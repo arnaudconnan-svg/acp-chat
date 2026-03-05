@@ -12,7 +12,7 @@ app.use(express.static("public"));
 app.use(express.json());
 
 // --- 0) Pris en compte du risque suicidaire
-async function llmTriage(userMessage) {
+async function llmTriage(userMessage, history = []) {
   const system = `
 Tu fais UNIQUEMENT du triage de risque suicidaire à partir du message utilisateur.
 Tu dois tenir compte du CONTEXTE : citation de quelqu'un d'autre, récit, métaphore, chanson, pensée intrusive, etc.
@@ -35,15 +35,20 @@ Format JSON strict :
 }
 `;
 
-  const r = await client.chat.completions.create({
-    model: "gpt-4.1-mini",
-    temperature: 0,
-    max_tokens: 80,
-    messages: [
-      { role: "system", content: system },
-      { role: "user", content: userMessage }
-    ],
-  });
+const context = history
+  .slice(-10)
+  .map(m => ({ role: m.role, content: m.content }));
+
+const r = await client.chat.completions.create({
+  model: "gpt-4.1-mini",
+  temperature: 0,
+  max_tokens: 80,
+  messages: [
+    { role: "system", content: system },
+    ...context,
+    { role: "user", content: userMessage }
+  ],
+});
 
   const raw = (r.choices?.[0]?.message?.content ?? "").trim();
 
@@ -158,7 +163,7 @@ function fallbackReflect(userMessage) {
 }
 
 // --- 4) Génération LLM avec "double passe" ---
-async function generateAcpReply(userMessage, intensity = "sobre") {
+async function generateAcpReply(userMessage, intensity = "sobre", history = []) {
   const baseSystem = `
 Tu es un espace de présence inspiré de l'Approche Centrée sur la Personne (Carl Rogers).
 Tu n'es PAS un thérapeute, PAS un coach, PAS un conseiller.
@@ -186,15 +191,20 @@ Ajustement d'intensité empathique : ${intensity}
 `;
 
   // Passe 1
-  const r1 = await client.chat.completions.create({
-    model: "gpt-4.1-mini",
-    max_tokens: 90,            // force court
-    temperature: 0.3,          // réduit créativité/dérives
-    messages: [
-      { role: "system", content: baseSystem },
-      { role: "user", content: userMessage }
-    ],
-  });
+const context = history
+  .slice(-20)
+  .map(m => ({ role: m.role, content: m.content }));
+
+const r1 = await client.chat.completions.create({
+  model: "gpt-4.1-mini",
+  max_tokens: 90,
+  temperature: 0.3,
+  messages: [
+    { role: "system", content: baseSystem },
+    ...context,
+    { role: "user", content: userMessage }
+  ],
+});
 
   let out = (r1.choices?.[0]?.message?.content ?? "").trim();
   out = clampToThreeSentences(out);
@@ -207,15 +217,20 @@ Réponds à nouveau en respectant strictement les règles.
 Ta réponse doit être uniquement un reflet/reformulation, sans aucun conseil, sans analyse, sans explication.
 `;
 
-    const r2 = await client.chat.completions.create({
-      model: "gpt-4.1-mini",
-      max_tokens: 70,
-      temperature: 0.2,
-      messages: [
-        { role: "system", content: repairSystem },
-        { role: "user", content: userMessage }
-      ],
-    });
+const context2 = history
+  .slice(-20)
+  .map(m => ({ role: m.role, content: m.content }));
+
+const r2 = await client.chat.completions.create({
+  model: "gpt-4.1-mini",
+  max_tokens: 70,
+  temperature: 0.2,
+  messages: [
+    { role: "system", content: repairSystem },
+    ...context2,
+    { role: "user", content: userMessage }
+  ],
+});
 
     out = (r2.choices?.[0]?.message?.content ?? "").trim();
     out = clampToThreeSentences(out);
@@ -231,10 +246,11 @@ Ta réponse doit être uniquement un reflet/reformulation, sans aucun conseil, s
 
 // --- Route chat ---
 app.post("/chat", async (req, res) => {
+
   try {
     const userMessage = String(req.body?.message ?? "");
-
-    const triage = await llmTriage(userMessage);
+    const history = Array.isArray(req.body?.history) ? req.body.history : [];
+    const triage = await llmTriage(userMessage, history);
 
     if (triage.level === "N2") {
       return res.json({ reply: n2Response() });
@@ -245,7 +261,7 @@ app.post("/chat", async (req, res) => {
       return res.json({ reply });
     }
 
-    const reply = await generateAcpReply(userMessage, "sobre");
+    const reply = await generateAcpReply(userMessage, "sobre", history);
     return res.json({ reply });
   } catch (err) {
     console.error("Erreur /chat:", err);

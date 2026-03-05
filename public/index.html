@@ -40,6 +40,30 @@ margin:5px 0;
 
 <script>
 
+const MEMORY_KEY = "acp_chat_history_v1";
+const MAX_TURNS = 20; // 20 tours = 40 messages
+
+function loadHistory() {
+  try { return JSON.parse(localStorage.getItem(MEMORY_KEY) || "[]"); }
+  catch { return []; }
+}
+
+function saveHistory(h) {
+  localStorage.setItem(MEMORY_KEY, JSON.stringify(h));
+}
+
+function pushMsg(role, content) {
+  const h = loadHistory();
+  h.push({ role, content, t: Date.now() });
+  const trimmed = h.slice(-MAX_TURNS * 2);
+  saveHistory(trimmed);
+  return trimmed;
+}
+
+function clearHistory() {
+  localStorage.removeItem(MEMORY_KEY);
+}
+
 async function send(){
 
 const input = document.getElementById("input")
@@ -48,6 +72,8 @@ const chat = document.getElementById("chat")
 const text = input.value
 
 if(text === "") return
+
+const historyAfterUser = pushMsg("user", text);
 
 const userMessage = document.createElement("div")
 userMessage.className = "message"
@@ -66,12 +92,15 @@ headers: {
 },
 
 body: JSON.stringify({
-message: text
+  message: text,
+  history: historyAfterUser
 })
 
 })
 
 const data = await response.json()
+
+pushMsg("assistant", data.reply);
 
 const botMessage = document.createElement("div")
 botMessage.className = "message"
