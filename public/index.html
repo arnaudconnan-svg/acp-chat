@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Chat ACP</title>
+
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#ffffff">
+
+<style>
+body{
+font-family: Arial;
+max-width:600px;
+margin:40px auto;
+}
+
+#chat{
+border:1px solid #ccc;
+padding:10px;
+height:300px;
+overflow-y:auto;
+margin-bottom:10px;
+}
+
+.message{
+margin:5px 0;
+}
+</style>
+
+</head>
+
+<body>
+
+<h2>Prototype Chat ACP</h2>
+
+<div id="chat"></div>
+
+<input id="input" type="text" placeholder="Écrire..." style="width:80%">
+<button onclick="send()">Envoyer</button>
+
+<script>
+
+async function send(){
+
+const input = document.getElementById("input")
+const chat = document.getElementById("chat")
+
+const text = input.value
+
+if(text === "") return
+
+const userMessage = document.createElement("div")
+userMessage.className = "message"
+userMessage.textContent = "Utilisateur : " + text
+
+chat.appendChild(userMessage)
+
+input.value = ""
+
+const response = await fetch("/chat", {
+
+method: "POST",
+
+headers: {
+"Content-Type": "application/json"
+},
+
+body: JSON.stringify({
+message: text
+})
+
+})
+
+const data = await response.json()
+
+const botMessage = document.createElement("div")
+botMessage.className = "message"
+botMessage.textContent = "Chatbot : " + data.reply
+
+chat.appendChild(botMessage)
+
+chat.scrollTop = chat.scrollHeight
+
+}
+
+</script>
+
+</body>
+</html>
