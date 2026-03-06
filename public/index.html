@@ -6,40 +6,57 @@
 
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#ffffff">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
   body {
-    font-family: Arial, sans-serif;
-    margin: 10px;
-  }
-  
-  h2 {
-    margin-left: 5px;
-  }
-  
-  #chat {
-    border: 1px solid #ccc;
-    padding: 12px;
-    height: 60vh;
-    overflow-y: auto;
-    margin: 10px 0;
-    font-size: 18px;
-  }
-  
-  .message {
-    margin: 8px 0;
-  }
-  
-  #input {
-    width: 75%;
-    font-size: 18px;
-    padding: 6px;
-  }
-  
-  button {
-    font-size: 18px;
-    padding: 6px 10px;
-  }
+  font-family: Arial, sans-serif;
+  margin: 25px;
+}
+
+/* 1 — Titre centré */
+h2 {
+  text-align: center;
+  font-size: 32px;
+  margin-bottom: 20px;
+}
+
+/* 2 — Fenêtre chat */
+#chat {
+  border: 1px solid #ccc;
+  padding: 16px;
+  height: 60vh;
+  overflow-y: auto;
+  margin: 12px 0;
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+/* 3 — Barre de saisie pleine largeur */
+#input {
+  width: 100%;
+  font-size: 18px;
+  padding: 12px;
+  box-sizing: border-box;
+  margin-bottom: 12px;
+}
+
+/* 4 — Bouton centré */
+button {
+  display: block;
+  margin: 0 auto;
+  font-size: 20px;
+  padding: 12px 18px;
+}
+
+/* Messages */
+.message {
+  margin: 12px 0;
+}
+
+.role {
+  font-weight: bold;
+}
 </style>
 
 </head>
@@ -50,7 +67,7 @@
 
 <div id="chat"></div>
 
-<input id="input" type="text" placeholder="Écrire..." style="width:80%">
+<input id="input" type="text" placeholder="Écrire...">
 <button onclick="send()">Envoyer</button>
 
 <script>
@@ -92,7 +109,7 @@ const historyAfterUser = pushMsg("user", text);
 
 const userMessage = document.createElement("div")
 userMessage.className = "message"
-userMessage.textContent = "Utilisateur : " + text
+userMessage.innerHTML = "<span class='role'>Utilisateur :</span> " + text
 
 chat.appendChild(userMessage)
 
@@ -119,7 +136,7 @@ pushMsg("assistant", data.reply);
 
 const botMessage = document.createElement("div")
 botMessage.className = "message"
-botMessage.textContent = "Chatbot : " + data.reply
+botMessage.innerHTML = "<span class='role'>Chatbot :</span> " + data.reply
 
 chat.appendChild(botMessage)
 
@@ -133,6 +150,15 @@ chat.scrollTop = chat.scrollHeight
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("/sw.js");
 }
+</script>
+
+<script>
+document.getElementById("input").addEventListener("keydown", function(event) {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    send();
+  }
+});
 </script>
 
 </body>
