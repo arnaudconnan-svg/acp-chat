@@ -28,8 +28,8 @@ Niveaux :
 - N2 : intention, plan, moyens, imminence
 
 Ambiguïté :
-- Si citation probable → is_quote=true + niveau le plus bas compatible
-- Si ambigu N1/N2 → N1 + needs_clarification=true
+- Si citation probable, mets is_quote=true et choisis le niveau le plus bas compatible.
+- Si ambigu entre N1 et N2, choisis N1 et needs_clarification=true.
 
 Format JSON strict :
 {
@@ -65,7 +65,6 @@ Format JSON strict :
     }
     
     return obj;
-    
   } catch {
     return { level: "N1", needs_clarification: true, is_quote: false };
   }
@@ -82,16 +81,18 @@ function n1Fallback() {
 
 async function n1ResponseLLM(userMessage) {
   const system = `
-Tu réponds comme un espace d'écoute inspiré de l'Approche Centrée sur la Personne.
-Tu n'es pas un thérapeute, pas un coach, pas un conseiller.
+Tu réponds de manière brève, claire et non dramatique.
+Tu t'adresses à la personne en la tutoyant.
+Tu ne donnes pas de conseil.
 
-- Tutoiement
-- 1 phrase maximum
-- Pas de conseil
-- Pas d'explication
-- Pas d'analyse
+Objectif unique : clarifier si la personne parle
+- d'une envie de disparaître / ne plus être là
+ou
+- d'une intention de se suicider
+ou
+- des paroles de quelqu'un d'autre.
 
-Objectif : clarification douce
+Réponse en une phrase maximum.
 `;
   
   const r = await client.chat.completions.create({
@@ -104,8 +105,7 @@ Objectif : clarification douce
     ],
   });
   
-  let out = (r.choices?.[0]?.message?.content ?? "").trim();
-  out = clampToThreeSentences(out);
+  const out = (r.choices?.[0]?.message?.content ?? "").trim();
   
   if (!out || out.length > 220) return n1Fallback();
   
@@ -123,59 +123,27 @@ function n2Response() {
 
 
 // --------------------------------------------------
-// 3) OUTILS
+// 3) GÉNÉRATION LIBRE DU LLM
 // --------------------------------------------------
 
-function clampToThreeSentences(text) {
-  const cleaned = text.trim().replace(/\s+/g, " ");
-  const parts = cleaned.split(/(?<=[.!?…])\s+/).filter(Boolean);
-  return parts.slice(0, 3).join(" ").trim();
-}
-
-function fallbackReflect(userMessage) {
-  const m = userMessage.trim();
-  if (!m) return "Je te lis.";
-  return "Tu dis : " + m;
-}
-
-
-// --------------------------------------------------
-// 4) GÉNÉRATION ACP — VERSION ÉPURÉE
-// --------------------------------------------------
-
-async function generateAcpReply(userMessage, history = []) {
-  const baseSystem = `
-Tu es un espace d'écoute inspiré de l'Approche Centrée sur la Personne.
-
-Tu réponds brièvement (1 à 3 phrases).
-Tu t'adresses à la personne en la tutoyant.
-
-Tu accueilles ce qui est exprimé tel que c'est vécu.
-Tu reformules ou reflètes l'expérience sans conseiller, sans expliquer, sans analyser.
-
-Priorité : présence simple et chaleureuse, langage naturel, proximité humaine.
-`;
-  
+async function generateFreeReply(userMessage, history = []) {
   const context = history
     .slice(-20)
     .map(m => ({ role: m.role, content: m.content }));
   
   const r = await client.chat.completions.create({
     model: "gpt-4.1-mini",
-    max_tokens: 90,
-    temperature: 0.3,
+    temperature: 0.7,
     messages: [
-      { role: "system", content: baseSystem },
       ...context,
       { role: "user", content: userMessage }
     ],
   });
   
-  let out = (r.choices?.[0]?.message?.content ?? "").trim();
-  out = clampToThreeSentences(out);
+  const out = (r.choices?.[0]?.message?.content ?? "").trim();
   
   if (!out) {
-    out = fallbackReflect(userMessage);
+    return "Je t’écoute.";
   }
   
   return out;
@@ -183,7 +151,7 @@ Priorité : présence simple et chaleureuse, langage naturel, proximité humaine
 
 
 // --------------------------------------------------
-// 5) ROUTE CHAT
+// 4) ROUTE CHAT
 // --------------------------------------------------
 
 app.post("/chat", async (req, res) => {
@@ -202,12 +170,12 @@ app.post("/chat", async (req, res) => {
       return res.json({ reply });
     }
     
-    const reply = await generateAcpReply(userMessage, history);
+    const reply = await generateFreeReply(userMessage, history);
     return res.json({ reply });
     
   } catch (err) {
     console.error("Erreur /chat:", err);
-    return res.json({ reply: "Je te lis." });
+    return res.json({ reply: "Je t’écoute." });
   }
 });
 
