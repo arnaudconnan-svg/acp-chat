@@ -233,7 +233,8 @@ const r1 = await client.chat.completions.create({
   let out = (r1.choices?.[0]?.message?.content ?? "").trim();
   out = clampToThreeSentences(out);
 
-  if (!out || violatesAcp(out)) {
+  if (!out// || violatesAcp(out)
+  ) {
 
     // Passe 2 : contrainte renforcée (réparation)
     const repairSystem = baseSystem + `
@@ -260,7 +261,8 @@ const r2 = await client.chat.completions.create({
     out = (r2.choices?.[0]?.message?.content ?? "").trim();
     out = clampToThreeSentences(out);
 
-    if (!out || violatesAcp(out)) {
+    if (!out// || violatesAcp(out)
+    ) {
       // Dernier recours : reflet minimal (toujours ACP-safe)
       out = fallbackReflect(userMessage);
     }
