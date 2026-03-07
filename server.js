@@ -123,10 +123,22 @@ function n2Response() {
 
 
 // --------------------------------------------------
-// 3) GÉNÉRATION LIBRE DU LLM
+// 3) GÉNÉRATION LIBRE DU LLM AVEC CADRE ÉPURÉ
 // --------------------------------------------------
 
 async function generateFreeReply(userMessage, history = []) {
+  const baseSystem = `
+Tu échanges avec une personne qui parle de son vécu.
+
+Tutoie la personne.
+
+Accueille ce qui est partagé tel que c'est vécu.
+Soutiens l'exploration personnelle et le questionnement.
+Reste du côté de l'expérience plutôt que des solutions.
+
+Langage simple, chaleureux, naturel, humain.
+`;
+  
   const context = history
     .slice(-20)
     .map(m => ({ role: m.role, content: m.content }));
@@ -135,6 +147,7 @@ async function generateFreeReply(userMessage, history = []) {
     model: "gpt-4.1-mini",
     temperature: 0.7,
     messages: [
+      { role: "system", content: baseSystem },
       ...context,
       { role: "user", content: userMessage }
     ],
