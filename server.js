@@ -38,11 +38,11 @@ Format JSON strict :
   "is_quote": true|false
 }
 `;
-  
+
   const context = history
     .slice(-10)
     .map(m => ({ role: m.role, content: m.content }));
-  
+
   const r = await client.chat.completions.create({
     model: "gpt-4.1-mini",
     temperature: 0,
@@ -53,17 +53,17 @@ Format JSON strict :
       { role: "user", content: userMessage }
     ],
   });
-  
+
   const raw = (r.choices?.[0]?.message?.content ?? "").trim();
-  
+
   try {
     const cleaned = raw.replace(/```json|```/g, "").trim();
     const obj = JSON.parse(cleaned);
-    
+
     if (!obj || !["N0", "N1", "N2"].includes(obj.level)) {
       return { level: "N1", needs_clarification: true, is_quote: false };
     }
-    
+
     return obj;
   } catch {
     return { level: "N1", needs_clarification: true, is_quote: false };
@@ -94,7 +94,7 @@ ou
 
 Réponse en une phrase maximum.
 `;
-  
+
   const r = await client.chat.completions.create({
     model: "gpt-4.1-mini",
     temperature: 0,
@@ -104,11 +104,11 @@ Réponse en une phrase maximum.
       { role: "user", content: userMessage }
     ],
   });
-  
+
   const out = (r.choices?.[0]?.message?.content ?? "").trim();
-  
+
   if (!out || out.length > 220) return n1Fallback();
-  
+
   return out;
 }
 
@@ -123,10 +123,53 @@ function n2Response() {
 
 
 // --------------------------------------------------
-// 3) GÉNÉRATION LIBRE DU LLM AVEC CADRE ÉPURÉ
+// 3) RÉSUMÉ INTER-SESSIONS
 // --------------------------------------------------
 
-async function generateFreeReply(userMessage, history = [], summary = "") {
+async function summarizeSession(previousHistory = [], previousSummary = "") {
+  if (!previousHistory || previousHistory.length === 0) return previousSummary;
+
+  const transcript = previousHistory
+    .map(m => `${m.role === "user" ? "Utilisateur" : "Assistant"} : ${m.content}`)
+    .join("\n");
+
+  const system = `
+Tu résumes des échanges entre une personne et un assistant d'écoute.
+
+But :
+- conserver uniquement ce qui aide à comprendre la personne dans la durée
+- garder les thèmes importants, émotions récurrentes, événements de vie, dynamiques notables
+- écrire un résumé court, clair, humain
+- ne pas donner de conseil
+- si une forme de dissociation ou de déconnexion de soi a été évoquée, le faire apparaître explicitement
+`;
+
+  const r = await client.chat.completions.create({
+    model: "gpt-4.1-mini",
+    temperature: 0.3,
+    messages: [
+      { role: "system", content: system },
+      {
+        role: "user",
+        content:
+          "Résumé précédent :\n" +
+          (previousSummary || "(aucun)") +
+          "\n\nSession à intégrer :\n" +
+          transcript +
+          "\n\nNouveau résumé :"
+      }
+    ],
+  });
+
+  return (r.choices?.[0]?.message?.content ?? "").trim() || previousSummary;
+}
+
+
+// --------------------------------------------------
+// 4) GÉNÉRATION LIBRE DU LLM AVEC CADRE ÉPURÉ
+// --------------------------------------------------
+
+async function generateFreeReply(userMessage, history = [], summary = "", isNewSession = false) {
   const baseSystem = `
 Tu échanges avec une personne qui parle de son vécu.
 
@@ -138,60 +181,67 @@ Reste du côté de l'expérience plutôt que des solutions.
 
 Langage simple, chaleureux, naturel, humain.
 `;
-  
+
   const context = history
     .slice(-20)
     .map(m => ({ role: m.role, content: m.content }));
-  
+
   const r = await client.chat.completions.create({
     model: "gpt-4.1-mini",
     temperature: 0.7,
     messages: [
       { role: "system", content: baseSystem },
-      ...(summary ? [{ role: "system", content: "Résumé des échanges précédents : " + summary }] :
-      []),
+      ...(isNewSession && summary
+        ? [{ role: "system", content: "Résumé des échanges précédents : " + summary }]
+        : []),
       ...context,
       { role: "user", content: userMessage }
     ],
   });
-  
+
   const out = (r.choices?.[0]?.message?.content ?? "").trim();
-  
+
   if (!out) {
     return "Je t’écoute.";
   }
-  
+
   return out;
 }
 
 
 // --------------------------------------------------
-// 4) ROUTE CHAT
+// 5) ROUTE CHAT
 // --------------------------------------------------
 
 app.post("/chat", async (req, res) => {
   try {
     const userMessage = String(req.body?.message ?? "");
     const history = Array.isArray(req.body?.history) ? req.body.history : [];
-    
+    const previousHistory = Array.isArray(req.body?.previousHistory) ? req.body.previousHistory : [];
     const summary = String(req.body?.summary ?? "");
-    
     const flags = req.body?.flags && typeof req.body.flags === "object" ? req.body.flags : {};
-    
-    const triage = await llmTriage(userMessage, history);
-    
-    if (triage.level === "N2") {
-      return res.json({ reply: n2Response() });
+    const isNewSession = Boolean(req.body?.isNewSession);
+
+    let newSummary = summary;
+
+    if (isNewSession && previousHistory.length > 0) {
+      newSummary = await summarizeSession(previousHistory, summary);
     }
-    
+
+    const triage = await llmTriage(userMessage, history);
+
+    if (triage.level === "N2") {
+      return res.json({ reply: n2Response(), summary: newSummary, flags });
+    }
+
     if (triage.level === "N1" || triage.needs_clarification) {
       const reply = await n1ResponseLLM(userMessage);
-      return res.json({ reply });
+      return res.json({ reply, summary: newSummary, flags });
     }
-    
-    const reply = await generateFreeReply(userMessage, History, summary);
-    return res.json({ reply });
-    
+
+    const reply = await generateFreeReply(userMessage, history, newSummary, isNewSession);
+    return res.json({ reply, summary: newSummary, flags });
+
   } catch (err) {
     console.error("Erreur /chat:", err);
     return res.json({ reply: "Je t’écoute." });

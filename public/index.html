@@ -65,7 +65,7 @@
 <button onclick="send()">Envoyer</button>
 
 <script>
-const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 min
+const SESSION_TIMEOUT = 1 * 10 * 1000; // 30 min
 
 const SESSION_KEY = "acp_session_history_v1";
 const SUMMARY_KEY = "acp_longterm_summary_v1";
@@ -92,16 +92,26 @@ function clearSessionHistory() {
   localStorage.removeItem(SESSION_KEY);
 }
 
+/*
+  Retourne :
+  - previousHistory : l'ancienne session si elle vient de se terminer
+  - history : la nouvelle session après ajout du message courant
+  - isNewSession : true si on démarre une nouvelle session
+*/
 function pushMsg(role, content) {
   const now = Date.now();
-  let history = loadSessionHistory();
+  const oldHistory = loadSessionHistory();
+
+  let previousHistory = [];
+  let history = oldHistory;
   let isNewSession = false;
 
-  if (history.length > 0) {
-    const lastTime = history[history.length - 1].t;
+  if (oldHistory.length > 0) {
+    const lastTime = oldHistory[oldHistory.length - 1].t;
     const gap = now - lastTime;
 
     if (gap > SESSION_TIMEOUT) {
+      previousHistory = oldHistory;
       history = [];
       isNewSession = true;
     }
@@ -112,7 +122,7 @@ function pushMsg(role, content) {
   history.push({ role, content, t: now });
   saveSessionHistory(history);
 
-  return { history, isNewSession };
+  return { previousHistory, history, isNewSession };
 }
 
 
@@ -159,6 +169,7 @@ async function send() {
 
   const pushed = pushMsg("user", text);
   const historyAfterUser = pushed.history;
+  const previousHistory = pushed.previousHistory;
   const isNewSession = pushed.isNewSession;
 
   const userMessage = document.createElement("div");
@@ -174,6 +185,7 @@ async function send() {
     body: JSON.stringify({
       message: text,
       history: historyAfterUser,
+      previousHistory: previousHistory,
       summary: loadLongTermSummary(),
       flags: loadStateFlags(),
       isNewSession: isNewSession
@@ -182,7 +194,17 @@ async function send() {
 
   const data = await response.json();
 
-  pushMsg("assistant", data.reply);
+  if (data.summary) {
+    saveLongTermSummary(data.summary);
+  }
+
+  if (data.flags) {
+    saveStateFlags(data.flags);
+  }
+
+  const currentHistory = loadSessionHistory();
+  currentHistory.push({ role: "assistant", content: data.reply, t: Date.now() });
+  saveSessionHistory(currentHistory);
 
   const botMessage = document.createElement("div");
   botMessage.className = "message";
