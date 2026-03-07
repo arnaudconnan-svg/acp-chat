@@ -126,7 +126,7 @@ function n2Response() {
 // 3) GÉNÉRATION LIBRE DU LLM AVEC CADRE ÉPURÉ
 // --------------------------------------------------
 
-async function generateFreeReply(userMessage, history = []) {
+async function generateFreeReply(userMessage, history = [], summary = "") {
   const baseSystem = `
 Tu échanges avec une personne qui parle de son vécu.
 
@@ -148,6 +148,8 @@ Langage simple, chaleureux, naturel, humain.
     temperature: 0.7,
     messages: [
       { role: "system", content: baseSystem },
+      ...(summary ? [{ role: "system", content: "Résumé des échanges précédents : " + summary }] :
+      []),
       ...context,
       { role: "user", content: userMessage }
     ],
@@ -172,6 +174,10 @@ app.post("/chat", async (req, res) => {
     const userMessage = String(req.body?.message ?? "");
     const history = Array.isArray(req.body?.history) ? req.body.history : [];
     
+    const summary = String(req.body?.summary ?? "");
+    
+    const flags = req.body?.flags && typeof req.body.flags === "object" ? req.body.flags : {};
+    
     const triage = await llmTriage(userMessage, history);
     
     if (triage.level === "N2") {
@@ -183,7 +189,7 @@ app.post("/chat", async (req, res) => {
       return res.json({ reply });
     }
     
-    const reply = await generateFreeReply(userMessage, history);
+    const reply = await generateFreeReply(userMessage, History, summary);
     return res.json({ reply });
     
   } catch (err) {

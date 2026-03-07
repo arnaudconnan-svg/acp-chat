@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Chat ACP</title>
+<title>Prototype Chat ACP - Bêta</title>
 
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#ffffff">
@@ -10,55 +10,49 @@
 
 <style>
   body {
-  font-family: Arial, sans-serif;
-  margin: 25px;
-}
+    font-family: Arial, sans-serif;
+    margin: 25px;
+  }
 
-/* 1 — Titre centré */
-h2 {
-  text-align: center;
-  font-size: 32px;
-  margin-bottom: 20px;
-}
+  h2 {
+    text-align: center;
+    font-size: 32px;
+    margin-bottom: 20px;
+  }
 
-/* 2 — Fenêtre chat */
-#chat {
-  border: 1px solid #ccc;
-  padding: 16px;
-  height: 60vh;
-  overflow-y: auto;
-  margin: 12px 0;
-  font-size: 16px;
-  line-height: 1.4;
-}
+  #chat {
+    border: 1px solid #ccc;
+    padding: 16px;
+    height: 60vh;
+    overflow-y: auto;
+    margin: 12px 0;
+    font-size: 16px;
+    line-height: 1.4;
+  }
 
-/* 3 — Barre de saisie pleine largeur */
-#input {
-  width: 100%;
-  font-size: 18px;
-  padding: 12px;
-  box-sizing: border-box;
-  margin-bottom: 12px;
-}
+  #input {
+    width: 100%;
+    font-size: 18px;
+    padding: 12px;
+    box-sizing: border-box;
+    margin-bottom: 12px;
+  }
 
-/* 4 — Bouton centré */
-button {
-  display: block;
-  margin: 0 auto;
-  font-size: 20px;
-  padding: 12px 18px;
-}
+  button {
+    display: block;
+    margin: 0 auto;
+    font-size: 20px;
+    padding: 12px 18px;
+  }
 
-/* Messages */
-.message {
-  margin: 12px 0;
-}
+  .message {
+    margin: 12px 0;
+  }
 
-.role {
-  font-weight: bold;
-}
+  .role {
+    font-weight: bold;
+  }
 </style>
-
 </head>
 
 <body>
@@ -71,94 +65,147 @@ button {
 <button onclick="send()">Envoyer</button>
 
 <script>
+const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 min
 
-const MEMORY_KEY = "acp_chat_history_v1";
-const MAX_TURNS = 20; // 20 tours = 40 messages
+const SESSION_KEY = "acp_session_history_v1";
+const SUMMARY_KEY = "acp_longterm_summary_v1";
+const FLAGS_KEY   = "acp_state_flags_v1";
 
-function loadHistory() {
-  try { return JSON.parse(localStorage.getItem(MEMORY_KEY) || "[]"); }
+
+// --------------------
+// Mémoire session
+// --------------------
+
+function loadSessionHistory() {
+  try { return JSON.parse(localStorage.getItem(SESSION_KEY) || "[]"); }
   catch { return []; }
 }
 
-function saveHistory(h) {
-  localStorage.setItem(MEMORY_KEY, JSON.stringify(h));
+function saveSessionHistory(h) {
+  localStorage.setItem(SESSION_KEY, JSON.stringify(h));
 }
 
 function pushMsg(role, content) {
-  const h = loadHistory();
-  h.push({ role, content, t: Date.now() });
-  const trimmed = h.slice(-MAX_TURNS * 2);
-  saveHistory(trimmed);
-  return trimmed;
+  const now = Date.now();
+  let history = loadSessionHistory();
+  let isNewSession = false;
+
+  if (history.length > 0) {
+    const lastTime = history[history.length - 1].t;
+    const gap = now - lastTime;
+
+    if (gap > SESSION_TIMEOUT) {
+      history = [];
+      isNewSession = true;
+    }
+  } else {
+    isNewSession = true;
+  }
+
+  history.push({ role, content, t: now });
+  saveSessionHistory(history);
+
+  return { history, isNewSession };
 }
 
-function clearHistory() {
-  localStorage.removeItem(MEMORY_KEY);
+
+// --------------------
+// Mémoire long terme (résumé)
+// --------------------
+
+function loadLongTermSummary() {
+  return localStorage.getItem(SUMMARY_KEY) || "";
 }
 
-async function send(){
-
-const input = document.getElementById("input")
-const chat = document.getElementById("chat")
-
-const text = input.value
-
-if(text === "") return
-
-const historyAfterUser = pushMsg("user", text);
-
-const userMessage = document.createElement("div")
-userMessage.className = "message"
-userMessage.innerHTML = "<span class='role'>Utilisateur :</span> " + text
-
-chat.appendChild(userMessage)
-
-input.value = ""
-
-const response = await fetch("/chat", {
-
-method: "POST",
-
-headers: {
-"Content-Type": "application/json"
-},
-
-body: JSON.stringify({
-  message: text,
-  history: historyAfterUser
-})
-
-})
-
-const data = await response.json()
-
-pushMsg("assistant", data.reply);
-
-const botMessage = document.createElement("div")
-botMessage.className = "message"
-botMessage.innerHTML = "<span class='role'>Chatbot :</span> " + data.reply
-
-chat.appendChild(botMessage)
-
-chat.scrollTop = chat.scrollHeight
-
+function saveLongTermSummary(text) {
+  localStorage.setItem(SUMMARY_KEY, text);
 }
 
-</script>
 
-<script>
+// --------------------
+// Flags d’état
+// --------------------
+
+function loadStateFlags() {
+  try { return JSON.parse(localStorage.getItem(FLAGS_KEY) || "{}"); }
+  catch { return {}; }
+}
+
+function saveStateFlags(flags) {
+  localStorage.setItem(FLAGS_KEY, JSON.stringify(flags));
+}
+
+
+// --------------------
+// Envoi message
+// --------------------
+
+async function send() {
+
+  const input = document.getElementById("input");
+  const chat  = document.getElementById("chat");
+
+  const text = input.value.trim();
+  if (!text) return;
+
+  const pushed = pushMsg("user", text);
+  const historyAfterUser = pushed.history;
+  const isNewSession = pushed.isNewSession;
+
+  const userMessage = document.createElement("div");
+  userMessage.className = "message";
+  userMessage.innerHTML =
+    "<span class='role'>Utilisateur :</span> " + text;
+  chat.appendChild(userMessage);
+
+  input.value = "";
+
+  const response = await fetch("/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      message: text,
+      history: historyAfterUser,
+      summary: loadLongTermSummary(),
+      flags: loadStateFlags(),
+      isNewSession: isNewSession
+    })
+  });
+
+  const data = await response.json();
+
+  pushMsg("assistant", data.reply);
+
+  const botMessage = document.createElement("div");
+  botMessage.className = "message";
+  botMessage.innerHTML =
+    "<span class='role'>Chatbot :</span> " + data.reply;
+  chat.appendChild(botMessage);
+
+  chat.scrollTop = chat.scrollHeight;
+}
+
+
+// --------------------
+// Entrée clavier
+// --------------------
+
+document.getElementById("input")
+  .addEventListener("keydown", function(event) {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      send();
+    }
+  });
+
+
+// --------------------
+// Service Worker
+// --------------------
+
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("/sw.js");
 }
-</script>
-
-<script>
-document.getElementById("input").addEventListener("keydown", function(event) {
-  if (event.key === "Enter") {
-    event.preventDefault();
-    send();
-  }
-});
 </script>
 
 </body>
