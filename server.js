@@ -23,13 +23,18 @@ Tu tiens compte du CONTEXTE : citation, récit, métaphore, chanson, pensée int
 Tu ne donnes AUCUN conseil. Tu produis du JSON STRICT, rien d'autre.
 
 Niveaux :
-- N0 : détresse sans souhait de mourir
-- N1 : idéation passive sans intention ni plan
-- N2 : intention, plan, moyens, imminence
+- N0 : pas de contenu suicidaire explicite
+- N1 : idéation passive explicite (souhait de mourir, disparaître, ne plus être là), sans intention ni plan
+- N2 : intention, plan, moyens, imminence, auto-agression envisagée pour soi
 
-Ambiguïté :
-- Si citation probable, mets is_quote=true et choisis le niveau le plus bas compatible.
+Règles importantes :
+- Ne classe en N1 ou N2 que s'il existe une référence explicite ou quasi explicite à mourir, disparaître, se suicider ou se faire du mal, dans le message actuel ou dans le contexte immédiat.
+- Une phrase vague, elliptique, sombre ou émotionnellement chargée ne suffit pas.
+- En l'absence de contenu suicidaire explicite, choisis N0.
+- N'utilise pas needs_clarification simplement parce qu'un message est ambigu, bref, flou ou lourd émotionnellement.
+- Si le message rapporte les paroles de quelqu'un d'autre, mets is_quote=true.
 - Si ambigu entre N1 et N2, choisis N1 et needs_clarification=true.
+- Si le message actuel ne contient aucune référence explicite à la mort, au suicide, à la disparition ou à l'auto-agression, choisis N0, sauf si le contexte immédiat parlait déjà explicitement de cela.
 
 Format JSON strict :
 {
@@ -38,11 +43,11 @@ Format JSON strict :
   "is_quote": true|false
 }
 `;
-
+  
   const context = history
     .slice(-10)
     .map(m => ({ role: m.role, content: m.content }));
-
+  
   const r = await client.chat.completions.create({
     model: "gpt-4.1-mini",
     temperature: 0,
@@ -53,20 +58,20 @@ Format JSON strict :
       { role: "user", content: userMessage }
     ],
   });
-
+  
   const raw = (r.choices?.[0]?.message?.content ?? "").trim();
-
+  
   try {
     const cleaned = raw.replace(/```json|```/g, "").trim();
     const obj = JSON.parse(cleaned);
-
+    
     if (!obj || !["N0", "N1", "N2"].includes(obj.level)) {
-      return { level: "N1", needs_clarification: true, is_quote: false };
+      return { level: "N0", needs_clarification: false, is_quote: false };
     }
-
+    
     return obj;
   } catch {
-    return { level: "N1", needs_clarification: true, is_quote: false };
+    return { level: "N0", needs_clarification: false, is_quote: false };
   }
 }
 
