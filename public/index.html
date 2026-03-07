@@ -77,12 +77,19 @@ const FLAGS_KEY   = "acp_state_flags_v1";
 // --------------------
 
 function loadSessionHistory() {
-  try { return JSON.parse(localStorage.getItem(SESSION_KEY) || "[]"); }
-  catch { return []; }
+  try {
+    return JSON.parse(localStorage.getItem(SESSION_KEY) || "[]");
+  } catch {
+    return [];
+  }
 }
 
 function saveSessionHistory(h) {
   localStorage.setItem(SESSION_KEY, JSON.stringify(h));
+}
+
+function clearSessionHistory() {
+  localStorage.removeItem(SESSION_KEY);
 }
 
 function pushMsg(role, content) {
@@ -127,8 +134,11 @@ function saveLongTermSummary(text) {
 // --------------------
 
 function loadStateFlags() {
-  try { return JSON.parse(localStorage.getItem(FLAGS_KEY) || "{}"); }
-  catch { return {}; }
+  try {
+    return JSON.parse(localStorage.getItem(FLAGS_KEY) || "{}");
+  } catch {
+    return {};
+  }
 }
 
 function saveStateFlags(flags) {
@@ -141,9 +151,8 @@ function saveStateFlags(flags) {
 // --------------------
 
 async function send() {
-
   const input = document.getElementById("input");
-  const chat  = document.getElementById("chat");
+  const chat = document.getElementById("chat");
 
   const text = input.value.trim();
   if (!text) return;
@@ -154,8 +163,7 @@ async function send() {
 
   const userMessage = document.createElement("div");
   userMessage.className = "message";
-  userMessage.innerHTML =
-    "<span class='role'>Utilisateur :</span> " + text;
+  userMessage.innerHTML = "<span class='role'>Utilisateur :</span> " + text;
   chat.appendChild(userMessage);
 
   input.value = "";
@@ -178,8 +186,7 @@ async function send() {
 
   const botMessage = document.createElement("div");
   botMessage.className = "message";
-  botMessage.innerHTML =
-    "<span class='role'>Chatbot :</span> " + data.reply;
+  botMessage.innerHTML = "<span class='role'>Chatbot :</span> " + data.reply;
   chat.appendChild(botMessage);
 
   chat.scrollTop = chat.scrollHeight;
@@ -190,13 +197,12 @@ async function send() {
 // Entrée clavier
 // --------------------
 
-document.getElementById("input")
-  .addEventListener("keydown", function(event) {
-    if (event.key === "Enter") {
-      event.preventDefault();
-      send();
-    }
-  });
+document.getElementById("input").addEventListener("keydown", function(event) {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    send();
+  }
+});
 
 
 // --------------------
