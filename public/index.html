@@ -4,21 +4,12 @@
 <meta charset="UTF-8">
 <title>Prototype Chat ACP - Bêta</title>
 
-<link rel="manifest" href="/manifest.json">
-<meta name="theme-color" content="#ffffff">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
-  body {
-    font-family: Arial, sans-serif;
-    margin: 25px;
-  }
+  body { font-family: Arial, sans-serif; margin: 25px; }
 
-  h2 {
-    text-align: center;
-    font-size: 32px;
-    margin-bottom: 20px;
-  }
+  h2 { text-align: center; font-size: 32px; margin-bottom: 20px; }
 
   #chat {
     border: 1px solid #ccc;
@@ -39,18 +30,34 @@
   }
 
   button {
+    display: inline-block;
+    font-size: 14px;
+    padding: 6px 10px;
+    margin: 4px 4px 0 0;
+  }
+
+  .main-btn {
     display: block;
     margin: 0 auto;
     font-size: 20px;
     padding: 12px 18px;
   }
 
-  .message {
+  .message { margin: 12px 0; }
+  .role { font-weight: bold; }
+
+  /* Voix off */
+  .theory-box {
+    border-left: 4px solid #888;
+    background: #f5f5f5;
+    padding: 10px;
     margin: 12px 0;
+    font-size: 14px;
   }
 
-  .role {
+  .theory-title {
     font-weight: bold;
+    margin-bottom: 6px;
   }
 </style>
 </head>
@@ -62,10 +69,10 @@
 <div id="chat"></div>
 
 <input id="input" type="text" placeholder="Écrire...">
-<button onclick="send()">Envoyer</button>
+<button class="main-btn" onclick="send()">Envoyer</button>
 
 <script>
-const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 min
+const SESSION_TIMEOUT = 30 * 60 * 1000;
 
 const SESSION_KEY = "acp_session_history_v1";
 const SUMMARY_KEY = "acp_longterm_summary_v1";
@@ -77,41 +84,22 @@ const FLAGS_KEY   = "acp_state_flags_v1";
 // --------------------
 
 function loadSessionHistory() {
-  try {
-    return JSON.parse(localStorage.getItem(SESSION_KEY) || "[]");
-  } catch {
-    return [];
-  }
+  try { return JSON.parse(localStorage.getItem(SESSION_KEY) || "[]"); }
+  catch { return []; }
 }
 
 function saveSessionHistory(h) {
   localStorage.setItem(SESSION_KEY, JSON.stringify(h));
 }
 
-function clearSessionHistory() {
-  localStorage.removeItem(SESSION_KEY);
-}
-
-/*
-  Retourne :
-  - previousHistory : l'ancienne session si elle vient de se terminer
-  - history : la nouvelle session après ajout du message courant
-  - isNewSession : true si on démarre une nouvelle session
-*/
 function pushMsg(role, content) {
   const now = Date.now();
-  const oldHistory = loadSessionHistory();
-
-  let previousHistory = [];
-  let history = oldHistory;
+  let history = loadSessionHistory();
   let isNewSession = false;
 
-  if (oldHistory.length > 0) {
-    const lastTime = oldHistory[oldHistory.length - 1].t;
-    const gap = now - lastTime;
-
+  if (history.length > 0) {
+    const gap = now - history[history.length - 1].t;
     if (gap > SESSION_TIMEOUT) {
-      previousHistory = oldHistory;
       history = [];
       isNewSession = true;
     }
@@ -122,37 +110,81 @@ function pushMsg(role, content) {
   history.push({ role, content, t: now });
   saveSessionHistory(history);
 
-  return { previousHistory, history, isNewSession };
+  return { history, isNewSession };
 }
 
 
 // --------------------
-// Mémoire long terme (résumé)
+// Mémoire long terme
 // --------------------
 
-function loadLongTermSummary() {
+function loadSummary() {
   return localStorage.getItem(SUMMARY_KEY) || "";
 }
 
-function saveLongTermSummary(text) {
+function saveSummary(text) {
   localStorage.setItem(SUMMARY_KEY, text);
 }
 
 
 // --------------------
-// Flags d’état
+// Flags
 // --------------------
 
-function loadStateFlags() {
-  try {
-    return JSON.parse(localStorage.getItem(FLAGS_KEY) || "{}");
-  } catch {
-    return {};
-  }
+function loadFlags() {
+  try { return JSON.parse(localStorage.getItem(FLAGS_KEY) || "{}"); }
+  catch { return {}; }
 }
 
-function saveStateFlags(flags) {
+function saveFlags(flags) {
   localStorage.setItem(FLAGS_KEY, JSON.stringify(flags));
+}
+
+
+// --------------------
+// UI helpers
+// --------------------
+
+function addMessage(roleLabel, text) {
+  const chat = document.getElementById("chat");
+  const msg = document.createElement("div");
+  msg.className = "message";
+  msg.innerHTML = "<span class='role'>" + roleLabel + " :</span> " + text;
+  chat.appendChild(msg);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function addTheoryBox(theory) {
+  const chat = document.getElementById("chat");
+  const box = document.createElement("div");
+  box.className = "theory-box";
+
+  box.innerHTML = `
+    <div class="theory-title">💬 ${theory.offer}</div>
+    <button onclick="showTheory(this)">Afficher</button>
+    <button onclick="dismissTheory(this)">Plus tard</button>
+    <button onclick="disableTheory(this)">Ne plus proposer</button>
+  `;
+
+  box.dataset.content = theory.content;
+  chat.appendChild(box);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function showTheory(btn) {
+  const box = btn.parentElement;
+  box.innerHTML = "<div>" + box.dataset.content + "</div>";
+}
+
+function dismissTheory(btn) {
+  btn.parentElement.remove();
+}
+
+function disableTheory(btn) {
+  const flags = loadFlags();
+  flags.noTheory = true;
+  saveFlags(flags);
+  btn.parentElement.remove();
 }
 
 
@@ -162,21 +194,14 @@ function saveStateFlags(flags) {
 
 async function send() {
   const input = document.getElementById("input");
-  const chat = document.getElementById("chat");
-
   const text = input.value.trim();
   if (!text) return;
 
   const pushed = pushMsg("user", text);
   const historyAfterUser = pushed.history;
-  const previousHistory = pushed.previousHistory;
   const isNewSession = pushed.isNewSession;
 
-  const userMessage = document.createElement("div");
-  userMessage.className = "message";
-  userMessage.innerHTML = "<span class='role'>Utilisateur :</span> " + text;
-  chat.appendChild(userMessage);
-
+  addMessage("Utilisateur", text);
   input.value = "";
 
   const response = await fetch("/chat", {
@@ -185,33 +210,23 @@ async function send() {
     body: JSON.stringify({
       message: text,
       history: historyAfterUser,
-      previousHistory: previousHistory,
-      summary: loadLongTermSummary(),
-      flags: loadStateFlags(),
-      isNewSession: isNewSession
+      summary: loadSummary(),
+      flags: loadFlags(),
+      isNewSession
     })
   });
 
   const data = await response.json();
 
-  if (data.summary) {
-    saveLongTermSummary(data.summary);
+  pushMsg("assistant", data.reply);
+  addMessage("Chatbot", data.reply);
+
+  if (data.summary) saveSummary(data.summary);
+  if (data.flags) saveFlags(data.flags);
+
+  if (data.theory && !loadFlags().noTheory) {
+    addTheoryBox(data.theory);
   }
-
-  if (data.flags) {
-    saveStateFlags(data.flags);
-  }
-
-  const currentHistory = loadSessionHistory();
-  currentHistory.push({ role: "assistant", content: data.reply, t: Date.now() });
-  saveSessionHistory(currentHistory);
-
-  const botMessage = document.createElement("div");
-  botMessage.className = "message";
-  botMessage.innerHTML = "<span class='role'>Chatbot :</span> " + data.reply;
-  chat.appendChild(botMessage);
-
-  chat.scrollTop = chat.scrollHeight;
 }
 
 
@@ -219,21 +234,12 @@ async function send() {
 // Entrée clavier
 // --------------------
 
-document.getElementById("input").addEventListener("keydown", function(event) {
-  if (event.key === "Enter") {
-    event.preventDefault();
+document.getElementById("input").addEventListener("keydown", e => {
+  if (e.key === "Enter") {
+    e.preventDefault();
     send();
   }
 });
-
-
-// --------------------
-// Service Worker
-// --------------------
-
-if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/sw.js");
-}
 </script>
 
 </body>
