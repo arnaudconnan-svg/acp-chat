@@ -46,7 +46,6 @@
   .message { margin: 12px 0; }
   .role { font-weight: bold; }
 
-  /* Voix off */
   .theory-box {
     border-left: 4px solid #888;
     background: #f5f5f5;
@@ -78,11 +77,6 @@ const SESSION_KEY = "acp_session_history_v1";
 const SUMMARY_KEY = "acp_longterm_summary_v1";
 const FLAGS_KEY   = "acp_state_flags_v1";
 
-
-// --------------------
-// Mémoire session
-// --------------------
-
 function loadSessionHistory() {
   try { return JSON.parse(localStorage.getItem(SESSION_KEY) || "[]"); }
   catch { return []; }
@@ -113,11 +107,6 @@ function pushMsg(role, content) {
   return { history, isNewSession };
 }
 
-
-// --------------------
-// Mémoire long terme
-// --------------------
-
 function loadSummary() {
   return localStorage.getItem(SUMMARY_KEY) || "";
 }
@@ -125,11 +114,6 @@ function loadSummary() {
 function saveSummary(text) {
   localStorage.setItem(SUMMARY_KEY, text);
 }
-
-
-// --------------------
-// Flags
-// --------------------
 
 function loadFlags() {
   try { return JSON.parse(localStorage.getItem(FLAGS_KEY) || "{}"); }
@@ -139,11 +123,6 @@ function loadFlags() {
 function saveFlags(flags) {
   localStorage.setItem(FLAGS_KEY, JSON.stringify(flags));
 }
-
-
-// --------------------
-// UI helpers
-// --------------------
 
 function addMessage(roleLabel, text) {
   const chat = document.getElementById("chat");
@@ -187,11 +166,6 @@ function disableTheory(btn) {
   btn.parentElement.remove();
 }
 
-
-// --------------------
-// Envoi message
-// --------------------
-
 async function send() {
   const input = document.getElementById("input");
   const text = input.value.trim();
@@ -217,6 +191,7 @@ async function send() {
   });
 
   const data = await response.json();
+  alert(JSON.stringify(data, null, 2));
 
   pushMsg("assistant", data.reply);
   addMessage("Chatbot", data.reply);
@@ -228,11 +203,6 @@ async function send() {
     addTheoryBox(data.theory);
   }
 }
-
-
-// --------------------
-// Entrée clavier
-// --------------------
 
 document.getElementById("input").addEventListener("keydown", e => {
   if (e.key === "Enter") {
