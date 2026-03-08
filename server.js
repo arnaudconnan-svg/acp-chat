@@ -34,7 +34,7 @@ Règles importantes :
 - N'utilise pas needs_clarification simplement parce qu'un message est ambigu, bref, flou ou lourd émotionnellement.
 - Si le message rapporte les paroles de quelqu'un d'autre, mets is_quote=true.
 - Si ambigu entre N1 et N2, choisis N1 et needs_clarification=true.
-- Si le message actuel ne contient aucune référence explicite à la mort, au suicide, à la disparition ou à l'auto-agression, choisis N0, sauf si le contexte immédiat parlait déjà explicitement de cela.
+- Si le message actuel ne contient aucune référence explicite à la mort, au suicide, à la disparition ou à l'auto-agression, choisis N0.
 
 Format JSON strict :
 {
@@ -43,11 +43,11 @@ Format JSON strict :
   "is_quote": true|false
 }
 `;
-  
+
   const context = history
     .slice(-10)
     .map(m => ({ role: m.role, content: m.content }));
-  
+
   const r = await client.chat.completions.create({
     model: "gpt-4.1-mini",
     temperature: 0,
@@ -58,17 +58,17 @@ Format JSON strict :
       { role: "user", content: userMessage }
     ],
   });
-  
+
   const raw = (r.choices?.[0]?.message?.content ?? "").trim();
-  
+
   try {
     const cleaned = raw.replace(/```json|```/g, "").trim();
     const obj = JSON.parse(cleaned);
-    
+
     if (!obj || !["N0", "N1", "N2"].includes(obj.level)) {
       return { level: "N0", needs_clarification: false, is_quote: false };
     }
-    
+
     return obj;
   } catch {
     return { level: "N0", needs_clarification: false, is_quote: false };
@@ -81,7 +81,7 @@ Format JSON strict :
 // --------------------------------------------------
 
 function n1Fallback() {
-  return "Tu dis avoir envie de mourir. Est-ce plutôt une envie de disparaître sans te faire du mal, ou une intention de te suicider ?";
+  return "Tu parles d’une envie de ne plus être là, pas d’une intention précise de te suicider ?";
 }
 
 async function n1ResponseLLM(userMessage) {
@@ -184,8 +184,9 @@ Accueille ce qui est partagé tel que c'est vécu.
 Soutiens l'exploration personnelle et le questionnement.
 Reste du côté de l'expérience plutôt que des solutions.
 
-Privilégie les reformulations et les affirmations ouvertes.
-Quand tu invites à approfondir, préfère souvent une phrase qui laisse de l’espace plutôt qu’une question directe.
+N’enchaîne pas les questions.
+Le plus souvent, reste en reformulation ou en affirmation ouverte.
+Une question directe n’est utile qu’occasionnellement.
 
 Langage simple, chaleureux, naturel, humain.
 `;
@@ -209,9 +210,7 @@ Langage simple, chaleureux, naturel, humain.
 
   const out = (r.choices?.[0]?.message?.content ?? "").trim();
 
-  if (!out) {
-    return "Je t’écoute.";
-  }
+  if (!out) return "Je t’écoute.";
 
   return out;
 }
