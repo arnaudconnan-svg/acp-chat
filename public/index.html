@@ -53,10 +53,6 @@
     font-weight: bold;
   }
 
-  /* -------------------- */
-  /* POPUP PROGRAMME      */
-  /* -------------------- */
-
   #overlay {
     position: fixed;
     inset: 0;
@@ -105,16 +101,17 @@
   <div id="popup">
     <p>💬 Le programme peut proposer un éclairage bref sur cette sensation.</p>
     <button class="popup-btn" onclick="showPsycho()">Afficher</button>
-    <button class="popup-btn" onclick="closePopup()">Plus tard</button>
+    <button class="popup-btn" onclick="closePopupAndShowReply()">Plus tard</button>
     <button class="popup-btn" onclick="disablePsycho()">Ne plus proposer</button>
   </div>
 </div>
 
 <script>
-const SESSION_TIMEOUT = 30 * 60 * 1000;
-
 const SESSION_KEY = "acp_session_history_v1";
-const FLAGS_KEY   = "acp_state_flags_v1";
+const FLAGS_KEY = "acp_state_flags_v1";
+
+// Réponse LLM en attente tant que la popup est affichée
+let pendingReply = null;
 
 function loadSessionHistory() {
   try { return JSON.parse(localStorage.getItem(SESSION_KEY) || "[]"); }
@@ -151,6 +148,11 @@ function addMessage(roleLabel, text) {
   chat.scrollTop = chat.scrollHeight;
 }
 
+function addBotReply(text) {
+  pushMsg("assistant", text);
+  addMessage("Chatbot", text);
+}
+
 function openPopup() {
   document.getElementById("overlay").style.display = "flex";
 }
@@ -159,11 +161,26 @@ function closePopup() {
   document.getElementById("overlay").style.display = "none";
 }
 
+function closePopupAndShowReply() {
+  closePopup();
+
+  if (pendingReply) {
+    addBotReply(pendingReply);
+    pendingReply = null;
+  }
+}
+
 function disablePsycho() {
   const flags = loadFlags();
   flags.noPsycho = true;
   saveFlags(flags);
+
   closePopup();
+
+  if (pendingReply) {
+    addBotReply(pendingReply);
+    pendingReply = null;
+  }
 }
 
 function showPsycho() {
@@ -181,14 +198,20 @@ function showPsycho() {
 
   chat.appendChild(box);
   chat.scrollTop = chat.scrollHeight;
+
+  // On jette la réponse LLM en attente : l'utilisateur repart après la psychoéducation
+  pendingReply = null;
 }
 
 async function send() {
   const input = document.getElementById("input");
-  const chat  = document.getElementById("chat");
+  const chat = document.getElementById("chat");
 
   const text = input.value.trim();
   if (!text) return;
+
+  // sécurité : s'il y avait une ancienne réponse en attente, on la supprime
+  pendingReply = null;
 
   pushMsg("user", text);
 
@@ -212,20 +235,16 @@ async function send() {
 
   const data = await response.json();
 
-  pushMsg("assistant", data.reply);
+  const flags = loadFlags();
 
-  const botMessage = document.createElement("div");
-  botMessage.className = "message";
-  botMessage.innerHTML =
-    "<span class='role'>Chatbot :</span> " + data.reply;
-  chat.appendChild(botMessage);
+  if (!flags.noPsycho && data.showPsycho) {
+    pendingReply = data.reply;
+    openPopup();
+  } else {
+    addBotReply(data.reply);
+  }
 
   chat.scrollTop = chat.scrollHeight;
-
-  const flags = loadFlags();
-  if (!flags.noPsycho && data.showPsycho) {
-    openPopup();
-  }
 }
 
 document.getElementById("input")
