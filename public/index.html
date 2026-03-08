@@ -4,8 +4,6 @@
 <meta charset="UTF-8">
 <title>Prototype Chat ACP - Bêta</title>
 
-<link rel="manifest" href="/manifest.json">
-<meta name="theme-color" content="#ffffff">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
@@ -40,8 +38,8 @@
 
   button {
     display: block;
-    margin: 0 auto;
-    font-size: 20px;
+    margin: 12px auto;
+    font-size: 18px;
     padding: 12px 18px;
   }
 
@@ -53,24 +51,25 @@
     font-weight: bold;
   }
 
+  /* Popup overlay */
   #overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0,0,0,0.45);
+    background: rgba(0,0,0,0.5);
     display: none;
-    align-items: center;
     justify-content: center;
+    align-items: center;
     z-index: 1000;
   }
 
   #popup {
-    background: #ffffff;
+    background: white;
     width: 85%;
     max-width: 420px;
-    border-radius: 12px;
+    border-radius: 18px;
     padding: 22px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.25);
     text-align: center;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
   }
 
   #popup p {
@@ -79,11 +78,14 @@
     margin-bottom: 18px;
   }
 
-  .popup-btn {
-    width: 100%;
-    font-size: 16px;
-    padding: 12px;
-    margin: 8px 0;
+  .popup-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .popup-buttons button {
+    margin: 0;
   }
 </style>
 </head>
@@ -97,167 +99,89 @@
 <input id="input" type="text" placeholder="Écrire...">
 <button onclick="send()">Envoyer</button>
 
+<!-- Popup -->
 <div id="overlay">
   <div id="popup">
-    <p>💬 Le programme peut proposer un éclairage bref sur cette sensation.</p>
-    <button class="popup-btn" onclick="showPsycho()">Afficher</button>
-    <button class="popup-btn" onclick="closePopupAndShowReply()">Plus tard</button>
-    <button class="popup-btn" onclick="disablePsycho()">Ne plus proposer</button>
+    <p id="popupText"></p>
+    <div class="popup-buttons">
+      <button onclick="acceptPsycho()">Afficher</button>
+      <button onclick="laterPsycho()">Plus tard</button>
+      <button onclick="neverPsycho()">Ne plus proposer</button>
+    </div>
   </div>
 </div>
 
 <script>
-const SESSION_KEY = "acp_session_history_v1";
-const FLAGS_KEY = "acp_state_flags_v1";
+const chat = document.getElementById("chat");
+const input = document.getElementById("input");
 
-// Réponse LLM en attente tant que la popup est affichée
 let pendingReply = null;
+let pendingPsychoText = null;
 
-function loadSessionHistory() {
-  try { return JSON.parse(localStorage.getItem(SESSION_KEY) || "[]"); }
-  catch { return []; }
-}
-
-function saveSessionHistory(h) {
-  localStorage.setItem(SESSION_KEY, JSON.stringify(h));
-}
-
-function pushMsg(role, content) {
-  const now = Date.now();
-  let history = loadSessionHistory();
-  history.push({ role, content, t: now });
-  saveSessionHistory(history);
-  return history;
-}
-
-function loadFlags() {
-  try { return JSON.parse(localStorage.getItem(FLAGS_KEY) || "{}"); }
-  catch { return {}; }
-}
-
-function saveFlags(flags) {
-  localStorage.setItem(FLAGS_KEY, JSON.stringify(flags));
-}
-
-function addMessage(roleLabel, text) {
-  const chat = document.getElementById("chat");
+function addMessage(role, text) {
   const msg = document.createElement("div");
   msg.className = "message";
-  msg.innerHTML = "<span class='role'>" + roleLabel + " :</span> " + text;
+  msg.innerHTML = "<span class='role'>" + role + " :</span> " + text;
   chat.appendChild(msg);
   chat.scrollTop = chat.scrollHeight;
 }
 
-function addBotReply(text) {
-  pushMsg("assistant", text);
-  addMessage("Chatbot", text);
-}
-
-function openPopup() {
+function showPopup(text) {
+  pendingPsychoText = text;
+  document.getElementById("popupText").textContent = text;
   document.getElementById("overlay").style.display = "flex";
 }
 
-function closePopup() {
+function hidePopup() {
   document.getElementById("overlay").style.display = "none";
 }
 
-function closePopupAndShowReply() {
-  closePopup();
-
-  if (pendingReply) {
-    addBotReply(pendingReply);
-    pendingReply = null;
-  }
+function acceptPsycho() {
+  hidePopup();
+  addMessage("Programme", pendingPsychoText);
 }
 
-function disablePsycho() {
-  const flags = loadFlags();
-  flags.noPsycho = true;
-  saveFlags(flags);
-
-  closePopup();
-
-  if (pendingReply) {
-    addBotReply(pendingReply);
-    pendingReply = null;
-  }
+function laterPsycho() {
+  hidePopup();
+  if (pendingReply) addMessage("Chatbot", pendingReply);
 }
 
-function showPsycho() {
-  closePopup();
-
-  const chat = document.getElementById("chat");
-
-  const box = document.createElement("div");
-  box.className = "message";
-  box.style.borderLeft = "4px solid #999";
-  box.style.paddingLeft = "12px";
-  box.style.marginTop = "18px";
-  box.textContent =
-    "Il arrive que l’esprit se mette à distance de l’expérience pour continuer à fonctionner malgré une charge émotionnelle ou cognitive. Cette mise à distance peut donner l’impression d’être spectateur de soi-même. C’est un mécanisme humain fréquent qui vise d’abord la protection.";
-
-  chat.appendChild(box);
-  chat.scrollTop = chat.scrollHeight;
-
-  // On jette la réponse LLM en attente : l'utilisateur repart après la psychoéducation
-  pendingReply = null;
+function neverPsycho() {
+  hidePopup();
+  if (pendingReply) addMessage("Chatbot", pendingReply);
+  // Ici tu pourras stocker un flag "neverPsycho"
 }
 
 async function send() {
-  const input = document.getElementById("input");
-  const chat = document.getElementById("chat");
-
   const text = input.value.trim();
   if (!text) return;
 
-  // sécurité : s'il y avait une ancienne réponse en attente, on la supprime
-  pendingReply = null;
-
-  pushMsg("user", text);
-
-  const userMessage = document.createElement("div");
-  userMessage.className = "message";
-  userMessage.innerHTML =
-    "<span class='role'>Utilisateur :</span> " + text;
-  chat.appendChild(userMessage);
-
+  addMessage("Utilisateur", text);
   input.value = "";
 
   const response = await fetch("/chat", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      message: text,
-      history: loadSessionHistory(),
-      flags: loadFlags()
-    })
+    body: JSON.stringify({ message: text })
   });
 
   const data = await response.json();
 
-  const flags = loadFlags();
+  pendingReply = data.reply;
 
-  if (!flags.noPsycho && data.showPsycho) {
-    pendingReply = data.reply;
-    openPopup();
+  if (data.showPsycho && data.psychoText) {
+    showPopup(data.psychoText);
   } else {
-    addBotReply(data.reply);
+    addMessage("Chatbot", data.reply);
   }
-
-  chat.scrollTop = chat.scrollHeight;
 }
 
-document.getElementById("input")
-  .addEventListener("keydown", function(event) {
-    if (event.key === "Enter") {
-      event.preventDefault();
-      send();
-    }
-  });
-
-if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/sw.js");
-}
+input.addEventListener("keydown", function(e){
+  if (e.key === "Enter") {
+    e.preventDefault();
+    send();
+  }
+});
 </script>
 
 </body>
