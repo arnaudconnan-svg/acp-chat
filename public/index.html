@@ -89,7 +89,6 @@
     padding: 12px;
     margin: 8px 0;
   }
-
 </style>
 </head>
 
@@ -102,11 +101,6 @@
 <input id="input" type="text" placeholder="Écrire...">
 <button onclick="send()">Envoyer</button>
 
-
-<!-- -------------------- -->
-<!-- POPUP PROGRAMME      -->
-<!-- -------------------- -->
-
 <div id="overlay">
   <div id="popup">
     <p>💬 Le programme peut proposer un éclairage bref sur cette sensation.</p>
@@ -116,18 +110,11 @@
   </div>
 </div>
 
-
 <script>
 const SESSION_TIMEOUT = 30 * 60 * 1000;
 
 const SESSION_KEY = "acp_session_history_v1";
-const SUMMARY_KEY = "acp_longterm_summary_v1";
 const FLAGS_KEY   = "acp_state_flags_v1";
-
-
-// --------------------
-// Mémoire session
-// --------------------
 
 function loadSessionHistory() {
   try { return JSON.parse(localStorage.getItem(SESSION_KEY) || "[]"); }
@@ -146,11 +133,6 @@ function pushMsg(role, content) {
   return history;
 }
 
-
-// --------------------
-// Flags
-// --------------------
-
 function loadFlags() {
   try { return JSON.parse(localStorage.getItem(FLAGS_KEY) || "{}"); }
   catch { return {}; }
@@ -160,10 +142,14 @@ function saveFlags(flags) {
   localStorage.setItem(FLAGS_KEY, JSON.stringify(flags));
 }
 
-
-// --------------------
-// Popup control
-// --------------------
+function addMessage(roleLabel, text) {
+  const chat = document.getElementById("chat");
+  const msg = document.createElement("div");
+  msg.className = "message";
+  msg.innerHTML = "<span class='role'>" + roleLabel + " :</span> " + text;
+  chat.appendChild(msg);
+  chat.scrollTop = chat.scrollHeight;
+}
 
 function openPopup() {
   document.getElementById("overlay").style.display = "flex";
@@ -196,11 +182,6 @@ function showPsycho() {
   chat.appendChild(box);
   chat.scrollTop = chat.scrollHeight;
 }
-
-
-// --------------------
-// Envoi message
-// --------------------
 
 async function send() {
   const input = document.getElementById("input");
@@ -241,17 +222,11 @@ async function send() {
 
   chat.scrollTop = chat.scrollHeight;
 
-  // Déclenche popup si autorisé
   const flags = loadFlags();
   if (!flags.noPsycho && data.showPsycho) {
     openPopup();
   }
 }
-
-
-// --------------------
-// Entrée clavier
-// --------------------
 
 document.getElementById("input")
   .addEventListener("keydown", function(event) {
@@ -260,11 +235,6 @@ document.getElementById("input")
       send();
     }
   });
-
-
-// --------------------
-// Service Worker
-// --------------------
 
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("/sw.js");
