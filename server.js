@@ -13,7 +13,22 @@ app.use(express.json());
 
 
 // --------------------------------------------------
-// 0) TRIAGE RISQUE SUICIDAIRE
+// 0) BIBLIOTHÈQUE THÉORIQUE (MINIMALE POUR TEST)
+// --------------------------------------------------
+
+const THEORY_LIBRARY = {
+  dissociation: {
+    title: "Déconnexion de soi",
+    offer:
+      "Le programme peut proposer un éclairage bref sur cette sensation de déconnexion de soi.",
+    content:
+      "Il arrive que l’esprit se mette à distance de l’expérience pour continuer à fonctionner malgré une charge émotionnelle ou cognitive. Cette forme de mise à distance peut donner l’impression d’être spectateur de soi-même. C’est un mécanisme humain fréquent qui vise d’abord la protection."
+  }
+};
+
+
+// --------------------------------------------------
+// 1) TRIAGE RISQUE SUICIDAIRE
 // --------------------------------------------------
 
 async function llmTriage(userMessage, history = []) {
@@ -28,13 +43,9 @@ Niveaux :
 - N2 : intention, plan, moyens, imminence, auto-agression envisagée pour soi
 
 Règles importantes :
-- Ne classe en N1 ou N2 que s'il existe une référence explicite ou quasi explicite à mourir, disparaître, se suicider ou se faire du mal, dans le message actuel ou dans le contexte immédiat.
-- Une phrase vague, elliptique, sombre ou émotionnellement chargée ne suffit pas.
+- Ne classe en N1 ou N2 que s'il existe une référence explicite ou quasi explicite à mourir, disparaître, se suicider ou se faire du mal.
+- Une phrase vague ou émotionnelle ne suffit pas.
 - En l'absence de contenu suicidaire explicite, choisis N0.
-- N'utilise pas needs_clarification simplement parce qu'un message est ambigu, bref, flou ou lourd émotionnellement.
-- Si le message rapporte les paroles de quelqu'un d'autre, mets is_quote=true.
-- Si ambigu entre N1 et N2, choisis N1 et needs_clarification=true.
-- Si le message actuel ne contient aucune référence explicite à la mort, au suicide, à la disparition ou à l'auto-agression, choisis N0.
 
 Format JSON strict :
 {
@@ -44,9 +55,7 @@ Format JSON strict :
 }
 `;
 
-  const context = history
-    .slice(-10)
-    .map(m => ({ role: m.role, content: m.content }));
+  const context = history.slice(-10).map(m => ({ role: m.role, content: m.content }));
 
   const r = await client.chat.completions.create({
     model: "gpt-4.1-mini",
@@ -77,27 +86,21 @@ Format JSON strict :
 
 
 // --------------------------------------------------
-// 1) N1 — CLARIFICATION DOUCE
+// 2) N1 — CLARIFICATION DOUCE
 // --------------------------------------------------
 
 function n1Fallback() {
-  return "Tu parles d’une envie de ne plus être là, pas d’une intention précise de te suicider ?";
+  return "Tu parles d’une envie de disparaître, ou d’une intention de te faire du mal ?";
 }
 
 async function n1ResponseLLM(userMessage) {
   const system = `
-Tu réponds de manière brève, claire et non dramatique.
-Tu t'adresses à la personne en la tutoyant.
-Tu ne donnes pas de conseil.
+Réponse brève, claire, non dramatique.
+Tutoiement.
+Pas de conseil.
 
-Objectif unique : clarifier si la personne parle
-- d'une envie de disparaître / ne plus être là
-ou
-- d'une intention de se suicider
-ou
-- des paroles de quelqu'un d'autre.
-
-Réponse en une phrase maximum.
+Objectif : clarifier idéation passive vs intention.
+1 phrase maximum.
 `;
 
   const r = await client.chat.completions.create({
@@ -111,15 +114,13 @@ Réponse en une phrase maximum.
   });
 
   const out = (r.choices?.[0]?.message?.content ?? "").trim();
-
   if (!out || out.length > 220) return n1Fallback();
-
   return out;
 }
 
 
 // --------------------------------------------------
-// 2) N2 — URGENCE
+// 3) N2 — URGENCE
 // --------------------------------------------------
 
 function n2Response() {
@@ -128,25 +129,52 @@ function n2Response() {
 
 
 // --------------------------------------------------
-// 3) RÉSUMÉ INTER-SESSIONS
+// 4) DÉTECTION THÈMES (PLACEHOLDER SIMPLE)
+// --------------------------------------------------
+
+async function detectThemes(userMessage) {
+  const system = `
+Tu détectes si le message évoque une forme de dissociation ou de déconnexion de soi.
+Réponds STRICTEMENT par JSON :
+{ "dissociation": true|false }
+`;
+
+  const r = await client.chat.completions.create({
+    model: "gpt-4.1-mini",
+    temperature: 0,
+    max_tokens: 20,
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: userMessage }
+    ],
+  });
+
+  try {
+    return JSON.parse(r.choices?.[0]?.message?.content ?? "{}");
+  } catch {
+    return { dissociation: false };
+  }
+}
+
+
+// --------------------------------------------------
+// 5) RÉSUMÉ INTER-SESSIONS
 // --------------------------------------------------
 
 async function summarizeSession(previousHistory = [], previousSummary = "") {
-  if (!previousHistory || previousHistory.length === 0) return previousSummary;
+  if (!previousHistory.length) return previousSummary;
 
   const transcript = previousHistory
     .map(m => `${m.role === "user" ? "Utilisateur" : "Assistant"} : ${m.content}`)
     .join("\n");
 
   const system = `
-Tu résumes des échanges entre une personne et un assistant d'écoute.
-
-But :
-- conserver uniquement ce qui aide à comprendre la personne dans la durée
-- garder les thèmes importants, émotions récurrentes, événements de vie, dynamiques notables
-- écrire un résumé court, clair, humain
-- ne pas donner de conseil
-- si une forme de dissociation ou de déconnexion de soi a été évoquée, le faire apparaître explicitement
+Résume brièvement les éléments durables :
+- thèmes
+- émotions récurrentes
+- dynamiques personnelles
+- événements de vie importants
+- mention explicite si dissociation évoquée
 `;
 
   const r = await client.chat.completions.create({
@@ -159,7 +187,7 @@ But :
         content:
           "Résumé précédent :\n" +
           (previousSummary || "(aucun)") +
-          "\n\nSession à intégrer :\n" +
+          "\n\nSession :\n" +
           transcript +
           "\n\nNouveau résumé :"
       }
@@ -171,28 +199,19 @@ But :
 
 
 // --------------------------------------------------
-// 4) GÉNÉRATION LIBRE DU LLM AVEC CADRE ÉPURÉ
+// 6) GÉNÉRATION RÉPONSE PRINCIPALE
 // --------------------------------------------------
 
 async function generateFreeReply(userMessage, history = [], summary = "", isNewSession = false) {
   const baseSystem = `
 Tu échanges avec une personne qui parle de son vécu.
-
-Tutoie la personne.
-
-Accueille ce qui est partagé tel que c'est vécu.
-Soutiens l'exploration personnelle et le questionnement.
-Reste du côté de l'expérience plutôt que des solutions.
-
-Évite autant que possible les questions directes.
-Quand tu ouvres quelque chose, fais-le le plus souvent par une reformulation ou une affirmation ouverte.
-
-Langage simple, chaleureux, naturel, humain.
+Tutoiement.
+Accueil de l’expérience.
+Exploration plutôt que solution.
+Langage simple, naturel, humain.
 `;
 
-  const context = history
-    .slice(-20)
-    .map(m => ({ role: m.role, content: m.content }));
+  const context = history.slice(-20).map(m => ({ role: m.role, content: m.content }));
 
   const r = await client.chat.completions.create({
     model: "gpt-4.1-mini",
@@ -200,7 +219,7 @@ Langage simple, chaleureux, naturel, humain.
     messages: [
       { role: "system", content: baseSystem },
       ...(isNewSession && summary
-        ? [{ role: "system", content: "Résumé des échanges précédents : " + summary }]
+        ? [{ role: "system", content: "Résumé : " + summary }]
         : []),
       ...context,
       { role: "user", content: userMessage }
@@ -208,15 +227,12 @@ Langage simple, chaleureux, naturel, humain.
   });
 
   const out = (r.choices?.[0]?.message?.content ?? "").trim();
-
-  if (!out) return "Je t’écoute.";
-
-  return out;
+  return out || "Je t’écoute.";
 }
 
 
 // --------------------------------------------------
-// 5) ROUTE CHAT
+// 7) ROUTE CHAT
 // --------------------------------------------------
 
 app.post("/chat", async (req, res) => {
@@ -246,7 +262,16 @@ app.post("/chat", async (req, res) => {
     }
 
     const reply = await generateFreeReply(userMessage, history, newSummary, isNewSession);
-    return res.json({ reply, summary: newSummary, flags });
+
+    // --- Détection thèmes psychoéducatifs
+    const themes = await detectThemes(userMessage);
+
+    return res.json({
+      reply,
+      summary: newSummary,
+      flags,
+      theory: themes.dissociation ? THEORY_LIBRARY.dissociation : null
+    });
 
   } catch (err) {
     console.error("Erreur /chat:", err);
