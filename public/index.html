@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <title>Prototype Chat ACP - Bêta</title>
 
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#ffffff">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
@@ -38,8 +40,8 @@
 
   button {
     display: block;
-    margin: 12px auto;
-    font-size: 18px;
+    margin: 0 auto;
+    font-size: 20px;
     padding: 12px 18px;
   }
 
@@ -51,30 +53,36 @@
     font-weight: bold;
   }
 
-  /* Popup overlay */
+  .program-message {
+    border-left: 4px solid #999;
+    padding-left: 12px;
+    margin-top: 18px;
+  }
+
+  /* Popup */
   #overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0,0,0,0.5);
+    background: rgba(0, 0, 0, 0.45);
     display: none;
-    justify-content: center;
     align-items: center;
+    justify-content: center;
     z-index: 1000;
   }
 
   #popup {
-    background: white;
+    background: #ffffff;
     width: 85%;
     max-width: 420px;
     border-radius: 18px;
     padding: 22px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.25);
     text-align: center;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
   }
 
-  #popup p {
+  #popupText {
     font-size: 16px;
-    line-height: 1.5;
+    line-height: 1.6;
     margin-bottom: 18px;
   }
 
@@ -86,6 +94,8 @@
 
   .popup-buttons button {
     margin: 0;
+    font-size: 18px;
+    padding: 12px;
   }
 </style>
 </head>
@@ -99,62 +109,263 @@
 <input id="input" type="text" placeholder="Écrire...">
 <button onclick="send()">Envoyer</button>
 
-<!-- Popup -->
 <div id="overlay">
   <div id="popup">
     <p id="popupText"></p>
-    <div class="popup-buttons">
-      <button onclick="acceptPsycho()">Afficher</button>
-      <button onclick="laterPsycho()">Plus tard</button>
-      <button onclick="neverPsycho()">Ne plus proposer</button>
-    </div>
+    <div id="popupButtons" class="popup-buttons"></div>
   </div>
 </div>
 
 <script>
-const chat = document.getElementById("chat");
-const input = document.getElementById("input");
+const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutes
 
+const SESSION_KEY = "acp_session_history_v1";
+const SUMMARY_KEY = "acp_longterm_summary_v1";
+const FLAGS_KEY   = "acp_state_flags_v1";
+
+// Réponse LLM temporairement retenue tant que la popup est active
 let pendingReply = null;
-let pendingPsychoText = null;
+let pendingTheory = null;
 
-function addMessage(role, text) {
+
+// --------------------
+// Mémoire session
+// --------------------
+
+function loadSessionHistory() {
+  try {
+    return JSON.parse(localStorage.getItem(SESSION_KEY) || "[]");
+  } catch {
+    return [];
+  }
+}
+
+function saveSessionHistory(history) {
+  localStorage.setItem(SESSION_KEY, JSON.stringify(history));
+}
+
+/*
+Retourne :
+- previousHistory : session précédente si timeout dépassé
+- history : nouvelle session après ajout du message
+- isNewSession : true si nouvelle session
+*/
+function pushMsg(role, content) {
+  const now = Date.now();
+  const oldHistory = loadSessionHistory();
+
+  let previousHistory = [];
+  let history = oldHistory;
+  let isNewSession = false;
+
+  if (oldHistory.length > 0) {
+    const lastTime = oldHistory[oldHistory.length - 1].t;
+    const gap = now - lastTime;
+
+    if (gap > SESSION_TIMEOUT) {
+      previousHistory = oldHistory;
+      history = [];
+      isNewSession = true;
+    }
+  } else {
+    isNewSession = true;
+  }
+
+  history.push({ role, content, t: now });
+  saveSessionHistory(history);
+
+  return { previousHistory, history, isNewSession };
+}
+
+function addAssistantToCurrentSession(content) {
+  const history = loadSessionHistory();
+  history.push({ role: "assistant", content, t: Date.now() });
+  saveSessionHistory(history);
+}
+
+
+// --------------------
+// Mémoire long terme
+// --------------------
+
+function loadSummary() {
+  return localStorage.getItem(SUMMARY_KEY) || "";
+}
+
+function saveSummary(summary) {
+  localStorage.setItem(SUMMARY_KEY, summary);
+}
+
+
+// --------------------
+// Flags
+// --------------------
+
+function normalizeFlags(flags) {
+  const safe = (flags && typeof flags === "object") ? flags : {};
+
+  if (!safe.theoryPrefs || typeof safe.theoryPrefs !== "object") {
+    safe.theoryPrefs = {};
+  }
+
+  return safe;
+}
+
+function loadFlags() {
+  try {
+    return normalizeFlags(JSON.parse(localStorage.getItem(FLAGS_KEY) || "{}"));
+  } catch {
+    return normalizeFlags({});
+  }
+}
+
+function saveFlags(flags) {
+  localStorage.setItem(FLAGS_KEY, JSON.stringify(normalizeFlags(flags)));
+}
+
+function isTheoryDisabled(themeKey) {
+  const flags = loadFlags();
+  return flags.theoryPrefs?.[themeKey]?.disabled === true;
+}
+
+function disableTheory(themeKey) {
+  const flags = loadFlags();
+  if (!flags.theoryPrefs) flags.theoryPrefs = {};
+  if (!flags.theoryPrefs[themeKey]) flags.theoryPrefs[themeKey] = {};
+  flags.theoryPrefs[themeKey].disabled = true;
+  saveFlags(flags);
+}
+
+
+// --------------------
+// UI helpers
+// --------------------
+
+function addMessage(roleLabel, text) {
+  const chat = document.getElementById("chat");
   const msg = document.createElement("div");
   msg.className = "message";
-  msg.innerHTML = "<span class='role'>" + role + " :</span> " + text;
+  msg.innerHTML = "<span class='role'>" + roleLabel + " :</span> " + text;
   chat.appendChild(msg);
   chat.scrollTop = chat.scrollHeight;
 }
 
-function showPopup(text) {
-  pendingPsychoText = text;
-  document.getElementById("popupText").textContent = text;
+function addProgramMessage(text) {
+  const chat = document.getElementById("chat");
+  const msg = document.createElement("div");
+  msg.className = "message program-message";
+  msg.innerHTML = "<span class='role'>Programme :</span> " + text;
+  chat.appendChild(msg);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function addBotReply(text) {
+  addAssistantToCurrentSession(text);
+  addMessage("Chatbot", text);
+}
+
+
+// --------------------
+// Popup
+// --------------------
+
+function openPopup() {
   document.getElementById("overlay").style.display = "flex";
 }
 
-function hidePopup() {
+function closePopup() {
   document.getElementById("overlay").style.display = "none";
 }
 
-function acceptPsycho() {
-  hidePopup();
-  addMessage("Programme", pendingPsychoText);
+function setPopupContent(text, buttonsHtml) {
+  document.getElementById("popupText").textContent = text;
+  document.getElementById("popupButtons").innerHTML = buttonsHtml;
 }
 
-function laterPsycho() {
-  hidePopup();
-  if (pendingReply) addMessage("Chatbot", pendingReply);
+function showTheoryInvite(theory) {
+  pendingTheory = theory;
+
+  setPopupContent(
+    theory.offer || "Le programme peut proposer un éclairage bref sur cette sensation.",
+    `
+      <button onclick="acceptTheory()">Afficher</button>
+      <button onclick="laterTheory()">Plus tard</button>
+      <button onclick="neverTheory()">Ne plus proposer</button>
+    `
+  );
+
+  openPopup();
 }
 
-function neverPsycho() {
-  hidePopup();
-  if (pendingReply) addMessage("Chatbot", pendingReply);
-  // Ici tu pourras stocker un flag "neverPsycho"
+function acceptTheory() {
+  if (!pendingTheory) {
+    closePopup();
+    return;
+  }
+
+  setPopupContent(
+    pendingTheory.content || "",
+    `<button onclick="closeTheoryContent()">OK</button>`
+  );
 }
+
+function closeTheoryContent() {
+  closePopup();
+
+  if (pendingTheory && pendingTheory.content) {
+    addProgramMessage(pendingTheory.content);
+  }
+
+  // On jette la réponse LLM : l'utilisateur repart après la psychoéducation
+  pendingReply = null;
+  pendingTheory = null;
+}
+
+function laterTheory() {
+  closePopup();
+
+  if (pendingReply) {
+    addBotReply(pendingReply);
+  }
+
+  pendingReply = null;
+  pendingTheory = null;
+}
+
+function neverTheory() {
+  if (pendingTheory && pendingTheory.key) {
+    disableTheory(pendingTheory.key);
+  }
+
+  closePopup();
+
+  if (pendingReply) {
+    addBotReply(pendingReply);
+  }
+
+  pendingReply = null;
+  pendingTheory = null;
+}
+
+
+// --------------------
+// Envoi message
+// --------------------
 
 async function send() {
+  const input = document.getElementById("input");
   const text = input.value.trim();
+
   if (!text) return;
+
+  // Nettoyage d’une éventuelle ancienne attente
+  pendingReply = null;
+  pendingTheory = null;
+
+  const pushed = pushMsg("user", text);
+  const historyAfterUser = pushed.history;
+  const previousHistory = pushed.previousHistory;
+  const isNewSession = pushed.isNewSession;
 
   addMessage("Utilisateur", text);
   input.value = "";
@@ -162,26 +373,51 @@ async function send() {
   const response = await fetch("/chat", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message: text })
+    body: JSON.stringify({
+      message: text,
+      history: historyAfterUser,
+      previousHistory: previousHistory,
+      summary: loadSummary(),
+      flags: loadFlags(),
+      isNewSession: isNewSession
+    })
   });
 
   const data = await response.json();
 
-  pendingReply = data.reply;
+  if (data.summary) saveSummary(data.summary);
+  if (data.flags) saveFlags(data.flags);
 
-  if (data.showPsycho && data.psychoText) {
-    showPopup(data.psychoText);
+  const theory = data.theory || null;
+
+  if (theory && !isTheoryDisabled(theory.key)) {
+    pendingReply = data.reply;
+    showTheoryInvite(theory);
   } else {
-    addMessage("Chatbot", data.reply);
+    addBotReply(data.reply);
   }
 }
 
-input.addEventListener("keydown", function(e){
-  if (e.key === "Enter") {
-    e.preventDefault();
+
+// --------------------
+// Entrée clavier
+// --------------------
+
+document.getElementById("input").addEventListener("keydown", function(event) {
+  if (event.key === "Enter") {
+    event.preventDefault();
     send();
   }
 });
+
+
+// --------------------
+// Service Worker
+// --------------------
+
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("/sw.js");
+}
 </script>
 
 </body>
