@@ -6,6 +6,7 @@
 <script src="app-config.js"></script>
 <script>
   document.title = window.APP_CONFIG.title;
+  document.getElementById("pageTitle").textContent = window.APP_CONFIG.title;
 </script>
 
 <link rel="manifest" href="/manifest.json">
@@ -106,7 +107,7 @@
 
 <body>
 
-<h2>Prototype Chat ACP - Bêta</h2>
+<h2 id="pageTitle">ACP Chat</h2>
 
 <div id="chat"></div>
 
