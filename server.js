@@ -14,21 +14,6 @@ app.use(express.json());
 
 
 // --------------------------------------------------
-// 0) BIBLIOTHÈQUE THÉORIQUE
-// --------------------------------------------------
-
-const THEORY_LIBRARY = {
-  dissociation: {
-    key: "dissociation",
-    title: "Déconnexion de soi",
-    offer: "Le programme peut proposer un éclairage bref sur cette sensation de déconnexion de soi.",
-    content:
-      "Il arrive que l’esprit se mette à distance de l’expérience pour continuer à fonctionner malgré une charge émotionnelle ou cognitive. Cette mise à distance peut donner l’impression d’être spectateur de soi-même. C’est un mécanisme humain fréquent qui vise d’abord la protection."
-  }
-};
-
-
-// --------------------------------------------------
 // 1) TRIAGE RISQUE SUICIDAIRE
 // --------------------------------------------------
 
@@ -144,53 +129,7 @@ function n2Response() {
 
 
 // --------------------------------------------------
-// 4) DÉTECTION THÉMATIQUE
-// --------------------------------------------------
-
-async function detectDissociation(userMessage, history = []) {
-  const system = `
-Tu détectes si le message utilisateur évoque une forme de dissociation, de déconnexion de soi, d'irréalité, d'être à côté de soi, de pilote automatique, de spectateur de soi-même, ou d'absence à soi.
-
-Réponds STRICTEMENT par JSON :
-{
-  "dissociation": true|false
-}
-
-Règles :
-- Réponds true seulement si le message évoque réellement ce type d'expérience.
-- Réponds false si ce n'est pas le cas.
-- Ne produis rien d'autre que le JSON.
-`;
-
-  const context = history
-    .slice(-6)
-    .map(m => ({ role: m.role, content: m.content }));
-
-  const r = await client.chat.completions.create({
-    model: "gpt-4.1-mini",
-    temperature: 0,
-    max_tokens: 30,
-    messages: [
-      { role: "system", content: system },
-      ...context,
-      { role: "user", content: userMessage }
-    ],
-  });
-
-  const raw = (r.choices?.[0]?.message?.content ?? "").trim();
-
-  try {
-    const cleaned = raw.replace(/```json|```/g, "").trim();
-    const obj = JSON.parse(cleaned);
-    return { dissociation: Boolean(obj.dissociation) };
-  } catch {
-    return { dissociation: false };
-  }
-}
-
-
-// --------------------------------------------------
-// 5) RÉSUMÉ INTER-SESSIONS
+// 4) RÉSUMÉ INTER-SESSIONS
 // --------------------------------------------------
 
 async function summarizeSession(previousHistory = [], previousSummary = "") {
@@ -233,7 +172,7 @@ But :
 
 
 // --------------------------------------------------
-// 6) GÉNÉRATION LIBRE DU LLM
+// 5) GÉNÉRATION LIBRE DU LLM
 // --------------------------------------------------
 
 async function generateFreeReply(userMessage, history = [], summary = "", isNewSession = false) {
@@ -280,7 +219,7 @@ Langage simple, chaleureux, naturel, humain.
 
 
 // --------------------------------------------------
-// 7) NORMALISATION FLAGS
+// 6) NORMALISATION FLAGS
 // --------------------------------------------------
 
 function normalizeFlags(flags) {
@@ -297,8 +236,9 @@ function isTheoryDisabled(flags, themeKey) {
   return flags?.theoryPrefs?.[themeKey]?.disabled === true;
 }
 
+
 // --------------------------------------------------
-// DÉTECTION THÈMES PSYCHOÉDUCATION
+// 7) DÉTECTION THÈMES PSYCHOÉDUCATION
 // --------------------------------------------------
 
 async function detectPsychoTheme(userMessage, history = []) {
@@ -347,6 +287,7 @@ Ne produis rien d'autre que ce JSON.
   }
 }
 
+
 // --------------------------------------------------
 // 8) ROUTE CHAT
 // --------------------------------------------------
@@ -387,15 +328,15 @@ app.post("/chat", async (req, res) => {
       });
     }
 
-    const reply = await generateFreeReply(userMessage, history, newSummary, isNewSession);
-
-    const dissociation = await detectDissociation(userMessage, history);
+    // Détection thème psychoéducation
+    const theme = await detectPsychoTheme(userMessage, history);
 
     let theory = null;
-
-    if (dissociation.dissociation && !isTheoryDisabled(flags, "dissociation")) {
-      theory = THEORY_LIBRARY.dissociation;
+    if (theme === "dissociation" && !isTheoryDisabled(flags, "dissociation")) {
+      theory = PSYCHO_LIBRARY.dissociation;
     }
+
+    const reply = await generateFreeReply(userMessage, history, newSummary, isNewSession);
 
     return res.json({
       reply,
