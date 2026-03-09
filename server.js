@@ -2,6 +2,7 @@ require("dotenv").config();
 
 const express = require("express");
 const OpenAI = require("openai");
+const PSYCHO_LIBRARY = require("./src/psycho/library");
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -296,6 +297,55 @@ function isTheoryDisabled(flags, themeKey) {
   return flags?.theoryPrefs?.[themeKey]?.disabled === true;
 }
 
+// --------------------------------------------------
+// DÉTECTION THÈMES PSYCHOÉDUCATION
+// --------------------------------------------------
+
+async function detectPsychoTheme(userMessage, history = []) {
+  const system = `
+Tu détectes si le message utilisateur évoque une forme de déconnexion de soi ou de dissociation.
+
+Cela peut inclure par exemple :
+- impression d’être déconnecté de soi
+- impression d’être à côté de soi
+- impression d’être absent à soi-même
+- impression d’irréalité
+- impression de fonctionner en pilote automatique
+- impression d’être spectateur de soi-même
+
+Réponds STRICTEMENT par JSON :
+{
+  "dissociation": true|false
+}
+
+Ne produis rien d'autre que ce JSON.
+`;
+
+  const context = history
+    .slice(-6)
+    .map(m => ({ role: m.role, content: m.content }));
+
+  const r = await client.chat.completions.create({
+    model: "gpt-4.1-mini",
+    temperature: 0,
+    max_tokens: 30,
+    messages: [
+      { role: "system", content: system },
+      ...context,
+      { role: "user", content: userMessage }
+    ],
+  });
+
+  const raw = (r.choices?.[0]?.message?.content ?? "").trim();
+
+  try {
+    const cleaned = raw.replace(/```json|```/g, "").trim();
+    const obj = JSON.parse(cleaned);
+    return obj.dissociation === true ? "dissociation" : null;
+  } catch {
+    return null;
+  }
+}
 
 // --------------------------------------------------
 // 8) ROUTE CHAT
