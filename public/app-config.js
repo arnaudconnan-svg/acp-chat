@@ -1,7 +1,4 @@
 (function() {
-  alert(window.location.hostname);
-  alert("isBeta = " + window.location.hostname.toLowerCase().includes("beta"));
-  
   const host = window.location.hostname.toLowerCase();
   
   const isBeta =
