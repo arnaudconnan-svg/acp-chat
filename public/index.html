@@ -5,8 +5,9 @@
 <title>ACP Chat</title>
 <script src="app-config.js"></script>
 <script>
-  document.title = window.APP_CONFIG.title;
-  document.getElementById("pageTitle").textContent = window.APP_CONFIG.title;
+  document.addEventListener("DOMContentLoaded", function() {
+      document.title = window.APP_CONFIG.title;
+      document.getElementById("pageTitle").textContent = window.APP_CONFIG.title;
 </script>
 
 <link rel="manifest" href="/manifest.json">
