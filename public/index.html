@@ -6,8 +6,8 @@
 <script src="app-config.js"></script>
 <script>
   document.addEventListener("DOMContentLoaded", function() {
-      document.title = window.APP_CONFIG.title;
-      document.getElementById("pageTitle").textContent = window.APP_CONFIG.title;
+    document.title = window.APP_CONFIG.title;
+    document.getElementById("pageTitle").textContent = window.APP_CONFIG.title;
   });
 </script>
 
@@ -39,10 +39,16 @@
 
   #input {
     width: 100%;
-    font-size: 16px;
+    font-size: 18px;
     padding: 12px;
     box-sizing: border-box;
     margin-bottom: 12px;
+    min-height: 80px;
+    max-height: 240px;
+    resize: none;
+    overflow-y: hidden;
+    font-family: inherit;
+    line-height: 1.4;
   }
 
   button {
@@ -53,21 +59,42 @@
   }
 
   .message {
-    margin: 12px 0;
+    margin: 18px 0;
+    display: flex;
+  }
+
+  .message.user {
+    justify-content: flex-end;
+  }
+
+  .message.bot {
+    justify-content: flex-start;
+  }
+
+  .bubble {
+    max-width: 80%;
+    padding: 12px 14px;
+    border-radius: 14px;
+    line-height: 1.5;
     white-space: pre-wrap;
   }
 
-  .role {
-    font-weight: bold;
+  .user .bubble {
+    background: #d8ecff;
+  }
+
+  .bot .bubble {
+    background: #f1f1f1;
   }
 
   .program-message {
     border-left: 4px solid #999;
     padding-left: 12px;
-    margin-top: 18px;
+    margin: 20px 0;
   }
 
   /* Popup */
+
   #overlay {
     position: fixed;
     inset: 0;
@@ -105,6 +132,7 @@
     font-size: 18px;
     padding: 12px;
   }
+
 </style>
 </head>
 
@@ -114,7 +142,7 @@
 
 <div id="chat"></div>
 
-<input id="input" type="text" placeholder="Écrire...">
+<textarea id="input" placeholder="Écrire..."></textarea>
 <button onclick="send()">Envoyer</button>
 
 <div id="overlay">
@@ -125,6 +153,7 @@
 </div>
 
 <script>
+
 const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutes
 
 const SESSION_KEY = "acp_session_history_v1";
@@ -132,6 +161,7 @@ const SUMMARY_KEY = "acp_longterm_summary_v1";
 const FLAGS_KEY   = "acp_state_flags_v1";
 
 // Réponse LLM temporairement retenue tant que la popup est active
+
 let pendingReply = null;
 let pendingTheory = null;
 
@@ -152,13 +182,8 @@ function saveSessionHistory(history) {
   localStorage.setItem(SESSION_KEY, JSON.stringify(history));
 }
 
-/*
-Retourne :
-- previousHistory : session précédente si timeout dépassé
-- history : nouvelle session après ajout du message
-- isNewSession : true si nouvelle session
-*/
 function pushMsg(role, content) {
+
   const now = Date.now();
   const oldHistory = loadSessionHistory();
 
@@ -167,6 +192,7 @@ function pushMsg(role, content) {
   let isNewSession = false;
 
   if (oldHistory.length > 0) {
+
     const lastTime = oldHistory[oldHistory.length - 1].t;
     const gap = now - lastTime;
 
@@ -175,20 +201,28 @@ function pushMsg(role, content) {
       history = [];
       isNewSession = true;
     }
-  } else {
+  }
+
+  else {
     isNewSession = true;
   }
 
   history.push({ role, content, t: now });
+
   saveSessionHistory(history);
 
   return { previousHistory, history, isNewSession };
+
 }
 
 function addAssistantToCurrentSession(content) {
+
   const history = loadSessionHistory();
+
   history.push({ role: "assistant", content, t: Date.now() });
+
   saveSessionHistory(history);
+
 }
 
 
@@ -210,6 +244,7 @@ function saveSummary(summary) {
 // --------------------
 
 function normalizeFlags(flags) {
+
   const safe = (flags && typeof flags === "object") ? flags : {};
 
   if (!safe.theoryPrefs || typeof safe.theoryPrefs !== "object") {
@@ -217,14 +252,19 @@ function normalizeFlags(flags) {
   }
 
   return safe;
+
 }
 
 function loadFlags() {
+
   try {
     return normalizeFlags(JSON.parse(localStorage.getItem(FLAGS_KEY) || "{}"));
-  } catch {
+  }
+
+  catch {
     return normalizeFlags({});
   }
+
 }
 
 function saveFlags(flags) {
@@ -232,16 +272,25 @@ function saveFlags(flags) {
 }
 
 function isTheoryDisabled(themeKey) {
+
   const flags = loadFlags();
+
   return flags.theoryPrefs?.[themeKey]?.disabled === true;
+
 }
 
 function disableTheory(themeKey) {
+
   const flags = loadFlags();
+
   if (!flags.theoryPrefs) flags.theoryPrefs = {};
+
   if (!flags.theoryPrefs[themeKey]) flags.theoryPrefs[themeKey] = {};
+
   flags.theoryPrefs[themeKey].disabled = true;
+
   saveFlags(flags);
+
 }
 
 
@@ -250,26 +299,61 @@ function disableTheory(themeKey) {
 // --------------------
 
 function addMessage(roleLabel, text) {
+
   const chat = document.getElementById("chat");
+
   const msg = document.createElement("div");
-  msg.className = "message";
-  msg.innerHTML = "<span class='role'>" + roleLabel + " :</span> " + text;
+
+  const roleClass = roleLabel === "Utilisateur" ? "user" : "bot";
+
+  msg.className = "message " + roleClass;
+
+  const bubble = document.createElement("div");
+
+  bubble.className = "bubble";
+
+  bubble.textContent = text;
+
+  msg.appendChild(bubble);
+
   chat.appendChild(msg);
+
   chat.scrollTop = chat.scrollHeight;
+
 }
 
 function addProgramMessage(text) {
+
   const chat = document.getElementById("chat");
+
   const msg = document.createElement("div");
+
   msg.className = "message program-message";
+
   msg.innerHTML = "<span class='role'>Programme :</span> " + text;
+
   chat.appendChild(msg);
+
   chat.scrollTop = chat.scrollHeight;
+
 }
 
 function addBotReply(text) {
+
   addAssistantToCurrentSession(text);
+
   addMessage("Chatbot", text);
+
+}
+
+function autoResizeInput() {
+
+  const input = document.getElementById("input");
+
+  input.style.height = "auto";
+
+  input.style.height = Math.min(input.scrollHeight, 240) + "px";
+
 }
 
 
@@ -286,11 +370,15 @@ function closePopup() {
 }
 
 function setPopupContent(text, buttonsHtml) {
+
   document.getElementById("popupText").textContent = text;
+
   document.getElementById("popupButtons").innerHTML = buttonsHtml;
+
 }
 
 function showTheoryInvite(theory) {
+
   pendingTheory = theory;
 
   setPopupContent(
@@ -303,9 +391,11 @@ function showTheoryInvite(theory) {
   );
 
   openPopup();
+
 }
 
 function acceptTheory() {
+
   if (!pendingTheory) {
     closePopup();
     return;
@@ -315,21 +405,24 @@ function acceptTheory() {
     pendingTheory.content || "",
     `<button onclick="closeTheoryContent()">OK</button>`
   );
+
 }
 
 function closeTheoryContent() {
+
   closePopup();
 
   if (pendingTheory && pendingTheory.content) {
     addProgramMessage(pendingTheory.content);
   }
 
-  // On jette la réponse LLM : l'utilisateur repart après la psychoéducation
   pendingReply = null;
   pendingTheory = null;
+
 }
 
 function laterTheory() {
+
   closePopup();
 
   if (pendingReply) {
@@ -338,9 +431,11 @@ function laterTheory() {
 
   pendingReply = null;
   pendingTheory = null;
+
 }
 
 function neverTheory() {
+
   if (pendingTheory && pendingTheory.key) {
     disableTheory(pendingTheory.key);
   }
@@ -353,6 +448,7 @@ function neverTheory() {
 
   pendingReply = null;
   pendingTheory = null;
+
 }
 
 
@@ -361,22 +457,29 @@ function neverTheory() {
 // --------------------
 
 async function send() {
+
   const input = document.getElementById("input");
+
   const text = input.value.trim();
 
   if (!text) return;
 
-  // Nettoyage d’une éventuelle ancienne attente
   pendingReply = null;
   pendingTheory = null;
 
   const pushed = pushMsg("user", text);
+
   const historyAfterUser = pushed.history;
+
   const previousHistory = pushed.previousHistory;
+
   const isNewSession = pushed.isNewSession;
 
   addMessage("Utilisateur", text);
+
   input.value = "";
+
+  input.style.height = "80px";
 
   const response = await fetch("/chat", {
     method: "POST",
@@ -394,16 +497,25 @@ async function send() {
   const data = await response.json();
 
   if (data.summary) saveSummary(data.summary);
+
   if (data.flags) saveFlags(data.flags);
 
   const theory = data.theory || null;
 
   if (theory && !isTheoryDisabled(theory.key)) {
+
     pendingReply = data.reply;
+
     showTheoryInvite(theory);
-  } else {
-    addBotReply(data.reply);
+
   }
+
+  else {
+
+    addBotReply(data.reply);
+
+  }
+
 }
 
 
@@ -411,11 +523,18 @@ async function send() {
 // Entrée clavier
 // --------------------
 
+document.getElementById("input").addEventListener("input", autoResizeInput);
+
 document.getElementById("input").addEventListener("keydown", function(event) {
-  if (event.key === "Enter") {
+
+  if (event.key === "Enter" && event.ctrlKey) {
+
     event.preventDefault();
+
     send();
+
   }
+
 });
 
 
@@ -426,6 +545,7 @@ document.getElementById("input").addEventListener("keydown", function(event) {
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("/sw.js");
 }
+
 </script>
 
 </body>
