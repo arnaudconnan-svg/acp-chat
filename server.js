@@ -193,6 +193,8 @@ Langage simple, chaleureux, naturel, humain.
 Structure tes réponses en paragraphes court.
 Saute une ligne entre deux idées importante.
 Évite les blocs de texte trop longs.
+
+Si le message de la personne est très court, minimal, répétitif ou ne contient pas d’expérience claire, n’invente pas une interprétation profonde. Reste simple, direct et sobre.
 `;
 
   const context = history
