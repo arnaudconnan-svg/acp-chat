@@ -344,10 +344,19 @@ function scrollToLastUserMessage() {
   const chat = document.getElementById("chat");
   const userMessages = chat.querySelectorAll(".message.user");
   const lastUser = userMessages[userMessages.length - 1];
-
+  
   if (!lastUser) return;
-
-  chat.scrollTop = lastUser.offsetTop - 12;
+  
+  const topMargin = 12;
+  const lastUserTop = lastUser.offsetTop;
+  const lastUserBottom = lastUserTop + lastUser.offsetHeight;
+  const visibleTop = chat.scrollTop;
+  const visibleBottom = visibleTop + chat.clientHeight;
+  
+  // Si le message utilisateur n'est pas entièrement visible, on remonte pour montrer son début
+  if (lastUserTop < visibleTop || lastUserBottom > visibleBottom) {
+    chat.scrollTop = Math.max(0, lastUserTop - topMargin);
+  }
 }
 
 function addBotReply(text) {
