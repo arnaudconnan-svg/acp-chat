@@ -189,6 +189,10 @@ Reste du côté de l'expérience plutôt que des solutions.
 Quand tu ouvres quelque chose, fais-le le plus souvent par une reformulation ou une affirmation ouverte.
 
 Langage simple, chaleureux, naturel, humain.
+
+Structure tes réponses en paragraphes court.
+Saute une ligne entre deux idées importante.
+Évite les blocs de texte trop longs.
 `;
 
   const context = history
