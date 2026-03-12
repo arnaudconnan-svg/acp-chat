@@ -93,8 +93,6 @@
     margin: 20px 0;
   }
 
-  /* Popup */
-
   #overlay {
     position: fixed;
     inset: 0;
@@ -132,7 +130,6 @@
     font-size: 18px;
     padding: 12px;
   }
-
 </style>
 </head>
 
@@ -154,13 +151,11 @@
 
 <script>
 
-const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutes
+const SESSION_TIMEOUT = 30 * 60 * 1000;
 
 const SESSION_KEY = "acp_session_history_v1";
 const SUMMARY_KEY = "acp_longterm_summary_v1";
 const FLAGS_KEY   = "acp_state_flags_v1";
-
-// Réponse LLM temporairement retenue tant que la popup est active
 
 let pendingReply = null;
 let pendingTheory = null;
@@ -298,6 +293,12 @@ function disableTheory(themeKey) {
 // UI helpers
 // --------------------
 
+function isUserNearBottom() {
+  const chat = document.getElementById("chat");
+  const threshold = 120;
+  return chat.scrollHeight - chat.scrollTop - chat.clientHeight < threshold;
+}
+
 function addMessage(roleLabel, text) {
 
   const chat = document.getElementById("chat");
@@ -357,11 +358,15 @@ function scrollToLastUserMessage() {
 
 function addBotReply(text) {
 
+  const shouldScroll = isUserNearBottom();
+
   addAssistantToCurrentSession(text);
 
   addMessage("Chatbot", text);
 
-  scrollToLastUserMessage();
+  if (shouldScroll) {
+    scrollToLastUserMessage();
+  }
 
 }
 
