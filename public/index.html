@@ -341,22 +341,18 @@ function addProgramMessage(text) {
 }
 
 function scrollToLastUserMessage() {
-  const chat = document.getElementById("chat");
-  const userMessages = chat.querySelectorAll(".message.user");
+  const userMessages = document.querySelectorAll(".message.user");
   const lastUser = userMessages[userMessages.length - 1];
   
   if (!lastUser) return;
   
-  const topMargin = 12;
-  const lastUserTop = lastUser.offsetTop;
-  const lastUserBottom = lastUserTop + lastUser.offsetHeight;
-  const visibleTop = chat.scrollTop;
-  const visibleBottom = visibleTop + chat.clientHeight;
+  lastUser.scrollIntoView({
+    block: "start",
+    behavior: "instant"
+  });
   
-  // Si le message utilisateur n'est pas entièrement visible, on remonte pour montrer son début
-  if (lastUserTop < visibleTop || lastUserBottom > visibleBottom) {
-    chat.scrollTop = Math.max(0, lastUserTop - topMargin);
-  }
+  const chat = document.getElementById("chat");
+  chat.scrollTop -= 20;
 }
 
 function addBotReply(text) {
