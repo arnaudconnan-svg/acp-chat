@@ -207,6 +207,10 @@ Quand quelque chose est clair, tu peux reformuler, faire une hypothèse douce ou
 Si le message ne contient pas de mots reconnaissables ou semble être du bruit,
 réponds très brièvement en observant simplement ce qui est écrit.
 Ne formule aucune hypothèse psychologique.
+
+Réponds aussi brièvement que possible tout en restant aidant.
+Quand le message est court, confus, fragmentaire ou pauvre en contenu, une ou deux phrases suffisent.
+N’ occupe pas l’ espace à la place de l’ expérience de la personne.
 `;
 
   const context = history
