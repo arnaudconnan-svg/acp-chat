@@ -318,7 +318,9 @@ function addMessage(roleLabel, text) {
 
   chat.appendChild(msg);
 
-  chat.scrollTop = chat.scrollHeight;
+  if (roleLabel === "Utilisateur") {
+    chat.scrollTop = chat.scrollHeight;
+  }
 
 }
 
@@ -338,11 +340,23 @@ function addProgramMessage(text) {
 
 }
 
+function scrollToLastUserMessage() {
+  const chat = document.getElementById("chat");
+  const userMessages = chat.querySelectorAll(".message.user");
+  const lastUser = userMessages[userMessages.length - 1];
+
+  if (!lastUser) return;
+
+  chat.scrollTop = lastUser.offsetTop - 12;
+}
+
 function addBotReply(text) {
 
   addAssistantToCurrentSession(text);
 
   addMessage("Chatbot", text);
+
+  scrollToLastUserMessage();
 
 }
 
