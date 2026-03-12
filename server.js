@@ -203,6 +203,10 @@ Ne projette pas une expérience intérieure non exprimée.
 Quand le sens n’ est pas clair, reflète simplement ce qui est là ou dis que le sens ne t’ apparaît pas encore clairement.
 Quand quelque chose est clair, tu peux reformuler, faire une hypothèse douce ou guider légèrement, mais sans quitter l’ expérience réellement exprimée.
 Évite les formulations emphatiques, poétiques ou grandiloquentes quand elles ne sont pas justifiées par le message.
+
+Si le message ne contient pas de mots reconnaissables ou semble être du bruit,
+réponds très brièvement en observant simplement ce qui est écrit.
+Ne formule aucune hypothèse psychologique.
 `;
 
   const context = history
