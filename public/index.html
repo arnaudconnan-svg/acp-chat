@@ -115,6 +115,8 @@ const SESSION_KEY = "acp_session_history_v1";
 const SUMMARY_KEY = "acp_longterm_summary_v1";
 const FLAGS_KEY   = "acp_state_flags_v1";
 
+let sessionExpiredAtLoad = false;
+
 
 // --------------------
 // Mémoire session
@@ -163,6 +165,15 @@ function addAssistantToCurrentSession(content) {
   const history = loadSessionHistory();
   history.push({ role: "assistant", content, t: Date.now() });
   saveSessionHistory(history);
+}
+
+function isSessionExpired() {
+  const history = loadSessionHistory();
+
+  if (!history.length) return false;
+
+  const lastTime = history[history.length - 1].t;
+  return Date.now() - lastTime > SESSION_TIMEOUT;
 }
 
 
@@ -252,6 +263,7 @@ function addSystemMessage(text) {
   msg.textContent = text;
 
   chat.appendChild(msg);
+  chat.scrollTop = chat.scrollHeight;
 }
 
 function rehydrateChatFromSession() {
@@ -343,9 +355,16 @@ async function send() {
   if (data.flags) saveFlags(data.flags);
 
   if (data.sessionRestarted) {
-    addSystemMessage(
-      "La session précédente a pris fin après 30 minutes d’inactivité. Le contenu a été conservé sous forme de résumé."
-    );
+    if (sessionExpiredAtLoad) {
+      addSystemMessage(
+        "Le contenu de la session précédente a été conservé sous forme de résumé."
+      );
+      sessionExpiredAtLoad = false;
+    } else {
+      addSystemMessage(
+        "La session précédente a pris fin après 30 minutes d’inactivité. Le contenu a été conservé sous forme de résumé."
+      );
+    }
   }
 
   addBotReply(data.reply);
@@ -357,8 +376,17 @@ async function send() {
 // --------------------
 
 document.addEventListener("DOMContentLoaded", function() {
-  rehydrateChatFromSession();
   autoResizeInput();
+
+  if (isSessionExpired()) {
+    document.getElementById("chat").innerHTML = "";
+    addSystemMessage(
+      "La session précédente a pris fin après 30 minutes d’inactivité. Elle sera reprise sous forme de résumé à ton prochain message."
+    );
+    sessionExpiredAtLoad = true;
+  } else {
+    rehydrateChatFromSession();
+  }
 });
 
 
