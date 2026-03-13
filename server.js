@@ -2,7 +2,6 @@ require("dotenv").config();
 
 const express = require("express");
 const OpenAI = require("openai");
-const PSYCHO_LIBRARY = require("./src/psycho/library");
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -223,8 +222,8 @@ Sois un peu plus vivant que d'habitude, sans compliment générique ni enthousia
 Ne prends pas la scène : reste centré sur ce que la personne vit.
 
 Quand la personne semble faire une découverte, clarifier quelque chose, ou se déplacer intérieurement, tu peux le reconnaître simplement.
-Nommes sobrement ce qui semble bouger, se préciser, s’ éclairer ou se réorganiser en elle.
-Fais - le sans exagération, sans compliment, et sans attribuer plus que ce qui apparaît réellement.
+Nommes sobrement ce qui semble bouger, se préciser, s’éclairer ou se réorganiser en elle.
+Fais-le sans exagération, sans compliment, et sans attribuer plus que ce qui apparaît réellement.
 
 Si le message ne contient pas de mots reconnaissables ou semble être du bruit, réponds très brièvement en observant simplement ce qui est écrit.
 Ne formule aucune hypothèse psychologique.
@@ -266,81 +265,12 @@ N'occupe pas l'espace à la place de l'expérience de la personne.
 // --------------------------------------------------
 
 function normalizeFlags(flags) {
-  const safe = (flags && typeof flags === "object") ? flags : {};
-
-  if (!safe.theoryPrefs || typeof safe.theoryPrefs !== "object") {
-    safe.theoryPrefs = {};
-  }
-
-  return safe;
-}
-
-function isTheoryDisabled(flags, themeKey) {
-  return flags?.theoryPrefs?.[themeKey]?.disabled === true;
+  return (flags && typeof flags === "object") ? flags : {};
 }
 
 
 // --------------------------------------------------
-// 7) DÉTECTION THÈMES PSYCHOÉDUCATION
-// --------------------------------------------------
-
-async function detectPsychoTheme(userMessage, history = []) {
-  const system = `
-Tu détectes si le message utilisateur évoque une forme de déconnexion de soi.
-
-Cela peut inclure par exemple:
-  -impression d’être déconnecté de soi 
-  - impression d’être à côté de soi
-  - impression d’être absent à soi-même
-  - impression d’irréalité
-  - impression de fonctionner en pilote automatique
-  - impression d’être spectateur de soi-même
-
-Ne considère cela comme vrai QUE si:
-  
-  1. la personne parle d’une expérience vécue actuellement ou récemment
-ET
-  2. cette expérience semble difficile, troublante, ou suscite un questionnement sur son rapport à elle-même.
-
-Si le message ne contient aucun indice clair de déconnexion de soi, réponds false.
-
-Réponds STRICTEMENT par JSON:
-{
-  "dissociation": true | false
-}
-
-Ne produis rien d'autre que ce JSON.
-`;
-
-  const context = history
-    .slice(-6)
-    .map(m => ({ role: m.role, content: m.content }));
-
-  const r = await client.chat.completions.create({
-    model: "gpt-4.1-mini",
-    temperature: 0,
-    max_tokens: 30,
-    messages: [
-      { role: "system", content: system },
-      ...context,
-      { role: "user", content: userMessage }
-    ],
-  });
-
-  const raw = (r.choices?.[0]?.message?.content ?? "").trim();
-
-  try {
-    const cleaned = raw.replace(/```json|```/g, "").trim();
-    const obj = JSON.parse(cleaned);
-    return obj.dissociation === true ? "dissociation" : null;
-  } catch {
-    return null;
-  }
-}
-
-
-// --------------------------------------------------
-// 8) ROUTE CHAT
+// 7) ROUTE CHAT
 // --------------------------------------------------
 
 app.post("/chat", async (req, res) => {
@@ -364,8 +294,7 @@ app.post("/chat", async (req, res) => {
       return res.json({
         reply: n2Response(),
         summary: newSummary,
-        flags,
-        theory: null
+        flags
       });
     }
 
@@ -374,17 +303,8 @@ app.post("/chat", async (req, res) => {
       return res.json({
         reply,
         summary: newSummary,
-        flags,
-        theory: null
+        flags
       });
-    }
-
-    // Détection thème psychoéducation
-    const theme = await detectPsychoTheme(userMessage, history);
-
-    let theory = null;
-    if (theme === "dissociation" && !isTheoryDisabled(flags, "dissociation")) {
-      theory = PSYCHO_LIBRARY.dissociation;
     }
 
     const reply = await generateFreeReply(userMessage, history, newSummary, isNewSession);
@@ -392,8 +312,7 @@ app.post("/chat", async (req, res) => {
     return res.json({
       reply,
       summary: newSummary,
-      flags,
-      theory
+      flags
     });
 
   } catch (err) {
@@ -401,8 +320,7 @@ app.post("/chat", async (req, res) => {
     return res.json({
       reply: "Je t’écoute.",
       summary: "",
-      flags: normalizeFlags({}),
-      theory: null
+      flags: normalizeFlags({})
     });
   }
 });

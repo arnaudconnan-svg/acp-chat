@@ -72,15 +72,14 @@
   }
 
   .bubble {
-  max-width: 80%;
-  padding: 12px 14px;
-  border-radius: 14px;
-  line-height: 1.5;
-  white-space: pre-wrap;
-  
-  word-break: break-word;
-  overflow-wrap: break-word;
-}
+    max-width: 80%;
+    padding: 12px 14px;
+    border-radius: 14px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
 
   .user .bubble {
     background: #d8ecff;
@@ -88,50 +87,6 @@
 
   .bot .bubble {
     background: #f1f1f1;
-  }
-
-  .program-message {
-    border-left: 4px solid #999;
-    padding-left: 12px;
-    margin: 20px 0;
-  }
-
-  #overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.45);
-    display: none;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-  }
-
-  #popup {
-    background: #ffffff;
-    width: 85%;
-    max-width: 420px;
-    border-radius: 18px;
-    padding: 22px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.25);
-    text-align: center;
-  }
-
-  #popupText {
-    font-size: 16px;
-    line-height: 1.6;
-    margin-bottom: 18px;
-  }
-
-  .popup-buttons {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  .popup-buttons button {
-    margin: 0;
-    font-size: 18px;
-    padding: 12px;
   }
 </style>
 </head>
@@ -145,23 +100,12 @@
 <textarea id="input" placeholder="Écrire..."></textarea>
 <button onclick="send()">Envoyer</button>
 
-<div id="overlay">
-  <div id="popup">
-    <p id="popupText"></p>
-    <div id="popupButtons" class="popup-buttons"></div>
-  </div>
-</div>
-
 <script>
-
 const SESSION_TIMEOUT = 30 * 60 * 1000;
 
 const SESSION_KEY = "acp_session_history_v1";
 const SUMMARY_KEY = "acp_longterm_summary_v1";
 const FLAGS_KEY   = "acp_state_flags_v1";
-
-let pendingReply = null;
-let pendingTheory = null;
 
 
 // --------------------
@@ -181,7 +125,6 @@ function saveSessionHistory(history) {
 }
 
 function pushMsg(role, content) {
-
   const now = Date.now();
   const oldHistory = loadSessionHistory();
 
@@ -190,7 +133,6 @@ function pushMsg(role, content) {
   let isNewSession = false;
 
   if (oldHistory.length > 0) {
-
     const lastTime = oldHistory[oldHistory.length - 1].t;
     const gap = now - lastTime;
 
@@ -199,28 +141,20 @@ function pushMsg(role, content) {
       history = [];
       isNewSession = true;
     }
-  }
-
-  else {
+  } else {
     isNewSession = true;
   }
 
   history.push({ role, content, t: now });
-
   saveSessionHistory(history);
 
   return { previousHistory, history, isNewSession };
-
 }
 
 function addAssistantToCurrentSession(content) {
-
   const history = loadSessionHistory();
-
   history.push({ role: "assistant", content, t: Date.now() });
-
   saveSessionHistory(history);
-
 }
 
 
@@ -242,53 +176,19 @@ function saveSummary(summary) {
 // --------------------
 
 function normalizeFlags(flags) {
-
-  const safe = (flags && typeof flags === "object") ? flags : {};
-
-  if (!safe.theoryPrefs || typeof safe.theoryPrefs !== "object") {
-    safe.theoryPrefs = {};
-  }
-
-  return safe;
-
+  return (flags && typeof flags === "object") ? flags : {};
 }
 
 function loadFlags() {
-
   try {
     return normalizeFlags(JSON.parse(localStorage.getItem(FLAGS_KEY) || "{}"));
-  }
-
-  catch {
+  } catch {
     return normalizeFlags({});
   }
-
 }
 
 function saveFlags(flags) {
   localStorage.setItem(FLAGS_KEY, JSON.stringify(normalizeFlags(flags)));
-}
-
-function isTheoryDisabled(themeKey) {
-
-  const flags = loadFlags();
-
-  return flags.theoryPrefs?.[themeKey]?.disabled === true;
-
-}
-
-function disableTheory(themeKey) {
-
-  const flags = loadFlags();
-
-  if (!flags.theoryPrefs) flags.theoryPrefs = {};
-
-  if (!flags.theoryPrefs[themeKey]) flags.theoryPrefs[themeKey] = {};
-
-  flags.theoryPrefs[themeKey].disabled = true;
-
-  saveFlags(flags);
-
 }
 
 
@@ -303,179 +203,54 @@ function isUserNearBottom() {
 }
 
 function addMessage(roleLabel, text) {
-
   const chat = document.getElementById("chat");
 
   const msg = document.createElement("div");
-
   const roleClass = roleLabel === "Utilisateur" ? "user" : "bot";
-
   msg.className = "message " + roleClass;
 
   const bubble = document.createElement("div");
-
   bubble.className = "bubble";
-
   bubble.textContent = text;
 
   msg.appendChild(bubble);
-
   chat.appendChild(msg);
 
   if (roleLabel === "Utilisateur") {
     chat.scrollTop = chat.scrollHeight;
   }
-
-}
-
-function addProgramMessage(text) {
-
-  const chat = document.getElementById("chat");
-
-  const msg = document.createElement("div");
-
-  msg.className = "message program-message";
-
-  msg.innerHTML = "<span class='role'>Programme :</span> " + text;
-
-  chat.appendChild(msg);
-
-  chat.scrollTop = chat.scrollHeight;
-
 }
 
 function scrollToLastUserMessage() {
   const userMessages = document.querySelectorAll(".message.user");
   const lastUser = userMessages[userMessages.length - 1];
-  
+
   if (!lastUser) return;
-  
+
   lastUser.scrollIntoView({
     block: "start",
     behavior: "instant"
   });
-  
+
   const chat = document.getElementById("chat");
   chat.scrollTop -= 20;
 }
 
 function addBotReply(text) {
-
   const shouldScroll = isUserNearBottom();
 
   addAssistantToCurrentSession(text);
-
   addMessage("Chatbot", text);
 
   if (shouldScroll) {
     scrollToLastUserMessage();
   }
-
 }
 
 function autoResizeInput() {
-
   const input = document.getElementById("input");
-
   input.style.height = "auto";
-
   input.style.height = Math.min(input.scrollHeight, 240) + "px";
-
-}
-
-
-// --------------------
-// Popup
-// --------------------
-
-function openPopup() {
-  document.getElementById("overlay").style.display = "flex";
-}
-
-function closePopup() {
-  document.getElementById("overlay").style.display = "none";
-}
-
-function setPopupContent(text, buttonsHtml) {
-
-  document.getElementById("popupText").textContent = text;
-
-  document.getElementById("popupButtons").innerHTML = buttonsHtml;
-
-}
-
-function showTheoryInvite(theory) {
-
-  pendingTheory = theory;
-
-  setPopupContent(
-    theory.offer || "Le programme peut proposer un éclairage bref sur cette sensation.",
-    `
-      <button onclick="acceptTheory()">Afficher</button>
-      <button onclick="laterTheory()">Plus tard</button>
-      <button onclick="neverTheory()">Ne plus proposer</button>
-    `
-  );
-
-  openPopup();
-
-}
-
-function acceptTheory() {
-
-  if (!pendingTheory) {
-    closePopup();
-    return;
-  }
-
-  setPopupContent(
-    pendingTheory.content || "",
-    `<button onclick="closeTheoryContent()">OK</button>`
-  );
-
-}
-
-function closeTheoryContent() {
-
-  closePopup();
-
-  if (pendingTheory && pendingTheory.content) {
-    addProgramMessage(pendingTheory.content);
-  }
-
-  pendingReply = null;
-  pendingTheory = null;
-
-}
-
-function laterTheory() {
-
-  closePopup();
-
-  if (pendingReply) {
-    addBotReply(pendingReply);
-  }
-
-  pendingReply = null;
-  pendingTheory = null;
-
-}
-
-function neverTheory() {
-
-  if (pendingTheory && pendingTheory.key) {
-    disableTheory(pendingTheory.key);
-  }
-
-  closePopup();
-
-  if (pendingReply) {
-    addBotReply(pendingReply);
-  }
-
-  pendingReply = null;
-  pendingTheory = null;
-
 }
 
 
@@ -484,28 +259,19 @@ function neverTheory() {
 // --------------------
 
 async function send() {
-
   const input = document.getElementById("input");
-
   const text = input.value.trim();
 
   if (!text) return;
 
-  pendingReply = null;
-  pendingTheory = null;
-
   const pushed = pushMsg("user", text);
-
   const historyAfterUser = pushed.history;
-
   const previousHistory = pushed.previousHistory;
-
   const isNewSession = pushed.isNewSession;
 
   addMessage("Utilisateur", text);
 
   input.value = "";
-
   input.style.height = "80px";
 
   const response = await fetch("/chat", {
@@ -524,25 +290,9 @@ async function send() {
   const data = await response.json();
 
   if (data.summary) saveSummary(data.summary);
-
   if (data.flags) saveFlags(data.flags);
 
-  const theory = data.theory || null;
-
-  if (theory && !isTheoryDisabled(theory.key)) {
-
-    pendingReply = data.reply;
-
-    showTheoryInvite(theory);
-
-  }
-
-  else {
-
-    addBotReply(data.reply);
-
-  }
-
+  addBotReply(data.reply);
 }
 
 
@@ -553,15 +303,10 @@ async function send() {
 document.getElementById("input").addEventListener("input", autoResizeInput);
 
 document.getElementById("input").addEventListener("keydown", function(event) {
-
   if (event.key === "Enter" && event.ctrlKey) {
-
     event.preventDefault();
-
     send();
-
   }
-
 });
 
 
@@ -572,7 +317,6 @@ document.getElementById("input").addEventListener("keydown", function(event) {
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("/sw.js");
 }
-
 </script>
 
 </body>
