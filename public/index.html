@@ -18,21 +18,21 @@
 <style>
   body {
     font-family: Arial, sans-serif;
-    margin: 25px;
+    margin: 12px;
   }
 
   h2 {
     text-align: center;
-    font-size: 32px;
-    margin-bottom: 20px;
+    font-size: 22px;
+    margin: 6px 0 12px 0;
   }
 
   #chat {
     border: 1px solid #ccc;
-    padding: 16px;
-    height: 60vh;
+    padding: 12px;
+    height: 64vh;
     overflow-y: auto;
-    margin: 12px 0;
+    margin: 8px 0 10px 0;
     font-size: 16px;
     line-height: 1.4;
   }
@@ -42,7 +42,7 @@
     font-size: 18px;
     padding: 12px;
     box-sizing: border-box;
-    margin-bottom: 12px;
+    margin-bottom: 10px;
     min-height: 80px;
     max-height: 240px;
     resize: none;
@@ -51,21 +51,35 @@
     line-height: 1.4;
   }
 
+  .actions {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+  }
+
   button {
-    display: block;
-    margin: 0 auto;
-    font-size: 20px;
-    padding: 12px 18px;
+    font-size: 18px;
+    padding: 10px 16px;
   }
 
   #editLastBtn {
-    margin-bottom: 12px;
-    font-size: 15px;
-    padding: 8px 12px;
+    display: none;
+    background: none;
+    border: none;
+    font-size: 13px;
+    color: #666;
+    cursor: pointer;
+    padding: 0;
+  }
+  
+  #editLastBtn:hover {
+    text-decoration: underline;
   }
 
   .message {
-    margin: 18px 0;
+    margin: 14px 0;
     display: flex;
   }
 
@@ -99,7 +113,7 @@
     text-align: center;
     font-size: 13px;
     color: #666;
-    margin: 12px 0;
+    margin: 10px 0;
     font-style: italic;
   }
 </style>
@@ -112,8 +126,11 @@
 <div id="chat"></div>
 
 <textarea id="input" placeholder="Écrire..."></textarea>
-<button id="editLastBtn" onclick="editLastTurn()" style="display:none;">Modifier le dernier message</button>
-<button onclick="send()">Envoyer</button>
+
+<div class="actions">
+  <button id="editLastBtn" onclick="editLastTurn()">modifier</button>
+  <button id="sendBtn" onclick="send()">Envoyer</button>
+</div>
 
 <script>
 const SESSION_TIMEOUT = 30 * 60 * 1000;
@@ -337,7 +354,7 @@ function canEditLastTurn() {
 
 function updateEditButtonVisibility() {
   const btn = document.getElementById("editLastBtn");
-  btn.style.display = canEditLastTurn() ? "block" : "none";
+  btn.style.display = canEditLastTurn() ? "inline-block" : "none";
 }
 
 function editLastTurn() {
