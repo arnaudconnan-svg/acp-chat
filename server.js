@@ -265,19 +265,27 @@ function isTheoryDisabled(flags, themeKey) {
 
 async function detectPsychoTheme(userMessage, history = []) {
   const system = `
-Tu détectes si le message utilisateur évoque une forme de déconnexion de soi ou de dissociation.
+Tu détectes si le message utilisateur évoque une forme de déconnexion de soi.
 
-Cela peut inclure par exemple :
-- impression d’être déconnecté de soi
-- impression d’être à côté de soi
-- impression d’être absent à soi-même
-- impression d’irréalité
-- impression de fonctionner en pilote automatique
-- impression d’être spectateur de soi-même
+Cela peut inclure par exemple:
+  -impression d’être déconnecté de soi 
+  - impression d’être à côté de soi
+  - impression d’être absent à soi-même
+  - impression d’irréalité
+  - impression de fonctionner en pilote automatique
+  - impression d’être spectateur de soi-même
 
-Réponds STRICTEMENT par JSON :
+Ne considère cela comme vrai QUE si:
+  
+  1. la personne parle d’une expérience vécue actuellement ou récemment
+ET
+  2. cette expérience semble difficile, troublante, ou suscite un questionnement sur son rapport à elle-même.
+
+Si le message ne contient aucun indice clair de déconnexion de soi, réponds false.
+
+Réponds STRICTEMENT par JSON:
 {
-  "dissociation": true|false
+  "dissociation": true | false
 }
 
 Ne produis rien d'autre que ce JSON.
