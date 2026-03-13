@@ -221,6 +221,38 @@ function addMessage(roleLabel, text) {
   }
 }
 
+function addMessageSilently(roleLabel, text) {
+  const chat = document.getElementById("chat");
+
+  const msg = document.createElement("div");
+  const roleClass = roleLabel === "Utilisateur" ? "user" : "bot";
+  msg.className = "message " + roleClass;
+
+  const bubble = document.createElement("div");
+  bubble.className = "bubble";
+  bubble.textContent = text;
+
+  msg.appendChild(bubble);
+  chat.appendChild(msg);
+}
+
+function rehydrateChatFromSession() {
+  const chat = document.getElementById("chat");
+  const history = loadSessionHistory();
+
+  chat.innerHTML = "";
+
+  for (const msg of history) {
+    if (msg.role === "user") {
+      addMessageSilently("Utilisateur", msg.content);
+    } else if (msg.role === "assistant") {
+      addMessageSilently("Chatbot", msg.content);
+    }
+  }
+
+  chat.scrollTop = chat.scrollHeight;
+}
+
 function scrollToLastUserMessage() {
   const userMessages = document.querySelectorAll(".message.user");
   const lastUser = userMessages[userMessages.length - 1];
@@ -294,6 +326,16 @@ async function send() {
 
   addBotReply(data.reply);
 }
+
+
+// --------------------
+// Initialisation
+// --------------------
+
+document.addEventListener("DOMContentLoaded", function() {
+  rehydrateChatFromSession();
+  autoResizeInput();
+});
 
 
 // --------------------
