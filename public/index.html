@@ -58,6 +58,12 @@
     padding: 12px 18px;
   }
 
+  #editLastBtn {
+    margin-bottom: 12px;
+    font-size: 15px;
+    padding: 8px 12px;
+  }
+
   .message {
     margin: 18px 0;
     display: flex;
@@ -106,6 +112,7 @@
 <div id="chat"></div>
 
 <textarea id="input" placeholder="Écrire..."></textarea>
+<button id="editLastBtn" onclick="editLastTurn()" style="display:none;">Modifier le dernier message</button>
 <button onclick="send()">Envoyer</button>
 
 <script>
@@ -281,6 +288,7 @@ function rehydrateChatFromSession() {
   }
 
   chat.scrollTop = chat.scrollHeight;
+  updateEditButtonVisibility();
 }
 
 function scrollToLastUserMessage() {
@@ -307,12 +315,52 @@ function addBotReply(text) {
   if (shouldScroll) {
     scrollToLastUserMessage();
   }
+
+  updateEditButtonVisibility();
 }
 
 function autoResizeInput() {
   const input = document.getElementById("input");
   input.style.height = "auto";
   input.style.height = Math.min(input.scrollHeight, 240) + "px";
+}
+
+function canEditLastTurn() {
+  const history = loadSessionHistory();
+  if (history.length < 2) return false;
+
+  const last = history[history.length - 1];
+  const beforeLast = history[history.length - 2];
+
+  return beforeLast.role === "user" && last.role === "assistant";
+}
+
+function updateEditButtonVisibility() {
+  const btn = document.getElementById("editLastBtn");
+  btn.style.display = canEditLastTurn() ? "block" : "none";
+}
+
+function editLastTurn() {
+  const history = loadSessionHistory();
+  if (history.length < 2) return;
+
+  const last = history[history.length - 1];
+  const beforeLast = history[history.length - 2];
+
+  if (!(beforeLast.role === "user" && last.role === "assistant")) return;
+
+  const input = document.getElementById("input");
+  input.value = beforeLast.content;
+
+  history.splice(-2, 2);
+  saveSessionHistory(history);
+
+  rehydrateChatFromSession();
+  autoResizeInput();
+  input.focus();
+
+  const len = input.value.length;
+  input.setSelectionRange(len, len);
 }
 
 
@@ -332,6 +380,7 @@ async function send() {
   const isNewSession = pushed.isNewSession;
 
   addMessage("Utilisateur", text);
+  updateEditButtonVisibility();
 
   input.value = "";
   input.style.height = "80px";
@@ -384,6 +433,7 @@ document.addEventListener("DOMContentLoaded", function() {
       "La session précédente a pris fin après 30 minutes d’inactivité. Elle sera reprise sous forme de résumé à ton prochain message."
     );
     sessionExpiredAtLoad = true;
+    updateEditButtonVisibility();
   } else {
     rehydrateChatFromSession();
   }
