@@ -88,6 +88,14 @@
   .bot .bubble {
     background: #f1f1f1;
   }
+
+  .system-message {
+    text-align: center;
+    font-size: 13px;
+    color: #666;
+    margin: 12px 0;
+    font-style: italic;
+  }
 </style>
 </head>
 
@@ -236,6 +244,16 @@ function addMessageSilently(roleLabel, text) {
   chat.appendChild(msg);
 }
 
+function addSystemMessage(text) {
+  const chat = document.getElementById("chat");
+
+  const msg = document.createElement("div");
+  msg.className = "system-message";
+  msg.textContent = text;
+
+  chat.appendChild(msg);
+}
+
 function rehydrateChatFromSession() {
   const chat = document.getElementById("chat");
   const history = loadSessionHistory();
@@ -323,6 +341,12 @@ async function send() {
 
   if (data.summary) saveSummary(data.summary);
   if (data.flags) saveFlags(data.flags);
+
+  if (data.sessionRestarted) {
+    addSystemMessage(
+      "La session précédente a pris fin après 30 minutes d’inactivité. Le contenu a été conservé sous forme de résumé."
+    );
+  }
 
   addBotReply(data.reply);
 }

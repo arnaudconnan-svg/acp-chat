@@ -282,9 +282,11 @@ app.post("/chat", async (req, res) => {
     const isNewSession = Boolean(req.body?.isNewSession);
     const flags = normalizeFlags(req.body?.flags);
 
+    const sessionRestarted = isNewSession && previousHistory.length > 0;
+
     let newSummary = summary;
 
-    if (isNewSession && previousHistory.length > 0) {
+    if (sessionRestarted) {
       newSummary = await summarizeSession(previousHistory, summary);
     }
 
@@ -294,7 +296,9 @@ app.post("/chat", async (req, res) => {
       return res.json({
         reply: n2Response(),
         summary: newSummary,
-        flags
+        flags,
+        isNewSession,
+        sessionRestarted
       });
     }
 
@@ -303,7 +307,9 @@ app.post("/chat", async (req, res) => {
       return res.json({
         reply,
         summary: newSummary,
-        flags
+        flags,
+        isNewSession,
+        sessionRestarted
       });
     }
 
@@ -312,7 +318,9 @@ app.post("/chat", async (req, res) => {
     return res.json({
       reply,
       summary: newSummary,
-      flags
+      flags,
+      isNewSession,
+      sessionRestarted
     });
 
   } catch (err) {
@@ -320,7 +328,9 @@ app.post("/chat", async (req, res) => {
     return res.json({
       reply: "Je t’écoute.",
       summary: "",
-      flags: normalizeFlags({})
+      flags: normalizeFlags({}),
+      isNewSession: false,
+      sessionRestarted: false
     });
   }
 });
