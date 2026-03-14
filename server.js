@@ -87,7 +87,7 @@ Si solutionRequest est true alors infoRequest doit être false.
     const cleaned = raw.replace(/```json|```/g, "").trim();
     const obj = JSON.parse(cleaned);
 
-    const suicideLevel = ["N0", "N1", "N2"].includes(obj.suicideLevel)
+    const suicideLevel = ["N0","N1","N2"].includes(obj.suicideLevel)
       ? obj.suicideLevel
       : "N0";
 
@@ -98,6 +98,7 @@ Si solutionRequest est true alors infoRequest doit être false.
       solutionRequest: obj.solutionRequest === true,
       infoRequest: obj.solutionRequest === true ? false : obj.infoRequest === true
     };
+
   } catch {
     return {
       suicideLevel: "N0",
@@ -119,6 +120,7 @@ function n1Fallback() {
 }
 
 async function n1ResponseLLM(userMessage) {
+
   const system = `
 Tu réponds brièvement pour clarifier le sens.
 
@@ -163,6 +165,7 @@ function n2Response() {
 // --------------------------------------------------
 
 async function summarizeSession(previousHistory = [], previousSummary = "") {
+
   if (!previousHistory.length) return previousSummary;
 
   const limitedPreviousHistory = previousHistory.slice(-MAX_PREVIOUS_HISTORY_FOR_SUMMARY);
@@ -172,27 +175,27 @@ async function summarizeSession(previousHistory = [], previousSummary = "") {
     .join("\n");
 
   const system = `
-Tu produis un résumé mémoire très concis d'une conversation.
+Tu mets à jour un résumé mémoire d'une conversation.
 
-Objectif :
-garder uniquement ce qui aide à comprendre la personne dans la durée.
+Le résumé précédent doit être considéré comme une mémoire stable.
 
-Conserver seulement :
-- faits de vie importants mentionnés
-- thèmes récurrents
-- préoccupations majeures
-- manière dont la personne explore son expérience
+Règles strictes :
 
-Ne pas inclure :
-- interprétations psychologiques
-- conseils
-- analyses du thérapeute
-- détails anecdotiques
+1. Ne modifie pas les éléments déjà présents dans le résumé précédent,
+sauf s'ils sont explicitement contredits dans la session.
+
+2. N'ajoute que des informations réellement nouvelles et importantes.
+
+3. Ne transforme jamais un élément ponctuel en caractéristique durable.
+
+4. Préfère ne rien ajouter plutôt que d'interpréter.
+
+5. Le résumé doit rester bref (maximum 5 à 8 lignes).
 
 Style :
 - phrases simples
 - factuel
-- 5 à 8 lignes maximum
+- aucune interprétation psychologique
 `;
 
   const r = await client.chat.completions.create({
@@ -229,6 +232,7 @@ async function generateFreeReply(
   solutionRequest = false,
   infoRequest = false
 ) {
+
   if (infoRequest) {
     solutionRequest = false;
   }
@@ -238,7 +242,7 @@ Tu échanges avec une personne qui parle de son vécu.
 
 Tutoie la personne.
 
-Accueille ce qui est partagé tel que c 'est vécu.
+Accueille ce qui est partagé tel que c'est vécu.
 
 Réponds aussi brièvement que possible tout en restant aidant.
 
@@ -334,7 +338,9 @@ function normalizeFlags(flags) {
 // --------------------------------------------------
 
 app.post("/chat", async (req, res) => {
+
   try {
+
     const userMessage = String(req.body?.message ?? "");
     const history = Array.isArray(req.body?.history) ? req.body.history : [];
     const previousHistory = Array.isArray(req.body?.previousHistory) ? req.body.previousHistory : [];
@@ -353,6 +359,7 @@ app.post("/chat", async (req, res) => {
     const analysis = await analyzeMessage(userMessage, history);
 
     if (analysis.suicideLevel === "N2") {
+
       return res.json({
         reply: n2Response(),
         summary: newSummary,
@@ -363,6 +370,7 @@ app.post("/chat", async (req, res) => {
     }
 
     if (analysis.suicideLevel === "N1" || analysis.needsClarification) {
+
       const reply = await n1ResponseLLM(userMessage);
 
       return res.json({
@@ -390,7 +398,9 @@ app.post("/chat", async (req, res) => {
       isNewSession,
       sessionRestarted
     });
+
   } catch (err) {
+
     console.error("Erreur /chat:", err);
 
     return res.json({
@@ -401,7 +411,9 @@ app.post("/chat", async (req, res) => {
       sessionRestarted: false
     });
   }
+
 });
+
 
 app.listen(port, () => {
   console.log(`Serveur lancé sur http://localhost:${port}`);
