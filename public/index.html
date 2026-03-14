@@ -16,112 +16,114 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
-  body {
-    font-family: Arial, sans-serif;
-    margin: 12px;
-    padding-bottom: 90px;
-  }
 
-  h2 {
-    text-align: center;
-    font-size: 22px;
-    margin: 6px 0 12px 0;
-  }
-
-  #chat {
-    border: 1px solid #ccc;
-    padding: 12px;
-    height: 64vh;
-    overflow-y: auto;
-    margin: 8px 0 10px 0;
-    font-size: 16px;
-    line-height: 1.4;
-  }
-
-  #input {
-    width: 100%;
-    font-size: 18px;
-    padding: 12px;
-    box-sizing: border-box;
-    margin-bottom: 70px;
-    min-height: 80px;
-    max-height: 240px;
-    resize: none;
-    overflow-y: hidden;
-    font-family: inherit;
-    line-height: 1.4;
-  }
-
-  .actions {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background: white;
-  display: flex;
-  justify-content: center;
-  gap: 10px;
-  padding: 10px;
-  border-top: 1px solid #ccc;
+body {
+  font-family: Arial, sans-serif;
+  margin: 12px;
 }
 
-  button {
-    font-size: 18px;
-    padding: 10px 16px;
-  }
+h2 {
+  text-align: center;
+  font-size: 22px;
+  margin: 6px 0 12px 0;
+}
 
-  #editLastBtn {
-    display: none;
-    background: none;
-    border: none;
-    font-size: 13px;
-    color: #666;
-    cursor: pointer;
-    padding: 0;
-  }
-  
-  #editLastBtn:hover {
-    text-decoration: underline;
-  }
+#chat {
+  border: 1px solid #ccc;
+  padding: 12px;
+  height: 64vh;
+  overflow-y: auto;
+  margin: 8px 0 10px 0;
+  font-size: 16px;
+  line-height: 1.4;
+}
 
-  .message {
-    margin: 14px 0;
-    display: flex;
-  }
+#inputArea {
+  position: sticky;
+  bottom: 0;
+  background: white;
+  padding-top: 6px;
+}
 
-  .message.user {
-    justify-content: flex-end;
-  }
+#input {
+  width: 100%;
+  font-size: 18px;
+  padding: 12px;
+  box-sizing: border-box;
+  min-height: 80px;
+  max-height: 240px;
+  resize: none;
+  overflow-y: hidden;
+  font-family: inherit;
+  line-height: 1.4;
+}
 
-  .message.bot {
-    justify-content: flex-start;
-  }
+.actions {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+}
 
-  .bubble {
-    max-width: 80%;
-    padding: 12px 14px;
-    border-radius: 14px;
-    line-height: 1.5;
-    white-space: pre-wrap;
-    word-break: break-word;
-    overflow-wrap: break-word;
-  }
+button {
+  font-size: 18px;
+  padding: 10px 16px;
+}
 
-  .user .bubble {
-    background: #d8ecff;
-  }
+#editLastBtn {
+  display: none;
+  background: none;
+  border: none;
+  font-size: 13px;
+  color: #666;
+  cursor: pointer;
+  padding: 0;
+}
 
-  .bot .bubble {
-    background: #f1f1f1;
-  }
+#editLastBtn:hover {
+  text-decoration: underline;
+}
 
-  .system-message {
-    text-align: center;
-    font-size: 13px;
-    color: #666;
-    margin: 10px 0;
-    font-style: italic;
-  }
+.message {
+  margin: 14px 0;
+  display: flex;
+}
+
+.message.user {
+  justify-content: flex-end;
+}
+
+.message.bot {
+  justify-content: flex-start;
+}
+
+.bubble {
+  max-width: 80%;
+  padding: 12px 14px;
+  border-radius: 14px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+.user .bubble {
+  background: #d8ecff;
+}
+
+.bot .bubble {
+  background: #f1f1f1;
+}
+
+.system-message {
+  text-align: center;
+  font-size: 13px;
+  color: #666;
+  margin: 10px 0;
+  font-style: italic;
+}
+
 </style>
 </head>
 
@@ -131,14 +133,19 @@
 
 <div id="chat"></div>
 
+<div id="inputArea">
+
 <textarea id="input" placeholder="Écrire..."></textarea>
 
 <div class="actions">
-  <button id="editLastBtn" onclick="editLastTurn()">modifier</button>
-  <button id="sendBtn" onclick="send()">Envoyer</button>
+<button id="editLastBtn" onclick="editLastTurn()">modifier</button>
+<button id="sendBtn" onclick="send()">Envoyer</button>
+</div>
+
 </div>
 
 <script>
+
 const SESSION_TIMEOUT = 30 * 60 * 1000;
 
 const SESSION_KEY = "acp_session_history_v1";
@@ -148,9 +155,6 @@ const FLAGS_KEY   = "acp_state_flags_v1";
 let sessionExpiredAtLoad = false;
 
 
-// --------------------
-// Mémoire session
-// --------------------
 
 function loadSessionHistory() {
   try {
@@ -165,6 +169,7 @@ function saveSessionHistory(history) {
 }
 
 function pushMsg(role, content) {
+
   const now = Date.now();
   const oldHistory = loadSessionHistory();
 
@@ -173,6 +178,7 @@ function pushMsg(role, content) {
   let isNewSession = false;
 
   if (oldHistory.length > 0) {
+
     const lastTime = oldHistory[oldHistory.length - 1].t;
     const gap = now - lastTime;
 
@@ -192,24 +198,30 @@ function pushMsg(role, content) {
 }
 
 function addAssistantToCurrentSession(content) {
+
   const history = loadSessionHistory();
-  history.push({ role: "assistant", content, t: Date.now() });
+
+  history.push({
+    role: "assistant",
+    content,
+    t: Date.now()
+  });
+
   saveSessionHistory(history);
 }
 
 function isSessionExpired() {
+
   const history = loadSessionHistory();
 
   if (!history.length) return false;
 
   const lastTime = history[history.length - 1].t;
+
   return Date.now() - lastTime > SESSION_TIMEOUT;
 }
 
 
-// --------------------
-// Mémoire long terme
-// --------------------
 
 function loadSummary() {
   return localStorage.getItem(SUMMARY_KEY) || "";
@@ -220,9 +232,6 @@ function saveSummary(summary) {
 }
 
 
-// --------------------
-// Flags
-// --------------------
 
 function normalizeFlags(flags) {
   return (flags && typeof flags === "object") ? flags : {};
@@ -241,28 +250,34 @@ function saveFlags(flags) {
 }
 
 
-// --------------------
-// UI helpers
-// --------------------
 
 function isUserNearBottom() {
+
   const chat = document.getElementById("chat");
+
   const threshold = 120;
+
   return chat.scrollHeight - chat.scrollTop - chat.clientHeight < threshold;
 }
 
 function addMessage(roleLabel, text) {
+
   const chat = document.getElementById("chat");
 
   const msg = document.createElement("div");
+
   const roleClass = roleLabel === "Utilisateur" ? "user" : "bot";
+
   msg.className = "message " + roleClass;
 
   const bubble = document.createElement("div");
+
   bubble.className = "bubble";
+
   bubble.textContent = text;
 
   msg.appendChild(bubble);
+
   chat.appendChild(msg);
 
   if (roleLabel === "Utilisateur") {
@@ -271,51 +286,69 @@ function addMessage(roleLabel, text) {
 }
 
 function addMessageSilently(roleLabel, text) {
+
   const chat = document.getElementById("chat");
 
   const msg = document.createElement("div");
+
   const roleClass = roleLabel === "Utilisateur" ? "user" : "bot";
+
   msg.className = "message " + roleClass;
 
   const bubble = document.createElement("div");
+
   bubble.className = "bubble";
+
   bubble.textContent = text;
 
   msg.appendChild(bubble);
+
   chat.appendChild(msg);
 }
 
 function addSystemMessage(text) {
+
   const chat = document.getElementById("chat");
 
   const msg = document.createElement("div");
+
   msg.className = "system-message";
+
   msg.textContent = text;
 
   chat.appendChild(msg);
+
   chat.scrollTop = chat.scrollHeight;
 }
 
 function rehydrateChatFromSession() {
+
   const chat = document.getElementById("chat");
+
   const history = loadSessionHistory();
 
   chat.innerHTML = "";
 
   for (const msg of history) {
+
     if (msg.role === "user") {
       addMessageSilently("Utilisateur", msg.content);
-    } else if (msg.role === "assistant") {
+    }
+
+    else if (msg.role === "assistant") {
       addMessageSilently("Chatbot", msg.content);
     }
   }
 
   chat.scrollTop = chat.scrollHeight;
+
   updateEditButtonVisibility();
 }
 
 function scrollToLastUserMessage() {
+
   const userMessages = document.querySelectorAll(".message.user");
+
   const lastUser = userMessages[userMessages.length - 1];
 
   if (!lastUser) return;
@@ -326,13 +359,16 @@ function scrollToLastUserMessage() {
   });
 
   const chat = document.getElementById("chat");
+
   chat.scrollTop -= 20;
 }
 
 function addBotReply(text) {
+
   const shouldScroll = isUserNearBottom();
 
   addAssistantToCurrentSession(text);
+
   addMessage("Chatbot", text);
 
   if (shouldScroll) {
@@ -343,69 +379,89 @@ function addBotReply(text) {
 }
 
 function autoResizeInput() {
+
   const input = document.getElementById("input");
+
   input.style.height = "auto";
+
   input.style.height = Math.min(input.scrollHeight, 240) + "px";
 }
 
 function canEditLastTurn() {
+
   const history = loadSessionHistory();
+
   if (history.length < 2) return false;
 
   const last = history[history.length - 1];
+
   const beforeLast = history[history.length - 2];
 
   return beforeLast.role === "user" && last.role === "assistant";
 }
 
 function updateEditButtonVisibility() {
+
   const btn = document.getElementById("editLastBtn");
+
   btn.style.display = canEditLastTurn() ? "inline-block" : "none";
 }
 
 function editLastTurn() {
+
   const history = loadSessionHistory();
+
   if (history.length < 2) return;
 
   const last = history[history.length - 1];
+
   const beforeLast = history[history.length - 2];
 
   if (!(beforeLast.role === "user" && last.role === "assistant")) return;
 
   const input = document.getElementById("input");
+
   input.value = beforeLast.content;
 
   history.splice(-2, 2);
+
   saveSessionHistory(history);
 
   rehydrateChatFromSession();
+
   autoResizeInput();
+
   input.focus();
 
   const len = input.value.length;
+
   input.setSelectionRange(len, len);
 }
 
 
-// --------------------
-// Envoi message
-// --------------------
 
 async function send() {
+
   const input = document.getElementById("input");
+
   const text = input.value.trim();
 
   if (!text) return;
 
   const pushed = pushMsg("user", text);
+
   const historyAfterUser = pushed.history;
+
   const previousHistory = pushed.previousHistory;
+
   const isNewSession = pushed.isNewSession;
 
   addMessage("Utilisateur", text);
+
   updateEditButtonVisibility();
 
   input.value = "";
+
   input.style.height = "80px";
 
   const response = await fetch("/chat", {
@@ -424,6 +480,7 @@ async function send() {
   const data = await response.json();
 
   if (data.summary) saveSummary(data.summary);
+
   if (data.flags) saveFlags(data.flags);
 
   if (data.sessionRestarted) {
@@ -434,47 +491,48 @@ async function send() {
 }
 
 
-// --------------------
-// Initialisation
-// --------------------
 
 document.addEventListener("DOMContentLoaded", function() {
+
   autoResizeInput();
 
   if (isSessionExpired()) {
+
     document.getElementById("chat").innerHTML = "";
+
     addSystemMessage(
       "La session précédente a pris fin après 30 minutes d’inactivité. Elle a été mémorisée sous forme de résumé pour maintenir la fluidité de la conversation."
     );
+
     sessionExpiredAtLoad = true;
+
     updateEditButtonVisibility();
+
   } else {
+
     rehydrateChatFromSession();
   }
 });
 
 
-// --------------------
-// Entrée clavier
-// --------------------
-
 document.getElementById("input").addEventListener("input", autoResizeInput);
 
 document.getElementById("input").addEventListener("keydown", function(event) {
+
   if (event.key === "Enter" && event.ctrlKey) {
+
     event.preventDefault();
+
     send();
   }
 });
 
 
-// --------------------
-// Service Worker
-// --------------------
-
 if ("serviceWorker" in navigator) {
+
   navigator.serviceWorker.register("/sw.js");
 }
+
 </script>
 
 </body>
