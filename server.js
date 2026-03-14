@@ -238,7 +238,7 @@ Tu échanges avec une personne qui parle de son vécu.
 
 Tutoie la personne.
 
-Accueille ce qui est partagé tel que c'est vécu.
+Accueille ce qui est partagé tel que c 'est vécu.
 
 Réponds aussi brièvement que possible tout en restant aidant.
 
@@ -246,6 +246,15 @@ Quand la personne pose une question factuelle,
 réponds directement à la question.
 
 Ne transforme pas la question en introspection.
+
+Les informations provenant du résumé des échanges précédents
+servent uniquement de contexte.
+
+Elles ne doivent jamais être utilisées pour enfermer
+la personne dans une description stable.
+
+Chaque message doit être accueilli comme une expression
+actuelle possiblement différente de ce qui a été dit auparavant.
 `;
 
   const context = history
@@ -296,7 +305,7 @@ Tu peux citer
 
   const r = await client.chat.completions.create({
     model: "gpt-4.1-mini",
-    temperature: 0.5,
+    temperature: 0.7,
     messages: [
       { role: "system", content: baseSystem },
       ...extraSystemMessages,
