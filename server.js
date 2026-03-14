@@ -211,6 +211,10 @@ async function generateFreeReply(
   infoRequest = false
 ) {
 
+  if (infoRequest) {
+  solutionRequest = false;
+}
+
   const baseSystem = `
 Tu échanges avec une personne qui parle de son vécu.
 
