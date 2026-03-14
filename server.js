@@ -165,31 +165,47 @@ async function summarizeSession(previousHistory = [], previousSummary = "") {
   if (!previousHistory.length) return previousSummary;
 
   const transcript = previousHistory
-    .map(m => `${m.role==="user"?"Utilisateur":"Assistant"} : ${m.content}`)
+    .map(m => `${m.role === "user" ? "Utilisateur" : "Assistant"} : ${m.content}`)
     .join("\n");
 
   const system = `
-Tu résumes les échanges.
+Tu produis un résumé mémoire très concis d'une conversation.
 
-But :
-- garder seulement ce qui aide à comprendre la personne
-- garder thèmes importants et dynamiques
-- résumé court
+Objectif :
+garder uniquement ce qui aide à comprendre la personne dans la durée.
+
+Conserver seulement :
+- faits de vie importants mentionnés
+- thèmes récurrents
+- préoccupations majeures
+- manière dont la personne explore son expérience
+
+Ne pas inclure :
+- interprétations psychologiques
+- conseils
+- analyses du thérapeute
+- détails anecdotiques
+
+Style :
+- phrases simples
+- factuel
+- 5 à 8 lignes maximum
 `;
 
   const r = await client.chat.completions.create({
     model: "gpt-4.1-mini",
-    temperature: 0.3,
-    max_tokens: 220,
+    temperature: 0.2,
+    max_tokens: 180,
     messages: [
       { role: "system", content: system },
       {
         role: "user",
         content:
-          "Résumé précédent :\n"+
-          (previousSummary || "(aucun)")+
-          "\n\nSession :\n"+
-          transcript
+          "Résumé précédent :\n" +
+          (previousSummary || "(aucun)") +
+          "\n\nSession à intégrer :\n" +
+          transcript +
+          "\n\nNouveau résumé :"
       }
     ],
   });
