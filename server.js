@@ -352,7 +352,7 @@ Trois à six phrases suffisent.
 
   const r = await client.chat.completions.create({
     model: "gpt-4.1-mini",
-    temperature: 0.7,
+    temperature: 0.5,
     messages: [
       { role: "system", content: baseSystem },
       ...extraSystemMessages,
