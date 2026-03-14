@@ -457,6 +457,7 @@ async function send() {
 
   const historyForServer = historyAfterUser.slice(-MAX_HISTORY_FOR_SERVER);
   const previousHistoryForServer = previousHistory.slice(-MAX_HISTORY_FOR_SERVER);
+  const safeIsNewSession = isNewSession && previousHistoryForServer.length > 0;
 
   addMessage("Utilisateur", text);
 
@@ -475,7 +476,7 @@ async function send() {
       previousHistory: previousHistoryForServer,
       summary: loadSummary(),
       flags: loadFlags(),
-      isNewSession: isNewSession
+      isNewSession: safeIsNewSession
     })
   });
 

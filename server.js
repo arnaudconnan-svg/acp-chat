@@ -259,6 +259,14 @@ la personne dans une description stable.
 
 Chaque message doit être accueilli comme une expression
 actuelle possiblement différente de ce qui a été dit auparavant.
+
+Quand un résumé est présent,
+il sert uniquement de repère de continuité.
+
+La personne peut revenir sur un sujet déjà évoqué,
+mais elle peut aussi changer complètement de direction.
+
+Ne suppose jamais que le thème précédent reste central.
 `;
 
   const context = history
@@ -348,7 +356,10 @@ app.post("/chat", async (req, res) => {
     const isNewSession = Boolean(req.body?.isNewSession);
     const flags = normalizeFlags(req.body?.flags);
 
-    const sessionRestarted = isNewSession && previousHistory.length > 0;
+    // 🔒 sécurisation serveur
+    const safeIsNewSession = isNewSession && previousHistory.length > 0;
+
+    const sessionRestarted = safeIsNewSession;
 
     let newSummary = summary;
 
@@ -364,7 +375,7 @@ app.post("/chat", async (req, res) => {
         reply: n2Response(),
         summary: newSummary,
         flags,
-        isNewSession,
+        isNewSession: safeIsNewSession,
         sessionRestarted
       });
     }
@@ -377,7 +388,7 @@ app.post("/chat", async (req, res) => {
         reply,
         summary: newSummary,
         flags,
-        isNewSession,
+        isNewSession: safeIsNewSession,
         sessionRestarted
       });
     }
@@ -386,7 +397,7 @@ app.post("/chat", async (req, res) => {
       userMessage,
       history,
       newSummary,
-      isNewSession,
+      safeIsNewSession,
       analysis.solutionRequest,
       analysis.infoRequest
     );
@@ -395,7 +406,7 @@ app.post("/chat", async (req, res) => {
       reply,
       summary: newSummary,
       flags,
-      isNewSession,
+      isNewSession: safeIsNewSession,
       sessionRestarted
     });
 
