@@ -421,16 +421,7 @@ async function send() {
   if (data.flags) saveFlags(data.flags);
 
   if (data.sessionRestarted) {
-    if (sessionExpiredAtLoad) {
-      addSystemMessage(
-        "Le contenu de la session précédente a été conservé sous forme de résumé."
-      );
-      sessionExpiredAtLoad = false;
-    } else {
-      addSystemMessage(
-        "La session précédente a pris fin après 30 minutes d’inactivité. Le contenu a été conservé sous forme de résumé."
-      );
-    }
+    sessionExpiredAtLoad = false;
   }
 
   addBotReply(data.reply);
@@ -447,7 +438,7 @@ document.addEventListener("DOMContentLoaded", function() {
   if (isSessionExpired()) {
     document.getElementById("chat").innerHTML = "";
     addSystemMessage(
-      "La session précédente a pris fin après 30 minutes d’inactivité. Elle sera reprise sous forme de résumé à ton prochain message."
+      "La session précédente a pris fin après 30 minutes d’inactivité. Elle a été mémorisée sous forme de résumé pour maintenir la fluidité de la conversation."
     );
     sessionExpiredAtLoad = true;
     updateEditButtonVisibility();
