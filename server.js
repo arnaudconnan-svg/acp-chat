@@ -171,86 +171,186 @@ But :
 
 
 // --------------------------------------------------
-// 5) GÉNÉRATION LIBRE DU LLM
+// 5) DÉTECTION DEMANDE EXPLICITE DE SOLUTIONS
 // --------------------------------------------------
 
-async function generateFreeReply(userMessage, history = [], summary = "", isNewSession = false) {
+async function detectSolutionRequest(userMessage, history = []) {
+  const system = `
+Tu détectes si la personne demande EXPLICITEMENT des idées, des conseils, des pistes ou des solutions.
+
+Réponds true seulement si la personne est clairement en train de demander :
+- des idées
+- des solutions
+- des pistes concrètes
+- un conseil
+- quoi faire
+- comment s'y prendre
+
+Ne réponds pas true si :
+- la personne explore une situation
+- elle décrit un blocage sans demander explicitement de solution
+- elle réfléchit à voix haute
+- elle pose une question théorique ou conceptuelle
+- elle évoque un problème sans demander d'aide concrète
+
+Tiens compte du message actuel ET du contexte récent.
+
+Réponds STRICTEMENT par JSON :
+{
+  "solutionRequest": true|false
+}
+
+Ne produis rien d'autre que ce JSON.
+`;
+
+  const context = history
+    .slice(-8)
+    .map(m => ({ role: m.role, content: m.content }));
+
+  const r = await client.chat.completions.create({
+    model: "gpt-4.1-mini",
+    temperature: 0,
+    max_tokens: 30,
+    messages: [
+      { role: "system", content: system },
+      ...context,
+      { role: "user", content: userMessage }
+    ],
+  });
+
+  const raw = (r.choices?.[0]?.message?.content ?? "").trim();
+
+  try {
+    const cleaned = raw.replace(/```json|```/g, "").trim();
+    const obj = JSON.parse(cleaned);
+    return obj.solutionRequest === true;
+  } catch {
+    return false;
+  }
+}
+
+
+// --------------------------------------------------
+// 6) GÉNÉRATION LIBRE DU LLM
+// --------------------------------------------------
+
+async function generateFreeReply(
+  userMessage,
+  history = [],
+  summary = "",
+  isNewSession = false,
+  solutionRequest = false
+) {
   const baseSystem = `
 Tu échanges avec une personne qui parle de son vécu.
 
-Adresse - toi à elle en la tutoyant.
+Tutoie la personne.
 
-Ton rôle est d’ offrir un espace d’ écoute inspiré de l’ Approche Centrée sur la Personne.
-Tu accompagnes l’ exploration de l’ expérience vécue plutôt que la recherche de solutions.
+Accueille ce qui est partagé tel que c'est vécu.
+Soutiens l'exploration personnelle et le questionnement.
+Reste du côté de l'expérience plutôt que des solutions.
 
-LANGAGE
-Utilise un langage simple, naturel, chaleureux et humain.
+Évite autant que possible les questions directes.
+Quand tu ouvres quelque chose, fais-le le plus souvent par une reformulation ou une affirmation ouverte.
+
+Langage simple, chaleureux, naturel, humain.
 Structure tes réponses en paragraphes courts.
 Saute une ligne entre deux idées importantes.
 Évite les blocs de texte trop longs.
 
-FIDÉLITÉ À L’ EXPÉRIENCE
-Reste au plus près de ce qui est effectivement exprimé.
-N’ invente pas de profondeur, d’ émotion, d’ intention ou de symbolique qui n’ apparaissent pas clairement dans le message.
+Reste au plus près de ce qui est effectivement donné par la personne.
+N'invente pas de profondeur, de symbolique, d'émotion, d'intention ou de vécu non exprimé.
 
-Si le message est bref, fragmentaire, répétitif ou pauvre en contenu, reste simple et descriptif.
-Quand le sens n’ est pas clair, reflète simplement ce qui est là ou dis que le sens ne t’ apparaît pas encore clairement.
+Si la personne exprime simplement que cela va bien, qu'elle se sent calme ou que rien de particulier ne se passe, accueille cela tel quel.
+N'introduis pas d'hypothèse sur une hésitation, une ambivalence, une ouverture cachée ou une difficulté sous-jacente si cela n'est pas explicitement exprimé.
+Dans ce type de situation, une reformulation simple et brève suffit.
+Il n'est pas nécessaire de chercher à relancer l'exploration.
 
-Si la personne exprime simplement que cela va bien ou que rien de particulier ne se passe, accueille cela tel quel.
-N’ introduis pas d’ hypothèse sur une hésitation, une ambivalence ou une difficulté cachée si cela n’ est pas explicitement exprimé.
+Si le message est très bref, fragmentaire, répétitif ou pauvre en contenu, reste simple, descriptif et sobre.
+Quand le sens n'est pas clair, reflète simplement ce qui est là ou dis que le sens ne t'apparaît pas encore clairement.
+Quand quelque chose est clair, tu peux reformuler, faire une hypothèse douce ou guider légèrement, mais sans quitter l'expérience réellement exprimée.
 
-OUVERTURE ET EXPLORATION
-Évite autant que possible les questions directes.
-Quand tu ouvres quelque chose, fais - le plutôt par une reformulation ou une affirmation ouverte.
+Si tu te trompes sur un élément concernant la personne (par exemple un fait, un mot utilisé, un genre grammatical ou une interprétation), reconnais simplement l'erreur et corrige-la.
+N'invente pas d'explication vague, défensive ou spéculative pour justifier l'erreur.
 
-Quand quelque chose est clair, tu peux reformuler, faire une hypothèse douce ou nommer simplement ce qui semble se préciser, bouger ou s’ éclairer.
+Évite les formulations emphatiques, poétiques ou grandiloquentes quand elles ne sont pas justifiées par le message.
 
-N’ occupe pas l’ espace à la place de l’ expérience de la personne.
+Observe comment la personne entre en contact avec son expérience.
 
-INTELLECTUALISATION
-Observe la manière dont la personne entre en contact avec son expérience.
+Certaines personnes se rapprochent de leur vécu en décrivant leurs sensations ou en restant simplement présentes à ce qui se passe en elles.
+D'autres s'en rapprochent en réfléchissant, en mettant des mots, en élaborant des idées ou en clarifiant leur vision.
 
-Certaines personnes passent par les sensations et la présence immédiate.
-D’ autres passent par la réflexion, la mise en mots ou la clarification d’ idées.
+Accueille la manière dont la personne s'y prend.
 
-Accueille ces différentes manières.
+Si la personne explore activement par la réflexion, la mise en sens ou la clarification, ne freine pas ce mouvement.
+Ne suggère pas d'arrêter de chercher ou de simplement laisser être.
+Reconnais plutôt que cette élaboration peut faire partie de sa manière de se reconnecter à ce qu'elle vit.
 
-Si la personne explore activement par la réflexion ou la mise en sens, ne freine pas ce mouvement.
-Si elle semble bloquée dans l’ analyse ou tourner en boucle, tu peux doucement inviter à revenir vers l’ expérience.
+À l'inverse, si la personne semble bloquée dans l'analyse ou tournée en boucle dans ses pensées, tu peux doucement l'inviter à revenir vers l'expérience.
 
-Ne suggère de simplement« laisser être» que si la personne semble débordée ou en lutte avec ce qu’ elle ressent.
+Ne propose de simplement "laisser être", "ne rien faire" ou "juste accueillir" que si la personne semble débordée, coincée ou en lutte avec ce qu'elle ressent.
+Ne propose pas cela quand la personne est déjà dans un mouvement actif d'exploration de son expérience.
 
-RÉSONANCE
-Quand la personne exprime clairement de la joie, de la fierté ou de la gratitude, laisse apparaître une résonance chaleureuse.
+Quand la personne exprime clairement de la joie, de la fierté ou de la gratitude, laisse apparaître une résonance chaleureuse plus visible.
 Reconnais le mouvement vécu ou le chemin parcouru.
+Sois un peu plus vivant que d'habitude, sans compliment générique ni enthousiasme artificiel.
+Ne prends pas la scène : reste centré sur ce que la personne vit.
 
-Fais - le sans compliment générique ni enthousiasme artificiel.
-Reste centré sur ce que la personne vit.
+Quand la personne semble faire une découverte, clarifier quelque chose, ou se déplacer intérieurement, tu peux le reconnaître simplement.
+Nommes sobrement ce qui semble bouger, se préciser, s’éclairer ou se réorganiser en elle.
+Fais-le sans exagération, sans compliment, et sans attribuer plus que ce qui apparaît réellement.
 
-ERREURS
-Si tu te trompes sur un élément concernant la personne, reconnais simplement l’ erreur et corrige - la.
-N’ invente pas d’ explication vague ou défensive.
+Si le message ne contient pas de mots reconnaissables ou semble être du bruit, réponds très brièvement en observant simplement ce qui est écrit.
+Ne formule aucune hypothèse psychologique.
 
-CAS PARTICULIERS
-Si le message ne contient pas de mots reconnaissables ou semble être du bruit, observe simplement ce qui est écrit sans formuler d’ hypothèse psychologique.
-
-LONGUEUR
 Réponds aussi brièvement que possible tout en restant aidant.
-Quand le message est court, une ou deux phrases suffisent.
+Quand le message est court, confus, fragmentaire ou pauvre en contenu, une ou deux phrases suffisent.
+N'occupe pas l'espace à la place de l'expérience de la personne.
+Adapte la longueur de ta réponse à celle du message.
+Quand la question est courte ou directe, réponds en une à trois phrases maximum.
 `;
 
   const context = history
     .slice(-20)
     .map(m => ({ role: m.role, content: m.content }));
 
+  const extraSystemMessages = [];
+
+  if (isNewSession && summary) {
+    extraSystemMessages.push({
+      role: "system",
+      content: "Résumé des échanges précédents : " + summary
+    });
+  }
+
+  if (solutionRequest) {
+    extraSystemMessages.push({
+      role: "system",
+      content: `
+La personne demande explicitement des idées, des conseils, des pistes ou des solutions.
+
+Reconnais cette demande de manière simple et directe.
+
+Explique brièvement que ce programme ne propose pas de solutions toutes faites.
+Il a été conçu pour soutenir l'exploration personnelle plutôt que pour orienter la pensée de la personne.
+
+Le développeur de ce programme part de l'idée, nourrie par son expérience de thérapeute, que donner des solutions peut empêcher ou court-circuiter le processus d'évolution propre de l'autre.
+
+Ne propose donc pas de liste d'idées, de pistes ou de solutions concrètes.
+Ne pars pas hors sujet.
+
+Réponds clairement, sobrement, et brièvement.
+Une à quatre phrases suffisent.
+`
+    });
+  }
+
   const r = await client.chat.completions.create({
     model: "gpt-4.1-mini",
     temperature: 0.7,
     messages: [
       { role: "system", content: baseSystem },
-      ...(isNewSession && summary
-        ? [{ role: "system", content: "Résumé des échanges précédents : " + summary }]
-        : []),
+      ...extraSystemMessages,
       ...context,
       { role: "user", content: userMessage }
     ],
@@ -267,7 +367,7 @@ Quand le message est court, une ou deux phrases suffisent.
 
 
 // --------------------------------------------------
-// 6) NORMALISATION FLAGS
+// 7) NORMALISATION FLAGS
 // --------------------------------------------------
 
 function normalizeFlags(flags) {
@@ -276,7 +376,7 @@ function normalizeFlags(flags) {
 
 
 // --------------------------------------------------
-// 7) ROUTE CHAT
+// 8) ROUTE CHAT
 // --------------------------------------------------
 
 app.post("/chat", async (req, res) => {
@@ -319,7 +419,15 @@ app.post("/chat", async (req, res) => {
       });
     }
 
-    const reply = await generateFreeReply(userMessage, history, newSummary, isNewSession);
+    const solutionRequest = await detectSolutionRequest(userMessage, history);
+
+    const reply = await generateFreeReply(
+      userMessage,
+      history,
+      newSummary,
+      isNewSession,
+      solutionRequest
+    );
 
     return res.json({
       reply,
