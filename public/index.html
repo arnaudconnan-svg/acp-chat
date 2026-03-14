@@ -124,6 +124,35 @@ button {
   font-style: italic;
 }
 
+.glossary-term {
+  text-decoration: underline dotted;
+  cursor: pointer;
+}
+
+#glossaryModal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.35);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+#glossaryBox {
+  background: white;
+  padding: 20px;
+  max-width: 420px;
+  width: calc(100% - 32px);
+  border-radius: 10px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.25);
+  font-size: 16px;
+}
+
+#glossaryContent {
+  margin-bottom: 14px;
+}
+
 </style>
 </head>
 
@@ -144,6 +173,13 @@ button {
 
 </div>
 
+<div id="glossaryModal">
+  <div id="glossaryBox">
+    <div id="glossaryContent"></div>
+    <button onclick="closeGlossary()">fermer</button>
+  </div>
+</div>
+
 <script>
 
 const SESSION_TIMEOUT = 30 * 60 * 1000;
@@ -152,6 +188,15 @@ const MAX_HISTORY_FOR_SERVER = 20;
 const SESSION_KEY = "acp_session_history_v1";
 const SUMMARY_KEY = "acp_longterm_summary_v1";
 const FLAGS_KEY   = "acp_state_flags_v1";
+
+const GLOSSARY = {
+  "centre d’évaluation interne": {
+    definition: "Capacité de la personne à sentir, évaluer et orienter son expérience à partir d’elle-même plutôt qu’à partir d’une autorité extérieure."
+  },
+  "centre d'evaluation interne": {
+    alias: "centre d’évaluation interne"
+  }
+};
 
 let sessionExpiredAtLoad = false;
 
@@ -252,6 +297,56 @@ function saveFlags(flags) {
 
 
 
+function escapeRegExp(text) {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function escapeHTML(text) {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function applyGlossary(text) {
+
+  let result = escapeHTML(text);
+
+  const terms = Object.keys(GLOSSARY).sort((a, b) => b.length - a.length);
+
+  terms.forEach(term => {
+    const entry = GLOSSARY[term];
+    const canonicalTerm = entry.alias || term;
+    const escapedTerm = escapeRegExp(term);
+    const regex = new RegExp(`\\b${escapedTerm}\\b`, "gi");
+
+    result = result.replace(regex, match => {
+      const safeCanonical = canonicalTerm.replace(/'/g, "\\'");
+      return `<span class="glossary-term" onclick="showDefinition('${safeCanonical}')">${match}</span>`;
+    });
+  });
+
+  return result;
+}
+
+function showDefinition(term) {
+
+  const entry = GLOSSARY[term];
+  if (!entry) return;
+
+  const modal = document.getElementById("glossaryModal");
+  const content = document.getElementById("glossaryContent");
+
+  content.textContent = entry.definition;
+  modal.style.display = "flex";
+}
+
+function closeGlossary() {
+  document.getElementById("glossaryModal").style.display = "none";
+}
+
+
+
 function isUserNearBottom() {
 
   const chat = document.getElementById("chat");
@@ -274,8 +369,7 @@ function addMessage(roleLabel, text) {
   const bubble = document.createElement("div");
 
   bubble.className = "bubble";
-
-  bubble.textContent = text;
+  bubble.innerHTML = applyGlossary(text);
 
   msg.appendChild(bubble);
 
@@ -299,8 +393,7 @@ function addMessageSilently(roleLabel, text) {
   const bubble = document.createElement("div");
 
   bubble.className = "bubble";
-
-  bubble.textContent = text;
+  bubble.innerHTML = applyGlossary(text);
 
   msg.appendChild(bubble);
 
@@ -498,6 +591,10 @@ async function send() {
 document.addEventListener("DOMContentLoaded", function() {
 
   autoResizeInput();
+
+  document.getElementById("glossaryModal").onclick = function(e) {
+    if (e.target.id === "glossaryModal") closeGlossary();
+  };
 
   if (isSessionExpired()) {
 
