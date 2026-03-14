@@ -11,6 +11,10 @@ const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 app.use(express.static("public"));
 app.use(express.json());
 
+const MAX_HISTORY_FOR_ANALYSIS = 10;
+const MAX_HISTORY_FOR_REPLY = 20;
+const MAX_PREVIOUS_HISTORY_FOR_SUMMARY = 40;
+
 
 // --------------------------------------------------
 // 1) ANALYSE UNIQUE : TRIAGE + SOLUTIONS + INFO
@@ -63,7 +67,7 @@ Si solutionRequest est true alors infoRequest doit être false.
 `;
 
   const context = history
-    .slice(-10)
+    .slice(-MAX_HISTORY_FOR_ANALYSIS)
     .map(m => ({ role: m.role, content: m.content }));
 
   const r = await client.chat.completions.create({
@@ -83,7 +87,7 @@ Si solutionRequest est true alors infoRequest doit être false.
     const cleaned = raw.replace(/```json|```/g, "").trim();
     const obj = JSON.parse(cleaned);
 
-    const suicideLevel = ["N0","N1","N2"].includes(obj.suicideLevel)
+    const suicideLevel = ["N0", "N1", "N2"].includes(obj.suicideLevel)
       ? obj.suicideLevel
       : "N0";
 
@@ -94,7 +98,6 @@ Si solutionRequest est true alors infoRequest doit être false.
       solutionRequest: obj.solutionRequest === true,
       infoRequest: obj.solutionRequest === true ? false : obj.infoRequest === true
     };
-
   } catch {
     return {
       suicideLevel: "N0",
@@ -116,7 +119,6 @@ function n1Fallback() {
 }
 
 async function n1ResponseLLM(userMessage) {
-
   const system = `
 Tu réponds brièvement pour clarifier le sens.
 
@@ -161,10 +163,11 @@ function n2Response() {
 // --------------------------------------------------
 
 async function summarizeSession(previousHistory = [], previousSummary = "") {
-
   if (!previousHistory.length) return previousSummary;
 
-  const transcript = previousHistory
+  const limitedPreviousHistory = previousHistory.slice(-MAX_PREVIOUS_HISTORY_FOR_SUMMARY);
+
+  const transcript = limitedPreviousHistory
     .map(m => `${m.role === "user" ? "Utilisateur" : "Assistant"} : ${m.content}`)
     .join("\n");
 
@@ -226,10 +229,9 @@ async function generateFreeReply(
   solutionRequest = false,
   infoRequest = false
 ) {
-
   if (infoRequest) {
-  solutionRequest = false;
-}
+    solutionRequest = false;
+  }
 
   const baseSystem = `
 Tu échanges avec une personne qui parle de son vécu.
@@ -247,7 +249,7 @@ Ne transforme pas la question en introspection.
 `;
 
   const context = history
-    .slice(-20)
+    .slice(-MAX_HISTORY_FOR_REPLY)
     .map(m => ({ role: m.role, content: m.content }));
 
   const extraSystemMessages = [];
@@ -323,9 +325,7 @@ function normalizeFlags(flags) {
 // --------------------------------------------------
 
 app.post("/chat", async (req, res) => {
-
   try {
-
     const userMessage = String(req.body?.message ?? "");
     const history = Array.isArray(req.body?.history) ? req.body.history : [];
     const previousHistory = Array.isArray(req.body?.previousHistory) ? req.body.previousHistory : [];
@@ -343,10 +343,7 @@ app.post("/chat", async (req, res) => {
 
     const analysis = await analyzeMessage(userMessage, history);
 
-    // ---------------- SUICIDE N2
-
     if (analysis.suicideLevel === "N2") {
-
       return res.json({
         reply: n2Response(),
         summary: newSummary,
@@ -356,10 +353,7 @@ app.post("/chat", async (req, res) => {
       });
     }
 
-    // ---------------- SUICIDE N1
-
     if (analysis.suicideLevel === "N1" || analysis.needsClarification) {
-
       const reply = await n1ResponseLLM(userMessage);
 
       return res.json({
@@ -370,8 +364,6 @@ app.post("/chat", async (req, res) => {
         sessionRestarted
       });
     }
-
-    // ---------------- RÉPONSE LLM
 
     const reply = await generateFreeReply(
       userMessage,
@@ -389,9 +381,7 @@ app.post("/chat", async (req, res) => {
       isNewSession,
       sessionRestarted
     });
-
   } catch (err) {
-
     console.error("Erreur /chat:", err);
 
     return res.json({
@@ -402,9 +392,7 @@ app.post("/chat", async (req, res) => {
       sessionRestarted: false
     });
   }
-
 });
-
 
 app.listen(port, () => {
   console.log(`Serveur lancé sur http://localhost:${port}`);

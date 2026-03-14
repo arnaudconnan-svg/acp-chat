@@ -147,6 +147,7 @@ button {
 <script>
 
 const SESSION_TIMEOUT = 30 * 60 * 1000;
+const MAX_HISTORY_FOR_SERVER = 20;
 
 const SESSION_KEY = "acp_session_history_v1";
 const SUMMARY_KEY = "acp_longterm_summary_v1";
@@ -451,10 +452,11 @@ async function send() {
   const pushed = pushMsg("user", text);
 
   const historyAfterUser = pushed.history;
-
   const previousHistory = pushed.previousHistory;
-
   const isNewSession = pushed.isNewSession;
+
+  const historyForServer = historyAfterUser.slice(-MAX_HISTORY_FOR_SERVER);
+  const previousHistoryForServer = previousHistory.slice(-MAX_HISTORY_FOR_SERVER);
 
   addMessage("Utilisateur", text);
 
@@ -469,8 +471,8 @@ async function send() {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       message: text,
-      history: historyAfterUser,
-      previousHistory: previousHistory,
+      history: historyForServer,
+      previousHistory: previousHistoryForServer,
       summary: loadSummary(),
       flags: loadFlags(),
       isNewSession: isNewSession
