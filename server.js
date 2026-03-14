@@ -83,6 +83,20 @@ Ne mets pas infoRequest à true si :
 - elle pose une question dont l'objectif principal est l'introspection
 
 Si solutionRequest est true, alors infoRequest doit être false.
+
+
+Quand la personne pose une question factuelle, théorique, historique ou scientifique,
+réponds directement à la question.
+
+Dans ce cas :
+- ne renvoie pas la question vers le vécu ou le ressenti de la personne
+- ne reformule pas la question sous forme introspective
+- ne demande pas ce que cela évoque pour elle
+
+Réponds simplement avec l'information demandée.
+
+Si nécessaire, tu peux ajouter une phrase courte pour relier cette information
+à ce que la personne explore, mais cela reste optionnel.
 `;
 
   const context = history

@@ -19,6 +19,7 @@
   body {
     font-family: Arial, sans-serif;
     margin: 12px;
+    padding-bottom: 90px;
   }
 
   h2 {
@@ -42,7 +43,7 @@
     font-size: 18px;
     padding: 12px;
     box-sizing: border-box;
-    margin-bottom: 10px;
+    margin-bottom: 70px;
     min-height: 80px;
     max-height: 240px;
     resize: none;
@@ -52,12 +53,17 @@
   }
 
   .actions {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 6px;
-  }
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: white;
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  padding: 10px;
+  border-top: 1px solid #ccc;
+}
 
   button {
     font-size: 18px;
