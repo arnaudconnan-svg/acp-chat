@@ -254,7 +254,7 @@ Ne transforme pas la question en introspection.
 
   const extraSystemMessages = [];
 
-  if (isNewSession && summary) {
+  if (summary) {
     extraSystemMessages.push({
       role: "system",
       content: "Résumé des échanges précédents : " + summary
