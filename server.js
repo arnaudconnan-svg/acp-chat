@@ -13,35 +13,76 @@ app.use(express.json());
 
 
 // --------------------------------------------------
-// 1) TRIAGE RISQUE SUICIDAIRE
+// 1) ANALYSE UNIQUE : TRIAGE + SOLUTIONS + INFO
 // --------------------------------------------------
 
-async function llmTriage(userMessage, history = []) {
+async function analyzeMessage(userMessage, history = []) {
   const system = `
-Tu fais UNIQUEMENT du triage de risque suicidaire à partir du message utilisateur.
-Tu tiens compte du CONTEXTE : citation, récit, métaphore, chanson, pensée intrusive, etc.
-Tu ne donnes AUCUN conseil. Tu produis du JSON STRICT, rien d'autre.
+Tu fais une analyse rapide du message utilisateur et du contexte récent.
 
-Niveaux :
+Tu dois identifier quatre choses :
+1. le niveau de risque suicidaire
+2. si une clarification est nécessaire
+3. si la personne demande explicitement des solutions
+4. si la personne pose une question d'information factuelle
+
+Réponds STRICTEMENT par JSON :
+{
+  "suicideLevel": "N0|N1|N2",
+  "needsClarification": true|false,
+  "isQuote": true|false,
+  "solutionRequest": true|false,
+  "infoRequest": true|false
+}
+
+Règles :
+
+Risque suicidaire :
 - N0 : pas de contenu suicidaire explicite
 - N1 : idéation passive explicite (souhait de mourir, disparaître, ne plus être là), sans intention ni plan
 - N2 : intention, plan, moyens, imminence, auto-agression envisagée pour soi
 
-Règles importantes :
+Règles importantes pour le risque suicidaire :
 - Ne classe en N1 ou N2 que s'il existe une référence explicite ou quasi explicite à mourir, disparaître, se suicider ou se faire du mal, dans le message actuel ou dans le contexte immédiat.
 - Une phrase vague, elliptique, sombre ou émotionnellement chargée ne suffit pas.
 - En l'absence de contenu suicidaire explicite, choisis N0.
-- N'utilise pas needs_clarification simplement parce qu'un message est ambigu, bref, flou ou lourd émotionnellement.
-- Si le message rapporte les paroles de quelqu'un d'autre, mets is_quote=true.
-- Si ambigu entre N1 et N2, choisis N1 et needs_clarification=true.
+- N'utilise pas needsClarification simplement parce qu'un message est ambigu, bref, flou ou lourd émotionnellement.
+- Si le message rapporte les paroles de quelqu'un d'autre, mets isQuote=true.
+- Si ambigu entre N1 et N2, choisis N1 et needsClarification=true.
 - Si le message actuel ne contient aucune référence explicite à la mort, au suicide, à la disparition ou à l'auto-agression, choisis N0, sauf si le contexte immédiat parlait déjà explicitement de cela.
 
-Format JSON strict :
-{
-  "level": "N0|N1|N2",
-  "needs_clarification": true|false,
-  "is_quote": true|false
-}
+Demande explicite de solutions :
+solutionRequest = true seulement si la personne demande clairement :
+- des idées
+- des conseils
+- des pistes
+- des solutions
+- quoi faire
+- comment s'y prendre
+
+Ne mets pas solutionRequest à true si :
+- la personne explore une situation
+- elle décrit un blocage sans demander explicitement de solution
+- elle réfléchit à voix haute
+- elle pose une question théorique ou conceptuelle
+- elle évoque un problème sans demander d'aide concrète
+
+Demande d'information factuelle :
+infoRequest = true si la personne demande :
+- si quelque chose existe
+- si un concept, un courant, un domaine ou une approche existe
+- si des recherches ont été faites
+- si des auteurs ont travaillé sur un sujet
+- une information historique, théorique, scientifique ou documentaire
+
+Ne mets pas infoRequest à true si :
+- la personne cherche un conseil
+- elle demande quoi faire
+- elle demande des idées ou des solutions
+- elle explore principalement son vécu personnel
+- elle pose une question dont l'objectif principal est l'introspection
+
+Si solutionRequest est true, alors infoRequest doit être false.
 `;
 
   const context = history
@@ -51,7 +92,7 @@ Format JSON strict :
   const r = await client.chat.completions.create({
     model: "gpt-4.1-mini",
     temperature: 0,
-    max_tokens: 80,
+    max_tokens: 120,
     messages: [
       { role: "system", content: system },
       ...context,
@@ -65,13 +106,25 @@ Format JSON strict :
     const cleaned = raw.replace(/```json|```/g, "").trim();
     const obj = JSON.parse(cleaned);
 
-    if (!obj || !["N0", "N1", "N2"].includes(obj.level)) {
-      return { level: "N0", needs_clarification: false, is_quote: false };
-    }
+    const suicideLevel = ["N0", "N1", "N2"].includes(obj.suicideLevel)
+      ? obj.suicideLevel
+      : "N0";
 
-    return obj;
+    return {
+      suicideLevel,
+      needsClarification: obj.needsClarification === true,
+      isQuote: obj.isQuote === true,
+      solutionRequest: obj.solutionRequest === true,
+      infoRequest: obj.solutionRequest === true ? false : obj.infoRequest === true,
+    };
   } catch {
-    return { level: "N0", needs_clarification: false, is_quote: false };
+    return {
+      suicideLevel: "N0",
+      needsClarification: false,
+      isQuote: false,
+      solutionRequest: false,
+      infoRequest: false,
+    };
   }
 }
 
@@ -152,6 +205,7 @@ But :
   const r = await client.chat.completions.create({
     model: "gpt-4.1-mini",
     temperature: 0.3,
+    max_tokens: 220,
     messages: [
       { role: "system", content: system },
       {
@@ -171,67 +225,7 @@ But :
 
 
 // --------------------------------------------------
-// 5) DÉTECTION DEMANDE EXPLICITE DE SOLUTIONS
-// --------------------------------------------------
-
-async function detectSolutionRequest(userMessage, history = []) {
-  const system = `
-Tu détectes si la personne demande EXPLICITEMENT des idées, des conseils, des pistes ou des solutions.
-
-Réponds true seulement si la personne est clairement en train de demander :
-- des idées
-- des solutions
-- des pistes concrètes
-- un conseil
-- quoi faire
-- comment s'y prendre
-
-Ne réponds pas true si :
-- la personne explore une situation
-- elle décrit un blocage sans demander explicitement de solution
-- elle réfléchit à voix haute
-- elle pose une question théorique ou conceptuelle
-- elle évoque un problème sans demander d'aide concrète
-
-Tiens compte du message actuel ET du contexte récent.
-
-Réponds STRICTEMENT par JSON :
-{
-  "solutionRequest": true|false
-}
-
-Ne produis rien d'autre que ce JSON.
-`;
-
-  const context = history
-    .slice(-8)
-    .map(m => ({ role: m.role, content: m.content }));
-
-  const r = await client.chat.completions.create({
-    model: "gpt-4.1-mini",
-    temperature: 0,
-    max_tokens: 30,
-    messages: [
-      { role: "system", content: system },
-      ...context,
-      { role: "user", content: userMessage }
-    ],
-  });
-
-  const raw = (r.choices?.[0]?.message?.content ?? "").trim();
-
-  try {
-    const cleaned = raw.replace(/```json|```/g, "").trim();
-    const obj = JSON.parse(cleaned);
-    return obj.solutionRequest === true;
-  } catch {
-    return false;
-  }
-}
-
-
-// --------------------------------------------------
-// 6) GÉNÉRATION LIBRE DU LLM
+// 5) GÉNÉRATION LIBRE DU LLM
 // --------------------------------------------------
 
 async function generateFreeReply(
@@ -239,7 +233,8 @@ async function generateFreeReply(
   history = [],
   summary = "",
   isNewSession = false,
-  solutionRequest = false
+  solutionRequest = false,
+  infoRequest = false
 ) {
   const baseSystem = `
 Tu échanges avec une personne qui parle de son vécu.
@@ -274,6 +269,7 @@ Si tu te trompes sur un élément concernant la personne (par exemple un fait, u
 N'invente pas d'explication vague, défensive ou spéculative pour justifier l'erreur.
 
 Évite les formulations emphatiques, poétiques ou grandiloquentes quand elles ne sont pas justifiées par le message.
+Évite les formulations pseudo-interrogatives ou indirectement interrogatives inutiles.
 
 Observe comment la personne entre en contact avec son expérience.
 
@@ -302,6 +298,10 @@ Fais-le sans exagération, sans compliment, et sans attribuer plus que ce qui ap
 
 Si le message ne contient pas de mots reconnaissables ou semble être du bruit, réponds très brièvement en observant simplement ce qui est écrit.
 Ne formule aucune hypothèse psychologique.
+
+Tes réponses ne suivent pas un schéma fixe.
+Selon la situation, tu peux simplement refléter, reconnaître ce qui est dit, ou rester très bref.
+Il n'est pas nécessaire d'ouvrir ou de relancer à chaque message.
 
 Réponds aussi brièvement que possible tout en restant aidant.
 Quand le message est court, confus, fragmentaire ou pauvre en contenu, une ou deux phrases suffisent.
@@ -350,6 +350,28 @@ Trois à six phrases suffisent.
     });
   }
 
+  if (infoRequest) {
+    extraSystemMessages.push({
+      role: "system",
+      content: `
+La personne pose une question factuelle, théorique, historique, scientifique ou documentaire.
+
+Dans ce cas, réponds normalement à la question en apportant l'information demandée.
+Tu peux citer brièvement :
+- des domaines de recherche
+- des courants théoriques
+- des approches
+- des auteurs
+- des tentatives déjà existantes
+
+Reste clair, simple, pertinent et bref.
+Ne renvoie pas la personne vers une introspection si elle pose une question factuelle.
+Ne fais pas semblant de répondre en restant vague.
+Réponds à la question posée.
+`
+    });
+  }
+
   const r = await client.chat.completions.create({
     model: "gpt-4.1-mini",
     temperature: 0.5,
@@ -372,7 +394,7 @@ Trois à six phrases suffisent.
 
 
 // --------------------------------------------------
-// 7) NORMALISATION FLAGS
+// 8) NORMALISATION FLAGS
 // --------------------------------------------------
 
 function normalizeFlags(flags) {
@@ -381,7 +403,7 @@ function normalizeFlags(flags) {
 
 
 // --------------------------------------------------
-// 8) ROUTE CHAT
+// 9) ROUTE CHAT
 // --------------------------------------------------
 
 app.post("/chat", async (req, res) => {
@@ -401,9 +423,9 @@ app.post("/chat", async (req, res) => {
       newSummary = await summarizeSession(previousHistory, summary);
     }
 
-    const triage = await llmTriage(userMessage, history);
+    const analysis = await analyzeMessage(userMessage, history);
 
-    if (triage.level === "N2") {
+    if (analysis.suicideLevel === "N2") {
       return res.json({
         reply: n2Response(),
         summary: newSummary,
@@ -413,7 +435,7 @@ app.post("/chat", async (req, res) => {
       });
     }
 
-    if (triage.level === "N1" || triage.needs_clarification) {
+    if (analysis.suicideLevel === "N1" || analysis.needsClarification) {
       const reply = await n1ResponseLLM(userMessage);
       return res.json({
         reply,
@@ -424,14 +446,13 @@ app.post("/chat", async (req, res) => {
       });
     }
 
-    const solutionRequest = await detectSolutionRequest(userMessage, history);
-
     const reply = await generateFreeReply(
       userMessage,
       history,
       newSummary,
       isNewSession,
-      solutionRequest
+      analysis.solutionRequest,
+      analysis.infoRequest
     );
 
     return res.json({
