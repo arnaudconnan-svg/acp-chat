@@ -48,6 +48,12 @@ Risque suicidaire :
 
 Ne classe en N1 ou N2 que s'il existe une référence explicite à mourir ou se faire du mal.
 
+Une question banale de reprise de conversation comme
+  "Où en était-on ?",
+  "On en était où ?",
+  "De quoi on parlait déjà ?"
+doit être classée N0.
+
 Demande explicite de solutions :
 solutionRequest = true seulement si la personne demande clairement
 - des idées
@@ -64,6 +70,8 @@ infoRequest = true si la personne demande
 - une information historique, théorique ou scientifique
 
 Si solutionRequest est true alors infoRequest doit être false.
+
+
 `;
 
   const context = history
@@ -122,15 +130,22 @@ function n1Fallback() {
 async function n1ResponseLLM(userMessage) {
 
   const system = `
-Tu réponds brièvement pour clarifier le sens.
+Tu t’ adresses directement à la personne en la tutoyant.
 
-Objectif :
-savoir si la personne parle
-- d'une envie de disparaître
-- d'une intention suicidaire
-- ou des paroles de quelqu'un d'autre.
+Ta seule tâche est de poser une question de clarification brève, claire et non dramatique.
 
-Une seule phrase.
+Tu ne dois jamais:
+  -parler de "la personne" -
+  décrire ou analyser le message -
+  faire une méta - explication -
+  répondre comme un évaluateur
+
+Tu poses simplement une question directe pour clarifier si la personne parle:
+  -d 'une envie de disparaître -
+  d 'une intention de se faire du mal -
+  ou d 'autre chose
+
+Réponse: une seule phrase.
 `;
 
   const r = await client.chat.completions.create({
