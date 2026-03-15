@@ -261,6 +261,7 @@ const GLOSSARY = {
 };
 
 let sessionExpiredAtLoad = false;
+let isSending = false;
 
 
 
@@ -537,6 +538,8 @@ function autoResizeInput() {
 }
 
 function canEditLastTurn() {
+  if (sessionExpiredAtLoad) return false;
+
   const history = loadSessionHistory();
   if (history.length < 2) return false;
 
@@ -552,6 +555,8 @@ function updateEditButtonVisibility() {
 }
 
 function editLastTurn() {
+  if (sessionExpiredAtLoad) return;
+
   const history = loadSessionHistory();
   if (history.length < 2) return;
 
@@ -574,13 +579,23 @@ function editLastTurn() {
   input.setSelectionRange(len, len);
 }
 
+function setSendingState(sending) {
+  isSending = sending;
+  document.getElementById("sendBtn").disabled = sending;
+  document.getElementById("editLastBtn").disabled = sending;
+}
+
 
 
 async function send() {
+  if (isSending) return;
+
   const input = document.getElementById("input");
   const text = input.value.trim();
 
   if (!text) return;
+
+  setSendingState(true);
 
   const pushed = pushMsg("user", text);
 
@@ -599,29 +614,47 @@ async function send() {
   input.style.height = "auto";
   input.style.height = "72px";
 
-  const response = await fetch("/chat", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      message: text,
-      history: historyForServer,
-      previousHistory: previousHistoryForServer,
-      summary: loadSummary(),
-      flags: loadFlags(),
-      isNewSession: safeIsNewSession
-    })
-  });
+  try {
+    const response = await fetch("/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: text,
+        history: historyForServer,
+        previousHistory: previousHistoryForServer,
+        summary: loadSummary(),
+        flags: loadFlags(),
+        isNewSession: safeIsNewSession
+      })
+    });
 
-  const data = await response.json();
+    if (!response.ok) {
+      throw new Error("Réponse serveur invalide");
+    }
 
-  if (data.summary) saveSummary(data.summary);
-  if (data.flags) saveFlags(data.flags);
+    const data = await response.json();
 
-  if (data.sessionRestarted) {
-    sessionExpiredAtLoad = false;
+    if (data.summary) saveSummary(data.summary);
+    if (data.flags) saveFlags(data.flags);
+
+    if (data.sessionRestarted) {
+      sessionExpiredAtLoad = false;
+    }
+
+    if (!data.reply || !String(data.reply).trim()) {
+      addSystemMessage("La réponse n’a pas pu être récupérée. Réessaie.");
+      return;
+    }
+
+    addBotReply(data.reply);
+
+  } catch (err) {
+    console.error("Erreur envoi message :", err);
+    addSystemMessage("La réponse n’a pas pu être récupérée. Réessaie.");
+  } finally {
+    setSendingState(false);
+    updateEditButtonVisibility();
   }
-
-  addBotReply(data.reply);
 }
 
 
@@ -634,6 +667,7 @@ document.addEventListener("DOMContentLoaded", function() {
   };
 
   if (isSessionExpired()) {
+    saveSessionHistory([]);
     document.getElementById("chat").innerHTML = "";
 
     addSystemMessage(
