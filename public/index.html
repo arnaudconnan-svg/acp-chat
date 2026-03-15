@@ -18,24 +18,24 @@
 <style>
 
 html, body {
-  height: 100%;
   margin: 0;
+  padding: 0;
+  background: white;
 }
 
 body {
   font-family: Arial, sans-serif;
   padding: 12px;
   box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  height: 100dvh;
   overflow-x: hidden;
-overflow-y: auto;
-  background: white;
+  overflow-y: auto;
+  min-height: 100dvh;
 }
 
 #topBar {
-  flex-shrink: 0;
+  position: relative;
+  z-index: 2;
+  background: white;
   touch-action: pan-y;
 }
 
@@ -50,23 +50,23 @@ h2 {
 #chat {
   border: 1px solid #ccc;
   padding: 12px;
-  flex: 1;
-  min-height: 0;
+  height: calc(100dvh - 320px);
+  min-height: 220px;
   overflow-y: auto;
-  margin: 8px 0 8px 0;
+  margin: 8px 0 10px 0;
   font-size: 16px;
   line-height: 1.4;
   box-sizing: border-box;
-  scroll-padding-bottom: 260px;
+  scroll-padding-bottom: 220px;
 }
 
 #inputArea {
-  flex-shrink: 0;
+  position: sticky;
+  bottom: 0;
   background: white;
   padding-top: 6px;
-  padding-bottom: 8px;
-  position: relative;
-  z-index: 2;
+  padding-bottom: 10px;
+  z-index: 3;
 }
 
 #input {
@@ -75,7 +75,7 @@ h2 {
   padding: 12px;
   box-sizing: border-box;
   min-height: 72px;
-  max-height: 180px;
+  max-height: 150px;
   resize: none;
   overflow-y: hidden;
   font-family: inherit;
@@ -88,7 +88,6 @@ h2 {
   align-items: center;
   gap: 10px;
   margin-top: 8px;
-  min-height: 48px;
 }
 
 button {
@@ -561,7 +560,7 @@ function autoResizeInput() {
 
   input.style.height = "auto";
 
-  input.style.height = Math.min(input.scrollHeight, 180) + "px";
+  input.style.height = Math.min(input.scrollHeight, 150) + "px";
 }
 
 function canEditLastTurn() {
@@ -640,7 +639,7 @@ async function send() {
   updateEditButtonVisibility();
 
   input.value = "";
-
+  input.style.height = "auto";
   input.style.height = "72px";
 
   const response = await fetch("/chat", {
