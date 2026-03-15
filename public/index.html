@@ -29,6 +29,106 @@ body {
   overflow: hidden;
 }
 
+/* ---------- ÉCRANS ---------- */
+
+.screen {
+  display: none;
+  height: 100%;
+}
+
+.screen.active {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------- ACCUEIL ---------- */
+
+#welcomeScreen {
+  overflow-y: auto;
+  justify-content: flex-start;
+  align-items: center;
+  padding: 18px 10px 24px 10px;
+}
+
+#welcomeInner {
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+#welcomeLogoWrap {
+  display: flex;
+  justify-content: center;
+  margin-top: 16px;
+  margin-bottom: 20px;
+}
+
+#welcomeLogo {
+  width: min(320px, 78vw);
+  height: auto;
+  display: block;
+}
+
+.welcomeLead {
+  text-align: center;
+  font-size: 18px;
+  line-height: 1.5;
+  color: #1f3f44;
+  margin: 0 0 18px 0;
+}
+
+.welcomeText {
+  font-size: 16px;
+  line-height: 1.6;
+  color: #333;
+  margin: 0 0 14px 0;
+}
+
+.welcomeDisclaimer {
+  font-size: 15px;
+  line-height: 1.6;
+  color: #555;
+  background: #f6f8f8;
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin: 20px 0 22px 0;
+}
+
+.welcomeActions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.welcomeBtnPrimary,
+.welcomeBtnSecondary {
+  width: 100%;
+  border-radius: 12px;
+  font-size: 17px;
+  line-height: 1.3;
+  padding: 14px 16px;
+  cursor: pointer;
+}
+
+.welcomeBtnPrimary {
+  border: none;
+  background: #245e66;
+  color: white;
+}
+
+.welcomeBtnSecondary {
+  border: 1px solid #b9c9cc;
+  background: white;
+  color: #245e66;
+}
+
+/* ---------- CHAT ---------- */
+
+#chatScreen {
+  flex-direction: column;
+}
+
 #topBar {
   flex: 0 0 auto;
   background: white;
@@ -167,12 +267,15 @@ button {
   font-style: italic;
 }
 
+/* ---------- GLOSSAIRE ---------- */
+
 .glossary-term {
   text-decoration: underline dotted;
   cursor: pointer;
 }
 
-#glossaryModal {
+#glossaryModal,
+#aboutModal {
   position: fixed;
   inset: 0;
   background: rgba(0,0,0,0.35);
@@ -183,7 +286,8 @@ button {
   z-index: 1000;
 }
 
-#glossaryBox {
+#glossaryBox,
+#aboutBox {
   background: white;
   width: calc(100% - 24px);
   max-width: 640px;
@@ -194,9 +298,12 @@ button {
   font-size: 16px;
   display: flex;
   flex-direction: column;
+  max-height: 85vh;
+  overflow-y: auto;
 }
 
-#glossaryBox::before {
+#glossaryBox::before,
+#aboutBox::before {
   content: "";
   width: 40px;
   height: 4px;
@@ -206,12 +313,14 @@ button {
   margin-bottom: 10px;
 }
 
-#glossaryContent {
+#glossaryContent,
+#aboutContent {
   margin-bottom: 14px;
-  line-height: 1.5;
+  line-height: 1.6;
 }
 
-#glossaryBox button {
+#glossaryBox button,
+#aboutBox button {
   align-self: flex-end;
   font-size: 14px;
   padding: 6px 10px;
@@ -221,7 +330,8 @@ button {
   cursor: pointer;
 }
 
-#glossaryBox button:hover {
+#glossaryBox button:hover,
+#aboutBox button:hover {
   text-decoration: underline;
 }
 
@@ -230,19 +340,55 @@ button {
 
 <body>
 
-<div id="topBar">
-  <h2 id="pageTitle">Facilitat.io</h2>
-  <button id="refreshBtn" onclick="refreshPage()" title="Rafraîchir">↻</button>
+<div id="welcomeScreen" class="screen active">
+  <div id="welcomeInner">
+    <div id="welcomeLogoWrap">
+      <img id="welcomeLogo" src="/images/logo.png" alt="Facilitat.io">
+    </div>
+
+    <p class="welcomeLead">
+      Un miroir conversationnel pour explorer ce que vous vivez.
+    </p>
+
+    <p class="welcomeText">
+      Facilitat.io propose un espace de réflexion inspiré de l’Approche Centrée sur la Personne.
+      Il ne donne pas de conseils, ne prescrit pas de solutions et ne cherche pas à vous orienter de l’extérieur.
+    </p>
+
+    <p class="welcomeText">
+      Il peut aider à clarifier votre expérience et à mieux vous comprendre, en soutenant le développement de votre propre centre d’évaluation interne.
+    </p>
+
+    <div class="welcomeDisclaimer">
+      Cet outil ne diagnostique pas, ne prescrit pas et ne remplace pas une relation d’accompagnement humaine.
+    </div>
+
+    <div class="welcomeActions">
+      <button class="welcomeBtnSecondary" onclick="openAboutModal()">
+        Pourquoi cette application est différente
+      </button>
+      <button class="welcomeBtnPrimary" onclick="enterChat()">
+        Entrer
+      </button>
+    </div>
+  </div>
 </div>
 
-<div id="chat"></div>
+<div id="chatScreen" class="screen">
+  <div id="topBar">
+    <h2 id="pageTitle">Facilitat.io</h2>
+    <button id="refreshBtn" onclick="refreshPage()" title="Rafraîchir">↻</button>
+  </div>
 
-<div id="inputArea">
-  <textarea id="input" placeholder="Écrire..."></textarea>
+  <div id="chat"></div>
 
-  <div class="actions">
-    <button id="editLastBtn" onclick="editLastTurn()">modifier</button>
-    <button id="sendBtn" onclick="send()">Envoyer</button>
+  <div id="inputArea">
+    <textarea id="input" placeholder="Écrire..."></textarea>
+
+    <div class="actions">
+      <button id="editLastBtn" onclick="editLastTurn()">modifier</button>
+      <button id="sendBtn" onclick="send()">Envoyer</button>
+    </div>
   </div>
 </div>
 
@@ -250,6 +396,26 @@ button {
   <div id="glossaryBox">
     <div id="glossaryContent"></div>
     <button onclick="closeGlossary()">fermer</button>
+  </div>
+</div>
+
+<div id="aboutModal">
+  <div id="aboutBox">
+    <div id="aboutContent">
+      <p>
+        La plupart des intelligences artificielles sont conçues pour répondre vite, conseiller, orienter ou résoudre.
+      </p>
+      <p>
+        Facilitat.io a été conçu autrement.
+      </p>
+      <p>
+        Son objectif est de soutenir le développement du centre d’évaluation interne : la capacité à sentir, reconnaître et évaluer son expérience à partir de soi-même.
+      </p>
+      <p>
+        Il s’agit d’un espace de réflexion, non d’un outil de prescription.
+      </p>
+    </div>
+    <button onclick="closeAboutModal()">fermer</button>
   </div>
 </div>
 
@@ -261,6 +427,7 @@ const MAX_HISTORY_FOR_SERVER = 20;
 const SESSION_KEY = "acp_session_history_v1";
 const SUMMARY_KEY = "acp_longterm_summary_v1";
 const FLAGS_KEY   = "acp_state_flags_v1";
+const WELCOME_SEEN_KEY = "facilitatio_welcome_seen_v1";
 
 const GLOSSARY = {
   "centre d’évaluation interne": {
@@ -274,7 +441,35 @@ const GLOSSARY = {
 let sessionExpiredAtLoad = false;
 let isSending = false;
 
+function showScreen(screenId) {
+  document.getElementById("welcomeScreen").classList.remove("active");
+  document.getElementById("chatScreen").classList.remove("active");
+  document.getElementById(screenId).classList.add("active");
+}
 
+function hasSeenWelcome() {
+  return localStorage.getItem(WELCOME_SEEN_KEY) === "true";
+}
+
+function setWelcomeSeen() {
+  localStorage.setItem(WELCOME_SEEN_KEY, "true");
+}
+
+function enterChat() {
+  setWelcomeSeen();
+  showScreen("chatScreen");
+  autoResizeInput();
+  const input = document.getElementById("input");
+  if (input) input.focus();
+}
+
+function openAboutModal() {
+  document.getElementById("aboutModal").style.display = "flex";
+}
+
+function closeAboutModal() {
+  document.getElementById("aboutModal").style.display = "none";
+}
 
 function loadSessionHistory() {
   try {
@@ -336,8 +531,6 @@ function isSessionExpired() {
   return Date.now() - lastTime > SESSION_TIMEOUT;
 }
 
-
-
 function loadSummary() {
   return localStorage.getItem(SUMMARY_KEY) || "";
 }
@@ -345,8 +538,6 @@ function loadSummary() {
 function saveSummary(summary) {
   localStorage.setItem(SUMMARY_KEY, summary);
 }
-
-
 
 function normalizeFlags(flags) {
   return (flags && typeof flags === "object") ? flags : {};
@@ -363,8 +554,6 @@ function loadFlags() {
 function saveFlags(flags) {
   localStorage.setItem(FLAGS_KEY, JSON.stringify(normalizeFlags(flags)));
 }
-
-
 
 function escapeRegExp(text) {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -415,8 +604,6 @@ function closeGlossary() {
 function refreshPage() {
   location.reload();
 }
-
-
 
 function isUserNearBottom() {
   const chat = document.getElementById("chat");
@@ -600,8 +787,6 @@ function setSendingState(sending) {
   document.getElementById("editLastBtn").disabled = sending;
 }
 
-
-
 async function send() {
   if (isSending) return;
 
@@ -672,14 +857,22 @@ async function send() {
   }
 }
 
-
-
 document.addEventListener("DOMContentLoaded", function() {
   autoResizeInput();
 
   document.getElementById("glossaryModal").onclick = function(e) {
     if (e.target.id === "glossaryModal") closeGlossary();
   };
+
+  document.getElementById("aboutModal").onclick = function(e) {
+    if (e.target.id === "aboutModal") closeAboutModal();
+  };
+
+  if (hasSeenWelcome()) {
+    showScreen("chatScreen");
+  } else {
+    showScreen("welcomeScreen");
+  }
 
   if (isSessionExpired()) {
     saveSessionHistory([]);
