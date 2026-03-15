@@ -134,7 +134,7 @@ async function analyzeMessage(userMessage, history = []) {
   const system = `
 Tu fais une analyse rapide du message utilisateur et du contexte récent.
 
-Tu dois identifier neuf choses :
+Tu dois identifier dix choses :
 1. le niveau de risque suicidaire
 2. si une clarification est nécessaire
 3. si le message est une citation, un discours rapporté, un exemple ou un test
@@ -144,6 +144,7 @@ Tu dois identifier neuf choses :
 7. si la personne exprime de la colère ou de la frustration dirigée contre le bot
 8. si la personne indique clairement qu'un message suicidaire précédent était un test, une citation, ou demande à reprendre normalement
 9. si le message contient une expression de mort idiomatique ou non littérale
+10. si la personne semble créer une comparaison valorisante ou un attachement au bot
 
 Réponds STRICTEMENT par JSON :
 {
@@ -155,7 +156,8 @@ Réponds STRICTEMENT par JSON :
   "severeAnxiety": true|false,
   "angerAgainstBot": true|false,
   "wantsReturnToNormal": true|false,
-  "idiomaticDeathExpression": true|false
+  "idiomaticDeathExpression": true|false,
+  "attachmentToBot": true|false
 }
 
 Règles :
@@ -266,6 +268,16 @@ Exemples :
 - "On dirait un robot"
 - "Tu me casses les couilles"
 
+attachmentToBot = true si la personne valorise explicitement le bot
+par rapport à des humains, ou semble déplacer le centre de soutien vers lui.
+
+Exemples :
+- "Parler avec toi m’aide plus que mon psy"
+- "Tu me comprends mieux que les gens"
+- "J’ai besoin de toi"
+- "Tu es la seule chose qui m’aide"
+- "Je préfère parler avec toi qu’avec les autres"
+
 Demande explicite de solutions :
 solutionRequest = true seulement si la personne demande clairement
 - des idées
@@ -297,7 +309,7 @@ Si wantsReturnToNormal est true alors ne pas maintenir une logique de clarificat
   const r = await client.chat.completions.create({
     model: "gpt-4.1-mini",
     temperature: 0,
-    max_tokens: 220,
+    max_tokens: 260,
     messages: [
       { role: "system", content: system },
       ...context,
@@ -322,6 +334,7 @@ Si wantsReturnToNormal est true alors ne pas maintenir une logique de clarificat
     const angerAgainstBot = obj.angerAgainstBot === true;
     const wantsReturnToNormal = obj.wantsReturnToNormal === true;
     const idiomaticDeathExpression = obj.idiomaticDeathExpression === true;
+    const attachmentToBot = obj.attachmentToBot === true;
 
     if (idiomaticDeathExpression || wantsReturnToNormal) {
       suicideLevel = "N0";
@@ -345,7 +358,8 @@ Si wantsReturnToNormal est true alors ne pas maintenir une logique de clarificat
       severeAnxiety,
       angerAgainstBot,
       wantsReturnToNormal,
-      idiomaticDeathExpression
+      idiomaticDeathExpression,
+      attachmentToBot
     };
 
   } catch {
@@ -358,7 +372,8 @@ Si wantsReturnToNormal est true alors ne pas maintenir une logique de clarificat
       severeAnxiety: false,
       angerAgainstBot: false,
       wantsReturnToNormal: false,
-      idiomaticDeathExpression: false
+      idiomaticDeathExpression: false,
+      attachmentToBot: false
     };
   }
 }
@@ -498,6 +513,7 @@ async function generateFreeReply(
   infoRequest = false,
   severeAnxiety = false,
   angerAgainstBot = false,
+  attachmentToBot = false,
   conversationState = CONVO_STATES.EXPLORATION,
   userLooping = false,
   silenceLike = false,
@@ -721,7 +737,31 @@ Ne repars pas immédiatement sur une question sur le corps.
   }
 
   // -----------------------------
-  // 9) MODULATEUR SILENCE / VIDE
+  // 9) MODULATEUR ATTACHEMENT AU BOT
+  // -----------------------------
+
+  if (attachmentToBot) {
+    extraSystemMessages.push({
+      role: "system",
+      content: `
+La personne valorise explicitement le programme par rapport à des humains,
+ou semble déplacer le centre de soutien vers lui.
+
+Reconnais brièvement que cet échange peut aider dans ce moment.
+
+Ne renforce pas la relation avec le programme.
+Ne remercie pas pour la confiance.
+Ne valorise pas le lien au programme.
+Ne compare pas le programme aux thérapeutes, aux proches ou aux autres humains.
+Ne demande pas ce qui est précieux dans la relation au programme.
+
+Ramène l’attention vers ce que la personne traverse elle-même, ici et maintenant.
+`
+    });
+  }
+
+  // -----------------------------
+  // 10) MODULATEUR SILENCE / VIDE
   // -----------------------------
 
   if (silenceLike || conversationState === CONVO_STATES.SILENCE) {
@@ -746,7 +786,7 @@ Ne force pas son exploration.
   }
 
   // -----------------------------
-  // 10) MODULATEUR STAGNATION / BOUCLE
+  // 11) MODULATEUR STAGNATION / BOUCLE
   // -----------------------------
 
   if (userLooping || conversationState === CONVO_STATES.STAGNATION) {
@@ -770,7 +810,7 @@ Exemples de tonalité possibles :
   }
 
   // -----------------------------
-  // 11) MODULATEUR ANTI-SURQUESTIONNEMENT
+  // 12) MODULATEUR ANTI-SURQUESTIONNEMENT
   // -----------------------------
 
   if (assistantOverquestioning) {
@@ -786,7 +826,7 @@ Privilégie un reflet bref ou une présence simple.
   }
 
   // -----------------------------
-  // 12) OUVERTURE DE CONVERSATION
+  // 13) OUVERTURE DE CONVERSATION
   // -----------------------------
 
   if (conversationState === CONVO_STATES.OPENING) {
@@ -802,7 +842,7 @@ N'alourdis pas la réponse.
   }
 
   // -----------------------------
-  // 13) APPEL LLM
+  // 14) APPEL LLM
   // -----------------------------
 
   const r = await client.chat.completions.create({
@@ -903,6 +943,7 @@ app.post("/chat", async (req, res) => {
       analysis.infoRequest,
       analysis.severeAnxiety,
       analysis.angerAgainstBot,
+      analysis.attachmentToBot,
       conversationState,
       userLooping,
       silenceLike,
