@@ -51,17 +51,20 @@ h2 {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  margin: 8px 0 10px 0;
+  margin: 8px 0 8px 0;
   font-size: 16px;
   line-height: 1.4;
   box-sizing: border-box;
-  scroll-padding-bottom: 220px;
+  scroll-padding-bottom: 260px;
 }
 
 #inputArea {
   flex-shrink: 0;
   background: white;
   padding-top: 6px;
+  padding-bottom: 8px;
+  position: relative;
+  z-index: 2;
 }
 
 #input {
@@ -69,8 +72,8 @@ h2 {
   font-size: 18px;
   padding: 12px;
   box-sizing: border-box;
-  min-height: 80px;
-  max-height: 240px;
+  min-height: 72px;
+  max-height: 180px;
   resize: none;
   overflow-y: hidden;
   font-family: inherit;
@@ -82,7 +85,8 @@ h2 {
   justify-content: center;
   align-items: center;
   gap: 10px;
-  margin-top: 6px;
+  margin-top: 8px;
+  min-height: 48px;
 }
 
 button {
@@ -555,7 +559,7 @@ function autoResizeInput() {
 
   input.style.height = "auto";
 
-  input.style.height = Math.min(input.scrollHeight, 240) + "px";
+  input.style.height = Math.min(input.scrollHeight, 180) + "px";
 }
 
 function canEditLastTurn() {
@@ -635,7 +639,7 @@ async function send() {
 
   input.value = "";
 
-  input.style.height = "80px";
+  input.style.height = "72px";
 
   const response = await fetch("/chat", {
     method: "POST",
