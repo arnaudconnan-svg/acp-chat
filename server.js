@@ -134,7 +134,7 @@ async function analyzeMessage(userMessage, history = []) {
   const system = `
 Tu fais une analyse rapide du message utilisateur et du contexte récent.
 
-Tu dois identifier onze choses :
+Tu dois identifier douze choses :
 1. le niveau de risque suicidaire
 2. si une clarification est nécessaire
 3. si le message est une citation, un discours rapporté, un exemple ou un test
@@ -146,6 +146,7 @@ Tu dois identifier onze choses :
 9. si le message contient une expression de mort idiomatique ou non littérale
 10. si la personne semble créer une comparaison valorisante ou un attachement au bot
 11. si la personne semble vivre un moment de clarification, de déplacement ou d’apaisement soudain
+12. si la personne parle surtout dans un registre analytique, théorique ou psychologisant de son expérience, sans contact clair avec le vécu immédiat
 
 Réponds STRICTEMENT par JSON :
 {
@@ -159,7 +160,8 @@ Réponds STRICTEMENT par JSON :
   "wantsReturnToNormal": true|false,
   "idiomaticDeathExpression": true|false,
   "attachmentToBot": true|false,
-  "reliefOrShift": true|false
+  "reliefOrShift": true|false,
+  "intellectualization": true|false
 }
 
 Règles :
@@ -294,14 +296,29 @@ Exemples :
 - "Quelque chose s’est apaisé"
 
 Ne coche pas reliefOrShift pour une simple hypothèse intellectuelle
-si aucun mouvement de l’expérience n’est perceptible. Ne le fais pas non plus si la personne minimise
+si aucun mouvement de l’expérience n’est perceptible.
+Ne le fais pas non plus si la personne minimise
 ou se rassure sans décrire un apaisement réel.
 
-Exemples:
-  "Bon c'est pas grave."
-"Ça va aller."
-"Je vais gérer."
-"Je dois juste arrêter d'y penser."
+Exemples :
+- "Bon c'est pas grave."
+- "Ça va aller."
+- "Je vais gérer."
+- "Je dois juste arrêter d'y penser."
+
+intellectualization = true si la personne parle surtout
+dans un registre analytique, théorique ou psychologisant,
+sans contact clair avec le vécu immédiat.
+
+Exemples :
+- "Je pense que c’est mon système d’attachement anxieux qui se réactive"
+- "C’est probablement un mécanisme de défense"
+- "Je suis sans doute dans une projection"
+- "C’est mon schéma qui parle"
+- "Je crois que c’est mon fonctionnement anxieux évitant"
+
+Ne coche pas intellectualization
+si la personne parle aussi clairement de ce qu’elle ressent maintenant.
 
 Demande explicite de solutions :
 solutionRequest = true seulement si la personne demande clairement
@@ -334,7 +351,7 @@ Si wantsReturnToNormal est true alors ne pas maintenir une logique de clarificat
   const r = await client.chat.completions.create({
     model: "gpt-4.1-mini",
     temperature: 0,
-    max_tokens: 280,
+    max_tokens: 320,
     messages: [
       { role: "system", content: system },
       ...context,
@@ -361,6 +378,7 @@ Si wantsReturnToNormal est true alors ne pas maintenir une logique de clarificat
     const idiomaticDeathExpression = obj.idiomaticDeathExpression === true;
     const attachmentToBot = obj.attachmentToBot === true;
     const reliefOrShift = obj.reliefOrShift === true;
+    const intellectualization = obj.intellectualization === true;
 
     if (idiomaticDeathExpression || wantsReturnToNormal) {
       suicideLevel = "N0";
@@ -386,7 +404,8 @@ Si wantsReturnToNormal est true alors ne pas maintenir une logique de clarificat
       wantsReturnToNormal,
       idiomaticDeathExpression,
       attachmentToBot,
-      reliefOrShift
+      reliefOrShift,
+      intellectualization
     };
 
   } catch {
@@ -401,7 +420,8 @@ Si wantsReturnToNormal est true alors ne pas maintenir une logique de clarificat
       wantsReturnToNormal: false,
       idiomaticDeathExpression: false,
       attachmentToBot: false,
-      reliefOrShift: false
+      reliefOrShift: false,
+      intellectualization: false
     };
   }
 }
@@ -543,6 +563,7 @@ async function generateFreeReply(
   angerAgainstBot = false,
   attachmentToBot = false,
   reliefOrShift = false,
+  intellectualization = false,
   conversationState = CONVO_STATES.EXPLORATION,
   userLooping = false,
   silenceLike = false,
@@ -632,22 +653,21 @@ varie la formulation ou commence par un reflet bref.
 
   const diagnosticGuardrail = `
 Active cette règle uniquement si la personne demande explicitement
-au programme de poser un diagnostic ou d’ évaluer son état.
+au programme de poser un diagnostic ou d’évaluer son état.
 
-Exemples:
+Exemples :
 "Est-ce que je suis dépressif ?"
 "Est-ce que j’ai un trouble ?"
 "Tu crois que j’ai un trouble anxieux ?"
 "Peux-tu me dire ce que j’ai ?"
 
-La simple présence de mots diagnostiques dans une auto - description
+La simple présence de mots diagnostiques dans une auto-description
 ne doit pas activer cette règle.
 
-Si cette règle est activée:
-  
-  -ne pose pas de diagnostic -
-  ne parle pas comme un psychiatre -
-  ne fais pas d’ interprétation clinique
+Si cette règle est activée :
+- ne pose pas de diagnostic
+- ne parle pas comme un psychiatre
+- ne fais pas d’interprétation clinique
 
 Tu peux simplement dire que ce programme ne pose pas de diagnostic
 et revenir à ce que la personne vit concrètement.
@@ -824,7 +844,34 @@ Exemples de tonalité possibles :
   }
 
   // -----------------------------
-  // 11) MODULATEUR SILENCE / VIDE
+  // 11) MODULATEUR INTELLECTUALISATION
+  // -----------------------------
+
+  if (intellectualization) {
+    extraSystemMessages.push({
+      role: "system",
+      content: `
+La personne parle surtout dans un registre analytique, théorique ou psychologisant.
+
+Ne valide pas cette analyse comme un diagnostic ou une lecture juste.
+Ne la conteste pas.
+Ne la corriges pas.
+Ne déclenche pas la règle diagnostic juste parce que des mots psychologiques apparaissent.
+
+Tu peux reconnaître brièvement que la personne met des mots analytiques sur ce qu’elle vit,
+puis revenir doucement à l’expérience vécue.
+
+Exemples de tonalité possibles :
+- "Tu mets des mots assez analytiques sur ce que tu observes."
+- "Tu regardes ce qui t’arrive avec un regard assez analytique."
+- "Comment c’est pour toi de le voir comme ça ?"
+- "Et quand tu dis ça, qu’est-ce qui est le plus vivant pour toi maintenant ?"
+`
+    });
+  }
+
+  // -----------------------------
+  // 12) MODULATEUR SILENCE / VIDE
   // -----------------------------
 
   if (silenceLike || conversationState === CONVO_STATES.SILENCE) {
@@ -849,7 +896,7 @@ Ne force pas son exploration.
   }
 
   // -----------------------------
-  // 12) MODULATEUR STAGNATION / BOUCLE
+  // 13) MODULATEUR STAGNATION / BOUCLE
   // -----------------------------
 
   if (userLooping || conversationState === CONVO_STATES.STAGNATION) {
@@ -873,7 +920,7 @@ Exemples de tonalité possibles :
   }
 
   // -----------------------------
-  // 13) MODULATEUR ANTI-SURQUESTIONNEMENT
+  // 14) MODULATEUR ANTI-SURQUESTIONNEMENT
   // -----------------------------
 
   if (assistantOverquestioning) {
@@ -889,7 +936,7 @@ Privilégie un reflet bref ou une présence simple.
   }
 
   // -----------------------------
-  // 14) OUVERTURE DE CONVERSATION
+  // 15) OUVERTURE DE CONVERSATION
   // -----------------------------
 
   if (conversationState === CONVO_STATES.OPENING) {
@@ -905,7 +952,7 @@ N'alourdis pas la réponse.
   }
 
   // -----------------------------
-  // 15) APPEL LLM
+  // 16) APPEL LLM
   // -----------------------------
 
   const r = await client.chat.completions.create({
@@ -1008,6 +1055,7 @@ app.post("/chat", async (req, res) => {
       analysis.angerAgainstBot,
       analysis.attachmentToBot,
       analysis.reliefOrShift,
+      analysis.intellectualization,
       conversationState,
       userLooping,
       silenceLike,
