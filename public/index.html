@@ -558,21 +558,25 @@ function escapeHTML(text) {
 
 function applyGlossary(text) {
   let result = escapeHTML(text);
-
+  
   const terms = Object.keys(GLOSSARY).sort((a, b) => b.length - a.length);
-
+  
   terms.forEach(term => {
     const entry = GLOSSARY[term];
     const canonicalTerm = entry.alias || term;
     const escapedTerm = escapeRegExp(term);
-    const regex = new RegExp(`\\b${escapedTerm}\\b`, "gi");
-
-    result = result.replace(regex, match => {
+    
+    const regex = new RegExp(
+      `(^|[^\\p{L}\\p{N}])(${escapedTerm})(?=$|[^\\p{L}\\p{N}])`,
+      "giu"
+    );
+    
+    result = result.replace(regex, (match, prefix, foundTerm) => {
       const safeCanonical = canonicalTerm.replace(/'/g, "\\'");
-      return `<span class="glossary-term" onclick="showDefinition('${safeCanonical}')">${match}</span>`;
+      return `${prefix}<span class="glossary-term" onclick="showDefinition('${safeCanonical}')">${foundTerm}</span>`;
     });
   });
-
+  
   return result;
 }
 
