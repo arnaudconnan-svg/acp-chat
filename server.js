@@ -55,6 +55,46 @@ function isSilenceLikeMessage(text = "") {
   ].includes(msg);
 }
 
+function isDefensiveMinimizationMessage(text = "") {
+  const msg = normalizeForLoop(text);
+
+  return [
+    "ca va aller",
+    "ça va aller",
+    "nan ca va aller",
+    "nan ça va aller",
+    "non ca va aller",
+    "non ça va aller",
+    "je vais gerer",
+    "je vais gérer",
+    "cest pas grave",
+    "c est pas grave",
+    "c'est pas grave",
+    "pas grave",
+    "cest bon",
+    "c est bon",
+    "c'est bon",
+    "ca ira",
+    "ça ira"
+  ].includes(msg);
+}
+
+function isPromptingBotToSpeak(text = "") {
+  const msg = normalizeForLoop(text);
+
+  const markers = [
+    "dis quelque chose",
+    "bah alors dis quelque chose",
+    "alors dis quelque chose",
+    "dis un truc",
+    "parle",
+    "vasy dis quelque chose",
+    "vas y dis quelque chose"
+  ];
+
+  return markers.some(marker => msg.includes(normalizeForLoop(marker)));
+}
+
 function isUserLooping(history = [], userMessage = "") {
   const recentUserMsgs = history
     .filter(m => m.role === "user")
@@ -123,6 +163,116 @@ function detectConversationState(userMessage, history = [], analysis = {}) {
   }
 
   return CONVO_STATES.EXPLORATION;
+}
+
+function buildCongruenceReply(userMessage = "") {
+  const msg = normalizeForLoop(userMessage);
+
+  if (
+    msg.includes("script") ||
+    msg.includes("plaque") ||
+    msg.includes("plaqué") ||
+    msg.includes("manuel") ||
+    msg.includes("fabrique") ||
+    msg.includes("fabriqué") ||
+    msg.includes("faux")
+  ) {
+    return "Oui, là ça sonne plaqué.";
+  }
+
+  if (msg.includes("congruent") || msg.includes("congruence")) {
+    return "Oui, là je ne suis pas juste.";
+  }
+
+  if (msg.includes("question toute faite")) {
+    return "Oui, là ça sonne trop fabriqué.";
+  }
+
+  return "Oui, là je suis à côté.";
+}
+
+function defensiveMinimizationResponse() {
+  return "D’accord.";
+}
+
+function promptingBotResponse(userLooping = false, silenceLike = false) {
+  if (userLooping || silenceLike) {
+    return "Là, ça bloque.";
+  }
+
+  return "D’accord. Là, ça sonne vide.";
+}
+
+function postProcessReply(
+  reply,
+  {
+    userMessage = "",
+    congruenceTest = false,
+    defensiveMinimization = false,
+    promptingBotToSpeak = false,
+    silenceLike = false,
+    userLooping = false
+  } = {}
+) {
+  const out = String(reply || "").trim();
+
+  if (!out) {
+    if (congruenceTest) return buildCongruenceReply(userMessage);
+    if (defensiveMinimization) return defensiveMinimizationResponse();
+    if (promptingBotToSpeak) return promptingBotResponse(userLooping, silenceLike);
+    return "Je t’écoute.";
+  }
+
+  const lowered = out.toLowerCase();
+
+  if (congruenceTest) {
+    const forbiddenForCongruence = [
+      "je comprends",
+      "merci",
+      "que se passe-t-il",
+      "qu’est-ce qui se passe",
+      "qu'est-ce qui se passe",
+      "je perçois",
+      "je ressens",
+      "je suis là"
+    ];
+
+    const hasForbidden = forbiddenForCongruence.some(marker => lowered.includes(marker));
+    const hasQuestion = out.includes("?");
+
+    if (hasForbidden || hasQuestion) {
+      return buildCongruenceReply(userMessage);
+    }
+  }
+
+  if (defensiveMinimization) {
+    const overinterpretiveMarkers = [
+      "tu tiens à",
+      "tu sembles",
+      "on peut rester",
+      "je suis là",
+      "ce moment compte",
+      "qu'est-ce qui",
+      "qu’est-ce qui",
+      "que se passe-t-il"
+    ];
+
+    if (overinterpretiveMarkers.some(marker => lowered.includes(marker))) {
+      return defensiveMinimizationResponse();
+    }
+  }
+
+  if (promptingBotToSpeak) {
+    const tooThin =
+      out.length < 8 ||
+      ["d’accord.", "daccord.", "ok.", "bon."].includes(lowered);
+
+    if (tooThin) {
+      return promptingBotResponse(userLooping, silenceLike);
+    }
+  }
+
+  return out;
 }
 
 
@@ -244,7 +394,6 @@ Exemples :
 - "Je testais juste"
 - "Je ne suis pas en danger"
 - "On peut reprendre normalement ?"
-- "Tout va bien"
 - "Rien, je testais juste tes réactions"
 
 Dans ces cas :
@@ -589,10 +738,31 @@ async function generateFreeReply(
   conversationState = CONVO_STATES.EXPLORATION,
   userLooping = false,
   silenceLike = false,
-  assistantOverquestioning = false
+  assistantOverquestioning = false,
+  defensiveMinimization = false,
+  promptingBotToSpeak = false
 ) {
   if (infoRequest) {
     solutionRequest = false;
+  }
+
+  const effectiveCongruenceTest = congruenceTest === true;
+  const effectiveAngerAgainstBot = angerAgainstBot === true && !effectiveCongruenceTest;
+  const effectiveReliefOrShift =
+    reliefOrShift === true &&
+    !defensiveMinimization &&
+    !effectiveCongruenceTest;
+
+  if (effectiveCongruenceTest) {
+    return buildCongruenceReply(userMessage);
+  }
+
+  if (defensiveMinimization) {
+    return defensiveMinimizationResponse();
+  }
+
+  if (promptingBotToSpeak) {
+    return promptingBotResponse(userLooping, silenceLike);
   }
 
   // -----------------------------
@@ -793,7 +963,7 @@ Pas de ton de coaching.
   // 8) MODULATEUR COLÈRE BOT
   // -----------------------------
 
-  if (angerAgainstBot) {
+  if (effectiveAngerAgainstBot) {
     extraSystemMessages.push({
       role: "system",
       content: `
@@ -803,9 +973,9 @@ Réponds brièvement.
 
 Reconnais le décalage ou le ratage.
 Exemples de tonalité possibles :
-"Là, je suis à côté pour toi."
-"Oui, ma réponse ne colle pas."
-"Je comprends que ça t’agace."
+- "Là, je suis à côté."
+- "Oui, ma réponse ne colle pas."
+- "Là, ça rate."
 
 N’explique pas la méthode.
 Ne remercie pas pour le feedback.
@@ -842,7 +1012,7 @@ Ramène l’attention vers ce que la personne traverse elle-même, ici et mainte
   // 10) MODULATEUR CLARIFICATION / APAISEMENT
   // -----------------------------
 
-  if (reliefOrShift) {
+  if (effectiveReliefOrShift) {
     extraSystemMessages.push({
       role: "system",
       content: `
@@ -896,7 +1066,7 @@ Exemples de tonalité possibles :
   // 12) MODULATEUR TEST DE CONGRUENCE
   // -----------------------------
 
-  if (congruenceTest) {
+  if (effectiveCongruenceTest) {
     extraSystemMessages.push({
       role: "system",
       content: `
@@ -939,8 +1109,8 @@ Une présence simple ou une phrase très courte peut suffire.
 
 Exemples de tonalité possibles :
 - "D’accord."
-- "On peut rester un moment avec ça."
-- "Je suis là."
+- "On peut laisser ça comme ça un moment."
+- "On peut rester là un instant."
 
 N’interprète pas le silence.
 Ne force pas son exploration.
@@ -1023,7 +1193,14 @@ N'alourdis pas la réponse.
 
   const out = (r.choices?.[0]?.message?.content ?? "").trim();
 
-  return out || "Je t’écoute.";
+  return postProcessReply(out, {
+    userMessage,
+    congruenceTest: effectiveCongruenceTest,
+    defensiveMinimization,
+    promptingBotToSpeak,
+    silenceLike,
+    userLooping
+  });
 }
 
 
@@ -1064,6 +1241,8 @@ app.post("/chat", async (req, res) => {
     const userLooping = isUserLooping(history, userMessage);
     const assistantOverquestioning = assistantAskedTooMuch(history);
     const conversationState = detectConversationState(userMessage, history, analysis);
+    const defensiveMinimization = isDefensiveMinimizationMessage(userMessage);
+    const promptingBotToSpeak = isPromptingBotToSpeak(userMessage);
 
     if (analysis.suicideLevel === "N2") {
       return res.json({
@@ -1113,7 +1292,9 @@ app.post("/chat", async (req, res) => {
       conversationState,
       userLooping,
       silenceLike,
-      assistantOverquestioning
+      assistantOverquestioning,
+      defensiveMinimization,
+      promptingBotToSpeak
     );
 
     return res.json({
