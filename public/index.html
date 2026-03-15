@@ -5,6 +5,7 @@
 <title>Facilitat.io</title>
 
 <link rel="manifest" href="/manifest.json">
+<link rel="preload" as="image" href="/images/logo.png">
 <meta name="theme-color" content="#ffffff">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 
@@ -488,6 +489,23 @@ function hideSplash() {
   }, 250);
 }
 
+function waitForWelcomeLogoThenHideSplash() {
+  const welcomeLogo = document.getElementById("welcomeLogo");
+
+  if (!welcomeLogo) {
+    hideSplash();
+    return;
+  }
+
+  if (welcomeLogo.complete && welcomeLogo.naturalWidth > 0) {
+    hideSplash();
+    return;
+  }
+
+  welcomeLogo.addEventListener("load", hideSplash, { once: true });
+  welcomeLogo.addEventListener("error", hideSplash, { once: true });
+}
+
 function showScreen(screenId) {
   document.getElementById("welcomeScreen").classList.remove("active");
   document.getElementById("chatScreen").classList.remove("active");
@@ -923,9 +941,9 @@ document.addEventListener("DOMContentLoaded", function() {
   } else {
     rehydrateChatFromSession();
   }
-});
 
-window.addEventListener("load", hideSplash);
+  waitForWelcomeLogoThenHideSplash();
+});
 
 document.getElementById("input").addEventListener("input", autoResizeInput);
 
