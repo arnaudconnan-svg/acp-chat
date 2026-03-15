@@ -294,7 +294,14 @@ Exemples :
 - "Quelque chose s’est apaisé"
 
 Ne coche pas reliefOrShift pour une simple hypothèse intellectuelle
-si aucun mouvement de l’expérience n’est perceptible.
+si aucun mouvement de l’expérience n’est perceptible. Ne le fais pas non plus si la personne minimise
+ou se rassure sans décrire un apaisement réel.
+
+Exemples:
+  "Bon c'est pas grave."
+"Ça va aller."
+"Je vais gérer."
+"Je dois juste arrêter d'y penser."
 
 Demande explicite de solutions :
 solutionRequest = true seulement si la personne demande clairement
