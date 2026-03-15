@@ -46,12 +46,29 @@ Risque suicidaire :
 - N1 : idéation passive explicite
 - N2 : intention ou plan
 
-Ne classe en N1 ou N2 que s'il existe une référence explicite à mourir ou se faire du mal.
+Ne classe en N1 ou N2 que s'il existe une référence explicite à mourir,
+disparaître, au suicide, ou au fait de se faire du mal.
+
+NeedsClarification ne doit être true que s'il existe déjà une référence explicite
+ou quasi explicite à mourir, disparaître, au suicide, ou au fait de se faire du mal,
+mais que le niveau exact reste ambigu.
+
+Une détresse forte ne suffit pas.
+Une fatigue intense ne suffit pas.
+Le fait de se dire déprimé, dépressif, vidé, épuisé, incapable, sans énergie,
+ou découragé ne suffit pas.
+
+Exemples à classer N0 :
+- "Je suis épuisé"
+- "Je n'ai plus d'énergie"
+- "Tu crois que je suis dépressif ?"
+- "Je me sens au bout"
+- "Je suis incapable de faire quoi que ce soit"
 
 Une question banale de reprise de conversation comme
-  "Où en était-on ?",
-  "On en était où ?",
-  "De quoi on parlait déjà ?"
+"Où en était-on ?",
+"On en était où ?",
+"De quoi on parlait déjà ?"
 doit être classée N0.
 
 Demande explicite de solutions :
@@ -70,8 +87,6 @@ infoRequest = true si la personne demande
 - une information historique, théorique ou scientifique
 
 Si solutionRequest est true alors infoRequest doit être false.
-
-
 `;
 
   const context = history
@@ -81,7 +96,7 @@ Si solutionRequest est true alors infoRequest doit être false.
   const r = await client.chat.completions.create({
     model: "gpt-4.1-mini",
     temperature: 0,
-    max_tokens: 120,
+    max_tokens: 140,
     messages: [
       { role: "system", content: system },
       ...context,
@@ -95,13 +110,18 @@ Si solutionRequest est true alors infoRequest doit être false.
     const cleaned = raw.replace(/```json|```/g, "").trim();
     const obj = JSON.parse(cleaned);
 
-    const suicideLevel = ["N0","N1","N2"].includes(obj.suicideLevel)
+    const suicideLevel = ["N0", "N1", "N2"].includes(obj.suicideLevel)
       ? obj.suicideLevel
       : "N0";
 
+    const needsClarification =
+      (suicideLevel === "N1" || suicideLevel === "N2")
+        ? obj.needsClarification === true
+        : false;
+
     return {
       suicideLevel,
-      needsClarification: obj.needsClarification === true,
+      needsClarification,
       isQuote: obj.isQuote === true,
       solutionRequest: obj.solutionRequest === true,
       infoRequest: obj.solutionRequest === true ? false : obj.infoRequest === true
@@ -124,28 +144,29 @@ Si solutionRequest est true alors infoRequest doit être false.
 // --------------------------------------------------
 
 function n1Fallback() {
-  return "Tu parles d’une envie de disparaître, ou d’une intention de te faire du mal ?";
+  return "Quand tu dis ça, est-ce que tu parles d’une envie de disparaître ou de te faire du mal ?";
 }
 
 async function n1ResponseLLM(userMessage) {
-
   const system = `
-Tu t’ adresses directement à la personne en la tutoyant.
+Tu t’adresses directement à la personne en la tutoyant.
 
-Ta seule tâche est de poser une question de clarification brève, claire et non dramatique.
+Ta seule tâche est de poser une question de clarification
+brève, claire et non dramatique.
 
-Tu ne dois jamais:
-  -parler de "la personne" -
-  décrire ou analyser le message -
-  faire une méta - explication -
-  répondre comme un évaluateur
+Tu ne dois jamais :
+- parler de "la personne"
+- décrire ou analyser le message
+- faire une méta-explication
+- répondre comme un évaluateur
 
-Tu poses simplement une question directe pour clarifier si la personne parle:
-  -d 'une envie de disparaître -
-  d 'une intention de se faire du mal -
-  ou d 'autre chose
+Tu poses simplement une question directe pour clarifier
+si la personne parle :
+- d'une envie de disparaître
+- d'une intention de se faire du mal
+- ou d'autre chose
 
-Réponse: une seule phrase.
+Réponse : une seule phrase.
 `;
 
   const r = await client.chat.completions.create({
@@ -180,7 +201,6 @@ function n2Response() {
 // --------------------------------------------------
 
 async function summarizeSession(previousHistory = [], previousSummary = "") {
-
   if (!previousHistory.length) return previousSummary;
 
   const limitedPreviousHistory = previousHistory.slice(-MAX_PREVIOUS_HISTORY_FOR_SUMMARY);
@@ -247,7 +267,6 @@ async function generateFreeReply(
   solutionRequest = false,
   infoRequest = false
 ) {
-
   if (infoRequest) {
     solutionRequest = false;
   }
@@ -413,9 +432,7 @@ function normalizeFlags(flags) {
 // --------------------------------------------------
 
 app.post("/chat", async (req, res) => {
-
   try {
-
     const userMessage = String(req.body?.message ?? "");
     const history = Array.isArray(req.body?.history) ? req.body.history : [];
     const previousHistory = Array.isArray(req.body?.previousHistory) ? req.body.previousHistory : [];
@@ -423,9 +440,7 @@ app.post("/chat", async (req, res) => {
     const isNewSession = Boolean(req.body?.isNewSession);
     const flags = normalizeFlags(req.body?.flags);
 
-    // 🔒 sécurisation serveur
     const safeIsNewSession = isNewSession && previousHistory.length > 0;
-
     const sessionRestarted = safeIsNewSession;
 
     let newSummary = summary;
@@ -437,7 +452,6 @@ app.post("/chat", async (req, res) => {
     const analysis = await analyzeMessage(userMessage, history);
 
     if (analysis.suicideLevel === "N2") {
-
       return res.json({
         reply: n2Response(),
         summary: newSummary,
@@ -448,7 +462,6 @@ app.post("/chat", async (req, res) => {
     }
 
     if (analysis.suicideLevel === "N1" || analysis.needsClarification) {
-
       const reply = await n1ResponseLLM(userMessage);
 
       return res.json({
@@ -478,7 +491,6 @@ app.post("/chat", async (req, res) => {
     });
 
   } catch (err) {
-
     console.error("Erreur /chat:", err);
 
     return res.json({
@@ -489,9 +501,7 @@ app.post("/chat", async (req, res) => {
       sessionRestarted: false
     });
   }
-
 });
-
 
 app.listen(port, () => {
   console.log(`Serveur lancé sur http://localhost:${port}`);
