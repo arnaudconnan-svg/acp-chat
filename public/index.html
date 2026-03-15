@@ -13,7 +13,7 @@
 
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#ffffff">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 
 <style>
 
@@ -22,40 +22,39 @@ html, body {
   padding: 0;
   height: 100%;
   background: white;
-  overflow: hidden;
 }
 
 body {
   font-family: Arial, sans-serif;
-  padding: 12px;
   box-sizing: border-box;
-  height: 100dvh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
+  padding: 12px;
   background: white;
-  overflow: hidden;
+  overflow-x: hidden;
 }
 
 #topBar {
   flex: 0 0 auto;
-  position: relative;
-  z-index: 2;
   background: white;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  padding-bottom: 4px;
 }
 
 h2 {
   text-align: center;
   font-size: 22px;
   margin: 10px 0 16px 0;
-  position: relative;
-  z-index: 1;
 }
 
 #chat {
   border: 1px solid #ccc;
   padding: 12px;
   flex: 1 1 auto;
-  min-height: 0;
+  min-height: 220px;
   overflow-y: auto;
   margin: 8px 0 10px 0;
   font-size: 16px;
@@ -67,9 +66,11 @@ h2 {
 #inputArea {
   flex: 0 0 auto;
   background: white;
+  position: sticky;
+  bottom: 0;
+  z-index: 6;
   padding-top: 6px;
   padding-bottom: 8px;
-  z-index: 3;
 }
 
 #input {
@@ -91,6 +92,7 @@ h2 {
   align-items: center;
   gap: 10px;
   margin-top: 8px;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 button {
@@ -221,14 +223,12 @@ button {
 <div id="chat"></div>
 
 <div id="inputArea">
+  <textarea id="input" placeholder="Écrire..."></textarea>
 
-<textarea id="input" placeholder="Écrire..."></textarea>
-
-<div class="actions">
-<button id="editLastBtn" onclick="editLastTurn()">modifier</button>
-<button id="sendBtn" onclick="send()">Envoyer</button>
-</div>
-
+  <div class="actions">
+    <button id="editLastBtn" onclick="editLastTurn()">modifier</button>
+    <button id="sendBtn" onclick="send()">Envoyer</button>
+  </div>
 </div>
 
 <div id="glossaryModal">
@@ -273,7 +273,6 @@ function saveSessionHistory(history) {
 }
 
 function pushMsg(role, content) {
-
   const now = Date.now();
   const oldHistory = loadSessionHistory();
 
@@ -282,7 +281,6 @@ function pushMsg(role, content) {
   let isNewSession = false;
 
   if (oldHistory.length > 0) {
-
     const lastTime = oldHistory[oldHistory.length - 1].t;
     const gap = now - lastTime;
 
@@ -302,7 +300,6 @@ function pushMsg(role, content) {
 }
 
 function addAssistantToCurrentSession(content) {
-
   const history = loadSessionHistory();
 
   history.push({
@@ -315,13 +312,11 @@ function addAssistantToCurrentSession(content) {
 }
 
 function isSessionExpired() {
-
   const history = loadSessionHistory();
 
   if (!history.length) return false;
 
   const lastTime = history[history.length - 1].t;
-
   return Date.now() - lastTime > SESSION_TIMEOUT;
 }
 
@@ -367,7 +362,6 @@ function escapeHTML(text) {
 }
 
 function applyGlossary(text) {
-
   let result = escapeHTML(text);
 
   const terms = Object.keys(GLOSSARY).sort((a, b) => b.length - a.length);
@@ -388,7 +382,6 @@ function applyGlossary(text) {
 }
 
 function showDefinition(term) {
-
   const entry = GLOSSARY[term];
   if (!entry) return;
 
@@ -405,17 +398,9 @@ function closeGlossary() {
 
 
 
-function updateViewportHeight() {
-  const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-  document.body.style.height = vh + "px";
-}
-
 function isUserNearBottom() {
-
   const chat = document.getElementById("chat");
-
   const threshold = 120;
-
   return chat.scrollHeight - chat.scrollTop - chat.clientHeight < threshold;
 }
 
@@ -444,22 +429,18 @@ function ensureLastUserVisibleAboveInput() {
 }
 
 function addMessage(roleLabel, text) {
-
   const chat = document.getElementById("chat");
 
   const msg = document.createElement("div");
-
   const roleClass = roleLabel === "Utilisateur" ? "user" : "bot";
 
   msg.className = "message " + roleClass;
 
   const bubble = document.createElement("div");
-
   bubble.className = "bubble";
   bubble.innerHTML = applyGlossary(text);
 
   msg.appendChild(bubble);
-
   chat.appendChild(msg);
 
   if (roleLabel === "Utilisateur") {
@@ -471,66 +452,51 @@ function addMessage(roleLabel, text) {
 }
 
 function addMessageSilently(roleLabel, text) {
-
   const chat = document.getElementById("chat");
 
   const msg = document.createElement("div");
-
   const roleClass = roleLabel === "Utilisateur" ? "user" : "bot";
 
   msg.className = "message " + roleClass;
 
   const bubble = document.createElement("div");
-
   bubble.className = "bubble";
   bubble.innerHTML = applyGlossary(text);
 
   msg.appendChild(bubble);
-
   chat.appendChild(msg);
 }
 
 function addSystemMessage(text) {
-
   const chat = document.getElementById("chat");
 
   const msg = document.createElement("div");
-
   msg.className = "system-message";
-
   msg.textContent = text;
 
   chat.appendChild(msg);
-
   scrollChatToBottom();
 }
 
 function rehydrateChatFromSession() {
-
   const chat = document.getElementById("chat");
-
   const history = loadSessionHistory();
 
   chat.innerHTML = "";
 
   for (const msg of history) {
-
     if (msg.role === "user") {
       addMessageSilently("Utilisateur", msg.content);
-    }
-
-    else if (msg.role === "assistant") {
+    } else if (msg.role === "assistant") {
       addMessageSilently("Chatbot", msg.content);
     }
   }
 
   scrollChatToBottom();
-
   updateEditButtonVisibility();
 }
 
 function scrollToLastUserMessage() {
-
   const chat = document.getElementById("chat");
   const userMessages = chat.querySelectorAll(".message.user");
   const lastUser = userMessages[userMessages.length - 1];
@@ -546,11 +512,9 @@ function scrollToLastUserMessage() {
 }
 
 function addBotReply(text) {
-
   const shouldScroll = isUserNearBottom();
 
   addAssistantToCurrentSession(text);
-
   addMessage("Chatbot", text);
 
   if (shouldScroll) {
@@ -563,71 +527,53 @@ function addBotReply(text) {
 }
 
 function autoResizeInput() {
-
   const input = document.getElementById("input");
-
   input.style.height = "auto";
-
   input.style.height = Math.min(input.scrollHeight, 150) + "px";
 }
 
 function canEditLastTurn() {
-
   const history = loadSessionHistory();
-
   if (history.length < 2) return false;
 
   const last = history[history.length - 1];
-
   const beforeLast = history[history.length - 2];
 
   return beforeLast.role === "user" && last.role === "assistant";
 }
 
 function updateEditButtonVisibility() {
-
   const btn = document.getElementById("editLastBtn");
-
   btn.style.display = canEditLastTurn() ? "inline-block" : "none";
 }
 
 function editLastTurn() {
-
   const history = loadSessionHistory();
-
   if (history.length < 2) return;
 
   const last = history[history.length - 1];
-
   const beforeLast = history[history.length - 2];
 
   if (!(beforeLast.role === "user" && last.role === "assistant")) return;
 
   const input = document.getElementById("input");
-
   input.value = beforeLast.content;
 
   history.splice(-2, 2);
-
   saveSessionHistory(history);
 
   rehydrateChatFromSession();
-
   autoResizeInput();
-
   input.focus();
 
   const len = input.value.length;
-
   input.setSelectionRange(len, len);
 }
 
 
 
 async function send() {
-
   const input = document.getElementById("input");
-
   const text = input.value.trim();
 
   if (!text) return;
@@ -643,7 +589,6 @@ async function send() {
   const safeIsNewSession = isNewSession && previousHistoryForServer.length > 0;
 
   addMessage("Utilisateur", text);
-
   updateEditButtonVisibility();
 
   input.value = "";
@@ -666,7 +611,6 @@ async function send() {
   const data = await response.json();
 
   if (data.summary) saveSummary(data.summary);
-
   if (data.flags) saveFlags(data.flags);
 
   if (data.sessionRestarted) {
@@ -679,8 +623,6 @@ async function send() {
 
 
 document.addEventListener("DOMContentLoaded", function() {
-
-  updateViewportHeight();
   autoResizeInput();
 
   document.getElementById("glossaryModal").onclick = function(e) {
@@ -688,7 +630,6 @@ document.addEventListener("DOMContentLoaded", function() {
   };
 
   if (isSessionExpired()) {
-
     document.getElementById("chat").innerHTML = "";
 
     addSystemMessage(
@@ -696,36 +637,22 @@ document.addEventListener("DOMContentLoaded", function() {
     );
 
     sessionExpiredAtLoad = true;
-
     updateEditButtonVisibility();
-
   } else {
-
     rehydrateChatFromSession();
   }
 });
 
-window.addEventListener("resize", updateViewportHeight);
-
-if (window.visualViewport) {
-  window.visualViewport.addEventListener("resize", updateViewportHeight);
-}
-
 document.getElementById("input").addEventListener("input", autoResizeInput);
 
 document.getElementById("input").addEventListener("keydown", function(event) {
-
   if (event.key === "Enter" && event.ctrlKey) {
-
     event.preventDefault();
-
     send();
   }
 });
 
-
 if ("serviceWorker" in navigator) {
-
   navigator.serviceWorker.register("/sw.js");
 }
 
