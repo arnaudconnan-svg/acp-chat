@@ -29,6 +29,36 @@ body {
   overflow: hidden;
 }
 
+body.app-loading .screen,
+body.app-loading #topBar,
+body.app-loading #chat,
+body.app-loading #inputArea {
+  visibility: hidden;
+}
+
+#appSplash {
+  position: fixed;
+  inset: 0;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  opacity: 1;
+  transition: opacity 0.25s ease;
+}
+
+#appSplash.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+#splashLogo {
+  width: min(220px, 62vw);
+  height: auto;
+  display: block;
+}
+
 /* ---------- ÉCRANS ---------- */
 
 .screen {
@@ -341,7 +371,11 @@ button {
 </style>
 </head>
 
-<body>
+<body class="app-loading">
+
+<div id="appSplash">
+  <img id="splashLogo" src="/images/logo.png" alt="Facilitat.io">
+</div>
 
 <div id="welcomeScreen" class="screen active">
   <div id="welcomeInner">
@@ -441,6 +475,18 @@ const GLOSSARY = {
 
 let sessionExpiredAtLoad = false;
 let isSending = false;
+
+function hideSplash() {
+  const splash = document.getElementById("appSplash");
+  if (!splash) return;
+
+  document.body.classList.remove("app-loading");
+  splash.classList.add("hidden");
+
+  setTimeout(() => {
+    splash.remove();
+  }, 250);
+}
 
 function showScreen(screenId) {
   document.getElementById("welcomeScreen").classList.remove("active");
@@ -558,25 +604,25 @@ function escapeHTML(text) {
 
 function applyGlossary(text) {
   let result = escapeHTML(text);
-  
+
   const terms = Object.keys(GLOSSARY).sort((a, b) => b.length - a.length);
-  
+
   terms.forEach(term => {
     const entry = GLOSSARY[term];
     const canonicalTerm = entry.alias || term;
     const escapedTerm = escapeRegExp(term);
-    
+
     const regex = new RegExp(
       `(^|[^\\p{L}\\p{N}])(${escapedTerm})(?=$|[^\\p{L}\\p{N}])`,
       "giu"
     );
-    
+
     result = result.replace(regex, (match, prefix, foundTerm) => {
       const safeCanonical = canonicalTerm.replace(/'/g, "\\'");
       return `${prefix}<span class="glossary-term" onclick="showDefinition('${safeCanonical}')">${foundTerm}</span>`;
     });
   });
-  
+
   return result;
 }
 
@@ -878,6 +924,8 @@ document.addEventListener("DOMContentLoaded", function() {
     rehydrateChatFromSession();
   }
 });
+
+window.addEventListener("load", hideSplash);
 
 document.getElementById("input").addEventListener("input", autoResizeInput);
 
