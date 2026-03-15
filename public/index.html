@@ -282,28 +282,26 @@ button {
 #aboutModal {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.35);
+  background: rgba(0, 0, 0, 0.35);
   display: none;
   align-items: flex-end;
   justify-content: center;
-  padding: 0;
   z-index: 1000;
 }
 
 #glossaryBox,
 #aboutBox {
   background: white;
-  width: calc(100% - 24px);
-  max-width: 640px;
-  margin: 0 12px 12px 12px;
-  border-radius: 14px 14px 0 0;
-  padding: 18px 18px 22px 18px;
-  box-shadow: 0 -8px 30px rgba(0,0,0,0.25);
+  width: min(640px, calc(100vw - 24px));
+  border-radius: 20px 20px 0 0;
+  padding: 18px 18px calc(24px + env(safe-area-inset-bottom, 0px)) 18px;
+  box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.25);
   font-size: 16px;
   display: flex;
   flex-direction: column;
-  max-height: 85vh;
+  max-height: calc(100dvh - 12px);
   overflow-y: auto;
+  margin: 0;
 }
 
 #glossaryBox::before,
