@@ -346,13 +346,29 @@ EXPLORATION :
 - expression ordinaire du vécu
 - aucun autre état ne domine
 
-CONTAINMENT :
-- angoisse aiguë
-- panique
-- peur de perdre le contrôle
-- peur de devenir fou
-- vide intérieur imminent
-- débordement psychique immédiat
+CONTAINMENT:
+  -angoisse aiguë
+  - angoisse très intense ou très envahissante
+  - panique
+  - peur de perdre le contrôle
+  - peur de devenir fou
+  - impression de débordement
+  - état difficile à porter maintenant
+  - détresse qui appelle d’abord de la simplicité et de la sécurité
+
+Choisis CONTAINMENT non seulement quand la personne parle de panique extrême, mais aussi quand elle exprime une angoisse forte, envahissante ou très difficile à porter dans l’instant.
+
+Exemples:
+  -"Je suis terriblement angoissé" -
+  "Je suis très angoissé" -
+  "Là je suis vraiment angoissé" -
+  "Je me sens dépassé" -
+  "Ça m’envahit" -
+  "Je ne me sens pas bien du tout" -
+  "Là ça déborde" -
+  "J’angoisse vraiment"
+
+Ne choisis pas EXPLORATION si la priorité semble être de contenir plutôt que d’explorer.
 
 STAGNATION :
 - boucle
@@ -385,6 +401,9 @@ BREAKDOWN :
 - dynamique relationnelle désorganisante sur plusieurs tours
 
 Ne choisis pas BREAKDOWN pour un simple test ponctuel.
+
+Si un message peut relever à la fois de EXPLORATION et de CONTAINMENT,
+choisis CONTAINMENT dès que l’état paraît très difficile à porter maintenant.
 
 congruenceResponseMode :
 - PLAQUE : si le plus juste serait de reconnaître que ça sonne plaqué, faux, fabriqué, scripté
@@ -747,14 +766,29 @@ EXPLORATION :
 - pas d’interprétation
 - une question peut être pertinente mais pas systématique
 
-CONTAINMENT :
+CONTAINMENT:
 - priorité absolue à la sécurité et à la contenance
-- réponds de façon simple
+- réponds de façon simple, basse et sobre
 - ne pousse pas l’exploration
-- ne reviens pas mécaniquement au corps
-- tu peux proposer de ralentir, de ne pas rester seul, de contacter quelqu’un de confiance
-- pas de protocole long
-- pas de ton de coaching
+- ne reformule pas longuement
+- n’ analyse pas l’angoisse
+- évite les questions exploratoires
+- la première réponse devrait le plus souvent être sans question
+
+Tu peux:
+- proposer de ralentir
+- proposer de ne pas rester seul
+- proposer de contacter quelqu’un de confiance
+- proposer une aide urgente si la personne se sent en train de basculer
+
+Pas de protocole long.
+Pas de ton de coaching.
+
+Exemples de tonalité possibles:
+- "D’accord. On peut rester sur quelque chose de très simple là."
+- "Ça semble très difficile à porter maintenant."
+- "D’accord. Pas besoin d’aller plus loin tout de suite."
+- "Là, on peut juste ralentir un peu."
 
 STAGNATION :
 - la personne semble dans une boucle ou une impasse
@@ -942,6 +976,21 @@ Privilégie un reflet bref ou une présence simple.
 `
     });
   }
+
+if (primaryState === CONVO_STATES.CONTAINMENT) {
+  extraSystemMessages.push({
+    role: "system",
+    content: `
+La conversation est actuellement en état CONTAINMENT.
+
+Important :
+- évite les questions exploratoires
+- la première réponse doit de préférence être sans question
+- privilégie une phrase courte, simple, contenante
+- si une question est utilisée, elle doit être brève et liée à la sécurité immédiate
+`
+  });
+}
 
   const r = await client.chat.completions.create({
     model: "gpt-4.1-mini",
