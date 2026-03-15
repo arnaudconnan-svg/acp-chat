@@ -1,9 +1,8 @@
-const CACHE_NAME = "facilitatio";
+const CACHE_NAME = "facilitatio-v2";
 
 const urlsToCache = [
   "/",
   "/index.html",
-  "/app-config.js",
   "/manifest.json",
   "/images/logo.png",
   "/images/icon-192.png",
