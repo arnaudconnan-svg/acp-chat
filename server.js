@@ -134,7 +134,7 @@ async function analyzeMessage(userMessage, history = []) {
   const system = `
 Tu fais une analyse rapide du message utilisateur et du contexte récent.
 
-Tu dois identifier douze choses :
+Tu dois identifier treize choses :
 1. le niveau de risque suicidaire
 2. si une clarification est nécessaire
 3. si le message est une citation, un discours rapporté, un exemple ou un test
@@ -147,6 +147,7 @@ Tu dois identifier douze choses :
 10. si la personne semble créer une comparaison valorisante ou un attachement au bot
 11. si la personne semble vivre un moment de clarification, de déplacement ou d’apaisement soudain
 12. si la personne parle surtout dans un registre analytique, théorique ou psychologisant de son expérience, sans contact clair avec le vécu immédiat
+13. si la personne met en cause l’authenticité, la justesse ou la congruence de la réponse du bot
 
 Réponds STRICTEMENT par JSON :
 {
@@ -161,7 +162,8 @@ Réponds STRICTEMENT par JSON :
   "idiomaticDeathExpression": true|false,
   "attachmentToBot": true|false,
   "reliefOrShift": true|false,
-  "intellectualization": true|false
+  "intellectualization": true|false,
+  "congruenceTest": true|false
 }
 
 Règles :
@@ -320,6 +322,22 @@ Exemples :
 Ne coche pas intellectualization
 si la personne parle aussi clairement de ce qu’elle ressent maintenant.
 
+congruenceTest = true si la personne met explicitement en cause
+le caractère authentique, juste, vrai, congruent ou non plaqué
+de la réponse du bot.
+
+Exemples :
+- "Là tu me sors juste une phrase toute faite"
+- "Tu fais semblant d’être empathique"
+- "Tu n’es pas congruent là"
+- "On sent le script"
+- "Ta réponse sonne faux"
+- "C'est plaqué"
+- "Tu balances une réponse de manuel"
+
+Ne coche pas congruenceTest pour une simple colère générale
+si l’authenticité ou la justesse de la réponse n’est pas visée directement.
+
 Demande explicite de solutions :
 solutionRequest = true seulement si la personne demande clairement
 - des idées
@@ -351,7 +369,7 @@ Si wantsReturnToNormal est true alors ne pas maintenir une logique de clarificat
   const r = await client.chat.completions.create({
     model: "gpt-4.1-mini",
     temperature: 0,
-    max_tokens: 320,
+    max_tokens: 360,
     messages: [
       { role: "system", content: system },
       ...context,
@@ -379,6 +397,7 @@ Si wantsReturnToNormal est true alors ne pas maintenir une logique de clarificat
     const attachmentToBot = obj.attachmentToBot === true;
     const reliefOrShift = obj.reliefOrShift === true;
     const intellectualization = obj.intellectualization === true;
+    const congruenceTest = obj.congruenceTest === true;
 
     if (idiomaticDeathExpression || wantsReturnToNormal) {
       suicideLevel = "N0";
@@ -405,7 +424,8 @@ Si wantsReturnToNormal est true alors ne pas maintenir une logique de clarificat
       idiomaticDeathExpression,
       attachmentToBot,
       reliefOrShift,
-      intellectualization
+      intellectualization,
+      congruenceTest
     };
 
   } catch {
@@ -421,7 +441,8 @@ Si wantsReturnToNormal est true alors ne pas maintenir une logique de clarificat
       idiomaticDeathExpression: false,
       attachmentToBot: false,
       reliefOrShift: false,
-      intellectualization: false
+      intellectualization: false,
+      congruenceTest: false
     };
   }
 }
@@ -564,6 +585,7 @@ async function generateFreeReply(
   attachmentToBot = false,
   reliefOrShift = false,
   intellectualization = false,
+  congruenceTest = false,
   conversationState = CONVO_STATES.EXPLORATION,
   userLooping = false,
   silenceLike = false,
@@ -855,7 +877,7 @@ La personne parle surtout dans un registre analytique, théorique ou psychologis
 
 Ne valide pas cette analyse comme un diagnostic ou une lecture juste.
 Ne la conteste pas.
-Ne la corriges pas.
+Ne la corrige pas.
 Ne déclenche pas la règle diagnostic juste parce que des mots psychologiques apparaissent.
 
 Tu peux reconnaître brièvement que la personne met des mots analytiques sur ce qu’elle vit,
@@ -871,7 +893,38 @@ Exemples de tonalité possibles :
   }
 
   // -----------------------------
-  // 12) MODULATEUR SILENCE / VIDE
+  // 12) MODULATEUR TEST DE CONGRUENCE
+  // -----------------------------
+
+  if (congruenceTest) {
+    extraSystemMessages.push({
+      role: "system",
+      content: `
+La personne met en cause l’authenticité, la justesse ou la congruence de ta réponse.
+
+Reconnais directement le caractère plaqué, faux ou inadéquat de la réponse si c’est ce qui est pointé.
+
+Ne te défends pas.
+N’explique pas la méthode.
+Ne remercie pas.
+Ne dis pas que tu "perçois" ou "ressens" quoi que ce soit.
+Ne prétends pas avoir une intériorité propre.
+Ne repars pas immédiatement sur une nouvelle question introspective.
+
+Une phrase courte suffit.
+
+Exemples de tonalité possibles :
+- "Oui, là ça sonne plaqué."
+- "Là, ma réponse ne rejoint pas vraiment ce qui se passe."
+- "Oui, là je suis à côté."
+- "Là, c’est trop fabriqué."
+- "Oui, tu sens plus le cadre que la rencontre."
+`
+    });
+  }
+
+  // -----------------------------
+  // 13) MODULATEUR SILENCE / VIDE
   // -----------------------------
 
   if (silenceLike || conversationState === CONVO_STATES.SILENCE) {
@@ -896,7 +949,7 @@ Ne force pas son exploration.
   }
 
   // -----------------------------
-  // 13) MODULATEUR STAGNATION / BOUCLE
+  // 14) MODULATEUR STAGNATION / BOUCLE
   // -----------------------------
 
   if (userLooping || conversationState === CONVO_STATES.STAGNATION) {
@@ -920,7 +973,7 @@ Exemples de tonalité possibles :
   }
 
   // -----------------------------
-  // 14) MODULATEUR ANTI-SURQUESTIONNEMENT
+  // 15) MODULATEUR ANTI-SURQUESTIONNEMENT
   // -----------------------------
 
   if (assistantOverquestioning) {
@@ -936,7 +989,7 @@ Privilégie un reflet bref ou une présence simple.
   }
 
   // -----------------------------
-  // 15) OUVERTURE DE CONVERSATION
+  // 16) OUVERTURE DE CONVERSATION
   // -----------------------------
 
   if (conversationState === CONVO_STATES.OPENING) {
@@ -952,7 +1005,7 @@ N'alourdis pas la réponse.
   }
 
   // -----------------------------
-  // 16) APPEL LLM
+  // 17) APPEL LLM
   // -----------------------------
 
   const r = await client.chat.completions.create({
@@ -1056,6 +1109,7 @@ app.post("/chat", async (req, res) => {
       analysis.attachmentToBot,
       analysis.reliefOrShift,
       analysis.intellectualization,
+      analysis.congruenceTest,
       conversationState,
       userLooping,
       silenceLike,
