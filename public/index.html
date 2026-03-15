@@ -22,6 +22,7 @@ html, body {
   padding: 0;
   height: 100%;
   background: white;
+  overflow: hidden;
 }
 
 body {
@@ -32,22 +33,42 @@ body {
   flex-direction: column;
   padding: 12px;
   background: white;
-  overflow-x: hidden;
+  overflow: hidden;
 }
 
 #topBar {
   flex: 0 0 auto;
   background: white;
-  position: sticky;
-  top: 0;
+  position: relative;
   z-index: 5;
   padding-bottom: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 h2 {
   text-align: center;
   font-size: 22px;
   margin: 10px 0 16px 0;
+  flex: 1;
+}
+
+#refreshBtn {
+  position: absolute;
+  right: 0;
+  top: 8px;
+  font-size: 20px;
+  line-height: 1;
+  padding: 6px 10px;
+  border: none;
+  background: transparent;
+  color: #666;
+  cursor: pointer;
+}
+
+#refreshBtn:hover {
+  text-decoration: underline;
 }
 
 #chat {
@@ -67,8 +88,7 @@ h2 {
 #inputArea {
   flex: 0 0 auto;
   background: white;
-  position: sticky;
-  bottom: 0;
+  position: relative;
   z-index: 6;
   padding-top: 6px;
   padding-bottom: 8px;
@@ -219,6 +239,7 @@ button {
 
 <div id="topBar">
   <h2 id="pageTitle">ACP Chat</h2>
+  <button id="refreshBtn" onclick="refreshPage()" title="Rafraîchir">↻</button>
 </div>
 
 <div id="chat"></div>
@@ -396,6 +417,10 @@ function showDefinition(term) {
 
 function closeGlossary() {
   document.getElementById("glossaryModal").style.display = "none";
+}
+
+function refreshPage() {
+  location.reload();
 }
 
 
