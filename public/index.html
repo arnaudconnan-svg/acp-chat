@@ -29,12 +29,14 @@ body {
   display: flex;
   flex-direction: column;
   height: 100dvh;
-  overflow: hidden;
+  overflow-x: hidden;
+overflow-y: auto;
   background: white;
 }
 
 #topBar {
   flex-shrink: 0;
+  touch-action: pan-y;
 }
 
 h2 {
