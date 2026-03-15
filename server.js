@@ -24,11 +24,16 @@ async function analyzeMessage(userMessage, history = []) {
   const system = `
 Tu fais une analyse rapide du message utilisateur et du contexte récent.
 
-Tu dois identifier quatre choses :
+Tu dois identifier neuf choses :
 1. le niveau de risque suicidaire
 2. si une clarification est nécessaire
-3. si la personne demande explicitement des solutions
-4. si la personne pose une question d'information factuelle
+3. si le message est une citation, un discours rapporté, un exemple ou un test
+4. si la personne demande explicitement des solutions
+5. si la personne pose une question d'information factuelle
+6. si la personne semble vivre une angoisse aiguë ou un risque de débordement psychique immédiat
+7. si la personne exprime de la colère ou de la frustration dirigée contre le bot
+8. si la personne indique clairement qu'un message suicidaire précédent était un test, une citation, ou demande à reprendre normalement
+9. si le message contient une expression de mort idiomatique ou non littérale
 
 Réponds STRICTEMENT par JSON :
 {
@@ -36,22 +41,31 @@ Réponds STRICTEMENT par JSON :
   "needsClarification": true|false,
   "isQuote": true|false,
   "solutionRequest": true|false,
-  "infoRequest": true|false
+  "infoRequest": true|false,
+  "severeAnxiety": true|false,
+  "angerAgainstBot": true|false,
+  "wantsReturnToNormal": true|false,
+  "idiomaticDeathExpression": true|false
 }
 
 Règles :
 
 Risque suicidaire :
 - N0 : pas de contenu suicidaire explicite
-- N1 : idéation passive explicite
-- N2 : intention ou plan
+- N1 : idéation passive explicite de mourir, d'en finir, de ne plus être là
+- N2 : intention, plan, moyen, imminence, ou projet explicite de mettre fin à sa vie
 
-Ne classe en N1 ou N2 que s'il existe une référence explicite à mourir,
-disparaître, au suicide, ou au fait de se faire du mal.
+Ne classe en N1 ou N2 que s'il existe une référence explicite et personnelle :
+- à mourir
+- au suicide
+- à se tuer
+- à mettre fin à sa vie
+- à en finir
+- à ne plus vouloir être en vie
+- ou à disparaître dans un sens vital
 
-NeedsClarification ne doit être true que s'il existe déjà une référence explicite
-ou quasi explicite à mourir, disparaître, au suicide, ou au fait de se faire du mal,
-mais que le niveau exact reste ambigu.
+NeedsClarification ne doit être true que si une intention de mourir
+ou de mettre fin à sa vie est possible, mais ambiguë.
 
 Une détresse forte ne suffit pas.
 Une fatigue intense ne suffit pas.
@@ -65,11 +79,82 @@ Exemples à classer N0 :
 - "Je me sens au bout"
 - "Je suis incapable de faire quoi que ce soit"
 
+Les expressions idiomatiques ou non littérales doivent rester en N0
+et ne demandent pas de clarification suicidaire.
+Exemples :
+- "Ce boulot me tue"
+- "Tu vas me tuer"
+- "J'ai envie de mourir de honte"
+- "J'ai envie de disparaître sous ma couette"
+
+Dans ces cas :
+- idiomaticDeathExpression = true
+- suicideLevel = N0
+- needsClarification = false
+
+Les comportements d'auto-agression ne doivent pas être interprétés
+automatiquement comme suicidaires.
+Exemples à classer N0 sauf intention explicite de mourir :
+- "Je me scarifie parfois"
+- "J'ai envie de me couper"
+- "J'ai envie de me faire mal"
+- "Je me brûle pour me calmer"
+
 Une question banale de reprise de conversation comme
 "Où en était-on ?",
 "On en était où ?",
 "De quoi on parlait déjà ?"
 doit être classée N0.
+
+isQuote = true si le message rapporte les paroles de quelqu'un d'autre,
+cite une phrase, un film, un patient, un proche, ou un exemple,
+sans indiquer que cela concerne directement l'utilisateur.
+
+Exemples :
+- "Une amie m'a dit : j'ai envie de mourir"
+- "Dans un film quelqu'un dit : je vais me tuer"
+- "Je cite juste cette phrase"
+
+wantsReturnToNormal = true seulement si la personne indique clairement qu'il s'agissait :
+- d'un test
+- d'une citation
+- d'un discours rapporté
+- ou qu'elle demande explicitement à reprendre normalement
+
+Exemples :
+- "C'était un test"
+- "Je testais juste"
+- "Je ne suis pas en danger"
+- "On peut reprendre normalement ?"
+- "Tout va bien"
+- "Rien, je testais juste tes réactions"
+
+Dans ces cas :
+- suicideLevel = N0
+- needsClarification = false
+
+severeAnxiety = true seulement si la personne semble décrire
+une angoisse aiguë, une panique, une peur de perdre le contrôle,
+de devenir folle, de tomber dans le vide, de se dissocier,
+ou un débordement psychique immédiat.
+
+Exemples :
+- "Je vais perdre le contrôle"
+- "Je pourrais devenir fou"
+- "Je tombe dans un vide intérieur"
+- "Je panique"
+- "J'ai besoin d'aide là maintenant"
+
+angerAgainstBot = true si la personne exprime clairement
+de la colère, de l'agacement ou du mépris à l'égard du bot
+ou de ses réponses.
+
+Exemples :
+- "Tu fais chier"
+- "Tu sers à rien"
+- "Ta réponse est nulle"
+- "On dirait un robot"
+- "Tu me casses les couilles"
 
 Demande explicite de solutions :
 solutionRequest = true seulement si la personne demande clairement
@@ -78,6 +163,8 @@ solutionRequest = true seulement si la personne demande clairement
 - des pistes
 - quoi faire
 - comment s'y prendre
+- une solution
+- des solutions
 
 Demande d'information factuelle :
 infoRequest = true si la personne demande
@@ -85,8 +172,12 @@ infoRequest = true si la personne demande
 - si des recherches ont été faites
 - si des auteurs ont travaillé sur un sujet
 - une information historique, théorique ou scientifique
+- une différence entre deux approches
+- ce qui est connu dans la littérature
 
 Si solutionRequest est true alors infoRequest doit être false.
+Si isQuote est true alors ne pas inférer automatiquement un risque suicidaire personnel.
+Si wantsReturnToNormal est true alors ne pas maintenir une logique de clarification suicidaire automatique.
 `;
 
   const context = history
@@ -96,7 +187,7 @@ Si solutionRequest est true alors infoRequest doit être false.
   const r = await client.chat.completions.create({
     model: "gpt-4.1-mini",
     temperature: 0,
-    max_tokens: 140,
+    max_tokens: 220,
     messages: [
       { role: "system", content: system },
       ...context,
@@ -110,21 +201,41 @@ Si solutionRequest est true alors infoRequest doit être false.
     const cleaned = raw.replace(/```json|```/g, "").trim();
     const obj = JSON.parse(cleaned);
 
-    const suicideLevel = ["N0", "N1", "N2"].includes(obj.suicideLevel)
+    let suicideLevel = ["N0", "N1", "N2"].includes(obj.suicideLevel)
       ? obj.suicideLevel
       : "N0";
 
-    const needsClarification =
+    const isQuote = obj.isQuote === true;
+    const solutionRequest = obj.solutionRequest === true;
+    const infoRequest = solutionRequest ? false : obj.infoRequest === true;
+    const severeAnxiety = obj.severeAnxiety === true;
+    const angerAgainstBot = obj.angerAgainstBot === true;
+    const wantsReturnToNormal = obj.wantsReturnToNormal === true;
+    const idiomaticDeathExpression = obj.idiomaticDeathExpression === true;
+
+    if (idiomaticDeathExpression || wantsReturnToNormal) {
+      suicideLevel = "N0";
+    }
+
+    let needsClarification =
       (suicideLevel === "N1" || suicideLevel === "N2")
         ? obj.needsClarification === true
         : false;
 
+    if (idiomaticDeathExpression || wantsReturnToNormal) {
+      needsClarification = false;
+    }
+
     return {
       suicideLevel,
       needsClarification,
-      isQuote: obj.isQuote === true,
-      solutionRequest: obj.solutionRequest === true,
-      infoRequest: obj.solutionRequest === true ? false : obj.infoRequest === true
+      isQuote,
+      solutionRequest,
+      infoRequest,
+      severeAnxiety,
+      angerAgainstBot,
+      wantsReturnToNormal,
+      idiomaticDeathExpression
     };
 
   } catch {
@@ -133,7 +244,11 @@ Si solutionRequest est true alors infoRequest doit être false.
       needsClarification: false,
       isQuote: false,
       solutionRequest: false,
-      infoRequest: false
+      infoRequest: false,
+      severeAnxiety: false,
+      angerAgainstBot: false,
+      wantsReturnToNormal: false,
+      idiomaticDeathExpression: false
     };
   }
 }
@@ -144,7 +259,7 @@ Si solutionRequest est true alors infoRequest doit être false.
 // --------------------------------------------------
 
 function n1Fallback() {
-  return "Quand tu dis ça, est-ce que tu parles d’une envie de disparaître ou de te faire du mal ?";
+  return "Quand tu dis ça, est-ce que tu parles d’une envie de mourir, de disparaître au sens vital, ou d’autre chose ?";
 }
 
 async function n1ResponseLLM(userMessage) {
@@ -162,8 +277,9 @@ Tu ne dois jamais :
 
 Tu poses simplement une question directe pour clarifier
 si la personne parle :
-- d'une envie de disparaître
-- d'une intention de se faire du mal
+- d'une envie de mourir
+- d'une disparition au sens vital
+- d'une intention de mettre fin à sa vie
 - ou d'autre chose
 
 Réponse : une seule phrase.
@@ -193,6 +309,10 @@ Réponse : une seule phrase.
 
 function n2Response() {
   return "Je t’entends, et là c’est urgent. Si tu es en danger immédiat, appelle le 112 ou le 3114. Si tu peux, ne reste pas seul.";
+}
+
+function returnToNormalResponse() {
+  return "D’accord. On reprend normalement.";
 }
 
 
@@ -265,7 +385,9 @@ async function generateFreeReply(
   summary = "",
   isNewSession = false,
   solutionRequest = false,
-  infoRequest = false
+  infoRequest = false,
+  severeAnxiety = false,
+  angerAgainstBot = false
 ) {
   if (infoRequest) {
     solutionRequest = false;
@@ -283,16 +405,16 @@ Réponds aussi brièvement que possible tout en restant aidant.
 Le ton doit rester sobre, simple et non familier.
 
 Évite les formulations de conversation automatique du type:
-  -"Salut" -
-  "Coucou" -
-  "Comment ça va ?" -
-  "J’espère que tu vas bien"
+- "Salut"
+- "Coucou"
+- "Comment ça va ?"
+- "J’espère que tu vas bien"
 
 Quand la personne ouvre simplement la conversation, préfère une formulation simple comme:
-  -"Bonjour. Que souhaites-tu explorer ici ?" -
-  "Bonjour. Que se passe-t-il pour toi en ce moment ?"
+- "Bonjour. Que souhaites-tu explorer ici ?"
+- "Bonjour. Que se passe-t-il pour toi en ce moment ?"
 
-N’ ajoute pas de chaleur conventionnelle ou de convivialité automatique.
+N’ajoute pas de chaleur conventionnelle ou de convivialité automatique.
 
 Quand la personne pose une question factuelle,
 réponds directement à la question.
@@ -355,6 +477,17 @@ de l'expérience vécue,
 tu peux doucement inviter à y revenir,
 sans imposer de direction ni de signification.
 
+Ne répète pas mécaniquement les mêmes questions
+sur le corps, les sensations ou l'ici-et-maintenant.
+
+Varie les portes d'entrée :
+- ce qui est le plus difficile
+- ce qui fait peur
+- ce qui manque
+- ce qui agace
+- ce qui cherche à être dit
+- ce qui serait le moins à côté maintenant
+
 Si la personne exprime de la colère,
 de l’agacement ou de l’hostilité
 à l’égard du programme ou de la conversation elle-même :
@@ -363,9 +496,11 @@ ne remercie pas automatiquement la personne
 pour l’expression de cette émotion,
 
 ne relance pas immédiatement
-par une question introspective,
+par une question introspective stéréotypée,
 
-reconnais simplement
+ne justifie pas la méthode du programme.
+
+Reconnais simplement
 que la manière dont le programme répond
 ne lui convient pas à ce moment-là.
 
@@ -412,6 +547,8 @@ Explique brièvement que ce programme soutient plutôt
 le développement du centre d’évaluation interne.
 
 Ne propose pas de liste de solutions.
+
+Ne réponds pas de façon sèche ou administrative.
 `
     });
   }
@@ -424,11 +561,59 @@ La personne pose une question factuelle.
 
 Réponds directement.
 
-Tu peux citer
+Tu peux citer :
 - auteurs
 - courants
 - recherches
 - domaines
+
+N'ajoute pas ensuite une relance introspective automatique.
+`
+    });
+  }
+
+  if (severeAnxiety) {
+    extraSystemMessages.push({
+      role: "system",
+      content: `
+La personne semble vivre une angoisse aiguë ou un risque de débordement psychique immédiat.
+
+Priorité :
+- répondre de façon contenante
+- rester très simple
+- éviter de pousser l'exploration trop loin
+- ne pas insister mécaniquement sur le corps si cela risque d'aggraver la désorganisation
+
+Tu peux, si c'est pertinent :
+- proposer de ralentir
+- proposer de ne pas rester seul
+- proposer de contacter quelqu'un de confiance
+- proposer d'appeler une aide urgente si la personne se sent en train de basculer ou en danger
+
+Ne donne pas de protocole long.
+Ne deviens pas coach.
+Ne moralise pas.
+`
+    });
+  }
+
+  if (angerAgainstBot) {
+    extraSystemMessages.push({
+      role: "system",
+      content: `
+La personne exprime de la colère ou de la frustration contre le bot.
+
+Réponds de façon brève et congruente.
+
+Reconnais le décalage ou le ratage.
+Exemples de tonalité possibles :
+- "Là, je suis à côté pour toi."
+- "Oui, ma réponse ne colle pas."
+- "Je comprends que ça t’agace."
+
+N'explique pas la méthode.
+N'utilise pas "merci de le dire".
+Ne repars pas immédiatement sur une question sur le corps.
 `
     });
   }
@@ -493,6 +678,16 @@ app.post("/chat", async (req, res) => {
       });
     }
 
+    if (analysis.wantsReturnToNormal) {
+      return res.json({
+        reply: returnToNormalResponse(),
+        summary: newSummary,
+        flags,
+        isNewSession: safeIsNewSession,
+        sessionRestarted
+      });
+    }
+
     if (analysis.suicideLevel === "N1" || analysis.needsClarification) {
       const reply = await n1ResponseLLM(userMessage);
 
@@ -511,7 +706,9 @@ app.post("/chat", async (req, res) => {
       newSummary,
       safeIsNewSession,
       analysis.solutionRequest,
-      analysis.infoRequest
+      analysis.infoRequest,
+      analysis.severeAnxiety,
+      analysis.angerAgainstBot
     );
 
     return res.json({
