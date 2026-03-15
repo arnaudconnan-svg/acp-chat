@@ -17,9 +17,24 @@
 
 <style>
 
+html, body {
+  height: 100%;
+  margin: 0;
+}
+
 body {
   font-family: Arial, sans-serif;
-  margin: 12px;
+  padding: 12px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  overflow: hidden;
+  background: white;
+}
+
+#topBar {
+  flex-shrink: 0;
 }
 
 h2 {
@@ -30,19 +45,21 @@ h2 {
   z-index: 1;
 }
 
-##chat {
+#chat {
   border: 1px solid #ccc;
   padding: 12px;
-  height: 58vh;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   margin: 8px 0 10px 0;
   font-size: 16px;
   line-height: 1.4;
+  box-sizing: border-box;
+  scroll-padding-bottom: 220px;
 }
 
 #inputArea {
-  position: sticky;
-  bottom: 0;
+  flex-shrink: 0;
   background: white;
   padding-top: 6px;
 }
@@ -136,23 +153,52 @@ button {
   inset: 0;
   background: rgba(0,0,0,0.35);
   display: none;
-  align-items: center;
+  align-items: flex-end;
   justify-content: center;
+  padding: 0;
   z-index: 1000;
 }
 
 #glossaryBox {
   background: white;
-  padding: 20px;
-  max-width: 420px;
-  width: calc(100% - 32px);
-  border-radius: 10px;
-  box-shadow: 0 8px 30px rgba(0,0,0,0.25);
+  width: calc(100% - 24px);
+  max-width: 640px;
+  margin: 0 12px 12px 12px;
+  border-radius: 14px 14px 0 0;
+  padding: 18px 18px 12px 18px;
+  box-shadow: 0 -8px 30px rgba(0,0,0,0.25);
   font-size: 16px;
+  display: flex;
+  flex-direction: column;
+}
+
+#glossaryBox::before {
+  content: "";
+  width: 40px;
+  height: 4px;
+  background: #ccc;
+  border-radius: 2px;
+  align-self: center;
+  margin-bottom: 10px;
 }
 
 #glossaryContent {
   margin-bottom: 14px;
+  line-height: 1.5;
+}
+
+#glossaryBox button {
+  align-self: flex-end;
+  font-size: 14px;
+  padding: 6px 10px;
+  border: none;
+  background: transparent;
+  color: #666;
+  cursor: pointer;
+}
+
+#glossaryBox button:hover {
+  text-decoration: underline;
 }
 
 </style>
@@ -160,7 +206,9 @@ button {
 
 <body>
 
-<h2 id="pageTitle">ACP Chat</h2>
+<div id="topBar">
+  <h2 id="pageTitle">ACP Chat</h2>
+</div>
 
 <div id="chat"></div>
 
@@ -358,6 +406,30 @@ function isUserNearBottom() {
   return chat.scrollHeight - chat.scrollTop - chat.clientHeight < threshold;
 }
 
+function scrollChatToBottom() {
+  const chat = document.getElementById("chat");
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function ensureLastUserVisibleAboveInput() {
+  const chat = document.getElementById("chat");
+  const inputArea = document.getElementById("inputArea");
+  const userMessages = chat.querySelectorAll(".message.user");
+  const lastUser = userMessages[userMessages.length - 1];
+
+  if (!lastUser) return;
+
+  const chatRect = chat.getBoundingClientRect();
+  const inputRect = inputArea.getBoundingClientRect();
+  const userRect = lastUser.getBoundingClientRect();
+
+  const visibleBottom = Math.min(chatRect.bottom, inputRect.top) - 12;
+
+  if (userRect.bottom > visibleBottom) {
+    chat.scrollTop += (userRect.bottom - visibleBottom);
+  }
+}
+
 function addMessage(roleLabel, text) {
 
   const chat = document.getElementById("chat");
@@ -378,7 +450,10 @@ function addMessage(roleLabel, text) {
   chat.appendChild(msg);
 
   if (roleLabel === "Utilisateur") {
-    chat.scrollTop = chat.scrollHeight;
+    requestAnimationFrame(() => {
+      scrollChatToBottom();
+      ensureLastUserVisibleAboveInput();
+    });
   }
 }
 
@@ -414,7 +489,7 @@ function addSystemMessage(text) {
 
   chat.appendChild(msg);
 
-  chat.scrollTop = chat.scrollHeight;
+  scrollChatToBottom();
 }
 
 function rehydrateChatFromSession() {
@@ -436,27 +511,25 @@ function rehydrateChatFromSession() {
     }
   }
 
-  chat.scrollTop = chat.scrollHeight;
+  scrollChatToBottom();
 
   updateEditButtonVisibility();
 }
 
 function scrollToLastUserMessage() {
 
-  const userMessages = document.querySelectorAll(".message.user");
-
+  const chat = document.getElementById("chat");
+  const userMessages = chat.querySelectorAll(".message.user");
   const lastUser = userMessages[userMessages.length - 1];
 
   if (!lastUser) return;
 
   lastUser.scrollIntoView({
-    block: "start",
+    block: "end",
     behavior: "instant"
   });
 
-  const chat = document.getElementById("chat");
-
-  chat.scrollTop -= 20;
+  ensureLastUserVisibleAboveInput();
 }
 
 function addBotReply(text) {
@@ -468,7 +541,9 @@ function addBotReply(text) {
   addMessage("Chatbot", text);
 
   if (shouldScroll) {
-    scrollToLastUserMessage();
+    requestAnimationFrame(() => {
+      scrollToLastUserMessage();
+    });
   }
 
   updateEditButtonVisibility();
