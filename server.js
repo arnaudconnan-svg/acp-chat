@@ -134,7 +134,7 @@ async function analyzeMessage(userMessage, history = []) {
   const system = `
 Tu fais une analyse rapide du message utilisateur et du contexte récent.
 
-Tu dois identifier dix choses :
+Tu dois identifier onze choses :
 1. le niveau de risque suicidaire
 2. si une clarification est nécessaire
 3. si le message est une citation, un discours rapporté, un exemple ou un test
@@ -145,6 +145,7 @@ Tu dois identifier dix choses :
 8. si la personne indique clairement qu'un message suicidaire précédent était un test, une citation, ou demande à reprendre normalement
 9. si le message contient une expression de mort idiomatique ou non littérale
 10. si la personne semble créer une comparaison valorisante ou un attachement au bot
+11. si la personne semble vivre un moment de clarification, de déplacement ou d’apaisement soudain
 
 Réponds STRICTEMENT par JSON :
 {
@@ -157,7 +158,8 @@ Réponds STRICTEMENT par JSON :
   "angerAgainstBot": true|false,
   "wantsReturnToNormal": true|false,
   "idiomaticDeathExpression": true|false,
-  "attachmentToBot": true|false
+  "attachmentToBot": true|false,
+  "reliefOrShift": true|false
 }
 
 Règles :
@@ -278,6 +280,22 @@ Exemples :
 - "Tu es la seule chose qui m’aide"
 - "Je préfère parler avec toi qu’avec les autres"
 
+reliefOrShift = true seulement si la personne indique clairement
+qu’un mouvement de compréhension, de clarification ou d’apaisement
+vient de se produire.
+
+Exemples :
+- "Attends… je crois que je viens de comprendre quelque chose"
+- "Ah… oui"
+- "En fait ça va mieux maintenant"
+- "Ça s’éclaire un peu"
+- "Je vois mieux"
+- "Je me sens plus calme d’un coup"
+- "Quelque chose s’est apaisé"
+
+Ne coche pas reliefOrShift pour une simple hypothèse intellectuelle
+si aucun mouvement de l’expérience n’est perceptible.
+
 Demande explicite de solutions :
 solutionRequest = true seulement si la personne demande clairement
 - des idées
@@ -309,7 +327,7 @@ Si wantsReturnToNormal est true alors ne pas maintenir une logique de clarificat
   const r = await client.chat.completions.create({
     model: "gpt-4.1-mini",
     temperature: 0,
-    max_tokens: 260,
+    max_tokens: 280,
     messages: [
       { role: "system", content: system },
       ...context,
@@ -335,6 +353,7 @@ Si wantsReturnToNormal est true alors ne pas maintenir une logique de clarificat
     const wantsReturnToNormal = obj.wantsReturnToNormal === true;
     const idiomaticDeathExpression = obj.idiomaticDeathExpression === true;
     const attachmentToBot = obj.attachmentToBot === true;
+    const reliefOrShift = obj.reliefOrShift === true;
 
     if (idiomaticDeathExpression || wantsReturnToNormal) {
       suicideLevel = "N0";
@@ -359,7 +378,8 @@ Si wantsReturnToNormal est true alors ne pas maintenir une logique de clarificat
       angerAgainstBot,
       wantsReturnToNormal,
       idiomaticDeathExpression,
-      attachmentToBot
+      attachmentToBot,
+      reliefOrShift
     };
 
   } catch {
@@ -373,7 +393,8 @@ Si wantsReturnToNormal est true alors ne pas maintenir une logique de clarificat
       angerAgainstBot: false,
       wantsReturnToNormal: false,
       idiomaticDeathExpression: false,
-      attachmentToBot: false
+      attachmentToBot: false,
+      reliefOrShift: false
     };
   }
 }
@@ -514,6 +535,7 @@ async function generateFreeReply(
   severeAnxiety = false,
   angerAgainstBot = false,
   attachmentToBot = false,
+  reliefOrShift = false,
   conversationState = CONVO_STATES.EXPLORATION,
   userLooping = false,
   silenceLike = false,
@@ -761,7 +783,34 @@ Ramène l’attention vers ce que la personne traverse elle-même, ici et mainte
   }
 
   // -----------------------------
-  // 10) MODULATEUR SILENCE / VIDE
+  // 10) MODULATEUR CLARIFICATION / APAISEMENT
+  // -----------------------------
+
+  if (reliefOrShift) {
+    extraSystemMessages.push({
+      role: "system",
+      content: `
+La personne semble vivre un moment de clarification, de déplacement ou d'apaisement.
+
+Ne t’approprie pas ce moment.
+Ne le qualifie pas comme "important", "précieux" ou "profond".
+Ne pousse pas l'exploration.
+N'interprète pas ce qui se passe.
+
+Une phrase simple peut suffire.
+Une question n'est pas toujours nécessaire.
+
+Exemples de tonalité possibles :
+- "Quelque chose semble s'éclaircir pour toi."
+- "On dirait qu'un mouvement s'est fait."
+- "D’accord."
+- "On dirait que quelque chose s'est apaisé."
+`
+    });
+  }
+
+  // -----------------------------
+  // 11) MODULATEUR SILENCE / VIDE
   // -----------------------------
 
   if (silenceLike || conversationState === CONVO_STATES.SILENCE) {
@@ -786,7 +835,7 @@ Ne force pas son exploration.
   }
 
   // -----------------------------
-  // 11) MODULATEUR STAGNATION / BOUCLE
+  // 12) MODULATEUR STAGNATION / BOUCLE
   // -----------------------------
 
   if (userLooping || conversationState === CONVO_STATES.STAGNATION) {
@@ -810,7 +859,7 @@ Exemples de tonalité possibles :
   }
 
   // -----------------------------
-  // 12) MODULATEUR ANTI-SURQUESTIONNEMENT
+  // 13) MODULATEUR ANTI-SURQUESTIONNEMENT
   // -----------------------------
 
   if (assistantOverquestioning) {
@@ -826,7 +875,7 @@ Privilégie un reflet bref ou une présence simple.
   }
 
   // -----------------------------
-  // 13) OUVERTURE DE CONVERSATION
+  // 14) OUVERTURE DE CONVERSATION
   // -----------------------------
 
   if (conversationState === CONVO_STATES.OPENING) {
@@ -842,7 +891,7 @@ N'alourdis pas la réponse.
   }
 
   // -----------------------------
-  // 14) APPEL LLM
+  // 15) APPEL LLM
   // -----------------------------
 
   const r = await client.chat.completions.create({
@@ -944,6 +993,7 @@ app.post("/chat", async (req, res) => {
       analysis.severeAnxiety,
       analysis.angerAgainstBot,
       analysis.attachmentToBot,
+      analysis.reliefOrShift,
       conversationState,
       userLooping,
       silenceLike,
