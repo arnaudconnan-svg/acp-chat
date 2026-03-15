@@ -15,6 +15,116 @@ const MAX_HISTORY_FOR_ANALYSIS = 10;
 const MAX_HISTORY_FOR_REPLY = 20;
 const MAX_PREVIOUS_HISTORY_FOR_SUMMARY = 40;
 
+const CONVO_STATES = {
+  OPENING: "opening",
+  CONTAINMENT: "containment",
+  EXPLORATION: "exploration",
+  STAGNATION: "stagnation",
+  SILENCE: "silence"
+};
+
+
+// --------------------------------------------------
+// 0) HEURISTIQUES CONVERSATIONNELLES
+// --------------------------------------------------
+
+function normalizeForLoop(text = "") {
+  return text
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function isSilenceLikeMessage(text = "") {
+  const msg = (text || "").trim().toLowerCase();
+
+  return [
+    "",
+    ".",
+    "...",
+    "rien",
+    "vraiment rien",
+    "c'est vide",
+    "c est vide",
+    "je n'ai rien à dire",
+    "je nai rien à dire",
+    "je n’ai rien à dire",
+    "je sais pas quoi dire",
+    "je ne sais pas quoi dire"
+  ].includes(msg);
+}
+
+function isUserLooping(history = [], userMessage = "") {
+  const recentUserMsgs = history
+    .filter(m => m.role === "user")
+    .slice(-3)
+    .map(m => normalizeForLoop(m.content));
+
+  const current = normalizeForLoop(userMessage);
+  const all = [...recentUserMsgs, current].filter(Boolean);
+
+  if (all.length < 3) return false;
+
+  const joined = all.join(" | ");
+
+  const repeatedMarkers = [
+    "je tourne en rond",
+    "toujours les memes choses",
+    "toujours les mêmes choses",
+    "ca ne mene nulle part",
+    "ça ne mène nulle part",
+    "je sais pas",
+    "je ne sais pas",
+    "rien",
+    "cest vide",
+    "c est vide",
+    "c'est vide"
+  ];
+
+  if (repeatedMarkers.some(marker => joined.includes(normalizeForLoop(marker)))) {
+    return true;
+  }
+
+  const uniqueCount = new Set(all).size;
+  return uniqueCount <= 2;
+}
+
+function assistantAskedTooMuch(history = []) {
+  const recentAssistantMsgs = history
+    .filter(m => m.role === "assistant")
+    .slice(-3)
+    .map(m => (m.content || "").trim());
+
+  if (recentAssistantMsgs.length < 2) return false;
+
+  const questionCount = recentAssistantMsgs.filter(msg => msg.endsWith("?")).length;
+
+  return questionCount >= 2;
+}
+
+function detectConversationState(userMessage, history = [], analysis = {}) {
+  const recent = history.slice(-6);
+
+  if (isSilenceLikeMessage(userMessage)) {
+    return CONVO_STATES.SILENCE;
+  }
+
+  if (analysis.severeAnxiety) {
+    return CONVO_STATES.CONTAINMENT;
+  }
+
+  if (isUserLooping(history, userMessage)) {
+    return CONVO_STATES.STAGNATION;
+  }
+
+  if (recent.length <= 2) {
+    return CONVO_STATES.OPENING;
+  }
+
+  return CONVO_STATES.EXPLORATION;
+}
+
 
 // --------------------------------------------------
 // 1) ANALYSE UNIQUE : TRIAGE + SOLUTIONS + INFO
@@ -387,17 +497,20 @@ async function generateFreeReply(
   solutionRequest = false,
   infoRequest = false,
   severeAnxiety = false,
-  angerAgainstBot = false
+  angerAgainstBot = false,
+  conversationState = CONVO_STATES.EXPLORATION,
+  userLooping = false,
+  silenceLike = false,
+  assistantOverquestioning = false
 ) {
-  
   if (infoRequest) {
     solutionRequest = false;
   }
-  
+
   // -----------------------------
   // 1) NOYAU IDENTITAIRE
   // -----------------------------
-  
+
   const baseSystem = `
 Tu es Facilitat.io.
 
@@ -437,11 +550,11 @@ Quand la personne ouvre simplement la conversation, préfère :
 "Bonjour. Que souhaites-tu explorer ici ?"
 "Bonjour. Que se passe-t-il pour toi en ce moment ?"
 `;
-  
+
   // -----------------------------
   // 2) STYLE DE FACILITATION
   // -----------------------------
-  
+
   const facilitationSystem = `
 Reste au plus près de l’expérience vécue.
 
@@ -467,11 +580,11 @@ Varie les portes d'entrée possibles :
 Si deux réponses consécutives commencent par une question similaire,
 varie la formulation ou commence par un reflet bref.
 `;
-  
+
   // -----------------------------
   // 3) GARDE-FOU DIAGNOSTIC
   // -----------------------------
-  
+
   const diagnosticGuardrail = `
 Si la personne demande si elle "a un trouble",
 si elle est "anxieuse",
@@ -487,28 +600,28 @@ que tu ne poses pas de diagnostic ici,
 que ce qu’elle décrit peut évoquer une expérience de souffrance ou d’angoisse importante,
 et revenir à ce qu’elle vit concrètement.
 `;
-  
+
   // -----------------------------
   // 4) CONTEXTE CONVERSATION
   // -----------------------------
-  
+
   const context = history
     .slice(-MAX_HISTORY_FOR_REPLY)
     .map(m => ({ role: m.role, content: m.content }));
-  
+
   const extraSystemMessages = [];
-  
+
   if (summary) {
     extraSystemMessages.push({
       role: "system",
       content: "Résumé des échanges précédents : " + summary
     });
   }
-  
+
   // -----------------------------
   // 5) MODULATEUR SOLUTIONS
   // -----------------------------
-  
+
   if (solutionRequest) {
     extraSystemMessages.push({
       role: "system",
@@ -525,11 +638,11 @@ Ne réponds pas de façon administrative ou sèche.
 `
     });
   }
-  
+
   // -----------------------------
   // 6) MODULATEUR INFO FACTUELLE
   // -----------------------------
-  
+
   if (infoRequest) {
     extraSystemMessages.push({
       role: "system",
@@ -553,12 +666,12 @@ N’ajoute pas ensuite une relance introspective automatique.
 `
     });
   }
-  
+
   // -----------------------------
   // 7) MODULATEUR ANGOISSE AIGUË
   // -----------------------------
-  
-  if (severeAnxiety) {
+
+  if (severeAnxiety || conversationState === CONVO_STATES.CONTAINMENT) {
     extraSystemMessages.push({
       role: "system",
       content: `
@@ -581,11 +694,11 @@ Pas de ton de coaching.
 `
     });
   }
-  
+
   // -----------------------------
   // 8) MODULATEUR COLÈRE BOT
   // -----------------------------
-  
+
   if (angerAgainstBot) {
     extraSystemMessages.push({
       role: "system",
@@ -606,11 +719,92 @@ Ne repars pas immédiatement sur une question sur le corps.
 `
     });
   }
-  
+
   // -----------------------------
-  // 9) APPEL LLM
+  // 9) MODULATEUR SILENCE / VIDE
   // -----------------------------
-  
+
+  if (silenceLike || conversationState === CONVO_STATES.SILENCE) {
+    extraSystemMessages.push({
+      role: "system",
+      content: `
+La personne exprime un vide, un silence, ou dit ne rien avoir à dire.
+
+Il n'est pas nécessaire de poser une question.
+
+Une présence simple ou une phrase très courte peut suffire.
+
+Exemples de tonalité possibles :
+- "D’accord."
+- "On peut rester un moment avec ça."
+- "Je suis là."
+
+N’interprète pas le silence.
+Ne force pas son exploration.
+`
+    });
+  }
+
+  // -----------------------------
+  // 10) MODULATEUR STAGNATION / BOUCLE
+  // -----------------------------
+
+  if (userLooping || conversationState === CONVO_STATES.STAGNATION) {
+    extraSystemMessages.push({
+      role: "system",
+      content: `
+La personne semble tourner en rond ou rester dans une boucle.
+
+Ne cherche pas à faire avancer artificiellement la conversation.
+
+Reconnais simplement la boucle ou l’impasse.
+Réduis le nombre de questions.
+Un reflet bref vaut mieux qu’une nouvelle exploration.
+
+Exemples de tonalité possibles :
+- "Oui, ça tourne en boucle pour toi."
+- "Ça ressemble à une impasse en ce moment."
+- "Tu reviens au même point, et c’est lourd."
+`
+    });
+  }
+
+  // -----------------------------
+  // 11) MODULATEUR ANTI-SURQUESTIONNEMENT
+  // -----------------------------
+
+  if (assistantOverquestioning) {
+    extraSystemMessages.push({
+      role: "system",
+      content: `
+Les dernières réponses du programme comportaient déjà plusieurs questions.
+
+Évite d'ajouter encore une nouvelle question si ce n'est pas nécessaire.
+Privilégie un reflet bref ou une présence simple.
+`
+    });
+  }
+
+  // -----------------------------
+  // 12) OUVERTURE DE CONVERSATION
+  // -----------------------------
+
+  if (conversationState === CONVO_STATES.OPENING) {
+    extraSystemMessages.push({
+      role: "system",
+      content: `
+La conversation en est encore à une phase d'ouverture.
+
+Reste simple.
+N'alourdis pas la réponse.
+`
+    });
+  }
+
+  // -----------------------------
+  // 13) APPEL LLM
+  // -----------------------------
+
   const r = await client.chat.completions.create({
     model: "gpt-4.1-mini",
     temperature: 0.7,
@@ -623,15 +817,15 @@ Ne repars pas immédiatement sur une question sur le corps.
       { role: "user", content: userMessage }
     ],
   });
-  
+
   const out = (r.choices?.[0]?.message?.content ?? "").trim();
-  
+
   return out || "Je t’écoute.";
 }
 
 
 // --------------------------------------------------
-// 8) NORMALISATION FLAGS
+// 6) NORMALISATION FLAGS
 // --------------------------------------------------
 
 function normalizeFlags(flags) {
@@ -640,7 +834,7 @@ function normalizeFlags(flags) {
 
 
 // --------------------------------------------------
-// 9) ROUTE CHAT
+// 7) ROUTE CHAT
 // --------------------------------------------------
 
 app.post("/chat", async (req, res) => {
@@ -662,6 +856,11 @@ app.post("/chat", async (req, res) => {
     }
 
     const analysis = await analyzeMessage(userMessage, history);
+
+    const silenceLike = isSilenceLikeMessage(userMessage);
+    const userLooping = isUserLooping(history, userMessage);
+    const assistantOverquestioning = assistantAskedTooMuch(history);
+    const conversationState = detectConversationState(userMessage, history, analysis);
 
     if (analysis.suicideLevel === "N2") {
       return res.json({
@@ -703,7 +902,11 @@ app.post("/chat", async (req, res) => {
       analysis.solutionRequest,
       analysis.infoRequest,
       analysis.severeAnxiety,
-      analysis.angerAgainstBot
+      analysis.angerAgainstBot,
+      conversationState,
+      userLooping,
+      silenceLike,
+      assistantOverquestioning
     );
 
     return res.json({
