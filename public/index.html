@@ -20,23 +20,27 @@
 html, body {
   margin: 0;
   padding: 0;
+  height: 100%;
   background: white;
+  overflow: hidden;
 }
 
 body {
   font-family: Arial, sans-serif;
   padding: 12px;
   box-sizing: border-box;
-  overflow-x: hidden;
-  overflow-y: auto;
-  min-height: 100dvh;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: white;
+  overflow: hidden;
 }
 
 #topBar {
+  flex: 0 0 auto;
   position: relative;
   z-index: 2;
   background: white;
-  touch-action: pan-y;
 }
 
 h2 {
@@ -50,8 +54,8 @@ h2 {
 #chat {
   border: 1px solid #ccc;
   padding: 12px;
-  height: calc(100dvh - 320px);
-  min-height: 220px;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
   margin: 8px 0 10px 0;
   font-size: 16px;
@@ -61,11 +65,10 @@ h2 {
 }
 
 #inputArea {
-  position: sticky;
-  bottom: 0;
+  flex: 0 0 auto;
   background: white;
   padding-top: 6px;
-  padding-bottom: 10px;
+  padding-bottom: 8px;
   z-index: 3;
 }
 
@@ -402,6 +405,11 @@ function closeGlossary() {
 
 
 
+function updateViewportHeight() {
+  const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+  document.body.style.height = vh + "px";
+}
+
 function isUserNearBottom() {
 
   const chat = document.getElementById("chat");
@@ -672,6 +680,7 @@ async function send() {
 
 document.addEventListener("DOMContentLoaded", function() {
 
+  updateViewportHeight();
   autoResizeInput();
 
   document.getElementById("glossaryModal").onclick = function(e) {
@@ -696,6 +705,11 @@ document.addEventListener("DOMContentLoaded", function() {
   }
 });
 
+window.addEventListener("resize", updateViewportHeight);
+
+if (window.visualViewport) {
+  window.visualViewport.addEventListener("resize", updateViewportHeight);
+}
 
 document.getElementById("input").addEventListener("input", autoResizeInput);
 
