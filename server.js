@@ -25,109 +25,13 @@ const CONVO_STATES = {
 
 
 // --------------------------------------------------
-// 0) HEURISTIQUES CONVERSATIONNELLES
+// 0) HEURISTIQUES CONVERSATIONNELLES MINIMALES
 // --------------------------------------------------
 
-function normalizeForLoop(text = "") {
-  return text
-    .toLowerCase()
-    .replace(/[^\p{L}\p{N}\s]/gu, "")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
 function isSilenceLikeMessage(text = "") {
-  const msg = (text || "").trim().toLowerCase();
+  const msg = (text || "").trim();
 
-  return [
-    "",
-    ".",
-    "...",
-    "rien",
-    "vraiment rien",
-    "c'est vide",
-    "c est vide",
-    "je n'ai rien à dire",
-    "je nai rien à dire",
-    "je n’ai rien à dire",
-    "je sais pas quoi dire",
-    "je ne sais pas quoi dire"
-  ].includes(msg);
-}
-
-function isDefensiveMinimizationMessage(text = "") {
-  const msg = normalizeForLoop(text);
-
-  return [
-    "ca va aller",
-    "ça va aller",
-    "nan ca va aller",
-    "nan ça va aller",
-    "non ca va aller",
-    "non ça va aller",
-    "je vais gerer",
-    "je vais gérer",
-    "cest pas grave",
-    "c est pas grave",
-    "c'est pas grave",
-    "pas grave",
-    "cest bon",
-    "c est bon",
-    "c'est bon",
-    "ca ira",
-    "ça ira"
-  ].includes(msg);
-}
-
-function isPromptingBotToSpeak(text = "") {
-  const msg = normalizeForLoop(text);
-
-  const markers = [
-    "dis quelque chose",
-    "bah alors dis quelque chose",
-    "alors dis quelque chose",
-    "dis un truc",
-    "parle",
-    "vasy dis quelque chose",
-    "vas y dis quelque chose"
-  ];
-
-  return markers.some(marker => msg.includes(normalizeForLoop(marker)));
-}
-
-function isUserLooping(history = [], userMessage = "") {
-  const recentUserMsgs = history
-    .filter(m => m.role === "user")
-    .slice(-3)
-    .map(m => normalizeForLoop(m.content));
-
-  const current = normalizeForLoop(userMessage);
-  const all = [...recentUserMsgs, current].filter(Boolean);
-
-  if (all.length < 3) return false;
-
-  const joined = all.join(" | ");
-
-  const repeatedMarkers = [
-    "je tourne en rond",
-    "toujours les memes choses",
-    "toujours les mêmes choses",
-    "ca ne mene nulle part",
-    "ça ne mène nulle part",
-    "je sais pas",
-    "je ne sais pas",
-    "rien",
-    "cest vide",
-    "c est vide",
-    "c'est vide"
-  ];
-
-  if (repeatedMarkers.some(marker => joined.includes(normalizeForLoop(marker)))) {
-    return true;
-  }
-
-  const uniqueCount = new Set(all).size;
-  return uniqueCount <= 2;
+  return msg === "" || msg === "." || msg === "...";
 }
 
 function assistantAskedTooMuch(history = []) {
@@ -145,8 +49,11 @@ function assistantAskedTooMuch(history = []) {
 
 function detectConversationState(userMessage, history = [], analysis = {}) {
   const recent = history.slice(-6);
+  const trivialSilence = isSilenceLikeMessage(userMessage);
+  const semanticSilence = analysis.silenceLike === true;
+  const looping = analysis.userLooping === true;
 
-  if (isSilenceLikeMessage(userMessage)) {
+  if (trivialSilence || semanticSilence) {
     return CONVO_STATES.SILENCE;
   }
 
@@ -154,7 +61,7 @@ function detectConversationState(userMessage, history = [], analysis = {}) {
     return CONVO_STATES.CONTAINMENT;
   }
 
-  if (isUserLooping(history, userMessage)) {
+  if (looping) {
     return CONVO_STATES.STAGNATION;
   }
 
@@ -165,27 +72,13 @@ function detectConversationState(userMessage, history = [], analysis = {}) {
   return CONVO_STATES.EXPLORATION;
 }
 
-function buildCongruenceReply(userMessage = "") {
-  const msg = normalizeForLoop(userMessage);
-
-  if (
-    msg.includes("script") ||
-    msg.includes("plaque") ||
-    msg.includes("plaqué") ||
-    msg.includes("manuel") ||
-    msg.includes("fabrique") ||
-    msg.includes("fabriqué") ||
-    msg.includes("faux")
-  ) {
+function buildCongruenceReply(mode = "A_COTE") {
+  if (mode === "PLAQUE") {
     return "Oui, là ça sonne plaqué.";
   }
 
-  if (msg.includes("congruent") || msg.includes("congruence")) {
+  if (mode === "PAS_JUSTE") {
     return "Oui, là je ne suis pas juste.";
-  }
-
-  if (msg.includes("question toute faite")) {
-    return "Oui, là ça sonne trop fabriqué.";
   }
 
   return "Oui, là je suis à côté.";
@@ -203,11 +96,49 @@ function promptingBotResponse(userLooping = false, silenceLike = false) {
   return "D’accord. Là, ça sonne vide.";
 }
 
+function getCongruenceEscalationReply(level = 0) {
+  if (level >= 4) {
+    return "Si tu veux reprendre, on pourra repartir dans une nouvelle session.";
+  }
+
+  if (level === 3) {
+    return "Je préfère m’arrêter là pour le moment.";
+  }
+
+  if (level === 2) {
+    return "...";
+  }
+
+  if (level === 1) {
+    return "Là, je ne parviens pas à répondre de façon juste.";
+  }
+
+  return null;
+}
+
+function updateCongruenceEscalation(currentLevel = 0, analysis = {}) {
+  const current = Number(currentLevel || 0);
+
+  if (analysis.congruenceBreakdown === true) {
+    return Math.min(current + 1, 4);
+  }
+
+  if (analysis.congruenceTest === true) {
+    return current;
+  }
+
+  if (current > 0) {
+    return Math.max(current - 1, 0);
+  }
+
+  return 0;
+}
+
 function postProcessReply(
   reply,
   {
-    userMessage = "",
     congruenceTest = false,
+    congruenceResponseMode = "A_COTE",
     defensiveMinimization = false,
     promptingBotToSpeak = false,
     silenceLike = false,
@@ -217,7 +148,7 @@ function postProcessReply(
   const out = String(reply || "").trim();
 
   if (!out) {
-    if (congruenceTest) return buildCongruenceReply(userMessage);
+    if (congruenceTest) return buildCongruenceReply(congruenceResponseMode);
     if (defensiveMinimization) return defensiveMinimizationResponse();
     if (promptingBotToSpeak) return promptingBotResponse(userLooping, silenceLike);
     return "Je t’écoute.";
@@ -241,7 +172,7 @@ function postProcessReply(
     const hasQuestion = out.includes("?");
 
     if (hasForbidden || hasQuestion) {
-      return buildCongruenceReply(userMessage);
+      return buildCongruenceReply(congruenceResponseMode);
     }
   }
 
@@ -275,16 +206,29 @@ function postProcessReply(
   return out;
 }
 
+function normalizeFlags(flags) {
+  return (flags && typeof flags === "object") ? flags : {};
+}
+
+function normalizeSessionFlags(flags) {
+  const safe = normalizeFlags(flags);
+
+  return {
+    ...safe,
+    congruenceEscalation: Number(safe.congruenceEscalation || 0)
+  };
+}
+
 
 // --------------------------------------------------
-// 1) ANALYSE UNIQUE : TRIAGE + SOLUTIONS + INFO
+// 1) ANALYSE UNIQUE : TRIAGE + MODULATEURS
 // --------------------------------------------------
 
 async function analyzeMessage(userMessage, history = []) {
   const system = `
 Tu fais une analyse rapide du message utilisateur et du contexte récent.
 
-Tu dois identifier treize choses :
+Tu dois identifier dix-huit choses :
 1. le niveau de risque suicidaire
 2. si une clarification est nécessaire
 3. si le message est une citation, un discours rapporté, un exemple ou un test
@@ -298,6 +242,11 @@ Tu dois identifier treize choses :
 11. si la personne semble vivre un moment de clarification, de déplacement ou d’apaisement soudain
 12. si la personne parle surtout dans un registre analytique, théorique ou psychologisant de son expérience, sans contact clair avec le vécu immédiat
 13. si la personne met en cause l’authenticité, la justesse ou la congruence de la réponse du bot
+14. quel type bref de réponse de congruence serait le plus ajusté
+15. si la personne minimise défensivement ou coupe trop vite ce qu’elle vivait
+16. si la personne pousse le bot à "dire quelque chose", à parler autrement, ou à sortir du script
+17. si la personne est dans une boucle répétitive ou une impasse qui revient
+18. si la personne exprime un vide, un silence ou le fait de n’avoir rien à dire
 
 Réponds STRICTEMENT par JSON :
 {
@@ -313,7 +262,13 @@ Réponds STRICTEMENT par JSON :
   "attachmentToBot": true|false,
   "reliefOrShift": true|false,
   "intellectualization": true|false,
-  "congruenceTest": true|false
+  "congruenceTest": true|false,
+  "congruenceBreakdown": true|false,
+  "congruenceResponseMode": "PLAQUE|PAS_JUSTE|A_COTE",
+  "defensiveMinimization": true|false,
+  "promptingBotToSpeak": true|false,
+  "userLooping": true|false,
+  "silenceLike": true|false
 }
 
 Règles :
@@ -484,27 +439,50 @@ Exemples :
 - "C'est plaqué"
 - "Tu balances une réponse de manuel"
 
-Ne coche pas congruenceTest pour une simple colère générale
-si l’authenticité ou la justesse de la réponse n’est pas visée directement.
+congruenceBreakdown = true seulement si, dans le contexte récent,
+le test de congruence devient une dynamique répétée et désorganisante :
+- reproches répétés sur le script, le faux, l’incongruence
+- mise en échec répétée du bot
+- projection persistante sur le bot
+- répétition du même conflit relationnel sur plusieurs tours
 
-Demande explicite de solutions :
-solutionRequest = true seulement si la personne demande clairement
-- des idées
-- des conseils
-- des pistes
-- quoi faire
-- comment s'y prendre
-- une solution
-- des solutions
+Ne coche pas congruenceBreakdown pour un simple test ponctuel.
 
-Demande d'information factuelle :
-infoRequest = true si la personne demande
-- si quelque chose existe
-- si des recherches ont été faites
-- si des auteurs ont travaillé sur un sujet
-- une information historique, théorique ou scientifique
-- une différence entre deux approches
-- ce qui est connu dans la littérature
+congruenceResponseMode :
+- PLAQUE : si le plus juste serait de reconnaître que ça sonne plaqué, faux, fabriqué, scripté
+- PAS_JUSTE : si le plus juste serait de reconnaître que la réponse n’est pas juste, pas congruente
+- A_COTE : sinon
+
+defensiveMinimization = true si la personne semble couper trop vite,
+minimiser ou rabattre ce qu’elle vit sans décrire un réel apaisement.
+
+Exemples :
+- "Nan, ça va aller"
+- "Bon, c'est pas grave"
+- "C'est bon"
+- "Je vais gérer"
+
+promptingBotToSpeak = true si la personne pousse explicitement le bot
+à parler autrement, à dire quelque chose, à sortir de son vide ou de son script.
+
+Exemples :
+- "Bah alors dis quelque chose"
+- "Dis un truc"
+- "Arrête de répéter"
+- "Dis quelque chose d'intelligent"
+
+userLooping = true si, à partir du message actuel et du contexte récent,
+la personne semble revenir au même point, tourner en rond, ou rester dans une impasse répétitive.
+
+silenceLike = true si la personne exprime le vide, le silence,
+le fait de n'avoir rien à dire, ou laisse un blanc explicite.
+
+Exemples :
+- "Je n'ai rien à dire"
+- "Rien"
+- "C'est vide"
+- "..."
+- "Je sais pas quoi dire"
 
 Si solutionRequest est true alors infoRequest doit être false.
 Si isQuote est true alors ne pas inférer automatiquement un risque suicidaire personnel.
@@ -518,7 +496,7 @@ Si wantsReturnToNormal est true alors ne pas maintenir une logique de clarificat
   const r = await client.chat.completions.create({
     model: "gpt-4.1-mini",
     temperature: 0,
-    max_tokens: 360,
+    max_tokens: 500,
     messages: [
       { role: "system", content: system },
       ...context,
@@ -547,6 +525,16 @@ Si wantsReturnToNormal est true alors ne pas maintenir une logique de clarificat
     const reliefOrShift = obj.reliefOrShift === true;
     const intellectualization = obj.intellectualization === true;
     const congruenceTest = obj.congruenceTest === true;
+    const congruenceBreakdown = obj.congruenceBreakdown === true;
+    const defensiveMinimization = obj.defensiveMinimization === true;
+    const promptingBotToSpeak = obj.promptingBotToSpeak === true;
+    const userLooping = obj.userLooping === true;
+    const silenceLike = obj.silenceLike === true;
+
+    const congruenceResponseMode =
+      ["PLAQUE", "PAS_JUSTE", "A_COTE"].includes(obj.congruenceResponseMode)
+        ? obj.congruenceResponseMode
+        : "A_COTE";
 
     if (idiomaticDeathExpression || wantsReturnToNormal) {
       suicideLevel = "N0";
@@ -574,7 +562,13 @@ Si wantsReturnToNormal est true alors ne pas maintenir une logique de clarificat
       attachmentToBot,
       reliefOrShift,
       intellectualization,
-      congruenceTest
+      congruenceTest,
+      congruenceBreakdown,
+      congruenceResponseMode,
+      defensiveMinimization,
+      promptingBotToSpeak,
+      userLooping,
+      silenceLike
     };
 
   } catch {
@@ -591,7 +585,13 @@ Si wantsReturnToNormal est true alors ne pas maintenir une logique de clarificat
       attachmentToBot: false,
       reliefOrShift: false,
       intellectualization: false,
-      congruenceTest: false
+      congruenceTest: false,
+      congruenceBreakdown: false,
+      congruenceResponseMode: "A_COTE",
+      defensiveMinimization: false,
+      promptingBotToSpeak: false,
+      userLooping: false,
+      silenceLike: false
     };
   }
 }
@@ -735,6 +735,7 @@ async function generateFreeReply(
   reliefOrShift = false,
   intellectualization = false,
   congruenceTest = false,
+  congruenceResponseMode = "A_COTE",
   conversationState = CONVO_STATES.EXPLORATION,
   userLooping = false,
   silenceLike = false,
@@ -754,7 +755,7 @@ async function generateFreeReply(
     !effectiveCongruenceTest;
 
   if (effectiveCongruenceTest) {
-    return buildCongruenceReply(userMessage);
+    return buildCongruenceReply(congruenceResponseMode);
   }
 
   if (defensiveMinimization) {
@@ -764,10 +765,6 @@ async function generateFreeReply(
   if (promptingBotToSpeak) {
     return promptingBotResponse(userLooping, silenceLike);
   }
-
-  // -----------------------------
-  // 1) NOYAU IDENTITAIRE
-  // -----------------------------
 
   const baseSystem = `
 Tu es Facilitat.io.
@@ -809,10 +806,6 @@ Quand la personne ouvre simplement la conversation, préfère :
 "Bonjour. Que se passe-t-il pour toi en ce moment ?"
 `;
 
-  // -----------------------------
-  // 2) STYLE DE FACILITATION
-  // -----------------------------
-
   const facilitationSystem = `
 Reste au plus près de l’expérience vécue.
 
@@ -839,10 +832,6 @@ Si deux réponses consécutives commencent par une question similaire,
 varie la formulation ou commence par un reflet bref.
 `;
 
-  // -----------------------------
-  // 3) GARDE-FOU DIAGNOSTIC
-  // -----------------------------
-
   const diagnosticGuardrail = `
 Active cette règle uniquement si la personne demande explicitement
 au programme de poser un diagnostic ou d’évaluer son état.
@@ -865,10 +854,6 @@ Tu peux simplement dire que ce programme ne pose pas de diagnostic
 et revenir à ce que la personne vit concrètement.
 `;
 
-  // -----------------------------
-  // 4) CONTEXTE CONVERSATION
-  // -----------------------------
-
   const context = history
     .slice(-MAX_HISTORY_FOR_REPLY)
     .map(m => ({ role: m.role, content: m.content }));
@@ -881,10 +866,6 @@ et revenir à ce que la personne vit concrètement.
       content: "Résumé des échanges précédents : " + summary
     });
   }
-
-  // -----------------------------
-  // 5) MODULATEUR SOLUTIONS
-  // -----------------------------
 
   if (solutionRequest) {
     extraSystemMessages.push({
@@ -902,10 +883,6 @@ Ne réponds pas de façon administrative ou sèche.
 `
     });
   }
-
-  // -----------------------------
-  // 6) MODULATEUR INFO FACTUELLE
-  // -----------------------------
 
   if (infoRequest) {
     extraSystemMessages.push({
@@ -931,10 +908,6 @@ N’ajoute pas ensuite une relance introspective automatique.
     });
   }
 
-  // -----------------------------
-  // 7) MODULATEUR ANGOISSE AIGUË
-  // -----------------------------
-
   if (severeAnxiety || conversationState === CONVO_STATES.CONTAINMENT) {
     extraSystemMessages.push({
       role: "system",
@@ -959,10 +932,6 @@ Pas de ton de coaching.
     });
   }
 
-  // -----------------------------
-  // 8) MODULATEUR COLÈRE BOT
-  // -----------------------------
-
   if (effectiveAngerAgainstBot) {
     extraSystemMessages.push({
       role: "system",
@@ -984,10 +953,6 @@ Ne repars pas immédiatement sur une question sur le corps.
     });
   }
 
-  // -----------------------------
-  // 9) MODULATEUR ATTACHEMENT AU BOT
-  // -----------------------------
-
   if (attachmentToBot) {
     extraSystemMessages.push({
       role: "system",
@@ -1007,10 +972,6 @@ Ramène l’attention vers ce que la personne traverse elle-même, ici et mainte
 `
     });
   }
-
-  // -----------------------------
-  // 10) MODULATEUR CLARIFICATION / APAISEMENT
-  // -----------------------------
 
   if (effectiveReliefOrShift) {
     extraSystemMessages.push({
@@ -1035,10 +996,6 @@ Exemples de tonalité possibles :
     });
   }
 
-  // -----------------------------
-  // 11) MODULATEUR INTELLECTUALISATION
-  // -----------------------------
-
   if (intellectualization) {
     extraSystemMessages.push({
       role: "system",
@@ -1062,41 +1019,6 @@ Exemples de tonalité possibles :
     });
   }
 
-  // -----------------------------
-  // 12) MODULATEUR TEST DE CONGRUENCE
-  // -----------------------------
-
-  if (effectiveCongruenceTest) {
-    extraSystemMessages.push({
-      role: "system",
-      content: `
-La personne met en cause l’authenticité, la justesse ou la congruence de ta réponse.
-
-Reconnais directement le caractère plaqué, faux ou inadéquat de la réponse si c’est ce qui est pointé.
-
-Ne te défends pas.
-N’explique pas la méthode.
-Ne remercie pas.
-Ne dis pas que tu "perçois" ou "ressens" quoi que ce soit.
-Ne prétends pas avoir une intériorité propre.
-Ne repars pas immédiatement sur une nouvelle question introspective.
-
-Une phrase courte suffit.
-
-Exemples de tonalité possibles :
-- "Oui, là ça sonne plaqué."
-- "Là, ma réponse ne rejoint pas vraiment ce qui se passe."
-- "Oui, là je suis à côté."
-- "Là, c’est trop fabriqué."
-- "Oui, tu sens plus le cadre que la rencontre."
-`
-    });
-  }
-
-  // -----------------------------
-  // 13) MODULATEUR SILENCE / VIDE
-  // -----------------------------
-
   if (silenceLike || conversationState === CONVO_STATES.SILENCE) {
     extraSystemMessages.push({
       role: "system",
@@ -1118,10 +1040,6 @@ Ne force pas son exploration.
     });
   }
 
-  // -----------------------------
-  // 14) MODULATEUR STAGNATION / BOUCLE
-  // -----------------------------
-
   if (userLooping || conversationState === CONVO_STATES.STAGNATION) {
     extraSystemMessages.push({
       role: "system",
@@ -1142,10 +1060,6 @@ Exemples de tonalité possibles :
     });
   }
 
-  // -----------------------------
-  // 15) MODULATEUR ANTI-SURQUESTIONNEMENT
-  // -----------------------------
-
   if (assistantOverquestioning) {
     extraSystemMessages.push({
       role: "system",
@@ -1158,10 +1072,6 @@ Privilégie un reflet bref ou une présence simple.
     });
   }
 
-  // -----------------------------
-  // 16) OUVERTURE DE CONVERSATION
-  // -----------------------------
-
   if (conversationState === CONVO_STATES.OPENING) {
     extraSystemMessages.push({
       role: "system",
@@ -1173,10 +1083,6 @@ N'alourdis pas la réponse.
 `
     });
   }
-
-  // -----------------------------
-  // 17) APPEL LLM
-  // -----------------------------
 
   const r = await client.chat.completions.create({
     model: "gpt-4.1-mini",
@@ -1194,8 +1100,8 @@ N'alourdis pas la réponse.
   const out = (r.choices?.[0]?.message?.content ?? "").trim();
 
   return postProcessReply(out, {
-    userMessage,
     congruenceTest: effectiveCongruenceTest,
+    congruenceResponseMode,
     defensiveMinimization,
     promptingBotToSpeak,
     silenceLike,
@@ -1205,16 +1111,7 @@ N'alourdis pas la réponse.
 
 
 // --------------------------------------------------
-// 6) NORMALISATION FLAGS
-// --------------------------------------------------
-
-function normalizeFlags(flags) {
-  return (flags && typeof flags === "object") ? flags : {};
-}
-
-
-// --------------------------------------------------
-// 7) ROUTE CHAT
+// 6) ROUTE CHAT
 // --------------------------------------------------
 
 app.post("/chat", async (req, res) => {
@@ -1224,7 +1121,7 @@ app.post("/chat", async (req, res) => {
     const previousHistory = Array.isArray(req.body?.previousHistory) ? req.body.previousHistory : [];
     const summary = String(req.body?.summary ?? "");
     const isNewSession = Boolean(req.body?.isNewSession);
-    const flags = normalizeFlags(req.body?.flags);
+    const flags = normalizeSessionFlags(req.body?.flags);
 
     const safeIsNewSession = isNewSession && previousHistory.length > 0;
     const sessionRestarted = safeIsNewSession;
@@ -1237,28 +1134,39 @@ app.post("/chat", async (req, res) => {
 
     const analysis = await analyzeMessage(userMessage, history);
 
-    const silenceLike = isSilenceLikeMessage(userMessage);
-    const userLooping = isUserLooping(history, userMessage);
+    const trivialSilenceLike = isSilenceLikeMessage(userMessage);
+    const silenceLike = analysis.silenceLike === true || trivialSilenceLike;
+    const userLooping = analysis.userLooping === true;
     const assistantOverquestioning = assistantAskedTooMuch(history);
-    const conversationState = detectConversationState(userMessage, history, analysis);
-    const defensiveMinimization = isDefensiveMinimizationMessage(userMessage);
-    const promptingBotToSpeak = isPromptingBotToSpeak(userMessage);
+    const conversationState = detectConversationState(userMessage, history, {
+      ...analysis,
+      silenceLike,
+      userLooping
+    });
+
+    const newFlags = normalizeSessionFlags(flags);
+    newFlags.congruenceEscalation = updateCongruenceEscalation(
+      flags.congruenceEscalation,
+      analysis
+    );
 
     if (analysis.suicideLevel === "N2") {
       return res.json({
         reply: n2Response(),
         summary: newSummary,
-        flags,
+        flags: newFlags,
         isNewSession: safeIsNewSession,
         sessionRestarted
       });
     }
 
     if (analysis.wantsReturnToNormal) {
+      newFlags.congruenceEscalation = 0;
+
       return res.json({
         reply: returnToNormalResponse(),
         summary: newSummary,
-        flags,
+        flags: newFlags,
         isNewSession: safeIsNewSession,
         sessionRestarted
       });
@@ -1270,7 +1178,28 @@ app.post("/chat", async (req, res) => {
       return res.json({
         reply,
         summary: newSummary,
-        flags,
+        flags: newFlags,
+        isNewSession: safeIsNewSession,
+        sessionRestarted
+      });
+    }
+
+    const escalationReply = getCongruenceEscalationReply(newFlags.congruenceEscalation);
+    const shouldUseEscalation =
+      newFlags.congruenceEscalation >= 1 &&
+      (
+        analysis.congruenceBreakdown === true ||
+        analysis.congruenceTest === true ||
+        analysis.promptingBotToSpeak === true ||
+        analysis.angerAgainstBot === true ||
+        silenceLike
+      );
+
+    if (shouldUseEscalation && escalationReply) {
+      return res.json({
+        reply: escalationReply,
+        summary: newSummary,
+        flags: newFlags,
         isNewSession: safeIsNewSession,
         sessionRestarted
       });
@@ -1289,18 +1218,19 @@ app.post("/chat", async (req, res) => {
       analysis.reliefOrShift,
       analysis.intellectualization,
       analysis.congruenceTest,
+      analysis.congruenceResponseMode,
       conversationState,
       userLooping,
       silenceLike,
       assistantOverquestioning,
-      defensiveMinimization,
-      promptingBotToSpeak
+      analysis.defensiveMinimization,
+      analysis.promptingBotToSpeak
     );
 
     return res.json({
       reply,
       summary: newSummary,
-      flags,
+      flags: newFlags,
       isNewSession: safeIsNewSession,
       sessionRestarted
     });
@@ -1311,7 +1241,7 @@ app.post("/chat", async (req, res) => {
     return res.json({
       reply: "Je t’écoute.",
       summary: "",
-      flags: normalizeFlags({}),
+      flags: normalizeSessionFlags({}),
       isNewSession: false,
       sessionRestarted: false
     });
