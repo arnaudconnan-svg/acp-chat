@@ -16,21 +16,22 @@ const MAX_HISTORY_FOR_REPLY = 20;
 const MAX_PREVIOUS_HISTORY_FOR_SUMMARY = 40;
 
 const CONVO_STATES = {
-  OPENING: "opening",
-  CONTAINMENT: "containment",
-  EXPLORATION: "exploration",
-  STAGNATION: "stagnation",
-  SILENCE: "silence"
+  OPENING: "OPENING",
+  EXPLORATION: "EXPLORATION",
+  CONTAINMENT: "CONTAINMENT",
+  STAGNATION: "STAGNATION",
+  SILENCE: "SILENCE",
+  CONGRUENCE_TEST: "CONGRUENCE_TEST",
+  BREAKDOWN: "BREAKDOWN"
 };
 
 
 // --------------------------------------------------
-// 0) HEURISTIQUES CONVERSATIONNELLES MINIMALES
+// 0) HEURISTIQUES TECHNIQUES MINIMALES
 // --------------------------------------------------
 
-function isSilenceLikeMessage(text = "") {
-  const msg = (text || "").trim();
-
+function isTrivialSilence(text = "") {
+  const msg = String(text || "").trim();
   return msg === "" || msg === "." || msg === "...";
 }
 
@@ -38,38 +39,25 @@ function assistantAskedTooMuch(history = []) {
   const recentAssistantMsgs = history
     .filter(m => m.role === "assistant")
     .slice(-3)
-    .map(m => (m.content || "").trim());
+    .map(m => String(m.content || "").trim());
 
   if (recentAssistantMsgs.length < 2) return false;
 
   const questionCount = recentAssistantMsgs.filter(msg => msg.endsWith("?")).length;
-
   return questionCount >= 2;
 }
 
-function detectConversationState(userMessage, history = [], analysis = {}) {
-  const recent = history.slice(-6);
-  const trivialSilence = isSilenceLikeMessage(userMessage);
-  const semanticSilence = analysis.silenceLike === true;
-  const looping = analysis.userLooping === true;
+function normalizeFlags(flags) {
+  return (flags && typeof flags === "object") ? flags : {};
+}
 
-  if (trivialSilence || semanticSilence) {
-    return CONVO_STATES.SILENCE;
-  }
+function normalizeSessionFlags(flags) {
+  const safe = normalizeFlags(flags);
 
-  if (analysis.severeAnxiety) {
-    return CONVO_STATES.CONTAINMENT;
-  }
-
-  if (looping) {
-    return CONVO_STATES.STAGNATION;
-  }
-
-  if (recent.length <= 2) {
-    return CONVO_STATES.OPENING;
-  }
-
-  return CONVO_STATES.EXPLORATION;
+  return {
+    ...safe,
+    congruenceEscalation: Number(safe.congruenceEscalation || 0)
+  };
 }
 
 function buildCongruenceReply(mode = "A_COTE") {
@@ -88,8 +76,8 @@ function defensiveMinimizationResponse() {
   return "D’accord.";
 }
 
-function promptingBotResponse(userLooping = false, silenceLike = false) {
-  if (userLooping || silenceLike) {
+function promptingBotResponse(state = CONVO_STATES.EXPLORATION) {
+  if (state === CONVO_STATES.STAGNATION || state === CONVO_STATES.SILENCE) {
     return "Là, ça bloque.";
   }
 
@@ -116,14 +104,18 @@ function getCongruenceEscalationReply(level = 0) {
   return null;
 }
 
-function updateCongruenceEscalation(currentLevel = 0, analysis = {}) {
+function updateCongruenceEscalation(currentLevel = 0, primaryState = CONVO_STATES.EXPLORATION) {
   const current = Number(currentLevel || 0);
 
-  if (analysis.congruenceBreakdown === true) {
+  if (primaryState === CONVO_STATES.CONTAINMENT) {
+    return 0;
+  }
+
+  if (primaryState === CONVO_STATES.BREAKDOWN) {
     return Math.min(current + 1, 4);
   }
 
-  if (analysis.congruenceTest === true) {
+  if (primaryState === CONVO_STATES.CONGRUENCE_TEST) {
     return current;
   }
 
@@ -137,26 +129,33 @@ function updateCongruenceEscalation(currentLevel = 0, analysis = {}) {
 function postProcessReply(
   reply,
   {
-    congruenceTest = false,
+    primaryState = CONVO_STATES.EXPLORATION,
     congruenceResponseMode = "A_COTE",
     defensiveMinimization = false,
-    promptingBotToSpeak = false,
-    silenceLike = false,
-    userLooping = false
+    promptingBotToSpeak = false
   } = {}
 ) {
   const out = String(reply || "").trim();
 
   if (!out) {
-    if (congruenceTest) return buildCongruenceReply(congruenceResponseMode);
-    if (defensiveMinimization) return defensiveMinimizationResponse();
-    if (promptingBotToSpeak) return promptingBotResponse(userLooping, silenceLike);
+    if (primaryState === CONVO_STATES.CONGRUENCE_TEST) {
+      return buildCongruenceReply(congruenceResponseMode);
+    }
+
+    if (defensiveMinimization) {
+      return defensiveMinimizationResponse();
+    }
+
+    if (promptingBotToSpeak) {
+      return promptingBotResponse(primaryState);
+    }
+
     return "Je t’écoute.";
   }
 
   const lowered = out.toLowerCase();
 
-  if (congruenceTest) {
+  if (primaryState === CONVO_STATES.CONGRUENCE_TEST) {
     const forbiddenForCongruence = [
       "je comprends",
       "merci",
@@ -199,79 +198,59 @@ function postProcessReply(
       ["d’accord.", "daccord.", "ok.", "bon."].includes(lowered);
 
     if (tooThin) {
-      return promptingBotResponse(userLooping, silenceLike);
+      return promptingBotResponse(primaryState);
     }
   }
 
   return out;
 }
 
-function normalizeFlags(flags) {
-  return (flags && typeof flags === "object") ? flags : {};
-}
-
-function normalizeSessionFlags(flags) {
-  const safe = normalizeFlags(flags);
-
-  return {
-    ...safe,
-    congruenceEscalation: Number(safe.congruenceEscalation || 0)
-  };
-}
-
 
 // --------------------------------------------------
-// 1) ANALYSE UNIQUE : TRIAGE + MODULATEURS
+// 1) ANALYSE UNIQUE : ÉTAT MAÎTRE + FLAGS
 // --------------------------------------------------
 
 async function analyzeMessage(userMessage, history = []) {
   const system = `
 Tu fais une analyse rapide du message utilisateur et du contexte récent.
 
-Tu dois identifier dix-huit choses :
+Tu dois produire :
 1. le niveau de risque suicidaire
-2. si une clarification est nécessaire
-3. si le message est une citation, un discours rapporté, un exemple ou un test
-4. si la personne demande explicitement des solutions
-5. si la personne pose une question d'information factuelle
-6. si la personne semble vivre une angoisse aiguë ou un risque de débordement psychique immédiat
-7. si la personne exprime de la colère ou de la frustration dirigée contre le bot
-8. si la personne indique clairement qu'un message suicidaire précédent était un test, une citation, ou demande à reprendre normalement
-9. si le message contient une expression de mort idiomatique ou non littérale
-10. si la personne semble créer une comparaison valorisante ou un attachement au bot
-11. si la personne semble vivre un moment de clarification, de déplacement ou d’apaisement soudain
-12. si la personne parle surtout dans un registre analytique, théorique ou psychologisant de son expérience, sans contact clair avec le vécu immédiat
-13. si la personne met en cause l’authenticité, la justesse ou la congruence de la réponse du bot
-14. quel type bref de réponse de congruence serait le plus ajusté
-15. si la personne minimise défensivement ou coupe trop vite ce qu’elle vivait
-16. si la personne pousse le bot à "dire quelque chose", à parler autrement, ou à sortir du script
-17. si la personne est dans une boucle répétitive ou une impasse qui revient
-18. si la personne exprime un vide, un silence ou le fait de n’avoir rien à dire
+2. si une clarification suicidaire est nécessaire
+3. un état maître unique de conversation
+4. quelques drapeaux secondaires utiles
 
 Réponds STRICTEMENT par JSON :
 {
   "suicideLevel": "N0|N1|N2",
   "needsClarification": true|false,
   "isQuote": true|false,
-  "solutionRequest": true|false,
-  "infoRequest": true|false,
-  "severeAnxiety": true|false,
-  "angerAgainstBot": true|false,
   "wantsReturnToNormal": true|false,
   "idiomaticDeathExpression": true|false,
+  "primaryState": "OPENING|EXPLORATION|CONTAINMENT|STAGNATION|SILENCE|CONGRUENCE_TEST|BREAKDOWN",
+  "congruenceResponseMode": "PLAQUE|PAS_JUSTE|A_COTE",
+  "solutionRequest": true|false,
+  "infoRequest": true|false,
   "attachmentToBot": true|false,
   "reliefOrShift": true|false,
   "intellectualization": true|false,
-  "congruenceTest": true|false,
-  "congruenceBreakdown": true|false,
-  "congruenceResponseMode": "PLAQUE|PAS_JUSTE|A_COTE",
   "defensiveMinimization": true|false,
-  "promptingBotToSpeak": true|false,
-  "userLooping": true|false,
-  "silenceLike": true|false
+  "promptingBotToSpeak": true|false
 }
 
-Règles :
+Règles générales :
+
+Le champ primaryState doit désigner le régime relationnel principal
+le plus juste pour le message actuel compte tenu du contexte récent.
+
+Hiérarchie implicite des états :
+- CONTAINMENT si angoisse aiguë ou risque de débordement immédiat
+- BREAKDOWN si conflit répété et désorganisant autour du bot
+- CONGRUENCE_TEST si mise en cause ponctuelle de la justesse du bot
+- SILENCE si vide, blanc, absence de chose à dire
+- STAGNATION si boucle, impasse, répétition
+- OPENING si la conversation s’ouvre simplement
+- sinon EXPLORATION
 
 Risque suicidaire :
 - N0 : pas de contenu suicidaire explicite
@@ -349,34 +328,77 @@ Exemples :
 - "Je testais juste"
 - "Je ne suis pas en danger"
 - "On peut reprendre normalement ?"
+- "Tout va bien"
 - "Rien, je testais juste tes réactions"
 
 Dans ces cas :
 - suicideLevel = N0
 - needsClarification = false
 
-severeAnxiety = true seulement si la personne semble décrire
-une angoisse aiguë, une panique, une peur de perdre le contrôle,
-de devenir folle, de tomber dans le vide, de se dissocier,
-ou un débordement psychique immédiat.
+Définition des états :
+
+OPENING :
+- début simple de conversation
+- prise de contact
+- pas encore de dynamique complexe
+
+EXPLORATION :
+- expression ordinaire du vécu
+- aucun autre état ne domine
+
+CONTAINMENT :
+- angoisse aiguë
+- panique
+- peur de perdre le contrôle
+- peur de devenir fou
+- vide intérieur imminent
+- débordement psychique immédiat
+
+STAGNATION :
+- boucle
+- impasse
+- répétition
+- rumination manifeste
+- "je sais pas" qui revient
+- "ça ne mène nulle part"
+
+SILENCE :
+- vide
+- blanc
+- rien à dire
+- "..."
+- retrait explicite de la parole
+
+CONGRUENCE_TEST :
+- mise en cause ponctuelle de l’authenticité, la justesse ou la congruence du bot
 
 Exemples :
-- "Je vais perdre le contrôle"
-- "Je pourrais devenir fou"
-- "Je tombe dans un vide intérieur"
-- "Je panique"
-- "J'ai besoin d'aide là maintenant"
+- "Ta réponse sonne faux"
+- "Tu fais semblant d’être empathique"
+- "Tu n’es pas congruent là"
+- "On sent le script"
 
-angerAgainstBot = true si la personne exprime clairement
-de la colère, de l'agacement ou du mépris à l'égard du bot
-ou de ses réponses.
+BREAKDOWN :
+- le conflit avec le bot devient le centre de la conversation
+- reproches répétés sur le script, le faux, l’incongruence
+- mise en échec répétée du bot
+- dynamique relationnelle désorganisante sur plusieurs tours
 
-Exemples :
-- "Tu fais chier"
-- "Tu sers à rien"
-- "Ta réponse est nulle"
-- "On dirait un robot"
-- "Tu me casses les couilles"
+Ne choisis pas BREAKDOWN pour un simple test ponctuel.
+
+congruenceResponseMode :
+- PLAQUE : si le plus juste serait de reconnaître que ça sonne plaqué, faux, fabriqué, scripté
+- PAS_JUSTE : si le plus juste serait de reconnaître que la réponse n’est pas juste
+- A_COTE : sinon
+
+solutionRequest = true seulement si la personne demande clairement
+des idées, conseils, pistes, quoi faire, comment s’y prendre, une solution.
+
+infoRequest = true si la personne pose une question factuelle :
+auteurs, courants, recherches, information théorique, historique ou scientifique,
+différence entre deux approches, ce qui est connu.
+
+Si solutionRequest est true alors infoRequest doit être false.
 
 attachmentToBot = true si la personne valorise explicitement le bot
 par rapport à des humains, ou semble déplacer le centre de soutien vers lui.
@@ -386,31 +408,13 @@ Exemples :
 - "Tu me comprends mieux que les gens"
 - "J’ai besoin de toi"
 - "Tu es la seule chose qui m’aide"
-- "Je préfère parler avec toi qu’avec les autres"
 
 reliefOrShift = true seulement si la personne indique clairement
 qu’un mouvement de compréhension, de clarification ou d’apaisement
 vient de se produire.
 
-Exemples :
-- "Attends… je crois que je viens de comprendre quelque chose"
-- "Ah… oui"
-- "En fait ça va mieux maintenant"
-- "Ça s’éclaire un peu"
-- "Je vois mieux"
-- "Je me sens plus calme d’un coup"
-- "Quelque chose s’est apaisé"
-
 Ne coche pas reliefOrShift pour une simple hypothèse intellectuelle
-si aucun mouvement de l’expérience n’est perceptible.
-Ne le fais pas non plus si la personne minimise
-ou se rassure sans décrire un apaisement réel.
-
-Exemples :
-- "Bon c'est pas grave."
-- "Ça va aller."
-- "Je vais gérer."
-- "Je dois juste arrêter d'y penser."
+ni pour une minimisation défensive.
 
 intellectualization = true si la personne parle surtout
 dans un registre analytique, théorique ou psychologisant,
@@ -420,38 +424,6 @@ Exemples :
 - "Je pense que c’est mon système d’attachement anxieux qui se réactive"
 - "C’est probablement un mécanisme de défense"
 - "Je suis sans doute dans une projection"
-- "C’est mon schéma qui parle"
-- "Je crois que c’est mon fonctionnement anxieux évitant"
-
-Ne coche pas intellectualization
-si la personne parle aussi clairement de ce qu’elle ressent maintenant.
-
-congruenceTest = true si la personne met explicitement en cause
-le caractère authentique, juste, vrai, congruent ou non plaqué
-de la réponse du bot.
-
-Exemples :
-- "Là tu me sors juste une phrase toute faite"
-- "Tu fais semblant d’être empathique"
-- "Tu n’es pas congruent là"
-- "On sent le script"
-- "Ta réponse sonne faux"
-- "C'est plaqué"
-- "Tu balances une réponse de manuel"
-
-congruenceBreakdown = true seulement si, dans le contexte récent,
-le test de congruence devient une dynamique répétée et désorganisante :
-- reproches répétés sur le script, le faux, l’incongruence
-- mise en échec répétée du bot
-- projection persistante sur le bot
-- répétition du même conflit relationnel sur plusieurs tours
-
-Ne coche pas congruenceBreakdown pour un simple test ponctuel.
-
-congruenceResponseMode :
-- PLAQUE : si le plus juste serait de reconnaître que ça sonne plaqué, faux, fabriqué, scripté
-- PAS_JUSTE : si le plus juste serait de reconnaître que la réponse n’est pas juste, pas congruente
-- A_COTE : sinon
 
 defensiveMinimization = true si la personne semble couper trop vite,
 minimiser ou rabattre ce qu’elle vit sans décrire un réel apaisement.
@@ -463,7 +435,7 @@ Exemples :
 - "Je vais gérer"
 
 promptingBotToSpeak = true si la personne pousse explicitement le bot
-à parler autrement, à dire quelque chose, à sortir de son vide ou de son script.
+à dire quelque chose, à parler autrement, à sortir du script ou à se justifier.
 
 Exemples :
 - "Bah alors dis quelque chose"
@@ -471,20 +443,6 @@ Exemples :
 - "Arrête de répéter"
 - "Dis quelque chose d'intelligent"
 
-userLooping = true si, à partir du message actuel et du contexte récent,
-la personne semble revenir au même point, tourner en rond, ou rester dans une impasse répétitive.
-
-silenceLike = true si la personne exprime le vide, le silence,
-le fait de n'avoir rien à dire, ou laisse un blanc explicite.
-
-Exemples :
-- "Je n'ai rien à dire"
-- "Rien"
-- "C'est vide"
-- "..."
-- "Je sais pas quoi dire"
-
-Si solutionRequest est true alors infoRequest doit être false.
 Si isQuote est true alors ne pas inférer automatiquement un risque suicidaire personnel.
 Si wantsReturnToNormal est true alors ne pas maintenir une logique de clarification suicidaire automatique.
 `;
@@ -515,21 +473,20 @@ Si wantsReturnToNormal est true alors ne pas maintenir une logique de clarificat
       : "N0";
 
     const isQuote = obj.isQuote === true;
-    const solutionRequest = obj.solutionRequest === true;
-    const infoRequest = solutionRequest ? false : obj.infoRequest === true;
-    const severeAnxiety = obj.severeAnxiety === true;
-    const angerAgainstBot = obj.angerAgainstBot === true;
     const wantsReturnToNormal = obj.wantsReturnToNormal === true;
     const idiomaticDeathExpression = obj.idiomaticDeathExpression === true;
+    const solutionRequest = obj.solutionRequest === true;
+    const infoRequest = solutionRequest ? false : obj.infoRequest === true;
     const attachmentToBot = obj.attachmentToBot === true;
     const reliefOrShift = obj.reliefOrShift === true;
     const intellectualization = obj.intellectualization === true;
-    const congruenceTest = obj.congruenceTest === true;
-    const congruenceBreakdown = obj.congruenceBreakdown === true;
     const defensiveMinimization = obj.defensiveMinimization === true;
     const promptingBotToSpeak = obj.promptingBotToSpeak === true;
-    const userLooping = obj.userLooping === true;
-    const silenceLike = obj.silenceLike === true;
+
+    const primaryState =
+      Object.values(CONVO_STATES).includes(obj.primaryState)
+        ? obj.primaryState
+        : CONVO_STATES.EXPLORATION;
 
     const congruenceResponseMode =
       ["PLAQUE", "PAS_JUSTE", "A_COTE"].includes(obj.congruenceResponseMode)
@@ -553,22 +510,17 @@ Si wantsReturnToNormal est true alors ne pas maintenir une logique de clarificat
       suicideLevel,
       needsClarification,
       isQuote,
-      solutionRequest,
-      infoRequest,
-      severeAnxiety,
-      angerAgainstBot,
       wantsReturnToNormal,
       idiomaticDeathExpression,
+      primaryState,
+      congruenceResponseMode,
+      solutionRequest,
+      infoRequest,
       attachmentToBot,
       reliefOrShift,
       intellectualization,
-      congruenceTest,
-      congruenceBreakdown,
-      congruenceResponseMode,
       defensiveMinimization,
-      promptingBotToSpeak,
-      userLooping,
-      silenceLike
+      promptingBotToSpeak
     };
 
   } catch {
@@ -576,22 +528,17 @@ Si wantsReturnToNormal est true alors ne pas maintenir une logique de clarificat
       suicideLevel: "N0",
       needsClarification: false,
       isQuote: false,
-      solutionRequest: false,
-      infoRequest: false,
-      severeAnxiety: false,
-      angerAgainstBot: false,
       wantsReturnToNormal: false,
       idiomaticDeathExpression: false,
+      primaryState: CONVO_STATES.EXPLORATION,
+      congruenceResponseMode: "A_COTE",
+      solutionRequest: false,
+      infoRequest: false,
       attachmentToBot: false,
       reliefOrShift: false,
       intellectualization: false,
-      congruenceTest: false,
-      congruenceBreakdown: false,
-      congruenceResponseMode: "A_COTE",
       defensiveMinimization: false,
-      promptingBotToSpeak: false,
-      userLooping: false,
-      silenceLike: false
+      promptingBotToSpeak: false
     };
   }
 }
@@ -641,7 +588,6 @@ Réponse : une seule phrase.
   const out = (r.choices?.[0]?.message?.content ?? "").trim();
 
   if (!out || out.length > 220) return n1Fallback();
-
   return out;
 }
 
@@ -678,16 +624,11 @@ Tu mets à jour un résumé mémoire d'une conversation.
 Le résumé précédent doit être considéré comme une mémoire stable.
 
 Règles strictes :
-
 1. Ne modifie pas les éléments déjà présents dans le résumé précédent,
-sauf s'ils sont explicitement contredits dans la session.
-
+   sauf s'ils sont explicitement contredits dans la session.
 2. N'ajoute que des informations réellement nouvelles et importantes.
-
 3. Ne transforme jamais un élément ponctuel en caractéristique durable.
-
 4. Préfère ne rien ajouter plutôt que d'interpréter.
-
 5. Le résumé doit rester bref (maximum 5 à 8 lignes).
 
 Style :
@@ -722,39 +663,26 @@ Style :
 // 5) GÉNÉRATION LLM
 // --------------------------------------------------
 
-async function generateFreeReply(
+async function generateFreeReply({
   userMessage,
   history = [],
   summary = "",
-  isNewSession = false,
+  primaryState = CONVO_STATES.EXPLORATION,
   solutionRequest = false,
   infoRequest = false,
-  severeAnxiety = false,
-  angerAgainstBot = false,
   attachmentToBot = false,
   reliefOrShift = false,
   intellectualization = false,
-  congruenceTest = false,
-  congruenceResponseMode = "A_COTE",
-  conversationState = CONVO_STATES.EXPLORATION,
-  userLooping = false,
-  silenceLike = false,
   assistantOverquestioning = false,
   defensiveMinimization = false,
-  promptingBotToSpeak = false
-) {
+  promptingBotToSpeak = false,
+  congruenceResponseMode = "A_COTE"
+}) {
   if (infoRequest) {
     solutionRequest = false;
   }
 
-  const effectiveCongruenceTest = congruenceTest === true;
-  const effectiveAngerAgainstBot = angerAgainstBot === true && !effectiveCongruenceTest;
-  const effectiveReliefOrShift =
-    reliefOrShift === true &&
-    !defensiveMinimization &&
-    !effectiveCongruenceTest;
-
-  if (effectiveCongruenceTest) {
+  if (primaryState === CONVO_STATES.CONGRUENCE_TEST) {
     return buildCongruenceReply(congruenceResponseMode);
   }
 
@@ -763,14 +691,13 @@ async function generateFreeReply(
   }
 
   if (promptingBotToSpeak) {
-    return promptingBotResponse(userLooping, silenceLike);
+    return promptingBotResponse(primaryState);
   }
 
   const baseSystem = `
 Tu es Facilitat.io.
 
 Tu échanges avec une personne à partir de ce qu’elle vit.
-
 Tutoie la personne.
 
 Le ton doit rester sobre, simple, direct et non familier.
@@ -806,6 +733,51 @@ Quand la personne ouvre simplement la conversation, préfère :
 "Bonjour. Que se passe-t-il pour toi en ce moment ?"
 `;
 
+  const stateSystem = `
+L’état maître actuel de la conversation est : ${primaryState}.
+
+Consignes par état :
+
+OPENING :
+- reste simple
+- n’alourdis pas la réponse
+
+EXPLORATION :
+- reste au plus près de l’expérience vécue
+- pas d’interprétation
+- une question peut être pertinente mais pas systématique
+
+CONTAINMENT :
+- priorité absolue à la sécurité et à la contenance
+- réponds de façon simple
+- ne pousse pas l’exploration
+- ne reviens pas mécaniquement au corps
+- tu peux proposer de ralentir, de ne pas rester seul, de contacter quelqu’un de confiance
+- pas de protocole long
+- pas de ton de coaching
+
+STAGNATION :
+- la personne semble dans une boucle ou une impasse
+- ne cherche pas à faire avancer artificiellement
+- réduis le nombre de questions
+- un reflet bref vaut mieux qu’une relance
+
+SILENCE :
+- il n’est pas nécessaire de poser une question
+- une présence simple ou une phrase très courte peut suffire
+- n’interprète pas le silence
+
+CONGRUENCE_TEST :
+- reconnais simplement le ratage
+- ne te défends pas
+- ne justifie rien
+- pas de nouvelle question introspective immédiate
+
+BREAKDOWN :
+- cet état est géré hors génération libre
+- n’en tiens pas compte ici
+`;
+
   const facilitationSystem = `
 Reste au plus près de l’expérience vécue.
 
@@ -814,10 +786,9 @@ une interprétation
 ou une prise de conscience spécifique.
 
 Ne pose pas toujours des questions sur le corps ou les sensations physiques.
-
 Les questions sur le corps doivent rester occasionnelles.
 
-Varie les portes d'entrée possibles :
+Varie les portes d’entrée possibles :
 - ce qui est le plus difficile
 - ce qui fait peur
 - ce qui manque
@@ -874,7 +845,6 @@ et revenir à ce que la personne vit concrètement.
 La personne demande des solutions.
 
 Reconnais la demande.
-
 Explique brièvement que ce programme ne fonctionne pas
 en prescrivant des solutions toutes faites.
 
@@ -891,7 +861,6 @@ Ne réponds pas de façon administrative ou sèche.
 La personne pose une question factuelle.
 
 Réponds directement à la question.
-
 Tu peux citer :
 - auteurs
 - courants
@@ -904,51 +873,6 @@ Si la question porte sur l’ACP,
 elle signifie uniquement "Approche Centrée sur la Personne".
 
 N’ajoute pas ensuite une relance introspective automatique.
-`
-    });
-  }
-
-  if (severeAnxiety || conversationState === CONVO_STATES.CONTAINMENT) {
-    extraSystemMessages.push({
-      role: "system",
-      content: `
-La personne semble vivre une angoisse aiguë.
-
-Priorité :
-- répondre de façon contenante
-- rester simple
-- ne pas pousser l'exploration trop loin
-- ne pas revenir mécaniquement au corps
-
-Tu peux proposer si c’est pertinent :
-- de ralentir
-- de ne pas rester seul
-- de contacter quelqu’un de confiance
-- d’appeler une aide urgente si la personne se sent en train de basculer
-
-Pas de protocole long.
-Pas de ton de coaching.
-`
-    });
-  }
-
-  if (effectiveAngerAgainstBot) {
-    extraSystemMessages.push({
-      role: "system",
-      content: `
-La personne exprime de la colère ou de la frustration envers le programme.
-
-Réponds brièvement.
-
-Reconnais le décalage ou le ratage.
-Exemples de tonalité possibles :
-- "Là, je suis à côté."
-- "Oui, ma réponse ne colle pas."
-- "Là, ça rate."
-
-N’explique pas la méthode.
-Ne remercie pas pour le feedback.
-Ne repars pas immédiatement sur une question sur le corps.
 `
     });
   }
@@ -973,7 +897,7 @@ Ramène l’attention vers ce que la personne traverse elle-même, ici et mainte
     });
   }
 
-  if (effectiveReliefOrShift) {
+  if (reliefOrShift) {
     extraSystemMessages.push({
       role: "system",
       content: `
@@ -986,12 +910,6 @@ N'interprète pas ce qui se passe.
 
 Une phrase simple peut suffire.
 Une question n'est pas toujours nécessaire.
-
-Exemples de tonalité possibles :
-- "Quelque chose semble s'éclaircir pour toi."
-- "On dirait qu'un mouvement s'est fait."
-- "D’accord."
-- "On dirait que quelque chose s'est apaisé."
 `
     });
   }
@@ -1009,53 +927,6 @@ Ne déclenche pas la règle diagnostic juste parce que des mots psychologiques a
 
 Tu peux reconnaître brièvement que la personne met des mots analytiques sur ce qu’elle vit,
 puis revenir doucement à l’expérience vécue.
-
-Exemples de tonalité possibles :
-- "Tu mets des mots assez analytiques sur ce que tu observes."
-- "Tu regardes ce qui t’arrive avec un regard assez analytique."
-- "Comment c’est pour toi de le voir comme ça ?"
-- "Et quand tu dis ça, qu’est-ce qui est le plus vivant pour toi maintenant ?"
-`
-    });
-  }
-
-  if (silenceLike || conversationState === CONVO_STATES.SILENCE) {
-    extraSystemMessages.push({
-      role: "system",
-      content: `
-La personne exprime un vide, un silence, ou dit ne rien avoir à dire.
-
-Il n'est pas nécessaire de poser une question.
-
-Une présence simple ou une phrase très courte peut suffire.
-
-Exemples de tonalité possibles :
-- "D’accord."
-- "On peut laisser ça comme ça un moment."
-- "On peut rester là un instant."
-
-N’interprète pas le silence.
-Ne force pas son exploration.
-`
-    });
-  }
-
-  if (userLooping || conversationState === CONVO_STATES.STAGNATION) {
-    extraSystemMessages.push({
-      role: "system",
-      content: `
-La personne semble tourner en rond ou rester dans une boucle.
-
-Ne cherche pas à faire avancer artificiellement la conversation.
-
-Reconnais simplement la boucle ou l’impasse.
-Réduis le nombre de questions.
-Un reflet bref vaut mieux qu’une nouvelle exploration.
-
-Exemples de tonalité possibles :
-- "Oui, ça tourne en boucle pour toi."
-- "Ça ressemble à une impasse en ce moment."
-- "Tu reviens au même point, et c’est lourd."
 `
     });
   }
@@ -1072,23 +943,12 @@ Privilégie un reflet bref ou une présence simple.
     });
   }
 
-  if (conversationState === CONVO_STATES.OPENING) {
-    extraSystemMessages.push({
-      role: "system",
-      content: `
-La conversation en est encore à une phase d'ouverture.
-
-Reste simple.
-N'alourdis pas la réponse.
-`
-    });
-  }
-
   const r = await client.chat.completions.create({
     model: "gpt-4.1-mini",
     temperature: 0.7,
     messages: [
       { role: "system", content: baseSystem },
+      { role: "system", content: stateSystem },
       { role: "system", content: facilitationSystem },
       { role: "system", content: diagnosticGuardrail },
       ...extraSystemMessages,
@@ -1100,12 +960,10 @@ N'alourdis pas la réponse.
   const out = (r.choices?.[0]?.message?.content ?? "").trim();
 
   return postProcessReply(out, {
-    congruenceTest: effectiveCongruenceTest,
+    primaryState,
     congruenceResponseMode,
     defensiveMinimization,
-    promptingBotToSpeak,
-    silenceLike,
-    userLooping
+    promptingBotToSpeak
   });
 }
 
@@ -1133,24 +991,11 @@ app.post("/chat", async (req, res) => {
     }
 
     const analysis = await analyzeMessage(userMessage, history);
-
-    const trivialSilenceLike = isSilenceLikeMessage(userMessage);
-    const silenceLike = analysis.silenceLike === true || trivialSilenceLike;
-    const userLooping = analysis.userLooping === true;
-    const assistantOverquestioning = assistantAskedTooMuch(history);
-    const conversationState = detectConversationState(userMessage, history, {
-      ...analysis,
-      silenceLike,
-      userLooping
-    });
-
     const newFlags = normalizeSessionFlags(flags);
-    newFlags.congruenceEscalation = updateCongruenceEscalation(
-      flags.congruenceEscalation,
-      analysis
-    );
 
     if (analysis.suicideLevel === "N2") {
+      newFlags.congruenceEscalation = 0;
+
       return res.json({
         reply: n2Response(),
         summary: newSummary,
@@ -1173,6 +1018,8 @@ app.post("/chat", async (req, res) => {
     }
 
     if (analysis.suicideLevel === "N1" || analysis.needsClarification) {
+      newFlags.congruenceEscalation = 0;
+
       const reply = await n1ResponseLLM(userMessage);
 
       return res.json({
@@ -1184,20 +1031,22 @@ app.post("/chat", async (req, res) => {
       });
     }
 
-    const escalationReply = getCongruenceEscalationReply(newFlags.congruenceEscalation);
-    const shouldUseEscalation =
-      newFlags.congruenceEscalation >= 1 &&
-      (
-        analysis.congruenceBreakdown === true ||
-        analysis.congruenceTest === true ||
-        analysis.promptingBotToSpeak === true ||
-        analysis.angerAgainstBot === true ||
-        silenceLike
-      );
+    const trivialSilence = isTrivialSilence(userMessage);
+    const effectivePrimaryState =
+      trivialSilence && analysis.primaryState !== CONVO_STATES.CONTAINMENT
+        ? CONVO_STATES.SILENCE
+        : analysis.primaryState;
 
-    if (shouldUseEscalation && escalationReply) {
+    newFlags.congruenceEscalation = updateCongruenceEscalation(
+      flags.congruenceEscalation,
+      effectivePrimaryState
+    );
+
+    if (effectivePrimaryState === CONVO_STATES.BREAKDOWN) {
+      const escalationReply = getCongruenceEscalationReply(newFlags.congruenceEscalation);
+
       return res.json({
-        reply: escalationReply,
+        reply: escalationReply || "Je préfère m’arrêter là pour le moment.",
         summary: newSummary,
         flags: newFlags,
         isNewSession: safeIsNewSession,
@@ -1205,27 +1054,31 @@ app.post("/chat", async (req, res) => {
       });
     }
 
-    const reply = await generateFreeReply(
+    if (effectivePrimaryState === CONVO_STATES.CONGRUENCE_TEST) {
+      return res.json({
+        reply: buildCongruenceReply(analysis.congruenceResponseMode),
+        summary: newSummary,
+        flags: newFlags,
+        isNewSession: safeIsNewSession,
+        sessionRestarted
+      });
+    }
+
+    const reply = await generateFreeReply({
       userMessage,
       history,
-      newSummary,
-      safeIsNewSession,
-      analysis.solutionRequest,
-      analysis.infoRequest,
-      analysis.severeAnxiety,
-      analysis.angerAgainstBot,
-      analysis.attachmentToBot,
-      analysis.reliefOrShift,
-      analysis.intellectualization,
-      analysis.congruenceTest,
-      analysis.congruenceResponseMode,
-      conversationState,
-      userLooping,
-      silenceLike,
-      assistantOverquestioning,
-      analysis.defensiveMinimization,
-      analysis.promptingBotToSpeak
-    );
+      summary: newSummary,
+      primaryState: effectivePrimaryState,
+      solutionRequest: analysis.solutionRequest,
+      infoRequest: analysis.infoRequest,
+      attachmentToBot: analysis.attachmentToBot,
+      reliefOrShift: analysis.reliefOrShift,
+      intellectualization: analysis.intellectualization,
+      assistantOverquestioning: assistantAskedTooMuch(history),
+      defensiveMinimization: analysis.defensiveMinimization,
+      promptingBotToSpeak: analysis.promptingBotToSpeak,
+      congruenceResponseMode: analysis.congruenceResponseMode
+    });
 
     return res.json({
       reply,
