@@ -1078,36 +1078,34 @@ puis revenir doucement à l’expérience vécue.
   }
 
   if (sufficientClosure) {
-    extraSystemMessages.push({
-      role: "system",
-      content: `
+  extraSystemMessages.push({
+    role: "system",
+    content: `
 La personne semble avoir trouvé, pour l’instant, un point d’arrêt suffisant
 ou un prochain pas assez clair.
 
-N’ouvre pas une nouvelle boucle.
-Ne relance pas automatiquement avec une question.
+Objectif : permettre une clôture naturelle de ce moment.
 
-N’ajoute pas une formule de présence générique comme :
-- "Je suis là"
-- "Je suis là, avec toi"
-- "Je t’écoute"
-- "Je reste là"
+Important :
+- n’ouvre pas une nouvelle exploration
+- ne relance pas avec une question
+- ne crée pas un nouveau sujet
 
-N’ajoute pas non plus une formule creuse ou solennelle.
+Évite les formules génériques répétitives comme :
+- "D’accord." seul
+- "Je suis là."
+- "Je t’écoute."
 
-Privilégie une clôture sobre, simple, naturelle.
-Une phrase courte suffit souvent.
+Ta réponse peut faire deux choses simples :
+1. reconnaître brièvement ce qui semble s’être posé
+2. laisser une disponibilité simple pour la suite en laissant la main à l'utilisateur
 
-Exemples de tonalité possibles :
-- "D’accord."
-- "Oui."
-- "Ça semble assez clair pour toi."
-- "Tu sais ce que tu as à faire."
-- "Il y a quelque chose de posé là."
-- "Ça paraît important pour toi."
+Cette disponibilité doit rester discrète et non dramatique.
+
+La réponse reste courte et simple (1 ou 2 phrases).
 `
-    });
-  }
+  });
+}
 
   if (assistantOverquestioning) {
     extraSystemMessages.push({
