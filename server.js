@@ -735,7 +735,7 @@ Réponse : une seule phrase.
 `;
 
   const r = await client.chat.completions.create({
-    model: "gpt-4.1-mini",
+    model: "gpt-4o",
     temperature: 0,
     max_tokens: 50,
     messages: [
@@ -1181,7 +1181,7 @@ Important :
   }
 
   const r = await client.chat.completions.create({
-    model: "gpt-4.1-mini",
+    model: "gpt-4o",
     temperature: 0.9,
     messages: [
       { role: "system", content: baseSystem },
