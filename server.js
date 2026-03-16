@@ -703,18 +703,6 @@ async function generateFreeReply({
     solutionRequest = false;
   }
 
-  if (primaryState === CONVO_STATES.CONGRUENCE_TEST) {
-    return buildCongruenceReply(congruenceResponseMode);
-  }
-
-  if (defensiveMinimization) {
-    return defensiveMinimizationResponse();
-  }
-
-  if (promptingBotToSpeak) {
-    return promptingBotResponse(primaryState);
-  }
-
   const baseSystem = `
 Tu es Facilitat.io.
 
@@ -775,12 +763,6 @@ Tu peux :
 
 Pas de protocole long.
 Pas de ton de coaching.
-
-Exemples de tonalité possibles :
-- "D’accord. On peut rester sur quelque chose de très simple là."
-- "Ça semble très difficile à porter maintenant."
-- "D’accord. Pas besoin d’aller plus loin tout de suite."
-- "Là, on peut juste ralentir un peu."
 
 STAGNATION :
 - la personne semble dans une boucle ou une impasse
@@ -857,6 +839,47 @@ et revenir à ce que la personne vit concrètement.
     extraSystemMessages.push({
       role: "system",
       content: "Résumé des échanges précédents : " + summary
+    });
+  }
+
+  if (primaryState === CONVO_STATES.CONGRUENCE_TEST) {
+    extraSystemMessages.push({
+      role: "system",
+      content: `
+La personne met en cause la justesse ou l’authenticité de ta réponse.
+
+Reconnais simplement le ratage si c’est le cas.
+Ne te défends pas.
+N’explique pas ton fonctionnement.
+Ne pose pas de nouvelle question.
+Réponse brève.
+`
+    });
+  }
+
+  if (defensiveMinimization) {
+    extraSystemMessages.push({
+      role: "system",
+      content: `
+La personne minimise rapidement ce qu’elle vient de dire.
+
+Ne dramatise pas.
+Ne sur-interprète pas.
+Une réponse très simple suffit.
+`
+    });
+  }
+
+  if (promptingBotToSpeak) {
+    extraSystemMessages.push({
+      role: "system",
+      content: `
+La personne te pousse à dire quelque chose.
+
+Ne te justifie pas.
+Ne parle pas de ton fonctionnement.
+Réponds simplement et naturellement.
+`
     });
   }
 
@@ -1084,16 +1107,6 @@ app.post("/chat", async (req, res) => {
 
       return res.json({
         reply: escalationReply || "Je préfère m’arrêter là pour le moment.",
-        summary: newSummary,
-        flags: newFlags,
-        isNewSession: safeIsNewSession,
-        sessionRestarted
-      });
-    }
-
-    if (effectivePrimaryState === CONVO_STATES.CONGRUENCE_TEST) {
-      return res.json({
-        reply: buildCongruenceReply(analysis.congruenceResponseMode),
         summary: newSummary,
         flags: newFlags,
         isNewSession: safeIsNewSession,
