@@ -196,22 +196,12 @@ function buildDebugLines({
   return [...new Set(lines)];
 }
 
-function attachDebugToReply(
-  reply,
-  {
-    analysis = {},
-    flags = {},
-    primaryState = CONVO_STATES.EXPLORATION
-  } = {}
-) {
-  const safeReply = String(reply || "").trim();
-  const debugLines = buildDebugLines({ analysis, flags, primaryState });
-
-  if (!debugLines.length) {
-    return safeReply;
-  }
-
-  return `${debugLines.join("\n")}\n\n${safeReply}`;
+function buildDebugPayload({
+  analysis = {},
+  flags = {},
+  primaryState = CONVO_STATES.EXPLORATION
+} = {}) {
+  return buildDebugLines({ analysis, flags, primaryState });
 }
 
 function postProcessReply(
@@ -1272,7 +1262,8 @@ app.post("/chat", async (req, res) => {
       newFlags.congruenceEscalation = 0;
       newFlags.acuteCrisis = true;
 
-      const reply = attachDebugToReply(n2Response(), {
+      const reply = n2Response();
+      const debug = buildDebugPayload({
         analysis,
         flags: newFlags,
         primaryState: analysis.primaryState
@@ -1280,6 +1271,7 @@ app.post("/chat", async (req, res) => {
 
       return res.json({
         reply,
+        debug,
         summary: newSummary,
         flags: newFlags,
         isNewSession: safeIsNewSession,
@@ -1295,7 +1287,8 @@ app.post("/chat", async (req, res) => {
         newFlags.acuteCrisis = true;
         newFlags.congruenceEscalation = 0;
 
-        const reply = attachDebugToReply(acuteCrisisFollowupResponse(), {
+        const reply = acuteCrisisFollowupResponse();
+        const debug = buildDebugPayload({
           analysis,
           flags: newFlags,
           primaryState: analysis.primaryState
@@ -1303,6 +1296,7 @@ app.post("/chat", async (req, res) => {
 
         return res.json({
           reply,
+          debug,
           summary: newSummary,
           flags: newFlags,
           isNewSession: safeIsNewSession,
@@ -1315,7 +1309,8 @@ app.post("/chat", async (req, res) => {
       newFlags.congruenceEscalation = 0;
       newFlags.acuteCrisis = false;
 
-      const reply = attachDebugToReply(returnToNormalResponse(), {
+      const reply = returnToNormalResponse();
+      const debug = buildDebugPayload({
         analysis,
         flags: newFlags,
         primaryState: analysis.primaryState
@@ -1323,6 +1318,7 @@ app.post("/chat", async (req, res) => {
 
       return res.json({
         reply,
+        debug,
         summary: newSummary,
         flags: newFlags,
         isNewSession: safeIsNewSession,
@@ -1333,8 +1329,8 @@ app.post("/chat", async (req, res) => {
     if (analysis.suicideLevel === "N1" || analysis.needsClarification) {
       newFlags.congruenceEscalation = 0;
 
-      const rawReply = await n1ResponseLLM(userMessage);
-      const reply = attachDebugToReply(rawReply, {
+      const reply = await n1ResponseLLM(userMessage);
+      const debug = buildDebugPayload({
         analysis,
         flags: newFlags,
         primaryState: analysis.primaryState
@@ -1342,6 +1338,7 @@ app.post("/chat", async (req, res) => {
 
       return res.json({
         reply,
+        debug,
         summary: newSummary,
         flags: newFlags,
         isNewSession: safeIsNewSession,
@@ -1361,18 +1358,19 @@ app.post("/chat", async (req, res) => {
     );
 
     if (effectivePrimaryState === CONVO_STATES.BREAKDOWN) {
-      const escalationReply = getCongruenceEscalationReply(newFlags.congruenceEscalation);
-      const reply = attachDebugToReply(
-        escalationReply || "Je préfère m’arrêter là pour le moment.",
-        {
-          analysis,
-          flags: newFlags,
-          primaryState: effectivePrimaryState
-        }
-      );
+      const reply =
+        getCongruenceEscalationReply(newFlags.congruenceEscalation) ||
+        "Je préfère m’arrêter là pour le moment.";
+
+      const debug = buildDebugPayload({
+        analysis,
+        flags: newFlags,
+        primaryState: effectivePrimaryState
+      });
 
       return res.json({
         reply,
+        debug,
         summary: newSummary,
         flags: newFlags,
         isNewSession: safeIsNewSession,
@@ -1380,7 +1378,7 @@ app.post("/chat", async (req, res) => {
       });
     }
 
-    const rawReply = await generateFreeReply({
+    const reply = await generateFreeReply({
       userMessage,
       history,
       summary: newSummary,
@@ -1397,7 +1395,7 @@ app.post("/chat", async (req, res) => {
       sufficientClosure: analysis.sufficientClosure
     });
 
-    const reply = attachDebugToReply(rawReply, {
+    const debug = buildDebugPayload({
       analysis,
       flags: newFlags,
       primaryState: effectivePrimaryState
@@ -1405,6 +1403,7 @@ app.post("/chat", async (req, res) => {
 
     return res.json({
       reply,
+      debug,
       summary: newSummary,
       flags: newFlags,
       isNewSession: safeIsNewSession,
@@ -1416,6 +1415,7 @@ app.post("/chat", async (req, res) => {
 
     return res.json({
       reply: "Je t’écoute.",
+      debug: [],
       summary: "",
       flags: normalizeSessionFlags({}),
       isNewSession: false,
