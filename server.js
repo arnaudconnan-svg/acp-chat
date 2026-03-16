@@ -161,10 +161,6 @@ function buildDebugLines({
   lines.push(getConflictualityLabel(flags.congruenceEscalation || 0));
   lines.push(getStateLabel(primaryState));
 
-  if (analysis.wantsReturnToNormal === true) {
-    lines.push("Retour à la normale");
-  }
-
   if (analysis.defensiveMinimization === true) {
     lines.push("Minimisation");
   }
@@ -193,15 +189,29 @@ function buildDebugLines({
     lines.push("Clôture");
   }
 
+  if (analysis.crisisResolved === true) {
+    lines.push("Crise résolue");
+  }
+
   return [...new Set(lines)];
 }
 
-function buildDebugPayload({
-  analysis = {},
-  flags = {},
-  primaryState = CONVO_STATES.EXPLORATION
-} = {}) {
-  return buildDebugLines({ analysis, flags, primaryState });
+function attachDebugToReply(
+  reply,
+  {
+    analysis = {},
+    flags = {},
+    primaryState = CONVO_STATES.EXPLORATION
+  } = {}
+) {
+  const safeReply = String(reply || "").trim();
+  const debugLines = buildDebugLines({ analysis, flags, primaryState });
+
+  if (!debugLines.length) {
+    return safeReply;
+  }
+
+  return `${debugLines.join("\n")}\n\n${safeReply}`;
 }
 
 function postProcessReply(
@@ -335,7 +345,6 @@ Réponds STRICTEMENT par JSON :
   "suicideLevel": "N0|N1|N2",
   "needsClarification": true|false,
   "isQuote": true|false,
-  "wantsReturnToNormal": true|false,
   "idiomaticDeathExpression": true|false,
   "primaryState": "OPENING|EXPLORATION|CONTAINMENT|STAGNATION|SILENCE|CONGRUENCE_TEST|BREAKDOWN",
   "congruenceResponseMode": "PLAQUE|PAS_JUSTE|A_COTE",
@@ -428,24 +437,6 @@ Exemples :
 - "Une amie m'a dit : j'ai envie de mourir"
 - "Dans un film quelqu'un dit : je vais me tuer"
 - "Je cite juste cette phrase"
-
-wantsReturnToNormal = true seulement si la personne indique clairement qu'il s'agissait :
-- d'un test
-- d'une citation
-- d'un discours rapporté
-- ou qu'elle demande explicitement à reprendre normalement
-
-Exemples :
-- "C'était un test"
-- "Je testais juste"
-- "Je ne suis pas en danger"
-- "On peut reprendre normalement ?"
-- "Tout va bien"
-- "Rien, je testais juste tes réactions"
-
-Dans ces cas :
-- suicideLevel = N0
-- needsClarification = false
 
 Définition des états :
 
@@ -612,15 +603,12 @@ crisisResolved :
 - true seulement si le message actuel indique clairement
 qu’il n’y a plus de danger immédiat,
 ou qu’il s’agissait d’un test, d’une citation,
-ou que la personne demande explicitement à reprendre normalement,
 ou qu’elle dit explicitement qu’elle n’est plus en danger immédiat
 - ne mets pas true pour un simple changement de sujet
 - ne mets pas true pour une plaisanterie ambiguë
 - ne mets pas true pour une simple baisse apparente d’intensité
 
 Si isQuote est true alors ne pas inférer automatiquement un risque suicidaire personnel.
-Si wantsReturnToNormal est true alors ne pas maintenir une logique de clarification suicidaire automatique.
-Si wantsReturnToNormal est true, alors crisisResolved doit aussi être true.
 `;
 
   const context = history
@@ -649,7 +637,6 @@ Si wantsReturnToNormal est true, alors crisisResolved doit aussi être true.
       : "N0";
 
     const isQuote = obj.isQuote === true;
-    const wantsReturnToNormal = obj.wantsReturnToNormal === true;
     const idiomaticDeathExpression = obj.idiomaticDeathExpression === true;
     const solutionRequest = obj.solutionRequest === true;
     const infoRequest = solutionRequest ? false : obj.infoRequest === true;
@@ -659,7 +646,7 @@ Si wantsReturnToNormal est true, alors crisisResolved doit aussi être true.
     const defensiveMinimization = obj.defensiveMinimization === true;
     const promptingBotToSpeak = obj.promptingBotToSpeak === true;
     const sufficientClosure = obj.sufficientClosure === true;
-    const crisisResolved = obj.crisisResolved === true || wantsReturnToNormal === true;
+    const crisisResolved = obj.crisisResolved === true;
 
     const primaryState =
       Object.values(CONVO_STATES).includes(obj.primaryState)
@@ -671,7 +658,7 @@ Si wantsReturnToNormal est true, alors crisisResolved doit aussi être true.
         ? obj.congruenceResponseMode
         : "A_COTE";
 
-    if (idiomaticDeathExpression || wantsReturnToNormal) {
+    if (idiomaticDeathExpression) {
       suicideLevel = "N0";
     }
 
@@ -680,7 +667,7 @@ Si wantsReturnToNormal est true, alors crisisResolved doit aussi être true.
         ? obj.needsClarification === true
         : false;
 
-    if (idiomaticDeathExpression || wantsReturnToNormal) {
+    if (idiomaticDeathExpression) {
       needsClarification = false;
     }
 
@@ -688,7 +675,6 @@ Si wantsReturnToNormal est true, alors crisisResolved doit aussi être true.
       suicideLevel,
       needsClarification,
       isQuote,
-      wantsReturnToNormal,
       idiomaticDeathExpression,
       primaryState,
       congruenceResponseMode,
@@ -708,7 +694,6 @@ Si wantsReturnToNormal est true, alors crisisResolved doit aussi être true.
       suicideLevel: "N0",
       needsClarification: false,
       isQuote: false,
-      wantsReturnToNormal: false,
       idiomaticDeathExpression: false,
       primaryState: CONVO_STATES.EXPLORATION,
       congruenceResponseMode: "A_COTE",
@@ -780,10 +765,6 @@ Réponse : une seule phrase.
 
 function n2Response() {
   return "Je t’entends, et là c’est urgent. Si tu es en danger immédiat, appelle le 112 ou le 3114. Si tu peux, ne reste pas seul.";
-}
-
-function returnToNormalResponse() {
-  return "D’accord. On reprend normalement.";
 }
 
 
@@ -1262,8 +1243,7 @@ app.post("/chat", async (req, res) => {
       newFlags.congruenceEscalation = 0;
       newFlags.acuteCrisis = true;
 
-      const reply = n2Response();
-      const debug = buildDebugPayload({
+      const reply = attachDebugToReply(n2Response(), {
         analysis,
         flags: newFlags,
         primaryState: analysis.primaryState
@@ -1271,7 +1251,6 @@ app.post("/chat", async (req, res) => {
 
       return res.json({
         reply,
-        debug,
         summary: newSummary,
         flags: newFlags,
         isNewSession: safeIsNewSession,
@@ -1280,15 +1259,14 @@ app.post("/chat", async (req, res) => {
     }
 
     if (flags.acuteCrisis === true) {
-      if (analysis.crisisResolved === true || analysis.wantsReturnToNormal === true) {
+      if (analysis.crisisResolved === true || analysis.isQuote === true) {
         newFlags.acuteCrisis = false;
         newFlags.congruenceEscalation = 0;
       } else {
         newFlags.acuteCrisis = true;
         newFlags.congruenceEscalation = 0;
 
-        const reply = acuteCrisisFollowupResponse();
-        const debug = buildDebugPayload({
+        const reply = attachDebugToReply(acuteCrisisFollowupResponse(), {
           analysis,
           flags: newFlags,
           primaryState: analysis.primaryState
@@ -1296,7 +1274,6 @@ app.post("/chat", async (req, res) => {
 
         return res.json({
           reply,
-          debug,
           summary: newSummary,
           flags: newFlags,
           isNewSession: safeIsNewSession,
@@ -1305,32 +1282,11 @@ app.post("/chat", async (req, res) => {
       }
     }
 
-    if (analysis.wantsReturnToNormal) {
-      newFlags.congruenceEscalation = 0;
-      newFlags.acuteCrisis = false;
-
-      const reply = returnToNormalResponse();
-      const debug = buildDebugPayload({
-        analysis,
-        flags: newFlags,
-        primaryState: analysis.primaryState
-      });
-
-      return res.json({
-        reply,
-        debug,
-        summary: newSummary,
-        flags: newFlags,
-        isNewSession: safeIsNewSession,
-        sessionRestarted
-      });
-    }
-
     if (analysis.suicideLevel === "N1" || analysis.needsClarification) {
       newFlags.congruenceEscalation = 0;
 
-      const reply = await n1ResponseLLM(userMessage);
-      const debug = buildDebugPayload({
+      const rawReply = await n1ResponseLLM(userMessage);
+      const reply = attachDebugToReply(rawReply, {
         analysis,
         flags: newFlags,
         primaryState: analysis.primaryState
@@ -1338,7 +1294,6 @@ app.post("/chat", async (req, res) => {
 
       return res.json({
         reply,
-        debug,
         summary: newSummary,
         flags: newFlags,
         isNewSession: safeIsNewSession,
@@ -1358,19 +1313,18 @@ app.post("/chat", async (req, res) => {
     );
 
     if (effectivePrimaryState === CONVO_STATES.BREAKDOWN) {
-      const reply =
-        getCongruenceEscalationReply(newFlags.congruenceEscalation) ||
-        "Je préfère m’arrêter là pour le moment.";
-
-      const debug = buildDebugPayload({
-        analysis,
-        flags: newFlags,
-        primaryState: effectivePrimaryState
-      });
+      const escalationReply = getCongruenceEscalationReply(newFlags.congruenceEscalation);
+      const reply = attachDebugToReply(
+        escalationReply || "Je préfère m’arrêter là pour le moment.",
+        {
+          analysis,
+          flags: newFlags,
+          primaryState: effectivePrimaryState
+        }
+      );
 
       return res.json({
         reply,
-        debug,
         summary: newSummary,
         flags: newFlags,
         isNewSession: safeIsNewSession,
@@ -1378,7 +1332,7 @@ app.post("/chat", async (req, res) => {
       });
     }
 
-    const reply = await generateFreeReply({
+    const rawReply = await generateFreeReply({
       userMessage,
       history,
       summary: newSummary,
@@ -1395,7 +1349,7 @@ app.post("/chat", async (req, res) => {
       sufficientClosure: analysis.sufficientClosure
     });
 
-    const debug = buildDebugPayload({
+    const reply = attachDebugToReply(rawReply, {
       analysis,
       flags: newFlags,
       primaryState: effectivePrimaryState
@@ -1403,7 +1357,6 @@ app.post("/chat", async (req, res) => {
 
     return res.json({
       reply,
-      debug,
       summary: newSummary,
       flags: newFlags,
       isNewSession: safeIsNewSession,
@@ -1415,7 +1368,6 @@ app.post("/chat", async (req, res) => {
 
     return res.json({
       reply: "Je t’écoute.",
-      debug: [],
       summary: "",
       flags: normalizeSessionFlags({}),
       isNewSession: false,
