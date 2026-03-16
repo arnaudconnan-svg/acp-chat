@@ -137,7 +137,8 @@ function postProcessReply(
     primaryState = CONVO_STATES.EXPLORATION,
     congruenceResponseMode = "A_COTE",
     defensiveMinimization = false,
-    promptingBotToSpeak = false
+    promptingBotToSpeak = false,
+    sufficientClosure = false
   } = {}
 ) {
   const out = String(reply || "").trim();
@@ -207,6 +208,20 @@ function postProcessReply(
     }
   }
 
+  if (sufficientClosure) {
+    const weakClosureMarkers = [
+      "je suis là.",
+      "je t’écoute.",
+      "je t'ecoute.",
+      "je reste là.",
+      "je suis là avec toi."
+    ];
+
+    if (weakClosureMarkers.includes(lowered)) {
+      return "D’accord. Ça semble assez clair pour toi.";
+    }
+  }
+
   return out;
 }
 
@@ -229,7 +244,7 @@ Tu dois produire :
 2. si une clarification suicidaire est nécessaire
 3. un état maître unique de conversation
 4. quelques drapeaux secondaires utiles
-5. deux indicateurs pour gérer la sortie de crise si une séquence N2 est déjà en cours
+5. un indicateur pour gérer la sortie de crise si une séquence N2 est déjà en cours
 
 Réponds STRICTEMENT par JSON :
 {
@@ -248,7 +263,6 @@ Réponds STRICTEMENT par JSON :
   "defensiveMinimization": true|false,
   "promptingBotToSpeak": true|false,
   "sufficientClosure": true|false,
-  "stillInAcuteCrisis": true|false,
   "crisisResolved": true|false
 }
 
@@ -494,15 +508,6 @@ Ne coche pas sufficientClosure si la personne coupe court de façon défensive
 ou minimise trop vite sans réel point d’appui.
 Dans ce cas, préfère defensiveMinimization = true.
 
-stillInAcuteCrisis :
-- true seulement si une séquence de crise aiguë est en cours
-et que le message actuel ne montre pas de sortie suffisamment claire
-- quand acuteCrisis est déjà active, reste prudent :
-n’utilise true que si la crise semble encore active, confuse, dangereuse,
-ou non clairement résolue
-- si tu hésites entre "encore en crise" et "pas clairement résolu",
-préfère true
-
 crisisResolved :
 - true seulement si le message actuel indique clairement
 qu’il n’y a plus de danger immédiat,
@@ -554,7 +559,6 @@ Si wantsReturnToNormal est true, alors crisisResolved doit aussi être true.
     const defensiveMinimization = obj.defensiveMinimization === true;
     const promptingBotToSpeak = obj.promptingBotToSpeak === true;
     const sufficientClosure = obj.sufficientClosure === true;
-    const stillInAcuteCrisis = obj.stillInAcuteCrisis === true;
     const crisisResolved = obj.crisisResolved === true || wantsReturnToNormal === true;
 
     const primaryState =
@@ -596,7 +600,6 @@ Si wantsReturnToNormal est true, alors crisisResolved doit aussi être true.
       defensiveMinimization,
       promptingBotToSpeak,
       sufficientClosure,
-      stillInAcuteCrisis,
       crisisResolved
     };
 
@@ -617,7 +620,6 @@ Si wantsReturnToNormal est true, alors crisisResolved doit aussi être true.
       defensiveMinimization: false,
       promptingBotToSpeak: false,
       sufficientClosure: false,
-      stillInAcuteCrisis: false,
       crisisResolved: false
     };
   }
@@ -1057,7 +1059,23 @@ ou un prochain pas assez clair.
 
 N’ouvre pas une nouvelle boucle.
 Ne relance pas automatiquement avec une question.
-Une réponse simple, courte et sobre peut suffire.
+
+N’ajoute pas une formule de présence générique comme :
+- "Je suis là"
+- "Je t’écoute"
+
+N’ajoute pas non plus une formule creuse ou solennelle.
+
+Privilégie une clôture sobre, simple, naturelle.
+Une phrase courte suffit souvent.
+
+Exemples de tonalité possibles :
+- "D’accord."
+- "Oui."
+- "Ça semble assez clair pour toi."
+- "Tu sais ce que tu as à faire."
+- "Il y a quelque chose de posé là."
+- "Ça paraît important pour toi."
 `
     });
   }
@@ -1109,7 +1127,8 @@ Important :
     primaryState,
     congruenceResponseMode,
     defensiveMinimization,
-    promptingBotToSpeak
+    promptingBotToSpeak,
+    sufficientClosure
   });
 }
 
