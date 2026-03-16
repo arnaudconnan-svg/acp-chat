@@ -143,6 +143,7 @@ function postProcessReply(
 ) {
   const out = String(reply || "").trim();
   const lowered = out.toLowerCase();
+  const normalizedLowered = lowered.replace(/\s+/g, " ").trim();
 
   if (!out) {
     if (primaryState === CONVO_STATES.CONGRUENCE_TEST) {
@@ -204,7 +205,7 @@ function postProcessReply(
   if (promptingBotToSpeak) {
     const tooThin =
       out.length < 8 ||
-      ["d’accord.", "daccord.", "ok.", "bon."].includes(lowered);
+      ["d’accord.", "daccord.", "ok.", "bon."].includes(normalizedLowered);
 
     if (tooThin) {
       return promptingBotResponse(primaryState);
@@ -214,13 +215,20 @@ function postProcessReply(
   if (sufficientClosure) {
     const weakClosureMarkers = [
       "je suis là.",
+      "je suis là",
+      "je suis là avec toi.",
+      "je suis là avec toi",
+      "je suis là, avec toi.",
+      "je suis là, avec toi",
       "je t’écoute.",
+      "je t’écoute",
       "je t'ecoute.",
+      "je t'ecoute",
       "je reste là.",
-      "je suis là avec toi."
+      "je reste là"
     ];
 
-    if (weakClosureMarkers.includes(lowered)) {
+    if (weakClosureMarkers.includes(normalizedLowered)) {
       return "D’accord. Ça semble assez clair pour toi.";
     }
   }
@@ -506,6 +514,22 @@ Exemples :
 - "Oui, ça me va comme ça."
 - "Ça ira pour l’instant."
 - "Je vais déjà faire ça."
+
+Un acquiescement bref peut aussi valoir sufficientClosure = true
+si le contexte immédiat montre déjà :
+- un apaisement en cours
+- un prochain pas clair
+- une retombée suffisante
+- ou un point de stabilisation déjà formulé juste avant
+
+Exemples :
+- après "Ça va me faire du bien" -> "Oui"
+- après "Juste d'y penser ça va mieux" -> "Oui"
+- après "Bon, je sais ce que j’ai à faire" -> "Oui"
+- après une reformulation juste d’un appui concret -> "D’accord", "Oui", "C’est ça"
+
+Ne coche pas sufficientClosure pour un simple "oui" isolé
+si le contexte juste avant ne montre pas déjà une retombée ou un appui clair.
 
 Ne coche pas sufficientClosure si la personne coupe court de façon défensive
 ou minimise trop vite sans réel point d’appui.
@@ -1065,7 +1089,9 @@ Ne relance pas automatiquement avec une question.
 
 N’ajoute pas une formule de présence générique comme :
 - "Je suis là"
+- "Je suis là, avec toi"
 - "Je t’écoute"
+- "Je reste là"
 
 N’ajoute pas non plus une formule creuse ou solennelle.
 
