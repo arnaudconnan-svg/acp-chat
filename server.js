@@ -947,6 +947,7 @@ en prescrivant des solutions toutes faites.
 
 Ne propose pas de liste de conseils.
 Ne réponds pas de façon administrative ou sèche.
+Ne donne pas d'idées, conseils, pistes, quoi faire, comment s’y prendre, une solution.
 `
     });
   }
