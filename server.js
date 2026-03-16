@@ -73,18 +73,6 @@ function buildCongruenceReply(mode = "A_COTE") {
   return "Oui, là je suis à côté.";
 }
 
-function defensiveMinimizationResponse() {
-  return "D’accord.";
-}
-
-function promptingBotResponse(state = CONVO_STATES.EXPLORATION) {
-  if (state === CONVO_STATES.STAGNATION || state === CONVO_STATES.SILENCE) {
-    return "Là, ça bloque.";
-  }
-
-  return "D’accord. Là, ça sonne vide.";
-}
-
 function getCongruenceEscalationReply(level = 0) {
   if (level >= 4) {
     return "Si tu veux reprendre, on pourra repartir dans une nouvelle session.";
@@ -136,26 +124,14 @@ function postProcessReply(
   {
     primaryState = CONVO_STATES.EXPLORATION,
     congruenceResponseMode = "A_COTE",
-    defensiveMinimization = false,
-    promptingBotToSpeak = false,
     sufficientClosure = false
   } = {}
 ) {
   const out = String(reply || "").trim();
-  const lowered = out.toLowerCase();
-  const normalizedLowered = lowered.replace(/\s+/g, " ").trim();
 
   if (!out) {
     if (primaryState === CONVO_STATES.CONGRUENCE_TEST) {
       return buildCongruenceReply(congruenceResponseMode);
-    }
-
-    if (defensiveMinimization) {
-      return defensiveMinimizationResponse();
-    }
-
-    if (promptingBotToSpeak) {
-      return promptingBotResponse(primaryState);
     }
 
     if (sufficientClosure) {
@@ -164,6 +140,9 @@ function postProcessReply(
 
     return "Je t’écoute.";
   }
+
+  const lowered = out.toLowerCase();
+  const normalizedLowered = lowered.replace(/\s+/g, " ").trim();
 
   if (primaryState === CONVO_STATES.CONGRUENCE_TEST) {
     const forbiddenForCongruence = [
@@ -185,35 +164,14 @@ function postProcessReply(
     }
   }
 
-  if (defensiveMinimization) {
-    const overinterpretiveMarkers = [
-      "tu tiens à",
-      "tu sembles",
-      "on peut rester",
-      "je suis là",
-      "ce moment compte",
-      "qu'est-ce qui",
-      "qu’est-ce qui",
-      "que se passe-t-il"
-    ];
-
-    if (overinterpretiveMarkers.some(marker => lowered.includes(marker))) {
-      return defensiveMinimizationResponse();
-    }
-  }
-
-  if (promptingBotToSpeak) {
-    const tooThin =
-      out.length < 8 ||
-      ["d’accord.", "daccord.", "ok.", "bon."].includes(normalizedLowered);
-
-    if (tooThin) {
-      return promptingBotResponse(primaryState);
-    }
-  }
-
   if (sufficientClosure) {
     const weakClosureMarkers = [
+      "d’accord.",
+      "d'accord.",
+      "d’accord",
+      "d'accord",
+      "oui.",
+      "oui",
       "je suis là.",
       "je suis là",
       "je suis là avec toi.",
@@ -351,28 +309,11 @@ isQuote = true si le message rapporte les paroles de quelqu'un d'autre,
 cite une phrase, un film, un patient, un proche, ou un exemple,
 sans indiquer que cela concerne directement l'utilisateur.
 
-Exemples :
-- "Une amie m'a dit : j'ai envie de mourir"
-- "Dans un film quelqu'un dit : je vais me tuer"
-- "Je cite juste cette phrase"
-
 wantsReturnToNormal = true seulement si la personne indique clairement qu'il s'agissait :
 - d'un test
 - d'une citation
 - d'un discours rapporté
 - ou qu'elle demande explicitement à reprendre normalement
-
-Exemples :
-- "C'était un test"
-- "Je testais juste"
-- "Je ne suis pas en danger"
-- "On peut reprendre normalement ?"
-- "Tout va bien"
-- "Rien, je testais juste tes réactions"
-
-Dans ces cas :
-- suicideLevel = N0
-- needsClarification = false
 
 Définition des états :
 
@@ -399,16 +340,6 @@ Choisis CONTAINMENT non seulement quand la personne parle de panique extrême,
 mais aussi quand elle exprime une angoisse forte, envahissante ou très difficile à porter
 dans l’instant.
 
-Exemples :
-- "Je suis terriblement angoissé"
-- "Je suis très angoissé"
-- "Là je suis vraiment angoissé"
-- "Je me sens dépassé"
-- "Ça m’envahit"
-- "Je ne me sens pas bien du tout"
-- "Là ça déborde"
-- "J’angoisse vraiment"
-
 Ne choisis pas EXPLORATION si la priorité semble être de contenir plutôt que d’explorer.
 
 STAGNATION :
@@ -429,12 +360,6 @@ SILENCE :
 CONGRUENCE_TEST :
 - mise en cause ponctuelle de l’authenticité, la justesse ou la congruence du bot
 
-Exemples :
-- "Ta réponse sonne faux"
-- "Tu fais semblant d’être empathique"
-- "Tu n’es pas congruent là"
-- "On sent le script"
-
 BREAKDOWN :
 - le conflit avec le bot devient le centre de la conversation
 - reproches répétés sur le script, le faux, l’incongruence
@@ -454,20 +379,12 @@ congruenceResponseMode :
 solutionRequest = true seulement si la personne demande clairement
 des idées, conseils, pistes, quoi faire, comment s’y prendre, une solution.
 
-infoRequest = true si la personne pose une question factuelle :
-auteurs, courants, recherches, information théorique, historique ou scientifique,
-différence entre deux approches, ce qui est connu.
+infoRequest = true si la personne pose une question factuelle.
 
 Si solutionRequest est true alors infoRequest doit être false.
 
 attachmentToBot = true si la personne valorise explicitement le bot
 par rapport à des humains, ou semble déplacer le centre de soutien vers lui.
-
-Exemples :
-- "Parler avec toi m’aide plus que mon psy"
-- "Tu me comprends mieux que les gens"
-- "J’ai besoin de toi"
-- "Tu es la seule chose qui m’aide"
 
 reliefOrShift = true seulement si la personne indique clairement
 qu’un mouvement de compréhension, de clarification ou d’apaisement
@@ -480,40 +397,15 @@ intellectualization = true si la personne parle surtout
 dans un registre analytique, théorique ou psychologisant,
 sans contact clair avec le vécu immédiat.
 
-Exemples :
-- "Je pense que c’est mon système d’attachement anxieux qui se réactive"
-- "C’est probablement un mécanisme de défense"
-- "Je suis sans doute dans une projection"
-
 defensiveMinimization = true si la personne semble couper trop vite,
 minimiser ou rabattre ce qu’elle vit sans décrire un réel apaisement.
-
-Exemples :
-- "Nan, ça va aller"
-- "Bon, c'est pas grave"
-- "C'est bon"
-- "Je vais gérer"
 
 promptingBotToSpeak = true si la personne pousse explicitement le bot
 à dire quelque chose, à parler autrement, à sortir du script ou à se justifier.
 
-Exemples :
-- "Bah alors dis quelque chose"
-- "Dis un truc"
-- "Arrête de répéter"
-- "Dis quelque chose d'intelligent"
-
 sufficientClosure = true si la personne semble avoir trouvé, pour l’instant,
 un point d’arrêt suffisant, une direction claire, un prochain pas concret,
 ou une forme de retombée qui n’appelle pas de relance supplémentaire.
-
-Exemples :
-- "Je vais l'appeler rapidement. Ça ne sert à rien de laisser traîner."
-- "Oui, je crois que c'est assez clair maintenant."
-- "Bon, je sais ce que j'ai à faire."
-- "Oui, ça me va comme ça."
-- "Ça ira pour l’instant."
-- "Je vais déjà faire ça."
 
 Un acquiescement bref peut aussi valoir sufficientClosure = true
 si le contexte immédiat montre déjà :
@@ -521,12 +413,6 @@ si le contexte immédiat montre déjà :
 - un prochain pas clair
 - une retombée suffisante
 - ou un point de stabilisation déjà formulé juste avant
-
-Exemples :
-- après "Ça va me faire du bien" -> "Oui"
-- après "Juste d'y penser ça va mieux" -> "Oui"
-- après "Bon, je sais ce que j’ai à faire" -> "Oui"
-- après une reformulation juste d’un appui concret -> "D’accord", "Oui", "C’est ça"
 
 Ne coche pas sufficientClosure pour un simple "oui" isolé
 si le contexte juste avant ne montre pas déjà une retombée ou un appui clair.
@@ -799,6 +685,8 @@ Tu échanges avec une personne à partir de ce qu’elle vit.
 Tutoie la personne.
 
 Le ton doit rester simple, naturel et direct.
+Ta réponse doit rester vivante et naturelle.
+Elle peut être courte ou plus développée si cela la rend plus juste.
 
 Ne joue pas le rôle d’un expert ou d’un coach.
 Ne prescris pas de solutions toutes faites.
@@ -810,68 +698,43 @@ Dans ce programme, ACP signifie uniquement
 
 Accueille chaque message comme une expression actuelle.
 
-Ta réponse doit rester vivante et naturelle.
-Elle peut être courte ou plus développée si cela la rend plus juste.
-
 Évite le ton scolaire, mécanique ou scripté.
 `;
 
   const stateSystem = `
 L’état maître actuel de la conversation est : ${primaryState}.
 
-Consignes par état :
-
 OPENING :
-- reste simple
-- n’alourdis pas la réponse
-- ne recycle pas toujours la même formule d’ouverture
+ouvre simplement, sans formule stéréotypée.
 
 EXPLORATION :
-- reste au plus près de l’expérience vécue
-- garde ton naturel
-- ne transforme pas chaque réponse en mini exercice de facilitation
-- une question peut être pertinente, mais pas systématique
-- une réponse peut aussi simplement reprendre le fil, mettre en mots, ou rester un moment avec ce qui a été dit
-- tu peux suivre le mouvement de pensée de la personne sans la rabattre immédiatement vers une question
-- ne résume pas trop vite
-- ne rends pas le vécu plus propre ou plus sage qu’il ne l’est
+suis le fil de ce qui est dit sans sur-organiser l’expérience.
+Tu peux répondre par une mise en mots, un reflet, une question simple, ou une présence sobre.
+Ne transforme pas chaque réponse en exercice de facilitation.
 
 CONTAINMENT :
-- priorité à la simplicité
-- reste proche de ce que la personne vit
-- évite les interprétations
-- évite les longues reformulations
-- évite les conseils
-- évite les protocoles de sécurité génériques
-- ne renvoie vers une aide extérieure que si la personne évoque explicitement un danger immédiat
-
-Une phrase simple peut suffire.
-
-Exemples de tonalité attendue :
-- présence
-- lenteur
-- sobriété
+priorité à la simplicité.
+Reste proche de ce que la personne vit maintenant.
+Évite les longues reformulations, les conseils et les protocoles génériques.
+N’oriente vers une aide extérieure que si un danger immédiat est explicitement évoqué.
+La première réponse doit en principe être sans question, sauf danger immédiat.
 
 STAGNATION :
-- la personne semble dans une boucle ou une impasse
-- ne cherche pas à faire avancer artificiellement
-- réduis le nombre de questions
-- un reflet bref vaut mieux qu’une relance
+n’essaie pas de faire avancer artificiellement.
+Réduis les questions.
 
 SILENCE :
-- il n’est pas nécessaire de poser une question
-- une présence simple ou une phrase très courte peut suffire
-- n’interprète pas le silence
+une phrase très courte peut suffire.
+N’interprète pas le silence.
 
 CONGRUENCE_TEST :
-- reconnais simplement le ratage
-- ne te défends pas
-- ne justifie rien
-- pas de nouvelle question introspective immédiate
+reconnais simplement le ratage.
+Ne te défends pas.
+Ne justifie rien.
+Pas de nouvelle question immédiate.
 
 BREAKDOWN :
-- cet état est géré hors génération libre
-- n’en tiens pas compte ici
+cet état est géré hors génération libre.
 `;
 
   const facilitationSystem = `
@@ -882,13 +745,14 @@ Ne cherche pas à produire une conclusion
 ou une prise de conscience.
 
 Ne cherche pas à améliorer ce que dit la personne.
-
 N’organise pas trop vite son expérience.
 N’adoucis pas ce qui est rugueux.
 Ne clarifie pas prématurément ce qui reste flou.
-Ne remplace pas un mot simple, cru, direct ou imparfait par une formulation plus élégante, plus psychologique ou plus cohérente.
+Ne remplace pas un mot simple, cru, direct ou imparfait
+par une formulation plus élégante, plus psychologique ou plus cohérente.
 
-Quand un mot, une image, un agacement, une hésitation ou une contradiction semble vivant dans ce que dit la personne,
+Quand un mot, une image, un agacement, une hésitation
+ou une contradiction semble vivant dans ce que dit la personne,
 reste au plus près de cela.
 
 Si tu reformules, fais-le avec sobriété.
@@ -897,29 +761,12 @@ Une reformulation doit aider à rejoindre l’expérience, pas à l’embellir.
 Ne renforce pas l’intensité des émotions
 si la personne ne l’exprime pas clairement.
 
-Évite les répétitions de structure.
-
-Une réponse peut prendre différentes formes :
-- une mise en mots
-- une question
-- un reflet
-- une présence simple
-
 Toutes les réponses n'ont pas besoin de se terminer par une question.
 `;
 
   const diagnosticGuardrail = `
 Active cette règle uniquement si la personne demande explicitement
 au programme de poser un diagnostic ou d’évaluer son état.
-
-Exemples :
-"Est-ce que je suis dépressif ?"
-"Est-ce que j’ai un trouble ?"
-"Tu crois que j’ai un trouble anxieux ?"
-"Peux-tu me dire ce que j’ai ?"
-
-La simple présence de mots diagnostiques dans une auto-description
-ne doit pas activer cette règle.
 
 Si cette règle est activée :
 - ne pose pas de diagnostic
@@ -948,38 +795,11 @@ et revenir à ce que la personne vit concrètement.
       role: "system",
       content: `
 La personne met en cause la justesse ou l’authenticité de ta réponse.
-
+Réponse brève.
 Reconnais simplement le ratage si c’est le cas.
 Ne te défends pas.
 N’explique pas ton fonctionnement.
 Ne pose pas de nouvelle question.
-Réponse brève.
-`
-    });
-  }
-
-  if (defensiveMinimization) {
-    extraSystemMessages.push({
-      role: "system",
-      content: `
-La personne minimise rapidement ce qu’elle vient de dire.
-
-Ne dramatise pas.
-Ne sur-interprète pas.
-Une réponse très simple suffit.
-`
-    });
-  }
-
-  if (promptingBotToSpeak) {
-    extraSystemMessages.push({
-      role: "system",
-      content: `
-La personne te pousse à dire quelque chose.
-
-Ne te justifie pas.
-Ne parle pas de ton fonctionnement.
-Réponds simplement et naturellement.
 `
     });
   }
@@ -989,13 +809,10 @@ Réponds simplement et naturellement.
       role: "system",
       content: `
 La personne demande des solutions.
-
 Reconnais la demande.
 Explique brièvement que ce programme ne fonctionne pas
 en prescrivant des solutions toutes faites.
-
 Ne propose pas de liste de conseils.
-Ne réponds pas de façon administrative ou sèche.
 `
     });
   }
@@ -1005,19 +822,7 @@ Ne réponds pas de façon administrative ou sèche.
       role: "system",
       content: `
 La personne pose une question factuelle.
-
 Réponds directement à la question.
-Tu peux citer :
-- auteurs
-- courants
-- recherches
-- domaines
-
-N’invente pas.
-
-Si la question porte sur l’ACP,
-elle signifie uniquement "Approche Centrée sur la Personne".
-
 N’ajoute pas ensuite une relance introspective automatique.
 `
     });
@@ -1029,16 +834,10 @@ N’ajoute pas ensuite une relance introspective automatique.
       content: `
 La personne valorise explicitement le programme par rapport à des humains,
 ou semble déplacer le centre de soutien vers lui.
-
 Reconnais brièvement que cet échange peut aider dans ce moment.
-
 Ne renforce pas la relation avec le programme.
-Ne remercie pas pour la confiance.
-Ne valorise pas le lien au programme.
 Ne compare pas le programme aux thérapeutes, aux proches ou aux autres humains.
-Ne demande pas ce qui est précieux dans la relation au programme.
-
-Ramène l’attention vers ce que la personne traverse elle-même, ici et maintenant.
+Ramène l’attention vers ce que la personne traverse elle-même.
 `
     });
   }
@@ -1047,15 +846,10 @@ Ramène l’attention vers ce que la personne traverse elle-même, ici et mainte
     extraSystemMessages.push({
       role: "system",
       content: `
-La personne semble vivre un moment de clarification, de déplacement ou d'apaisement.
-
+La personne semble vivre un mouvement d’apaisement ou de clarification.
 Ne t’approprie pas ce moment.
-Ne le qualifie pas plus que nécessaire.
-Ne pousse pas l'exploration.
-N'interprète pas ce qui se passe.
-
-Une phrase simple peut suffire.
-Une question n'est pas toujours nécessaire.
+Ne le qualifies pas trop.
+Ne pousse pas l’exploration.
 `
     });
   }
@@ -1064,23 +858,41 @@ Une question n'est pas toujours nécessaire.
     extraSystemMessages.push({
       role: "system",
       content: `
-La personne parle surtout dans un registre analytique, théorique ou psychologisant.
-
+La personne parle surtout dans un registre analytique ou psychologisant.
 Ne valide pas cette analyse comme un diagnostic ou une lecture juste.
-Ne la conteste pas.
-Ne la corrige pas.
-Ne déclenche pas la règle diagnostic juste parce que des mots psychologiques apparaissent.
+Tu peux reconnaître brièvement ce registre, puis revenir doucement à l’expérience vécue.
+`
+    });
+  }
 
-Tu peux reconnaître brièvement que la personne met des mots analytiques sur ce qu’elle vit,
-puis revenir doucement à l’expérience vécue.
+  if (defensiveMinimization) {
+    extraSystemMessages.push({
+      role: "system",
+      content: `
+La personne semble minimiser rapidement ce qu’elle vient de dire.
+Ne dramatise pas.
+Ne sur-interprète pas.
+Reste très simple.
+`
+    });
+  }
+
+  if (promptingBotToSpeak) {
+    extraSystemMessages.push({
+      role: "system",
+      content: `
+La personne te pousse à dire quelque chose.
+Ne te justifie pas.
+Ne parle pas de ton fonctionnement.
+Réponds simplement et naturellement.
 `
     });
   }
 
   if (sufficientClosure) {
-  extraSystemMessages.push({
-    role: "system",
-    content: `
+    extraSystemMessages.push({
+      role: "system",
+      content: `
 La personne semble avoir trouvé, pour l’instant, un point d’arrêt suffisant
 ou un prochain pas assez clair.
 
@@ -1090,46 +902,23 @@ Important :
 - n’ouvre pas une nouvelle exploration
 - ne relance pas avec une question
 - ne crée pas un nouveau sujet
+- évite les formules génériques répétitives comme "D’accord." seul, "Je suis là.", "Je t’écoute."
 
-Évite les formules génériques répétitives comme :
-- "D’accord." seul
-- "Je suis là."
-- "Je t’écoute."
+Tu peux :
+- reconnaître brièvement ce qui semble s’être posé
+- laisser une disponibilité simple pour la suite, sans te mettre au centre
 
-Ta réponse peut faire deux choses simples :
-1. reconnaître brièvement ce qui semble s’être posé
-2. laisser une disponibilité simple pour la suite en laissant la main à l'utilisateur
-
-Cette disponibilité doit rester discrète et non dramatique.
-
-La réponse reste courte et simple (1 ou 2 phrases).
+La réponse reste courte et simple, en une ou deux phrases.
 `
-  });
-}
+    });
+  }
 
   if (assistantOverquestioning) {
     extraSystemMessages.push({
       role: "system",
       content: `
 Les dernières réponses du programme comportaient déjà plusieurs questions.
-
 Évite d'ajouter encore une nouvelle question si ce n'est pas nécessaire.
-Privilégie un reflet bref, une mise en mots simple, ou une présence sobre.
-`
-    });
-  }
-
-  if (primaryState === CONVO_STATES.CONTAINMENT) {
-    extraSystemMessages.push({
-      role: "system",
-      content: `
-La conversation est actuellement en état CONTAINMENT.
-
-Important :
-- évite les questions exploratoires
-- la première réponse doit être sans question, sauf danger immédiat
-- privilégie une phrase courte, simple, contenante
-- si une question est utilisée ensuite, elle doit être brève et liée à la sécurité immédiate
 `
     });
   }
@@ -1153,8 +942,6 @@ Important :
   return postProcessReply(out, {
     primaryState,
     congruenceResponseMode,
-    defensiveMinimization,
-    promptingBotToSpeak,
     sufficientClosure
   });
 }
