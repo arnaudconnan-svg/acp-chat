@@ -131,6 +131,89 @@ function acuteCrisisFollowupResponse() {
   return "Je reste sur quelque chose de très simple là. Si le danger est immédiat, appelle le 112 ou le 3114. Si tu peux, ne reste pas seul.";
 }
 
+function getConflictualityLabel(level = 0) {
+  return `Niveau de conflictualité : ${Number(level || 0)}`;
+}
+
+function getStateLabel(primaryState = CONVO_STATES.EXPLORATION) {
+  return `[${primaryState}] state`;
+}
+
+function buildDebugLines({
+  analysis = {},
+  flags = {},
+  primaryState = CONVO_STATES.EXPLORATION
+} = {}) {
+  const lines = [];
+
+  if (analysis.suicideLevel === "N2") {
+    lines.push("Alerte suicide");
+  }
+
+  if (analysis.needsClarification === true) {
+    lines.push("Risque suicidaire probable");
+  }
+
+  if (analysis.isQuote === true) {
+    lines.push("Évoque une autre personne");
+  }
+
+  lines.push(getConflictualityLabel(flags.congruenceEscalation || 0));
+  lines.push(getStateLabel(primaryState));
+
+  if (analysis.wantsReturnToNormal === true) {
+    lines.push("Retour à la normale");
+  }
+
+  if (analysis.defensiveMinimization === true) {
+    lines.push("Minimisation");
+  }
+
+  if (analysis.intellectualization === true) {
+    lines.push("Intellectualisation");
+  }
+
+  if (analysis.solutionRequest === true) {
+    lines.push("Demande de solutions");
+  }
+
+  if (analysis.infoRequest === true) {
+    lines.push("Demande d'informations");
+  }
+
+  if (analysis.attachmentToBot === true) {
+    lines.push("Risque de dépendance");
+  }
+
+  if (analysis.reliefOrShift === true) {
+    lines.push("Soulagement");
+  }
+
+  if (analysis.sufficientClosure === true) {
+    lines.push("Clôture");
+  }
+
+  return [...new Set(lines)];
+}
+
+function attachDebugToReply(
+  reply,
+  {
+    analysis = {},
+    flags = {},
+    primaryState = CONVO_STATES.EXPLORATION
+  } = {}
+) {
+  const safeReply = String(reply || "").trim();
+  const debugLines = buildDebugLines({ analysis, flags, primaryState });
+
+  if (!debugLines.length) {
+    return safeReply;
+  }
+
+  return `${debugLines.join("\n")}\n\n${safeReply}`;
+}
+
 function postProcessReply(
   reply,
   {
@@ -1078,9 +1161,9 @@ puis revenir doucement à l’expérience vécue.
   }
 
   if (sufficientClosure) {
-  extraSystemMessages.push({
-    role: "system",
-    content: `
+    extraSystemMessages.push({
+      role: "system",
+      content: `
 La personne semble avoir trouvé, pour l’instant, un point d’arrêt suffisant
 ou un prochain pas assez clair.
 
@@ -1104,8 +1187,8 @@ Cette disponibilité doit rester discrète et non dramatique.
 
 La réponse reste courte et simple (1 ou 2 phrases).
 `
-  });
-}
+    });
+  }
 
   if (assistantOverquestioning) {
     extraSystemMessages.push({
@@ -1189,8 +1272,14 @@ app.post("/chat", async (req, res) => {
       newFlags.congruenceEscalation = 0;
       newFlags.acuteCrisis = true;
 
+      const reply = attachDebugToReply(n2Response(), {
+        analysis,
+        flags: newFlags,
+        primaryState: analysis.primaryState
+      });
+
       return res.json({
-        reply: n2Response(),
+        reply,
         summary: newSummary,
         flags: newFlags,
         isNewSession: safeIsNewSession,
@@ -1206,8 +1295,14 @@ app.post("/chat", async (req, res) => {
         newFlags.acuteCrisis = true;
         newFlags.congruenceEscalation = 0;
 
+        const reply = attachDebugToReply(acuteCrisisFollowupResponse(), {
+          analysis,
+          flags: newFlags,
+          primaryState: analysis.primaryState
+        });
+
         return res.json({
-          reply: acuteCrisisFollowupResponse(),
+          reply,
           summary: newSummary,
           flags: newFlags,
           isNewSession: safeIsNewSession,
@@ -1220,8 +1315,14 @@ app.post("/chat", async (req, res) => {
       newFlags.congruenceEscalation = 0;
       newFlags.acuteCrisis = false;
 
+      const reply = attachDebugToReply(returnToNormalResponse(), {
+        analysis,
+        flags: newFlags,
+        primaryState: analysis.primaryState
+      });
+
       return res.json({
-        reply: returnToNormalResponse(),
+        reply,
         summary: newSummary,
         flags: newFlags,
         isNewSession: safeIsNewSession,
@@ -1232,7 +1333,12 @@ app.post("/chat", async (req, res) => {
     if (analysis.suicideLevel === "N1" || analysis.needsClarification) {
       newFlags.congruenceEscalation = 0;
 
-      const reply = await n1ResponseLLM(userMessage);
+      const rawReply = await n1ResponseLLM(userMessage);
+      const reply = attachDebugToReply(rawReply, {
+        analysis,
+        flags: newFlags,
+        primaryState: analysis.primaryState
+      });
 
       return res.json({
         reply,
@@ -1256,9 +1362,17 @@ app.post("/chat", async (req, res) => {
 
     if (effectivePrimaryState === CONVO_STATES.BREAKDOWN) {
       const escalationReply = getCongruenceEscalationReply(newFlags.congruenceEscalation);
+      const reply = attachDebugToReply(
+        escalationReply || "Je préfère m’arrêter là pour le moment.",
+        {
+          analysis,
+          flags: newFlags,
+          primaryState: effectivePrimaryState
+        }
+      );
 
       return res.json({
-        reply: escalationReply || "Je préfère m’arrêter là pour le moment.",
+        reply,
         summary: newSummary,
         flags: newFlags,
         isNewSession: safeIsNewSession,
@@ -1266,7 +1380,7 @@ app.post("/chat", async (req, res) => {
       });
     }
 
-    const reply = await generateFreeReply({
+    const rawReply = await generateFreeReply({
       userMessage,
       history,
       summary: newSummary,
@@ -1281,6 +1395,12 @@ app.post("/chat", async (req, res) => {
       promptingBotToSpeak: analysis.promptingBotToSpeak,
       congruenceResponseMode: analysis.congruenceResponseMode,
       sufficientClosure: analysis.sufficientClosure
+    });
+
+    const reply = attachDebugToReply(rawReply, {
+      analysis,
+      flags: newFlags,
+      primaryState: effectivePrimaryState
     });
 
     return res.json({
