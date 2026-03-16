@@ -849,6 +849,8 @@ Ne pose pas de diagnostic.
 N’utilise pas de langage psychopathologisant.
 
 Évite le ton scolaire, mécanique ou scripté.
+
+Quand une consigne locale contredit une tendance générale de conversation, la consigne locale prime.
 `;
 
   const stateSystem = `
