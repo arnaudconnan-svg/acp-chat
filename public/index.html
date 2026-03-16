@@ -443,7 +443,7 @@ button {
         Facilitat.io a été conçu autrement.
       </p>
       <p>
-        Son objectif est de soutenir le développement du centre d’évaluation interne : la capacité à sentir, reconnaître et évaluer son expérience à partir de soi-même.
+        Son objectif est de soutenir le développement du centre d’évaluation interne : la capacité à sentir, reconnaître et évaluer son expérience à partir d’elle-même.
       </p>
       <p>
         Il ne cherche pas à améliorer la performance, à normaliser l’expérience ou à proposer des réponses toutes faites.
@@ -515,6 +515,9 @@ function showScreen(screenId) {
 function enterChat() {
   showScreen("chatScreen");
   autoResizeInput();
+  requestAnimationFrame(() => {
+    scrollChatToBottom(true);
+  });
 }
 
 function openAboutModal() {
@@ -669,9 +672,21 @@ function isUserNearBottom() {
   return chat.scrollHeight - chat.scrollTop - chat.clientHeight < threshold;
 }
 
-function scrollChatToBottom() {
+function scrollChatToBottom(force = false) {
   const chat = document.getElementById("chat");
-  chat.scrollTop = chat.scrollHeight;
+  if (!chat) return;
+
+  if (force) {
+    chat.scrollTop = chat.scrollHeight;
+    return;
+  }
+
+  const distanceFromBottom =
+    chat.scrollHeight - chat.scrollTop - chat.clientHeight;
+
+  if (distanceFromBottom < 80) {
+    chat.scrollTop = chat.scrollHeight;
+  }
 }
 
 function ensureLastUserVisibleAboveInput() {
@@ -710,7 +725,7 @@ function addMessage(roleLabel, text) {
 
   if (roleLabel === "Utilisateur") {
     requestAnimationFrame(() => {
-      scrollChatToBottom();
+      scrollChatToBottom(true);
       ensureLastUserVisibleAboveInput();
     });
   }
@@ -740,7 +755,7 @@ function addSystemMessage(text) {
   msg.textContent = text;
 
   chat.appendChild(msg);
-  scrollChatToBottom();
+  scrollChatToBottom(true);
 }
 
 function rehydrateChatFromSession() {
@@ -757,7 +772,10 @@ function rehydrateChatFromSession() {
     }
   }
 
-  scrollChatToBottom();
+  requestAnimationFrame(() => {
+    scrollChatToBottom(true);
+  });
+
   updateEditButtonVisibility();
 }
 
@@ -943,6 +961,26 @@ document.addEventListener("DOMContentLoaded", function() {
   }
 
   waitForWelcomeLogoThenHideSplash();
+});
+
+window.addEventListener("load", () => {
+  requestAnimationFrame(() => {
+    scrollChatToBottom(true);
+  });
+});
+
+window.addEventListener("pageshow", () => {
+  requestAnimationFrame(() => {
+    scrollChatToBottom(true);
+  });
+});
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") {
+    requestAnimationFrame(() => {
+      scrollChatToBottom(true);
+    });
+  }
 });
 
 document.getElementById("input").addEventListener("input", autoResizeInput);
