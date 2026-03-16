@@ -235,7 +235,8 @@ Réponds STRICTEMENT par JSON :
   "reliefOrShift": true|false,
   "intellectualization": true|false,
   "defensiveMinimization": true|false,
-  "promptingBotToSpeak": true|false
+  "promptingBotToSpeak": true|false,
+  "sufficientClosure": true|false
 }
 
 Règles générales :
@@ -464,6 +465,22 @@ Exemples :
 - "Arrête de répéter"
 - "Dis quelque chose d'intelligent"
 
+sufficientClosure = true si la personne semble avoir trouvé, pour l’instant,
+un point d’arrêt suffisant, une direction claire, un prochain pas concret,
+ou une forme de retombée qui n’appelle pas de relance supplémentaire.
+
+Exemples :
+- "Je vais l'appeler rapidement. Ça ne sert à rien de laisser traîner."
+- "Oui, je crois que c'est assez clair maintenant."
+- "Bon, je sais ce que j'ai à faire."
+- "Oui, ça me va comme ça."
+- "Ça ira pour l’instant."
+- "Je vais déjà faire ça."
+
+Ne coche pas sufficientClosure si la personne coupe court de façon défensive
+ou minimise trop vite sans réel point d’appui.
+Dans ce cas, préfère defensiveMinimization = true.
+
 Si isQuote est true alors ne pas inférer automatiquement un risque suicidaire personnel.
 Si wantsReturnToNormal est true alors ne pas maintenir une logique de clarification suicidaire automatique.
 `;
@@ -475,7 +492,7 @@ Si wantsReturnToNormal est true alors ne pas maintenir une logique de clarificat
   const r = await client.chat.completions.create({
     model: "gpt-4.1-mini",
     temperature: 0,
-    max_tokens: 500,
+    max_tokens: 520,
     messages: [
       { role: "system", content: system },
       ...context,
@@ -503,6 +520,7 @@ Si wantsReturnToNormal est true alors ne pas maintenir une logique de clarificat
     const intellectualization = obj.intellectualization === true;
     const defensiveMinimization = obj.defensiveMinimization === true;
     const promptingBotToSpeak = obj.promptingBotToSpeak === true;
+    const sufficientClosure = obj.sufficientClosure === true;
 
     const primaryState =
       Object.values(CONVO_STATES).includes(obj.primaryState)
@@ -541,7 +559,8 @@ Si wantsReturnToNormal est true alors ne pas maintenir une logique de clarificat
       reliefOrShift,
       intellectualization,
       defensiveMinimization,
-      promptingBotToSpeak
+      promptingBotToSpeak,
+      sufficientClosure
     };
 
   } catch {
@@ -559,7 +578,8 @@ Si wantsReturnToNormal est true alors ne pas maintenir une logique de clarificat
       reliefOrShift: false,
       intellectualization: false,
       defensiveMinimization: false,
-      promptingBotToSpeak: false
+      promptingBotToSpeak: false,
+      sufficientClosure: false
     };
   }
 }
@@ -697,7 +717,8 @@ async function generateFreeReply({
   assistantOverquestioning = false,
   defensiveMinimization = false,
   promptingBotToSpeak = false,
-  congruenceResponseMode = "A_COTE"
+  congruenceResponseMode = "A_COTE",
+  sufficientClosure = false
 }) {
   if (infoRequest) {
     solutionRequest = false;
@@ -976,6 +997,20 @@ puis revenir doucement à l’expérience vécue.
     });
   }
 
+  if (sufficientClosure) {
+    extraSystemMessages.push({
+      role: "system",
+      content: `
+La personne semble avoir trouvé, pour l’instant, un point d’arrêt suffisant
+ou un prochain pas assez clair.
+
+N’ouvre pas une nouvelle boucle.
+Ne relance pas automatiquement avec une question.
+Une réponse simple, courte et sobre peut suffire.
+`
+    });
+  }
+
   if (assistantOverquestioning) {
     extraSystemMessages.push({
       role: "system",
@@ -1127,7 +1162,8 @@ app.post("/chat", async (req, res) => {
       assistantOverquestioning: assistantAskedTooMuch(history),
       defensiveMinimization: analysis.defensiveMinimization,
       promptingBotToSpeak: analysis.promptingBotToSpeak,
-      congruenceResponseMode: analysis.congruenceResponseMode
+      congruenceResponseMode: analysis.congruenceResponseMode,
+      sufficientClosure: analysis.sufficientClosure
     });
 
     return res.json({
