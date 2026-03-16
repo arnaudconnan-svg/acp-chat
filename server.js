@@ -142,6 +142,7 @@ function postProcessReply(
   } = {}
 ) {
   const out = String(reply || "").trim();
+  const lowered = out.toLowerCase();
 
   if (!out) {
     if (primaryState === CONVO_STATES.CONGRUENCE_TEST) {
@@ -156,10 +157,12 @@ function postProcessReply(
       return promptingBotResponse(primaryState);
     }
 
+    if (sufficientClosure) {
+      return "D’accord. Ça semble assez clair pour toi.";
+    }
+
     return "Je t’écoute.";
   }
-
-  const lowered = out.toLowerCase();
 
   if (primaryState === CONVO_STATES.CONGRUENCE_TEST) {
     const forbiddenForCongruence = [
