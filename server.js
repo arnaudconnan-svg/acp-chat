@@ -356,6 +356,8 @@ Exemples :
 - "Dans un film quelqu'un dit : je vais me tuer"
 - "Je cite juste cette phrase"
 
+Si isQuote est true alors ne pas inférer automatiquement un risque suicidaire personnel.
+
 wantsReturnToNormal = true seulement si la personne indique clairement qu'il s'agissait :
 - d'un test
 - d'une citation
@@ -373,6 +375,8 @@ Exemples :
 Dans ces cas :
 - suicideLevel = N0
 - needsClarification = false
+
+Si wantsReturnToNormal est true alors ne pas maintenir une logique de clarification suicidaire automatique.
 
 Définition des états :
 
@@ -411,6 +415,9 @@ Exemples :
 
 Ne choisis pas EXPLORATION si la priorité semble être de contenir plutôt que d’explorer.
 
+Si un message peut relever à la fois de EXPLORATION et de CONTAINMENT,
+choisis CONTAINMENT dès que l’ état paraît très difficile à porter maintenant.
+
 STAGNATION :
 - boucle
 - impasse
@@ -442,9 +449,6 @@ BREAKDOWN :
 - dynamique relationnelle désorganisante sur plusieurs tours
 
 Ne choisis pas BREAKDOWN pour un simple test ponctuel.
-
-Si un message peut relever à la fois de EXPLORATION et de CONTAINMENT,
-choisis CONTAINMENT dès que l’état paraît très difficile à porter maintenant.
 
 congruenceResponseMode :
 - PLAQUE : si le plus juste serait de reconnaître que ça sonne plaqué, faux, fabriqué, scripté
@@ -541,12 +545,11 @@ qu’il n’y a plus de danger immédiat,
 ou qu’il s’agissait d’un test, d’une citation,
 ou que la personne demande explicitement à reprendre normalement,
 ou qu’elle dit explicitement qu’elle n’est plus en danger immédiat
+
 - ne mets pas true pour un simple changement de sujet
 - ne mets pas true pour une plaisanterie ambiguë
 - ne mets pas true pour une simple baisse apparente d’intensité
 
-Si isQuote est true alors ne pas inférer automatiquement un risque suicidaire personnel.
-Si wantsReturnToNormal est true alors ne pas maintenir une logique de clarification suicidaire automatique.
 Si wantsReturnToNormal est true, alors crisisResolved doit aussi être true.
 `;
 
@@ -685,7 +688,7 @@ Réponse : une seule phrase.
 `;
 
   const r = await client.chat.completions.create({
-    model: "gpt-4.1-mini",
+    model: "gpt-4.o",
     temperature: 0,
     max_tokens: 50,
     messages: [
@@ -822,7 +825,7 @@ L’état maître actuel de la conversation est : ${primaryState}.
 Consignes par état :
 
 OPENING :
-- reste simple
+- reste simple, chaleureux mais sobre 
 - n’alourdis pas la réponse
 - ne recycle pas toujours la même formule d’ouverture
 
@@ -1135,7 +1138,7 @@ Important :
   }
 
   const r = await client.chat.completions.create({
-    model: "gpt-4.1-mini",
+    model: "gpt-4.o",
     temperature: 0.9,
     messages: [
       { role: "system", content: baseSystem },
