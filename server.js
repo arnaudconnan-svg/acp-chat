@@ -1044,7 +1044,7 @@ Important :
 - "Je suis là."
 - "Je t’écoute."
 
-Ta réponse peut faire deux choses simples :
+Ta réponse doit faire deux choses simples :
 1. reconnaître ce qui semble s’être posé
 2. laisser une disponibilité simple pour la suite en laissant la main à l'utilisateur
 
