@@ -278,8 +278,14 @@ button {
   justify-content: flex-start;
 }
 
-.bubble {
+.message-content {
   max-width: 80%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.bubble {
   padding: 12px 14px;
   border-radius: 14px;
   line-height: 1.5;
@@ -294,6 +300,24 @@ button {
 
 .bot .bubble {
   background: #f1f1f1;
+}
+
+.debug-block {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.debug-chip {
+  font-size: 12px;
+  line-height: 1.2;
+  color: #4b5563;
+  background: #eef2f4;
+  border: 1px solid #d7dee2;
+  border-radius: 999px;
+  padding: 4px 8px;
+  white-space: nowrap;
 }
 
 .system-message {
@@ -572,12 +596,13 @@ function pushMsg(role, content) {
   return { previousHistory, history, isNewSession };
 }
 
-function addAssistantToCurrentSession(content) {
+function addAssistantToCurrentSession(content, debug = []) {
   const history = loadSessionHistory();
 
   history.push({
     role: "assistant",
     content,
+    debug: Array.isArray(debug) ? debug : [],
     t: Date.now()
   });
 
@@ -713,7 +738,23 @@ function ensureLastUserVisibleAboveInput() {
   }
 }
 
-function addMessage(roleLabel, text) {
+function createDebugBlock(debugLines = []) {
+  if (!Array.isArray(debugLines) || !debugLines.length) return null;
+
+  const debugBlock = document.createElement("div");
+  debugBlock.className = "debug-block";
+
+  debugLines.forEach(line => {
+    const chip = document.createElement("span");
+    chip.className = "debug-chip";
+    chip.textContent = line;
+    debugBlock.appendChild(chip);
+  });
+
+  return debugBlock;
+}
+
+function addMessage(roleLabel, text, debug = []) {
   const chat = document.getElementById("chat");
 
   const msg = document.createElement("div");
@@ -721,11 +762,22 @@ function addMessage(roleLabel, text) {
 
   msg.className = "message " + roleClass;
 
+  const contentWrap = document.createElement("div");
+  contentWrap.className = "message-content";
+
+  if (roleClass === "bot") {
+    const debugBlock = createDebugBlock(debug);
+    if (debugBlock) {
+      contentWrap.appendChild(debugBlock);
+    }
+  }
+
   const bubble = document.createElement("div");
   bubble.className = "bubble";
   bubble.innerHTML = applyGlossary(text);
 
-  msg.appendChild(bubble);
+  contentWrap.appendChild(bubble);
+  msg.appendChild(contentWrap);
   chat.appendChild(msg);
 
   if (roleLabel === "Utilisateur") {
@@ -736,7 +788,7 @@ function addMessage(roleLabel, text) {
   }
 }
 
-function addMessageSilently(roleLabel, text) {
+function addMessageSilently(roleLabel, text, debug = []) {
   const chat = document.getElementById("chat");
 
   const msg = document.createElement("div");
@@ -744,11 +796,22 @@ function addMessageSilently(roleLabel, text) {
 
   msg.className = "message " + roleClass;
 
+  const contentWrap = document.createElement("div");
+  contentWrap.className = "message-content";
+
+  if (roleClass === "bot") {
+    const debugBlock = createDebugBlock(debug);
+    if (debugBlock) {
+      contentWrap.appendChild(debugBlock);
+    }
+  }
+
   const bubble = document.createElement("div");
   bubble.className = "bubble";
   bubble.innerHTML = applyGlossary(text);
 
-  msg.appendChild(bubble);
+  contentWrap.appendChild(bubble);
+  msg.appendChild(contentWrap);
   chat.appendChild(msg);
 }
 
@@ -773,7 +836,7 @@ function rehydrateChatFromSession() {
     if (msg.role === "user") {
       addMessageSilently("Utilisateur", msg.content);
     } else if (msg.role === "assistant") {
-      addMessageSilently("Chatbot", msg.content);
+      addMessageSilently("Chatbot", msg.content, msg.debug || []);
     }
   }
 
@@ -799,11 +862,11 @@ function scrollToLastUserMessage() {
   ensureLastUserVisibleAboveInput();
 }
 
-function addBotReply(text) {
+function addBotReply(text, debug = []) {
   const shouldScroll = isUserNearBottom();
 
-  addAssistantToCurrentSession(text);
-  addMessage("Chatbot", text);
+  addAssistantToCurrentSession(text, debug);
+  addMessage("Chatbot", text, debug);
 
   if (shouldScroll) {
     requestAnimationFrame(() => {
@@ -927,7 +990,7 @@ async function send() {
       return;
     }
 
-    addBotReply(data.reply);
+    addBotReply(data.reply, Array.isArray(data.debug) ? data.debug : []);
 
   } catch (err) {
     console.error("Erreur envoi message :", err);
