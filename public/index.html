@@ -510,14 +510,19 @@ function showScreen(screenId) {
   document.getElementById("welcomeScreen").classList.remove("active");
   document.getElementById("chatScreen").classList.remove("active");
   document.getElementById(screenId).classList.add("active");
+
+  if (screenId === "chatScreen") {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        scrollChatToBottom(true);
+      });
+    });
+  }
 }
 
 function enterChat() {
   showScreen("chatScreen");
   autoResizeInput();
-  requestAnimationFrame(() => {
-    scrollChatToBottom(true);
-  });
 }
 
 function openAboutModal() {
@@ -772,9 +777,9 @@ function rehydrateChatFromSession() {
     }
   }
 
-  requestAnimationFrame(() => {
+  setTimeout(() => {
     scrollChatToBottom(true);
-  });
+  }, 0);
 
   updateEditButtonVisibility();
 }
@@ -965,20 +970,26 @@ document.addEventListener("DOMContentLoaded", function() {
 
 window.addEventListener("load", () => {
   requestAnimationFrame(() => {
-    scrollChatToBottom(true);
+    requestAnimationFrame(() => {
+      scrollChatToBottom(true);
+    });
   });
 });
 
 window.addEventListener("pageshow", () => {
   requestAnimationFrame(() => {
-    scrollChatToBottom(true);
+    requestAnimationFrame(() => {
+      scrollChatToBottom(true);
+    });
   });
 });
 
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible") {
     requestAnimationFrame(() => {
-      scrollChatToBottom(true);
+      requestAnimationFrame(() => {
+        scrollChatToBottom(true);
+      });
     });
   }
 });
