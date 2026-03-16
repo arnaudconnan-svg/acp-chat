@@ -56,7 +56,8 @@ function normalizeSessionFlags(flags) {
 
   return {
     ...safe,
-    congruenceEscalation: Number(safe.congruenceEscalation || 0)
+    congruenceEscalation: Number(safe.congruenceEscalation || 0),
+    acuteCrisis: safe.acuteCrisis === true
   };
 }
 
@@ -124,6 +125,10 @@ function updateCongruenceEscalation(currentLevel = 0, primaryState = CONVO_STATE
   }
 
   return 0;
+}
+
+function acuteCrisisFollowupResponse() {
+  return "Je reste sur quelque chose de très simple là. Si le danger est immédiat, appelle le 112 ou le 3114. Si tu peux, ne reste pas seul.";
 }
 
 function postProcessReply(
@@ -210,15 +215,21 @@ function postProcessReply(
 // 1) ANALYSE UNIQUE : ÉTAT MAÎTRE + FLAGS
 // --------------------------------------------------
 
-async function analyzeMessage(userMessage, history = []) {
+async function analyzeMessage(userMessage, history = [], sessionFlags = {}) {
+  const safeFlags = normalizeSessionFlags(sessionFlags);
+
   const system = `
 Tu fais une analyse rapide du message utilisateur et du contexte récent.
+
+Contexte de session :
+- acuteCrisis actuellement active : ${safeFlags.acuteCrisis ? "oui" : "non"}
 
 Tu dois produire :
 1. le niveau de risque suicidaire
 2. si une clarification suicidaire est nécessaire
 3. un état maître unique de conversation
 4. quelques drapeaux secondaires utiles
+5. deux indicateurs pour gérer la sortie de crise si une séquence N2 est déjà en cours
 
 Réponds STRICTEMENT par JSON :
 {
@@ -236,7 +247,9 @@ Réponds STRICTEMENT par JSON :
   "intellectualization": true|false,
   "defensiveMinimization": true|false,
   "promptingBotToSpeak": true|false,
-  "sufficientClosure": true|false
+  "sufficientClosure": true|false,
+  "stillInAcuteCrisis": true|false,
+  "crisisResolved": true|false
 }
 
 Règles générales :
@@ -481,8 +494,28 @@ Ne coche pas sufficientClosure si la personne coupe court de façon défensive
 ou minimise trop vite sans réel point d’appui.
 Dans ce cas, préfère defensiveMinimization = true.
 
+stillInAcuteCrisis :
+- true seulement si une séquence de crise aiguë est en cours
+et que le message actuel ne montre pas de sortie suffisamment claire
+- quand acuteCrisis est déjà active, reste prudent :
+n’utilise true que si la crise semble encore active, confuse, dangereuse,
+ou non clairement résolue
+- si tu hésites entre "encore en crise" et "pas clairement résolu",
+préfère true
+
+crisisResolved :
+- true seulement si le message actuel indique clairement
+qu’il n’y a plus de danger immédiat,
+ou qu’il s’agissait d’un test, d’une citation,
+ou que la personne demande explicitement à reprendre normalement,
+ou qu’elle dit explicitement qu’elle n’est plus en danger immédiat
+- ne mets pas true pour un simple changement de sujet
+- ne mets pas true pour une plaisanterie ambiguë
+- ne mets pas true pour une simple baisse apparente d’intensité
+
 Si isQuote est true alors ne pas inférer automatiquement un risque suicidaire personnel.
 Si wantsReturnToNormal est true alors ne pas maintenir une logique de clarification suicidaire automatique.
+Si wantsReturnToNormal est true, alors crisisResolved doit aussi être true.
 `;
 
   const context = history
@@ -492,7 +525,7 @@ Si wantsReturnToNormal est true alors ne pas maintenir une logique de clarificat
   const r = await client.chat.completions.create({
     model: "gpt-4.1-mini",
     temperature: 0,
-    max_tokens: 520,
+    max_tokens: 560,
     messages: [
       { role: "system", content: system },
       ...context,
@@ -521,6 +554,8 @@ Si wantsReturnToNormal est true alors ne pas maintenir une logique de clarificat
     const defensiveMinimization = obj.defensiveMinimization === true;
     const promptingBotToSpeak = obj.promptingBotToSpeak === true;
     const sufficientClosure = obj.sufficientClosure === true;
+    const stillInAcuteCrisis = obj.stillInAcuteCrisis === true;
+    const crisisResolved = obj.crisisResolved === true || wantsReturnToNormal === true;
 
     const primaryState =
       Object.values(CONVO_STATES).includes(obj.primaryState)
@@ -560,7 +595,9 @@ Si wantsReturnToNormal est true alors ne pas maintenir une logique de clarificat
       intellectualization,
       defensiveMinimization,
       promptingBotToSpeak,
-      sufficientClosure
+      sufficientClosure,
+      stillInAcuteCrisis,
+      crisisResolved
     };
 
   } catch {
@@ -579,7 +616,9 @@ Si wantsReturnToNormal est true alors ne pas maintenir une logique de clarificat
       intellectualization: false,
       defensiveMinimization: false,
       promptingBotToSpeak: false,
-      sufficientClosure: false
+      sufficientClosure: false,
+      stillInAcuteCrisis: false,
+      crisisResolved: false
     };
   }
 }
@@ -1097,11 +1136,12 @@ app.post("/chat", async (req, res) => {
       newSummary = await summarizeSession(previousHistory, summary);
     }
 
-    const analysis = await analyzeMessage(userMessage, history);
+    const analysis = await analyzeMessage(userMessage, history, flags);
     const newFlags = normalizeSessionFlags(flags);
 
     if (analysis.suicideLevel === "N2") {
       newFlags.congruenceEscalation = 0;
+      newFlags.acuteCrisis = true;
 
       return res.json({
         reply: n2Response(),
@@ -1112,8 +1152,27 @@ app.post("/chat", async (req, res) => {
       });
     }
 
+    if (flags.acuteCrisis === true) {
+      if (analysis.crisisResolved === true || analysis.wantsReturnToNormal === true) {
+        newFlags.acuteCrisis = false;
+        newFlags.congruenceEscalation = 0;
+      } else {
+        newFlags.acuteCrisis = true;
+        newFlags.congruenceEscalation = 0;
+
+        return res.json({
+          reply: acuteCrisisFollowupResponse(),
+          summary: newSummary,
+          flags: newFlags,
+          isNewSession: safeIsNewSession,
+          sessionRestarted
+        });
+      }
+    }
+
     if (analysis.wantsReturnToNormal) {
       newFlags.congruenceEscalation = 0;
+      newFlags.acuteCrisis = false;
 
       return res.json({
         reply: returnToNormalResponse(),
