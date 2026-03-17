@@ -16,13 +16,18 @@ const MAX_HISTORY_FOR_REPLY = 20;
 const MAX_PREVIOUS_HISTORY_FOR_SUMMARY = 40;
 
 const CONVO_STATES = {
+  CONTAINMENT: "CONTAINMENT",
+  BREAKDOWN: "BREAKDOWN",
+  CONGRUENCE_TEST: "CONGRUENCE_TEST",
+  SOLUTION_REQUEST: "SOLUTION_REQUEST",
+  INFO_REQUEST: "INFO_REQUEST",
+  STAGNATION: "STAGNATION",
+  INTELLECTUALIZATION: "INTELLECTUALIZATION",
+  MINIMIZATION: "MINIMIZATION",
+  SILENCE: "SILENCE",
   OPENING: "OPENING",
   EXPLORATION: "EXPLORATION",
-  CONTAINMENT: "CONTAINMENT",
-  STAGNATION: "STAGNATION",
-  SILENCE: "SILENCE",
-  CONGRUENCE_TEST: "CONGRUENCE_TEST",
-  BREAKDOWN: "BREAKDOWN"
+  NONE: "NONE"
 };
 
 
@@ -131,18 +136,35 @@ function acuteCrisisFollowupResponse() {
   return "Je reste sur quelque chose de très simple là. Si le danger est immédiat, appelle le 112 ou le 3114. Si tu peux, ne reste pas seul.";
 }
 
+function stateIs(state, target) {
+  return state === target;
+}
+
+function stateIn(state, ...targets) {
+  return targets.includes(state);
+}
+
+function analysisHasState(analysis = {}, target) {
+  return analysis.primaryState === target || analysis.secondaryState === target;
+}
+
 function getConflictualityLabel(level = 0) {
   return `Niveau de conflictualité : ${Number(level || 0)}`;
 }
 
-function getStateLabel(primaryState = CONVO_STATES.EXPLORATION) {
-  return `[${primaryState}] state`;
+function getPrimaryStateLabel(primaryState = CONVO_STATES.EXPLORATION) {
+  return `État primaire : ${primaryState}`;
+}
+
+function getSecondaryStateLabel(secondaryState = CONVO_STATES.NONE) {
+  return `État secondaire : ${secondaryState}`;
 }
 
 function buildDebugLines({
   analysis = {},
   flags = {},
-  primaryState = CONVO_STATES.EXPLORATION
+  primaryState = CONVO_STATES.EXPLORATION,
+  secondaryState = CONVO_STATES.NONE
 } = {}) {
   const lines = [];
 
@@ -159,23 +181,8 @@ function buildDebugLines({
   }
 
   lines.push(getConflictualityLabel(flags.congruenceEscalation || 0));
-  lines.push(getStateLabel(primaryState));
-
-  if (analysis.defensiveMinimization === true) {
-    lines.push("Minimisation");
-  }
-
-  if (analysis.intellectualization === true) {
-    lines.push("Intellectualisation");
-  }
-
-  if (analysis.solutionRequest === true) {
-    lines.push("Demande de solutions");
-  }
-
-  if (analysis.infoRequest === true) {
-    lines.push("Demande d'informations");
-  }
+  lines.push(getPrimaryStateLabel(primaryState));
+  lines.push(getSecondaryStateLabel(secondaryState));
 
   if (analysis.attachmentToBot === true) {
     lines.push("Risque de dépendance");
@@ -183,6 +190,10 @@ function buildDebugLines({
 
   if (analysis.reliefOrShift === true) {
     lines.push("Soulagement");
+  }
+
+  if (analysis.promptingBotToSpeak === true) {
+    lines.push("Pousse le bot à parler");
   }
 
   if (analysis.sufficientClosure === true) {
@@ -199,9 +210,10 @@ function buildDebugLines({
 function buildDebugPayload({
   analysis = {},
   flags = {},
-  primaryState = CONVO_STATES.EXPLORATION
+  primaryState = CONVO_STATES.EXPLORATION,
+  secondaryState = CONVO_STATES.NONE
 } = {}) {
-  return buildDebugLines({ analysis, flags, primaryState });
+  return buildDebugLines({ analysis, flags, primaryState, secondaryState });
 }
 
 function postProcessReply(
@@ -311,7 +323,7 @@ function postProcessReply(
 
 
 // --------------------------------------------------
-// 1) ANALYSE UNIQUE : ÉTAT MAÎTRE + FLAGS
+// 1) ANALYSE UNIQUE : ÉTAT MAÎTRE + ÉTAT SECONDAIRE
 // --------------------------------------------------
 
 async function analyzeMessage(userMessage, history = [], sessionFlags = {}) {
@@ -326,9 +338,10 @@ Contexte de session :
 Tu dois produire :
 1. le niveau de risque suicidaire
 2. si une clarification suicidaire est nécessaire
-3. un état maître unique de conversation
-4. quelques drapeaux secondaires utiles
-5. un indicateur pour gérer la sortie de crise si une séquence N2 est déjà en cours
+3. un état primaire unique de conversation
+4. un état secondaire éventuel
+5. quelques drapeaux utiles
+6. un indicateur pour gérer la sortie de crise si une séquence N2 est déjà en cours
 
 Réponds STRICTEMENT par JSON :
 {
@@ -336,14 +349,11 @@ Réponds STRICTEMENT par JSON :
   "needsClarification": true|false,
   "isQuote": true|false,
   "idiomaticDeathExpression": true|false,
-  "primaryState": "OPENING|EXPLORATION|CONTAINMENT|STAGNATION|SILENCE|CONGRUENCE_TEST|BREAKDOWN",
+  "primaryState": "CONTAINMENT|BREAKDOWN|CONGRUENCE_TEST|SOLUTION_REQUEST|INFO_REQUEST|STAGNATION|INTELLECTUALIZATION|MINIMIZATION|SILENCE|OPENING|EXPLORATION",
+  "secondaryState": "NONE|CONTAINMENT|BREAKDOWN|CONGRUENCE_TEST|SOLUTION_REQUEST|INFO_REQUEST|STAGNATION|INTELLECTUALIZATION|MINIMIZATION|SILENCE|OPENING|EXPLORATION",
   "congruenceResponseMode": "PLAQUE|PAS_JUSTE|A_COTE",
-  "solutionRequest": true|false,
-  "infoRequest": true|false,
   "attachmentToBot": true|false,
   "reliefOrShift": true|false,
-  "intellectualization": true|false,
-  "defensiveMinimization": true|false,
   "promptingBotToSpeak": true|false,
   "sufficientClosure": true|false,
   "crisisResolved": true|false
@@ -352,16 +362,29 @@ Réponds STRICTEMENT par JSON :
 Règles générales :
 
 Le champ primaryState doit désigner le régime relationnel principal
-le plus juste pour le message actuel compte tenu du contexte récent.
+le plus juste pour le message actuel.
 
-Hiérarchie implicite des états :
-- CONTAINMENT si angoisse aiguë ou risque de débordement immédiat
-- BREAKDOWN si conflit répété et désorganisant autour du bot
-- CONGRUENCE_TEST si mise en cause ponctuelle de la justesse du bot
-- SILENCE si vide, blanc, absence de chose à dire
-- STAGNATION si boucle, impasse, répétition
-- OPENING si la conversation s’ouvre simplement
-- sinon EXPLORATION
+Le champ secondaryState doit désigner au maximum un autre mouvement présent maintenant
+ou dans les 3 derniers messages utilisateur, mais moins structurant que le primaryState.
+
+Règles sur secondaryState :
+- secondaryState doit être différent de primaryState
+- si aucun autre mouvement n’est clairement présent, mets "NONE"
+- n’utilise pas secondaryState pour faire de stratégie dans le temps
+- n’utilise pas un historique plus large que les 3 derniers messages utilisateur
+
+Hiérarchie implicite pour primaryState :
+1. CONTAINMENT
+2. BREAKDOWN
+3. CONGRUENCE_TEST
+4. SOLUTION_REQUEST
+5. INFO_REQUEST
+6. STAGNATION
+7. INTELLECTUALIZATION
+8. MINIMIZATION
+9. SILENCE
+10. OPENING
+11. EXPLORATION
 
 Risque suicidaire :
 - N0 : pas de contenu suicidaire explicite
@@ -434,15 +457,6 @@ Dans ces cas :
 
 Définition des états :
 
-OPENING :
-- début simple de conversation
-- prise de contact
-- pas encore de dynamique complexe
-
-EXPLORATION :
-- expression ordinaire du vécu
-- aucun autre état ne domine
-
 CONTAINMENT :
 - angoisse aiguë
 - angoisse très intense ou très envahissante
@@ -453,21 +467,20 @@ CONTAINMENT :
 - état difficile à porter maintenant
 - détresse qui appelle d’abord de la simplicité et de la sécurité
 
-Choisis CONTAINMENT non seulement quand la personne parle de panique extrême,
-mais aussi quand elle exprime une angoisse forte, envahissante ou très difficile à porter
-dans l’instant.
+BREAKDOWN :
+- le conflit avec le bot devient le centre de la conversation
+- reproches répétés sur le script, le faux, l’incongruence
+- mise en échec répétée du bot
+- dynamique relationnelle désorganisante sur plusieurs tours
 
-Exemples :
-- "Je suis terriblement angoissé"
-- "Je suis très angoissé"
-- "Là je suis vraiment angoissé"
-- "Je me sens dépassé"
-- "Ça m’envahit"
-- "Je ne me sens pas bien du tout"
-- "Là ça déborde"
-- "J’angoisse vraiment"
+CONGRUENCE_TEST :
+- mise en cause ponctuelle de l’authenticité, la justesse ou la congruence du bot
 
-Ne choisis pas EXPLORATION si la priorité semble être de contenir plutôt que d’explorer.
+SOLUTION_REQUEST :
+- la personne demande surtout quoi faire, comment s’y prendre, une piste concrète, une solution
+
+INFO_REQUEST :
+- la personne demande surtout une information factuelle, théorique, historique ou scientifique
 
 STAGNATION :
 - boucle
@@ -477,6 +490,14 @@ STAGNATION :
 - "je sais pas" qui revient
 - "ça ne mène nulle part"
 
+INTELLECTUALIZATION :
+- la personne passe surtout par l’analyse, la théorie ou la psychologisation
+- le vécu immédiat est moins présent que l’analyse
+
+MINIMIZATION :
+- la personne coupe, réduit ou rabat trop vite ce qu’elle vit
+- il n’y a pas de réel apaisement clairement décrit
+
 SILENCE :
 - vide
 - blanc
@@ -484,39 +505,24 @@ SILENCE :
 - "..."
 - retrait explicite de la parole
 
-CONGRUENCE_TEST :
-- mise en cause ponctuelle de l’authenticité, la justesse ou la congruence du bot
+OPENING :
+- début simple de conversation
+- prise de contact
+- pas encore de dynamique complexe
 
-Exemples :
-- "Ta réponse sonne faux"
-- "Tu fais semblant d’être empathique"
-- "Tu n’es pas congruent là"
-- "On sent le script"
-
-BREAKDOWN :
-- le conflit avec le bot devient le centre de la conversation
-- reproches répétés sur le script, le faux, l’incongruence
-- mise en échec répétée du bot
-- dynamique relationnelle désorganisante sur plusieurs tours
-
-Ne choisis pas BREAKDOWN pour un simple test ponctuel.
+EXPLORATION :
+- expression ordinaire du vécu
+- aucun autre état ne domine
 
 Si un message peut relever à la fois de EXPLORATION et de CONTAINMENT,
 choisis CONTAINMENT dès que l’état paraît très difficile à porter maintenant.
+
+Ne choisis pas BREAKDOWN pour un simple test ponctuel.
 
 congruenceResponseMode :
 - PLAQUE : si le plus juste serait de reconnaître que ça sonne plaqué, faux, fabriqué, scripté
 - PAS_JUSTE : si le plus juste serait de reconnaître que la réponse n’est pas juste
 - A_COTE : sinon
-
-solutionRequest = true seulement si la personne demande clairement
-des idées, conseils, pistes, quoi faire, comment s’y prendre, une solution.
-
-infoRequest = true si la personne pose une question factuelle :
-auteurs, courants, recherches, information théorique, historique ou scientifique,
-différence entre deux approches, ce qui est connu.
-
-Si solutionRequest est true alors infoRequest doit être false.
 
 attachmentToBot = true si la personne valorise explicitement le bot
 par rapport à des humains, ou semble déplacer le centre de soutien vers lui.
@@ -533,24 +539,6 @@ vient de se produire.
 
 Ne coche pas reliefOrShift pour une simple hypothèse intellectuelle
 ni pour une minimisation défensive.
-
-intellectualization = true si la personne parle surtout
-dans un registre analytique, théorique ou psychologisant,
-sans contact clair avec le vécu immédiat.
-
-Exemples :
-- "Je pense que c’est mon système d’attachement anxieux qui se réactive"
-- "C’est probablement un mécanisme de défense"
-- "Je suis sans doute dans une projection"
-
-defensiveMinimization = true si la personne semble couper trop vite,
-minimiser ou rabattre ce qu’elle vit sans décrire un réel apaisement.
-
-Exemples :
-- "Nan, ça va aller"
-- "Bon, c'est pas grave"
-- "C'est bon"
-- "Je vais gérer"
 
 promptingBotToSpeak = true si la personne pousse explicitement le bot
 à dire quelque chose, à parler autrement, à sortir du script ou à se justifier.
@@ -580,18 +568,8 @@ si le contexte immédiat montre déjà :
 - une retombée suffisante
 - ou un point de stabilisation déjà formulé juste avant
 
-Exemples :
-- après "Ça va me faire du bien" -> "Oui"
-- après "Juste d'y penser ça va mieux" -> "Oui"
-- après "Bon, je sais ce que j’ai à faire" -> "Oui"
-- après une reformulation juste d’un appui concret -> "D’accord", "Oui", "C’est ça"
-
 Ne coche pas sufficientClosure pour un simple "oui" isolé
 si le contexte juste avant ne montre pas déjà une retombée ou un appui clair.
-
-Ne coche pas sufficientClosure si la personne coupe court de façon défensive
-ou minimise trop vite sans réel point d’appui.
-Dans ce cas, préfère defensiveMinimization = true.
 
 crisisResolved :
 - true seulement si le message actuel indique clairement
@@ -630,20 +608,21 @@ ou que la personne dit explicitement qu’elle n’est plus en danger immédiat
 
     const isQuote = obj.isQuote === true;
     const idiomaticDeathExpression = obj.idiomaticDeathExpression === true;
-    const solutionRequest = obj.solutionRequest === true;
-    const infoRequest = solutionRequest ? false : obj.infoRequest === true;
     const attachmentToBot = obj.attachmentToBot === true;
     const reliefOrShift = obj.reliefOrShift === true;
-    const intellectualization = obj.intellectualization === true;
-    const defensiveMinimization = obj.defensiveMinimization === true;
     const promptingBotToSpeak = obj.promptingBotToSpeak === true;
     const sufficientClosure = obj.sufficientClosure === true;
     const crisisResolved = obj.crisisResolved === true;
 
     const primaryState =
-      Object.values(CONVO_STATES).includes(obj.primaryState)
+      Object.values(CONVO_STATES).includes(obj.primaryState) && obj.primaryState !== CONVO_STATES.NONE
         ? obj.primaryState
         : CONVO_STATES.EXPLORATION;
+
+    const secondaryState =
+      Object.values(CONVO_STATES).includes(obj.secondaryState) && obj.secondaryState !== primaryState
+        ? obj.secondaryState
+        : CONVO_STATES.NONE;
 
     const congruenceResponseMode =
       ["PLAQUE", "PAS_JUSTE", "A_COTE"].includes(obj.congruenceResponseMode)
@@ -663,12 +642,29 @@ ou que la personne dit explicitement qu’elle n’est plus en danger immédiat
       needsClarification = false;
     }
 
+    const solutionRequest =
+      stateIn(primaryState, CONVO_STATES.SOLUTION_REQUEST) ||
+      stateIn(secondaryState, CONVO_STATES.SOLUTION_REQUEST);
+
+    const infoRequest =
+      stateIn(primaryState, CONVO_STATES.INFO_REQUEST) ||
+      stateIn(secondaryState, CONVO_STATES.INFO_REQUEST);
+
+    const intellectualization =
+      stateIn(primaryState, CONVO_STATES.INTELLECTUALIZATION) ||
+      stateIn(secondaryState, CONVO_STATES.INTELLECTUALIZATION);
+
+    const defensiveMinimization =
+      stateIn(primaryState, CONVO_STATES.MINIMIZATION) ||
+      stateIn(secondaryState, CONVO_STATES.MINIMIZATION);
+
     return {
       suicideLevel,
       needsClarification,
       isQuote,
       idiomaticDeathExpression,
       primaryState,
+      secondaryState,
       congruenceResponseMode,
       solutionRequest,
       infoRequest,
@@ -688,6 +684,7 @@ ou que la personne dit explicitement qu’elle n’est plus en danger immédiat
       isQuote: false,
       idiomaticDeathExpression: false,
       primaryState: CONVO_STATES.EXPLORATION,
+      secondaryState: CONVO_STATES.NONE,
       congruenceResponseMode: "A_COTE",
       solutionRequest: false,
       infoRequest: false,
@@ -815,7 +812,282 @@ Style :
 
 
 // --------------------------------------------------
-// 5) GÉNÉRATION LLM
+// 5) PROMPTS D'ÉTAT
+// --------------------------------------------------
+
+function buildPrimaryStatePrompt(primaryState = CONVO_STATES.EXPLORATION) {
+  switch (primaryState) {
+    case CONVO_STATES.OPENING:
+      return `
+Ouverture simple.
+N’alourdis pas.
+Ne structure pas trop vite.
+`;
+
+    case CONVO_STATES.EXPLORATION:
+      return `
+Reste au plus près du vécu.
+Tu peux suivre le mouvement de pensée sans rabattre immédiatement vers une question.
+Ne rends pas le vécu plus propre, plus sage ou plus cohérent qu’il ne l’est.
+`;
+
+    case CONVO_STATES.CONTAINMENT:
+      return `
+Priorité à la simplicité.
+Reste proche de ce que la personne vit maintenant.
+Évite les interprétations, les longues reformulations, les conseils et les questions exploratoires.
+Ne renvoie vers une aide extérieure que si un danger immédiat est évoqué explicitement.
+`;
+
+    case CONVO_STATES.STAGNATION:
+      return `
+Il y a une impression de boucle ou d’impasse.
+Ne force pas l’avancée.
+Réduis les questions.
+Un reflet simple vaut mieux qu’une relance élaborée.
+`;
+
+    case CONVO_STATES.SILENCE:
+      return `
+Respecte le vide.
+Une réponse très courte peut suffire.
+N’interprète pas le silence.
+Ne relance pas automatiquement.
+`;
+
+    case CONVO_STATES.CONGRUENCE_TEST:
+      return `
+La justesse de ta réponse est mise en cause.
+Reconnais simplement le décalage si c’est le cas.
+Ne te défends pas.
+N’explique pas ton fonctionnement.
+Ne pose pas de question.
+`;
+
+    case CONVO_STATES.BREAKDOWN:
+      return `
+Le conflit avec le programme prend toute la place.
+Réduis fortement.
+Ne cherche plus à explorer.
+`;
+
+    case CONVO_STATES.SOLUTION_REQUEST:
+      return `
+La personne demande ce qu’elle devrait faire, penser ou mettre en place.
+Reconnais cette recherche de concret.
+Pose clairement le cadre : ici, pas de conseil ni de solution toute faite.
+N’entre pas toi-même dans la recherche de solutions.
+Ne propose aucune piste concrète, même partielle.
+Ne bascule pas dans l’exploration immédiatement.
+N’ouvre que légèrement, si nécessaire, sur ce que représente cette demande pour la personne.
+`;
+
+    case CONVO_STATES.INFO_REQUEST:
+      return `
+La personne pose surtout une question factuelle.
+Réponds directement.
+N’ajoute pas automatiquement d’exploration introspective.
+`;
+
+    case CONVO_STATES.INTELLECTUALIZATION:
+      return `
+La personne passe surtout par l’analyse.
+Ne valide pas cette analyse comme vérité sur elle ou comme lecture diagnostique.
+Tu peux reconnaître brièvement ce passage par l’analyse puis revenir doucement au vécu.
+`;
+
+    case CONVO_STATES.MINIMIZATION:
+      return `
+La personne réduit ou coupe trop vite ce qu’elle vit.
+Ne dramatise pas.
+Ne sur-interprète pas.
+Une réponse simple suffit souvent.
+`;
+
+    default:
+      return `
+Reste simple, vivant et proche de ce qui est dit.
+`;
+  }
+}
+
+function buildSecondaryStatePrompt(primaryState = CONVO_STATES.EXPLORATION, secondaryState = CONVO_STATES.NONE) {
+  if (!secondaryState || secondaryState === CONVO_STATES.NONE) return "";
+
+  if (
+    stateIn(
+      primaryState,
+      CONVO_STATES.BREAKDOWN,
+      CONVO_STATES.CONGRUENCE_TEST,
+      CONVO_STATES.SILENCE,
+      CONVO_STATES.CONTAINMENT,
+      CONVO_STATES.OPENING
+    )
+  ) {
+    return "";
+  }
+
+  if (primaryState === CONVO_STATES.SOLUTION_REQUEST) {
+    switch (secondaryState) {
+      case CONVO_STATES.INTELLECTUALIZATION:
+        return `
+Dans la dernière phrase, n’ignore pas complètement que la personne semble peut-être aussi chercher à comprendre ou maîtriser rapidement ce qui se passe.
+Ne présente pas cela comme une vérité sur elle.
+Ne nourris pas l’analyse.
+Ne ferme pas.
+`;
+      case CONVO_STATES.MINIMIZATION:
+        return `
+Dans la dernière phrase, n’ignore pas complètement qu’il y a peut-être autre chose derrière la demande apparente.
+Ne présente pas cela comme une vérité sur elle.
+Ne dramatise pas.
+Ne ferme pas.
+`;
+      case CONVO_STATES.STAGNATION:
+        return `
+Dans la dernière phrase, n’ignore pas complètement que cette recherche de solution semble peut-être revenir ou tourner un peu.
+Ne présente pas cela comme une vérité sur elle.
+Ne durcis pas le cadre.
+Ne ferme pas.
+`;
+      case CONVO_STATES.INFO_REQUEST:
+        return `
+Dans la dernière phrase, n’ignore pas complètement qu’une demande de compréhension plus factuelle peut aussi être présente.
+Ne présente pas cela comme une vérité sur elle.
+Ne fais pas basculer la réponse en cours théorique.
+Ne ferme pas.
+`;
+      default:
+        return `
+Dans la dernière phrase, n’ignore pas complètement le mouvement secondaire présent.
+Ne le présente pas comme une vérité sur la personne.
+Ne ferme pas.
+`;
+    }
+  }
+
+  if (primaryState === CONVO_STATES.EXPLORATION) {
+    switch (secondaryState) {
+      case CONVO_STATES.INTELLECTUALIZATION:
+        return `
+Dans la dernière phrase, n’ignore pas complètement que la personne passe aussi par l’analyse.
+Ne présente pas cela comme une vérité sur elle.
+Ne nourris pas l’analyse.
+Ne ferme pas.
+`;
+      case CONVO_STATES.MINIMIZATION:
+        return `
+Dans la dernière phrase, n’ignore pas complètement que quelque chose est peut-être dit trop vite.
+Ne présente pas cela comme une vérité sur elle.
+Ne dramatise pas.
+Ne ferme pas.
+`;
+      case CONVO_STATES.SOLUTION_REQUEST:
+        return `
+Dans la dernière phrase, n’ignore pas complètement le souhait que ça se résolve.
+Ne donne aucun conseil.
+Ne présente pas cela comme une vérité sur la personne.
+Ne ferme pas.
+`;
+      case CONVO_STATES.STAGNATION:
+        return `
+Dans la dernière phrase, n’ignore pas complètement qu’il y a peut-être une boucle.
+Ne le martèle pas.
+Ne présente pas cela comme une vérité sur la personne.
+Ne ferme pas.
+`;
+      case CONVO_STATES.INFO_REQUEST:
+        return `
+Dans la dernière phrase, n’ignore pas complètement qu’une demande de compréhension plus claire peut aussi être présente.
+Ne bascule pas dans l’explication théorique.
+Ne présente pas cela comme une vérité sur la personne.
+Ne ferme pas.
+`;
+      default:
+        return `
+Dans la dernière phrase, n’ignore pas complètement le mouvement secondaire présent.
+Ne le présente pas comme une vérité sur la personne.
+Ne ferme pas.
+`;
+    }
+  }
+
+  if (primaryState === CONVO_STATES.STAGNATION) {
+    switch (secondaryState) {
+      case CONVO_STATES.INTELLECTUALIZATION:
+        return `
+Dans la dernière phrase, n’ignore pas complètement que l’analyse semble peut-être participer à la boucle.
+Ne présente pas cela comme une vérité sur la personne.
+Ne nourris pas l’analyse.
+Ne ferme pas.
+`;
+      case CONVO_STATES.SOLUTION_REQUEST:
+        return `
+Dans la dernière phrase, n’ignore pas complètement que le souhait d’aller vite vers une issue est peut-être présent.
+Ne satisfais pas directement cette attente.
+Ne présente pas cela comme une vérité sur la personne.
+Ne ferme pas.
+`;
+      case CONVO_STATES.MINIMIZATION:
+        return `
+Dans la dernière phrase, n’ignore pas complètement qu’il y a peut-être aussi une manière de rabattre trop vite ce qui se passe.
+Ne présente pas cela comme une vérité sur la personne.
+Ne dramatise pas.
+Ne ferme pas.
+`;
+      default:
+        return `
+Dans la dernière phrase, n’ignore pas complètement le mouvement secondaire présent.
+Ne le présente pas comme une vérité sur la personne.
+Ne ferme pas.
+`;
+    }
+  }
+
+  if (primaryState === CONVO_STATES.INFO_REQUEST) {
+    switch (secondaryState) {
+      case CONVO_STATES.INTELLECTUALIZATION:
+        return `
+Dans la dernière phrase, n’ignore pas complètement que cette demande d’information semble peut-être aussi liée à un besoin de comprendre vite.
+Ne présente pas cela comme une vérité sur la personne.
+Ne psychologise pas.
+Ne ferme pas.
+`;
+      case CONVO_STATES.MINIMIZATION:
+        return `
+Dans la dernière phrase, n’ignore pas complètement qu’il y a peut-être autre chose derrière la demande factuelle.
+Ne présente pas cela comme une vérité sur la personne.
+Ne dramatise pas.
+Ne ferme pas.
+`;
+      case CONVO_STATES.SOLUTION_REQUEST:
+        return `
+Dans la dernière phrase, n’ignore pas complètement qu’une attente de concret est peut-être aussi là.
+Ne donne pas de conseil.
+Ne présente pas cela comme une vérité sur la personne.
+Ne ferme pas.
+`;
+      case CONVO_STATES.STAGNATION:
+        return `
+Dans la dernière phrase, n’ignore pas complètement qu’il y a peut-être quelque chose qui tourne un peu autour de cette demande d’information.
+Ne présente pas cela comme une vérité sur la personne.
+Ne ferme pas.
+`;
+      default:
+        return `
+Dans la dernière phrase, n’ignore pas complètement le mouvement secondaire présent.
+Ne le présente pas comme une vérité sur la personne.
+Ne ferme pas.
+`;
+    }
+  }
+
+  return "";
+}
+
+
+// --------------------------------------------------
+// 6) GÉNÉRATION LLM
 // --------------------------------------------------
 
 async function generateFreeReply({
@@ -823,20 +1095,17 @@ async function generateFreeReply({
   history = [],
   summary = "",
   primaryState = CONVO_STATES.EXPLORATION,
-  solutionRequest = false,
-  infoRequest = false,
+  secondaryState = CONVO_STATES.NONE,
   attachmentToBot = false,
   reliefOrShift = false,
-  intellectualization = false,
   assistantOverquestioning = false,
-  defensiveMinimization = false,
   promptingBotToSpeak = false,
   congruenceResponseMode = "A_COTE",
   sufficientClosure = false
 }) {
-  if (infoRequest) {
-    solutionRequest = false;
-  }
+  const primaryStatePrompt = buildPrimaryStatePrompt(primaryState);
+  const secondaryStatePrompt = buildSecondaryStatePrompt(primaryState, secondaryState);
+  const isMinimization = analysisHasState({ primaryState, secondaryState }, CONVO_STATES.MINIMIZATION);
 
   const baseSystem = `
 Tu es Facilitat.io.
@@ -854,53 +1123,26 @@ Quand une consigne locale contredit une tendance générale de conversation, la 
 `;
 
   const stateSystem = `
-L’état maître actuel de la conversation est : ${primaryState}.
+État primaire actuel : ${primaryState}
+État secondaire éventuel : ${secondaryState}
 
-Consignes par état :
+Important :
+- le corps de la réponse suit l’état primaire
+- la dernière phrase peut être légèrement influencée par l’état secondaire
+- l’état secondaire ne doit jamais prendre le dessus sur l’état primaire
+- dans BREAKDOWN, CONGRUENCE_TEST, SILENCE, CONTAINMENT et OPENING, ignore l’état secondaire
+- la dernière phrase ne doit pas être formulée comme une vérité sur la personne
+- la dernière phrase ne doit pas devenir une technique visible
+`;
 
-OPENING :
-- reste sobre
-- ne recycle pas toujours la même formule d’ouverture
+  const bodySystem = `
+Consignes pour le corps de la réponse :
+${primaryStatePrompt}
+`;
 
-EXPLORATION :
-- reste au plus près de l’expérience vécue
-- tu peux suivre le mouvement de pensée de la personne sans la rabattre immédiatement vers une question
-- ne rends pas le vécu plus propre ou plus sage qu’il ne l’est
-
-CONTAINMENT :
-- priorité à la simplicité
-- reste proche de ce que la personne vit
-- évite les interprétations
-- évite les longues reformulations
-- évite les conseils
-- évite les protocoles de sécurité génériques
-- ne renvoie vers une aide extérieure que si la personne évoque explicitement un danger immédiat
-
-Exemples de tonalité attendue :
-- présence
-- lenteur
-- sobriété
-
-STAGNATION :
-- la personne semble dans une boucle ou une impasse
-- ne cherche pas à faire avancer artificiellement
-- réduis le nombre de questions
-- un reflet bref vaut mieux qu’une relance
-
-SILENCE :
-- il n’est pas nécessaire de poser une question
-- une présence simple ou une phrase très courte peut suffire
-- n’interprète pas le silence
-
-CONGRUENCE_TEST :
-- reconnais simplement le ratage
-- ne te défends pas
-- ne justifie rien
-- pas de nouvelle question introspective immédiate
-
-BREAKDOWN :
-- cet état est géré hors génération libre
-- n’en tiens pas compte ici
+  const endingSystem = `
+Consignes pour la dernière phrase :
+${secondaryStatePrompt || "Aucune consigne secondaire supplémentaire."}
 `;
 
   const facilitationSystem = `
@@ -956,33 +1198,6 @@ et revenir à ce que la personne vit concrètement.
     });
   }
 
-  if (primaryState === CONVO_STATES.CONGRUENCE_TEST) {
-    extraSystemMessages.push({
-      role: "system",
-      content: `
-La personne met en cause la justesse ou l’authenticité de ta réponse.
-
-Reconnais simplement le ratage si c’est le cas.
-Ne te défends pas.
-N’explique pas ton fonctionnement.
-Ne pose pas de nouvelle question.
-Réponse brève.
-`
-    });
-  }
-
-  if (defensiveMinimization) {
-    extraSystemMessages.push({
-      role: "system",
-      content: `
-La personne minimise rapidement ce qu’elle vient de dire.
-
-Ne dramatise pas.
-Ne sur-interprète pas.
-`
-    });
-  }
-
   if (promptingBotToSpeak) {
     extraSystemMessages.push({
       role: "system",
@@ -991,48 +1206,6 @@ La personne te pousse à dire quelque chose.
 
 Ne te justifie pas.
 Ne parle pas de ton fonctionnement.
-`
-    });
-  }
-
-  if (solutionRequest) {
-    extraSystemMessages.push({
-      role: "system",
-      content: `
-La personne demande des conseils, des idées ou des solutions.
-
-N’ entre pas toi - même dans la recherche de solutions.
-Ne propose aucune piste concrète, même partielle.
-Ne suggère pas d’ actions, d’ étapes, d’ options, d’ exemples ou de stratégies.
-Ne transforme pas la réponse en pseudo - coaching.
-
-Tu peux:
-  -reconnaître la demande -
-  dire simplement que ce programme n’ apporte pas de solutions toutes faites -
-  aider la personne à préciser ce qu’ elle cherche, ce qu’ elle imagine, ce qu’ elle redoute ou ce qui bloquerait pour elle
-
-Si tu poses une question, elle doit servir à clarifier la demande vécue, pas à orienter vers une solution.
-`
-    });
-  }
-
-  if (infoRequest) {
-    extraSystemMessages.push({
-      role: "system",
-      content: `
-La personne pose une question factuelle.
-
-Réponds directement à la question.
-Tu peux citer :
-- auteurs
-- courants
-- recherches
-- domaines
-
-N’invente pas.
-
-Si la question porte sur l’ACP,
-elle signifie uniquement "Approche Centrée sur la Personne".
 `
     });
   }
@@ -1071,23 +1244,6 @@ N'interprète pas ce qui se passe.
     });
   }
 
-  if (intellectualization) {
-    extraSystemMessages.push({
-      role: "system",
-      content: `
-La personne parle surtout dans un registre analytique, théorique ou psychologisant.
-
-Ne valide pas cette analyse comme un diagnostic ou une lecture juste.
-Ne la conteste pas.
-Ne la corrige pas.
-Ne déclenche pas la règle diagnostic juste parce que des mots psychologiques apparaissent.
-
-Tu peux reconnaître que la personne met des mots analytiques sur ce qu’elle vit,
-puis revenir doucement à l’expérience vécue.
-`
-    });
-  }
-
   if (sufficientClosure) {
     extraSystemMessages.push({
       role: "system",
@@ -1095,12 +1251,11 @@ puis revenir doucement à l’expérience vécue.
 La personne semble avoir trouvé, pour l’instant, un point d’arrêt suffisant
 ou un prochain pas assez clair.
 
-Objectif : permettre une clôture naturelle de ce moment.
-
-Important :
-- n’ouvre pas une nouvelle exploration
-- ne relance pas avec une question
-- ne crée pas un nouveau sujet
+Objectif :
+- permettre une clôture naturelle
+- ne pas ouvrir une nouvelle exploration
+- ne pas relancer avec une question
+- ne pas créer un nouveau sujet
 
 Évite les formules génériques répétitives comme :
 - "D’accord." seul
@@ -1122,26 +1277,14 @@ Privilégie un reflet bref, une mise en mots simple, ou une présence sobre.
     });
   }
 
-  if (primaryState === CONVO_STATES.CONTAINMENT) {
-    extraSystemMessages.push({
-      role: "system",
-      content: `
-La conversation est actuellement en état CONTAINMENT.
-
-Important :
-- évite les questions exploratoires
-- la première réponse doit être sans question, sauf danger immédiat
-- si une question est utilisée ensuite, elle doit être brève et liée à la sécurité immédiate
-`
-    });
-  }
-
   const r = await client.chat.completions.create({
     model: "gpt-4o",
     temperature: 0.9,
     messages: [
       { role: "system", content: baseSystem },
       { role: "system", content: stateSystem },
+      { role: "system", content: bodySystem },
+      { role: "system", content: endingSystem },
       { role: "system", content: facilitationSystem },
       { role: "system", content: diagnosticGuardrail },
       ...extraSystemMessages,
@@ -1155,7 +1298,7 @@ Important :
   return postProcessReply(out, {
     primaryState,
     congruenceResponseMode,
-    defensiveMinimization,
+    defensiveMinimization: isMinimization,
     promptingBotToSpeak,
     sufficientClosure
   });
@@ -1163,7 +1306,7 @@ Important :
 
 
 // --------------------------------------------------
-// 6) ROUTE CHAT
+// 7) ROUTE CHAT
 // --------------------------------------------------
 
 app.post("/chat", async (req, res) => {
@@ -1195,7 +1338,8 @@ app.post("/chat", async (req, res) => {
       const debug = buildDebugPayload({
         analysis,
         flags: newFlags,
-        primaryState: analysis.primaryState
+        primaryState: analysis.primaryState,
+        secondaryState: analysis.secondaryState
       });
 
       return res.json({
@@ -1220,7 +1364,8 @@ app.post("/chat", async (req, res) => {
         const debug = buildDebugPayload({
           analysis,
           flags: newFlags,
-          primaryState: analysis.primaryState
+          primaryState: analysis.primaryState,
+          secondaryState: analysis.secondaryState
         });
 
         return res.json({
@@ -1241,7 +1386,8 @@ app.post("/chat", async (req, res) => {
       const debug = buildDebugPayload({
         analysis,
         flags: newFlags,
-        primaryState: analysis.primaryState
+        primaryState: analysis.primaryState,
+        secondaryState: analysis.secondaryState
       });
 
       return res.json({
@@ -1273,7 +1419,8 @@ app.post("/chat", async (req, res) => {
       const debug = buildDebugPayload({
         analysis,
         flags: newFlags,
-        primaryState: effectivePrimaryState
+        primaryState: effectivePrimaryState,
+        secondaryState: analysis.secondaryState
       });
 
       return res.json({
@@ -1291,13 +1438,10 @@ app.post("/chat", async (req, res) => {
       history,
       summary: newSummary,
       primaryState: effectivePrimaryState,
-      solutionRequest: analysis.solutionRequest,
-      infoRequest: analysis.infoRequest,
+      secondaryState: analysis.secondaryState,
       attachmentToBot: analysis.attachmentToBot,
       reliefOrShift: analysis.reliefOrShift,
-      intellectualization: analysis.intellectualization,
       assistantOverquestioning: assistantAskedTooMuch(history),
-      defensiveMinimization: analysis.defensiveMinimization,
       promptingBotToSpeak: analysis.promptingBotToSpeak,
       congruenceResponseMode: analysis.congruenceResponseMode,
       sufficientClosure: analysis.sufficientClosure
@@ -1306,7 +1450,8 @@ app.post("/chat", async (req, res) => {
     const debug = buildDebugPayload({
       analysis,
       flags: newFlags,
-      primaryState: effectivePrimaryState
+      primaryState: effectivePrimaryState,
+      secondaryState: analysis.secondaryState
     });
 
     return res.json({
