@@ -1279,7 +1279,7 @@ Privilégie un reflet bref, une mise en mots simple, ou une présence sobre.
 
   const r = await client.chat.completions.create({
     model: "gpt-4o",
-    temperature: 2,
+    temperature: 1.4,
     messages: [
       { role: "system", content: baseSystem },
       { role: "system", content: stateSystem },
