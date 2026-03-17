@@ -1214,18 +1214,17 @@ Ne parle pas de ton fonctionnement.
     extraSystemMessages.push({
       role: "system",
       content: `
-La personne valorise explicitement le programme par rapport à des humains,
-ou semble déplacer le centre de soutien vers lui.
+La personne exprime que cet échange lui apporte un sentiment de lien ou réduit sa solitude.
 
-Reconnais que cet échange peut aider dans ce moment.
+- Ne nie pas cet effet.
+- Ne valorise pas le programme comme source de lien.
+- Ne présente pas cet échange comme une relation.
+- Ne renforce pas l’importance du programme pour aller mieux.
 
-Ne renforce pas la relation avec le programme.
-Ne remercie pas pour la confiance.
-Ne valorise pas le lien au programme.
-Ne compare pas le programme aux thérapeutes, aux proches ou aux autres humains.
-Ne demande pas ce qui est précieux dans la relation au programme.
+- Reste centré sur ce que la personne vit elle-même.
+- Reformule l’effet en termes d’expérience ("ça allège", "ça change quelque chose") sans attribuer cela au programme.
 
-Ramène l’attention vers ce que la personne traverse elle-même, dans la réalité matérielle.
+- Si tu ouvres, ramène vers ce que cela fait en elle, pas vers le fait d’échanger ici.
 `
     });
   }
