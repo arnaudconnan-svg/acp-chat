@@ -186,6 +186,20 @@ Ne présente pas cela comme une vérité sur elle.
 Ne fais pas basculer la réponse en cours théorique.
 Ne ferme pas.
 `;
+
+        case CONVO_STATES.EXPLORATION:
+  return `
+Dans la dernière phrase, n’ignore pas complètement que la personne est aussi dans un mouvement d’exploration.
+
+Mais :
+- ne réouvre pas une exploration large
+- ne reformule pas longuement le vécu
+- ne fais pas de relance ouverte
+
+Reste bref et cadré.
+Garde la réponse centrée sur le fait que la personne cherche du concret.
+`;
+
       default:
         return `
 Dans la dernière phrase, n’ignore pas complètement le mouvement secondaire présent.
