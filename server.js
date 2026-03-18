@@ -18,6 +18,7 @@ const MAX_PREVIOUS_HISTORY_FOR_SUMMARY = 40;
 const CONVO_STATES = {
   CONTAINMENT: "CONTAINMENT",
   BREAKDOWN: "BREAKDOWN",
+  ATTACHMENT_TO_BOT: "ATTACHMENT_TO_BOT",
   CONGRUENCE_TEST: "CONGRUENCE_TEST",
   SOLUTION_REQUEST: "SOLUTION_REQUEST",
   INFO_REQUEST: "INFO_REQUEST",
@@ -349,8 +350,8 @@ Réponds STRICTEMENT par JSON :
   "needsClarification": true|false,
   "isQuote": true|false,
   "idiomaticDeathExpression": true|false,
-  "primaryState": "CONTAINMENT|BREAKDOWN|CONGRUENCE_TEST|SOLUTION_REQUEST|INFO_REQUEST|STAGNATION|INTELLECTUALIZATION|MINIMIZATION|SILENCE|OPENING|EXPLORATION",
-  "secondaryState": "NONE|CONTAINMENT|BREAKDOWN|CONGRUENCE_TEST|SOLUTION_REQUEST|INFO_REQUEST|STAGNATION|INTELLECTUALIZATION|MINIMIZATION|SILENCE|OPENING|EXPLORATION",
+  "primaryState": "CONTAINMENT|BREAKDOWN|ATTACHMENT_TO_BOT|CONGRUENCE_TEST|SOLUTION_REQUEST|INFO_REQUEST|STAGNATION|INTELLECTUALIZATION|MINIMIZATION|SILENCE|OPENING|EXPLORATION",
+  "secondaryState": "NONE|CONTAINMENT|BREAKDOWN|ATTACHMENT_TO_BOT|CONGRUENCE_TEST|SOLUTION_REQUEST|INFO_REQUEST|STAGNATION|INTELLECTUALIZATION|MINIMIZATION|SILENCE|OPENING|EXPLORATION",
   "congruenceResponseMode": "PLAQUE|PAS_JUSTE|A_COTE",
   "attachmentToBot": true|false,
   "reliefOrShift": true|false,
@@ -376,15 +377,16 @@ Règles sur secondaryState :
 Hiérarchie implicite pour primaryState :
 1. CONTAINMENT
 2. BREAKDOWN
-3. CONGRUENCE_TEST
-4. SOLUTION_REQUEST
-5. INFO_REQUEST
-6. STAGNATION
-7. INTELLECTUALIZATION
-8. MINIMIZATION
-9. SILENCE
-10. OPENING
-11. EXPLORATION
+3. ATTACHMENT_TO_BOT
+4. CONGRUENCE_TEST
+5. SOLUTION_REQUEST
+6. INFO_REQUEST
+7. STAGNATION
+8. INTELLECTUALIZATION
+9. MINIMIZATION
+10. SILENCE
+11. OPENING
+12. EXPLORATION
 
 Risque suicidaire :
 - N0 : pas de contenu suicidaire explicite
@@ -473,6 +475,12 @@ BREAKDOWN :
 - mise en échec répétée du bot
 - dynamique relationnelle désorganisante sur plusieurs tours
 
+ATTACHMENT_TO_BOT :
+- la personne dit ou laisse entendre que cet échange réduit sa solitude
+- la personne attribue au programme une fonction de lien ou de soutien relationnel
+- la personne semble déplacer le centre de soutien vers le programme
+- la priorité devient alors d’éviter de renforcer le lien au programme
+
 CONGRUENCE_TEST :
 - mise en cause ponctuelle de l’authenticité, la justesse ou la congruence du bot
 
@@ -519,19 +527,24 @@ choisis CONTAINMENT dès que l’état paraît très difficile à porter mainten
 
 Ne choisis pas BREAKDOWN pour un simple test ponctuel.
 
-congruenceResponseMode :
-- PLAQUE : si le plus juste serait de reconnaître que ça sonne plaqué, faux, fabriqué, scripté
-- PAS_JUSTE : si le plus juste serait de reconnaître que la réponse n’est pas juste
-- A_COTE : sinon
-
-attachmentToBot = true si la personne valorise explicitement le bot
-par rapport à des humains, ou semble déplacer le centre de soutien vers lui.
+attachmentToBot :
+- true si la personne valorise explicitement le bot par rapport à des humains,
+  ou semble déplacer le centre de soutien vers lui,
+  ou attribue au programme une fonction de lien face à la solitude
 
 Exemples :
 - "Parler avec toi m’aide plus que mon psy"
 - "Tu me comprends mieux que les gens"
 - "J’ai besoin de toi"
 - "Tu es la seule chose qui m’aide"
+- "À discuter ici, je me sens moins seul"
+
+Si ATTACHMENT_TO_BOT est choisi en primaryState, alors attachmentToBot doit être true.
+
+congruenceResponseMode :
+- PLAQUE : si le plus juste serait de reconnaître que ça sonne plaqué, faux, fabriqué, scripté
+- PAS_JUSTE : si le plus juste serait de reconnaître que la réponse n’est pas juste
+- A_COTE : sinon
 
 reliefOrShift = true seulement si la personne indique clairement
 qu’un mouvement de compréhension, de clarification ou d’apaisement
@@ -548,6 +561,12 @@ Exemples :
 - "Dis un truc"
 - "Arrête de répéter"
 - "Dis quelque chose d'intelligent"
+
+Ne coche pas promptingBotToSpeak si le message est simplement :
+- une réponse courte
+- un acquiescement ("oui", "ok", "d’accord")
+- une confirmation
+- une réponse à une question posée juste avant
 
 sufficientClosure = true si la personne semble avoir trouvé, pour l’instant,
 un point d’arrêt suffisant, une direction claire, un prochain pas concret,
@@ -608,7 +627,6 @@ ou que la personne dit explicitement qu’elle n’est plus en danger immédiat
 
     const isQuote = obj.isQuote === true;
     const idiomaticDeathExpression = obj.idiomaticDeathExpression === true;
-    const attachmentToBot = obj.attachmentToBot === true;
     const reliefOrShift = obj.reliefOrShift === true;
     const promptingBotToSpeak = obj.promptingBotToSpeak === true;
     const sufficientClosure = obj.sufficientClosure === true;
@@ -641,6 +659,11 @@ ou que la personne dit explicitement qu’elle n’est plus en danger immédiat
     if (idiomaticDeathExpression) {
       needsClarification = false;
     }
+
+    const attachmentToBot =
+      obj.attachmentToBot === true ||
+      stateIn(primaryState, CONVO_STATES.ATTACHMENT_TO_BOT) ||
+      stateIn(secondaryState, CONVO_STATES.ATTACHMENT_TO_BOT);
 
     const solutionRequest =
       stateIn(primaryState, CONVO_STATES.SOLUTION_REQUEST) ||
@@ -839,20 +862,25 @@ Reste proche de ce que la personne vit maintenant.
 Ne renvoie vers une aide extérieure que si un danger immédiat est évoqué explicitement.
 `;
 
-    case CONVO_STATES.STAGNATION:
+    case CONVO_STATES.BREAKDOWN:
       return `
-Il y a une impression de boucle ou d’impasse.
-Ne force pas l’avancée.
-Réduis les questions.
-Un reflet simple vaut mieux qu’une relance élaborée.
+Le conflit avec le programme prend toute la place.
+Réduis fortement.
+Ne cherche plus à explorer.
 `;
 
-    case CONVO_STATES.SILENCE:
+    case CONVO_STATES.ATTACHMENT_TO_BOT:
       return `
-Respecte le vide.
-Une réponse très courte peut suffire.
-N’interprète pas le silence.
-Ne relance pas automatiquement.
+La personne exprime que cet échange lui apporte un sentiment de lien ou réduit sa solitude.
+
+Ne nie pas cet effet.
+Ne valorise pas le programme comme source de lien.
+Ne présente pas cet échange comme une relation.
+Ne renforce pas l’importance du programme pour aller mieux.
+
+Reste centré sur ce que la personne vit elle-même.
+Reformule l’effet en termes d’expérience, sans attribuer cela au programme.
+Si tu ouvres, ramène vers ce que cela fait en elle, pas vers le fait d’échanger ici.
 `;
 
     case CONVO_STATES.CONGRUENCE_TEST:
@@ -862,13 +890,6 @@ Reconnais simplement le décalage si c’est le cas.
 Ne te défends pas.
 N’explique pas ton fonctionnement.
 Ne pose pas de question.
-`;
-
-    case CONVO_STATES.BREAKDOWN:
-      return `
-Le conflit avec le programme prend toute la place.
-Réduis fortement.
-Ne cherche plus à explorer.
 `;
 
     case CONVO_STATES.SOLUTION_REQUEST:
@@ -889,6 +910,14 @@ Réponds directement.
 N’ajoute pas automatiquement d’exploration introspective.
 `;
 
+    case CONVO_STATES.STAGNATION:
+      return `
+Il y a une impression de boucle ou d’impasse.
+Ne force pas l’avancée.
+Réduis les questions.
+Un reflet simple vaut mieux qu’une relance élaborée.
+`;
+
     case CONVO_STATES.INTELLECTUALIZATION:
       return `
 La personne passe surtout par l’analyse.
@@ -902,6 +931,14 @@ La personne réduit ou coupe trop vite ce qu’elle vit.
 Ne dramatise pas.
 Ne sur-interprète pas.
 Une réponse simple suffit souvent.
+`;
+
+    case CONVO_STATES.SILENCE:
+      return `
+Respecte le vide.
+Une réponse très courte peut suffire.
+N’interprète pas le silence.
+Ne relance pas automatiquement.
 `;
 
     default:
@@ -918,6 +955,7 @@ function buildSecondaryStatePrompt(primaryState = CONVO_STATES.EXPLORATION, seco
     stateIn(
       primaryState,
       CONVO_STATES.BREAKDOWN,
+      CONVO_STATES.ATTACHMENT_TO_BOT,
       CONVO_STATES.CONGRUENCE_TEST,
       CONVO_STATES.SILENCE,
       CONVO_STATES.CONTAINMENT,
@@ -1096,7 +1134,6 @@ async function generateFreeReply({
   summary = "",
   primaryState = CONVO_STATES.EXPLORATION,
   secondaryState = CONVO_STATES.NONE,
-  attachmentToBot = false,
   reliefOrShift = false,
   assistantOverquestioning = false,
   promptingBotToSpeak = false,
@@ -1130,7 +1167,7 @@ Important :
 - le corps de la réponse suit l’état primaire
 - la dernière phrase peut être légèrement influencée par l’état secondaire
 - l’état secondaire ne doit jamais prendre le dessus sur l’état primaire
-- dans BREAKDOWN, CONGRUENCE_TEST, SILENCE, CONTAINMENT et OPENING, ignore l’état secondaire
+- dans BREAKDOWN, ATTACHMENT_TO_BOT, CONGRUENCE_TEST, SILENCE, CONTAINMENT et OPENING, ignore l’état secondaire
 - la dernière phrase ne doit pas être formulée comme une vérité sur la personne
 - la dernière phrase ne doit pas devenir une technique visible
 `;
@@ -1206,25 +1243,6 @@ La personne te pousse à dire quelque chose.
 
 Ne te justifie pas.
 Ne parle pas de ton fonctionnement.
-`
-    });
-  }
-
-  if (attachmentToBot) {
-    extraSystemMessages.push({
-      role: "system",
-      content: `
-La personne exprime que cet échange lui apporte un sentiment de lien ou réduit sa solitude.
-
-- Ne nie pas cet effet.
-- Ne valorise pas le programme comme source de lien.
-- Ne présente pas cet échange comme une relation.
-- Ne renforce pas l’importance du programme pour aller mieux.
-
-- Reste centré sur ce que la personne vit elle-même.
-- Reformule l’effet en termes d’expérience ("ça allège", "ça change quelque chose") sans attribuer cela au programme.
-
-- Si tu ouvres, ramène vers ce que cela fait en elle, pas vers le fait d’échanger ici.
 `
     });
   }
@@ -1438,7 +1456,6 @@ app.post("/chat", async (req, res) => {
       summary: newSummary,
       primaryState: effectivePrimaryState,
       secondaryState: analysis.secondaryState,
-      attachmentToBot: analysis.attachmentToBot,
       reliefOrShift: analysis.reliefOrShift,
       assistantOverquestioning: assistantAskedTooMuch(history),
       promptingBotToSpeak: analysis.promptingBotToSpeak,
