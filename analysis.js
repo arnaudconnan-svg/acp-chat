@@ -362,6 +362,20 @@ ou que la personne dit explicitement qu’elle n’est plus en danger immédiat
         ? obj.congruenceResponseMode
         : "A_COTE";
 
+    if (
+  secondaryState === CONVO_STATES.SOLUTION_REQUEST &&
+  [
+    CONVO_STATES.EXPLORATION,
+    CONVO_STATES.INTELLECTUALIZATION,
+    CONVO_STATES.MINIMIZATION,
+    CONVO_STATES.STAGNATION
+  ].includes(primaryState)
+) {
+  const previousPrimary = primaryState;
+  primaryState = CONVO_STATES.SOLUTION_REQUEST;
+  secondaryState = previousPrimary;
+}
+
     if (idiomaticDeathExpression) {
       suicideLevel = "N0";
     }
