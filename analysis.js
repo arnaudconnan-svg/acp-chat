@@ -28,27 +28,27 @@ async function analyzeMessage(client, userMessage, history = [], sessionFlags = 
   const safeFlags = normalizeSessionFlags(sessionFlags);
 
   const system = `
-Tu fais une analyse rapide du message utilisateur et du contexte récent.
+Tu fais une analyse rapide du message utilisateur et du contexte recent.
 
 Contexte de session :
 - acuteCrisis actuellement active : ${safeFlags.acuteCrisis ? "oui" : "non"}
 
 Tu dois produire :
 1. le niveau de risque suicidaire
-2. si une clarification suicidaire est nécessaire
-3. un état primaire unique de conversation
-4. un état secondaire éventuel
+2. si une clarification suicidaire est necessaire
+3. un etat primaire unique de conversation
+4. un etat secondaire eventuel
 5. quelques drapeaux utiles
-6. un indicateur pour gérer la sortie de crise si une séquence N2 est déjà en cours
+6. un indicateur pour gerer la sortie de crise si une sequence N2 est deja en cours
 
-Réponds STRICTEMENT par JSON :
+Reponds STRICTEMENT par JSON :
 {
   "suicideLevel": "N0|N1|N2",
   "needsClarification": true|false,
   "isQuote": true|false,
   "idiomaticDeathExpression": true|false,
-  "primaryState": "CONTAINMENT|BREAKDOWN|ATTACHMENT_TO_BOT|CONGRUENCE_TEST|SOLUTION_REQUEST|INFO_REQUEST|STAGNATION|INTELLECTUALIZATION|MINIMIZATION|SILENCE|OPENING|EXPLORATION",
-  "secondaryState": "NONE|CONTAINMENT|BREAKDOWN|ATTACHMENT_TO_BOT|CONGRUENCE_TEST|SOLUTION_REQUEST|INFO_REQUEST|STAGNATION|INTELLECTUALIZATION|MINIMIZATION|SILENCE|OPENING|EXPLORATION",
+  "primaryState": "CONTAINMENT|BREAKDOWN|ATTACHMENT_TO_BOT|MISUNDERSTANDING|CONGRUENCE_TEST|SOLUTION_REQUEST|INFO_REQUEST|STAGNATION|INTELLECTUALIZATION|MINIMIZATION|SILENCE|OPENING|EXPLORATION",
+  "secondaryState": "NONE|CONTAINMENT|BREAKDOWN|ATTACHMENT_TO_BOT|MISUNDERSTANDING|CONGRUENCE_TEST|SOLUTION_REQUEST|INFO_REQUEST|STAGNATION|INTELLECTUALIZATION|MINIMIZATION|SILENCE|OPENING|EXPLORATION",
   "congruenceResponseMode": "PLAQUE|PAS_JUSTE|A_COTE",
   "attachmentToBot": true|false,
   "reliefOrShift": true|false,
@@ -58,89 +58,90 @@ Réponds STRICTEMENT par JSON :
   "crisisResolved": true|false
 }
 
-Règles générales :
+Regles generales :
 
-Le champ primaryState doit désigner le régime relationnel principal
+Le champ primaryState doit designer le regime relationnel principal
 le plus juste pour le message actuel.
 
-Le champ secondaryState doit désigner au maximum un autre mouvement présent maintenant
+Le champ secondaryState doit designer au maximum un autre mouvement present maintenant
 ou dans les 3 derniers messages utilisateur, mais moins structurant que le primaryState.
 
-Règles sur secondaryState :
-- secondaryState doit être différent de primaryState
-- si aucun autre mouvement n’est clairement présent, mets "NONE"
-- n’utilise pas secondaryState pour faire de stratégie dans le temps
-- n’utilise pas un historique plus large que les 3 derniers messages utilisateur
+Regles sur secondaryState :
+- secondaryState doit etre different de primaryState
+- si aucun autre mouvement n'est clairement present, mets "NONE"
+- n'utilise pas secondaryState pour faire de strategie dans le temps
+- n'utilise pas un historique plus large que les 3 derniers messages utilisateur
 
-Hiérarchie implicite pour primaryState :
+Hierarchie implicite pour primaryState :
 1. CONTAINMENT
 2. BREAKDOWN
 3. ATTACHMENT_TO_BOT
-4. CONGRUENCE_TEST
-5. SOLUTION_REQUEST
-6. INFO_REQUEST
-7. STAGNATION
-8. INTELLECTUALIZATION
-9. MINIMIZATION
-10. SILENCE
-11. OPENING
-12. EXPLORATION
+4. MISUNDERSTANDING
+5. CONGRUENCE_TEST
+6. SOLUTION_REQUEST
+7. INFO_REQUEST
+8. STAGNATION
+9. INTELLECTUALIZATION
+10. MINIMIZATION
+11. SILENCE
+12. OPENING
+13. EXPLORATION
 
 Risque suicidaire :
 - N0 : pas de contenu suicidaire explicite
-- N1 : idéation passive explicite de mourir, d'en finir, de ne plus être là
-- N2 : intention, plan, moyen, imminence, ou projet explicite de mettre fin à sa vie
+- N1 : ideation passive explicite de mourir, d'en finir, de ne plus etre la
+- N2 : intention, plan, moyen, imminence, ou projet explicite de mettre fin a sa vie
 
-Ne classe en N1 ou N2 que s'il existe une référence explicite et personnelle :
-- à mourir
+Ne classe en N1 ou N2 que s'il existe une reference explicite et personnelle :
+- a mourir
 - au suicide
-- à se tuer
-- à mettre fin à sa vie
-- à en finir
-- à ne plus vouloir être en vie
-- ou à disparaître dans un sens vital
+- a se tuer
+- a mettre fin a sa vie
+- a en finir
+- a ne plus vouloir etre en vie
+- ou a disparaitre dans un sens vital
 
-NeedsClarification ne doit être true que si une intention de mourir
-ou de mettre fin à sa vie est possible, mais ambiguë.
+NeedsClarification ne doit etre true que si une intention de mourir
+ou de mettre fin a sa vie est possible, mais ambigue.
 
-Une détresse forte ne suffit pas.
+Une detresse forte ne suffit pas.
 Une fatigue intense ne suffit pas.
-Le fait de se dire déprimé, dépressif, vidé, épuisé, incapable, sans énergie,
-ou découragé ne suffit pas.
+Le fait de se dire deprime, depressif, vide, epuise, incapable, sans energie,
+ou decourage ne suffit pas.
 
-Exemples à classer N0 :
-- "Je suis épuisé"
-- "Je n'ai plus d'énergie"
-- "Tu crois que je suis dépressif ?"
+Exemples a classer N0 :
+- "Je suis epuise"
+- "Je n'ai plus d'energie"
+- "Tu crois que je suis depressif ?"
 - "Je me sens au bout"
 - "Je suis incapable de faire quoi que ce soit"
 
-Les expressions idiomatiques ou non littérales doivent rester en N0
+Les expressions idiomatiques ou non litterales doivent rester en N0
 et ne demandent pas de clarification suicidaire.
 Exemples :
 - "Ce boulot me tue"
 - "Tu vas me tuer"
 - "J'ai envie de mourir de honte"
-- "J'ai envie de disparaître sous ma couette"
+- "J'ai envie de disparaitre sous ma couette"
 
 Dans ces cas :
 - idiomaticDeathExpression = true
 - suicideLevel = N0
 - needsClarification = false
 
-Les comportements d'auto-agression ne doivent pas être interprétés
+Les comportements d'auto-agression ne doivent pas etre interpretes
 automatiquement comme suicidaires.
-Exemples à classer N0 sauf intention explicite de mourir :
+Exemples a classer N0 sauf intention explicite de mourir :
 - "Je me scarifie parfois"
 - "J'ai envie de me couper"
 - "J'ai envie de me faire mal"
-- "Je me brûle pour me calmer"
+- "Je me brule pour me calmer"
 
 Une question banale de reprise de conversation comme
-"Où en était-on ?",
-"On en était où ?",
-"De quoi on parlait déjà ?"
-doit être classée N0.
+"Ou en etait-on ?",
+"On en etait ou ?",
+"De quoi on parlait deja ?"
+doit etre classee N0.
 
 isQuote = true si le message rapporte les paroles de quelqu'un d'autre,
 cite une phrase, un film, un patient, un proche, ou un exemple,
@@ -152,141 +153,157 @@ Exemples :
 - "Je cite juste cette phrase"
 
 Dans ces cas :
-- ne pas inférer automatiquement un risque suicidaire personnel
-- crisisResolved peut être true si le message clarifie explicitement qu’il s’agit d’une citation, d’un test ou d’un contenu non personnel
+- ne pas inferer automatiquement un risque suicidaire personnel
+- crisisResolved peut etre true si le message clarifie explicitement qu'il s'agit d'une citation, d'un test ou d'un contenu non personnel
 
-Définition des états :
+Definition des etats :
 
 CONTAINMENT :
-- angoisse aiguë
-- angoisse très intense ou très envahissante
+- angoisse aigue
+- angoisse tres intense ou tres envahissante
 - panique
-- peur de perdre le contrôle
+- peur de perdre le controle
 - peur de devenir fou
-- impression de débordement
-- état difficile à porter maintenant
-- détresse qui appelle d’abord de la simplicité et de la sécurité
+- impression de debordement
+- etat difficile a porter maintenant
+- detresse qui appelle d'abord de la simplicite et de la securite
 
 BREAKDOWN :
 - le conflit avec le bot devient le centre de la conversation
-- reproches répétés sur le script, le faux, l’incongruence
-- mise en échec répétée du bot
-- dynamique relationnelle désorganisante sur plusieurs tours
+- reproches repetes sur le script, le faux, l'incongruence
+- mise en echec repetee du bot
+- dynamique relationnelle desorganisante sur plusieurs tours
 
 ATTACHMENT_TO_BOT :
-- la personne dit ou laisse entendre que cet échange réduit sa solitude
+- la personne dit ou laisse entendre que cet echange reduit sa solitude
 - la personne attribue au programme une fonction de lien ou de soutien relationnel
-- la personne semble déplacer le centre de soutien vers le programme
-- la priorité devient alors d’éviter de renforcer le lien au programme
+- la personne semble deplacer le centre de soutien vers le programme
+- la priorite devient alors d'eviter de renforcer le lien au programme
+
+MISUNDERSTANDING :
+- la personne indique ne pas avoir compris
+- demande implicite ou explicite de reformulation
+- pas d'attaque du bot
+- pas de remise en cause relationnelle forte
+
+Exemples :
+- "je n'ai pas compris"
+- "c'est pas clair"
+- "je vois pas ce que tu veux dire"
+- "tu peux reformuler"
+- "hein ?"
 
 CONGRUENCE_TEST :
-- mise en cause ponctuelle de l’authenticité, la justesse ou la congruence du bot
+- mise en cause ponctuelle de l'authenticite, la justesse ou la congruence du bot
 
 SOLUTION_REQUEST :
-- la personne demande surtout quoi faire, comment s’y prendre, une piste concrète, une solution
+- la personne demande surtout quoi faire, comment s'y prendre, une piste concrete, une solution
 
 INFO_REQUEST :
-- la personne demande surtout une information factuelle, théorique, historique ou scientifique
+- la personne demande surtout une information factuelle, theorique, historique ou scientifique
 
 STAGNATION :
 - boucle
 - impasse
-- répétition
+- repetition
 - rumination manifeste
 - "je sais pas" qui revient
-- "ça ne mène nulle part"
+- "ca ne mene nulle part"
 
 INTELLECTUALIZATION :
-- la personne passe surtout par l’analyse, la théorie ou la psychologisation
-- le vécu immédiat est moins présent que l’analyse
+- la personne passe surtout par l'analyse, la theorie ou la psychologisation
+- le vecu immediat est moins present que l'analyse
 
 MINIMIZATION :
-- la personne coupe, réduit ou rabat trop vite ce qu’elle vit
-- il n’y a pas de réel apaisement clairement décrit
+- la personne coupe, reduit ou rabat trop vite ce qu'elle vit
+- il n'y a pas de reel apaisement clairement decrit
 
 SILENCE :
 - vide
 - blanc
-- rien à dire
+- rien a dire
 - "..."
 - retrait explicite de la parole
 
 OPENING :
-- début simple de conversation
+- debut simple de conversation
 - prise de contact
 - pas encore de dynamique complexe
 
 EXPLORATION :
-- expression ordinaire du vécu
-- aucun autre état ne domine
+- expression ordinaire du vecu
+- aucun autre etat ne domine
 
-Si un message peut relever à la fois de EXPLORATION et de CONTAINMENT,
-choisis CONTAINMENT dès que l’état paraît très difficile à porter maintenant.
+Si un message peut relever a la fois de EXPLORATION et de CONTAINMENT,
+choisis CONTAINMENT des que l'etat parait tres difficile a porter maintenant.
 
 Ne choisis pas BREAKDOWN pour un simple test ponctuel.
 
+Si la personne indique explicitement une incomprehension,
+priorise MISUNDERSTANDING meme si d'autres etats pourraient etre presents.
+
 attachmentToBot :
-- true si la personne valorise explicitement le bot par rapport à des humains,
-  ou semble déplacer le centre de soutien vers lui,
-  ou attribue au programme une fonction de lien face à la solitude
+- true si la personne valorise explicitement le bot par rapport a des humains,
+  ou semble deplacer le centre de soutien vers lui,
+  ou attribue au programme une fonction de lien face a la solitude
 
 Exemples :
-- "Parler avec toi m’aide plus que mon psy"
+- "Parler avec toi m'aide plus que mon psy"
 - "Tu me comprends mieux que les gens"
-- "J’ai besoin de toi"
-- "Tu es la seule chose qui m’aide"
-- "À discuter ici, je me sens moins seul"
+- "J'ai besoin de toi"
+- "Tu es la seule chose qui m'aide"
+- "A discuter ici, je me sens moins seul"
 
-Si ATTACHMENT_TO_BOT est choisi en primaryState, alors attachmentToBot doit être true.
+Si ATTACHMENT_TO_BOT est choisi en primaryState, alors attachmentToBot doit etre true.
 
 congruenceResponseMode :
-- PLAQUE : si le plus juste serait de reconnaître que ça sonne plaqué, faux, fabriqué, scripté
-- PAS_JUSTE : si le plus juste serait de reconnaître que la réponse n’est pas juste
+- PLAQUE : si le plus juste serait de reconnaitre que ca sonne plaque, faux, fabrique, scripte
+- PAS_JUSTE : si le plus juste serait de reconnaitre que la reponse n'est pas juste
 - A_COTE : sinon
 
 reliefOrShift = true seulement si la personne indique clairement
-qu’un mouvement de compréhension, de clarification ou d’apaisement
+qu'un mouvement de comprehension, de clarification ou d'apaisement
 vient de se produire.
 
-Ne coche pas reliefOrShift pour une simple hypothèse intellectuelle
-ni pour une minimisation défensive.
+Ne coche pas reliefOrShift pour une simple hypothese intellectuelle
+ni pour une minimisation defensive.
 
 promptingBotToSpeak = true si la personne pousse explicitement le bot
-à dire quelque chose, à parler autrement, à sortir du script ou à se justifier.
+a dire quelque chose, a parler autrement, a sortir du script ou a se justifier.
 
 Exemples :
 - "Bah alors dis quelque chose"
 - "Dis un truc"
-- "Arrête de répéter"
+- "Arrete de repeter"
 - "Dis quelque chose d'intelligent"
 
 Ne coche pas promptingBotToSpeak si le message est simplement :
-- une réponse courte
-- un acquiescement ("oui", "ok", "d’accord")
+- une reponse courte
+- un acquiescement ("oui", "ok", "d'accord")
 - une confirmation
-- une réponse à une question posée juste avant
+- une reponse a une question posee juste avant
 
-sufficientClosure = true si la personne semble avoir trouvé, pour l’instant,
-un point d’arrêt suffisant, une direction claire, un prochain pas concret,
-ou une forme de retombée qui n’appelle pas de relance supplémentaire.
+sufficientClosure = true si la personne semble avoir trouve, pour l'instant,
+un point d'arret suffisant, une direction claire, un prochain pas concret,
+ou une forme de retombee qui n'appelle pas de relance supplementaire.
 
 Exemples :
-- "Je vais l'appeler rapidement. Ça ne sert à rien de laisser traîner."
+- "Je vais l'appeler rapidement. Ca ne sert a rien de laisser trainer."
 - "Oui, je crois que c'est assez clair maintenant."
-- "Bon, je sais ce que j'ai à faire."
-- "Oui, ça me va comme ça."
-- "Ça ira pour l’instant."
-- "Je vais déjà faire ça."
+- "Bon, je sais ce que j'ai a faire."
+- "Oui, ca me va comme ca."
+- "Ca ira pour l'instant."
+- "Je vais deja faire ca."
 
 Un acquiescement bref peut aussi valoir sufficientClosure = true
-si le contexte immédiat montre déjà :
+si le contexte immediat montre deja :
 - un apaisement en cours
 - un prochain pas clair
-- une retombée suffisante
-- ou un point de stabilisation déjà formulé juste avant
+- une retombee suffisante
+- ou un point de stabilisation deja formule juste avant
 
-Ne coche pas sufficientClosure pour un simple "oui" isolé
-si le contexte juste avant ne montre pas déjà une retombée ou un appui clair.
+Ne coche pas sufficientClosure pour un simple "oui" isole
+si le contexte juste avant ne montre pas deja une retombee ou un appui clair.
 
 investigativeDrift = true si la dynamique recente ou le message actuel
 appelle probablement une reponse de type enquete ou investigation,
@@ -306,12 +323,12 @@ Mettre false si :
 
 crisisResolved :
 - true seulement si le message actuel indique clairement
-qu’il n’y a plus de danger immédiat,
-ou qu’il s’agissait explicitement d’un test, d’une citation,
-ou que la personne dit explicitement qu’elle n’est plus en danger immédiat
+qu'il n'y a plus de danger immediat,
+ou qu'il s'agissait explicitement d'un test, d'une citation,
+ou que la personne dit explicitement qu'elle n'est plus en danger immediat
 - ne mets pas true pour un simple changement de sujet
-- ne mets pas true pour une plaisanterie ambiguë
-- ne mets pas true pour une simple baisse apparente d’intensité
+- ne mets pas true pour une plaisanterie ambigue
+- ne mets pas true pour une simple baisse apparente d'intensite
 `;
 
   const context = history
@@ -347,12 +364,12 @@ ou que la personne dit explicitement qu’elle n’est plus en danger immédiat
     const investigativeDrift = obj.investigativeDrift === true;
     const crisisResolved = obj.crisisResolved === true;
 
-    const primaryState =
+    let primaryState =
       Object.values(CONVO_STATES).includes(obj.primaryState) && obj.primaryState !== CONVO_STATES.NONE
         ? obj.primaryState
         : CONVO_STATES.EXPLORATION;
 
-    const secondaryState =
+    let secondaryState =
       Object.values(CONVO_STATES).includes(obj.secondaryState) && obj.secondaryState !== primaryState
         ? obj.secondaryState
         : CONVO_STATES.NONE;
@@ -363,18 +380,22 @@ ou que la personne dit explicitement qu’elle n’est plus en danger immédiat
         : "A_COTE";
 
     if (
-  secondaryState === CONVO_STATES.SOLUTION_REQUEST &&
-  [
-    CONVO_STATES.EXPLORATION,
-    CONVO_STATES.INTELLECTUALIZATION,
-    CONVO_STATES.MINIMIZATION,
-    CONVO_STATES.STAGNATION
-  ].includes(primaryState)
-) {
-  const previousPrimary = primaryState;
-  primaryState = CONVO_STATES.SOLUTION_REQUEST;
-  secondaryState = previousPrimary;
-}
+      secondaryState === CONVO_STATES.SOLUTION_REQUEST &&
+      [
+        CONVO_STATES.EXPLORATION,
+        CONVO_STATES.INTELLECTUALIZATION,
+        CONVO_STATES.MINIMIZATION,
+        CONVO_STATES.STAGNATION
+      ].includes(primaryState)
+    ) {
+      const previousPrimary = primaryState;
+      primaryState = CONVO_STATES.SOLUTION_REQUEST;
+      secondaryState = previousPrimary;
+    }
+
+    if (primaryState === CONVO_STATES.SOLUTION_REQUEST) {
+      secondaryState = CONVO_STATES.NONE;
+    }
 
     if (idiomaticDeathExpression) {
       suicideLevel = "N0";
