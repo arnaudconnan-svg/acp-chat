@@ -79,19 +79,15 @@ Ne pose pas de question.
 
     case CONVO_STATES.SOLUTION_REQUEST:
       return `
-La personne demande quoi faire, comment s’y prendre, ou cherche une solution.
+La personne cherche quoi faire, comment s’ y prendre, ou une solution concrète.
 
 Ne donne pas de conseil.
 Ne propose pas de piste.
-Ne suggère pas d’option.
-Ne fais pas de liste implicite ou explicite.
-Ne parle pas de "plusieurs chemins", "plusieurs possibilités" ou "plusieurs parcours".
-Ne bascule pas en mode accompagnement pratique.
+Ne suggère pas de stratégie, même indirectement.
 
-Tu peux seulement :
-- reconnaître la demande de concret
-- rappeler brièvement le cadre
-- ouvrir légèrement sur ce que cette demande représente pour la personne
+Tu peux reconnaître simplement que la personne cherche du concret,
+rappeler brièvement le cadre,
+et rester au plus près de ce que cette demande représente pour elle.
 `;
 
     case CONVO_STATES.INFO_REQUEST:
