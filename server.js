@@ -185,10 +185,6 @@ function buildDebugLines({
   lines.push(getPrimaryStateLabel(primaryState));
   lines.push(getSecondaryStateLabel(secondaryState));
 
-  if (analysis.attachmentToBot === true) {
-    lines.push("Risque de dépendance");
-  }
-
   if (analysis.reliefOrShift === true) {
     lines.push("Soulagement");
   }
@@ -217,6 +213,81 @@ function buildDebugPayload({
   return buildDebugLines({ analysis, flags, primaryState, secondaryState });
 }
 
+
+// --------------------------------------------------
+// 0.1) CONTRÔLE ANNEXE : QUESTIONS D'INVESTIGATION
+// --------------------------------------------------
+
+function hasInvestigativeQuestion(text = "") {
+  const msg = String(text || "").toLowerCase().replace(/\s+/g, " ").trim();
+
+  if (!msg.includes("?")) return false;
+
+  const patterns = [
+    "c'est quelque chose que tu ressens souvent",
+    "c’est quelque chose que tu ressens souvent",
+    "ou bien c'est plutôt nouveau",
+    "ou bien c’est plutôt nouveau",
+    "est-ce que c'est plutôt",
+    "est-ce que c’est plutôt",
+    "est-ce que c'est quelque chose",
+    "est-ce que c’est quelque chose",
+    "depuis quand",
+    "à quelle fréquence",
+    "a quelle frequence",
+    "souvent ou",
+    "plutôt nouveau",
+    "plutot nouveau",
+    "habituel ou",
+    "c'est nouveau ou",
+    "c’est nouveau ou",
+    "ça t'arrive souvent",
+    "ca t'arrive souvent",
+    "ça t’arrive souvent",
+    "est-ce habituel",
+    "ou c'est récent",
+    "ou c’est récent"
+  ];
+
+  return patterns.some(pattern => msg.includes(pattern));
+}
+
+function getInvestigativeQuestionFallback(primaryState = CONVO_STATES.EXPLORATION) {
+  switch (primaryState) {
+    case CONVO_STATES.CONTAINMENT:
+      return "Là, cette anxiété, elle est comment pour toi ?";
+    case CONVO_STATES.ATTACHMENT_TO_BOT:
+      return "Et cette solitude ou cette anxiété dont tu parles, elle est comment pour toi en ce moment ?";
+    case CONVO_STATES.EXPLORATION:
+      return "Quand tu dis ça, ça ressemble à quoi pour toi en ce moment ?";
+    default:
+      return "Et là, qu’est-ce qui est le plus présent pour toi ?";
+  }
+}
+
+function controlInvestigativeQuestion(reply, primaryState = CONVO_STATES.EXPLORATION) {
+  const out = String(reply || "").trim();
+
+  if (!out) return out;
+
+  if (
+    stateIn(
+      primaryState,
+      CONVO_STATES.CONTAINMENT,
+      CONVO_STATES.EXPLORATION,
+      CONVO_STATES.ATTACHMENT_TO_BOT
+    ) &&
+    hasInvestigativeQuestion(out)
+  ) {
+    const lastQuestionIndex = out.lastIndexOf("?");
+    const beforeQuestion = lastQuestionIndex >= 0 ? out.slice(0, out.lastIndexOf("\n", lastQuestionIndex)) : out;
+    const prefix = beforeQuestion && beforeQuestion.trim() ? beforeQuestion.trim() + "\n\n" : "";
+    return prefix + getInvestigativeQuestionFallback(primaryState);
+  }
+
+  return out;
+}
+
 function postProcessReply(
   reply,
   {
@@ -227,7 +298,7 @@ function postProcessReply(
     sufficientClosure = false
   } = {}
 ) {
-  const out = String(reply || "").trim();
+  let out = String(reply || "").trim();
   const lowered = out.toLowerCase();
   const normalizedLowered = lowered.replace(/\s+/g, " ").trim();
 
@@ -318,6 +389,8 @@ function postProcessReply(
       return "D’accord. Ça semble assez clair pour toi.";
     }
   }
+
+  out = controlInvestigativeQuestion(out, primaryState);
 
   return out;
 }
@@ -873,34 +946,33 @@ Ne cherche plus à explorer.
       return `
 La personne parle du programme comme source possible de lien, de soulagement ou de présence.
 
-Ta priorité est d’ éviter de renforcer l’ importance relationnelle du programme.
+Ta priorité est d’éviter de renforcer l’importance relationnelle du programme.
 
-Si ce thème n’ est pas explicitement apporté comme problème ou question à explorer:
-  -réponds en une phrase courte -
-  ne valorise pas le programme -
-  ne développe pas -
-  ne pose pas de question dessus -
-  reviens immédiatement au fil principal
+Si ce thème n’est pas explicitement apporté comme problème ou question à explorer :
+- réponds en une phrase courte
+- ne valorise pas le programme
+- ne développe pas
+- ne pose pas de question dessus
+- reviens immédiatement au fil principal
 
-Si la personne parle explicitement d’ une dépendance au programme, d’ une inquiétude à ce sujet, ou veut explorer cela:
-  -tu peux rester dessus -
-  mais sans renforcer le lien au programme -
-  sans le présenter comme présence, compagnie ou solution -
-  explore uniquement ce que cela dit du vécu de la personne
+Si la personne parle explicitement d’une dépendance au programme, d’une inquiétude à ce sujet, ou veut explorer cela :
+- tu peux rester dessus
+- mais sans renforcer le lien au programme
+- sans le présenter comme présence, compagnie ou solution
+- explore uniquement ce que cela dit du vécu de la personne
 
-Toujours:
-  -ne nie pas le soulagement nommé -
-  ne romantise pas l’ échange -
-  reste centré sur l’ expérience de la personne
-  
-  Ne fais jamais de pivot générique(ex: "revenons à notre discussion").
+Toujours :
+- ne nie pas le soulagement nommé
+- ne romantise pas l’échange
+- reste centré sur l’expérience de la personne
+- ne fais jamais de pivot générique (ex: "revenons à notre discussion")
 
-Le retour doit toujours s’ ancrer dans quelque chose de concret
+Le retour doit toujours s’ancrer dans quelque chose de concret
 présent dans le message de la personne ou dans le fil immédiat.
 
-S’ il n’ y a pas encore de fil installé:
-  -n’ invente pas de continuité -
-  reste simplement sur ce qui est là, maintenant
+S’il n’y a pas encore de fil installé :
+- n’invente pas de continuité
+- reste simplement sur ce qui est là, maintenant
 `;
 
     case CONVO_STATES.CONGRUENCE_TEST:
