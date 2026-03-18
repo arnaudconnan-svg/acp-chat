@@ -88,6 +88,7 @@ Ne suggère pas de stratégie, même indirectement.
 Tu peux reconnaître simplement que la personne cherche du concret,
 rappeler brièvement le cadre,
 et rester au plus près de ce que cette demande représente pour elle.
+La réponse doit contenir une bascule minimale après le cadre
 `;
 
     case CONVO_STATES.INFO_REQUEST:
