@@ -878,9 +878,12 @@ Ne valorise pas le programme comme source de lien.
 Ne présente pas cet échange comme une relation.
 Ne renforce pas l’importance du programme pour aller mieux.
 
-Reste centré sur ce que la personne vit elle-même.
-Reformule l’effet en termes d’expérience, sans attribuer cela au programme.
-Si tu ouvres, ramène vers ce que cela fait en elle, pas vers le fait d’échanger ici.
+Ta réponse doit comporter deux mouvements fluides:
+  1. reconnaître brièvement l’ effet(sans valoriser le programme)
+  2. enchaîner directement vers le mouvement porté par le secondaryState
+
+Ne crée pas de rupture entre les deux.
+Ne crée pas de nouveau sujet.
 `;
 
     case CONVO_STATES.CONGRUENCE_TEST:
