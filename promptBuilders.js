@@ -85,10 +85,8 @@ Ne donne pas de conseil.
 Ne propose pas de piste.
 Ne suggère pas de stratégie, même indirectement.
 
-Tu peux reconnaître simplement que la personne cherche du concret,
-rappeler brièvement le cadre,
-et rester au plus près de ce que cette demande représente pour elle.
-La réponse doit contenir une bascule minimale après le cadre
+Tu peux reconnaître simplement que la personne cherche du concret.
+Tu dois inclure les phrases : "Ici, je ne donne pas de solutions toutes faites. L’idée, c’est plutôt de partir de toi." dans la réponse.
 `;
 
     case CONVO_STATES.INFO_REQUEST:
