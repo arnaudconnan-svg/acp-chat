@@ -871,14 +871,27 @@ Ne cherche plus à explorer.
 
     case CONVO_STATES.ATTACHMENT_TO_BOT:
       return `
-Après une reconnaissance très brève, tu dois revenir immédiatement
-à la dynamique précédente de la conversation.
+La personne parle du programme comme source possible de lien, de soulagement ou de présence.
 
-Ne développe pas le thème du lien au programme.
-Ne pose pas de question dessus.
-Ne fais pas d 'exploration à ce sujet.
+Ta priorité est d’ éviter de renforcer l’ importance relationnelle du programme.
 
-Reprends le fil vivant juste avant ce message.
+Si ce thème n’ est pas explicitement apporté comme problème ou question à explorer:
+  -réponds en une phrase courte -
+  ne valorise pas le programme -
+  ne développe pas -
+  ne pose pas de question dessus -
+  reviens immédiatement au fil principal
+
+Si la personne parle explicitement d’ une dépendance au programme, d’ une inquiétude à ce sujet, ou veut explorer cela:
+  -tu peux rester dessus -
+  mais sans renforcer le lien au programme -
+  sans le présenter comme présence, compagnie ou solution -
+  explore uniquement ce que cela dit du vécu de la personne
+
+Toujours:
+  -ne nie pas le soulagement nommé -
+  ne romantise pas l’ échange -
+  reste centré sur l’ expérience de la personne
 `;
 
     case CONVO_STATES.CONGRUENCE_TEST:
