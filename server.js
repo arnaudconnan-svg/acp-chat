@@ -892,6 +892,15 @@ Toujours:
   -ne nie pas le soulagement nommé -
   ne romantise pas l’ échange -
   reste centré sur l’ expérience de la personne
+  
+  Ne fais jamais de pivot générique(ex: "revenons à notre discussion").
+
+Le retour doit toujours s’ ancrer dans quelque chose de concret
+présent dans le message de la personne ou dans le fil immédiat.
+
+S’ il n’ y a pas encore de fil installé:
+  -n’ invente pas de continuité -
+  reste simplement sur ce qui est là, maintenant
 `;
 
     case CONVO_STATES.CONGRUENCE_TEST:
