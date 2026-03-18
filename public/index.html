@@ -184,6 +184,23 @@ h2 {
   flex: 1;
 }
 
+#toggleLogsBtn {
+  position: absolute;
+  left: 0;
+  top: 8px;
+  font-size: 14px;
+  line-height: 1;
+  padding: 8px 10px;
+  border: none;
+  background: transparent;
+  color: #666;
+  cursor: pointer;
+}
+
+#toggleLogsBtn:hover {
+  text-decoration: underline;
+}
+
 #refreshBtn {
   position: absolute;
   right: 0;
@@ -434,6 +451,7 @@ button {
 
 <div id="chatScreen" class="screen">
   <div id="topBar">
+    <button id="toggleLogsBtn" onclick="toggleLogs()" title="Masquer / afficher les logs">logs</button>
     <h2 id="pageTitle">Facilitat.io</h2>
     <button id="refreshBtn" onclick="refreshPage()" title="Rafraîchir">↻</button>
   </div>
@@ -488,6 +506,7 @@ const MAX_HISTORY_FOR_SERVER = 20;
 const SESSION_KEY = "acp_session_history_v1";
 const SUMMARY_KEY = "acp_longterm_summary_v1";
 const FLAGS_KEY   = "acp_state_flags_v1";
+const LOGS_VISIBLE_KEY = "acp_logs_visible_v1";
 
 const GLOSSARY = {
   "centre d’évaluation interne": {
@@ -500,6 +519,7 @@ const GLOSSARY = {
 
 let sessionExpiredAtLoad = false;
 let isSending = false;
+let logsVisible = true;
 
 function hideSplash() {
   const splash = document.getElementById("appSplash");
@@ -642,6 +662,34 @@ function saveFlags(flags) {
   localStorage.setItem(FLAGS_KEY, JSON.stringify(normalizeFlags(flags)));
 }
 
+function loadLogsVisible() {
+  const raw = localStorage.getItem(LOGS_VISIBLE_KEY);
+  return raw === null ? true : raw === "true";
+}
+
+function saveLogsVisible(value) {
+  localStorage.setItem(LOGS_VISIBLE_KEY, String(value));
+}
+
+function updateLogsButtonLabel() {
+  const btn = document.getElementById("toggleLogsBtn");
+  if (!btn) return;
+  btn.textContent = logsVisible ? "logs" : "logs off";
+}
+
+function applyLogsVisibility() {
+  document.querySelectorAll(".debug-block").forEach(block => {
+    block.style.display = logsVisible ? "flex" : "none";
+  });
+  updateLogsButtonLabel();
+}
+
+function toggleLogs() {
+  logsVisible = !logsVisible;
+  saveLogsVisible(logsVisible);
+  applyLogsVisibility();
+}
+
 function escapeRegExp(text) {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -742,7 +790,8 @@ function createDebugBlock(debugLines = []) {
   if (!Array.isArray(debugLines) || !debugLines.length) return null;
 
   const debugBlock = document.createElement("div");
-  debugBlock.className = "debug-block";
+debugBlock.className = "debug-block";
+debugBlock.style.display = logsVisible ? "flex" : "none";
 
   debugLines.forEach(line => {
     const chip = document.createElement("span");
@@ -844,6 +893,7 @@ function rehydrateChatFromSession() {
     scrollChatToBottom(true);
   }, 0);
 
+  applyLogsVisibility();
   updateEditButtonVisibility();
 }
 
@@ -1002,6 +1052,8 @@ async function send() {
 }
 
 document.addEventListener("DOMContentLoaded", function() {
+  logsVisible = loadLogsVisible();
+updateLogsButtonLabel();
   autoResizeInput();
 
   document.getElementById("glossaryModal").onclick = function(e) {
