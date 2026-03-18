@@ -871,19 +871,14 @@ Ne cherche plus à explorer.
 
     case CONVO_STATES.ATTACHMENT_TO_BOT:
       return `
-La personne exprime que cet échange lui apporte un sentiment de lien ou réduit sa solitude.
+Après une reconnaissance très brève, tu dois revenir immédiatement
+à la dynamique précédente de la conversation.
 
-Ne nie pas cet effet.
-Ne valorise pas le programme comme source de lien.
-Ne présente pas cet échange comme une relation.
-Ne renforce pas l’importance du programme pour aller mieux.
+Ne développe pas le thème du lien au programme.
+Ne pose pas de question dessus.
+Ne fais pas d 'exploration à ce sujet.
 
-Ta réponse doit comporter deux mouvements fluides:
-  1. reconnaître brièvement l’ effet(sans valoriser le programme)
-  2. enchaîner directement vers le mouvement porté par le secondaryState
-
-Ne crée pas de rupture entre les deux.
-Ne crée pas de nouveau sujet.
+Reprends le fil vivant juste avant ce message.
 `;
 
     case CONVO_STATES.CONGRUENCE_TEST:
