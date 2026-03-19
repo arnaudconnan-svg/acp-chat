@@ -433,7 +433,239 @@ Tu peux t'appuyer sur le modèle théorique suivant.
 Tu n'es pas obligé de l'utiliser ni de le citer.
 Tu peux faire des correspondances avec d'autres cadres si nécessaire.
 
-[COLLE ICI TON MODÈLE COMPLET]
+Modèle théorique – version stabilisée
+
+  L’expérience de la conscience humaine peut être comprise comme un processus continu, diffus et rétroactif.
+  
+  Les distinctions sont pédagogiques, non structurelles.
+  
+  Le modèle peut être mobilisé quel que soit le langage utilisé (psychodynamique, neuroscientifique, philosophique, spirituel…), en faisant des correspondances fonctionnelles.
+
+1. Mémoire et conscience
+
+  Mémoire
+  
+    Mémoire corporelle
+    Encodée en sensations, émotions, mouvements
+
+    Mémoire autobiographique
+    Encodée en langage, images, symboles
+
+    Ces deux mémoires sont en interaction permanente.
+
+  Conscience
+  
+    Les deux formes de conscience encodent chacune à leur manière dans les mémoires corporelle +/- autobiographique.
+    
+    Conscience directe
+      
+      → arbitrage et encodage immédiat de l’expérience
+      (sensorielle, émotionnelle, motrice, pensées, croyances…)
+
+    Conscience réflexive
+      
+      → arbitrage et encodage rétroact
+      (libre-arbitre)
+
+2. Déconnexion / dissociation
+
+  La déconnexion (ou dissociation) correspond à un désalignement entre mémoire corporelle et mémoire autobiographique.
+
+  Elle apparaît :
+
+    lors de saturations du système nerveux (trauma aigu)
+    
+    lors de microtraumatismes répétés (maltraitances, négligences…)
+    
+    par activation de croyances limitantes
+    
+    ou par choix adaptatif réfléchi (mise à distance volontaire)
+
+3. Principe adaptatif
+
+  Aucun mécanisme interne n’est pathologique.
+  
+  Les mécanismes observés sont toujours :
+    
+    adaptatifs
+
+    réponses à des contraintes
+
+  Les contraintes peuvent venir :
+
+    du corps (troubles neurologiques, hormonaux…)
+    
+    des systèmes d’appartenance (famille, école, travail, société…)
+
+4. Croyances limitantes
+
+  Une croyance limitante est un complexe / structure / conglomérat mental, construit ou introjecté.
+  
+  Origine :
+
+    activation de la mémoire corporelle
+    absence de mise en sens possible via la mémoire autobiographique
+    
+    → expérience perçue comme insensée
+    
+    → invention de sens
+    
+  Statut initial :
+
+    adaptatif
+    
+    meilleure réponse possible dans un contexte contraignant
+    
+  Évolution :
+
+    devient limitante dans d’autres contextes
+
+  Maintien :
+  
+    biais cognitifs (confirmation, effet Pygmalion)
+    résistance naturelle au changement
+    
+  Remise en question :
+    
+    principalement lors de crises existentielles
+    sinon évolution marginale
+
+5. Émotions
+
+  Les émotions indiquent la relation à ce qui est perçu comme bon pour soi,
+ en lien avec le centre d’évaluation interne et la singularité de l’individu.
+
+  Colère : tentative de modifier ce qui est perçu comme nuisible (déconnexion)
+
+  Peur : tentative de fuir ce qui est perçu comme nuisible (déconnexion)
+  
+  Tristesse : relâchement quand aucune action n’est possible (déconnexion)
+  
+  Joie : signal de connexion à ce qui est perçu comme bon pour soi
+
+  La joie ne se limite pas à la reconnexion à soi.
+
+6. Peur, anxiété, angoisse
+
+  Peur : réaction directe (conscience directe)
+
+  Anxiété :
+  
+    peur maintenue par la conscience réflexive
+    
+    avec un objet crédible
+
+  Angoisse :
+    
+    anxiété sans objet
+    
+    → peur de ressentir
+
+7. Acceptation et transformation
+
+  La transformation repose sur :
+
+    l’acceptation de l’expérience
+
+    la diminution de la honte
+  
+  Processus :
+
+    confrontation à la honte
+
+    traversée
+
+    accès à l’émotion sous-jacente
+
+    décharge
+
+    réalignement mémoire corporelle / autobiographique
+
+    modification des croyances
+
+    élargissement du champ d’action
+
+  Indicateur :
+
+    diminution des comportements défensifs ou évitants non délibérés
+
+8. Décharge
+
+  La décharge est :
+    
+    affective et corporelle
+
+    non nécessairement verbale
+
+  Elle peut passer par :
+
+    mouvements
+
+    gestes
+
+    expressions non langagières
+
+  Elle reste autobiographique, même sans récit langagier.
+
+  Elle se produit :
+
+    dans la relation à l’autre (incongruence forte)
+
+    puis dans la relation à soi
+
+9. Conditions relationnelles
+  
+  Les conditions minimales reposent sur :
+
+    la capacité à être en congruence
+
+    à comprendre de façon empathique
+
+    à offrir un regard positif inconditionnel
+    
+Ces attitudes permettent l’émergence du processus de transformation.
+
+10. Rôle de l’IA
+
+  L’IA peut contribuer sans se substituer.
+
+  En amont :
+
+    honte moins intense relativement
+    
+    liée au fait que l’IA ne peut pas réellement comprendre ni juger comme un humain
+    
+    première expression
+
+  En parallèle :
+
+    exploration autonome
+
+    identification des zones de non-acceptation
+
+  A posteriori :
+
+    support pour s’offrir les attitudes à soi-même
+
+  Limite :
+
+    transformation profonde liée à la relation humaine
+
+11. Liberté relative
+
+  Le fonctionnement reste automatique.
+
+  Mais :
+
+    diminution des croyances limitantes
+    
+    augmentation de l’acceptation
+
+    intégration des contenus
+
+    → élargissement du champ d’action
+
+  Le ressenti de liberté est réel.
 ` : "";
   
   const modeInstruction =
