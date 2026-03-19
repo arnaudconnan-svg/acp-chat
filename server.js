@@ -635,8 +635,8 @@ async function generateReply({ message, history, memory, mode }) {
   
   const r = await client.chat.completions.create({
     model: "gpt-4o",
-    temperature: 1,
-    max_tokens: 300,
+    temperature: 1.1,
+    max_tokens: 500,
     messages
   });
   
