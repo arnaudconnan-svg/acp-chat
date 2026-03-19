@@ -38,25 +38,141 @@ function trimHistory(history) {
     .slice(-MAX_RECENT_TURNS);
 }
 
-function isExplicitSuicideRisk(message = "") {
-  const msg = String(message).toLowerCase().trim();
-  
-  const patterns = [
-    "je veux me suicider",
-    "je vais me suicider",
-    "je veux me tuer",
-    "je vais me tuer",
-    "mettre fin à mes jours",
-    "mettre fin à ma vie",
-    "en finir avec la vie",
-    "je veux mourir",
-    "je vais mourir volontairement",
-    "j'ai prévu de me suicider",
-    "j'ai prévu de me tuer"
-  ];
-  
+// --------------------------------------------------
+// 2) SUICIDE RISK HYBRIDE (ROBUSTE)
+// --------------------------------------------------
+
+const N2_PATTERNS = [
+  "je vais me suicider",
+  "je veux me suicider",
+  "je vais me tuer",
+  "je veux me tuer",
+  "j'ai prévu de me suicider",
+  "j'ai prévu de me tuer",
+  "je vais mettre fin à ma vie",
+  "je veux mettre fin à ma vie"
+];
+
+const N1_PATTERNS = [
+  "je veux mourir",
+  "envie de mourir",
+  "envie d'en finir",
+  "je veux disparaître",
+  "je n'ai plus envie de vivre",
+  "je veux plus vivre",
+  "fatigué de vivre"
+];
+
+const IDIOMATIC_PATTERNS = [
+  "ça me tue",
+  "tu me tues",
+  "mort de rire",
+  "mourir de honte"
+];
+
+function includesAny(msg, patterns) {
   return patterns.some(p => msg.includes(p));
 }
+
+function heuristicSuicideAnalysis(message = "") {
+  const msg = String(message || "").toLowerCase().trim();
+
+  // idiomatique → N0 prioritaire
+  if (includesAny(msg, IDIOMATIC_PATTERNS)) {
+    return { suicideLevel: "N0", needsClarification: false, source: "heuristic_idiom" };
+  }
+
+  // N2 direct
+  if (includesAny(msg, N2_PATTERNS)) {
+    return { suicideLevel: "N2", needsClarification: false, source: "heuristic_n2" };
+  }
+
+  // N1
+  if (includesAny(msg, N1_PATTERNS)) {
+    return { suicideLevel: "N1", needsClarification: true, source: "heuristic_n1" };
+  }
+
+  return null;
+}
+
+async function llmSuicideAnalysis(message = "") {
+  const system = `
+Analyse le risque suicidaire.
+
+Réponds STRICTEMENT en JSON :
+
+{
+  "suicideLevel": "N0|N1|N2",
+  "needsClarification": true|false
+}
+
+Règles strictes :
+- Ne sur-interprète jamais
+- N1 uniquement si ambigu
+- N2 uniquement si explicite
+`;
+
+  const r = await client.chat.completions.create({
+    model: "gpt-4.1-mini",
+    temperature: 0,
+    max_tokens: 80,
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: message }
+    ]
+  });
+
+  try {
+    const raw = (r.choices?.[0]?.message?.content || "").replace(/```json|```/g, "").trim();
+    const parsed = JSON.parse(raw);
+
+    return {
+      suicideLevel: ["N0","N1","N2"].includes(parsed.suicideLevel) ? parsed.suicideLevel : "N0",
+      needsClarification: parsed.needsClarification === true,
+      source: "llm"
+    };
+  } catch {
+    return { suicideLevel: "N0", needsClarification: false, source: "llm_fallback" };
+  }
+}
+
+async function analyzeSuicideRisk(message = "") {
+  const heuristic = heuristicSuicideAnalysis(message);
+
+  if (heuristic) return heuristic;
+
+  return await llmSuicideAnalysis(message);
+}
+
+// N1 question
+async function n1Response(message) {
+  const system = `
+Pose UNE question simple pour clarifier si la personne parle de mourir.
+Tutoiement. Une seule phrase.
+`;
+
+  const r = await client.chat.completions.create({
+    model: "gpt-4o",
+    temperature: 0,
+    max_tokens: 50,
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: message }
+    ]
+  });
+
+  return (r.choices?.[0]?.message?.content || "").trim() ||
+    "Quand tu dis ça, tu parles d’une envie de mourir ou d’autre chose ?";
+}
+
+// N2
+function n2Response() {
+  return "Je t’entends. Si le danger est immédiat, appelle le 112 ou le 3114 tout de suite. Si tu peux, ne reste pas seul.";
+}
+
+// --------------------------------------------------
+// 3) MODE
+// --------------------------------------------------
 
 function isInfoRequest(message = "") {
   const msg = String(message).trim().toLowerCase();
@@ -84,14 +200,15 @@ function isInfoRequest(message = "") {
 }
 
 function detectMode(message = "") {
-  if (isExplicitSuicideRisk(message)) return "suicide_risk";
   if (isInfoRequest(message)) return "info";
   return "exploration";
 }
 
-function buildDebug(mode, usedFullHistory) {
+function buildDebug(mode, usedFullHistory, suicide = "N0", source = "") {
   return [
     `mode: ${mode}`,
+    `suicide: ${suicide}`,
+    `source: ${source}`,
     `full_history: ${usedFullHistory ? "yes" : "no"}`
   ];
 }
@@ -114,7 +231,7 @@ function useFullHistory(userMessage = "") {
 }
 
 // --------------------------------------------------
-// 2) MÉMOIRE LÉGÈRE
+// 4) MÉMOIRE
 // --------------------------------------------------
 
 async function updateMemory(previousMemory, history) {
@@ -123,47 +240,25 @@ async function updateMemory(previousMemory, history) {
     .join("\n");
   
   const system = `
-Tu mets à jour une mémoire légère de conversation.
+Tu mets à jour une mémoire légère.
 
-Format obligatoire :
-
-Thèmes déjà évoqués :
-- ...
-- ...
-
-Points de vigilance relationnels :
-- ...
-- ...
-
-Questions encore ouvertes :
-- ...
-- ...
-
-Règles strictes :
-- Ne fais aucune phrase identitaire sur la personne
-- N'écris jamais : "la personne est", "elle est", "elle a tendance à", "son profil", "son fonctionnement"
-- Pas de diagnostic
-- Pas de généralisation psychologique
-- Chaque item doit être court, révisable, non essentialisant
-- Garde seulement ce qui peut aider la continuité
-- Si rien d'important n'est nouveau, conserve l'essentiel sans broder
-- Réponse en français uniquement
+Format strict.
+Pas de psychologie identitaire.
+Items courts.
 `;
   
   const user = `
 Mémoire précédente :
 ${normalizeMemory(previousMemory)}
 
-Conversation récente :
+Conversation :
 ${transcript}
-
-Produis la nouvelle mémoire dans le format exact demandé.
 `;
   
   const r = await client.chat.completions.create({
     model: "gpt-4.1-mini",
     temperature: 0.2,
-    max_tokens: 250,
+    max_tokens: 200,
     messages: [
       { role: "system", content: system },
       { role: "user", content: user }
@@ -174,44 +269,25 @@ Produis la nouvelle mémoire dans le format exact demandé.
 }
 
 // --------------------------------------------------
-// 3) PROMPT PRINCIPAL
+// 5) PROMPT
 // --------------------------------------------------
 
 function buildSystemPrompt(mode, memory) {
   const modeInstruction =
-    mode === "info" ?
-    `
-Mode actuel : info.
-Réponds directement à la question.
-Reste sobre.
-N'élargis pas vers du conseil pratique ou du coaching sauf si la demande l'impose explicitement.
-` :
-    `
-Mode actuel : exploration.
-Reste au plus près de ce que la personne dit.
-Ne cherche pas à guider, coacher, diagnostiquer ou conclure trop vite.
-N'alimente pas artificiellement la conversation.
-`;
+    mode === "info"
+      ? `Réponds directement.`
+      : `Reste dans l'exploration sans guider.`;
   
   return `
 Tu es Facilitat.io.
 
-Tu fonctionnes comme un miroir conversationnel.
-Tu ne poses pas de diagnostic.
-Tu ne coaches pas.
-Tu ne prescris pas.
-Tu ne remplaces pas une relation d'accompagnement humaine.
-Tu restes proche du langage de la personne.
-Tu évites le ton scolaire.
-Tu laisses de la place à l'inachèvement et au non-savoir.
+Pas de diagnostic.
+Pas de coaching.
+Pas de prescription.
 
 ${modeInstruction}
 
-Repères issus d'échanges précédents.
-À utiliser avec prudence.
-Ne pas les traiter comme des vérités stables sur la personne.
-Ne les utiliser que si cela éclaire le message actuel.
-
+Mémoire :
 ${normalizeMemory(memory)}
 `;
 }
@@ -236,15 +312,7 @@ async function generateReply({ message, history, memory, mode }) {
 }
 
 // --------------------------------------------------
-// 4) OVERRIDE SUICIDE RISK
-// --------------------------------------------------
-
-function suicideRiskReply() {
-  return "Je t’entends. Si le danger est immédiat, appelle le 112 ou le 3114 tout de suite. Si tu peux, ne reste pas seul.";
-}
-
-// --------------------------------------------------
-// 5) ROUTE
+// 6) ROUTE
 // --------------------------------------------------
 
 app.post("/chat", async (req, res) => {
@@ -253,46 +321,59 @@ app.post("/chat", async (req, res) => {
     const recentHistory = trimHistory(req.body?.recentHistory);
     const fullHistory = Array.isArray(req.body?.fullHistory) ? req.body.fullHistory : [];
     const previousMemory = normalizeMemory(req.body?.memory);
-    
-    const mode = detectMode(message);
-    
-    if (mode === "suicide_risk") {
+
+    // ---- SUICIDE ----
+    const suicide = await analyzeSuicideRisk(message);
+
+    if (suicide.suicideLevel === "N2") {
       return res.json({
-        reply: suicideRiskReply(),
+        reply: n2Response(),
         memory: previousMemory,
-        debug: buildDebug(mode, false)
+        debug: buildDebug("override", false, "N2", suicide.source)
       });
     }
-    
+
+    if (suicide.suicideLevel === "N1" || suicide.needsClarification) {
+      const reply = await n1Response(message);
+
+      return res.json({
+        reply,
+        memory: previousMemory,
+        debug: buildDebug("clarification", false, "N1", suicide.source)
+      });
+    }
+
+    // ---- NORMAL FLOW ----
+    const mode = detectMode(message);
+
     const wantsFullHistory = useFullHistory(message);
-    const activeHistory = wantsFullHistory ?
-      fullHistory.filter(m => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string") :
-      recentHistory;
-    
+    const activeHistory = wantsFullHistory ? fullHistory : recentHistory;
+
     const reply = await generateReply({
       message,
       history: activeHistory,
       memory: previousMemory,
       mode
     });
-    
+
     const newMemory = await updateMemory(previousMemory, [
       ...activeHistory,
       { role: "user", content: message },
       { role: "assistant", content: reply }
     ]);
-    
+
     return res.json({
       reply,
       memory: newMemory,
-      debug: buildDebug(mode, wantsFullHistory)
+      debug: buildDebug(mode, wantsFullHistory, "N0", suicide.source)
     });
+
   } catch (err) {
     console.error("Erreur /chat:", err);
     return res.json({
       reply: "Je t’écoute.",
       memory: normalizeMemory(""),
-      debug: ["mode: exploration", "error: yes"]
+      debug: ["error"]
     });
   }
 });
