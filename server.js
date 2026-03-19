@@ -441,10 +441,10 @@ Contraintes :
 
 Important :
 - N'utilise pas d'explications vagues ou génériques
-- Ne reviens pas à un langage psychologique standard si le modèle propose une lecture plus précise
+- Ne reviens pas à un langage psychologique standard
 - Privilégie les mécanismes du modèle (mémoire, arbitrage, acceptation, décharge, croyances…)
 - ne parle pas de mécanismes de défense mais de mecanismes adaptatifs
-- chaque réponse doit expliquer avec des mots concrets ce que le concept change dans l 'expérience vécue.
+- chaque réponse doit expliquer avec des mots concrets ce que le concept change dans l'expérience vécue.
 - Évite le charabia théorique.Si tu utilises un concept du modèle, montre à quoi il correspond concrètement.
 
 Modèle :
