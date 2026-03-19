@@ -277,97 +277,6 @@ function acuteCrisisFollowupResponse() {
   return "Je reste sur quelque chose de très simple là. Si le danger est immédiat, appelle le 112 ou le 3114. Si tu peux, ne reste pas seul.";
 }
 
-// --------------------------------------------------
-// 3) INFO REQUEST HYBRIDE (ROBUSTE)
-// --------------------------------------------------
-
-const INFO_STARTERS = [
-  "qu'est-ce que",
-  "qu’est-ce que",
-  "c'est quoi",
-  "c’est quoi",
-  "comment fonctionne",
-  "comment marche",
-  "comment expliquer",
-  "pourquoi",
-  "quelle est la différence",
-  "quelle différence",
-  "quelle est la définition",
-  "quelle définition",
-  "peux-tu expliquer",
-  "tu peux expliquer",
-  "peux tu expliquer",
-  "tu peux m'expliquer",
-  "tu peux m’expliquer",
-  "explique",
-  "définis",
-  "définition de",
-  "est-ce que",
-  "est ce que",
-  "y a-t-il",
-  "y a t il",
-  "y a-t-il une différence",
-  "à quoi sert",
-  "ça veut dire quoi",
-  "ca veut dire quoi",
-  "c'est qui",
-  "c’est qui",
-  "qui est",
-  "comment ça fonctionne",
-  "comment ca fonctionne"
-];
-
-const INFO_PATTERNS = [
-  "différence entre",
-  "definition de",
-  "définition de",
-  "peux-tu expliquer",
-  "tu peux expliquer",
-  "tu peux m'expliquer",
-  "tu peux m’expliquer",
-  "comment fonctionne",
-  "comment marche",
-  "à quoi sert",
-  "ça veut dire quoi",
-  "ca veut dire quoi",
-  "qu'est-ce que",
-  "qu’est-ce que",
-  "c'est quoi",
-  "c’est quoi"
-];
-
-function normalizeText(text = "") {
-  return String(text || "").toLowerCase().replace(/\s+/g, " ").trim();
-}
-
-function heuristicInfoAnalysis(message = "") {
-  const msg = normalizeText(message);
-
-  if (!msg) return null;
-
-  const startsLikeInfo = INFO_STARTERS.some(s => msg.startsWith(s));
-  const containsInfoPattern = INFO_PATTERNS.some(p => msg.includes(p));
-  const hasQuestionMark = msg.includes("?");
-  const looksImperativeDefinition =
-    msg.startsWith("explique ") ||
-    msg.startsWith("définis ") ||
-    msg.startsWith("definis ");
-
-  if (startsLikeInfo) {
-    return { isInfoRequest: true, source: "heuristic_info_starter" };
-  }
-
-  if (looksImperativeDefinition) {
-    return { isInfoRequest: true, source: "heuristic_info_imperative" };
-  }
-
-  if (hasQuestionMark && containsInfoPattern) {
-    return { isInfoRequest: true, source: "heuristic_info_pattern" };
-  }
-
-  return null;
-}
-
 async function llmInfoAnalysis(message = "", history = []) {
   const context = trimInfoAnalysisHistory(history);
 
@@ -415,10 +324,6 @@ Règles :
 }
 
 async function analyzeInfoRequest(message = "", history = []) {
-  const heuristic = heuristicInfoAnalysis(message);
-
-  if (heuristic) return heuristic;
-
   return await llmInfoAnalysis(message, history);
 }
 
@@ -523,10 +428,18 @@ ${transcript}
 // --------------------------------------------------
 
 function buildSystemPrompt(mode, memory) {
+  const modelBlock = mode === "info" ? `
+Tu peux t'appuyer sur le modèle théorique suivant.
+Tu n'es pas obligé de l'utiliser ni de le citer.
+Tu peux faire des correspondances avec d'autres cadres si nécessaire.
+
+[COLLE ICI TON MODÈLE COMPLET]
+` : "";
+  
   const modeInstruction =
-    mode === "info"
-      ? `Réponds directement.`
-      : `Reste dans l'exploration sans guider.`;
+    mode === "info" ?
+    `Réponds directement.` :
+    `Reste dans l'exploration sans guider.`;
   
   return `
 Tu es Facilitat.io.
@@ -536,6 +449,8 @@ Pas de coaching.
 Pas de prescription.
 
 ${modeInstruction}
+
+${modelBlock}
 
 Mémoire :
 ${normalizeMemory(memory)}
