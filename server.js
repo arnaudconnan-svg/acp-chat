@@ -10,6 +10,7 @@ app.use(express.static("public"));
 app.use(express.json());
 
 const MAX_RECENT_TURNS = 8;
+const MAX_INFO_ANALYSIS_TURNS = 6;
 
 // --------------------------------------------------
 // 1) OUTILS MINIMAUX
@@ -36,6 +37,13 @@ function trimHistory(history) {
   return history
     .filter(m => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
     .slice(-MAX_RECENT_TURNS);
+}
+
+function trimInfoAnalysisHistory(history) {
+  if (!Array.isArray(history)) return [];
+  return history
+    .filter(m => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
+    .slice(-MAX_INFO_ANALYSIS_TURNS);
 }
 
 // --------------------------------------------------
@@ -127,7 +135,7 @@ Règles strictes :
     const parsed = JSON.parse(raw);
 
     return {
-      suicideLevel: ["N0","N1","N2"].includes(parsed.suicideLevel) ? parsed.suicideLevel : "N0",
+      suicideLevel: ["N0", "N1", "N2"].includes(parsed.suicideLevel) ? parsed.suicideLevel : "N0",
       needsClarification: parsed.needsClarification === true,
       source: "llm"
     };
@@ -171,44 +179,174 @@ function n2Response() {
 }
 
 // --------------------------------------------------
-// 3) MODE
+// 3) INFO REQUEST HYBRIDE (ROBUSTE)
 // --------------------------------------------------
 
-function isInfoRequest(message = "") {
-  const msg = String(message).trim().toLowerCase();
-  
-  if (!msg.includes("?")) return false;
-  
-  const starters = [
-    "qu'est-ce que",
-    "qu’est-ce que",
-    "c'est quoi",
-    "c’est quoi",
-    "comment fonctionne",
-    "comment marche",
-    "pourquoi",
-    "quelle est la différence",
-    "quelle différence",
-    "peux-tu expliquer",
-    "tu peux expliquer",
-    "définis",
-    "définition de",
-    "est-ce que"
-  ];
-  
-  return starters.some(s => msg.startsWith(s));
+const INFO_STARTERS = [
+  "qu'est-ce que",
+  "qu’est-ce que",
+  "c'est quoi",
+  "c’est quoi",
+  "comment fonctionne",
+  "comment marche",
+  "comment expliquer",
+  "pourquoi",
+  "quelle est la différence",
+  "quelle différence",
+  "quelle est la définition",
+  "quelle définition",
+  "peux-tu expliquer",
+  "tu peux expliquer",
+  "peux tu expliquer",
+  "tu peux m'expliquer",
+  "tu peux m’expliquer",
+  "explique",
+  "définis",
+  "définition de",
+  "est-ce que",
+  "est ce que",
+  "y a-t-il",
+  "y a t il",
+  "y a-t-il une différence",
+  "à quoi sert",
+  "ça veut dire quoi",
+  "ca veut dire quoi",
+  "c'est qui",
+  "c’est qui",
+  "qui est",
+  "comment ça fonctionne",
+  "comment ca fonctionne"
+];
+
+const INFO_PATTERNS = [
+  "différence entre",
+  "definition de",
+  "définition de",
+  "peux-tu expliquer",
+  "tu peux expliquer",
+  "tu peux m'expliquer",
+  "tu peux m’expliquer",
+  "comment fonctionne",
+  "comment marche",
+  "à quoi sert",
+  "ça veut dire quoi",
+  "ca veut dire quoi",
+  "qu'est-ce que",
+  "qu’est-ce que",
+  "c'est quoi",
+  "c’est quoi"
+];
+
+function normalizeText(text = "") {
+  return String(text || "").toLowerCase().replace(/\s+/g, " ").trim();
 }
 
-function detectMode(message = "") {
-  if (isInfoRequest(message)) return "info";
-  return "exploration";
+function heuristicInfoAnalysis(message = "") {
+  const msg = normalizeText(message);
+
+  if (!msg) return null;
+
+  const startsLikeInfo = INFO_STARTERS.some(s => msg.startsWith(s));
+  const containsInfoPattern = INFO_PATTERNS.some(p => msg.includes(p));
+  const hasQuestionMark = msg.includes("?");
+  const looksImperativeDefinition =
+    msg.startsWith("explique ") ||
+    msg.startsWith("définis ") ||
+    msg.startsWith("definis ");
+
+  if (startsLikeInfo) {
+    return { isInfoRequest: true, source: "heuristic_info_starter" };
+  }
+
+  if (looksImperativeDefinition) {
+    return { isInfoRequest: true, source: "heuristic_info_imperative" };
+  }
+
+  if (hasQuestionMark && containsInfoPattern) {
+    return { isInfoRequest: true, source: "heuristic_info_pattern" };
+  }
+
+  return null;
 }
 
-function buildDebug(mode, usedFullHistory, suicide = "N0", source = "") {
+async function llmInfoAnalysis(message = "", history = []) {
+  const context = trimInfoAnalysisHistory(history);
+
+  const system = `
+Tu détermines si le message utilisateur relève surtout d'une demande d'information factuelle, théorique, historique ou scientifique.
+
+Réponds STRICTEMENT en JSON :
+
+{
+  "isInfoRequest": true|false
+}
+
+Règles :
+- true si la personne demande surtout une information, une explication, une définition, une différence, un fonctionnement
+- false si la personne exprime surtout son vécu, une difficulté, une émotion, une demande de présence ou d'exploration
+- ne sur-interprète pas
+- base-toi d'abord sur le message actuel, puis sur le contexte récent si nécessaire
+`;
+
+  const r = await client.chat.completions.create({
+    model: "gpt-4.1-mini",
+    temperature: 0,
+    max_tokens: 60,
+    messages: [
+      { role: "system", content: system },
+      ...context.map(m => ({ role: m.role, content: m.content })),
+      { role: "user", content: message }
+    ]
+  });
+
+  try {
+    const raw = (r.choices?.[0]?.message?.content || "").replace(/```json|```/g, "").trim();
+    const parsed = JSON.parse(raw);
+
+    return {
+      isInfoRequest: parsed.isInfoRequest === true,
+      source: "llm"
+    };
+  } catch {
+    return {
+      isInfoRequest: false,
+      source: "llm_fallback"
+    };
+  }
+}
+
+async function analyzeInfoRequest(message = "", history = []) {
+  const heuristic = heuristicInfoAnalysis(message);
+
+  if (heuristic) return heuristic;
+
+  return await llmInfoAnalysis(message, history);
+}
+
+// --------------------------------------------------
+// 4) MODE
+// --------------------------------------------------
+
+async function detectMode(message = "", history = []) {
+  const info = await analyzeInfoRequest(message, history);
+  return {
+    mode: info.isInfoRequest ? "info" : "exploration",
+    infoSource: info.source
+  };
+}
+
+function buildDebug(
+  mode,
+  usedFullHistory,
+  suicide = "N0",
+  suicideSource = "",
+  infoSource = ""
+) {
   return [
     `mode: ${mode}`,
     `suicide: ${suicide}`,
-    `source: ${source}`,
+    `suicide_source: ${suicideSource}`,
+    `info_source: ${infoSource}`,
     `full_history: ${usedFullHistory ? "yes" : "no"}`
   ];
 }
@@ -231,7 +369,7 @@ function useFullHistory(userMessage = "") {
 }
 
 // --------------------------------------------------
-// 4) MÉMOIRE
+// 5) MÉMOIRE
 // --------------------------------------------------
 
 async function updateMemory(previousMemory, history) {
@@ -269,7 +407,7 @@ ${transcript}
 }
 
 // --------------------------------------------------
-// 5) PROMPT
+// 6) PROMPT
 // --------------------------------------------------
 
 function buildSystemPrompt(mode, memory) {
@@ -312,7 +450,7 @@ async function generateReply({ message, history, memory, mode }) {
 }
 
 // --------------------------------------------------
-// 6) ROUTE
+// 7) ROUTE
 // --------------------------------------------------
 
 app.post("/chat", async (req, res) => {
@@ -329,7 +467,7 @@ app.post("/chat", async (req, res) => {
       return res.json({
         reply: n2Response(),
         memory: previousMemory,
-        debug: buildDebug("override", false, "N2", suicide.source)
+        debug: buildDebug("override", false, "N2", suicide.source, "")
       });
     }
 
@@ -339,15 +477,14 @@ app.post("/chat", async (req, res) => {
       return res.json({
         reply,
         memory: previousMemory,
-        debug: buildDebug("clarification", false, "N1", suicide.source)
+        debug: buildDebug("clarification", false, "N1", suicide.source, "")
       });
     }
 
     // ---- NORMAL FLOW ----
-    const mode = detectMode(message);
-
     const wantsFullHistory = useFullHistory(message);
     const activeHistory = wantsFullHistory ? fullHistory : recentHistory;
+    const { mode, infoSource } = await detectMode(message, activeHistory);
 
     const reply = await generateReply({
       message,
@@ -365,7 +502,7 @@ app.post("/chat", async (req, res) => {
     return res.json({
       reply,
       memory: newMemory,
-      debug: buildDebug(mode, wantsFullHistory, "N0", suicide.source)
+      debug: buildDebug(mode, wantsFullHistory, "N0", suicide.source, infoSource)
     });
 
   } catch (err) {
