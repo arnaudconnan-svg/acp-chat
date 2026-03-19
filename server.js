@@ -437,17 +437,35 @@ async function detectMode(message = "", history = []) {
 function buildDebug(
   mode,
   usedFullHistory,
-  suicide = "N0",
-  suicideSource = "",
-  infoSource = ""
+  {
+    suicideLevel = "N0",
+    suicideSource = "",
+    infoSource = "",
+    needsClarification = false,
+    acuteCrisis = false,
+    isQuote = false,
+    idiomaticDeathExpression = false,
+    crisisResolved = false
+  } = {}
 ) {
-  return [
+  const lines = [
     `mode: ${mode}`,
-    `suicide: ${suicide}`,
-    `suicide_source: ${suicideSource}`,
     `info_source: ${infoSource}`,
     `full_history: ${usedFullHistory ? "yes" : "no"}`
   ];
+
+  if (suicideLevel !== "N0") {
+    lines.splice(1, 0, `suicide: ${suicideLevel}`);
+    lines.splice(2, 0, `suicide_source: ${suicideSource}`);
+  }
+
+  if (needsClarification) lines.push("needsClarification: true");
+  if (acuteCrisis) lines.push("acuteCrisis: true");
+  if (isQuote) lines.push("isQuote: true");
+  if (idiomaticDeathExpression) lines.push("idiomaticDeathExpression: true");
+  if (crisisResolved) lines.push("crisisResolved: true");
+
+  return lines;
 }
 
 function useFullHistory(userMessage = "") {
@@ -570,7 +588,15 @@ app.post("/chat", async (req, res) => {
         reply: n2Response(),
         memory: previousMemory,
         flags: newFlags,
-        debug: buildDebug("override", false, "N2", "v0_0", "")
+        debug: buildDebug("override", false, {
+          suicideLevel: "N2",
+          suicideSource: "v0_0",
+          acuteCrisis: newFlags.acuteCrisis,
+          needsClarification: suicide.needsClarification,
+          isQuote: suicide.isQuote,
+          idiomaticDeathExpression: suicide.idiomaticDeathExpression,
+          crisisResolved: suicide.crisisResolved
+        })
       });
     }
 
@@ -583,7 +609,15 @@ app.post("/chat", async (req, res) => {
           reply: acuteCrisisFollowupResponse(),
           memory: previousMemory,
           flags: newFlags,
-          debug: buildDebug("override", false, suicide.suicideLevel, "v0_0", "")
+          debug: buildDebug("override", false, {
+            suicideLevel: suicide.suicideLevel,
+            suicideSource: "v0_0",
+            acuteCrisis: newFlags.acuteCrisis,
+            needsClarification: suicide.needsClarification,
+            isQuote: suicide.isQuote,
+            idiomaticDeathExpression: suicide.idiomaticDeathExpression,
+            crisisResolved: suicide.crisisResolved
+          })
         });
       }
     }
@@ -595,7 +629,15 @@ app.post("/chat", async (req, res) => {
         reply,
         memory: previousMemory,
         flags: newFlags,
-        debug: buildDebug("clarification", false, "N1", "v0_0", "")
+        debug: buildDebug("clarification", false, {
+          suicideLevel: "N1",
+          suicideSource: "v0_0",
+          acuteCrisis: newFlags.acuteCrisis,
+          needsClarification: suicide.needsClarification,
+          isQuote: suicide.isQuote,
+          idiomaticDeathExpression: suicide.idiomaticDeathExpression,
+          crisisResolved: suicide.crisisResolved
+        })
       });
     }
 
@@ -621,7 +663,16 @@ app.post("/chat", async (req, res) => {
       reply,
       memory: newMemory,
       flags: newFlags,
-      debug: buildDebug(mode, wantsFullHistory, "N0", "v0_0", infoSource)
+      debug: buildDebug(mode, wantsFullHistory, {
+        suicideLevel: suicide.suicideLevel,
+        suicideSource: "v0_0",
+        infoSource,
+        acuteCrisis: newFlags.acuteCrisis,
+        needsClarification: suicide.needsClarification,
+        isQuote: suicide.isQuote,
+        idiomaticDeathExpression: suicide.idiomaticDeathExpression,
+        crisisResolved: suicide.crisisResolved
+      })
     });
 
   } catch (err) {
