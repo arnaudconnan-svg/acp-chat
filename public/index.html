@@ -24,6 +24,7 @@ body {
   display: flex;
   flex-direction: column;
   padding: 12px;
+  background: white;
 }
 
 /* ---------- ÉCRANS ---------- */
@@ -60,11 +61,14 @@ body {
 #welcomeLogoWrap {
   display: flex;
   justify-content: center;
+  margin-top: 0;
   margin-bottom: 10px;
 }
 
 #welcomeLogo {
   width: min(220px, 62vw);
+  height: auto;
+  display: block;
 }
 
 .welcomeLead {
@@ -72,21 +76,25 @@ body {
   font-size: 16px;
   line-height: 1.45;
   color: #1f3f44;
-  margin-bottom: 12px;
+  margin: 0 0 12px 0;
 }
 
 .welcomeText {
   font-size: 15px;
   line-height: 1.5;
+  color: #333;
+  margin: 0 0 10px 0;
   text-align: center;
 }
 
 .welcomeDisclaimer {
   font-size: 14px;
+  line-height: 1.5;
+  color: #555;
   background: #f6f8f8;
   border-radius: 12px;
-  padding: 12px;
-  margin: 12px 0;
+  padding: 12px 14px;
+  margin: 12px 0 14px 0;
   text-align: center;
 }
 
@@ -94,32 +102,67 @@ body {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  margin-top: 0;
 }
 
 .welcomeBtnPrimary,
 .welcomeBtnSecondary {
+  width: 100%;
   border-radius: 12px;
-  padding: 12px;
   font-size: 16px;
+  line-height: 1.25;
+  padding: 12px 14px;
   cursor: pointer;
 }
 
 .welcomeBtnPrimary {
+  border: none;
   background: #245e66;
   color: white;
-  border: none;
 }
 
 .welcomeBtnSecondary {
   border: 1px solid #b9c9cc;
   background: white;
+  color: #245e66;
 }
 
 /* ---------- CHAT ---------- */
 
+#chatScreen {
+  flex-direction: column;
+}
+
 #topBar {
+  flex: 0 0 auto;
+  background: white;
   position: relative;
+  z-index: 5;
+  padding-bottom: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+h2 {
   text-align: center;
+  font-size: 22px;
+  margin: 10px 0 16px 0;
+  flex: 1;
+}
+
+#debugToggleBtn {
+  position: absolute;
+  left: 0;
+  top: 8px;
+  font-size: 13px;
+  line-height: 1;
+  padding: 8px 10px;
+  border: 1px solid #d7dee2;
+  border-radius: 999px;
+  background: white;
+  color: #4b5563;
+  cursor: pointer;
 }
 
 #refreshBtn {
@@ -127,35 +170,52 @@ body {
   right: 0;
   top: 8px;
   font-size: 20px;
-  background: none;
+  line-height: 1;
+  padding: 6px 10px;
   border: none;
+  background: transparent;
+  color: #666;
   cursor: pointer;
-}
-
-h2 {
-  margin: 10px 0 16px 0;
 }
 
 #chat {
   border: 1px solid #ccc;
   padding: 12px;
-  flex: 1;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
-  margin: 8px 0;
+  margin: 8px 0 10px 0;
+  font-size: 16px;
+  line-height: 1.4;
+  box-sizing: border-box;
+  -webkit-overflow-scrolling: touch;
+}
+
+#inputArea {
+  flex: 0 0 auto;
+  background: white;
+  position: relative;
+  z-index: 6;
+  padding-top: 6px;
 }
 
 #input {
   width: 100%;
   font-size: 18px;
   padding: 12px;
+  box-sizing: border-box;
   min-height: 72px;
   max-height: 150px;
   resize: none;
+  overflow-y: auto;
+  font-family: inherit;
+  line-height: 1.4;
 }
 
 .actions {
   display: flex;
   justify-content: center;
+  align-items: center;
   gap: 10px;
   margin-top: 8px;
 }
@@ -172,6 +232,66 @@ button {
   border: none;
   font-size: 13px;
   color: #666;
+  padding: 0;
+}
+
+.message {
+  margin: 14px 0;
+  display: flex;
+}
+
+.message.user {
+  justify-content: flex-end;
+}
+
+.message.bot {
+  justify-content: flex-start;
+}
+
+.message-content {
+  max-width: 80%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.bubble {
+  padding: 12px 14px;
+  border-radius: 14px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+.user .bubble {
+  background: #d8ecff;
+}
+
+.bot .bubble {
+  background: #f1f1f1;
+}
+
+.debug-block {
+  display: none;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+body.show-debug .debug-block {
+  display: flex;
+}
+
+.debug-chip {
+  font-size: 12px;
+  line-height: 1.2;
+  color: #4b5563;
+  background: #eef2f4;
+  border: 1px solid #d7dee2;
+  border-radius: 999px;
+  padding: 4px 8px;
+  white-space: nowrap;
 }
 
 /* ---------- MODALE ---------- */
@@ -179,17 +299,51 @@ button {
 #aboutModal {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.35);
+  background: rgba(0, 0, 0, 0.35);
   display: none;
   align-items: flex-end;
   justify-content: center;
+  z-index: 1000;
 }
 
 #aboutBox {
   background: white;
-  width: min(640px, 100%);
+  width: min(640px, calc(100vw - 24px));
   border-radius: 20px 20px 0 0;
-  padding: 20px;
+  padding: 18px 18px calc(24px + env(safe-area-inset-bottom, 0px)) 18px;
+  box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.25);
+  font-size: 16px;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100dvh - 12px);
+  overflow-y: auto;
+  margin: 0;
+}
+
+#aboutBox::before {
+  content: "";
+  width: 40px;
+  height: 4px;
+  background: #ccc;
+  border-radius: 2px;
+  align-self: center;
+  margin-bottom: 10px;
+}
+
+#aboutContent {
+  margin-bottom: 18px;
+  line-height: 1.6;
+}
+
+#aboutBox button {
+  align-self: flex-end;
+  font-size: 14px;
+  padding: 8px 12px;
+  margin-top: 6px;
+  border: none;
+  background: transparent;
+  color: #666;
+  cursor: pointer;
 }
 </style>
 </head>
@@ -201,7 +355,7 @@ button {
   <div id="welcomeInner">
 
     <div id="welcomeLogoWrap">
-      <img id="welcomeLogo" src="/images/logo.png">
+      <img id="welcomeLogo" src="/images/logo.png" alt="Facilitat.io">
     </div>
 
     <p class="welcomeLead">
@@ -210,10 +364,11 @@ button {
 
     <p class="welcomeText">
       Facilitat.io propose un espace de réflexion inspiré de l’Approche Centrée sur la Personne.
+      Il ne donne pas de conseils, ne prescrit pas de solutions et ne cherche pas à vous orienter de l’extérieur.
     </p>
 
     <div class="welcomeDisclaimer">
-      Cet outil ne remplace pas un accompagnement humain.
+      Cet outil ne diagnostique pas, ne prescrit pas et ne remplace pas une relation d’accompagnement humaine.
     </div>
 
     <div class="welcomeActions">
@@ -232,34 +387,54 @@ button {
 <!-- CHAT -->
 <div id="chatScreen" class="screen">
   <div id="topBar">
+    <button id="debugToggleBtn" type="button">logs masqués</button>
     <h2>Facilitat.io</h2>
     <button id="refreshBtn" onclick="location.reload()">↻</button>
   </div>
 
   <div id="chat"></div>
 
-  <textarea id="input" placeholder="Écrire..."></textarea>
+  <div id="inputArea">
+    <textarea id="input" placeholder="Écrire..."></textarea>
 
-  <div class="actions">
-    <button id="editLastBtn">modifier</button>
-    <button id="sendBtn">Envoyer</button>
+    <div class="actions">
+      <button id="editLastBtn">modifier</button>
+      <button id="sendBtn">Envoyer</button>
+    </div>
   </div>
 </div>
 
 <!-- ABOUT MODAL -->
 <div id="aboutModal">
   <div id="aboutBox">
-    <p>Facilitat.io ne donne pas de conseils ni de solutions toutes faites.</p>
+    <div id="aboutContent">
+      <p>
+        La plupart des intelligences artificielles sont conçues pour répondre vite, conseiller, orienter ou résoudre.
+      </p>
+      <p>
+        Facilitat.io a été conçu autrement.
+      </p>
+      <p>
+        Son objectif est de soutenir le développement du centre d’évaluation interne : la capacité à sentir, reconnaître et évaluer son expérience à partir d’elle-même.
+      </p>
+      <p>
+        Il ne cherche pas à améliorer la performance, à normaliser l’expérience ou à proposer des réponses toutes faites.
+      </p>
+      <p>
+        Il s’agit d’un espace de réflexion, non d’un outil de prescription.
+      </p>
+    </div>
     <button onclick="closeAboutModal()">fermer</button>
   </div>
 </div>
 
 <script>
-function openAboutModal(){
-  document.getElementById("aboutModal").style.display="flex"
+function openAboutModal() {
+  document.getElementById("aboutModal").style.display = "flex";
 }
-function closeAboutModal(){
-  document.getElementById("aboutModal").style.display="none"
+
+function closeAboutModal() {
+  document.getElementById("aboutModal").style.display = "none";
 }
 </script>
 
@@ -269,6 +444,7 @@ const MEMORY_KEY = "facilitatio_v0_memory";
 const MAX_RECENT_TURNS = 8;
 
 let isSending = false;
+let showDebug = false;
 
 /* ---------- MEMORY ---------- */
 
@@ -325,27 +501,40 @@ function enterChat() {
   showScreen("chatScreen");
 }
 
+function syncDebugVisibility() {
+  document.body.classList.toggle("show-debug", showDebug);
+  document.getElementById("debugToggleBtn").textContent = showDebug ? "logs visibles" : "logs masqués";
+}
+
 function addMessage(role, text, debug = []) {
   const chat = document.getElementById("chat");
 
   const msg = document.createElement("div");
   msg.className = "message " + role;
 
-  const wrap = document.createElement("div");
+  const contentWrap = document.createElement("div");
+  contentWrap.className = "message-content";
 
   if (role === "bot" && debug.length) {
     const dbg = document.createElement("div");
     dbg.className = "debug-block";
-    dbg.textContent = debug.join(" | ");
-    wrap.appendChild(dbg);
+
+    debug.forEach(line => {
+      const chip = document.createElement("span");
+      chip.className = "debug-chip";
+      chip.textContent = line;
+      dbg.appendChild(chip);
+    });
+
+    contentWrap.appendChild(dbg);
   }
 
   const bubble = document.createElement("div");
   bubble.className = "bubble";
   bubble.textContent = text;
 
-  wrap.appendChild(bubble);
-  msg.appendChild(wrap);
+  contentWrap.appendChild(bubble);
+  msg.appendChild(contentWrap);
   chat.appendChild(msg);
 
   chat.scrollTop = chat.scrollHeight;
@@ -367,7 +556,7 @@ function renderHistory() {
 function canEditLastTurn() {
   const h = loadHistory();
   if (h.length < 2) return false;
-  return h[h.length-2].role === "user" && h[h.length-1].role === "assistant";
+  return h[h.length - 2].role === "user" && h[h.length - 1].role === "assistant";
 }
 
 function updateEditButtonVisibility() {
@@ -380,7 +569,7 @@ function editLastTurn() {
   if (!canEditLastTurn()) return;
 
   const input = document.getElementById("input");
-  input.value = h[h.length-2].content;
+  input.value = h[h.length - 2].content;
 
   h.splice(-2, 2);
   saveHistory(h);
@@ -392,7 +581,7 @@ function editLastTurn() {
 /* ---------- SEND ---------- */
 
 function buildPayload(message) {
-  const full = loadHistory().map(({role,content}) => ({role,content}));
+  const full = loadHistory().map(({ role, content }) => ({ role, content }));
   return {
     message,
     recentHistory: full.slice(-MAX_RECENT_TURNS),
@@ -442,6 +631,10 @@ async function send() {
 
 document.getElementById("sendBtn").onclick = send;
 document.getElementById("editLastBtn").onclick = editLastTurn;
+document.getElementById("debugToggleBtn").onclick = () => {
+  showDebug = !showDebug;
+  syncDebugVisibility();
+};
 
 document.getElementById("input").addEventListener("keydown", e => {
   if (e.key === "Enter" && e.ctrlKey) {
@@ -450,7 +643,14 @@ document.getElementById("input").addEventListener("keydown", e => {
   }
 });
 
+document.getElementById("aboutModal").addEventListener("click", e => {
+  if (e.target.id === "aboutModal") {
+    closeAboutModal();
+  }
+});
+
 window.onload = () => {
+  syncDebugVisibility();
   renderHistory();
 };
 
