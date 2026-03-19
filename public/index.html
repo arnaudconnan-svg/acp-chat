@@ -64,7 +64,18 @@ body {
 /* ---------- CHAT ---------- */
 
 #topBar {
+  position: relative;
   text-align: center;
+}
+
+#refreshBtn {
+  position: absolute;
+  right: 0;
+  top: 8px;
+  font-size: 20px;
+  background: none;
+  border: none;
+  cursor: pointer;
 }
 
 h2 {
@@ -166,6 +177,7 @@ button {
 <div id="chatScreen" class="screen">
   <div id="topBar">
     <h2>Facilitat.io</h2>
+    <button id="refreshBtn" onclick="location.reload()">↻</button>
   </div>
 
   <div id="chat"></div>
