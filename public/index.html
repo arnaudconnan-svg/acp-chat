@@ -38,27 +38,81 @@ body {
   flex-direction: column;
 }
 
-/* ---------- WELCOME ---------- */
+/* ---------- ACCUEIL ---------- */
 
 #welcomeScreen {
+  overflow: hidden;
   justify-content: center;
   align-items: center;
-  text-align: center;
+  padding: 10px 10px 14px 10px;
+}
+
+#welcomeInner {
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  height: 100%;
+}
+
+#welcomeLogoWrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 10px;
 }
 
 #welcomeLogo {
-  width: 160px;
-  margin-bottom: 20px;
+  width: min(220px, 62vw);
+}
+
+.welcomeLead {
+  text-align: center;
+  font-size: 16px;
+  line-height: 1.45;
+  color: #1f3f44;
+  margin-bottom: 12px;
+}
+
+.welcomeText {
+  font-size: 15px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.welcomeDisclaimer {
+  font-size: 14px;
+  background: #f6f8f8;
+  border-radius: 12px;
+  padding: 12px;
+  margin: 12px 0;
+  text-align: center;
+}
+
+.welcomeActions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.welcomeBtnPrimary,
+.welcomeBtnSecondary {
+  border-radius: 12px;
+  padding: 12px;
+  font-size: 16px;
+  cursor: pointer;
 }
 
 .welcomeBtnPrimary {
-  border: none;
   background: #245e66;
   color: white;
-  padding: 12px 18px;
-  border-radius: 12px;
-  font-size: 16px;
-  cursor: pointer;
+  border: none;
+}
+
+.welcomeBtnSecondary {
+  border: 1px solid #b9c9cc;
+  background: white;
 }
 
 /* ---------- CHAT ---------- */
@@ -120,44 +174,22 @@ button {
   color: #666;
 }
 
-#editLastBtn:hover {
-  text-decoration: underline;
+/* ---------- MODALE ---------- */
+
+#aboutModal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.35);
+  display: none;
+  align-items: flex-end;
+  justify-content: center;
 }
 
-/* ---------- MESSAGES ---------- */
-
-.message {
-  margin: 12px 0;
-  display: flex;
-}
-
-.message.user {
-  justify-content: flex-end;
-}
-
-.message.bot {
-  justify-content: flex-start;
-}
-
-.bubble {
-  padding: 10px 12px;
-  border-radius: 12px;
-  max-width: 75%;
-  white-space: pre-wrap;
-}
-
-.user .bubble {
-  background: #d8ecff;
-}
-
-.bot .bubble {
-  background: #f1f1f1;
-}
-
-.debug-block {
-  font-size: 11px;
-  color: #666;
-  margin-bottom: 4px;
+#aboutBox {
+  background: white;
+  width: min(640px, 100%);
+  border-radius: 20px 20px 0 0;
+  padding: 20px;
 }
 </style>
 </head>
@@ -166,10 +198,34 @@ button {
 
 <!-- WELCOME -->
 <div id="welcomeScreen" class="screen active">
-  <div>
-    <img id="welcomeLogo" src="/images/logo.png" alt="logo">
-    <p>Un miroir conversationnel</p>
-    <button class="welcomeBtnPrimary" onclick="enterChat()">Entrer</button>
+  <div id="welcomeInner">
+
+    <div id="welcomeLogoWrap">
+      <img id="welcomeLogo" src="/images/logo.png">
+    </div>
+
+    <p class="welcomeLead">
+      Un miroir conversationnel pour explorer ce que vous vivez.
+    </p>
+
+    <p class="welcomeText">
+      Facilitat.io propose un espace de réflexion inspiré de l’Approche Centrée sur la Personne.
+    </p>
+
+    <div class="welcomeDisclaimer">
+      Cet outil ne remplace pas un accompagnement humain.
+    </div>
+
+    <div class="welcomeActions">
+      <button class="welcomeBtnSecondary" onclick="openAboutModal()">
+        Pourquoi cette application est différente
+      </button>
+
+      <button class="welcomeBtnPrimary" onclick="enterChat()">
+        Entrer
+      </button>
+    </div>
+
   </div>
 </div>
 
@@ -189,6 +245,23 @@ button {
     <button id="sendBtn">Envoyer</button>
   </div>
 </div>
+
+<!-- ABOUT MODAL -->
+<div id="aboutModal">
+  <div id="aboutBox">
+    <p>Facilitat.io ne donne pas de conseils ni de solutions toutes faites.</p>
+    <button onclick="closeAboutModal()">fermer</button>
+  </div>
+</div>
+
+<script>
+function openAboutModal(){
+  document.getElementById("aboutModal").style.display="flex"
+}
+function closeAboutModal(){
+  document.getElementById("aboutModal").style.display="none"
+}
+</script>
 
 <script>
 const SESSION_KEY = "facilitatio_v0_history";
@@ -380,8 +453,6 @@ document.getElementById("input").addEventListener("keydown", e => {
 window.onload = () => {
   renderHistory();
 };
-
-/* ---------- SW ---------- */
 
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("/sw.js");
