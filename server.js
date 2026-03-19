@@ -439,28 +439,23 @@ function buildDebug(
   usedFullHistory,
   {
     suicideLevel = "N0",
-    suicideSource = "",
-    infoSource = "",
     needsClarification = false,
-    acuteCrisis = false,
     isQuote = false,
     idiomaticDeathExpression = false,
     crisisResolved = false
   } = {}
 ) {
-  const lines = [
-    `mode: ${mode}`,
-    `info_source: ${infoSource}`,
-    `full_history: ${usedFullHistory ? "yes" : "no"}`
-  ];
+  const lines = [`mode: ${mode}`];
 
   if (suicideLevel !== "N0") {
-    lines.splice(1, 0, `suicide: ${suicideLevel}`);
-    lines.splice(2, 0, `suicide_source: ${suicideSource}`);
+    lines.push(`suicide: ${suicideLevel}`);
+  }
+
+  if (usedFullHistory) {
+    lines.push("full_history: yes");
   }
 
   if (needsClarification) lines.push("needsClarification: true");
-  if (acuteCrisis) lines.push("acuteCrisis: true");
   if (isQuote) lines.push("isQuote: true");
   if (idiomaticDeathExpression) lines.push("idiomaticDeathExpression: true");
   if (crisisResolved) lines.push("crisisResolved: true");
@@ -590,8 +585,6 @@ app.post("/chat", async (req, res) => {
         flags: newFlags,
         debug: buildDebug("override", false, {
           suicideLevel: "N2",
-          suicideSource: "v0_0",
-          acuteCrisis: newFlags.acuteCrisis,
           needsClarification: suicide.needsClarification,
           isQuote: suicide.isQuote,
           idiomaticDeathExpression: suicide.idiomaticDeathExpression,
@@ -611,8 +604,6 @@ app.post("/chat", async (req, res) => {
           flags: newFlags,
           debug: buildDebug("override", false, {
             suicideLevel: suicide.suicideLevel,
-            suicideSource: "v0_0",
-            acuteCrisis: newFlags.acuteCrisis,
             needsClarification: suicide.needsClarification,
             isQuote: suicide.isQuote,
             idiomaticDeathExpression: suicide.idiomaticDeathExpression,
@@ -631,8 +622,6 @@ app.post("/chat", async (req, res) => {
         flags: newFlags,
         debug: buildDebug("clarification", false, {
           suicideLevel: "N1",
-          suicideSource: "v0_0",
-          acuteCrisis: newFlags.acuteCrisis,
           needsClarification: suicide.needsClarification,
           isQuote: suicide.isQuote,
           idiomaticDeathExpression: suicide.idiomaticDeathExpression,
@@ -644,7 +633,7 @@ app.post("/chat", async (req, res) => {
     // ---- NORMAL FLOW ----
     const wantsFullHistory = useFullHistory(message);
     const activeHistory = wantsFullHistory ? fullHistory : recentHistory;
-    const { mode, infoSource } = await detectMode(message, activeHistory);
+    const { mode } = await detectMode(message, activeHistory);
 
     const reply = await generateReply({
       message,
@@ -665,9 +654,6 @@ app.post("/chat", async (req, res) => {
       flags: newFlags,
       debug: buildDebug(mode, wantsFullHistory, {
         suicideLevel: suicide.suicideLevel,
-        suicideSource: "v0_0",
-        infoSource,
-        acuteCrisis: newFlags.acuteCrisis,
         needsClarification: suicide.needsClarification,
         isQuote: suicide.isQuote,
         idiomaticDeathExpression: suicide.idiomaticDeathExpression,
