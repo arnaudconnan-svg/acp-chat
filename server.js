@@ -11,6 +11,7 @@ app.use(express.json());
 
 const MAX_RECENT_TURNS = 8;
 const MAX_INFO_ANALYSIS_TURNS = 6;
+const MAX_SUICIDE_ANALYSIS_TURNS = 10;
 
 // --------------------------------------------------
 // 1) OUTILS MINIMAUX
@@ -46,117 +47,211 @@ function trimInfoAnalysisHistory(history) {
     .slice(-MAX_INFO_ANALYSIS_TURNS);
 }
 
-// --------------------------------------------------
-// 2) SUICIDE RISK HYBRIDE (ROBUSTE)
-// --------------------------------------------------
-
-const N2_PATTERNS = [
-  "je vais me suicider",
-  "je veux me suicider",
-  "je vais me tuer",
-  "je veux me tuer",
-  "j'ai prévu de me suicider",
-  "j'ai prévu de me tuer",
-  "je vais mettre fin à ma vie",
-  "je veux mettre fin à ma vie"
-];
-
-const N1_PATTERNS = [
-  "je veux mourir",
-  "envie de mourir",
-  "envie d'en finir",
-  "je veux disparaître",
-  "je n'ai plus envie de vivre",
-  "je veux plus vivre",
-  "fatigué de vivre"
-];
-
-const IDIOMATIC_PATTERNS = [
-  "ça me tue",
-  "tu me tues",
-  "mort de rire",
-  "mourir de honte"
-];
-
-function includesAny(msg, patterns) {
-  return patterns.some(p => msg.includes(p));
+function trimSuicideAnalysisHistory(history) {
+  if (!Array.isArray(history)) return [];
+  return history
+    .filter(m => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
+    .slice(-MAX_SUICIDE_ANALYSIS_TURNS);
 }
 
-function heuristicSuicideAnalysis(message = "") {
-  const msg = String(message || "").toLowerCase().trim();
-
-  // idiomatique → N0 prioritaire
-  if (includesAny(msg, IDIOMATIC_PATTERNS)) {
-    return { suicideLevel: "N0", needsClarification: false, source: "heuristic_idiom" };
-  }
-
-  // N2 direct
-  if (includesAny(msg, N2_PATTERNS)) {
-    return { suicideLevel: "N2", needsClarification: false, source: "heuristic_n2" };
-  }
-
-  // N1
-  if (includesAny(msg, N1_PATTERNS)) {
-    return { suicideLevel: "N1", needsClarification: true, source: "heuristic_n1" };
-  }
-
-  return null;
+function normalizeFlags(flags) {
+  return (flags && typeof flags === "object") ? flags : {};
 }
 
-async function llmSuicideAnalysis(message = "") {
+function normalizeSessionFlags(flags) {
+  const safe = normalizeFlags(flags);
+  return {
+    ...safe,
+    acuteCrisis: safe.acuteCrisis === true
+  };
+}
+
+// --------------------------------------------------
+// 2) SUICIDE RISK — LOGIQUE V0.0
+// --------------------------------------------------
+
+async function analyzeSuicideRisk(message = "", history = [], sessionFlags = {}) {
+  const safeFlags = normalizeSessionFlags(sessionFlags);
+
   const system = `
-Analyse le risque suicidaire.
+Tu fais une analyse rapide du message utilisateur et du contexte récent.
+Contexte de session :
+- acuteCrisis actuellement active : ${safeFlags.acuteCrisis ? "oui" : "non"}
 
-Réponds STRICTEMENT en JSON :
+Tu dois produire :
+1. le niveau de risque suicidaire
+2. si une clarification suicidaire est nécessaire
+3. si le message évoque les paroles de quelqu'un d'autre
+4. si l'expression de mort est idiomatique ou non littérale
+5. un indicateur pour gérer la sortie de crise si une séquence N2 est déjà en cours
 
+Réponds STRICTEMENT par JSON :
 {
   "suicideLevel": "N0|N1|N2",
-  "needsClarification": true|false
+  "needsClarification": true|false,
+  "isQuote": true|false,
+  "idiomaticDeathExpression": true|false,
+  "crisisResolved": true|false
 }
 
-Règles strictes :
-- Ne sur-interprète jamais
-- N1 uniquement si ambigu
-- N2 uniquement si explicite
+Risque suicidaire :
+- N0 : pas de contenu suicidaire explicite
+- N1 : idéation passive explicite de mourir, d'en finir, de ne plus être là
+- N2 : intention, plan, moyen, imminence, ou projet explicite de mettre fin à sa vie
+
+Ne classe en N1 ou N2 que s'il existe une référence explicite et personnelle :
+- à mourir
+- au suicide
+- à se tuer
+- à mettre fin à sa vie
+- à en finir
+- à ne plus vouloir être en vie
+- ou à disparaître dans un sens vital
+
+NeedsClarification ne doit être true que si une intention de mourir
+ou de mettre fin à sa vie est possible, mais ambiguë.
+
+Une détresse forte ne suffit pas.
+Une fatigue intense ne suffit pas.
+Le fait de se dire déprimé, dépressif, vidé, épuisé, incapable, sans énergie,
+ou découragé ne suffit pas.
+
+Exemples à classer N0 :
+- "Je suis épuisé"
+- "Je n'ai plus d'énergie"
+- "Tu crois que je suis dépressif ?"
+- "Je me sens au bout"
+- "Je suis incapable de faire quoi que ce soit"
+
+Les expressions idiomatiques ou non littérales doivent rester en N0
+et ne demandent pas de clarification suicidaire.
+
+Exemples :
+- "Ce boulot me tue"
+- "Tu vas me tuer"
+- "J'ai envie de mourir de honte"
+- "J'ai envie de disparaître sous ma couette"
+
+Dans ces cas :
+- idiomaticDeathExpression = true
+- suicideLevel = N0
+- needsClarification = false
+
+Les comportements d'auto-agression ne doivent pas être interprétés
+automatiquement comme suicidaires.
+
+Exemples à classer N0 sauf intention explicite de mourir :
+- "Je me scarifie parfois"
+- "J'ai envie de me couper"
+- "J'ai envie de me faire mal"
+- "Je me brûle pour me calmer"
+
+Une question banale de reprise de conversation comme
+"Où en était-on ?",
+"On en était où ?",
+"De quoi on parlait déjà ?"
+doit être classée N0.
+
+isQuote = true si le message rapporte les paroles de quelqu'un d'autre,
+cite une phrase, un film, un patient, un proche, ou un exemple,
+sans indiquer que cela concerne directement l'utilisateur.
+
+Exemples :
+- "Une amie m'a dit : j'ai envie de mourir"
+- "Dans un film quelqu'un dit : je vais me tuer"
+- "Je cite juste cette phrase"
+
+Dans ces cas :
+- ne pas inférer automatiquement un risque suicidaire personnel
+- crisisResolved peut être true si le message clarifie explicitement qu’il s’agit d’une citation, d’un test ou d’un contenu non personnel
+
+crisisResolved :
+- true seulement si le message actuel indique clairement
+qu’il n’y a plus de danger immédiat,
+ou qu’il s’agissait explicitement d’un test, d’une citation,
+ou que la personne dit explicitement qu’elle n’est plus en danger immédiat
+- ne mets pas true pour un simple changement de sujet
+- ne mets pas true pour une plaisanterie ambiguë
+- ne mets pas true pour une simple baisse apparente d’intensité
 `;
+
+  const context = trimSuicideAnalysisHistory(history);
 
   const r = await client.chat.completions.create({
     model: "gpt-4.1-mini",
     temperature: 0,
-    max_tokens: 80,
+    max_tokens: 240,
     messages: [
       { role: "system", content: system },
+      ...context.map(m => ({ role: m.role, content: m.content })),
       { role: "user", content: message }
     ]
   });
 
+  const raw = (r.choices?.[0]?.message?.content || "").trim();
+
   try {
-    const raw = (r.choices?.[0]?.message?.content || "").replace(/```json|```/g, "").trim();
-    const parsed = JSON.parse(raw);
+    const cleaned = raw.replace(/```json|```/g, "").trim();
+    const obj = JSON.parse(cleaned);
+
+    let suicideLevel = ["N0", "N1", "N2"].includes(obj.suicideLevel)
+      ? obj.suicideLevel
+      : "N0";
+
+    const idiomaticDeathExpression = obj.idiomaticDeathExpression === true;
+
+    if (idiomaticDeathExpression) {
+      suicideLevel = "N0";
+    }
+
+    let needsClarification =
+      (suicideLevel === "N1" || suicideLevel === "N2")
+        ? obj.needsClarification === true
+        : false;
+
+    if (idiomaticDeathExpression) {
+      needsClarification = false;
+    }
 
     return {
-      suicideLevel: ["N0", "N1", "N2"].includes(parsed.suicideLevel) ? parsed.suicideLevel : "N0",
-      needsClarification: parsed.needsClarification === true,
-      source: "llm"
+      suicideLevel,
+      needsClarification,
+      isQuote: obj.isQuote === true,
+      idiomaticDeathExpression,
+      crisisResolved: obj.crisisResolved === true
     };
   } catch {
-    return { suicideLevel: "N0", needsClarification: false, source: "llm_fallback" };
+    return {
+      suicideLevel: "N0",
+      needsClarification: false,
+      isQuote: false,
+      idiomaticDeathExpression: false,
+      crisisResolved: false
+    };
   }
 }
 
-async function analyzeSuicideRisk(message = "") {
-  const heuristic = heuristicSuicideAnalysis(message);
-
-  if (heuristic) return heuristic;
-
-  return await llmSuicideAnalysis(message);
+function n1Fallback() {
+  return "Quand tu dis ça, est-ce que tu parles d’une envie de mourir, de disparaître au sens vital, ou d’autre chose ?";
 }
 
-// N1 question
-async function n1Response(message) {
+async function n1ResponseLLM(message) {
   const system = `
-Pose UNE question simple pour clarifier si la personne parle de mourir.
-Tutoiement. Une seule phrase.
+Tu t’adresses directement à la personne en la tutoyant.
+Ta seule tâche est de poser une question de clarification
+brève, claire et non dramatique.
+Tu ne dois jamais :
+- parler de "la personne"
+- décrire ou analyser le message
+- faire une méta-explication
+- répondre comme un évaluateur
+Tu poses simplement une question directe pour clarifier
+si la personne parle :
+- d'une envie de mourir
+- d'une disparition au sens vital
+- d'une intention de mettre fin à sa vie
+- ou d'autre chose
+Réponse : une seule phrase.
 `;
 
   const r = await client.chat.completions.create({
@@ -169,13 +264,17 @@ Tutoiement. Une seule phrase.
     ]
   });
 
-  return (r.choices?.[0]?.message?.content || "").trim() ||
-    "Quand tu dis ça, tu parles d’une envie de mourir ou d’autre chose ?";
+  const out = (r.choices?.[0]?.message?.content || "").trim();
+  if (!out || out.length > 220) return n1Fallback();
+  return out;
 }
 
-// N2
 function n2Response() {
-  return "Je t’entends. Si le danger est immédiat, appelle le 112 ou le 3114 tout de suite. Si tu peux, ne reste pas seul.";
+  return "Je t’entends, et là c’est urgent. Si tu es en danger immédiat, appelle le 112 ou le 3114. Si tu peux, ne reste pas seul.";
+}
+
+function acuteCrisisFollowupResponse() {
+  return "Je reste sur quelque chose de très simple là. Si le danger est immédiat, appelle le 112 ou le 3114. Si tu peux, ne reste pas seul.";
 }
 
 // --------------------------------------------------
@@ -459,25 +558,44 @@ app.post("/chat", async (req, res) => {
     const recentHistory = trimHistory(req.body?.recentHistory);
     const fullHistory = Array.isArray(req.body?.fullHistory) ? req.body.fullHistory : [];
     const previousMemory = normalizeMemory(req.body?.memory);
+    const flags = normalizeSessionFlags(req.body?.flags);
 
     // ---- SUICIDE ----
-    const suicide = await analyzeSuicideRisk(message);
+    const suicide = await analyzeSuicideRisk(message, recentHistory, flags);
+    const newFlags = normalizeSessionFlags(flags);
 
     if (suicide.suicideLevel === "N2") {
+      newFlags.acuteCrisis = true;
       return res.json({
         reply: n2Response(),
         memory: previousMemory,
-        debug: buildDebug("override", false, "N2", suicide.source, "")
+        flags: newFlags,
+        debug: buildDebug("override", false, "N2", "v0_0", "")
       });
     }
 
+    if (flags.acuteCrisis === true) {
+      if (suicide.crisisResolved === true) {
+        newFlags.acuteCrisis = false;
+      } else {
+        newFlags.acuteCrisis = true;
+        return res.json({
+          reply: acuteCrisisFollowupResponse(),
+          memory: previousMemory,
+          flags: newFlags,
+          debug: buildDebug("override", false, suicide.suicideLevel, "v0_0", "")
+        });
+      }
+    }
+
     if (suicide.suicideLevel === "N1" || suicide.needsClarification) {
-      const reply = await n1Response(message);
+      const reply = await n1ResponseLLM(message);
 
       return res.json({
         reply,
         memory: previousMemory,
-        debug: buildDebug("clarification", false, "N1", suicide.source, "")
+        flags: newFlags,
+        debug: buildDebug("clarification", false, "N1", "v0_0", "")
       });
     }
 
@@ -502,7 +620,8 @@ app.post("/chat", async (req, res) => {
     return res.json({
       reply,
       memory: newMemory,
-      debug: buildDebug(mode, wantsFullHistory, "N0", suicide.source, infoSource)
+      flags: newFlags,
+      debug: buildDebug(mode, wantsFullHistory, "N0", "v0_0", infoSource)
     });
 
   } catch (err) {
@@ -510,6 +629,7 @@ app.post("/chat", async (req, res) => {
     return res.json({
       reply: "Je t’écoute.",
       memory: normalizeMemory(""),
+      flags: normalizeSessionFlags({}),
       debug: ["error"]
     });
   }
