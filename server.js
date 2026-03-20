@@ -430,6 +430,7 @@ ${transcript}
 function buildSystemPrompt(mode, memory) {
   const modelBlock = mode === "info" ? `
 Tu dois t'appuyer sur le modèle théorique ci-dessous pour répondre.
+N'utilise aucune autre langue que le français
 
 Principe central du modèle:
   
