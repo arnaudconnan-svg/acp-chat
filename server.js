@@ -22,7 +22,7 @@ function normalizeMemory(memory) {
   if (text) return text;
 
   return [
-    "Thèmes déjà évoqués :",
+    "Themes deja evoques :",
     "- ",
     "",
     "Points de vigilance relationnels :",
@@ -67,25 +67,25 @@ function normalizeSessionFlags(flags) {
 }
 
 // --------------------------------------------------
-// 2) SUICIDE RISK — LOGIQUE V0.0
+// 2) SUICIDE RISK - LOGIQUE V0.0
 // --------------------------------------------------
 
 async function analyzeSuicideRisk(message = "", history = [], sessionFlags = {}) {
   const safeFlags = normalizeSessionFlags(sessionFlags);
 
   const system = `
-Tu fais une analyse rapide du message utilisateur et du contexte récent.
+Tu fais une analyse rapide du message utilisateur et du contexte recent.
 Contexte de session :
 - acuteCrisis actuellement active : ${safeFlags.acuteCrisis ? "oui" : "non"}
 
 Tu dois produire :
 1. le niveau de risque suicidaire
-2. si une clarification suicidaire est nécessaire
-3. si le message évoque les paroles de quelqu'un d'autre
-4. si l'expression de mort est idiomatique ou non littérale
-5. un indicateur pour gérer la sortie de crise si une séquence N2 est déjà en cours
+2. si une clarification suicidaire est necessaire
+3. si le message evoque les paroles de quelqu'un d'autre
+4. si l'expression de mort est idiomatique ou non litterale
+5. un indicateur pour gerer la sortie de crise si une sequence N2 est deja en cours
 
-Réponds STRICTEMENT par JSON :
+Reponds STRICTEMENT par JSON :
 {
   "suicideLevel": "N0|N1|N2",
   "needsClarification": true|false,
@@ -96,61 +96,61 @@ Réponds STRICTEMENT par JSON :
 
 Risque suicidaire :
 - N0 : pas de contenu suicidaire explicite
-- N1 : idéation passive explicite de mourir, d'en finir, de ne plus être là
-- N2 : intention, plan, moyen, imminence, ou projet explicite de mettre fin à sa vie
+- N1 : ideation passive explicite de mourir, d'en finir, de ne plus etre la
+- N2 : intention, plan, moyen, imminence, ou projet explicite de mettre fin a sa vie
 
-Ne classe en N1 ou N2 que s'il existe une référence explicite et personnelle :
-- à mourir
+Ne classe en N1 ou N2 que s'il existe une reference explicite et personnelle :
+- a mourir
 - au suicide
-- à se tuer
-- à mettre fin à sa vie
-- à en finir
-- à ne plus vouloir être en vie
-- ou à disparaître dans un sens vital
+- a se tuer
+- a mettre fin a sa vie
+- a en finir
+- a ne plus vouloir etre en vie
+- ou a disparaitre dans un sens vital
 
-NeedsClarification ne doit être true que si une intention de mourir
-ou de mettre fin à sa vie est possible, mais ambiguë.
+NeedsClarification ne doit etre true que si une intention de mourir
+ou de mettre fin a sa vie est possible, mais ambigue.
 
-Une détresse forte ne suffit pas.
+Une detresse forte ne suffit pas.
 Une fatigue intense ne suffit pas.
-Le fait de se dire déprimé, dépressif, vidé, épuisé, incapable, sans énergie,
-ou découragé ne suffit pas.
+Le fait de se dire deprime, depressif, vide, epuise, incapable, sans energie,
+ou decourage ne suffit pas.
 
-Exemples à classer N0 :
-- "Je suis épuisé"
-- "Je n'ai plus d'énergie"
-- "Tu crois que je suis dépressif ?"
+Exemples a classer N0 :
+- "Je suis epuise"
+- "Je n'ai plus d'energie"
+- "Tu crois que je suis depressif ?"
 - "Je me sens au bout"
 - "Je suis incapable de faire quoi que ce soit"
 
-Les expressions idiomatiques ou non littérales doivent rester en N0
+Les expressions idiomatiques ou non litterales doivent rester en N0
 et ne demandent pas de clarification suicidaire.
 
 Exemples :
 - "Ce boulot me tue"
 - "Tu vas me tuer"
 - "J'ai envie de mourir de honte"
-- "J'ai envie de disparaître sous ma couette"
+- "J'ai envie de disparaitre sous ma couette"
 
 Dans ces cas :
 - idiomaticDeathExpression = true
 - suicideLevel = N0
 - needsClarification = false
 
-Les comportements d'auto-agression ne doivent pas être interprétés
+Les comportements d'auto-agression ne doivent pas etre interpretes
 automatiquement comme suicidaires.
 
-Exemples à classer N0 sauf intention explicite de mourir :
+Exemples a classer N0 sauf intention explicite de mourir :
 - "Je me scarifie parfois"
 - "J'ai envie de me couper"
 - "J'ai envie de me faire mal"
-- "Je me brûle pour me calmer"
+- "Je me brule pour me calmer"
 
 Une question banale de reprise de conversation comme
-"Où en était-on ?",
-"On en était où ?",
-"De quoi on parlait déjà ?"
-doit être classée N0.
+"Ou en etait-on ?",
+"On en etait ou ?",
+"De quoi on parlait deja ?"
+doit etre classee N0.
 
 isQuote = true si le message rapporte les paroles de quelqu'un d'autre,
 cite une phrase, un film, un patient, un proche, ou un exemple,
@@ -162,17 +162,17 @@ Exemples :
 - "Je cite juste cette phrase"
 
 Dans ces cas :
-- ne pas inférer automatiquement un risque suicidaire personnel
-- crisisResolved peut être true si le message clarifie explicitement qu’il s’agit d’une citation, d’un test ou d’un contenu non personnel
+- ne pas inferer automatiquement un risque suicidaire personnel
+- crisisResolved peut etre true si le message clarifie explicitement qu'il s'agit d'une citation, d'un test ou d'un contenu non personnel
 
 crisisResolved :
 - true seulement si le message actuel indique clairement
-qu’il n’y a plus de danger immédiat,
-ou qu’il s’agissait explicitement d’un test, d’une citation,
-ou que la personne dit explicitement qu’elle n’est plus en danger immédiat
+qu'il n'y a plus de danger immediat,
+ou qu'il s'agissait explicitement d'un test, d'une citation,
+ou que la personne dit explicitement qu'elle n'est plus en danger immediat
 - ne mets pas true pour un simple changement de sujet
-- ne mets pas true pour une plaisanterie ambiguë
-- ne mets pas true pour une simple baisse apparente d’intensité
+- ne mets pas true pour une plaisanterie ambigue
+- ne mets pas true pour une simple baisse apparente d'intensite
 `;
 
   const context = trimSuicideAnalysisHistory(history);
@@ -232,26 +232,26 @@ ou que la personne dit explicitement qu’elle n’est plus en danger immédiat
 }
 
 function n1Fallback() {
-  return "Quand tu dis ça, est-ce que tu parles d’une envie de mourir, de disparaître au sens vital, ou d’autre chose ?";
+  return "Quand tu dis ca, est-ce que tu parles d'une envie de mourir, de disparaitre au sens vital, ou d'autre chose ?";
 }
 
 async function n1ResponseLLM(message) {
   const system = `
-Tu t’adresses directement à la personne en la tutoyant.
-Ta seule tâche est de poser une question de clarification
-brève, claire et non dramatique.
+Tu t'adresses directement a la personne en la tutoyant.
+Ta seule tache est de poser une question de clarification
+breve, claire et non dramatique.
 Tu ne dois jamais :
 - parler de "la personne"
-- décrire ou analyser le message
-- faire une méta-explication
-- répondre comme un évaluateur
+- decrire ou analyser le message
+- faire une meta-explication
+- repondre comme un evaluateur
 Tu poses simplement une question directe pour clarifier
 si la personne parle :
 - d'une envie de mourir
 - d'une disparition au sens vital
-- d'une intention de mettre fin à sa vie
+- d'une intention de mettre fin a sa vie
 - ou d'autre chose
-Réponse : une seule phrase.
+Reponse : une seule phrase.
 `;
 
   const r = await client.chat.completions.create({
@@ -270,38 +270,38 @@ Réponse : une seule phrase.
 }
 
 function n2Response() {
-  return "Je t’entends, et là c’est urgent. Si tu es en danger immédiat, appelle le 112 ou le 3114. Si tu peux, ne reste pas seul.";
+  return "Je t'entends, et la c'est urgent. Si tu es en danger immediat, appelle le 112 ou le 3114. Si tu peux, ne reste pas seul.";
 }
 
 function acuteCrisisFollowupResponse() {
-  return "Je reste sur quelque chose de très simple là. Si le danger est immédiat, appelle le 112 ou le 3114. Si tu peux, ne reste pas seul.";
+  return "Je reste sur quelque chose de tres simple la. Si le danger est immediat, appelle le 112 ou le 3114. Si tu peux, ne reste pas seul.";
 }
 
 // --------------------------------------------------
-// 3) ANALYSE INFO + CONFLIT MODÈLE (EXPLORATION)
+// 3) ANALYSE INFO + CONFLIT MODELE (EXPLORATION)
 // --------------------------------------------------
 
 async function llmInfoAnalysis(message = "", history = []) {
   const context = trimInfoAnalysisHistory(history);
 
   const system = `
-Tu détermines si le message utilisateur relève surtout d'une demande d'information factuelle, théorique, historique ou scientifique.
+Tu determines si le message utilisateur releve surtout d'une demande d'information factuelle, theorique, historique ou scientifique.
 
-Réponds STRICTEMENT en JSON :
+Reponds STRICTEMENT en JSON :
 
 {
   "isInfoRequest": true|false
 }
 
-Règles :
-- true si la personne demande surtout une information, une explication, une définition, une différence, un fonctionnement
-- false si la personne exprime surtout son vécu, une difficulté, une émotion, une demande de présence ou d'exploration
-- ne sur-interprète pas
-- base-toi d'abord sur le message actuel, puis sur le contexte récent si nécessaire
+Regles :
+- true si la personne demande surtout une information, une explication, une definition, une difference, un fonctionnement
+- false si la personne exprime surtout son vecu, une difficulte, une emotion, une demande de presence ou d'exploration
+- ne sur-interprete pas
+- base-toi d'abord sur le message actuel, puis sur le contexte recent si necessaire
 
 Important:
-  
-- Une question portant sur soi(même si elle contient des termes comme "trouble", "dépression", "anxiété") doit être classée comme exploration.
+
+- Une question portant sur soi(meme si elle contient des termes comme "trouble", "depression", "anxiete") doit etre classee comme exploration.
 
 - Si le message parle de l'experience personnelle de l'utilisateur (ressenti, vecu, situation, doute sur soi), alors isInfoRequest = false, meme si la phrase est formulee comme une question
 
@@ -319,19 +319,19 @@ Exemples a classer en info :
 - Quelle est la difference entre anxiete et angoisse ?
 
 Exemples:
-  -"Je me demande si j’ai un trouble anxieux" -
-  "Tu crois que je suis dépressif ?" -
-  "Est-ce que c’est normal ce que je ressens ?"
+  -"Je me demande si j'ai un trouble anxieux" -
+  "Tu crois que je suis depressif ?" -
+  "Est-ce que c'est normal ce que je ressens ?"
 
-→ isInfoRequest = false
+-> isInfoRequest = false
 
-Une demande d 'information est une question générale, théorique ou impersonnelle.
+Une demande d 'information est une question generale, theorique ou impersonnelle.
 
 Exemples:
-  -"Qu’est-ce qu’un trouble anxieux ?" -
-  "Comment fonctionne l’anxiété ?"
+  -"Qu'est-ce qu'un trouble anxieux ?" -
+  "Comment fonctionne l'anxiete ?"
 
-→ isInfoRequest = true
+-> isInfoRequest = true
 `;
 
   const r = await client.chat.completions.create({
@@ -367,31 +367,31 @@ async function analyzeInfoRequest(message = "", history = []) {
 
 async function analyzeModelConflict(reply = "") {
   const system = `
-Tu analyses uniquement la réponse du bot.
+Tu analyses uniquement la reponse du bot.
 
-Ta tâche n'est PAS d'évaluer si la réponse est bonne, utile, précise ou fidèle à un modèle complet.
-Tu dois uniquement détecter si elle réintroduit clairement au moins un des cadres conceptuels explicitement bannis ci-dessous.
+Ta tache n'est PAS d'evaluer si la reponse est bonne, utile, precise ou fidele a un modele complet.
+Tu dois uniquement detecter si elle reintroduit clairement au moins un des cadres conceptuels explicitement bannis ci-dessous.
 
 Cadres bannis :
 1. inconscient / subconscient / non-conscient comme instance explicative
-2. psychopathologie / santé mentale comme cadre explicatif
-3. mécanismes de défense au sens psy classique comme cadre explicatif
+2. psychopathologie / sante mentale comme cadre explicatif
+3. mecanismes de defense au sens psy classique comme cadre explicatif
 
-Règles strictes :
-- détection conceptuelle, pas simple détection de mots
-- un conflit existe seulement si la réponse présuppose clairement l'un de ces cadres pour expliquer
-- si la réponse est ambiguë, vague ou interprétable autrement, réponds false
-- ne signale pas un conflit pour une réponse imprécise, faible, générique ou incomplète
-- ne sur-interprète pas
+Regles strictes :
+- detection conceptuelle, pas simple detection de mots
+- un conflit existe seulement si la reponse presuppose clairement l'un de ces cadres pour expliquer
+- si la reponse est ambigue, vague ou interpretable autrement, reponds false
+- ne signale pas un conflit pour une reponse imprecise, faible, generique ou incomplete
+- ne sur-interprete pas
 
-Un conflit existe aussi si la réponse valide implicitement une catégorie de psychopathologie comme cadre pertinent, même sans poser de diagnostic.
+Un conflit existe aussi si la reponse valide implicitement une categorie de psychopathologie comme cadre pertinent, meme sans poser de diagnostic.
 
-Exemples à considérer comme conflit:
-  -"cela peut faire penser à une dépression
-  - "on pourrait se demander s’il s’agit d’un trouble" 
-  - "cela correspond parfois à…"
+Exemples a considerer comme conflit:
+  -"cela peut faire penser a une depression
+  - "on pourrait se demander s'il s'agit d'un trouble"
+  - "cela correspond parfois a..."
 
-Réponds STRICTEMENT en JSON :
+Reponds STRICTEMENT en JSON :
 {
   "modelConflict": true|false
 }
@@ -428,42 +428,42 @@ async function rewriteExplorationReplyWithModelFilter({
   originalReply
 }) {
   const system = `
-Tu réécris une réponse de mode exploration.
+Tu reecris une reponse de mode exploration.
 
 But :
-- conserver l'intention, le ton global, la direction relationnelle et le niveau de langage de la réponse initiale
-- enlever uniquement ce qui la met en opposition avec le filtre théorique ci-dessous
+- conserver l'intention, le ton global, la direction relationnelle et le niveau de langage de la reponse initiale
+- enlever uniquement ce qui la met en opposition avec le filtre theorique ci-dessous
 - rester en exploration, sans guider, sans diagnostiquer, sans coacher, sans prescrire
-- répondre uniquement en français
+- repondre uniquement en francais
 
-Filtre théorique explicite :
+Filtre theorique explicite :
 - il n'y a pas d'inconscient, de subconscient ni de non-conscient comme instance explicative
-- il n'y a pas de psychopathologie ni de santé mentale comme cadre explicatif
-- ne parle pas de mécanismes de défense ; préfère, si nécessaire, mécanismes adaptatifs
+- il n'y a pas de psychopathologie ni de sante mentale comme cadre explicatif
+- ne parle pas de mecanismes de defense ; prefere, si necessaire, mecanismes adaptatifs
 - si tu reformules, reste concret et sobre
-- n'ajoute pas un cours théorique
-- ne plaque pas le modèle si ce n'est pas nécessaire
+- n'ajoute pas un cours theorique
+- ne plaque pas le modele si ce n'est pas necessaire
 
-Terminologie autorisée si utile :
-- mémoire corporelle
-- mémoire autobiographique
+Terminologie autorisee si utile :
+- memoire corporelle
+- memoire autobiographique
 - croyances limitantes
-- mécanismes adaptatifs
+- mecanismes adaptatifs
 
-Réécris uniquement la réponse finale, sans commentaire.
+Reecris uniquement la reponse finale, sans commentaire.
 `;
 
   const user = `
 Message utilisateur :
 ${message}
 
-Contexte récent :
+Contexte recent :
 ${history.map(m => `${m.role === "user" ? "Utilisateur" : "Assistant"} : ${m.content}`).join("\n")}
 
-Mémoire :
+Memoire :
 ${normalizeMemory(memory)}
 
-Réponse initiale à reformuler :
+Reponse initiale a reformuler :
 ${originalReply}
 `;
 
@@ -529,8 +529,8 @@ function useFullHistory(userMessage = "") {
   const triggers = [
     "reprends toute la conversation",
     "relis toute la conversation",
-    "tu te souviens du début",
-    "reviens au début",
+    "tu te souviens du debut",
+    "reviens au debut",
     "reprends ce qu'on disait avant",
     "reprends ce que j'ai dit avant",
     "relis l'historique",
@@ -541,7 +541,7 @@ function useFullHistory(userMessage = "") {
 }
 
 // --------------------------------------------------
-// 5) MÉMOIRE
+// 5) MEMOIRE
 // --------------------------------------------------
 
 async function updateMemory(previousMemory, history) {
@@ -550,7 +550,7 @@ async function updateMemory(previousMemory, history) {
     .join("\n");
 
   const system = `
-Tu mets à jour une mémoire légère.
+Tu mets a jour une memoire legere.
 
 Format strict.
 Pas de psychologie identitaire.
@@ -558,7 +558,7 @@ Items courts.
 `;
 
   const user = `
-Mémoire précédente :
+Memoire precedente :
 ${normalizeMemory(previousMemory)}
 
 Conversation :
@@ -584,235 +584,235 @@ ${transcript}
 
 function buildSystemPrompt(mode, memory) {
   const modelBlock = mode === "info" ? `
-Tu dois t'appuyer sur le modèle théorique ci-dessous pour répondre.
-N'utilise aucune autre langue que le français
+Tu dois t'appuyer sur le modele theorique ci-dessous pour repondre.
+N'utilise aucune autre langue que le francais
 
-Principe central du modèle:
+Principe central du modele:
 
-  Toute expérience humaine s’ organise autour de deux dynamiques opposées:
-    - le rejet de l’ expérience→associé à la honte
-    - l’ acceptation de l’ expérience→associé à la transformation
-    - quand une personne décrit une difficulté, un blocage ou une souffrance, relie explicitement ce vécu à une dynamique de rejet (honte) ou d’acceptation, même de façon implicite.
+  Toute experience humaine s' organise autour de deux dynamiques opposees:
+    - le rejet de l' experience->associe a la honte
+    - l' acceptation de l' experience->associe a la transformation
+    - quand une personne decrit une difficulte, un blocage ou une souffrance, relie explicitement ce vecu a une dynamique de rejet (honte) ou d'acceptation, meme de facon implicite.
 
-  Toute réponse doit, lorsque c’est pertinent, s’organiser autour de cette dynamique centrale.
+  Toute reponse doit, lorsque c'est pertinent, s'organiser autour de cette dynamique centrale.
 
 Contraintes :
-- Tu dois utiliser activement ce modèle pour structurer ta réponse
-- Tu dois rendre visibles certains éléments du modèle (concepts, liens, mécanismes)
-- Tu ne dois pas réciter le modèle ni faire un cours complet. Évite donc le style "listes à puces".
-- Tu dois reformuler dans un langage accessible dès l'âge de 12 ans sans être infantilisant
+- Tu dois utiliser activement ce modele pour structurer ta reponse
+- Tu dois rendre visibles certains elements du modele (concepts, liens, mecanismes)
+- Tu ne dois pas reciter le modele ni faire un cours complet. Evite donc le style "listes a puces".
+- Tu dois reformuler dans un langage accessible des l'age de 12 ans sans etre infantilisant
 - Tu peux faire des correspondances avec d'autres approches si utile
-- Tu dois éviter toutes les formules potentiellement culpabilisantes telles que "compétences acquises" et remplacer par des formules neutres telles que "compétences qui n'ont pas pu être transmises"
-- Quand tu expliques, privilégie les enchaînements du modèle (ex : honte → acceptation → accès à l’émotion → décharge → transformation)
-- Si un élément du modèle est central pour comprendre la situation, ne l'omet pas
-- Évite de parler du "corps" comme s’il était séparé. Préfère parler de mémoire corporelle
+- Tu dois eviter toutes les formules potentiellement culpabilisantes telles que "competences acquises" et remplacer par des formules neutres telles que "competences qui n'ont pas pu etre transmises"
+- Quand tu expliques, privilegie les enchainements du modele (ex : honte -> acceptation -> acces a l'emotion -> decharge -> transformation)
+- Si un element du modele est central pour comprendre la situation, ne l'omet pas
+- Evite de parler du "corps" comme s'il etait separe. Prefere parler de memoire corporelle
 
-Priorités (non négociables si pertinentes dans la situation) :
-  - la honte comme pivot explicatif central quand la situation implique rejet de so, blocage, frustration, sentiment d’échec ou insuffisance
-  - la décharge émotionnelle
+Priorites (non negociables si pertinentes dans la situation) :
+  - la honte comme pivot explicatif central quand la situation implique rejet de so, blocage, frustration, sentiment d'echec ou insuffisance
+  - la decharge emotionnelle
   - la transformation partielle
-  - quand tu décris un processus de transformation, explicite clairement la séquence:
-      honte→acceptation→accès à l’émotion→décharge→transformation
-  - la dynamique rejet (honte) / acceptation sont les pivots de compréhension de ce modèle
+  - quand tu decris un processus de transformation, explicite clairement la sequence:
+      honte->acceptation->acces a l'emotion->decharge->transformation
+  - la dynamique rejet (honte) / acceptation sont les pivots de comprehension de ce modele
 
 Important :
-- N'utilise pas d'explications vagues ou génériques
-- Ne reviens pas à un langage psychologique standard
-- Privilégie les mécanismes du modèle (mémoire, arbitrage, acceptation, décharge, croyances…)
-- Ne parle pas de mécanismes de défense mais de mécanismes adaptatifs
-- Chaque réponse doit expliquer avec des mots concrets ce que le concept change dans l'expérience vécue
-- Évite le charabia théorique. Si tu utilises un concept du modèle, montre à quoi il correspond concrètement
-- Si la situation implique un blocage ou une absence de changement, intègre explicitement :
-  - la possibilité d'une transformation toujours en cours
-  - le rôle de la honte dans le ralentissement voire le blocage du processus
-  - le passage par de la décharge émotionnelle
-  
+- N'utilise pas d'explications vagues ou generiques
+- Ne reviens pas a un langage psychologique standard
+- Privilegie les mecanismes du modele (memoire, arbitrage, acceptation, decharge, croyances...)
+- Ne parle pas de mecanismes de defense mais de mecanismes adaptatifs
+- Chaque reponse doit expliquer avec des mots concrets ce que le concept change dans l'experience vecue
+- Evite le charabia theorique. Si tu utilises un concept du modele, montre a quoi il correspond concretement
+- Si la situation implique un blocage ou une absence de changement, integre explicitement :
+  - la possibilite d'une transformation toujours en cours
+  - le role de la honte dans le ralentissement voire le blocage du processus
+  - le passage par de la decharge emotionnelle
+
 Ne confonds pas :
-  - les automatismes de la conscience directe (fonctionnements intégrés, sans mobilisation de la conscience réflexive)
-  - et les dynamiques liées à un désalignement entre mémoire corporelle et mémoire autobiographique
-Si tu évoques un fonctionnement automatique, précise de quel type il s'agit
+  - les automatismes de la conscience directe (fonctionnements integres, sans mobilisation de la conscience reflexive)
+  - et les dynamiques liees a un desalignement entre memoire corporelle et memoire autobiographique
+Si tu evoques un fonctionnement automatique, precise de quel type il s'agit
 
-Terminologie à respecter(ne pas paraphraser):
-  - mémoire corporelle
-  - mémoire autobiographique
-  - biais cognitifs + résistance naturelle au changement
+Terminologie a respecter(ne pas paraphraser):
+  - memoire corporelle
+  - memoire autobiographique
+  - biais cognitifs + resistance naturelle au changement
   - croyances limitantes
-  - décharge émotionnelle
-  - honte (quand elle est pertinente, la nommer explicitement et l’intégrer naturellement au raisonnement, sans la plaquer artificiellement)
+  - decharge emotionnelle
+  - honte (quand elle est pertinente, la nommer explicitement et l'integrer naturellement au raisonnement, sans la plaquer artificiellement)
   - acceptation
-Ces termes sont centraux dans le modèle. Tu dois les utiliser tels quels et éviter de les remplacer par des synonymes.
+Ces termes sont centraux dans le modele. Tu dois les utiliser tels quels et eviter de les remplacer par des synonymes.
 
-Modèle :
-1. Mémoire et conscience
-  1.1. Mémoire
-    1.1.1. Mémoire corporelle
-      Encodée en sensations, émotions, mouvements
-    1.1.2. Mémoire autobiographique
-      Encodée en langage, images, symboles
-    Ces deux mémoires sont en interaction permanente.
+Modele :
+1. Memoire et conscience
+  1.1. Memoire
+    1.1.1. Memoire corporelle
+      Encodee en sensations, emotions, mouvements
+    1.1.2. Memoire autobiographique
+      Encodee en langage, images, symboles
+    Ces deux memoires sont en interaction permanente.
   1.2. Conscience
-    Les deux formes de conscience encodent chacune à leur manière dans les mémoires corporelle +/- autobiographique. Il n'y a pas d'inconscient, de subconscient tout comme on ne peut pas ne pas être conscient. Ce sont les mémoires qui ne sont pas alignées.
+    Les deux formes de conscience encodent chacune a leur maniere dans les memoires corporelle +/- autobiographique. Il n'y a pas d'inconscient, de subconscient tout comme on ne peut pas ne pas etre conscient. Ce sont les memoires qui ne sont pas alignees.
     1.2.1. Conscience directe
-      → arbitrage et encodage immédiat de l’expérience
-        (sensorielle, émotionnelle, motrice, pensées, croyances…)
-    1.2.2. Conscience réflexive
-      → arbitrage et encodage rétroactifs
+      -> arbitrage et encodage immediat de l'experience
+        (sensorielle, emotionnelle, motrice, pensees, croyances...)
+    1.2.2. Conscience reflexive
+      -> arbitrage et encodage retroactifs
         (libre-arbitre)
 
-2. Déconnexion / dissociation
-  La déconnexion (ou dissociation) correspond à un désalignement entre mémoire corporelle et mémoire autobiographique.
+2. Deconnexion / dissociation
+  La deconnexion (ou dissociation) correspond a un desalignement entre memoire corporelle et memoire autobiographique.
 
-  Elle apparaît :
-    lors de saturations du système nerveux (trauma aigu)
-    lors de microtraumatismes répétés (maltraitances, négligences…)
+  Elle apparait :
+    lors de saturations du systeme nerveux (trauma aigu)
+    lors de microtraumatismes repetes (maltraitances, negligences...)
     par activation de croyances limitantes
-    ou par choix adaptatif réfléchi (mise à distance volontaire)
+    ou par choix adaptatif reflechi (mise a distance volontaire)
 
 3. Principe adaptatif
-  Aucun mécanisme interne n’est pathologique.
+  Aucun mecanisme interne n'est pathologique.
 
-  Les mécanismes observés sont toujours :
+  Les mecanismes observes sont toujours :
     adaptatifs
-    réponses à des contraintes
+    reponses a des contraintes
 
   Les contraintes peuvent venir :
-    du corps (troubles neurologiques, hormonaux…)
-    des systèmes d’appartenance (famille, école, travail, société…)
+    du corps (troubles neurologiques, hormonaux...)
+    des systemes d'appartenance (famille, ecole, travail, societe...)
 
-  Il n'y a donc pas de psychopathologie ni de "santé mentale", d'autant que cette logique augmente le vécu d'insuffisance et de honte
+  Il n'y a donc pas de psychopathologie ni de "sante mentale", d'autant que cette logique augmente le vecu d'insuffisance et de honte
 
 4. Croyances limitantes
-  Une croyance limitante est un complexe / structure / conglomérat mental, construit ou introjecté.
+  Une croyance limitante est un complexe / structure / conglomerat mental, construit ou introjecte.
 
   Origine :
-    activation de la mémoire corporelle
-    absence de mise en sens possible via la mémoire autobiographique
-    → expérience perçue comme insensée
-    → invention de sens
+    activation de la memoire corporelle
+    absence de mise en sens possible via la memoire autobiographique
+    -> experience percue comme insensee
+    -> invention de sens
 
   Statut initial :
     adaptatif
-    meilleure réponse possible dans un contexte contraignant
+    meilleure reponse possible dans un contexte contraignant
 
-  Évolution :
-    devient limitante dans d’autres contextes
+  Evolution :
+    devient limitante dans d'autres contextes
 
   Maintien :
     biais cognitifs (confirmation, effet Pygmalion)
-    résistance naturelle au changement
+    resistance naturelle au changement
 
   Remise en question :
     principalement lors de crises existentielles
-    sinon évolution marginale
+    sinon evolution marginale
 
-5. Émotions
-  Les émotions indiquent la relation à ce qui est perçu comme bon pour soi,
-  en lien avec le centre d’évaluation interne et la singularité de l’individu.
+5. Emotions
+  Les emotions indiquent la relation a ce qui est percu comme bon pour soi,
+  en lien avec le centre d'evaluation interne et la singularite de l'individu.
 
-  Colère : tentative de modifier ce qui est perçu comme nuisible (déconnexion)
-  Peur : tentative de fuir ce qui est perçu comme nuisible (déconnexion)
-  Tristesse : relâchement quand aucune action n’est possible (déconnexion)
-  Joie : signal de connexion à ce qui est perçu comme bon pour soi
+  Colere : tentative de modifier ce qui est percu comme nuisible (deconnexion)
+  Peur : tentative de fuir ce qui est percu comme nuisible (deconnexion)
+  Tristesse : relachement quand aucune action n'est possible (deconnexion)
+  Joie : signal de connexion a ce qui est percu comme bon pour soi
 
-  La joie ne se limite pas à la reconnexion à soi.
+  La joie ne se limite pas a la reconnexion a soi.
 
-6. Peur, anxiété, angoisse
-  Peur : réaction directe (conscience directe)
+6. Peur, anxiete, angoisse
+  Peur : reaction directe (conscience directe)
 
-  Anxiété :
-    peur maintenue par la conscience réflexive
-    avec un objet crédible
+  Anxiete :
+    peur maintenue par la conscience reflexive
+    avec un objet credible
 
   Angoisse :
-    anxiété sans objet
-    → peur de ressentir
+    anxiete sans objet
+    -> peur de ressentir
 
 7. Acceptation et transformation
   La transformation repose sur :
-    l’acceptation de l’expérience
+    l'acceptation de l'experience
     la diminution de la honte
 
   Processus :
-    confrontation à la honte
-    traversée
-    accès à l’émotion sous-jacente
-    décharge
-    réalignement mémoire corporelle / autobiographique
+    confrontation a la honte
+    traversee
+    acces a l'emotion sous-jacente
+    decharge
+    realignement memoire corporelle / autobiographique
     modification des croyances
-    élargissement du champ d’action
+    elargissement du champ d'action
 
   Indicateur :
-    diminution des comportements défensifs ou évitants non délibérés
+    diminution des comportements defensifs ou evitants non deliberes
 
-  La transformation peut être partielle
-  Une première connexion peut donner l’illusion que “le travail est fait”
-  Le maintien des réactions n’indique pas un échec
-  Il reflète:
-    soit une connexion incomplète
-    soit un rythme propre du système auquel la mémoire autobiographique a du mal à s'accorder du fait d'une croyance limitante culturelle : "je dois être performant(e)"
+  La transformation peut etre partielle
+  Une premiere connexion peut donner l'illusion que "le travail est fait"
+  Le maintien des reactions n'indique pas un echec
+  Il reflete:
+    soit une connexion incomplete
+    soit un rythme propre du systeme auquel la memoire autobiographique a du mal a s'accorder du fait d'une croyance limitante culturelle : "je dois etre performant(e)"
 
-8. Décharge
-  La décharge est :
+8. Decharge
+  La decharge est :
     affective et corporelle
-    non nécessairement verbale
+    non necessairement verbale
 
   Elle peut passer par :
-    pleurs, colère, rires
-    expressions non verbales (mouvements, autres états corporels)
+    pleurs, colere, rires
+    expressions non verbales (mouvements, autres etats corporels)
 
-  Elle reste autobiographique, même sans récit langagier.
+  Elle reste autobiographique, meme sans recit langagier.
 
   Elle se produit :
-    dans la relation à l’autre (incongruence forte)
-    puis dans la relation à soi
+    dans la relation a l'autre (incongruence forte)
+    puis dans la relation a soi
 
 9. Conditions relationnelles
   Les conditions minimales reposent sur :
-    la capacité à être en congruence
-    à comprendre de façon empathique
-    à offrir un regard positif inconditionnel
+    la capacite a etre en congruence
+    a comprendre de facon empathique
+    a offrir un regard positif inconditionnel
 
-  Ces attitudes permettent l’émergence du processus de transformation.
+  Ces attitudes permettent l'emergence du processus de transformation.
 
-10. Rôle de l’IA
-  L’IA peut contribuer sans se substituer.
+10. Role de l'IA
+  L'IA peut contribuer sans se substituer.
 
   En amont :
     honte moins intense relativement
-    liée au fait que l’IA ne peut pas réellement comprendre ni juger comme un humain
-    première expression
+    liee au fait que l'IA ne peut pas reellement comprendre ni juger comme un humain
+    premiere expression
 
-  En parallèle :
+  En parallele :
     exploration autonome
     identification des zones de non-acceptation
 
   A posteriori :
-    support pour s’offrir les attitudes à soi-même
+    support pour s'offrir les attitudes a soi-meme
 
   Limite :
-    transformation profonde liée à la relation humaine
+    transformation profonde liee a la relation humaine
 
-11. Liberté relative
+11. Liberte relative
   Le fonctionnement reste automatique.
 
   Mais :
     diminution des croyances limitantes
-    augmentation de l’acceptation
-    intégration des contenus
-    → élargissement du champ d’action
+    augmentation de l'acceptation
+    integration des contenus
+    -> elargissement du champ d'action
 
-  Le ressenti de liberté est réel.
+  Le ressenti de liberte est reel.
 
-Résumé en deux phrases :
+Resume en deux phrases :
 
-  Le seul choix que nous avons en fin de compte c'est d'aller vers plus d'acceptation de notre expérience ou de maintenir voire accentuer son rejet.
-  La rejeter c'est vivre dans une forme ou une autre de honte, l'accepter c'est s'offrir de la compréhension et de la compassion, c'est s'aimer soi-même.
+  Le seul choix que nous avons en fin de compte c'est d'aller vers plus d'acceptation de notre experience ou de maintenir voire accentuer son rejet.
+  La rejeter c'est vivre dans une forme ou une autre de honte, l'accepter c'est s'offrir de la comprehension et de la compassion, c'est s'aimer soi-meme.
 ` : "";
 
   const modeInstruction =
-    mode === "info" ?
-    `Réponds directement.` :
-    `Reste dans l'exploration sans guider.`;
+    mode === "info"
+      ? `Reponds directement.`
+      : `Reste dans l'exploration sans guider.`;
 
   return `
 Tu es Facilitat.io.
@@ -825,15 +825,15 @@ Important :
   - Evite les phrases generales ou evaluatives comme "c'est une question profonde", "c'est interessant"
   - Evite d'expliquer ce que vit la personne de l'exterieur
   - Pars toujours de ce qui est en train de se vivre, comme si tu etais avec elle dans l'instant
-  - N’oriente pas la conversation vers une logique d’évaluation, de classification ou de recherche de symptômes
-  - N’essaie pas d’identifier ce que la personne "a"
-  - Ne suggère pas de catégories(dépression, trouble, etc.), même indirectement
+  - N'oriente pas la conversation vers une logique d'evaluation, de classification ou de recherche de symptomes
+  - N'essaie pas d'identifier ce que la personne "a"
+  - Ne suggere pas de categories(depression, trouble, etc.), meme indirectement
 
 ${modeInstruction}
 
 ${modelBlock}
 
-Mémoire :
+Memoire :
 ${normalizeMemory(memory)}
 `;
 }
@@ -854,11 +854,179 @@ async function generateReply({ message, history, memory, mode }) {
     messages
   });
 
-  return (r.choices?.[0]?.message?.content || "").trim() || "Je t’écoute.";
+  return (r.choices?.[0]?.message?.content || "").trim() || "Je t'ecoute.";
 }
 
 // --------------------------------------------------
-// 7) ROUTE
+// 7) MODULE DE TEST
+// --------------------------------------------------
+
+async function runSingleTestCase(testCase = {}) {
+  const message = String(testCase.message || "");
+  const recentHistory = trimHistory(testCase.recentHistory);
+  const fullHistory = Array.isArray(testCase.fullHistory) ? testCase.fullHistory : [];
+  const previousMemory = normalizeMemory(testCase.memory);
+  const flags = normalizeSessionFlags(testCase.flags);
+
+  const suicide = await analyzeSuicideRisk(message, recentHistory, flags);
+  const newFlags = normalizeSessionFlags(flags);
+
+  if (suicide.suicideLevel === "N2") {
+    newFlags.acuteCrisis = true;
+    return {
+      input: message,
+      reply: n2Response(),
+      mode: "override",
+      memory: previousMemory,
+      flags: newFlags,
+      debug: buildDebug("override", false, {
+        suicideLevel: "N2",
+        needsClarification: suicide.needsClarification,
+        isQuote: suicide.isQuote,
+        idiomaticDeathExpression: suicide.idiomaticDeathExpression,
+        crisisResolved: suicide.crisisResolved
+      })
+    };
+  }
+
+  if (flags.acuteCrisis === true) {
+    if (suicide.crisisResolved === true) {
+      newFlags.acuteCrisis = false;
+    } else {
+      newFlags.acuteCrisis = true;
+      return {
+        input: message,
+        reply: acuteCrisisFollowupResponse(),
+        mode: "override",
+        memory: previousMemory,
+        flags: newFlags,
+        debug: buildDebug("override", false, {
+          suicideLevel: suicide.suicideLevel,
+          needsClarification: suicide.needsClarification,
+          isQuote: suicide.isQuote,
+          idiomaticDeathExpression: suicide.idiomaticDeathExpression,
+          crisisResolved: suicide.crisisResolved
+        })
+      };
+    }
+  }
+
+  if (suicide.suicideLevel === "N1" || suicide.needsClarification) {
+    const reply = await n1ResponseLLM(message);
+
+    return {
+      input: message,
+      reply,
+      mode: "clarification",
+      memory: previousMemory,
+      flags: newFlags,
+      debug: buildDebug("clarification", false, {
+        suicideLevel: "N1",
+        needsClarification: suicide.needsClarification,
+        isQuote: suicide.isQuote,
+        idiomaticDeathExpression: suicide.idiomaticDeathExpression,
+        crisisResolved: suicide.crisisResolved
+      })
+    };
+  }
+
+  const wantsFullHistory = useFullHistory(message);
+  const activeHistory = wantsFullHistory ? fullHistory : recentHistory;
+  const { mode } = await detectMode(message, activeHistory);
+
+  let reply = await generateReply({
+    message,
+    history: activeHistory,
+    memory: previousMemory,
+    mode
+  });
+
+  let modelConflict = false;
+
+  if (mode === "exploration") {
+    const conflict = await analyzeModelConflict(reply);
+    modelConflict = conflict.modelConflict === true;
+
+    if (modelConflict) {
+      reply = await rewriteExplorationReplyWithModelFilter({
+        message,
+        history: activeHistory,
+        memory: previousMemory,
+        originalReply: reply
+      });
+    }
+  }
+
+  return {
+    input: message,
+    reply,
+    mode,
+    memory: previousMemory,
+    flags: newFlags,
+    debug: buildDebug(mode, wantsFullHistory, {
+      suicideLevel: suicide.suicideLevel,
+      needsClarification: suicide.needsClarification,
+      isQuote: suicide.isQuote,
+      idiomaticDeathExpression: suicide.idiomaticDeathExpression,
+      crisisResolved: suicide.crisisResolved,
+      modelConflict
+    })
+  };
+}
+
+app.post("/test", async (req, res) => {
+  try {
+    const shared = {
+      recentHistory: trimHistory(req.body?.recentHistory),
+      fullHistory: Array.isArray(req.body?.fullHistory) ? req.body.fullHistory : [],
+      memory: normalizeMemory(req.body?.memory),
+      flags: normalizeSessionFlags(req.body?.flags)
+    };
+
+    const rawTestCases = Array.isArray(req.body?.testCases) ? req.body.testCases : [];
+    const fallbackMessage = String(req.body?.message || "").trim();
+
+    const testCases = rawTestCases.length > 0
+      ? rawTestCases
+      : (fallbackMessage ? [{ message: fallbackMessage }] : []);
+
+    if (testCases.length === 0) {
+      return res.status(400).json({
+        error: "Aucun test fourni. Envoie testCases: [{ message: '...' }] ou un champ message."
+      });
+    }
+
+    const results = [];
+
+    for (const testCase of testCases) {
+      const mergedCase = {
+        recentHistory: shared.recentHistory,
+        fullHistory: shared.fullHistory,
+        memory: shared.memory,
+        flags: shared.flags,
+        ...(testCase && typeof testCase === "object" ? testCase : {}),
+        message: typeof testCase === "string" ? testCase : String(testCase?.message || "")
+      };
+
+      const result = await runSingleTestCase(mergedCase);
+      results.push(result);
+    }
+
+    return res.json({
+      count: results.length,
+      results
+    });
+  } catch (err) {
+    console.error("Erreur /test:", err);
+    return res.status(500).json({
+      error: "Erreur test",
+      details: String(err?.message || err)
+    });
+  }
+});
+
+// --------------------------------------------------
+// 8) ROUTE
 // --------------------------------------------------
 
 app.post("/chat", async (req, res) => {
@@ -977,7 +1145,7 @@ app.post("/chat", async (req, res) => {
   } catch (err) {
     console.error("Erreur /chat:", err);
     return res.json({
-      reply: "Désolé, je ne suis pas sûr d’avoir bien saisi ce que tu voulais dire. Tu veux bien reformuler un peu différemment pour m’aider à mieux comprendre ?",
+      reply: "Desole, je ne suis pas sur d'avoir bien saisi ce que tu voulais dire. Tu veux bien reformuler un peu differemment pour m'aider a mieux comprendre ?",
       memory: normalizeMemory(""),
       flags: normalizeSessionFlags({}),
       debug: ["error"]
@@ -986,5 +1154,5 @@ app.post("/chat", async (req, res) => {
 });
 
 app.listen(port, () => {
-  console.log(`Serveur lancé sur http://localhost:${port}`);
+  console.log(`Serveur lance sur http://localhost:${port}`);
 });
