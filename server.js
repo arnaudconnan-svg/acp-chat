@@ -550,8 +550,8 @@ Modèle :
     diminution des comportements défensifs ou évitants non délibérés
   
   La transformation peut être partielle
-  Une première connexion peut donner l’ illusion que“ le travail est fait”
-  Le maintien des réactions n’ indique pas un échec
+  Une première connexion peut donner l’illusion que “le travail est fait”
+  Le maintien des réactions n’indique pas un échec
   Il reflète:
     soit une connexion incomplète
     soit un rythme propre du système auquel la mémoire autobiographique a du mal à s'accorder du fait d'une croyance limitante culturelle : "je dois être performant(e)"
