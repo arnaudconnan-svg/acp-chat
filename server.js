@@ -611,6 +611,11 @@ Important :
   - la possibilité d'une transformation toujours en cours
   - le rôle de la honte dans le ralentissement voire le blocage du processus
   - le passage par de la décharge émotionnelle
+  
+Ne confonds pas :
+  - les automatismes de la conscience directe (fonctionnements intégrés, sans mobilisation de la conscience réflexive)
+  - et les dynamiques liées à un désalignement entre mémoire corporelle et mémoire autobiographique
+Si tu évoques un fonctionnement automatique, précise de quel type il s'agit
 
 Terminologie à respecter(ne pas paraphraser):
   - mémoire corporelle
