@@ -456,7 +456,7 @@ Priorités (non négociables si pertinentes dans la situation) :
   - la décharge émotionnelle
   - la transformation partielle
   - quand tu décris un processus de transformation, explicite clairement la séquence:
-    honte→acceptation→accès à l’émotion→décharge→transformation
+      honte→acceptation→accès à l’émotion→décharge→transformation
   - la dynamique rejet (honte) / acceptation sont les pivots de compréhension de ce modèle
 
 Important :
