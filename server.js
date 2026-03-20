@@ -448,6 +448,10 @@ Important :
 - ne parle pas de mécanismes de défense mais de mecanismes adaptatifs
 - chaque réponse doit expliquer avec des mots concrets ce que le concept change dans l'expérience vécue.
 - Évite le charabia théorique.Si tu utilises un concept du modèle, montre à quoi il correspond concrètement.
+- Si la situation implique un blocage ou une absence de changement, intègre explicitement:
+  - la possibilité d 'une transformation partielle
+  - le rôle de la honte dans le maintien du blocage
+  - le passage par une décharge émotionnelle
 
 Modèle :
 1. Mémoire et conscience
