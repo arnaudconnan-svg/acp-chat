@@ -954,7 +954,7 @@ app.post("/chat", async (req, res) => {
   } catch (err) {
     console.error("Erreur /chat:", err);
     return res.json({
-      reply: "Je t’écoute.",
+      reply: "Désolé, je ne suis pas sûr d’avoir bien saisi ce que tu voulais dire. Tu veux bien reformuler un peu différemment pour m’aider à mieux comprendre ?",
       memory: normalizeMemory(""),
       flags: normalizeSessionFlags({}),
       debug: ["error"]
