@@ -461,6 +461,15 @@ Important :
   - le rôle de la honte dans le ralentissement voire le blocage du processus
   - le passage par de la décharge émotionnelle
 
+Terminologie à respecter(ne pas paraphraser):
+  - mémoire corporelle
+  - mémoire autobiographique
+  - résistance naturelle au changement
+  - croyances limitantes
+  - décharge émotionnelle
+  - honte
+  - acceptation
+
 Modèle :
 1. Mémoire et conscience
   1.1. Mémoire
