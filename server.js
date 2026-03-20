@@ -626,7 +626,7 @@ Modèle :
 Résumé en deux phrases :
 
   Le seul choix que nous avons en fin de compte c'est d'aller vers plus d'acceptation de notre expérience ou de maintenir voire accentuer son rejet.
-  La rejeter c'est vivre dans une forme ou une autre de honte, l'accepter c'est s'aimer soi-même.
+  La rejeter c'est vivre dans une forme ou une autre de honte, l'accepter c'est s'offrir de la compréhension et de la compassion, c'est s'aimer soi-même.
 ` : "";
   
   const modeInstruction =
