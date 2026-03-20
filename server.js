@@ -522,9 +522,9 @@ Modèle :
   Il n'y a donc pas de psychopathologie ni de "santé mentale", d'autant que cette logique augmente le vécu d'insuffisance et de honte
 
 4. Croyances limitantes
-  Une croyance limitante est un complexe / structure / conglomérat mental, construit ou introjecté.
+  Une croyance limitante est un complexe / structure / conglomérat mental, construit ou introjecté qui sert d'appui, de soutien, de balise à l'expérience.
 
-  Origine :
+  Origine (si non introjecté) :
     activation de la mémoire corporelle
     absence de mise en sens possible via la mémoire autobiographique
     → expérience perçue comme insensée
@@ -535,7 +535,8 @@ Modèle :
     meilleure réponse possible dans un contexte contraignant
 
   Évolution :
-    devient limitante dans d’autres contextes
+    peut continuer avec être un appui, un soutien, une balise dans un contexte contraignant 
+    devient nécessairement limitante du point de vue de la liberté de choix dans d’autres contextes
 
   Maintien :
     biais cognitifs (confirmation, effet Pygmalion)
