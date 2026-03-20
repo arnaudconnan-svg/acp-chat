@@ -298,6 +298,25 @@ Règles :
 - false si la personne exprime surtout son vécu, une difficulté, une émotion, une demande de présence ou d'exploration
 - ne sur-interprète pas
 - base-toi d'abord sur le message actuel, puis sur le contexte récent si nécessaire
+
+Important:
+  
+  Une question portant sur soi(même si elle contient des termes comme "trouble", "dépression", "anxiété") doit être classée comme exploration.
+
+Exemples:
+  -"Je me demande si j’ai un trouble anxieux" -
+  "Tu crois que je suis dépressif ?" -
+  "Est-ce que c’est normal ce que je ressens ?"
+
+→ isInfoRequest = false
+
+Une demande d 'information est une question générale, théorique ou impersonnelle.
+
+Exemples:
+  -"Qu’est-ce qu’un trouble anxieux ?" -
+  "Comment fonctionne l’anxiété ?"
+
+→ isInfoRequest = true
 `;
 
   const r = await client.chat.completions.create({
