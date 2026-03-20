@@ -301,7 +301,22 @@ Règles :
 
 Important:
   
-  Une question portant sur soi(même si elle contient des termes comme "trouble", "dépression", "anxiété") doit être classée comme exploration.
+- Une question portant sur soi(même si elle contient des termes comme "trouble", "dépression", "anxiété") doit être classée comme exploration.
+
+- Si le message parle de l'experience personnelle de l'utilisateur (ressenti, vecu, situation, doute sur soi), alors isInfoRequest = false, meme si la phrase est formulee comme une question
+
+- La forme interrogative ne suffit pas a classer en demande d'information
+
+- Une demande d'information est uniquement une question generale, theorique ou impersonnelle
+
+Exemples a classer en exploration :
+- Comment savoir si ce que je ressens est de l'anxiete ou de l'angoisse ?
+- C'est normal de ressentir ca ?
+- Est-ce que ce que je vis est de l'anxiete ?
+
+Exemples a classer en info :
+- Qu'est-ce que l'anxiete ?
+- Quelle est la difference entre anxiete et angoisse ?
 
 Exemples:
   -"Je me demande si j’ai un trouble anxieux" -
