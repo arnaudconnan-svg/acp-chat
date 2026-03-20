@@ -20,7 +20,7 @@ const MAX_SUICIDE_ANALYSIS_TURNS = 10;
 function normalizeMemory(memory) {
   const text = String(memory || "").trim();
   if (text) return text;
-  
+
   return [
     "Thèmes déjà évoqués :",
     "- ",
@@ -277,6 +277,10 @@ function acuteCrisisFollowupResponse() {
   return "Je reste sur quelque chose de très simple là. Si le danger est immédiat, appelle le 112 ou le 3114. Si tu peux, ne reste pas seul.";
 }
 
+// --------------------------------------------------
+// 3) ANALYSE INFO + CONFLIT MODÈLE (EXPLORATION)
+// --------------------------------------------------
+
 async function llmInfoAnalysis(message = "", history = []) {
   const context = trimInfoAnalysisHistory(history);
 
@@ -327,6 +331,114 @@ async function analyzeInfoRequest(message = "", history = []) {
   return await llmInfoAnalysis(message, history);
 }
 
+async function analyzeModelConflict(reply = "") {
+  const system = `
+Tu analyses uniquement la réponse du bot.
+
+Ta tâche n'est PAS d'évaluer si la réponse est bonne, utile, précise ou fidèle à un modèle complet.
+Tu dois uniquement détecter si elle réintroduit clairement au moins un des cadres conceptuels explicitement bannis ci-dessous.
+
+Cadres bannis :
+1. inconscient / subconscient / non-conscient comme instance explicative
+2. psychopathologie / santé mentale comme cadre explicatif
+3. mécanismes de défense au sens psy classique comme cadre explicatif
+
+Règles strictes :
+- détection conceptuelle, pas simple détection de mots
+- un conflit existe seulement si la réponse présuppose clairement l'un de ces cadres pour expliquer
+- si la réponse est ambiguë, vague ou interprétable autrement, réponds false
+- ne signale pas un conflit pour une réponse imprécise, faible, générique ou incomplète
+- ne sur-interprète pas
+
+Réponds STRICTEMENT en JSON :
+{
+  "modelConflict": true|false
+}
+`;
+
+  const r = await client.chat.completions.create({
+    model: "gpt-4.1-mini",
+    temperature: 0,
+    max_tokens: 40,
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: reply }
+    ]
+  });
+
+  try {
+    const raw = (r.choices?.[0]?.message?.content || "").replace(/```json|```/g, "").trim();
+    const parsed = JSON.parse(raw);
+
+    return {
+      modelConflict: parsed.modelConflict === true
+    };
+  } catch {
+    return {
+      modelConflict: false
+    };
+  }
+}
+
+async function rewriteExplorationReplyWithModelFilter({
+  message,
+  history,
+  memory,
+  originalReply
+}) {
+  const system = `
+Tu réécris une réponse de mode exploration.
+
+But :
+- conserver l'intention, le ton global, la direction relationnelle et le niveau de langage de la réponse initiale
+- enlever uniquement ce qui la met en opposition avec le filtre théorique ci-dessous
+- rester en exploration, sans guider, sans diagnostiquer, sans coacher, sans prescrire
+- répondre uniquement en français
+
+Filtre théorique explicite :
+- il n'y a pas d'inconscient, de subconscient ni de non-conscient comme instance explicative
+- il n'y a pas de psychopathologie ni de santé mentale comme cadre explicatif
+- ne parle pas de mécanismes de défense ; préfère, si nécessaire, mécanismes adaptatifs
+- si tu reformules, reste concret et sobre
+- n'ajoute pas un cours théorique
+- ne plaque pas le modèle si ce n'est pas nécessaire
+
+Terminologie autorisée si utile :
+- mémoire corporelle
+- mémoire autobiographique
+- croyances limitantes
+- mécanismes adaptatifs
+
+Réécris uniquement la réponse finale, sans commentaire.
+`;
+
+  const user = `
+Message utilisateur :
+${message}
+
+Contexte récent :
+${history.map(m => `${m.role === "user" ? "Utilisateur" : "Assistant"} : ${m.content}`).join("\n")}
+
+Mémoire :
+${normalizeMemory(memory)}
+
+Réponse initiale à reformuler :
+${originalReply}
+`;
+
+  const r = await client.chat.completions.create({
+    model: "gpt-4o",
+    temperature: 0.7,
+    max_tokens: 500,
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: user }
+    ]
+  });
+
+  return (r.choices?.[0]?.message?.content || "").trim() || originalReply;
+}
+
 // --------------------------------------------------
 // 4) MODE
 // --------------------------------------------------
@@ -347,7 +459,8 @@ function buildDebug(
     needsClarification = false,
     isQuote = false,
     idiomaticDeathExpression = false,
-    crisisResolved = false
+    crisisResolved = false,
+    modelConflict = false
   } = {}
 ) {
   const lines = [`mode: ${mode}`];
@@ -364,13 +477,14 @@ function buildDebug(
   if (isQuote) lines.push("isQuote: true");
   if (idiomaticDeathExpression) lines.push("idiomaticDeathExpression: true");
   if (crisisResolved) lines.push("crisisResolved: true");
+  if (modelConflict) lines.push("modelConflict: true");
 
   return lines;
 }
 
 function useFullHistory(userMessage = "") {
   const msg = String(userMessage).toLowerCase();
-  
+
   const triggers = [
     "reprends toute la conversation",
     "relis toute la conversation",
@@ -381,7 +495,7 @@ function useFullHistory(userMessage = "") {
     "relis l'historique",
     "reprends l'historique"
   ];
-  
+
   return triggers.some(t => msg.includes(t));
 }
 
@@ -393,7 +507,7 @@ async function updateMemory(previousMemory, history) {
   const transcript = history
     .map(m => `${m.role === "user" ? "Utilisateur" : "Assistant"} : ${m.content}`)
     .join("\n");
-  
+
   const system = `
 Tu mets à jour une mémoire légère.
 
@@ -401,7 +515,7 @@ Format strict.
 Pas de psychologie identitaire.
 Items courts.
 `;
-  
+
   const user = `
 Mémoire précédente :
 ${normalizeMemory(previousMemory)}
@@ -409,7 +523,7 @@ ${normalizeMemory(previousMemory)}
 Conversation :
 ${transcript}
 `;
-  
+
   const r = await client.chat.completions.create({
     model: "gpt-4.1-mini",
     temperature: 0.2,
@@ -419,7 +533,7 @@ ${transcript}
       { role: "user", content: user }
     ]
   });
-  
+
   return (r.choices?.[0]?.message?.content || "").trim() || normalizeMemory(previousMemory);
 }
 
@@ -433,12 +547,12 @@ Tu dois t'appuyer sur le modèle théorique ci-dessous pour répondre.
 N'utilise aucune autre langue que le français
 
 Principe central du modèle:
-  
+
   Toute expérience humaine s’ organise autour de deux dynamiques opposées:
     - le rejet de l’ expérience→associé à la honte
     - l’ acceptation de l’ expérience→associé à la transformation
     - quand une personne décrit une difficulté, un blocage ou une souffrance, relie explicitement ce vécu à une dynamique de rejet (honte) ou d’acceptation, même de façon implicite.
-    
+
   Toute réponse doit, lorsque c’est pertinent, s’organiser autour de cette dynamique centrale.
 
 Contraintes :
@@ -522,9 +636,9 @@ Modèle :
   Il n'y a donc pas de psychopathologie ni de "santé mentale", d'autant que cette logique augmente le vécu d'insuffisance et de honte
 
 4. Croyances limitantes
-  Une croyance limitante est un complexe / structure / conglomérat mental, construit ou introjecté qui sert d'appui, de soutien, de balise à l'expérience.
+  Une croyance limitante est un complexe / structure / conglomérat mental, construit ou introjecté.
 
-  Origine (si non introjecté) :
+  Origine :
     activation de la mémoire corporelle
     absence de mise en sens possible via la mémoire autobiographique
     → expérience perçue comme insensée
@@ -535,8 +649,7 @@ Modèle :
     meilleure réponse possible dans un contexte contraignant
 
   Évolution :
-    peut continuer avec être un appui, un soutien, une balise dans un contexte contraignant 
-    devient nécessairement limitante du point de vue de la liberté de choix dans d’autres contextes
+    devient limitante dans d’autres contextes
 
   Maintien :
     biais cognitifs (confirmation, effet Pygmalion)
@@ -584,7 +697,7 @@ Modèle :
 
   Indicateur :
     diminution des comportements défensifs ou évitants non délibérés
-  
+
   La transformation peut être partielle
   Une première connexion peut donner l’illusion que “le travail est fait”
   Le maintien des réactions n’indique pas un échec
@@ -649,12 +762,12 @@ Résumé en deux phrases :
   Le seul choix que nous avons en fin de compte c'est d'aller vers plus d'acceptation de notre expérience ou de maintenir voire accentuer son rejet.
   La rejeter c'est vivre dans une forme ou une autre de honte, l'accepter c'est s'offrir de la compréhension et de la compassion, c'est s'aimer soi-même.
 ` : "";
-  
+
   const modeInstruction =
     mode === "info" ?
     `Réponds directement.` :
     `Reste dans l'exploration sans guider.`;
-  
+
   return `
 Tu es Facilitat.io.
 
@@ -673,20 +786,20 @@ ${normalizeMemory(memory)}
 
 async function generateReply({ message, history, memory, mode }) {
   const system = buildSystemPrompt(mode, memory);
-  
+
   const messages = [
     { role: "system", content: system },
     ...history.map(m => ({ role: m.role, content: m.content })),
     { role: "user", content: message }
   ];
-  
+
   const r = await client.chat.completions.create({
     model: "gpt-4o",
     temperature: 1.1,
     max_tokens: 500,
     messages
   });
-  
+
   return (r.choices?.[0]?.message?.content || "").trim() || "Je t’écoute.";
 }
 
@@ -764,12 +877,28 @@ app.post("/chat", async (req, res) => {
     const activeHistory = wantsFullHistory ? fullHistory : recentHistory;
     const { mode } = await detectMode(message, activeHistory);
 
-    const reply = await generateReply({
+    let reply = await generateReply({
       message,
       history: activeHistory,
       memory: previousMemory,
       mode
     });
+
+    let modelConflict = false;
+
+    if (mode === "exploration") {
+      const conflict = await analyzeModelConflict(reply);
+      modelConflict = conflict.modelConflict === true;
+
+      if (modelConflict) {
+        reply = await rewriteExplorationReplyWithModelFilter({
+          message,
+          history: activeHistory,
+          memory: previousMemory,
+          originalReply: reply
+        });
+      }
+    }
 
     const newMemory = await updateMemory(previousMemory, [
       ...activeHistory,
@@ -786,7 +915,8 @@ app.post("/chat", async (req, res) => {
         needsClarification: suicide.needsClarification,
         isQuote: suicide.isQuote,
         idiomaticDeathExpression: suicide.idiomaticDeathExpression,
-        crisisResolved: suicide.crisisResolved
+        crisisResolved: suicide.crisisResolved,
+        modelConflict
       })
     });
 
