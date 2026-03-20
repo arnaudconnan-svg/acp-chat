@@ -596,9 +596,8 @@ Modèle :
     non nécessairement verbale
 
   Elle peut passer par :
-    mouvements
-    gestes
-    expressions non langagières
+    pleurs, colère, rires
+    expressions non verbales (mouvements, autres états corporels)
 
   Elle reste autobiographique, même sans récit langagier.
 
