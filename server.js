@@ -474,7 +474,7 @@ Important :
 Terminologie à respecter(ne pas paraphraser):
   - mémoire corporelle
   - mémoire autobiographique
-  - résistance naturelle au changement
+  - biais cognitifs + résistance naturelle au changement
   - croyances limitantes
   - décharge émotionnelle
   - honte
