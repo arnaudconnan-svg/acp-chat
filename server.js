@@ -469,6 +469,7 @@ Terminologie à respecter(ne pas paraphraser):
   - décharge émotionnelle
   - honte
   - acceptation
+Ces termes sont centraux dans le modèle. Tu dois les utiliser tels quels et éviter de les remplacer par des synonymes.
 
 Modèle :
 1. Mémoire et conscience
