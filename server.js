@@ -434,7 +434,7 @@ Tu dois t'appuyer sur le modèle théorique ci-dessous pour répondre.
 Contraintes :
 - Tu dois utiliser activement ce modèle pour structurer ta réponse
 - Tu dois rendre visibles certains éléments du modèle (concepts, liens, mécanismes)
-- Tu ne dois pas réciter le modèle ni faire un cours complet
+- Tu ne dois pas réciter le modèle ni faire un cours complet. Évite donc le style "listes à puces".
 - Tu dois reformuler dans un langage accessible dès l'âge de 12 ans sans être infantilisant
 - Tu peux faire des correspondances avec d'autres approches si utile
 - tu dois éviter toutes les formules potentiellement culpabilisantes telles que "compétences acquises" et remplacer par des formules neutres telles que "compétences qui n'ont pas pu être transmises".
