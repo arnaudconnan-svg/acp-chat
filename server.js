@@ -431,6 +431,15 @@ function buildSystemPrompt(mode, memory) {
   const modelBlock = mode === "info" ? `
 Tu dois t'appuyer sur le modèle théorique ci-dessous pour répondre.
 
+Principe central du modèle:
+  
+  Toute expérience humaine s’ organise autour de deux dynamiques opposées:
+    - le rejet de l’ expérience→associé à la honte
+    - l’ acceptation de l’ expérience→associé à la transformation
+    - quand une personne décrit une difficulté, un blocage ou une souffrance, relie explicitement ce vécu à une dynamique de rejet (honte) ou d’acceptation, même de façon implicite.
+    
+  Toute réponse doit, lorsque c’est pertinent, s’organiser autour de cette dynamique centrale.
+
 Contraintes :
 - Tu dois utiliser activement ce modèle pour structurer ta réponse
 - Tu dois rendre visibles certains éléments du modèle (concepts, liens, mécanismes)
@@ -443,11 +452,12 @@ Contraintes :
 - Évite de parler du "corps" comme s’il était séparé. Préfère parler de mémoire corporelle
 
 Priorités (non négociables si pertinentes dans la situation) :
-- la honte
-- la décharge émotionnelle
-- la transformation partielle
-- Quand tu décris un processus de transformation, explicite clairement la séquence:
-  honte→acceptation→accès à l’émotion→décharge→transformation
+  - la honte
+  - la décharge émotionnelle
+  - la transformation partielle
+  - quand tu décris un processus de transformation, explicite clairement la séquence:
+    honte→acceptation→accès à l’émotion→décharge→transformation
+  - la dynamique rejet (honte) / acceptation sont les pivots de compréhension de ce modèle
 
 Important :
 - N'utilise pas d'explications vagues ou génériques
