@@ -449,9 +449,9 @@ Important :
 - chaque réponse doit expliquer avec des mots concrets ce que le concept change dans l'expérience vécue.
 - Évite le charabia théorique.Si tu utilises un concept du modèle, montre à quoi il correspond concrètement.
 - Si la situation implique un blocage ou une absence de changement, intègre explicitement:
-  - la possibilité d 'une transformation partielle
-  - le rôle de la honte dans le maintien du blocage
-  - le passage par une décharge émotionnelle
+  - la possibilité d'une transformation toujours en cours
+  - le rôle de la honte dans le ralentissement voire le blocage du processus
+  - le passage par de la décharge émotionnelle
 
 Modèle :
 1. Mémoire et conscience
