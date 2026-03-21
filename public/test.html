@@ -432,6 +432,13 @@ Je me demande si ce que je ressens ressemble plutot a de l'angoisse ou de l'anxi
           </div>
 
           <div class="toggle-line">
+            <input type="checkbox" id="chainToggle">
+            <label for="chainToggle" style="margin:0; font-size:13px; font-weight:700; cursor:pointer;">
+              Mode chaine
+            </label>
+          </div>
+
+          <div class="toggle-line">
             <input type="checkbox" id="advancedToggle">
             <label for="advancedToggle" style="margin:0; font-size:13px; font-weight:700; cursor:pointer;">
               Afficher les champs avances
@@ -515,6 +522,7 @@ Questions encore ouvertes :
     const inputModeEl = document.getElementById("inputMode");
     const singleFieldEl = document.getElementById("singleField");
     const batchFieldEl = document.getElementById("batchField");
+    const chainToggleEl = document.getElementById("chainToggle");
     const advancedToggleEl = document.getElementById("advancedToggle");
     const advancedFieldsEl = document.getElementById("advancedFields");
 
@@ -569,6 +577,10 @@ Questions encore ouvertes :
       const recentHistory = safeParseJson(recentHistoryInputEl.value, "recentHistory", undefined);
       const fullHistory = safeParseJson(fullHistoryInputEl.value, "fullHistory", undefined);
       const flags = safeParseJson(flagsInputEl.value, "flags", undefined);
+
+      if (chainToggleEl.checked) {
+        payload.chain = true;
+      }
 
       if (memory) payload.memory = memory;
       if (recentHistory !== undefined) payload.recentHistory = recentHistory;
@@ -628,6 +640,10 @@ Questions encore ouvertes :
 
       const parts = [];
       parts.push('<span class="chip">Total : ' + results.length + "</span>");
+
+      if (data?.chain === true) {
+        parts.push('<span class="chip">chain : true</span>');
+      }
 
       for (const [mode, count] of Object.entries(counts)) {
         parts.push('<span class="chip">' + escapeHtml(mode) + " : " + count + "</span>");
@@ -766,6 +782,7 @@ Questions encore ouvertes :
     function loadSample() {
       inputModeEl.value = "batch";
       toggleInputMode();
+      chainToggleEl.checked = false;
 
       batchInputEl.value = JSON.stringify([
         {
@@ -818,6 +835,9 @@ Questions encore ouvertes :
     function clearAll() {
       singleMessageEl.value = "";
       batchInputEl.value = "";
+      chainToggleEl.checked = false;
+      advancedToggleEl.checked = false;
+      toggleAdvancedFields();
       memoryInputEl.value = "";
       recentHistoryInputEl.value = "";
       fullHistoryInputEl.value = "";

@@ -62,6 +62,13 @@ function trimRecallAnalysisHistory(history) {
     .slice(-MAX_RECALL_ANALYSIS_TURNS);
 }
 
+function normalizeFullHistory(history) {
+  if (!Array.isArray(history)) return [];
+  return history.filter(
+    m => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string"
+  );
+}
+
 function normalizeFlags(flags) {
   return (flags && typeof flags === "object") ? flags : {};
 }
@@ -888,7 +895,7 @@ Important :
   - N'oriente pas la conversation vers une logique d'evaluation, de classification ou de recherche de symptomes
   - N'essaie pas d'identifier ce que la personne "a"
   - Ne suggere pas de categories(depression, trouble, etc.), meme indirectement
-  
+
   Si l'utilisateur pose une question theorique ou conceptuelle a propos de ce qu'il vit :
     - ne reponds pas par une explication generale
     - ne l'ignore pas
@@ -899,19 +906,19 @@ Important :
     - appuie-toi si possible sur les elements concrets qu'elle vient d'exprimer ou qui ont ete rappeles
     - privilegie une reformulation situee et concrete plutot qu'une question large ou generique
     - garde un ton souple, proche, non professoral
-    - quand l 'utilisateur demande une difference, une distinction ou une nuance, ne deplace pas la question vers une demande generale de description
-    - reformule directement cette difference comme une distinction possible a eprouver dans l 'experience
+    - quand l'utilisateur demande une difference, une distinction ou une nuance, ne deplace pas la question vers une demande generale de description
+    - reformule directement cette difference comme une distinction possible a eprouver dans l'experience
     - privilegie des formulations du type:
       -"est-ce que ces deux mots designent pour toi..."
       - "est-ce que tu sens une nuance entre..."
       - "quand tu dis X ou Y, est-ce que ca change quelque chose dans ce que tu vis ?"
-    
+
   Evite les formulations seches ou cassantes comme :
     - "plutot que de chercher"
     - "je ne fais pas de difference"
     - "ce n'est pas important"
     - "peu importe le mot"
-    
+
   Prends la question au serieux et ramene-la dans l'experience.
 
 ${modeInstruction}
@@ -949,7 +956,7 @@ async function generateReply({ message, history, memory, mode }) {
 async function runSingleTestCase(testCase = {}) {
   const message = String(testCase.message || "");
   const recentHistory = trimHistory(testCase.recentHistory);
-  const fullHistory = Array.isArray(testCase.fullHistory) ? testCase.fullHistory : [];
+  const fullHistory = normalizeFullHistory(testCase.fullHistory);
   const previousMemory = normalizeMemory(testCase.memory);
   const flags = normalizeSessionFlags(testCase.flags);
 
@@ -1043,11 +1050,17 @@ async function runSingleTestCase(testCase = {}) {
     }
   }
 
+  const updatedMemory = await updateMemory(previousMemory, [
+    ...activeHistory,
+    { role: "user", content: message },
+    { role: "assistant", content: reply }
+  ]);
+
   return {
     input: message,
     reply,
     mode,
-    memory: previousMemory,
+    memory: updatedMemory,
     flags: newFlags,
     debug: buildDebug(mode, recallUsed, {
       suicideLevel: suicide.suicideLevel,
@@ -1064,11 +1077,12 @@ app.post("/test", async (req, res) => {
   try {
     const shared = {
       recentHistory: trimHistory(req.body?.recentHistory),
-      fullHistory: Array.isArray(req.body?.fullHistory) ? req.body.fullHistory : [],
+      fullHistory: normalizeFullHistory(req.body?.fullHistory),
       memory: normalizeMemory(req.body?.memory),
       flags: normalizeSessionFlags(req.body?.flags)
     };
 
+    const chain = req.body?.chain === true;
     const rawTestCases = Array.isArray(req.body?.testCases) ? req.body.testCases : [];
     const fallbackMessage = String(req.body?.message || "").trim();
 
@@ -1084,22 +1098,46 @@ app.post("/test", async (req, res) => {
 
     const results = [];
 
+    let currentRecentHistory = shared.recentHistory;
+    let currentMemory = shared.memory;
+    let currentFlags = shared.flags;
+
     for (const testCase of testCases) {
+      const safeTestCase = (testCase && typeof testCase === "object") ? testCase : {};
+      const message = typeof testCase === "string" ? testCase : String(safeTestCase.message || "");
+
       const mergedCase = {
-        recentHistory: shared.recentHistory,
-        fullHistory: shared.fullHistory,
-        memory: shared.memory,
-        flags: shared.flags,
-        ...(testCase && typeof testCase === "object" ? testCase : {}),
-        message: typeof testCase === "string" ? testCase : String(testCase?.message || "")
+        recentHistory: chain
+          ? currentRecentHistory
+          : (safeTestCase.recentHistory !== undefined ? safeTestCase.recentHistory : shared.recentHistory),
+        fullHistory: safeTestCase.fullHistory !== undefined ? safeTestCase.fullHistory : shared.fullHistory,
+        memory: chain
+          ? currentMemory
+          : (safeTestCase.memory !== undefined ? safeTestCase.memory : shared.memory),
+        flags: chain
+          ? currentFlags
+          : (safeTestCase.flags !== undefined ? safeTestCase.flags : shared.flags),
+        ...safeTestCase,
+        message
       };
 
       const result = await runSingleTestCase(mergedCase);
       results.push(result);
+
+      if (chain) {
+        currentMemory = result.memory;
+        currentFlags = result.flags;
+        currentRecentHistory = trimHistory([
+          ...currentRecentHistory,
+          { role: "user", content: result.input },
+          { role: "assistant", content: result.reply }
+        ]);
+      }
     }
 
     return res.json({
       count: results.length,
+      chain,
       results
     });
   } catch (err) {
@@ -1119,7 +1157,7 @@ app.post("/chat", async (req, res) => {
   try {
     const message = String(req.body?.message || "");
     const recentHistory = trimHistory(req.body?.recentHistory);
-    const fullHistory = Array.isArray(req.body?.fullHistory) ? req.body.fullHistory : [];
+    const fullHistory = normalizeFullHistory(req.body?.fullHistory);
     const previousMemory = normalizeMemory(req.body?.memory);
     const flags = normalizeSessionFlags(req.body?.flags);
 
