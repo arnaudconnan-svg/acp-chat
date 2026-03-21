@@ -1130,11 +1130,14 @@ app.post("/test", async (req, res) => {
       if (chain) {
         currentMemory = result.memory;
         currentFlags = result.flags;
-        currentRecentHistory = trimHistory([
-          ...currentRecentHistory,
+        
+        currentFullHistory = [
+          ...currentFullHistory,
           { role: "user", content: result.input },
           { role: "assistant", content: result.reply }
-        ]);
+        ];
+        
+        currentRecentHistory = trimHistory(currentFullHistory);
       }
     }
 
