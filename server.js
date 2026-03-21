@@ -12,6 +12,7 @@ app.use(express.json());
 const MAX_RECENT_TURNS = 8;
 const MAX_INFO_ANALYSIS_TURNS = 6;
 const MAX_SUICIDE_ANALYSIS_TURNS = 10;
+const MAX_RECALL_ANALYSIS_TURNS = 6;
 
 // --------------------------------------------------
 // 1) OUTILS MINIMAUX
@@ -52,6 +53,13 @@ function trimSuicideAnalysisHistory(history) {
   return history
     .filter(m => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
     .slice(-MAX_SUICIDE_ANALYSIS_TURNS);
+}
+
+function trimRecallAnalysisHistory(history) {
+  if (!Array.isArray(history)) return [];
+  return history
+    .filter(m => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
+    .slice(-MAX_RECALL_ANALYSIS_TURNS);
 }
 
 function normalizeFlags(flags) {
@@ -278,7 +286,7 @@ function acuteCrisisFollowupResponse() {
 }
 
 // --------------------------------------------------
-// 3) ANALYSE INFO + CONFLIT MODELE (EXPLORATION)
+// 3) ANALYSE INFO + RECALL + CONFLIT MODELE
 // --------------------------------------------------
 
 async function llmInfoAnalysis(message = "", history = []) {
@@ -325,7 +333,7 @@ Exemples:
 
 -> isInfoRequest = false
 
-Une demande d 'information est une question generale, theorique ou impersonnelle.
+Une demande d'information est une question generale, theorique ou impersonnelle.
 
 Exemples:
   -"Qu'est-ce qu'un trouble anxieux ?" -
@@ -363,6 +371,75 @@ Exemples:
 
 async function analyzeInfoRequest(message = "", history = []) {
   return await llmInfoAnalysis(message, history);
+}
+
+async function llmRecallAnalysis(message = "", history = []) {
+  const context = trimRecallAnalysisHistory(history);
+
+  const system = `
+Tu determines si le message utilisateur contient une demande explicite de rappel de contenu deja dit auparavant dans la session.
+
+Reponds STRICTEMENT en JSON :
+
+{
+  "isRecallRequest": true|false
+}
+
+Regles :
+- true seulement si la personne demande clairement de se souvenir, de reprendre, de rappeler ou de revenir sur quelque chose deja dit auparavant
+- false si la formulation est vague, ambigue ou simplement conversationnelle
+- false si la personne pose seulement une question d'information ou exprime son vecu actuel
+- ne sur-interprete pas
+- base-toi d'abord sur le message actuel, puis sur le contexte recent si necessaire
+
+Exemples a classer true :
+- "Tu te rappelles de ce que je t'ai dit sur ma mere ?"
+- "Reprends ce que je t'ai dit sur mon travail"
+- "Tu te souviens de ce qu'on disait a propos de ma fille ?"
+- "Peux-tu revenir sur ce que je t'avais dit au debut a propos de mon angoisse ?"
+
+Exemples a classer false :
+- "On en etait ou deja ?"
+- "De quoi on parlait deja ?"
+- "Tu peux m'aider a comprendre ce que je ressens ?"
+- "Qu'est-ce que l'angoisse ?"
+- "Je repense a ce que je t'ai dit hier"
+- "Je ne sais plus ou j'en suis"
+
+Important :
+- une demande ambigue de reprise de conversation doit rester false
+- ne mets true que si la demande de rappel est claire
+`;
+
+  const r = await client.chat.completions.create({
+    model: "gpt-4.1-mini",
+    temperature: 0,
+    max_tokens: 60,
+    messages: [
+      { role: "system", content: system },
+      ...context.map(m => ({ role: m.role, content: m.content })),
+      { role: "user", content: message }
+    ]
+  });
+
+  try {
+    const raw = (r.choices?.[0]?.message?.content || "").replace(/```json|```/g, "").trim();
+    const parsed = JSON.parse(raw);
+
+    return {
+      isRecallRequest: parsed.isRecallRequest === true,
+      source: "llm"
+    };
+  } catch {
+    return {
+      isRecallRequest: false,
+      source: "llm_fallback"
+    };
+  }
+}
+
+async function analyzeRecallRequest(message = "", history = []) {
+  return await llmRecallAnalysis(message, history);
 }
 
 async function analyzeModelConflict(reply = "") {
@@ -481,7 +558,7 @@ ${originalReply}
 }
 
 // --------------------------------------------------
-// 4) MODE
+// 4) MODE + DEBUG
 // --------------------------------------------------
 
 async function detectMode(message = "", history = []) {
@@ -494,7 +571,7 @@ async function detectMode(message = "", history = []) {
 
 function buildDebug(
   mode,
-  usedFullHistory,
+  recallUsed,
   {
     suicideLevel = "N0",
     needsClarification = false,
@@ -510,8 +587,8 @@ function buildDebug(
     lines.push(`suicide: ${suicideLevel}`);
   }
 
-  if (usedFullHistory) {
-    lines.push("full_history: yes");
+  if (recallUsed) {
+    lines.push("recall: true");
   }
 
   if (needsClarification) lines.push("needsClarification: true");
@@ -521,23 +598,6 @@ function buildDebug(
   if (modelConflict) lines.push("modelConflict: true");
 
   return lines;
-}
-
-function useFullHistory(userMessage = "") {
-  const msg = String(userMessage).toLowerCase();
-
-  const triggers = [
-    "reprends toute la conversation",
-    "relis toute la conversation",
-    "tu te souviens du debut",
-    "reviens au debut",
-    "reprends ce qu'on disait avant",
-    "reprends ce que j'ai dit avant",
-    "relis l'historique",
-    "reprends l'historique"
-  ];
-
-  return triggers.some(t => msg.includes(t));
 }
 
 // --------------------------------------------------
@@ -930,8 +990,9 @@ async function runSingleTestCase(testCase = {}) {
     };
   }
 
-  const wantsFullHistory = useFullHistory(message);
-  const activeHistory = wantsFullHistory ? fullHistory : recentHistory;
+  const recall = await analyzeRecallRequest(message, recentHistory);
+  const recallUsed = recall.isRecallRequest === true;
+  const activeHistory = recallUsed ? fullHistory : recentHistory;
   const { mode } = await detectMode(message, activeHistory);
 
   let reply = await generateReply({
@@ -963,7 +1024,7 @@ async function runSingleTestCase(testCase = {}) {
     mode,
     memory: previousMemory,
     flags: newFlags,
-    debug: buildDebug(mode, wantsFullHistory, {
+    debug: buildDebug(mode, recallUsed, {
       suicideLevel: suicide.suicideLevel,
       needsClarification: suicide.needsClarification,
       isQuote: suicide.isQuote,
@@ -1095,8 +1156,9 @@ app.post("/chat", async (req, res) => {
     }
 
     // ---- NORMAL FLOW ----
-    const wantsFullHistory = useFullHistory(message);
-    const activeHistory = wantsFullHistory ? fullHistory : recentHistory;
+    const recall = await analyzeRecallRequest(message, recentHistory);
+    const recallUsed = recall.isRecallRequest === true;
+    const activeHistory = recallUsed ? fullHistory : recentHistory;
     const { mode } = await detectMode(message, activeHistory);
 
     let reply = await generateReply({
@@ -1132,7 +1194,7 @@ app.post("/chat", async (req, res) => {
       reply,
       memory: newMemory,
       flags: newFlags,
-      debug: buildDebug(mode, wantsFullHistory, {
+      debug: buildDebug(mode, recallUsed, {
         suicideLevel: suicide.suicideLevel,
         needsClarification: suicide.needsClarification,
         isQuote: suicide.isQuote,
