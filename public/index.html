@@ -127,6 +127,18 @@ body {
   color: #245e66;
 }
 
+.welcomeBtnTertiary {
+  width: 100%;
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 1.25;
+  padding: 10px 14px;
+  cursor: pointer;
+  border: 1px dashed #b9c9cc;
+  background: #f8fbfb;
+  color: #245e66;
+}
+
 /* ---------- CHAT ---------- */
 
 #chatScreen {
@@ -376,10 +388,15 @@ body.show-debug .debug-block {
         Pourquoi cette application est différente
       </button>
 
+      <button class="welcomeBtnTertiary" onclick="window.location.href='/test.html'">
+        Interface de test
+      </button>
+
       <button class="welcomeBtnPrimary" onclick="enterChat()">
         Entrer
       </button>
     </div>
+    
 
   </div>
 </div>
