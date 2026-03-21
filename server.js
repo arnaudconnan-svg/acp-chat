@@ -1099,6 +1099,7 @@ app.post("/test", async (req, res) => {
     const results = [];
 
     let currentRecentHistory = shared.recentHistory;
+    let currentFullHistory = shared.fullHistory;
     let currentMemory = shared.memory;
     let currentFlags = shared.flags;
 
@@ -1110,7 +1111,9 @@ app.post("/test", async (req, res) => {
         recentHistory: chain
           ? currentRecentHistory
           : (safeTestCase.recentHistory !== undefined ? safeTestCase.recentHistory : shared.recentHistory),
-        fullHistory: safeTestCase.fullHistory !== undefined ? safeTestCase.fullHistory : shared.fullHistory,
+        fullHistory: chain ?
+        currentFullHistory :
+          (safeTestCase.fullHistory !== undefined ? safeTestCase.fullHistory : shared.fullHistory),
         memory: chain
           ? currentMemory
           : (safeTestCase.memory !== undefined ? safeTestCase.memory : shared.memory),
