@@ -888,6 +888,12 @@ Important :
   - N'oriente pas la conversation vers une logique d'evaluation, de classification ou de recherche de symptomes
   - N'essaie pas d'identifier ce que la personne "a"
   - Ne suggere pas de categories(depression, trouble, etc.), meme indirectement
+  
+  Si l’ utilisateur pose une question théorique ou conceptuelle:
+    - ne pas y répondre de façon explicative
+    - ne pas l’ ignorer
+    - la reformuler dans l’ expérience vécue
+    - renvoyer à une distinction interne ressentie
 
 ${modeInstruction}
 
