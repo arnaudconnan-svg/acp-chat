@@ -108,19 +108,14 @@ function normalizeSessionFlags(flags) {
   };
 }
 
-function normalizeSessionFlags(flags) {
-  const safe = normalizeFlags(flags);
-  const explorationRelanceWindow = normalizeExplorationRelanceWindow(safe.explorationRelanceWindow);
-  const computedLevel = computeExplorationDirectivityLevel(explorationRelanceWindow);
-
+function registerExplorationRelance(flags, isRelance) {
+  const safeFlags = normalizeSessionFlags(flags);
+  const nextWindow = [...safeFlags.explorationRelanceWindow, isRelance === true].slice(-RELANCE_WINDOW_SIZE);
+  
   return {
-    ...safe,
-    acuteCrisis: safe.acuteCrisis === true,
-    explorationRelanceWindow,
-    explorationDirectivityLevel:
-      safe.explorationDirectivityLevel !== undefined
-        ? clampExplorationDirectivityLevel(safe.explorationDirectivityLevel)
-        : computedLevel
+    ...safeFlags,
+    explorationRelanceWindow: nextWindow,
+    explorationDirectivityLevel: computeExplorationDirectivityLevel(nextWindow)
   };
 }
 
