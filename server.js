@@ -108,6 +108,22 @@ function normalizeSessionFlags(flags) {
   };
 }
 
+function normalizeSessionFlags(flags) {
+  const safe = normalizeFlags(flags);
+  const explorationRelanceWindow = normalizeExplorationRelanceWindow(safe.explorationRelanceWindow);
+  const computedLevel = computeExplorationDirectivityLevel(explorationRelanceWindow);
+
+  return {
+    ...safe,
+    acuteCrisis: safe.acuteCrisis === true,
+    explorationRelanceWindow,
+    explorationDirectivityLevel:
+      safe.explorationDirectivityLevel !== undefined
+        ? clampExplorationDirectivityLevel(safe.explorationDirectivityLevel)
+        : computedLevel
+  };
+}
+
 function getExplorationStructureInstruction(explorationDirectivityLevel) {
   const safeLevel = clampExplorationDirectivityLevel(explorationDirectivityLevel);
   
