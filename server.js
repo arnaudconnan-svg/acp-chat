@@ -108,16 +108,6 @@ function normalizeSessionFlags(flags) {
   };
 }
 
-function registerExplorationRelance(flags, isRelance) {
-  const safeFlags = normalizeSessionFlags(flags);
-  const nextWindow = [...safeFlags.explorationRelanceWindow, isRelance === true].slice(-RELANCE_WINDOW_SIZE);
-  return {
-    ...safeFlags,
-    explorationRelanceWindow: nextWindow,
-    explorationDirectivityLevel: computeExplorationDirectivityLevel(nextWindow)
-  };
-}
-
 function getExplorationStructureInstruction(explorationDirectivityLevel) {
   const safeLevel = clampExplorationDirectivityLevel(explorationDirectivityLevel);
   
@@ -127,35 +117,46 @@ function getExplorationStructureInstruction(explorationDirectivityLevel) {
       
     case 1:
       return `
-Contrainte structurelle legere :
-- privilegie une reponse qui reste proche de ce qui vient d'etre dit
-- evite d'ajouter une question en fin de message
-- evite de terminer par une ouverture vers la suite si ce n'est pas necessaire
+Contrainte structurelle tres legere :
+- reste dans une reponse chaleureuse, simple et proche de ce qui vient d'etre dit
+- evite si possible d'ajouter une question en fin de message
+- tu peux accueillir, refleter ou reformuler
+- n'ouvre pas vers une exploration supplementaire sauf si cela parait vraiment necessaire
 `;
       
     case 2:
-  return `
+      return `
+Contrainte structurelle legere :
+- garde une tonalite contenante et humaine, sans devenir descriptive ou distante
+- privilegie une reponse breve qui accueille ou reformule sobrement ce qui est la
+- evite les questions
+- evite les invitations a decrire, preciser, observer, explorer ou approfondir
+- tu peux aider a poser un peu ce qui est la, sans orienter vers une suite
+`;
+      
+    case 3:
+      return `
 Contrainte structurelle moderee :
 - fais une reponse plutot courte et autoportante
 - pas de question
 - pas d'invitation a decrire, preciser, observer, explorer ou approfondir
 - evite aussi les formulations de suggestion indirecte comme "il peut etre utile de", "cela peut aider de", "parfois on peut"
-- privilegie un reflet simple ou une reformulation sobre
+- privilegie un reflet simple, une reformulation sobre, ou un accueil bref
 `;
       
-    case 3:
+    case 4:
       return `
 Contrainte structurelle forte :
-- fais au maximum 2 phrases courtes
+- fais une reponse breve, sobre et autoportante
 - aucune question
+- aucune consigne implicite ou explicite
 - aucune invitation a continuer, decrire, observer, explorer, approfondir ou laisser emerger quoi que ce soit
 - aucune formulation de type conseil, suggestion ou orientation douce
 - reste au plus pres de ce qui est deja la, puis arrete-toi
 `;
       
-    case 4:
     default:
-      return "Dis juste 'Pouet'";
+      return "";
   }
 }
 
