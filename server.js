@@ -894,6 +894,8 @@ Important :
   - N'oriente pas la conversation vers une logique d'evaluation, de classification ou de recherche de symptomes
   - N'essaie pas d'identifier ce que la personne "a"
   - Ne suggere pas de categories (depression, trouble, etc.), meme indirectement
+  
+Tu peux rester avec ce qui est là, sans chercher à faire avancer.
 
 ${modeInstruction}
 
