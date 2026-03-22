@@ -134,11 +134,12 @@ Contrainte structurelle legere :
 `;
       
     case 2:
-      return `
+  return `
 Contrainte structurelle moderee :
 - fais une reponse plutot courte et autoportante
 - pas de question
 - pas d'invitation a decrire, preciser, observer, explorer ou approfondir
+- evite aussi les formulations de suggestion indirecte comme "il peut etre utile de", "cela peut aider de", "parfois on peut"
 - privilegie un reflet simple ou une reformulation sobre
 `;
       
