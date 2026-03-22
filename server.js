@@ -132,6 +132,7 @@ Contrainte structurelle legere :
 - evite les questions
 - evite les invitations a decrire, preciser, observer, explorer ou approfondir
 - tu peux aider a poser un peu ce qui est la, sans orienter vers une suite
+- tu peux, si c’est juste dans le flux de la réponse, reconnaitre qu’un besoin de soutien, d’appui ou de présence peut exister, sans te proposer comme solution ni orienter explicitement vers quelqu’un
 `;
       
     case 3:
@@ -142,6 +143,7 @@ Contrainte structurelle moderee :
 - pas d'invitation a decrire, preciser, observer, explorer ou approfondir
 - evite aussi les formulations de suggestion indirecte comme "il peut etre utile de", "cela peut aider de", "parfois on peut"
 - privilegie un reflet simple, une reformulation sobre, ou un accueil bref
+- tu peux, si c’est juste dans le flux de la réponse, reconnaitre qu’un besoin de soutien, d’appui ou de présence peut exister, sans te proposer comme solution ni orienter explicitement vers quelqu’un
 `;
       
     case 4:
@@ -153,6 +155,7 @@ Contrainte structurelle forte :
 - aucune invitation a continuer, decrire, observer, explorer, approfondir ou laisser emerger quoi que ce soit
 - aucune formulation de type conseil, suggestion ou orientation douce
 - reste au plus pres de ce qui est deja la, puis arrete-toi
+- tu peux, si c’est juste dans le flux de la réponse, reconnaitre qu’un besoin de soutien, d’appui ou de présence peut exister, sans te proposer comme solution ni orienter explicitement vers quelqu’un
 `;
       
     default:
