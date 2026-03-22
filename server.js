@@ -120,12 +120,34 @@ function registerExplorationRelance(flags, isRelance) {
 
 function getExplorationStructureInstruction(explorationDirectivityLevel) {
   const safeLevel = clampExplorationDirectivityLevel(explorationDirectivityLevel);
-
+  
   switch (safeLevel) {
     case 0:
+      return "";
+      
     case 1:
+      return `
+Contrainte structurelle :
+- evite la relance explicite en fin de reponse
+- si une question n'est pas necessaire, n'en mets pas
+`;
+      
     case 2:
+      return `
+Contrainte structurelle :
+- reponse plutot courte et autoportante
+- pas de question finale
+- pas d'invitation a poursuivre ou approfondir
+`;
+      
     case 3:
+      return `
+Contrainte structurelle :
+- aucune question
+- aucune relance explicite ou implicite
+- reste au plus pres de ce qui est deja la, puis arrete-toi
+`;
+      
     case 4:
     default:
       return "";
@@ -133,7 +155,7 @@ function getExplorationStructureInstruction(explorationDirectivityLevel) {
 }
 
 // --------------------------------------------------
-// 2) SUICIDE RISK - LOGIQUE V0.0
+// 2) SUICIDE RISK
 // --------------------------------------------------
 
 async function analyzeSuicideRisk(message = "", history = [], sessionFlags = {}) {
