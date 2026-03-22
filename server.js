@@ -129,32 +129,32 @@ function getExplorationStructureInstruction(explorationDirectivityLevel) {
     case 1:
       return `
 Contrainte structurelle tres legere :
-- reste dans une reponse chaleureuse, simple et proche de ce qui vient d'etre dit
-- evite si possible d'ajouter une question en fin de message
-- tu peux accueillir, refleter ou reformuler
-- n'ouvre pas vers une exploration supplementaire sauf si cela parait vraiment necessaire
+- reste libre, chaleureux, simple et proche de ce qui vient d'etre dit
+- une relance est possible si elle vient naturellement
+- evite seulement d'enchainer plusieurs mouvements de guidage dans la meme reponse
+- privilegie l'accueil, le reflet ou la reformulation plutot qu'une prise en main de la suite
 `;
       
     case 2:
       return `
 Contrainte structurelle legere :
-- garde une tonalite contenante et humaine, sans devenir descriptive ou distante
-- privilegie une reponse breve qui accueille ou reformule sobrement ce qui est la
-- evite les questions
-- evite les invitations a decrire, preciser, observer, explorer ou approfondir
-- tu peux aider a poser un peu ce qui est la, sans orienter vers une suite
-- tu peux, si c’est juste dans le flux de la réponse, reconnaitre qu’un besoin de soutien, d’appui ou de présence peut exister, sans te proposer comme solution ni orienter explicitement vers quelqu’un
+- garde une tonalite contenante, humaine et vivante
+- privilegie une reponse assez breve, proche de ce qui est la
+- une relance reste possible, mais evite qu'elle prenne toute la place
+- evite les formulations trop pilotantes ou trop scolaires
+- tu peux aider a poser un peu ce qui est la sans organiser la suite a la place de l'utilisateur
+- tu peux, si c'est juste dans le flux de la reponse, reconnaitre qu'un besoin de soutien, d'appui ou de presence peut exister, sans te proposer comme solution ni orienter explicitement vers quelqu'un
 `;
       
     case 3:
       return `
 Contrainte structurelle moderee :
-- fais une reponse plutot courte et autoportante
-- pas de question
-- pas d'invitation a decrire, preciser, observer, explorer ou approfondir
+- fais une reponse plutot courte, contenante et globalement autoportante
+- evite les questions sauf si elles paraissent vraiment necessaires
+- evite les invitations a decrire, preciser, observer, explorer ou approfondir
 - evite aussi les formulations de suggestion indirecte comme "il peut etre utile de", "cela peut aider de", "parfois on peut"
 - privilegie un reflet simple, une reformulation sobre, ou un accueil bref
-- tu peux, si c’est juste dans le flux de la réponse, reconnaitre qu’un besoin de soutien, d’appui ou de présence peut exister, sans te proposer comme solution ni orienter explicitement vers quelqu’un
+- tu peux, si c'est juste dans le flux de la reponse, reconnaitre qu'un besoin de soutien, d'appui ou de presence peut exister, sans te proposer comme solution ni orienter explicitement vers quelqu'un
 `;
       
     case 4:
@@ -166,7 +166,7 @@ Contrainte structurelle forte :
 - aucune invitation a continuer, decrire, observer, explorer, approfondir ou laisser emerger quoi que ce soit
 - aucune formulation de type conseil, suggestion ou orientation douce
 - reste au plus pres de ce qui est deja la, puis arrete-toi
-- tu peux, si c’est juste dans le flux de la réponse, reconnaitre qu’un besoin de soutien, d’appui ou de présence peut exister, sans te proposer comme solution ni orienter explicitement vers quelqu’un
+- tu peux, si c'est juste dans le flux de la reponse, reconnaitre qu'un besoin de soutien, d'appui ou de presence peut exister, sans te proposer comme solution ni orienter explicitement vers quelqu'un
 `;
       
     default:
