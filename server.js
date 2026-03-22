@@ -13,6 +13,7 @@ const MAX_RECENT_TURNS = 8;
 const MAX_INFO_ANALYSIS_TURNS = 6;
 const MAX_SUICIDE_ANALYSIS_TURNS = 10;
 const MAX_RECALL_ANALYSIS_TURNS = 6;
+const RELANCE_WINDOW_SIZE = 4;
 
 // --------------------------------------------------
 // 1) OUTILS MINIMAUX
@@ -73,12 +74,62 @@ function normalizeFlags(flags) {
   return (flags && typeof flags === "object") ? flags : {};
 }
 
+function clampExplorationDirectivityLevel(level) {
+  const n = Number(level);
+  if (!Number.isInteger(n)) return 0;
+  return Math.max(0, Math.min(4, n));
+}
+
+function computeExplorationDirectivityLevel(relanceWindow = []) {
+  const count = relanceWindow.filter(Boolean).length;
+  return Math.max(0, Math.min(4, count));
+}
+
+function normalizeExplorationRelanceWindow(windowValue) {
+  if (!Array.isArray(windowValue)) return [];
+  return windowValue
+    .filter(v => typeof v === "boolean")
+    .slice(-RELANCE_WINDOW_SIZE);
+}
+
 function normalizeSessionFlags(flags) {
   const safe = normalizeFlags(flags);
+  const explorationRelanceWindow = normalizeExplorationRelanceWindow(safe.explorationRelanceWindow);
+  const computedLevel = computeExplorationDirectivityLevel(explorationRelanceWindow);
+
   return {
     ...safe,
-    acuteCrisis: safe.acuteCrisis === true
+    acuteCrisis: safe.acuteCrisis === true,
+    explorationRelanceWindow,
+    explorationDirectivityLevel:
+      safe.explorationDirectivityLevel !== undefined
+        ? clampExplorationDirectivityLevel(safe.explorationDirectivityLevel)
+        : computedLevel
   };
+}
+
+function registerExplorationRelance(flags, isRelance) {
+  const safeFlags = normalizeSessionFlags(flags);
+  const nextWindow = [...safeFlags.explorationRelanceWindow, isRelance === true].slice(-RELANCE_WINDOW_SIZE);
+  return {
+    ...safeFlags,
+    explorationRelanceWindow: nextWindow,
+    explorationDirectivityLevel: computeExplorationDirectivityLevel(nextWindow)
+  };
+}
+
+function getExplorationStructureInstruction(explorationDirectivityLevel) {
+  const safeLevel = clampExplorationDirectivityLevel(explorationDirectivityLevel);
+
+  switch (safeLevel) {
+    case 0:
+    case 1:
+    case 2:
+    case 3:
+    case 4:
+    default:
+      return "";
+  }
 }
 
 // --------------------------------------------------
@@ -293,7 +344,7 @@ function acuteCrisisFollowupResponse() {
 }
 
 // --------------------------------------------------
-// 3) ANALYSE INFO + RECALL + CONFLIT MODELE
+// 3) ANALYSE INFO + RECALL + CONFLIT MODELE + RELANCE
 // --------------------------------------------------
 
 async function llmInfoAnalysis(message = "", history = []) {
@@ -505,6 +556,72 @@ Reponds STRICTEMENT en JSON :
   }
 }
 
+async function analyzeExplorationRelance({
+  message = "",
+  reply = "",
+  history = [],
+  memory = ""
+}) {
+  const context = trimHistory(history);
+
+  const system = `
+Tu analyses uniquement si la reponse du bot contient une relance au sens relationnel.
+
+Reponds STRICTEMENT en JSON :
+{
+  "isRelance": true|false
+}
+
+Definition :
+- true si la reponse pousse l'utilisateur a continuer, preciser, decrire, clarifier, approfondir, expliquer, observer davantage, ou si elle ouvre explicitement vers la suite
+- true si elle contient une question, une invitation implicite ou explicite, une incitation a explorer davantage
+- false si la reponse peut se suffire a elle-meme, reste avec ce qui est la, reflete, reformule, accueille, ou s'arrete sans pousser
+
+Important :
+- ne te base pas seulement sur la ponctuation
+- une phrase sans point d'interrogation peut quand meme etre une relance
+- une question de clarification suicidaire n'est pas concernee ici ; tu analyses seulement une reponse de mode exploration ordinaire
+- ne sur-interprete pas
+`;
+
+  const user = `
+Message utilisateur actuel :
+${message}
+
+Contexte recent :
+${context.map(m => `${m.role === "user" ? "Utilisateur" : "Assistant"} : ${m.content}`).join("\n")}
+
+Memoire :
+${normalizeMemory(memory)}
+
+Reponse du bot a analyser :
+${reply}
+`;
+
+  const r = await client.chat.completions.create({
+    model: "gpt-4.1-mini",
+    temperature: 0,
+    max_tokens: 60,
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: user }
+    ]
+  });
+
+  try {
+    const raw = (r.choices?.[0]?.message?.content || "").replace(/```json|```/g, "").trim();
+    const parsed = JSON.parse(raw);
+
+    return {
+      isRelance: parsed.isRelance === true
+    };
+  } catch {
+    return {
+      isRelance: false
+    };
+  }
+}
+
 async function rewriteExplorationReplyWithModelFilter({
   message,
   history,
@@ -585,7 +702,10 @@ function buildDebug(
     isQuote = false,
     idiomaticDeathExpression = false,
     crisisResolved = false,
-    modelConflict = false
+    modelConflict = false,
+    isRelance = null,
+    explorationDirectivityLevel = 0,
+    explorationRelanceWindow = []
   } = {}
 ) {
   const lines = [`mode: ${mode}`];
@@ -603,6 +723,16 @@ function buildDebug(
   if (idiomaticDeathExpression) lines.push("idiomaticDeathExpression: true");
   if (crisisResolved) lines.push("crisisResolved: true");
   if (modelConflict) lines.push("modelConflict: true");
+
+  if (mode === "exploration" && typeof isRelance === "boolean") {
+    lines.push(`relance: ${isRelance ? "true" : "false"}`);
+    lines.push(`explorationDirectivity: ${clampExplorationDirectivityLevel(explorationDirectivityLevel)}/4`);
+    lines.push(
+      `explorationRelanceWindow: [${normalizeExplorationRelanceWindow(explorationRelanceWindow)
+        .map(v => (v ? "1" : "0"))
+        .join(",")}]`
+    );
+  }
 
   return lines;
 }
@@ -649,7 +779,7 @@ ${transcript}
 // 6) PROMPT
 // --------------------------------------------------
 
-function buildSystemPrompt(mode, memory) {
+function buildSystemPrompt(mode, memory, explorationDirectivityLevel = 0) {
   const modelBlock = mode === "info" ? `
 Tu dois t'appuyer sur le modele theorique ci-dessous pour repondre.
 N'utilise aucune autre langue que le francais
@@ -881,6 +1011,11 @@ Resume en deux phrases :
       ? `Reponds directement.`
       : `Reste dans l'exploration sans guider.`;
 
+  const explorationStructureInstruction =
+    mode === "exploration"
+      ? getExplorationStructureInstruction(explorationDirectivityLevel)
+      : "";
+
   return `
 Tu es Facilitat.io.
 
@@ -897,6 +1032,8 @@ Important :
 
 ${modeInstruction}
 
+${explorationStructureInstruction}
+
 ${modelBlock}
 
 Memoire :
@@ -904,8 +1041,14 @@ ${normalizeMemory(memory)}
 `;
 }
 
-async function generateReply({ message, history, memory, mode }) {
-  const system = buildSystemPrompt(mode, memory);
+async function generateReply({
+  message,
+  history,
+  memory,
+  mode,
+  explorationDirectivityLevel = 0
+}) {
+  const system = buildSystemPrompt(mode, memory, explorationDirectivityLevel);
 
   const messages = [
     { role: "system", content: system },
@@ -935,7 +1078,7 @@ async function runSingleTestCase(testCase = {}) {
   const flags = normalizeSessionFlags(testCase.flags);
 
   const suicide = await analyzeSuicideRisk(message, recentHistory, flags);
-  const newFlags = normalizeSessionFlags(flags);
+  let newFlags = normalizeSessionFlags(flags);
 
   if (suicide.suicideLevel === "N2") {
     newFlags.acuteCrisis = true;
@@ -1005,10 +1148,12 @@ async function runSingleTestCase(testCase = {}) {
     message,
     history: activeHistory,
     memory: previousMemory,
-    mode
+    mode,
+    explorationDirectivityLevel: newFlags.explorationDirectivityLevel
   });
 
   let modelConflict = false;
+  let isRelance = null;
 
   if (mode === "exploration") {
     const conflict = await analyzeModelConflict(reply);
@@ -1022,6 +1167,16 @@ async function runSingleTestCase(testCase = {}) {
         originalReply: reply
       });
     }
+
+    const relanceAnalysis = await analyzeExplorationRelance({
+      message,
+      reply,
+      history: activeHistory,
+      memory: previousMemory
+    });
+
+    isRelance = relanceAnalysis.isRelance === true;
+    newFlags = registerExplorationRelance(newFlags, isRelance);
   }
 
   const updatedMemory = await updateMemory(previousMemory, [
@@ -1042,7 +1197,10 @@ async function runSingleTestCase(testCase = {}) {
       isQuote: suicide.isQuote,
       idiomaticDeathExpression: suicide.idiomaticDeathExpression,
       crisisResolved: suicide.crisisResolved,
-      modelConflict
+      modelConflict,
+      isRelance,
+      explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
+      explorationRelanceWindow: newFlags.explorationRelanceWindow
     })
   };
 }
@@ -1079,17 +1237,17 @@ app.post("/test", async (req, res) => {
 
     for (const testCase of testCases) {
       const safeTestCase = (testCase && typeof testCase === "object") ? testCase : {};
-      const message = typeof testCase === "string" ?
-        testCase :
-          String(safeTestCase.message ?? safeTestCase.input ?? "");
+      const message = typeof testCase === "string"
+        ? testCase
+        : String(safeTestCase.message ?? safeTestCase.input ?? "");
 
       const mergedCase = {
         recentHistory: chain
           ? currentRecentHistory
           : (safeTestCase.recentHistory !== undefined ? safeTestCase.recentHistory : shared.recentHistory),
-        fullHistory: chain ?
-        currentFullHistory :
-          (safeTestCase.fullHistory !== undefined ? safeTestCase.fullHistory : shared.fullHistory),
+        fullHistory: chain
+          ? currentFullHistory
+          : (safeTestCase.fullHistory !== undefined ? safeTestCase.fullHistory : shared.fullHistory),
         memory: chain
           ? currentMemory
           : (safeTestCase.memory !== undefined ? safeTestCase.memory : shared.memory),
@@ -1106,13 +1264,13 @@ app.post("/test", async (req, res) => {
       if (chain) {
         currentMemory = result.memory;
         currentFlags = result.flags;
-        
+
         currentFullHistory = [
           ...currentFullHistory,
           { role: "user", content: result.input },
           { role: "assistant", content: result.reply }
         ];
-        
+
         currentRecentHistory = trimHistory(currentFullHistory);
       }
     }
@@ -1145,7 +1303,7 @@ app.post("/chat", async (req, res) => {
 
     // ---- SUICIDE ----
     const suicide = await analyzeSuicideRisk(message, recentHistory, flags);
-    const newFlags = normalizeSessionFlags(flags);
+    let newFlags = normalizeSessionFlags(flags);
 
     if (suicide.suicideLevel === "N2") {
       newFlags.acuteCrisis = true;
@@ -1210,10 +1368,12 @@ app.post("/chat", async (req, res) => {
       message,
       history: activeHistory,
       memory: previousMemory,
-      mode
+      mode,
+      explorationDirectivityLevel: newFlags.explorationDirectivityLevel
     });
 
     let modelConflict = false;
+    let isRelance = null;
 
     if (mode === "exploration") {
       const conflict = await analyzeModelConflict(reply);
@@ -1227,6 +1387,16 @@ app.post("/chat", async (req, res) => {
           originalReply: reply
         });
       }
+
+      const relanceAnalysis = await analyzeExplorationRelance({
+        message,
+        reply,
+        history: activeHistory,
+        memory: previousMemory
+      });
+
+      isRelance = relanceAnalysis.isRelance === true;
+      newFlags = registerExplorationRelance(newFlags, isRelance);
     }
 
     const newMemory = await updateMemory(previousMemory, [
@@ -1245,7 +1415,10 @@ app.post("/chat", async (req, res) => {
         isQuote: suicide.isQuote,
         idiomaticDeathExpression: suicide.idiomaticDeathExpression,
         crisisResolved: suicide.crisisResolved,
-        modelConflict
+        modelConflict,
+        isRelance,
+        explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
+        explorationRelanceWindow: newFlags.explorationRelanceWindow
       })
     });
 
