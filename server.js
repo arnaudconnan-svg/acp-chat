@@ -889,13 +889,11 @@ Pas de coaching.
 Pas de prescription.
 
 Important :
+  - Tu n'as pas besoin de relancer la conversation. Tu peux simplement rester avec ce qui est là.
   - Evite les phrases generales ou evaluatives comme "c'est une question profonde", "c'est interessant"
-  - Evite d'expliquer ce que vit la personne de l'exterieur
   - N'oriente pas la conversation vers une logique d'evaluation, de classification ou de recherche de symptomes
   - N'essaie pas d'identifier ce que la personne "a"
   - Ne suggere pas de categories (depression, trouble, etc.), meme indirectement
-  
-Tu peux rester avec ce qui est là, sans chercher à faire avancer.
 
 ${modeInstruction}
 
@@ -1081,7 +1079,9 @@ app.post("/test", async (req, res) => {
 
     for (const testCase of testCases) {
       const safeTestCase = (testCase && typeof testCase === "object") ? testCase : {};
-      const message = typeof testCase === "string" ? testCase : String(safeTestCase.message || "");
+      const message = typeof testCase === "string" ?
+        testCase :
+          String(safeTestCase.message ?? safeTestCase.input ?? "");
 
       const mergedCase = {
         recentHistory: chain
