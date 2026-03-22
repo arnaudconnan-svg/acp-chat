@@ -127,30 +127,34 @@ function getExplorationStructureInstruction(explorationDirectivityLevel) {
       
     case 1:
       return `
-Contrainte structurelle :
-- evite la relance explicite en fin de reponse
-- si une question n'est pas necessaire, n'en mets pas
+Contrainte structurelle legere :
+- privilegie une reponse qui reste proche de ce qui vient d'etre dit
+- evite d'ajouter une question en fin de message
+- evite de terminer par une ouverture vers la suite si ce n'est pas necessaire
 `;
       
     case 2:
       return `
-Contrainte structurelle :
-- reponse plutot courte et autoportante
-- pas de question finale
-- pas d'invitation a poursuivre ou approfondir
+Contrainte structurelle moderee :
+- fais une reponse plutot courte et autoportante
+- pas de question
+- pas d'invitation a decrire, preciser, observer, explorer ou approfondir
+- privilegie un reflet simple ou une reformulation sobre
 `;
       
     case 3:
       return `
-Contrainte structurelle :
+Contrainte structurelle forte :
+- fais au maximum 2 phrases courtes
 - aucune question
-- aucune relance explicite ou implicite
+- aucune invitation a continuer, decrire, observer, explorer, approfondir ou laisser emerger quoi que ce soit
+- aucune formulation de type conseil, suggestion ou orientation douce
 - reste au plus pres de ce qui est deja la, puis arrete-toi
 `;
       
     case 4:
     default:
-      return "";
+      return "Dis juste 'Pouet'";
   }
 }
 
