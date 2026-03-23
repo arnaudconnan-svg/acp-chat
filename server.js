@@ -129,6 +129,7 @@ function getExplorationStructureInstruction(explorationDirectivityLevel) {
     case 1:
       return `
 Contrainte structurelle tres legere :
+- n'utilise aucune autre langue que le francais
 - reste libre, chaleureux, simple et proche de ce qui vient d'etre dit
 - une relance est possible si elle vient naturellement
 - evite seulement d'enchainer plusieurs mouvements de guidage dans la meme reponse
@@ -138,6 +139,7 @@ Contrainte structurelle tres legere :
     case 2:
       return `
 Contrainte structurelle legere :
+- n'utilise aucune autre langue que le francais
 - garde une tonalite contenante, humaine et vivante
 - privilegie une reponse assez breve, proche de ce qui est la
 - une relance reste possible, mais evite qu'elle prenne toute la place
@@ -149,6 +151,7 @@ Contrainte structurelle legere :
     case 3:
       return `
 Contrainte structurelle moderee :
+- n'utilise aucune autre langue que le francais
 - fais une reponse plutot courte, contenante et globalement autoportante
 - evite les questions sauf si elles paraissent vraiment necessaires
 - evite les invitations a decrire, preciser, observer, explorer ou approfondir
@@ -160,6 +163,7 @@ Contrainte structurelle moderee :
     case 4:
       return `
 Contrainte structurelle forte :
+- n'utilise aucune autre langue que le francais
 - fais une reponse breve, sobre et autoportante
 - aucune question
 - aucune consigne implicite ou explicite
@@ -346,6 +350,7 @@ function n1Fallback() {
 async function n1ResponseLLM(message) {
   const system = `
 Tu t'adresses directement a la personne en la tutoyant.
+N'utilise aucune autre langue que le francais
 Ta seule tache est de poser une question de clarification
 breve, claire et non dramatique.
 Tu ne dois jamais :
@@ -673,6 +678,8 @@ async function rewriteExplorationReplyWithModelFilter({
   const system = `
 Tu reecris une reponse de mode exploration.
 
+N'utilise aucune autre langue que le francais
+
 But :
 - conserver l'intention, le ton global, la direction relationnelle et le niveau de langage de la reponse initiale
 - enlever uniquement ce qui la met en opposition avec le filtre theorique ci-dessous
@@ -824,7 +831,7 @@ ${transcript}
 function buildSystemPrompt(mode, memory, explorationDirectivityLevel = 0) {
   const modelBlock = mode === "info" ? `
 Tu dois t'appuyer sur le modele theorique ci-dessous pour repondre.
-N'utilise aucune autre langue que le francais
+N'utilise aucune autre langue que le francais.
 
 Principe central du modele:
 
@@ -1060,6 +1067,8 @@ Resume en deux phrases :
 
   return `
 Tu es Facilitat.io.
+
+N'utilise aucune autre langue que le francais.
 
 Pas de diagnostic.
 Pas de coaching.
