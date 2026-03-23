@@ -27,7 +27,7 @@ body {
   background: white;
 }
 
-/* ---------- ÉCRANS ---------- */
+/* ---------- ECRANS ---------- */
 
 .screen {
   display: none;
@@ -177,17 +177,36 @@ h2 {
   cursor: pointer;
 }
 
-#refreshBtn {
+#newSessionWrap {
   position: absolute;
   right: 0;
   top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#newSessionLabel {
+  font-size: 13px;
+  line-height: 1;
+  color: #4b5563;
+  user-select: none;
+}
+
+#newSessionBtn {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid #d7dee2;
+  border-radius: 999px;
+  background: white;
+  color: #4b5563;
+  cursor: pointer;
   font-size: 20px;
   line-height: 1;
-  padding: 6px 10px;
-  border: none;
-  background: transparent;
-  color: #666;
-  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 #chat {
@@ -201,6 +220,11 @@ h2 {
   line-height: 1.4;
   box-sizing: border-box;
   -webkit-overflow-scrolling: touch;
+  transition: opacity 0.18s ease;
+}
+
+#chat.fading {
+  opacity: 0;
 }
 
 #inputArea {
@@ -236,15 +260,6 @@ button {
   font-size: 16px;
   padding: 8px 14px;
   cursor: pointer;
-}
-
-#editLastBtn {
-  display: none;
-  background: none;
-  border: none;
-  font-size: 13px;
-  color: #666;
-  padding: 0;
 }
 
 .message {
@@ -306,7 +321,104 @@ body.show-debug .debug-block {
   white-space: nowrap;
 }
 
-/* ---------- MODALE ---------- */
+/* ---------- MODALES ---------- */
+
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 1200;
+  padding: 12px;
+  box-sizing: border-box;
+}
+
+.modal.bottom-sheet {
+  align-items: flex-end;
+}
+
+.modalBox {
+  background: white;
+  width: min(640px, calc(100vw - 24px));
+  border-radius: 20px;
+  padding: 18px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22);
+  font-size: 16px;
+  box-sizing: border-box;
+}
+
+.modal.bottom-sheet .modalBox {
+  border-radius: 20px 20px 0 0;
+  padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  max-height: calc(100dvh - 12px);
+  overflow-y: auto;
+}
+
+.modalHandle {
+  width: 40px;
+  height: 4px;
+  background: #ccc;
+  border-radius: 2px;
+  margin: 0 auto 10px auto;
+}
+
+.modalTitle {
+  margin: 0 0 14px 0;
+  font-size: 18px;
+  line-height: 1.3;
+  color: #1f3f44;
+}
+
+.modalText {
+  margin: 0 0 12px 0;
+  line-height: 1.5;
+  color: #333;
+}
+
+.modalCheckboxRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 16px;
+  margin-bottom: 16px;
+  color: #444;
+  line-height: 1.4;
+  font-size: 14px;
+}
+
+.modalCheckboxRow input {
+  margin-top: 2px;
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.modalBtnPrimary,
+.modalBtnSecondary {
+  border-radius: 12px;
+  font-size: 15px;
+  line-height: 1.25;
+  padding: 10px 14px;
+  cursor: pointer;
+}
+
+.modalBtnPrimary {
+  border: none;
+  background: #245e66;
+  color: white;
+}
+
+.modalBtnSecondary {
+  border: 1px solid #b9c9cc;
+  background: white;
+  color: #245e66;
+}
 
 #aboutModal {
   position: fixed;
@@ -375,28 +487,27 @@ body.show-debug .debug-block {
     </p>
 
     <p class="welcomeText">
-      Facilitat.io propose un espace de réflexion inspiré de l’Approche Centrée sur la Personne.
-      Il ne donne pas de conseils, ne prescrit pas de solutions et ne cherche pas à vous orienter de l’extérieur.
+      Facilitat.io propose un espace de réflexion inspiré de l'Approche Centree sur la Personne.
+      Il ne donne pas de conseils, ne prescrit pas de solutions et ne cherche pas a vous orienter de l'exterieur.
     </p>
 
     <div class="welcomeDisclaimer">
-      Cet outil ne diagnostique pas, ne prescrit pas et ne remplace pas une relation d’accompagnement humaine.
+      Cet outil ne diagnostique pas, ne prescrit pas et ne remplace pas une relation d'accompagnement humaine.
     </div>
 
     <div class="welcomeActions">
       <button class="welcomeBtnSecondary" onclick="openAboutModal()">
-        Pourquoi cette application est différente
+        Pourquoi cette application est differente
       </button>
 
       <button class="welcomeBtnPrimary" onclick="enterChat()">
         Entrer
       </button>
-      
+
       <button class="welcomeBtnTertiary" onclick="window.location.href='/test.html'">
         Interface de test
       </button>
     </div>
-    
 
   </div>
 </div>
@@ -404,18 +515,21 @@ body.show-debug .debug-block {
 <!-- CHAT -->
 <div id="chatScreen" class="screen">
   <div id="topBar">
-    <button id="debugToggleBtn" type="button">logs masqués</button>
+    <button id="debugToggleBtn" type="button">logs masques</button>
     <h2>Facilitat.io</h2>
-    <button id="refreshBtn" onclick="location.reload()">↻</button>
+
+    <div id="newSessionWrap">
+      <span id="newSessionLabel">Nouvelle session</span>
+      <button id="newSessionBtn" type="button" aria-label="Nouvelle session">+</button>
+    </div>
   </div>
 
   <div id="chat"></div>
 
   <div id="inputArea">
-    <textarea id="input" placeholder="Écrire..."></textarea>
+    <textarea id="input" placeholder="Ecrire..."></textarea>
 
     <div class="actions">
-      <button id="editLastBtn">modifier</button>
       <button id="sendBtn">Envoyer</button>
     </div>
   </div>
@@ -426,22 +540,94 @@ body.show-debug .debug-block {
   <div id="aboutBox">
     <div id="aboutContent">
       <p>
-        La plupart des intelligences artificielles sont conçues pour répondre vite, conseiller, orienter ou résoudre.
+        La plupart des intelligences artificielles sont concues pour repondre vite, conseiller, orienter ou resoudre.
       </p>
       <p>
-        Facilitat.io a été conçu autrement.
+        Facilitat.io a ete concu autrement.
       </p>
       <p>
-        Son objectif est de soutenir le développement du centre d’évaluation interne : la capacité à sentir, reconnaître et évaluer son expérience à partir d’elle-même.
+        Son objectif est de soutenir le developpement du centre d'evaluation interne : la capacite a sentir, reconnaitre et evaluer son experience a partir d'elle-meme.
       </p>
       <p>
-        Il ne cherche pas à améliorer la performance, à normaliser l’expérience ou à proposer des réponses toutes faites.
+        Il ne cherche pas a ameliorer la performance, a normaliser l'experience ou a proposer des reponses toutes faites.
       </p>
       <p>
-        Il s’agit d’un espace de réflexion, non d’un outil de prescription.
+        Il s'agit d'un espace de reflexion, non d'un outil de prescription.
       </p>
     </div>
     <button onclick="closeAboutModal()">fermer</button>
+  </div>
+</div>
+
+<!-- SESSION INFO MODAL -->
+<div id="sessionInfoModal" class="modal bottom-sheet">
+  <div class="modalBox">
+    <div class="modalHandle"></div>
+    <h3 class="modalTitle">Avant de commencer</h3>
+
+    <p class="modalText">
+      A chaque nouvelle session, les informations importantes sont gardees en memoire pour la continuite de votre exploration personnelle.
+    </p>
+
+    <p class="modalText">
+      Les sessions sont limitees dans le temps (12h sans activite).
+    </p>
+
+    <p class="modalText">
+      Elles sont aussi limitees en longueur. Vous serez prevenu suffisamment avant la fin de la session pour anticiper le passage a une nouvelle session.
+    </p>
+
+    <label class="modalCheckboxRow">
+      <input id="sessionInfoDontShow" type="checkbox">
+      <span>Ne plus afficher ce message</span>
+    </label>
+
+    <div class="modalActions">
+      <button class="modalBtnPrimary" id="sessionInfoContinueBtn" type="button">Continuer</button>
+    </div>
+  </div>
+</div>
+
+<!-- NEW SESSION CONFIRM MODAL -->
+<div id="confirmNewSessionModal" class="modal">
+  <div class="modalBox">
+    <h3 class="modalTitle">Nouvelle session</h3>
+    <p class="modalText">
+      Voulez-vous vraiment demarrer une nouvelle session ?
+    </p>
+
+    <div class="modalActions">
+      <button class="modalBtnSecondary" id="cancelNewSessionBtn" type="button">Annuler</button>
+      <button class="modalBtnPrimary" id="confirmNewSessionBtn" type="button">Nouvelle session</button>
+    </div>
+  </div>
+</div>
+
+<!-- EXPIRED MODAL -->
+<div id="expiredSessionModal" class="modal">
+  <div class="modalBox">
+    <h3 class="modalTitle">Session expiree</h3>
+    <p class="modalText">
+      La session precedente a expire.
+    </p>
+
+    <div class="modalActions">
+      <button class="modalBtnPrimary" id="expiredNewSessionBtn" type="button">Nouvelle session</button>
+    </div>
+  </div>
+</div>
+
+<!-- TERMINATED MODAL -->
+<div id="terminatedSessionModal" class="modal">
+  <div class="modalBox">
+    <h3 class="modalTitle">Session terminee</h3>
+    <p class="modalText" id="terminatedSessionText">
+      Cette session est arrivee a sa limite.
+    </p>
+
+    <div class="modalActions">
+      <button class="modalBtnPrimary" id="terminatedNewSessionBtn" type="button">Nouvelle session</button>
+    </div>
   </div>
 </div>
 
@@ -458,16 +644,24 @@ function closeAboutModal() {
 <script>
 const SESSION_KEY = "facilitatio_v0_history";
 const MEMORY_KEY = "facilitatio_v0_memory";
+const FLAGS_KEY = "facilitatio_v0_flags";
+const ACTIVITY_KEY = "facilitatio_last_activity";
+const SESSION_INFO_DISMISSED_KEY = "facilitatio_session_info_dismissed";
+const SESSION_TIMEOUT_MS = 12 * 60 * 60 * 1000;
 const MAX_RECENT_TURNS = 8;
 
 let isSending = false;
 let showDebug = false;
+let sessionStatus = "welcome";
+let capacityWarningShown = false;
+let capacityCriticalShown = false;
+let lastMessageAllowed = false;
 
 /* ---------- MEMORY ---------- */
 
 function defaultMemory() {
   return [
-    "Thèmes déjà évoqués :",
+    "Themes deja evoques :",
     "- ",
     "",
     "Points de vigilance relationnels :",
@@ -486,6 +680,20 @@ function saveMemory(memory) {
   localStorage.setItem(MEMORY_KEY, memory);
 }
 
+/* ---------- FLAGS ---------- */
+
+function loadFlags() {
+  try {
+    return JSON.parse(localStorage.getItem(FLAGS_KEY) || "{}");
+  } catch {
+    return {};
+  }
+}
+
+function saveFlags(flags) {
+  localStorage.setItem(FLAGS_KEY, JSON.stringify(flags || {}));
+}
+
 /* ---------- HISTORY ---------- */
 
 function loadHistory() {
@@ -500,10 +708,49 @@ function saveHistory(history) {
   localStorage.setItem(SESSION_KEY, JSON.stringify(history));
 }
 
-function pushHistory(role, content, debug = []) {
+function pushHistory(role, content, debug) {
   const history = loadHistory();
-  history.push({ role, content, debug });
+  history.push({
+    role,
+    content,
+    debug: Array.isArray(debug) ? debug : [],
+    t: Date.now()
+  });
   saveHistory(history);
+}
+
+function clearHistory() {
+  localStorage.removeItem(SESSION_KEY);
+}
+
+/* ---------- ACTIVITY ---------- */
+
+function updateActivity() {
+  localStorage.setItem(ACTIVITY_KEY, String(Date.now()));
+}
+
+function getLastActivity() {
+  return Number(localStorage.getItem(ACTIVITY_KEY) || 0);
+}
+
+function isSessionExpired() {
+  const last = getLastActivity();
+  if (!last) return false;
+  return (Date.now() - last) > SESSION_TIMEOUT_MS;
+}
+
+/* ---------- SESSION INFO MODAL PREFERENCE ---------- */
+
+function loadSessionInfoDismissed() {
+  return localStorage.getItem(SESSION_INFO_DISMISSED_KEY) === "1";
+}
+
+function saveSessionInfoDismissed(value) {
+  if (value) {
+    localStorage.setItem(SESSION_INFO_DISMISSED_KEY, "1");
+  } else {
+    localStorage.removeItem(SESSION_INFO_DISMISSED_KEY);
+  }
 }
 
 /* ---------- UI ---------- */
@@ -514,16 +761,17 @@ function showScreen(id) {
   document.getElementById(id).classList.add("active");
 }
 
-function enterChat() {
-  showScreen("chatScreen");
-}
-
 function syncDebugVisibility() {
   document.body.classList.toggle("show-debug", showDebug);
-  document.getElementById("debugToggleBtn").textContent = showDebug ? "logs visibles" : "logs masqués";
+  document.getElementById("debugToggleBtn").textContent = showDebug ? "logs visibles" : "logs masques";
 }
 
-function addMessage(role, text, debug = []) {
+function scrollChatToBottom() {
+  const chat = document.getElementById("chat");
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function addMessage(role, text, debug) {
   const chat = document.getElementById("chat");
 
   const msg = document.createElement("div");
@@ -532,7 +780,7 @@ function addMessage(role, text, debug = []) {
   const contentWrap = document.createElement("div");
   contentWrap.className = "message-content";
 
-  if (role === "bot" && debug.length) {
+  if (role === "bot" && Array.isArray(debug) && debug.length) {
     const dbg = document.createElement("div");
     dbg.className = "debug-block";
 
@@ -554,7 +802,7 @@ function addMessage(role, text, debug = []) {
   msg.appendChild(contentWrap);
   chat.appendChild(msg);
 
-  chat.scrollTop = chat.scrollHeight;
+  scrollChatToBottom();
 }
 
 function renderHistory() {
@@ -565,62 +813,294 @@ function renderHistory() {
     addMessage(m.role === "user" ? "user" : "bot", m.content, m.debug || []);
   });
 
-  updateEditButtonVisibility();
+  syncInputAvailability();
 }
 
-/* ---------- EDIT ---------- */
+function fadeChatThenReset(callback) {
+  const chat = document.getElementById("chat");
+  chat.classList.add("fading");
 
-function canEditLastTurn() {
-  const h = loadHistory();
-  if (h.length < 2) return false;
-  return h[h.length - 2].role === "user" && h[h.length - 1].role === "assistant";
+  setTimeout(() => {
+    chat.classList.remove("fading");
+    callback();
+  }, 180);
 }
 
-function updateEditButtonVisibility() {
-  document.getElementById("editLastBtn").style.display =
-    canEditLastTurn() ? "inline-block" : "none";
-}
-
-function editLastTurn() {
-  const h = loadHistory();
-  if (!canEditLastTurn()) return;
-
+function setInputDisabled(disabled) {
   const input = document.getElementById("input");
-  input.value = h[h.length - 2].content;
+  const sendBtn = document.getElementById("sendBtn");
 
-  h.splice(-2, 2);
-  saveHistory(h);
+  input.disabled = disabled;
+  sendBtn.disabled = disabled;
+}
+
+/* ---------- MODALS ---------- */
+
+function openModal(id) {
+  document.getElementById(id).style.display = "flex";
+}
+
+function closeModal(id) {
+  document.getElementById(id).style.display = "none";
+}
+
+function openSessionInfoModal() {
+  document.getElementById("sessionInfoDontShow").checked = loadSessionInfoDismissed();
+  openModal("sessionInfoModal");
+}
+
+function closeSessionInfoModal() {
+  closeModal("sessionInfoModal");
+}
+
+function openConfirmNewSessionModal() {
+  openModal("confirmNewSessionModal");
+}
+
+function closeConfirmNewSessionModal() {
+  closeModal("confirmNewSessionModal");
+}
+
+function openExpiredSessionModal() {
+  openModal("expiredSessionModal");
+}
+
+function closeExpiredSessionModal() {
+  closeModal("expiredSessionModal");
+}
+
+function openTerminatedSessionModal(message) {
+  document.getElementById("terminatedSessionText").textContent = message;
+  openModal("terminatedSessionModal");
+}
+
+function closeTerminatedSessionModal() {
+  closeModal("terminatedSessionModal");
+}
+
+/* ---------- SESSION STATE ---------- */
+
+function setSessionStatus(nextStatus) {
+  sessionStatus = nextStatus;
+  syncInputAvailability();
+}
+
+function syncInputAvailability() {
+  const blocked = sessionStatus === "terminated" || sessionStatus === "closing";
+  setInputDisabled(blocked);
+}
+
+function resetLocalSessionState() {
+  capacityWarningShown = false;
+  capacityCriticalShown = false;
+  lastMessageAllowed = false;
+}
+
+function clearSessionStorageExceptMemory() {
+  clearHistory();
+  localStorage.removeItem(FLAGS_KEY);
+  localStorage.removeItem(ACTIVITY_KEY);
+  localStorage.removeItem(SESSION_INFO_DISMISSED_KEY);
+}
+
+function buildSessionPayloadForClose() {
+  const fullHistory = loadHistory().map(({ role, content }) => ({ role, content }));
+  return {
+    fullHistory,
+    memory: loadMemory(),
+    flags: loadFlags()
+  };
+}
+
+async function closeSessionBackend() {
+  const payload = buildSessionPayloadForClose();
+
+  try {
+    const res = await fetch("/session/close", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify(payload)
+    });
+
+    const data = await res.json();
+
+    if (data && data.memory) {
+      saveMemory(data.memory);
+    }
+  } catch {
+    /* silence volontaire */
+  }
+}
+
+async function finalizeAndStartNewSession() {
+  if (sessionStatus === "closing") return;
+
+  setSessionStatus("closing");
+  await closeSessionBackend();
+
+  fadeChatThenReset(() => {
+    clearSessionStorageExceptMemory();
+    resetLocalSessionState();
+    renderHistory();
+    closeConfirmNewSessionModal();
+    closeExpiredSessionModal();
+    closeTerminatedSessionModal();
+    startFreshSession();
+  });
+}
+
+function startFreshSession() {
+  setSessionStatus("active");
+  saveFlags({});
+  updateActivity();
 
   renderHistory();
+
+  if (loadHistory().length === 0) {
+    pushHistory("assistant", "Bienvenue dans cette nouvelle session. Que veux-tu explorer aujourd'hui ?", []);
+    addMessage("bot", "Bienvenue dans cette nouvelle session. Que veux-tu explorer aujourd'hui ?", []);
+  }
+
+  const input = document.getElementById("input");
+  input.value = "";
   input.focus();
+}
+
+function handleExpiredSessionOnEntry() {
+  setSessionStatus("expired");
+  showScreen("chatScreen");
+  renderHistory();
+  openExpiredSessionModal();
+}
+
+function enterChat() {
+  showScreen("chatScreen");
+  updateActivity();
+
+  if (isSessionExpired() && loadHistory().length > 0) {
+    handleExpiredSessionOnEntry();
+    return;
+  }
+
+  if (loadSessionInfoDismissed()) {
+    startFreshOrResumeSession();
+  } else {
+    openSessionInfoModal();
+  }
+}
+
+function startFreshOrResumeSession() {
+  closeSessionInfoModal();
+  showScreen("chatScreen");
+  updateActivity();
+
+  const history = loadHistory();
+
+  if (history.length > 0) {
+    setSessionStatus("active");
+    renderHistory();
+    scrollChatToBottom();
+  } else {
+    startFreshSession();
+  }
+}
+
+/* ---------- DEBUG ---------- */
+
+function extractExplorationDirectivityValue(debugLines) {
+  if (!Array.isArray(debugLines)) return 0;
+
+  const line = debugLines.find(x => typeof x === "string" && x.startsWith("explorationDirectivity: "));
+  if (!line) return 0;
+
+  const match = line.match(/explorationDirectivity:\s*(\d)\/4/);
+  if (!match) return 0;
+
+  return Number(match[1]) || 0;
+}
+
+function maybeShowCapacityMessagesFromDebug(debugLines) {
+  const level = extractExplorationDirectivityValue(debugLines);
+
+  if (!capacityWarningShown && level >= 3) {
+    capacityWarningShown = true;
+    pushHistory(
+      "assistant",
+      "Cette session approche de sa limite. Tu peux bientot en ouvrir une nouvelle pour poursuivre dans de bonnes conditions.",
+      []
+    );
+    addMessage(
+      "bot",
+      "Cette session approche de sa limite. Tu peux bientot en ouvrir une nouvelle pour poursuivre dans de bonnes conditions.",
+      []
+    );
+  }
+
+  if (!capacityCriticalShown && level >= 4) {
+    capacityCriticalShown = true;
+    lastMessageAllowed = true;
+    pushHistory(
+      "assistant",
+      "Cette session a presque atteint sa capacite maximale. Tu peux encore envoyer un dernier message dans cette session.",
+      []
+    );
+    addMessage(
+      "bot",
+      "Cette session a presque atteint sa capacite maximale. Tu peux encore envoyer un dernier message dans cette session.",
+      []
+    );
+  }
 }
 
 /* ---------- SEND ---------- */
 
 function buildPayload(message) {
   const full = loadHistory().map(({ role, content }) => ({ role, content }));
+
   return {
     message,
     recentHistory: full.slice(-MAX_RECENT_TURNS),
     fullHistory: full,
-    memory: loadMemory()
+    memory: loadMemory(),
+    flags: loadFlags()
   };
+}
+
+async function terminateAfterLastMessage() {
+  setSessionStatus("terminated");
+
+  pushHistory(
+    "assistant",
+    "Cette session est terminee.",
+    []
+  );
+  addMessage(
+    "bot",
+    "Cette session est terminee.",
+    []
+  );
+
+  openTerminatedSessionModal(
+    "Cette session est arrivee a sa limite. Pour continuer ton exploration, une nouvelle session est necessaire."
+  );
 }
 
 async function send() {
   if (isSending) return;
+  if (sessionStatus === "terminated" || sessionStatus === "closing") return;
+  if (sessionStatus === "expired") return;
 
   const input = document.getElementById("input");
   const message = input.value.trim();
   if (!message) return;
 
   isSending = true;
+  updateActivity();
 
-  pushHistory("user", message);
-  addMessage("user", message);
+  pushHistory("user", message, []);
+  addMessage("user", message, []);
 
   input.value = "";
-  updateEditButtonVisibility();
 
   try {
     const res = await fetch("/chat", {
@@ -632,25 +1112,58 @@ async function send() {
     const data = await res.json();
 
     if (data.memory) saveMemory(data.memory);
+    if (data.flags) saveFlags(data.flags);
 
     pushHistory("assistant", data.reply, data.debug || []);
     addMessage("bot", data.reply, data.debug || []);
 
+    updateActivity();
+    maybeShowCapacityMessagesFromDebug(data.debug || []);
+
+    if (lastMessageAllowed) {
+      lastMessageAllowed = false;
+      await terminateAfterLastMessage();
+    }
   } catch {
-    addMessage("bot", "Erreur serveur");
+    addMessage("bot", "Erreur serveur", []);
   }
 
   isSending = false;
-  updateEditButtonVisibility();
+  syncInputAvailability();
 }
 
 /* ---------- EVENTS ---------- */
 
 document.getElementById("sendBtn").onclick = send;
-document.getElementById("editLastBtn").onclick = editLastTurn;
+
 document.getElementById("debugToggleBtn").onclick = () => {
   showDebug = !showDebug;
   syncDebugVisibility();
+};
+
+document.getElementById("newSessionBtn").onclick = () => {
+  openConfirmNewSessionModal();
+};
+
+document.getElementById("cancelNewSessionBtn").onclick = () => {
+  closeConfirmNewSessionModal();
+};
+
+document.getElementById("confirmNewSessionBtn").onclick = async () => {
+  await finalizeAndStartNewSession();
+};
+
+document.getElementById("expiredNewSessionBtn").onclick = async () => {
+  await finalizeAndStartNewSession();
+};
+
+document.getElementById("terminatedNewSessionBtn").onclick = async () => {
+  await finalizeAndStartNewSession();
+};
+
+document.getElementById("sessionInfoContinueBtn").onclick = () => {
+  saveSessionInfoDismissed(document.getElementById("sessionInfoDontShow").checked);
+  startFreshOrResumeSession();
 };
 
 document.getElementById("input").addEventListener("keydown", e => {
@@ -660,20 +1173,47 @@ document.getElementById("input").addEventListener("keydown", e => {
   }
 });
 
+document.getElementById("input").addEventListener("focus", () => {
+  updateActivity();
+});
+
+document.getElementById("chat").addEventListener("scroll", () => {
+  updateActivity();
+});
+
 document.getElementById("aboutModal").addEventListener("click", e => {
   if (e.target.id === "aboutModal") {
     closeAboutModal();
   }
 });
 
+document.getElementById("confirmNewSessionModal").addEventListener("click", e => {
+  if (e.target.id === "confirmNewSessionModal") {
+    closeConfirmNewSessionModal();
+  }
+});
+
+document.getElementById("sessionInfoModal").addEventListener("click", e => {
+  if (e.target.id === "sessionInfoModal") {
+    closeSessionInfoModal();
+  }
+});
+
+/* ---------- INIT ---------- */
+
 window.onload = () => {
   syncDebugVisibility();
-  renderHistory();
-};
 
-//if ("serviceWorker" in navigator) {
-//  navigator.serviceWorker.register("/sw.js");
-//}
+  if (isSessionExpired() && loadHistory().length > 0) {
+    showScreen("chatScreen");
+    renderHistory();
+    setSessionStatus("expired");
+    openExpiredSessionModal();
+    return;
+  }
+
+  showScreen("welcomeScreen");
+};
 </script>
 
 </body>
