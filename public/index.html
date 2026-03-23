@@ -513,7 +513,7 @@ body.show-debug .debug-block {
 </div>
 
 <!-- CHAT -->
-<div id="chatScreen" class="screen">
+<div id="chatScreen" class="screen" tabindex="-1">
   <div id="topBar">
     <button id="debugToggleBtn" type="button">logs masques</button>
     <h2>Facilitat.io</h2>
@@ -771,6 +771,20 @@ function scrollChatToBottom() {
   chat.scrollTop = chat.scrollHeight;
 }
 
+function defocusInput() {
+  const input = document.getElementById("input");
+  const chatScreen = document.getElementById("chatScreen");
+
+  input.blur();
+
+  setTimeout(() => {
+    if (document.activeElement && typeof document.activeElement.blur === "function") {
+      document.activeElement.blur();
+    }
+    chatScreen.focus();
+  }, 50);
+}
+
 function addMessage(role, text, debug) {
   const chat = document.getElementById("chat");
 
@@ -963,7 +977,7 @@ function startFreshSession() {
 
   const input = document.getElementById("input");
   input.value = "";
-  input.blur();
+  defocusInput();
 }
 
 function handleExpiredSessionOnEntry() {
@@ -976,10 +990,6 @@ function handleExpiredSessionOnEntry() {
 function enterChat() {
   showScreen("chatScreen");
   updateActivity();
-  
-  setTimeout(() => {
-    document.getElementById("input").blur();
-  }, 50);
 
   if (isSessionExpired() && loadHistory().length > 0) {
     handleExpiredSessionOnEntry();
@@ -995,6 +1005,7 @@ function enterChat() {
 
 function startFreshOrResumeSession() {
   closeSessionInfoModal();
+  defocusInput();
   showScreen("chatScreen");
   updateActivity();
 
