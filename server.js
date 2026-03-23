@@ -111,7 +111,7 @@ function normalizeSessionFlags(flags) {
 function registerExplorationRelance(flags, isRelance) {
   const safeFlags = normalizeSessionFlags(flags);
   const nextWindow = [...safeFlags.explorationRelanceWindow, isRelance === true].slice(-RELANCE_WINDOW_SIZE);
-  
+
   return {
     ...safeFlags,
     explorationRelanceWindow: nextWindow,
@@ -121,11 +121,11 @@ function registerExplorationRelance(flags, isRelance) {
 
 function getExplorationStructureInstruction(explorationDirectivityLevel) {
   const safeLevel = clampExplorationDirectivityLevel(explorationDirectivityLevel);
-  
+
   switch (safeLevel) {
     case 0:
       return "";
-      
+
     case 1:
       return `
 Contrainte structurelle tres legere :
@@ -134,7 +134,7 @@ Contrainte structurelle tres legere :
 - evite seulement d'enchainer plusieurs mouvements de guidage dans la meme reponse
 - privilegie l'accueil, le reflet ou la reformulation plutot qu'une prise en main de la suite
 `;
-      
+
     case 2:
       return `
 Contrainte structurelle legere :
@@ -145,7 +145,7 @@ Contrainte structurelle legere :
 - tu peux aider a poser un peu ce qui est la sans organiser la suite a la place de l'utilisateur
 - tu peux, si c'est juste dans le flux de la reponse, reconnaitre qu'un besoin de soutien, d'appui ou de presence peut exister, sans te proposer comme solution ni orienter explicitement vers quelqu'un
 `;
-      
+
     case 3:
       return `
 Contrainte structurelle moderee :
@@ -156,7 +156,7 @@ Contrainte structurelle moderee :
 - privilegie un reflet simple, une reformulation sobre, ou un accueil bref
 - tu peux, si c'est juste dans le flux de la reponse, reconnaitre qu'un besoin de soutien, d'appui ou de presence peut exister, sans te proposer comme solution ni orienter explicitement vers quelqu'un
 `;
-      
+
     case 4:
       return `
 Contrainte structurelle forte :
@@ -168,7 +168,7 @@ Contrainte structurelle forte :
 - reste au plus pres de ce qui est deja la, puis arrete-toi
 - tu peux, si c'est juste dans le flux de la reponse, reconnaitre qu'un besoin de soutien, d'appui ou de presence peut exister, sans te proposer comme solution ni orienter explicitement vers quelqu'un
 `;
-      
+
     default:
       return "";
   }
@@ -1332,7 +1332,42 @@ app.post("/test", async (req, res) => {
 });
 
 // --------------------------------------------------
-// 8) ROUTE
+// 8) SESSION CLOSE
+// --------------------------------------------------
+
+app.post("/session/close", async (req, res) => {
+  try {
+    const fullHistory = normalizeFullHistory(req.body?.fullHistory);
+    const previousMemory = normalizeMemory(req.body?.memory);
+    const flags = normalizeSessionFlags(req.body?.flags);
+
+    let nextMemory = previousMemory;
+
+    if (fullHistory.length > 0) {
+      nextMemory = await updateMemory(previousMemory, fullHistory);
+    }
+
+    return res.json({
+      memory: nextMemory,
+      flags: normalizeSessionFlags({
+        ...flags,
+        acuteCrisis: false,
+        explorationRelanceWindow: [],
+        explorationDirectivityLevel: 0
+      })
+    });
+  } catch (err) {
+    console.error("Erreur /session/close:", err);
+    return res.status(500).json({
+      error: "Erreur session close",
+      memory: normalizeMemory(req.body?.memory),
+      flags: normalizeSessionFlags({})
+    });
+  }
+});
+
+// --------------------------------------------------
+// 9) ROUTE
 // --------------------------------------------------
 
 app.post("/chat", async (req, res) => {
