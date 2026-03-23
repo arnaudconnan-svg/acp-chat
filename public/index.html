@@ -774,15 +774,20 @@ function scrollChatToBottom() {
 function defocusInput() {
   const input = document.getElementById("input");
   const chatScreen = document.getElementById("chatScreen");
-
-  input.blur();
-
-  setTimeout(() => {
+  
+  const applyDefocus = () => {
+    input.blur();
+    
     if (document.activeElement && typeof document.activeElement.blur === "function") {
       document.activeElement.blur();
     }
+    
     chatScreen.focus();
-  }, 50);
+  };
+  
+  applyDefocus();
+  setTimeout(applyDefocus, 50);
+  setTimeout(applyDefocus, 150);
 }
 
 function addMessage(role, text, debug) {
@@ -960,6 +965,7 @@ async function finalizeAndStartNewSession() {
     closeExpiredSessionModal();
     closeTerminatedSessionModal();
     startFreshSession();
+    defocusInput();
   });
 }
 
