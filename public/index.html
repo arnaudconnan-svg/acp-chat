@@ -976,6 +976,10 @@ function handleExpiredSessionOnEntry() {
 function enterChat() {
   showScreen("chatScreen");
   updateActivity();
+  
+  setTimeout(() => {
+    document.getElementById("input").blur();
+  }, 50);
 
   if (isSessionExpired() && loadHistory().length > 0) {
     handleExpiredSessionOnEntry();
