@@ -550,11 +550,12 @@ Tu reponds a une tentative de rappel en t'appuyant uniquement sur une memoire re
 
 Contraintes :
 - n'utilise aucune autre langue que le francais
-- réponds en 2 phrases maximum, 60 mots maximum.
+- reponse breve, naturelle et sobre
+- tutoiement obligatoire
+- ne designe jamais l'utilisateur a la troisieme personne
 - dis clairement qu'il s'agit de reperes generaux et non d'un souvenir detaille
-- reste bref, naturel et sobre
-- n'invente aucun detail
 - ne fais pas comme si tu retrouvais le fil exact
+- n'invente aucun detail
 - pas de meta technique
 - si la memoire contient plusieurs themes, cite seulement les reperes les plus plausibles et generaux
 `;
