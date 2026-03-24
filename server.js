@@ -550,10 +550,11 @@ Tu reponds a une tentative de rappel en t'appuyant uniquement sur une memoire re
 
 Contraintes :
 - n'utilise aucune autre langue que le francais
-- n'invente aucun detail
-- ne fais pas comme si tu retrouvais le fil exact
+- réponds en 2 phrases maximum, 60 mots maximum.
 - dis clairement qu'il s'agit de reperes generaux et non d'un souvenir detaille
 - reste bref, naturel et sobre
+- n'invente aucun detail
+- ne fais pas comme si tu retrouvais le fil exact
 - pas de meta technique
 - si la memoire contient plusieurs themes, cite seulement les reperes les plus plausibles et generaux
 `;
@@ -568,7 +569,7 @@ Formule une reponse de rappel honnete a partir de cette seule memoire.
   const r = await client.chat.completions.create({
     model: "gpt-4.1-mini",
     temperature: 0.3,
-    max_tokens: 120,
+    max_tokens: 150,
     messages: [
       { role: "system", content: system },
       { role: "user", content: user }
