@@ -12,6 +12,7 @@ app.use(express.json());
 const MAX_RECENT_TURNS = 8;
 const MAX_INFO_ANALYSIS_TURNS = 6;
 const MAX_SUICIDE_ANALYSIS_TURNS = 10;
+const MAX_RECALL_ANALYSIS_TURNS = 6;
 const RELANCE_WINDOW_SIZE = 4;
 
 // --------------------------------------------------
@@ -53,6 +54,13 @@ function trimSuicideAnalysisHistory(history) {
   return history
     .filter(m => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
     .slice(-MAX_SUICIDE_ANALYSIS_TURNS);
+}
+
+function trimRecallAnalysisHistory(history) {
+  if (!Array.isArray(history)) return [];
+  return history
+    .filter(m => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
+    .slice(-MAX_RECALL_ANALYSIS_TURNS);
 }
 
 function normalizeFlags(flags) {
@@ -376,7 +384,7 @@ function acuteCrisisFollowupResponse() {
 }
 
 // --------------------------------------------------
-// 3) ANALYSE INFO + CONFLIT MODELE + RELANCE
+// 3) ANALYSE INFO + RECALL + CONFLIT MODELE + RELANCE
 // --------------------------------------------------
 
 async function llmInfoAnalysis(message = "", history = []) {
@@ -461,6 +469,118 @@ Exemples:
 
 async function analyzeInfoRequest(message = "", history = []) {
   return await llmInfoAnalysis(message, history);
+}
+
+async function analyzeRecallRouting(message = "", recentHistory = [], memory = "") {
+  const context = trimRecallAnalysisHistory(recentHistory);
+
+  const system = `
+Tu determines si le message utilisateur est une tentative de rappel, et si oui a partir de quelle source on peut y repondre honnetement.
+
+Reponds STRICTEMENT en JSON :
+
+{
+  "isRecallAttempt": true|false,
+  "calledMemory": "shortTermMemory|longTermMemory|none"
+}
+
+Definitions :
+- shortTermMemory : recentHistory suffit a repondre honnetement
+- longTermMemory : recentHistory ne suffit pas, mais la memoire resumee contient des reperes utiles
+- none : c'est une tentative de rappel, mais ni recentHistory ni la memoire resumee ne permettent un rappel honnete
+
+Regles :
+- isRecallAttempt = true seulement si la personne demande clairement ou vaguement de revenir a quelque chose deja evoque, de se souvenir, de reprendre, de rappeler, ou de retrouver le fil
+- une simple question d'information ne doit pas etre classee comme recall
+- "De quoi on parlait deja ?", "On en etait ou ?", "Tu te souviens de ce que je t'ai dit sur...", "Qu'est-ce que tu gardes de ce qu'on s'est dit ?" sont des tentatives de rappel
+- si isRecallAttempt = false, calledMemory doit etre "none"
+- shortTermMemory seulement si les derniers tours permettent vraiment de repondre sans faire semblant d'avoir plus de continuite que recentHistory
+- longTermMemory seulement si la memoire resumee contient des reperes generaux exploitables
+- none si l'utilisateur demande un rappel mais qu'il n'y a pas assez de reperes fiables
+
+Ne sur-interprete pas.
+`;
+  const user = `
+Message utilisateur :
+${message}
+
+RecentHistory :
+${context.map(m => `${m.role === "user" ? "Utilisateur" : "Assistant"} : ${m.content}`).join("\n")}
+
+Memoire resumee :
+${normalizeMemory(memory)}
+`;
+
+  const r = await client.chat.completions.create({
+    model: "gpt-4.1-mini",
+    temperature: 0,
+    max_tokens: 80,
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: user }
+    ]
+  });
+
+  try {
+    const raw = (r.choices?.[0]?.message?.content || "").replace(/```json|```/g, "").trim();
+    const parsed = JSON.parse(raw);
+
+    const isRecallAttempt = parsed.isRecallAttempt === true;
+    const calledMemory = ["shortTermMemory", "longTermMemory", "none"].includes(parsed.calledMemory)
+      ? parsed.calledMemory
+      : "none";
+
+    return {
+      isRecallAttempt,
+      calledMemory: isRecallAttempt ? calledMemory : "none",
+      isLongTermMemoryRecall: isRecallAttempt && calledMemory === "longTermMemory"
+    };
+  } catch {
+    return {
+      isRecallAttempt: false,
+      calledMemory: "none",
+      isLongTermMemoryRecall: false
+    };
+  }
+}
+
+async function buildLongTermMemoryRecallResponse(memory = "") {
+  const system = `
+Tu reponds a une tentative de rappel en t'appuyant uniquement sur une memoire resumee.
+
+Contraintes :
+- n'utilise aucune autre langue que le francais
+- n'invente aucun detail
+- ne fais pas comme si tu retrouvais le fil exact
+- dis clairement qu'il s'agit de reperes generaux et non d'un souvenir detaille
+- reste bref, naturel et sobre
+- pas de meta technique
+- si la memoire contient plusieurs themes, cite seulement les reperes les plus plausibles et generaux
+`;
+
+  const user = `
+Memoire resumee :
+${normalizeMemory(memory)}
+
+Formule une reponse de rappel honnete a partir de cette seule memoire.
+`;
+
+  const r = await client.chat.completions.create({
+    model: "gpt-4.1-mini",
+    temperature: 0.3,
+    max_tokens: 120,
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: user }
+    ]
+  });
+
+  return (r.choices?.[0]?.message?.content || "").trim()
+    || "Je garde quelques reperes generaux d'une session a l'autre, mais pas le fil detaille exact.";
+}
+
+function buildNoMemoryRecallResponse() {
+  return "Je n'ai pas assez de reperes pour retrouver cela clairement. Tu peux me redonner un peu de contexte ?";
 }
 
 async function analyzeModelConflict(reply = "") {
@@ -666,6 +786,9 @@ function buildDebug(
     isQuote = false,
     idiomaticDeathExpression = false,
     crisisResolved = false,
+    isRecallAttempt = false,
+    calledMemory = "none",
+    isLongTermMemoryRecall = false,
     modelConflict = false,
     isRelance = null,
     explorationDirectivityLevel = 0,
@@ -678,6 +801,9 @@ function buildDebug(
     lines.push(`suicide: ${suicideLevel}`);
   }
 
+  if (isRecallAttempt) lines.push("isRecallAttempt: true");
+  if (calledMemory !== "none") lines.push(`calledMemory: ${calledMemory}`);
+  if (isLongTermMemoryRecall) lines.push("isLongTermMemoryRecall: true");
   if (needsClarification) lines.push("needsClarification: true");
   if (isQuote) lines.push("isQuote: true");
   if (idiomaticDeathExpression) lines.push("idiomaticDeathExpression: true");
@@ -986,7 +1112,7 @@ Pas de coaching.
 Pas de prescription.
 
 Important :
-  - N’utilise pas de question sauf nécessité exceptionnelle.
+  - N'utilise pas de question sauf necessite exceptionnelle.
   - Evite les phrases generales ou evaluatives comme "c'est une question profonde", "c'est interessant"
   - N'oriente pas la conversation vers une logique d'evaluation, de classification ou de recherche de symptomes
   - N'essaie pas d'identifier ce que la personne "a"
@@ -1100,6 +1226,62 @@ async function runSingleTestCase(testCase = {}) {
     };
   }
 
+  const recallRouting = await analyzeRecallRouting(message, recentHistory, previousMemory);
+
+  if (recallRouting.isLongTermMemoryRecall) {
+    const reply = await buildLongTermMemoryRecallResponse(previousMemory);
+    const updatedMemory = await updateMemory(previousMemory, [
+      ...recentHistory,
+      { role: "user", content: message },
+      { role: "assistant", content: reply }
+    ]);
+
+    return {
+      input: message,
+      reply,
+      mode: "memoryRecall",
+      memory: updatedMemory,
+      flags: newFlags,
+      debug: buildDebug("memoryRecall", {
+        suicideLevel: suicide.suicideLevel,
+        needsClarification: suicide.needsClarification,
+        isQuote: suicide.isQuote,
+        idiomaticDeathExpression: suicide.idiomaticDeathExpression,
+        crisisResolved: suicide.crisisResolved,
+        isRecallAttempt: recallRouting.isRecallAttempt,
+        calledMemory: recallRouting.calledMemory,
+        isLongTermMemoryRecall: recallRouting.isLongTermMemoryRecall
+      })
+    };
+  }
+
+  if (recallRouting.isRecallAttempt && recallRouting.calledMemory === "none") {
+    const reply = buildNoMemoryRecallResponse();
+    const updatedMemory = await updateMemory(previousMemory, [
+      ...recentHistory,
+      { role: "user", content: message },
+      { role: "assistant", content: reply }
+    ]);
+
+    return {
+      input: message,
+      reply,
+      mode: "memoryRecall",
+      memory: updatedMemory,
+      flags: newFlags,
+      debug: buildDebug("memoryRecall", {
+        suicideLevel: suicide.suicideLevel,
+        needsClarification: suicide.needsClarification,
+        isQuote: suicide.isQuote,
+        idiomaticDeathExpression: suicide.idiomaticDeathExpression,
+        crisisResolved: suicide.crisisResolved,
+        isRecallAttempt: recallRouting.isRecallAttempt,
+        calledMemory: recallRouting.calledMemory,
+        isLongTermMemoryRecall: recallRouting.isLongTermMemoryRecall
+      })
+    };
+  }
+
   const activeHistory = recentHistory;
   const { mode } = await detectMode(message, activeHistory);
 
@@ -1156,6 +1338,9 @@ async function runSingleTestCase(testCase = {}) {
       isQuote: suicide.isQuote,
       idiomaticDeathExpression: suicide.idiomaticDeathExpression,
       crisisResolved: suicide.crisisResolved,
+      isRecallAttempt: recallRouting.isRecallAttempt,
+      calledMemory: recallRouting.calledMemory,
+      isLongTermMemoryRecall: recallRouting.isLongTermMemoryRecall,
       modelConflict,
       isRelance,
       explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
@@ -1336,6 +1521,58 @@ app.post("/chat", async (req, res) => {
       });
     }
 
+    const recallRouting = await analyzeRecallRouting(message, recentHistory, previousMemory);
+
+    if (recallRouting.isLongTermMemoryRecall) {
+      const reply = await buildLongTermMemoryRecallResponse(previousMemory);
+      const newMemory = await updateMemory(previousMemory, [
+        ...recentHistory,
+        { role: "user", content: message },
+        { role: "assistant", content: reply }
+      ]);
+
+      return res.json({
+        reply,
+        memory: newMemory,
+        flags: newFlags,
+        debug: buildDebug("memoryRecall", {
+          suicideLevel: suicide.suicideLevel,
+          needsClarification: suicide.needsClarification,
+          isQuote: suicide.isQuote,
+          idiomaticDeathExpression: suicide.idiomaticDeathExpression,
+          crisisResolved: suicide.crisisResolved,
+          isRecallAttempt: recallRouting.isRecallAttempt,
+          calledMemory: recallRouting.calledMemory,
+          isLongTermMemoryRecall: recallRouting.isLongTermMemoryRecall
+        })
+      });
+    }
+
+    if (recallRouting.isRecallAttempt && recallRouting.calledMemory === "none") {
+      const reply = buildNoMemoryRecallResponse();
+      const newMemory = await updateMemory(previousMemory, [
+        ...recentHistory,
+        { role: "user", content: message },
+        { role: "assistant", content: reply }
+      ]);
+
+      return res.json({
+        reply,
+        memory: newMemory,
+        flags: newFlags,
+        debug: buildDebug("memoryRecall", {
+          suicideLevel: suicide.suicideLevel,
+          needsClarification: suicide.needsClarification,
+          isQuote: suicide.isQuote,
+          idiomaticDeathExpression: suicide.idiomaticDeathExpression,
+          crisisResolved: suicide.crisisResolved,
+          isRecallAttempt: recallRouting.isRecallAttempt,
+          calledMemory: recallRouting.calledMemory,
+          isLongTermMemoryRecall: recallRouting.isLongTermMemoryRecall
+        })
+      });
+    }
+
     const activeHistory = recentHistory;
     const { mode } = await detectMode(message, activeHistory);
 
@@ -1390,6 +1627,9 @@ app.post("/chat", async (req, res) => {
         isQuote: suicide.isQuote,
         idiomaticDeathExpression: suicide.idiomaticDeathExpression,
         crisisResolved: suicide.crisisResolved,
+        isRecallAttempt: recallRouting.isRecallAttempt,
+        calledMemory: recallRouting.calledMemory,
+        isLongTermMemoryRecall: recallRouting.isLongTermMemoryRecall,
         modelConflict,
         isRelance,
         explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
