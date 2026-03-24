@@ -548,7 +548,9 @@ async function buildLongTermMemoryRecallResponse(memory = "") {
   const system = `
 Tu reponds a une tentative de rappel en t'appuyant uniquement sur une memoire resumee.
 
-N'utilise aucune autre langue que le francais
+N'utilise aucune autre langue que le francais.
+
+Tutoie l'utilisateur.
 
 Contraintes :
 - ne parle pas de l'utilisateur à la troisième personne 
