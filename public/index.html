@@ -474,7 +474,6 @@ body.show-debug .debug-block {
 
 <body>
 
-<!-- WELCOME -->
 <div id="welcomeScreen" class="screen active">
   <div id="welcomeInner">
 
@@ -512,7 +511,6 @@ body.show-debug .debug-block {
   </div>
 </div>
 
-<!-- CHAT -->
 <div id="chatScreen" class="screen" tabindex="-1">
   <div id="topBar">
     <button id="debugToggleBtn" type="button">logs masques</button>
@@ -535,7 +533,6 @@ body.show-debug .debug-block {
   </div>
 </div>
 
-<!-- ABOUT MODAL -->
 <div id="aboutModal">
   <div id="aboutBox">
     <div id="aboutContent">
@@ -559,7 +556,6 @@ body.show-debug .debug-block {
   </div>
 </div>
 
-<!-- SESSION INFO MODAL -->
 <div id="sessionInfoModal" class="modal bottom-sheet">
   <div class="modalBox">
     <div class="modalHandle"></div>
@@ -588,7 +584,6 @@ body.show-debug .debug-block {
   </div>
 </div>
 
-<!-- NEW SESSION CONFIRM MODAL -->
 <div id="confirmNewSessionModal" class="modal">
   <div class="modalBox">
     <h3 class="modalTitle">Nouvelle session</h3>
@@ -603,7 +598,6 @@ body.show-debug .debug-block {
   </div>
 </div>
 
-<!-- EXPIRED MODAL -->
 <div id="expiredSessionModal" class="modal">
   <div class="modalBox">
     <h3 class="modalTitle">Session expiree</h3>
@@ -617,7 +611,6 @@ body.show-debug .debug-block {
   </div>
 </div>
 
-<!-- TERMINATED MODAL -->
 <div id="terminatedSessionModal" class="modal">
   <div class="modalBox">
     <h3 class="modalTitle">Session terminee</h3>
@@ -653,9 +646,6 @@ const MAX_RECENT_TURNS = 8;
 let isSending = false;
 let showDebug = false;
 let sessionStatus = "welcome";
-let capacityWarningShown = false;
-let capacityCriticalShown = false;
-let lastMessageAllowed = false;
 
 /* ---------- MEMORY ---------- */
 
@@ -909,11 +899,7 @@ function syncInputAvailability() {
   setInputDisabled(blocked);
 }
 
-function resetLocalSessionState() {
-  capacityWarningShown = false;
-  capacityCriticalShown = false;
-  lastMessageAllowed = false;
-}
+function resetLocalSessionState() {}
 
 function clearSessionStorageExceptMemory() {
   clearHistory();
@@ -923,9 +909,7 @@ function clearSessionStorageExceptMemory() {
 }
 
 function buildSessionPayloadForClose() {
-  const fullHistory = loadHistory().map(({ role, content }) => ({ role, content }));
   return {
-    fullHistory,
     memory: loadMemory(),
     flags: loadFlags()
   };
@@ -946,9 +930,7 @@ async function closeSessionBackend() {
     if (data && data.memory) {
       saveMemory(data.memory);
     }
-  } catch {
-    /* silence volontaire */
-  }
+  } catch {}
 }
 
 async function finalizeAndStartNewSession() {
@@ -1026,53 +1008,6 @@ function startFreshOrResumeSession() {
   }
 }
 
-/* ---------- DEBUG ---------- */
-
-function extractExplorationDirectivityValue(debugLines) {
-  if (!Array.isArray(debugLines)) return 0;
-
-  const line = debugLines.find(x => typeof x === "string" && x.startsWith("explorationDirectivity: "));
-  if (!line) return 0;
-
-  const match = line.match(/explorationDirectivity:\s*(\d)\/4/);
-  if (!match) return 0;
-
-  return Number(match[1]) || 0;
-}
-
-function maybeShowCapacityMessagesFromDebug(debugLines) {
-  const level = extractExplorationDirectivityValue(debugLines);
-
-  if (!capacityWarningShown && level >= 3) {
-    capacityWarningShown = true;
-    pushHistory(
-      "assistant",
-      "Cette session approche de sa limite. Tu peux bientot en ouvrir une nouvelle pour poursuivre dans de bonnes conditions.",
-      []
-    );
-    addMessage(
-      "bot",
-      "Cette session approche de sa limite. Tu peux bientot en ouvrir une nouvelle pour poursuivre dans de bonnes conditions.",
-      []
-    );
-  }
-
-  if (!capacityCriticalShown && level >= 4) {
-    capacityCriticalShown = true;
-    lastMessageAllowed = true;
-    pushHistory(
-      "assistant",
-      "Cette session a presque atteint sa capacite maximale. Tu peux encore envoyer un dernier message dans cette session.",
-      []
-    );
-    addMessage(
-      "bot",
-      "Cette session a presque atteint sa capacite maximale. Tu peux encore envoyer un dernier message dans cette session.",
-      []
-    );
-  }
-}
-
 /* ---------- SEND ---------- */
 
 function buildPayload(message) {
@@ -1081,29 +1016,9 @@ function buildPayload(message) {
   return {
     message,
     recentHistory: full.slice(-MAX_RECENT_TURNS),
-    fullHistory: full,
     memory: loadMemory(),
     flags: loadFlags()
   };
-}
-
-async function terminateAfterLastMessage() {
-  setSessionStatus("terminated");
-
-  pushHistory(
-    "assistant",
-    "Cette session est terminee.",
-    []
-  );
-  addMessage(
-    "bot",
-    "Cette session est terminee.",
-    []
-  );
-
-  openTerminatedSessionModal(
-    "Cette session est arrivee a sa limite. Pour continuer ton exploration, une nouvelle session est necessaire."
-  );
 }
 
 async function send() {
@@ -1139,12 +1054,6 @@ async function send() {
     addMessage("bot", data.reply, data.debug || []);
 
     updateActivity();
-    maybeShowCapacityMessagesFromDebug(data.debug || []);
-
-    if (lastMessageAllowed) {
-      lastMessageAllowed = false;
-      await terminateAfterLastMessage();
-    }
   } catch {
     addMessage("bot", "Erreur serveur", []);
   }
