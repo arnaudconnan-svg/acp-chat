@@ -12,7 +12,6 @@ app.use(express.json());
 const MAX_RECENT_TURNS = 8;
 const MAX_INFO_ANALYSIS_TURNS = 6;
 const MAX_SUICIDE_ANALYSIS_TURNS = 10;
-const MAX_RECALL_ANALYSIS_TURNS = 6;
 const RELANCE_WINDOW_SIZE = 4;
 
 // --------------------------------------------------
@@ -54,20 +53,6 @@ function trimSuicideAnalysisHistory(history) {
   return history
     .filter(m => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
     .slice(-MAX_SUICIDE_ANALYSIS_TURNS);
-}
-
-function trimRecallAnalysisHistory(history) {
-  if (!Array.isArray(history)) return [];
-  return history
-    .filter(m => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
-    .slice(-MAX_RECALL_ANALYSIS_TURNS);
-}
-
-function normalizeFullHistory(history) {
-  if (!Array.isArray(history)) return [];
-  return history.filter(
-    m => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string"
-  );
 }
 
 function normalizeFlags(flags) {
@@ -391,7 +376,7 @@ function acuteCrisisFollowupResponse() {
 }
 
 // --------------------------------------------------
-// 3) ANALYSE INFO + RECALL + CONFLIT MODELE + RELANCE
+// 3) ANALYSE INFO + CONFLIT MODELE + RELANCE
 // --------------------------------------------------
 
 async function llmInfoAnalysis(message = "", history = []) {
@@ -476,75 +461,6 @@ Exemples:
 
 async function analyzeInfoRequest(message = "", history = []) {
   return await llmInfoAnalysis(message, history);
-}
-
-async function llmRecallAnalysis(message = "", history = []) {
-  const context = trimRecallAnalysisHistory(history);
-
-  const system = `
-Tu determines si le message utilisateur contient une demande explicite de rappel de contenu deja dit auparavant dans la session.
-
-Reponds STRICTEMENT en JSON :
-
-{
-  "isRecallRequest": true|false
-}
-
-Regles :
-- true seulement si la personne demande clairement de se souvenir, de reprendre, de rappeler ou de revenir sur quelque chose deja dit auparavant
-- false si la formulation est vague, ambigue ou simplement conversationnelle
-- false si la personne pose seulement une question d'information ou exprime son vecu actuel
-- ne sur-interprete pas
-- base-toi d'abord sur le message actuel, puis sur le contexte recent si necessaire
-
-Exemples a classer true :
-- "Tu te rappelles de ce que je t'ai dit sur ma mere ?"
-- "Reprends ce que je t'ai dit sur mon travail"
-- "Tu te souviens de ce qu'on disait a propos de ma fille ?"
-- "Peux-tu revenir sur ce que je t'avais dit au debut a propos de mon angoisse ?"
-
-Exemples a classer false :
-- "On en etait ou deja ?"
-- "De quoi on parlait deja ?"
-- "Tu peux m'aider a comprendre ce que je ressens ?"
-- "Qu'est-ce que l'angoisse ?"
-- "Je repense a ce que je t'ai dit hier"
-- "Je ne sais plus ou j'en suis"
-
-Important :
-- une demande ambigue de reprise de conversation doit rester false
-- ne mets true que si la demande de rappel est claire
-`;
-
-  const r = await client.chat.completions.create({
-    model: "gpt-4.1-mini",
-    temperature: 0,
-    max_tokens: 60,
-    messages: [
-      { role: "system", content: system },
-      ...context.map(m => ({ role: m.role, content: m.content })),
-      { role: "user", content: message }
-    ]
-  });
-
-  try {
-    const raw = (r.choices?.[0]?.message?.content || "").replace(/```json|```/g, "").trim();
-    const parsed = JSON.parse(raw);
-
-    return {
-      isRecallRequest: parsed.isRecallRequest === true,
-      source: "llm"
-    };
-  } catch {
-    return {
-      isRecallRequest: false,
-      source: "llm_fallback"
-    };
-  }
-}
-
-async function analyzeRecallRequest(message = "", history = []) {
-  return await llmRecallAnalysis(message, history);
 }
 
 async function analyzeModelConflict(reply = "") {
@@ -744,7 +660,6 @@ async function detectMode(message = "", history = []) {
 
 function buildDebug(
   mode,
-  recallUsed,
   {
     suicideLevel = "N0",
     needsClarification = false,
@@ -761,10 +676,6 @@ function buildDebug(
 
   if (suicideLevel !== "N0") {
     lines.push(`suicide: ${suicideLevel}`);
-  }
-
-  if (recallUsed) {
-    lines.push("recall: true");
   }
 
   if (needsClarification) lines.push("needsClarification: true");
@@ -1124,7 +1035,6 @@ async function generateReply({
 async function runSingleTestCase(testCase = {}) {
   const message = String(testCase.message || "");
   const recentHistory = trimHistory(testCase.recentHistory);
-  const fullHistory = normalizeFullHistory(testCase.fullHistory);
   const previousMemory = normalizeMemory(testCase.memory);
   const flags = normalizeSessionFlags(testCase.flags);
 
@@ -1139,7 +1049,7 @@ async function runSingleTestCase(testCase = {}) {
       mode: "override",
       memory: previousMemory,
       flags: newFlags,
-      debug: buildDebug("override", false, {
+      debug: buildDebug("override", {
         suicideLevel: "N2",
         needsClarification: suicide.needsClarification,
         isQuote: suicide.isQuote,
@@ -1160,7 +1070,7 @@ async function runSingleTestCase(testCase = {}) {
         mode: "override",
         memory: previousMemory,
         flags: newFlags,
-        debug: buildDebug("override", false, {
+        debug: buildDebug("override", {
           suicideLevel: suicide.suicideLevel,
           needsClarification: suicide.needsClarification,
           isQuote: suicide.isQuote,
@@ -1180,7 +1090,7 @@ async function runSingleTestCase(testCase = {}) {
       mode: "clarification",
       memory: previousMemory,
       flags: newFlags,
-      debug: buildDebug("clarification", false, {
+      debug: buildDebug("clarification", {
         suicideLevel: "N1",
         needsClarification: suicide.needsClarification,
         isQuote: suicide.isQuote,
@@ -1190,9 +1100,7 @@ async function runSingleTestCase(testCase = {}) {
     };
   }
 
-  const recall = await analyzeRecallRequest(message, recentHistory);
-  const recallUsed = recall.isRecallRequest === true;
-  const activeHistory = recallUsed ? fullHistory : recentHistory;
+  const activeHistory = recentHistory;
   const { mode } = await detectMode(message, activeHistory);
 
   let reply = await generateReply({
@@ -1242,7 +1150,7 @@ async function runSingleTestCase(testCase = {}) {
     mode,
     memory: updatedMemory,
     flags: newFlags,
-    debug: buildDebug(mode, recallUsed, {
+    debug: buildDebug(mode, {
       suicideLevel: suicide.suicideLevel,
       needsClarification: suicide.needsClarification,
       isQuote: suicide.isQuote,
@@ -1260,7 +1168,6 @@ app.post("/test", async (req, res) => {
   try {
     const shared = {
       recentHistory: trimHistory(req.body?.recentHistory),
-      fullHistory: normalizeFullHistory(req.body?.fullHistory),
       memory: normalizeMemory(req.body?.memory),
       flags: normalizeSessionFlags(req.body?.flags)
     };
@@ -1282,7 +1189,6 @@ app.post("/test", async (req, res) => {
     const results = [];
 
     let currentRecentHistory = shared.recentHistory;
-    let currentFullHistory = shared.fullHistory;
     let currentMemory = shared.memory;
     let currentFlags = shared.flags;
 
@@ -1296,9 +1202,6 @@ app.post("/test", async (req, res) => {
         recentHistory: chain
           ? currentRecentHistory
           : (safeTestCase.recentHistory !== undefined ? safeTestCase.recentHistory : shared.recentHistory),
-        fullHistory: chain
-          ? currentFullHistory
-          : (safeTestCase.fullHistory !== undefined ? safeTestCase.fullHistory : shared.fullHistory),
         memory: chain
           ? currentMemory
           : (safeTestCase.memory !== undefined ? safeTestCase.memory : shared.memory),
@@ -1316,13 +1219,11 @@ app.post("/test", async (req, res) => {
         currentMemory = result.memory;
         currentFlags = result.flags;
 
-        currentFullHistory = [
-          ...currentFullHistory,
+        currentRecentHistory = trimHistory([
+          ...currentRecentHistory,
           { role: "user", content: result.input },
           { role: "assistant", content: result.reply }
-        ];
-
-        currentRecentHistory = trimHistory(currentFullHistory);
+        ]);
       }
     }
 
@@ -1346,18 +1247,11 @@ app.post("/test", async (req, res) => {
 
 app.post("/session/close", async (req, res) => {
   try {
-    const fullHistory = normalizeFullHistory(req.body?.fullHistory);
     const previousMemory = normalizeMemory(req.body?.memory);
     const flags = normalizeSessionFlags(req.body?.flags);
 
-    let nextMemory = previousMemory;
-
-    if (fullHistory.length > 0) {
-      nextMemory = await updateMemory(previousMemory, fullHistory);
-    }
-
     return res.json({
-      memory: nextMemory,
+      memory: previousMemory,
       flags: normalizeSessionFlags({
         ...flags,
         acuteCrisis: false,
@@ -1383,11 +1277,9 @@ app.post("/chat", async (req, res) => {
   try {
     const message = String(req.body?.message || "");
     const recentHistory = trimHistory(req.body?.recentHistory);
-    const fullHistory = normalizeFullHistory(req.body?.fullHistory);
     const previousMemory = normalizeMemory(req.body?.memory);
     const flags = normalizeSessionFlags(req.body?.flags);
 
-    // ---- SUICIDE ----
     const suicide = await analyzeSuicideRisk(message, recentHistory, flags);
     let newFlags = normalizeSessionFlags(flags);
 
@@ -1397,7 +1289,7 @@ app.post("/chat", async (req, res) => {
         reply: n2Response(),
         memory: previousMemory,
         flags: newFlags,
-        debug: buildDebug("override", false, {
+        debug: buildDebug("override", {
           suicideLevel: "N2",
           needsClarification: suicide.needsClarification,
           isQuote: suicide.isQuote,
@@ -1416,7 +1308,7 @@ app.post("/chat", async (req, res) => {
           reply: acuteCrisisFollowupResponse(),
           memory: previousMemory,
           flags: newFlags,
-          debug: buildDebug("override", false, {
+          debug: buildDebug("override", {
             suicideLevel: suicide.suicideLevel,
             needsClarification: suicide.needsClarification,
             isQuote: suicide.isQuote,
@@ -1434,7 +1326,7 @@ app.post("/chat", async (req, res) => {
         reply,
         memory: previousMemory,
         flags: newFlags,
-        debug: buildDebug("clarification", false, {
+        debug: buildDebug("clarification", {
           suicideLevel: "N1",
           needsClarification: suicide.needsClarification,
           isQuote: suicide.isQuote,
@@ -1444,10 +1336,7 @@ app.post("/chat", async (req, res) => {
       });
     }
 
-    // ---- NORMAL FLOW ----
-    const recall = await analyzeRecallRequest(message, recentHistory);
-    const recallUsed = recall.isRecallRequest === true;
-    const activeHistory = recallUsed ? fullHistory : recentHistory;
+    const activeHistory = recentHistory;
     const { mode } = await detectMode(message, activeHistory);
 
     let reply = await generateReply({
@@ -1495,7 +1384,7 @@ app.post("/chat", async (req, res) => {
       reply,
       memory: newMemory,
       flags: newFlags,
-      debug: buildDebug(mode, recallUsed, {
+      debug: buildDebug(mode, {
         suicideLevel: suicide.suicideLevel,
         needsClarification: suicide.needsClarification,
         isQuote: suicide.isQuote,
