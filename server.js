@@ -551,6 +551,7 @@ Tu reponds a une tentative de rappel en t'appuyant uniquement sur une memoire re
 N'utilise aucune autre langue que le francais
 
 Contraintes :
+- ne parle pas de l'utilisateur à la troisième personne 
 - reponse breve, naturelle et sobre
 - dis clairement qu'il s'agit de reperes generaux et non d'un souvenir detaille
 - n'invente aucun detail
