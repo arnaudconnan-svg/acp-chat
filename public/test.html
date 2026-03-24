@@ -467,14 +467,6 @@ Questions encore ouvertes :
             </div>
 
             <div class="field">
-              <label for="fullHistoryInput">fullHistory JSON</label>
-              <textarea id="fullHistoryInput" spellcheck="false" placeholder='[
-  { "role": "user", "content": "..." },
-  { "role": "assistant", "content": "..." }
-]'></textarea>
-            </div>
-
-            <div class="field">
               <label for="flagsInput">flags JSON</label>
               <textarea id="flagsInput" spellcheck="false" placeholder='{
   "acuteCrisis": false
@@ -530,7 +522,6 @@ Questions encore ouvertes :
     const batchInputEl = document.getElementById("batchInput");
     const memoryInputEl = document.getElementById("memoryInput");
     const recentHistoryInputEl = document.getElementById("recentHistoryInput");
-    const fullHistoryInputEl = document.getElementById("fullHistoryInput");
     const flagsInputEl = document.getElementById("flagsInput");
 
     const runBtnEl = document.getElementById("runBtn");
@@ -575,7 +566,6 @@ Questions encore ouvertes :
 
       const memory = memoryInputEl.value.trim();
       const recentHistory = safeParseJson(recentHistoryInputEl.value, "recentHistory", undefined);
-      const fullHistory = safeParseJson(fullHistoryInputEl.value, "fullHistory", undefined);
       const flags = safeParseJson(flagsInputEl.value, "flags", undefined);
 
       if (chainToggleEl.checked) {
@@ -584,7 +574,6 @@ Questions encore ouvertes :
 
       if (memory) payload.memory = memory;
       if (recentHistory !== undefined) payload.recentHistory = recentHistory;
-      if (fullHistory !== undefined) payload.fullHistory = fullHistory;
       if (flags !== undefined) payload.flags = flags;
 
       if (inputModeEl.value === "single") {
@@ -807,13 +796,6 @@ Questions encore ouvertes :
         { role: "assistant", content: "Je suis avec toi. Qu est-ce qui se passe le plus fort pour toi la dedans ?" }
       ], null, 2);
 
-      fullHistoryInputEl.value = JSON.stringify([
-        { role: "user", content: "Je me sens a fleur de peau ces derniers jours." },
-        { role: "assistant", content: "Je suis avec toi. Qu est-ce qui se passe le plus fort pour toi la dedans ?" },
-        { role: "user", content: "J ai l impression d etre bloque." },
-        { role: "assistant", content: "Bloque comment, de l interieur ?" }
-      ], null, 2);
-
       memoryInputEl.value = [
         "Themes deja evoques :",
         "- blocage",
@@ -840,7 +822,6 @@ Questions encore ouvertes :
       toggleAdvancedFields();
       memoryInputEl.value = "";
       recentHistoryInputEl.value = "";
-      fullHistoryInputEl.value = "";
       flagsInputEl.value = "";
       rawJsonEl.value = "";
       lastResultText = "";
