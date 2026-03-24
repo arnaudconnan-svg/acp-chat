@@ -485,15 +485,18 @@ Principes :
 - fais une analyse contextuelle, pas un simple reperage de mots
 - sois selectif : contact doit rester relativement rare
 
-Met isContact = true seulement si le message actuel laisse penser qu'un mouvement interne est effectivement en cours de se faire maintenant :
+Met isContact = true seulement si la personne semble etre en train de vivre le processus, et pas seulement d'en parler.
+
+Indications de contact :
 - quelque chose monte, lache, pousse, retient, revient, se debloque, se relache
 - la personne semble au bord d'une decharge emotionnelle ou en train de la vivre
 - il y a une tension explicite entre retenue et laisser-faire
-- il y a un processus corporel, emotionnel ou sensoriel en cours, pas seulement un etat decrit
+- le message donne l'impression que ca se passe maintenant, en direct
 
-Ne mets pas contact = true si le message actuel est surtout :
+Ne mets pas contact = true si le message est surtout :
 - une description generale d'un ressenti ou d'un etat
 - un ressenti simplement nomme sans mouvement en cours
+- une sensation evoquee a distance ou de facon vague
 - une analyse ou une tentative de comprendre
 - un recit distancie
 - une demande d'information
@@ -504,6 +507,7 @@ Exemples a classer false :
 - "Je suis triste"
 - "Je crois que j'ai besoin de comprendre ce qui se passe"
 - "J'essaie d'analyser ce que je ressens"
+- "Il y a un truc bizarre dans mon ventre, je sais pas trop ce que c'est"
 - "Attends... ca se calme un peu. J'essaie de reprendre."
 
 Exemples a classer true :
