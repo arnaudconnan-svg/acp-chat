@@ -1873,7 +1873,12 @@ app.post("/chat", async (req, res) => {
   }
 });
 
-initDb();
+try {
+  initDb();
+  console.log("initDb OK");
+} catch (err) {
+  console.error("initDb ERREUR:", err);
+}
 
 app.listen(port, () => {
   console.log(`Serveur lance sur http://localhost:${port}`);
