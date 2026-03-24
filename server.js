@@ -85,6 +85,13 @@ function normalizeExplorationRelanceWindow(windowValue) {
     .slice(-RELANCE_WINDOW_SIZE);
 }
 
+function normalizeContactState(contactState) {
+  const safe = (contactState && typeof contactState === "object") ? contactState : {};
+  return {
+    wasContact: safe.wasContact === true
+  };
+}
+
 function normalizeSessionFlags(flags) {
   const safe = normalizeFlags(flags);
   const explorationRelanceWindow = normalizeExplorationRelanceWindow(safe.explorationRelanceWindow);
@@ -93,6 +100,7 @@ function normalizeSessionFlags(flags) {
   return {
     ...safe,
     acuteCrisis: safe.acuteCrisis === true,
+    contactState: normalizeContactState(safe.contactState),
     explorationRelanceWindow,
     explorationDirectivityLevel:
       safe.explorationDirectivityLevel !== undefined
@@ -384,7 +392,7 @@ function acuteCrisisFollowupResponse() {
 }
 
 // --------------------------------------------------
-// 3) ANALYSE INFO + RECALL + CONFLIT MODELE + RELANCE
+// 3) ANALYSE INFO + CONTACT + RECALL + CONFLIT MODELE + RELANCE
 // --------------------------------------------------
 
 async function llmInfoAnalysis(message = "", history = []) {
@@ -469,6 +477,73 @@ Exemples:
 
 async function analyzeInfoRequest(message = "", history = []) {
   return await llmInfoAnalysis(message, history);
+}
+
+async function analyzeContactState(message = "", history = [], previousContactState = { wasContact: false }) {
+  const context = trimHistory(history);
+  const safePreviousContactState = normalizeContactState(previousContactState);
+
+  const system = `
+Tu determines si, dans le message actuel et le contexte recent, la personne est au contact d'un processus interne en cours (emotionnel, corporel ou sensoriel).
+
+Reponds STRICTEMENT en JSON :
+{
+  "isContact": true|false
+}
+
+Principes :
+- base-toi d'abord sur le message actuel, puis sur le contexte recent si necessaire
+- fais une analyse contextuelle, pas un simple reperage de mots
+- le message actuel doit rester decisif : le contexte recent peut aider a comprendre, mais ne suffit pas a lui seul a classer en contact
+
+Contact = la personne semble en lien direct avec quelque chose qui se vit ou se transforme en elle (ca monte, ca lache, ca retient, sensation interne, emotion en train de se faire, etc.)
+
+Le contact peut etre emotionnel, corporel ou sensoriel.
+Il peut inclure des perceptions internes encore peu elaborees ou difficiles a mettre en mots.
+
+Ce n'est pas contact si la personne est surtout dans :
+- l'analyse ou l'explication
+- un recit distancie
+- une demande d'information
+
+Si previousContactState.wasContact = true, sois un peu plus sensible a la possibilite que le contact soit encore present, sans le forcer.
+
+Reponds uniquement par le JSON.
+`;
+
+  const user = `
+Message utilisateur actuel :
+${message}
+
+Contexte recent :
+${context.map(m => `${m.role === "user" ? "Utilisateur" : "Assistant"} : ${m.content}`).join("\n")}
+
+previousContactState :
+${JSON.stringify(safePreviousContactState)}
+`;
+
+  const r = await client.chat.completions.create({
+    model: "gpt-4.1-mini",
+    temperature: 0,
+    max_tokens: 80,
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: user }
+    ]
+  });
+
+  try {
+    const raw = (r.choices?.[0]?.message?.content || "").replace(/```json|```/g, "").trim();
+    const parsed = JSON.parse(raw);
+
+    return {
+      isContact: parsed.isContact === true
+    };
+  } catch {
+    return {
+      isContact: false
+    };
+  }
 }
 
 async function analyzeRecallRouting(message = "", recentHistory = [], memory = "") {
@@ -803,6 +878,7 @@ function buildDebug(
     lines.push(`suicide: ${suicideLevel}`);
   }
 
+  if (mode === "contact") lines.push("contact: true");
   if (isRecallAttempt) lines.push("isRecallAttempt: true");
   if (calledMemory !== "none") lines.push(`calledMemory: ${calledMemory}`);
   if (isLongTermMemoryRecall) lines.push("isLongTermMemoryRecall: true");
@@ -1097,12 +1173,21 @@ Resume en deux phrases :
   const modeInstruction =
     mode === "info"
       ? `Reponds directement.`
-      : `Reste dans l'exploration sans guider.`;
+      : mode === "contact"
+        ? `A partir du message actuel et du recentHistory, produis un reflet de comprehension empathique.`
+        : `Reste dans l'exploration sans guider.`;
 
   const explorationStructureInstruction =
     mode === "exploration"
       ? getExplorationStructureInstruction(explorationDirectivityLevel)
       : "";
+
+  const memoryBlock = mode === "contact"
+    ? ""
+    : `
+Memoire :
+${normalizeMemory(memory)}
+`;
 
   return `
 Tu es Facilitat.io.
@@ -1126,8 +1211,7 @@ ${explorationStructureInstruction}
 
 ${modelBlock}
 
-Memoire :
-${normalizeMemory(memory)}
+${memoryBlock}
 `;
 }
 
@@ -1171,6 +1255,7 @@ async function runSingleTestCase(testCase = {}) {
 
   if (suicide.suicideLevel === "N2") {
     newFlags.acuteCrisis = true;
+    newFlags.contactState = { wasContact: false };
     return {
       input: message,
       reply: n2Response(),
@@ -1192,6 +1277,7 @@ async function runSingleTestCase(testCase = {}) {
       newFlags.acuteCrisis = false;
     } else {
       newFlags.acuteCrisis = true;
+      newFlags.contactState = { wasContact: false };
       return {
         input: message,
         reply: acuteCrisisFollowupResponse(),
@@ -1211,6 +1297,7 @@ async function runSingleTestCase(testCase = {}) {
 
   if (suicide.suicideLevel === "N1" || suicide.needsClarification) {
     const reply = await n1ResponseLLM(message);
+    newFlags.contactState = { wasContact: false };
 
     return {
       input: message,
@@ -1285,7 +1372,25 @@ async function runSingleTestCase(testCase = {}) {
   }
 
   const activeHistory = recentHistory;
-  const { mode } = await detectMode(message, activeHistory);
+  const previousContactState = normalizeContactState(newFlags.contactState);
+  const contactAnalysis = await analyzeContactState(message, activeHistory, previousContactState);
+  const justExitedContact = previousContactState.wasContact === true && contactAnalysis.isContact !== true;
+
+  if (justExitedContact) {
+    newFlags.explorationRelanceWindow = [false, true, true, true];
+    newFlags.explorationDirectivityLevel = 3;
+  }
+
+  newFlags.contactState = {
+    wasContact: contactAnalysis.isContact === true
+  };
+
+  let mode = "contact";
+
+  if (!contactAnalysis.isContact) {
+    const detected = await detectMode(message, activeHistory);
+    mode = detected.mode;
+  }
 
   let reply = await generateReply({
     message,
@@ -1442,6 +1547,7 @@ app.post("/session/close", async (req, res) => {
       flags: normalizeSessionFlags({
         ...flags,
         acuteCrisis: false,
+        contactState: { wasContact: false },
         explorationRelanceWindow: [],
         explorationDirectivityLevel: 0
       })
@@ -1461,17 +1567,25 @@ app.post("/session/close", async (req, res) => {
 // --------------------------------------------------
 
 app.post("/chat", async (req, res) => {
+  let modeForCatch = "exploration";
+  let previousMemoryForCatch = normalizeMemory("");
+  let flagsForCatch = normalizeSessionFlags({});
+
   try {
     const message = String(req.body?.message || "");
     const recentHistory = trimHistory(req.body?.recentHistory);
     const previousMemory = normalizeMemory(req.body?.memory);
     const flags = normalizeSessionFlags(req.body?.flags);
 
+    previousMemoryForCatch = previousMemory;
+    flagsForCatch = flags;
+
     const suicide = await analyzeSuicideRisk(message, recentHistory, flags);
     let newFlags = normalizeSessionFlags(flags);
 
     if (suicide.suicideLevel === "N2") {
       newFlags.acuteCrisis = true;
+      newFlags.contactState = { wasContact: false };
       return res.json({
         reply: n2Response(),
         memory: previousMemory,
@@ -1491,6 +1605,7 @@ app.post("/chat", async (req, res) => {
         newFlags.acuteCrisis = false;
       } else {
         newFlags.acuteCrisis = true;
+        newFlags.contactState = { wasContact: false };
         return res.json({
           reply: acuteCrisisFollowupResponse(),
           memory: previousMemory,
@@ -1508,6 +1623,7 @@ app.post("/chat", async (req, res) => {
 
     if (suicide.suicideLevel === "N1" || suicide.needsClarification) {
       const reply = await n1ResponseLLM(message);
+      newFlags.contactState = { wasContact: false };
 
       return res.json({
         reply,
@@ -1576,20 +1692,38 @@ app.post("/chat", async (req, res) => {
     }
 
     const activeHistory = recentHistory;
-    const { mode } = await detectMode(message, activeHistory);
+    const previousContactState = normalizeContactState(newFlags.contactState);
+    const contactAnalysis = await analyzeContactState(message, activeHistory, previousContactState);
+    const justExitedContact = previousContactState.wasContact === true && contactAnalysis.isContact !== true;
+
+    if (justExitedContact) {
+      newFlags.explorationRelanceWindow = [false, true, true, true];
+      newFlags.explorationDirectivityLevel = 3;
+    }
+
+    newFlags.contactState = {
+      wasContact: contactAnalysis.isContact === true
+    };
+
+    const detectedMode = contactAnalysis.isContact
+      ? "contact"
+      : (await detectMode(message, activeHistory)).mode;
+
+    modeForCatch = detectedMode;
+    flagsForCatch = newFlags;
 
     let reply = await generateReply({
       message,
       history: activeHistory,
       memory: previousMemory,
-      mode,
+      mode: detectedMode,
       explorationDirectivityLevel: newFlags.explorationDirectivityLevel
     });
 
     let modelConflict = false;
     let isRelance = null;
 
-    if (mode === "exploration") {
+    if (detectedMode === "exploration") {
       const conflict = await analyzeModelConflict(reply);
       modelConflict = conflict.modelConflict === true;
 
@@ -1611,6 +1745,7 @@ app.post("/chat", async (req, res) => {
 
       isRelance = relanceAnalysis.isRelance === true;
       newFlags = registerExplorationRelance(newFlags, isRelance);
+      flagsForCatch = newFlags;
     }
 
     const newMemory = await updateMemory(previousMemory, [
@@ -1623,7 +1758,7 @@ app.post("/chat", async (req, res) => {
       reply,
       memory: newMemory,
       flags: newFlags,
-      debug: buildDebug(mode, {
+      debug: buildDebug(detectedMode, {
         suicideLevel: suicide.suicideLevel,
         needsClarification: suicide.needsClarification,
         isQuote: suicide.isQuote,
@@ -1642,9 +1777,11 @@ app.post("/chat", async (req, res) => {
   } catch (err) {
     console.error("Erreur /chat:", err);
     return res.json({
-      reply: "Desole, je ne suis pas sur d'avoir bien saisi ce que tu voulais dire. Tu veux bien reformuler un peu differemment pour m'aider a mieux comprendre ?",
-      memory: normalizeMemory(""),
-      flags: normalizeSessionFlags({}),
+      reply: modeForCatch === "contact"
+        ? "Je suis la."
+        : "Desole, je ne suis pas sur d'avoir bien saisi ce que tu voulais dire. Tu veux bien reformuler un peu differemment pour m'aider a mieux comprendre ?",
+      memory: previousMemoryForCatch,
+      flags: flagsForCatch,
       debug: ["error"]
     });
   }
