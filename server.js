@@ -515,6 +515,7 @@ Exemples a classer false :
 - "Je suis triste"
 - "Je crois que j'ai besoin de comprendre ce qui se passe"
 - "J'essaie d'analyser ce que je ressens"
+- "Attends... ca se calme un peu. J'essaie de reprendre."
 
 Exemples a classer true :
 - "Je sens que ca monte"
@@ -566,7 +567,7 @@ async function analyzeRecallRouting(message = "", recentHistory = [], memory = "
   const context = trimRecallAnalysisHistory(recentHistory);
 
   const system = `
-Tu determines si le message utilisateur est une tentative de rappel, et si oui a partir de quelle source on peut y repondre honnetement.
+Tu determines si le message utilisateur est une tentative de rappel conversationnel, c'est-a-dire une demande de retrouver, reprendre ou rappeler un contenu deja evoque dans l'echange.
 
 Reponds STRICTEMENT en JSON :
 
@@ -581,15 +582,38 @@ Definitions :
 - none : c'est une tentative de rappel, mais ni recentHistory ni la memoire resumee ne permettent un rappel honnete
 
 Regles :
-- isRecallAttempt = true seulement si la personne demande clairement ou vaguement de revenir a quelque chose deja evoque, de se souvenir, de reprendre, de rappeler, ou de retrouver le fil
+- isRecallAttempt = true seulement si la personne cherche a retrouver un contenu deja evoque dans la conversation
+- il doit s'agir d'un rappel conversationnel, pas d'une reprise de soi, d'un retour au calme, d'une reprise de controle ou d'une remise en mouvement
 - une simple question d'information ne doit pas etre classee comme recall
-- "De quoi on parlait deja ?", "On en etait ou ?", "Tu te souviens de ce que je t'ai dit sur...", "Qu'est-ce que tu gardes de ce qu'on s'est dit ?" sont des tentatives de rappel
 - si isRecallAttempt = false, calledMemory doit etre "none"
 - shortTermMemory seulement si les derniers tours permettent vraiment de repondre sans faire semblant d'avoir plus de continuite que recentHistory
 - longTermMemory seulement si la memoire resumee contient des reperes generaux exploitables
 - none si l'utilisateur demande un rappel mais qu'il n'y a pas assez de reperes fiables
 
-Ne sur-interprete pas.
+Exemples a classer true :
+- "De quoi on parlait deja ?"
+- "On en etait ou ?"
+- "Tu te souviens de ce que je t'ai dit sur..."
+- "Qu'est-ce que tu gardes de ce qu'on s'est dit ?"
+- "Tu peux me rappeler ce qu'on disait tout a l'heure ?"
+- "On peut reprendre ce qu'on disait sur ma mere ?"
+
+Exemples a classer false :
+- "J'essaie de reprendre"
+- "Attends, je reprends"
+- "Je reprends un peu mes esprits"
+- "Je reviens a moi"
+- "Je retrouve un peu mon calme"
+- "Je me remets a penser"
+- "J'ai besoin de comprendre ce qui se passe"
+- "Je veux reprendre le controle"
+
+Important :
+- les verbes comme reprendre, revenir, retrouver, se souvenir ou rappeler ne suffisent pas a eux seuls
+- ils ne comptent comme recall que s'ils portent clairement sur le fil de la conversation ou sur un contenu deja evoque
+- ne sur-interprete pas
+
+Reponds uniquement par le JSON.
 `;
   const user = `
 Message utilisateur :
