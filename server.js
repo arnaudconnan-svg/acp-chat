@@ -484,7 +484,7 @@ async function analyzeContactState(message = "", history = [], previousContactSt
   const safePreviousContactState = normalizeContactState(previousContactState);
 
   const system = `
-Tu determines si, dans le message actuel et le contexte recent, la personne est au contact d'un processus interne en cours (emotionnel, corporel ou sensoriel).
+Tu determines si, dans le message actuel et le contexte recent, la personne est au contact direct d'un processus interne en train de se faire maintenant.
 
 Reponds STRICTEMENT en JSON :
 {
@@ -492,19 +492,35 @@ Reponds STRICTEMENT en JSON :
 }
 
 Principes :
-- base-toi d'abord sur le message actuel, puis sur le contexte recent si necessaire
+- base-toi d'abord sur le message actuel ; le contexte recent peut aider a comprendre mais ne suffit pas a lui seul
 - fais une analyse contextuelle, pas un simple reperage de mots
-- le message actuel doit rester decisif : le contexte recent peut aider a comprendre, mais ne suffit pas a lui seul a classer en contact
+- sois selectif : contact doit rester relativement rare
 
-Contact = la personne semble en lien direct avec quelque chose qui se vit ou se transforme en elle (ca monte, ca lache, ca retient, sensation interne, emotion en train de se faire, etc.)
+Met isContact = true seulement si le message actuel laisse penser qu'un mouvement interne est effectivement en cours de se faire maintenant :
+- quelque chose monte, lache, pousse, retient, revient, se debloque, se relache
+- la personne semble au bord d'une decharge emotionnelle ou en train de la vivre
+- il y a une tension explicite entre retenue et laisser-faire
+- il y a un processus corporel, emotionnel ou sensoriel en cours, pas seulement un etat decrit
 
-Le contact peut etre emotionnel, corporel ou sensoriel.
-Il peut inclure des perceptions internes encore peu elaborees ou difficiles a mettre en mots.
-
-Ce n'est pas contact si la personne est surtout dans :
-- l'analyse ou l'explication
+Ne mets pas contact = true si le message actuel est surtout :
+- une description generale d'un ressenti ou d'un etat
+- un ressenti simplement nomme sans mouvement en cours
+- une analyse ou une tentative de comprendre
 - un recit distancie
 - une demande d'information
+- une reprise de controle ou de mise en sens, meme apres un moment de contact
+
+Exemples a classer false :
+- "Je me sens un peu tendu aujourd'hui"
+- "Je suis triste"
+- "Je crois que j'ai besoin de comprendre ce qui se passe"
+- "J'essaie d'analyser ce que je ressens"
+
+Exemples a classer true :
+- "Je sens que ca monte"
+- "Ca lache un peu"
+- "Il y a quelque chose qui pousse dans la poitrine"
+- "J'ai envie de pleurer et en meme temps quelque chose retient"
 
 Si previousContactState.wasContact = true, sois un peu plus sensible a la possibilite que le contact soit encore present, sans le forcer.
 
