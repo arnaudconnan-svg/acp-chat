@@ -408,44 +408,33 @@ Reponds STRICTEMENT en JSON :
 }
 
 Regles :
-- true si la personne demande surtout une information, une explication, une definition, une difference, un fonctionnement
-- false si la personne exprime surtout son vecu, une difficulte, une emotion, une demande de presence ou d'exploration
+- true seulement si la personne demande principalement une information generale, theorique ou impersonnelle
+- false si la personne parle surtout de ce qu'elle vit, ressent, traverse, comprend mal, ou cherche a mettre du sens sur sa propre experience
 - ne sur-interprete pas
 - base-toi d'abord sur le message actuel, puis sur le contexte recent si necessaire
+- sois restrictif : en cas de doute, reponds false
 
-Important:
+Important :
+- une demande de comprehension de soi n'est pas une demande d'information
+- une question portant sur sa propre experience doit etre classee en exploration
+- la forme interrogative ne suffit pas a classer en info
+- des formulations comme "j'ai besoin de comprendre", "je veux comprendre ce qui se passe", "qu'est-ce qui m'arrive", "comment comprendre ce que je vis" doivent etre classees false si elles portent sur l'experience de l'utilisateur
 
-- Une question portant sur soi(meme si elle contient des termes comme "trouble", "depression", "anxiete") doit etre classee comme exploration.
+Exemples a classer false :
+- "Je crois que j'ai besoin de comprendre ce qui se passe"
+- "Comment comprendre ce que je ressens ?"
+- "Qu'est-ce qui m'arrive en ce moment ?"
+- "Je me demande si ce que je vis est de l'angoisse"
+- "C'est normal de ressentir ca ?"
+- "Tu crois que je suis depressif ?"
 
-- Si le message parle de l'experience personnelle de l'utilisateur (ressenti, vecu, situation, doute sur soi), alors isInfoRequest = false, meme si la phrase est formulee comme une question
+Exemples a classer true :
+- "Qu'est-ce que l'angoisse ?"
+- "Quelle est la difference entre angoisse et anxiete ?"
+- "Comment fonctionne une crise d'angoisse ?"
+- "Qu'est-ce qu'une croyance limitante ?"
 
-- La forme interrogative ne suffit pas a classer en demande d'information
-
-- Une demande d'information est uniquement une question generale, theorique ou impersonnelle
-
-Exemples a classer en exploration :
-- Comment savoir si ce que je ressens est de l'anxiete ou de l'angoisse ?
-- C'est normal de ressentir ca ?
-- Est-ce que ce que je vis est de l'anxiete ?
-
-Exemples a classer en info :
-- Qu'est-ce que l'anxiete ?
-- Quelle est la difference entre anxiete et angoisse ?
-
-Exemples:
-  -"Je me demande si j'ai un trouble anxieux" -
-  "Tu crois que je suis depressif ?" -
-  "Est-ce que c'est normal ce que je ressens ?"
-
--> isInfoRequest = false
-
-Une demande d'information est une question generale, theorique ou impersonnelle.
-
-Exemples:
-  -"Qu'est-ce qu'un trouble anxieux ?" -
-  "Comment fonctionne l'anxiete ?"
-
--> isInfoRequest = true
+Reponds uniquement par le JSON.
 `;
 
   const r = await client.chat.completions.create({
@@ -1214,8 +1203,18 @@ Resume en deux phrases :
     mode === "info"
       ? `Reponds directement.`
       : mode === "contact"
-        ? `A partir du message actuel et du recentHistory, produis un reflet de comprehension empathique.`
-        : `Reste dans l'exploration sans guider.`;
+        ? `
+Reponds comme si tu etais juste a cote de la personne pendant que quelque chose se vit en elle.
+
+Parle simplement, avec des mots directs et humains.
+Appuie-toi sur ce qui est en train de se passer maintenant dans son corps ou dans son emotion.
+
+Tu peux doucement attirer l'attention vers ce qui est en train de se sentir, sans poser de questions ni expliquer.
+
+N'anticipe pas, n'interprete pas, ne cherches pas a comprendre a sa place.
+
+Reste au plus pres de ce qui est la, tel que ca se presente.
+        ` :``;
 
   const explorationStructureInstruction =
     mode === "exploration"
