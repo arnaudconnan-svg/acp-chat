@@ -566,7 +566,7 @@ Formule une reponse de rappel honnete a partir de cette seule memoire.
 
   const r = await client.chat.completions.create({
     model: "gpt-4.1-mini",
-    temperature: 0.3,
+    temperature: 0.9,
     max_tokens: 150,
     messages: [
       { role: "system", content: system },
