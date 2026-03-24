@@ -6,6 +6,7 @@
 <link rel="manifest" href="/manifest.json">
 <link rel="preload" as="image" href="/images/logo.png">
 <meta name="theme-color" content="#ffffff">
+<meta name="viewport" content="#ffffff">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 
 <style>
@@ -486,7 +487,7 @@ body.show-debug .debug-block {
     </p>
 
     <p class="welcomeText">
-      Facilitat.io propose un espace de réflexion inspiré de l'Approche Centree sur la Personne.
+      Facilitat.io propose un espace de reflexion inspire de l'Approche Centree sur la Personne.
       Il ne donne pas de conseils, ne prescrit pas de solutions et ne cherche pas a vous orienter de l'exterieur.
     </p>
 
@@ -764,17 +765,17 @@ function scrollChatToBottom() {
 function defocusInput() {
   const input = document.getElementById("input");
   const chatScreen = document.getElementById("chatScreen");
-  
+
   const applyDefocus = () => {
     input.blur();
-    
+
     if (document.activeElement && typeof document.activeElement.blur === "function") {
       document.activeElement.blur();
     }
-    
+
     chatScreen.focus();
   };
-  
+
   applyDefocus();
   setTimeout(applyDefocus, 50);
   setTimeout(applyDefocus, 150);
@@ -905,7 +906,6 @@ function clearSessionStorageExceptMemory() {
   clearHistory();
   localStorage.removeItem(FLAGS_KEY);
   localStorage.removeItem(ACTIVITY_KEY);
-  localStorage.removeItem(SESSION_INFO_DISMISSED_KEY);
 }
 
 function buildSessionPayloadForClose() {
