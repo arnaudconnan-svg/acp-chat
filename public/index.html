@@ -637,8 +637,7 @@ function closeAboutModal() {
 
 <script>
 console.log("INDEX VERSION V0.9.2 TEST");
-alert("INDEX VERSION V0.9.2 TEST");
-const SESSION_KEY = "facilitatio_v0_history";
+alert("INDEX VERSION V0.9.2 TEST");const SESSION_KEY = "facilitatio_v0_history";
 const MEMORY_KEY = "facilitatio_v0_memory";
 const FLAGS_KEY = "facilitatio_v0_flags";
 const ACTIVITY_KEY = "facilitatio_last_activity";
@@ -1041,7 +1040,7 @@ async function send() {
   input.value = "";
 
   try {
-    const res = await fetch("https://acp-chat-beta.onrender.com/chat", {
+    const res = await fetch("/chat", {
       method: "POST",
       headers: {"Content-Type":"application/json"},
       body: JSON.stringify(buildPayload(message))
