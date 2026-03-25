@@ -836,18 +836,20 @@ function showScreen(id) {
   document.getElementById("welcomeScreen").classList.remove("active");
   document.getElementById("chatScreen").classList.remove("active");
   document.getElementById(id).classList.add("active");
+  syncDebugVisibility();
 }
 
-function syncDebugVisibility() {
+ffunction syncDebugVisibility() {
   const isAdminUI = localStorage.getItem(ADMIN_UI_KEY) === "1";
   const debugBtn = document.getElementById("debugToggleBtn");
-  
-  debugBtn.style.display = isAdminUI ? "block" : "none";
+  const chatScreen = document.getElementById("chatScreen");
+  const isChatActive = chatScreen.classList.contains("active");
   
   if (!isAdminUI) {
     showDebug = false;
   }
   
+  debugBtn.style.display = isAdminUI && isChatActive ? "block" : "none";
   document.body.classList.toggle("show-debug", isAdminUI && showDebug);
   debugBtn.textContent = showDebug ? "logs visibles" : "logs masques";
 }
