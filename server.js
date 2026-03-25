@@ -1,7 +1,4 @@
 require("dotenv").config();
-console.log("OPENAI_API_KEY?", !!process.env.OPENAI_API_KEY);
-console.log("ADMIN_PASSWORD?", !!process.env.ADMIN_PASSWORD);
-console.log("SESSION_SECRET?", !!process.env.SESSION_SECRET);
 
 const crypto = require("crypto");
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
@@ -1737,7 +1734,10 @@ app.post("/chat", async (req, res) => {
   try {
     const message = String(req.body?.message || "");
     const messages = readMessages();
-  messages.push({
+
+console.log("WRITE MESSAGE:", message);
+
+messages.push({
   id: "m_" + Date.now(),
   conversationId: "c_default",
   userId: "u_default",
@@ -1745,7 +1745,9 @@ app.post("/chat", async (req, res) => {
   content: message,
   timestamp: new Date().toISOString()
 });
+
 writeMessages(messages);
+
     const recentHistory = trimHistory(req.body?.recentHistory);
     const previousMemory = normalizeMemory(req.body?.memory);
     const flags = normalizeSessionFlags(req.body?.flags);
