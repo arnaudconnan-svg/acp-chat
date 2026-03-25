@@ -527,7 +527,7 @@ body.show-debug .debug-block {
   <div id="welcomeInner">
 
     <div id="welcomeLogoWrap">
-      <img id="welcomeLogo" src="/images/logo.png" alt="Facilitat.io">
+      <img id="welcomeLogo" src="/images/logo.png" alt="Facilitat.io" width="220" height="220">
     </div>
 
     <p class="welcomeLead">
@@ -852,8 +852,7 @@ function saveSessionInfoDismissed(value) {
 /* ---------- UI ---------- */
 
 function showScreen(id) {
-  document.getElementById("welcomeScreen").classList.remove("active");
-  document.getElementById("chatScreen").classList.remove("active");
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
   document.getElementById(id).classList.add("active");
   syncDebugVisibility();
 }
@@ -1096,7 +1095,6 @@ function startFreshSession() {
 
 function handleExpiredSessionOnEntry() {
   setSessionStatus("expired");
-  showScreen("chatScreen");
   renderHistory();
   openExpiredSessionModal();
 }
@@ -1198,7 +1196,7 @@ async function send() {
 document.getElementById("sendBtn").onclick = send;
 
 document.getElementById("menuBtn").onclick = () => {
-  window.location.href = window.location.pathname;
+  showScreen("welcomeScreen");
 };
 
 document.getElementById("debugToggleBtn").onclick = () => {
@@ -1279,13 +1277,18 @@ window.onload = () => {
   
   if (params.get("admin") === "1") {
     localStorage.setItem(ADMIN_UI_KEY, "1");
-  } else {
+  }
+  if (params.get("admin") === "0") {
     localStorage.removeItem(ADMIN_UI_KEY);
   }
   
   syncDebugVisibility();
   
+  let welcomeShown = false;
+
   function showWelcomeWhenReady() {
+    if (welcomeShown) return;
+    welcomeShown = true;
     showScreen("welcomeScreen");
     welcome.classList.add("ready");
   }
@@ -1295,7 +1298,7 @@ window.onload = () => {
     return;
   }
   
-  if (logo.complete && logo.naturalWidth > 0) {
+  if (logo.complete) {
     showWelcomeWhenReady();
     return;
   }
