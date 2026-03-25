@@ -1,4 +1,7 @@
 require("dotenv").config();
+console.log("OPENAI_API_KEY?", !!process.env.OPENAI_API_KEY);
+console.log("ADMIN_PASSWORD?", !!process.env.ADMIN_PASSWORD);
+console.log("SESSION_SECRET?", !!process.env.SESSION_SECRET);
 
 const crypto = require("crypto");
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
