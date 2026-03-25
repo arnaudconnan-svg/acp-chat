@@ -1176,6 +1176,10 @@ async function send() {
 
 document.getElementById("sendBtn").onclick = send;
 
+document.getElementById("menuBtn").onclick = () => {
+  window.location.href = window.location.pathname + "?admin=1";
+};
+
 document.getElementById("debugToggleBtn").onclick = () => {
   showDebug = !showDebug;
   syncDebugVisibility();
