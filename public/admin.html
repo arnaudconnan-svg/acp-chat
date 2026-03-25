@@ -1,11 +1,73 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <title>Admin</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta charset="UTF-8">
+<title>Admin - Conversations</title>
+
+<style>
+body {
+  font-family: Arial, sans-serif;
+  padding: 16px;
+}
+
+h1 {
+  font-size: 20px;
+}
+
+#list {
+  margin-top: 16px;
+}
+
+.item {
+  padding: 10px;
+  border-bottom: 1px solid #ddd;
+  cursor: pointer;
+}
+
+.item:hover {
+  background: #f5f5f5;
+}
+</style>
 </head>
+
 <body>
-  <h1>Admin OK</h1>
+
+<h1>Conversations</h1>
+
+<div id="list">Chargement...</div>
+
+<script>
+async function loadConversations() {
+  const res = await fetch("/api/admin/conversations");
+  const data = await res.json();
+
+  const list = document.getElementById("list");
+  list.innerHTML = "";
+
+  if (!data.length) {
+    list.textContent = "Aucune conversation";
+    return;
+  }
+
+  data.forEach(conv => {
+    const div = document.createElement("div");
+    div.className = "item";
+
+    div.textContent =
+      conv.id +
+      " | " +
+      new Date(conv.createdAt).toLocaleString();
+
+    div.onclick = () => {
+      window.location.href = "/admin.html?c=" + conv.id;
+    };
+
+    list.appendChild(div);
+  });
+}
+
+loadConversations();
+</script>
+
 </body>
 </html>
