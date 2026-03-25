@@ -14,6 +14,10 @@ h1 {
   font-size: 20px;
 }
 
+<button onclick="goBack()" style="margin-bottom:12px;">
+  ← Retour
+</button>
+
 #list {
   margin-top: 16px;
 }
@@ -87,8 +91,14 @@ h1 {
       const div = document.createElement("div");
       div.className = "item";
       
-      div.textContent =
-        "[" + msg.role + "] " + msg.content;
+      div.innerHTML = `
+  <div style="font-size:12px; color:#666;">
+    ${new Date(msg.t || msg.createdAt || Date.now()).toLocaleString()} — ${msg.role}
+  </div>
+  <div>
+    ${msg.content}
+  </div>
+`;
       
       list.appendChild(div);
     });
@@ -104,7 +114,21 @@ h1 {
     }
   }
   
-  init();
+  function goBack() {
+    window.location.href = "/admin.html";
+  }
+  
+  async function init() {
+    const conversationId = getConversationIdFromUrl();
+    
+    if (conversationId) {
+      document.getElementById("backBtn").style.display = "block";
+      await loadMessages(conversationId);
+    } else {
+      document.getElementById("backBtn").style.display = "none";
+      await loadConversations();
+  }
+}
 </script>
 </body>
 </html>
