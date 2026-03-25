@@ -1887,7 +1887,13 @@ await messagesRef.push({
         { role: "user", content: message },
         { role: "assistant", content: reply }
       ]);
-
+    await messagesRef.push({
+      conversationId,
+      userId,
+      role: "assistant",
+      content: reply,
+      timestamp: new Date().toISOString()
+    });
       return res.json({
         conversationId,
         reply,
