@@ -1429,6 +1429,14 @@ async function runSingleTestCase(testCase = {}) {
     const reply = await n1ResponseLLM(message);
     newFlags.contactState = { wasContact: false };
 
+    await messagesRef.push({
+      conversationId,
+      userId,
+      role: "assistant",
+      content: reply,
+      timestamp: new Date().toISOString()
+    });
+
     return {
       input: message,
       reply,
