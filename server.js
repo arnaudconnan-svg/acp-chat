@@ -1,11 +1,25 @@
 require("dotenv").config();
+
 const crypto = require("crypto");
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+const SESSION_SECRET = process.env.SESSION_SECRET;
+
+const adminSessions = new Map(); // sessionId -> { isAdmin: true, createdAt }
+const ADMIN_SESSION_DURATION = 24 * 60 * 60 * 1000; // 24h
 const express = require("express");
 const OpenAI = require("openai");
 
 const app = express();
 const port = process.env.PORT || 3000;
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+app.get("/admin.html", requireAdminAuth, (req, res) => {
+  res.sendFile(__dirname + "/public/admin.html");
+});
+
+app.get("/test.html", requireAdminAuth, (req, res) => {
+  res.sendFile(__dirname + "/public/test.html");
+});
 
 app.use(express.static("public"));
 app.use(express.json());
@@ -19,6 +33,52 @@ const RELANCE_WINDOW_SIZE = 4;
 // --------------------------------------------------
 // 1) OUTILS MINIMAUX
 // --------------------------------------------------
+
+function generateSessionId() {
+  return crypto.randomBytes(24).toString("hex");
+}
+
+function parseCookies(req) {
+  const list = {};
+  const rc = req.headers.cookie;
+  
+  if (!rc) return list;
+  
+  rc.split(";").forEach(cookie => {
+    const parts = cookie.split("=");
+    list[parts.shift().trim()] = decodeURIComponent(parts.join("="));
+  });
+  
+  return list;
+}
+
+function getAdminSession(req) {
+  const cookies = parseCookies(req);
+  const sessionId = cookies.adminSessionId;
+  
+  if (!sessionId) return null;
+  
+  const session = adminSessions.get(sessionId);
+  if (!session) return null;
+  
+  // expiration
+  if (Date.now() - session.createdAt > ADMIN_SESSION_DURATION) {
+    adminSessions.delete(sessionId);
+    return null;
+  }
+  
+  return session;
+}
+
+function requireAdminAuth(req, res, next) {
+  const session = getAdminSession(req);
+  
+  if (!session) {
+    return res.redirect("/admin-login.html");
+  }
+  
+  next();
+}
 
 function normalizeMemory(memory) {
   const text = String(memory || "").trim();
@@ -1609,6 +1669,44 @@ app.post("/session/close", async (req, res) => {
 // --------------------------------------------------
 // 9) ROUTE
 // --------------------------------------------------
+
+app.post("/api/admin/login", (req, res) => {
+  const { password } = req.body;
+  
+  if (!password || password !== ADMIN_PASSWORD) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
+  const sessionId = generateSessionId();
+  
+  adminSessions.set(sessionId, {
+    isAdmin: true,
+    createdAt: Date.now()
+  });
+  
+  res.setHeader(
+    "Set-Cookie",
+    `adminSessionId=${sessionId}; HttpOnly; Path=/; SameSite=Lax`
+  );
+  
+  res.json({ success: true });
+});
+
+app.post("/api/admin/logout", (req, res) => {
+  const cookies = parseCookies(req);
+  const sessionId = cookies.adminSessionId;
+  
+  if (sessionId) {
+    adminSessions.delete(sessionId);
+  }
+  
+  res.setHeader(
+    "Set-Cookie",
+    "adminSessionId=; HttpOnly; Path=/; Max-Age=0"
+  );
+  
+  res.json({ success: true });
+});
 
 app.post("/chat", async (req, res) => {
   let modeForCatch = "exploration";
