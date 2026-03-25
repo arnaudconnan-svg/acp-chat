@@ -1270,7 +1270,7 @@ document.getElementById("sessionInfoModal").addEventListener("click", e => {
 
 /* ---------- INIT ---------- */
 
-window.onload = () => {
+window.addEventListener("load", () => {
   const params = new URLSearchParams(window.location.search);
   const logo = document.getElementById("welcomeLogo");
   const welcome = document.getElementById("welcomeScreen");
@@ -1305,7 +1305,7 @@ window.onload = () => {
   
   logo.addEventListener("load", showWelcomeWhenReady, { once: true });
   logo.addEventListener("error", showWelcomeWhenReady, { once: true });
-};
+});
 </script>
 </body>
 </html>
