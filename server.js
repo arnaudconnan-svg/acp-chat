@@ -1741,12 +1741,33 @@ app.get("/api/admin/conversations", requireAdminAuth, async (req, res) => {
     const data = snapshot.val() || {};
     
     // transformer en tableau + tri par updatedAt desc
-    const list = Object.entries(data).map(([id, value]) => ({
-      id,
-      ...value
-    })).sort((a, b) => {
-      return new Date(b.updatedAt) - new Date(a.updatedAt);
+    const list = await Promise.all(
+  Object.entries(data).map(async ([id, value]) => {
+    const messagesSnapshot = await db
+      .ref("messages")
+      .orderByChild("conversationId")
+      .equalTo(id)
+      .once("value");
+    
+    const messagesData = messagesSnapshot.val() || {};
+    const messages = Object.values(messagesData).sort((a, b) => {
+      return new Date(a.timestamp) - new Date(b.timestamp);
     });
+    
+    const firstUserMessage =
+      messages.find(m => m.role === "user" && typeof m.content === "string")?.content || "";
+    
+      return {
+        id,
+        ...value,
+        preview: firstUserMessage.slice(0, 120)
+      };
+    })
+  );
+
+  list.sort((a, b) => {
+    return new Date(b.updatedAt) - new Date(a.updatedAt);
+  });
     
     res.json(list);
   } catch (err) {
@@ -1785,13 +1806,13 @@ app.post("/chat", async (req, res) => {
     console.log("WRITE MESSAGE FIREBASE:", message);
     const conversationId = req.body?.conversationId || ("c_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6));
     const userId = req.body?.userId || "u_anon";
-await messagesRef.push({
-  conversationId,
-  userId,
-  role: "user",
-  content: message,
-  timestamp: new Date().toISOString()
-});
+  await messagesRef.push({
+    conversationId,
+    userId,
+    role: "user",
+    content: message,
+    timestamp: new Date().toISOString()
+  });
 
     const conversationsRef = db.ref("conversations");
     const convRef = conversationsRef.child(conversationId);
