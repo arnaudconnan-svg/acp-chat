@@ -1161,15 +1161,28 @@ document.getElementById("sessionInfoModal").addEventListener("click", e => {
 
 window.onload = () => {
   syncDebugVisibility();
-
-  if (isSessionExpired() && loadHistory().length > 0) {
+  
+  const history = loadHistory();
+  const expired = isSessionExpired();
+  
+  if (history.length > 0 && !expired) {
+    // 👉 reprendre directement la session
+    showScreen("chatScreen");
+    setSessionStatus("active");
+    renderHistory();
+    scrollChatToBottom();
+    return;
+  }
+  
+  if (history.length > 0 && expired) {
     showScreen("chatScreen");
     renderHistory();
     setSessionStatus("expired");
     openExpiredSessionModal();
     return;
   }
-
+  
+  // 👉 sinon accueil
   showScreen("welcomeScreen");
 };
 </script>
