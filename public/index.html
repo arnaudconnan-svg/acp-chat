@@ -1041,7 +1041,7 @@ async function send() {
   input.value = "";
 
   try {
-    const res = await fetch("/chat", {
+    const res = await fetch("https://acp-chat-beta.onrender.com/chat", {
       method: "POST",
       headers: {"Content-Type":"application/json"},
       body: JSON.stringify(buildPayload(message))
