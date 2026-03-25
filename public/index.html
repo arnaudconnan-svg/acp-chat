@@ -170,15 +170,17 @@ h2 {
   position: absolute;
   left: 0;
   top: 8px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
+  width: 32px;
+  height: 32px;
+  padding: 0;
   border: 1px solid #d7dee2;
   border-radius: 999px;
   background: white;
   color: #4b5563;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 #menuIcon {
@@ -187,8 +189,15 @@ h2 {
 }
 
 #menuText {
+  position: absolute;
+  left: 42px;
+  top: 50%;
+  transform: translateY(-50%);
   font-size: 13px;
   line-height: 1;
+  color: #4b5563;
+  user-select: none;
+  pointer-events: none;
 }
 
 #debugToggleBtn {
