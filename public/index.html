@@ -6,7 +6,6 @@
 <link rel="manifest" href="/manifest.json">
 <link rel="preload" as="image" href="/images/logo.png">
 <meta name="theme-color" content="#ffffff">
-<meta name="viewport" content="#ffffff">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 
 <style>
@@ -973,7 +972,6 @@ async function finalizeAndStartNewSession() {
 }
 
 function startFreshSession() {
-  alert("START FRESH SESSION CALLED");
   setSessionStatus("active");
   saveFlags({});
   updateActivity();
@@ -1015,17 +1013,16 @@ function enterChat() {
 
 function startFreshOrResumeSession() {
   closeSessionInfoModal();
-  defocusInput();
   showScreen("chatScreen");
   updateActivity();
   
   const history = loadHistory();
-  alert("HISTORY AT ENTRY = " + JSON.stringify(history));
   
   if (history.length > 0) {
     setSessionStatus("active");
     renderHistory();
     scrollChatToBottom();
+    defocusInput();
   } else {
     startFreshSession();
   }
@@ -1161,28 +1158,6 @@ document.getElementById("sessionInfoModal").addEventListener("click", e => {
 
 window.onload = () => {
   syncDebugVisibility();
-  
-  const history = loadHistory();
-  const expired = isSessionExpired();
-  
-  if (history.length > 0 && !expired) {
-    // 👉 reprendre directement la session
-    showScreen("chatScreen");
-    setSessionStatus("active");
-    renderHistory();
-    scrollChatToBottom();
-    return;
-  }
-  
-  if (history.length > 0 && expired) {
-    showScreen("chatScreen");
-    renderHistory();
-    setSessionStatus("expired");
-    openExpiredSessionModal();
-    return;
-  }
-  
-  // 👉 sinon accueil
   showScreen("welcomeScreen");
 };
 </script>
