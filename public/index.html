@@ -1014,19 +1014,13 @@ function enterChat() {
 }
 
 function startFreshOrResumeSession() {
-  console.log("HISTORY AT ENTRY:", loadHistory());
   closeSessionInfoModal();
   defocusInput();
   showScreen("chatScreen");
   updateActivity();
   
   const history = loadHistory();
-  alert("historyLength=" + history.length + " expired=" + isSessionExpired());
-  console.log("RESUME CHECK", {
-    historyLength: history.length,
-    expired: isSessionExpired(),
-    lastActivity: getLastActivity()
-  });
+  alert("HISTORY AT ENTRY = " + JSON.stringify(history));
   
   if (history.length > 0) {
     setSessionStatus("active");
