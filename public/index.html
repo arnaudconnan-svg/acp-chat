@@ -195,7 +195,6 @@ h2 {
   justify-content: center;
   width: 100%;
   height: 100%;
-  font-size: 16px;
   line-height: 1;
 }
 
@@ -585,7 +584,18 @@ body.show-debug .debug-block {
 <div id="chatScreen" class="screen" tabindex="-1">
   <div id="topBar">
   <button id="menuBtn" type="button" aria-label="Menu">
-    <span id="menuIcon">←</span>
+    <span id="menuIcon" aria-hidden="true">
+  <svg viewBox="0 0 24 24" width="16" height="16" role="presentation">
+    <path
+      d="M15 18l-6-6 6-6"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+  </svg>
+</span>
     <span id="menuText">Menu</span>
   </button>
   
