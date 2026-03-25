@@ -807,12 +807,15 @@ function syncDebugVisibility() {
 function scrollChatToBottom() {
   const chat = document.getElementById("chat");
   
-  requestAnimationFrame(() => {
+  function apply() {
     chat.scrollTop = chat.scrollHeight;
-    requestAnimationFrame(() => {
-      chat.scrollTop = chat.scrollHeight;
-    });
-  });
+  }
+  
+  apply();
+  requestAnimationFrame(apply);
+  setTimeout(apply, 50);
+  setTimeout(apply, 150);
+  setTimeout(apply, 300);
 }
 
 function defocusInput() {
