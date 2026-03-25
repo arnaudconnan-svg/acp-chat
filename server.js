@@ -1742,10 +1742,11 @@ app.post("/chat", async (req, res) => {
   try {
     const message = String(req.body?.message || "");
     console.log("WRITE MESSAGE FIREBASE:", message);
-
+    const conversationId = req.body?.conversationId || ("c_" + Date.now());
+    const userId = req.body?.userId || "u_anon";
 await messagesRef.push({
-  conversationId: "c_default",
-  userId: "u_default",
+  conversationId,
+  userId,
   role: "user",
   content: message,
   timestamp: new Date().toISOString()
