@@ -839,7 +839,7 @@ function showScreen(id) {
   syncDebugVisibility();
 }
 
-ffunction syncDebugVisibility() {
+function syncDebugVisibility() {
   const isAdminUI = localStorage.getItem(ADMIN_UI_KEY) === "1";
   const debugBtn = document.getElementById("debugToggleBtn");
   const chatScreen = document.getElementById("chatScreen");
