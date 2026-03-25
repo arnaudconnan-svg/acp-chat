@@ -1734,6 +1734,26 @@ app.post("/api/admin/logout", (req, res) => {
   res.json({ success: true });
 });
 
+app.get("/api/admin/conversations", requireAdminAuth, async (req, res) => {
+  try {
+    const snapshot = await db.ref("conversations").once("value");
+    const data = snapshot.val() || {};
+    
+    // transformer en tableau + tri par updatedAt desc
+    const list = Object.entries(data).map(([id, value]) => ({
+      id,
+      ...value
+    })).sort((a, b) => {
+      return new Date(b.updatedAt) - new Date(a.updatedAt);
+    });
+    
+    res.json(list);
+  } catch (err) {
+    console.error("Erreur conversations:", err);
+    res.status(500).json({ error: "Erreur serveur" });
+  }
+});
+
 app.post("/chat", async (req, res) => {
   let modeForCatch = "exploration";
   let previousMemoryForCatch = normalizeMemory("");
