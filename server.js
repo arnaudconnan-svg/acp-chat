@@ -7,6 +7,7 @@ admin.initializeApp({
   databaseURL: process.env.FIREBASE_DATABASE_URL
 });
 const db = admin.database();
+const messagesRef = db.ref("messages");
 const crypto = require("crypto");
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 const SESSION_SECRET = process.env.SESSION_SECRET;
@@ -1740,20 +1741,15 @@ app.post("/chat", async (req, res) => {
 
   try {
     const message = String(req.body?.message || "");
-    const messages = readMessages();
+    console.log("WRITE MESSAGE FIREBASE:", message);
 
-console.log("WRITE MESSAGE:", message);
-
-messages.push({
-  id: "m_" + Date.now(),
+await messagesRef.push({
   conversationId: "c_default",
   userId: "u_default",
   role: "user",
   content: message,
   timestamp: new Date().toISOString()
 });
-
-writeMessages(messages);
 
     const recentHistory = trimHistory(req.body?.recentHistory);
     const previousMemory = normalizeMemory(req.body?.memory);
