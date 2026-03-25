@@ -14,10 +14,6 @@ h1 {
   font-size: 20px;
 }
 
-<button id="backBtn" onclick="goBack()" style="margin-bottom:12px; display:none">
-  ← Retour
-</button>
-
 #list {
   margin-top: 16px;
 }
@@ -38,107 +34,110 @@ h1 {
 
 <h1>Conversations</h1>
 
+<button id="backBtn" onclick="goBack()" style="margin-bottom:12px; display:none;">
+  ← Retour
+</button>
+
 <div id="list">Chargement...</div>
 
 <script>
-  alert("ADMIN JS OK");
+alert("ADMIN JS OK");
 
-  function getConversationIdFromUrl() {
-    const params = new URLSearchParams(window.location.search);
-    return params.get("c");
-  }
-  
-  function goBack() {
-    window.location.href = "/admin.html";
-  }
-  
-  async function loadConversations() {
-    const list = document.getElementById("list");
-    list.textContent = "Chargement des conversations...";
-    
-    try {
-      const res = await fetch("/api/admin/conversations");
-      
-      if (!res.ok) {
-        list.textContent = "Erreur HTTP conversations: " + res.status;
-        return;
-      }
-      
-      const data = await res.json();
-      list.innerHTML = "";
-      
-      if (!Array.isArray(data) || !data.length) {
-        list.textContent = "Aucune conversation";
-        return;
-      }
-      
-      data.forEach(conv => {
-        const div = document.createElement("div");
-        div.className = "item";
-        div.textContent =
-          conv.id + " | " + new Date(conv.createdAt).toLocaleString();
-        
-        div.onclick = () => {
-          window.location.href = "/admin.html?c=" + encodeURIComponent(conv.id);
-        };
-        
-        list.appendChild(div);
-      });
-    } catch (err) {
-      list.textContent = "Erreur JS conversations: " + err.message;
+function getConversationIdFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("c");
+}
+
+function goBack() {
+  window.location.href = "/admin.html";
+}
+
+async function loadConversations() {
+  const list = document.getElementById("list");
+  list.textContent = "Chargement des conversations...";
+
+  try {
+    const res = await fetch("/api/admin/conversations");
+
+    if (!res.ok) {
+      list.textContent = "Erreur HTTP conversations: " + res.status;
+      return;
     }
+
+    const data = await res.json();
+    list.innerHTML = "";
+
+    if (!Array.isArray(data) || !data.length) {
+      list.textContent = "Aucune conversation";
+      return;
+    }
+
+    data.forEach(conv => {
+      const div = document.createElement("div");
+      div.className = "item";
+      div.textContent = conv.id + " | " + new Date(conv.createdAt).toLocaleString();
+
+      div.onclick = () => {
+        window.location.href = "/admin.html?c=" + encodeURIComponent(conv.id);
+      };
+
+      list.appendChild(div);
+    });
+  } catch (err) {
+    list.textContent = "Erreur JS conversations: " + err.message;
   }
-  
-  async function loadMessages(conversationId) {
-    const list = document.getElementById("list");
-    list.textContent = "Chargement des messages...";
-    
-    try {
-      const res = await fetch("/api/admin/conversations/" + encodeURIComponent(conversationId) + "/messages");
-      
-      if (!res.ok) {
-        list.textContent = "Erreur HTTP messages: " + res.status;
-        return;
-      }
-      
-      const data = await res.json();
-      list.innerHTML = "";
-      
-      if (!Array.isArray(data) || !data.length) {
-        list.textContent = "Aucun message";
-        return;
-      }
-      
-      data.forEach(msg => {
-        const div = document.createElement("div");
-        div.className = "item";
-        div.innerHTML = `
+}
+
+async function loadMessages(conversationId) {
+  const list = document.getElementById("list");
+  list.textContent = "Chargement des messages...";
+
+  try {
+    const res = await fetch("/api/admin/conversations/" + encodeURIComponent(conversationId) + "/messages");
+
+    if (!res.ok) {
+      list.textContent = "Erreur HTTP messages: " + res.status;
+      return;
+    }
+
+    const data = await res.json();
+    list.innerHTML = "";
+
+    if (!Array.isArray(data) || !data.length) {
+      list.textContent = "Aucun message";
+      return;
+    }
+
+    data.forEach(msg => {
+      const div = document.createElement("div");
+      div.className = "item";
+      div.innerHTML = `
         <div style="font-size:12px; color:#666; margin-bottom:4px;">
           ${new Date(msg.timestamp || msg.createdAt || Date.now()).toLocaleString()} - ${msg.role}
         </div>
         <div>${msg.content || ""}</div>
       `;
-        list.appendChild(div);
-      });
-    } catch (err) {
-      list.textContent = "Erreur JS messages: " + err.message;
-    }
+      list.appendChild(div);
+    });
+  } catch (err) {
+    list.textContent = "Erreur JS messages: " + err.message;
   }
-  
-  async function init() {
-    const conversationId = getConversationIdFromUrl();
-    const backBtn = document.getElementById("backBtn");
-    
-    if (conversationId) {
-      backBtn.style.display = "block";
-      await loadMessages(conversationId);
-    } else {
-      backBtn.style.display = "none";
-      await loadConversations();
-    }
+}
+
+async function init() {
+  const conversationId = getConversationIdFromUrl();
+  const backBtn = document.getElementById("backBtn");
+
+  if (conversationId) {
+    backBtn.style.display = "block";
+    await loadMessages(conversationId);
+  } else {
+    backBtn.style.display = "none";
+    await loadConversations();
   }
-  
-  init();
+}
+
+init();
 </script>
 </body>
 </html>
