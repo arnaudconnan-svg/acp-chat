@@ -1,53 +1,10 @@
 require("dotenv").config();
-const path = require("path");
 const express = require("express");
 const OpenAI = require("openai");
-const { DatabaseSync } = require("node:sqlite");
 
 const app = express();
 const port = process.env.PORT || 3000;
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
-let db;
-
-function initDb() {
-  db = new DatabaseSync(path.join(__dirname, "data.sqlite"));
-  
-  db.exec(`
-    PRAGMA journal_mode = WAL;
-
-    CREATE TABLE IF NOT EXISTS users (
-      id TEXT PRIMARY KEY,
-      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-    );
-
-    CREATE TABLE IF NOT EXISTS conversations (
-      id TEXT PRIMARY KEY,
-      user_id TEXT NOT NULL,
-      title TEXT,
-      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-    );
-
-    CREATE TABLE IF NOT EXISTS messages (
-      id TEXT PRIMARY KEY,
-      conversation_id TEXT NOT NULL,
-      role TEXT NOT NULL,
-      content TEXT NOT NULL,
-      debug_json TEXT,
-      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-    );
-
-    CREATE TABLE IF NOT EXISTS logs (
-      id TEXT PRIMARY KEY,
-      message_id TEXT NOT NULL,
-      phase TEXT NOT NULL,
-      data TEXT NOT NULL,
-      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-    );
-  `);
-  
-  console.log("SQLite initialisee :", path.join(__dirname, "data.sqlite"));
-}
 
 app.use(express.static("public"));
 app.use(express.json());
@@ -1872,13 +1829,6 @@ app.post("/chat", async (req, res) => {
     });
   }
 });
-
-try {
-  initDb();
-  console.log("initDb OK");
-} catch (err) {
-  console.error("initDb ERREUR:", err);
-}
 
 app.listen(port, () => {
   console.log(`Serveur lance sur http://localhost:${port}`);

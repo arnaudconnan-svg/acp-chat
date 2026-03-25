@@ -633,36 +633,12 @@ function openAboutModal() {
 function closeAboutModal() {
   document.getElementById("aboutModal").style.display = "none";
 }
-
-function getOrCreateUserId() {
-  let id = localStorage.getItem(USER_ID_KEY);
-  
-  if (!id) {
-    id = crypto.randomUUID();
-    localStorage.setItem(USER_ID_KEY, id);
-  }
-  
-  return id;
-}
-
-function getOrCreateConversationId() {
-  let id = localStorage.getItem(CURRENT_CONVERSATION_ID_KEY);
-  
-  if (!id) {
-    id = crypto.randomUUID();
-    localStorage.setItem(CURRENT_CONVERSATION_ID_KEY, id);
-  }
-  
-  return id;
-}
 </script>
 
 <script>
 const SESSION_KEY = "facilitatio_v0_history";
 const MEMORY_KEY = "facilitatio_v0_memory";
 const FLAGS_KEY = "facilitatio_v0_flags";
-const USER_ID_KEY = "facilitatio_user_id";
-const CURRENT_CONVERSATION_ID_KEY = "facilitatio_current_conversation_id";
 const ACTIVITY_KEY = "facilitatio_last_activity";
 const SESSION_INFO_DISMISSED_KEY = "facilitatio_session_info_dismissed";
 const SESSION_TIMEOUT_MS = 1 * 1 * 60 * 1000;
@@ -1038,8 +1014,6 @@ function buildPayload(message) {
   const full = loadHistory().map(({ role, content }) => ({ role, content }));
   
   return {
-    user_id: getOrCreateUserId(),
-    conversation_id: getOrCreateConversationId(),
     message,
     recentHistory: full.slice(-MAX_RECENT_TURNS),
     memory: loadMemory(),
