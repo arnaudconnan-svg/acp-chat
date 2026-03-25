@@ -1,4 +1,5 @@
 require("dotenv").config();
+const crypto = require("crypto");
 const express = require("express");
 const OpenAI = require("openai");
 
