@@ -523,7 +523,7 @@ body.show-debug .debug-block {
 
 <body>
 
-<div id="welcomeScreen" class="screen active">
+<div id="welcomeScreen" class="screen">
   <div id="welcomeInner">
 
     <div id="welcomeLogoWrap">
@@ -1274,6 +1274,8 @@ document.getElementById("sessionInfoModal").addEventListener("click", e => {
 
 window.onload = () => {
   const params = new URLSearchParams(window.location.search);
+  const logo = document.getElementById("welcomeLogo");
+  const welcome = document.getElementById("welcomeScreen");
   
   if (params.get("admin") === "1") {
     localStorage.setItem(ADMIN_UI_KEY, "1");
@@ -1282,7 +1284,24 @@ window.onload = () => {
   }
   
   syncDebugVisibility();
-  showScreen("welcomeScreen");
+  
+  function showWelcomeWhenReady() {
+    showScreen("welcomeScreen");
+    welcome.classList.add("ready");
+  }
+  
+  if (!logo) {
+    showWelcomeWhenReady();
+    return;
+  }
+  
+  if (logo.complete && logo.naturalWidth > 0) {
+    showWelcomeWhenReady();
+    return;
+  }
+  
+  logo.addEventListener("load", showWelcomeWhenReady, { once: true });
+  logo.addEventListener("error", showWelcomeWhenReady, { once: true });
 };
 </script>
 </body>
