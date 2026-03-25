@@ -1384,23 +1384,33 @@ async function runSingleTestCase(testCase = {}) {
   let newFlags = normalizeSessionFlags(flags);
 
   if (suicide.suicideLevel === "N2") {
-    newFlags.acuteCrisis = true;
-    newFlags.contactState = { wasContact: false };
-    return {
-      input: message,
-      reply: n2Response(),
-      mode: "override",
-      memory: previousMemory,
-      flags: newFlags,
-      debug: buildDebug("override", {
-        suicideLevel: "N2",
-        needsClarification: suicide.needsClarification,
-        isQuote: suicide.isQuote,
-        idiomaticDeathExpression: suicide.idiomaticDeathExpression,
-        crisisResolved: suicide.crisisResolved
-      })
-    };
-  }
+  newFlags.acuteCrisis = true;
+  newFlags.contactState = { wasContact: false };
+  
+    const reply = n2Response();
+    
+    await messagesRef.push({
+      conversationId,
+      userId,
+      role: "assistant",
+      content: reply,
+      timestamp: new Date().toISOString()
+    });
+  
+  return res.json({
+    conversationId,
+    reply,
+    memory: previousMemory,
+    flags: newFlags,
+    debug: buildDebug("override", {
+      suicideLevel: "N2",
+      needsClarification: suicide.needsClarification,
+      isQuote: suicide.isQuote,
+      idiomaticDeathExpression: suicide.idiomaticDeathExpression,
+      crisisResolved: suicide.crisisResolved
+    })
+  });
+}
 
   if (flags.acuteCrisis === true) {
     if (suicide.crisisResolved === true) {
