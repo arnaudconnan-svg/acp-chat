@@ -73,6 +73,18 @@ h1 {
   background: #fbfbfc;
 }
 
+.message-row .item {
+  cursor: default;
+}
+
+.message-row .item:hover {
+  background: white;
+}
+
+.message-row .role-user:hover {
+  background: #e6f0ff;
+}
+
 .meta {
   font-size: 12px;
   line-height: 1.4;
@@ -246,6 +258,7 @@ h1 {
         const isUser = msg.role === "user";
         
         const wrapper = document.createElement("div");
+        wrapper.className = "message-row";
         wrapper.style.display = "flex";
         wrapper.style.justifyContent = isUser ? "flex-end" : "flex-start";
         

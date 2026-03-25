@@ -806,7 +806,13 @@ function syncDebugVisibility() {
 
 function scrollChatToBottom() {
   const chat = document.getElementById("chat");
-  chat.scrollTop = chat.scrollHeight;
+  
+  requestAnimationFrame(() => {
+    chat.scrollTop = chat.scrollHeight;
+    requestAnimationFrame(() => {
+      chat.scrollTop = chat.scrollHeight;
+    });
+  });
 }
 
 function defocusInput() {
