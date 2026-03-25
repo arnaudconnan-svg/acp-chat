@@ -1070,6 +1070,9 @@ async function send() {
 
     const data = await res.json();
 
+    if (data.conversationId) {
+      localStorage.setItem(CONVERSATION_ID_KEY, data.conversationId);
+    }
     if (data.memory) saveMemory(data.memory);
     if (data.flags) saveFlags(data.flags);
 

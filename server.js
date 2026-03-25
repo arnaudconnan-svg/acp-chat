@@ -1742,7 +1742,7 @@ app.post("/chat", async (req, res) => {
   try {
     const message = String(req.body?.message || "");
     console.log("WRITE MESSAGE FIREBASE:", message);
-    const conversationId = req.body?.conversationId || ("c_" + Date.now());
+    const conversationId = req.body?.conversationId || ("c_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6));
     const userId = req.body?.userId || "u_anon";
 await messagesRef.push({
   conversationId,
@@ -1751,6 +1751,23 @@ await messagesRef.push({
   content: message,
   timestamp: new Date().toISOString()
 });
+
+    const conversationsRef = db.ref("conversations");
+    const convRef = conversationsRef.child(conversationId);
+
+    const snapshot = await convRef.get();
+
+    if (!snapshot.exists()) {
+      await convRef.set({
+        userId,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      });
+    } else {
+      await convRef.update({
+        updatedAt: new Date().toISOString()
+      });
+    }
 
     const recentHistory = trimHistory(req.body?.recentHistory);
     const previousMemory = normalizeMemory(req.body?.memory);
