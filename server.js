@@ -1386,31 +1386,22 @@ async function runSingleTestCase(testCase = {}) {
   if (suicide.suicideLevel === "N2") {
   newFlags.acuteCrisis = true;
   newFlags.contactState = { wasContact: false };
-  
-    const reply = n2Response();
-    
-    await messagesRef.push({
-      conversationId,
-      userId,
-      role: "assistant",
-      content: reply,
-      timestamp: new Date().toISOString()
-    });
-  
-  return res.json({
-    conversationId,
-    reply,
-    memory: previousMemory,
-    flags: newFlags,
-    debug: buildDebug("override", {
-      suicideLevel: "N2",
-      needsClarification: suicide.needsClarification,
-      isQuote: suicide.isQuote,
-      idiomaticDeathExpression: suicide.idiomaticDeathExpression,
-      crisisResolved: suicide.crisisResolved
-    })
-  });
-}
+
+    return {
+      input: message,
+      reply: n2Response(),
+      mode: "override",
+      memory: previousMemory,
+      flags: newFlags,
+      debug: buildDebug("override", {
+        suicideLevel: "N2",
+        needsClarification: suicide.needsClarification,
+        isQuote: suicide.isQuote,
+        idiomaticDeathExpression: suicide.idiomaticDeathExpression,
+        crisisResolved: suicide.crisisResolved
+      })
+    };
+  }
 
   if (flags.acuteCrisis === true) {
     if (suicide.crisisResolved === true) {
@@ -1438,15 +1429,7 @@ async function runSingleTestCase(testCase = {}) {
   if (suicide.suicideLevel === "N1" || suicide.needsClarification) {
     const reply = await n1ResponseLLM(message);
     newFlags.contactState = { wasContact: false };
-
-    await messagesRef.push({
-      conversationId,
-      userId,
-      role: "assistant",
-      content: reply,
-      timestamp: new Date().toISOString()
-    });
-
+    
     return {
       input: message,
       reply,
@@ -1840,9 +1823,20 @@ await messagesRef.push({
     if (suicide.suicideLevel === "N2") {
       newFlags.acuteCrisis = true;
       newFlags.contactState = { wasContact: false };
+      
+      const reply = n2Response();
+      
+      await messagesRef.push({
+        conversationId,
+        userId,
+        role: "assistant",
+        content: reply,
+        timestamp: new Date().toISOString()
+      });
+      
       return res.json({
         conversationId,
-        reply: n2Response(),
+        reply,
         memory: previousMemory,
         flags: newFlags,
         debug: buildDebug("override", {
@@ -1861,9 +1855,20 @@ await messagesRef.push({
       } else {
         newFlags.acuteCrisis = true;
         newFlags.contactState = { wasContact: false };
+        
+        const reply = acuteCrisisFollowupResponse();
+        
+        await messagesRef.push({
+          conversationId,
+          userId,
+          role: "assistant",
+          content: reply,
+          timestamp: new Date().toISOString()
+        });
+        
         return res.json({
           conversationId,
-          reply: acuteCrisisFollowupResponse(),
+          reply,
           memory: previousMemory,
           flags: newFlags,
           debug: buildDebug("override", {
@@ -1878,20 +1883,28 @@ await messagesRef.push({
     }
 
     if (suicide.suicideLevel === "N1" || suicide.needsClarification) {
-      const reply = await n1ResponseLLM(message);
-      newFlags.contactState = { wasContact: false };
-
-      return res.json({
-        conversationId,
-        reply,
-        memory: previousMemory,
-        flags: newFlags,
-        debug: buildDebug("clarification", {
-          suicideLevel: "N1",
-          needsClarification: suicide.needsClarification,
-          isQuote: suicide.isQuote,
-          idiomaticDeathExpression: suicide.idiomaticDeathExpression,
-          crisisResolved: suicide.crisisResolved
+        const reply = await n1ResponseLLM(message);
+        newFlags.contactState = { wasContact: false };
+        
+        await messagesRef.push({
+          conversationId,
+          userId,
+          role: "assistant",
+          content: reply,
+          timestamp: new Date().toISOString()
+        });
+        
+        return res.json({
+          conversationId,
+          reply,
+          memory: previousMemory,
+          flags: newFlags,
+          debug: buildDebug("clarification", {
+            suicideLevel: "N1",
+            needsClarification: suicide.needsClarification,
+            isQuote: suicide.isQuote,
+            idiomaticDeathExpression: suicide.idiomaticDeathExpression,
+            crisisResolved: suicide.crisisResolved
         })
       });
     }
@@ -1937,7 +1950,15 @@ await messagesRef.push({
         { role: "user", content: message },
         { role: "assistant", content: reply }
       ]);
-
+      
+      await messagesRef.push({
+        conversationId,
+        userId,
+        role: "assistant",
+        content: reply,
+        timestamp: new Date().toISOString()
+      });
+      
       return res.json({
         conversationId,
         reply,
@@ -2018,7 +2039,15 @@ await messagesRef.push({
       { role: "user", content: message },
       { role: "assistant", content: reply }
     ]);
-
+    
+    await messagesRef.push({
+      conversationId,
+      userId,
+      role: "assistant",
+      content: reply,
+      timestamp: new Date().toISOString()
+    });
+    
     return res.json({
       conversationId,
       reply,
