@@ -503,11 +503,31 @@ body.show-debug .debug-block {
         Entrer
       </button>
 
-      <button class="welcomeBtnTertiary" onclick="window.location.href='/test.html'">
-        Interface de test
+      <button class="welcomeBtnTertiary" onclick="openDevAccessModal()">
+        Acces developpeur
       </button>
     </div>
+  </div>
+</div>
 
+<div id="devAccessModal" class="modal">
+  <div class="modalBox">
+    <h3 class="modalTitle">Acces developpeur</h3>
+    <p class="modalText">
+      Choisis l'interface a ouvrir.
+    </p>
+    
+    <div class="modalActions" style="justify-content:flex-start; flex-direction:column; align-items:stretch;">
+      <button class="modalBtnPrimary" type="button" onclick="window.location.href='/test.html'">
+        Interface de test
+      </button>
+      <button class="modalBtnSecondary" type="button" onclick="window.location.href='/admin.html'">
+        Interface admin
+      </button>
+      <button class="modalBtnSecondary" type="button" onclick="closeDevAccessModal()">
+        Annuler
+      </button>
+    </div>
   </div>
 </div>
 
@@ -625,13 +645,21 @@ body.show-debug .debug-block {
 </div>
 
 <script>
-function openAboutModal() {
-  document.getElementById("aboutModal").style.display = "flex";
-}
-
-function closeAboutModal() {
-  document.getElementById("aboutModal").style.display = "none";
-}
+  function openAboutModal() {
+    document.getElementById("aboutModal").style.display = "flex";
+  }
+  
+  function closeAboutModal() {
+    document.getElementById("aboutModal").style.display = "none";
+  }
+  
+  function openDevAccessModal() {
+    document.getElementById("devAccessModal").style.display = "flex";
+  }
+  
+  function closeDevAccessModal() {
+    document.getElementById("devAccessModal").style.display = "none";
+  }
 </script>
 
 <script>
@@ -1115,6 +1143,12 @@ document.getElementById("expiredNewSessionBtn").onclick = async () => {
 document.getElementById("terminatedNewSessionBtn").onclick = async () => {
   await finalizeAndStartNewSession();
 };
+
+document.getElementById("devAccessModal").addEventListener("click", e => {
+  if (e.target.id === "devAccessModal") {
+    closeDevAccessModal();
+  }
+});
 
 document.getElementById("sessionInfoContinueBtn").onclick = () => {
   saveSessionInfoDismissed(document.getElementById("sessionInfoDontShow").checked);
