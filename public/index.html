@@ -675,6 +675,7 @@ const ACTIVITY_KEY = "facilitatio_last_activity";
 const SESSION_INFO_DISMISSED_KEY = "facilitatio_session_info_dismissed";
 const SESSION_TIMEOUT_MS = 12 *60 * 60 * 1000;
 const MAX_RECENT_TURNS = 8;
+const ADMIN_UI_KEY = "facilitatio_admin_ui";
 
 let isSending = false;
 let showDebug = false;
@@ -803,8 +804,17 @@ function showScreen(id) {
 }
 
 function syncDebugVisibility() {
-  document.body.classList.toggle("show-debug", showDebug);
-  document.getElementById("debugToggleBtn").textContent = showDebug ? "logs visibles" : "logs masques";
+  const isAdminUI = localStorage.getItem(ADMIN_UI_KEY) === "1";
+  const debugBtn = document.getElementById("debugToggleBtn");
+  
+  debugBtn.style.display = isAdminUI ? "block" : "none";
+  
+  if (!isAdminUI) {
+    showDebug = false;
+  }
+  
+  document.body.classList.toggle("show-debug", isAdminUI && showDebug);
+  debugBtn.textContent = showDebug ? "logs visibles" : "logs masques";
 }
 
 function scrollChatToBottom() {
@@ -1203,6 +1213,12 @@ document.getElementById("sessionInfoModal").addEventListener("click", e => {
 /* ---------- INIT ---------- */
 
 window.onload = () => {
+  const params = new URLSearchParams(window.location.search);
+  
+  if (params.get("admin") === "1") {
+    localStorage.setItem(ADMIN_UI_KEY, "1");
+  }
+  
   syncDebugVisibility();
   showScreen("welcomeScreen");
 };

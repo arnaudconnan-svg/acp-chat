@@ -60,6 +60,16 @@ const RELANCE_WINDOW_SIZE = 4;
 // 1) OUTILS MINIMAUX
 // --------------------------------------------------
 
+function enableAdminUI() {
+  localStorage.setItem(ADMIN_UI_KEY, "1");
+  location.reload();
+}
+
+function disableAdminUI() {
+  localStorage.removeItem(ADMIN_UI_KEY);
+  location.reload();
+}
+
 function generateSessionId() {
   return crypto.randomBytes(24).toString("hex");
 }
