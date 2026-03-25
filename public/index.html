@@ -1177,7 +1177,8 @@ async function send() {
 document.getElementById("sendBtn").onclick = send;
 
 document.getElementById("menuBtn").onclick = () => {
-  window.location.href = window.location.pathname + "?admin=1";
+  window.location.href = window.location.pathname;
+};
 };
 
 document.getElementById("debugToggleBtn").onclick = () => {
@@ -1256,6 +1257,8 @@ window.onload = () => {
   
   if (params.get("admin") === "1") {
     localStorage.setItem(ADMIN_UI_KEY, "1");
+  } else {
+    localStorage.removeItem(ADMIN_UI_KEY);
   }
   
   syncDebugVisibility();
