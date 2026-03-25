@@ -6,9 +6,27 @@ console.log("SESSION_SECRET?", !!process.env.SESSION_SECRET);
 const crypto = require("crypto");
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 const SESSION_SECRET = process.env.SESSION_SECRET;
-
 const adminSessions = new Map(); // sessionId -> { isAdmin: true, createdAt }
 const ADMIN_SESSION_DURATION = 24 * 60 * 60 * 1000; // 24h
+
+const fs = require("fs");
+const path = require("path");
+
+const MESSAGES_FILE = path.join(__dirname, "data/messages.json");
+
+function readMessages() {
+  try {
+    const data = fs.readFileSync(MESSAGES_FILE, "utf-8");
+    return JSON.parse(data);
+  } catch {
+    return [];
+  }
+}
+
+function writeMessages(messages) {
+  fs.writeFileSync(MESSAGES_FILE, JSON.stringify(messages, null, 2));
+}
+
 const express = require("express");
 const OpenAI = require("openai");
 
@@ -1718,6 +1736,16 @@ app.post("/chat", async (req, res) => {
 
   try {
     const message = String(req.body?.message || "");
+    const messages = readMessages();
+  messages.push({
+  id: "m_" + Date.now(),
+  conversationId: "c_default",
+  userId: "u_default",
+  role: "user",
+  content: message,
+  timestamp: new Date().toISOString()
+});
+writeMessages(messages);
     const recentHistory = trimHistory(req.body?.recentHistory);
     const previousMemory = normalizeMemory(req.body?.memory);
     const flags = normalizeSessionFlags(req.body?.flags);
