@@ -1754,6 +1754,26 @@ app.get("/api/admin/conversations", requireAdminAuth, async (req, res) => {
   }
 });
 
+app.get("/api/admin/conversations/:id/messages", requireAdminAuth, async (req, res) => {
+  try {
+    const conversationId = req.params.id;
+    const snapshot = await db.ref("messages").orderByChild("conversationId").equalTo(conversationId).once("value");
+    const data = snapshot.val() || {};
+    
+    const list = Object.entries(data).map(([id, value]) => ({
+      id,
+      ...value
+    })).sort((a, b) => {
+      return new Date(a.timestamp) - new Date(b.timestamp);
+    });
+    
+    res.json(list);
+  } catch (err) {
+    console.error("Erreur messages conversation:", err);
+    res.status(500).json({ error: "Erreur serveur" });
+  }
+});
+
 app.post("/chat", async (req, res) => {
   let modeForCatch = "exploration";
   let previousMemoryForCatch = normalizeMemory("");
