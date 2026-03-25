@@ -77,9 +77,9 @@ function requireAdminAuth(req, res, next) {
   const session = getAdminSession(req);
   
   if (!session) {
-    return res.redirect("/admin-login.html");
+    const nextUrl = encodeURIComponent(req.originalUrl);
+    return res.redirect(`/admin-login.html?next=${nextUrl}`);
   }
-  
   next();
 }
 

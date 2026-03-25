@@ -64,7 +64,8 @@
           return;
         }
 
-        window.location.href = "/admin.html";
+        const next = new URLSearchParams(window.location.search).get("next") || "/admin.html";
+        window.location.href = next;
       } catch (err) {
         errorDiv.textContent = "Erreur de connexion";
       }
