@@ -1766,6 +1766,7 @@ await messagesRef.push({
       newFlags.acuteCrisis = true;
       newFlags.contactState = { wasContact: false };
       return res.json({
+        conversationId,
         reply: n2Response(),
         memory: previousMemory,
         flags: newFlags,
@@ -1786,6 +1787,7 @@ await messagesRef.push({
         newFlags.acuteCrisis = true;
         newFlags.contactState = { wasContact: false };
         return res.json({
+          conversationId,
           reply: acuteCrisisFollowupResponse(),
           memory: previousMemory,
           flags: newFlags,
@@ -1805,6 +1807,7 @@ await messagesRef.push({
       newFlags.contactState = { wasContact: false };
 
       return res.json({
+        conversationId,
         reply,
         memory: previousMemory,
         flags: newFlags,
@@ -1829,6 +1832,7 @@ await messagesRef.push({
       ]);
 
       return res.json({
+        conversationId,
         reply,
         memory: newMemory,
         flags: newFlags,
@@ -1854,6 +1858,7 @@ await messagesRef.push({
       ]);
 
       return res.json({
+        conversationId,
         reply,
         memory: newMemory,
         flags: newFlags,
@@ -1934,6 +1939,7 @@ await messagesRef.push({
     ]);
 
     return res.json({
+      conversationId,
       reply,
       memory: newMemory,
       flags: newFlags,
