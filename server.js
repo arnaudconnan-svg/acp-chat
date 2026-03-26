@@ -2180,12 +2180,21 @@ app.post("/chat", async (req, res) => {
         
         const userMessageCount = allMessages.filter(m => m.role === "user").length;
         
-        if (!convData.titleLocked && userMessageCount <= 3) {
+        if (convData.titleLocked !== true && userMessageCount <= 3) {
           const generatedTitle = await generateConversationTitle(allMessages);
           
           if (generatedTitle) {
-            await convRef.update({
-              generatedTitle
+            await convRef.transaction(current => {
+              if (!current) return current;
+              
+              if (current.titleLocked === true) {
+                return current; // on n’écrase pas
+              }
+              
+              return {
+                ...current,
+                generatedTitle
+              };
             });
           }
         }
