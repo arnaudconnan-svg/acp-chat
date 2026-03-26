@@ -941,17 +941,6 @@ function getOrCreateConversationId() {
   return id;
 }
 
-function getOrCreateConversationId() {
-  let id = localStorage.getItem(CONVERSATION_ID_KEY);
-  
-  if (!id) {
-    id = "c_" + Date.now();
-    localStorage.setItem(CONVERSATION_ID_KEY, id);
-  }
-  
-  return id;
-}
-
 let isSending = false;
 let showDebug = false;
 let sessionStatus = "welcome";
