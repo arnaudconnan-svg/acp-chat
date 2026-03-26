@@ -1897,11 +1897,12 @@ app.post("/chat", async (req, res) => {
     const conversationsRef = db.ref("conversations");
     const convRef = conversationsRef.child(conversationId);
 
-    const nowIso = new Date().toISOString();
     const snapshot = await convRef.get();
     const convData = snapshot.val() || {};
     
     await convRef.transaction(current => {
+      const nowIso = new Date().toISOString();
+      
       if (!current) {
         return {
           userId,
