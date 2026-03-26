@@ -1433,7 +1433,7 @@ async function finalizeAndStartNewSession() {
     closeConfirmNewSessionModal();
     closeExpiredSessionModal();
     closeTerminatedSessionModal();
-    localStorage.setItem(CONVERSATION_ID_KEY, "c_" + Date.now());
+    localStorage.removeItem(CONVERSATION_ID_KEY);
     showScreen("chatScreen");
     startFreshSession();
     defocusInput();
