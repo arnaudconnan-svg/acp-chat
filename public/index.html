@@ -973,8 +973,15 @@ function createEmptyConversationData() {
   };
 }
 
-function ensureConversationId() {
-  return getOrCreateConversationId();
+function getConversationId() {
+  return localStorage.getItem(CONVERSATION_ID_KEY);
+}
+
+function createConversationId() {
+  const id = "c_" + Date.now();
+  localStorage.setItem(CONVERSATION_ID_KEY, id);
+  console.log("🆕 NEW conversationId:", id);
+  return id;
 }
 
 function loadConversationsIndex() {
@@ -991,7 +998,7 @@ function saveConversationsIndex(index) {
 }
 
 function upsertConversationIndexItem(patch = {}) {
-  const conversationId = String(patch.id || ensureConversationId());
+  const conversationId = String(patch.id || getConversationId());
   const index = loadConversationsIndex();
   const existingIndex = index.findIndex(item => item && item.id === conversationId);
   const previous = existingIndex >= 0 ? index[existingIndex] : null;
@@ -1013,7 +1020,7 @@ function upsertConversationIndexItem(patch = {}) {
   saveConversationsIndex(index);
 }
 
-function createConversationShell(conversationId = ensureConversationId()) {
+function createConversationShell(conversationId = getConversationId()) {
   const existing = loadConversationData(conversationId);
   
   saveConversationData(conversationId, {
@@ -1032,7 +1039,7 @@ function createConversationShell(conversationId = ensureConversationId()) {
   });
 }
 
-function loadConversationData(conversationId = ensureConversationId()) {
+function loadConversationData(conversationId = getConversationId()) {
   try {
     const raw = localStorage.getItem(getConversationStorageKey(conversationId));
     if (!raw) return createEmptyConversationData();
@@ -1051,7 +1058,7 @@ function loadConversationData(conversationId = ensureConversationId()) {
   }
 }
 
-function saveConversationData(conversationId = ensureConversationId(), data = {}) {
+function saveConversationData(conversationId = getConversationId(), data = {}) {
   const safeData = {
     messages: Array.isArray(data?.messages) ? data.messages : [],
     memory: typeof data?.memory === "string" && data.memory.trim() ?
@@ -1084,7 +1091,7 @@ function loadMemory() {
 }
 
 function saveMemory(memory) {
-  const conversationId = ensureConversationId();
+  const conversationId = String(patch.id || getConversationId());
   const data = loadConversationData(conversationId);
   
   saveConversationData(conversationId, {
@@ -1099,7 +1106,8 @@ function loadFlags() {
 }
 
 function saveFlags(flags) {
-  const conversationId = ensureConversationId();
+  const conversationId = getConversationId();
+if (!conversationId) return;
   const data = loadConversationData(conversationId);
   
   saveConversationData(conversationId, {
@@ -1114,7 +1122,8 @@ function loadHistory() {
 }
 
 function saveHistory(history) {
-  const conversationId = ensureConversationId();
+  const conversationId = getConversationId();
+if (!conversationId) return;
   const data = loadConversationData(conversationId);
   
   saveConversationData(conversationId, {
@@ -1125,6 +1134,15 @@ function saveHistory(history) {
 }
 
 function pushHistory(role, content, debug) {
+  let conversationId = getConversationId();
+  
+  // 🔥 création UNIQUEMENT au 1er message user
+  if (!conversationId && role === "user") {
+    conversationId = createConversationId();
+  }
+  
+  if (!conversationId) return; // rien à faire si pas encore de session
+  
   const history = loadHistory();
   
   history.push({
@@ -1136,10 +1154,10 @@ function pushHistory(role, content, debug) {
   
   saveHistory(history);
   
-  // création de la conversation UNIQUEMENT au 1er message utilisateur
+  // index uniquement au 1er message user
   if (role === "user" && history.length === 1) {
     upsertConversationIndexItem({
-      id: ensureConversationId(),
+      id: conversationId,
       title: null,
       updatedAt: Date.now()
     });
@@ -1420,7 +1438,6 @@ async function finalizeAndStartNewSession() {
 }
 
 function startFreshSession() {
-  ensureConversationId();
   setSessionStatus("active");
   saveFlags({});
   updateActivity();
