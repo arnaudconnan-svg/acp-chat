@@ -999,6 +999,25 @@ function upsertConversationIndexItem(patch = {}) {
   saveConversationsIndex(index);
 }
 
+function createConversationShell(conversationId = ensureConversationId()) {
+  const existing = loadConversationData(conversationId);
+  
+  saveConversationData(conversationId, {
+    messages: Array.isArray(existing.messages) ? existing.messages : [],
+    memory: typeof existing.memory === "string" && existing.memory.trim() ?
+      existing.memory :
+      defaultMemory(),
+    flags: existing.flags && typeof existing.flags === "object" ? existing.flags : {},
+    updatedAt: Date.now()
+  });
+  
+  upsertConversationIndexItem({
+    id: conversationId,
+    title: null,
+    updatedAt: Date.now()
+  });
+}
+
 function loadConversationData(conversationId = ensureConversationId()) {
   try {
     const raw = localStorage.getItem(getConversationStorageKey(conversationId));
@@ -1324,7 +1343,7 @@ function resetLocalSessionState() {}
 
 function clearSessionStorageExceptMemory() {
   clearHistory();
-  localStorage.removeItem(FLAGS_KEY);
+  saveFlags({});
   localStorage.removeItem(ACTIVITY_KEY);
 }
 
@@ -1374,6 +1393,9 @@ async function finalizeAndStartNewSession() {
 }
 
 function startFreshSession() {
+  const conversationId = ensureConversationId();
+  
+  createConversationShell(conversationId);
   setSessionStatus("active");
   saveFlags({});
   updateActivity();
@@ -1412,7 +1434,38 @@ function enterChat() {
   }
 }
 
+function renderConversationsList() {
+  const listEl = document.getElementById("conversationsList");
+  const items = loadConversationsIndex()
+    .slice()
+    .sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0));
+  
+  if (items.length === 0) {
+    listEl.innerHTML = `
+      <div class="conversationItem">
+        <div class="conversationItemPlaceholder">
+          Aucune conversation locale pour le moment.
+        </div>
+      </div>
+    `;
+    return;
+  }
+  
+  listEl.innerHTML = items.map(item => {
+    const safeTitle = item.title && String(item.title).trim() ?
+      String(item.title).trim() :
+      "Titre en cours de creation. Patientez...";
+    
+    return `
+      <div class="conversationItem" data-conversation-id="${item.id}">
+        <div class="conversationItemPlaceholder">${safeTitle}</div>
+      </div>
+    `;
+  }).join("");
+}
+
 function enterConversations() {
+  renderConversationsList();
   showScreen("conversationsScreen");
 }
 
