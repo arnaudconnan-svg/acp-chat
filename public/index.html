@@ -939,17 +939,7 @@ function getOrCreateUserId() {
 }
 
 function getOrCreateConversationId() {
-  let id = localStorage.getItem(CONVERSATION_ID_KEY);
-  
-  if (!id) {
-    console.warn("⚠️ conversationId MISSING → RECREATED");
-    id = "c_" + Date.now();
-    localStorage.setItem(CONVERSATION_ID_KEY, id);
-  } else {
-    console.log("✅ conversationId EXISTS:", id);
-  }
-  
-  return id;
+  return localStorage.getItem(CONVERSATION_ID_KEY);
 }
 
 let isSending = false;
