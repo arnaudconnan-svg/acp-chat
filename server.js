@@ -1825,24 +1825,22 @@ app.post("/api/conversations/:id/title", async (req, res) => {
 
 app.get("/api/admin/conversations", requireAdminAuth, async (req, res) => {
   try {
+    const snapshot = await db.ref("conversations").once("value");
+    const data = snapshot.val() || {};
     
     const conversations = Object.entries(data).map(([id, value]) => ({
       id,
       userId: value.userId || null,
       createdAt: value.createdAt,
       updatedAt: value.updatedAt || value.createdAt,
-    
-      displayTitle:
-      value.title ||
-      value.generatedTitle ||
-      (value.lastUserMessage ?
+      displayTitle: value.title || (
+        value.lastUserMessage ?
         value.lastUserMessage.slice(0, 40) :
-        "(sans titre)"),
-    
+        "(sans titre)"
+      ),
       messageCount: value.messageCount || 0
     }));
     
-    // tri par date de mise à jour (desc)
     conversations.sort((a, b) =>
       new Date(b.updatedAt) - new Date(a.updatedAt)
     );
@@ -1896,9 +1894,6 @@ app.post("/chat", async (req, res) => {
 
     const conversationsRef = db.ref("conversations");
     const convRef = conversationsRef.child(conversationId);
-
-    const snapshot = await convRef.get();
-    const convData = snapshot.val() || {};
     
     await convRef.transaction(current => {
       const nowIso = new Date().toISOString();
@@ -1909,7 +1904,6 @@ app.post("/chat", async (req, res) => {
           createdAt: nowIso,
           updatedAt: nowIso,
           title: null,
-          generatedTitle: null,
           titleLocked: false,
           messageCount: 1,
           lastUserMessage: message
@@ -1920,7 +1914,7 @@ app.post("/chat", async (req, res) => {
         ...current,
         userId,
         updatedAt: nowIso,
-        messageCount: (current.messageCount || 0) + 1,
+        messageCount: (Number(current.messageCount) || 0) + 1,
         lastUserMessage: message
       };
     });
