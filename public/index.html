@@ -920,12 +920,10 @@ body.show-debug .debug-block {
 <script>
 const USER_ID_KEY = "facilitatio_user_id";
 const CONVERSATION_ID_KEY = "facilitatio_conversation_id";
-const SESSION_KEY = "facilitatio_v0_history";
-const MEMORY_KEY = "facilitatio_v0_memory";
-const FLAGS_KEY = "facilitatio_v0_flags";
+const CONVERSATIONS_INDEX_KEY = "facilitatio_conversations_index";
 const ACTIVITY_KEY = "facilitatio_last_activity";
 const SESSION_INFO_DISMISSED_KEY = "facilitatio_session_info_dismissed";
-const SESSION_TIMEOUT_MS = 12 *60 * 60 * 1000;
+const SESSION_TIMEOUT_MS = 12 * 60 * 60 * 1000;
 const MAX_RECENT_TURNS = 8;
 const ADMIN_UI_KEY = "facilitatio_admin_ui";
 
@@ -933,24 +931,10 @@ let isSending = false;
 let showDebug = false;
 let sessionStatus = "welcome";
 
-/* ---------- MEMORY ---------- */
+/* ---------- CONVERSATIONS STORAGE ---------- */
 
-function getOrCreateUserId() {
-  let id = localStorage.getItem(USER_ID_KEY);
-  if (!id) {
-    id = "u_" + Date.now();
-    localStorage.setItem(USER_ID_KEY, id);
-  }
-  return id;
-}
-
-function getOrCreateConversationId() {
-  let id = localStorage.getItem(CONVERSATION_ID_KEY);
-  if (!id) {
-    id = "c_" + Date.now();
-    localStorage.setItem(CONVERSATION_ID_KEY, id);
-  }
-  return id;
+function getConversationStorageKey(conversationId) {
+  return `facilitatio_conversation_data_${conversationId}`;
 }
 
 function defaultMemory() {
@@ -966,55 +950,169 @@ function defaultMemory() {
   ].join("\n");
 }
 
-function loadMemory() {
-  return localStorage.getItem(MEMORY_KEY) || defaultMemory();
+function createEmptyConversationData() {
+  return {
+    messages: [],
+    memory: defaultMemory(),
+    flags: {},
+    updatedAt: Date.now()
+  };
 }
 
-function saveMemory(memory) {
-  localStorage.setItem(MEMORY_KEY, memory);
+function ensureConversationId() {
+  return getOrCreateConversationId();
 }
 
-/* ---------- FLAGS ---------- */
-
-function loadFlags() {
+function loadConversationsIndex() {
   try {
-    return JSON.parse(localStorage.getItem(FLAGS_KEY) || "{}");
-  } catch {
-    return {};
-  }
-}
-
-function saveFlags(flags) {
-  localStorage.setItem(FLAGS_KEY, JSON.stringify(flags || {}));
-}
-
-/* ---------- HISTORY ---------- */
-
-function loadHistory() {
-  try {
-    return JSON.parse(localStorage.getItem(SESSION_KEY) || "[]");
+    const parsed = JSON.parse(localStorage.getItem(CONVERSATIONS_INDEX_KEY) || "[]");
+    return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];
   }
 }
 
+function saveConversationsIndex(index) {
+  localStorage.setItem(CONVERSATIONS_INDEX_KEY, JSON.stringify(Array.isArray(index) ? index : []));
+}
+
+function upsertConversationIndexItem(patch = {}) {
+  const conversationId = String(patch.id || ensureConversationId());
+  const index = loadConversationsIndex();
+  const existingIndex = index.findIndex(item => item && item.id === conversationId);
+  const previous = existingIndex >= 0 ? index[existingIndex] : null;
+  
+  const nextItem = {
+    id: conversationId,
+    title: Object.prototype.hasOwnProperty.call(patch, "title") ?
+      patch.title :
+      (previous ? previous.title : null),
+    updatedAt: Number(patch.updatedAt || (previous ? previous.updatedAt : Date.now()))
+  };
+  
+  if (existingIndex >= 0) {
+    index[existingIndex] = nextItem;
+  } else {
+    index.push(nextItem);
+  }
+  
+  saveConversationsIndex(index);
+}
+
+function loadConversationData(conversationId = ensureConversationId()) {
+  try {
+    const raw = localStorage.getItem(getConversationStorageKey(conversationId));
+    if (!raw) return createEmptyConversationData();
+    
+    const parsed = JSON.parse(raw);
+    return {
+      messages: Array.isArray(parsed?.messages) ? parsed.messages : [],
+      memory: typeof parsed?.memory === "string" && parsed.memory.trim() ?
+        parsed.memory :
+        defaultMemory(),
+      flags: parsed?.flags && typeof parsed.flags === "object" ? parsed.flags : {},
+      updatedAt: Number(parsed?.updatedAt || Date.now())
+    };
+  } catch {
+    return createEmptyConversationData();
+  }
+}
+
+function saveConversationData(conversationId = ensureConversationId(), data = {}) {
+  const safeData = {
+    messages: Array.isArray(data?.messages) ? data.messages : [],
+    memory: typeof data?.memory === "string" && data.memory.trim() ?
+      data.memory :
+      defaultMemory(),
+    flags: data?.flags && typeof data.flags === "object" ? data.flags : {},
+    updatedAt: Number(data?.updatedAt || Date.now())
+  };
+  
+  localStorage.setItem(
+    getConversationStorageKey(conversationId),
+    JSON.stringify(safeData)
+  );
+  
+  upsertConversationIndexItem({
+    id: conversationId,
+    updatedAt: safeData.updatedAt
+  });
+}
+
+function deleteConversationData(conversationId) {
+  localStorage.removeItem(getConversationStorageKey(conversationId));
+  
+  const nextIndex = loadConversationsIndex().filter(item => item && item.id !== conversationId);
+  saveConversationsIndex(nextIndex);
+}
+
+function loadMemory() {
+  return loadConversationData().memory;
+}
+
+function saveMemory(memory) {
+  const conversationId = ensureConversationId();
+  const data = loadConversationData(conversationId);
+  
+  saveConversationData(conversationId, {
+    ...data,
+    memory,
+    updatedAt: Date.now()
+  });
+}
+
+function loadFlags() {
+  return loadConversationData().flags;
+}
+
+function saveFlags(flags) {
+  const conversationId = ensureConversationId();
+  const data = loadConversationData(conversationId);
+  
+  saveConversationData(conversationId, {
+    ...data,
+    flags: flags || {},
+    updatedAt: Date.now()
+  });
+}
+
+function loadHistory() {
+  return loadConversationData().messages;
+}
+
 function saveHistory(history) {
-  localStorage.setItem(SESSION_KEY, JSON.stringify(history));
+  const conversationId = ensureConversationId();
+  const data = loadConversationData(conversationId);
+  
+  saveConversationData(conversationId, {
+    ...data,
+    messages: Array.isArray(history) ? history : [],
+    updatedAt: Date.now()
+  });
 }
 
 function pushHistory(role, content, debug) {
   const history = loadHistory();
+  
   history.push({
     role,
     content,
     debug: Array.isArray(debug) ? debug : [],
     t: Date.now()
   });
+  
   saveHistory(history);
 }
 
 function clearHistory() {
-  localStorage.removeItem(SESSION_KEY);
+  const conversationId = ensureConversationId();
+  const data = loadConversationData(conversationId);
+  
+  saveConversationData(conversationId, {
+    ...data,
+    messages: [],
+    updatedAt: Date.now()
+  });
 }
 
 /* ---------- ACTIVITY ---------- */
@@ -1033,7 +1131,7 @@ function isSessionExpired() {
   return (Date.now() - last) > SESSION_TIMEOUT_MS;
 }
 
-/* ---------- SESSION INFO MODAL PREFERENCE ---------- */
+/* --- SESSION INFO MODAL PREFERENCE --- */
 
 function loadSessionInfoDismissed() {
   return localStorage.getItem(SESSION_INFO_DISMISSED_KEY) === "1";
