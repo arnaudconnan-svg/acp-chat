@@ -1415,9 +1415,7 @@ async function finalizeAndStartNewSession() {
 }
 
 function startFreshSession() {
-  const conversationId = ensureConversationId();
-  
-  createConversationShell(conversationId);
+  ensureConversationId();
   setSessionStatus("active");
   saveFlags({});
   updateActivity();
@@ -1523,6 +1521,32 @@ function buildPayload(message) {
   };
 }
 
+async function refreshConversationTitle(conversationId, attempt = 0) {
+  if (!conversationId) return;
+  
+  try {
+    const titleRes = await fetch(`/api/conversations/${encodeURIComponent(conversationId)}/title`);
+    const titleData = await titleRes.json();
+    
+    if (!titleRes.ok) return;
+    
+    if (titleData.title) {
+      upsertConversationIndexItem({
+        id: conversationId,
+        title: titleData.title,
+        updatedAt: titleData.updatedAt ? new Date(titleData.updatedAt).getTime() : Date.now()
+      });
+      return;
+    }
+    
+    if (attempt < 5) {
+      setTimeout(() => {
+        refreshConversationTitle(conversationId, attempt + 1);
+      }, 800);
+    }
+  } catch {}
+}
+
 async function send() {
   if (isSending) return;
   if (sessionStatus === "terminated" || sessionStatus === "closing") return;
@@ -1559,18 +1583,7 @@ async function send() {
     addMessage("bot", data.reply, data.debug || []);
     
     if (data.conversationId) {
-      try {
-        const titleRes = await fetch(`/api/conversations/${encodeURIComponent(data.conversationId)}/title`);
-        const titleData = await titleRes.json();
-        
-        if (titleRes.ok) {
-          upsertConversationIndexItem({
-            id: data.conversationId,
-            title: titleData.title || null,
-            updatedAt: titleData.updatedAt ? new Date(titleData.updatedAt).getTime() : Date.now()
-          });
-        }
-      } catch {}
+      refreshConversationTitle(data.conversationId);
     }
     
     updateActivity();
