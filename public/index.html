@@ -148,6 +148,133 @@ body {
   color: #245e66;
 }
 
+/* ---------- CONVERSATIONS ---------- */
+
+#conversationsScreen {
+  position: relative;
+  min-height: 0;
+  background: white;
+}
+
+#conversationsTopBar {
+  flex: 0 0 auto;
+  background: white;
+  position: relative;
+  z-index: 5;
+  padding-bottom: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#conversationsBackBtn {
+  position: absolute;
+  left: 0;
+  top: 8px;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid #d7dee2;
+  border-radius: 999px;
+  background: white;
+  color: #4b5563;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#conversationsBackText {
+  position: absolute;
+  left: 42px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 13px;
+  line-height: 1;
+  color: #4b5563;
+  user-select: none;
+  pointer-events: none;
+}
+
+#conversationsTitle {
+  text-align: center;
+  font-size: 22px;
+  margin: 10px 0 16px 0;
+  color: #1f3f44;
+  flex: 1;
+}
+
+#conversationsListWrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 8px 0 96px 0;
+  box-sizing: border-box;
+  -webkit-overflow-scrolling: touch;
+}
+
+#conversationsList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.conversationItem {
+  border: 1px solid #d7dee2;
+  border-radius: 14px;
+  background: white;
+  padding: 14px 16px;
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+}
+
+.conversationItemPlaceholder {
+  color: #6b7280;
+  font-size: 15px;
+  line-height: 1.4;
+}
+
+#conversationsFabWrap {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 0 calc(12px + env(safe-area-inset-bottom, 0px)) 12px;
+  background: linear-gradient(to left, white 70%, rgba(255, 255, 255, 0));
+}
+
+#conversationsFabLabel {
+  font-size: 14px;
+  line-height: 1.2;
+  color: #245e66;
+  user-select: none;
+  text-align: right;
+}
+
+#conversationsFabBtn {
+  width: 56px;
+  height: 56px;
+  border: none;
+  border-radius: 999px;
+  background: #245e66;
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 22px rgba(36, 94, 102, 0.28);
+  padding: 0;
+}
+
+#conversationsFabBtn svg {
+  display: block;
+}
+
 /* ---------- CHAT ---------- */
 
 #chatScreen {
@@ -553,7 +680,7 @@ body.show-debug .debug-block {
         Pourquoi cette application est differente
       </button>
 
-      <button class="welcomeBtnPrimary" onclick="enterChat()">
+      <button class="welcomeBtnPrimary" onclick="enterConversations()">
         Entrer
       </button>
 
@@ -582,6 +709,61 @@ body.show-debug .debug-block {
         Annuler
       </button>
     </div>
+  </div>
+</div>
+
+<div id="conversationsScreen" class="screen">
+  <div id="conversationsTopBar">
+    <button id="conversationsBackBtn" type="button" aria-label="Retour">
+      <span id="menuIcon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="16" height="16" role="presentation">
+          <path
+            d="M15 18l-6-6 6-6"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </svg>
+      </span>
+      <span id="conversationsBackText">Accueil</span>
+    </button>
+
+    <h2 id="conversationsTitle">Conversations</h2>
+  </div>
+
+  <div id="conversationsListWrap">
+    <div id="conversationsList">
+      <div class="conversationItem">
+        <div class="conversationItemPlaceholder">
+          Aucune conversation locale pour le moment.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="conversationsFabWrap">
+    <span id="conversationsFabLabel">Nouvelle session</span>
+    <button id="conversationsFabBtn" type="button" aria-label="Nouvelle session">
+      <svg viewBox="0 0 24 24" width="22" height="22" role="presentation" aria-hidden="true">
+        <path
+          d="M5 12h12"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+        />
+        <path
+          d="M13 6l6 6-6 6"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+      </svg>
+    </button>
   </div>
 </div>
 
@@ -1131,6 +1313,10 @@ function enterChat() {
   }
 }
 
+function enterConversations() {
+  showScreen("conversationsScreen");
+}
+
 function startFreshOrResumeSession() {
   closeSessionInfoModal();
   showScreen("chatScreen");
@@ -1212,6 +1398,10 @@ async function send() {
 document.getElementById("sendBtn").onclick = send;
 
 document.getElementById("menuBtn").onclick = () => {
+  showScreen("conversationsScreen");
+};
+
+document.getElementById("conversationsBackBtn").onclick = () => {
   showScreen("welcomeScreen");
 };
 
@@ -1221,6 +1411,10 @@ document.getElementById("debugToggleBtn").onclick = () => {
 };
 
 document.getElementById("newSessionBtn").onclick = () => {
+  openConfirmNewSessionModal();
+};
+
+document.getElementById("conversationsFabBtn").onclick = () => {
   openConfirmNewSessionModal();
 };
 
