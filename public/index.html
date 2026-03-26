@@ -1257,10 +1257,10 @@ async function closeSessionBackend() {
 
 async function finalizeAndStartNewSession() {
   if (sessionStatus === "closing") return;
-
+  
   setSessionStatus("closing");
   await closeSessionBackend();
-
+  
   fadeChatThenReset(() => {
     clearSessionStorageExceptMemory();
     resetLocalSessionState();
@@ -1269,6 +1269,7 @@ async function finalizeAndStartNewSession() {
     closeExpiredSessionModal();
     closeTerminatedSessionModal();
     localStorage.setItem(CONVERSATION_ID_KEY, "c_" + Date.now());
+    showScreen("chatScreen");
     startFreshSession();
     defocusInput();
   });
