@@ -927,6 +927,24 @@ const SESSION_TIMEOUT_MS = 12 * 60 * 60 * 1000;
 const MAX_RECENT_TURNS = 8;
 const ADMIN_UI_KEY = "facilitatio_admin_ui";
 
+function getOrCreateUserId() {
+  let userId = localStorage.getItem(USER_ID_KEY);
+  if (!userId) {
+    userId = "u_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8);
+    localStorage.setItem(USER_ID_KEY, userId);
+  }
+  return userId;
+}
+
+function getOrCreateConversationId() {
+  let conversationId = localStorage.getItem(CONVERSATION_ID_KEY);
+  if (!conversationId) {
+    conversationId = "c_" + Date.now();
+    localStorage.setItem(CONVERSATION_ID_KEY, conversationId);
+  }
+  return conversationId;
+}
+
 let isSending = false;
 let showDebug = false;
 let sessionStatus = "welcome";
