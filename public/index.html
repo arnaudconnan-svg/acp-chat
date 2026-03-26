@@ -1122,10 +1122,6 @@ function pushHistory(role, content, debug) {
   
   saveHistory(history);
 }
-  
-  function clearSessionStorageExceptMemory() {
-  localStorage.removeItem(ACTIVITY_KEY);
-}
 
 /* ---------- ACTIVITY ---------- */
 
@@ -1350,6 +1346,12 @@ function syncInputAvailability() {
 }
 
 function resetLocalSessionState() {}
+
+function clearSessionStorageExceptMemory() {
+  saveHistory([]);
+  saveFlags({});
+  localStorage.removeItem(ACTIVITY_KEY);
+}
 
 function buildSessionPayloadForClose() {
   return {
