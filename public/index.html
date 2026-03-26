@@ -1162,13 +1162,18 @@ function saveSessionInfoDismissed(value) {
 function openConversation(conversationId) {
   localStorage.setItem(CONVERSATION_ID_KEY, conversationId);
   
-  showScreen("chatScreen");
-  setSessionStatus("active");
-  updateActivity();
+  if (isSessionExpired() && loadHistory().length > 0) {
+    showScreen("chatScreen");
+    handleExpiredSessionOnEntry();
+    return;
+  }
   
-  renderHistory();
-  scrollChatToBottom();
-  defocusInput();
+  if (loadSessionInfoDismissed()) {
+    startFreshOrResumeSession();
+  } else {
+    showScreen("chatScreen");
+    openSessionInfoModal();
+  }
 }
 
 function showScreen(id) {
