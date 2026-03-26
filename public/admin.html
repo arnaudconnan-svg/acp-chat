@@ -145,7 +145,7 @@ h1 {
 }
 
 .role-assistant {
-  background: #e7f1f0;
+  background: white;
   border: none;
 }
 
@@ -276,13 +276,13 @@ async function loadConversations() {
       title.style.fontSize = "15px";
       title.style.color = "#334155";
       title.style.marginBottom = "4px";
+      title.style.whiteSpace = "nowrap";
+      title.style.overflow = "hidden";
+      title.style.textOverflow = "ellipsis";
+      title.style.fontWeight = "500";
       
-      let sessionTitle = conv.title || conv.generatedTitle || "";
-      if (sessionTitle.length > 40) {
-        sessionTitle = sessionTitle.slice(0, 40) + "…";
-      }
-      
-      title.textContent = sessionTitle || "(sans titre)";
+      const sessionTitle = conv.displayTitle || "(sans titre)";
+        title.textContent = sessionTitle;
       
       // ---- LIGNE 3 : nombre de messages
       const count = document.createElement("div");

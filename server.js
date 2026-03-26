@@ -1703,6 +1703,60 @@ app.post("/session/close", async (req, res) => {
   }
 });
 
+// ------------------------------
+// GENERATION TITRE AUTO
+// ------------------------------
+
+async function generateConversationTitle(messages) {
+  try {
+    // on prend max 3 premiers messages user
+    const userMessages = messages
+      .filter(m => m.role === "user")
+      .slice(0, 3)
+      .map(m => m.content)
+      .join("\n\n");
+
+    if (!userMessages) return null;
+
+    const completion = await client.chat.completions.create({
+      model: "gpt-4.1-mini",
+      temperature: 0.3,
+      messages: [
+        {
+          role: "system",
+          content:
+            "Tu génères un titre très court (une seule phrase), en français, sans emoji, sans ponctuation excessive."
+        },
+        {
+          role: "user",
+          content: userMessages
+        }
+      ]
+    });
+
+    let title = completion.choices?.[0]?.message?.content?.trim();
+
+    if (!title) {
+      // fallback : début du premier message user
+      return userMessages.slice(0, 40);
+    }
+
+    // nettoyage léger
+    title = title.replace(/\s+/g, " ").trim();
+
+    // limite 40 caractères
+    if (title.length > 40) {
+      title = title.slice(0, 40).trim() + "…";
+    }
+
+    return title;
+
+  } catch (err) {
+    console.error("Erreur génération titre:", err.message);
+    return null;
+  }
+}
+
 // --------------------------------------------------
 // 9) ROUTE
 // --------------------------------------------------
@@ -1745,51 +1799,69 @@ app.post("/api/admin/logout", (req, res) => {
   res.json({ success: true });
 });
 
+app.post("/api/conversations/:id/title", async (req, res) => {
+  try {
+    const conversationId = req.params.id;
+    const title = String(req.body?.title || "").trim();
+    
+    if (!title) {
+      return res.status(400).json({ error: "Titre vide" });
+    }
+    
+    const convRef = db.ref("conversations").child(conversationId);
+    
+    await convRef.update({
+      title,
+      titleLocked: true
+    });
+    
+    return res.json({ success: true });
+    
+  } catch (err) {
+    console.error("Erreur update title:", err);
+    return res.status(500).json({ error: "Erreur serveur" });
+  }
+});
+
 app.get("/api/admin/conversations", requireAdminAuth, async (req, res) => {
   try {
     const snapshot = await db.ref("conversations").once("value");
     const data = snapshot.val() || {};
     
-    // transformer en tableau + tri par updatedAt desc
-    const list = await Promise.all(
-  Object.entries(data).map(async ([id, value]) => {
-    const messagesSnapshot = await db
-      .ref("messages")
-      .orderByChild("conversationId")
-      .equalTo(id)
-      .once("value");
+    const conversations = Object.entries(data).map(([id, value]) => ({
+      id,
+      userId: value.userId || null,
+      createdAt: value.createdAt,
+      updatedAt: value.updatedAt || value.createdAt,
     
-    const messagesData = messagesSnapshot.val() || {};
-    const messages = Object.values(messagesData).sort((a, b) => {
-      return new Date(a.timestamp) - new Date(b.timestamp);
-    });
+      displayTitle:
+      value.title ||
+      value.generatedTitle ||
+      (value.lastUserMessage ?
+        value.lastUserMessage.slice(0, 40) :
+        "(sans titre)"),
     
-    const firstUserMessage =
-      messages.find(m => m.role === "user" && typeof m.content === "string")?.content || "";
+      messageCount: value.messageCount || 0
+    }));
     
-      return {
-        id,
-        ...value,
-        preview: firstUserMessage.slice(0, 120)
-      };
-    })
-  );
-
-  list.sort((a, b) => {
-    return new Date(b.updatedAt) - new Date(a.updatedAt);
-  });
+    // tri par date de mise à jour (desc)
+    conversations.sort((a, b) =>
+      new Date(b.updatedAt) - new Date(a.updatedAt)
+    );
     
-    res.json(list);
+    res.json(conversations);
   } catch (err) {
-    console.error("Erreur conversations:", err);
-    res.status(500).json({ error: "Erreur serveur" });
+    res.status(500).json({ error: err.message });
   }
 });
 
 app.get("/api/admin/conversations/:id/messages", requireAdminAuth, async (req, res) => {
   try {
     const conversationId = req.params.id;
-    const snapshot = await db.ref("messages").orderByChild("conversationId").equalTo(conversationId).once("value");
+    const snapshot = await messagesRef
+      .orderByChild("conversationId")
+      .equalTo(conversationId)
+      .once("value");
     const data = snapshot.val() || {};
     
     const list = Object.entries(data).map(([id, value]) => ({
@@ -1827,17 +1899,27 @@ app.post("/chat", async (req, res) => {
     const conversationsRef = db.ref("conversations");
     const convRef = conversationsRef.child(conversationId);
 
+    const nowIso = new Date().toISOString();
     const snapshot = await convRef.get();
-
+    const convData = snapshot.val() || {};
+    
     if (!snapshot.exists()) {
       await convRef.set({
         userId,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        createdAt: nowIso,
+        updatedAt: nowIso,
+        title: null,
+        generatedTitle: null,
+        titleLocked: false,
+        messageCount: 1,
+        lastUserMessage: message
       });
     } else {
       await convRef.update({
-        updatedAt: new Date().toISOString()
+        userId,
+        updatedAt: nowIso,
+        messageCount: admin.database.ServerValue.increment(1),
+        lastUserMessage: message
       });
     }
 
@@ -2078,6 +2160,40 @@ app.post("/chat", async (req, res) => {
       content: reply,
       timestamp: new Date().toISOString()
     });
+    
+// ------------------------------
+// GENERATION TITRE AUTO (async)
+// ------------------------------
+
+    (async () => {
+      try {
+        const convSnap = await convRef.get();
+        const convData = convSnap.val() || {};
+        
+        const messagesSnap = await messagesRef
+          .orderByChild("conversationId")
+          .equalTo(conversationId)
+          .once("value");
+        
+        const allMessages = Object.values(messagesSnap.val() || {})
+          .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+        
+        const userMessageCount = allMessages.filter(m => m.role === "user").length;
+        
+        if (!convData.titleLocked && userMessageCount <= 3) {
+          const generatedTitle = await generateConversationTitle(allMessages);
+          
+          if (generatedTitle) {
+            await convRef.update({
+              generatedTitle
+            });
+          }
+        }
+        
+      } catch (err) {
+        console.error("Erreur titre async:", err.message);
+      }
+    })();
     
     return res.json({
       conversationId,
