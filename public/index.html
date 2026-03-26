@@ -931,7 +931,7 @@ let isSending = false;
 let showDebug = false;
 let sessionStatus = "welcome";
 
-/* ---------- CONVERSATIONS STORAGE ---------- */
+/* ------- CONVERSATIONS STORAGE ------- */
 
 function getConversationStorageKey(conversationId) {
   return `facilitatio_conversation_data_${conversationId}`;
@@ -1122,16 +1122,9 @@ function pushHistory(role, content, debug) {
   
   saveHistory(history);
 }
-
-function clearHistory() {
-  const conversationId = ensureConversationId();
-  const data = loadConversationData(conversationId);
   
-  saveConversationData(conversationId, {
-    ...data,
-    messages: [],
-    updatedAt: Date.now()
-  });
+  function clearSessionStorageExceptMemory() {
+  localStorage.removeItem(ACTIVITY_KEY);
 }
 
 /* ---------- ACTIVITY ---------- */
@@ -1165,6 +1158,18 @@ function saveSessionInfoDismissed(value) {
 }
 
 /* ---------- UI ---------- */
+
+function openConversation(conversationId) {
+  localStorage.setItem(CONVERSATION_ID_KEY, conversationId);
+  
+  showScreen("chatScreen");
+  setSessionStatus("active");
+  updateActivity();
+  
+  renderHistory();
+  scrollChatToBottom();
+  defocusInput();
+}
 
 function showScreen(id) {
   document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
@@ -1546,6 +1551,16 @@ async function send() {
 }
 
 /* ---------- EVENTS ---------- */
+
+document.getElementById("conversationsList").addEventListener("click", (e) => {
+  const item = e.target.closest(".conversationItem");
+  if (!item) return;
+  
+  const conversationId = item.getAttribute("data-conversation-id");
+  if (!conversationId) return;
+  
+  openConversation(conversationId);
+});
 
 document.getElementById("sendBtn").onclick = send;
 
