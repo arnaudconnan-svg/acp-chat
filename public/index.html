@@ -1139,6 +1139,15 @@ function pushHistory(role, content, debug) {
   });
   
   saveHistory(history);
+  
+  // création de la conversation UNIQUEMENT au 1er message utilisateur
+  if (role === "user" && history.length === 1) {
+    upsertConversationIndexItem({
+      id: ensureConversationId(),
+      title: null,
+      updatedAt: Date.now()
+    });
+  }
 }
 
 /* ---------- ACTIVITY ---------- */
