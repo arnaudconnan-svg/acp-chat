@@ -1091,7 +1091,9 @@ function loadMemory() {
 }
 
 function saveMemory(memory) {
-  const conversationId = String(patch.id || getConversationId());
+  const conversationId = getConversationId();
+  if (!conversationId) return;
+  
   const data = loadConversationData(conversationId);
   
   saveConversationData(conversationId, {
