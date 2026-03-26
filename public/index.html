@@ -1504,42 +1504,57 @@ async function send() {
   if (isSending) return;
   if (sessionStatus === "terminated" || sessionStatus === "closing") return;
   if (sessionStatus === "expired") return;
-
+  
   const input = document.getElementById("input");
   const message = input.value.trim();
   if (!message) return;
-
+  
   isSending = true;
   updateActivity();
-
+  
   pushHistory("user", message, []);
   addMessage("user", message, []);
-
+  
   input.value = "";
-
+  
   try {
     const res = await fetch("/chat", {
       method: "POST",
-      headers: {"Content-Type":"application/json"},
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(buildPayload(message))
     });
-
+    
     const data = await res.json();
-
+    
     if (data.conversationId) {
       localStorage.setItem(CONVERSATION_ID_KEY, data.conversationId);
     }
     if (data.memory) saveMemory(data.memory);
     if (data.flags) saveFlags(data.flags);
-
+    
     pushHistory("assistant", data.reply, data.debug || []);
     addMessage("bot", data.reply, data.debug || []);
-
+    
+    if (data.conversationId) {
+      try {
+        const titleRes = await fetch(`/api/conversations/${encodeURIComponent(data.conversationId)}/title`);
+        const titleData = await titleRes.json();
+        
+        if (titleRes.ok) {
+          upsertConversationIndexItem({
+            id: data.conversationId,
+            title: titleData.title || null,
+            updatedAt: titleData.updatedAt ? new Date(titleData.updatedAt).getTime() : Date.now()
+          });
+        }
+      } catch {}
+    }
+    
     updateActivity();
   } catch {
     addMessage("bot", "Erreur serveur", []);
   }
-
+  
   isSending = false;
   syncInputAvailability();
 }
