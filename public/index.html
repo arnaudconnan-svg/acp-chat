@@ -1366,8 +1366,6 @@ function syncInputAvailability() {
 function resetLocalSessionState() {}
 
 function clearSessionStorageExceptMemory() {
-  saveHistory([]);
-  saveFlags({});
   localStorage.removeItem(ACTIVITY_KEY);
 }
 
