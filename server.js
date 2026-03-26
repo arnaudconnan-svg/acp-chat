@@ -1897,6 +1897,7 @@ app.get("/api/admin/conversations/:id/messages", requireAdminAuth, async (req, r
 });
 
 app.post("/chat", async (req, res) => {
+  console.log("CHAT INPUT conversationId:", req.body?.conversationId);
   let modeForCatch = "exploration";
   let previousMemoryForCatch = normalizeMemory("");
   let flagsForCatch = normalizeSessionFlags({});
