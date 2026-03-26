@@ -1432,9 +1432,8 @@ function startFreshSession() {
   renderHistory();
   
   if (loadHistory().length === 0) {
-    pushHistory("assistant", "Bienvenue dans cette nouvelle session. Que veux-tu explorer aujourd'hui ?", []);
-    addMessage("bot", "Bienvenue dans cette nouvelle session. Que veux-tu explorer aujourd'hui ?", []);
-  }
+  addMessage("bot", "Bienvenue dans cette nouvelle session. Que veux-tu explorer aujourd'hui ?", []);
+}
   
   const input = document.getElementById("input");
   input.value = "";
