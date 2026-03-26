@@ -2,6 +2,8 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light">
 <title>Admin - Conversations</title>
 
 <style>
@@ -15,6 +17,7 @@ html, body {
   background: #f6f7f9;
   color: #1f2937;
   font-family: Arial, sans-serif;
+  color-scheme: light;
 }
 
 body {
@@ -22,9 +25,10 @@ body {
 }
 
 #app {
-  max-width: 900px;
+  width: 100%;
+  max-width: 760px;
   margin: 0 auto;
-  padding: 12px 12px 24px;
+  padding: 12px 12px calc(24px + env(safe-area-inset-bottom, 0px));
 }
 
 .topbar {
@@ -32,79 +36,82 @@ body {
   top: 0;
   z-index: 20;
   background: #f6f7f9;
-  padding-bottom: 10px;
+  padding: 8px 0 12px;
 }
 
 h1 {
-  font-size: 22px;
-  line-height: 1.2;
-  margin: 0 0 10px;
+  font-size: 28px;
+  line-height: 1.15;
+  margin: 0 0 12px;
+  color: #1f3f44;
 }
 
 #backBtn {
   display: none;
   width: 100%;
-  min-height: 44px;
-  border: 1px solid #d1d5db;
+  min-height: 48px;
+  border: 1px solid #cfd8db;
   border-radius: 12px;
   background: white;
-  color: #111827;
-  font-size: 16px;
-  padding: 10px 14px;
-  margin-bottom: 10px;
+  color: #245e66;
+  font-size: 17px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
 }
 
 #list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 }
 
 .item {
   background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 14px;
-  padding: 12px;
+  border: 1px solid #dde4e7;
+  border-radius: 16px;
+  padding: 14px;
   cursor: pointer;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
 .item:hover {
   background: #fbfbfc;
 }
 
+.message-row {
+  display: flex;
+}
+
 .message-row .item {
   cursor: default;
+  box-shadow: none;
 }
 
 .message-row .item:hover {
-  background: white;
-}
-
-.message-row .role-user:hover {
-  background: #e6f0ff;
+  background: inherit;
 }
 
 .meta {
   font-size: 12px;
   line-height: 1.4;
   color: #6b7280;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 
 .main {
-  font-size: 15px;
-  line-height: 1.45;
+  font-size: 16px;
+  line-height: 1.5;
   white-space: pre-wrap;
   word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .conv-id {
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.35;
-  color: #111827;
+  color: #1f2937;
   font-weight: 600;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
   word-break: break-all;
 }
 
@@ -112,28 +119,48 @@ h1 {
 .empty,
 .error {
   background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 14px;
-  padding: 14px;
-  font-size: 15px;
-  line-height: 1.45;
+  border: 1px solid #dde4e7;
+  border-radius: 16px;
+  padding: 16px;
+  font-size: 16px;
+  line-height: 1.5;
 }
 
 .error {
   color: #991b1b;
 }
 
+.role-user {
+  background: #4a7478;
+  color: white;
+  border: none;
+}
+
+.role-user .meta {
+  color: rgba(255, 255, 255, 0.78);
+}
+
 .role-user .main {
-  color: #0f3d91;
+  color: white;
+}
+
+.role-assistant {
+  background: #e6eeee;
+  border: none;
+}
+
+.role-assistant .meta {
+  color: #708487;
 }
 
 .role-assistant .main {
-  color: #1f2937;
+  color: #4b6366;
 }
 
 .preview {
-  font-size: 15px;
-  line-height: 1.45;
+  font-size: 16px;
+  line-height: 1.5;
+  color: #334155;
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
@@ -141,179 +168,197 @@ h1 {
   word-break: break-word;
 }
 
-</style>
+@media (max-width: 640px) {
+  #app {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
 
+  h1 {
+    font-size: 24px;
+  }
+
+  .item {
+    padding: 12px;
+    border-radius: 14px;
+  }
+
+  .main,
+  .preview,
+  .loading,
+  .empty,
+  .error {
+    font-size: 15px;
+  }
+
+  .message-row .item {
+    max-width: 88% !important;
+  }
+}
+</style>
 </head>
 
 <body>
-  
+
 <div id="app">
   <div class="topbar">
-    
+
     <h1>Conversations</h1>
-    
-    <button id="backBtn" onclick="goBack()" style="margin-bottom:12px; display:none;">
+
+    <button id="backBtn" onclick="goBack()" style="display:none;">
       ← Retour
     </button>
-    
-    <div id="conversationMeta" class="meta" style="display:none;">
-    </div>
-    
+
+    <div id="conversationMeta" class="meta" style="display:none;"></div>
+
   </div>
-  
-  <div id="list">Chargement...
-  </div>
-  
+
+  <div id="list">Chargement...</div>
 </div>
 
 <script>
-  function getConversationIdFromUrl() {
-    const params = new URLSearchParams(window.location.search);
-    return params.get("c");
-  }
-  
-  function goBack() {
-    window.location.href = "/admin.html";
-  }
-  
-  async function loadConversations() {
-    const list = document.getElementById("list");
-    list.textContent = "Chargement des conversations...";
-    
-    try {
-      const res = await fetch("/api/admin/conversations");
-      
-      if (!res.ok) {
-        list.textContent = "Erreur HTTP conversations: " + res.status;
-        return;
-      }
-      
-      const data = await res.json();
-      list.innerHTML = "";
-      
-      if (!Array.isArray(data) || !data.length) {
-        list.textContent = "Aucune conversation";
-        return;
-      }
-      
-      data.forEach(conv => {
-        const card = document.createElement("div");
-        card.className = "item";
-        
-        const convId = document.createElement("div");
-        convId.className = "conv-id";
-        convId.textContent = conv.id || "";
-        
-        const created = document.createElement("div");
-        created.className = "meta";
-        created.textContent =
-          "Creee : " + new Date(conv.createdAt).toLocaleString();
-        
-        const updated = document.createElement("div");
-        updated.className = "meta";
-        updated.textContent =
-          "Mise a jour : " + new Date(conv.updatedAt || conv.createdAt).toLocaleString();
-        
-        const preview = document.createElement("div");
-        preview.className = "preview";
-        preview.textContent = conv.preview || "(aucun message utilisateur)";
-        
-        card.appendChild(convId);
-        card.appendChild(created);
-        card.appendChild(updated);
-        card.appendChild(preview);
-        
-        card.onclick = () => {
-          window.location.href = "/admin.html?c=" + encodeURIComponent(conv.id);
-        };
-        
-        list.appendChild(card);
-      });
-    } catch (err) {
-      list.textContent = "Erreur JS conversations: " + err.message;
-    }
-  }
-  
-  async function loadMessages(conversationId) {
-    const list = document.getElementById("list");
-    list.textContent = "Chargement des messages...";
-    
-    try {
-      const res = await fetch("/api/admin/conversations/" + encodeURIComponent(conversationId) + "/messages");
-      
-      if (!res.ok) {
-        list.textContent = "Erreur HTTP messages: " + res.status;
-        return;
-      }
-      
-      const data = await res.json();
-      list.innerHTML = "";
-      
-      if (!Array.isArray(data) || !data.length) {
-        list.textContent = "Aucun message";
-        return;
-      }
-      
-      data.forEach(msg => {
-        const isUser = msg.role === "user";
-        
-        const wrapper = document.createElement("div");
-        wrapper.className = "message-row";
-        wrapper.style.display = "flex";
-        wrapper.style.justifyContent = isUser ? "flex-end" : "flex-start";
-        
-        const card = document.createElement("div");
-        card.className = "item role-" + msg.role;
-        card.style.maxWidth = "85%";
-        
-        if (isUser) {
-          card.style.background = "#e6f0ff";
-        }
-        
-        const meta = document.createElement("div");
-        meta.className = "meta";
-        meta.textContent =
-          new Date(msg.timestamp || msg.createdAt || Date.now()).toLocaleString() +
-          " • " +
-          (isUser ? "utilisateur" : "assistant");
-        
-        const main = document.createElement("div");
-        main.className = "main";
-        main.textContent = msg.content || "";
-        
-        card.appendChild(meta);
-        card.appendChild(main);
-        wrapper.appendChild(card);
-        list.appendChild(wrapper);
-      });
-      
-    } catch (err) {
-      list.textContent = "Erreur JS messages: " + err.message;
-    }
-  }
-  
-  async function init() {
-    const conversationId = getConversationIdFromUrl();
-    const backBtn = document.getElementById("backBtn");
-    const conversationMeta = document.getElementById("conversationMeta");
-    const title = document.querySelector("h1");
-    
-    if (conversationId) {
-      title.textContent = "Messages";
-      backBtn.style.display = "block";
-      conversationMeta.style.display = "block";
-      conversationMeta.textContent = "Conversation : " + conversationId;
-      await loadMessages(conversationId);
-    } else {
-      title.textContent = "Conversations";
-      backBtn.style.display = "none";
-      conversationMeta.style.display = "none";
-      conversationMeta.textContent = "";
-      await loadConversations();
-    }
+function getConversationIdFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("c");
 }
-  
-  init();
+
+function goBack() {
+  window.location.href = "/admin.html";
+}
+
+async function loadConversations() {
+  const list = document.getElementById("list");
+  list.textContent = "Chargement des conversations...";
+
+  try {
+    const res = await fetch("/api/admin/conversations");
+
+    if (!res.ok) {
+      list.innerHTML = '<div class="error">Erreur HTTP conversations: ' + res.status + "</div>";
+      return;
+    }
+
+    const data = await res.json();
+    list.innerHTML = "";
+
+    if (!Array.isArray(data) || !data.length) {
+      list.innerHTML = '<div class="empty">Aucune conversation</div>';
+      return;
+    }
+
+    data.forEach(conv => {
+      const card = document.createElement("div");
+      card.className = "item";
+
+      const convId = document.createElement("div");
+      convId.className = "conv-id";
+      convId.textContent = conv.id || "";
+
+      const created = document.createElement("div");
+      created.className = "meta";
+      created.textContent =
+        "Creee : " + new Date(conv.createdAt).toLocaleString();
+
+      const updated = document.createElement("div");
+      updated.className = "meta";
+      updated.textContent =
+        "Mise a jour : " + new Date(conv.updatedAt || conv.createdAt).toLocaleString();
+
+      const preview = document.createElement("div");
+      preview.className = "preview";
+      preview.textContent = conv.preview || "(aucun message utilisateur)";
+
+      card.appendChild(convId);
+      card.appendChild(created);
+      card.appendChild(updated);
+      card.appendChild(preview);
+
+      card.onclick = () => {
+        window.location.href = "/admin.html?c=" + encodeURIComponent(conv.id);
+      };
+
+      list.appendChild(card);
+    });
+  } catch (err) {
+    list.innerHTML = '<div class="error">Erreur JS conversations: ' + err.message + "</div>";
+  }
+}
+
+async function loadMessages(conversationId) {
+  const list = document.getElementById("list");
+  list.textContent = "Chargement des messages...";
+
+  try {
+    const res = await fetch("/api/admin/conversations/" + encodeURIComponent(conversationId) + "/messages");
+
+    if (!res.ok) {
+      list.innerHTML = '<div class="error">Erreur HTTP messages: ' + res.status + "</div>";
+      return;
+    }
+
+    const data = await res.json();
+    list.innerHTML = "";
+
+    if (!Array.isArray(data) || !data.length) {
+      list.innerHTML = '<div class="empty">Aucun message</div>';
+      return;
+    }
+
+    data.forEach(msg => {
+      const isUser = msg.role === "user";
+
+      const wrapper = document.createElement("div");
+      wrapper.className = "message-row";
+      wrapper.style.justifyContent = isUser ? "flex-end" : "flex-start";
+
+      const card = document.createElement("div");
+      card.className = "item role-" + msg.role;
+      card.style.maxWidth = "78%";
+
+      const meta = document.createElement("div");
+      meta.className = "meta";
+      meta.textContent =
+        new Date(msg.timestamp || msg.createdAt || Date.now()).toLocaleString() +
+        " • " +
+        (isUser ? "utilisateur" : "assistant");
+
+      const main = document.createElement("div");
+      main.className = "main";
+      main.textContent = msg.content || "";
+
+      card.appendChild(meta);
+      card.appendChild(main);
+      wrapper.appendChild(card);
+      list.appendChild(wrapper);
+    });
+
+  } catch (err) {
+    list.innerHTML = '<div class="error">Erreur JS messages: ' + err.message + "</div>";
+  }
+}
+
+async function init() {
+  const conversationId = getConversationIdFromUrl();
+  const backBtn = document.getElementById("backBtn");
+  const conversationMeta = document.getElementById("conversationMeta");
+  const title = document.querySelector("h1");
+
+  if (conversationId) {
+    title.textContent = "Messages";
+    backBtn.style.display = "block";
+    conversationMeta.style.display = "block";
+    conversationMeta.textContent = "Conversation : " + conversationId;
+    await loadMessages(conversationId);
+  } else {
+    title.textContent = "Conversations";
+    backBtn.style.display = "none";
+    conversationMeta.style.display = "none";
+    conversationMeta.textContent = "";
+    await loadConversations();
+  }
+}
+
+init();
 </script>
 </body>
 </html>
