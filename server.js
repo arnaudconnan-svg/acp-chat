@@ -1825,8 +1825,6 @@ app.post("/api/conversations/:id/title", async (req, res) => {
 
 app.get("/api/admin/conversations", requireAdminAuth, async (req, res) => {
   try {
-    const snapshot = await db.ref("conversations").once("value");
-    const data = snapshot.val() || {};
     
     const conversations = Object.entries(data).map(([id, value]) => ({
       id,
@@ -1903,25 +1901,28 @@ app.post("/chat", async (req, res) => {
     const snapshot = await convRef.get();
     const convData = snapshot.val() || {};
     
-    if (!snapshot.exists()) {
-      await convRef.set({
+    await convRef.transaction(current => {
+      if (!current) {
+        return {
+          userId,
+          createdAt: nowIso,
+          updatedAt: nowIso,
+          title: null,
+          generatedTitle: null,
+          titleLocked: false,
+          messageCount: 1,
+          lastUserMessage: message
+        };
+      }
+      
+      return {
+        ...current,
         userId,
-        createdAt: nowIso,
         updatedAt: nowIso,
-        title: null,
-        generatedTitle: null,
-        titleLocked: false,
-        messageCount: 1,
+        messageCount: (current.messageCount || 0) + 1,
         lastUserMessage: message
-      });
-    } else {
-      await convRef.update({
-        userId,
-        updatedAt: nowIso,
-        messageCount: admin.database.ServerValue.increment(1),
-        lastUserMessage: message
-      });
-    }
+      };
+    });
 
     const recentHistory = trimHistory(req.body?.recentHistory);
     const previousMemory = normalizeMemory(req.body?.memory);
