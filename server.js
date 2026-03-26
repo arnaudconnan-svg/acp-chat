@@ -1823,6 +1823,28 @@ app.post("/api/conversations/:id/title", async (req, res) => {
   }
 });
 
+app.get("/api/conversations/:id/title", async (req, res) => {
+  try {
+    const conversationId = req.params.id;
+    const snapshot = await db.ref("conversations").child(conversationId).once("value");
+    const data = snapshot.val() || null;
+    
+    if (!data) {
+      return res.status(404).json({ error: "Conversation introuvable" });
+    }
+    
+    return res.json({
+      id: conversationId,
+      title: data.title || null,
+      titleLocked: data.titleLocked === true,
+      updatedAt: data.updatedAt || data.createdAt || null
+    });
+  } catch (err) {
+    console.error("Erreur get conversation title:", err);
+    return res.status(500).json({ error: "Erreur serveur" });
+  }
+});
+
 app.get("/api/admin/conversations", requireAdminAuth, async (req, res) => {
   try {
     const snapshot = await db.ref("conversations").once("value");
