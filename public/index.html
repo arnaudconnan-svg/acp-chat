@@ -1566,8 +1566,8 @@ document.getElementById("newSessionBtn").onclick = () => {
   openConfirmNewSessionModal();
 };
 
-document.getElementById("conversationsFabBtn").onclick = () => {
-  openConfirmNewSessionModal();
+document.getElementById("conversationsFabBtn").onclick = async () => {
+  await finalizeAndStartNewSession();
 };
 
 document.getElementById("cancelNewSessionBtn").onclick = () => {
