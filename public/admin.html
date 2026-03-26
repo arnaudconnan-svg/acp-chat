@@ -145,7 +145,7 @@ h1 {
 }
 
 .role-assistant {
-  background: #white;
+  background: #e7f1f0;
   border: none;
 }
 
@@ -249,34 +249,74 @@ async function loadConversations() {
     data.forEach(conv => {
       const card = document.createElement("div");
       card.className = "item";
-
-      const convId = document.createElement("div");
-      convId.className = "conv-id";
-      convId.textContent = conv.id || "";
-
-      const created = document.createElement("div");
-      created.className = "meta";
-      created.textContent =
-        "Creee : " + new Date(conv.createdAt).toLocaleString();
-
-      const updated = document.createElement("div");
-      updated.className = "meta";
-      updated.textContent =
-        "Mise a jour : " + new Date(conv.updatedAt || conv.createdAt).toLocaleString();
-
-      const preview = document.createElement("div");
-      preview.className = "preview";
-      preview.textContent = conv.preview || "(aucun message utilisateur)";
-
-      card.appendChild(convId);
-      card.appendChild(created);
-      card.appendChild(updated);
-      card.appendChild(preview);
-
+      card.style.position = "relative";
+      
+      // ---- LIGNE 1 : date + userId (dominante)
+      const mainLine = document.createElement("div");
+      mainLine.style.fontSize = "15px";
+      mainLine.style.fontWeight = "600";
+      mainLine.style.color = "#1f3f44";
+      mainLine.style.marginBottom = "4px";
+      
+      const updatedDate = new Date(conv.updatedAt || conv.createdAt);
+      const formattedDate = updatedDate.toLocaleString("fr-FR", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit"
+      });
+      
+      const userId = conv.userId || "user inconnu";
+      
+      mainLine.textContent = formattedDate + " — " + userId;
+      
+      // ---- LIGNE 2 : titre (normal, discret)
+      const title = document.createElement("div");
+      title.style.fontSize = "15px";
+      title.style.color = "#334155";
+      title.style.marginBottom = "4px";
+      
+      let sessionTitle = conv.title || conv.generatedTitle || "";
+      if (sessionTitle.length > 40) {
+        sessionTitle = sessionTitle.slice(0, 40) + "…";
+      }
+      
+      title.textContent = sessionTitle || "(sans titre)";
+      
+      // ---- LIGNE 3 : nombre de messages
+      const count = document.createElement("div");
+      count.style.fontSize = "13px";
+      count.style.color = "#6b7280";
+      
+      const messageCount = conv.messageCount || 0;
+      count.textContent = messageCount + " messages";
+      
+      // ---- BOUTON ⋯ (top right)
+      const menuBtn = document.createElement("div");
+      menuBtn.textContent = "⋮";
+      menuBtn.style.position = "absolute";
+      menuBtn.style.top = "10px";
+      menuBtn.style.right = "10px";
+      menuBtn.style.fontSize = "18px";
+      menuBtn.style.color = "#6b7280";
+      menuBtn.style.cursor = "pointer";
+      
+      menuBtn.onclick = (e) => {
+        e.stopPropagation();
+        showBottomSheet(conv);
+      };
+      
+      // ---- CLICK CARD
       card.onclick = () => {
         window.location.href = "/admin.html?c=" + encodeURIComponent(conv.id);
       };
-
+      
+      card.appendChild(mainLine);
+      card.appendChild(title);
+      card.appendChild(count);
+      card.appendChild(menuBtn);
+      
       list.appendChild(card);
     });
   } catch (err) {
@@ -335,6 +375,40 @@ async function loadMessages(conversationId) {
   } catch (err) {
     list.innerHTML = '<div class="error">Erreur JS messages: ' + err.message + "</div>";
   }
+}
+
+function showBottomSheet(conv) {
+  const existing = document.getElementById("bottomSheet");
+  if (existing) existing.remove();
+  
+  const overlay = document.createElement("div");
+  overlay.id = "bottomSheet";
+  overlay.style.position = "fixed";
+  overlay.style.left = "0";
+  overlay.style.right = "0";
+  overlay.style.bottom = "0";
+  overlay.style.background = "#ffffff";
+  overlay.style.borderTopLeftRadius = "16px";
+  overlay.style.borderTopRightRadius = "16px";
+  overlay.style.padding = "16px";
+  overlay.style.boxShadow = "0 -4px 20px rgba(0,0,0,0.15)";
+  overlay.style.zIndex = "999";
+  
+  const id = document.createElement("div");
+  id.style.marginBottom = "8px";
+  id.textContent = "ID: " + conv.id;
+  
+  const created = document.createElement("div");
+  created.textContent =
+    "Créée le: " +
+    new Date(conv.createdAt).toLocaleString();
+  
+  overlay.appendChild(id);
+  overlay.appendChild(created);
+  
+  overlay.onclick = () => overlay.remove();
+  
+  document.body.appendChild(overlay);
 }
 
 async function init() {
