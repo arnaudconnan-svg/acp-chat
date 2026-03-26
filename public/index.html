@@ -1525,7 +1525,7 @@ function buildPayload(message) {
   return {
     message,
     userId: getOrCreateUserId(),
-    conversationId: getOrCreateConversationId(),
+    conversationId: localStorage.getItem(CONVERSATION_ID_KEY),
     recentHistory: full.slice(-MAX_RECENT_TURNS),
     memory: loadMemory(),
     flags: loadFlags()
