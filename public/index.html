@@ -927,14 +927,13 @@ const SESSION_TIMEOUT_MS = 12 * 60 * 60 * 1000;
 const MAX_RECENT_TURNS = 8;
 const ADMIN_UI_KEY = "facilitatio_admin_ui";
 
-function getOrCreateUserId() {
-  let userId = localStorage.getItem(USER_ID_KEY);
-  if (!userId) {
-    userId = "u_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8);
-    localStorage.setItem(USER_ID_KEY, userId);
-  }
-  return userId;
-}
+///////////////////////////////////////////////////////////
+Menu
+CHAT INPUT conversationId: c_1774548171736
+WRITE MESSAGE FIREBASE: Test 1
+[2026-03-26T18:03:06.716Z]  @firebase/database: FIREBASE WARNING: Using an unspecified index. Your data will be downloaded and filtered on the client. Consider adding ".indexOn": "conversationId" at /messages to your security rules for better performance. 
+CHAT INPUT conversationId: c_1774548194339
+WRITE MESSAGE FIREBASE: Test 2
 
 function getOrCreateConversationId() {
   let conversationId = localStorage.getItem(CONVERSATION_ID_KEY);
