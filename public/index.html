@@ -1924,8 +1924,6 @@ document.getElementById("sessionInfoModal").addEventListener("click", e => {
 
 window.addEventListener("load", () => {
   const params = new URLSearchParams(window.location.search);
-  const logo = document.getElementById("welcomeLogo");
-  const welcome = document.getElementById("welcomeScreen");
   
   if (params.get("admin") === "1") {
     localStorage.setItem(ADMIN_UI_KEY, "1");
@@ -1936,39 +1934,39 @@ window.addEventListener("load", () => {
   
   syncDebugVisibility();
   
-  let welcomeShown = false;
-
-  function showWelcomeWhenReady() {
-    if (welcomeShown) return;
-    welcomeShown = true;
+  const existingConversationId = getConversationId();
+  
+  if (existingConversationId) {
+    showScreen("chatScreen");
+    
+    if (isSessionExpired() && loadHistory().length > 0) {
+      handleExpiredSessionOnEntry();
+      return;
+    }
+    
+    if (loadSessionInfoDismissed()) {
+      startFreshOrResumeSession();
+    } else {
+      openSessionInfoModal();
+    }
+    
+    return;
+  }
+ 
+  const logo = document.getElementById("welcomeLogo");
+  const welcome = document.getElementById("welcomeScreen");
+  
+  function showWelcome() {
     showScreen("welcomeScreen");
     welcome.classList.add("ready");
   }
   
-  if (!logo) {
-    showWelcomeWhenReady();
-    return;
-  }
-  
-  if (logo.complete) {
-    showWelcomeWhenReady();
-    return;
-  }
-  
-  logo.addEventListener("load", showWelcomeWhenReady, { once: true });
-  logo.addEventListener("error", showWelcomeWhenReady, { once: true
-  
-  const existingConversationId = getConversationId();
-
-if (existingConversationId) {
-  showScreen("chatScreen");
-  
-  if (loadSessionInfoDismissed()) {
-    startFreshOrResumeSession();
+  if (!logo || logo.complete) {
+    showWelcome();
   } else {
-    openSessionInfoModal();
+    logo.addEventListener("load", showWelcome, { once: true });
+    logo.addEventListener("error", showWelcome, { once: true });
   }
-}
 });
 </script>
 </body>
