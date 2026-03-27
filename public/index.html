@@ -2245,8 +2245,9 @@ window.addEventListener("load", () => {
     const icon = document.createElement("img");
     icon.src = "/images/icon-512.png";
     icon.alt = "Chargement";
-    icon.style.width = "min(112px, 28vw)";
-    icon.style.height = "auto";
+    icon.style.width = "96px";
+    icon.style.height = "96px";
+    icon.style.objectFit = "contain";
     icon.style.display = "block";
     
     const text = document.createElement("div");

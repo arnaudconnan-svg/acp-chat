@@ -44,12 +44,9 @@ const app = express();
 const port = process.env.PORT || 3000;
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-app.get("/health", (req, res) => {
+app.get("/health", async (req, res) => {
+  await new Promise(resolve => setTimeout(resolve, 5000));
   res.status(200).json({ ok: true });
-});
-
-app.get("/admin.html", requireAdminAuth, (req, res) => {
-  res.sendFile(__dirname + "/public/admin.html");
 });
 
 app.get("/test.html", requireAdminAuth, (req, res) => {
