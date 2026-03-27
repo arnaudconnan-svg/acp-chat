@@ -1075,6 +1075,28 @@ body.show-debug .debug-block {
   </div>
 </div>
 
+<div id="deleteConversationModal" class="modal">
+  <div class="modalBox">
+    <h3 class="modalTitle">Supprimer la conversation</h3>
+    <p class="modalText">
+      Voulez-vous vraiment supprimer cette conversation ?
+    </p>
+    
+    <div class="modalActions">
+      <button class="modalBtnSecondary" id="cancelDeleteConversationBtn" type="button">
+        Annuler
+      </button>
+      <button class="modalBtnPrimary" id="confirmDeleteConversationBtn" type="button">
+        Supprimer
+      </button>
+    </div>
+  </div>
+</div>
+
+<button id="debugToggleBtn" type="button" aria-label="Afficher ou masquer les logs">
+  logs masques
+</button>
+
 <button id="debugToggleBtn" type="button" aria-label="Afficher ou masquer les logs">
   logs masques
 </button>
@@ -2077,6 +2099,8 @@ function updateTitleCounter() {
 
 editTitleInput.addEventListener("input", updateTitleCounter);
 
+let pendingDeleteConversationId = null;
+
 document.getElementById("conversationsList").addEventListener("click", e => {
   const toggleBtn = e.target.closest("[data-menu-toggle]");
   if (toggleBtn) {
@@ -2120,15 +2144,8 @@ document.getElementById("conversationsList").addEventListener("click", e => {
       el.style.display = "none";
     });
     
-    if (!confirm("Supprimer cette conversation ?")) return;
-    
-    deleteConversationData(conversationId);
-    
-    if (getConversationId() === conversationId) {
-      localStorage.removeItem(CONVERSATION_ID_KEY);
-    }
-    
-    renderConversationsList();
+    pendingDeleteConversationId = conversationId;
+    openModal("deleteConversationModal");
     return;
   }
   
@@ -2136,6 +2153,43 @@ document.getElementById("conversationsList").addEventListener("click", e => {
   if (openBtn) {
     const conversationId = openBtn.getAttribute("data-open-conversation");
     openConversation(conversationId);
+  }
+});
+
+document.addEventListener("click", e => {
+  if (!e.target.closest("[data-menu-toggle]") && !e.target.closest("[data-menu]")) {
+    document.querySelectorAll("[data-menu]").forEach(el => {
+      el.style.display = "none";
+    });
+  }
+});
+
+document.getElementById("cancelDeleteConversationBtn").onclick = () => {
+  pendingDeleteConversationId = null;
+  closeModal("deleteConversationModal");
+};
+
+document.getElementById("confirmDeleteConversationBtn").onclick = () => {
+  if (!pendingDeleteConversationId) {
+    closeModal("deleteConversationModal");
+    return;
+  }
+  
+  deleteConversationData(pendingDeleteConversationId);
+  
+  if (getConversationId() === pendingDeleteConversationId) {
+    localStorage.removeItem(CONVERSATION_ID_KEY);
+  }
+  
+  pendingDeleteConversationId = null;
+  closeModal("deleteConversationModal");
+  renderConversationsList();
+};
+
+document.getElementById("deleteConversationModal").addEventListener("click", e => {
+  if (e.target.id === "deleteConversationModal") {
+    pendingDeleteConversationId = null;
+    closeModal("deleteConversationModal");
   }
 });
 
