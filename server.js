@@ -1007,41 +1007,48 @@ function buildDebug(
   mode,
   {
     suicideLevel = "N0",
-    needsClarification = false,
-    isQuote = false,
-    idiomaticDeathExpression = false,
-    crisisResolved = false,
-    isRecallAttempt = false,
     calledMemory = "none",
-    isLongTermMemoryRecall = false,
     modelConflict = false,
-    isRelance = null,
     explorationDirectivityLevel = 0,
     explorationRelanceWindow = []
   } = {}
 ) {
-  const lines = [`mode: ${mode}`];
+  const lines = [];
   
-  if (suicideLevel !== "N0") {
-    lines.push(`suicide: ${suicideLevel}`);
+  // MODE
+  if (mode === "exploration") lines.push("mode: EXPLORATION");
+  if (mode === "info") lines.push("mode: INFORMATION");
+  if (mode === "contact") lines.push("mode: CONTACT");
+  
+  // SUICIDE
+  if (suicideLevel === "N1") {
+    lines.push("suicideLevel: Possible risque suicidaire");
+  }
+  if (suicideLevel === "N2") {
+    lines.push("suicideLevel: Risque suicidaire avéré");
   }
   
-  if (mode === "contact") lines.push("contact: true");
-  if (isRecallAttempt) lines.push("isRecallAttempt: true");
-  if (calledMemory !== "none") lines.push(`calledMemory: ${calledMemory}`);
-  if (isLongTermMemoryRecall) lines.push("isLongTermMemoryRecall: true");
-  if (needsClarification) lines.push("needsClarification: true");
-  if (isQuote) lines.push("isQuote: true");
-  if (idiomaticDeathExpression) lines.push("idiomaticDeathExpression: true");
-  if (crisisResolved) lines.push("crisisResolved: true");
-  if (modelConflict) lines.push("modelConflict: true");
+  // MEMORY
+  if (calledMemory === "shortTermMemory") {
+    lines.push("calledMemory: Appel à la mémoire à court terme");
+  }
+  if (calledMemory === "longTermMemory") {
+    lines.push("calledMemory: Appel à la mémoire à long terme");
+  }
   
+  // MODEL
+  if (modelConflict) {
+    lines.push("modelConflict: Conflit avec le modèle théorique");
+  }
+  
+  // EXPLORATION ONLY
   if (mode === "exploration") {
-    lines.push(`explorationDirectivity: ${clampExplorationDirectivityLevel(explorationDirectivityLevel)}/4`);
+    lines.push(`explorationDirectivityLevel: Niveau de directivité : ${clampExplorationDirectivityLevel(explorationDirectivityLevel)}/4`);
+    
     lines.push(
-      `explorationRelanceWindow: [${normalizeExplorationRelanceWindow(explorationRelanceWindow)
+      `explorationRelanceWindow: Relance aux derniers tours [${normalizeExplorationRelanceWindow(explorationRelanceWindow)
         .map(v => (v ? "1" : "0"))
-        .join(",")}]`
+        .join("-")}]`
     );
   }
   
@@ -1976,13 +1983,13 @@ app.get("/api/admin/conversations/:id/messages", requireAdminAuth, async (req, r
 
 app.post("/chat", async (req, res) => {
   console.log("CHAT INPUT conversationId:", req.body?.conversationId);
+
   let modeForCatch = "exploration";
   let previousMemoryForCatch = normalizeMemory("");
   let flagsForCatch = normalizeSessionFlags({});
 
   try {
     const message = String(req.body?.message || "");
-    console.log("WRITE MESSAGE FIREBASE:", message);
     const conversationId = req.body?.conversationId;
 
     if (!conversationId) {
@@ -2000,17 +2007,16 @@ app.post("/chat", async (req, res) => {
       timestamp: nowIso
     });
 
-    const conversationsRef = db.ref("conversations");
-    const convRef = conversationsRef.child(conversationId);
+    const convRef = db.ref("conversations").child(conversationId);
 
     await convRef.transaction(current => {
-      const txNowIso = new Date().toISOString();
+      const now = new Date().toISOString();
 
       if (!current) {
         return {
           userId,
-          createdAt: txNowIso,
-          updatedAt: txNowIso,
+          createdAt: now,
+          updatedAt: now,
           title: null,
           titleLocked: false,
           messageCount: 1,
@@ -2021,7 +2027,7 @@ app.post("/chat", async (req, res) => {
       return {
         ...current,
         userId,
-        updatedAt: txNowIso,
+        updatedAt: now,
         messageCount: (Number(current.messageCount) || 0) + 1,
         lastUserMessage: message
       };
@@ -2034,42 +2040,22 @@ app.post("/chat", async (req, res) => {
     previousMemoryForCatch = previousMemory;
     flagsForCatch = flags;
 
-    async function pushAssistantMessage(reply, debugPayload) {
-      await messagesRef.push({
-        conversationId,
-        userId,
-        role: "assistant",
-        content: reply,
-        timestamp: new Date().toISOString(),
-        userMessage: message,
-        assistantReply: reply,
-        debug: debugPayload
-      });
-    }
-
     const suicide = await analyzeSuicideRisk(message, recentHistory, flags);
     let newFlags = normalizeSessionFlags(flags);
 
+    // -------- N2 --------
     if (suicide.suicideLevel === "N2") {
       newFlags.acuteCrisis = true;
       newFlags.contactState = { wasContact: false };
 
       const reply = n2Response();
-      const debugPayload = {
-        mode: "override",
-        suicideLevel: "N2",
-        needsClarification: suicide.needsClarification,
-        isQuote: suicide.isQuote,
-        idiomaticDeathExpression: suicide.idiomaticDeathExpression,
-        crisisResolved: suicide.crisisResolved,
-        isContact: false,
-        isRelance: null,
-        explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
-        flags: newFlags,
-        memory: previousMemory
-      };
 
-      await pushAssistantMessage(reply, debugPayload);
+      await pushAssistantMessage(
+        reply,
+        buildDebug("override", {
+          suicideLevel: "N2"
+        })
+      );
 
       return res.json({
         conversationId,
@@ -2077,38 +2063,25 @@ app.post("/chat", async (req, res) => {
         memory: previousMemory,
         flags: newFlags,
         debug: buildDebug("override", {
-          suicideLevel: "N2",
-          needsClarification: suicide.needsClarification,
-          isQuote: suicide.isQuote,
-          idiomaticDeathExpression: suicide.idiomaticDeathExpression,
-          crisisResolved: suicide.crisisResolved
+          suicideLevel: "N2"
         })
       });
     }
 
+    // -------- ACUTE --------
     if (flags.acuteCrisis === true) {
-      if (suicide.crisisResolved === true) {
-        newFlags.acuteCrisis = false;
-      } else {
+      if (suicide.crisisResolved !== true) {
         newFlags.acuteCrisis = true;
         newFlags.contactState = { wasContact: false };
 
         const reply = acuteCrisisFollowupResponse();
-        const debugPayload = {
-          mode: "override",
-          suicideLevel: suicide.suicideLevel,
-          needsClarification: suicide.needsClarification,
-          isQuote: suicide.isQuote,
-          idiomaticDeathExpression: suicide.idiomaticDeathExpression,
-          crisisResolved: suicide.crisisResolved,
-          isContact: false,
-          isRelance: null,
-          explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
-          flags: newFlags,
-          memory: previousMemory
-        };
 
-        await pushAssistantMessage(reply, debugPayload);
+        await pushAssistantMessage(
+          reply,
+          buildDebug("override", {
+            suicideLevel: suicide.suicideLevel
+          })
+        );
 
         return res.json({
           conversationId,
@@ -2116,35 +2089,25 @@ app.post("/chat", async (req, res) => {
           memory: previousMemory,
           flags: newFlags,
           debug: buildDebug("override", {
-            suicideLevel: suicide.suicideLevel,
-            needsClarification: suicide.needsClarification,
-            isQuote: suicide.isQuote,
-            idiomaticDeathExpression: suicide.idiomaticDeathExpression,
-            crisisResolved: suicide.crisisResolved
+            suicideLevel: suicide.suicideLevel
           })
         });
       }
+
+      newFlags.acuteCrisis = false;
     }
 
+    // -------- N1 --------
     if (suicide.suicideLevel === "N1" || suicide.needsClarification) {
       const reply = await n1ResponseLLM(message);
       newFlags.contactState = { wasContact: false };
 
-      const debugPayload = {
-        mode: "clarification",
-        suicideLevel: "N1",
-        needsClarification: suicide.needsClarification,
-        isQuote: suicide.isQuote,
-        idiomaticDeathExpression: suicide.idiomaticDeathExpression,
-        crisisResolved: suicide.crisisResolved,
-        isContact: false,
-        isRelance: null,
-        explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
-        flags: newFlags,
-        memory: previousMemory
-      };
-
-      await pushAssistantMessage(reply, debugPayload);
+      await pushAssistantMessage(
+        reply,
+        buildDebug("clarification", {
+          suicideLevel: "N1"
+        })
+      );
 
       return res.json({
         conversationId,
@@ -2152,116 +2115,58 @@ app.post("/chat", async (req, res) => {
         memory: previousMemory,
         flags: newFlags,
         debug: buildDebug("clarification", {
-          suicideLevel: "N1",
-          needsClarification: suicide.needsClarification,
-          isQuote: suicide.isQuote,
-          idiomaticDeathExpression: suicide.idiomaticDeathExpression,
-          crisisResolved: suicide.crisisResolved
+          suicideLevel: "N1"
         })
       });
     }
 
+    // -------- RECALL --------
     const recallRouting = await analyzeRecallRouting(message, recentHistory, previousMemory);
 
     if (recallRouting.isLongTermMemoryRecall) {
       const reply = await buildLongTermMemoryRecallResponse(previousMemory);
-      const newMemory = await updateMemory(previousMemory, [
-        ...recentHistory,
-        { role: "user", content: message },
-        { role: "assistant", content: reply }
-      ]);
 
-      const debugPayload = {
-        mode: "memoryRecall",
-        suicideLevel: suicide.suicideLevel,
-        needsClarification: suicide.needsClarification,
-        isQuote: suicide.isQuote,
-        idiomaticDeathExpression: suicide.idiomaticDeathExpression,
-        crisisResolved: suicide.crisisResolved,
-        isRecallAttempt: recallRouting.isRecallAttempt,
-        calledMemory: recallRouting.calledMemory,
-        isLongTermMemoryRecall: recallRouting.isLongTermMemoryRecall,
-        isContact: false,
-        isRelance: null,
-        explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
-        flags: newFlags,
-        memory: newMemory
-      };
-
-      await pushAssistantMessage(reply, debugPayload);
+      await pushAssistantMessage(
+        reply,
+        buildDebug("memoryRecall", {
+          calledMemory: "longTermMemory"
+        })
+      );
 
       return res.json({
         conversationId,
         reply,
-        memory: newMemory,
+        memory: previousMemory,
         flags: newFlags,
         debug: buildDebug("memoryRecall", {
-          suicideLevel: suicide.suicideLevel,
-          needsClarification: suicide.needsClarification,
-          isQuote: suicide.isQuote,
-          idiomaticDeathExpression: suicide.idiomaticDeathExpression,
-          crisisResolved: suicide.crisisResolved,
-          isRecallAttempt: recallRouting.isRecallAttempt,
-          calledMemory: recallRouting.calledMemory,
-          isLongTermMemoryRecall: recallRouting.isLongTermMemoryRecall
+          calledMemory: "longTermMemory"
         })
       });
     }
 
     if (recallRouting.isRecallAttempt && recallRouting.calledMemory === "none") {
       const reply = buildNoMemoryRecallResponse();
-      const newMemory = await updateMemory(previousMemory, [
-        ...recentHistory,
-        { role: "user", content: message },
-        { role: "assistant", content: reply }
-      ]);
 
-      const debugPayload = {
-        mode: "memoryRecall",
-        suicideLevel: suicide.suicideLevel,
-        needsClarification: suicide.needsClarification,
-        isQuote: suicide.isQuote,
-        idiomaticDeathExpression: suicide.idiomaticDeathExpression,
-        crisisResolved: suicide.crisisResolved,
-        isRecallAttempt: recallRouting.isRecallAttempt,
-        calledMemory: recallRouting.calledMemory,
-        isLongTermMemoryRecall: recallRouting.isLongTermMemoryRecall,
-        isContact: false,
-        isRelance: null,
-        explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
-        flags: newFlags,
-        memory: newMemory
-      };
-
-      await pushAssistantMessage(reply, debugPayload);
+      await pushAssistantMessage(
+        reply,
+        buildDebug("memoryRecall", {})
+      );
 
       return res.json({
         conversationId,
         reply,
-        memory: newMemory,
+        memory: previousMemory,
         flags: newFlags,
-        debug: buildDebug("memoryRecall", {
-          suicideLevel: suicide.suicideLevel,
-          needsClarification: suicide.needsClarification,
-          isQuote: suicide.isQuote,
-          idiomaticDeathExpression: suicide.idiomaticDeathExpression,
-          crisisResolved: suicide.crisisResolved,
-          isRecallAttempt: recallRouting.isRecallAttempt,
-          calledMemory: recallRouting.calledMemory,
-          isLongTermMemoryRecall: recallRouting.isLongTermMemoryRecall
-        })
+        debug: buildDebug("memoryRecall", {})
       });
     }
 
-    const activeHistory = recentHistory;
-    const previousContactState = normalizeContactState(newFlags.contactState);
-    const contactAnalysis = await analyzeContactState(message, activeHistory, previousContactState);
-    const justExitedContact = previousContactState.wasContact === true && contactAnalysis.isContact !== true;
-
-    if (justExitedContact) {
-      newFlags.explorationRelanceWindow = [false, true, true, true];
-      newFlags.explorationDirectivityLevel = 3;
-    }
+    // -------- MODE --------
+    const contactAnalysis = await analyzeContactState(
+      message,
+      recentHistory,
+      newFlags.contactState
+    );
 
     newFlags.contactState = {
       wasContact: contactAnalysis.isContact === true
@@ -2269,21 +2174,19 @@ app.post("/chat", async (req, res) => {
 
     const detectedMode = contactAnalysis.isContact
       ? "contact"
-      : (await detectMode(message, activeHistory)).mode;
+      : (await detectMode(message, recentHistory)).mode;
 
     modeForCatch = detectedMode;
-    flagsForCatch = newFlags;
 
     let reply = await generateReply({
       message,
-      history: activeHistory,
+      history: recentHistory,
       memory: previousMemory,
       mode: detectedMode,
       explorationDirectivityLevel: newFlags.explorationDirectivityLevel
     });
 
     let modelConflict = false;
-    let isRelance = null;
 
     if (detectedMode === "exploration") {
       const conflict = await analyzeModelConflict(reply);
@@ -2292,92 +2195,38 @@ app.post("/chat", async (req, res) => {
       if (modelConflict) {
         reply = await rewriteExplorationReplyWithModelFilter({
           message,
-          history: activeHistory,
+          history: recentHistory,
           memory: previousMemory,
           originalReply: reply
         });
       }
 
-      const relanceAnalysis = await analyzeExplorationRelance({
+      const relance = await analyzeExplorationRelance({
         message,
         reply,
-        history: activeHistory,
+        history: recentHistory,
         memory: previousMemory
       });
 
-      isRelance = relanceAnalysis.isRelance === true;
-      newFlags = registerExplorationRelance(newFlags, isRelance);
-      flagsForCatch = newFlags;
+      newFlags = registerExplorationRelance(newFlags, relance.isRelance);
     }
 
     const newMemory = await updateMemory(previousMemory, [
-      ...activeHistory,
+      ...recentHistory,
       { role: "user", content: message },
       { role: "assistant", content: reply }
     ]);
 
-    const finalDebugPayload = {
-      mode: detectedMode,
-      suicideLevel: suicide.suicideLevel,
-      needsClarification: suicide.needsClarification,
-      isQuote: suicide.isQuote,
-      idiomaticDeathExpression: suicide.idiomaticDeathExpression,
-      crisisResolved: suicide.crisisResolved,
-      isRecallAttempt: recallRouting.isRecallAttempt,
-      calledMemory: recallRouting.calledMemory,
-      isLongTermMemoryRecall: recallRouting.isLongTermMemoryRecall,
-      isContact: contactAnalysis.isContact === true,
-      modelConflict,
-      isRelance,
-      explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
-      explorationRelanceWindow: newFlags.explorationRelanceWindow,
-      flags: newFlags,
-      memory: newMemory
-    };
-
-    await pushAssistantMessage(reply, finalDebugPayload);
-
-// ------------------------------
-// GENERATION TITRE AUTO (async)
-// ------------------------------
-
-    (async () => {
-      try {
-        const convSnap = await convRef.get();
-        const convData = convSnap.val() || {};
-
-        const messagesSnap = await messagesRef
-          .orderByChild("conversationId")
-          .equalTo(conversationId)
-          .once("value");
-
-        const allMessages = Object.values(messagesSnap.val() || {})
-          .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-
-        const userMessageCount = allMessages.filter(m => m.role === "user").length;
-
-        if (convData.titleLocked !== true && !convData.title && userMessageCount <= 3) {
-          const title = await generateConversationTitle(allMessages);
-
-          if (title) {
-            await convRef.transaction(current => {
-              if (!current) return current;
-
-              if (current.titleLocked === true || current.title) {
-                return current;
-              }
-
-              return {
-                ...current,
-                title
-              };
-            });
-          }
-        }
-      } catch (err) {
-        console.error("Erreur titre async:", err.message);
-      }
-    })();
+    await pushAssistantMessage(
+      reply,
+      buildDebug(detectedMode, {
+        suicideLevel: suicide.suicideLevel,
+        calledMemory: recallRouting.calledMemory,
+        modelConflict,
+        explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
+        explorationRelanceWindow: newFlags.explorationRelanceWindow
+      })
+    );
 
     return res.json({
       conversationId,
@@ -2386,15 +2235,8 @@ app.post("/chat", async (req, res) => {
       flags: newFlags,
       debug: buildDebug(detectedMode, {
         suicideLevel: suicide.suicideLevel,
-        needsClarification: suicide.needsClarification,
-        isQuote: suicide.isQuote,
-        idiomaticDeathExpression: suicide.idiomaticDeathExpression,
-        crisisResolved: suicide.crisisResolved,
-        isRecallAttempt: recallRouting.isRecallAttempt,
         calledMemory: recallRouting.calledMemory,
-        isLongTermMemoryRecall: recallRouting.isLongTermMemoryRecall,
         modelConflict,
-        isRelance,
         explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
         explorationRelanceWindow: newFlags.explorationRelanceWindow
       })
@@ -2402,10 +2244,12 @@ app.post("/chat", async (req, res) => {
 
   } catch (err) {
     console.error("Erreur /chat:", err);
+
     return res.json({
-      reply: modeForCatch === "contact"
-        ? "Je suis la."
-        : "Desole, je ne suis pas sur d'avoir bien saisi ce que tu voulais dire. Tu veux bien reformuler un peu differemment pour m'aider a mieux comprendre ?",
+      reply:
+        modeForCatch === "contact"
+          ? "Je suis la."
+          : "Desole, reformule.",
       memory: previousMemoryForCatch,
       flags: flagsForCatch,
       debug: ["error"]
