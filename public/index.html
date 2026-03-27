@@ -1674,7 +1674,11 @@ async function finalizeAndStartNewSession() {
     closeTerminatedSessionModal();
     localStorage.removeItem(CONVERSATION_ID_KEY);
     showScreen("chatScreen");
-    startFreshSession();
+    if (loadSessionInfoDismissed()) {
+      startFreshSession();
+    } else {
+      openSessionInfoModal();
+    }
     defocusInput();
   });
 }
