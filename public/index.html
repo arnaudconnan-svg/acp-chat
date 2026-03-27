@@ -2279,26 +2279,53 @@ window.addEventListener("load", () => {
   return false;
 }
   
-  function showWelcome(bootOverlay) {
-  showScreen("welcomeScreen", { replaceHistory: true });
-  
-  welcome.style.transition = "none";
-  welcome.classList.remove("ready");
-  
-  requestAnimationFrame(() => {
-    if (bootOverlay) {
-      bootOverlay.remove();
+  function showWelcome(bootOverlay, source) {
+    showScreen("welcomeScreen", { replaceHistory: true });
+    
+    let sourceBadge = document.getElementById("bootSourceBadge");
+    
+    if (!sourceBadge) {
+      sourceBadge = document.createElement("div");
+      sourceBadge.id = "bootSourceBadge";
+      sourceBadge.style.position = "fixed";
+      sourceBadge.style.right = "12px";
+      sourceBadge.style.top = "12px";
+      sourceBadge.style.zIndex = "7000";
+      sourceBadge.style.padding = "6px 10px";
+      sourceBadge.style.borderRadius = "999px";
+      sourceBadge.style.background = "rgba(36, 94, 102, 0.08)";
+      sourceBadge.style.border = "1px solid rgba(36, 94, 102, 0.18)";
+      sourceBadge.style.color = "#245e66";
+      sourceBadge.style.fontFamily = "Arial, sans-serif";
+      sourceBadge.style.fontSize = "12px";
+      sourceBadge.style.lineHeight = "1";
+      document.body.appendChild(sourceBadge);
     }
     
-    setTimeout(() => {
-      welcome.style.transition = "";
+    sourceBadge.textContent = source || "source inconnue";
+    sourceBadge.style.display = "block";
+    
+    welcome.style.transition = "none";
+    welcome.classList.remove("ready");
+    
+    requestAnimationFrame(() => {
+      if (bootOverlay) {
+        bootOverlay.remove();
+      }
       
-      requestAnimationFrame(() => {
-        welcome.classList.add("ready");
-      });
-    }, 1000);
-  });
-}
+      setTimeout(() => {
+        welcome.style.transition = "";
+        
+        requestAnimationFrame(() => {
+          welcome.classList.add("ready");
+        });
+        
+        setTimeout(() => {
+          sourceBadge.style.display = "none";
+        }, 4000);
+      }, 1000);
+    });
+  }
   
   async function boot() {
     const bootOverlay = createBootOverlay();
