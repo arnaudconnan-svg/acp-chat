@@ -52,10 +52,6 @@ app.get("/test.html", requireAdminAuth, (req, res) => {
   res.sendFile(__dirname + "/public/test.html");
 });
 
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "public/index.html"));
-});
-
 app.use(express.static("public"));
 app.use(express.json());
 

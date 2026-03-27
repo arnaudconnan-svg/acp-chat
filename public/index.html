@@ -1041,7 +1041,7 @@ function getConversationId() {
 function createConversationId() {
   const id = "c_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6);
   localStorage.setItem(CONVERSATION_ID_KEY, id);
-  console.log("🆕 NEW conversationId:", id);
+  console.log("NEW conversationId:", id);
   return id;
 }
 
@@ -1116,6 +1116,8 @@ function loadConversationData(conversationId = getConversationId()) {
 }
 
 function saveConversationData(conversationId = getConversationId(), data = {}) {
+  if (!conversationId) return;
+  
   const safeData = {
     messages: Array.isArray(data?.messages) ? data.messages : [],
     memory: typeof data?.memory === "string" && data.memory.trim() ?
@@ -1166,7 +1168,8 @@ function loadFlags() {
 
 function saveFlags(flags) {
   const conversationId = getConversationId();
-if (!conversationId) return;
+  if (!conversationId) return;
+  
   const data = loadConversationData(conversationId);
   
   saveConversationData(conversationId, {
@@ -1182,7 +1185,8 @@ function loadHistory() {
 
 function saveHistory(history) {
   const conversationId = getConversationId();
-if (!conversationId) return;
+  if (!conversationId) return;
+  
   const data = loadConversationData(conversationId);
   
   saveConversationData(conversationId, {
@@ -1199,7 +1203,7 @@ function pushHistory(role, content, debug) {
     conversationId = createConversationId();
   }
   
-  if (!conversationId) return; // rien à faire si pas encore de session
+  if (!conversationId) return;
   
   const history = loadHistory();
   
@@ -1212,15 +1216,15 @@ function pushHistory(role, content, debug) {
   
   saveHistory(history);
   
- if (role === "user" && history.length === 1) {
-  const firstTitle = String(content).trim().replace(/\s+/g, " ").slice(0, 60);
-  
-  upsertConversationIndexItem({
-    id: conversationId,
-    title: firstTitle || "Conversation sans titre",
-    updatedAt: Date.now()
-  });
-}
+  if (role === "user" && history.length === 1) {
+    const firstTitle = String(content).trim().replace(/\s+/g, " ").slice(0, 60);
+    
+    upsertConversationIndexItem({
+      id: conversationId,
+      title: firstTitle || "Conversation sans titre",
+      updatedAt: Date.now()
+    });
+  }
 }
 
 /* ---------- ACTIVITY ---------- */
