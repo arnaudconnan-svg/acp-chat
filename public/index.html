@@ -1653,11 +1653,24 @@ async function send() {
   if (sessionStatus === "expired") return;
   
   const input = document.getElementById("input");
+  const sendBtn = document.getElementById("sendBtn");
   const message = input.value.trim();
   if (!message) return;
   
   isSending = true;
   updateActivity();
+  
+  const originalBtnText = sendBtn.textContent;
+  let waitStep = 0;
+  const waitFrames = ["•", "••", "•••", "••"];
+  
+  sendBtn.disabled = true;
+  sendBtn.textContent = waitFrames[0];
+  
+  const waitTimer = setInterval(() => {
+    waitStep = (waitStep + 1) % waitFrames.length;
+    sendBtn.textContent = waitFrames[waitStep];
+  }, 300);
   
   pushHistory("user", message, []);
   addMessage("user", message, []);
@@ -1689,10 +1702,12 @@ async function send() {
     updateActivity();
   } catch {
     addMessage("bot", "Erreur serveur", []);
+  } finally {
+    clearInterval(waitTimer);
+    sendBtn.textContent = originalBtnText;
+    isSending = false;
+    syncInputAvailability();
   }
-  
-  isSending = false;
-  syncInputAvailability();
 }
 
 /* ---------- EVENTS ---------- */
