@@ -1580,12 +1580,105 @@ function renderConversationsList() {
     const escapedId = escapeHtml(item.id);
     
     return `
-      <div class="conversationItem" data-conversation-id="${escapedId}">
-        <div class="conversationItemPlaceholder">${escapedTitle}</div>
+      <div class="conversationItem" data-conversation-id="${escapedId}" style="justify-content:space-between; gap:12px; align-items:flex-start;">
+        <button
+          type="button"
+          data-open-conversation="${escapedId}"
+          style="flex:1; min-width:0; border:none; background:transparent; padding:0; text-align:left; color:inherit; font:inherit; cursor:pointer;"
+        >
+          <div class="conversationItemPlaceholder">${escapedTitle}</div>
+        </button>
+        <div style="position:relative; flex:0 0 auto;">
+          <button
+            type="button"
+            data-menu-toggle="${escapedId}"
+            aria-label="Options"
+            style="width:32px; height:32px; border:1px solid #d7dee2; border-radius:999px; background:white; color:#4b5563; padding:0; display:flex; align-items:center; justify-content:center; cursor:pointer;"
+          >
+            <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+              <circle cx="12" cy="5" r="1.8" fill="currentColor"></circle>
+              <circle cx="12" cy="12" r="1.8" fill="currentColor"></circle>
+              <circle cx="12" cy="19" r="1.8" fill="currentColor"></circle>
+            </svg>
+          </button>
+          <div
+            data-menu="${escapedId}"
+            style="display:none; position:absolute; top:38px; right:0; min-width:140px; background:white; border:1px solid #d7dee2; border-radius:12px; box-shadow:0 10px 24px rgba(0,0,0,0.14); overflow:hidden; z-index:30;"
+          >
+            <button
+              type="button"
+              data-rename-conversation="${escapedId}"
+              style="width:100%; border:none; background:white; padding:12px 14px; text-align:left; font:inherit; color:#1f3f44; cursor:pointer;"
+            >
+              Renommer
+            </button>
+            <button
+              type="button"
+              data-delete-conversation="${escapedId}"
+              style="width:100%; border:none; border-top:1px solid #eef2f4; background:white; padding:12px 14px; text-align:left; font:inherit; color:#b42318; cursor:pointer;"
+            >
+              Supprimer
+            </button>
+          </div>
+        </div>
       </div>
     `;
   }).join("");
 }
+
+document.getElementById("conversationsList").onclick = e => {
+  const openBtn = e.target.closest("[data-open-conversation]");
+  if (openBtn) {
+    openConversation(openBtn.getAttribute("data-open-conversation"));
+    return;
+  }
+  
+  const toggleBtn = e.target.closest("[data-menu-toggle]");
+  if (toggleBtn) {
+    const conversationId = toggleBtn.getAttribute("data-menu-toggle");
+    const menus = document.querySelectorAll("[data-menu]");
+    
+    menus.forEach(menu => {
+      if (menu.getAttribute("data-menu") !== conversationId) {
+        menu.style.display = "none";
+      }
+    });
+    
+    const menu = document.querySelector(`[data-menu="${conversationId}"]`);
+    if (menu) {
+      menu.style.display = menu.style.display === "block" ? "none" : "block";
+    }
+    return;
+  }
+  
+  const renameBtn = e.target.closest("[data-rename-conversation]");
+  if (renameBtn) {
+    const conversationId = renameBtn.getAttribute("data-rename-conversation");
+    document.querySelectorAll("[data-menu]").forEach(menu => {
+      menu.style.display = "none";
+    });
+    openEditTitleModal(conversationId);
+    return;
+  }
+  
+  const deleteBtn = e.target.closest("[data-delete-conversation]");
+  if (deleteBtn) {
+    const conversationId = deleteBtn.getAttribute("data-delete-conversation");
+    document.querySelectorAll("[data-menu]").forEach(menu => {
+      menu.style.display = "none";
+    });
+    
+    if (!confirm("Supprimer cette conversation ?")) return;
+    
+    deleteConversationData(conversationId);
+    
+    if (getConversationId() === conversationId) {
+      localStorage.removeItem(CONVERSATION_ID_KEY);
+    }
+    
+    renderConversationsList();
+  }
+};
 
 function enterConversations() {
   renderConversationsList();
@@ -1636,10 +1729,10 @@ async function refreshConversationTitle(conversationId, attempt = 0) {
   
   try {
     const titleRes = await fetch(`/api/conversations/${encodeURIComponent(conversationId)}/title`);
-   
-   if (!titleRes.ok) return;
-
-  const titleData = await titleRes.json();
+    
+    if (!titleRes.ok) return;
+    
+    const titleData = await titleRes.json();
     
     if (titleData.title) {
       upsertConversationIndexItem({
