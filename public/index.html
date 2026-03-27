@@ -2270,19 +2270,13 @@ window.addEventListener("load", () => {
 }
   
   async function waitForBackendReady() {
-    const deadline = Date.now() + 25000;
-    
-    while (Date.now() < deadline) {
-      try {
-        const res = await fetch("/health", { cache: "no-store" });
-        if (res.ok) return true;
-      } catch {}
-      
-      await new Promise(resolve => setTimeout(resolve, 800));
-    }
-    
-    return false;
-  }
+  try {
+    const res = await fetch("/health", { cache: "no-store" });
+    if (res.ok) return true;
+  } catch {}
+  
+  return false;
+}
   
   function showWelcome() {
     showScreen("welcomeScreen", { replaceHistory: true });
