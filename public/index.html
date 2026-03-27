@@ -1810,6 +1810,7 @@ document.getElementById("conversationsList").addEventListener("pointerdown", (e)
   const item = e.target.closest(".conversationItem");
   if (!item) return;
   
+  e.preventDefault();
   longPressTriggered = false;
   
   pressTimer = setTimeout(() => {
@@ -1818,8 +1819,8 @@ document.getElementById("conversationsList").addEventListener("pointerdown", (e)
     const conversationId = item.getAttribute("data-conversation-id");
     if (!conversationId) return;
     
-    openEditTitleModal(conversationId); // on implémentera ensuite
-  }, 500); // durée appui long
+    openEditTitleModal(conversationId);
+  }, 500);
 });
 
 document.getElementById("conversationsList").addEventListener("pointerup", (e) => {
