@@ -2279,21 +2279,25 @@ window.addEventListener("load", () => {
 }
   
   function showWelcome(bootOverlay) {
-    showScreen("welcomeScreen", { replaceHistory: true });
+  showScreen("welcomeScreen", { replaceHistory: true });
+  
+  welcome.style.transition = "none";
+  welcome.classList.remove("ready");
+  
+  requestAnimationFrame(() => {
+    if (bootOverlay) {
+      bootOverlay.remove();
+    }
     
-    welcome.style.transition = "none";
-    welcome.classList.remove("ready");
-    
-    requestAnimationFrame(() => {
-      if (bootOverlay) {
-        bootOverlay.remove();
-      }
+    setTimeout(() => {
+      welcome.style.transition = "";
       
-      setTimeout(() => {
+      requestAnimationFrame(() => {
         welcome.classList.add("ready");
-      }, 1000);
-    });
-  }
+      });
+    }, 1000);
+  });
+}
   
   async function boot() {
     const bootOverlay = createBootOverlay();
