@@ -30,19 +30,32 @@ self.addEventListener("fetch", event => {
   const request = event.request;
   
   if (request.mode === "navigate") {
-    event.respondWith(
-      caches.match("/index.html").then(cachedIndex => {
-        if (cachedIndex) {
-          console.log("[SW] NAVIGATE -> CACHE /index.html", request.url);
-          return cachedIndex;
-        }
-        
-        console.log("[SW] NAVIGATE -> NETWORK", request.url);
-        return fetch(request);
-      })
-    );
-    return;
-  }
+  event.respondWith(
+    caches.match("/index.html").then(async cachedIndex => {
+      if (cachedIndex) {
+        const text = await cachedIndex.text();
+        const marked = text.replace(
+          "<body>",
+          '<body data-source="cache">'
+        );
+        return new Response(marked, {
+          headers: { "Content-Type": "text/html" }
+        });
+      }
+      
+      const res = await fetch(request);
+      const text = await res.text();
+      const marked = text.replace(
+        "<body>",
+        '<body data-source="network">'
+      );
+      return new Response(marked, {
+        headers: { "Content-Type": "text/html" }
+      });
+    })
+  );
+  return;
+}
   
   const url = new URL(request.url);
   
