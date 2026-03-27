@@ -50,7 +50,7 @@ body {
   align-items: center;
   padding: 10px 10px 14px 10px;
   opacity: 0;
-  transition: opacity 0.2s ease;
+  transition: opacity 2.2s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 #welcomeScreen.ready {
@@ -1600,7 +1600,7 @@ function addMessage(role, text, debug) {
 
   scrollChatToBottom();
 }
-
+  
 function renderHistory() {
   const chat = document.getElementById("chat");
   chat.innerHTML = "";
