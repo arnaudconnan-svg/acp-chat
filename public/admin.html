@@ -394,35 +394,62 @@ h1 {
         card.appendChild(main);
         
         if (!isUser && msg.debug !== undefined) {
-          const debugBox = document.createElement("div");
-          debugBox.style.marginTop = "10px";
-          debugBox.style.padding = "10px";
-          debugBox.style.borderRadius = "12px";
-          debugBox.style.background = "#eef4f4";
-          debugBox.style.border = "1px solid #d6e2e1";
-          debugBox.style.fontSize = "13px";
-          debugBox.style.lineHeight = "1.45";
-          debugBox.style.color = "#334155";
-          debugBox.style.whiteSpace = "pre-wrap";
-          debugBox.style.wordBreak = "break-word";
-          debugBox.style.overflowWrap = "break-word";
-          
-          const debugTitle = document.createElement("div");
-          debugTitle.textContent = "debug";
-          debugTitle.style.fontSize = "12px";
-          debugTitle.style.fontWeight = "700";
-          debugTitle.style.textTransform = "uppercase";
-          debugTitle.style.letterSpacing = "0.04em";
-          debugTitle.style.color = "#245e66";
-          debugTitle.style.marginBottom = "6px";
-          
-          const debugContent = document.createElement("div");
-          debugContent.textContent = formatDebugValue(msg.debug);
-          
-          debugBox.appendChild(debugTitle);
-          debugBox.appendChild(debugContent);
-          card.appendChild(debugBox);
-        }
+            const debugWrap = document.createElement("div");
+            debugWrap.style.marginTop = "10px";
+            
+            const debugToggle = document.createElement("button");
+            debugToggle.type = "button";
+            debugToggle.textContent = "Afficher le debug";
+            debugToggle.style.display = "block";
+            debugToggle.style.width = "100%";
+            debugToggle.style.padding = "10px 12px";
+            debugToggle.style.borderRadius = "12px";
+            debugToggle.style.border = "1px solid #d6e2e1";
+            debugToggle.style.background = "#f8fbfb";
+            debugToggle.style.color = "#245e66";
+            debugToggle.style.fontSize = "13px";
+            debugToggle.style.fontWeight = "700";
+            debugToggle.style.cursor = "pointer";
+            debugToggle.style.textAlign = "left";
+            
+            const debugBox = document.createElement("div");
+            debugBox.style.display = "none";
+            debugBox.style.marginTop = "8px";
+            debugBox.style.padding = "10px";
+            debugBox.style.borderRadius = "12px";
+            debugBox.style.background = "#eef4f4";
+            debugBox.style.border = "1px solid #d6e2e1";
+            debugBox.style.fontSize = "13px";
+            debugBox.style.lineHeight = "1.45";
+            debugBox.style.color = "#334155";
+            debugBox.style.whiteSpace = "pre-wrap";
+            debugBox.style.wordBreak = "break-word";
+            debugBox.style.overflowWrap = "break-word";
+            
+            const debugTitle = document.createElement("div");
+            debugTitle.textContent = "debug";
+            debugTitle.style.fontSize = "12px";
+            debugTitle.style.fontWeight = "700";
+            debugTitle.style.textTransform = "uppercase";
+            debugTitle.style.letterSpacing = "0.04em";
+            debugTitle.style.color = "#245e66";
+            debugTitle.style.marginBottom = "6px";
+            
+            const debugContent = document.createElement("div");
+            debugContent.textContent = formatDebugValue(msg.debug);
+            
+            debugToggle.onclick = () => {
+              const isOpen = debugBox.style.display !== "none";
+              debugBox.style.display = isOpen ? "none" : "block";
+              debugToggle.textContent = isOpen ? "Afficher le debug" : "Masquer le debug";
+            };
+            
+            debugBox.appendChild(debugTitle);
+            debugBox.appendChild(debugContent);
+            debugWrap.appendChild(debugToggle);
+            debugWrap.appendChild(debugBox);
+            card.appendChild(debugWrap);
+          }
         
         wrapper.appendChild(card);
         list.appendChild(wrapper);
