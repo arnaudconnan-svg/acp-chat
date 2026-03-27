@@ -13,6 +13,7 @@ admin.initializeApp({
 });
 const db = admin.database();
 const messagesRef = db.ref("messages");
+const userLabelsRef = db.ref("userLabels");
 const crypto = require("crypto");
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 const SESSION_SECRET = process.env.SESSION_SECRET;
@@ -1020,11 +1021,11 @@ function buildDebug(
   } = {}
 ) {
   const lines = [`mode: ${mode}`];
-
+  
   if (suicideLevel !== "N0") {
     lines.push(`suicide: ${suicideLevel}`);
   }
-
+  
   if (mode === "contact") lines.push("contact: true");
   if (isRecallAttempt) lines.push("isRecallAttempt: true");
   if (calledMemory !== "none") lines.push(`calledMemory: ${calledMemory}`);
@@ -1034,9 +1035,8 @@ function buildDebug(
   if (idiomaticDeathExpression) lines.push("idiomaticDeathExpression: true");
   if (crisisResolved) lines.push("crisisResolved: true");
   if (modelConflict) lines.push("modelConflict: true");
-
-  if (mode === "exploration" && typeof isRelance === "boolean") {
-    lines.push(`relance: ${isRelance ? "true" : "false"}`);
+  
+  if (mode === "exploration") {
     lines.push(`explorationDirectivity: ${clampExplorationDirectivityLevel(explorationDirectivityLevel)}/4`);
     lines.push(
       `explorationRelanceWindow: [${normalizeExplorationRelanceWindow(explorationRelanceWindow)
@@ -1044,7 +1044,7 @@ function buildDebug(
         .join(",")}]`
     );
   }
-
+  
   return lines;
 }
 
@@ -1829,6 +1829,29 @@ app.post("/api/admin/logout", (req, res) => {
   res.json({ success: true });
 });
 
+app.post("/api/admin/user-label", requireAdminAuth, async (req, res) => {
+  try {
+    const userId = String(req.body?.userId || "").trim();
+    const label = String(req.body?.label || "").trim();
+    
+    if (!userId) {
+      return res.status(400).json({ error: "Missing userId" });
+    }
+    
+    if (!label) {
+      await userLabelsRef.child(userId).remove();
+      return res.json({ success: true, removed: true });
+    }
+    
+    await userLabelsRef.child(userId).set(label);
+    
+    return res.json({ success: true });
+  } catch (err) {
+    console.error("Erreur user-label:", err);
+    return res.status(500).json({ error: "Erreur serveur" });
+  }
+});
+
 app.post("/api/conversations/:id/title", async (req, res) => {
   try {
     const conversationId = req.params.id;
@@ -1877,21 +1900,33 @@ app.get("/api/conversations/:id/title", async (req, res) => {
 
 app.get("/api/admin/conversations", requireAdminAuth, async (req, res) => {
   try {
-    const snapshot = await db.ref("conversations").once("value");
-    const data = snapshot.val() || {};
+    const [convSnap, labelsSnap] = await Promise.all([
+      db.ref("conversations").once("value"),
+      userLabelsRef.once("value")
+    ]);
     
-    const conversations = Object.entries(data).map(([id, value]) => ({
-      id,
-      userId: value.userId || null,
-      createdAt: value.createdAt,
-      updatedAt: value.updatedAt || value.createdAt,
-      displayTitle: value.title || (
-        value.lastUserMessage ?
-        value.lastUserMessage.slice(0, 40) :
-        "(sans titre)"
-      ),
-      messageCount: value.messageCount || 0
-    }));
+    const data = convSnap.val() || {};
+    const labels = labelsSnap.val() || {};
+    
+    const conversations = Object.entries(data).map(([id, value]) => {
+      const rawUserId = value.userId || null;
+      const label = rawUserId && labels[rawUserId] ? labels[rawUserId] : null;
+      
+      return {
+        id,
+        userId: rawUserId,
+        userLabel: label,
+        displayUser: label || rawUserId,
+        createdAt: value.createdAt,
+        updatedAt: value.updatedAt || value.createdAt,
+        displayTitle: value.title || (
+          value.lastUserMessage ?
+          value.lastUserMessage.slice(0, 40) :
+          "(sans titre)"
+        ),
+        messageCount: value.messageCount || 0
+      };
+    });
     
     conversations.sort((a, b) =>
       new Date(b.updatedAt) - new Date(a.updatedAt)
@@ -1904,27 +1939,40 @@ app.get("/api/admin/conversations", requireAdminAuth, async (req, res) => {
 });
 
 app.get("/api/admin/conversations/:id/messages", requireAdminAuth, async (req, res) => {
-  try {
-    const conversationId = req.params.id;
-    const snapshot = await messagesRef
-      .orderByChild("conversationId")
-      .equalTo(conversationId)
-      .once("value");
-    const data = snapshot.val() || {};
-    
-    const list = Object.entries(data).map(([id, value]) => ({
-      id,
-      ...value
-    })).sort((a, b) => {
-      return new Date(a.timestamp) - new Date(b.timestamp);
-    });
-    
-    res.json(list);
-  } catch (err) {
-    console.error("Erreur messages conversation:", err);
-    res.status(500).json({ error: "Erreur serveur" });
-  }
-});
+    try {
+      const conversationId = req.params.id;
+      
+      const [messagesSnap, labelsSnap] = await Promise.all([
+        messagesRef
+        .orderByChild("conversationId")
+        .equalTo(conversationId)
+        .once("value"),
+        userLabelsRef.once("value")
+      ]);
+      
+      const data = messagesSnap.val() || {};
+      const labels = labelsSnap.val() || {};
+      
+      const list = Object.entries(data).map(([id, value]) => {
+        const rawUserId = value.userId || null;
+        const label = rawUserId && labels[rawUserId] ? labels[rawUserId] : null;
+        
+        return {
+          id,
+          ...value,
+          userLabel: label,
+          displayUser: label || rawUserId
+        };
+      }).sort((a, b) => {
+        return new Date(a.timestamp) - new Date(b.timestamp);
+      });
+      
+      res.json(list);
+    } catch (err) {
+      console.error("Erreur messages conversation:", err);
+      res.status(500).json({ error: "Erreur serveur" });
+    }
+  });
 
 app.post("/chat", async (req, res) => {
   console.log("CHAT INPUT conversationId:", req.body?.conversationId);
