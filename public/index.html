@@ -562,6 +562,14 @@ button {
   justify-content: center;
 }
 
+.waiting-dot {
+  display: block;
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: #415f63;
+}
+
 .debug-block {
   display: none;
   flex-wrap: wrap;
@@ -866,6 +874,51 @@ body.show-debug .debug-block {
       </svg>
     </button>
   </div>
+
+  <template id="conversationItemTemplate">
+    <div class="conversationItem conversationItemRow">
+      <button
+        type="button"
+        class="conversationOpenBtn"
+        data-open-conversation=""
+      >
+        <div class="conversationItemPlaceholder"></div>
+      </button>
+      <div class="conversationMenuWrap">
+        <button
+          type="button"
+          class="conversationMenuToggle"
+          data-menu-toggle=""
+          aria-label="Options"
+        >
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+            <circle cx="12" cy="5" r="1.8" fill="currentColor"></circle>
+            <circle cx="12" cy="12" r="1.8" fill="currentColor"></circle>
+            <circle cx="12" cy="19" r="1.8" fill="currentColor"></circle>
+          </svg>
+        </button>
+        <div
+          class="conversationMenuPopover"
+          data-menu=""
+        >
+          <button
+            type="button"
+            class="conversationMenuAction"
+            data-rename-conversation=""
+          >
+            Renommer
+          </button>
+          <button
+            type="button"
+            class="conversationMenuAction conversationMenuActionDanger"
+            data-delete-conversation=""
+          >
+            Supprimer
+          </button>
+        </div>
+      </div>
+    </div>
+  </template>
 </div>
 
 <div id="chatScreen" class="screen" tabindex="-1">
@@ -1605,7 +1658,6 @@ function startFreshSession() {
   renderHistory();
   
   if (loadHistory().length === 0) {
-  // ⚠️ on affiche sans stocker
   addMessage("bot", "Bienvenue dans cette nouvelle session. Que veux-tu explorer aujourd'hui ?", []);
 }
   
@@ -1638,74 +1690,55 @@ function enterChat() {
 
 function renderConversationsList() {
   const listEl = document.getElementById("conversationsList");
+  const template = document.getElementById("conversationItemTemplate");
+  
   const items = loadConversationsIndex()
     .slice()
     .sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0));
   
+  listEl.innerHTML = "";
+  
   if (items.length === 0) {
-    listEl.innerHTML = `
-      <div class="conversationItem">
-        <div class="conversationItemPlaceholder">
-          Aucune conversation locale pour le moment.
-        </div>
-      </div>
-    `;
+    const itemEl = document.createElement("div");
+    itemEl.className = "conversationItem";
+    
+    const textEl = document.createElement("div");
+    textEl.className = "conversationItemPlaceholder";
+    textEl.textContent = "Aucune conversation locale pour le moment.";
+    
+    itemEl.appendChild(textEl);
+    listEl.appendChild(itemEl);
     return;
   }
   
-  listEl.innerHTML = items.map(item => {
-    const safeTitle = item.title && String(item.title).trim()
-      ? String(item.title).trim()
-      : "Conversation sans titre";
+  items.forEach(item => {
+    const safeTitle = item.title && String(item.title).trim() ?
+      String(item.title).trim() :
+      "Conversation sans titre";
     
-    const escapedTitle = escapeHtml(safeTitle);
-    const escapedId = escapeHtml(item.id);
+    const node = template.content.cloneNode(true);
     
-    return `
-      <div class="conversationItem conversationItemRow" data-conversation-id="${escapedId}">
-        <button
-          type="button"
-          class="conversationOpenBtn"
-          data-open-conversation="${escapedId}"
-        >
-          <div class="conversationItemPlaceholder">${escapedTitle}</div>
-        </button>
-        <div class="conversationMenuWrap">
-          <button
-            type="button"
-            class="conversationMenuToggle"
-            data-menu-toggle="${escapedId}"
-            aria-label="Options"
-          >
-            <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-              <circle cx="12" cy="5" r="1.8" fill="currentColor"></circle>
-              <circle cx="12" cy="12" r="1.8" fill="currentColor"></circle>
-              <circle cx="12" cy="19" r="1.8" fill="currentColor"></circle>
-            </svg>
-          </button>
-          <div
-            class="conversationMenuPopover"
-            data-menu="${escapedId}"
-          >
-            <button
-              type="button"
-              class="conversationMenuAction"
-              data-rename-conversation="${escapedId}"
-            >
-              Renommer
-            </button>
-            <button
-              type="button"
-              class="conversationMenuAction conversationMenuActionDanger"
-              data-delete-conversation="${escapedId}"
-            >
-              Supprimer
-            </button>
-          </div>
-        </div>
-      </div>
-    `;
-  }).join("");
+    const root = node.querySelector(".conversationItem");
+    const openBtn = node.querySelector("[data-open-conversation]");
+    const titleEl = node.querySelector(".conversationItemPlaceholder");
+    const toggleBtn = node.querySelector("[data-menu-toggle]");
+    const menu = node.querySelector("[data-menu]");
+    const renameBtn = node.querySelector("[data-rename-conversation]");
+    const deleteBtn = node.querySelector("[data-delete-conversation]");
+    
+    root.dataset.conversationId = item.id;
+    
+    openBtn.dataset.openConversation = item.id;
+    titleEl.textContent = safeTitle;
+    
+    toggleBtn.dataset.menuToggle = item.id;
+    menu.dataset.menu = item.id;
+    
+    renameBtn.dataset.renameConversation = item.id;
+    deleteBtn.dataset.deleteConversation = item.id;
+    
+    listEl.appendChild(node);
+  });
 }
 
 function enterConversations() {
@@ -1807,18 +1840,23 @@ async function send() {
   
   const waitingMsg = document.createElement("div");
   waitingMsg.className = "message bot";
-  waitingMsg.innerHTML = `
-    <div class="message-content">
-      <div class="bubble waiting-bubble">
-        <span id="waitingDot" style="display:block;width:12px;height:12px;border-radius:999px;background:#415f63;"></span>
-      </div>
-    </div>
-  `;
+  
+  const waitingContent = document.createElement("div");
+  waitingContent.className = "message-content";
+  
+  const waitingBubble = document.createElement("div");
+  waitingBubble.className = "bubble waiting-bubble";
+  
+  const waitingDot = document.createElement("span");
+  waitingDot.id = "waitingDot";
+  waitingDot.className = "waiting-dot";
+  
+  waitingBubble.appendChild(waitingDot);
+  waitingContent.appendChild(waitingBubble);
+  waitingMsg.appendChild(waitingContent);
   
   chat.appendChild(waitingMsg);
   scrollChatToBottom();
-  
-  const waitingDot = waitingMsg.querySelector("#waitingDot");
   let dotAnimation = null;
   
   if (waitingDot && waitingDot.animate) {
