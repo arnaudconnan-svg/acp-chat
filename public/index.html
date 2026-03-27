@@ -895,11 +895,65 @@ body.show-debug .debug-block {
   </div>
 </div>
 
+<div id="editTitleModal" class="modal">
+  <div class="modalBox">
+    <h3 class="modalTitle">Modifier le titre</h3>
+
+    <input
+      id="editTitleInput"
+      type="text"
+      maxlength="60"
+      placeholder="Titre de la conversation"
+      style="width:100%; padding:10px; font-size:16px; box-sizing:border-box;"
+    />
+    
+    <div id="editTitleCounter" style="
+      margin-top:6px;
+      font-size:12px;
+      color:#6b7280;
+      text-align:right;
+    ">
+      0/60
+    </div>
+
+    <div class="modalActions">
+      <button class="modalBtnSecondary" id="cancelEditTitleBtn" type="button">
+        Annuler
+      </button>
+      <button class="modalBtnPrimary" id="confirmEditTitleBtn" type="button">
+        Valider
+      </button>
+    </div>
+  </div>
+</div>
+
 <button id="debugToggleBtn" type="button" aria-label="Afficher ou masquer les logs">
   logs masques
 </button>
 
 <script>
+  function openEditTitleModal(conversationId) {
+    if (!conversationId) return;
+    
+    const index = loadConversationsIndex();
+    const item = index.find(i => i.id === conversationId);
+    
+    const currentTitle = item && item.title ? item.title : "";
+    
+    const input = document.getElementById("editTitleInput");
+    input.value = currentTitle;
+    updateTitleCounter();
+    
+    input.dataset.conversationId = conversationId;
+    
+    openModal("editTitleModal");
+    
+    setTimeout(() => {
+      input.focus();
+      input.select();
+    }, 50);
+  }
+
   function openAboutModal() {
     document.getElementById("aboutModal").style.display = "flex";
   }
@@ -975,7 +1029,7 @@ function getConversationId() {
 }
 
 function createConversationId() {
-  const id = "c_" + Date.now();
+  const id = "c_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6);
   localStorage.setItem(CONVERSATION_ID_KEY, id);
   console.log("🆕 NEW conversationId:", id);
   return id;
@@ -1319,6 +1373,18 @@ function closeModal(id) {
   document.getElementById(id).style.display = "none";
 }
 
+function resetEditTitleModal() {
+  const input = document.getElementById("editTitleInput");
+  input.value = "";
+  input.dataset.conversationId = "";
+  updateTitleCounter();
+}
+
+function closeEditTitleModal() {
+  resetEditTitleModal();
+  closeModal("editTitleModal");
+}
+
 function openSessionInfoModal() {
   document.getElementById("sessionInfoDontShow").checked = loadSessionInfoDismissed();
   openModal("sessionInfoModal");
@@ -1598,14 +1664,94 @@ async function send() {
 
 /* ---------- EVENTS ---------- */
 
-document.getElementById("conversationsList").addEventListener("click", (e) => {
+let pressTimer = null;
+let longPressTriggered = false;
+
+document.getElementById("cancelEditTitleBtn").onclick = () => {
+  closeEditTitleModal();
+};
+
+document.getElementById("editTitleModal").addEventListener("click", e => {
+  if (e.target.id === "editTitleModal") {
+    closeEditTitleModal();
+  }
+});
+
+document.getElementById("editTitleInput").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    document.getElementById("confirmEditTitleBtn").click();
+  }
+});
+
+document.getElementById("confirmEditTitleBtn").onclick = () => {
+  const input = document.getElementById("editTitleInput");
+  const conversationId = input.dataset.conversationId;
+  
+  if (!conversationId) return;
+  
+  let newTitle = input.value.trim();
+  
+  if (newTitle.length > 60) {
+    newTitle = newTitle.slice(0, 60);
+  }
+  
+  upsertConversationIndexItem({
+    id: conversationId,
+    title: newTitle || null,
+    updatedAt: Date.now()
+  });
+  
+  renderConversationsList();
+  closeEditTitleModal();
+};
+
+const editTitleInput = document.getElementById("editTitleInput");
+const editTitleCounter = document.getElementById("editTitleCounter");
+
+function updateTitleCounter() {
+  const length = editTitleInput.value.length;
+  editTitleCounter.textContent = length + "/60";
+}
+
+editTitleInput.addEventListener("input", updateTitleCounter);
+
+document.getElementById("conversationsList").addEventListener("pointerdown", (e) => {
   const item = e.target.closest(".conversationItem");
   if (!item) return;
+  
+  longPressTriggered = false;
+  
+  pressTimer = setTimeout(() => {
+    longPressTriggered = true;
+    
+    const conversationId = item.getAttribute("data-conversation-id");
+    if (!conversationId) return;
+    
+    openEditTitleModal(conversationId); // on implémentera ensuite
+  }, 500); // durée appui long
+});
+
+document.getElementById("conversationsList").addEventListener("pointerup", (e) => {
+  clearTimeout(pressTimer);
+  
+  const item = e.target.closest(".conversationItem");
+  if (!item) return;
+  
+  if (longPressTriggered) return;
   
   const conversationId = item.getAttribute("data-conversation-id");
   if (!conversationId) return;
   
   openConversation(conversationId);
+});
+
+document.getElementById("conversationsList").addEventListener("pointerleave", () => {
+  clearTimeout(pressTimer);
+});
+
+document.getElementById("conversationsList").addEventListener("pointercancel", () => {
+  clearTimeout(pressTimer);
 });
 
 document.getElementById("sendBtn").onclick = send;
