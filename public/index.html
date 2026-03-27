@@ -1414,11 +1414,45 @@ function openConversation(conversationId) {
   }
 }
 
-function showScreen(id) {
+const SCREEN_IDS = ["welcomeScreen", "conversationsScreen", "chatScreen"];
+
+function applyScreen(id) {
   document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
   document.getElementById(id).classList.add("active");
   syncDebugVisibility();
 }
+
+function showScreen(id, options = {}) {
+  const { pushHistory = true, replaceHistory = false } = options;
+  const currentActive = document.querySelector(".screen.active");
+  const currentId = currentActive ? currentActive.id : null;
+  
+  applyScreen(id);
+  
+  if (!SCREEN_IDS.includes(id)) return;
+  if (!pushHistory) return;
+  
+  const nextState = { screenId: id };
+  
+  if (replaceHistory) {
+    history.replaceState(nextState, "", window.location.href);
+    return;
+  }
+  
+  if (currentId !== id) {
+    history.pushState(nextState, "", window.location.href);
+  }
+}
+
+window.addEventListener("popstate", e => {
+  const screenId = e.state && e.state.screenId;
+  
+  if (!SCREEN_IDS.includes(screenId)) {
+    return;
+  }
+  
+  applyScreen(screenId);
+});
 
 function syncDebugVisibility() {
   const isAdminUI = localStorage.getItem(ADMIN_UI_KEY) === "1";
@@ -2133,7 +2167,7 @@ window.addEventListener("load", () => {
   const welcome = document.getElementById("welcomeScreen");
   
   function showWelcome() {
-    showScreen("welcomeScreen");
+    showScreen("welcomeScreen", { replaceHistory: true });
     welcome.classList.add("ready");
   }
   
