@@ -2289,17 +2289,19 @@ window.addEventListener("load", () => {
   
   function showWelcome(bootOverlay) {
     showScreen("welcomeScreen", { replaceHistory: true });
+    
     welcome.style.transition = "none";
-    welcome.classList.add("ready");
+    welcome.classList.remove("ready");
     
     requestAnimationFrame(() => {
       if (bootOverlay) {
         bootOverlay.remove();
       }
       
-      requestAnimationFrame(() => {
-        welcome.style.transition = "";
-      });
+      setTimeout(() => {
+        welcome.style.transition = "opacity 1.2s ease";
+        welcome.classList.add("ready");
+      }, 1000);
     });
   }
   
