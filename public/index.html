@@ -2232,78 +2232,55 @@ window.addEventListener("load", () => {
   const welcome = document.getElementById("welcomeScreen");
   
   function createBootOverlay() {
-  const overlay = document.createElement("div");
-  overlay.style.position = "fixed";
-  overlay.style.inset = "0";
-  overlay.style.zIndex = "6000";
-  overlay.style.display = "flex";
-  overlay.style.flexDirection = "column";
-  overlay.style.alignItems = "center";
-  overlay.style.justifyContent = "center";
-  overlay.style.background = "#ffffff";
-  
-  const icon = document.createElement("img");
-  icon.src = "/images/icon-512.png";
-  icon.alt = "Chargement";
-  icon.style.width = "220px";
-  icon.style.height = "220px";
-  icon.style.objectFit = "contain";
-  icon.style.display = "block";
-  
-  overlay.appendChild(icon);
-  document.body.appendChild(overlay);
-  
-  if (icon.animate) {
-    icon.animate(
-      [
-        { transform: "rotate(0deg)" },
-        { transform: "rotate(360deg)" }
-      ],
-      {
-        duration: 1400,
-        iterations: Infinity,
-        easing: "linear"
-      }
-    );
-  }
-  
-  return overlay;
-}
-  
-  async function waitForBackendReady() {
-  try {
-    const res = await fetch("/health", { cache: "no-store" });
-    if (res.ok) return true;
-  } catch {}
-  
-  return false;
-}
-  
-  function showWelcome(bootOverlay, source) {
-    showScreen("welcomeScreen", { replaceHistory: true });
+    const overlay = document.createElement("div");
+    overlay.style.position = "fixed";
+    overlay.style.inset = "0";
+    overlay.style.zIndex = "6000";
+    overlay.style.display = "flex";
+    overlay.style.flexDirection = "column";
+    overlay.style.alignItems = "center";
+    overlay.style.justifyContent = "center";
+    overlay.style.background = "#ffffff";
     
-    let sourceBadge = document.getElementById("bootSourceBadge");
+    const icon = document.createElement("img");
+    icon.src = "/images/icon-512.png";
+    icon.alt = "Chargement";
+    icon.style.width = "220px";
+    icon.style.height = "220px";
+    icon.style.objectFit = "contain";
+    icon.style.display = "block";
     
-    if (!sourceBadge) {
-      sourceBadge = document.createElement("div");
-      sourceBadge.id = "bootSourceBadge";
-      sourceBadge.style.position = "fixed";
-      sourceBadge.style.right = "12px";
-      sourceBadge.style.top = "12px";
-      sourceBadge.style.zIndex = "7000";
-      sourceBadge.style.padding = "6px 10px";
-      sourceBadge.style.borderRadius = "999px";
-      sourceBadge.style.background = "rgba(36, 94, 102, 0.08)";
-      sourceBadge.style.border = "1px solid rgba(36, 94, 102, 0.18)";
-      sourceBadge.style.color = "#245e66";
-      sourceBadge.style.fontFamily = "Arial, sans-serif";
-      sourceBadge.style.fontSize = "12px";
-      sourceBadge.style.lineHeight = "1";
-      document.body.appendChild(sourceBadge);
+    overlay.appendChild(icon);
+    document.body.appendChild(overlay);
+    
+    if (icon.animate) {
+      icon.animate(
+        [
+          { transform: "rotate(0deg)" },
+          { transform: "rotate(360deg)" }
+        ],
+        {
+          duration: 1400,
+          iterations: Infinity,
+          easing: "linear"
+        }
+      );
     }
     
-    sourceBadge.textContent = source || "source inconnue";
-    sourceBadge.style.display = "block";
+    return overlay;
+  }
+    
+    async function waitForBackendReady() {
+    try {
+      const res = await fetch("/health", { cache: "no-store" });
+      if (res.ok) return true;
+    } catch {}
+    
+    return false;
+  }
+  
+  function showWelcome(bootOverlay) {
+    showScreen("welcomeScreen", { replaceHistory: true });
     
     welcome.style.transition = "none";
     welcome.classList.remove("ready");
@@ -2319,10 +2296,6 @@ window.addEventListener("load", () => {
         requestAnimationFrame(() => {
           welcome.classList.add("ready");
         });
-        
-        setTimeout(() => {
-          sourceBadge.style.display = "none";
-        }, 4000);
       }, 1000);
     });
   }
