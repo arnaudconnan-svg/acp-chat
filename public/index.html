@@ -1956,7 +1956,19 @@ window.addEventListener("load", () => {
   }
   
   logo.addEventListener("load", showWelcomeWhenReady, { once: true });
-  logo.addEventListener("error", showWelcomeWhenReady, { once: true });
+  logo.addEventListener("error", showWelcomeWhenReady, { once: true
+  
+  const existingConversationId = getConversationId();
+
+if (existingConversationId) {
+  showScreen("chatScreen");
+  
+  if (loadSessionInfoDismissed()) {
+    startFreshOrResumeSession();
+  } else {
+    openSessionInfoModal();
+  }
+}
 });
 </script>
 </body>
