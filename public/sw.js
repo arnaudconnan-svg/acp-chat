@@ -30,11 +30,16 @@ self.addEventListener("fetch", event => {
   const request = event.request;
   
   if (request.mode === "navigate") {
-    event.respondWith(
-      fetch(request).catch(() => caches.match("/index.html"))
-    );
-    return;
-  }
+  event.respondWith(
+    caches.match("/index.html").then(cachedIndex => {
+      if (cachedIndex) {
+        return cachedIndex;
+      }
+      return fetch(request);
+    })
+  );
+  return;
+}
   
   const url = new URL(request.url);
   
