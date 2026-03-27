@@ -30,22 +30,33 @@ self.addEventListener("fetch", event => {
   const request = event.request;
   
   if (request.mode === "navigate") {
-  event.respondWith(
-    caches.match("/index.html").then(cachedIndex => {
-      if (cachedIndex) {
-        return cachedIndex;
-      }
-      return fetch(request);
-    })
-  );
-  return;
-}
+    event.respondWith(
+      caches.match("/index.html").then(cachedIndex => {
+        if (cachedIndex) {
+          console.log("[SW] NAVIGATE -> CACHE /index.html", request.url);
+          return cachedIndex;
+        }
+        
+        console.log("[SW] NAVIGATE -> NETWORK", request.url);
+        return fetch(request);
+      })
+    );
+    return;
+  }
   
   const url = new URL(request.url);
   
   if (url.origin === self.location.origin && SHELL_ASSETS.includes(url.pathname)) {
     event.respondWith(
-      caches.match(request).then(cached => cached || fetch(request))
+      caches.match(request).then(cached => {
+        if (cached) {
+          console.log("[SW] ASSET -> CACHE", url.pathname);
+          return cached;
+        }
+        
+        console.log("[SW] ASSET -> NETWORK", url.pathname);
+        return fetch(request);
+      })
     );
   }
 });
