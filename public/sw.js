@@ -31,27 +31,14 @@ self.addEventListener("fetch", event => {
   
   if (request.mode === "navigate") {
   event.respondWith(
-    caches.match("/index.html").then(async cachedIndex => {
-      if (cachedIndex) {
-        const text = await cachedIndex.text();
-        const marked = text.replace(
-          "<body>",
-          '<body data-source="cache">'
-        );
-        return new Response(marked, {
-          headers: { "Content-Type": "text/html" }
-        });
-      }
-      
-      const res = await fetch(request);
-      const text = await res.text();
-      const marked = text.replace(
-        "<body>",
-        '<body data-source="network">'
-      );
-      return new Response(marked, {
-        headers: { "Content-Type": "text/html" }
-      });
+    new Response(`
+      <html>
+        <body style="background:white;display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;">
+          <div style="font-size:20px;">SW INTERCEPT OK</div>
+        </body>
+      </html>
+    `, {
+      headers: { "Content-Type": "text/html" }
     })
   );
   return;

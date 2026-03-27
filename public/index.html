@@ -1080,15 +1080,6 @@ body.show-debug .debug-block {
 </button>
 
 <script>
-
-
-
-//////////////////////////////////////////
-console.log(document.body.dataset.source);
-//////////////////////////////////////////
-
-
-
   function openEditTitleModal(conversationId) {
     if (!conversationId) return;
     
@@ -2327,23 +2318,6 @@ window.addEventListener("load", () => {
   
   boot();
 });
-
-const source = document.body.dataset.source || "unknown";
-
-const badge = document.createElement("div");
-badge.textContent = source;
-badge.style.position = "fixed";
-badge.style.top = "8px";
-badge.style.right = "8px";
-badge.style.zIndex = "9999";
-badge.style.background = "black";
-badge.style.color = "white";
-badge.style.padding = "6px 8px";
-badge.style.fontSize = "12px";
-badge.style.borderRadius = "6px";
-
-document.body.appendChild(badge);
-
 </script>
 </body>
 </html>
