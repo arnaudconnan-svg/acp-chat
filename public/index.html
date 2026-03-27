@@ -50,7 +50,7 @@ body {
   align-items: center;
   padding: 10px 10px 14px 10px;
   opacity: 0;
-  transition: opacity 8s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: opacity 18s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 #welcomeScreen.ready {
@@ -1181,13 +1181,14 @@ function ensureBootOverlay() {
   if (icon.animate) {
     icon.animate(
       [
-        { transform: "rotate(0deg)" },
-        { transform: "rotate(360deg)" }
+        { transform: "rotate(0deg)", opacity: 0.95 },
+        { transform: "rotate(180deg)", opacity: 0.72 },
+        { transform: "rotate(360deg)", opacity: 0.95 }
       ],
       {
-        duration: 1400,
+        duration: 5200,
         iterations: Infinity,
-        easing: "linear"
+        easing: "ease-in-out"
       }
     );
   }
