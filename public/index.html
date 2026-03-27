@@ -1143,6 +1143,67 @@ function getOrCreateUserId() {
 let isSending = false;
 let showDebug = false;
 let sessionStatus = "welcome";
+let bootOverlayEl = null;
+
+function ensureBootOverlay() {
+  if (bootOverlayEl) return bootOverlayEl;
+  
+  const overlay = document.createElement("div");
+  overlay.id = "bootOverlay";
+  overlay.style.position = "fixed";
+  overlay.style.inset = "0";
+  overlay.style.zIndex = "6000";
+  overlay.style.display = "none";
+  overlay.style.flexDirection = "column";
+  overlay.style.alignItems = "center";
+  overlay.style.justifyContent = "center";
+  overlay.style.background = "#ffffff";
+  overlay.style.gap = "18px";
+  
+  const icon = document.createElement("img");
+  icon.src = "/images/icon-512.png";
+  icon.alt = "Chargement";
+  icon.style.width = "min(112px, 28vw)";
+  icon.style.height = "auto";
+  icon.style.display = "block";
+  
+  const text = document.createElement("div");
+  text.textContent = "Chargement...";
+  text.style.fontFamily = "Arial, sans-serif";
+  text.style.fontSize = "16px";
+  text.style.lineHeight = "1.4";
+  text.style.color = "#245e66";
+  
+  overlay.appendChild(icon);
+  overlay.appendChild(text);
+  document.body.appendChild(overlay);
+  
+  if (icon.animate) {
+    icon.animate(
+      [
+        { transform: "rotate(0deg)" },
+        { transform: "rotate(360deg)" }
+      ],
+      {
+        duration: 1400,
+        iterations: Infinity,
+        easing: "linear"
+      }
+    );
+  }
+  
+  bootOverlayEl = overlay;
+  return overlay;
+}
+
+function showBootOverlay() {
+  ensureBootOverlay().style.display = "flex";
+}
+
+function hideBootOverlay() {
+  if (!bootOverlayEl) return;
+  bootOverlayEl.style.display = "none";
+}
 
 /* ------- CONVERSATIONS STORAGE ------- */
 
