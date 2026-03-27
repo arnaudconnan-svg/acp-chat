@@ -48,6 +48,13 @@
   
   let autoSubmitDone = false;
   
+  history.replaceState({ adminLogin: true }, "", window.location.href);
+  history.pushState({ adminLoginBack: true }, "", window.location.href);
+  
+  window.addEventListener("popstate", () => {
+    window.location.replace("/index.html?fromAdminLogin=1");
+  });
+  
   async function submitLogin() {
     if (autoSubmitDone) return;
     const password = passwordInput.value.trim();
@@ -82,7 +89,6 @@
     submitLogin();
   });
   
-  // --- auto-submit si autofill ---
   window.addEventListener("load", () => {
     let attempts = 0;
     const maxAttempts = 20;
