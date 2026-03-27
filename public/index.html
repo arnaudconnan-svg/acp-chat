@@ -1920,44 +1920,59 @@ document.getElementById("sessionInfoModal").addEventListener("click", e => {
   }
 });
 
-/* ---------- INIT ---------- */
-
-window.addEventListener("load", () => {
-  const params = new URLSearchParams(window.location.search);
-  const logo = document.getElementById("welcomeLogo");
-  const welcome = document.getElementById("welcomeScreen");
+  /* ---------- INIT ---------- */
   
-  if (params.get("admin") === "1") {
-    localStorage.setItem(ADMIN_UI_KEY, "1");
-  }
-  if (params.get("admin") === "0") {
-    localStorage.removeItem(ADMIN_UI_KEY);
-  }
-  
-  syncDebugVisibility();
-  
-  let welcomeShown = false;
-
-  function showWelcomeWhenReady() {
-    if (welcomeShown) return;
-    welcomeShown = true;
-    showScreen("welcomeScreen");
-    welcome.classList.add("ready");
-  }
-  
-  if (!logo) {
-    showWelcomeWhenReady();
-    return;
-  }
-  
-  if (logo.complete) {
-    showWelcomeWhenReady();
-    return;
-  }
-  
-  logo.addEventListener("load", showWelcomeWhenReady, { once: true });
-  logo.addEventListener("error", showWelcomeWhenReady, { once: true });
-});
+  window.addEventListener("load", () => {
+    const params = new URLSearchParams(window.location.search);
+    const logo = document.getElementById("welcomeLogo");
+    const welcome = document.getElementById("welcomeScreen");
+    const currentConversationId = getConversationId();
+    const currentHistory = currentConversationId ? loadHistory() : [];
+    
+    if (params.get("admin") === "1") {
+      localStorage.setItem(ADMIN_UI_KEY, "1");
+    }
+    if (params.get("admin") === "0") {
+      localStorage.removeItem(ADMIN_UI_KEY);
+    }
+    
+    syncDebugVisibility();
+    
+    if (currentConversationId && Array.isArray(currentHistory) && currentHistory.length > 0) {
+      showScreen("chatScreen");
+      setSessionStatus(isSessionExpired() ? "expired" : "active");
+      renderHistory();
+      scrollChatToBottom();
+      defocusInput();
+      
+      if (isSessionExpired()) {
+        openExpiredSessionModal();
+      }
+      return;
+    }
+    
+    let welcomeShown = false;
+    
+    function showWelcomeWhenReady() {
+      if (welcomeShown) return;
+      welcomeShown = true;
+      showScreen("welcomeScreen");
+      welcome.classList.add("ready");
+    }
+    
+    if (!logo) {
+      showWelcomeWhenReady();
+      return;
+    }
+    
+    if (logo.complete) {
+      showWelcomeWhenReady();
+      return;
+    }
+    
+    logo.addEventListener("load", showWelcomeWhenReady, { once: true });
+    logo.addEventListener("error", showWelcomeWhenReady, { once: true });
+  });
 </script>
 </body>
 </html>
