@@ -2309,40 +2309,5 @@ window.addEventListener("load", () => {
   boot();
 });
 </script>
-
-<script>
-  async function waitForBackendReady() {
-    showBootOverlay();
-    
-    const MAX_WAIT = 20000; // 20s max
-    const INTERVAL = 800;
-    
-    const start = Date.now();
-    
-    while (true) {
-      try {
-        const res = await fetch("/health", { cache: "no-store" });
-        
-        if (res.ok) {
-          break;
-        }
-      } catch (e) {
-        // backend pas prêt
-      }
-      
-      if (Date.now() - start > MAX_WAIT) {
-        break;
-      }
-      
-      await new Promise(r => setTimeout(r, INTERVAL));
-    }
-    
-    hideBootOverlay();
-  }
-  
-  document.addEventListener("DOMContentLoaded", () => {
-    waitForBackendReady();
-  });
-</script>
 </body>
 </html>
