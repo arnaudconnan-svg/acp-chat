@@ -2230,17 +2230,97 @@ window.addEventListener("load", () => {
   const logo = document.getElementById("welcomeLogo");
   const welcome = document.getElementById("welcomeScreen");
   
+  function createBootOverlay() {
+    const overlay = document.createElement("div");
+    overlay.style.position = "fixed";
+    overlay.style.inset = "0";
+    overlay.style.zIndex = "6000";
+    overlay.style.display = "flex";
+    overlay.style.flexDirection = "column";
+    overlay.style.alignItems = "center";
+    overlay.style.justifyContent = "center";
+    overlay.style.background = "#ffffff";
+    overlay.style.gap = "18px";
+    
+    const icon = document.createElement("img");
+    icon.src = "/images/icon-512.png";
+    icon.alt = "Chargement";
+    icon.style.width = "min(112px, 28vw)";
+    icon.style.height = "auto";
+    icon.style.display = "block";
+    
+    const text = document.createElement("div");
+    text.textContent = "Chargement...";
+    text.style.fontFamily = "Arial, sans-serif";
+    text.style.fontSize = "16px";
+    text.style.lineHeight = "1.4";
+    text.style.color = "#245e66";
+    
+    overlay.appendChild(icon);
+    overlay.appendChild(text);
+    document.body.appendChild(overlay);
+    
+    if (icon.animate) {
+      icon.animate(
+        [
+          { transform: "rotate(0deg)" },
+          { transform: "rotate(360deg)" }
+        ],
+        {
+          duration: 1400,
+          iterations: Infinity,
+          easing: "linear"
+        }
+      );
+    }
+    
+    return overlay;
+  }
+  
+  async function waitForBackendReady() {
+    const deadline = Date.now() + 25000;
+    
+    while (Date.now() < deadline) {
+      try {
+        const res = await fetch("/health", { cache: "no-store" });
+        if (res.ok) return true;
+      } catch {}
+      
+      await new Promise(resolve => setTimeout(resolve, 800));
+    }
+    
+    return false;
+  }
+  
   function showWelcome() {
     showScreen("welcomeScreen", { replaceHistory: true });
     welcome.classList.add("ready");
   }
   
-  if (!logo || logo.complete) {
-    showWelcome();
-  } else {
-    logo.addEventListener("load", showWelcome, { once: true });
-    logo.addEventListener("error", showWelcome, { once: true });
+  async function boot() {
+    const bootOverlay = createBootOverlay();
+    
+    if (!logo || logo.complete) {
+      await waitForBackendReady();
+      showWelcome();
+      bootOverlay.remove();
+      return;
+    }
+    
+    logo.addEventListener("load", async () => {
+      await waitForBackendReady();
+      showWelcome();
+      bootOverlay.remove();
+    }, { once: true });
+    
+    logo.addEventListener("error", async () => {
+      await waitForBackendReady();
+      showWelcome();
+      bootOverlay.remove();
+    }, { once: true });
   }
+  
+  boot();
 });
 </script>
 
