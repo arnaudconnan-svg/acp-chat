@@ -50,7 +50,7 @@ body {
   align-items: center;
   padding: 10px 10px 14px 10px;
   opacity: 0;
-  transition: opacity 2.2s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: opacity 3.5s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 #welcomeScreen.ready {
@@ -2290,7 +2290,6 @@ window.addEventListener("load", () => {
       }
       
       setTimeout(() => {
-        welcome.style.transition = "opacity 1.2s ease";
         welcome.classList.add("ready");
       }, 1000);
     });
