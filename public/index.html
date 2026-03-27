@@ -1938,25 +1938,6 @@ window.addEventListener("load", () => {
   
   syncDebugVisibility();
   
-  const existingConversationId = getConversationId();
-  
-  if (existingConversationId) {
-    showScreen("chatScreen");
-    
-    if (isSessionExpired() && loadHistory().length > 0) {
-      handleExpiredSessionOnEntry();
-      return;
-    }
-    
-    if (loadSessionInfoDismissed()) {
-      startFreshOrResumeSession();
-    } else {
-      openSessionInfoModal();
-    }
-    
-    return;
-  }
- 
   const logo = document.getElementById("welcomeLogo");
   const welcome = document.getElementById("welcomeScreen");
   
