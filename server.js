@@ -1909,38 +1909,41 @@ app.post("/chat", async (req, res) => {
 
     if (!conversationId) {
       return res.status(400).json({ error: "Missing conversationId" });
-}
+    }
+
     const userId = req.body?.userId || "u_anon";
-  await messagesRef.push({
-    conversationId,
-    userId,
-    role: "user",
-    content: message,
-    timestamp: new Date().toISOString()
-  });
+    const nowIso = new Date().toISOString();
+
+    await messagesRef.push({
+      conversationId,
+      userId,
+      role: "user",
+      content: message,
+      timestamp: nowIso
+    });
 
     const conversationsRef = db.ref("conversations");
     const convRef = conversationsRef.child(conversationId);
-    
+
     await convRef.transaction(current => {
-      const nowIso = new Date().toISOString();
-      
+      const txNowIso = new Date().toISOString();
+
       if (!current) {
         return {
           userId,
-          createdAt: nowIso,
-          updatedAt: nowIso,
+          createdAt: txNowIso,
+          updatedAt: txNowIso,
           title: null,
           titleLocked: false,
           messageCount: 1,
           lastUserMessage: message
         };
       }
-      
+
       return {
         ...current,
         userId,
-        updatedAt: nowIso,
+        updatedAt: txNowIso,
         messageCount: (Number(current.messageCount) || 0) + 1,
         lastUserMessage: message
       };
@@ -1953,23 +1956,43 @@ app.post("/chat", async (req, res) => {
     previousMemoryForCatch = previousMemory;
     flagsForCatch = flags;
 
+    async function pushAssistantMessage(reply, debugPayload) {
+      await messagesRef.push({
+        conversationId,
+        userId,
+        role: "assistant",
+        content: reply,
+        timestamp: new Date().toISOString(),
+        userMessage: message,
+        assistantReply: reply,
+        debug: debugPayload
+      });
+    }
+
     const suicide = await analyzeSuicideRisk(message, recentHistory, flags);
     let newFlags = normalizeSessionFlags(flags);
 
     if (suicide.suicideLevel === "N2") {
       newFlags.acuteCrisis = true;
       newFlags.contactState = { wasContact: false };
-      
+
       const reply = n2Response();
-      
-      await messagesRef.push({
-        conversationId,
-        userId,
-        role: "assistant",
-        content: reply,
-        timestamp: new Date().toISOString()
-      });
-      
+      const debugPayload = {
+        mode: "override",
+        suicideLevel: "N2",
+        needsClarification: suicide.needsClarification,
+        isQuote: suicide.isQuote,
+        idiomaticDeathExpression: suicide.idiomaticDeathExpression,
+        crisisResolved: suicide.crisisResolved,
+        isContact: false,
+        isRelance: null,
+        explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
+        flags: newFlags,
+        memory: previousMemory
+      };
+
+      await pushAssistantMessage(reply, debugPayload);
+
       return res.json({
         conversationId,
         reply,
@@ -1991,17 +2014,24 @@ app.post("/chat", async (req, res) => {
       } else {
         newFlags.acuteCrisis = true;
         newFlags.contactState = { wasContact: false };
-        
+
         const reply = acuteCrisisFollowupResponse();
-        
-        await messagesRef.push({
-          conversationId,
-          userId,
-          role: "assistant",
-          content: reply,
-          timestamp: new Date().toISOString()
-        });
-        
+        const debugPayload = {
+          mode: "override",
+          suicideLevel: suicide.suicideLevel,
+          needsClarification: suicide.needsClarification,
+          isQuote: suicide.isQuote,
+          idiomaticDeathExpression: suicide.idiomaticDeathExpression,
+          crisisResolved: suicide.crisisResolved,
+          isContact: false,
+          isRelance: null,
+          explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
+          flags: newFlags,
+          memory: previousMemory
+        };
+
+        await pushAssistantMessage(reply, debugPayload);
+
         return res.json({
           conversationId,
           reply,
@@ -2019,28 +2049,36 @@ app.post("/chat", async (req, res) => {
     }
 
     if (suicide.suicideLevel === "N1" || suicide.needsClarification) {
-        const reply = await n1ResponseLLM(message);
-        newFlags.contactState = { wasContact: false };
-        
-        await messagesRef.push({
-          conversationId,
-          userId,
-          role: "assistant",
-          content: reply,
-          timestamp: new Date().toISOString()
-        });
-        
-        return res.json({
-          conversationId,
-          reply,
-          memory: previousMemory,
-          flags: newFlags,
-          debug: buildDebug("clarification", {
-            suicideLevel: "N1",
-            needsClarification: suicide.needsClarification,
-            isQuote: suicide.isQuote,
-            idiomaticDeathExpression: suicide.idiomaticDeathExpression,
-            crisisResolved: suicide.crisisResolved
+      const reply = await n1ResponseLLM(message);
+      newFlags.contactState = { wasContact: false };
+
+      const debugPayload = {
+        mode: "clarification",
+        suicideLevel: "N1",
+        needsClarification: suicide.needsClarification,
+        isQuote: suicide.isQuote,
+        idiomaticDeathExpression: suicide.idiomaticDeathExpression,
+        crisisResolved: suicide.crisisResolved,
+        isContact: false,
+        isRelance: null,
+        explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
+        flags: newFlags,
+        memory: previousMemory
+      };
+
+      await pushAssistantMessage(reply, debugPayload);
+
+      return res.json({
+        conversationId,
+        reply,
+        memory: previousMemory,
+        flags: newFlags,
+        debug: buildDebug("clarification", {
+          suicideLevel: "N1",
+          needsClarification: suicide.needsClarification,
+          isQuote: suicide.isQuote,
+          idiomaticDeathExpression: suicide.idiomaticDeathExpression,
+          crisisResolved: suicide.crisisResolved
         })
       });
     }
@@ -2054,13 +2092,26 @@ app.post("/chat", async (req, res) => {
         { role: "user", content: message },
         { role: "assistant", content: reply }
       ]);
-    await messagesRef.push({
-      conversationId,
-      userId,
-      role: "assistant",
-      content: reply,
-      timestamp: new Date().toISOString()
-    });
+
+      const debugPayload = {
+        mode: "memoryRecall",
+        suicideLevel: suicide.suicideLevel,
+        needsClarification: suicide.needsClarification,
+        isQuote: suicide.isQuote,
+        idiomaticDeathExpression: suicide.idiomaticDeathExpression,
+        crisisResolved: suicide.crisisResolved,
+        isRecallAttempt: recallRouting.isRecallAttempt,
+        calledMemory: recallRouting.calledMemory,
+        isLongTermMemoryRecall: recallRouting.isLongTermMemoryRecall,
+        isContact: false,
+        isRelance: null,
+        explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
+        flags: newFlags,
+        memory: newMemory
+      };
+
+      await pushAssistantMessage(reply, debugPayload);
+
       return res.json({
         conversationId,
         reply,
@@ -2086,15 +2137,26 @@ app.post("/chat", async (req, res) => {
         { role: "user", content: message },
         { role: "assistant", content: reply }
       ]);
-      
-      await messagesRef.push({
-        conversationId,
-        userId,
-        role: "assistant",
-        content: reply,
-        timestamp: new Date().toISOString()
-      });
-      
+
+      const debugPayload = {
+        mode: "memoryRecall",
+        suicideLevel: suicide.suicideLevel,
+        needsClarification: suicide.needsClarification,
+        isQuote: suicide.isQuote,
+        idiomaticDeathExpression: suicide.idiomaticDeathExpression,
+        crisisResolved: suicide.crisisResolved,
+        isRecallAttempt: recallRouting.isRecallAttempt,
+        calledMemory: recallRouting.calledMemory,
+        isLongTermMemoryRecall: recallRouting.isLongTermMemoryRecall,
+        isContact: false,
+        isRelance: null,
+        explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
+        flags: newFlags,
+        memory: newMemory
+      };
+
+      await pushAssistantMessage(reply, debugPayload);
+
       return res.json({
         conversationId,
         reply,
@@ -2175,15 +2237,28 @@ app.post("/chat", async (req, res) => {
       { role: "user", content: message },
       { role: "assistant", content: reply }
     ]);
-    
-    await messagesRef.push({
-      conversationId,
-      userId,
-      role: "assistant",
-      content: reply,
-      timestamp: new Date().toISOString()
-    });
-    
+
+    const finalDebugPayload = {
+      mode: detectedMode,
+      suicideLevel: suicide.suicideLevel,
+      needsClarification: suicide.needsClarification,
+      isQuote: suicide.isQuote,
+      idiomaticDeathExpression: suicide.idiomaticDeathExpression,
+      crisisResolved: suicide.crisisResolved,
+      isRecallAttempt: recallRouting.isRecallAttempt,
+      calledMemory: recallRouting.calledMemory,
+      isLongTermMemoryRecall: recallRouting.isLongTermMemoryRecall,
+      isContact: contactAnalysis.isContact === true,
+      modelConflict,
+      isRelance,
+      explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
+      explorationRelanceWindow: newFlags.explorationRelanceWindow,
+      flags: newFlags,
+      memory: newMemory
+    };
+
+    await pushAssistantMessage(reply, finalDebugPayload);
+
 // ------------------------------
 // GENERATION TITRE AUTO (async)
 // ------------------------------
@@ -2192,28 +2267,28 @@ app.post("/chat", async (req, res) => {
       try {
         const convSnap = await convRef.get();
         const convData = convSnap.val() || {};
-        
+
         const messagesSnap = await messagesRef
           .orderByChild("conversationId")
           .equalTo(conversationId)
           .once("value");
-        
+
         const allMessages = Object.values(messagesSnap.val() || {})
           .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-        
+
         const userMessageCount = allMessages.filter(m => m.role === "user").length;
-        
+
         if (convData.titleLocked !== true && !convData.title && userMessageCount <= 3) {
           const title = await generateConversationTitle(allMessages);
-          
+
           if (title) {
             await convRef.transaction(current => {
               if (!current) return current;
-              
+
               if (current.titleLocked === true || current.title) {
                 return current;
               }
-              
+
               return {
                 ...current,
                 title
@@ -2221,12 +2296,11 @@ app.post("/chat", async (req, res) => {
             });
           }
         }
-        
       } catch (err) {
         console.error("Erreur titre async:", err.message);
       }
     })();
-    
+
     return res.json({
       conversationId,
       reply,

@@ -1619,9 +1619,10 @@ async function refreshConversationTitle(conversationId, attempt = 0) {
   
   try {
     const titleRes = await fetch(`/api/conversations/${encodeURIComponent(conversationId)}/title`);
-    const titleData = await titleRes.json();
-    
-    if (!titleRes.ok) return;
+   
+   if (!titleRes.ok) return;
+
+  const titleData = await titleRes.json();
     
     if (titleData.title) {
       upsertConversationIndexItem({
