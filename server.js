@@ -1,7 +1,12 @@
 require("dotenv").config();
 
 const admin = require("firebase-admin");
-const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+let serviceAccount;
+try {
+  serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+} catch {
+  throw new Error("Invalid FIREBASE_SERVICE_ACCOUNT JSON");
+}
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
   databaseURL: process.env.FIREBASE_DATABASE_URL
@@ -82,7 +87,14 @@ function parseCookies(req) {
   
   rc.split(";").forEach(cookie => {
     const parts = cookie.split("=");
-    list[parts.shift().trim()] = decodeURIComponent(parts.join("="));
+    const key = parts.shift()?.trim();
+    if (!key) return;
+    
+    try {
+      list[key] = decodeURIComponent(parts.join("="));
+    } catch {
+      list[key] = parts.join("=");
+    }
   });
   
   return list;
@@ -161,7 +173,9 @@ function trimRecallAnalysisHistory(history) {
 }
 
 function normalizeFlags(flags) {
-  return (flags && typeof flags === "object") ? flags : {};
+  if (!flags || typeof flags !== "object") return {};
+  if (Array.isArray(flags)) return {};
+  return flags;
 }
 
 function clampExplorationDirectivityLevel(level) {
@@ -183,9 +197,12 @@ function normalizeExplorationRelanceWindow(windowValue) {
 }
 
 function normalizeContactState(contactState) {
-  const safe = (contactState && typeof contactState === "object") ? contactState : {};
+  if (!contactState || typeof contactState !== "object" || Array.isArray(contactState)) {
+    return { wasContact: false };
+  }
+  
   return {
-    wasContact: safe.wasContact === true
+    wasContact: contactState.wasContact === true
   };
 }
 
@@ -1385,7 +1402,20 @@ async function generateReply({
 // --------------------------------------------------
 
 async function runSingleTestCase(testCase = {}) {
-  const message = String(testCase.message || "");
+    
+    const message = String(testCase.message || "").trim();
+    
+    if (!message) {
+      return {
+        input: "",
+        reply: "",
+        mode: "error",
+        memory: normalizeMemory(testCase.memory),
+        flags: normalizeSessionFlags(testCase.flags),
+        debug: ["empty_message"]
+      };
+    }
+  
   const recentHistory = trimHistory(testCase.recentHistory);
   const previousMemory = normalizeMemory(testCase.memory);
   const flags = normalizeSessionFlags(testCase.flags);
