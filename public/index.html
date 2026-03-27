@@ -1660,8 +1660,6 @@ async function send() {
   
   isSending = true;
   updateActivity();
-  
-  const originalBtnText = sendBtn.textContent;
   sendBtn.disabled = true;
   
   pushHistory("user", message, []);
@@ -1671,39 +1669,34 @@ async function send() {
   
   const waitingMsg = document.createElement("div");
   waitingMsg.className = "message bot";
+  waitingMsg.innerHTML = `
+    <div class="message-content">
+      <div class="bubble" style="display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;padding:0;">
+        <span id="waitingDot" style="display:block;width:12px;height:12px;border-radius:999px;background:#415f63;"></span>
+      </div>
+    </div>
+  `;
   
-  const waitingContentWrap = document.createElement("div");
-  waitingContentWrap.className = "message-content";
-  
-  const waitingBubble = document.createElement("div");
-  waitingBubble.className = "bubble";
-  waitingBubble.style.display = "inline-flex";
-  waitingBubble.style.alignItems = "center";
-  waitingBubble.style.justifyContent = "center";
-  waitingBubble.style.minWidth = "44px";
-  waitingBubble.style.minHeight = "44px";
-  waitingBubble.style.padding = "0";
-  
-  const waitingDot = document.createElement("span");
-  waitingDot.style.display = "block";
-  waitingDot.style.width = "12px";
-  waitingDot.style.height = "12px";
-  waitingDot.style.borderRadius = "999px";
-  waitingDot.style.background = "currentColor";
-  waitingDot.style.transform = "scale(0.8)";
-  
-  waitingBubble.appendChild(waitingDot);
-  waitingContentWrap.appendChild(waitingBubble);
-  waitingMsg.appendChild(waitingContentWrap);
   chat.appendChild(waitingMsg);
   scrollChatToBottom();
   
-  let dotPhase = 0;
-  const dotFrames = [0.8, 1, 1.2, 1, 0.8];
-  const waitTimer = setInterval(() => {
-    dotPhase = (dotPhase + 1) % dotFrames.length;
-    waitingDot.style.transform = "scale(" + dotFrames[dotPhase] + ")";
-  }, 220);
+  const waitingDot = waitingMsg.querySelector("#waitingDot");
+  let dotAnimation = null;
+  
+  if (waitingDot && waitingDot.animate) {
+    dotAnimation = waitingDot.animate(
+      [
+        { transform: "scale(0.8)" },
+        { transform: "scale(1.2)" },
+        { transform: "scale(0.8)" }
+      ],
+      {
+        duration: 900,
+        iterations: Infinity,
+        easing: "ease-in-out"
+      }
+    );
+  }
   
   try {
     const res = await fetch("/chat", {
@@ -1720,7 +1713,8 @@ async function send() {
     if (data.memory) saveMemory(data.memory);
     if (data.flags) saveFlags(data.flags);
     
-    waitingMsg.remove();
+    if (dotAnimation) dotAnimation.cancel();
+    if (waitingMsg.parentNode) waitingMsg.parentNode.removeChild(waitingMsg);
     
     pushHistory("assistant", data.reply, data.debug || []);
     addMessage("bot", data.reply, data.debug || []);
@@ -1731,11 +1725,10 @@ async function send() {
     
     updateActivity();
   } catch {
-    waitingMsg.remove();
+    if (dotAnimation) dotAnimation.cancel();
+    if (waitingMsg.parentNode) waitingMsg.parentNode.removeChild(waitingMsg);
     addMessage("bot", "Erreur serveur", []);
   } finally {
-    clearInterval(waitTimer);
-    sendBtn.textContent = originalBtnText;
     isSending = false;
     syncInputAvailability();
   }
