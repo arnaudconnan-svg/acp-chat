@@ -1575,7 +1575,23 @@ function addMessage(role, text, debug) {
     debug.forEach(line => {
       const chip = document.createElement("span");
       chip.className = "debug-chip";
-      chip.textContent = line;
+      if (line === "mode: exploration") chip.textContent = "EXPLORATION";
+      else if (line === "mode: info") chip.textContent = "INFORMATION";
+      else if (line === "mode: contact") chip.textContent = "CONTACT";
+      else if (line === "suicide: N1") chip.textContent = "Possible risque suicidaire";
+      else if (line === "suicide: N2") chip.textContent = "Risque suicidaire avéré";
+      else if (line === "calledMemory: shortTermMemory") chip.textContent = "Appel à la mémoire à court terme";
+      else if (line === "calledMemory: longTermMemory") chip.textContent = "Appel à la mémoire à long terme";
+      else if (line.startsWith("modelConflict")) chip.textContent = "Conflit avec le modèle théorique";
+      else if (line.startsWith("explorationDirectivityLevel")) {
+        const val = line.split(":")[1]?.trim();
+        chip.textContent = "Niveau de directivité : " + val + "/4";
+      }
+      else if (line.startsWith("explorationRelanceWindow")) {
+        const val = line.split(":")[1]?.trim();
+        chip.textContent = "Relance aux derniers tours " + val;
+      }
+      else return;
       dbg.appendChild(chip);
     });
 
