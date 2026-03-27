@@ -1663,22 +1663,26 @@ async function finalizeAndStartNewSession() {
   if (sessionStatus === "closing") return;
   
   setSessionStatus("closing");
+  closeConfirmNewSessionModal();
+  closeExpiredSessionModal();
+  closeTerminatedSessionModal();
+  
   await closeSessionBackend();
   
   fadeChatThenReset(() => {
     clearSessionStorageExceptMemory();
     resetLocalSessionState();
-    renderHistory();
-    closeConfirmNewSessionModal();
-    closeExpiredSessionModal();
-    closeTerminatedSessionModal();
     localStorage.removeItem(CONVERSATION_ID_KEY);
+    renderHistory();
     showScreen("chatScreen");
+    
     if (loadSessionInfoDismissed()) {
       startFreshSession();
     } else {
       openSessionInfoModal();
+      setSessionStatus("active");
     }
+    
     defocusInput();
   });
 }
