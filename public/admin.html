@@ -538,26 +538,25 @@ h1 {
         })
       });
       
-        overlay.remove();
-        
-        const card = document.querySelector(`.item[data-conv-id="${conv.id}"]`);
-        if (card) {
-          const mainLine = card.firstChild;
-          if (mainLine) {
-            const updatedDate = new Date(conv.updatedAt || conv.createdAt);
-            const formattedDate = updatedDate.toLocaleString("fr-FR", {
-              day: "2-digit",
-              month: "2-digit",
-              year: "numeric",
-              hour: "2-digit",
-              minute: "2-digit"
-            });
-            
-            mainLine.textContent =
-              formattedDate + " — " + (input.value.trim() || conv.userId);
-          }
+      overlay.remove();
+      
+      const card = document.querySelector(`.item[data-conv-id="${conv.id}"]`);
+      if (card) {
+        const mainLine = card.firstChild;
+        if (mainLine) {
+          const updatedDate = new Date(conv.updatedAt || conv.createdAt);
+          const formattedDate = updatedDate.toLocaleString("fr-FR", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit"
+          });
+          
+          mainLine.textContent =
+            formattedDate + " — " + (input.value.trim() || conv.userId);
         }
-      });
+      }
     };
     
     overlay.appendChild(id);
