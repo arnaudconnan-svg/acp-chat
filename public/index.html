@@ -2689,57 +2689,89 @@
       });
     }
     
-    document.getElementById("conversationsList").addEventListener("click", e => {
-      const toggleBtn = e.target.closest("[data-menu-toggle]");
-      if (toggleBtn) {
-        e.preventDefault();
-        e.stopPropagation();
+    function renderConversationsList() {
+      const listEl = document.getElementById("conversationsList");
+      const template = document.getElementById("conversationItemTemplate");
+      
+      const items = loadConversationsIndex()
+        .slice()
+        .sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0));
+      
+      closeConversationMenus();
+      listEl.innerHTML = "";
+      
+      if (items.length === 0) {
+        const itemEl = document.createElement("div");
+        itemEl.className = "conversationItem";
         
-        const conversationId = toggleBtn.getAttribute("data-menu-toggle");
-        const menu = document.querySelector('[data-menu="' + conversationId + '"]');
-        const isOpening = menu && menu.style.display !== "block";
+        const textEl = document.createElement("div");
+        textEl.className = "conversationItemPlaceholder";
+        textEl.textContent = "Aucune conversation locale pour le moment.";
         
-        if (!menu) return;
+        itemEl.appendChild(textEl);
+        listEl.appendChild(itemEl);
+        return;
+      }
+      
+      items.forEach(item => {
+        const safeTitle = item.title && String(item.title).trim() ?
+          String(item.title).trim() :
+          "Conversation sans titre";
         
-        if (isOpening) {
-          openConversationMenu(toggleBtn, menu);
-        } else {
+        const node = template.content.cloneNode(true);
+        
+        const root = node.querySelector(".conversationItem");
+        const openBtn = node.querySelector("[data-open-conversation]");
+        const titleEl = node.querySelector(".conversationItemPlaceholder");
+        const toggleBtn = node.querySelector("[data-menu-toggle]");
+        const menu = node.querySelector("[data-menu]");
+        const renameBtn = node.querySelector("[data-rename-conversation]");
+        const deleteBtn = node.querySelector("[data-delete-conversation]");
+        
+        root.dataset.conversationId = item.id;
+        openBtn.dataset.openConversation = item.id;
+        titleEl.textContent = safeTitle;
+        toggleBtn.dataset.menuToggle = item.id;
+        menu.dataset.menu = item.id;
+        renameBtn.dataset.renameConversation = item.id;
+        deleteBtn.dataset.deleteConversation = item.id;
+        
+        openBtn.onclick = () => {
           closeConversationMenus();
-        }
+          openConversation(item.id);
+        };
         
-        return;
-      }
-      
-      const renameBtn = e.target.closest("[data-rename-conversation]");
-      if (renameBtn) {
-        e.preventDefault();
-        e.stopPropagation();
+        toggleBtn.onclick = e => {
+          e.preventDefault();
+          e.stopPropagation();
+          
+          const isOpening = menu.style.display !== "block";
+          
+          if (isOpening) {
+            openConversationMenu(toggleBtn, menu);
+          } else {
+            closeConversationMenus();
+          }
+        };
         
-        const conversationId = renameBtn.getAttribute("data-rename-conversation");
-        closeConversationMenus();
-        openEditTitleModal(conversationId);
-        return;
-      }
-      
-      const deleteBtn = e.target.closest("[data-delete-conversation]");
-      if (deleteBtn) {
-        e.preventDefault();
-        e.stopPropagation();
+        renameBtn.onclick = e => {
+          e.preventDefault();
+          e.stopPropagation();
+          closeConversationMenus();
+          openEditTitleModal(item.id);
+        };
         
-        const conversationId = deleteBtn.getAttribute("data-delete-conversation");
-        closeConversationMenus();
-        pendingDeleteConversationId = conversationId;
-        openModal("deleteConversationModal");
-        return;
-      }
-      
-      const openBtn = e.target.closest("[data-open-conversation]");
-      if (openBtn) {
-        const conversationId = openBtn.getAttribute("data-open-conversation");
-        closeConversationMenus();
-        openConversation(conversationId);
-      }
-    });
+        deleteBtn.onclick = e => {
+          e.preventDefault();
+          e.stopPropagation();
+          closeConversationMenus();
+          pendingDeleteConversationId = item.id;
+          openModal("deleteConversationModal");
+        };
+        
+        listEl.appendChild(node);
+      });
+    }
     
     document.addEventListener("click", e => {
       if (!e.target.closest("[data-menu-toggle]") && !e.target.closest("[data-menu]")) {
