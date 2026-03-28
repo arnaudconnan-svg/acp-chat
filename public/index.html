@@ -1709,27 +1709,54 @@
       
       saveHistory(history);
       
-      const userMessages = history.filter(m => m.role === "user");
-      const firstUserMessage = userMessages[0]?.content || "";
+      const index = loadConversationsIndex();
+      const existingItem = index.find(item => item && item.id === conversationId);
+      const existingTitle = existingItem && typeof existingItem.title === "string" ?
+        existingItem.title.trim() :
+        "";
+      const hasCustomTitle = existingItem && existingItem.isCustomTitle === true;
       
-      if (role === "assistant" && userMessages.length === 0) {
+      if (hasCustomTitle) {
         upsertConversationIndexItem({
           id: conversationId,
-          title: "Nouvelle conversation",
-          updatedAt: Date.now()
+          updatedAt: Date.now(),
+          isCustomTitle: true
         });
         return;
       }
       
-      if (userMessages.length >= 1) {
-        const firstTitle = String(firstUserMessage).trim().replace(/\s+/g, " ").slice(0, 60);
+      const userMessages = history.filter(m => m.role === "user");
+      
+      if (userMessages.length === 0) {
+        upsertConversationIndexItem({
+          id: conversationId,
+          title: existingTitle || "Nouvelle conversation",
+          updatedAt: Date.now(),
+          isCustomTitle: false
+        });
+        return;
+      }
+      
+      if (!existingTitle || existingTitle === "Nouvelle conversation" || existingTitle === "Conversation sans titre") {
+        const firstUserTitle = String(userMessages[0].content || "")
+          .trim()
+          .replace(/\s+/g, " ")
+          .slice(0, 60);
         
         upsertConversationIndexItem({
           id: conversationId,
-          title: firstTitle || "Conversation sans titre",
-          updatedAt: Date.now()
+          title: firstUserTitle || "Conversation sans titre",
+          updatedAt: Date.now(),
+          isCustomTitle: false
         });
+        return;
       }
+      
+      upsertConversationIndexItem({
+        id: conversationId,
+        updatedAt: Date.now(),
+        isCustomTitle: false
+      });
     }
     
     /* ---------- ACTIVITY ---------- */
