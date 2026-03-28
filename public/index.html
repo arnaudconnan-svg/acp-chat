@@ -150,11 +150,14 @@ body {
 
 /* ---------- CONVERSATIONS ---------- */
 
+/* ---------- CONVERSATIONS ---------- */
+
 #conversationsScreen {
   position: relative;
   min-height: 0;
-  background: url("/images/conversations-bg.png") center bottom / 108% 108% no-repeat,
-    #f8f8f6;
+  background:
+    url("/images/conversations-bg.webp") center center / calc(100% + 28px) calc(100% + 28px) no-repeat,
+    #f8f7f5;
 }
 
 #conversationsTopBar {
@@ -162,56 +165,28 @@ body {
   background: transparent;
   position: relative;
   z-index: 5;
-  padding-bottom: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  padding: 0 0 2px 0;
+  min-height: 8px;
+  display: block;
 }
 
 #conversationsBackBtn {
-  position: absolute;
-  left: 0;
-  top: 8px;
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  border: 1px solid rgba(215, 222, 226, 0.9);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.82);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  color: #4b5563;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: none;
 }
 
 #conversationsBackText {
-  position: absolute;
-  left: 42px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 13px;
-  line-height: 1;
-  color: #4b5563;
-  user-select: none;
-  pointer-events: none;
+  display: none;
 }
 
 #conversationsTitle {
-  text-align: center;
-  font-size: 22px;
-  margin: 10px 0 16px 0;
-  color: #1f3f44;
-  flex: 1;
+  display: none;
 }
 
 #conversationsListWrap {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
-  padding: 8px 0 96px 0;
+  padding: 4px 0 92px 0;
   box-sizing: border-box;
   -webkit-overflow-scrolling: touch;
 }
@@ -219,30 +194,30 @@ body {
 #conversationsList {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
 }
 
 .conversationItem {
-  border: 0px solid rgba(223, 228, 230, 0.95);
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.78);
+  border: none;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.72);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  box-shadow:
-    0 8px 24px rgba(31, 63, 68, 0.08),
-    0 1px 0 rgba(255, 255, 255, 0.75) inset;
-  padding: 16px 18px;
-  min-height: 72px;
+  padding: 18px 20px;
+  min-height: 74px;
   display: flex;
   align-items: center;
   box-sizing: border-box;
+  box-shadow:
+    0 10px 28px rgba(36, 94, 102, 0.08),
+    0 1px 0 rgba(255, 255, 255, 0.7) inset;
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
 }
 
 .conversationItemPlaceholder {
-  color: #52666a;
+  color: #53676b;
   font-size: 15px;
   line-height: 1.45;
 }
@@ -278,7 +253,7 @@ body {
   border: none;
   border-radius: 0;
   background: transparent;
-  color: #4b5563;
+  color: #5c6f73;
   padding: 0;
   display: flex;
   align-items: center;
@@ -287,28 +262,30 @@ body {
 }
 
 .conversationMenuToggle svg {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
 }
 
 .conversationMenuPopover {
   display: none;
   position: absolute;
-  top: 48px;
+  top: 36px;
   right: 0;
-  min-width: 140px;
-  background: white;
-  border: 1px solid #d7dee2;
-  border-radius: 12px;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.14);
+  min-width: 148px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(215, 222, 226, 0.7);
+  border-radius: 16px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
   overflow: hidden;
   z-index: 30;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
 .conversationMenuAction {
   width: 100%;
   border: none;
-  background: white;
+  background: transparent;
   padding: 12px 14px;
   text-align: left;
   font: inherit;
@@ -317,7 +294,7 @@ body {
 }
 
 .conversationMenuActionDanger {
-  border-top: 1px solid #eef2f4;
+  border-top: 1px solid rgba(238, 242, 244, 0.9);
   color: #b42318;
 }
 
@@ -328,22 +305,18 @@ body {
   z-index: 20;
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: flex-end;
   padding: 12px 0 calc(12px + env(safe-area-inset-bottom, 0px)) 12px;
-  background: linear-gradient(to left, rgba(248, 248, 246, 0.96) 70%, rgba(248, 248, 246, 0));
+  background: none;
 }
 
 #conversationsFabLabel {
-  font-size: 14px;
-  line-height: 1.2;
-  color: #245e66;
-  user-select: none;
-  text-align: right;
+  display: none;
 }
 
 #conversationsFabBtn {
-  width: 56px;
-  height: 56px;
+  width: 58px;
+  height: 58px;
   border: none;
   border-radius: 999px;
   background: #245e66;
@@ -352,7 +325,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8px 22px rgba(36, 94, 102, 0.28);
+  box-shadow: 0 10px 24px rgba(36, 94, 102, 0.28);
   padding: 0;
 }
 
