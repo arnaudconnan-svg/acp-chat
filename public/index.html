@@ -2180,11 +2180,13 @@
       saveFlags({});
       updateActivity();
       
-      renderHistory();
+      const history = loadHistory();
       
-      if (loadHistory().length === 0) {
-        addMessage("bot", "Bienvenue dans cette nouvelle session. Que veux-tu explorer aujourd'hui ?", []);
+      if (history.length === 0) {
+        pushHistory("assistant", "Bienvenue dans cette nouvelle session. Que veux-tu explorer aujourd'hui ?", []);
       }
+      
+      renderHistory();
       
       const input = document.getElementById("input");
       input.value = "";
