@@ -2010,28 +2010,69 @@ app.post("/chat", async (req, res) => {
     const convRef = db.ref("conversations").child(conversationId);
 
     await convRef.transaction(current => {
-      const now = new Date().toISOString();
+  const now = new Date().toISOString();
+  
+  if (!current) {
+    return {
+      userId,
+      createdAt: now,
+      updatedAt: now,
+      title: null,
+      titleLocked: false,
+      messageCount: 1,
+      lastUserMessage: message
+    };
+  }
+  
+  return {
+    ...current,
+    userId,
+    updatedAt: now,
+    messageCount: (Number(current.messageCount) || 0) + 1,
+    lastUserMessage: message
+  };
+});
 
-      if (!current) {
-        return {
-          userId,
-          createdAt: now,
-          updatedAt: now,
-          title: null,
-          titleLocked: false,
-          messageCount: 1,
-          lastUserMessage: message
-        };
+try {
+  const convSnap = await convRef.once("value");
+  const convData = convSnap.val() || {};
+  
+  const shouldGenerateTitle =
+    convData.titleLocked !== true &&
+    (
+      !convData.title ||
+      String(convData.title).trim() === "" ||
+      String(convData.title).trim() === String(convData.lastUserMessage || "").trim()
+    );
+  
+  if (shouldGenerateTitle) {
+    const messagesSnap = await messagesRef
+      .orderByChild("conversationId")
+      .equalTo(conversationId)
+      .once("value");
+    
+    const conversationMessages = Object.values(messagesSnap.val() || {})
+      .filter(m => m && typeof m.content === "string")
+      .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    
+    const userMessageCount = conversationMessages.filter(m => m.role === "user").length;
+    
+    if (userMessageCount >= 3) {
+      const generatedTitle = await generateConversationTitle(conversationMessages);
+      
+      if (generatedTitle) {
+        await convRef.update({
+          title: generatedTitle,
+          updatedAt: new Date().toISOString()
+        });
       }
+    }
+  }
+} catch (titleErr) {
+  console.error("Erreur auto-title /chat:", titleErr.message);
+}
 
-      return {
-        ...current,
-        userId,
-        updatedAt: now,
-        messageCount: (Number(current.messageCount) || 0) + 1,
-        lastUserMessage: message
-      };
-    });
+const recentHistory = trimHistory(req.body?.recentHistory);
 
     const recentHistory = trimHistory(req.body?.recentHistory);
     const previousMemory = normalizeMemory(req.body?.memory);
