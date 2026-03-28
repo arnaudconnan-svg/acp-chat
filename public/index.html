@@ -2176,22 +2176,28 @@
     }
     
     function startFreshSession() {
-      setSessionStatus("active");
-      saveFlags({});
-      updateActivity();
-      
-      const history = loadHistory();
-      
-      if (history.length === 0) {
-        pushHistory("assistant", "Bienvenue dans cette nouvelle session. Que veux-tu explorer aujourd'hui ?", []);
-      }
-      
-      renderHistory();
-      
-      const input = document.getElementById("input");
-      input.value = "";
-      defocusInput();
-    }
+  setSessionStatus("active");
+  saveFlags({});
+  updateActivity();
+  
+  let conversationId = getConversationId();
+  
+  if (!conversationId) {
+    conversationId = createConversationId();
+  }
+  
+  const history = loadHistory();
+  
+  if (history.length === 0) {
+    pushHistory("assistant", "Bienvenue dans cette nouvelle session. Que veux-tu explorer aujourd'hui ?", []);
+  }
+  
+  renderHistory();
+  
+  const input = document.getElementById("input");
+  input.value = "";
+  defocusInput();
+}
     
     function handleExpiredSessionOnEntry() {
       setSessionStatus("expired");
