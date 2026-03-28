@@ -2490,6 +2490,22 @@ function ensureConversationMenuOverlay() {
   return overlay;
 }
 
+function ensureConversationMenuPortal() {
+  let portal = document.getElementById("conversationMenuPortal");
+  
+  if (portal) return portal;
+  
+  portal = document.createElement("div");
+  portal.id = "conversationMenuPortal";
+  portal.style.position = "fixed";
+  portal.style.inset = "0";
+  portal.style.zIndex = "260";
+  portal.style.pointerEvents = "none";
+  
+  document.body.appendChild(portal);
+  return portal;
+}
+
 function resetConversationMenuStyles(menu) {
   if (!menu) return;
   
@@ -2512,10 +2528,12 @@ function resetConversationMenuStyles(menu) {
   menu.style.opacity = "";
   menu.style.transform = "";
   menu.style.transition = "";
+  menu.style.pointerEvents = "";
 }
 
 function closeConversationMenus() {
   const overlay = ensureConversationMenuOverlay();
+  const portal = ensureConversationMenuPortal();
   
   overlay.style.opacity = "0";
   overlay.style.pointerEvents = "none";
@@ -2527,8 +2545,23 @@ function closeConversationMenus() {
   }, 220);
   
   document.querySelectorAll("[data-menu]").forEach(menu => {
+    const originalParent = menu.__originalParent;
+    const originalNextSibling = menu.__originalNextSibling;
+    
     resetConversationMenuStyles(menu);
+    
+    if (originalParent) {
+      if (originalNextSibling && originalNextSibling.parentNode === originalParent) {
+        originalParent.insertBefore(menu, originalNextSibling);
+      } else {
+        originalParent.appendChild(menu);
+      }
+    }
   });
+  
+  if (portal) {
+    portal.innerHTML = "";
+  }
   
   document.querySelectorAll(".conversationItem").forEach(item => {
     item.style.zIndex = "";
@@ -2540,13 +2573,21 @@ function openConversationMenu(toggleBtn, menu) {
   if (!toggleBtn || !menu) return;
   
   const overlay = ensureConversationMenuOverlay();
+  const portal = ensureConversationMenuPortal();
   const rect = toggleBtn.getBoundingClientRect();
   const panelWidth = 196;
-  const panelTop = rect.top + rect.height + 10;
-  const panelLeft = Math.max(16, Math.min(window.innerWidth - panelWidth - 16, rect.right - panelWidth));
+  const panelTop = Math.round(rect.bottom + 10);
+  const panelLeft = Math.round(Math.max(16, Math.min(window.innerWidth - panelWidth - 16, rect.right - panelWidth)));
   const item = toggleBtn.closest(".conversationItem");
   
   closeConversationMenus();
+  
+  if (!menu.__originalParent) {
+    menu.__originalParent = menu.parentNode;
+  }
+  menu.__originalNextSibling = menu.nextSibling;
+  
+  portal.appendChild(menu);
   
   if (item) {
     item.style.position = "relative";
@@ -2572,9 +2613,10 @@ function openConversationMenu(toggleBtn, menu) {
   menu.style.opacity = "0";
   menu.style.transform = "translateY(-4px) scale(0.985)";
   menu.style.transition = "opacity 0.2s ease, transform 0.2s ease";
+  menu.style.pointerEvents = "auto";
   
   const centerX = Math.round(rect.right - 16);
-  const centerY = Math.round(panelTop + 28);
+  const centerY = Math.round(rect.top + rect.height / 2);
   
   overlay.style.display = "block";
   overlay.style.pointerEvents = "auto";
