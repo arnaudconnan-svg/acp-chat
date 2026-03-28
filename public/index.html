@@ -341,7 +341,7 @@
     .conversationItem {
       border: none;
       border-radius: 22px;
-      background: rgba(255, 255, 255, 0.72);
+      background: rgba(36, 94, 102, 0.85);
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
       padding: 18px 20px;
@@ -350,15 +350,16 @@
       align-items: center;
       box-sizing: border-box;
       box-shadow:
-        0 10px 28px rgba(36, 94, 102, 0.08),
-        0 1px 0 rgba(255, 255, 255, 0.7) inset;
+        0 10px 28px rgba(36, 94, 102, 0.12),
+        0 1px 0 rgba(255, 255, 255, 0.25) inset;
       user-select: none;
       -webkit-user-select: none;
       -webkit-touch-callout: none;
+      color: #ffffff;
     }
     
     .conversationItemPlaceholder {
-      color: #53676b;
+      color: #ffffff;
       font-size: 15px;
       line-height: 1.45;
     }
@@ -1750,76 +1751,76 @@
     }
     
     function showScreen(id, options = {}) {
-  const { pushHistory = true, replaceHistory = false } = options;
-  const currentActive = document.querySelector(".screen.active");
-  const currentId = currentActive ? currentActive.id : null;
-  
-  if (currentId === id) {
-    if (!SCREEN_IDS.includes(id)) return;
-    
-    const nextState = { screenId: id };
-    
-    if (replaceHistory) {
-      history.replaceState(nextState, "", window.location.href);
+      const { pushHistory = true, replaceHistory = false } = options;
+      const currentActive = document.querySelector(".screen.active");
+      const currentId = currentActive ? currentActive.id : null;
+      
+      if (currentId === id) {
+        if (!SCREEN_IDS.includes(id)) return;
+        
+        const nextState = { screenId: id };
+        
+        if (replaceHistory) {
+          history.replaceState(nextState, "", window.location.href);
+        }
+        
+        return;
+      }
+      
+      const currentEl = currentActive;
+      const nextEl = document.getElementById(id);
+      
+      function transition() {
+        if (!currentEl) {
+          applyScreen(id);
+          return;
+        }
+        
+        currentEl.style.transition = "opacity 0.32s ease";
+        currentEl.style.opacity = "0";
+        
+        setTimeout(() => {
+          nextEl.style.transition = "none";
+          nextEl.style.opacity = "0";
+          
+          applyScreen(id);
+          
+          setTimeout(() => {
+            nextEl.style.transition = "opacity 0.7s ease";
+            nextEl.style.opacity = "1";
+          }, 80);
+          
+          currentEl.style.transition = "";
+          currentEl.style.opacity = "";
+        }, 320);
+      }
+      
+      transition();
+      
+      if (!SCREEN_IDS.includes(id)) return;
+      
+      const nextState = { screenId: id };
+      
+      if (replaceHistory) {
+        history.replaceState(nextState, "", window.location.href);
+        return;
+      }
+      
+      if (!pushHistory) return;
+      
+      history.pushState(nextState, "", window.location.href);
     }
     
-    return;
-  }
-  
-  const currentEl = currentActive;
-  const nextEl = document.getElementById(id);
-  
-  function transition() {
-    if (!currentEl) {
-      applyScreen(id);
-      return;
-    }
-    
-    currentEl.style.transition = "opacity 0.32s ease";
-    currentEl.style.opacity = "0";
-    
-    setTimeout(() => {
-      nextEl.style.transition = "none";
-      nextEl.style.opacity = "0";
+    window.addEventListener("popstate", e => {
+      const state = e.state || {};
+      const screenId = state.screenId;
       
-      applyScreen(id);
+      if (!SCREEN_IDS.includes(screenId)) {
+        return;
+      }
       
-      setTimeout(() => {
-        nextEl.style.transition = "opacity 0.7s ease";
-        nextEl.style.opacity = "1";
-      }, 80);
-      
-      currentEl.style.transition = "";
-      currentEl.style.opacity = "";
-    }, 320);
-  }
-  
-  transition();
-  
-  if (!SCREEN_IDS.includes(id)) return;
-  
-  const nextState = { screenId: id };
-  
-  if (replaceHistory) {
-    history.replaceState(nextState, "", window.location.href);
-    return;
-  }
-  
-  if (!pushHistory) return;
-  
-  history.pushState(nextState, "", window.location.href);
-}
-
-window.addEventListener("popstate", e => {
-  const state = e.state || {};
-  const screenId = state.screenId;
-  
-  if (!SCREEN_IDS.includes(screenId)) {
-    return;
-  }
-  
-  showScreen(screenId, { pushHistory: false });
-});
+      showScreen(screenId, { pushHistory: false });
+    });
     
     function syncDebugVisibility() {
       const isAdminUI = localStorage.getItem(ADMIN_UI_KEY) === "1";
@@ -2167,82 +2168,82 @@ window.addEventListener("popstate", e => {
     }
     
     function enterConversations() {
-  const welcomeScreen = document.getElementById("welcomeScreen");
-  const conversationsScreen = document.getElementById("conversationsScreen");
-  const bgValue = window.getComputedStyle(conversationsScreen).backgroundImage || "";
-  const match = bgValue.match(/url\(["']?(.*?)["']?\)/);
-  const bgUrl = match ? match[1] : "";
-  
-  renderConversationsList();
-  
-  function pushConversationsHistory() {
-    const currentState = history.state || {};
-    
-    if (currentState.screenId !== "conversationsScreen") {
-      history.pushState({ screenId: "conversationsScreen" }, "", window.location.href);
+      const welcomeScreen = document.getElementById("welcomeScreen");
+      const conversationsScreen = document.getElementById("conversationsScreen");
+      const bgValue = window.getComputedStyle(conversationsScreen).backgroundImage || "";
+      const match = bgValue.match(/url\(["']?(.*?)["']?\)/);
+      const bgUrl = match ? match[1] : "";
+      
+      renderConversationsList();
+      
+      function pushConversationsHistory() {
+        const currentState = history.state || {};
+        
+        if (currentState.screenId !== "conversationsScreen") {
+          history.pushState({ screenId: "conversationsScreen" }, "", window.location.href);
+        }
+      }
+      
+      function fadeOutWelcomeThenShow() {
+        welcomeScreen.style.transition = "opacity 0.38s ease";
+        welcomeScreen.style.opacity = "0";
+        
+        setTimeout(() => {
+          conversationsScreen.style.transition = "none";
+          conversationsScreen.style.opacity = "0";
+          
+          applyScreen("conversationsScreen");
+          pushConversationsHistory();
+          
+          setTimeout(() => {
+            conversationsScreen.style.transition = "opacity 0.7s ease";
+            conversationsScreen.style.opacity = "1";
+          }, 90);
+          
+          welcomeScreen.style.transition = "";
+          welcomeScreen.style.opacity = "";
+        }, 380);
+      }
+      
+      if (!bgUrl) {
+        fadeOutWelcomeThenShow();
+        return;
+      }
+      
+      if (enterConversations._loadedUrl === bgUrl) {
+        fadeOutWelcomeThenShow();
+        return;
+      }
+      
+      if (enterConversations._loadingPromise && enterConversations._loadingUrl === bgUrl) {
+        enterConversations._loadingPromise.then(() => {
+          fadeOutWelcomeThenShow();
+        });
+        return;
+      }
+      
+      enterConversations._loadingUrl = bgUrl;
+      enterConversations._loadingPromise = new Promise(resolve => {
+        const img = new Image();
+        
+        img.onload = () => {
+          enterConversations._loadedUrl = bgUrl;
+          enterConversations._loadingPromise = null;
+          resolve();
+        };
+        
+        img.onerror = () => {
+          enterConversations._loadingPromise = null;
+          resolve();
+        };
+        
+        img.src = bgUrl;
+      });
+      
+      enterConversations._loadingPromise.then(() => {
+        fadeOutWelcomeThenShow();
+      });
     }
-  }
-  
-  function fadeOutWelcomeThenShow() {
-    welcomeScreen.style.transition = "opacity 0.38s ease";
-    welcomeScreen.style.opacity = "0";
-    
-    setTimeout(() => {
-      conversationsScreen.style.transition = "none";
-      conversationsScreen.style.opacity = "0";
-      
-      applyScreen("conversationsScreen");
-      pushConversationsHistory();
-      
-      setTimeout(() => {
-        conversationsScreen.style.transition = "opacity 0.7s ease";
-        conversationsScreen.style.opacity = "1";
-      }, 90);
-      
-      welcomeScreen.style.transition = "";
-      welcomeScreen.style.opacity = "";
-    }, 380);
-  }
-  
-  if (!bgUrl) {
-    fadeOutWelcomeThenShow();
-    return;
-  }
-  
-  if (enterConversations._loadedUrl === bgUrl) {
-    fadeOutWelcomeThenShow();
-    return;
-  }
-  
-  if (enterConversations._loadingPromise && enterConversations._loadingUrl === bgUrl) {
-    enterConversations._loadingPromise.then(() => {
-      fadeOutWelcomeThenShow();
-    });
-    return;
-  }
-  
-  enterConversations._loadingUrl = bgUrl;
-  enterConversations._loadingPromise = new Promise(resolve => {
-    const img = new Image();
-    
-    img.onload = () => {
-      enterConversations._loadedUrl = bgUrl;
-      enterConversations._loadingPromise = null;
-      resolve();
-    };
-    
-    img.onerror = () => {
-      enterConversations._loadingPromise = null;
-      resolve();
-    };
-    
-    img.src = bgUrl;
-  });
-  
-  enterConversations._loadingPromise.then(() => {
-    fadeOutWelcomeThenShow();
-  });
-}
     
     function startFreshOrResumeSession() {
       closeSessionInfoModal();
