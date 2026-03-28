@@ -1754,7 +1754,37 @@
       const currentActive = document.querySelector(".screen.active");
       const currentId = currentActive ? currentActive.id : null;
       
-      applyScreen(id);
+      if (currentId === id) return;
+      
+      const currentEl = currentActive;
+      const nextEl = document.getElementById(id);
+      
+      function transition() {
+        if (!currentEl) {
+          applyScreen(id);
+          return;
+        }
+        
+        currentEl.style.transition = "opacity 0.32s ease";
+        currentEl.style.opacity = "0";
+        
+        setTimeout(() => {
+          nextEl.style.transition = "none";
+          nextEl.style.opacity = "0";
+          
+          applyScreen(id);
+          
+          setTimeout(() => {
+            nextEl.style.transition = "opacity 0.7s ease";
+            nextEl.style.opacity = "1";
+          }, 80);
+          
+          currentEl.style.transition = "";
+          currentEl.style.opacity = "";
+        }, 320);
+      }
+      
+      transition();
       
       if (!SCREEN_IDS.includes(id)) return;
       
@@ -1771,16 +1801,6 @@
         history.pushState(nextState, "", window.location.href);
       }
     }
-    
-    window.addEventListener("popstate", e => {
-      const screenId = e.state && e.state.screenId;
-      
-      if (!SCREEN_IDS.includes(screenId)) {
-        return;
-      }
-      
-      applyScreen(screenId);
-    });
     
     function syncDebugVisibility() {
       const isAdminUI = localStorage.getItem(ADMIN_UI_KEY) === "1";
@@ -2128,73 +2148,73 @@
     }
     
     function enterConversations() {
-  const welcomeScreen = document.getElementById("welcomeScreen");
-  const conversationsScreen = document.getElementById("conversationsScreen");
-  const bgValue = window.getComputedStyle(conversationsScreen).backgroundImage || "";
-  const match = bgValue.match(/url\(["']?(.*?)["']?\)/);
-  const bgUrl = match ? match[1] : "";
-  
-  renderConversationsList();
-  
-  function fadeOutWelcomeThenShow() {
-    welcomeScreen.style.transition = "opacity 0.38s ease";
-    welcomeScreen.style.opacity = "0";
-    
-    setTimeout(() => {
-      conversationsScreen.style.transition = "none";
-      conversationsScreen.style.opacity = "0";
+      const welcomeScreen = document.getElementById("welcomeScreen");
+      const conversationsScreen = document.getElementById("conversationsScreen");
+      const bgValue = window.getComputedStyle(conversationsScreen).backgroundImage || "";
+      const match = bgValue.match(/url\(["']?(.*?)["']?\)/);
+      const bgUrl = match ? match[1] : "";
       
-      showScreen("conversationsScreen", { pushHistory: true });
+      renderConversationsList();
       
-      setTimeout(() => {
-        conversationsScreen.style.transition = "opacity 0.7s ease";
-        conversationsScreen.style.opacity = "1";
-      }, 90);
+      function fadeOutWelcomeThenShow() {
+        welcomeScreen.style.transition = "opacity 0.38s ease";
+        welcomeScreen.style.opacity = "0";
+        
+        setTimeout(() => {
+          conversationsScreen.style.transition = "none";
+          conversationsScreen.style.opacity = "0";
+          
+          showScreen("conversationsScreen", { pushHistory: true });
+          
+          setTimeout(() => {
+            conversationsScreen.style.transition = "opacity 0.7s ease";
+            conversationsScreen.style.opacity = "1";
+          }, 90);
+          
+          welcomeScreen.style.transition = "";
+          welcomeScreen.style.opacity = "";
+        }, 380);
+      }
       
-      welcomeScreen.style.transition = "";
-      welcomeScreen.style.opacity = "";
-    }, 380);
-  }
-  
-  if (!bgUrl) {
-    fadeOutWelcomeThenShow();
-    return;
-  }
-  
-  if (enterConversations._loadedUrl === bgUrl) {
-    fadeOutWelcomeThenShow();
-    return;
-  }
-  
-  if (enterConversations._loadingPromise && enterConversations._loadingUrl === bgUrl) {
-    enterConversations._loadingPromise.then(() => {
-      fadeOutWelcomeThenShow();
-    });
-    return;
-  }
-  
-  enterConversations._loadingUrl = bgUrl;
-  enterConversations._loadingPromise = new Promise(resolve => {
-    const img = new Image();
-    
-    img.onload = () => {
-      enterConversations._loadedUrl = bgUrl;
-      enterConversations._loadingPromise = null;
-      resolve();
-    };
-    
-    img.onerror = () => {
-      enterConversations._loadingPromise = null;
-      resolve();
-    };
-    
-    img.src = bgUrl;
-  });
-  
-  enterConversations._loadingPromise.then(() => {
-    fadeOutWelcomeThenShow();
-  });
-}
+      if (!bgUrl) {
+        fadeOutWelcomeThenShow();
+        return;
+      }
+      
+      if (enterConversations._loadedUrl === bgUrl) {
+        fadeOutWelcomeThenShow();
+        return;
+      }
+      
+      if (enterConversations._loadingPromise && enterConversations._loadingUrl === bgUrl) {
+        enterConversations._loadingPromise.then(() => {
+          fadeOutWelcomeThenShow();
+        });
+        return;
+      }
+      
+      enterConversations._loadingUrl = bgUrl;
+      enterConversations._loadingPromise = new Promise(resolve => {
+        const img = new Image();
+        
+        img.onload = () => {
+          enterConversations._loadedUrl = bgUrl;
+          enterConversations._loadingPromise = null;
+          resolve();
+        };
+        
+        img.onerror = () => {
+          enterConversations._loadingPromise = null;
+          resolve();
+        };
+        
+        img.src = bgUrl;
+      });
+      
+      enterConversations._loadingPromise.then(() => {
+        fadeOutWelcomeThenShow();
+      });
+    }
     
     function startFreshOrResumeSession() {
       closeSessionInfoModal();
