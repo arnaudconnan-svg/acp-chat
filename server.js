@@ -1741,49 +1741,83 @@ app.post("/session/close", async (req, res) => {
 
 async function generateConversationTitle(messages) {
   try {
-    // on prend max 3 premiers messages user
     const userMessages = messages
-      .filter(m => m.role === "user")
+      .filter(m => m && m.role === "user" && typeof m.content === "string")
       .slice(0, 3)
-      .map(m => m.content)
-      .join("\n\n");
+      .map(m => m.content.trim())
+      .filter(Boolean);
     
-    if (!userMessages) return null;
+    if (userMessages.length === 0) return null;
+    
+    const sourceText = userMessages.join("\n\n");
     
     const completion = await client.chat.completions.create({
-      model: "gpt-4.1-mini",
-      temperature: 0.3,
+      model: "gpt-4o-mini",
+      temperature: 0.2,
+      max_tokens: 30,
       messages: [
-      {
-        role: "system",
-        content: "Tu génères un titre très court (une seule phrase), en français, sans emoji, sans ponctuation excessive."
-      },
-      {
-        role: "user",
-        content: userMessages
-      }]
+        {
+          role: "system",
+          content: [
+            "Tu generes un titre tres court en francais pour une conversation.",
+            "Contraintes :",
+            "- 2 a 6 mots",
+            "- pas de guillemets",
+            "- pas d'emoji",
+            "- pas de point final",
+            "- formulation naturelle et specifique",
+            "- ne recopie pas simplement le premier message",
+            "- ne commence pas par Verbatim de type Je, J, Tu, Mon, Ma sauf si c'est indispensable"
+          ].join("\n")
+        },
+        {
+          role: "user",
+          content: sourceText
+        }
+      ]
     });
     
-    let title = completion.choices?.[0]?.message?.content?.trim();
+    let title = completion.choices?.[0]?.message?.content?.trim() || "";
+    
+    title = title
+      .replace(/^["'«]+|["'»]+$/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
     
     if (!title) {
-      // fallback : début du premier message user
-      return userMessages.slice(0, 40);
+      const merged = userMessages.join(" ");
+      const words = merged
+        .replace(/[^\p{L}\p{N}\s'-]/gu, " ")
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 5);
+      
+      return words.length ? words.join(" ") : "Conversation";
     }
     
-    // nettoyage léger
-    title = title.replace(/\s+/g, " ").trim();
-    
-    // limite 40 caractères
     if (title.length > 40) {
-      title = title.slice(0, 40).trim() + "…";
+      title = title.slice(0, 40).trim();
     }
     
-    return title;
+    return title || "Conversation";
     
   } catch (err) {
-    console.error("Erreur génération titre:", err.message);
-    return null;
+    console.error("Erreur generation titre:", err.message);
+    
+    const fallbackMessages = messages
+      .filter(m => m && m.role === "user" && typeof m.content === "string")
+      .slice(0, 3)
+      .map(m => m.content.trim())
+      .filter(Boolean);
+    
+    const merged = fallbackMessages.join(" ");
+    const words = merged
+      .replace(/[^\p{L}\p{N}\s'-]/gu, " ")
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 5);
+    
+    return words.length ? words.join(" ") : "Conversation";
   }
 }
 
