@@ -2129,6 +2129,7 @@
         .slice()
         .sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0));
       
+      closeConversationMenus();
       listEl.innerHTML = "";
       
       if (items.length === 0) {
@@ -2160,19 +2161,50 @@
         const deleteBtn = node.querySelector("[data-delete-conversation]");
         
         root.dataset.conversationId = item.id;
-        
         openBtn.dataset.openConversation = item.id;
         titleEl.textContent = safeTitle;
-        
         toggleBtn.dataset.menuToggle = item.id;
         menu.dataset.menu = item.id;
-        
         renameBtn.dataset.renameConversation = item.id;
         deleteBtn.dataset.deleteConversation = item.id;
+        
+        openBtn.onclick = () => {
+          closeConversationMenus();
+          openConversation(item.id);
+        };
+        
+        toggleBtn.onclick = e => {
+          e.preventDefault();
+          e.stopPropagation();
+          
+          const isOpening = menu.style.display !== "block";
+          
+          if (isOpening) {
+            openConversationMenu(toggleBtn, menu);
+          } else {
+            closeConversationMenus();
+          }
+        };
+        
+        renameBtn.onclick = e => {
+          e.preventDefault();
+          e.stopPropagation();
+          closeConversationMenus();
+          openEditTitleModal(item.id);
+        };
+        
+        deleteBtn.onclick = e => {
+          e.preventDefault();
+          e.stopPropagation();
+          closeConversationMenus();
+          pendingDeleteConversationId = item.id;
+          openModal("deleteConversationModal");
+        };
         
         listEl.appendChild(node);
       });
     }
+    ``
     
     function enterConversations() {
       const welcomeScreen = document.getElementById("welcomeScreen");
