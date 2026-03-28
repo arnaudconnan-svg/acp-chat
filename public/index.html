@@ -2608,42 +2608,64 @@ window.addEventListener("load", () => {
   }
 
   function interruptWelcomeRitual() {
-    if (!ritualRunning || ritualInterrupted) return;
-    ritualInterrupted = true;
-  }
-
-  function accelerateWelcomeIntro() {
-  if (!welcomeHasInteracted) {
-    welcomeHasInteracted = true;
-    fastForwardWelcomeVisuals();
+  if (!ritualRunning || ritualInterrupted) return;
+  
+  ritualInterrupted = true;
+  
+  const textEl = document.getElementById("welcomeRitualText");
+  
+  if (ritualTextTimeout) {
+    clearTimeout(ritualTextTimeout);
+    ritualTextTimeout = null;
     
-    if (welcomePhase === "boot_pause") {
-      bindWelcomeInteraction();
-      startWelcomeRitual();
-    } else if (welcomePhase === "logo_visible" && !firstPhraseShown) {
-      if (ritualStartTimeout) {
-        clearTimeout(ritualStartTimeout);
-        ritualStartTimeout = null;
-      }
-      
-      startWelcomeRitual();
+    if (textEl) {
+      textEl.classList.remove("is-visible");
+      textEl.classList.add("is-hidden");
     }
-  }
-  
-  if (ritualRunning) {
-    interruptWelcomeRitual();
-    return;
-  }
-  
-  if (welcomePhase === "actions_pending") {
-    revealActions(false);
-    return;
-  }
-  
-  if (!actionsVisible) {
-    revealActions(false);
+    
+    ritualGapTimeout = setTimeout(() => {
+      ritualIndex += 1;
+      showWelcomeRitualPhrase();
+    }, WELCOME_RITUAL_SKIP_GAP_DURATION);
   }
 }
+
+  function accelerateWelcomeIntro() {
+    if (!welcomeHasInteracted) {
+      welcomeHasInteracted = true;
+      fastForwardWelcomeVisuals();
+
+      if (welcomePhase === "boot_pause") {
+        bindWelcomeInteraction();
+        startWelcomeRitual();
+        return;
+      }
+
+      if (welcomePhase === "logo_visible" && !firstPhraseShown) {
+        if (ritualStartTimeout) {
+          clearTimeout(ritualStartTimeout);
+          ritualStartTimeout = null;
+        }
+
+        startWelcomeRitual();
+        return;
+      }
+    }
+
+    if (ritualRunning) {
+      interruptWelcomeRitual();
+      return;
+    }
+
+    if (welcomePhase === "actions_pending") {
+      revealActions(false);
+      return;
+    }
+
+    if (!actionsVisible) {
+      revealActions(false);
+    }
+  }
 
   function bindWelcomeInteraction() {
     if (welcomeInteractionBound) return;
