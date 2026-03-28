@@ -45,201 +45,203 @@
     }
     
     /* ---------- ACCUEIL ---------- */
-
-#welcomeScreen {
-  position: relative;
-  overflow: hidden;
-  justify-content: center;
-  align-items: center;
-  padding: 0 22px calc(22px + env(safe-area-inset-bottom, 0px)) 22px;
-  opacity: 0;
-  transition: opacity 2.5s cubic-bezier(0.8, 0.2, 1, 1);
-  background:
-    radial-gradient(circle at 50% 16%, rgba(223, 237, 239, 0.96) 0%, rgba(242, 248, 247, 0.92) 40%, rgba(252, 253, 253, 0.98) 72%, rgba(255, 255, 255, 1) 100%);
-}
-
-#welcomeScreen::before {
-  content: "";
-  position: absolute;
-  inset: -10%;
-  background:
-    radial-gradient(circle at 28% 24%, rgba(180, 209, 214, 0.24) 0%, rgba(180, 209, 214, 0) 46%),
-    radial-gradient(circle at 74% 76%, rgba(203, 225, 221, 0.2) 0%, rgba(203, 225, 221, 0) 44%);
-  opacity: 0.95;
-  pointer-events: none;
-}
-
-#welcomeScreen.ready {
-  opacity: 1;
-}
-
-#welcomeInner {
-  position: relative;
-  z-index: 1;
-  width: 100%;
-  max-width: 680px;
-  margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  min-height: 100%;
-  box-sizing: border-box;
-  padding-top: 9vh;
-  padding-bottom: 5vh;
-}
-
-#welcomeLogoWrap {
-  display: flex;
-  justify-content: center;
-  width: 100%;
-  margin: 0 0 38px 0;
-  opacity: 0;
-}
-
-#welcomeLogo {
-  width: min(340px, 80vw);
-  height: auto;
-  display: block;
-  filter: drop-shadow(0 16px 36px rgba(36, 94, 102, 0.12));
-}
-
-#welcomeRitualText {
-  width: 100%;
-  min-height: 92px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  font-size: clamp(28px, 6.4vw, 38px);
-  font-weight: 400;
-  line-height: 1.22;
-  letter-spacing: 0.01em;
-  color: #173b40;
-  opacity: 0;
-  transform: translateY(10px);
-  padding: 0 6px;
-  box-sizing: border-box;
-  text-wrap: balance;
-}
-
-#welcomeRitualText.is-visible {
-  opacity: 1;
-  transform: translateY(0);
-  transition:
-    opacity 0.68s ease,
-    transform 0.68s ease;
-}
-
-#welcomeRitualText.is-hidden {
-  opacity: 0;
-  transform: translateY(10px);
-  transition:
-    opacity 0.52s ease,
-    transform 0.52s ease;
-}
-
-#welcomeActions {
-  width: 100%;
-  max-width: 380px;
-  margin-top: auto;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 14px;
-  opacity: 0;
-  pointer-events: none;
-  transform: translateY(18px);
-}
-
-#welcomeActions.is-visible {
-  opacity: 1;
-  pointer-events: auto;
-  transform: translateY(0);
-  transition:
-    opacity 0.75s ease,
-    transform 0.75s ease;
-}
-
-.welcomeBtnPrimary,
-.welcomeBtnSecondary,
-.welcomeBtnTertiary {
-  width: 100%;
-  box-sizing: border-box;
-  line-height: 1.25;
-  cursor: pointer;
-}
-
-.welcomeBtnPrimary {
-  border: none;
-  border-radius: 18px;
-  background: #245e66;
-  color: #ffffff;
-  font-size: 17px;
-  font-weight: 600;
-  padding: 15px 20px;
-  box-shadow:
-    0 14px 30px rgba(36, 94, 102, 0.22),
-    0 1px 0 rgba(255, 255, 255, 0.18) inset;
-}
-
-.welcomeBtnSecondary {
-  border: none;
-  background: transparent;
-  color: #245e66;
-  font-size: 14px;
-  padding: 2px 12px;
-}
-
-.welcomeBtnTertiary {
-  border: 1px dashed #bfd0d3;
-  border-radius: 14px;
-  background: rgba(248, 251, 251, 0.8);
-  color: #245e66;
-  font-size: 13px;
-  padding: 9px 12px;
-}
-
-#welcomeEnterBtn {
-  transform: scale(1);
-}
-
-#welcomeActions.is-visible #welcomeEnterBtn {
-  animation: welcomeEnterPulse 2.6s ease-in-out infinite;
-}
-
-#welcomeAboutBtn {
-  opacity: 0.88;
-}
-
-#welcomeDevAccessWrap {
-  min-height: 36px;
-}
-
-body:not(.admin-ui) #welcomeDevAccessBtn {
-  visibility: hidden;
-  pointer-events: none;
-}
-
-@keyframes welcomeEnterPulse {
-  0% {
-    transform: scale(1);
-    box-shadow:
-      0 14px 30px rgba(36, 94, 102, 0.22),
-      0 1px 0 rgba(255, 255, 255, 0.18) inset;
-  }
-  50% {
-    transform: scale(1.035);
-    box-shadow:
-      0 18px 36px rgba(36, 94, 102, 0.28),
-      0 1px 0 rgba(255, 255, 255, 0.18) inset;
-  }
-  100% {
-    transform: scale(1);
-    box-shadow:
-      0 14px 30px rgba(36, 94, 102, 0.22),
-      0 1px 0 rgba(255, 255, 255, 0.18) inset;
-  }
-}
+    
+    #welcomeScreen {
+      position: relative;
+      overflow: hidden;
+      justify-content: center;
+      align-items: center;
+      padding: 0 22px calc(22px + env(safe-area-inset-bottom, 0px)) 22px;
+      opacity: 0;
+      transition: opacity 2.5s cubic-bezier(0.8, 0.2, 1, 1);
+      background:
+        radial-gradient(circle at 50% 16%, rgba(223, 237, 239, 0.96) 0%, rgba(242, 248, 247, 0.92) 40%, rgba(252, 253, 253, 0.98) 72%, rgba(255, 255, 255, 1) 100%);
+    }
+    
+    #welcomeScreen::before {
+      content: "";
+      position: absolute;
+      inset: -10%;
+      background:
+        radial-gradient(circle at 28% 24%, rgba(180, 209, 214, 0.24) 0%, rgba(180, 209, 214, 0) 46%),
+        radial-gradient(circle at 74% 76%, rgba(203, 225, 221, 0.2) 0%, rgba(203, 225, 221, 0) 44%);
+      opacity: 0.95;
+      pointer-events: none;
+    }
+    
+    #welcomeScreen.ready {
+      opacity: 1;
+    }
+    
+    #welcomeInner {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 680px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100%;
+      box-sizing: border-box;
+      padding-top: 9vh;
+      padding-bottom: 5vh;
+    }
+    
+    #welcomeLogoWrap {
+      display: flex;
+      justify-content: center;
+      width: 100%;
+      margin: 0 0 38px 0;
+      opacity: 0;
+    }
+    
+    #welcomeLogo {
+      width: min(340px, 80vw);
+      height: auto;
+      display: block;
+      filter: drop-shadow(0 16px 36px rgba(36, 94, 102, 0.12));
+    }
+    
+    #welcomeRitualText {
+      width: 100%;
+      min-height: 92px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      font-size: clamp(28px, 6.4vw, 38px);
+      font-weight: 400;
+      line-height: 1.22;
+      letter-spacing: 0.01em;
+      color: #173b40;
+      opacity: 0;
+      transform: translateY(10px);
+      padding: 0 6px;
+      box-sizing: border-box;
+      text-wrap: balance;
+    }
+    
+    #welcomeRitualText.is-visible {
+      opacity: 1;
+      transform: translateY(0);
+      transition:
+        opacity 0.68s ease,
+        transform 0.68s ease;
+    }
+    
+    #welcomeRitualText.is-hidden {
+      opacity: 0;
+      transform: translateY(10px);
+      transition:
+        opacity 0.52s ease,
+        transform 0.52s ease;
+    }
+    
+    #welcomeActions {
+      width: 100%;
+      max-width: 380px;
+      margin-top: auto;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 14px;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(18px);
+    }
+    
+    #welcomeActions.is-visible {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0);
+      transition:
+        opacity 0.75s ease,
+        transform 0.75s ease;
+    }
+    
+    .welcomeBtnPrimary,
+    .welcomeBtnSecondary,
+    .welcomeBtnTertiary {
+      width: 100%;
+      box-sizing: border-box;
+      line-height: 1.25;
+      cursor: pointer;
+    }
+    
+    .welcomeBtnPrimary {
+      border: none;
+      border-radius: 18px;
+      background: #245e66;
+      color: #ffffff;
+      font-size: 17px;
+      font-weight: 600;
+      padding: 15px 20px;
+      box-shadow:
+        0 14px 30px rgba(36, 94, 102, 0.22),
+        0 1px 0 rgba(255, 255, 255, 0.18) inset;
+    }
+    
+    .welcomeBtnSecondary {
+      border: none;
+      background: transparent;
+      color: #245e66;
+      font-size: 14px;
+      padding: 2px 12px;
+    }
+    
+    .welcomeBtnTertiary {
+      border: 1px dashed #bfd0d3;
+      border-radius: 14px;
+      background: rgba(248, 251, 251, 0.8);
+      color: #245e66;
+      font-size: 13px;
+      padding: 9px 12px;
+    }
+    
+    #welcomeEnterBtn {
+      transform: scale(1);
+    }
+    
+    #welcomeActions.is-visible #welcomeEnterBtn {
+      animation: welcomeEnterPulse 2.6s ease-in-out infinite;
+    }
+    
+    #welcomeAboutBtn {
+      opacity: 0.88;
+    }
+    
+    #welcomeDevAccessWrap {
+      min-height: 36px;
+    }
+    
+    body:not(.admin-ui) #welcomeDevAccessBtn {
+      visibility: hidden;
+      pointer-events: none;
+    }
+    
+    @keyframes welcomeEnterPulse {
+      0% {
+        transform: scale(1);
+        box-shadow:
+          0 14px 30px rgba(36, 94, 102, 0.22),
+          0 1px 0 rgba(255, 255, 255, 0.18) inset;
+      }
+      
+      50% {
+        transform: scale(1.035);
+        box-shadow:
+          0 18px 36px rgba(36, 94, 102, 0.28),
+          0 1px 0 rgba(255, 255, 255, 0.18) inset;
+      }
+      
+      100% {
+        transform: scale(1);
+        box-shadow:
+          0 14px 30px rgba(36, 94, 102, 0.22),
+          0 1px 0 rgba(255, 255, 255, 0.18) inset;
+      }
+    }
     
     /* ---------- CONVERSATIONS ---------- */
     
@@ -846,26 +848,26 @@ body:not(.admin-ui) #welcomeDevAccessBtn {
 </head>
 
 <body>
-  
   <div id="welcomeScreen" class="screen">
     <div id="welcomeInner">
+      
       <div id="welcomeLogoWrap">
-        <img id="welcomeLogo" src="/images/logo.png" alt="Facilitat.io" width="220" height="220">
+        <img id="welcomeLogo" src="/images/logo.png" alt="Facilitat.io">
       </div>
       
       <div id="welcomeRitualText" aria-live="polite"></div>
       
       <div id="welcomeActions">
-        <button id="welcomeEnterBtn" class="welcomeBtnPrimary" type="button" onclick="enterConversations()">
+        <button id="welcomeEnterBtn" class="welcomeBtnPrimary" type="button">
           Entrer
         </button>
         
-        <button id="welcomeAboutBtn" class="welcomeBtnSecondary" type="button" onclick="openAboutModal()">
+        <button id="welcomeAboutBtn" class="welcomeBtnSecondary" type="button">
           Plus d'informations
         </button>
         
         <div id="welcomeDevAccessWrap">
-          <button id="welcomeDevAccessBtn" class="welcomeBtnTertiary" type="button" onclick="openDevAccessModal()">
+          <button id="welcomeDevAccessBtn" class="welcomeBtnTertiary" type="button">
             Acces developpeur
           </button>
         </div>
@@ -2063,525 +2065,552 @@ body:not(.admin-ui) #welcomeDevAccessBtn {
     }
     
     /* ---------- EVENTS ---------- */
-
-document.getElementById("cancelEditTitleBtn").onclick = () => {
-  closeEditTitleModal();
-};
-
-document.getElementById("editTitleModal").addEventListener("click", e => {
-  if (e.target.id === "editTitleModal") {
-    closeEditTitleModal();
-  }
-});
-
-document.getElementById("editTitleInput").addEventListener("keydown", e => {
-  if (e.key === "Enter") {
-    e.preventDefault();
-    document.getElementById("confirmEditTitleBtn").click();
-  }
-});
-
-document.getElementById("confirmEditTitleBtn").onclick = () => {
-  const input = document.getElementById("editTitleInput");
-  const conversationId = input.dataset.conversationId;
-  
-  if (!conversationId) return;
-  
-  let newTitle = input.value.trim();
-  
-  if (newTitle.length > 60) {
-    newTitle = newTitle.slice(0, 60);
-  }
-  
-  upsertConversationIndexItem({
-    id: conversationId,
-    title: newTitle || null,
-    updatedAt: Date.now(),
-    isCustomTitle: true
-  });
-  
-  renderConversationsList();
-  closeEditTitleModal();
-};
-
-const editTitleInput = document.getElementById("editTitleInput");
-const editTitleCounter = document.getElementById("editTitleCounter");
-
-function updateTitleCounter() {
-  const length = editTitleInput.value.length;
-  editTitleCounter.textContent = length + "/60";
-}
-
-editTitleInput.addEventListener("input", updateTitleCounter);
-
-let pendingDeleteConversationId = null;
-
-document.getElementById("conversationsList").addEventListener("click", e => {
-  const toggleBtn = e.target.closest("[data-menu-toggle]");
-  if (toggleBtn) {
-    e.preventDefault();
-    e.stopPropagation();
     
-    const conversationId = toggleBtn.getAttribute("data-menu-toggle");
-    const menu = document.querySelector(`[data-menu="${conversationId}"]`);
+    document.getElementById("cancelEditTitleBtn").onclick = () => {
+      closeEditTitleModal();
+    };
     
-    document.querySelectorAll("[data-menu]").forEach(el => {
-      if (el !== menu) el.style.display = "none";
+    document.getElementById("editTitleModal").addEventListener("click", e => {
+      if (e.target.id === "editTitleModal") {
+        closeEditTitleModal();
+      }
     });
     
-    if (menu) {
-      menu.style.display = menu.style.display === "block" ? "none" : "block";
-    }
-    
-    return;
-  }
-  
-  const renameBtn = e.target.closest("[data-rename-conversation]");
-  if (renameBtn) {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    const conversationId = renameBtn.getAttribute("data-rename-conversation");
-    document.querySelectorAll("[data-menu]").forEach(el => {
-      el.style.display = "none";
-    });
-    openEditTitleModal(conversationId);
-    return;
-  }
-  
-  const deleteBtn = e.target.closest("[data-delete-conversation]");
-  if (deleteBtn) {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    const conversationId = deleteBtn.getAttribute("data-delete-conversation");
-    document.querySelectorAll("[data-menu]").forEach(el => {
-      el.style.display = "none";
+    document.getElementById("editTitleInput").addEventListener("keydown", e => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        document.getElementById("confirmEditTitleBtn").click();
+      }
     });
     
-    pendingDeleteConversationId = conversationId;
-    openModal("deleteConversationModal");
-    return;
-  }
-  
-  const openBtn = e.target.closest("[data-open-conversation]");
-  if (openBtn) {
-    const conversationId = openBtn.getAttribute("data-open-conversation");
-    openConversation(conversationId);
-  }
-});
-
-document.addEventListener("click", e => {
-  if (!e.target.closest("[data-menu-toggle]") && !e.target.closest("[data-menu]")) {
-    document.querySelectorAll("[data-menu]").forEach(el => {
-      el.style.display = "none";
-    });
-  }
-});
-
-document.getElementById("cancelDeleteConversationBtn").onclick = () => {
-  pendingDeleteConversationId = null;
-  closeModal("deleteConversationModal");
-};
-
-document.getElementById("confirmDeleteConversationBtn").onclick = () => {
-  if (!pendingDeleteConversationId) {
-    closeModal("deleteConversationModal");
-    return;
-  }
-  
-  deleteConversationData(pendingDeleteConversationId);
-  
-  if (getConversationId() === pendingDeleteConversationId) {
-    localStorage.removeItem(CONVERSATION_ID_KEY);
-  }
-  
-  pendingDeleteConversationId = null;
-  closeModal("deleteConversationModal");
-  renderConversationsList();
-};
-
-document.getElementById("deleteConversationModal").addEventListener("click", e => {
-  if (e.target.id === "deleteConversationModal") {
-    pendingDeleteConversationId = null;
-    closeModal("deleteConversationModal");
-  }
-});
-
-document.getElementById("sendBtn").onclick = send;
-
-document.getElementById("menuBtn").onclick = () => {
-  enterConversations();
-};
-
-document.getElementById("conversationsBackBtn").onclick = () => {
-  history.back();
-};
-
-document.getElementById("debugToggleBtn").onclick = () => {
-  showDebug = !showDebug;
-  syncDebugVisibility();
-};
-
-document.getElementById("newSessionBtn").onclick = () => {
-  openConfirmNewSessionModal();
-};
-
-document.getElementById("conversationsFabBtn").onclick = async () => {
-  await finalizeAndStartNewSession();
-};
-
-document.getElementById("cancelNewSessionBtn").onclick = () => {
-  closeConfirmNewSessionModal();
-};
-
-document.getElementById("confirmNewSessionBtn").onclick = async () => {
-  await finalizeAndStartNewSession();
-};
-
-document.getElementById("expiredNewSessionBtn").onclick = async () => {
-  await finalizeAndStartNewSession();
-};
-
-document.getElementById("terminatedNewSessionBtn").onclick = async () => {
-  await finalizeAndStartNewSession();
-};
-
-document.getElementById("devAccessModal").addEventListener("click", e => {
-  if (e.target.id === "devAccessModal") {
-    closeDevAccessModal();
-  }
-});
-
-document.getElementById("sessionInfoContinueBtn").onclick = () => {
-  saveSessionInfoDismissed(document.getElementById("sessionInfoDontShow").checked);
-  startFreshOrResumeSession();
-};
-
-document.getElementById("input").addEventListener("keydown", e => {
-  if (e.key === "Enter" && e.ctrlKey) {
-    e.preventDefault();
-    send();
-  }
-});
-
-document.getElementById("input").addEventListener("focus", () => {
-  updateActivity();
-});
-
-document.getElementById("chat").addEventListener("scroll", () => {
-  updateActivity();
-});
-
-document.getElementById("aboutModal").addEventListener("click", e => {
-  if (e.target.id === "aboutModal") {
-    closeAboutModal();
-  }
-});
-
-document.getElementById("confirmNewSessionModal").addEventListener("click", e => {
-  if (e.target.id === "confirmNewSessionModal") {
-    closeConfirmNewSessionModal();
-  }
-});
-
-document.getElementById("sessionInfoModal").addEventListener("click", e => {
-  if (e.target.id === "sessionInfoModal") {
-    closeSessionInfoModal();
-  }
-});
-    
-    /* ---------- INIT ---------- */
-
-window.addEventListener("load", () => {
-  const params = new URLSearchParams(window.location.search);
-  
-  if (params.get("admin") === "1") {
-    localStorage.setItem(ADMIN_UI_KEY, "1");
-  }
-  if (params.get("admin") === "0") {
-    localStorage.removeItem(ADMIN_UI_KEY);
-  }
-  
-  document.body.classList.toggle(
-    "admin-ui",
-    localStorage.getItem(ADMIN_UI_KEY) === "1"
-  );
-  
-  syncDebugVisibility();
-  
-  const logo = document.getElementById("welcomeLogo");
-  const welcome = document.getElementById("welcomeScreen");
-  
-  function createBootOverlay() {
-    const overlay = document.createElement("div");
-    overlay.style.position = "fixed";
-    overlay.style.inset = "0";
-    overlay.style.zIndex = "6000";
-    overlay.style.display = "flex";
-    overlay.style.flexDirection = "column";
-    overlay.style.alignItems = "center";
-    overlay.style.justifyContent = "center";
-    overlay.style.background = "#ffffff";
-    
-    const icon = document.createElement("img");
-    icon.src = "/images/icon-512.png";
-    icon.alt = "Chargement";
-    icon.style.width = "220px";
-    icon.style.height = "220px";
-    icon.style.objectFit = "contain";
-    icon.style.display = "block";
-    
-    overlay.appendChild(icon);
-    document.body.appendChild(overlay);
-    
-    if (icon.animate) {
-      icon.animate(
-        [
-          { transform: "rotate(0deg)" },
-          { transform: "rotate(360deg)" }
-        ],
-        {
-          duration: 1400,
-          iterations: Infinity,
-          easing: "linear"
-        }
-      );
-    }
-    
-    return overlay;
-  }
-  
-  async function waitForBackendReady() {
-    try {
-      const res = await fetch("/health", { cache: "no-store" });
-      if (res.ok) return true;
-    } catch {}
-    
-    return false;
-  }
-  
-  // ---------- WELCOME RITUAL ----------
-  
-  const WELCOME_RITUAL = [
-    "Se comprendre",
-    "S'accepter",
-    "Se faire confiance",
-    "Se liberer..."
-  ];
-  
-  const WELCOME_BOOT_PAUSE_MS = 750;
-  const WELCOME_RITUAL_TEXT_DURATION = 2000;
-  const WELCOME_RITUAL_GAP_DURATION = 400;
-  const WELCOME_RITUAL_SKIP_TEXT_DURATION = 200;
-  const WELCOME_RITUAL_SKIP_GAP_DURATION = 100;
-  const WELCOME_LOGO_DELAY_MS = 0;
-  const WELCOME_LOGO_FADE_DURATION_MS = 1200;
-  const WELCOME_RITUAL_START_DELAY_MS = 1400;
-  
-  let ritualIndex = 0;
-  let ritualRunning = false;
-  let ritualInterrupted = false;
-  let ritualTextTimeout = null;
-  let ritualGapTimeout = null;
-  let ritualStartTimeout = null;
-  let welcomeInteractionBound = false;
-  let welcomeHasInteracted = false;
-  
-  function clearWelcomeRitualTimers() {
-    if (ritualTextTimeout) {
-      clearTimeout(ritualTextTimeout);
-      ritualTextTimeout = null;
-    }
-    
-    if (ritualGapTimeout) {
-      clearTimeout(ritualGapTimeout);
-      ritualGapTimeout = null;
-    }
-    
-    if (ritualStartTimeout) {
-      clearTimeout(ritualStartTimeout);
-      ritualStartTimeout = null;
-    }
-  }
-  
-  function resetWelcomeRitualUI() {
-    const logoWrap = document.getElementById("welcomeLogoWrap");
-    const textEl = document.getElementById("welcomeRitualText");
-    const actions = document.getElementById("welcomeActions");
-    
-    if (logoWrap) {
-      logoWrap.style.transition = "none";
-      logoWrap.style.opacity = "0";
-    }
-    
-    if (textEl) {
-      textEl.textContent = "";
-      textEl.classList.remove("is-visible", "is-hidden");
-    }
-    
-    if (actions) {
-      actions.classList.remove("is-visible");
-    }
-  }
-  
-  function showWelcomeLogo() {
-    const logoWrap = document.getElementById("welcomeLogoWrap");
-    if (!logoWrap) return;
-    
-    setTimeout(() => {
-      logoWrap.style.transition = "opacity " + WELCOME_LOGO_FADE_DURATION_MS + "ms ease";
-      logoWrap.style.opacity = "1";
-    }, WELCOME_LOGO_DELAY_MS);
-  }
-  
-  function endWelcomeRitual() {
-    clearWelcomeRitualTimers();
-    ritualRunning = false;
-    
-    const textEl = document.getElementById("welcomeRitualText");
-    const actions = document.getElementById("welcomeActions");
-    
-    if (textEl) {
-      textEl.classList.remove("is-visible");
-      textEl.classList.add("is-hidden");
-    }
-    
-    if (actions) {
-      actions.classList.add("is-visible");
-    }
-  }
-  
-  function showWelcomeRitualPhrase() {
-    const textEl = document.getElementById("welcomeRitualText");
-    if (!textEl) return;
-    
-    if (ritualIndex >= WELCOME_RITUAL.length) {
-      endWelcomeRitual();
-      return;
-    }
-    
-    textEl.textContent = WELCOME_RITUAL[ritualIndex];
-    textEl.classList.remove("is-hidden");
-    textEl.classList.add("is-visible");
-    
-    const textDuration = ritualInterrupted ?
-      WELCOME_RITUAL_SKIP_TEXT_DURATION :
-      WELCOME_RITUAL_TEXT_DURATION;
-    
-    ritualTextTimeout = setTimeout(() => {
-      textEl.classList.remove("is-visible");
-      textEl.classList.add("is-hidden");
+    document.getElementById("confirmEditTitleBtn").onclick = () => {
+      const input = document.getElementById("editTitleInput");
+      const conversationId = input.dataset.conversationId;
       
-      const gapDuration = ritualInterrupted ?
-        WELCOME_RITUAL_SKIP_GAP_DURATION :
-        WELCOME_RITUAL_GAP_DURATION;
+      if (!conversationId) return;
       
-      ritualGapTimeout = setTimeout(() => {
-        ritualIndex += 1;
-        showWelcomeRitualPhrase();
-      }, gapDuration);
-    }, textDuration);
-  }
-  
-  function startWelcomeRitual() {
-    clearWelcomeRitualTimers();
-    
-    ritualIndex = 0;
-    ritualRunning = true;
-    ritualInterrupted = false;
-    welcomeHasInteracted = false;
-    
-    const textEl = document.getElementById("welcomeRitualText");
-    const actions = document.getElementById("welcomeActions");
-    
-    if (textEl) {
-      textEl.textContent = "";
-      textEl.classList.remove("is-visible", "is-hidden");
-    }
-    
-    if (actions) {
-      actions.classList.remove("is-visible");
-    }
-    
-    showWelcomeRitualPhrase();
-  }
-  
-  function interruptWelcomeRitual() {
-    if (!ritualRunning || ritualInterrupted) return;
-    ritualInterrupted = true;
-  }
-  
-  function bindWelcomeInteraction() {
-    if (welcomeInteractionBound) return;
-    
-    const screen = document.getElementById("welcomeScreen");
-    if (!screen) return;
-    
-    screen.addEventListener("click", event => {
-      if (welcomeHasInteracted) return;
-      if (event.target.closest("#welcomeActions")) return;
+      let newTitle = input.value.trim();
       
-      welcomeHasInteracted = true;
-      interruptWelcomeRitual();
-    });
-    
-    welcomeInteractionBound = true;
-  }
-  
-  function showWelcome(bootOverlay) {
-    showScreen("welcomeScreen", { replaceHistory: true, pushHistory: false });
-    
-    clearWelcomeRitualTimers();
-    resetWelcomeRitualUI();
-    
-    welcome.style.transition = "none";
-    welcome.classList.remove("ready");
-    
-    requestAnimationFrame(() => {
-      if (bootOverlay) {
-        bootOverlay.remove();
+      if (newTitle.length > 60) {
+        newTitle = newTitle.slice(0, 60);
       }
       
-      setTimeout(() => {
-        welcome.style.transition = "";
-        
-        requestAnimationFrame(() => {
-          welcome.classList.add("ready");
-        });
-        
-        showWelcomeLogo();
-        bindWelcomeInteraction();
-        
-        ritualStartTimeout = setTimeout(() => {
-          startWelcomeRitual();
-        }, WELCOME_RITUAL_START_DELAY_MS);
-      }, WELCOME_BOOT_PAUSE_MS);
-    });
-  }
-  
-  async function boot() {
-    const bootOverlay = createBootOverlay();
+      upsertConversationIndexItem({
+        id: conversationId,
+        title: newTitle || null,
+        updatedAt: Date.now(),
+        isCustomTitle: true
+      });
+      
+      renderConversationsList();
+      closeEditTitleModal();
+    };
     
-    if (!logo || logo.complete) {
-      await waitForBackendReady();
-      showWelcome(bootOverlay);
-      return;
+    const editTitleInput = document.getElementById("editTitleInput");
+    const editTitleCounter = document.getElementById("editTitleCounter");
+    
+    function updateTitleCounter() {
+      const length = editTitleInput.value.length;
+      editTitleCounter.textContent = length + "/60";
     }
     
-    logo.addEventListener("load", async () => {
-      await waitForBackendReady();
-      showWelcome(bootOverlay);
-    }, { once: true });
+    editTitleInput.addEventListener("input", updateTitleCounter);
     
-    logo.addEventListener("error", async () => {
-      await waitForBackendReady();
-      showWelcome(bootOverlay);
-    }, { once: true });
-  }
-  
-  boot();
-});
+    let pendingDeleteConversationId = null;
+    
+    document.getElementById("conversationsList").addEventListener("click", e => {
+      const toggleBtn = e.target.closest("[data-menu-toggle]");
+      if (toggleBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const conversationId = toggleBtn.getAttribute("data-menu-toggle");
+        const menu = document.querySelector(`[data-menu="${conversationId}"]`);
+        
+        document.querySelectorAll("[data-menu]").forEach(el => {
+          if (el !== menu) el.style.display = "none";
+        });
+        
+        if (menu) {
+          menu.style.display = menu.style.display === "block" ? "none" : "block";
+        }
+        
+        return;
+      }
+      
+      const renameBtn = e.target.closest("[data-rename-conversation]");
+      if (renameBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const conversationId = renameBtn.getAttribute("data-rename-conversation");
+        document.querySelectorAll("[data-menu]").forEach(el => {
+          el.style.display = "none";
+        });
+        openEditTitleModal(conversationId);
+        return;
+      }
+      
+      const deleteBtn = e.target.closest("[data-delete-conversation]");
+      if (deleteBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const conversationId = deleteBtn.getAttribute("data-delete-conversation");
+        document.querySelectorAll("[data-menu]").forEach(el => {
+          el.style.display = "none";
+        });
+        
+        pendingDeleteConversationId = conversationId;
+        openModal("deleteConversationModal");
+        return;
+      }
+      
+      const openBtn = e.target.closest("[data-open-conversation]");
+      if (openBtn) {
+        const conversationId = openBtn.getAttribute("data-open-conversation");
+        openConversation(conversationId);
+      }
+    });
+    
+    document.addEventListener("click", e => {
+      if (!e.target.closest("[data-menu-toggle]") && !e.target.closest("[data-menu]")) {
+        document.querySelectorAll("[data-menu]").forEach(el => {
+          el.style.display = "none";
+        });
+      }
+    });
+    
+    document.getElementById("cancelDeleteConversationBtn").onclick = () => {
+      pendingDeleteConversationId = null;
+      closeModal("deleteConversationModal");
+    };
+    
+    document.getElementById("confirmDeleteConversationBtn").onclick = () => {
+      if (!pendingDeleteConversationId) {
+        closeModal("deleteConversationModal");
+        return;
+      }
+      
+      deleteConversationData(pendingDeleteConversationId);
+      
+      if (getConversationId() === pendingDeleteConversationId) {
+        localStorage.removeItem(CONVERSATION_ID_KEY);
+      }
+      
+      pendingDeleteConversationId = null;
+      closeModal("deleteConversationModal");
+      renderConversationsList();
+    };
+    
+    document.getElementById("deleteConversationModal").addEventListener("click", e => {
+      if (e.target.id === "deleteConversationModal") {
+        pendingDeleteConversationId = null;
+        closeModal("deleteConversationModal");
+      }
+    });
+    
+    document.getElementById("welcomeEnterBtn").onclick = () => {
+      enterConversations();
+    };
+    
+    document.getElementById("welcomeAboutBtn").onclick = () => {
+      openAboutModal();
+    };
+    
+    document.getElementById("welcomeDevAccessBtn").onclick = () => {
+      openDevAccessModal();
+    };
+    
+    document.getElementById("sendBtn").onclick = send;
+    
+    document.getElementById("menuBtn").onclick = () => {
+      enterConversations();
+    };
+    
+    document.getElementById("conversationsBackBtn").onclick = () => {
+      history.back();
+    };
+    
+    document.getElementById("debugToggleBtn").onclick = () => {
+      showDebug = !showDebug;
+      syncDebugVisibility();
+    };
+    
+    document.getElementById("newSessionBtn").onclick = () => {
+      openConfirmNewSessionModal();
+    };
+    
+    document.getElementById("conversationsFabBtn").onclick = async () => {
+      await finalizeAndStartNewSession();
+    };
+    
+    document.getElementById("cancelNewSessionBtn").onclick = () => {
+      closeConfirmNewSessionModal();
+    };
+    
+    document.getElementById("confirmNewSessionBtn").onclick = async () => {
+      await finalizeAndStartNewSession();
+    };
+    
+    document.getElementById("expiredNewSessionBtn").onclick = async () => {
+      await finalizeAndStartNewSession();
+    };
+    
+    document.getElementById("terminatedNewSessionBtn").onclick = async () => {
+      await finalizeAndStartNewSession();
+    };
+    
+    document.getElementById("devAccessModal").addEventListener("click", e => {
+      if (e.target.id === "devAccessModal") {
+        closeDevAccessModal();
+      }
+    });
+    
+    document.getElementById("sessionInfoContinueBtn").onclick = () => {
+      saveSessionInfoDismissed(document.getElementById("sessionInfoDontShow").checked);
+      startFreshOrResumeSession();
+    };
+    
+    document.getElementById("input").addEventListener("keydown", e => {
+      if (e.key === "Enter" && e.ctrlKey) {
+        e.preventDefault();
+        send();
+      }
+    });
+    
+    document.getElementById("input").addEventListener("focus", () => {
+      updateActivity();
+    });
+    
+    document.getElementById("chat").addEventListener("scroll", () => {
+      updateActivity();
+    });
+    
+    document.getElementById("aboutModal").addEventListener("click", e => {
+      if (e.target.id === "aboutModal") {
+        closeAboutModal();
+      }
+    });
+    
+    document.getElementById("confirmNewSessionModal").addEventListener("click", e => {
+      if (e.target.id === "confirmNewSessionModal") {
+        closeConfirmNewSessionModal();
+      }
+    });
+    
+    document.getElementById("sessionInfoModal").addEventListener("click", e => {
+      if (e.target.id === "sessionInfoModal") {
+        closeSessionInfoModal();
+      }
+    });
+    
+    /* ---------- INIT ---------- */
+    
+    window.addEventListener("load", () => {
+      const params = new URLSearchParams(window.location.search);
+      
+      if (params.get("admin") === "1") {
+        localStorage.setItem(ADMIN_UI_KEY, "1");
+      }
+      if (params.get("admin") === "0") {
+        localStorage.removeItem(ADMIN_UI_KEY);
+      }
+      
+      document.body.classList.toggle(
+        "admin-ui",
+        localStorage.getItem(ADMIN_UI_KEY) === "1"
+      );
+      
+      syncDebugVisibility();
+      
+      const logo = document.getElementById("welcomeLogo");
+      const welcome = document.getElementById("welcomeScreen");
+      
+      function createBootOverlay() {
+        const overlay = document.createElement("div");
+        overlay.style.position = "fixed";
+        overlay.style.inset = "0";
+        overlay.style.zIndex = "6000";
+        overlay.style.display = "flex";
+        overlay.style.flexDirection = "column";
+        overlay.style.alignItems = "center";
+        overlay.style.justifyContent = "center";
+        overlay.style.background = "#ffffff";
+        
+        const icon = document.createElement("img");
+        icon.src = "/images/icon-512.png";
+        icon.alt = "Chargement";
+        icon.style.width = "220px";
+        icon.style.height = "220px";
+        icon.style.objectFit = "contain";
+        icon.style.display = "block";
+        
+        overlay.appendChild(icon);
+        document.body.appendChild(overlay);
+        
+        if (icon.animate) {
+          icon.animate(
+            [
+              { transform: "rotate(0deg)" },
+              { transform: "rotate(360deg)" }
+            ],
+            {
+              duration: 1400,
+              iterations: Infinity,
+              easing: "linear"
+            }
+          );
+        }
+        
+        return overlay;
+      }
+      
+      async function waitForBackendReady() {
+        try {
+          const res = await fetch("/health", { cache: "no-store" });
+          if (res.ok) return true;
+        } catch {}
+        
+        return false;
+      }
+      
+      // ---------- WELCOME RITUAL ----------
+      
+      const WELCOME_RITUAL = [
+        "Se comprendre",
+        "S'accepter",
+        "Se faire confiance",
+        "Se liberer..."
+      ];
+      
+      const WELCOME_BOOT_PAUSE_MS = 750;
+      const WELCOME_RITUAL_TEXT_DURATION = 2000;
+      const WELCOME_RITUAL_GAP_DURATION = 400;
+      const WELCOME_RITUAL_SKIP_TEXT_DURATION = 200;
+      const WELCOME_RITUAL_SKIP_GAP_DURATION = 100;
+      const WELCOME_LOGO_DELAY_MS = 0;
+      const WELCOME_LOGO_FADE_DURATION_MS = 1200;
+      const WELCOME_RITUAL_START_DELAY_MS = 1400;
+      
+      let ritualIndex = 0;
+      let ritualRunning = false;
+      let ritualInterrupted = false;
+      let ritualTextTimeout = null;
+      let ritualGapTimeout = null;
+      let ritualStartTimeout = null;
+      let welcomeInteractionBound = false;
+      let welcomeHasInteracted = false;
+      
+      function clearWelcomeRitualTimers() {
+        if (ritualTextTimeout) {
+          clearTimeout(ritualTextTimeout);
+          ritualTextTimeout = null;
+        }
+        
+        if (ritualGapTimeout) {
+          clearTimeout(ritualGapTimeout);
+          ritualGapTimeout = null;
+        }
+        
+        if (ritualStartTimeout) {
+          clearTimeout(ritualStartTimeout);
+          ritualStartTimeout = null;
+        }
+      }
+      
+      function resetWelcomeRitualUI() {
+        const logoWrap = document.getElementById("welcomeLogoWrap");
+        const textEl = document.getElementById("welcomeRitualText");
+        const actions = document.getElementById("welcomeActions");
+        
+        if (logoWrap) {
+          logoWrap.style.transition = "none";
+          logoWrap.style.opacity = "0";
+        }
+        
+        if (textEl) {
+          textEl.textContent = "";
+          textEl.classList.remove("is-visible", "is-hidden");
+        }
+        
+        if (actions) {
+          actions.classList.remove("is-visible");
+        }
+      }
+      
+      function showWelcomeLogo() {
+        const logoWrap = document.getElementById("welcomeLogoWrap");
+        if (!logoWrap) return;
+        
+        setTimeout(() => {
+          logoWrap.style.transition = "opacity " + WELCOME_LOGO_FADE_DURATION_MS + "ms ease";
+          logoWrap.style.opacity = "1";
+        }, WELCOME_LOGO_DELAY_MS);
+      }
+      
+      function endWelcomeRitual() {
+        clearWelcomeRitualTimers();
+        ritualRunning = false;
+        
+        const textEl = document.getElementById("welcomeRitualText");
+        const actions = document.getElementById("welcomeActions");
+        
+        if (textEl) {
+          textEl.classList.remove("is-visible");
+          textEl.classList.add("is-hidden");
+        }
+        
+        if (actions) {
+          actions.classList.add("is-visible");
+        }
+      }
+      
+      function showWelcomeRitualPhrase() {
+        const textEl = document.getElementById("welcomeRitualText");
+        if (!textEl) return;
+        
+        if (ritualIndex >= WELCOME_RITUAL.length) {
+          endWelcomeRitual();
+          return;
+        }
+        
+        textEl.textContent = WELCOME_RITUAL[ritualIndex];
+        textEl.classList.remove("is-hidden");
+        textEl.classList.add("is-visible");
+        
+        const textDuration = ritualInterrupted ?
+          WELCOME_RITUAL_SKIP_TEXT_DURATION :
+          WELCOME_RITUAL_TEXT_DURATION;
+        
+        ritualTextTimeout = setTimeout(() => {
+          textEl.classList.remove("is-visible");
+          textEl.classList.add("is-hidden");
+          
+          const gapDuration = ritualInterrupted ?
+            WELCOME_RITUAL_SKIP_GAP_DURATION :
+            WELCOME_RITUAL_GAP_DURATION;
+          
+          ritualGapTimeout = setTimeout(() => {
+            ritualIndex += 1;
+            showWelcomeRitualPhrase();
+          }, gapDuration);
+        }, textDuration);
+      }
+      
+      function startWelcomeRitual() {
+        clearWelcomeRitualTimers();
+        
+        ritualIndex = 0;
+        ritualRunning = true;
+        ritualInterrupted = false;
+        welcomeHasInteracted = false;
+        
+        const textEl = document.getElementById("welcomeRitualText");
+        const actions = document.getElementById("welcomeActions");
+        
+        if (textEl) {
+          textEl.textContent = "";
+          textEl.classList.remove("is-visible", "is-hidden");
+        }
+        
+        if (actions) {
+          actions.classList.remove("is-visible");
+        }
+        
+        showWelcomeRitualPhrase();
+      }
+      
+      function interruptWelcomeRitual() {
+        if (!ritualRunning || ritualInterrupted) return;
+        ritualInterrupted = true;
+      }
+      
+      function bindWelcomeInteraction() {
+        if (welcomeInteractionBound) return;
+        
+        const screen = document.getElementById("welcomeScreen");
+        if (!screen) return;
+        
+        screen.addEventListener("click", event => {
+          if (welcomeHasInteracted) return;
+          if (event.target.closest("#welcomeActions")) return;
+          
+          welcomeHasInteracted = true;
+          interruptWelcomeRitual();
+        });
+        
+        welcomeInteractionBound = true;
+      }
+      
+      function showWelcome(bootOverlay) {
+        showScreen("welcomeScreen", { replaceHistory: true, pushHistory: false });
+        
+        clearWelcomeRitualTimers();
+        resetWelcomeRitualUI();
+        
+        welcome.style.transition = "none";
+        welcome.classList.remove("ready");
+        
+        requestAnimationFrame(() => {
+          if (bootOverlay) {
+            bootOverlay.remove();
+          }
+          
+          setTimeout(() => {
+            welcome.style.transition = "";
+            
+            requestAnimationFrame(() => {
+              welcome.classList.add("ready");
+            });
+            
+            showWelcomeLogo();
+            bindWelcomeInteraction();
+            
+            ritualStartTimeout = setTimeout(() => {
+              startWelcomeRitual();
+            }, WELCOME_RITUAL_START_DELAY_MS);
+          }, WELCOME_BOOT_PAUSE_MS);
+        });
+      }
+      
+      async function boot() {
+        const bootOverlay = createBootOverlay();
+        
+        if (!logo || logo.complete) {
+          await waitForBackendReady();
+          showWelcome(bootOverlay);
+          
+          history.replaceState({ screenId: "welcomeScreen" },
+            "",
+            window.location.href
+          );
+          return;
+        }
+        
+        logo.addEventListener("load", async () => {
+          await waitForBackendReady();
+          showWelcome(bootOverlay);
+          
+          history.replaceState({ screenId: "welcomeScreen" },
+            "",
+            window.location.href
+          );
+        }, { once: true });
+        
+        logo.addEventListener("error", async () => {
+          await waitForBackendReady();
+          showWelcome(bootOverlay);
+          
+          history.replaceState({ screenId: "welcomeScreen" },
+            "",
+            window.location.href
+          );
+        }, { once: true });
+      }
+      
+      boot();
+    });
   </script>
 </body>
 
