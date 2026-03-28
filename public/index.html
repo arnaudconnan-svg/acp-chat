@@ -2426,69 +2426,70 @@ window.addEventListener("load", () => {
   let bootPauseTimeout = null;
   let logoFadeTimeout = null;
   let welcomeInteractionBound = false;
-  let welcomeHasInteracted = false;
+let welcomeHasInteracted = false;
 
-  let welcomePhase = "idle";
-  let firstPhraseShown = false;
-  let actionsVisible = false;
+let welcomePhase = "idle";
+let firstPhraseShown = false;
+let actionsVisible = false;
 
-  function clearWelcomeRitualTimers() {
-    if (ritualTextTimeout) {
-      clearTimeout(ritualTextTimeout);
-      ritualTextTimeout = null;
-    }
-
-    if (ritualGapTimeout) {
-      clearTimeout(ritualGapTimeout);
-      ritualGapTimeout = null;
-    }
-
-    if (ritualStartTimeout) {
-      clearTimeout(ritualStartTimeout);
-      ritualStartTimeout = null;
-    }
-
-    if (actionsRevealTimeout) {
-      clearTimeout(actionsRevealTimeout);
-      actionsRevealTimeout = null;
-    }
-
-    if (bootPauseTimeout) {
-      clearTimeout(bootPauseTimeout);
-      bootPauseTimeout = null;
-    }
-
-    if (logoFadeTimeout) {
-      clearTimeout(logoFadeTimeout);
-      logoFadeTimeout = null;
-    }
+function clearWelcomeRitualTimers() {
+  if (ritualTextTimeout) {
+    clearTimeout(ritualTextTimeout);
+    ritualTextTimeout = null;
   }
-
-  function resetWelcomeRitualUI() {
-    const logoWrap = document.getElementById("welcomeLogoWrap");
-    const textEl = document.getElementById("welcomeRitualText");
-    const actions = document.getElementById("welcomeActions");
-
-    if (logoWrap) {
-      logoWrap.style.transition = "none";
-      logoWrap.style.opacity = "0";
-    }
-
-    if (textEl) {
-      textEl.textContent = "";
-      textEl.classList.remove("is-visible", "is-hidden");
-    }
-
-    if (actions) {
-      actions.classList.remove("is-visible");
-    }
-
-    firstPhraseShown = false;
-    actionsVisible = false;
-    welcomePhase = "boot_pause";
+  
+  if (ritualGapTimeout) {
+    clearTimeout(ritualGapTimeout);
+    ritualGapTimeout = null;
   }
+  
+  if (ritualStartTimeout) {
+    clearTimeout(ritualStartTimeout);
+    ritualStartTimeout = null;
+  }
+  
+  if (actionsRevealTimeout) {
+    clearTimeout(actionsRevealTimeout);
+    actionsRevealTimeout = null;
+  }
+  
+  if (bootPauseTimeout) {
+    clearTimeout(bootPauseTimeout);
+    bootPauseTimeout = null;
+  }
+  
+  if (logoFadeTimeout) {
+    clearTimeout(logoFadeTimeout);
+    logoFadeTimeout = null;
+  }
+}
 
-  function fastForwardWelcomeVisuals() {
+function resetWelcomeRitualUI() {
+  const logoWrap = document.getElementById("welcomeLogoWrap");
+  const textEl = document.getElementById("welcomeRitualText");
+  const actions = document.getElementById("welcomeActions");
+  
+  if (logoWrap) {
+    logoWrap.style.transition = "none";
+    logoWrap.style.opacity = "0";
+  }
+  
+  if (textEl) {
+    textEl.textContent = "";
+    textEl.classList.remove("is-visible", "is-hidden");
+  }
+  
+  if (actions) {
+    actions.classList.remove("is-visible");
+  }
+  
+  welcomeHasInteracted = false;
+  firstPhraseShown = false;
+  actionsVisible = false;
+  welcomePhase = "boot_pause";
+}
+
+function fastForwardWelcomeVisuals() {
   const logoWrap = document.getElementById("welcomeLogoWrap");
   
   if (bootPauseTimeout) {
@@ -2653,25 +2654,25 @@ function interruptWelcomeRitual() {
 }
 
 function accelerateWelcomeIntro() {
-  if (welcomeHasInteracted) return;
-  welcomeHasInteracted = true;
-  
-  fastForwardWelcomeVisuals();
-  
-  if (welcomePhase === "boot_pause") {
-    bindWelcomeInteraction();
-    startWelcomeRitual();
-    return;
-  }
-  
-  if (welcomePhase === "logo_visible" && !firstPhraseShown) {
-    if (ritualStartTimeout) {
-      clearTimeout(ritualStartTimeout);
-      ritualStartTimeout = null;
+  if (!welcomeHasInteracted) {
+    welcomeHasInteracted = true;
+    fastForwardWelcomeVisuals();
+    
+    if (welcomePhase === "boot_pause") {
+      bindWelcomeInteraction();
+      startWelcomeRitual();
+      return;
     }
     
-    startWelcomeRitual();
-    return;
+    if (welcomePhase === "logo_visible" && !firstPhraseShown) {
+      if (ritualStartTimeout) {
+        clearTimeout(ritualStartTimeout);
+        ritualStartTimeout = null;
+      }
+      
+      startWelcomeRitual();
+      return;
+    }
   }
   
   if (ritualRunning) {
@@ -2689,54 +2690,19 @@ function accelerateWelcomeIntro() {
   }
 }
 
-  function bindWelcomeInteraction() {
-    if (welcomeInteractionBound) return;
-
-    const screen = document.getElementById("welcomeScreen");
-    if (!screen) return;
-
-    screen.addEventListener("click", event => {
-      if (event.target.closest("#welcomeActions")) return;
-      accelerateWelcomeIntro();
-    });
-
-    welcomeInteractionBound = true;
-  }
-
-  function showWelcome(bootOverlay) {
-    showScreen("welcomeScreen", { replaceHistory: true, pushHistory: false });
-
-    clearWelcomeRitualTimers();
-    resetWelcomeRitualUI();
-
-    welcome.style.transition = "none";
-    welcome.classList.remove("ready");
-
-    requestAnimationFrame(() => {
-      if (bootOverlay) {
-        bootOverlay.remove();
-      }
-
-      bootPauseTimeout = setTimeout(() => {
-        bootPauseTimeout = null;
-
-        welcome.style.transition = "";
-
-        requestAnimationFrame(() => {
-          welcome.classList.add("ready");
-        });
-
-        showWelcomeLogo(false);
-        bindWelcomeInteraction();
-
-        ritualStartTimeout = setTimeout(() => {
-          startWelcomeRitual();
-        }, WELCOME_RITUAL_START_DELAY_MS);
-
-        welcomePhase = "logo_visible";
-      }, WELCOME_BOOT_PAUSE_MS);
-    });
-  }
+function bindWelcomeInteraction() {
+  if (welcomeInteractionBound) return;
+  
+  const screen = document.getElementById("welcomeScreen");
+  if (!screen) return;
+  
+  screen.addEventListener("click", event => {
+    if (event.target.closest("#welcomeActions")) return;
+    accelerateWelcomeIntro();
+  });
+  
+  welcomeInteractionBound = true;
+}
 
   async function boot() {
     const bootOverlay = createBootOverlay();
