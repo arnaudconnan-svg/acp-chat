@@ -1709,14 +1709,23 @@
       
       saveHistory(history);
       
-      if (role === "user" && history.length === 1) {
-        const firstTitle = String(content).trim().replace(/\s+/g, " ").slice(0, 60);
-        
-        upsertConversationIndexItem({
-          id: conversationId,
-          title: firstTitle || "Conversation sans titre",
-          updatedAt: Date.now()
-        });
+      if (history.length === 1) {
+        if (role === "user") {
+          const firstTitle = String(content).trim().replace(/\s+/g, " ").slice(0, 60);
+          
+          upsertConversationIndexItem({
+            id: conversationId,
+            title: firstTitle || "Conversation sans titre",
+            updatedAt: Date.now()
+          });
+        } else {
+          // Assistant en premier → placeholder temporaire propre
+          upsertConversationIndexItem({
+            id: conversationId,
+            title: "Nouvelle conversation",
+            updatedAt: Date.now()
+          });
+        }
       }
     }
     
@@ -2176,28 +2185,28 @@
     }
     
     function startFreshSession() {
-  setSessionStatus("active");
-  saveFlags({});
-  updateActivity();
-  
-  let conversationId = getConversationId();
-  
-  if (!conversationId) {
-    conversationId = createConversationId();
-  }
-  
-  const history = loadHistory();
-  
-  if (history.length === 0) {
-    pushHistory("assistant", "Bienvenue dans cette nouvelle session. Que veux-tu explorer aujourd'hui ?", []);
-  }
-  
-  renderHistory();
-  
-  const input = document.getElementById("input");
-  input.value = "";
-  defocusInput();
-}
+      setSessionStatus("active");
+      saveFlags({});
+      updateActivity();
+      
+      let conversationId = getConversationId();
+      
+      if (!conversationId) {
+        conversationId = createConversationId();
+      }
+      
+      const history = loadHistory();
+      
+      if (history.length === 0) {
+        pushHistory("assistant", "Bienvenue dans cette nouvelle session. Que veux-tu explorer aujourd'hui ?", []);
+      }
+      
+      renderHistory();
+      
+      const input = document.getElementById("input");
+      input.value = "";
+      defocusInput();
+    }
     
     function handleExpiredSessionOnEntry() {
       setSessionStatus("expired");
