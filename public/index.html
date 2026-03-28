@@ -153,12 +153,14 @@ body {
 #conversationsScreen {
   position: relative;
   min-height: 0;
-  background: white;
+  background:
+    url("/images/conversations-bg.png") center bottom / cover no-repeat,
+    #f8f8f6;
 }
 
 #conversationsTopBar {
   flex: 0 0 auto;
-  background: white;
+  background: transparent;
   position: relative;
   z-index: 5;
   padding-bottom: 4px;
@@ -174,9 +176,11 @@ body {
   width: 32px;
   height: 32px;
   padding: 0;
-  border: 1px solid #d7dee2;
+  border: 1px solid rgba(215, 222, 226, 0.9);
   border-radius: 999px;
-  background: white;
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   color: #4b5563;
   cursor: pointer;
   display: flex;
@@ -216,15 +220,20 @@ body {
 #conversationsList {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 }
 
 .conversationItem {
-  border: 1px solid #d7dee2;
-  border-radius: 14px;
-  background: white;
-  padding: 14px 16px;
-  min-height: 56px;
+  border: 1px solid rgba(223, 228, 230, 0.95);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow:
+    0 8px 24px rgba(31, 63, 68, 0.08),
+    0 1px 0 rgba(255, 255, 255, 0.75) inset;
+  padding: 16px 18px;
+  min-height: 72px;
   display: flex;
   align-items: center;
   box-sizing: border-box;
@@ -234,9 +243,9 @@ body {
 }
 
 .conversationItemPlaceholder {
-  color: #6b7280;
+  color: #52666a;
   font-size: 15px;
-  line-height: 1.4;
+  line-height: 1.45;
 }
 
 .conversationItemRow {
@@ -265,11 +274,11 @@ body {
 }
 
 .conversationMenuToggle {
-  width: 40px;
-  height: 40px;
-  border: 1px solid #d7dee2;
+  width: 44px;
+  height: 44px;
+  border: 1px solid rgba(215, 222, 226, 0.9);
   border-radius: 999px;
-  background: white;
+  background: rgba(255, 255, 255, 0.88);
   color: #4b5563;
   padding: 0;
   display: flex;
@@ -281,7 +290,7 @@ body {
 .conversationMenuPopover {
   display: none;
   position: absolute;
-  top: 44px;
+  top: 48px;
   right: 0;
   min-width: 140px;
   background: white;
@@ -317,7 +326,7 @@ body {
   align-items: center;
   gap: 10px;
   padding: 12px 0 calc(12px + env(safe-area-inset-bottom, 0px)) 12px;
-  background: linear-gradient(to left, white 70%, rgba(255, 255, 255, 0));
+  background: linear-gradient(to left, rgba(248, 248, 246, 0.96) 70%, rgba(248, 248, 246, 0));
 }
 
 #conversationsFabLabel {
