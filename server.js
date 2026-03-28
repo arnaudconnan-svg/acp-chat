@@ -2255,22 +2255,30 @@ app.post("/chat", async (req, res) => {
       newFlags = registerExplorationRelance(newFlags, relance.isRelance);
     }
     
+    const finalDebug = buildDebug(detectedMode, {
+      suicideLevel: suicide.suicideLevel,
+      calledMemory: recallRouting.calledMemory,
+      modelConflict,
+      explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
+      explorationRelanceWindow: newFlags.explorationRelanceWindow
+    });
+    
     const newMemory = await updateMemory(previousMemory, [
       ...recentHistory,
       { role: "user", content: message },
       { role: "assistant", content: reply }
     ]);
     
-    await pushAssistantMessage(
+    await pushAssistantMessage(reply, finalDebug);
+    await maybeGenerateConversationTitle();
+    
+    return res.json({
+      conversationId,
       reply,
-      buildDebug(detectedMode, {
-        suicideLevel: suicide.suicideLevel,
-        calledMemory: recallRouting.calledMemory,
-        modelConflict,
-        explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
-        explorationRelanceWindow: newFlags.explorationRelanceWindow
-      })
-    );
+      memory: newMemory,
+      flags: newFlags,
+      debug: finalDebug
+    });
     
     return res.json({
       conversationId,
