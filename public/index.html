@@ -1767,7 +1767,12 @@
       const currentActive = document.querySelector(".screen.active");
       const currentId = currentActive ? currentActive.id : null;
       
-      if (currentId === "conversationsScreen" && id === "chatScreen" && options.replaceHistory === undefined && options.pushHistory !== false) {
+      if (
+        currentId === "chatScreen" &&
+        id === "conversationsScreen" &&
+        options.replaceHistory === undefined &&
+        options.pushHistory !== false
+      ) {
         replaceHistory = true;
       }
       
@@ -1855,7 +1860,10 @@
         return;
       }
       
-      showScreen(screenId, { pushHistory: false, noAnimation: true });
+      showScreen(screenId, {
+        pushHistory: false,
+        noAnimation: screenId === "welcomeScreen"
+      });
     });
     
     function syncDebugVisibility() {
