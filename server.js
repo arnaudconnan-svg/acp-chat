@@ -132,7 +132,7 @@ function requireAdminAuth(req, res, next) {
 function normalizeMemory(memory) {
   const text = String(memory || "").trim();
   if (text) return text;
-
+  
   return [
     "Themes deja evoques :",
     "- ",
@@ -211,23 +211,22 @@ function normalizeSessionFlags(flags) {
   const safe = normalizeFlags(flags);
   const explorationRelanceWindow = normalizeExplorationRelanceWindow(safe.explorationRelanceWindow);
   const computedLevel = computeExplorationDirectivityLevel(explorationRelanceWindow);
-
+  
   return {
     ...safe,
     acuteCrisis: safe.acuteCrisis === true,
     contactState: normalizeContactState(safe.contactState),
     explorationRelanceWindow,
-    explorationDirectivityLevel:
-      safe.explorationDirectivityLevel !== undefined
-        ? clampExplorationDirectivityLevel(safe.explorationDirectivityLevel)
-        : computedLevel
+    explorationDirectivityLevel: safe.explorationDirectivityLevel !== undefined ?
+      clampExplorationDirectivityLevel(safe.explorationDirectivityLevel) :
+      computedLevel
   };
 }
 
 function registerExplorationRelance(flags, isRelance) {
   const safeFlags = normalizeSessionFlags(flags);
   const nextWindow = [...safeFlags.explorationRelanceWindow, isRelance === true].slice(-RELANCE_WINDOW_SIZE);
-
+  
   return {
     ...safeFlags,
     explorationRelanceWindow: nextWindow,
@@ -237,11 +236,11 @@ function registerExplorationRelance(flags, isRelance) {
 
 function getExplorationStructureInstruction(explorationDirectivityLevel) {
   const safeLevel = clampExplorationDirectivityLevel(explorationDirectivityLevel);
-
+  
   switch (safeLevel) {
     case 0:
       return "";
-
+      
     case 1:
       return `
 Contrainte structurelle tres legere :
@@ -251,7 +250,7 @@ Contrainte structurelle tres legere :
 - evite seulement d'enchainer plusieurs mouvements de guidage dans la meme reponse
 - privilegie l'accueil, le reflet ou la reformulation plutot qu'une prise en main de la suite
 `;
-
+      
     case 2:
       return `
 Contrainte structurelle legere :
@@ -263,7 +262,7 @@ Contrainte structurelle legere :
 - tu peux aider a poser un peu ce qui est la sans organiser la suite a la place de l'utilisateur
 - tu peux, si c'est juste dans le flux de la reponse, reconnaitre qu'un besoin de soutien, d'appui ou de presence peut exister, sans te proposer comme solution ni orienter explicitement vers quelqu'un
 `;
-
+      
     case 3:
       return `
 Contrainte structurelle moderee :
@@ -275,7 +274,7 @@ Contrainte structurelle moderee :
 - privilegie un reflet simple, une reformulation sobre, ou un accueil bref
 - tu peux, si c'est juste dans le flux de la reponse, reconnaitre qu'un besoin de soutien, d'appui ou de presence peut exister, sans te proposer comme solution ni orienter explicitement vers quelqu'un
 `;
-
+      
     case 4:
       return `
 Contrainte structurelle forte :
@@ -288,7 +287,7 @@ Contrainte structurelle forte :
 - reste au plus pres de ce qui est deja la, puis arrete-toi
 - tu peux, si c'est juste dans le flux de la reponse, reconnaitre qu'un besoin de soutien, d'appui ou de presence peut exister, sans te proposer comme solution ni orienter explicitement vers quelqu'un
 `;
-
+      
     default:
       return "";
   }
@@ -300,7 +299,7 @@ Contrainte structurelle forte :
 
 async function analyzeSuicideRisk(message = "", history = [], sessionFlags = {}) {
   const safeFlags = normalizeSessionFlags(sessionFlags);
-
+  
   const system = `
 Tu fais une analyse rapide du message utilisateur et du contexte recent.
 Contexte de session :
@@ -402,9 +401,9 @@ ou que la personne dit explicitement qu'elle n'est plus en danger immediat
 - ne mets pas true pour une plaisanterie ambigue
 - ne mets pas true pour une simple baisse apparente d'intensite
 `;
-
+  
   const context = trimSuicideAnalysisHistory(history);
-
+  
   const r = await client.chat.completions.create({
     model: "gpt-4.1-mini",
     temperature: 0,
@@ -415,32 +414,32 @@ ou que la personne dit explicitement qu'elle n'est plus en danger immediat
       { role: "user", content: message }
     ]
   });
-
+  
   const raw = (r.choices?.[0]?.message?.content || "").trim();
-
+  
   try {
     const cleaned = raw.replace(/```json|```/g, "").trim();
     const obj = JSON.parse(cleaned);
-
-    let suicideLevel = ["N0", "N1", "N2"].includes(obj.suicideLevel)
-      ? obj.suicideLevel
-      : "N0";
-
+    
+    let suicideLevel = ["N0", "N1", "N2"].includes(obj.suicideLevel) ?
+      obj.suicideLevel :
+      "N0";
+    
     const idiomaticDeathExpression = obj.idiomaticDeathExpression === true;
-
+    
     if (idiomaticDeathExpression) {
       suicideLevel = "N0";
     }
-
+    
     let needsClarification =
-      (suicideLevel === "N1" || suicideLevel === "N2")
-        ? obj.needsClarification === true
-        : false;
-
+      (suicideLevel === "N1" || suicideLevel === "N2") ?
+      obj.needsClarification === true :
+      false;
+    
     if (idiomaticDeathExpression) {
       needsClarification = false;
     }
-
+    
     return {
       suicideLevel,
       needsClarification,
@@ -482,7 +481,7 @@ si la personne parle :
 - ou d'autre chose
 Reponse : une seule phrase.
 `;
-
+  
   const r = await client.chat.completions.create({
     model: "gpt-4o",
     temperature: 0,
@@ -492,7 +491,7 @@ Reponse : une seule phrase.
       { role: "user", content: message }
     ]
   });
-
+  
   const out = (r.choices?.[0]?.message?.content || "").trim();
   if (!out || out.length > 220) return n1Fallback();
   return out;
@@ -512,7 +511,7 @@ function acuteCrisisFollowupResponse() {
 
 async function llmInfoAnalysis(message = "", history = []) {
   const context = trimInfoAnalysisHistory(history);
-
+  
   const system = `
 Tu determines si le message utilisateur releve surtout d'une demande d'information factuelle, theorique, historique ou scientifique.
 
@@ -551,7 +550,7 @@ Exemples a classer true :
 
 Reponds uniquement par le JSON.
 `;
-
+  
   const r = await client.chat.completions.create({
     model: "gpt-4.1-mini",
     temperature: 0,
@@ -562,11 +561,11 @@ Reponds uniquement par le JSON.
       { role: "user", content: message }
     ]
   });
-
+  
   try {
     const raw = (r.choices?.[0]?.message?.content || "").replace(/```json|```/g, "").trim();
     const parsed = JSON.parse(raw);
-
+    
     return {
       isInfoRequest: parsed.isInfoRequest === true,
       source: "llm"
@@ -586,7 +585,7 @@ async function analyzeInfoRequest(message = "", history = []) {
 async function analyzeContactState(message = "", history = [], previousContactState = { wasContact: false }) {
   const context = trimHistory(history);
   const safePreviousContactState = normalizeContactState(previousContactState);
-
+  
   const system = `
 Tu determines si, dans le message actuel et le contexte recent, la personne est au contact direct d'un processus interne en train de se faire maintenant.
 
@@ -635,7 +634,7 @@ Si previousContactState.wasContact = true, sois un peu plus sensible a la possib
 
 Reponds uniquement par le JSON.
 `;
-
+  
   const user = `
 Message utilisateur actuel :
 ${message}
@@ -646,7 +645,7 @@ ${context.map(m => `${m.role === "user" ? "Utilisateur" : "Assistant"} : ${m.con
 previousContactState :
 ${JSON.stringify(safePreviousContactState)}
 `;
-
+  
   const r = await client.chat.completions.create({
     model: "gpt-4.1-mini",
     temperature: 0,
@@ -656,11 +655,11 @@ ${JSON.stringify(safePreviousContactState)}
       { role: "user", content: user }
     ]
   });
-
+  
   try {
     const raw = (r.choices?.[0]?.message?.content || "").replace(/```json|```/g, "").trim();
     const parsed = JSON.parse(raw);
-
+    
     return {
       isContact: parsed.isContact === true
     };
@@ -673,7 +672,7 @@ ${JSON.stringify(safePreviousContactState)}
 
 async function analyzeRecallRouting(message = "", recentHistory = [], memory = "") {
   const context = trimRecallAnalysisHistory(recentHistory);
-
+  
   const system = `
 Tu determines si le message utilisateur est une tentative de rappel conversationnel, c'est-a-dire une demande de retrouver, reprendre ou rappeler un contenu deja evoque dans l'echange.
 
@@ -733,7 +732,7 @@ ${context.map(m => `${m.role === "user" ? "Utilisateur" : "Assistant"} : ${m.con
 Memoire resumee :
 ${normalizeMemory(memory)}
 `;
-
+  
   const r = await client.chat.completions.create({
     model: "gpt-4.1-mini",
     temperature: 0,
@@ -743,16 +742,16 @@ ${normalizeMemory(memory)}
       { role: "user", content: user }
     ]
   });
-
+  
   try {
     const raw = (r.choices?.[0]?.message?.content || "").replace(/```json|```/g, "").trim();
     const parsed = JSON.parse(raw);
-
+    
     const isRecallAttempt = parsed.isRecallAttempt === true;
-    const calledMemory = ["shortTermMemory", "longTermMemory", "none"].includes(parsed.calledMemory)
-      ? parsed.calledMemory
-      : "none";
-
+    const calledMemory = ["shortTermMemory", "longTermMemory", "none"].includes(parsed.calledMemory) ?
+      parsed.calledMemory :
+      "none";
+    
     return {
       isRecallAttempt,
       calledMemory: isRecallAttempt ? calledMemory : "none",
@@ -782,14 +781,14 @@ Contraintes :
 - n'invente aucun detail
 - si la memoire contient plusieurs themes, cite seulement les reperes les plus plausibles et generaux
 `;
-
+  
   const user = `
 Memoire resumee :
 ${normalizeMemory(memory)}
 
 Formule une reponse de rappel honnete a partir de cette seule memoire.
 `;
-
+  
   const r = await client.chat.completions.create({
     model: "gpt-4.1-mini",
     temperature: 0.9,
@@ -799,9 +798,9 @@ Formule une reponse de rappel honnete a partir de cette seule memoire.
       { role: "user", content: user }
     ]
   });
-
-  return (r.choices?.[0]?.message?.content || "").trim()
-    || "Je garde quelques reperes generaux d'une session a l'autre, mais pas le fil detaille exact.";
+  
+  return (r.choices?.[0]?.message?.content || "").trim() ||
+    "Je garde quelques reperes generaux d'une session a l'autre, mais pas le fil detaille exact.";
 }
 
 function buildNoMemoryRecallResponse() {
@@ -839,7 +838,7 @@ Reponds STRICTEMENT en JSON :
   "modelConflict": true|false
 }
 `;
-
+  
   const r = await client.chat.completions.create({
     model: "gpt-4.1-mini",
     temperature: 0,
@@ -849,11 +848,11 @@ Reponds STRICTEMENT en JSON :
       { role: "user", content: reply }
     ]
   });
-
+  
   try {
     const raw = (r.choices?.[0]?.message?.content || "").replace(/```json|```/g, "").trim();
     const parsed = JSON.parse(raw);
-
+    
     return {
       modelConflict: parsed.modelConflict === true
     };
@@ -871,7 +870,7 @@ async function analyzeExplorationRelance({
   memory = ""
 }) {
   const context = trimHistory(history);
-
+  
   const system = `
 Tu analyses uniquement si la reponse du bot contient une relance au sens relationnel.
 
@@ -891,7 +890,7 @@ Important :
 - une question de clarification suicidaire n'est pas concernee ici ; tu analyses seulement une reponse de mode exploration ordinaire
 - ne sur-interprete pas
 `;
-
+  
   const user = `
 Message utilisateur actuel :
 ${message}
@@ -905,7 +904,7 @@ ${normalizeMemory(memory)}
 Reponse du bot a analyser :
 ${reply}
 `;
-
+  
   const r = await client.chat.completions.create({
     model: "gpt-4.1-mini",
     temperature: 0,
@@ -915,11 +914,11 @@ ${reply}
       { role: "user", content: user }
     ]
   });
-
+  
   try {
     const raw = (r.choices?.[0]?.message?.content || "").replace(/```json|```/g, "").trim();
     const parsed = JSON.parse(raw);
-
+    
     return {
       isRelance: parsed.isRelance === true
     };
@@ -963,7 +962,7 @@ Terminologie autorisee si utile :
 
 Reecris uniquement la reponse finale, sans commentaire.
 `;
-
+  
   const user = `
 Message utilisateur :
 ${message}
@@ -977,7 +976,7 @@ ${normalizeMemory(memory)}
 Reponse initiale a reformuler :
 ${originalReply}
 `;
-
+  
   const r = await client.chat.completions.create({
     model: "gpt-4o",
     temperature: 0.7,
@@ -987,7 +986,7 @@ ${originalReply}
       { role: "user", content: user }
     ]
   });
-
+  
   return (r.choices?.[0]?.message?.content || "").trim() || originalReply;
 }
 
@@ -1063,7 +1062,7 @@ async function updateMemory(previousMemory, history) {
   const transcript = history
     .map(m => `${m.role === "user" ? "Utilisateur" : "Assistant"} : ${m.content}`)
     .join("\n");
-
+  
   const system = `
 Tu mets a jour une memoire legere.
 
@@ -1071,7 +1070,7 @@ Format strict.
 Pas de psychologie identitaire.
 Items courts.
 `;
-
+  
   const user = `
 Memoire precedente :
 ${normalizeMemory(previousMemory)}
@@ -1079,7 +1078,7 @@ ${normalizeMemory(previousMemory)}
 Conversation :
 ${transcript}
 `;
-
+  
   const r = await client.chat.completions.create({
     model: "gpt-4.1-mini",
     temperature: 0.2,
@@ -1089,7 +1088,7 @@ ${transcript}
       { role: "user", content: user }
     ]
   });
-
+  
   return (r.choices?.[0]?.message?.content || "").trim() || normalizeMemory(previousMemory);
 }
 
@@ -1323,12 +1322,12 @@ Resume en deux phrases :
   Le seul choix que nous avons en fin de compte c'est d'aller vers plus d'acceptation de notre experience ou de maintenir voire accentuer son rejet.
   La rejeter c'est vivre dans une forme ou une autre de honte, l'accepter c'est s'offrir de la comprehension et de la compassion, c'est s'aimer soi-meme.
 ` : "";
-
+  
   const modeInstruction =
-    mode === "info"
-      ? `Reponds directement.`
-      : mode === "contact"
-        ? `
+    mode === "info" ?
+    `Reponds directement.` :
+    mode === "contact" ?
+    `
 Reponds comme si tu etais juste a cote de la personne pendant que quelque chose se vit en elle.
 
 Parle simplement, avec des mots directs et humains.
@@ -1339,20 +1338,20 @@ Tu peux doucement attirer l'attention vers ce qui est en train de se sentir, san
 N'anticipe pas, n'interprete pas, ne cherches pas a comprendre a sa place.
 
 Reste au plus pres de ce qui est la, tel que ca se presente.
-        ` :``;
-
+        ` : ``;
+  
   const explorationStructureInstruction =
-    mode === "exploration"
-      ? getExplorationStructureInstruction(explorationDirectivityLevel)
-      : "";
-
-  const memoryBlock = mode === "contact"
-    ? ""
-    : `
+    mode === "exploration" ?
+    getExplorationStructureInstruction(explorationDirectivityLevel) :
+    "";
+  
+  const memoryBlock = mode === "contact" ?
+    "" :
+    `
 Memoire :
 ${normalizeMemory(memory)}
 `;
-
+  
   return `
 Tu es Facilitat.io.
 
@@ -1387,20 +1386,20 @@ async function generateReply({
   explorationDirectivityLevel = 0
 }) {
   const system = buildSystemPrompt(mode, memory, explorationDirectivityLevel);
-
+  
   const messages = [
     { role: "system", content: system },
     ...history.map(m => ({ role: m.role, content: m.content })),
     { role: "user", content: message }
   ];
-
+  
   const r = await client.chat.completions.create({
     model: "gpt-4o",
     temperature: 1.1,
     max_tokens: 500,
     messages
   });
-
+  
   return (r.choices?.[0]?.message?.content || "").trim() || "Je t'ecoute.";
 }
 
@@ -1409,31 +1408,31 @@ async function generateReply({
 // --------------------------------------------------
 
 async function runSingleTestCase(testCase = {}) {
-    
-    const message = String(testCase.message || "").trim();
-    
-    if (!message) {
-      return {
-        input: "",
-        reply: "",
-        mode: "error",
-        memory: normalizeMemory(testCase.memory),
-        flags: normalizeSessionFlags(testCase.flags),
-        debug: ["empty_message"]
-      };
-    }
+  
+  const message = String(testCase.message || "").trim();
+  
+  if (!message) {
+    return {
+      input: "",
+      reply: "",
+      mode: "error",
+      memory: normalizeMemory(testCase.memory),
+      flags: normalizeSessionFlags(testCase.flags),
+      debug: ["empty_message"]
+    };
+  }
   
   const recentHistory = trimHistory(testCase.recentHistory);
   const previousMemory = normalizeMemory(testCase.memory);
   const flags = normalizeSessionFlags(testCase.flags);
-
+  
   const suicide = await analyzeSuicideRisk(message, recentHistory, flags);
   let newFlags = normalizeSessionFlags(flags);
-
+  
   if (suicide.suicideLevel === "N2") {
-  newFlags.acuteCrisis = true;
-  newFlags.contactState = { wasContact: false };
-
+    newFlags.acuteCrisis = true;
+    newFlags.contactState = { wasContact: false };
+    
     return {
       input: message,
       reply: n2Response(),
@@ -1449,7 +1448,7 @@ async function runSingleTestCase(testCase = {}) {
       })
     };
   }
-
+  
   if (flags.acuteCrisis === true) {
     if (suicide.crisisResolved === true) {
       newFlags.acuteCrisis = false;
@@ -1472,7 +1471,7 @@ async function runSingleTestCase(testCase = {}) {
       };
     }
   }
-
+  
   if (suicide.suicideLevel === "N1" || suicide.needsClarification) {
     const reply = await n1ResponseLLM(message);
     newFlags.contactState = { wasContact: false };
@@ -1492,9 +1491,9 @@ async function runSingleTestCase(testCase = {}) {
       })
     };
   }
-
+  
   const recallRouting = await analyzeRecallRouting(message, recentHistory, previousMemory);
-
+  
   if (recallRouting.isLongTermMemoryRecall) {
     const reply = await buildLongTermMemoryRecallResponse(previousMemory);
     const updatedMemory = await updateMemory(previousMemory, [
@@ -1502,7 +1501,7 @@ async function runSingleTestCase(testCase = {}) {
       { role: "user", content: message },
       { role: "assistant", content: reply }
     ]);
-
+    
     return {
       input: message,
       reply,
@@ -1521,7 +1520,7 @@ async function runSingleTestCase(testCase = {}) {
       })
     };
   }
-
+  
   if (recallRouting.isRecallAttempt && recallRouting.calledMemory === "none") {
     const reply = buildNoMemoryRecallResponse();
     const updatedMemory = await updateMemory(previousMemory, [
@@ -1529,7 +1528,7 @@ async function runSingleTestCase(testCase = {}) {
       { role: "user", content: message },
       { role: "assistant", content: reply }
     ]);
-
+    
     return {
       input: message,
       reply,
@@ -1548,28 +1547,28 @@ async function runSingleTestCase(testCase = {}) {
       })
     };
   }
-
+  
   const activeHistory = recentHistory;
   const previousContactState = normalizeContactState(newFlags.contactState);
   const contactAnalysis = await analyzeContactState(message, activeHistory, previousContactState);
   const justExitedContact = previousContactState.wasContact === true && contactAnalysis.isContact !== true;
-
+  
   if (justExitedContact) {
     newFlags.explorationRelanceWindow = [false, true, true, true];
     newFlags.explorationDirectivityLevel = 3;
   }
-
+  
   newFlags.contactState = {
     wasContact: contactAnalysis.isContact === true
   };
-
+  
   let mode = "contact";
-
+  
   if (!contactAnalysis.isContact) {
     const detected = await detectMode(message, activeHistory);
     mode = detected.mode;
   }
-
+  
   let reply = await generateReply({
     message,
     history: activeHistory,
@@ -1577,14 +1576,14 @@ async function runSingleTestCase(testCase = {}) {
     mode,
     explorationDirectivityLevel: newFlags.explorationDirectivityLevel
   });
-
+  
   let modelConflict = false;
   let isRelance = null;
-
+  
   if (mode === "exploration") {
     const conflict = await analyzeModelConflict(reply);
     modelConflict = conflict.modelConflict === true;
-
+    
     if (modelConflict) {
       reply = await rewriteExplorationReplyWithModelFilter({
         message,
@@ -1593,24 +1592,24 @@ async function runSingleTestCase(testCase = {}) {
         originalReply: reply
       });
     }
-
+    
     const relanceAnalysis = await analyzeExplorationRelance({
       message,
       reply,
       history: activeHistory,
       memory: previousMemory
     });
-
+    
     isRelance = relanceAnalysis.isRelance === true;
     newFlags = registerExplorationRelance(newFlags, isRelance);
   }
-
+  
   const updatedMemory = await updateMemory(previousMemory, [
     ...activeHistory,
     { role: "user", content: message },
     { role: "assistant", content: reply }
   ]);
-
+  
   return {
     input: message,
     reply,
@@ -1641,54 +1640,54 @@ app.post("/test", async (req, res) => {
       memory: normalizeMemory(req.body?.memory),
       flags: normalizeSessionFlags(req.body?.flags)
     };
-
+    
     const chain = req.body?.chain === true;
     const rawTestCases = Array.isArray(req.body?.testCases) ? req.body.testCases : [];
     const fallbackMessage = String(req.body?.message || "").trim();
-
-    const testCases = rawTestCases.length > 0
-      ? rawTestCases
-      : (fallbackMessage ? [{ message: fallbackMessage }] : []);
-
+    
+    const testCases = rawTestCases.length > 0 ?
+      rawTestCases :
+      (fallbackMessage ? [{ message: fallbackMessage }] : []);
+    
     if (testCases.length === 0) {
       return res.status(400).json({
         error: "Aucun test fourni. Envoie testCases: [{ message: '...' }] ou un champ message."
       });
     }
-
+    
     const results = [];
-
+    
     let currentRecentHistory = shared.recentHistory;
     let currentMemory = shared.memory;
     let currentFlags = shared.flags;
-
+    
     for (const testCase of testCases) {
       const safeTestCase = (testCase && typeof testCase === "object") ? testCase : {};
-      const message = typeof testCase === "string"
-        ? testCase
-        : String(safeTestCase.message ?? safeTestCase.input ?? "");
-
+      const message = typeof testCase === "string" ?
+        testCase :
+        String(safeTestCase.message ?? safeTestCase.input ?? "");
+      
       const mergedCase = {
-        recentHistory: chain
-          ? currentRecentHistory
-          : (safeTestCase.recentHistory !== undefined ? safeTestCase.recentHistory : shared.recentHistory),
-        memory: chain
-          ? currentMemory
-          : (safeTestCase.memory !== undefined ? safeTestCase.memory : shared.memory),
-        flags: chain
-          ? currentFlags
-          : (safeTestCase.flags !== undefined ? safeTestCase.flags : shared.flags),
+        recentHistory: chain ?
+          currentRecentHistory :
+          (safeTestCase.recentHistory !== undefined ? safeTestCase.recentHistory : shared.recentHistory),
+        memory: chain ?
+          currentMemory :
+          (safeTestCase.memory !== undefined ? safeTestCase.memory : shared.memory),
+        flags: chain ?
+          currentFlags :
+          (safeTestCase.flags !== undefined ? safeTestCase.flags : shared.flags),
         ...safeTestCase,
         message
       };
-
+      
       const result = await runSingleTestCase(mergedCase);
       results.push(result);
-
+      
       if (chain) {
         currentMemory = result.memory;
         currentFlags = result.flags;
-
+        
         currentRecentHistory = trimHistory([
           ...currentRecentHistory,
           { role: "user", content: result.input },
@@ -1696,7 +1695,7 @@ app.post("/test", async (req, res) => {
         ]);
       }
     }
-
+    
     return res.json({
       count: results.length,
       chain,
@@ -1719,7 +1718,7 @@ app.post("/session/close", async (req, res) => {
   try {
     const previousMemory = normalizeMemory(req.body?.memory);
     const flags = normalizeSessionFlags(req.body?.flags);
-
+    
     return res.json({
       memory: previousMemory,
       flags: normalizeSessionFlags({
@@ -1752,42 +1751,40 @@ async function generateConversationTitle(messages) {
       .slice(0, 3)
       .map(m => m.content)
       .join("\n\n");
-
+    
     if (!userMessages) return null;
-
+    
     const completion = await client.chat.completions.create({
       model: "gpt-4.1-mini",
       temperature: 0.3,
       messages: [
-        {
-          role: "system",
-          content:
-            "Tu génères un titre très court (une seule phrase), en français, sans emoji, sans ponctuation excessive."
-        },
-        {
-          role: "user",
-          content: userMessages
-        }
-      ]
+      {
+        role: "system",
+        content: "Tu génères un titre très court (une seule phrase), en français, sans emoji, sans ponctuation excessive."
+      },
+      {
+        role: "user",
+        content: userMessages
+      }]
     });
-
+    
     let title = completion.choices?.[0]?.message?.content?.trim();
-
+    
     if (!title) {
       // fallback : début du premier message user
       return userMessages.slice(0, 40);
     }
-
+    
     // nettoyage léger
     title = title.replace(/\s+/g, " ").trim();
-
+    
     // limite 40 caractères
     if (title.length > 40) {
       title = title.slice(0, 40).trim() + "…";
     }
-
+    
     return title;
-
+    
   } catch (err) {
     console.error("Erreur génération titre:", err.message);
     return null;
@@ -1946,59 +1943,59 @@ app.get("/api/admin/conversations", requireAdminAuth, async (req, res) => {
 });
 
 app.get("/api/admin/conversations/:id/messages", requireAdminAuth, async (req, res) => {
-    try {
-      const conversationId = req.params.id;
+  try {
+    const conversationId = req.params.id;
+    
+    const [messagesSnap, labelsSnap] = await Promise.all([
+      messagesRef
+      .orderByChild("conversationId")
+      .equalTo(conversationId)
+      .once("value"),
+      userLabelsRef.once("value")
+    ]);
+    
+    const data = messagesSnap.val() || {};
+    const labels = labelsSnap.val() || {};
+    
+    const list = Object.entries(data).map(([id, value]) => {
+      const rawUserId = value.userId || null;
+      const label = rawUserId && labels[rawUserId] ? labels[rawUserId] : null;
       
-      const [messagesSnap, labelsSnap] = await Promise.all([
-        messagesRef
-        .orderByChild("conversationId")
-        .equalTo(conversationId)
-        .once("value"),
-        userLabelsRef.once("value")
-      ]);
-      
-      const data = messagesSnap.val() || {};
-      const labels = labelsSnap.val() || {};
-      
-      const list = Object.entries(data).map(([id, value]) => {
-        const rawUserId = value.userId || null;
-        const label = rawUserId && labels[rawUserId] ? labels[rawUserId] : null;
-        
-        return {
-          id,
-          ...value,
-          userLabel: label,
-          displayUser: label || rawUserId
-        };
-      }).sort((a, b) => {
-        return new Date(a.timestamp) - new Date(b.timestamp);
-      });
-      
-      res.json(list);
-    } catch (err) {
-      console.error("Erreur messages conversation:", err);
-      res.status(500).json({ error: "Erreur serveur" });
-    }
-  });
+      return {
+        id,
+        ...value,
+        userLabel: label,
+        displayUser: label || rawUserId
+      };
+    }).sort((a, b) => {
+      return new Date(a.timestamp) - new Date(b.timestamp);
+    });
+    
+    res.json(list);
+  } catch (err) {
+    console.error("Erreur messages conversation:", err);
+    res.status(500).json({ error: "Erreur serveur" });
+  }
+});
 
 app.post("/chat", async (req, res) => {
   console.log("CHAT INPUT conversationId:", req.body?.conversationId);
-
+  
   let modeForCatch = "exploration";
   let previousMemoryForCatch = normalizeMemory("");
   let flagsForCatch = normalizeSessionFlags({});
-
+  
   try {
     const message = String(req.body?.message || "");
     const conversationId = req.body?.conversationId;
-
+    
     if (!conversationId) {
       return res.status(400).json({ error: "Missing conversationId" });
     }
-
+    
     const userId = req.body?.userId || "u_anon";
     const nowIso = new Date().toISOString();
-
+    
     await messagesRef.push({
       conversationId,
       userId,
@@ -2006,78 +2003,76 @@ app.post("/chat", async (req, res) => {
       content: message,
       timestamp: nowIso
     });
-
+    
     const convRef = db.ref("conversations").child(conversationId);
-
+    
     await convRef.transaction(current => {
-  const now = new Date().toISOString();
-  
-  if (!current) {
-    return {
-      userId,
-      createdAt: now,
-      updatedAt: now,
-      title: null,
-      titleLocked: false,
-      messageCount: 1,
-      lastUserMessage: message
-    };
-  }
-  
-  return {
-    ...current,
-    userId,
-    updatedAt: now,
-    messageCount: (Number(current.messageCount) || 0) + 1,
-    lastUserMessage: message
-  };
-});
-
-try {
-  const convSnap = await convRef.once("value");
-  const convData = convSnap.val() || {};
-  
-  const shouldGenerateTitle =
-    convData.titleLocked !== true &&
-    (
-      !convData.title ||
-      String(convData.title).trim() === "" ||
-      String(convData.title).trim() === String(convData.lastUserMessage || "").trim()
-    );
-  
-  if (shouldGenerateTitle) {
-    const messagesSnap = await messagesRef
-      .orderByChild("conversationId")
-      .equalTo(conversationId)
-      .once("value");
-    
-    const conversationMessages = Object.values(messagesSnap.val() || {})
-      .filter(m => m && typeof m.content === "string")
-      .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-    
-    const userMessageCount = conversationMessages.filter(m => m.role === "user").length;
-    
-    if (userMessageCount >= 3) {
-      const generatedTitle = await generateConversationTitle(conversationMessages);
+      const now = new Date().toISOString();
       
-      if (generatedTitle) {
-        await convRef.update({
-          title: generatedTitle,
-          updatedAt: new Date().toISOString()
-        });
+      if (!current) {
+        return {
+          userId,
+          createdAt: now,
+          updatedAt: now,
+          title: null,
+          titleLocked: false,
+          messageCount: 1,
+          lastUserMessage: message
+        };
       }
+      
+      return {
+        ...current,
+        userId,
+        updatedAt: now,
+        messageCount: (Number(current.messageCount) || 0) + 1,
+        lastUserMessage: message
+      };
+    });
+    
+    try {
+      const convSnap = await convRef.once("value");
+      const convData = convSnap.val() || {};
+      
+      const shouldGenerateTitle =
+        convData.titleLocked !== true &&
+        (
+          !convData.title ||
+          String(convData.title).trim() === "" ||
+          String(convData.title).trim() === String(convData.lastUserMessage || "").trim()
+        );
+      
+      if (shouldGenerateTitle) {
+        const messagesSnap = await messagesRef
+          .orderByChild("conversationId")
+          .equalTo(conversationId)
+          .once("value");
+        
+        const conversationMessages = Object.values(messagesSnap.val() || {})
+          .filter(m => m && typeof m.content === "string")
+          .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+        
+        const userMessageCount = conversationMessages.filter(m => m.role === "user").length;
+        
+        if (userMessageCount >= 3) {
+          const generatedTitle = await generateConversationTitle(conversationMessages);
+          
+          if (generatedTitle) {
+            await convRef.update({
+              title: generatedTitle,
+              updatedAt: new Date().toISOString()
+            });
+          }
+        }
+      }
+    } catch (titleErr) {
+      console.error("Erreur auto-title /chat:", titleErr.message);
     }
-  }
-} catch (titleErr) {
-  console.error("Erreur auto-title /chat:", titleErr.message);
-}
-
-const recentHistory = trimHistory(req.body?.recentHistory);
-
+    
     const recentHistory = trimHistory(req.body?.recentHistory);
     const previousMemory = normalizeMemory(req.body?.memory);
     const flags = normalizeSessionFlags(req.body?.flags);
-
+    
     previousMemoryForCatch = previousMemory;
     flagsForCatch = flags;
     
@@ -2094,21 +2089,21 @@ const recentHistory = trimHistory(req.body?.recentHistory);
     
     const suicide = await analyzeSuicideRisk(message, recentHistory, flags);
     let newFlags = normalizeSessionFlags(flags);
-
+    
     // -------- N2 --------
     if (suicide.suicideLevel === "N2") {
       newFlags.acuteCrisis = true;
       newFlags.contactState = { wasContact: false };
-
+      
       const reply = n2Response();
-
+      
       await pushAssistantMessage(
         reply,
         buildDebug("override", {
           suicideLevel: "N2"
         })
       );
-
+      
       return res.json({
         conversationId,
         reply,
@@ -2119,22 +2114,22 @@ const recentHistory = trimHistory(req.body?.recentHistory);
         })
       });
     }
-
+    
     // -------- ACUTE --------
     if (flags.acuteCrisis === true) {
       if (suicide.crisisResolved !== true) {
         newFlags.acuteCrisis = true;
         newFlags.contactState = { wasContact: false };
-
+        
         const reply = acuteCrisisFollowupResponse();
-
+        
         await pushAssistantMessage(
           reply,
           buildDebug("override", {
             suicideLevel: suicide.suicideLevel
           })
         );
-
+        
         return res.json({
           conversationId,
           reply,
@@ -2145,22 +2140,22 @@ const recentHistory = trimHistory(req.body?.recentHistory);
           })
         });
       }
-
+      
       newFlags.acuteCrisis = false;
     }
-
+    
     // -------- N1 --------
     if (suicide.suicideLevel === "N1" || suicide.needsClarification) {
       const reply = await n1ResponseLLM(message);
       newFlags.contactState = { wasContact: false };
-
+      
       await pushAssistantMessage(
         reply,
         buildDebug("clarification", {
           suicideLevel: "N1"
         })
       );
-
+      
       return res.json({
         conversationId,
         reply,
@@ -2171,20 +2166,20 @@ const recentHistory = trimHistory(req.body?.recentHistory);
         })
       });
     }
-
+    
     // -------- RECALL --------
     const recallRouting = await analyzeRecallRouting(message, recentHistory, previousMemory);
-
+    
     if (recallRouting.isLongTermMemoryRecall) {
       const reply = await buildLongTermMemoryRecallResponse(previousMemory);
-
+      
       await pushAssistantMessage(
         reply,
         buildDebug("memoryRecall", {
           calledMemory: "longTermMemory"
         })
       );
-
+      
       return res.json({
         conversationId,
         reply,
@@ -2195,15 +2190,15 @@ const recentHistory = trimHistory(req.body?.recentHistory);
         })
       });
     }
-
+    
     if (recallRouting.isRecallAttempt && recallRouting.calledMemory === "none") {
       const reply = buildNoMemoryRecallResponse();
-
+      
       await pushAssistantMessage(
         reply,
         buildDebug("memoryRecall", {})
       );
-
+      
       return res.json({
         conversationId,
         reply,
@@ -2212,24 +2207,24 @@ const recentHistory = trimHistory(req.body?.recentHistory);
         debug: buildDebug("memoryRecall", {})
       });
     }
-
+    
     // -------- MODE --------
     const contactAnalysis = await analyzeContactState(
       message,
       recentHistory,
       newFlags.contactState
     );
-
+    
     newFlags.contactState = {
       wasContact: contactAnalysis.isContact === true
     };
-
-    const detectedMode = contactAnalysis.isContact
-      ? "contact"
-      : (await detectMode(message, recentHistory)).mode;
-
+    
+    const detectedMode = contactAnalysis.isContact ?
+      "contact" :
+      (await detectMode(message, recentHistory)).mode;
+    
     modeForCatch = detectedMode;
-
+    
     let reply = await generateReply({
       message,
       history: recentHistory,
@@ -2237,13 +2232,13 @@ const recentHistory = trimHistory(req.body?.recentHistory);
       mode: detectedMode,
       explorationDirectivityLevel: newFlags.explorationDirectivityLevel
     });
-
+    
     let modelConflict = false;
-
+    
     if (detectedMode === "exploration") {
       const conflict = await analyzeModelConflict(reply);
       modelConflict = conflict.modelConflict === true;
-
+      
       if (modelConflict) {
         reply = await rewriteExplorationReplyWithModelFilter({
           message,
@@ -2252,23 +2247,23 @@ const recentHistory = trimHistory(req.body?.recentHistory);
           originalReply: reply
         });
       }
-
+      
       const relance = await analyzeExplorationRelance({
         message,
         reply,
         history: recentHistory,
         memory: previousMemory
       });
-
+      
       newFlags = registerExplorationRelance(newFlags, relance.isRelance);
     }
-
+    
     const newMemory = await updateMemory(previousMemory, [
       ...recentHistory,
       { role: "user", content: message },
       { role: "assistant", content: reply }
     ]);
-
+    
     await pushAssistantMessage(
       reply,
       buildDebug(detectedMode, {
@@ -2279,7 +2274,7 @@ const recentHistory = trimHistory(req.body?.recentHistory);
         explorationRelanceWindow: newFlags.explorationRelanceWindow
       })
     );
-
+    
     return res.json({
       conversationId,
       reply,
@@ -2293,15 +2288,14 @@ const recentHistory = trimHistory(req.body?.recentHistory);
         explorationRelanceWindow: newFlags.explorationRelanceWindow
       })
     });
-
+    
   } catch (err) {
     console.error("Erreur /chat:", err);
-
+    
     return res.json({
-      reply:
-        modeForCatch === "contact"
-          ? "Je suis la."
-          : "Desole, reformule.",
+      reply: modeForCatch === "contact" ?
+        "Je suis la." :
+        "Desole, reformule.",
       memory: previousMemoryForCatch,
       flags: flagsForCatch,
       debug: ["error"]
