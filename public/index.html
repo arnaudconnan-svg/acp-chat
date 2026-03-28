@@ -1709,11 +1709,10 @@
       
       saveHistory(history);
       
-      const index = loadConversationsIndex();
-      const currentItem = index.find(item => item && item.id === conversationId);
-      const currentTitle = currentItem && typeof currentItem.title === "string" ? currentItem.title.trim() : "";
+      const userMessages = history.filter(m => m.role === "user");
+      const firstUserMessage = userMessages[0]?.content || "";
       
-      if (role === "assistant" && history.length === 1) {
+      if (role === "assistant" && userMessages.length === 0) {
         upsertConversationIndexItem({
           id: conversationId,
           title: "Nouvelle conversation",
@@ -1722,16 +1721,8 @@
         return;
       }
       
-      if (
-        role === "user" &&
-        (
-          history.filter(m => m.role === "user").length === 1 ||
-          !currentTitle ||
-          currentTitle === "Nouvelle conversation" ||
-          currentTitle === "Conversation sans titre"
-        )
-      ) {
-        const firstTitle = String(content).trim().replace(/\s+/g, " ").slice(0, 60);
+      if (userMessages.length >= 1) {
+        const firstTitle = String(firstUserMessage).trim().replace(/\s+/g, " ").slice(0, 60);
         
         upsertConversationIndexItem({
           id: conversationId,
