@@ -2128,75 +2128,73 @@
     }
     
     function enterConversations() {
-      const welcomeScreen = document.getElementById("welcomeScreen");
-      const conversationsScreen = document.getElementById("conversationsScreen");
-      const bgValue = window.getComputedStyle(conversationsScreen).backgroundImage || "";
-      const match = bgValue.match(/url\(["']?(.*?)["']?\)/);
-      const bgUrl = match ? match[1] : "";
+  const welcomeScreen = document.getElementById("welcomeScreen");
+  const conversationsScreen = document.getElementById("conversationsScreen");
+  const bgValue = window.getComputedStyle(conversationsScreen).backgroundImage || "";
+  const match = bgValue.match(/url\(["']?(.*?)["']?\)/);
+  const bgUrl = match ? match[1] : "";
+  
+  renderConversationsList();
+  
+  function fadeOutWelcomeThenShow() {
+    welcomeScreen.style.transition = "opacity 0.38s ease";
+    welcomeScreen.style.opacity = "0";
+    
+    setTimeout(() => {
+      conversationsScreen.style.transition = "none";
+      conversationsScreen.style.opacity = "0";
       
-      renderConversationsList();
+      showScreen("conversationsScreen", { pushHistory: true });
       
-      function fadeOutWelcomeThenShow() {
-        welcomeScreen.style.transition = "opacity 0.38s ease";
-        welcomeScreen.style.opacity = "0";
-        
-        setTimeout(() => {
-          conversationsScreen.style.transition = "none";
-          conversationsScreen.style.opacity = "0";
-          
-          showScreen("conversationsScreen", { pushHistory: true });
-          
-          requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-              conversationsScreen.style.transition = "opacity 0.55s ease";
-              conversationsScreen.style.opacity = "1";
-              
-              welcomeScreen.style.transition = "";
-              welcomeScreen.style.opacity = "";
-            });
-          });
-        }, 380);
-      }
+      setTimeout(() => {
+        conversationsScreen.style.transition = "opacity 0.7s ease";
+        conversationsScreen.style.opacity = "1";
+      }, 90);
       
-      if (!bgUrl) {
-        fadeOutWelcomeThenShow();
-        return;
-      }
-      
-      if (enterConversations._loadedUrl === bgUrl) {
-        fadeOutWelcomeThenShow();
-        return;
-      }
-      
-      if (enterConversations._loadingPromise && enterConversations._loadingUrl === bgUrl) {
-        enterConversations._loadingPromise.then(() => {
-          fadeOutWelcomeThenShow();
-        });
-        return;
-      }
-      
-      enterConversations._loadingUrl = bgUrl;
-      enterConversations._loadingPromise = new Promise(resolve => {
-        const img = new Image();
-        
-        img.onload = () => {
-          enterConversations._loadedUrl = bgUrl;
-          enterConversations._loadingPromise = null;
-          resolve();
-        };
-        
-        img.onerror = () => {
-          enterConversations._loadingPromise = null;
-          resolve();
-        };
-        
-        img.src = bgUrl;
-      });
-      
-      enterConversations._loadingPromise.then(() => {
-        fadeOutWelcomeThenShow();
-      });
-    }
+      welcomeScreen.style.transition = "";
+      welcomeScreen.style.opacity = "";
+    }, 380);
+  }
+  
+  if (!bgUrl) {
+    fadeOutWelcomeThenShow();
+    return;
+  }
+  
+  if (enterConversations._loadedUrl === bgUrl) {
+    fadeOutWelcomeThenShow();
+    return;
+  }
+  
+  if (enterConversations._loadingPromise && enterConversations._loadingUrl === bgUrl) {
+    enterConversations._loadingPromise.then(() => {
+      fadeOutWelcomeThenShow();
+    });
+    return;
+  }
+  
+  enterConversations._loadingUrl = bgUrl;
+  enterConversations._loadingPromise = new Promise(resolve => {
+    const img = new Image();
+    
+    img.onload = () => {
+      enterConversations._loadedUrl = bgUrl;
+      enterConversations._loadingPromise = null;
+      resolve();
+    };
+    
+    img.onerror = () => {
+      enterConversations._loadingPromise = null;
+      resolve();
+    };
+    
+    img.src = bgUrl;
+  });
+  
+  enterConversations._loadingPromise.then(() => {
+    fadeOutWelcomeThenShow();
+  });
+}
     
     function startFreshOrResumeSession() {
       closeSessionInfoModal();
