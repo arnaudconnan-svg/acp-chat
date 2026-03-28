@@ -2480,9 +2480,11 @@
           textEl.classList.add("is-hidden");
         }
         
-        if (actions) {
-          actions.classList.add("is-visible");
-        }
+        setTimeout(() => {
+          if (actions) {
+            actions.classList.add("is-visible");
+          }
+        }, 500);
       }
       
       function showWelcomeRitualPhrase() {
