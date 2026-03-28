@@ -191,6 +191,8 @@
       color: #245e66;
       font-size: 14px;
       padding: 2px 12px;
+      -webkit-tap-highlight-color: transparent;
+      outline: none;
     }
     
     .welcomeBtnTertiary {
@@ -218,6 +220,28 @@
         opacity 0.45s ease,
         transform 0.45s ease;
       transition-delay: 0.22s;
+    }
+    
+    #aboutContent {
+      max-width: 520px;
+      margin: 0 auto;
+    }
+    
+    .about-title {
+      margin-top: 85px;
+      margin-bottom: 15px;
+    }
+    
+    .about-main {
+      margin-bottom: 15px;
+    }
+    
+    .about-highlight {
+      margin-bottom: 100px;
+    }
+    
+    .about-footer {
+      margin-top: 0px;
     }
     
     #welcomeDevAccessWrap {
@@ -263,8 +287,6 @@
           0 1px 0 rgba(255, 255, 255, 0.18) inset;
       }
     }
-    
-    /* ---------- CONVERSATIONS ---------- */
     
     /* ---------- CONVERSATIONS ---------- */
     
@@ -1008,20 +1030,20 @@
   <div id="aboutModal">
     <div id="aboutBox">
       <div id="aboutContent">
-        <p>
-          La plupart des intelligences artificielles sont concues pour repondre vite, conseiller, orienter ou resoudre.
+        <p class="about-title">
+          <strong>Facilitat.io</strong>
         </p>
-        <p>
-          Facilitat.io a ete concu autrement.
+        
+        <p class="about-main">
+          Propose une interaction avec une IA qui facilite le développement de la personne, sans orienter ni conseiller, mais en soutenant :
         </p>
-        <p>
-          Son objectif est de soutenir le developpement du centre d'evaluation interne : la capacite a sentir, reconnaitre et evaluer son experience a partir d'elle-meme.
+        
+        <p class="about-highlight">
+          <strong>Un mouvement de compréhension et d’acceptation de soi...</strong>
         </p>
-        <p>
-          Il ne cherche pas a ameliorer la performance, a normaliser l'experience ou a proposer des reponses toutes faites.
-        </p>
-        <p>
-          Il s'agit d'un espace de reflexion, non d'un outil de prescription.
+        
+        <p class="about-footer">
+          Cet outil ne remplace pas une relation d’accompagnement humaine.
         </p>
       </div>
       <button onclick="closeAboutModal()">fermer</button>
@@ -1149,13 +1171,11 @@
       
       const index = loadConversationsIndex();
       const item = index.find(i => i.id === conversationId);
-      
       const currentTitle = item && item.title ? item.title : "";
       
       const input = document.getElementById("editTitleInput");
       input.value = currentTitle;
       updateTitleCounter();
-      
       input.dataset.conversationId = conversationId;
       
       openModal("editTitleModal");
@@ -1166,12 +1186,45 @@
       }, 50);
     }
     
+    function isInformativeModal(modalId) {
+      return [
+        "aboutModal",
+        "sessionInfoModal",
+        "expiredSessionModal",
+        "terminatedSessionModal"
+      ].includes(modalId);
+    }
+    
+    function getInformativeModalBox(modalId) {
+      if (modalId === "aboutModal") {
+        return document.getElementById("aboutBox");
+      }
+      
+      const modal = document.getElementById(modalId);
+      return modal ? modal.querySelector(".modalBox") : null;
+    }
+    
+    function applyAboutModalStyles() {
+      const box = document.getElementById("aboutBox");
+      const content = document.getElementById("aboutContent");
+      
+      if (!box || !content) return;
+      
+      box.style.padding = "28px 24px calc(34px + env(safe-area-inset-bottom, 0px)) 24px";
+      
+      content.style.marginBottom = "22px";
+      content.style.textAlign = "center";
+      content.style.fontSize = "18px";
+      content.style.lineHeight = "1.9";
+      content.style.color = "#24464b";
+    }
+    
     function openAboutModal() {
-      document.getElementById("aboutModal").style.display = "flex";
+      openModal("aboutModal");
     }
     
     function closeAboutModal() {
-      document.getElementById("aboutModal").style.display = "none";
+      closeModal("aboutModal");
     }
     
     function openDevAccessModal() {
@@ -1181,6 +1234,133 @@
     function closeDevAccessModal() {
       document.getElementById("devAccessModal").style.display = "none";
     }
+    
+    window.addEventListener("load", () => {
+      if (window.__infoModalAnimationPatched) return;
+      if (typeof window.openModal !== "function" || typeof window.closeModal !== "function") return;
+      
+      const baseOpenModal = window.openModal.bind(window);
+      const baseCloseModal = window.closeModal.bind(window);
+      
+      window.openModal = function(modalId) {
+        if (!isInformativeModal(modalId)) {
+          baseOpenModal(modalId);
+          return;
+        }
+        
+        const modal = document.getElementById(modalId);
+        const box = getInformativeModalBox(modalId);
+        if (!modal || !box) {
+          baseOpenModal(modalId);
+          return;
+        }
+        
+        if (modalId === "aboutModal") {
+          applyAboutModalStyles();
+        }
+        
+        if (box.__modalAnim) {
+          box.__modalAnim.cancel();
+          box.__modalAnim = null;
+        }
+        
+        if (modal.__backdropAnim) {
+          modal.__backdropAnim.cancel();
+          modal.__backdropAnim = null;
+        }
+        
+        modal.dataset.open = "1";
+        modal.style.display = "flex";
+        modal.style.background = "rgba(0, 0, 0, 0)";
+        
+        box.style.transform = "translateY(100%)";
+        
+        modal.__backdropAnim = modal.animate(
+          [
+            { background: "rgba(0, 0, 0, 0)" },
+            { background: "rgba(0, 0, 0, 0.18)" }
+          ],
+          {
+            duration: 760,
+            easing: "ease",
+            fill: "forwards"
+          }
+        );
+        
+        box.__modalAnim = box.animate(
+          [
+            { transform: "translateY(100%)" },
+            { transform: "translateY(0)" }
+          ],
+          {
+            duration: 760,
+            easing: "cubic-bezier(0.22, 0.8, 0.2, 1)",
+            fill: "forwards"
+          }
+        );
+      };
+      
+      window.closeModal = function(modalId) {
+        if (!isInformativeModal(modalId)) {
+          baseCloseModal(modalId);
+          return;
+        }
+        
+        const modal = document.getElementById(modalId);
+        const box = getInformativeModalBox(modalId);
+        if (!modal || !box || modal.style.display === "none") {
+          baseCloseModal(modalId);
+          return;
+        }
+        
+        if (box.__modalAnim) {
+          box.__modalAnim.cancel();
+          box.__modalAnim = null;
+        }
+        
+        if (modal.__backdropAnim) {
+          modal.__backdropAnim.cancel();
+          modal.__backdropAnim = null;
+        }
+        
+        modal.dataset.open = "0";
+        
+        modal.__backdropAnim = modal.animate(
+          [
+            { background: "rgba(0, 0, 0, 0.18)" },
+            { background: "rgba(0, 0, 0, 0)" }
+          ],
+          {
+            duration: 760,
+            easing: "ease",
+            fill: "forwards"
+          }
+        );
+        
+        box.__modalAnim = box.animate(
+          [
+            { transform: "translateY(0)" },
+            { transform: "translateY(100%)" }
+          ],
+          {
+            duration: 760,
+            easing: "cubic-bezier(0.22, 0.8, 0.2, 1)",
+            fill: "forwards"
+          }
+        );
+        
+        box.__modalAnim.onfinish = () => {
+          if (modal.dataset.open === "0") {
+            modal.style.display = "none";
+            modal.style.background = "rgba(0, 0, 0, 0)";
+          }
+          box.__modalAnim = null;
+          modal.__backdropAnim = null;
+        };
+      };
+      
+      window.__infoModalAnimationPatched = true;
+    });
   </script>
   
   <script>
