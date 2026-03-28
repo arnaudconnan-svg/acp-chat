@@ -2136,14 +2136,16 @@
       renderConversationsList();
       
       function showWithFade() {
-        screen.style.opacity = "0";
         screen.style.transition = "none";
+        screen.style.opacity = "0";
         
         showScreen("conversationsScreen", { pushHistory: true });
         
         requestAnimationFrame(() => {
-          screen.style.transition = "opacity 0.6s ease";
-          screen.style.opacity = "1";
+          requestAnimationFrame(() => {
+            screen.style.transition = "opacity 0.55s ease";
+            screen.style.opacity = "1";
+          });
         });
       }
       
@@ -2158,7 +2160,9 @@
       }
       
       if (enterConversations._loadingPromise && enterConversations._loadingUrl === bgUrl) {
-        enterConversations._loadingPromise.then(showWithFade);
+        enterConversations._loadingPromise.then(() => {
+          showWithFade();
+        });
         return;
       }
       
@@ -2180,7 +2184,9 @@
         img.src = bgUrl;
       });
       
-      enterConversations._loadingPromise.then(showWithFade);
+      enterConversations._loadingPromise.then(() => {
+        showWithFade();
+      });
     }
     
     function startFreshOrResumeSession() {
