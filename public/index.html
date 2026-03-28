@@ -2335,15 +2335,15 @@
   const message = input.value.trim();
   if (!message) return;
   
-  const requestConversationId = getConversationId();
-  const requestScreenId = document.querySelector(".screen.active")?.id || "";
-  
   isSending = true;
   updateActivity();
   sendBtn.disabled = true;
   
   pushHistory("user", message, []);
   addMessage("user", message, []);
+  
+  const requestConversationId = getConversationId();
+  const requestScreenId = document.querySelector(".screen.active")?.id || "";
   
   input.value = "";
   
@@ -2385,6 +2385,8 @@
   }
   
   try {
+    const requestData = loadConversationData(requestConversationId);
+    
     const res = await fetch("/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -2392,11 +2394,11 @@
         message,
         userId: getOrCreateUserId(),
         conversationId: requestConversationId,
-        recentHistory: loadConversationData(requestConversationId).messages
+        recentHistory: requestData.messages
           .map(({ role, content }) => ({ role, content }))
           .slice(-MAX_RECENT_TURNS),
-        memory: loadConversationData(requestConversationId).memory,
-        flags: loadConversationData(requestConversationId).flags
+        memory: requestData.memory,
+        flags: requestData.flags
       })
     });
     
@@ -2405,29 +2407,34 @@
     if (dotAnimation) dotAnimation.cancel();
     if (waitingMsg.parentNode) waitingMsg.parentNode.removeChild(waitingMsg);
     
-    if (!data || data.conversationId !== requestConversationId) {
+    if (!res.ok || !data || data.conversationId !== requestConversationId) {
+      if (
+        getConversationId() === requestConversationId &&
+        document.querySelector(".screen.active")?.id === requestScreenId &&
+        requestScreenId === "chatScreen"
+      ) {
+        addMessage("bot", "Erreur serveur", []);
+      }
       return;
     }
     
     const currentData = loadConversationData(requestConversationId);
     const alreadyExists = currentData.messages.some(
-      m => m.role === "assistant" && m.content === data.reply
+      m => m.role === "assistant" && m.content === data.reply && (m.t || 0) > Date.now() - 10000
     );
     
     if (!alreadyExists) {
-      const updatedHistory = [
-        ...currentData.messages,
-        {
-          role: "assistant",
-          content: data.reply,
-          debug: data.debug || [],
-          t: Date.now()
-        }
-      ];
-      
       saveConversationData(requestConversationId, {
         ...currentData,
-        messages: updatedHistory,
+        messages: [
+          ...currentData.messages,
+          {
+            role: "assistant",
+            content: data.reply,
+            debug: data.debug || [],
+            t: Date.now()
+          }
+        ],
         memory: data.memory || currentData.memory,
         flags: data.flags || currentData.flags,
         updatedAt: Date.now()
