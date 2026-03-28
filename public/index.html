@@ -2325,96 +2325,151 @@
     }
     
     async function send() {
-      if (isSending) return;
-      if (sessionStatus === "terminated" || sessionStatus === "closing") return;
-      if (sessionStatus === "expired") return;
-      
-      const input = document.getElementById("input");
-      const sendBtn = document.getElementById("sendBtn");
-      const chat = document.getElementById("chat");
-      const message = input.value.trim();
-      if (!message) return;
-      
-      isSending = true;
-      updateActivity();
-      sendBtn.disabled = true;
-      
-      pushHistory("user", message, []);
-      addMessage("user", message, []);
-      
-      input.value = "";
-      
-      const waitingMsg = document.createElement("div");
-      waitingMsg.className = "message bot";
-      
-      const waitingContent = document.createElement("div");
-      waitingContent.className = "message-content";
-      
-      const waitingBubble = document.createElement("div");
-      waitingBubble.className = "bubble waiting-bubble";
-      
-      const waitingDot = document.createElement("span");
-      waitingDot.id = "waitingDot";
-      waitingDot.className = "waiting-dot";
-      
-      waitingBubble.appendChild(waitingDot);
-      waitingContent.appendChild(waitingBubble);
-      waitingMsg.appendChild(waitingContent);
-      
-      chat.appendChild(waitingMsg);
-      scrollChatToBottom();
-      let dotAnimation = null;
-      
-      if (waitingDot && waitingDot.animate) {
-        dotAnimation = waitingDot.animate(
-          [
-            { transform: "scale(0.8)" },
-            { transform: "scale(1.2)" },
-            { transform: "scale(0.8)" }
-          ],
-          {
-            duration: 900,
-            iterations: Infinity,
-            easing: "ease-in-out"
-          }
-        );
+  if (isSending) return;
+  if (sessionStatus === "terminated" || sessionStatus === "closing") return;
+  if (sessionStatus === "expired") return;
+  
+  const input = document.getElementById("input");
+  const sendBtn = document.getElementById("sendBtn");
+  const chat = document.getElementById("chat");
+  const message = input.value.trim();
+  if (!message) return;
+  
+  const requestConversationId = getConversationId();
+  const requestScreenId = document.querySelector(".screen.active")?.id || "";
+  
+  isSending = true;
+  updateActivity();
+  sendBtn.disabled = true;
+  
+  pushHistory("user", message, []);
+  addMessage("user", message, []);
+  
+  input.value = "";
+  
+  const waitingMsg = document.createElement("div");
+  waitingMsg.className = "message bot";
+  
+  const waitingContent = document.createElement("div");
+  waitingContent.className = "message-content";
+  
+  const waitingBubble = document.createElement("div");
+  waitingBubble.className = "bubble waiting-bubble";
+  
+  const waitingDot = document.createElement("span");
+  waitingDot.id = "waitingDot";
+  waitingDot.className = "waiting-dot";
+  
+  waitingBubble.appendChild(waitingDot);
+  waitingContent.appendChild(waitingBubble);
+  waitingMsg.appendChild(waitingContent);
+  
+  chat.appendChild(waitingMsg);
+  scrollChatToBottom();
+  
+  let dotAnimation = null;
+  
+  if (waitingDot && waitingDot.animate) {
+    dotAnimation = waitingDot.animate(
+      [
+        { transform: "scale(0.8)" },
+        { transform: "scale(1.2)" },
+        { transform: "scale(0.8)" }
+      ],
+      {
+        duration: 900,
+        iterations: Infinity,
+        easing: "ease-in-out"
       }
-      
-      try {
-        const res = await fetch("/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(buildPayload(message))
-        });
-        
-        const data = await res.json();
-        
-        if (data.conversationId) {
-          localStorage.setItem(CONVERSATION_ID_KEY, data.conversationId);
-        }
-        if (data.memory) saveMemory(data.memory);
-        if (data.flags) saveFlags(data.flags);
-        
-        if (dotAnimation) dotAnimation.cancel();
-        if (waitingMsg.parentNode) waitingMsg.parentNode.removeChild(waitingMsg);
-        
-        pushHistory("assistant", data.reply, data.debug || []);
-        addMessage("bot", data.reply, data.debug || []);
-        
-        if (data.conversationId) {
-          refreshConversationTitle(data.conversationId);
-        }
-        
-        updateActivity();
-      } catch {
-        if (dotAnimation) dotAnimation.cancel();
-        if (waitingMsg.parentNode) waitingMsg.parentNode.removeChild(waitingMsg);
-        addMessage("bot", "Erreur serveur", []);
-      } finally {
-        isSending = false;
-        syncInputAvailability();
-      }
+    );
+  }
+  
+  try {
+    const res = await fetch("/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message,
+        userId: getOrCreateUserId(),
+        conversationId: requestConversationId,
+        recentHistory: loadConversationData(requestConversationId).messages
+          .map(({ role, content }) => ({ role, content }))
+          .slice(-MAX_RECENT_TURNS),
+        memory: loadConversationData(requestConversationId).memory,
+        flags: loadConversationData(requestConversationId).flags
+      })
+    });
+    
+    const data = await res.json();
+    
+    if (dotAnimation) dotAnimation.cancel();
+    if (waitingMsg.parentNode) waitingMsg.parentNode.removeChild(waitingMsg);
+    
+    if (!data || data.conversationId !== requestConversationId) {
+      return;
     }
+    
+    const currentData = loadConversationData(requestConversationId);
+    const alreadyExists = currentData.messages.some(
+      m => m.role === "assistant" && m.content === data.reply
+    );
+    
+    if (!alreadyExists) {
+      const updatedHistory = [
+        ...currentData.messages,
+        {
+          role: "assistant",
+          content: data.reply,
+          debug: data.debug || [],
+          t: Date.now()
+        }
+      ];
+      
+      saveConversationData(requestConversationId, {
+        ...currentData,
+        messages: updatedHistory,
+        memory: data.memory || currentData.memory,
+        flags: data.flags || currentData.flags,
+        updatedAt: Date.now()
+      });
+    } else {
+      saveConversationData(requestConversationId, {
+        ...currentData,
+        memory: data.memory || currentData.memory,
+        flags: data.flags || currentData.flags,
+        updatedAt: Date.now()
+      });
+    }
+    
+    if (
+      getConversationId() === requestConversationId &&
+      document.querySelector(".screen.active")?.id === requestScreenId &&
+      requestScreenId === "chatScreen"
+    ) {
+      addMessage("bot", data.reply, data.debug || []);
+    }
+    
+    if (data.conversationId) {
+      refreshConversationTitle(data.conversationId);
+    }
+    
+    updateActivity();
+  } catch {
+    if (dotAnimation) dotAnimation.cancel();
+    if (waitingMsg.parentNode) waitingMsg.parentNode.removeChild(waitingMsg);
+    
+    if (
+      getConversationId() === requestConversationId &&
+      document.querySelector(".screen.active")?.id === requestScreenId &&
+      requestScreenId === "chatScreen"
+    ) {
+      addMessage("bot", "Erreur serveur", []);
+    }
+  } finally {
+    isSending = false;
+    syncInputAvailability();
+  }
+}
     
     /* ---------- EVENTS ---------- */
     
