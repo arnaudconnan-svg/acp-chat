@@ -6,7 +6,6 @@
   <title>Facilitat.io</title>
   <link rel="manifest" href="/manifest.json">
   <link rel="preload" as="image" href="/images/logo.png">
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
   <meta name="theme-color" content="#ffffff">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="color-scheme" content="light">
@@ -22,7 +21,7 @@
     }
     
     body {
-      font-family: 'IBM Plex Sans', system-ui, -apple-system, Arial, sans-serif;
+      font-family: Arial, sans-serif;
       box-sizing: border-box;
       height: 100%;
       display: flex;
@@ -112,7 +111,6 @@
       justify-content: center;
       text-align: center;
       margin-top: 10vh;
-      font-style: italic;
       font-size: clamp(30px, 7vw, 42px);
       font-weight: 500;
       line-height: 1.35;
@@ -2130,9 +2128,52 @@
     }
     
     function enterConversations() {
-      renderConversationsList();
+  const screen = document.getElementById("conversationsScreen");
+  const bgValue = window.getComputedStyle(screen).backgroundImage || "";
+  const match = bgValue.match(/url\(["']?(.*?)["']?\)/);
+  const bgUrl = match ? match[1] : "";
+  
+  renderConversationsList();
+  
+  if (!bgUrl) {
+    showScreen("conversationsScreen", { pushHistory: true });
+    return;
+  }
+  
+  if (enterConversations._loadedUrl === bgUrl) {
+    showScreen("conversationsScreen", { pushHistory: true });
+    return;
+  }
+  
+  if (enterConversations._loadingPromise && enterConversations._loadingUrl === bgUrl) {
+    enterConversations._loadingPromise.then(() => {
       showScreen("conversationsScreen", { pushHistory: true });
-    }
+    });
+    return;
+  }
+  
+  enterConversations._loadingUrl = bgUrl;
+  enterConversations._loadingPromise = new Promise(resolve => {
+    const img = new Image();
+    
+    img.onload = () => {
+      enterConversations._loadedUrl = bgUrl;
+      enterConversations._loadingPromise = null;
+      resolve();
+    };
+    
+    img.onerror = () => {
+      enterConversations._loadingPromise = null;
+      resolve();
+    };
+    
+    img.src = bgUrl;
+  });
+  
+  enterConversations._loadingPromise.then(() => {
+    showScreen("conversationsScreen", { pushHistory: true });
+  });
+}
     
     function startFreshOrResumeSession() {
       closeSessionInfoModal();
