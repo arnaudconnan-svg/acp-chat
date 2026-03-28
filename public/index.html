@@ -2464,67 +2464,96 @@ window.addEventListener("popstate", e => {
     let pendingDeleteConversationId = null;
     
     document.getElementById("conversationsList").addEventListener("click", e => {
-      const toggleBtn = e.target.closest("[data-menu-toggle]");
-      if (toggleBtn) {
-        e.preventDefault();
-        e.stopPropagation();
-        
-        const conversationId = toggleBtn.getAttribute("data-menu-toggle");
-        const menu = document.querySelector(`[data-menu="${conversationId}"]`);
-        
-        document.querySelectorAll("[data-menu]").forEach(el => {
-          if (el !== menu) el.style.display = "none";
-        });
-        
-        if (menu) {
-          menu.style.display = menu.style.display === "block" ? "none" : "block";
-        }
-        
-        return;
-      }
-      
-      const renameBtn = e.target.closest("[data-rename-conversation]");
-      if (renameBtn) {
-        e.preventDefault();
-        e.stopPropagation();
-        
-        const conversationId = renameBtn.getAttribute("data-rename-conversation");
-        document.querySelectorAll("[data-menu]").forEach(el => {
-          el.style.display = "none";
-        });
-        openEditTitleModal(conversationId);
-        return;
-      }
-      
-      const deleteBtn = e.target.closest("[data-delete-conversation]");
-      if (deleteBtn) {
-        e.preventDefault();
-        e.stopPropagation();
-        
-        const conversationId = deleteBtn.getAttribute("data-delete-conversation");
-        document.querySelectorAll("[data-menu]").forEach(el => {
-          el.style.display = "none";
-        });
-        
-        pendingDeleteConversationId = conversationId;
-        openModal("deleteConversationModal");
-        return;
-      }
-      
-      const openBtn = e.target.closest("[data-open-conversation]");
-      if (openBtn) {
-        const conversationId = openBtn.getAttribute("data-open-conversation");
-        openConversation(conversationId);
-      }
+  const toggleBtn = e.target.closest("[data-menu-toggle]");
+  if (toggleBtn) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const conversationId = toggleBtn.getAttribute("data-menu-toggle");
+    const menu = document.querySelector(`[data-menu="${conversationId}"]`);
+    const item = toggleBtn.closest(".conversationItem");
+    const isOpening = menu && menu.style.display !== "block";
+    
+    document.querySelectorAll("[data-menu]").forEach(el => {
+      el.style.display = "none";
     });
     
-    document.addEventListener("click", e => {
-      if (!e.target.closest("[data-menu-toggle]") && !e.target.closest("[data-menu]")) {
-        document.querySelectorAll("[data-menu]").forEach(el => {
-          el.style.display = "none";
-        });
-      }
+    document.querySelectorAll(".conversationItem").forEach(el => {
+      el.style.zIndex = "";
+      el.style.position = "";
     });
+    
+    if (menu && isOpening) {
+      menu.style.display = "block";
+      if (item) {
+        item.style.position = "relative";
+        item.style.zIndex = "300";
+      }
+    }
+    
+    return;
+  }
+  
+  const renameBtn = e.target.closest("[data-rename-conversation]");
+  if (renameBtn) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const conversationId = renameBtn.getAttribute("data-rename-conversation");
+    
+    document.querySelectorAll("[data-menu]").forEach(el => {
+      el.style.display = "none";
+    });
+    
+    document.querySelectorAll(".conversationItem").forEach(el => {
+      el.style.zIndex = "";
+      el.style.position = "";
+    });
+    
+    openEditTitleModal(conversationId);
+    return;
+  }
+  
+  const deleteBtn = e.target.closest("[data-delete-conversation]");
+  if (deleteBtn) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const conversationId = deleteBtn.getAttribute("data-delete-conversation");
+    
+    document.querySelectorAll("[data-menu]").forEach(el => {
+      el.style.display = "none";
+    });
+    
+    document.querySelectorAll(".conversationItem").forEach(el => {
+      el.style.zIndex = "";
+      el.style.position = "";
+    });
+    
+    pendingDeleteConversationId = conversationId;
+    openModal("deleteConversationModal");
+    return;
+  }
+  
+  const openBtn = e.target.closest("[data-open-conversation]");
+  if (openBtn) {
+    const conversationId = openBtn.getAttribute("data-open-conversation");
+    openConversation(conversationId);
+  }
+});
+
+document.addEventListener("click", e => {
+  if (!e.target.closest("[data-menu-toggle]") && !e.target.closest("[data-menu]")) {
+    document.querySelectorAll("[data-menu]").forEach(el => {
+      el.style.display = "none";
+    });
+    
+    document.querySelectorAll(".conversationItem").forEach(el => {
+      el.style.zIndex = "";
+      el.style.position = "";
+    });
+  }
+});
     
     document.getElementById("cancelDeleteConversationBtn").onclick = () => {
       pendingDeleteConversationId = null;
