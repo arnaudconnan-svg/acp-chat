@@ -2052,6 +2052,7 @@ app.post("/chat", async (req, res) => {
     }
     
     const suicide = await analyzeSuicideRisk(message, recentHistory, flags);
+    let newFlags = normalizeSessionFlags(flags);
 
     // -------- N2 --------
     if (suicide.suicideLevel === "N2") {
