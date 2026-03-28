@@ -218,8 +218,7 @@ function normalizeSessionFlags(flags) {
     contactState: normalizeContactState(safe.contactState),
     explorationRelanceWindow,
     explorationDirectivityLevel: safe.explorationDirectivityLevel !== undefined ?
-      clampExplorationDirectivityLevel(safe.explorationDirectivityLevel) :
-      computedLevel
+      clampExplorationDirectivityLevel(safe.explorationDirectivityLevel) : computedLevel
   };
 }
 
@@ -1669,14 +1668,11 @@ app.post("/test", async (req, res) => {
       
       const mergedCase = {
         recentHistory: chain ?
-          currentRecentHistory :
-          (safeTestCase.recentHistory !== undefined ? safeTestCase.recentHistory : shared.recentHistory),
+          currentRecentHistory : (safeTestCase.recentHistory !== undefined ? safeTestCase.recentHistory : shared.recentHistory),
         memory: chain ?
-          currentMemory :
-          (safeTestCase.memory !== undefined ? safeTestCase.memory : shared.memory),
+          currentMemory : (safeTestCase.memory !== undefined ? safeTestCase.memory : shared.memory),
         flags: chain ?
-          currentFlags :
-          (safeTestCase.flags !== undefined ? safeTestCase.flags : shared.flags),
+          currentFlags : (safeTestCase.flags !== undefined ? safeTestCase.flags : shared.flags),
         ...safeTestCase,
         message
       };
@@ -2034,27 +2030,46 @@ app.post("/chat", async (req, res) => {
       const convSnap = await convRef.once("value");
       const convData = convSnap.val() || {};
       
-      const shouldGenerateTitle =
-        convData.titleLocked !== true &&
-        (
-          !convData.title ||
-          String(convData.title).trim() === "" ||
-          String(convData.title).trim() === String(convData.lastUserMessage || "").trim()
-        );
-      
-      if (shouldGenerateTitle) {
+      if (convData.titleLocked !== true) {
         const messagesSnap = await messagesRef
           .orderByChild("conversationId")
           .equalTo(conversationId)
           .once("value");
         
-        const conversationMessages = Object.values(messagesSnap.val() || {})
+        let conversationMessages = Object.values(messagesSnap.val() || {})
           .filter(m => m && typeof m.content === "string")
           .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
         
-        const userMessageCount = conversationMessages.filter(m => m.role === "user").length;
+        const hasCurrentUserMessage = conversationMessages.some(m =>
+          m.role === "user" &&
+          m.content === message &&
+          m.timestamp === nowIso
+        );
         
-        if (userMessageCount >= 3) {
+        if (!hasCurrentUserMessage) {
+          conversationMessages = [
+            ...conversationMessages,
+            {
+              conversationId,
+              userId,
+              role: "user",
+              content: message,
+              timestamp: nowIso
+            }
+          ].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+        }
+        
+        const userMessages = conversationMessages.filter(m => m.role === "user");
+        const currentTitle = String(convData.title || "").trim();
+        const firstUserMessage = String(userMessages[0]?.content || "").trim();
+        const shouldGenerateSmartTitle =
+          userMessages.length >= 3 &&
+          (
+            !currentTitle ||
+            currentTitle === firstUserMessage
+          );
+        
+        if (shouldGenerateSmartTitle) {
           const generatedTitle = await generateConversationTitle(conversationMessages);
           
           if (generatedTitle) {
@@ -2294,8 +2309,7 @@ app.post("/chat", async (req, res) => {
     
     return res.json({
       reply: modeForCatch === "contact" ?
-        "Je suis la." :
-        "Desole, reformule.",
+        "Je suis la." : "Desole, reformule.",
       memory: previousMemoryForCatch,
       flags: flagsForCatch,
       debug: ["error"]
