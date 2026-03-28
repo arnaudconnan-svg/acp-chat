@@ -1757,11 +1757,42 @@
       syncDebugVisibility();
     }
     
+    function prepareWelcomeScreenStatic() {
+      const welcome = document.getElementById("welcomeScreen");
+      const logoWrap = document.getElementById("welcomeLogoWrap");
+      const textEl = document.getElementById("welcomeRitualText");
+      const actions = document.getElementById("welcomeActions");
+      
+      if (!welcome) return;
+      
+      welcome.classList.add("ready");
+      welcome.style.transition = "";
+      welcome.style.opacity = "";
+      
+      if (logoWrap) {
+        logoWrap.style.transition = "none";
+        logoWrap.style.opacity = "1";
+      }
+      
+      if (textEl) {
+        textEl.textContent = "";
+        textEl.classList.remove("is-visible", "is-hidden");
+        textEl.style.transition = "none";
+        textEl.style.opacity = "0";
+        textEl.style.transform = "translateY(10px)";
+      }
+      
+      if (actions) {
+        actions.classList.add("is-visible");
+      }
+    }
+    
     function showScreen(id, options = {}) {
       let {
         pushHistory = true,
           replaceHistory = false,
-          noAnimation = false
+          noAnimation = false,
+          noWelcomeIntro = false
       } = options;
       
       const currentActive = document.querySelector(".screen.active");
@@ -1777,6 +1808,10 @@
       }
       
       if (currentId === id) {
+        if (id === "welcomeScreen" && noWelcomeIntro) {
+          prepareWelcomeScreenStatic();
+        }
+        
         if (!SCREEN_IDS.includes(id)) return;
         
         const nextState = { screenId: id };
@@ -1790,6 +1825,10 @@
       
       const nextEl = document.getElementById(id);
       if (!nextEl) return;
+      
+      if (id === "welcomeScreen" && noWelcomeIntro) {
+        prepareWelcomeScreenStatic();
+      }
       
       if (noAnimation) {
         applyScreen(id);
@@ -1862,7 +1901,8 @@
       
       showScreen(screenId, {
         pushHistory: false,
-        noAnimation: screenId === "welcomeScreen"
+        noAnimation: false,
+        noWelcomeIntro: screenId === "welcomeScreen"
       });
     });
     
