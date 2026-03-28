@@ -1709,23 +1709,35 @@
       
       saveHistory(history);
       
-      if (history.length === 1) {
-        if (role === "user") {
-          const firstTitle = String(content).trim().replace(/\s+/g, " ").slice(0, 60);
-          
-          upsertConversationIndexItem({
-            id: conversationId,
-            title: firstTitle || "Conversation sans titre",
-            updatedAt: Date.now()
-          });
-        } else {
-          // Assistant en premier → placeholder temporaire propre
-          upsertConversationIndexItem({
-            id: conversationId,
-            title: "Nouvelle conversation",
-            updatedAt: Date.now()
-          });
-        }
+      const index = loadConversationsIndex();
+      const currentItem = index.find(item => item && item.id === conversationId);
+      const currentTitle = currentItem && typeof currentItem.title === "string" ? currentItem.title.trim() : "";
+      
+      if (role === "assistant" && history.length === 1) {
+        upsertConversationIndexItem({
+          id: conversationId,
+          title: "Nouvelle conversation",
+          updatedAt: Date.now()
+        });
+        return;
+      }
+      
+      if (
+        role === "user" &&
+        (
+          history.filter(m => m.role === "user").length === 1 ||
+          !currentTitle ||
+          currentTitle === "Nouvelle conversation" ||
+          currentTitle === "Conversation sans titre"
+        )
+      ) {
+        const firstTitle = String(content).trim().replace(/\s+/g, " ").slice(0, 60);
+        
+        upsertConversationIndexItem({
+          id: conversationId,
+          title: firstTitle || "Conversation sans titre",
+          updatedAt: Date.now()
+        });
       }
     }
     
