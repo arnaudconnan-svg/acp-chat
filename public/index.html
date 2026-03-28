@@ -2469,590 +2469,796 @@
     editTitleInput.addEventListener("input", updateTitleCounter);
     
     let pendingDeleteConversationId = null;
+
+function ensureConversationMenuOverlay() {
+  let overlay = document.getElementById("conversationMenuOverlay");
+  
+  if (overlay) return overlay;
+  
+  overlay = document.createElement("div");
+  overlay.id = "conversationMenuOverlay";
+  overlay.style.position = "fixed";
+  overlay.style.inset = "0";
+  overlay.style.zIndex = "240";
+  overlay.style.display = "none";
+  overlay.style.opacity = "0";
+  overlay.style.pointerEvents = "none";
+  overlay.style.transition = "opacity 0.22s ease";
+  overlay.style.background = "rgba(20, 36, 40, 0.14)";
+  
+  document.body.appendChild(overlay);
+  return overlay;
+}
+
+function resetConversationMenuStyles(menu) {
+  if (!menu) return;
+  
+  menu.style.display = "none";
+  menu.style.position = "";
+  menu.style.top = "";
+  menu.style.left = "";
+  menu.style.right = "";
+  menu.style.minWidth = "";
+  menu.style.maxWidth = "";
+  menu.style.background = "";
+  menu.style.border = "";
+  menu.style.borderRadius = "";
+  menu.style.boxShadow = "";
+  menu.style.backdropFilter = "";
+  menu.style.webkitBackdropFilter = "";
+  menu.style.overflow = "";
+  menu.style.zIndex = "";
+  menu.style.padding = "";
+  menu.style.opacity = "";
+  menu.style.transform = "";
+  menu.style.transition = "";
+}
+
+function closeConversationMenus() {
+  const overlay = ensureConversationMenuOverlay();
+  
+  overlay.style.opacity = "0";
+  overlay.style.pointerEvents = "none";
+  
+  setTimeout(() => {
+    if (overlay.style.opacity === "0") {
+      overlay.style.display = "none";
+    }
+  }, 220);
+  
+  document.querySelectorAll("[data-menu]").forEach(menu => {
+    resetConversationMenuStyles(menu);
+  });
+  
+  document.querySelectorAll(".conversationItem").forEach(item => {
+    item.style.zIndex = "";
+    item.style.position = "";
+  });
+}
+
+function openConversationMenu(toggleBtn, menu) {
+  if (!toggleBtn || !menu) return;
+  
+  const overlay = ensureConversationMenuOverlay();
+  const rect = toggleBtn.getBoundingClientRect();
+  const panelWidth = 196;
+  const panelTop = rect.top + rect.height + 10;
+  const panelLeft = Math.max(16, Math.min(window.innerWidth - panelWidth - 16, rect.right - panelWidth));
+  const item = toggleBtn.closest(".conversationItem");
+  
+  closeConversationMenus();
+  
+  if (item) {
+    item.style.position = "relative";
+    item.style.zIndex = "300";
+  }
+  
+  menu.style.display = "block";
+  menu.style.position = "fixed";
+  menu.style.top = panelTop + "px";
+  menu.style.left = panelLeft + "px";
+  menu.style.right = "auto";
+  menu.style.minWidth = panelWidth + "px";
+  menu.style.maxWidth = "calc(100vw - 32px)";
+  menu.style.background = "rgba(255, 255, 255, 0.96)";
+  menu.style.border = "1px solid rgba(222, 228, 230, 0.92)";
+  menu.style.borderRadius = "26px";
+  menu.style.boxShadow = "0 22px 46px rgba(20, 36, 40, 0.18)";
+  menu.style.backdropFilter = "blur(8px)";
+  menu.style.webkitBackdropFilter = "blur(8px)";
+  menu.style.overflow = "hidden";
+  menu.style.zIndex = "260";
+  menu.style.padding = "8px 0";
+  menu.style.opacity = "0";
+  menu.style.transform = "translateY(-4px) scale(0.985)";
+  menu.style.transition = "opacity 0.2s ease, transform 0.2s ease";
+  
+  const centerX = Math.round(rect.right - 16);
+  const centerY = Math.round(panelTop + 28);
+  
+  overlay.style.display = "block";
+  overlay.style.pointerEvents = "auto";
+  overlay.style.background =
+    "radial-gradient(circle at " + centerX + "px " + centerY + "px, rgba(255,255,255,0) 0px, rgba(255,255,255,0) 84px, rgba(20,36,40,0.04) 140px, rgba(20,36,40,0.14) 100%)";
+  
+  requestAnimationFrame(() => {
+    overlay.style.opacity = "1";
+    menu.style.opacity = "1";
+    menu.style.transform = "translateY(0) scale(1)";
+  });
+}
+
+function renderConversationsList() {
+  const listEl = document.getElementById("conversationsList");
+  const template = document.getElementById("conversationItemTemplate");
+  
+  const items = loadConversationsIndex()
+    .slice()
+    .sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0));
+  
+  listEl.innerHTML = "";
+  
+  if (items.length === 0) {
+    const itemEl = document.createElement("div");
+    itemEl.className = "conversationItem";
     
-    function renderConversationsList() {
-      const listEl = document.getElementById("conversationsList");
-      const template = document.getElementById("conversationItemTemplate");
+    const textEl = document.createElement("div");
+    textEl.className = "conversationItemPlaceholder";
+    textEl.textContent = "Aucune conversation locale pour le moment.";
+    
+    itemEl.appendChild(textEl);
+    listEl.appendChild(itemEl);
+    return;
+  }
+  
+  items.forEach(item => {
+    const safeTitle = item.title && String(item.title).trim()
+      ? String(item.title).trim()
+      : "Conversation sans titre";
+    
+    const node = template.content.cloneNode(true);
+    
+    const root = node.querySelector(".conversationItem");
+    const openBtn = node.querySelector("[data-open-conversation]");
+    const titleEl = node.querySelector(".conversationItemPlaceholder");
+    const toggleBtn = node.querySelector("[data-menu-toggle]");
+    const menu = node.querySelector("[data-menu]");
+    const renameBtn = node.querySelector("[data-rename-conversation]");
+    const deleteBtn = node.querySelector("[data-delete-conversation]");
+    
+    root.dataset.conversationId = item.id;
+    openBtn.dataset.openConversation = item.id;
+    titleEl.textContent = safeTitle;
+    toggleBtn.dataset.menuToggle = item.id;
+    menu.dataset.menu = item.id;
+    renameBtn.dataset.renameConversation = item.id;
+    deleteBtn.dataset.deleteConversation = item.id;
+    
+    listEl.appendChild(node);
+  });
+}
+
+document.getElementById("conversationsList").addEventListener("click", e => {
+  const toggleBtn = e.target.closest("[data-menu-toggle]");
+  if (toggleBtn) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const conversationId = toggleBtn.getAttribute("data-menu-toggle");
+    const menu = document.querySelector(`[data-menu="${conversationId}"]`);
+    const isOpening = menu && menu.style.display !== "block";
+    
+    if (!menu) return;
+    
+    if (isOpening) {
+      openConversationMenu(toggleBtn, menu);
+    } else {
+      closeConversationMenus();
+    }
+    
+    return;
+  }
+  
+  const renameBtn = e.target.closest("[data-rename-conversation]");
+  if (renameBtn) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const conversationId = renameBtn.getAttribute("data-rename-conversation");
+    closeConversationMenus();
+    openEditTitleModal(conversationId);
+    return;
+  }
+  
+  const deleteBtn = e.target.closest("[data-delete-conversation]");
+  if (deleteBtn) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const conversationId = deleteBtn.getAttribute("data-delete-conversation");
+    closeConversationMenus();
+    pendingDeleteConversationId = conversationId;
+    openModal("deleteConversationModal");
+    return;
+  }
+  
+  const openBtn = e.target.closest("[data-open-conversation]");
+  if (openBtn) {
+    const conversationId = openBtn.getAttribute("data-open-conversation");
+    closeConversationMenus();
+    openConversation(conversationId);
+  }
+});
+
+document.addEventListener("click", e => {
+  if (!e.target.closest("[data-menu-toggle]") && !e.target.closest("[data-menu]")) {
+    closeConversationMenus();
+  }
+});
+
+window.addEventListener("resize", closeConversationMenus);
+window.addEventListener("scroll", closeConversationMenus, true);
+
+document.getElementById("cancelDeleteConversationBtn").onclick = () => {
+  pendingDeleteConversationId = null;
+  closeModal("deleteConversationModal");
+};
+
+document.getElementById("confirmDeleteConversationBtn").onclick = () => {
+  if (!pendingDeleteConversationId) {
+    closeModal("deleteConversationModal");
+    return;
+  }
+  
+  deleteConversationData(pendingDeleteConversationId);
+  
+  if (getConversationId() === pendingDeleteConversationId) {
+    localStorage.removeItem(CONVERSATION_ID_KEY);
+  }
+  
+  pendingDeleteConversationId = null;
+  closeModal("deleteConversationModal");
+  renderConversationsList();
+};
+
+document.getElementById("deleteConversationModal").addEventListener("click", e => {
+  if (e.target.id === "deleteConversationModal") {
+    pendingDeleteConversationId = null;
+    closeModal("deleteConversationModal");
+  }
+});
+
+document.getElementById("welcomeEnterBtn").onclick = () => {
+  enterConversations();
+};
+
+document.getElementById("welcomeAboutBtn").onclick = () => {
+  openAboutModal();
+};
+
+document.getElementById("welcomeDevAccessBtn").onclick = () => {
+  openDevAccessModal();
+};
+
+document.getElementById("sendBtn").onclick = send;
+
+document.getElementById("menuBtn").onclick = () => {
+  enterConversations();
+};
+
+document.getElementById("conversationsBackBtn").onclick = () => {
+  history.back();
+};
+
+document.getElementById("debugToggleBtn").onclick = () => {
+  showDebug = !showDebug;
+  syncDebugVisibility();
+};
+
+document.getElementById("newSessionBtn").onclick = () => {
+  openConfirmNewSessionModal();
+};
+
+document.getElementById("conversationsFabBtn").onclick = async () => {
+  await finalizeAndStartNewSession();
+};
+
+document.getElementById("cancelNewSessionBtn").onclick = () => {
+  closeConfirmNewSessionModal();
+};
+
+document.getElementById("confirmNewSessionBtn").onclick = async () => {
+  await finalizeAndStartNewSession();
+};
+
+document.getElementById("expiredNewSessionBtn").onclick = async () => {
+  await finalizeAndStartNewSession();
+};
+
+document.getElementById("terminatedNewSessionBtn").onclick = async () => {
+  await finalizeAndStartNewSession();
+};
+
+document.getElementById("devAccessModal").addEventListener("click", e => {
+  if (e.target.id === "devAccessModal") {
+    closeDevAccessModal();
+  }
+});
+
+document.getElementById("sessionInfoContinueBtn").onclick = () => {
+  saveSessionInfoDismissed(document.getElementById("sessionInfoDontShow").checked);
+  startFreshOrResumeSession();
+};
+
+document.getElementById("input").addEventListener("keydown", e => {
+  if (e.key === "Enter" && e.ctrlKey) {
+    e.preventDefault();
+    send();
+  }
+});
+
+document.getElementById("input").addEventListener("focus", () => {
+  updateActivity();
+});
+
+document.getElementById("chat").addEventListener("scroll", () => {
+  updateActivity();
+});
+
+document.getElementById("aboutModal").addEventListener("click", e => {
+  if (e.target.id === "aboutModal") {
+    closeAboutModal();
+  }
+});
+
+document.getElementById("confirmNewSessionModal").addEventListener("click", e => {
+  if (e.target.id === "confirmNewSessionModal") {
+    closeConfirmNewSessionModal();
+  }
+});
+
+document.getElementById("sessionInfoModal").addEventListener("click", e => {
+  if (e.target.id === "sessionInfoModal") {
+    closeSessionInfoModal();
+  }
+});
+
+window.addEventListener("load", () => {
+  const params = new URLSearchParams(window.location.search);
+  
+  if (params.get("admin") === "1") {
+    localStorage.setItem(ADMIN_UI_KEY, "1");
+  }
+  if (params.get("admin") === "0") {
+    localStorage.removeItem(ADMIN_UI_KEY);
+  }
+  
+  document.body.classList.toggle(
+    "admin-ui",
+    localStorage.getItem(ADMIN_UI_KEY) === "1"
+  );
+  
+  syncDebugVisibility();
+  
+  const logo = document.getElementById("welcomeLogo");
+  const welcome = document.getElementById("welcomeScreen");
+  
+  async function waitForBackendReady() {
+    try {
+      const res = await fetch("/health", { cache: "no-store" });
+      if (res.ok) return true;
+    } catch {}
+    
+    return false;
+  }
+  
+  const WELCOME_RITUAL = [
+    "Se comprendre",
+    "S'accepter",
+    "Se faire confiance",
+    "Libérer son potentiel..."
+  ];
+  
+  const WELCOME_BOOT_PAUSE_MS = 750;
+  const WELCOME_RITUAL_TEXT_DURATION = 2000;
+  const WELCOME_RITUAL_GAP_DURATION = 400;
+  const WELCOME_RITUAL_SKIP_TEXT_DURATION = 160;
+  const WELCOME_RITUAL_SKIP_GAP_DURATION = 80;
+  const WELCOME_LOGO_DELAY_MS = 0;
+  const WELCOME_LOGO_FADE_DURATION_MS = 1200;
+  const WELCOME_RITUAL_START_DELAY_MS = 2400;
+  const WELCOME_ACTIONS_DELAY_MS = 200;
+  const WELCOME_SKIP_ACTIONS_REMAINING_MS = 160;
+  
+  let ritualIndex = 0;
+  let ritualRunning = false;
+  let ritualInterrupted = false;
+  let ritualTextTimeout = null;
+  let ritualGapTimeout = null;
+  let ritualStartTimeout = null;
+  let actionsRevealTimeout = null;
+  let bootPauseTimeout = null;
+  let logoFadeTimeout = null;
+  let welcomeInteractionBound = false;
+  let welcomeHasInteracted = false;
+  
+  let welcomePhase = "idle";
+  let firstPhraseShown = false;
+  let actionsVisible = false;
+  
+  function clearWelcomeRitualTimers() {
+    if (ritualTextTimeout) {
+      clearTimeout(ritualTextTimeout);
+      ritualTextTimeout = null;
+    }
+    
+    if (ritualGapTimeout) {
+      clearTimeout(ritualGapTimeout);
+      ritualGapTimeout = null;
+    }
+    
+    if (ritualStartTimeout) {
+      clearTimeout(ritualStartTimeout);
+      ritualStartTimeout = null;
+    }
+    
+    if (actionsRevealTimeout) {
+      clearTimeout(actionsRevealTimeout);
+      actionsRevealTimeout = null;
+    }
+    
+    if (bootPauseTimeout) {
+      clearTimeout(bootPauseTimeout);
+      bootPauseTimeout = null;
+    }
+    
+    if (logoFadeTimeout) {
+      clearTimeout(logoFadeTimeout);
+      logoFadeTimeout = null;
+    }
+  }
+  
+  function resetWelcomeRitualUI() {
+    const logoWrap = document.getElementById("welcomeLogoWrap");
+    const textEl = document.getElementById("welcomeRitualText");
+    const actions = document.getElementById("welcomeActions");
+    
+    if (logoWrap) {
+      logoWrap.style.transition = "none";
+      logoWrap.style.opacity = "0";
+    }
+    
+    if (textEl) {
+      textEl.textContent = "";
+      textEl.classList.remove("is-visible", "is-hidden");
+    }
+    
+    if (actions) {
+      actions.classList.remove("is-visible");
+    }
+    
+    welcomeHasInteracted = false;
+    firstPhraseShown = false;
+    actionsVisible = false;
+    welcomePhase = "boot_pause";
+  }
+  
+  function fastForwardWelcomeVisuals() {
+    const logoWrap = document.getElementById("welcomeLogoWrap");
+    
+    if (bootPauseTimeout) {
+      clearTimeout(bootPauseTimeout);
+      bootPauseTimeout = null;
+    }
+    
+    if (logoFadeTimeout) {
+      clearTimeout(logoFadeTimeout);
+      logoFadeTimeout = null;
+    }
+    
+    if (welcome) {
+      welcome.style.transition = "none";
+      welcome.classList.add("ready");
+    }
+    
+    if (logoWrap) {
+      logoWrap.style.transition = "none";
+      logoWrap.style.opacity = "1";
+    }
+  }
+  
+  function revealActions(withDelay = true) {
+    const actions = document.getElementById("welcomeActions");
+    if (!actions || actionsVisible) return;
+    
+    const delay = withDelay ? WELCOME_ACTIONS_DELAY_MS : WELCOME_SKIP_ACTIONS_REMAINING_MS;
+    
+    if (actionsRevealTimeout) {
+      clearTimeout(actionsRevealTimeout);
+      actionsRevealTimeout = null;
+    }
+    
+    welcomePhase = "actions_pending";
+    
+    actionsRevealTimeout = setTimeout(() => {
+      actions.classList.add("is-visible");
+      actionsVisible = true;
+      welcomePhase = "done";
+      actionsRevealTimeout = null;
+    }, delay);
+  }
+  
+  function showWelcomeLogo(immediate = false) {
+    const logoWrap = document.getElementById("welcomeLogoWrap");
+    if (!logoWrap) return;
+    
+    if (logoFadeTimeout) {
+      clearTimeout(logoFadeTimeout);
+      logoFadeTimeout = null;
+    }
+    
+    const delay = immediate ? 0 : WELCOME_LOGO_DELAY_MS;
+    const duration = immediate ? 0 : WELCOME_LOGO_FADE_DURATION_MS;
+    
+    logoFadeTimeout = setTimeout(() => {
+      logoWrap.style.transition = duration > 0 ? "opacity " + duration + "ms ease" : "none";
+      logoWrap.style.opacity = "1";
+      logoFadeTimeout = null;
       
-      const items = loadConversationsIndex()
-        .slice()
-        .sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0));
+      if (welcomePhase === "logo_pending") {
+        welcomePhase = "logo_visible";
+      }
+    }, delay);
+  }
+  
+  function endWelcomeRitual() {
+    if (ritualTextTimeout) {
+      clearTimeout(ritualTextTimeout);
+      ritualTextTimeout = null;
+    }
+    
+    if (ritualGapTimeout) {
+      clearTimeout(ritualGapTimeout);
+      ritualGapTimeout = null;
+    }
+    
+    ritualRunning = false;
+    
+    const textEl = document.getElementById("welcomeRitualText");
+    
+    if (textEl) {
+      textEl.textContent = "";
+      textEl.classList.remove("is-visible", "is-hidden");
+      textEl.style.transition = "none";
+      textEl.style.opacity = "0";
+      textEl.style.transform = "translateY(10px)";
+    }
+    
+    revealActions(!ritualInterrupted);
+  }
+  
+  function showWelcomeRitualPhrase() {
+    const textEl = document.getElementById("welcomeRitualText");
+    if (!textEl) return;
+    
+    if (ritualIndex >= WELCOME_RITUAL.length) {
+      endWelcomeRitual();
+      return;
+    }
+    
+    const isFirstPhrase = ritualIndex === 0;
+    const isLastPhrase = ritualIndex === WELCOME_RITUAL.length - 1;
+    
+    welcomePhase = "ritual";
+    textEl.textContent = WELCOME_RITUAL[ritualIndex];
+    textEl.classList.remove("is-visible", "is-hidden");
+    
+    if (isFirstPhrase) {
+      textEl.style.transition = "none";
+      textEl.style.opacity = "1";
+      textEl.style.transform = "translateX(-120vw)";
       
-      listEl.innerHTML = "";
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          textEl.style.transition = "transform 1.05s ease";
+          textEl.style.transform = "translateX(0)";
+        });
+      });
       
-      if (items.length === 0) {
-        const itemEl = document.createElement("div");
-        itemEl.className = "conversationItem";
+      firstPhraseShown = true;
+    } else {
+      textEl.style.transition = "";
+      textEl.style.opacity = "";
+      textEl.style.transform = "";
+      textEl.classList.remove("is-hidden");
+      textEl.classList.add("is-visible");
+    }
+    
+    const textDuration = ritualInterrupted
+      ? WELCOME_RITUAL_SKIP_TEXT_DURATION
+      : WELCOME_RITUAL_TEXT_DURATION;
+    
+    ritualTextTimeout = setTimeout(() => {
+      if (isLastPhrase) {
+        textEl.classList.remove("is-visible", "is-hidden");
+        textEl.style.transition = "transform 2.5s ease";
+        textEl.style.opacity = "1";
+        textEl.style.transform = "translateX(120vw)";
+      } else {
+        textEl.style.transition = "";
+        textEl.style.opacity = "";
+        textEl.style.transform = "";
+        textEl.classList.remove("is-visible");
+        textEl.classList.add("is-hidden");
+      }
+      
+      const gapDuration = ritualInterrupted
+        ? WELCOME_RITUAL_SKIP_GAP_DURATION
+        : (isLastPhrase ? 1400 : WELCOME_RITUAL_GAP_DURATION);
+      
+      ritualGapTimeout = setTimeout(() => {
+        ritualIndex += 1;
+        showWelcomeRitualPhrase();
+      }, gapDuration);
+    }, textDuration);
+  }
+  
+  function startWelcomeRitual() {
+    if (ritualStartTimeout) {
+      clearTimeout(ritualStartTimeout);
+      ritualStartTimeout = null;
+    }
+    
+    if (actionsRevealTimeout) {
+      clearTimeout(actionsRevealTimeout);
+      actionsRevealTimeout = null;
+    }
+    
+    ritualIndex = 0;
+    ritualRunning = true;
+    ritualInterrupted = false;
+    
+    const textEl = document.getElementById("welcomeRitualText");
+    const actions = document.getElementById("welcomeActions");
+    
+    if (textEl) {
+      textEl.textContent = "";
+      textEl.classList.remove("is-visible", "is-hidden");
+    }
+    
+    if (actions) {
+      actions.classList.remove("is-visible");
+    }
+    
+    actionsVisible = false;
+    showWelcomeRitualPhrase();
+  }
+  
+  function interruptWelcomeRitual() {
+    if (!ritualRunning || ritualInterrupted) return;
+    
+    ritualInterrupted = true;
+    
+    const textEl = document.getElementById("welcomeRitualText");
+    
+    if (ritualTextTimeout) {
+      clearTimeout(ritualTextTimeout);
+      ritualTextTimeout = null;
+      
+      if (textEl) {
+        textEl.classList.remove("is-visible");
+        textEl.classList.add("is-hidden");
+      }
+      
+      ritualGapTimeout = setTimeout(() => {
+        ritualIndex += 1;
+        showWelcomeRitualPhrase();
+      }, WELCOME_RITUAL_SKIP_GAP_DURATION);
+    }
+  }
+  
+  function accelerateWelcomeIntro() {
+    if (!welcomeHasInteracted) {
+      welcomeHasInteracted = true;
+      fastForwardWelcomeVisuals();
+      
+      if (welcomePhase === "boot_pause") {
+        bindWelcomeInteraction();
+        startWelcomeRitual();
+        return;
+      }
+      
+      if (welcomePhase === "logo_visible" && !firstPhraseShown) {
+        if (ritualStartTimeout) {
+          clearTimeout(ritualStartTimeout);
+          ritualStartTimeout = null;
+        }
         
-        const textEl = document.createElement("div");
-        textEl.className = "conversationItemPlaceholder";
-        textEl.textContent = "Aucune conversation locale pour le moment.";
+        startWelcomeRitual();
+        return;
+      }
+    }
+    
+    if (ritualRunning) {
+      interruptWelcomeRitual();
+      return;
+    }
+    
+    if (welcomePhase === "actions_pending") {
+      revealActions(false);
+      return;
+    }
+    
+    if (!actionsVisible) {
+      revealActions(false);
+    }
+  }
+  
+  function bindWelcomeInteraction() {
+    if (welcomeInteractionBound) return;
+    
+    const screen = document.getElementById("welcomeScreen");
+    if (!screen) return;
+    
+    screen.addEventListener("click", event => {
+      if (event.target.closest("#welcomeActions")) return;
+      accelerateWelcomeIntro();
+    });
+    
+    welcomeInteractionBound = true;
+  }
+  
+  function showWelcome() {
+    showScreen("welcomeScreen", { replaceHistory: true, pushHistory: false });
+    
+    clearWelcomeRitualTimers();
+    resetWelcomeRitualUI();
+    
+    welcome.style.transition = "none";
+    welcome.classList.remove("ready");
+    
+    requestAnimationFrame(() => {
+      bootPauseTimeout = setTimeout(() => {
+        bootPauseTimeout = null;
         
+        welcome.style.transition = "";
         
-        document.getElementById("cancelDeleteConversationBtn").onclick = () => {
-          pendingDeleteConversationId = null;
-          closeModal("deleteConversationModal");
-        };
-        
-        document.getElementById("confirmDeleteConversationBtn").onclick = () => {
-          if (!pendingDeleteConversationId) {
-            closeModal("deleteConversationModal");
-            return;
-          }
-          
-          deleteConversationData(pendingDeleteConversationId);
-          
-          if (getConversationId() === pendingDeleteConversationId) {
-            localStorage.removeItem(CONVERSATION_ID_KEY);
-          }
-          
-          pendingDeleteConversationId = null;
-          closeModal("deleteConversationModal");
-          renderConversationsList();
-        };
-        
-        document.getElementById("deleteConversationModal").addEventListener("click", e => {
-          if (e.target.id === "deleteConversationModal") {
-            pendingDeleteConversationId = null;
-            closeModal("deleteConversationModal");
-          }
+        requestAnimationFrame(() => {
+          welcome.classList.add("ready");
         });
         
-        document.getElementById("welcomeEnterBtn").onclick = () => {
-          enterConversations();
-        };
+        showWelcomeLogo(false);
+        bindWelcomeInteraction();
         
-        document.getElementById("welcomeAboutBtn").onclick = () => {
-          openAboutModal();
-        };
+        ritualStartTimeout = setTimeout(() => {
+          startWelcomeRitual();
+        }, WELCOME_RITUAL_START_DELAY_MS);
         
-        document.getElementById("welcomeDevAccessBtn").onclick = () => {
-          openDevAccessModal();
-        };
-        
-        document.getElementById("sendBtn").onclick = send;
-        
-        document.getElementById("menuBtn").onclick = () => {
-          enterConversations();
-        };
-        
-        document.getElementById("conversationsBackBtn").onclick = () => {
-          history.back();
-        };
-        
-        document.getElementById("debugToggleBtn").onclick = () => {
-          showDebug = !showDebug;
-          syncDebugVisibility();
-        };
-        
-        document.getElementById("newSessionBtn").onclick = () => {
-          openConfirmNewSessionModal();
-        };
-        
-        document.getElementById("conversationsFabBtn").onclick = async () => {
-          await finalizeAndStartNewSession();
-        };
-        
-        document.getElementById("cancelNewSessionBtn").onclick = () => {
-          closeConfirmNewSessionModal();
-        };
-        
-        document.getElementById("confirmNewSessionBtn").onclick = async () => {
-          await finalizeAndStartNewSession();
-        };
-        
-        document.getElementById("expiredNewSessionBtn").onclick = async () => {
-          await finalizeAndStartNewSession();
-        };
-        
-        document.getElementById("terminatedNewSessionBtn").onclick = async () => {
-          await finalizeAndStartNewSession();
-        };
-        
-        document.getElementById("devAccessModal").addEventListener("click", e => {
-          if (e.target.id === "devAccessModal") {
-            closeDevAccessModal();
-          }
-        });
-        
-        document.getElementById("sessionInfoContinueBtn").onclick = () => {
-          saveSessionInfoDismissed(document.getElementById("sessionInfoDontShow").checked);
-          startFreshOrResumeSession();
-        };
-        
-        document.getElementById("input").addEventListener("keydown", e => {
-          if (e.key === "Enter" && e.ctrlKey) {
-            e.preventDefault();
-            send();
-          }
-        });
-        
-        document.getElementById("input").addEventListener("focus", () => {
-          updateActivity();
-        });
-        
-        document.getElementById("chat").addEventListener("scroll", () => {
-          updateActivity();
-        });
-        
-        document.getElementById("aboutModal").addEventListener("click", e => {
-          if (e.target.id === "aboutModal") {
-            closeAboutModal();
-          }
-        });
-        
-        document.getElementById("confirmNewSessionModal").addEventListener("click", e => {
-          if (e.target.id === "confirmNewSessionModal") {
-            closeConfirmNewSessionModal();
-          }
-        });
-        
-        document.getElementById("sessionInfoModal").addEventListener("click", e => {
-          if (e.target.id === "sessionInfoModal") {
-            closeSessionInfoModal();
-          }
-        });
-        
-        /* ---------- INIT ---------- */
-        
-        window.addEventListener("load", () => {
-          const params = new URLSearchParams(window.location.search);
-          
-          if (params.get("admin") === "1") {
-            localStorage.setItem(ADMIN_UI_KEY, "1");
-          }
-          if (params.get("admin") === "0") {
-            localStorage.removeItem(ADMIN_UI_KEY);
-          }
-          
-          document.body.classList.toggle(
-            "admin-ui",
-            localStorage.getItem(ADMIN_UI_KEY) === "1"
-          );
-          
-          syncDebugVisibility();
-          
-          const logo = document.getElementById("welcomeLogo");
-          const welcome = document.getElementById("welcomeScreen");
-          
-          async function waitForBackendReady() {
-            try {
-              const res = await fetch("/health", { cache: "no-store" });
-              if (res.ok) return true;
-            } catch {}
-            
-            return false;
-          }
-          
-          // ---------- WELCOME RITUAL ----------
-          
-          const WELCOME_RITUAL = [
-            "Se comprendre",
-            "S'accepter",
-            "Se faire confiance",
-            "Libérer son potentiel..."
-          ];
-          
-          const WELCOME_BOOT_PAUSE_MS = 750;
-          const WELCOME_RITUAL_TEXT_DURATION = 2000;
-          const WELCOME_RITUAL_GAP_DURATION = 400;
-          const WELCOME_RITUAL_SKIP_TEXT_DURATION = 160;
-          const WELCOME_RITUAL_SKIP_GAP_DURATION = 80;
-          const WELCOME_LOGO_DELAY_MS = 0;
-          const WELCOME_LOGO_FADE_DURATION_MS = 1200;
-          const WELCOME_RITUAL_START_DELAY_MS = 2400;
-          const WELCOME_ACTIONS_DELAY_MS = 200;
-          const WELCOME_SKIP_ACTIONS_REMAINING_MS = 160;
-          
-          let ritualIndex = 0;
-          let ritualRunning = false;
-          let ritualInterrupted = false;
-          let ritualTextTimeout = null;
-          let ritualGapTimeout = null;
-          let ritualStartTimeout = null;
-          let actionsRevealTimeout = null;
-          let bootPauseTimeout = null;
-          let logoFadeTimeout = null;
-          let welcomeInteractionBound = false;
-          let welcomeHasInteracted = false;
-          
-          let welcomePhase = "idle";
-          let firstPhraseShown = false;
-          let actionsVisible = false;
-          
-          function clearWelcomeRitualTimers() {
-            if (ritualTextTimeout) {
-              clearTimeout(ritualTextTimeout);
-              ritualTextTimeout = null;
-            }
-            
-            if (ritualGapTimeout) {
-              clearTimeout(ritualGapTimeout);
-              ritualGapTimeout = null;
-            }
-            
-            if (ritualStartTimeout) {
-              clearTimeout(ritualStartTimeout);
-              ritualStartTimeout = null;
-            }
-            
-            if (actionsRevealTimeout) {
-              clearTimeout(actionsRevealTimeout);
-              actionsRevealTimeout = null;
-            }
-            
-            if (bootPauseTimeout) {
-              clearTimeout(bootPauseTimeout);
-              bootPauseTimeout = null;
-            }
-            
-            if (logoFadeTimeout) {
-              clearTimeout(logoFadeTimeout);
-              logoFadeTimeout = null;
-            }
-          }
-          
-          function resetWelcomeRitualUI() {
-            const logoWrap = document.getElementById("welcomeLogoWrap");
-            const textEl = document.getElementById("welcomeRitualText");
-            const actions = document.getElementById("welcomeActions");
-            
-            if (logoWrap) {
-              logoWrap.style.transition = "none";
-              logoWrap.style.opacity = "0";
-            }
-            
-            if (textEl) {
-              textEl.textContent = "";
-              textEl.classList.remove("is-visible", "is-hidden");
-            }
-            
-            if (actions) {
-              actions.classList.remove("is-visible");
-            }
-            
-            welcomeHasInteracted = false;
-            firstPhraseShown = false;
-            actionsVisible = false;
-            welcomePhase = "boot_pause";
-          }
-          
-          function fastForwardWelcomeVisuals() {
-            const logoWrap = document.getElementById("welcomeLogoWrap");
-            
-            if (bootPauseTimeout) {
-              clearTimeout(bootPauseTimeout);
-              bootPauseTimeout = null;
-            }
-            
-            if (logoFadeTimeout) {
-              clearTimeout(logoFadeTimeout);
-              logoFadeTimeout = null;
-            }
-            
-            if (welcome) {
-              welcome.style.transition = "none";
-              welcome.classList.add("ready");
-            }
-            
-            if (logoWrap) {
-              logoWrap.style.transition = "none";
-              logoWrap.style.opacity = "1";
-            }
-          }
-          
-          function revealActions(withDelay = true) {
-            const actions = document.getElementById("welcomeActions");
-            if (!actions || actionsVisible) return;
-            
-            const delay = withDelay ? WELCOME_ACTIONS_DELAY_MS : WELCOME_SKIP_ACTIONS_REMAINING_MS;
-            
-            if (actionsRevealTimeout) {
-              clearTimeout(actionsRevealTimeout);
-              actionsRevealTimeout = null;
-            }
-            
-            welcomePhase = "actions_pending";
-            
-            actionsRevealTimeout = setTimeout(() => {
-              actions.classList.add("is-visible");
-              actionsVisible = true;
-              welcomePhase = "done";
-              actionsRevealTimeout = null;
-            }, delay);
-          }
-          
-          function showWelcomeLogo(immediate = false) {
-            const logoWrap = document.getElementById("welcomeLogoWrap");
-            if (!logoWrap) return;
-            
-            if (logoFadeTimeout) {
-              clearTimeout(logoFadeTimeout);
-              logoFadeTimeout = null;
-            }
-            
-            const delay = immediate ? 0 : WELCOME_LOGO_DELAY_MS;
-            const duration = immediate ? 0 : WELCOME_LOGO_FADE_DURATION_MS;
-            
-            logoFadeTimeout = setTimeout(() => {
-              logoWrap.style.transition = duration > 0 ? "opacity " + duration + "ms ease" : "none";
-              logoWrap.style.opacity = "1";
-              logoFadeTimeout = null;
-              
-              if (welcomePhase === "logo_pending") {
-                welcomePhase = "logo_visible";
-              }
-            }, delay);
-          }
-          
-          function endWelcomeRitual() {
-            if (ritualTextTimeout) {
-              clearTimeout(ritualTextTimeout);
-              ritualTextTimeout = null;
-            }
-            
-            if (ritualGapTimeout) {
-              clearTimeout(ritualGapTimeout);
-              ritualGapTimeout = null;
-            }
-            
-            ritualRunning = false;
-            
-            const textEl = document.getElementById("welcomeRitualText");
-            
-            if (textEl) {
-              textEl.textContent = "";
-              textEl.classList.remove("is-visible", "is-hidden");
-              textEl.style.transition = "none";
-              textEl.style.opacity = "0";
-              textEl.style.transform = "translateY(10px)";
-            }
-            
-            revealActions(!ritualInterrupted);
-          }
-          
-          function showWelcomeRitualPhrase() {
-            const textEl = document.getElementById("welcomeRitualText");
-            if (!textEl) return;
-            
-            if (ritualIndex >= WELCOME_RITUAL.length) {
-              endWelcomeRitual();
-              return;
-            }
-            
-            const isFirstPhrase = ritualIndex === 0;
-            const isLastPhrase = ritualIndex === WELCOME_RITUAL.length - 1;
-            
-            welcomePhase = "ritual";
-            textEl.textContent = WELCOME_RITUAL[ritualIndex];
-            textEl.classList.remove("is-visible", "is-hidden");
-            
-            if (isFirstPhrase) {
-              textEl.style.transition = "none";
-              textEl.style.opacity = "1";
-              textEl.style.transform = "translateX(-120vw)";
-              
-              requestAnimationFrame(() => {
-                requestAnimationFrame(() => {
-                  textEl.style.transition = "transform 1.05s ease";
-                  textEl.style.transform = "translateX(0)";
-                });
-              });
-              
-              firstPhraseShown = true;
-            } else {
-              textEl.style.transition = "";
-              textEl.style.opacity = "";
-              textEl.style.transform = "";
-              textEl.classList.remove("is-hidden");
-              textEl.classList.add("is-visible");
-            }
-            
-            const textDuration = ritualInterrupted ?
-              WELCOME_RITUAL_SKIP_TEXT_DURATION :
-              WELCOME_RITUAL_TEXT_DURATION;
-            
-            ritualTextTimeout = setTimeout(() => {
-              if (isLastPhrase) {
-                textEl.classList.remove("is-visible", "is-hidden");
-                textEl.style.transition = "transform 2.5s ease";
-                textEl.style.opacity = "1";
-                textEl.style.transform = "translateX(120vw)";
-              } else {
-                textEl.style.transition = "";
-                textEl.style.opacity = "";
-                textEl.style.transform = "";
-                textEl.classList.remove("is-visible");
-                textEl.classList.add("is-hidden");
-              }
-              
-              const gapDuration = ritualInterrupted ?
-                WELCOME_RITUAL_SKIP_GAP_DURATION :
-                (isLastPhrase ? 1400 : WELCOME_RITUAL_GAP_DURATION);
-              
-              ritualGapTimeout = setTimeout(() => {
-                ritualIndex += 1;
-                showWelcomeRitualPhrase();
-              }, gapDuration);
-            }, textDuration);
-          }
-          
-          function startWelcomeRitual() {
-            if (ritualStartTimeout) {
-              clearTimeout(ritualStartTimeout);
-              ritualStartTimeout = null;
-            }
-            
-            if (actionsRevealTimeout) {
-              clearTimeout(actionsRevealTimeout);
-              actionsRevealTimeout = null;
-            }
-            
-            ritualIndex = 0;
-            ritualRunning = true;
-            ritualInterrupted = false;
-            
-            const textEl = document.getElementById("welcomeRitualText");
-            const actions = document.getElementById("welcomeActions");
-            
-            if (textEl) {
-              textEl.textContent = "";
-              textEl.classList.remove("is-visible", "is-hidden");
-            }
-            
-            if (actions) {
-              actions.classList.remove("is-visible");
-            }
-            
-            actionsVisible = false;
-            showWelcomeRitualPhrase();
-          }
-          
-          function interruptWelcomeRitual() {
-            if (!ritualRunning || ritualInterrupted) return;
-            
-            ritualInterrupted = true;
-            
-            const textEl = document.getElementById("welcomeRitualText");
-            
-            if (ritualTextTimeout) {
-              clearTimeout(ritualTextTimeout);
-              ritualTextTimeout = null;
-              
-              if (textEl) {
-                textEl.classList.remove("is-visible");
-                textEl.classList.add("is-hidden");
-              }
-              
-              ritualGapTimeout = setTimeout(() => {
-                ritualIndex += 1;
-                showWelcomeRitualPhrase();
-              }, WELCOME_RITUAL_SKIP_GAP_DURATION);
-            }
-          }
-          
-          function accelerateWelcomeIntro() {
-            if (!welcomeHasInteracted) {
-              welcomeHasInteracted = true;
-              fastForwardWelcomeVisuals();
-              
-              if (welcomePhase === "boot_pause") {
-                bindWelcomeInteraction();
-                startWelcomeRitual();
-                return;
-              }
-              
-              if (welcomePhase === "logo_visible" && !firstPhraseShown) {
-                if (ritualStartTimeout) {
-                  clearTimeout(ritualStartTimeout);
-                  ritualStartTimeout = null;
-                }
-                
-                startWelcomeRitual();
-                return;
-              }
-            }
-            
-            if (ritualRunning) {
-              interruptWelcomeRitual();
-              return;
-            }
-            
-            if (welcomePhase === "actions_pending") {
-              revealActions(false);
-              return;
-            }
-            
-            if (!actionsVisible) {
-              revealActions(false);
-            }
-          }
-          
-          function bindWelcomeInteraction() {
-            if (welcomeInteractionBound) return;
-            
-            const screen = document.getElementById("welcomeScreen");
-            if (!screen) return;
-            
-            screen.addEventListener("click", event => {
-              if (event.target.closest("#welcomeActions")) return;
-              accelerateWelcomeIntro();
-            });
-            
-            welcomeInteractionBound = true;
-          }
-          
-          function showWelcome() {
-            showScreen("welcomeScreen", { replaceHistory: true, pushHistory: false });
-            
-            clearWelcomeRitualTimers();
-            resetWelcomeRitualUI();
-            
-            welcome.style.transition = "none";
-            welcome.classList.remove("ready");
-            
-            requestAnimationFrame(() => {
-              bootPauseTimeout = setTimeout(() => {
-                bootPauseTimeout = null;
-                
-                welcome.style.transition = "";
-                
-                requestAnimationFrame(() => {
-                  welcome.classList.add("ready");
-                });
-                
-                showWelcomeLogo(false);
-                bindWelcomeInteraction();
-                
-                ritualStartTimeout = setTimeout(() => {
-                  startWelcomeRitual();
-                }, WELCOME_RITUAL_START_DELAY_MS);
-                
-                welcomePhase = "logo_visible";
-              }, WELCOME_BOOT_PAUSE_MS);
-            });
-          }
-          
-          async function boot() {
-            if (!logo || logo.complete) {
-              await waitForBackendReady();
-              showWelcome();
-              return;
-            }
-            
-            logo.addEventListener("load", async () => {
-              await waitForBackendReady();
-              showWelcome();
-            }, { once: true });
-            
-            logo.addEventListener("error", async () => {
-              await waitForBackendReady();
-              showWelcome();
-            }, { once: true });
-          }
-          
-          boot();
-        });
+        welcomePhase = "logo_visible";
+      }, WELCOME_BOOT_PAUSE_MS);
+    });
+  }
+  
+  async function boot() {
+    if (!logo || logo.complete) {
+      await waitForBackendReady();
+      showWelcome();
+      return;
+    }
+    
+    logo.addEventListener("load", async () => {
+      await waitForBackendReady();
+      showWelcome();
+    }, { once: true });
+    
+    logo.addEventListener("error", async () => {
+      await waitForBackendReady();
+      showWelcome();
+    }, { once: true });
+  }
+  
+  boot();
+});
   </script>
 </body>
 
