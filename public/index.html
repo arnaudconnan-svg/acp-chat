@@ -1750,57 +1750,76 @@
     }
     
     function showScreen(id, options = {}) {
-      const { pushHistory = true, replaceHistory = false } = options;
-      const currentActive = document.querySelector(".screen.active");
-      const currentId = currentActive ? currentActive.id : null;
-      
-      if (currentId === id) return;
-      
-      const currentEl = currentActive;
-      const nextEl = document.getElementById(id);
-      
-      function transition() {
-        if (!currentEl) {
-          applyScreen(id);
-          return;
-        }
-        
-        currentEl.style.transition = "opacity 0.32s ease";
-        currentEl.style.opacity = "0";
-        
-        setTimeout(() => {
-          nextEl.style.transition = "none";
-          nextEl.style.opacity = "0";
-          
-          applyScreen(id);
-          
-          setTimeout(() => {
-            nextEl.style.transition = "opacity 0.7s ease";
-            nextEl.style.opacity = "1";
-          }, 80);
-          
-          currentEl.style.transition = "";
-          currentEl.style.opacity = "";
-        }, 320);
-      }
-      
-      transition();
-      
-      if (!SCREEN_IDS.includes(id)) return;
-      
-      const nextState = { screenId: id };
-      
-      if (replaceHistory) {
-        history.replaceState(nextState, "", window.location.href);
-        return;
-      }
-      
-      if (!pushHistory) return;
-      
-      if (currentId !== id) {
-        history.pushState(nextState, "", window.location.href);
-      }
+  const { pushHistory = true, replaceHistory = false } = options;
+  const currentActive = document.querySelector(".screen.active");
+  const currentId = currentActive ? currentActive.id : null;
+  
+  if (currentId === id) {
+    if (!SCREEN_IDS.includes(id)) return;
+    
+    const nextState = { screenId: id };
+    
+    if (replaceHistory) {
+      history.replaceState(nextState, "", window.location.href);
     }
+    
+    return;
+  }
+  
+  const currentEl = currentActive;
+  const nextEl = document.getElementById(id);
+  
+  function transition() {
+    if (!currentEl) {
+      applyScreen(id);
+      return;
+    }
+    
+    currentEl.style.transition = "opacity 0.32s ease";
+    currentEl.style.opacity = "0";
+    
+    setTimeout(() => {
+      nextEl.style.transition = "none";
+      nextEl.style.opacity = "0";
+      
+      applyScreen(id);
+      
+      setTimeout(() => {
+        nextEl.style.transition = "opacity 0.7s ease";
+        nextEl.style.opacity = "1";
+      }, 80);
+      
+      currentEl.style.transition = "";
+      currentEl.style.opacity = "";
+    }, 320);
+  }
+  
+  transition();
+  
+  if (!SCREEN_IDS.includes(id)) return;
+  
+  const nextState = { screenId: id };
+  
+  if (replaceHistory) {
+    history.replaceState(nextState, "", window.location.href);
+    return;
+  }
+  
+  if (!pushHistory) return;
+  
+  history.pushState(nextState, "", window.location.href);
+}
+
+window.addEventListener("popstate", e => {
+  const state = e.state || {};
+  const screenId = state.screenId;
+  
+  if (!SCREEN_IDS.includes(screenId)) {
+    return;
+  }
+  
+  showScreen(screenId, { pushHistory: false });
+});
     
     function syncDebugVisibility() {
       const isAdminUI = localStorage.getItem(ADMIN_UI_KEY) === "1";
