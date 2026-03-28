@@ -2039,9 +2039,19 @@ app.post("/chat", async (req, res) => {
 
     previousMemoryForCatch = previousMemory;
     flagsForCatch = flags;
-
+    
+    async function pushAssistantMessage(reply, debug) {
+      await messagesRef.push({
+        conversationId,
+        userId,
+        role: "assistant",
+        content: reply,
+        timestamp: new Date().toISOString(),
+        debug
+      });
+    }
+    
     const suicide = await analyzeSuicideRisk(message, recentHistory, flags);
-    let newFlags = normalizeSessionFlags(flags);
 
     // -------- N2 --------
     if (suicide.suicideLevel === "N2") {
