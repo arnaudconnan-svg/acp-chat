@@ -2128,40 +2128,49 @@
     }
     
     function enterConversations() {
-      const screen = document.getElementById("conversationsScreen");
-      const bgValue = window.getComputedStyle(screen).backgroundImage || "";
+      const welcomeScreen = document.getElementById("welcomeScreen");
+      const conversationsScreen = document.getElementById("conversationsScreen");
+      const bgValue = window.getComputedStyle(conversationsScreen).backgroundImage || "";
       const match = bgValue.match(/url\(["']?(.*?)["']?\)/);
       const bgUrl = match ? match[1] : "";
       
       renderConversationsList();
       
-      function showWithFade() {
-        screen.style.transition = "none";
-        screen.style.opacity = "0";
+      function fadeOutWelcomeThenShow() {
+        welcomeScreen.style.transition = "opacity 0.32s ease";
+        welcomeScreen.style.opacity = "0";
         
-        showScreen("conversationsScreen", { pushHistory: true });
-        
-        requestAnimationFrame(() => {
+        setTimeout(() => {
+          conversationsScreen.style.transition = "none";
+          conversationsScreen.style.opacity = "0";
+          
+          showScreen("conversationsScreen", { pushHistory: true });
+          
           requestAnimationFrame(() => {
-            screen.style.transition = "opacity 0.55s ease";
-            screen.style.opacity = "1";
+            requestAnimationFrame(() => {
+              conversationsScreen.style.transition = "opacity 0.42s ease";
+              conversationsScreen.style.opacity = "1";
+              
+              welcomeScreen.style.transition = "";
+              welcomeScreen.style.opacity = "";
+            });
           });
-        });
+        }, 320);
       }
       
       if (!bgUrl) {
-        showWithFade();
+        fadeOutWelcomeThenShow();
         return;
       }
       
       if (enterConversations._loadedUrl === bgUrl) {
-        showWithFade();
+        fadeOutWelcomeThenShow();
         return;
       }
       
       if (enterConversations._loadingPromise && enterConversations._loadingUrl === bgUrl) {
         enterConversations._loadingPromise.then(() => {
-          showWithFade();
+          fadeOutWelcomeThenShow();
         });
         return;
       }
@@ -2185,7 +2194,7 @@
       });
       
       enterConversations._loadingPromise.then(() => {
-        showWithFade();
+        fadeOutWelcomeThenShow();
       });
     }
     
