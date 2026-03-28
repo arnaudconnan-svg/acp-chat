@@ -2333,6 +2333,7 @@
   const sendBtn = document.getElementById("sendBtn");
   const chat = document.getElementById("chat");
   const message = input.value.trim();
+  
   if (!message) return;
   
   isSending = true;
@@ -2385,8 +2386,6 @@
   }
   
   try {
-    const requestData = loadConversationData(requestConversationId);
-    
     const res = await fetch("/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -2394,11 +2393,9 @@
         message,
         userId: getOrCreateUserId(),
         conversationId: requestConversationId,
-        recentHistory: requestData.messages
-          .map(({ role, content }) => ({ role, content }))
-          .slice(-MAX_RECENT_TURNS),
-        memory: requestData.memory,
-        flags: requestData.flags
+        recentHistory: loadHistory().map(({ role, content }) => ({ role, content })).slice(-MAX_RECENT_TURNS),
+        memory: loadMemory(),
+        flags: loadFlags()
       })
     });
     
@@ -2407,7 +2404,7 @@
     if (dotAnimation) dotAnimation.cancel();
     if (waitingMsg.parentNode) waitingMsg.parentNode.removeChild(waitingMsg);
     
-    if (!res.ok || !data || data.conversationId !== requestConversationId) {
+    if (!res.ok || !data || !data.reply) {
       if (
         getConversationId() === requestConversationId &&
         document.querySelector(".screen.active")?.id === requestScreenId &&
@@ -2418,32 +2415,27 @@
       return;
     }
     
-    const currentData = loadConversationData(requestConversationId);
-    const alreadyExists = currentData.messages.some(
-      m => m.role === "assistant" && m.content === data.reply && (m.t || 0) > Date.now() - 10000
-    );
+    const currentConversationId = getConversationId();
     
-    if (!alreadyExists) {
+    if (currentConversationId === requestConversationId) {
+      if (data.memory) saveMemory(data.memory);
+      if (data.flags) saveFlags(data.flags);
+      pushHistory("assistant", data.reply, data.debug || []);
+    } else {
+      const storedData = loadConversationData(requestConversationId);
       saveConversationData(requestConversationId, {
-        ...currentData,
+        ...storedData,
+        memory: data.memory || storedData.memory,
+        flags: data.flags || storedData.flags,
         messages: [
-          ...currentData.messages,
+          ...(Array.isArray(storedData.messages) ? storedData.messages : []),
           {
             role: "assistant",
             content: data.reply,
-            debug: data.debug || [],
+            debug: Array.isArray(data.debug) ? data.debug : [],
             t: Date.now()
           }
         ],
-        memory: data.memory || currentData.memory,
-        flags: data.flags || currentData.flags,
-        updatedAt: Date.now()
-      });
-    } else {
-      saveConversationData(requestConversationId, {
-        ...currentData,
-        memory: data.memory || currentData.memory,
-        flags: data.flags || currentData.flags,
         updatedAt: Date.now()
       });
     }
