@@ -74,148 +74,126 @@
     }
     
     #welcomeInner {
-      position: relative;
-      z-index: 1;
-      width: 100%;
-      max-width: 680px;
-      margin: 0 auto;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      min-height: 100%;
-      box-sizing: border-box;
-      padding-top: 9vh;
-      padding-bottom: 5vh;
-    }
-    
-    #welcomeLogoWrap {
-      display: flex;
-      justify-content: center;
-      width: 100%;
-      margin: 0 0 38px 0;
-      opacity: 0;
-    }
-    
-    #welcomeLogo {
-      width: min(340px, 80vw);
-      height: auto;
-      display: block;
-      filter: drop-shadow(0 16px 36px rgba(36, 94, 102, 0.12));
-    }
-    
-    #welcomeRitualText {
-      width: 100%;
-      min-height: 92px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      font-size: clamp(28px, 6.4vw, 38px);
-      font-weight: 400;
-      line-height: 1.22;
-      letter-spacing: 0.01em;
-      color: #173b40;
-      opacity: 0;
-      transform: translateY(10px);
-      padding: 0 6px;
-      box-sizing: border-box;
-      text-wrap: balance;
-    }
-    
-    #welcomeRitualText.is-visible {
-      opacity: 1;
-      transform: translateY(0);
-      transition:
-        opacity 0.68s ease,
-        transform 0.68s ease;
-    }
-    
-    #welcomeRitualText.is-hidden {
-      opacity: 0;
-      transform: translateY(10px);
-      transition:
-        opacity 0.52s ease,
-        transform 0.52s ease;
-    }
-    
-    #welcomeActions {
-      position: absolute;
-      left: 50%;
-      transform: translateX(-50%) translateY(18px);
-      top: 65%;
-      width: 100%;
-      max-width: 380px;
-      display: flex;
-      flex-direction: column;
-      align-items: stretch;
-      gap: 14px;
-      opacity: 0;
-      pointer-events: none;
-    }
-    
-    #welcomeActions.is-visible {
-      opacity: 1;
-      pointer-events: auto;
-      transform: translateX(-50%) translateY(0);
-      transition:
-        opacity 0.75s ease,
-        transform 0.75s ease;
-    }
-    
-    .welcomeBtnPrimary,
-    .welcomeBtnSecondary,
-    .welcomeBtnTertiary {
-      width: 100%;
-      box-sizing: border-box;
-      line-height: 1.25;
-      cursor: pointer;
-    }
-    
-    .welcomeBtnPrimary {
-      border: none;
-      border-radius: 18px;
-      background: #245e66;
-      color: #ffffff;
-      font-size: 17px;
-      font-weight: 600;
-      padding: 15px 20px;
-      box-shadow:
-        0 14px 30px rgba(36, 94, 102, 0.22),
-        0 1px 0 rgba(255, 255, 255, 0.18) inset;
-    }
-    
-    .welcomeBtnSecondary {
-      border: none;
-      background: transparent;
-      color: #245e66;
-      font-size: 14px;
-      padding: 2px 12px;
-    }
-    
-    .welcomeBtnTertiary {
-      border: 1px dashed #bfd0d3;
-      border-radius: 14px;
-      background: rgba(248, 251, 251, 0.8);
-      color: #245e66;
-      font-size: 13px;
-      padding: 9px 12px;
-    }
-    
-    #welcomeEnterBtn {
-      transform: scale(1);
-    }
-    
-    #welcomeActions.is-visible #welcomeEnterBtn {
-      animation: welcomeEnterPulse 2.6s ease-in-out infinite;
-    }
-    
-    #welcomeAboutBtn {
-      opacity: 0.88;
-    }
-    
-    #welcomeDevAccessWrap {
-      min-height: 36px;
-    }
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 680px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100%;
+  box-sizing: border-box;
+  padding-top: 9vh;
+  padding-bottom: 5vh;
+}
+
+#welcomeLogoWrap {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  margin: 0 0 38px 0;
+  opacity: 0;
+  background: #ffffff;
+  padding: 24px;
+  border-radius: 20px;
+}
+
+#welcomeLogo {
+  width: min(340px, 80vw);
+  height: auto;
+  display: block;
+  filter: drop-shadow(0 16px 36px rgba(36, 94, 102, 0.12));
+}
+
+#welcomeRitualText {
+  width: 100%;
+  min-height: 92px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-size: clamp(28px, 6.4vw, 38px);
+  font-weight: 400;
+  line-height: 1.22;
+  letter-spacing: 0.01em;
+  color: #173b40;
+  opacity: 0;
+  transform: translateY(10px);
+  padding: 0 6px;
+  box-sizing: border-box;
+  text-wrap: balance;
+}
+
+#welcomeRitualText.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity 0.68s ease,
+    transform 0.68s ease;
+}
+
+#welcomeRitualText.is-hidden {
+  opacity: 0;
+  transform: translateY(10px);
+  transition:
+    opacity 0.52s ease,
+    transform 0.52s ease;
+}
+
+#welcomeActions {
+  position: absolute;
+  left: 50%;
+  top: 66%;
+  width: min(380px, calc(100vw - 44px));
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  opacity: 0;
+  pointer-events: none;
+}
+
+#welcomeActions.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+  transition: opacity 0.75s ease;
+}
+
+#welcomeEnterBtn {
+  transform: scale(1);
+  margin-bottom: 24px;
+}
+
+#welcomeActions.is-visible #welcomeEnterBtn {
+  animation: welcomeEnterPulse 2.6s ease-in-out infinite;
+}
+
+#welcomeAboutBtn {
+  opacity: 0;
+  transform: translateY(10px);
+  transition:
+    opacity 0.45s ease,
+    transform 0.45s ease;
+  transition-delay: 0.28s;
+}
+
+#welcomeDevAccessWrap {
+  min-height: 36px;
+  margin-top: 14px;
+  opacity: 0;
+  transform: translateY(10px);
+  transition:
+    opacity 0.45s ease,
+    transform 0.45s ease;
+  transition-delay: 0.42s;
+}
+
+#welcomeActions.is-visible #welcomeAboutBtn,
+#welcomeActions.is-visible #welcomeDevAccessWrap {
+  opacity: 1;
+  transform: translateY(0);
+}
     
     body:not(.admin-ui) #welcomeDevAccessBtn {
       visibility: hidden;
