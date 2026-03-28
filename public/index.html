@@ -2438,34 +2438,60 @@
         return;
       }
       
+      const localData = loadConversationData(conversationId);
+      const userMessages = (localData.messages || []).filter(m => m.role === "user");
+      const firstUserTitle = String(userMessages[0]?.content || "").trim().replace(/\s+/g, " ").slice(0, 60);
+      const shouldWaitForSmartTitle = userMessages.length >= 3;
+      
       try {
-        const titleRes = await fetch(`/api/conversations/${encodeURIComponent(conversationId)}/title`);
+        const titleRes = await fetch(`/api/conversations/${encodeURIComponent(conversationId)}/title`, {
+          cache: "no-store"
+        });
         
-        if (!titleRes.ok) return;
-        
-        const titleData = await titleRes.json();
-        
-        if (titleData.title) {
-          upsertConversationIndexItem({
-            id: conversationId,
-            title: titleData.title,
-            updatedAt: titleData.updatedAt ? new Date(titleData.updatedAt).getTime() : Date.now(),
-            isCustomTitle: false
-          });
-          
-          if (document.getElementById("conversationsScreen").classList.contains("active")) {
-            renderConversationsList();
+        if (!titleRes.ok) {
+          if (shouldWaitForSmartTitle && attempt < 12) {
+            setTimeout(() => {
+              refreshConversationTitle(conversationId, attempt + 1);
+            }, 1000);
           }
-          
           return;
         }
         
-        if (attempt < 5) {
+        const titleData = await titleRes.json();
+        const serverTitle = String(titleData.title || "").trim();
+        
+        if (serverTitle) {
+          const hasSmartTitle = !firstUserTitle ||
+            serverTitle !== firstUserTitle;
+          
+          if (hasSmartTitle || !shouldWaitForSmartTitle) {
+            upsertConversationIndexItem({
+              id: conversationId,
+              title: serverTitle,
+              updatedAt: titleData.updatedAt ? new Date(titleData.updatedAt).getTime() : Date.now(),
+              isCustomTitle: false
+            });
+            
+            if (document.getElementById("conversationsScreen").classList.contains("active")) {
+              renderConversationsList();
+            }
+            
+            return;
+          }
+        }
+        
+        if (shouldWaitForSmartTitle && attempt < 12) {
           setTimeout(() => {
             refreshConversationTitle(conversationId, attempt + 1);
-          }, 800);
+          }, 1000);
         }
-      } catch {}
+      } catch {
+        if (shouldWaitForSmartTitle && attempt < 12) {
+          setTimeout(() => {
+            refreshConversationTitle(conversationId, attempt + 1);
+          }, 1000);
+        }
+      }
     }
     
     async function send() {
