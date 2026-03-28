@@ -2137,7 +2137,7 @@
       renderConversationsList();
       
       function fadeOutWelcomeThenShow() {
-        welcomeScreen.style.transition = "opacity 0.32s ease";
+        welcomeScreen.style.transition = "opacity 0.38s ease";
         welcomeScreen.style.opacity = "0";
         
         setTimeout(() => {
@@ -2148,14 +2148,14 @@
           
           requestAnimationFrame(() => {
             requestAnimationFrame(() => {
-              conversationsScreen.style.transition = "opacity 0.42s ease";
+              conversationsScreen.style.transition = "opacity 0.55s ease";
               conversationsScreen.style.opacity = "1";
               
               welcomeScreen.style.transition = "";
               welcomeScreen.style.opacity = "";
             });
           });
-        }, 320);
+        }, 380);
       }
       
       if (!bgUrl) {
