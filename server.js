@@ -1991,6 +1991,39 @@ app.post("/chat", async (req, res) => {
     
     const userId = req.body?.userId || "u_anon";
     const nowIso = new Date().toISOString();
+    const convRef = db.ref("conversations").child(conversationId);
+    
+    async function maybeGenerateConversationTitle() {
+      try {
+        const convSnap = await convRef.once("value");
+        const convData = convSnap.val() || {};
+        
+        if (convData.titleLocked === true) return;
+        
+        const messagesSnap = await messagesRef
+          .orderByChild("conversationId")
+          .equalTo(conversationId)
+          .once("value");
+        
+        const conversationMessages = Object.values(messagesSnap.val() || {})
+          .filter(m => m && typeof m.content === "string")
+          .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+        
+        const userMessages = conversationMessages.filter(m => m.role === "user");
+        
+        if (userMessages.length < 3) return;
+        
+        const generatedTitle = await generateConversationTitle(conversationMessages);
+        if (!generatedTitle) return;
+        
+        await convRef.update({
+          title: generatedTitle,
+          updatedAt: new Date().toISOString()
+        });
+      } catch (titleErr) {
+        console.error("Erreur auto-title /chat:", titleErr.message);
+      }
+    }
     
     await messagesRef.push({
       conversationId,
@@ -1999,8 +2032,6 @@ app.post("/chat", async (req, res) => {
       content: message,
       timestamp: nowIso
     });
-    
-    const convRef = db.ref("conversations").child(conversationId);
     
     await convRef.transaction(current => {
       const now = new Date().toISOString();
@@ -2026,46 +2057,6 @@ app.post("/chat", async (req, res) => {
       };
     });
     
-    async function maybeGenerateConversationTitle() {
-      try {
-        const convSnap = await convRef.once("value");
-        const convData = convSnap.val() || {};
-        
-        if (convData.titleLocked === true) return;
-        
-        const messagesSnap = await messagesRef
-          .orderByChild("conversationId")
-          .equalTo(conversationId)
-          .once("value");
-        
-        const conversationMessages = Object.values(messagesSnap.val() || {})
-          .filter(m =>
-            m &&
-            typeof m.content === "string" &&
-            (m.role === "user" || m.role === "assistant")
-          )
-          .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-        
-        const userMessages = conversationMessages.filter(m => m.role === "user");
-        
-        if (userMessages.length < 3) return;
-        
-        const generatedTitle = await generateConversationTitle(conversationMessages);
-        if (!generatedTitle) return;
-        
-        const currentTitle = String(convData.title || "").trim();
-        
-        if (currentTitle === generatedTitle) return;
-        
-        await convRef.update({
-          title: generatedTitle,
-          updatedAt: new Date().toISOString()
-        });
-      } catch (titleErr) {
-        console.error("Erreur auto-title /chat:", titleErr.message);
-      }
-    }
-    
     const recentHistory = trimHistory(req.body?.recentHistory);
     const previousMemory = normalizeMemory(req.body?.memory);
     const flags = normalizeSessionFlags(req.body?.flags);
@@ -2082,130 +2073,117 @@ app.post("/chat", async (req, res) => {
         timestamp: new Date().toISOString(),
         debug
       });
+      
+      await convRef.update({
+        updatedAt: new Date().toISOString()
+      });
     }
     
     const suicide = await analyzeSuicideRisk(message, recentHistory, flags);
     let newFlags = normalizeSessionFlags(flags);
     
-    // -------- N2 --------
     if (suicide.suicideLevel === "N2") {
       newFlags.acuteCrisis = true;
       newFlags.contactState = { wasContact: false };
       
+      const debug = buildDebug("override", {
+        suicideLevel: "N2"
+      });
       const reply = n2Response();
       
-      await pushAssistantMessage(
-        reply,
-        buildDebug("override", {
-          suicideLevel: "N2"
-        })
-      );
+      await pushAssistantMessage(reply, debug);
+      await maybeGenerateConversationTitle();
       
       return res.json({
         conversationId,
         reply,
         memory: previousMemory,
         flags: newFlags,
-        debug: buildDebug("override", {
-          suicideLevel: "N2"
-        })
+        debug
       });
     }
     
-    // -------- ACUTE --------
     if (flags.acuteCrisis === true) {
       if (suicide.crisisResolved !== true) {
         newFlags.acuteCrisis = true;
         newFlags.contactState = { wasContact: false };
         
+        const debug = buildDebug("override", {
+          suicideLevel: suicide.suicideLevel
+        });
         const reply = acuteCrisisFollowupResponse();
         
-        await pushAssistantMessage(
-          reply,
-          buildDebug("override", {
-            suicideLevel: suicide.suicideLevel
-          })
-        );
+        await pushAssistantMessage(reply, debug);
+        await maybeGenerateConversationTitle();
         
         return res.json({
           conversationId,
           reply,
           memory: previousMemory,
           flags: newFlags,
-          debug: buildDebug("override", {
-            suicideLevel: suicide.suicideLevel
-          })
+          debug
         });
       }
       
       newFlags.acuteCrisis = false;
     }
     
-    // -------- N1 --------
     if (suicide.suicideLevel === "N1" || suicide.needsClarification) {
       const reply = await n1ResponseLLM(message);
       newFlags.contactState = { wasContact: false };
       
-      await pushAssistantMessage(
-        reply,
-        buildDebug("clarification", {
-          suicideLevel: "N1"
-        })
-      );
+      const debug = buildDebug("clarification", {
+        suicideLevel: "N1"
+      });
+      
+      await pushAssistantMessage(reply, debug);
+      await maybeGenerateConversationTitle();
       
       return res.json({
         conversationId,
         reply,
         memory: previousMemory,
         flags: newFlags,
-        debug: buildDebug("clarification", {
-          suicideLevel: "N1"
-        })
+        debug
       });
     }
     
-    // -------- RECALL --------
     const recallRouting = await analyzeRecallRouting(message, recentHistory, previousMemory);
     
     if (recallRouting.isLongTermMemoryRecall) {
       const reply = await buildLongTermMemoryRecallResponse(previousMemory);
+      const debug = buildDebug("memoryRecall", {
+        calledMemory: "longTermMemory"
+      });
       
-      await pushAssistantMessage(
-        reply,
-        buildDebug("memoryRecall", {
-          calledMemory: "longTermMemory"
-        })
-      );
+      await pushAssistantMessage(reply, debug);
+      await maybeGenerateConversationTitle();
       
       return res.json({
         conversationId,
         reply,
         memory: previousMemory,
         flags: newFlags,
-        debug: buildDebug("memoryRecall", {
-          calledMemory: "longTermMemory"
-        })
+        debug
       });
     }
     
     if (recallRouting.isRecallAttempt && recallRouting.calledMemory === "none") {
       const reply = buildNoMemoryRecallResponse();
+      const debug = buildDebug("memoryRecall", {});
       
-      await pushAssistantMessage(
-        reply,
-        buildDebug("memoryRecall", {})
-      );
+      await pushAssistantMessage(reply, debug);
+      await maybeGenerateConversationTitle();
       
       return res.json({
         conversationId,
         reply,
         memory: previousMemory,
         flags: newFlags,
-        debug: buildDebug("memoryRecall", {})
+        debug
       });
     }
     
-    // -------- MODE --------
     const contactAnalysis = await analyzeContactState(
       message,
       recentHistory,
@@ -2255,7 +2233,7 @@ app.post("/chat", async (req, res) => {
       newFlags = registerExplorationRelance(newFlags, relance.isRelance);
     }
     
-    const finalDebug = buildDebug(detectedMode, {
+    const debug = buildDebug(detectedMode, {
       suicideLevel: suicide.suicideLevel,
       calledMemory: recallRouting.calledMemory,
       modelConflict,
@@ -2269,7 +2247,7 @@ app.post("/chat", async (req, res) => {
       { role: "assistant", content: reply }
     ]);
     
-    await pushAssistantMessage(reply, finalDebug);
+    await pushAssistantMessage(reply, debug);
     await maybeGenerateConversationTitle();
     
     return res.json({
@@ -2277,29 +2255,14 @@ app.post("/chat", async (req, res) => {
       reply,
       memory: newMemory,
       flags: newFlags,
-      debug: finalDebug
-    });
-    
-    return res.json({
-      conversationId,
-      reply,
-      memory: newMemory,
-      flags: newFlags,
-      debug: buildDebug(detectedMode, {
-        suicideLevel: suicide.suicideLevel,
-        calledMemory: recallRouting.calledMemory,
-        modelConflict,
-        explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
-        explorationRelanceWindow: newFlags.explorationRelanceWindow
-      })
+      debug
     });
     
   } catch (err) {
     console.error("Erreur /chat:", err);
     
     return res.json({
-      reply: modeForCatch === "contact" ?
-        "Je suis la." : "Desole, reformule.",
+      reply: modeForCatch === "contact" ? "Je suis la." : "Desole, reformule.",
       memory: previousMemoryForCatch,
       flags: flagsForCatch,
       debug: ["error"]
