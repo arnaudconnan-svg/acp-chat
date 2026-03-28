@@ -3106,6 +3106,7 @@
     
     window.addEventListener("load", () => {
       const params = new URLSearchParams(window.location.search);
+      const shouldSkipWelcomeAnimation = params.get("admin") === "1";
       
       if (params.get("admin") === "1") {
         localStorage.setItem(ADMIN_UI_KEY, "1");
@@ -3137,7 +3138,7 @@
         "Se comprendre",
         "S'accepter",
         "Se faire confiance",
-        "Libérer son potentiel..."
+        "Liberer son potentiel..."
       ];
       
       const WELCOME_BOOT_PAUSE_MS = 750;
@@ -3490,6 +3491,18 @@
       }
       
       function showWelcome() {
+        if (shouldSkipWelcomeAnimation) {
+          clearWelcomeRitualTimers();
+          prepareWelcomeScreenStatic();
+          showScreen("welcomeScreen", {
+            replaceHistory: true,
+            pushHistory: false,
+            noAnimation: true,
+            noWelcomeIntro: true
+          });
+          return;
+        }
+        
         showScreen("welcomeScreen", { replaceHistory: true, pushHistory: false });
         
         clearWelcomeRitualTimers();
@@ -3539,7 +3552,7 @@
       }
       
       boot();
-    });
+    });;
   </script>
 </body>
 
