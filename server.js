@@ -2029,34 +2029,54 @@ app.post("/chat", async (req, res) => {
     
     async function maybeGenerateConversationTitle() {
       try {
-        const convSnap = await convRef.once("value");
-        const convData = convSnap.val() || {};
-        
-        if (convData.titleLocked === true) return;
-        
-        const messagesSnap = await messagesRef
-          .orderByChild("conversationId")
-          .equalTo(conversationId)
-          .once("value");
-        
-        const conversationMessages = Object.values(messagesSnap.val() || {})
-          .filter(m => m && typeof m.content === "string")
-          .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-        
-        const userMessages = conversationMessages.filter(m => m.role === "user");
-        
-        if (userMessages.length < 3) return;
-        
-        const generatedTitle = await generateConversationTitle(conversationMessages);
-        if (!generatedTitle) return;
-        
+  const convSnap = await convRef.once("value");
+  const convData = convSnap.val() || {};
+  
+  if (convData.titleLocked !== true) {
+    const messagesSnap = await messagesRef
+      .orderByChild("conversationId")
+      .equalTo(conversationId)
+      .once("value");
+    
+    const conversationMessages = Object.values(messagesSnap.val() || {})
+      .filter(m => m && typeof m.content === "string")
+      .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    
+    const userMessages = conversationMessages
+      .filter(m => m.role === "user")
+      .map(m => String(m.content || "").trim())
+      .filter(Boolean);
+    
+    const userMessageCount = userMessages.length;
+    const currentTitle = String(convData.title || "").trim();
+    const firstUserMessage = userMessages[0] || "";
+    
+    const shouldGenerateTitle =
+      userMessageCount >= 3 &&
+      (
+        !currentTitle ||
+        currentTitle === "Nouvelle conversation" ||
+        currentTitle === "Conversation sans titre" ||
+        currentTitle === "Conversation" ||
+        currentTitle === firstUserMessage
+      );
+    
+    if (shouldGenerateTitle) {
+      const generatedTitle = await generateConversationTitle(conversationMessages);
+      
+      if (generatedTitle && generatedTitle.trim()) {
         await convRef.update({
-          title: generatedTitle,
+          title: generatedTitle.trim(),
           updatedAt: new Date().toISOString()
         });
-      } catch (titleErr) {
-        console.error("Erreur auto-title /chat:", titleErr.message);
+        
+        console.log("AUTO TITLE UPDATED:", conversationId, "->", generatedTitle.trim());
       }
+    }
+  }
+} catch (titleErr) {
+  console.error("Erreur auto-title /chat:", titleErr.message);
+}
     }
     
     await messagesRef.push({
