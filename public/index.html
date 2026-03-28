@@ -139,22 +139,24 @@
     }
     
     #welcomeActions {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%) translateY(18px);
+      top: 65%;
       width: 100%;
       max-width: 380px;
-      margin-top: auto;
       display: flex;
       flex-direction: column;
       align-items: stretch;
       gap: 14px;
       opacity: 0;
       pointer-events: none;
-      transform: translateY(18px);
     }
     
     #welcomeActions.is-visible {
       opacity: 1;
       pointer-events: auto;
-      transform: translateY(0);
+      transform: translateX(-50%) translateY(0);
       transition:
         opacity 0.75s ease,
         transform 0.75s ease;
