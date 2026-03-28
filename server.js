@@ -2026,62 +2026,44 @@ app.post("/chat", async (req, res) => {
       };
     });
     
-    try {
-      const convSnap = await convRef.once("value");
-      const convData = convSnap.val() || {};
-      
-      if (convData.titleLocked !== true) {
+    async function maybeGenerateConversationTitle() {
+      try {
+        const convSnap = await convRef.once("value");
+        const convData = convSnap.val() || {};
+        
+        if (convData.titleLocked === true) return;
+        
         const messagesSnap = await messagesRef
           .orderByChild("conversationId")
           .equalTo(conversationId)
           .once("value");
         
-        let conversationMessages = Object.values(messagesSnap.val() || {})
-          .filter(m => m && typeof m.content === "string")
+        const conversationMessages = Object.values(messagesSnap.val() || {})
+          .filter(m =>
+            m &&
+            typeof m.content === "string" &&
+            (m.role === "user" || m.role === "assistant")
+          )
           .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
         
-        const hasCurrentUserMessage = conversationMessages.some(m =>
-          m.role === "user" &&
-          m.content === message &&
-          m.timestamp === nowIso
-        );
-        
-        if (!hasCurrentUserMessage) {
-          conversationMessages = [
-            ...conversationMessages,
-            {
-              conversationId,
-              userId,
-              role: "user",
-              content: message,
-              timestamp: nowIso
-            }
-          ].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-        }
-        
         const userMessages = conversationMessages.filter(m => m.role === "user");
-        const currentTitle = String(convData.title || "").trim();
-        const firstUserMessage = String(userMessages[0]?.content || "").trim();
-        const shouldGenerateSmartTitle =
-          userMessages.length >= 3 &&
-          (
-            !currentTitle ||
-            currentTitle === firstUserMessage
-          );
         
-        if (shouldGenerateSmartTitle) {
-          const generatedTitle = await generateConversationTitle(conversationMessages);
-          
-          if (generatedTitle) {
-            await convRef.update({
-              title: generatedTitle,
-              updatedAt: new Date().toISOString()
-            });
-          }
-        }
+        if (userMessages.length < 3) return;
+        
+        const generatedTitle = await generateConversationTitle(conversationMessages);
+        if (!generatedTitle) return;
+        
+        const currentTitle = String(convData.title || "").trim();
+        
+        if (currentTitle === generatedTitle) return;
+        
+        await convRef.update({
+          title: generatedTitle,
+          updatedAt: new Date().toISOString()
+        });
+      } catch (titleErr) {
+        console.error("Erreur auto-title /chat:", titleErr.message);
       }
-    } catch (titleErr) {
-      console.error("Erreur auto-title /chat:", titleErr.message);
     }
     
     const recentHistory = trimHistory(req.body?.recentHistory);
