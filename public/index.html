@@ -45,12 +45,27 @@ body {
 /* ---------- ACCUEIL ---------- */
 
 #welcomeScreen {
+  position: relative;
   overflow: hidden;
   justify-content: center;
   align-items: center;
-  padding: 10px 10px 14px 10px;
+  padding: 0 18px calc(18px + env(safe-area-inset-bottom, 0px)) 18px;
   opacity: 0;
   transition: opacity 2.5s cubic-bezier(0.8, 0.2, 1, 1);
+  background:
+    radial-gradient(circle at 50% 18%, rgba(220, 236, 238, 0.92) 0%, rgba(244, 249, 248, 0.88) 38%, rgba(255, 255, 255, 0.98) 72%, rgba(255, 255, 255, 1) 100%);
+}
+
+#welcomeScreen::before {
+  content: "";
+  position: absolute;
+  inset: -12%;
+  background:
+    radial-gradient(circle at 30% 28%, rgba(185, 214, 218, 0.22) 0%, rgba(185, 214, 218, 0) 48%),
+    radial-gradient(circle at 72% 74%, rgba(205, 227, 223, 0.18) 0%, rgba(205, 227, 223, 0) 46%);
+  transform: scale(1);
+  opacity: 0.9;
+  pointer-events: none;
 }
 
 #welcomeScreen.ready {
@@ -58,94 +73,155 @@ body {
 }
 
 #welcomeInner {
+  position: relative;
+  z-index: 1;
   width: 100%;
   max-width: 640px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  height: 100%;
+  align-items: center;
+  min-height: 100%;
+  box-sizing: border-box;
+  padding-top: 11vh;
+  padding-bottom: 5vh;
 }
 
 #welcomeLogoWrap {
   display: flex;
   justify-content: center;
-  margin-top: 0;
-  margin-bottom: 10px;
+  width: 100%;
+  margin: 0 0 34px 0;
+  opacity: 0;
 }
 
 #welcomeLogo {
-  width: min(220px, 62vw);
+  width: min(330px, 78vw);
   height: auto;
   display: block;
+  filter: drop-shadow(0 14px 34px rgba(36, 94, 102, 0.1));
 }
 
-.welcomeLead {
+#welcomeRitualText {
+  min-height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   text-align: center;
-  font-size: 16px;
-  line-height: 1.45;
+  font-size: clamp(24px, 6vw, 34px);
+  line-height: 1.25;
+  letter-spacing: 0.01em;
   color: #1f3f44;
-  margin: 0 0 12px 0;
+  opacity: 0;
+  transform: translateY(8px);
+  padding: 0 10px;
+  box-sizing: border-box;
 }
 
-.welcomeText {
-  font-size: 15px;
-  line-height: 1.5;
-  color: #333;
-  margin: 0 0 10px 0;
-  text-align: center;
+#welcomeRitualText.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity 0.65s ease,
+    transform 0.65s ease;
 }
 
-.welcomeDisclaimer {
-  font-size: 14px;
-  line-height: 1.5;
-  color: #555;
-  background: #f6f8f8;
-  border-radius: 12px;
-  padding: 12px 14px;
-  margin: 12px 0 14px 0;
-  text-align: center;
+#welcomeRitualText.is-hidden {
+  opacity: 0;
+  transform: translateY(8px);
+  transition:
+    opacity 0.55s ease,
+    transform 0.55s ease;
 }
 
-.welcomeActions {
+#welcomeActions {
+  width: 100%;
+  max-width: 360px;
+  margin-top: auto;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin-top: 0;
+  align-items: stretch;
+  gap: 12px;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(18px);
+}
+
+#welcomeActions.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+  transition:
+    opacity 0.7s ease,
+    transform 0.7s ease;
 }
 
 .welcomeBtnPrimary,
-.welcomeBtnSecondary {
+.welcomeBtnSecondary,
+.welcomeBtnTertiary {
   width: 100%;
-  border-radius: 12px;
-  font-size: 16px;
+  border-radius: 16px;
   line-height: 1.25;
-  padding: 12px 14px;
   cursor: pointer;
+  box-sizing: border-box;
 }
 
 .welcomeBtnPrimary {
   border: none;
   background: #245e66;
-  color: white;
+  color: #ffffff;
+  font-size: 17px;
+  padding: 14px 18px;
+  box-shadow: 0 12px 28px rgba(36, 94, 102, 0.2);
 }
 
 .welcomeBtnSecondary {
-  border: 1px solid #b9c9cc;
-  background: white;
+  border: none;
+  background: transparent;
   color: #245e66;
+  font-size: 14px;
+  padding: 4px 12px;
 }
 
 .welcomeBtnTertiary {
-  width: 100%;
-  border-radius: 12px;
-  font-size: 14px;
-  line-height: 1.25;
-  padding: 10px 14px;
-  cursor: pointer;
-  border: 1px dashed #b9c9cc;
-  background: #f8fbfb;
+  border: 1px dashed #bfd0d3;
+  background: rgba(248, 251, 251, 0.72);
   color: #245e66;
+  font-size: 13px;
+  padding: 9px 12px;
+}
+
+#welcomeEnterBtn {
+  transform: translateY(0);
+}
+
+#welcomeActions.is-visible #welcomeEnterBtn {
+  animation: welcomeEnterPulse 2.8s ease-in-out infinite;
+}
+
+#welcomeAboutBtn {
+  opacity: 0.82;
+}
+
+#welcomeDevAccessWrap {
+  min-height: 34px;
+}
+
+body:not(.admin-ui) #welcomeDevAccessBtn {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+@keyframes welcomeEnterPulse {
+  0% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(0) scale(1.03);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+  }
 }
 
 /* ---------- CONVERSATIONS ---------- */
@@ -755,57 +831,26 @@ body.show-debug .debug-block {
 
 <div id="welcomeScreen" class="screen">
   <div id="welcomeInner">
-
     <div id="welcomeLogoWrap">
       <img id="welcomeLogo" src="/images/logo.png" alt="Facilitat.io" width="220" height="220">
     </div>
-
-    <p class="welcomeLead">
-      Un miroir conversationnel pour explorer ce que vous vivez.
-    </p>
-
-    <p class="welcomeText">
-      Facilitat.io propose un espace de reflexion inspire de l'Approche Centree sur la Personne.
-      Il ne donne pas de conseils, ne prescrit pas de solutions et ne cherche pas a vous orienter de l'exterieur.
-    </p>
-
-    <div class="welcomeDisclaimer">
-      Cet outil ne diagnostique pas, ne prescrit pas et ne remplace pas une relation d'accompagnement humaine.
-    </div>
-
-    <div class="welcomeActions">
-      <button class="welcomeBtnSecondary" onclick="openAboutModal()">
-        Pourquoi cette application est differente
-      </button>
-
-      <button class="welcomeBtnPrimary" onclick="enterConversations()">
+    
+    <div id="welcomeRitualText" aria-live="polite"></div>
+    
+    <div id="welcomeActions">
+      <button id="welcomeEnterBtn" class="welcomeBtnPrimary" type="button" onclick="enterConversations()">
         Entrer
       </button>
-
-      <button class="welcomeBtnTertiary" onclick="openDevAccessModal()">
-        Acces developpeur
+      
+      <button id="welcomeAboutBtn" class="welcomeBtnSecondary" type="button" onclick="openAboutModal()">
+        Plus d'informations
       </button>
-    </div>
-  </div>
-</div>
-
-<div id="devAccessModal" class="modal">
-  <div class="modalBox">
-    <h3 class="modalTitle">Acces developpeur</h3>
-    <p class="modalText">
-      Choisis l'interface a ouvrir.
-    </p>
-    
-    <div class="modalActions modalActionsStack">
-      <button class="modalBtnPrimary" type="button" onclick="window.location.href='/test.html'">
-        Interface de test
-      </button>
-      <button class="modalBtnSecondary" type="button" onclick="window.location.href='/admin.html'">
-        Interface admin
-      </button>
-      <button class="modalBtnSecondary" type="button" onclick="closeDevAccessModal()">
-        Annuler
-      </button>
+      
+      <div id="welcomeDevAccessWrap">
+        <button id="welcomeDevAccessBtn" class="welcomeBtnTertiary" type="button" onclick="openDevAccessModal()">
+          Acces developpeur
+        </button>
+      </div>
     </div>
   </div>
 </div>
@@ -2273,110 +2318,285 @@ document.getElementById("sessionInfoModal").addEventListener("click", e => {
 /* ---------- INIT ---------- */
 
 window.addEventListener("load", () => {
-  const params = new URLSearchParams(window.location.search);
-  
-  if (params.get("admin") === "1") {
-    localStorage.setItem(ADMIN_UI_KEY, "1");
-  }
-  if (params.get("admin") === "0") {
-    localStorage.removeItem(ADMIN_UI_KEY);
-  }
-  
-  syncDebugVisibility();
-  
-  const logo = document.getElementById("welcomeLogo");
-  const welcome = document.getElementById("welcomeScreen");
-  
-  function createBootOverlay() {
-    const overlay = document.createElement("div");
-    overlay.style.position = "fixed";
-    overlay.style.inset = "0";
-    overlay.style.zIndex = "6000";
-    overlay.style.display = "flex";
-    overlay.style.flexDirection = "column";
-    overlay.style.alignItems = "center";
-    overlay.style.justifyContent = "center";
-    overlay.style.background = "#ffffff";
-    
-    const icon = document.createElement("img");
-    icon.src = "/images/icon-512.png";
-    icon.alt = "Chargement";
-    icon.style.width = "220px";
-    icon.style.height = "220px";
-    icon.style.objectFit = "contain";
-    icon.style.display = "block";
-    
-    overlay.appendChild(icon);
-    document.body.appendChild(overlay);
-    
-    if (icon.animate) {
-      icon.animate(
-        [
-          { transform: "rotate(0deg)" },
-          { transform: "rotate(360deg)" }
-        ],
-        {
-          duration: 1400,
-          iterations: Infinity,
-          easing: "linear"
-        }
-      );
-    }
-    
-    return overlay;
-  }
-    
-    async function waitForBackendReady() {
-    try {
-      const res = await fetch("/health", { cache: "no-store" });
-      if (res.ok) return true;
-    } catch {}
-    
-    return false;
-  }
-  
-  function showWelcome(bootOverlay) {
-    showScreen("welcomeScreen", { replaceHistory: true });
-    
-    welcome.style.transition = "none";
-    welcome.classList.remove("ready");
-    
-    requestAnimationFrame(() => {
-      if (bootOverlay) {
-        bootOverlay.remove();
-      }
-      
-      setTimeout(() => {
-        welcome.style.transition = "";
-        
-        requestAnimationFrame(() => {
-          welcome.classList.add("ready");
-        });
-      }, 1000);
-    });
-  }
-  
-  async function boot() {
-    const bootOverlay = createBootOverlay();
-    
-    if (!logo || logo.complete) {
-      await waitForBackendReady();
-      showWelcome(bootOverlay);
-      return;
-    }
-    
-    logo.addEventListener("load", async () => {
-      await waitForBackendReady();
-      showWelcome(bootOverlay);
-    }, { once: true });
-    
-    logo.addEventListener("error", async () => {
-      await waitForBackendReady();
-      showWelcome(bootOverlay);
-    }, { once: true });
-  }
-  
-  boot();
+const params = new URLSearchParams(window.location.search);
+
+if (params.get("admin") === "1") {
+localStorage.setItem(ADMIN_UI_KEY, "1");
+}
+if (params.get("admin") === "0") {
+localStorage.removeItem(ADMIN_UI_KEY);
+}
+
+document.body.classList.toggle(
+"admin-ui",
+localStorage.getItem(ADMIN_UI_KEY) === "1"
+);
+
+syncDebugVisibility();
+
+const logo = document.getElementById("welcomeLogo");
+const welcome = document.getElementById("welcomeScreen");
+
+function createBootOverlay() {
+const overlay = document.createElement("div");
+overlay.style.position = "fixed";
+overlay.style.inset = "0";
+overlay.style.zIndex = "6000";
+overlay.style.display = "flex";
+overlay.style.flexDirection = "column";
+overlay.style.alignItems = "center";
+overlay.style.justifyContent = "center";
+overlay.style.background = "#ffffff";
+
+const icon = document.createElement("img");
+icon.src = "/images/icon-512.png";
+icon.alt = "Chargement";
+icon.style.width = "220px";
+icon.style.height = "220px";
+icon.style.objectFit = "contain";
+icon.style.display = "block";
+
+overlay.appendChild(icon);
+document.body.appendChild(overlay);
+
+if (icon.animate) {
+icon.animate(
+[
+{ transform: "rotate(0deg)" },
+{ transform: "rotate(360deg)" }
+],
+{
+duration: 1400,
+iterations: Infinity,
+easing: "linear"
+}
+);
+}
+
+return overlay;
+}
+
+async function waitForBackendReady() {
+try {
+const res = await fetch("/health", { cache: "no-store" });
+if (res.ok) return true;
+} catch {}
+
+return false;
+}
+
+function showWelcome(bootOverlay) {
+showScreen("welcomeScreen", { replaceHistory: true });
+
+resetWelcomeRitualUI();
+
+welcome.style.transition = "none";
+welcome.classList.remove("ready");
+
+requestAnimationFrame(() => {
+if (bootOverlay) {
+bootOverlay.remove();
+}
+
+setTimeout(() => {
+welcome.style.transition = "";
+
+requestAnimationFrame(() => {
+welcome.classList.add("ready");
+});
+
+showWelcomeLogo();
+bindWelcomeInteraction();
+
+setTimeout(() => {
+startWelcomeRitual();
+}, WELCOME_RITUAL_START_DELAY_MS);
+}, 750);
+});
+}
+
+// ---------- WELCOME RITUAL ----------
+
+const WELCOME_RITUAL = [
+"Se comprendre",
+"S'accepter",
+"Se faire confiance",
+"Se liberer..."
+];
+
+const WELCOME_RITUAL_TEXT_DURATION = 2000;
+const WELCOME_RITUAL_GAP_DURATION = 400;
+const WELCOME_RITUAL_SKIP_TEXT_DURATION = 200;
+const WELCOME_RITUAL_SKIP_GAP_DURATION = 100;
+const WELCOME_LOGO_DELAY_MS = 0;
+const WELCOME_LOGO_FADE_DURATION_MS = 1200;
+const WELCOME_RITUAL_START_DELAY_MS = 1400;
+
+let ritualIndex = 0;
+let ritualRunning = false;
+let ritualInterrupted = false;
+let ritualTextTimeout = null;
+let ritualGapTimeout = null;
+let welcomeInteractionBound = false;
+let welcomeHasInteracted = false;
+
+function clearWelcomeRitualTimers() {
+if (ritualTextTimeout) {
+clearTimeout(ritualTextTimeout);
+ritualTextTimeout = null;
+}
+
+if (ritualGapTimeout) {
+clearTimeout(ritualGapTimeout);
+ritualGapTimeout = null;
+}
+}
+
+function resetWelcomeRitualUI() {
+const logoWrap = document.getElementById("welcomeLogoWrap");
+const textEl = document.getElementById("welcomeRitualText");
+const actions = document.getElementById("welcomeActions");
+
+if (logoWrap) {
+logoWrap.style.transition = "none";
+logoWrap.style.opacity = "0";
+}
+
+if (textEl) {
+textEl.textContent = "";
+textEl.classList.remove("is-visible", "is-hidden");
+}
+
+if (actions) {
+actions.classList.remove("is-visible");
+}
+}
+
+function showWelcomeLogo() {
+const logoWrap = document.getElementById("welcomeLogoWrap");
+if (!logoWrap) return;
+
+setTimeout(() => {
+logoWrap.style.transition = "opacity " + WELCOME_LOGO_FADE_DURATION_MS + "ms ease";
+logoWrap.style.opacity = "1";
+}, WELCOME_LOGO_DELAY_MS);
+}
+
+function endWelcomeRitual() {
+clearWelcomeRitualTimers();
+ritualRunning = false;
+
+const textEl = document.getElementById("welcomeRitualText");
+const actions = document.getElementById("welcomeActions");
+
+if (textEl) {
+textEl.classList.remove("is-visible");
+textEl.classList.add("is-hidden");
+}
+
+if (actions) {
+actions.classList.add("is-visible");
+}
+}
+
+function showWelcomeRitualPhrase() {
+const textEl = document.getElementById("welcomeRitualText");
+if (!textEl) return;
+
+if (ritualIndex >= WELCOME_RITUAL.length) {
+endWelcomeRitual();
+return;
+}
+
+textEl.textContent = WELCOME_RITUAL[ritualIndex];
+textEl.classList.remove("is-hidden");
+textEl.classList.add("is-visible");
+
+const textDuration = ritualInterrupted
+? WELCOME_RITUAL_SKIP_TEXT_DURATION
+: WELCOME_RITUAL_TEXT_DURATION;
+
+ritualTextTimeout = setTimeout(() => {
+textEl.classList.remove("is-visible");
+textEl.classList.add("is-hidden");
+
+const gapDuration = ritualInterrupted
+? WELCOME_RITUAL_SKIP_GAP_DURATION
+: WELCOME_RITUAL_GAP_DURATION;
+
+ritualGapTimeout = setTimeout(() => {
+ritualIndex += 1;
+showWelcomeRitualPhrase();
+}, gapDuration);
+}, textDuration);
+}
+
+function startWelcomeRitual() {
+clearWelcomeRitualTimers();
+
+ritualIndex = 0;
+ritualRunning = true;
+ritualInterrupted = false;
+welcomeHasInteracted = false;
+
+const textEl = document.getElementById("welcomeRitualText");
+const actions = document.getElementById("welcomeActions");
+
+if (textEl) {
+textEl.textContent = "";
+textEl.classList.remove("is-visible", "is-hidden");
+}
+
+if (actions) {
+actions.classList.remove("is-visible");
+}
+
+showWelcomeRitualPhrase();
+}
+
+function interruptWelcomeRitual() {
+if (!ritualRunning || ritualInterrupted) return;
+ritualInterrupted = true;
+}
+
+function bindWelcomeInteraction() {
+if (welcomeInteractionBound) return;
+
+const screen = document.getElementById("welcomeScreen");
+if (!screen) return;
+
+screen.addEventListener("click", event => {
+if (welcomeHasInteracted) return;
+if (event.target.closest("#welcomeActions")) return;
+
+welcomeHasInteracted = true;
+interruptWelcomeRitual();
+});
+
+welcomeInteractionBound = true;
+}
+
+async function boot() {
+const bootOverlay = createBootOverlay();
+
+if (!logo || logo.complete) {
+await waitForBackendReady();
+showWelcome(bootOverlay);
+return;
+}
+
+logo.addEventListener("load", async () => {
+await waitForBackendReady();
+showWelcome(bootOverlay);
+}, { once: true });
+
+logo.addEventListener("error", async () => {
+await waitForBackendReady();
+showWelcome(bootOverlay);
+}, { once: true });
+}
+
+boot();
 });
 </script>
 </body>
