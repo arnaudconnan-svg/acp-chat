@@ -2558,6 +2558,10 @@
       
       const wheelListenerOptions = { passive: true };
       
+      function keepBottomLocked() {
+        chat.scrollTop = chat.scrollHeight;
+      }
+      
       function cleanup() {
         window.removeEventListener("touchstart", onUserInterrupt);
         window.removeEventListener("wheel", onUserInterrupt, wheelListenerOptions);
@@ -2571,6 +2575,7 @@
         bubble.textContent = text;
         
         requestAnimationFrame(() => {
+          keepBottomLocked();
           bubble.style.opacity = "1";
         });
       }
@@ -2580,6 +2585,9 @@
         interrupted = true;
         cleanup();
         completeFast();
+        requestAnimationFrame(() => {
+          updateScrollToBottomBtn();
+        });
       }
       
       function step() {
@@ -2587,11 +2595,16 @@
         
         index += chunkSize;
         bubble.textContent = text.slice(0, index);
+        keepBottomLocked();
         
         if (index < totalLength) {
           requestAnimationFrame(step);
         } else {
           cleanup();
+          requestAnimationFrame(() => {
+            keepBottomLocked();
+            updateScrollToBottomBtn();
+          });
         }
       }
       
@@ -2602,7 +2615,11 @@
       
       setTimeout(() => {
         if (interrupted) return;
-        requestAnimationFrame(step);
+        
+        requestAnimationFrame(() => {
+          keepBottomLocked();
+          requestAnimationFrame(step);
+        });
       }, 50);
     }
     
