@@ -2538,69 +2538,38 @@
     }
     
     let keyboardViewportState = {
-      offset: 0,
       wasAtBottomBeforeKeyboard: false,
-      keyboardOpen: false,
-      closeAnimationFrame: 0
+      keyboardOpen: false
     };
     
-    function stopKeyboardCloseAnimation() {
-      if (keyboardViewportState.closeAnimationFrame) {
-        cancelAnimationFrame(keyboardViewportState.closeAnimationFrame);
-        keyboardViewportState.closeAnimationFrame = 0;
-      }
-    }
-    
-    function getKeyboardViewportOffset() {
-      const vv = window.visualViewport;
-      if (!vv) return 0;
-      
-      const active = document.activeElement;
-      const isEditableFocused = !!active &&
-        (
-          active.id === "input" ||
-          active.tagName === "TEXTAREA" ||
-          active.tagName === "INPUT" ||
-          active.isContentEditable === true
-        );
-      
-      const rawOffset = Math.round(window.innerHeight - vv.height - vv.offsetTop);
-      
-      if (rawOffset <= 0) return 0;
-      
-      if (!isEditableFocused && rawOffset < 90) {
-        return 0;
-      }
-      
-      return Math.max(0, rawOffset);
-    }
-    
-    function applyKeyboardLayout(offset) {
+    function resetKeyboardManagedLayout() {
       const inputArea = document.getElementById("inputArea");
       const chat = document.getElementById("chat");
       const scrollBtn = document.getElementById("scrollToBottomBtn");
       const notice = document.getElementById("chatTemporaryNotice");
       
-      if (!inputArea || !chat) return;
+      if (inputArea) {
+        inputArea.style.transition = "";
+        inputArea.style.transform = "";
+      }
       
-      inputArea.style.transition = "none";
-      inputArea.style.transform = offset > 0 ? `translateY(${-offset}px)` : "translateY(0)";
-      
-      chat.style.transition = "none";
-      chat.style.paddingBottom = `calc(${168 + offset}px + env(safe-area-inset-bottom, 0px))`;
+      if (chat) {
+        chat.style.transition = "";
+        chat.style.paddingBottom = "";
+      }
       
       if (scrollBtn) {
-        scrollBtn.style.transition = "none";
-        scrollBtn.style.bottom = `calc(${88 + offset}px + env(safe-area-inset-bottom, 0px))`;
+        scrollBtn.style.transition = "";
+        scrollBtn.style.bottom = "";
       }
       
       if (notice) {
-        notice.style.transition = "none";
-        notice.style.bottom = `calc(${112 + offset}px + env(safe-area-inset-bottom, 0px))`;
+        notice.style.transition = "";
+        notice.style.bottom = "";
       }
     }
     
-    function restoreBottomWithoutAnimation() {
+    function restoreBottomAfterKeyboardClose() {
       const chat = document.getElementById("chat");
       if (!chat) return;
       
@@ -2614,118 +2583,82 @@
       });
     }
     
-    function animateKeyboardClose(fromOffset) {
-      stopKeyboardCloseAnimation();
-      
-      const start = performance.now();
-      const duration = 180;
-      
-      function frame(now) {
-        const progress = Math.min(1, (now - start) / duration);
-        const eased = 1 - Math.pow(1 - progress, 3);
-        const currentOffset = Math.round(fromOffset * (1 - eased));
-        
-        applyKeyboardLayout(currentOffset);
-        
-        if (keyboardViewportState.wasAtBottomBeforeKeyboard) {
-          restoreBottomWithoutAnimation();
-        }
-        
-        if (progress < 1) {
-          keyboardViewportState.closeAnimationFrame = requestAnimationFrame(frame);
-          return;
-        }
-        
-        keyboardViewportState.closeAnimationFrame = 0;
-        keyboardViewportState.offset = 0;
-        keyboardViewportState.keyboardOpen = false;
-        keyboardViewportState.wasAtBottomBeforeKeyboard = false;
-        applyKeyboardLayout(0);
-        updateScrollToBottomBtn();
-      }
-      
-      keyboardViewportState.closeAnimationFrame = requestAnimationFrame(frame);
-    }
-    
-    function applyKeyboardViewportOffset() {
-      const nextOffset = getKeyboardViewportOffset();
-      const previousOffset = keyboardViewportState.offset;
-      const isKeyboardOpening = previousOffset === 0 && nextOffset > 0;
-      const isKeyboardClosing = previousOffset > 0 && nextOffset === 0;
-      
-      if (isKeyboardOpening) {
-        stopKeyboardCloseAnimation();
-        keyboardViewportState.wasAtBottomBeforeKeyboard = isChatAtBottom();
-        keyboardViewportState.keyboardOpen = true;
-        keyboardViewportState.offset = nextOffset;
-        applyKeyboardLayout(nextOffset);
-        
-        if (keyboardViewportState.wasAtBottomBeforeKeyboard) {
-          restoreBottomWithoutAnimation();
-        }
-        
-        updateScrollToBottomBtn();
-        return;
-      }
-      
-      if (nextOffset > 0) {
-        stopKeyboardCloseAnimation();
-        keyboardViewportState.keyboardOpen = true;
-        keyboardViewportState.offset = nextOffset;
-        applyKeyboardLayout(nextOffset);
-        
-        if (keyboardViewportState.wasAtBottomBeforeKeyboard) {
-          restoreBottomWithoutAnimation();
-        }
-        
-        updateScrollToBottomBtn();
-        return;
-      }
-      
-      if (isKeyboardClosing) {
-        animateKeyboardClose(previousOffset);
-        return;
-      }
-      
-      keyboardViewportState.offset = 0;
-      keyboardViewportState.keyboardOpen = false;
-      keyboardViewportState.wasAtBottomBeforeKeyboard = false;
-      applyKeyboardLayout(0);
-      updateScrollToBottomBtn();
-    }
-    
     function installKeyboardViewportHandling() {
       if (window.__keyboardViewportHandlingInstalled) return;
       window.__keyboardViewportHandlingInstalled = true;
       
-      let rafId = 0;
+      const input = document.getElementById("input");
       
-      const scheduleApply = () => {
-        if (rafId) cancelAnimationFrame(rafId);
-        rafId = requestAnimationFrame(() => {
-          rafId = 0;
-          applyKeyboardViewportOffset();
-        });
+      const handleFocusIn = event => {
+        const target = event.target;
+        const isChatInput =
+          target &&
+          (
+            target.id === "input" ||
+            target.tagName === "TEXTAREA" ||
+            target.tagName === "INPUT" ||
+            target.isContentEditable === true
+          );
+        
+        if (!isChatInput) return;
+        
+        keyboardViewportState.wasAtBottomBeforeKeyboard = isChatAtBottom();
+        keyboardViewportState.keyboardOpen = true;
+        resetKeyboardManagedLayout();
+        
+        setTimeout(() => {
+          updateScrollToBottomBtn();
+        }, 50);
       };
       
-      if (window.visualViewport) {
-        window.visualViewport.addEventListener("resize", scheduleApply);
-        window.visualViewport.addEventListener("scroll", scheduleApply);
-      }
+      const handleFocusOut = event => {
+        const target = event.target;
+        const isChatInput =
+          target &&
+          (
+            target.id === "input" ||
+            target.tagName === "TEXTAREA" ||
+            target.tagName === "INPUT" ||
+            target.isContentEditable === true
+          );
+        
+        if (!isChatInput) return;
+        
+        keyboardViewportState.keyboardOpen = false;
+        resetKeyboardManagedLayout();
+        
+        if (keyboardViewportState.wasAtBottomBeforeKeyboard) {
+          setTimeout(restoreBottomAfterKeyboardClose, 0);
+          setTimeout(restoreBottomAfterKeyboardClose, 60);
+          setTimeout(restoreBottomAfterKeyboardClose, 180);
+          setTimeout(() => {
+            restoreBottomAfterKeyboardClose();
+            keyboardViewportState.wasAtBottomBeforeKeyboard = false;
+          }, 320);
+          return;
+        }
+        
+        setTimeout(() => {
+          updateScrollToBottomBtn();
+          keyboardViewportState.wasAtBottomBeforeKeyboard = false;
+        }, 120);
+      };
       
-      window.addEventListener("resize", scheduleApply);
-      window.addEventListener("orientationchange", scheduleApply);
+      document.addEventListener("focusin", handleFocusIn);
+      document.addEventListener("focusout", handleFocusOut);
       
-      document.addEventListener("focusin", scheduleApply);
-      document.addEventListener("focusout", () => {
-        setTimeout(scheduleApply, 0);
-        setTimeout(scheduleApply, 40);
-        setTimeout(scheduleApply, 100);
-        setTimeout(scheduleApply, 180);
-        setTimeout(scheduleApply, 260);
+      window.addEventListener("resize", () => {
+        updateScrollToBottomBtn();
       });
       
-      scheduleApply();
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener("resize", () => {
+          updateScrollToBottomBtn();
+        });
+        window.visualViewport.addEventListener("scroll", () => {
+          updateScrollToBottomBtn();
+        });
+      }
     }
     
     installKeyboardViewportHandling();
