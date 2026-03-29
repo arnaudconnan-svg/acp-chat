@@ -827,14 +827,17 @@
       margin: 14px 0;
       display: flex;
       position: relative;
+      opacity: 0;
     }
     
     .message.user {
       justify-content: flex-end;
+      animation: userMessageIn 0.34s ease forwards;
     }
     
     .message.bot {
       justify-content: flex-start;
+      animation: botMessageIn 0.34s ease forwards;
     }
     
     .message-content {
@@ -877,6 +880,30 @@
         0 1px 0 rgba(255, 255, 255, 0.42) inset;
       backdrop-filter: blur(8px);
       -webkit-backdrop-filter: blur(8px);
+    }
+    
+    @keyframes userMessageIn {
+      0% {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      
+      100% {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    @keyframes botMessageIn {
+      0% {
+        opacity: 0;
+        transform: translateX(-6px) translateY(8px);
+      }
+      
+      100% {
+        opacity: 1;
+        transform: translateX(0) translateY(0);
+      }
     }
     
     .waiting-bubble {
@@ -2421,6 +2448,36 @@
       setTimeout(applyDefocus, 150);
     }
     
+    function renderBotMessageContent(bubble, text) {
+      const isAtBottom =
+        Math.abs(
+          chatMessages.scrollHeight -
+          chatMessages.scrollTop -
+          chatMessages.clientHeight
+        ) < 4;
+      
+      if (!isAtBottom || text.length < 220) {
+        bubble.textContent = text;
+        return;
+      }
+      
+      let index = 0;
+      const chunkSize = 2;
+      
+      function step() {
+        index += chunkSize;
+        bubble.textContent = text.slice(0, index);
+        
+        if (index < text.length) {
+          requestAnimationFrame(step);
+        }
+      }
+      
+      setTimeout(() => {
+        requestAnimationFrame(step);
+      }, 40);
+    }
+    
     function addMessage(role, text, debug, options = {}) {
       const { shouldAutoScroll = true, pulseScrollButton = false } = options;
       const chat = document.getElementById("chat");
@@ -2461,7 +2518,7 @@
       
       const bubble = document.createElement("div");
       bubble.className = "bubble";
-      bubble.textContent = text;
+      renderBotMessageContent(bubble, reply);
       
       contentWrap.appendChild(bubble);
       msg.appendChild(contentWrap);
