@@ -1007,7 +1007,33 @@
     }
     
     #scrollToBottomBtn.pulse {
-      animation: scrollToBottomPulse 0.72s ease-in-out 2;
+      animation: scrollPulse 0.8s ease-in-out 2;
+    }
+    
+    @keyframes scrollPulse {
+      0% {
+        transform: translateX(-50%) translateY(0) scale(1);
+        background: rgba(255, 255, 255, 0.72);
+        box-shadow:
+          0 10px 24px rgba(36, 94, 102, 0.12),
+          0 1px 0 rgba(255, 255, 255, 0.5) inset;
+      }
+      
+      50% {
+        transform: translateX(-50%) translateY(0) scale(1.12);
+        background: rgba(36, 94, 102, 0.18);
+        box-shadow:
+          0 0 0 8px rgba(36, 94, 102, 0.12),
+          0 12px 28px rgba(36, 94, 102, 0.18);
+      }
+      
+      100% {
+        transform: translateX(-50%) translateY(0) scale(1);
+        background: rgba(255, 255, 255, 0.72);
+        box-shadow:
+          0 10px 24px rgba(36, 94, 102, 0.12),
+          0 1px 0 rgba(255, 255, 255, 0.5) inset;
+      }
     }
     
     @keyframes scrollToBottomPulse {
@@ -2371,12 +2397,23 @@
       
       scrollToBottomBtnPulseAnim = btn.animate(
         [
-          { transform: "translateX(-50%) translateY(0) scale(1)" },
-          { transform: "translateX(-50%) translateY(0) scale(1.08)" },
-          { transform: "translateX(-50%) translateY(0) scale(1)" }
-        ],
         {
-          duration: 720,
+          transform: "translateX(-50%) translateY(0) scale(1)",
+          background: "rgba(255, 255, 255, 0.72)",
+          boxShadow: "0 10px 24px rgba(36, 94, 102, 0.12), 0 1px 0 rgba(255, 255, 255, 0.5) inset"
+        },
+        {
+          transform: "translateX(-50%) translateY(0) scale(1.14)",
+          background: "rgba(36, 94, 102, 0.2)",
+          boxShadow: "0 0 0 8px rgba(36, 94, 102, 0.12), 0 12px 28px rgba(36, 94, 102, 0.2)"
+        },
+        {
+          transform: "translateX(-50%) translateY(0) scale(1)",
+          background: "rgba(255, 255, 255, 0.72)",
+          boxShadow: "0 10px 24px rgba(36, 94, 102, 0.12), 0 1px 0 rgba(255, 255, 255, 0.5) inset"
+        }],
+        {
+          duration: 820,
           iterations: 2,
           easing: "ease-in-out"
         }
