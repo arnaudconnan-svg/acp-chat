@@ -2139,13 +2139,20 @@
         
         const forceBottomNow = () => {
           if (!chat) return;
+          
+          const previousScrollBehavior = chat.style.scrollBehavior;
+          chat.style.scrollBehavior = "auto";
           chat.scrollTop = chat.scrollHeight;
           updateScrollToBottomBtn();
+          
+          requestAnimationFrame(() => {
+            chat.style.scrollBehavior = previousScrollBehavior || "";
+          });
         };
         
         forceBottomNow();
         requestAnimationFrame(forceBottomNow);
-        setTimeout(forceBottomNow, 50);
+        setTimeout(forceBottomNow, 30);
         return;
       }
       
