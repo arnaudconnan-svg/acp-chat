@@ -2363,43 +2363,28 @@
       };
     }
     
-    function updateScrollToBottomBtn(options = {}) {
-      const { forcePulse = false } = options;
-      const btn = ensureScrollToBottomBtn();
-      const chatScreen = document.getElementById("chatScreen");
+    function updateScrollToBottomBtn({ forcePulse = false } = {}) {
       const chat = document.getElementById("chat");
+      const btn = document.getElementById("scrollToBottomBtn");
       
-      if (!btn || !chatScreen || !chat || !chatScreen.classList.contains("active")) {
-        if (btn) {
-          btn.style.opacity = "0";
-          btn.style.pointerEvents = "none";
-          btn.style.transform = "translateX(-50%) translateY(8px) scale(0.96)";
-        }
-        scrollToBottomBtnVisible = false;
-        stopScrollToBottomPulse();
+      if (!chat || !btn) return;
+      
+      const isAtBottom =
+        Math.abs(chat.scrollHeight - chat.scrollTop - chat.clientHeight) <= CHAT_BOTTOM_THRESHOLD_PX;
+      
+      if (isAtBottom) {
+        btn.classList.remove("visible");
+        btn.classList.remove("pulse");
         return;
       }
       
-      const hasScrollableOverflow = (chat.scrollHeight - chat.clientHeight) > CHAT_BOTTOM_THRESHOLD_PX;
-      const shouldShow = hasScrollableOverflow && !isChatAtBottom();
+      btn.classList.add("visible");
       
-      if (shouldShow) {
-        btn.style.opacity = "1";
-        btn.style.pointerEvents = "auto";
-        btn.style.transform = "translateX(-50%) translateY(0) scale(1)";
-        scrollToBottomBtnVisible = true;
-        
-        if (forcePulse) {
-          pulseScrollToBottomBtn();
-        }
-        return;
+      if (forcePulse) {
+        btn.classList.remove("pulse"); // reset si déjà actif
+        void btn.offsetWidth; // reflow pour relancer animation
+        btn.classList.add("pulse");
       }
-      
-      btn.style.opacity = "0";
-      btn.style.pointerEvents = "none";
-      btn.style.transform = "translateX(-50%) translateY(8px) scale(0.96)";
-      scrollToBottomBtnVisible = false;
-      stopScrollToBottomPulse();
     }
     
     function scrollChatToBottom(options = {}) {
@@ -2458,14 +2443,21 @@
       const isAtBottom =
         Math.abs(chat.scrollHeight - chat.scrollTop - chat.clientHeight) <= CHAT_BOTTOM_THRESHOLD_PX;
       
-      if (!isAtBottom || text.length < 220) {
+      if (!isAtBottom || text.length < 180) {
         bubble.textContent = text;
         return;
       }
       
       let index = 0;
-      const chunkSize = 2;
       let interrupted = false;
+      
+      const totalLength = text.length;
+      
+      // vitesse adaptative
+      const chunkSize =
+        totalLength < 400 ? 2 :
+        totalLength < 800 ? 3 :
+        totalLength < 1400 ? 4 : 5;
       
       function completeFast() {
         bubble.style.transition = "opacity 120ms ease";
@@ -2494,7 +2486,7 @@
         index += chunkSize;
         bubble.textContent = text.slice(0, index);
         
-        if (index < text.length) {
+        if (index < totalLength) {
           requestAnimationFrame(step);
         } else {
           chat.removeEventListener("scroll", onUserInterrupt);
@@ -2507,7 +2499,7 @@
       
       setTimeout(() => {
         requestAnimationFrame(step);
-      }, 40);
+      }, 50);
     }
     
     function addMessage(role, text, debug, options = {}) {
