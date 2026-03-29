@@ -3566,6 +3566,7 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             message,
+            isEdited: isEditing === true,
             userId: getOrCreateUserId(),
             conversationId: requestConversationId,
             recentHistory: loadHistory().map(({ role, content }) => ({ role, content })).slice(-MAX_RECENT_TURNS),
