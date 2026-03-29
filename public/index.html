@@ -3855,6 +3855,106 @@
       });
     }
     
+    const welcomeEnterBtn = document.getElementById("welcomeEnterBtn");
+    if (welcomeEnterBtn) {
+      welcomeEnterBtn.onclick = () => {
+        enterConversations();
+      };
+    }
+    
+    const welcomeAboutBtn = document.getElementById("welcomeAboutBtn");
+    if (welcomeAboutBtn) {
+      welcomeAboutBtn.onclick = () => {
+        openAboutModal();
+      };
+    }
+    
+    const welcomeDevAccessBtn = document.getElementById("welcomeDevAccessBtn");
+    if (welcomeDevAccessBtn) {
+      welcomeDevAccessBtn.onclick = () => {
+        openDevAccessModal();
+      };
+    }
+    
+    const sendBtn = document.getElementById("sendBtn");
+    if (sendBtn) {
+      sendBtn.onclick = send;
+    }
+    
+    const menuBtn = document.getElementById("menuBtn");
+    if (menuBtn) {
+      menuBtn.onclick = () => {
+        enterConversations();
+      };
+    }
+    
+    const conversationsBackBtn = document.getElementById("conversationsBackBtn");
+    if (conversationsBackBtn) {
+      conversationsBackBtn.onclick = () => {
+        history.back();
+      };
+    }
+    
+    const debugToggleBtn = document.getElementById("debugToggleBtn");
+    if (debugToggleBtn) {
+      debugToggleBtn.onclick = () => {
+        showDebug = !showDebug;
+        syncDebugVisibility();
+      };
+    }
+    
+    const conversationsFabBtn = document.getElementById("conversationsFabBtn");
+    if (conversationsFabBtn) {
+      conversationsFabBtn.onclick = async () => {
+        await finalizeAndStartNewSession();
+      };
+    }
+    
+    const cancelNewSessionBtn = document.getElementById("cancelNewSessionBtn");
+    if (cancelNewSessionBtn) {
+      cancelNewSessionBtn.onclick = () => {
+        closeConfirmNewSessionModal();
+      };
+    }
+    
+    const confirmNewSessionBtn = document.getElementById("confirmNewSessionBtn");
+    if (confirmNewSessionBtn) {
+      confirmNewSessionBtn.onclick = async () => {
+        await finalizeAndStartNewSession();
+      };
+    }
+    
+    const expiredNewSessionBtn = document.getElementById("expiredNewSessionBtn");
+    if (expiredNewSessionBtn) {
+      expiredNewSessionBtn.onclick = async () => {
+        await finalizeAndStartNewSession();
+      };
+    }
+    
+    const terminatedNewSessionBtn = document.getElementById("terminatedNewSessionBtn");
+    if (terminatedNewSessionBtn) {
+      terminatedNewSessionBtn.onclick = async () => {
+        await finalizeAndStartNewSession();
+      };
+    }
+    
+    const devAccessModal = document.getElementById("devAccessModal");
+    if (devAccessModal) {
+      devAccessModal.addEventListener("click", e => {
+        if (e.target.id === "devAccessModal") {
+          closeDevAccessModal();
+        }
+      });
+    }
+    
+    const sessionInfoContinueBtn = document.getElementById("sessionInfoContinueBtn");
+    if (sessionInfoContinueBtn) {
+      sessionInfoContinueBtn.onclick = () => {
+        saveSessionInfoDismissed(document.getElementById("sessionInfoDontShow").checked);
+        startFreshOrResumeSession();
+      };
+    }
+    
     const chatEl = document.getElementById("chat");
     if (chatEl) {
       ensureScrollToBottomBtn();
