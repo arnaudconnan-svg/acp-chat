@@ -3866,54 +3866,29 @@
       }
     }
     
-    const inputEl = document.getElementById("input");
-    if (inputEl) {
-      inputEl.addEventListener("keydown", e => {
-        if ((e.key === "Enter" && !e.shiftKey) || (e.key === "Enter" && e.ctrlKey)) {
-          e.preventDefault();
-          send();
-        }
-      });
-      
-      inputEl.addEventListener("input", () => {
-        autoResizeInput();
-      });
-      
-      inputEl.addEventListener("focus", () => {
-        updateActivity();
-        syncInputShellState();
-        autoResizeInput();
-      });
-      
-      inputEl.addEventListener("blur", () => {
-        syncInputShellState();
-      });
-      
-      inputEl.style.scrollbarWidth = "none";
-      inputEl.style.msOverflowStyle = "none";
-      
-      requestAnimationFrame(() => {
-        autoResizeInput();
-      });
-    }
-    
     const welcomeEnterBtn = document.getElementById("welcomeEnterBtn");
     if (welcomeEnterBtn) {
-      welcomeEnterBtn.onclick = () => {
+      welcomeEnterBtn.onclick = event => {
+        event.preventDefault();
+        event.stopPropagation();
         enterConversations();
       };
     }
     
     const welcomeAboutBtn = document.getElementById("welcomeAboutBtn");
     if (welcomeAboutBtn) {
-      welcomeAboutBtn.onclick = () => {
+      welcomeAboutBtn.onclick = event => {
+        event.preventDefault();
+        event.stopPropagation();
         openAboutModal();
       };
     }
     
     const welcomeDevAccessBtn = document.getElementById("welcomeDevAccessBtn");
     if (welcomeDevAccessBtn) {
-      welcomeDevAccessBtn.onclick = () => {
+      welcomeDevAccessBtn.onclick = event => {
+        event.preventDefault();
+        event.stopPropagation();
         openDevAccessModal();
       };
     }
