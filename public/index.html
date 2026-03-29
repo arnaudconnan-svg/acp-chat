@@ -982,6 +982,14 @@
         box-shadow 0.22s ease,
         transform 0.22s ease;
       overflow: hidden;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+      outline: none;
+      appearance: none;
+      -webkit-appearance: none;
+      touch-action: manipulation;
     }
     
     #debugToggleBtn+#debugToggleBtn {
@@ -994,6 +1002,14 @@
       box-shadow:
         0 14px 28px rgba(36, 94, 102, 0.22),
         0 1px 0 rgba(255, 255, 255, 0.18) inset;
+    }
+    
+    #debugToggleBtn:focus,
+    #debugToggleBtn:focus-visible,
+    #debugToggleBtn:active {
+      outline: none;
+      color: inherit;
+      text-decoration: none;
     }
     
     #debugToggleBtn:active {
