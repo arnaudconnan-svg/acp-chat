@@ -4125,12 +4125,36 @@
     
     const chatEl = document.getElementById("chat");
     if (chatEl) {
+      const topBarEl = document.getElementById("topBar");
+      
+      function syncTopBarElevation() {
+        if (!topBarEl) return;
+        topBarEl.classList.toggle("is-elevated", chatEl.scrollTop > 12);
+      }
+      
       ensureScrollToBottomBtn();
+      syncTopBarElevation();
       
       chatEl.addEventListener("scroll", () => {
         updateActivity();
         updateScrollToBottomBtn();
+        syncTopBarElevation();
       });
+      
+      const originalRenderHistory = renderHistory;
+      renderHistory = function() {
+        originalRenderHistory();
+        requestAnimationFrame(syncTopBarElevation);
+        setTimeout(syncTopBarElevation, 40);
+      };
+      
+      const originalScrollChatToBottom = scrollChatToBottom;
+      scrollChatToBottom = function(options = {}) {
+        originalScrollChatToBottom(options);
+        requestAnimationFrame(syncTopBarElevation);
+        setTimeout(syncTopBarElevation, 40);
+        setTimeout(syncTopBarElevation, 180);
+      };
     }
     
     const aboutModal = document.getElementById("aboutModal");
