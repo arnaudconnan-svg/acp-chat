@@ -2044,6 +2044,7 @@ app.post("/chat", async (req, res) => {
   
   try {
     const message = String(req.body?.message || "");
+    const isEdited = req.body?.isEdited === true;
     const conversationId = req.body?.conversationId;
     
     if (!conversationId) {
