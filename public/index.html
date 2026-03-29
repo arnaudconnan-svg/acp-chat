@@ -3371,6 +3371,186 @@
       }
     }
     
+    let pendingDeleteConversationId = null;
+    
+    function ensureConversationMenuOverlay() {
+      let overlay = document.getElementById("conversationMenuOverlay");
+      
+      if (overlay) return overlay;
+      
+      overlay = document.createElement("div");
+      overlay.id = "conversationMenuOverlay";
+      overlay.style.position = "fixed";
+      overlay.style.inset = "0";
+      overlay.style.zIndex = "240";
+      overlay.style.display = "none";
+      overlay.style.opacity = "0";
+      overlay.style.pointerEvents = "none";
+      overlay.style.transition = "opacity 0.22s ease";
+      overlay.style.background = "rgba(20, 36, 40, 0.14)";
+      
+      document.body.appendChild(overlay);
+      return overlay;
+    }
+    
+    function ensureConversationMenuPortal() {
+      let portal = document.getElementById("conversationMenuPortal");
+      
+      if (portal) return portal;
+      
+      portal = document.createElement("div");
+      portal.id = "conversationMenuPortal";
+      portal.style.position = "fixed";
+      portal.style.inset = "0";
+      portal.style.zIndex = "260";
+      portal.style.pointerEvents = "none";
+      
+      document.body.appendChild(portal);
+      return portal;
+    }
+    
+    function resetConversationMenuStyles(menu) {
+      if (!menu) return;
+      
+      menu.style.display = "none";
+      menu.style.position = "";
+      menu.style.top = "";
+      menu.style.left = "";
+      menu.style.right = "";
+      menu.style.minWidth = "";
+      menu.style.maxWidth = "";
+      menu.style.background = "";
+      menu.style.border = "";
+      menu.style.borderRadius = "";
+      menu.style.boxShadow = "";
+      menu.style.backdropFilter = "";
+      menu.style.webkitBackdropFilter = "";
+      menu.style.overflow = "";
+      menu.style.zIndex = "";
+      menu.style.padding = "";
+      menu.style.opacity = "";
+      menu.style.transform = "";
+      menu.style.transition = "";
+      menu.style.pointerEvents = "";
+    }
+    
+    function closeConversationMenus() {
+      const overlay = ensureConversationMenuOverlay();
+      const portal = ensureConversationMenuPortal();
+      
+      overlay.style.opacity = "0";
+      overlay.style.pointerEvents = "none";
+      
+      setTimeout(() => {
+        if (overlay.style.opacity === "0") {
+          overlay.style.display = "none";
+        }
+      }, 220);
+      
+      document.querySelectorAll("[data-menu]").forEach(menu => {
+        const originalParent = menu.__originalParent;
+        const originalNextSibling = menu.__originalNextSibling;
+        
+        resetConversationMenuStyles(menu);
+        
+        if (originalParent) {
+          if (originalNextSibling && originalNextSibling.parentNode === originalParent) {
+            originalParent.insertBefore(menu, originalNextSibling);
+          } else {
+            originalParent.appendChild(menu);
+          }
+        }
+      });
+      
+      if (portal) {
+        portal.innerHTML = "";
+      }
+      
+      document.querySelectorAll(".conversationItem").forEach(item => {
+        item.style.zIndex = "";
+        item.style.position = "";
+      });
+    }
+    
+    function openConversationMenu(toggleBtn, menu) {
+      if (!toggleBtn || !menu) return;
+      
+      const overlay = ensureConversationMenuOverlay();
+      const portal = ensureConversationMenuPortal();
+      const rect = toggleBtn.getBoundingClientRect();
+      const panelWidth = 196;
+      const panelTop = Math.round(rect.bottom + 10);
+      const panelLeft = Math.round(
+        Math.max(16, Math.min(window.innerWidth - panelWidth - 16, rect.right - panelWidth))
+      );
+      const item = toggleBtn.closest(".conversationItem");
+      
+      closeConversationMenus();
+      
+      portal.style.zIndex = "420";
+      
+      if (!menu.__originalParent) {
+        menu.__originalParent = menu.parentNode;
+      }
+      menu.__originalNextSibling = menu.nextSibling;
+      
+      portal.appendChild(menu);
+      
+      if (item) {
+        item.style.position = "relative";
+        item.style.zIndex = "300";
+      }
+      
+      menu.style.display = "block";
+      menu.style.position = "fixed";
+      menu.style.top = panelTop + "px";
+      menu.style.left = panelLeft + "px";
+      menu.style.right = "auto";
+      menu.style.minWidth = panelWidth + "px";
+      menu.style.maxWidth = "calc(100vw - 32px)";
+      menu.style.background = "rgba(255, 255, 255, 0.96)";
+      menu.style.border = "1px solid rgba(222, 228, 230, 0.92)";
+      menu.style.borderRadius = "26px";
+      menu.style.boxShadow = "0 22px 46px rgba(20, 36, 40, 0.18)";
+      menu.style.backdropFilter = "blur(8px)";
+      menu.style.webkitBackdropFilter = "blur(8px)";
+      menu.style.overflow = "hidden";
+      menu.style.zIndex = "430";
+      menu.style.padding = "8px 0";
+      menu.style.opacity = "0";
+      menu.style.transform = "translateY(-4px) scale(0.985)";
+      menu.style.transition = "opacity 0.2s ease, transform 0.2s ease";
+      menu.style.pointerEvents = "auto";
+      
+      const centerX = Math.round(rect.right - 16);
+      const centerY = Math.round(rect.top + rect.height / 2);
+      
+      overlay.style.zIndex = "410";
+      overlay.style.display = "block";
+      overlay.style.pointerEvents = "auto";
+      overlay.style.background =
+        "radial-gradient(circle at " + centerX + "px " + centerY + "px, rgba(255,255,255,0) 0px, rgba(255,255,255,0) 84px, rgba(20,36,40,0.04) 140px, rgba(20,36,40,0.14) 100%)";
+      
+      requestAnimationFrame(() => {
+        overlay.style.opacity = "1";
+        menu.style.opacity = "1";
+        menu.style.transform = "translateY(0) scale(1)";
+      });
+    }
+    
+    document.addEventListener("click", e => {
+      if (!e.target.closest("[data-menu-toggle]") && !e.target.closest("[data-menu]")) {
+        closeConversationMenus();
+      }
+    });
+    
+    window.addEventListener("resize", () => {
+      closeConversationMenus();
+      updateScrollToBottomBtn();
+    });
+    
+    window.addEventListener("scroll", closeConversationMenus, true);
+    
     function renderConversationsList() {
       const listEl = document.getElementById("conversationsList");
       const template = document.getElementById("conversationItemTemplate");
