@@ -2207,9 +2207,38 @@
         showDebug = false;
       }
       
+      if (!debugBtn) return;
+      
       debugBtn.style.display = isAdminUI && isChatActive ? "block" : "none";
+      
+      if (!(isAdminUI && isChatActive)) {
+        debugBtn.textContent = "logs";
+        return;
+      }
+      
+      debugBtn.textContent = "logs";
+      
+      debugBtn.style.width = "36px";
+      debugBtn.style.height = "36px";
+      debugBtn.style.minWidth = "36px";
+      debugBtn.style.padding = "0";
+      debugBtn.style.borderRadius = "999px";
+      debugBtn.style.fontSize = "9px";
+      debugBtn.style.fontWeight = "700";
+      debugBtn.style.letterSpacing = "0.02em";
+      debugBtn.style.textTransform = "lowercase";
+      debugBtn.style.lineHeight = "1";
+      debugBtn.style.boxShadow = showDebug ?
+        "0 12px 24px rgba(36, 94, 102, 0.18), 0 1px 0 rgba(255, 255, 255, 0.18) inset" :
+        "0 8px 18px rgba(36, 94, 102, 0.08), 0 1px 0 rgba(255, 255, 255, 0.42) inset";
+      debugBtn.style.background = showDebug ?
+        "#245e66" :
+        "rgba(255, 255, 255, 0.84)";
+      debugBtn.style.color = showDebug ?
+        "#ffffff" :
+        "rgba(36, 94, 102, 0.68)";
+      
       document.body.classList.toggle("show-debug", isAdminUI && showDebug);
-      debugBtn.textContent = showDebug ? "logs visibles" : "logs masques";
     }
     
     function isChatAtBottom() {
@@ -2312,8 +2341,9 @@
       const { forcePulse = false } = options;
       const btn = ensureScrollToBottomBtn();
       const chatScreen = document.getElementById("chatScreen");
+      const chat = document.getElementById("chat");
       
-      if (!btn || !chatScreen || !chatScreen.classList.contains("active")) {
+      if (!btn || !chatScreen || !chat || !chatScreen.classList.contains("active")) {
         if (btn) {
           btn.style.opacity = "0";
           btn.style.pointerEvents = "none";
@@ -2324,7 +2354,8 @@
         return;
       }
       
-      const shouldShow = !isChatAtBottom();
+      const hasScrollableOverflow = (chat.scrollHeight - chat.clientHeight) > CHAT_BOTTOM_THRESHOLD_PX;
+      const shouldShow = hasScrollableOverflow && !isChatAtBottom();
       
       if (shouldShow) {
         btn.style.opacity = "1";
