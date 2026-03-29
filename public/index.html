@@ -2537,6 +2537,12 @@
       setTimeout(applyDefocus, 150);
     }
     
+    let keyboardViewportState = {
+      offset: 0,
+      wasAtBottomBeforeKeyboard: false,
+      keyboardOpen: false
+    };
+    
     function getKeyboardViewportOffset() {
       const vv = window.visualViewport;
       if (!vv) return 0;
@@ -2569,22 +2575,61 @@
       
       if (!inputArea || !chat) return;
       
-      const offset = getKeyboardViewportOffset();
+      const nextOffset = getKeyboardViewportOffset();
+      const previousOffset = keyboardViewportState.offset;
+      const wasKeyboardOpen = keyboardViewportState.keyboardOpen;
+      const isKeyboardOpening = previousOffset === 0 && nextOffset > 0;
+      const isKeyboardClosing = previousOffset > 0 && nextOffset === 0;
       
-      inputArea.style.transition = "transform 0.22s ease";
-      inputArea.style.transform = offset > 0 ? `translateY(${-offset}px)` : "translateY(0)";
+      if (isKeyboardOpening) {
+        keyboardViewportState.wasAtBottomBeforeKeyboard = isChatAtBottom();
+        keyboardViewportState.keyboardOpen = true;
+      }
       
-      chat.style.transition = "padding-bottom 0.22s ease";
-      chat.style.paddingBottom = `calc(${168 + offset}px + env(safe-area-inset-bottom, 0px))`;
+      inputArea.style.transition = "transform 0.24s ease";
+      inputArea.style.transform = nextOffset > 0 ? `translateY(${-nextOffset}px)` : "translateY(0)";
+      
+      chat.style.transition = "padding-bottom 0.24s ease";
+      chat.style.paddingBottom = `calc(${168 + nextOffset}px + env(safe-area-inset-bottom, 0px))`;
       
       if (scrollBtn) {
-        scrollBtn.style.transition = "opacity 0.22s ease, transform 0.22s ease, bottom 0.22s ease";
-        scrollBtn.style.bottom = `calc(${88 + offset}px + env(safe-area-inset-bottom, 0px))`;
+        scrollBtn.style.transition = "opacity 0.22s ease, transform 0.22s ease, bottom 0.24s ease";
+        scrollBtn.style.bottom = `calc(${88 + nextOffset}px + env(safe-area-inset-bottom, 0px))`;
       }
       
       if (notice) {
-        notice.style.transition = "opacity 0.18s ease, transform 0.18s ease, bottom 0.22s ease";
-        notice.style.bottom = `calc(${112 + offset}px + env(safe-area-inset-bottom, 0px))`;
+        notice.style.transition = "opacity 0.18s ease, transform 0.18s ease, bottom 0.24s ease";
+        notice.style.bottom = `calc(${112 + nextOffset}px + env(safe-area-inset-bottom, 0px))`;
+      }
+      
+      keyboardViewportState.offset = nextOffset;
+      
+      if (isKeyboardClosing && keyboardViewportState.wasAtBottomBeforeKeyboard) {
+        const restoreBottom = () => {
+          const previousScrollBehavior = chat.style.scrollBehavior;
+          chat.style.scrollBehavior = "auto";
+          chat.scrollTop = chat.scrollHeight;
+          updateScrollToBottomBtn();
+          requestAnimationFrame(() => {
+            chat.style.scrollBehavior = previousScrollBehavior || "";
+          });
+        };
+        
+        restoreBottom();
+        requestAnimationFrame(restoreBottom);
+        setTimeout(restoreBottom, 60);
+        setTimeout(() => {
+          restoreBottom();
+          keyboardViewportState.keyboardOpen = false;
+          keyboardViewportState.wasAtBottomBeforeKeyboard = false;
+        }, 180);
+        
+        return;
+      }
+      
+      if (!wasKeyboardOpen && nextOffset === 0) {
+        keyboardViewportState.keyboardOpen = false;
+        keyboardViewportState.wasAtBottomBeforeKeyboard = false;
       }
       
       updateScrollToBottomBtn();
@@ -2615,9 +2660,10 @@
       document.addEventListener("focusin", scheduleApply);
       document.addEventListener("focusout", () => {
         setTimeout(scheduleApply, 0);
-        setTimeout(scheduleApply, 60);
-        setTimeout(scheduleApply, 180);
-        setTimeout(scheduleApply, 320);
+        setTimeout(scheduleApply, 40);
+        setTimeout(scheduleApply, 120);
+        setTimeout(scheduleApply, 220);
+        setTimeout(scheduleApply, 340);
       });
       
       scheduleApply();
