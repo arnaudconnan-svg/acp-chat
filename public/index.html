@@ -2503,10 +2503,13 @@
         totalLength < 800 ? 3 :
         totalLength < 1400 ? 4 : 5;
       
+      const wheelListenerOptions = { passive: true };
+      
       function cleanup() {
-        chat.removeEventListener("scroll", onUserInterrupt);
         window.removeEventListener("touchstart", onUserInterrupt);
         window.removeEventListener("wheel", onUserInterrupt, wheelListenerOptions);
+        window.removeEventListener("mousedown", onUserInterrupt);
+        window.removeEventListener("keydown", onUserInterrupt);
       }
       
       function completeFast() {
@@ -2526,8 +2529,6 @@
         completeFast();
       }
       
-      const wheelListenerOptions = { passive: true };
-      
       function step() {
         if (interrupted) return;
         
@@ -2541,9 +2542,10 @@
         }
       }
       
-      chat.addEventListener("scroll", onUserInterrupt);
       window.addEventListener("touchstart", onUserInterrupt);
       window.addEventListener("wheel", onUserInterrupt, wheelListenerOptions);
+      window.addEventListener("mousedown", onUserInterrupt);
+      window.addEventListener("keydown", onUserInterrupt);
       
       setTimeout(() => {
         if (interrupted) return;
