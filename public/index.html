@@ -1234,8 +1234,9 @@
     
     /* ===== HINT FAB ===== */
     
-    .fab.hint-active {
+    #conversationsFabBtn.hint-active {
       animation: fabHintPulse 1.8s ease-in-out infinite;
+    }
     }
     
     @keyframes fabHintPulse {
@@ -1781,7 +1782,7 @@
     function triggerFabHint() {
       if (isHintSeen("fab")) return;
       
-      const fab = document.querySelector(".fab");
+      const fab = document.getElementById("conversationsFabBtn");
       if (!fab) return;
       
       fab.classList.add("hint-active");
