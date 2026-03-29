@@ -3137,7 +3137,7 @@
       
       pushHistory("user", message, []);
       addMessage("user", message, [], {
-        shouldAutoScroll: true
+        shouldAutoScroll: wasAtBottom
       });
       
       const requestConversationId = getConversationId();
