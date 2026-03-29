@@ -2537,6 +2537,94 @@
       setTimeout(applyDefocus, 150);
     }
     
+    function getKeyboardViewportOffset() {
+      const vv = window.visualViewport;
+      if (!vv) return 0;
+      
+      const active = document.activeElement;
+      const isEditableFocused = !!active &&
+        (
+          active.id === "input" ||
+          active.tagName === "TEXTAREA" ||
+          active.tagName === "INPUT" ||
+          active.isContentEditable === true
+        );
+      
+      const rawOffset = Math.round(window.innerHeight - vv.height - vv.offsetTop);
+      
+      if (rawOffset <= 0) return 0;
+      
+      if (!isEditableFocused && rawOffset < 90) {
+        return 0;
+      }
+      
+      return Math.max(0, rawOffset);
+    }
+    
+    function applyKeyboardViewportOffset() {
+      const inputArea = document.getElementById("inputArea");
+      const chat = document.getElementById("chat");
+      const scrollBtn = document.getElementById("scrollToBottomBtn");
+      const notice = document.getElementById("chatTemporaryNotice");
+      
+      if (!inputArea || !chat) return;
+      
+      const offset = getKeyboardViewportOffset();
+      
+      inputArea.style.transition = "transform 0.22s ease";
+      inputArea.style.transform = offset > 0 ? `translateY(${-offset}px)` : "translateY(0)";
+      
+      chat.style.transition = "padding-bottom 0.22s ease";
+      chat.style.paddingBottom = `calc(${168 + offset}px + env(safe-area-inset-bottom, 0px))`;
+      
+      if (scrollBtn) {
+        scrollBtn.style.transition = "opacity 0.22s ease, transform 0.22s ease, bottom 0.22s ease";
+        scrollBtn.style.bottom = `calc(${88 + offset}px + env(safe-area-inset-bottom, 0px))`;
+      }
+      
+      if (notice) {
+        notice.style.transition = "opacity 0.18s ease, transform 0.18s ease, bottom 0.22s ease";
+        notice.style.bottom = `calc(${112 + offset}px + env(safe-area-inset-bottom, 0px))`;
+      }
+      
+      updateScrollToBottomBtn();
+    }
+    
+    function installKeyboardViewportHandling() {
+      if (window.__keyboardViewportHandlingInstalled) return;
+      window.__keyboardViewportHandlingInstalled = true;
+      
+      let rafId = 0;
+      
+      const scheduleApply = () => {
+        if (rafId) cancelAnimationFrame(rafId);
+        rafId = requestAnimationFrame(() => {
+          rafId = 0;
+          applyKeyboardViewportOffset();
+        });
+      };
+      
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener("resize", scheduleApply);
+        window.visualViewport.addEventListener("scroll", scheduleApply);
+      }
+      
+      window.addEventListener("resize", scheduleApply);
+      window.addEventListener("orientationchange", scheduleApply);
+      
+      document.addEventListener("focusin", scheduleApply);
+      document.addEventListener("focusout", () => {
+        setTimeout(scheduleApply, 0);
+        setTimeout(scheduleApply, 60);
+        setTimeout(scheduleApply, 180);
+        setTimeout(scheduleApply, 320);
+      });
+      
+      scheduleApply();
+    }
+    
+    installKeyboardViewportHandling();
+    
     function renderBotMessageContent(bubble, text, options = {}) {
       const {
         progressive = true,
