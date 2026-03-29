@@ -1252,35 +1252,35 @@
   </div>
   
   <div id="chatScreen" class="screen" tabindex="-1">
-  <div id="topBar">
-    <button id="menuBtn" type="button" aria-label="Menu">
-      <span id="menuIcon" aria-hidden="true">
-        <svg viewBox="0 0 24 24" width="16" height="16" role="presentation">
-          <path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-        </svg>
-      </span>
-    </button>
+    <div id="topBar">
+      <button id="menuBtn" type="button" aria-label="Menu">
+        <span id="menuIcon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="16" height="16" role="presentation">
+            <path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </span>
+      </button>
+      
+      <h2>Facilitat.io</h2>
+    </div>
     
-    <h2>Facilitat.io</h2>
-  </div>
-  
-  <div id="chat"></div>
-  
-  <div id="inputArea">
-    <div id="inputAreaInner">
-      <div id="inputShell">
-        <textarea id="input" placeholder="Répondre à Facilitat.io" rows="1"></textarea>
-        
-        <div id="inputMetaActions">
-          <button id="debugToggleBtn" type="button" aria-label="Afficher ou masquer les logs">
-            logs
-          </button>
-          <button id="sendBtn" type="button" aria-label="Envoyer"></button>
+    <div id="chat"></div>
+    
+    <div id="inputArea">
+      <div id="inputAreaInner">
+        <div id="inputShell">
+          <textarea id="input" placeholder="Répondre à Facilitat.io" rows="1"></textarea>
+          
+          <div id="inputMetaActions">
+            <button id="debugToggleBtn" type="button" aria-label="Afficher ou masquer les logs">
+              logs
+            </button>
+            <button id="sendBtn" type="button" aria-label="Envoyer"></button>
+          </div>
         </div>
       </div>
     </div>
   </div>
-</div>
   
   <div id="aboutModal">
     <div id="aboutBox">
@@ -1660,6 +1660,7 @@
     const SESSION_TIMEOUT_MS = 12 * 60 * 60 * 1000;
     const MAX_RECENT_TURNS = 8;
     const ADMIN_UI_KEY = "facilitatio_admin_ui";
+    const CHAT_BOTTOM_THRESHOLD_PX = 6;
     
     function getOrCreateUserId() {
       let userId = localStorage.getItem(USER_ID_KEY);
@@ -1676,6 +1677,9 @@
     let showDebug = false;
     let sessionStatus = "welcome";
     let bootOverlayEl = null;
+    let scrollToBottomBtnEl = null;
+    let scrollToBottomBtnVisible = false;
+    let scrollToBottomBtnPulseAnim = null;
     
     function ensureBootOverlay() {
       if (bootOverlayEl) return bootOverlayEl;
@@ -2036,6 +2040,9 @@
       document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
       document.getElementById(id).classList.add("active");
       syncDebugVisibility();
+      requestAnimationFrame(() => {
+        updateScrollToBottomBtn();
+      });
     }
     
     function prepareWelcomeScreenStatic() {
@@ -2101,6 +2108,9 @@
           history.replaceState(nextState, "", window.location.href);
         }
         
+        requestAnimationFrame(() => {
+          updateScrollToBottomBtn();
+        });
         return;
       }
       
@@ -2202,8 +2212,150 @@
       debugBtn.textContent = showDebug ? "logs visibles" : "logs masques";
     }
     
-    function scrollChatToBottom() {
+    function isChatAtBottom() {
       const chat = document.getElementById("chat");
+      if (!chat) return true;
+      
+      const remaining = chat.scrollHeight - chat.clientHeight - chat.scrollTop;
+      return remaining <= CHAT_BOTTOM_THRESHOLD_PX;
+    }
+    
+    function ensureScrollToBottomBtn() {
+      if (scrollToBottomBtnEl) return scrollToBottomBtnEl;
+      
+      const chatScreen = document.getElementById("chatScreen");
+      if (!chatScreen) return null;
+      
+      const btn = document.createElement("button");
+      btn.id = "scrollToBottomBtn";
+      btn.type = "button";
+      btn.setAttribute("aria-label", "Aller en bas");
+      btn.innerHTML = `
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+        <path d="M12 6v12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"></path>
+        <path d="M6 14l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path>
+      </svg>
+    `;
+      
+      btn.style.position = "absolute";
+      btn.style.left = "50%";
+      btn.style.bottom = "calc(88px + env(safe-area-inset-bottom, 0px))";
+      btn.style.transform = "translateX(-50%) translateY(8px) scale(0.96)";
+      btn.style.width = "46px";
+      btn.style.height = "46px";
+      btn.style.padding = "0";
+      btn.style.border = "1px solid rgba(255, 255, 255, 0.56)";
+      btn.style.borderRadius = "999px";
+      btn.style.background = "rgba(255, 255, 255, 0.72)";
+      btn.style.color = "#245e66";
+      btn.style.boxShadow = "0 10px 24px rgba(36, 94, 102, 0.12), 0 1px 0 rgba(255, 255, 255, 0.5) inset";
+      btn.style.backdropFilter = "blur(14px)";
+      btn.style.webkitBackdropFilter = "blur(14px)";
+      btn.style.display = "flex";
+      btn.style.alignItems = "center";
+      btn.style.justifyContent = "center";
+      btn.style.opacity = "0";
+      btn.style.pointerEvents = "none";
+      btn.style.transition = "opacity 0.22s ease, transform 0.22s ease";
+      btn.style.zIndex = "41";
+      btn.style.webkitTapHighlightColor = "transparent";
+      
+      btn.addEventListener("click", () => {
+        const chat = document.getElementById("chat");
+        if (!chat) return;
+        
+        chat.scrollTo({
+          top: chat.scrollHeight,
+          behavior: "smooth"
+        });
+      });
+      
+      chatScreen.appendChild(btn);
+      scrollToBottomBtnEl = btn;
+      return btn;
+    }
+    
+    function stopScrollToBottomPulse() {
+      if (scrollToBottomBtnPulseAnim) {
+        scrollToBottomBtnPulseAnim.cancel();
+        scrollToBottomBtnPulseAnim = null;
+      }
+    }
+    
+    function pulseScrollToBottomBtn() {
+      const btn = ensureScrollToBottomBtn();
+      if (!btn || !scrollToBottomBtnVisible) return;
+      
+      stopScrollToBottomPulse();
+      
+      if (!btn.animate) return;
+      
+      scrollToBottomBtnPulseAnim = btn.animate(
+        [
+          { transform: "translateX(-50%) translateY(0) scale(1)" },
+          { transform: "translateX(-50%) translateY(0) scale(1.08)" },
+          { transform: "translateX(-50%) translateY(0) scale(1)" }
+        ],
+        {
+          duration: 720,
+          iterations: 2,
+          easing: "ease-in-out"
+        }
+      );
+      
+      scrollToBottomBtnPulseAnim.onfinish = () => {
+        scrollToBottomBtnPulseAnim = null;
+      };
+    }
+    
+    function updateScrollToBottomBtn(options = {}) {
+      const { forcePulse = false } = options;
+      const btn = ensureScrollToBottomBtn();
+      const chatScreen = document.getElementById("chatScreen");
+      
+      if (!btn || !chatScreen || !chatScreen.classList.contains("active")) {
+        if (btn) {
+          btn.style.opacity = "0";
+          btn.style.pointerEvents = "none";
+          btn.style.transform = "translateX(-50%) translateY(8px) scale(0.96)";
+        }
+        scrollToBottomBtnVisible = false;
+        stopScrollToBottomPulse();
+        return;
+      }
+      
+      const shouldShow = !isChatAtBottom();
+      
+      if (shouldShow) {
+        btn.style.opacity = "1";
+        btn.style.pointerEvents = "auto";
+        btn.style.transform = "translateX(-50%) translateY(0) scale(1)";
+        scrollToBottomBtnVisible = true;
+        
+        if (forcePulse) {
+          pulseScrollToBottomBtn();
+        }
+        return;
+      }
+      
+      btn.style.opacity = "0";
+      btn.style.pointerEvents = "none";
+      btn.style.transform = "translateX(-50%) translateY(8px) scale(0.96)";
+      scrollToBottomBtnVisible = false;
+      stopScrollToBottomPulse();
+    }
+    
+    function scrollChatToBottom(options = {}) {
+      const { smooth = false } = options;
+      const chat = document.getElementById("chat");
+      if (!chat) return;
+      
+      const top = chat.scrollHeight;
+      
+      if (smooth) {
+        chat.scrollTo({ top, behavior: "smooth" });
+        return;
+      }
       
       function apply() {
         chat.scrollTop = chat.scrollHeight;
@@ -2213,7 +2365,10 @@
       requestAnimationFrame(apply);
       setTimeout(apply, 50);
       setTimeout(apply, 150);
-      setTimeout(apply, 300);
+      setTimeout(() => {
+        apply();
+        updateScrollToBottomBtn();
+      }, 300);
     }
     
     function defocusInput() {
@@ -2235,7 +2390,8 @@
       setTimeout(applyDefocus, 150);
     }
     
-    function addMessage(role, text, debug) {
+    function addMessage(role, text, debug, options = {}) {
+      const { shouldAutoScroll = true, pulseScrollButton = false } = options;
       const chat = document.getElementById("chat");
       
       const msg = document.createElement("div");
@@ -2280,7 +2436,13 @@
       msg.appendChild(contentWrap);
       chat.appendChild(msg);
       
-      scrollChatToBottom();
+      if (shouldAutoScroll) {
+        scrollChatToBottom();
+      } else {
+        requestAnimationFrame(() => {
+          updateScrollToBottomBtn({ forcePulse: pulseScrollButton });
+        });
+      }
     }
     
     function renderHistory() {
@@ -2288,10 +2450,18 @@
       chat.innerHTML = "";
       
       loadHistory().forEach(m => {
-        addMessage(m.role === "user" ? "user" : "bot", m.content, m.debug || []);
+        addMessage(
+          m.role === "user" ? "user" : "bot",
+          m.content,
+          m.debug || [], { shouldAutoScroll: false }
+        );
       });
       
       syncInputAvailability();
+      requestAnimationFrame(() => {
+        scrollChatToBottom();
+        updateScrollToBottomBtn();
+      });
     }
     
     function fadeChatThenReset(callback) {
@@ -2731,12 +2901,16 @@
       
       if (!message) return;
       
+      const wasAtBottom = isChatAtBottom();
+      
       isSending = true;
       updateActivity();
       sendBtn.disabled = true;
       
       pushHistory("user", message, []);
-      addMessage("user", message, []);
+      addMessage("user", message, [], {
+        shouldAutoScroll: true
+      });
       
       const requestConversationId = getConversationId();
       const requestScreenId = document.querySelector(".screen.active")?.id || "";
@@ -2805,7 +2979,10 @@
             document.querySelector(".screen.active")?.id === requestScreenId &&
             requestScreenId === "chatScreen"
           ) {
-            addMessage("bot", "Erreur serveur", []);
+            addMessage("bot", "Erreur serveur", [], {
+              shouldAutoScroll: wasAtBottom,
+              pulseScrollButton: !wasAtBottom
+            });
           }
           return;
         }
@@ -2840,7 +3017,10 @@
           document.querySelector(".screen.active")?.id === requestScreenId &&
           requestScreenId === "chatScreen"
         ) {
-          addMessage("bot", data.reply, data.debug || []);
+          addMessage("bot", data.reply, data.debug || [], {
+            shouldAutoScroll: wasAtBottom,
+            pulseScrollButton: !wasAtBottom
+          });
         }
         
         if (data.conversationId) {
@@ -2857,11 +3037,15 @@
           document.querySelector(".screen.active")?.id === requestScreenId &&
           requestScreenId === "chatScreen"
         ) {
-          addMessage("bot", "Erreur serveur", []);
+          addMessage("bot", "Erreur serveur", [], {
+            shouldAutoScroll: wasAtBottom,
+            pulseScrollButton: !wasAtBottom
+          });
         }
       } finally {
         isSending = false;
         syncInputAvailability();
+        updateScrollToBottomBtn();
       }
     }
     
@@ -3088,7 +3272,10 @@
       }
     });
     
-    window.addEventListener("resize", closeConversationMenus);
+    window.addEventListener("resize", () => {
+      closeConversationMenus();
+      updateScrollToBottomBtn();
+    });
     window.addEventListener("scroll", closeConversationMenus, true);
     
     document.getElementById("cancelDeleteConversationBtn").onclick = () => {
@@ -3236,8 +3423,11 @@
     
     const chatEl = document.getElementById("chat");
     if (chatEl) {
+      ensureScrollToBottomBtn();
+      
       chatEl.addEventListener("scroll", () => {
         updateActivity();
+        updateScrollToBottomBtn();
       });
     }
     
@@ -3283,6 +3473,8 @@
       
       document.body.classList.toggle("admin-ui", isAdminUI);
       syncDebugVisibility();
+      ensureScrollToBottomBtn();
+      updateScrollToBottomBtn();
       
       const logo = document.getElementById("welcomeLogo");
       const welcome = document.getElementById("welcomeScreen");
@@ -3366,6 +3558,8 @@
         const logoWrap = document.getElementById("welcomeLogoWrap");
         const textEl = document.getElementById("welcomeRitualText");
         const actions = document.getElementById("welcomeActions");
+        
+        if (!logoWrap) return;
         
         if (logoWrap) {
           logoWrap.style.transition = "none";
