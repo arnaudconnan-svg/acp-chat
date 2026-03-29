@@ -4054,8 +4054,18 @@
       
       const originalSend = send;
       send = async function() {
+        const hadTextBeforeSend = inputEl.value.trim().length > 0;
+        
+        const sendPromise = originalSend();
+        
+        if (hadTextBeforeSend) {
+          requestAnimationFrame(syncComposerUi);
+          setTimeout(syncComposerUi, 0);
+          setTimeout(syncComposerUi, 60);
+        }
+        
         try {
-          await originalSend();
+          await sendPromise;
         } finally {
           syncComposerUi();
         }
