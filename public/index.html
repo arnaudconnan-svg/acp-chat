@@ -2881,6 +2881,34 @@
     
     let draftBeforeEdit = "";
     
+    function syncInputShellState() {
+      const input = document.getElementById("input");
+      const shell = document.getElementById("inputShell");
+      if (!input || !shell) return;
+      
+      shell.classList.toggle("is-active", document.activeElement === input || input.value.trim().length > 0);
+    }
+    
+    function autoResizeInput() {
+      const input = document.getElementById("input");
+      if (!input) return;
+      
+      const computed = window.getComputedStyle(input);
+      const lineHeight = parseFloat(computed.lineHeight) || 24;
+      const maxLines = 10;
+      const maxHeight = Math.round(lineHeight * maxLines);
+      
+      input.style.height = "auto";
+      
+      const nextHeight = Math.min(input.scrollHeight, maxHeight);
+      input.style.height = `${nextHeight}px`;
+      input.style.overflowY = input.scrollHeight > maxHeight ? "auto" : "hidden";
+      
+      input.style.scrollbarWidth = "none";
+      input.style.msOverflowStyle = "none";
+      syncInputShellState();
+    }
+    
     function openEditMode(historyIndex, text) {
       const input = document.getElementById("input");
       const bar = ensureEditModeBar();
@@ -2898,6 +2926,7 @@
       bar.style.transform = "translateX(-50%) translateY(0)";
       
       input.value = text;
+      autoResizeInput();
       input.focus();
       input.setSelectionRange(input.value.length, input.value.length);
     }
@@ -2915,6 +2944,7 @@
       
       if (input && restoreDraft) {
         input.value = draftBeforeEdit || "";
+        autoResizeInput();
       }
       
       editMode.active = false;
@@ -2922,6 +2952,7 @@
       editMode.targetHistoryIndex = -1;
       editMode.originalText = "";
       draftBeforeEdit = "";
+      syncInputShellState();
     }
     
     function cancelEditMode() {
@@ -3285,6 +3316,9 @@
           setSessionStatus("active");
         }
         
+        const input = document.getElementById("input");
+        input.value = "";
+        autoResizeInput();
         defocusInput();
       });
     }
@@ -3311,6 +3345,7 @@
       
       const input = document.getElementById("input");
       input.value = "";
+      autoResizeInput();
       defocusInput();
     }
     
@@ -3510,6 +3545,7 @@
         closeEditMode({ restoreDraft: false });
         renderHistory();
         scrollChatToBottom();
+        autoResizeInput();
         defocusInput();
       } else {
         startFreshSession();
@@ -3613,6 +3649,7 @@
           closeEditMode({ restoreDraft: true });
           isSending = false;
           syncInputAvailability();
+          autoResizeInput();
           showTemporaryNotice("Modification impossible");
           return;
         }
@@ -3630,6 +3667,7 @@
         scrollChatToBottom();
         
         input.value = restoredDraft || "";
+        autoResizeInput();
       } else {
         pushHistory("user", message, []);
         addMessage("user", message, [], {
@@ -3640,6 +3678,7 @@
         });
         
         input.value = "";
+        autoResizeInput();
       }
       
       const requestConversationId = getConversationId();
@@ -3780,379 +3819,39 @@
       } finally {
         isSending = false;
         syncInputAvailability();
+        autoResizeInput();
         updateScrollToBottomBtn();
       }
-    }
-    
-    document.getElementById("cancelEditTitleBtn").onclick = () => {
-      closeEditTitleModal();
-    };
-    
-    document.getElementById("editTitleModal").addEventListener("click", e => {
-      if (e.target.id === "editTitleModal") {
-        closeEditTitleModal();
-      }
-    });
-    
-    document.getElementById("editTitleInput").addEventListener("keydown", e => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        document.getElementById("confirmEditTitleBtn").click();
-      }
-    });
-    
-    document.getElementById("confirmEditTitleBtn").onclick = () => {
-      const input = document.getElementById("editTitleInput");
-      const conversationId = input.dataset.conversationId;
-      
-      if (!conversationId) return;
-      
-      let newTitle = input.value.trim();
-      
-      if (newTitle.length > 60) {
-        newTitle = newTitle.slice(0, 60);
-      }
-      
-      upsertConversationIndexItem({
-        id: conversationId,
-        title: newTitle || null,
-        updatedAt: Date.now(),
-        isCustomTitle: true
-      });
-      
-      renderConversationsList();
-      closeEditTitleModal();
-    };
-    
-    const editTitleInput = document.getElementById("editTitleInput");
-    const editTitleCounter = document.getElementById("editTitleCounter");
-    
-    function updateTitleCounter() {
-      const length = editTitleInput.value.length;
-      editTitleCounter.textContent = length + "/60";
-    }
-    
-    editTitleInput.addEventListener("input", updateTitleCounter);
-    
-    let pendingDeleteConversationId = null;
-    
-    function ensureConversationMenuOverlay() {
-      let overlay = document.getElementById("conversationMenuOverlay");
-      
-      if (overlay) return overlay;
-      
-      overlay = document.createElement("div");
-      overlay.id = "conversationMenuOverlay";
-      overlay.style.position = "fixed";
-      overlay.style.inset = "0";
-      overlay.style.zIndex = "240";
-      overlay.style.display = "none";
-      overlay.style.opacity = "0";
-      overlay.style.pointerEvents = "none";
-      overlay.style.transition = "opacity 0.22s ease";
-      overlay.style.background = "rgba(20, 36, 40, 0.14)";
-      
-      document.body.appendChild(overlay);
-      return overlay;
-    }
-    
-    function ensureConversationMenuPortal() {
-      let portal = document.getElementById("conversationMenuPortal");
-      
-      if (portal) return portal;
-      
-      portal = document.createElement("div");
-      portal.id = "conversationMenuPortal";
-      portal.style.position = "fixed";
-      portal.style.inset = "0";
-      portal.style.zIndex = "260";
-      portal.style.pointerEvents = "none";
-      
-      document.body.appendChild(portal);
-      return portal;
-    }
-    
-    function resetConversationMenuStyles(menu) {
-      if (!menu) return;
-      
-      menu.style.display = "none";
-      menu.style.position = "";
-      menu.style.top = "";
-      menu.style.left = "";
-      menu.style.right = "";
-      menu.style.minWidth = "";
-      menu.style.maxWidth = "";
-      menu.style.background = "";
-      menu.style.border = "";
-      menu.style.borderRadius = "";
-      menu.style.boxShadow = "";
-      menu.style.backdropFilter = "";
-      menu.style.webkitBackdropFilter = "";
-      menu.style.overflow = "";
-      menu.style.zIndex = "";
-      menu.style.padding = "";
-      menu.style.opacity = "";
-      menu.style.transform = "";
-      menu.style.transition = "";
-      menu.style.pointerEvents = "";
-    }
-    
-    function closeConversationMenus() {
-      const overlay = ensureConversationMenuOverlay();
-      const portal = ensureConversationMenuPortal();
-      
-      overlay.style.opacity = "0";
-      overlay.style.pointerEvents = "none";
-      
-      setTimeout(() => {
-        if (overlay.style.opacity === "0") {
-          overlay.style.display = "none";
-        }
-      }, 220);
-      
-      document.querySelectorAll("[data-menu]").forEach(menu => {
-        const originalParent = menu.__originalParent;
-        const originalNextSibling = menu.__originalNextSibling;
-        
-        resetConversationMenuStyles(menu);
-        
-        if (originalParent) {
-          if (originalNextSibling && originalNextSibling.parentNode === originalParent) {
-            originalParent.insertBefore(menu, originalNextSibling);
-          } else {
-            originalParent.appendChild(menu);
-          }
-        }
-      });
-      
-      if (portal) {
-        portal.innerHTML = "";
-      }
-      
-      document.querySelectorAll(".conversationItem").forEach(item => {
-        item.style.zIndex = "";
-        item.style.position = "";
-      });
-    }
-    
-    function openConversationMenu(toggleBtn, menu) {
-      if (!toggleBtn || !menu) return;
-      
-      const overlay = ensureConversationMenuOverlay();
-      const portal = ensureConversationMenuPortal();
-      const rect = toggleBtn.getBoundingClientRect();
-      const panelWidth = 196;
-      const panelTop = Math.round(rect.bottom + 10);
-      const panelLeft = Math.round(
-        Math.max(16, Math.min(window.innerWidth - panelWidth - 16, rect.right - panelWidth))
-      );
-      const item = toggleBtn.closest(".conversationItem");
-      
-      closeConversationMenus();
-      
-      portal.style.zIndex = "420";
-      
-      if (!menu.__originalParent) {
-        menu.__originalParent = menu.parentNode;
-      }
-      menu.__originalNextSibling = menu.nextSibling;
-      
-      portal.appendChild(menu);
-      
-      if (item) {
-        item.style.position = "relative";
-        item.style.zIndex = "300";
-      }
-      
-      menu.style.display = "block";
-      menu.style.position = "fixed";
-      menu.style.top = panelTop + "px";
-      menu.style.left = panelLeft + "px";
-      menu.style.right = "auto";
-      menu.style.minWidth = panelWidth + "px";
-      menu.style.maxWidth = "calc(100vw - 32px)";
-      menu.style.background = "rgba(255, 255, 255, 0.96)";
-      menu.style.border = "1px solid rgba(222, 228, 230, 0.92)";
-      menu.style.borderRadius = "26px";
-      menu.style.boxShadow = "0 22px 46px rgba(20, 36, 40, 0.18)";
-      menu.style.backdropFilter = "blur(8px)";
-      menu.style.webkitBackdropFilter = "blur(8px)";
-      menu.style.overflow = "hidden";
-      menu.style.zIndex = "430";
-      menu.style.padding = "8px 0";
-      menu.style.opacity = "0";
-      menu.style.transform = "translateY(-4px) scale(0.985)";
-      menu.style.transition = "opacity 0.2s ease, transform 0.2s ease";
-      menu.style.pointerEvents = "auto";
-      
-      const centerX = Math.round(rect.right - 16);
-      const centerY = Math.round(rect.top + rect.height / 2);
-      
-      overlay.style.zIndex = "410";
-      overlay.style.display = "block";
-      overlay.style.pointerEvents = "auto";
-      overlay.style.background =
-        "radial-gradient(circle at " + centerX + "px " + centerY + "px, rgba(255,255,255,0) 0px, rgba(255,255,255,0) 84px, rgba(20,36,40,0.04) 140px, rgba(20,36,40,0.14) 100%)";
-      
-      requestAnimationFrame(() => {
-        overlay.style.opacity = "1";
-        menu.style.opacity = "1";
-        menu.style.transform = "translateY(0) scale(1)";
-      });
-    }
-    
-    document.addEventListener("click", e => {
-      if (!e.target.closest("[data-menu-toggle]") && !e.target.closest("[data-menu]")) {
-        closeConversationMenus();
-      }
-    });
-    
-    window.addEventListener("resize", () => {
-      closeConversationMenus();
-      updateScrollToBottomBtn();
-    });
-    window.addEventListener("scroll", closeConversationMenus, true);
-    
-    document.getElementById("cancelDeleteConversationBtn").onclick = () => {
-      pendingDeleteConversationId = null;
-      closeModal("deleteConversationModal");
-    };
-    
-    document.getElementById("confirmDeleteConversationBtn").onclick = () => {
-      if (!pendingDeleteConversationId) {
-        closeModal("deleteConversationModal");
-        return;
-      }
-      
-      deleteConversationData(pendingDeleteConversationId);
-      
-      if (getConversationId() === pendingDeleteConversationId) {
-        localStorage.removeItem(CONVERSATION_ID_KEY);
-      }
-      
-      pendingDeleteConversationId = null;
-      closeModal("deleteConversationModal");
-      renderConversationsList();
-    };
-    
-    document.getElementById("deleteConversationModal").addEventListener("click", e => {
-      if (e.target.id === "deleteConversationModal") {
-        pendingDeleteConversationId = null;
-        closeModal("deleteConversationModal");
-      }
-    });
-    
-    const welcomeEnterBtn = document.getElementById("welcomeEnterBtn");
-    if (welcomeEnterBtn) {
-      welcomeEnterBtn.onclick = () => {
-        enterConversations();
-      };
-    }
-    
-    const welcomeAboutBtn = document.getElementById("welcomeAboutBtn");
-    if (welcomeAboutBtn) {
-      welcomeAboutBtn.onclick = () => {
-        openAboutModal();
-      };
-    }
-    
-    const welcomeDevAccessBtn = document.getElementById("welcomeDevAccessBtn");
-    if (welcomeDevAccessBtn) {
-      welcomeDevAccessBtn.onclick = () => {
-        openDevAccessModal();
-      };
-    }
-    
-    const sendBtn = document.getElementById("sendBtn");
-    if (sendBtn) {
-      sendBtn.onclick = send;
-    }
-    
-    const menuBtn = document.getElementById("menuBtn");
-    if (menuBtn) {
-      menuBtn.onclick = () => {
-        enterConversations();
-      };
-    }
-    
-    const conversationsBackBtn = document.getElementById("conversationsBackBtn");
-    if (conversationsBackBtn) {
-      conversationsBackBtn.onclick = () => {
-        history.back();
-      };
-    }
-    
-    const debugToggleBtn = document.getElementById("debugToggleBtn");
-    if (debugToggleBtn) {
-      debugToggleBtn.onclick = () => {
-        showDebug = !showDebug;
-        syncDebugVisibility();
-      };
-    }
-    
-    const conversationsFabBtn = document.getElementById("conversationsFabBtn");
-    if (conversationsFabBtn) {
-      conversationsFabBtn.onclick = async () => {
-        await finalizeAndStartNewSession();
-      };
-    }
-    
-    const cancelNewSessionBtn = document.getElementById("cancelNewSessionBtn");
-    if (cancelNewSessionBtn) {
-      cancelNewSessionBtn.onclick = () => {
-        closeConfirmNewSessionModal();
-      };
-    }
-    
-    const confirmNewSessionBtn = document.getElementById("confirmNewSessionBtn");
-    if (confirmNewSessionBtn) {
-      confirmNewSessionBtn.onclick = async () => {
-        await finalizeAndStartNewSession();
-      };
-    }
-    
-    const expiredNewSessionBtn = document.getElementById("expiredNewSessionBtn");
-    if (expiredNewSessionBtn) {
-      expiredNewSessionBtn.onclick = async () => {
-        await finalizeAndStartNewSession();
-      };
-    }
-    
-    const terminatedNewSessionBtn = document.getElementById("terminatedNewSessionBtn");
-    if (terminatedNewSessionBtn) {
-      terminatedNewSessionBtn.onclick = async () => {
-        await finalizeAndStartNewSession();
-      };
-    }
-    
-    const devAccessModal = document.getElementById("devAccessModal");
-    if (devAccessModal) {
-      devAccessModal.addEventListener("click", e => {
-        if (e.target.id === "devAccessModal") {
-          closeDevAccessModal();
-        }
-      });
-    }
-    
-    const sessionInfoContinueBtn = document.getElementById("sessionInfoContinueBtn");
-    if (sessionInfoContinueBtn) {
-      sessionInfoContinueBtn.onclick = () => {
-        saveSessionInfoDismissed(document.getElementById("sessionInfoDontShow").checked);
-        startFreshOrResumeSession();
-      };
     }
     
     const inputEl = document.getElementById("input");
     if (inputEl) {
       inputEl.addEventListener("keydown", e => {
-        if (e.key === "Enter" && e.ctrlKey) {
+        if ((e.key === "Enter" && !e.shiftKey) || (e.key === "Enter" && e.ctrlKey)) {
           e.preventDefault();
           send();
         }
       });
       
+      inputEl.addEventListener("input", () => {
+        autoResizeInput();
+      });
+      
       inputEl.addEventListener("focus", () => {
         updateActivity();
+        syncInputShellState();
+        autoResizeInput();
+      });
+      
+      inputEl.addEventListener("blur", () => {
+        syncInputShellState();
+      });
+      
+      inputEl.style.scrollbarWidth = "none";
+      inputEl.style.msOverflowStyle = "none";
+      
+      requestAnimationFrame(() => {
+        autoResizeInput();
       });
     }
     
