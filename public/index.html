@@ -4018,6 +4018,77 @@
     
     const inputEl = document.getElementById("input");
     if (inputEl) {
+      const inputShellEl = document.getElementById("inputShell");
+      const sendBtnEl = document.getElementById("sendBtn");
+      
+      function getInputMaxHeightPx() {
+        const computed = window.getComputedStyle(inputEl);
+        const lineHeight = parseFloat(computed.lineHeight) || 24;
+        return lineHeight * 10;
+      }
+      
+      function resizeComposerInput() {
+        inputEl.style.height = "auto";
+        
+        const maxHeight = getInputMaxHeightPx();
+        const nextHeight = Math.min(inputEl.scrollHeight, maxHeight);
+        
+        inputEl.style.height = nextHeight + "px";
+        inputEl.style.overflowY = inputEl.scrollHeight > maxHeight ? "auto" : "hidden";
+      }
+      
+      function syncComposerUi() {
+        const hasText = inputEl.value.trim().length > 0;
+        const isFocused = document.activeElement === inputEl;
+        
+        if (inputShellEl) {
+          inputShellEl.classList.toggle("is-active", isFocused || hasText);
+        }
+        
+        if (sendBtnEl) {
+          sendBtnEl.disabled = inputEl.disabled || isSending || !hasText;
+        }
+        
+        resizeComposerInput();
+      }
+      
+      const originalSend = send;
+      send = async function() {
+        try {
+          await originalSend();
+        } finally {
+          syncComposerUi();
+        }
+      };
+      
+      if (sendBtnEl) {
+        sendBtnEl.onclick = send;
+      }
+      
+      const originalOpenEditMode = openEditMode;
+      openEditMode = function(historyIndex, text) {
+        originalOpenEditMode(historyIndex, text);
+        requestAnimationFrame(syncComposerUi);
+      };
+      
+      const originalCloseEditMode = closeEditMode;
+      closeEditMode = function(options = {}) {
+        originalCloseEditMode(options);
+        requestAnimationFrame(syncComposerUi);
+      };
+      
+      const originalStartFreshSession = startFreshSession;
+      startFreshSession = function() {
+        originalStartFreshSession();
+        requestAnimationFrame(syncComposerUi);
+      };
+      
+      const originalStartFreshOrResumeSession = startFreshOrResumeSession;
+      startFreshOrResumeSession = function() {
+        originalStartFreshOrResumeSession();
+        requestAnimationFrame(syncComposerUi);
+      };
+      
       inputEl.addEventListener("keydown", e => {
         if (e.key === "Enter" && e.ctrlKey) {
           e.preventDefault();
@@ -4025,9 +4096,21 @@
         }
       });
       
+      inputEl.addEventListener("input", () => {
+        updateActivity();
+        syncComposerUi();
+      });
+      
       inputEl.addEventListener("focus", () => {
         updateActivity();
+        syncComposerUi();
       });
+      
+      inputEl.addEventListener("blur", () => {
+        syncComposerUi();
+      });
+      
+      requestAnimationFrame(syncComposerUi);
     }
     
     const chatEl = document.getElementById("chat");
