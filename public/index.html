@@ -2621,8 +2621,10 @@
       }
       
       requestAnimationFrame(() => {
-        updateScrollToBottomBtn({
-          forcePulse: role === "bot" && pulseScrollButton && !wasAtBottomBeforeInsert
+        requestAnimationFrame(() => {
+          updateScrollToBottomBtn({
+            forcePulse: role === "bot" && pulseScrollButton && !wasAtBottomBeforeInsert
+          });
         });
       });
     }
