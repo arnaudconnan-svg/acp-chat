@@ -1000,6 +1000,30 @@
       transform: scale(0.96);
     }
     
+    #scrollToBottomBtn.visible {
+      opacity: 1 !important;
+      pointer-events: auto !important;
+      transform: translateX(-50%) translateY(0) scale(1) !important;
+    }
+    
+    #scrollToBottomBtn.pulse {
+      animation: scrollToBottomPulse 0.72s ease-in-out 2;
+    }
+    
+    @keyframes scrollToBottomPulse {
+      0% {
+        transform: translateX(-50%) translateY(0) scale(1);
+      }
+      
+      50% {
+        transform: translateX(-50%) translateY(0) scale(1.08);
+      }
+      
+      100% {
+        transform: translateX(-50%) translateY(0) scale(1);
+      }
+    }
+    
     /* ---------- MODALES ---------- */
     
     .modal {
@@ -1687,7 +1711,7 @@
     const SESSION_TIMEOUT_MS = 12 * 60 * 60 * 1000;
     const MAX_RECENT_TURNS = 8;
     const ADMIN_UI_KEY = "facilitatio_admin_ui";
-    const CHAT_BOTTOM_THRESHOLD_PX = 6;
+    const CHAT_BOTTOM_THRESHOLD_PX = 12;
     
     function getOrCreateUserId() {
       let userId = localStorage.getItem(USER_ID_KEY);
@@ -2272,7 +2296,7 @@
       if (!chat) return true;
       
       const remaining = chat.scrollHeight - chat.clientHeight - chat.scrollTop;
-      return remaining <= CHAT_BOTTOM_THRESHOLD_PX;
+      return remaining <= 12;
     }
     
     function ensureScrollToBottomBtn() {
@@ -2286,11 +2310,11 @@
       btn.type = "button";
       btn.setAttribute("aria-label", "Aller en bas");
       btn.innerHTML = `
-      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-        <path d="M12 6v12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"></path>
-        <path d="M6 14l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path>
-      </svg>
-    `;
+    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+      <path d="M12 6v12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"></path>
+      <path d="M6 14l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path>
+    </svg>
+  `;
       
       btn.style.position = "absolute";
       btn.style.left = "50%";
@@ -2363,28 +2387,43 @@
       };
     }
     
-    function updateScrollToBottomBtn({ forcePulse = false } = {}) {
+    function updateScrollToBottomBtn(options = {}) {
+      const { forcePulse = false } = options;
+      const btn = ensureScrollToBottomBtn();
+      const chatScreen = document.getElementById("chatScreen");
       const chat = document.getElementById("chat");
-      const btn = document.getElementById("scrollToBottomBtn");
       
-      if (!chat || !btn) return;
-      
-      const isAtBottom =
-        Math.abs(chat.scrollHeight - chat.scrollTop - chat.clientHeight) <= CHAT_BOTTOM_THRESHOLD_PX;
-      
-      if (isAtBottom) {
-        btn.classList.remove("visible");
-        btn.classList.remove("pulse");
+      if (!btn || !chatScreen || !chat || !chatScreen.classList.contains("active")) {
+        if (btn) {
+          btn.style.opacity = "0";
+          btn.style.pointerEvents = "none";
+          btn.style.transform = "translateX(-50%) translateY(8px) scale(0.96)";
+        }
+        scrollToBottomBtnVisible = false;
+        stopScrollToBottomPulse();
         return;
       }
       
-      btn.classList.add("visible");
+      const hasScrollableOverflow = (chat.scrollHeight - chat.clientHeight) > 12;
+      const shouldShow = hasScrollableOverflow && !isChatAtBottom();
       
-      if (forcePulse) {
-        btn.classList.remove("pulse"); // reset si déjà actif
-        void btn.offsetWidth; // reflow pour relancer animation
-        btn.classList.add("pulse");
+      if (shouldShow) {
+        btn.style.opacity = "1";
+        btn.style.pointerEvents = "auto";
+        btn.style.transform = "translateX(-50%) translateY(0) scale(1)";
+        scrollToBottomBtnVisible = true;
+        
+        if (forcePulse) {
+          pulseScrollToBottomBtn();
+        }
+        return;
       }
+      
+      btn.style.opacity = "0";
+      btn.style.pointerEvents = "none";
+      btn.style.transform = "translateX(-50%) translateY(8px) scale(0.96)";
+      scrollToBottomBtnVisible = false;
+      stopScrollToBottomPulse();
     }
     
     function scrollChatToBottom(options = {}) {
@@ -2432,7 +2471,8 @@
       setTimeout(applyDefocus, 150);
     }
     
-    function renderBotMessageContent(bubble, text) {
+    function renderBotMessageContent(bubble, text, options = {}) {
+      const { progressive = true } = options;
       const chat = document.getElementById("chat");
       
       if (!chat) {
@@ -2440,29 +2480,36 @@
         return;
       }
       
-      const isAtBottom =
-        Math.abs(chat.scrollHeight - chat.scrollTop - chat.clientHeight) <= CHAT_BOTTOM_THRESHOLD_PX;
+      if (!progressive) {
+        bubble.textContent = text;
+        return;
+      }
       
-      if (!isAtBottom || text.length < 180) {
+      const isAtBottomNow = isChatAtBottom();
+      
+      if (!isAtBottomNow || text.length < 180) {
         bubble.textContent = text;
         return;
       }
       
       let index = 0;
       let interrupted = false;
-      
       const totalLength = text.length;
       
-      // vitesse adaptative
       const chunkSize =
         totalLength < 400 ? 2 :
         totalLength < 800 ? 3 :
         totalLength < 1400 ? 4 : 5;
       
+      function cleanup() {
+        chat.removeEventListener("scroll", onUserInterrupt);
+        window.removeEventListener("touchstart", onUserInterrupt);
+        window.removeEventListener("wheel", onUserInterrupt, { passive: true });
+      }
+      
       function completeFast() {
         bubble.style.transition = "opacity 120ms ease";
         bubble.style.opacity = "0.6";
-        
         bubble.textContent = text;
         
         requestAnimationFrame(() => {
@@ -2473,10 +2520,7 @@
       function onUserInterrupt() {
         if (interrupted) return;
         interrupted = true;
-        
-        chat.removeEventListener("scroll", onUserInterrupt);
-        window.removeEventListener("touchstart", onUserInterrupt);
-        
+        cleanup();
         completeFast();
       }
       
@@ -2489,21 +2533,27 @@
         if (index < totalLength) {
           requestAnimationFrame(step);
         } else {
-          chat.removeEventListener("scroll", onUserInterrupt);
-          window.removeEventListener("touchstart", onUserInterrupt);
+          cleanup();
         }
       }
       
       chat.addEventListener("scroll", onUserInterrupt);
       window.addEventListener("touchstart", onUserInterrupt);
+      window.addEventListener("wheel", onUserInterrupt, { passive: true });
       
       setTimeout(() => {
+        if (interrupted) return;
         requestAnimationFrame(step);
       }, 50);
     }
     
     function addMessage(role, text, debug, options = {}) {
-      const { shouldAutoScroll = true, pulseScrollButton = false } = options;
+      const {
+        shouldAutoScroll = true,
+          pulseScrollButton = false,
+          progressive = true
+      } = options;
+      
       const chat = document.getElementById("chat");
       
       const msg = document.createElement("div");
@@ -2544,7 +2594,7 @@
       bubble.className = "bubble";
       
       if (role === "bot") {
-        renderBotMessageContent(bubble, text);
+        renderBotMessageContent(bubble, text, { progressive });
       } else {
         bubble.textContent = text;
       }
@@ -2553,11 +2603,15 @@
       msg.appendChild(contentWrap);
       chat.appendChild(msg);
       
-      if (shouldAutoScroll) {
+      const currentlyAtBottom = isChatAtBottom();
+      
+      if (shouldAutoScroll || currentlyAtBottom) {
         scrollChatToBottom();
       } else {
         requestAnimationFrame(() => {
-          updateScrollToBottomBtn({ forcePulse: pulseScrollButton });
+          updateScrollToBottomBtn({
+            forcePulse: role === "bot" && pulseScrollButton
+          });
         });
       }
     }
@@ -2570,7 +2624,12 @@
         addMessage(
           m.role === "user" ? "user" : "bot",
           m.content,
-          m.debug || [], { shouldAutoScroll: false }
+          m.debug || [],
+          {
+            shouldAutoScroll: false,
+            progressive: false,
+            pulseScrollButton: false
+          }
         );
       });
       
