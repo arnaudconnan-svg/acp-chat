@@ -541,7 +541,7 @@
     
     #topBar.is-elevated {
       background: rgba(255, 255, 255, 0.75);
-      box-shadow: 0 2px 88px rgba(0, 0, 0, 0,04);
+      box-shadow: 0 2px 88px rgba(0, 0, 0, 0, 04);
       border-bottom-color: rgba(215, 228, 230, 0.88);
     }
     
@@ -4123,10 +4123,30 @@
     const chatEl = document.getElementById("chat");
     if (chatEl) {
       const topBarEl = document.getElementById("topBar");
+      const menuBtnEl = document.getElementById("menuBtn");
       
       function syncTopBarElevation() {
         if (!topBarEl) return;
-        topBarEl.classList.toggle("is-elevated", chatEl.scrollTop > 12);
+        
+        const elevated = chatEl.scrollTop > 12;
+        
+        topBarEl.classList.toggle("is-elevated", elevated);
+        
+        topBarEl.style.background = elevated ?
+          "rgba(255, 255, 255, 0.58)" :
+          "rgba(255, 255, 255, 0.42)";
+        topBarEl.style.backdropFilter = elevated ? "blur(12px)" : "blur(10px)";
+        topBarEl.style.webkitBackdropFilter = elevated ? "blur(12px)" : "blur(10px)";
+        topBarEl.style.borderBottom = elevated ?
+          "1px solid rgba(255, 255, 255, 0.24)" :
+          "1px solid rgba(255, 255, 255, 0.14)";
+        topBarEl.style.boxShadow = elevated ?
+          "0 8px 22px rgba(36, 94, 102, 0.05)" :
+          "none";
+      }
+      
+      if (menuBtnEl) {
+        menuBtnEl.style.display = "none";
       }
       
       ensureScrollToBottomBtn();
