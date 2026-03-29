@@ -2112,11 +2112,11 @@ app.post("/chat", async (req, res) => {
     }
     
     await messagesRef.push({
-      conversationId,
-      userId,
       role: "user",
-      content: message,
-      timestamp: nowIso
+      content: isEdited ? message + "\n[MODIFIÉ]" : message,
+      timestamp: Date.now(),
+      userId,
+      conversationId
     });
     
     await convRef.transaction(current => {
@@ -2152,12 +2152,11 @@ app.post("/chat", async (req, res) => {
     
     async function pushAssistantMessage(reply, debug) {
       await messagesRef.push({
-        conversationId,
-        userId,
         role: "assistant",
-        content: reply,
-        timestamp: new Date().toISOString(),
-        debug
+        content: isEdited ? reply + "\n[MODIFIÉ]" : reply,
+        timestamp: Date.now(),
+        userId,
+        conversationId
       });
       
       await convRef.update({
