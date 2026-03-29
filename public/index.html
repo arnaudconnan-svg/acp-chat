@@ -1505,16 +1505,6 @@
     </div>
   </div>
   
-  <div id="inputMetaActions">
-    <button id="debugToggleBtn" type="button" aria-label="Afficher ou masquer les logs">
-      logs
-    </button>
-  </div>
-  
-  <button id="debugToggleBtn" type="button" aria-label="Afficher ou masquer les logs">
-    logs masques
-  </button>
-  
   <script>
     function openEditTitleModal(conversationId) {
       if (!conversationId) return;
@@ -2646,11 +2636,187 @@
       }, 50);
     }
     
+    function showTemporaryNotice(message) {
+      let notice = document.getElementById("chatTemporaryNotice");
+      
+      if (!notice) {
+        notice = document.createElement("div");
+        notice.id = "chatTemporaryNotice";
+        notice.style.position = "absolute";
+        notice.style.left = "50%";
+        notice.style.bottom = "calc(112px + env(safe-area-inset-bottom, 0px))";
+        notice.style.transform = "translateX(-50%) translateY(8px)";
+        notice.style.maxWidth = "calc(100% - 32px)";
+        notice.style.padding = "10px 14px";
+        notice.style.borderRadius = "14px";
+        notice.style.background = "rgba(36, 94, 102, 0.92)";
+        notice.style.color = "#ffffff";
+        notice.style.fontSize = "13px";
+        notice.style.lineHeight = "1.35";
+        notice.style.boxShadow = "0 12px 24px rgba(36, 94, 102, 0.18)";
+        notice.style.opacity = "0";
+        notice.style.pointerEvents = "none";
+        notice.style.zIndex = "55";
+        notice.style.transition = "opacity 0.18s ease, transform 0.18s ease";
+        document.getElementById("chatScreen").appendChild(notice);
+      }
+      
+      notice.textContent = message;
+      notice.style.opacity = "1";
+      notice.style.transform = "translateX(-50%) translateY(0)";
+      
+      clearTimeout(notice._hideTimer);
+      notice._hideTimer = setTimeout(() => {
+        notice.style.opacity = "0";
+        notice.style.transform = "translateX(-50%) translateY(8px)";
+      }, 1700);
+    }
+    
+    function ensureEditModeBar() {
+      let bar = document.getElementById("editModeBar");
+      if (bar) return bar;
+      
+      const inputArea = document.getElementById("inputArea");
+      if (!inputArea) return null;
+      
+      bar = document.createElement("div");
+      bar.id = "editModeBar";
+      bar.style.position = "absolute";
+      bar.style.left = "50%";
+      bar.style.bottom = "calc(92px + env(safe-area-inset-bottom, 0px))";
+      bar.style.transform = "translateX(-50%) translateY(6px)";
+      bar.style.width = "calc(100% - 28px)";
+      bar.style.maxWidth = "700px";
+      bar.style.boxSizing = "border-box";
+      bar.style.display = "flex";
+      bar.style.alignItems = "center";
+      bar.style.justifyContent = "space-between";
+      bar.style.gap = "12px";
+      bar.style.padding = "10px 14px";
+      bar.style.borderRadius = "16px";
+      bar.style.background = "rgba(255, 255, 255, 0.92)";
+      bar.style.border = "1px solid rgba(214, 230, 233, 0.95)";
+      bar.style.boxShadow = "0 12px 28px rgba(36, 94, 102, 0.14)";
+      bar.style.backdropFilter = "blur(14px)";
+      bar.style.webkitBackdropFilter = "blur(14px)";
+      bar.style.opacity = "0";
+      bar.style.pointerEvents = "none";
+      bar.style.zIndex = "41";
+      bar.style.transition = "opacity 0.18s ease, transform 0.18s ease";
+      
+      const label = document.createElement("div");
+      label.id = "editModeBarLabel";
+      label.textContent = "Modification du dernier message";
+      label.style.fontSize = "13px";
+      label.style.lineHeight = "1.3";
+      label.style.color = "#245e66";
+      label.style.fontWeight = "600";
+      label.style.minWidth = "0";
+      
+      const closeBtn = document.createElement("button");
+      closeBtn.type = "button";
+      closeBtn.id = "editModeBarClose";
+      closeBtn.setAttribute("aria-label", "Annuler la modification");
+      closeBtn.textContent = "×";
+      closeBtn.style.width = "28px";
+      closeBtn.style.height = "28px";
+      closeBtn.style.minWidth = "28px";
+      closeBtn.style.border = "none";
+      closeBtn.style.borderRadius = "999px";
+      closeBtn.style.padding = "0";
+      closeBtn.style.margin = "0";
+      closeBtn.style.display = "flex";
+      closeBtn.style.alignItems = "center";
+      closeBtn.style.justifyContent = "center";
+      closeBtn.style.background = "rgba(36, 94, 102, 0.12)";
+      closeBtn.style.color = "#245e66";
+      closeBtn.style.fontSize = "20px";
+      closeBtn.style.lineHeight = "1";
+      closeBtn.style.cursor = "pointer";
+      closeBtn.style.webkitTapHighlightColor = "transparent";
+      
+      closeBtn.onclick = () => {
+        cancelEditMode();
+      };
+      
+      bar.appendChild(label);
+      bar.appendChild(closeBtn);
+      inputArea.appendChild(bar);
+      
+      return bar;
+    }
+    
+    let editMode = {
+      active: false,
+      conversationId: null,
+      targetHistoryIndex: -1,
+      originalText: ""
+    };
+    
+    let draftBeforeEdit = "";
+    
+    function openEditMode(historyIndex, text) {
+      const input = document.getElementById("input");
+      const bar = ensureEditModeBar();
+      if (!input || !bar) return;
+      
+      draftBeforeEdit = input.value;
+      
+      editMode.active = true;
+      editMode.conversationId = getConversationId();
+      editMode.targetHistoryIndex = historyIndex;
+      editMode.originalText = text;
+      
+      bar.style.opacity = "1";
+      bar.style.pointerEvents = "auto";
+      bar.style.transform = "translateX(-50%) translateY(0)";
+      
+      input.value = text;
+      input.focus();
+      input.setSelectionRange(input.value.length, input.value.length);
+    }
+    
+    function closeEditMode(options = {}) {
+      const { restoreDraft = true } = options;
+      const input = document.getElementById("input");
+      const bar = document.getElementById("editModeBar");
+      
+      if (bar) {
+        bar.style.opacity = "0";
+        bar.style.pointerEvents = "none";
+        bar.style.transform = "translateX(-50%) translateY(6px)";
+      }
+      
+      if (input && restoreDraft) {
+        input.value = draftBeforeEdit || "";
+      }
+      
+      editMode.active = false;
+      editMode.conversationId = null;
+      editMode.targetHistoryIndex = -1;
+      editMode.originalText = "";
+      draftBeforeEdit = "";
+    }
+    
+    function cancelEditMode() {
+      closeEditMode({ restoreDraft: true });
+    }
+    
+    function getLastUserHistoryIndex(history) {
+      for (let i = history.length - 1; i >= 0; i -= 1) {
+        if (history[i] && history[i].role === "user") {
+          return i;
+        }
+      }
+      return -1;
+    }
+    
     function addMessage(role, text, debug, options = {}) {
       const {
         shouldAutoScroll = true,
           pulseScrollButton = false,
-          progressive = true
+          progressive = true,
+          historyIndex = -1
       } = options;
       
       const chat = document.getElementById("chat");
@@ -2702,6 +2868,57 @@
         });
       } else {
         bubble.textContent = text;
+        
+        let longPressTimer = null;
+        let pressMoved = false;
+        
+        const startLongPress = event => {
+          if (event.type === "mousedown" && event.button !== 0) return;
+          
+          pressMoved = false;
+          clearTimeout(longPressTimer);
+          longPressTimer = setTimeout(() => {
+            const history = loadHistory();
+            const lastUserHistoryIndex = getLastUserHistoryIndex(history);
+            
+            if (historyIndex !== lastUserHistoryIndex) {
+              msg.style.transition = "transform 0.14s ease";
+              msg.style.transform = "translateX(-3px)";
+              setTimeout(() => {
+                msg.style.transform = "translateX(3px)";
+                setTimeout(() => {
+                  msg.style.transform = "";
+                }, 70);
+              }, 70);
+              
+              showTemporaryNotice("Seul le dernier message est modifiable");
+              return;
+            }
+            
+            openEditMode(historyIndex, text);
+          }, 480);
+        };
+        
+        const cancelLongPress = () => {
+          clearTimeout(longPressTimer);
+        };
+        
+        const markMove = () => {
+          pressMoved = true;
+          if (pressMoved) cancelLongPress();
+        };
+        
+        msg.addEventListener("touchstart", startLongPress, { passive: true });
+        msg.addEventListener("touchend", cancelLongPress);
+        msg.addEventListener("touchcancel", cancelLongPress);
+        msg.addEventListener("touchmove", markMove, { passive: true });
+        msg.addEventListener("mousedown", startLongPress);
+        msg.addEventListener("mouseup", cancelLongPress);
+        msg.addEventListener("mouseleave", cancelLongPress);
+        msg.addEventListener("mousemove", markMove);
+        msg.style.webkitTouchCallout = "none";
+        msg.style.webkitUserSelect = "none";
+        msg.style.userSelect = "none";
       }
       
       contentWrap.appendChild(bubble);
@@ -2728,7 +2945,7 @@
       
       chat.innerHTML = "";
       
-      loadHistory().forEach(m => {
+      loadHistory().forEach((m, index) => {
         addMessage(
           m.role === "user" ? "user" : "bot",
           m.content,
@@ -2736,7 +2953,8 @@
           {
             shouldAutoScroll: false,
             progressive: false,
-            pulseScrollButton: false
+            pulseScrollButton: false,
+            historyIndex: index
           }
         );
       });
@@ -2875,6 +3093,7 @@
         clearSessionStorageExceptMemory();
         resetLocalSessionState();
         localStorage.removeItem(CONVERSATION_ID_KEY);
+        closeEditMode({ restoreDraft: false });
         renderHistory();
         showScreen("chatScreen", { pushHistory: true });
         
@@ -2906,6 +3125,7 @@
         pushHistory("assistant", "Bienvenue dans cette nouvelle session. Que veux-tu explorer aujourd'hui ?", []);
       }
       
+      closeEditMode({ restoreDraft: false });
       renderHistory();
       
       const input = document.getElementById("input");
@@ -3106,6 +3326,7 @@
       
       if (history.length > 0) {
         setSessionStatus("active");
+        closeEditMode({ restoreDraft: false });
         renderHistory();
         scrollChatToBottom();
         defocusInput();
@@ -3181,27 +3402,67 @@
       const input = document.getElementById("input");
       const sendBtn = document.getElementById("sendBtn");
       const chat = document.getElementById("chat");
-      const message = input.value.trim();
+      const nextMessage = input.value.trim();
       
-      if (!message) return;
+      if (!nextMessage) return;
       
-      const wasAtBottom = isChatAtBottom();
+      const isEditing = editMode.active;
+      const conversationIdBeforeSend = getConversationId();
+      const wasAtBottom = isEditing ? true : isChatAtBottom();
+      const restoredDraft = isEditing ? draftBeforeEdit : "";
+      
+      let message = nextMessage;
       
       isSending = true;
       updateActivity();
       sendBtn.disabled = true;
       
-      pushHistory("user", message, []);
-      addMessage("user", message, [], {
-        shouldAutoScroll: wasAtBottom,
-        pulseScrollButton: false,
-        progressive: false
-      });
+      if (isEditing) {
+        const history = loadHistory();
+        const targetIndex = editMode.targetHistoryIndex;
+        const lastUserIndex = getLastUserHistoryIndex(history);
+        
+        if (
+          targetIndex < 0 ||
+          targetIndex !== lastUserIndex ||
+          editMode.conversationId !== conversationIdBeforeSend ||
+          !history[targetIndex] ||
+          history[targetIndex].role !== "user"
+        ) {
+          closeEditMode({ restoreDraft: true });
+          isSending = false;
+          syncInputAvailability();
+          showTemporaryNotice("Modification impossible");
+          return;
+        }
+        
+        history[targetIndex] = {
+          ...history[targetIndex],
+          content: message,
+          t: Date.now()
+        };
+        
+        const truncatedHistory = history.slice(0, targetIndex + 1);
+        saveHistory(truncatedHistory);
+        closeEditMode({ restoreDraft: false });
+        renderHistory();
+        scrollChatToBottom();
+        
+        input.value = restoredDraft || "";
+      } else {
+        pushHistory("user", message, []);
+        addMessage("user", message, [], {
+          shouldAutoScroll: wasAtBottom,
+          pulseScrollButton: false,
+          progressive: false,
+          historyIndex: loadHistory().length - 1
+        });
+        
+        input.value = "";
+      }
       
       const requestConversationId = getConversationId();
       const requestScreenId = document.querySelector(".screen.active")?.id || "";
-      
-      input.value = "";
       
       const waitingMsg = document.createElement("div");
       waitingMsg.className = "message bot";
@@ -3222,7 +3483,7 @@
       
       chat.appendChild(waitingMsg);
       
-      if (wasAtBottom) {
+      if (wasAtBottom || isEditing) {
         scrollChatToBottom();
       } else {
         requestAnimationFrame(() => {
@@ -3273,8 +3534,8 @@
             requestScreenId === "chatScreen"
           ) {
             addMessage("bot", "Erreur serveur", [], {
-              shouldAutoScroll: wasAtBottom,
-              pulseScrollButton: !wasAtBottom
+              shouldAutoScroll: wasAtBottom || isEditing,
+              pulseScrollButton: !wasAtBottom && !isEditing
             });
           }
           return;
@@ -3311,8 +3572,8 @@
           requestScreenId === "chatScreen"
         ) {
           addMessage("bot", data.reply, data.debug || [], {
-            shouldAutoScroll: wasAtBottom,
-            pulseScrollButton: !wasAtBottom
+            shouldAutoScroll: wasAtBottom || isEditing,
+            pulseScrollButton: !wasAtBottom && !isEditing
           });
         }
         
@@ -3331,8 +3592,8 @@
           requestScreenId === "chatScreen"
         ) {
           addMessage("bot", "Erreur serveur", [], {
-            shouldAutoScroll: wasAtBottom,
-            pulseScrollButton: !wasAtBottom
+            shouldAutoScroll: wasAtBottom || isEditing,
+            pulseScrollButton: !wasAtBottom && !isEditing
           });
         }
       } finally {
