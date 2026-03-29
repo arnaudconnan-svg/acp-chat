@@ -3636,123 +3636,21 @@
     }
     
     function enterConversations() {
-      const welcomeScreen = document.getElementById("welcomeScreen");
-      const conversationsScreen = document.getElementById("conversationsScreen");
-      
-      if (!welcomeScreen || !conversationsScreen) return;
-      
-      const bgValue = window.getComputedStyle(conversationsScreen).backgroundImage || "";
-      const match = bgValue.match(/url\(["']?(.*?)["']?\)/);
-      const bgUrl = match ? match[1] : "";
-      
-      renderConversationsList();
-      
-      let didOpen = false;
-      
-      function pushConversationsHistory() {
-        const currentState = history.state || {};
+      try {
+        console.log("enterConversations start");
         
-        if (currentState.screenId !== "conversationsScreen") {
-          history.pushState({ screenId: "conversationsScreen" }, "", window.location.href);
-        }
+        renderConversationsList();
+        
+        console.log("renderConversationsList OK");
+        
+        showScreen("conversationsScreen");
+        
+        console.log("showScreen OK");
+        
+      } catch (e) {
+        alert("ERREUR: " + e.message);
+        console.error(e);
       }
-      
-      function finalizeOpen() {
-        if (didOpen) return;
-        didOpen = true;
-        
-        conversationsScreen.style.transition = "none";
-        conversationsScreen.style.opacity = "0";
-        
-        applyScreen("conversationsScreen");
-        pushConversationsHistory();
-        
-        requestAnimationFrame(() => {
-          conversationsScreen.style.transition = "opacity 0.7s ease";
-          conversationsScreen.style.opacity = "1";
-        });
-        
-        welcomeScreen.style.transition = "";
-        welcomeScreen.style.opacity = "";
-      }
-      
-      function fadeOutWelcomeThenShow() {
-        if (didOpen) return;
-        
-        welcomeScreen.style.transition = "opacity 0.38s ease";
-        welcomeScreen.style.opacity = "0";
-        
-        setTimeout(() => {
-          finalizeOpen();
-        }, 380);
-      }
-      
-      const failSafeTimer = setTimeout(() => {
-        finalizeOpen();
-      }, 1200);
-      
-      if (!bgUrl) {
-        fadeOutWelcomeThenShow();
-        return;
-      }
-      
-      if (enterConversations._loadedUrl === bgUrl) {
-        fadeOutWelcomeThenShow();
-        return;
-      }
-      
-      if (enterConversations._loadingPromise && enterConversations._loadingUrl === bgUrl) {
-        enterConversations._loadingPromise
-          .then(() => {
-            clearTimeout(failSafeTimer);
-            fadeOutWelcomeThenShow();
-          })
-          .catch(() => {
-            clearTimeout(failSafeTimer);
-            fadeOutWelcomeThenShow();
-          });
-        return;
-      }
-      
-      enterConversations._loadingUrl = bgUrl;
-      enterConversations._loadingPromise = new Promise(resolve => {
-        const img = new Image();
-        let done = false;
-        
-        const finish = () => {
-          if (done) return;
-          done = true;
-          resolve();
-        };
-        
-        img.onload = () => {
-          enterConversations._loadedUrl = bgUrl;
-          enterConversations._loadingPromise = null;
-          finish();
-        };
-        
-        img.onerror = () => {
-          enterConversations._loadingPromise = null;
-          finish();
-        };
-        
-        setTimeout(() => {
-          enterConversations._loadingPromise = null;
-          finish();
-        }, 900);
-        
-        img.src = bgUrl;
-      });
-      
-      enterConversations._loadingPromise
-        .then(() => {
-          clearTimeout(failSafeTimer);
-          fadeOutWelcomeThenShow();
-        })
-        .catch(() => {
-          clearTimeout(failSafeTimer);
-          fadeOutWelcomeThenShow();
-        });
     }
     
     function startFreshOrResumeSession() {
