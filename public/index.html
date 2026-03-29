@@ -2465,15 +2465,45 @@
       
       let index = 0;
       const chunkSize = 2;
+      let interrupted = false;
+      
+      function completeFast() {
+        bubble.style.transition = "opacity 120ms ease";
+        bubble.style.opacity = "0.6";
+        
+        bubble.textContent = text;
+        
+        requestAnimationFrame(() => {
+          bubble.style.opacity = "1";
+        });
+      }
+      
+      function onUserInterrupt() {
+        if (interrupted) return;
+        interrupted = true;
+        
+        chat.removeEventListener("scroll", onUserInterrupt);
+        window.removeEventListener("touchstart", onUserInterrupt);
+        
+        completeFast();
+      }
       
       function step() {
+        if (interrupted) return;
+        
         index += chunkSize;
         bubble.textContent = text.slice(0, index);
         
         if (index < text.length) {
           requestAnimationFrame(step);
+        } else {
+          chat.removeEventListener("scroll", onUserInterrupt);
+          window.removeEventListener("touchstart", onUserInterrupt);
         }
       }
+      
+      chat.addEventListener("scroll", onUserInterrupt);
+      window.addEventListener("touchstart", onUserInterrupt);
       
       setTimeout(() => {
         requestAnimationFrame(step);
