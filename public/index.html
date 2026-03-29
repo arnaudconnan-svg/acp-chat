@@ -3137,7 +3137,9 @@
       
       pushHistory("user", message, []);
       addMessage("user", message, [], {
-        shouldAutoScroll: wasAtBottom
+        shouldAutoScroll: wasAtBottom,
+        pulseScrollButton: false,
+        progressive: false
       });
       
       const requestConversationId = getConversationId();
@@ -3163,7 +3165,14 @@
       waitingMsg.appendChild(waitingContent);
       
       chat.appendChild(waitingMsg);
-      scrollChatToBottom();
+      
+      if (wasAtBottom) {
+        scrollChatToBottom();
+      } else {
+        requestAnimationFrame(() => {
+          updateScrollToBottomBtn();
+        });
+      }
       
       let dotAnimation = null;
       
