@@ -53,7 +53,35 @@ app.get("/test.html", requireAdminAuth, (req, res) => {
   res.sendFile(__dirname + "/public/test.html");
 });
 
-app.use(express.static("public"));
+app.use(express.static("public", {
+  etag: false,
+  lastModified: false,
+  setHeaders: (res, filePath) => {
+    const normalized = String(filePath).replace(/\\/g, "/");
+    
+    if (normalized.endsWith(".html")) {
+      res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+      res.setHeader("Pragma", "no-cache");
+      res.setHeader("Expires", "0");
+      return;
+    }
+    
+    if (normalized.endsWith("/manifest.json") || normalized.endsWith(".webmanifest")) {
+      res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+      res.setHeader("Pragma", "no-cache");
+      res.setHeader("Expires", "0");
+      return;
+    }
+    
+    if (normalized.endsWith(".js") || normalized.endsWith(".css")) {
+      res.setHeader("Cache-Control", "no-cache, must-revalidate");
+      return;
+    }
+    
+    res.setHeader("Cache-Control", "public, max-age=86400");
+  }
+}));
+
 app.use(express.json());
 
 const MAX_RECENT_TURNS = 8;
