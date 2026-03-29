@@ -2133,6 +2133,22 @@
       document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
       document.getElementById(id).classList.add("active");
       syncDebugVisibility();
+      
+      if (id === "chatScreen") {
+        const chat = document.getElementById("chat");
+        
+        const forceBottomNow = () => {
+          if (!chat) return;
+          chat.scrollTop = chat.scrollHeight;
+          updateScrollToBottomBtn();
+        };
+        
+        forceBottomNow();
+        requestAnimationFrame(forceBottomNow);
+        setTimeout(forceBottomNow, 50);
+        return;
+      }
+      
       requestAnimationFrame(() => {
         updateScrollToBottomBtn();
       });
