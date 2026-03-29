@@ -1729,6 +1729,64 @@
       
       window.__infoModalAnimationPatched = true;
     });
+    
+    // ===== HINTS SYSTEM (BASE) =====
+    
+    const HINTS_KEY = "facilitat_hints";
+    
+    function getHintsState() {
+      try {
+        return JSON.parse(localStorage.getItem(HINTS_KEY)) || {};
+      } catch {
+        return {};
+      }
+    }
+    
+    function setHintSeen(name) {
+      const state = getHintsState();
+      state[name] = true;
+      localStorage.setItem(HINTS_KEY, JSON.stringify(state));
+    }
+    
+    function isHintSeen(name) {
+      const state = getHintsState();
+      return state[name] === true;
+    }
+    
+    // ===== HINT FAB =====
+    
+    function triggerFabHint() {
+      if (isHintSeen("fab")) return;
+      
+      const fab = document.querySelector(".fab");
+      if (!fab) return;
+      
+      fab.classList.add("hint-active");
+      
+      // interruption = considéré comme vu
+      const stop = () => {
+        fab.classList.remove("hint-active");
+        setHintSeen("fab");
+        fab.removeEventListener("click", stop);
+        fab.removeEventListener("touchstart", stop);
+      };
+      
+      fab.addEventListener("click", stop);
+      fab.addEventListener("touchstart", stop);
+      
+      // auto-stop fallback (sécurité)
+      setTimeout(stop, 5000);
+    }
+    
+    // déclenchement léger après affichage écran conversations
+    setTimeout(() => {
+      const isFirstRun = !localStorage.getItem("facilitat_first_run_done");
+      
+      if (isFirstRun) {
+        triggerFabHint();
+        localStorage.setItem("facilitat_first_run_done", "true");
+      }
+    }, 800);
   </script>
   
   <script>
