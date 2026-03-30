@@ -3015,7 +3015,7 @@
       msg.appendChild(contentWrap);
       chat.appendChild(msg);
       
-      if (shouldAutoScroll && wasAtBottomBeforeInsert) {
+      if (shouldAutoScroll) {
         scrollChatToBottom();
         return;
       }
@@ -3052,14 +3052,8 @@
       syncInputAvailability();
       
       requestAnimationFrame(() => {
-        const shouldScrollToBottom = chat.scrollHeight > chat.clientHeight + 40;
-        
-        if (shouldScrollToBottom) {
-          scrollChatToBottom();
-        } else {
-          chat.scrollTop = 0;
-          updateScrollToBottomBtn();
-        }
+        scrollChatToBottom();
+        updateScrollToBottomBtn();
       });
     }
     
