@@ -1752,702 +1752,702 @@
   </script>
   
   <script>
-    const USER_ID_KEY = "facilitatio_user_id";
-    const CONVERSATION_ID_KEY = "facilitatio_conversation_id";
-    const CONVERSATIONS_INDEX_KEY = "facilitatio_conversations_index";
-    const ACTIVITY_KEY = "facilitatio_last_activity";
-    const SESSION_INFO_DISMISSED_KEY = "facilitatio_session_info_dismissed";
-    const SESSION_TIMEOUT_MS = 12 * 60 * 60 * 1000;
-    const MAX_RECENT_TURNS = 8;
-    const ADMIN_UI_KEY = "facilitatio_admin_ui";
-    const CHAT_BOTTOM_THRESHOLD_PX = 12;
-    
-    function getOrCreateUserId() {
-      let userId = localStorage.getItem(USER_ID_KEY);
-      
-      if (!userId) {
-        userId = "u_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8);
-        localStorage.setItem(USER_ID_KEY, userId);
-      }
-      
-      return userId;
+  const USER_ID_KEY = "facilitatio_user_id";
+  const CONVERSATION_ID_KEY = "facilitatio_conversation_id";
+  const CONVERSATIONS_INDEX_KEY = "facilitatio_conversations_index";
+  const ACTIVITY_KEY = "facilitatio_last_activity";
+  const SESSION_INFO_DISMISSED_KEY = "facilitatio_session_info_dismissed";
+  const SESSION_TIMEOUT_MS = 12 * 60 * 60 * 1000;
+  const MAX_RECENT_TURNS = 8;
+  const ADMIN_UI_KEY = "facilitatio_admin_ui";
+  const CHAT_BOTTOM_THRESHOLD_PX = 12;
+
+  function getOrCreateUserId() {
+    let userId = localStorage.getItem(USER_ID_KEY);
+
+    if (!userId) {
+      userId = "u_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8);
+      localStorage.setItem(USER_ID_KEY, userId);
     }
-    
-    let isSending = false;
-    let showDebug = false;
-    let sessionStatus = "welcome";
-    let bootOverlayEl = null;
-    let scrollToBottomBtnEl = null;
-    let scrollToBottomBtnVisible = false;
-    let scrollToBottomBtnPulseAnim = null;
-    
-    function ensureBootOverlay() {
-      if (bootOverlayEl) return bootOverlayEl;
-      
-      const overlay = document.createElement("div");
-      overlay.id = "bootOverlay";
-      overlay.style.position = "fixed";
-      overlay.style.inset = "0";
-      overlay.style.zIndex = "6000";
-      overlay.style.display = "none";
-      overlay.style.flexDirection = "column";
-      overlay.style.alignItems = "center";
-      overlay.style.justifyContent = "center";
-      overlay.style.background = "#ffffff";
-      overlay.style.gap = "18px";
-      
-      const icon = document.createElement("img");
-      icon.src = "/images/icon-512.png";
-      icon.alt = "Chargement";
-      icon.style.width = "min(112px, 28vw)";
-      icon.style.height = "auto";
-      icon.style.display = "block";
-      
-      const text = document.createElement("div");
-      text.textContent = "Chargement...";
-      text.style.fontFamily = "Arial, sans-serif";
-      text.style.fontSize = "16px";
-      text.style.lineHeight = "1.4";
-      text.style.color = "#245e66";
-      
-      overlay.appendChild(icon);
-      overlay.appendChild(text);
-      document.body.appendChild(overlay);
-      
-      if (icon.animate) {
-        icon.animate(
-          [
-            { transform: "rotate(0deg)", opacity: 0.95 },
-            { transform: "rotate(180deg)", opacity: 0.72 },
-            { transform: "rotate(360deg)", opacity: 0.95 }
-          ],
-          {
-            duration: 5200,
-            iterations: Infinity,
-            easing: "ease-in-out"
-          }
-        );
-      }
-      
-      bootOverlayEl = overlay;
-      return overlay;
-    }
-    
-    function showBootOverlay() {
-      ensureBootOverlay().style.display = "flex";
-    }
-    
-    function hideBootOverlay() {
-      if (!bootOverlayEl) return;
-      bootOverlayEl.style.display = "none";
-    }
-    
-    function getConversationStorageKey(conversationId) {
-      return `facilitatio_conversation_data_${conversationId}`;
-    }
-    
-    function defaultMemory() {
-      return [
-        "Themes deja evoques :",
-        "- ",
-        "",
-        "Points de vigilance relationnels :",
-        "- ",
-        "",
-        "Questions encore ouvertes :",
-        "- "
-      ].join("\n");
-    }
-    
-    function createEmptyConversationData() {
-      return {
-        messages: [],
-        memory: defaultMemory(),
-        flags: {},
-        updatedAt: Date.now()
-      };
-    }
-    
-    function getConversationId() {
-      return localStorage.getItem(CONVERSATION_ID_KEY);
-    }
-    
-    function createConversationId() {
-      const id = "c_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6);
-      localStorage.setItem(CONVERSATION_ID_KEY, id);
-      console.log("NEW conversationId:", id);
-      return id;
-    }
-    
-    function loadConversationsIndex() {
-      try {
-        const parsed = JSON.parse(localStorage.getItem(CONVERSATIONS_INDEX_KEY) || "[]");
-        return Array.isArray(parsed) ? parsed : [];
-      } catch {
-        return [];
-      }
-    }
-    
-    function saveConversationsIndex(index) {
-      localStorage.setItem(CONVERSATIONS_INDEX_KEY, JSON.stringify(Array.isArray(index) ? index : []));
-    }
-    
-    function escapeHtml(value) {
-      return String(value)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#39;");
-    }
-    
-    function upsertConversationIndexItem(patch = {}) {
-      const conversationId = String(patch.id || getConversationId());
-      const index = loadConversationsIndex();
-      const existingIndex = index.findIndex(item => item && item.id === conversationId);
-      const previous = existingIndex >= 0 ? index[existingIndex] : null;
-      
-      const nextItem = {
-        id: conversationId,
-        title: Object.prototype.hasOwnProperty.call(patch, "title") ?
-          patch.title : (previous ? previous.title : null),
-        updatedAt: Number(
-          patch.updatedAt ||
-          (previous ? previous.updatedAt : Date.now())
-        ),
-        isCustomTitle: Object.prototype.hasOwnProperty.call(patch, "isCustomTitle") ?
-          !!patch.isCustomTitle : (previous ? !!previous.isCustomTitle : false)
-      };
-      
-      if (existingIndex >= 0) {
-        index[existingIndex] = nextItem;
-      } else {
-        index.push(nextItem);
-      }
-      
-      saveConversationsIndex(index);
-    }
-    
-    function loadConversationData(conversationId = getConversationId()) {
-      try {
-        const raw = localStorage.getItem(getConversationStorageKey(conversationId));
-        if (!raw) return createEmptyConversationData();
-        
-        const parsed = JSON.parse(raw);
-        return {
-          messages: Array.isArray(parsed?.messages) ? parsed.messages : [],
-          memory: typeof parsed?.memory === "string" && parsed.memory.trim() ?
-            parsed.memory : defaultMemory(),
-          flags: parsed?.flags && typeof parsed.flags === "object" ? parsed.flags : {},
-          updatedAt: Number(parsed?.updatedAt || Date.now())
-        };
-      } catch {
-        return createEmptyConversationData();
-      }
-    }
-    
-    function saveConversationData(conversationId = getConversationId(), data = {}) {
-      if (!conversationId) return;
-      
-      const safeData = {
-        messages: Array.isArray(data?.messages) ? data.messages : [],
-        memory: typeof data?.memory === "string" && data.memory.trim() ?
-          data.memory : defaultMemory(),
-        flags: data?.flags && typeof data.flags === "object" ? data.flags : {},
-        updatedAt: Number(data?.updatedAt || Date.now())
-      };
-      
-      localStorage.setItem(
-        getConversationStorageKey(conversationId),
-        JSON.stringify(safeData)
+
+    return userId;
+  }
+
+  let isSending = false;
+  let showDebug = false;
+  let sessionStatus = "welcome";
+  let bootOverlayEl = null;
+  let scrollToBottomBtnEl = null;
+  let scrollToBottomBtnVisible = false;
+  let scrollToBottomBtnPulseAnim = null;
+
+  function ensureBootOverlay() {
+    if (bootOverlayEl) return bootOverlayEl;
+
+    const overlay = document.createElement("div");
+    overlay.id = "bootOverlay";
+    overlay.style.position = "fixed";
+    overlay.style.inset = "0";
+    overlay.style.zIndex = "6000";
+    overlay.style.display = "none";
+    overlay.style.flexDirection = "column";
+    overlay.style.alignItems = "center";
+    overlay.style.justifyContent = "center";
+    overlay.style.background = "#ffffff";
+    overlay.style.gap = "18px";
+
+    const icon = document.createElement("img");
+    icon.src = "/images/icon-512.png";
+    icon.alt = "Chargement";
+    icon.style.width = "min(112px, 28vw)";
+    icon.style.height = "auto";
+    icon.style.display = "block";
+
+    const text = document.createElement("div");
+    text.textContent = "Chargement...";
+    text.style.fontFamily = "Arial, sans-serif";
+    text.style.fontSize = "16px";
+    text.style.lineHeight = "1.4";
+    text.style.color = "#245e66";
+
+    overlay.appendChild(icon);
+    overlay.appendChild(text);
+    document.body.appendChild(overlay);
+
+    if (icon.animate) {
+      icon.animate(
+        [
+          { transform: "rotate(0deg)", opacity: 0.95 },
+          { transform: "rotate(180deg)", opacity: 0.72 },
+          { transform: "rotate(360deg)", opacity: 0.95 }
+        ],
+        {
+          duration: 5200,
+          iterations: Infinity,
+          easing: "ease-in-out"
+        }
       );
-      
-      upsertConversationIndexItem({
-        id: conversationId,
-        updatedAt: safeData.updatedAt
-      });
     }
-    
-    function deleteConversationData(conversationId) {
-      localStorage.removeItem(getConversationStorageKey(conversationId));
-      
-      const nextIndex = loadConversationsIndex().filter(item => item && item.id !== conversationId);
-      saveConversationsIndex(nextIndex);
+
+    bootOverlayEl = overlay;
+    return overlay;
+  }
+
+  function showBootOverlay() {
+    ensureBootOverlay().style.display = "flex";
+  }
+
+  function hideBootOverlay() {
+    if (!bootOverlayEl) return;
+    bootOverlayEl.style.display = "none";
+  }
+
+  function getConversationStorageKey(conversationId) {
+    return `facilitatio_conversation_data_${conversationId}`;
+  }
+
+  function defaultMemory() {
+    return [
+      "Themes deja evoques :",
+      "- ",
+      "",
+      "Points de vigilance relationnels :",
+      "- ",
+      "",
+      "Questions encore ouvertes :",
+      "- "
+    ].join("\n");
+  }
+
+  function createEmptyConversationData() {
+    return {
+      messages: [],
+      memory: defaultMemory(),
+      flags: {},
+      updatedAt: Date.now()
+    };
+  }
+
+  function getConversationId() {
+    return localStorage.getItem(CONVERSATION_ID_KEY);
+  }
+
+  function createConversationId() {
+    const id = "c_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6);
+    localStorage.setItem(CONVERSATION_ID_KEY, id);
+    console.log("NEW conversationId:", id);
+    return id;
+  }
+
+  function loadConversationsIndex() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(CONVERSATIONS_INDEX_KEY) || "[]");
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
     }
-    
-    function loadMemory() {
-      return loadConversationData().memory;
+  }
+
+  function saveConversationsIndex(index) {
+    localStorage.setItem(CONVERSATIONS_INDEX_KEY, JSON.stringify(Array.isArray(index) ? index : []));
+  }
+
+  function escapeHtml(value) {
+    return String(value)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+  function upsertConversationIndexItem(patch = {}) {
+    const conversationId = String(patch.id || getConversationId());
+    const index = loadConversationsIndex();
+    const existingIndex = index.findIndex(item => item && item.id === conversationId);
+    const previous = existingIndex >= 0 ? index[existingIndex] : null;
+
+    const nextItem = {
+      id: conversationId,
+      title: Object.prototype.hasOwnProperty.call(patch, "title") ?
+        patch.title : (previous ? previous.title : null),
+      updatedAt: Number(
+        patch.updatedAt ||
+        (previous ? previous.updatedAt : Date.now())
+      ),
+      isCustomTitle: Object.prototype.hasOwnProperty.call(patch, "isCustomTitle") ?
+        !!patch.isCustomTitle : (previous ? !!previous.isCustomTitle : false)
+    };
+
+    if (existingIndex >= 0) {
+      index[existingIndex] = nextItem;
+    } else {
+      index.push(nextItem);
     }
-    
-    function saveMemory(memory) {
-      const conversationId = getConversationId();
-      if (!conversationId) return;
-      
-      const data = loadConversationData(conversationId);
-      
-      saveConversationData(conversationId, {
-        ...data,
-        memory,
-        updatedAt: Date.now()
-      });
+
+    saveConversationsIndex(index);
+  }
+
+  function loadConversationData(conversationId = getConversationId()) {
+    try {
+      const raw = localStorage.getItem(getConversationStorageKey(conversationId));
+      if (!raw) return createEmptyConversationData();
+
+      const parsed = JSON.parse(raw);
+      return {
+        messages: Array.isArray(parsed?.messages) ? parsed.messages : [],
+        memory: typeof parsed?.memory === "string" && parsed.memory.trim() ?
+          parsed.memory : defaultMemory(),
+        flags: parsed?.flags && typeof parsed.flags === "object" ? parsed.flags : {},
+        updatedAt: Number(parsed?.updatedAt || Date.now())
+      };
+    } catch {
+      return createEmptyConversationData();
     }
-    
-    function loadFlags() {
-      return loadConversationData().flags;
+  }
+
+  function saveConversationData(conversationId = getConversationId(), data = {}) {
+    if (!conversationId) return;
+
+    const safeData = {
+      messages: Array.isArray(data?.messages) ? data.messages : [],
+      memory: typeof data?.memory === "string" && data.memory.trim() ?
+        data.memory : defaultMemory(),
+      flags: data?.flags && typeof data.flags === "object" ? data.flags : {},
+      updatedAt: Number(data?.updatedAt || Date.now())
+    };
+
+    localStorage.setItem(
+      getConversationStorageKey(conversationId),
+      JSON.stringify(safeData)
+    );
+
+    upsertConversationIndexItem({
+      id: conversationId,
+      updatedAt: safeData.updatedAt
+    });
+  }
+
+  function deleteConversationData(conversationId) {
+    localStorage.removeItem(getConversationStorageKey(conversationId));
+
+    const nextIndex = loadConversationsIndex().filter(item => item && item.id !== conversationId);
+    saveConversationsIndex(nextIndex);
+  }
+
+  function loadMemory() {
+    return loadConversationData().memory;
+  }
+
+  function saveMemory(memory) {
+    const conversationId = getConversationId();
+    if (!conversationId) return;
+
+    const data = loadConversationData(conversationId);
+
+    saveConversationData(conversationId, {
+      ...data,
+      memory,
+      updatedAt: Date.now()
+    });
+  }
+
+  function loadFlags() {
+    return loadConversationData().flags;
+  }
+
+  function saveFlags(flags) {
+    const conversationId = getConversationId();
+    if (!conversationId) return;
+
+    const data = loadConversationData(conversationId);
+
+    saveConversationData(conversationId, {
+      ...data,
+      flags: flags || {},
+      updatedAt: Date.now()
+    });
+  }
+
+  function loadHistory() {
+    return loadConversationData().messages;
+  }
+
+  function saveHistory(history) {
+    const conversationId = getConversationId();
+    if (!conversationId) return;
+
+    const data = loadConversationData(conversationId);
+
+    saveConversationData(conversationId, {
+      ...data,
+      messages: Array.isArray(history) ? history : [],
+      updatedAt: Date.now()
+    });
+  }
+
+  function pushHistory(role, content, debug) {
+    let conversationId = getConversationId();
+
+    if (!conversationId && role === "user") {
+      conversationId = createConversationId();
     }
-    
-    function saveFlags(flags) {
-      const conversationId = getConversationId();
-      if (!conversationId) return;
-      
-      const data = loadConversationData(conversationId);
-      
-      saveConversationData(conversationId, {
-        ...data,
-        flags: flags || {},
-        updatedAt: Date.now()
-      });
-    }
-    
-    function loadHistory() {
-      return loadConversationData().messages;
-    }
-    
-    function saveHistory(history) {
-      const conversationId = getConversationId();
-      if (!conversationId) return;
-      
-      const data = loadConversationData(conversationId);
-      
-      saveConversationData(conversationId, {
-        ...data,
-        messages: Array.isArray(history) ? history : [],
-        updatedAt: Date.now()
-      });
-    }
-    
-    function pushHistory(role, content, debug) {
-      let conversationId = getConversationId();
-      
-      if (!conversationId && role === "user") {
-        conversationId = createConversationId();
-      }
-      
-      if (!conversationId) return;
-      
-      const history = loadHistory();
-      
-      history.push({
-        role,
-        content,
-        debug: Array.isArray(debug) ? debug : [],
-        t: Date.now()
-      });
-      
-      saveHistory(history);
-      
-      const index = loadConversationsIndex();
-      const existingItem = index.find(item => item && item.id === conversationId);
-      const existingTitle = existingItem && typeof existingItem.title === "string" ?
-        existingItem.title.trim() :
-        "";
-      const hasCustomTitle = existingItem && existingItem.isCustomTitle === true;
-      
-      if (hasCustomTitle) {
-        upsertConversationIndexItem({
-          id: conversationId,
-          updatedAt: Date.now(),
-          isCustomTitle: true
-        });
-        return;
-      }
-      
-      const userMessages = history.filter(m => m.role === "user");
-      
-      if (userMessages.length === 0) {
-        upsertConversationIndexItem({
-          id: conversationId,
-          title: existingTitle || "Nouvelle conversation",
-          updatedAt: Date.now(),
-          isCustomTitle: false
-        });
-        return;
-      }
-      
-      if (!existingTitle || existingTitle === "Nouvelle conversation" || existingTitle === "Conversation sans titre") {
-        const firstUserTitle = String(userMessages[0].content || "")
-          .trim()
-          .replace(/\s+/g, " ")
-          .slice(0, 60);
-        
-        upsertConversationIndexItem({
-          id: conversationId,
-          title: firstUserTitle || "Conversation sans titre",
-          updatedAt: Date.now(),
-          isCustomTitle: false
-        });
-        return;
-      }
-      
+
+    if (!conversationId) return;
+
+    const history = loadHistory();
+
+    history.push({
+      role,
+      content,
+      debug: Array.isArray(debug) ? debug : [],
+      t: Date.now()
+    });
+
+    saveHistory(history);
+
+    const index = loadConversationsIndex();
+    const existingItem = index.find(item => item && item.id === conversationId);
+    const existingTitle = existingItem && typeof existingItem.title === "string" ?
+      existingItem.title.trim() :
+      "";
+    const hasCustomTitle = existingItem && existingItem.isCustomTitle === true;
+
+    if (hasCustomTitle) {
       upsertConversationIndexItem({
         id: conversationId,
         updatedAt: Date.now(),
+        isCustomTitle: true
+      });
+      return;
+    }
+
+    const userMessages = history.filter(m => m.role === "user");
+
+    if (userMessages.length === 0) {
+      upsertConversationIndexItem({
+        id: conversationId,
+        title: existingTitle || "Nouvelle conversation",
+        updatedAt: Date.now(),
         isCustomTitle: false
       });
+      return;
     }
-    
-    function updateActivity() {
-      localStorage.setItem(ACTIVITY_KEY, String(Date.now()));
-    }
-    
-    function getLastActivity() {
-      return Number(localStorage.getItem(ACTIVITY_KEY) || 0);
-    }
-    
-    function isSessionExpired() {
-      const last = getLastActivity();
-      if (!last) return false;
-      return (Date.now() - last) > SESSION_TIMEOUT_MS;
-    }
-    
-    function loadSessionInfoDismissed() {
-      return localStorage.getItem(SESSION_INFO_DISMISSED_KEY) === "1";
-    }
-    
-    function saveSessionInfoDismissed(value) {
-      if (value) {
-        localStorage.setItem(SESSION_INFO_DISMISSED_KEY, "1");
-      } else {
-        localStorage.removeItem(SESSION_INFO_DISMISSED_KEY);
-      }
-    }
-    
-    function openConversation(conversationId) {
-      localStorage.setItem(CONVERSATION_ID_KEY, conversationId);
-      
-      if (isSessionExpired() && loadHistory().length > 0) {
-        showScreen("chatScreen", { pushHistory: true });
-        handleExpiredSessionOnEntry();
-        return;
-      }
-      
-      startFreshOrResumeSession();
-    }
-    
-    const SCREEN_IDS = ["welcomeScreen", "conversationsScreen", "chatScreen"];
-    
-    function applyScreen(id) {
-      document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
-      document.getElementById(id).classList.add("active");
-      syncDebugVisibility();
-      
-      if (id === "chatScreen") {
-        const chat = document.getElementById("chat");
-        
-        const shouldScrollToBottom = () => {
-          if (!chat) return false;
-          return chat.scrollHeight > chat.clientHeight + 40;
-        };
-        
-        const forceBottomNow = () => {
-          if (!chat || !shouldScrollToBottom()) return;
-          
-          const previousScrollBehavior = chat.style.scrollBehavior;
-          chat.style.scrollBehavior = "auto";
-          chat.scrollTop = chat.scrollHeight;
-          updateScrollToBottomBtn();
-          
-          requestAnimationFrame(() => {
-            chat.style.scrollBehavior = previousScrollBehavior || "";
-          });
-        };
-        
-        forceBottomNow();
-        requestAnimationFrame(forceBottomNow);
-        setTimeout(forceBottomNow, 30);
-        return;
-      }
-      
-      requestAnimationFrame(() => {
-        updateScrollToBottomBtn();
+
+    if (!existingTitle || existingTitle === "Nouvelle conversation" || existingTitle === "Conversation sans titre") {
+      const firstUserTitle = String(userMessages[0].content || "")
+        .trim()
+        .replace(/\s+/g, " ")
+        .slice(0, 60);
+
+      upsertConversationIndexItem({
+        id: conversationId,
+        title: firstUserTitle || "Conversation sans titre",
+        updatedAt: Date.now(),
+        isCustomTitle: false
       });
+      return;
     }
-    
-    function prepareWelcomeScreenStatic() {
-      const welcome = document.getElementById("welcomeScreen");
-      const logoWrap = document.getElementById("welcomeLogoWrap");
-      const textEl = document.getElementById("welcomeRitualText");
-      const actions = document.getElementById("welcomeActions");
-      
-      if (!welcome) return;
-      
-      welcome.classList.add("ready");
-      welcome.style.transition = "";
-      welcome.style.opacity = "";
-      
-      if (logoWrap) {
-        logoWrap.style.transition = "none";
-        logoWrap.style.opacity = "1";
-      }
-      
-      if (textEl) {
-        textEl.textContent = "";
-        textEl.classList.remove("is-visible", "is-hidden");
-        textEl.style.transition = "none";
-        textEl.style.opacity = "0";
-        textEl.style.transform = "translateY(10px)";
-      }
-      
-      if (actions) {
-        actions.classList.add("is-visible");
-      }
+
+    upsertConversationIndexItem({
+      id: conversationId,
+      updatedAt: Date.now(),
+      isCustomTitle: false
+    });
+  }
+
+  function updateActivity() {
+    localStorage.setItem(ACTIVITY_KEY, String(Date.now()));
+  }
+
+  function getLastActivity() {
+    return Number(localStorage.getItem(ACTIVITY_KEY) || 0);
+  }
+
+  function isSessionExpired() {
+    const last = getLastActivity();
+    if (!last) return false;
+    return (Date.now() - last) > SESSION_TIMEOUT_MS;
+  }
+
+  function loadSessionInfoDismissed() {
+    return localStorage.getItem(SESSION_INFO_DISMISSED_KEY) === "1";
+  }
+
+  function saveSessionInfoDismissed(value) {
+    if (value) {
+      localStorage.setItem(SESSION_INFO_DISMISSED_KEY, "1");
+    } else {
+      localStorage.removeItem(SESSION_INFO_DISMISSED_KEY);
     }
-    
-    function showScreen(id, options = {}) {
-      let {
-        pushHistory = true,
-          replaceHistory = false,
-          noAnimation = false,
-          noWelcomeIntro = false
-      } = options;
-      
-      const currentActive = document.querySelector(".screen.active");
-      const currentId = currentActive ? currentActive.id : null;
-      
-      if (
-        currentId === "chatScreen" &&
-        id === "conversationsScreen" &&
-        options.replaceHistory === undefined &&
-        options.pushHistory !== false
-      ) {
-        replaceHistory = true;
-      }
-      
-      if (currentId === id) {
-        if (id === "welcomeScreen" && noWelcomeIntro) {
-          prepareWelcomeScreenStatic();
-        }
-        
-        if (!SCREEN_IDS.includes(id)) return;
-        
-        const nextState = { screenId: id };
-        
-        if (replaceHistory) {
-          history.replaceState(nextState, "", window.location.href);
-        }
-        
+  }
+
+  function openConversation(conversationId) {
+    localStorage.setItem(CONVERSATION_ID_KEY, conversationId);
+
+    if (isSessionExpired() && loadHistory().length > 0) {
+      showScreen("chatScreen", { pushHistory: true });
+      handleExpiredSessionOnEntry();
+      return;
+    }
+
+    startFreshOrResumeSession();
+  }
+
+  const SCREEN_IDS = ["welcomeScreen", "conversationsScreen", "chatScreen"];
+
+  function applyScreen(id) {
+    document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+    document.getElementById(id).classList.add("active");
+    syncDebugVisibility();
+
+    if (id === "chatScreen") {
+      const chat = document.getElementById("chat");
+
+      const shouldScrollToBottom = () => {
+        if (!chat) return false;
+        return chat.scrollHeight > chat.clientHeight + 40;
+      };
+
+      const forceBottomNow = () => {
+        if (!chat || !shouldScrollToBottom()) return;
+
+        const previousScrollBehavior = chat.style.scrollBehavior;
+        chat.style.scrollBehavior = "auto";
+        chat.scrollTop = chat.scrollHeight;
+        updateScrollToBottomBtn();
+
         requestAnimationFrame(() => {
-          updateScrollToBottomBtn();
+          chat.style.scrollBehavior = previousScrollBehavior || "";
         });
-        return;
-      }
-      
-      const nextEl = document.getElementById(id);
-      if (!nextEl) return;
-      
+      };
+
+      forceBottomNow();
+      requestAnimationFrame(forceBottomNow);
+      setTimeout(forceBottomNow, 30);
+      return;
+    }
+
+    requestAnimationFrame(() => {
+      updateScrollToBottomBtn();
+    });
+  }
+
+  function prepareWelcomeScreenStatic() {
+    const welcome = document.getElementById("welcomeScreen");
+    const logoWrap = document.getElementById("welcomeLogoWrap");
+    const textEl = document.getElementById("welcomeRitualText");
+    const actions = document.getElementById("welcomeActions");
+
+    if (!welcome) return;
+
+    welcome.classList.add("ready");
+    welcome.style.transition = "";
+    welcome.style.opacity = "";
+
+    if (logoWrap) {
+      logoWrap.style.transition = "none";
+      logoWrap.style.opacity = "1";
+    }
+
+    if (textEl) {
+      textEl.textContent = "";
+      textEl.classList.remove("is-visible", "is-hidden");
+      textEl.style.transition = "none";
+      textEl.style.opacity = "0";
+      textEl.style.transform = "translateY(10px)";
+    }
+
+    if (actions) {
+      actions.classList.add("is-visible");
+    }
+  }
+
+  function showScreen(id, options = {}) {
+    let {
+      pushHistory = true,
+      replaceHistory = false,
+      noAnimation = false,
+      noWelcomeIntro = false
+    } = options;
+
+    const currentActive = document.querySelector(".screen.active");
+    const currentId = currentActive ? currentActive.id : null;
+
+    if (
+      currentId === "chatScreen" &&
+      id === "conversationsScreen" &&
+      options.replaceHistory === undefined &&
+      options.pushHistory !== false
+    ) {
+      replaceHistory = true;
+    }
+
+    if (currentId === id) {
       if (id === "welcomeScreen" && noWelcomeIntro) {
         prepareWelcomeScreenStatic();
       }
-      
-      if (noAnimation) {
-        applyScreen(id);
-        
-        if (!SCREEN_IDS.includes(id)) return;
-        
-        const nextState = { screenId: id };
-        
-        if (replaceHistory) {
-          history.replaceState(nextState, "", window.location.href);
-          return;
-        }
-        
-        if (!pushHistory) return;
-        
-        history.pushState(nextState, "", window.location.href);
-        return;
-      }
-      
-      const currentEl = currentActive;
-      
-      function transition() {
-        if (!currentEl) {
-          applyScreen(id);
-          return;
-        }
-        
-        currentEl.style.transition = "opacity 0.32s ease";
-        currentEl.style.opacity = "0";
-        
-        setTimeout(() => {
-          nextEl.style.transition = "none";
-          nextEl.style.opacity = "0";
-          
-          applyScreen(id);
-          
-          setTimeout(() => {
-            nextEl.style.transition = "opacity 0.7s ease";
-            nextEl.style.opacity = "1";
-          }, 80);
-          
-          currentEl.style.transition = "";
-          currentEl.style.opacity = "";
-        }, 320);
-      }
-      
-      transition();
-      
+
       if (!SCREEN_IDS.includes(id)) return;
-      
+
       const nextState = { screenId: id };
-      
+
+      if (replaceHistory) {
+        history.replaceState(nextState, "", window.location.href);
+      }
+
+      requestAnimationFrame(() => {
+        updateScrollToBottomBtn();
+      });
+      return;
+    }
+
+    const nextEl = document.getElementById(id);
+    if (!nextEl) return;
+
+    if (id === "welcomeScreen" && noWelcomeIntro) {
+      prepareWelcomeScreenStatic();
+    }
+
+    if (noAnimation) {
+      applyScreen(id);
+
+      if (!SCREEN_IDS.includes(id)) return;
+
+      const nextState = { screenId: id };
+
       if (replaceHistory) {
         history.replaceState(nextState, "", window.location.href);
         return;
       }
-      
+
       if (!pushHistory) return;
-      
+
       history.pushState(nextState, "", window.location.href);
+      return;
     }
-    
-    window.addEventListener("popstate", e => {
-      const state = e.state || {};
-      const screenId = state.screenId;
-      
-      if (!SCREEN_IDS.includes(screenId)) {
+
+    const currentEl = currentActive;
+
+    function transition() {
+      if (!currentEl) {
+        applyScreen(id);
         return;
       }
-      
-      showScreen(screenId, {
-        pushHistory: false,
-        noAnimation: false,
-        noWelcomeIntro: screenId === "welcomeScreen"
+
+      currentEl.style.transition = "opacity 0.32s ease";
+      currentEl.style.opacity = "0";
+
+      setTimeout(() => {
+        nextEl.style.transition = "none";
+        nextEl.style.opacity = "0";
+
+        applyScreen(id);
+
+        setTimeout(() => {
+          nextEl.style.transition = "opacity 0.7s ease";
+          nextEl.style.opacity = "1";
+        }, 80);
+
+        currentEl.style.transition = "";
+        currentEl.style.opacity = "";
+      }, 320);
+    }
+
+    transition();
+
+    if (!SCREEN_IDS.includes(id)) return;
+
+    const nextState = { screenId: id };
+
+    if (replaceHistory) {
+      history.replaceState(nextState, "", window.location.href);
+      return;
+    }
+
+    if (!pushHistory) return;
+
+    history.pushState(nextState, "", window.location.href);
+  }
+
+  window.addEventListener("popstate", e => {
+    const state = e.state || {};
+    const screenId = state.screenId;
+
+    if (!SCREEN_IDS.includes(screenId)) {
+      return;
+    }
+
+    showScreen(screenId, {
+      pushHistory: false,
+      noAnimation: false,
+      noWelcomeIntro: screenId === "welcomeScreen"
+    });
+  });
+
+  function syncDebugVisibility() {
+    const isAdminUI = localStorage.getItem(ADMIN_UI_KEY) === "1";
+    const debugBtn = document.getElementById("debugToggleBtn");
+    const chatScreen = document.getElementById("chatScreen");
+    const isChatActive = chatScreen.classList.contains("active");
+
+    if (!isAdminUI) {
+      showDebug = false;
+    }
+
+    if (!debugBtn) return;
+
+    debugBtn.style.display = isAdminUI && isChatActive ? "block" : "none";
+
+    if (!(isAdminUI && isChatActive)) {
+      debugBtn.textContent = "logs";
+      return;
+    }
+
+    debugBtn.textContent = "logs";
+    debugBtn.style.width = "36px";
+    debugBtn.style.height = "36px";
+    debugBtn.style.minWidth = "36px";
+    debugBtn.style.padding = "0";
+    debugBtn.style.borderRadius = "999px";
+    debugBtn.style.fontSize = "9px";
+    debugBtn.style.fontWeight = "700";
+    debugBtn.style.letterSpacing = "0.02em";
+    debugBtn.style.textTransform = "lowercase";
+    debugBtn.style.lineHeight = "1";
+    debugBtn.style.boxShadow = showDebug ?
+      "0 12px 24px rgba(36, 94, 102, 0.18), 0 1px 0 rgba(255, 255, 255, 0.18) inset" :
+      "0 8px 18px rgba(36, 94, 102, 0.08), 0 1px 0 rgba(255, 255, 255, 0.42) inset";
+    debugBtn.style.background = showDebug ?
+      "#245e66" :
+      "rgba(255, 255, 255, 0.84)";
+    debugBtn.style.color = showDebug ?
+      "#ffffff" :
+      "rgba(36, 94, 102, 0.68)";
+
+    document.body.classList.toggle("show-debug", isAdminUI && showDebug);
+  }
+
+  function isChatAtBottom() {
+    const chat = document.getElementById("chat");
+    if (!chat) return true;
+
+    const remaining = chat.scrollHeight - chat.clientHeight - chat.scrollTop;
+    return remaining <= 12;
+  }
+
+  function ensureScrollToBottomBtn() {
+    if (scrollToBottomBtnEl) return scrollToBottomBtnEl;
+
+    const chatScreen = document.getElementById("chatScreen");
+    if (!chatScreen) return null;
+
+    const btn = document.createElement("button");
+    btn.id = "scrollToBottomBtn";
+    btn.type = "button";
+    btn.setAttribute("aria-label", "Aller en bas");
+    btn.innerHTML = `
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+        <path d="M12 6v12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"></path>
+        <path d="M6 14l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path>
+      </svg>
+    `;
+
+    btn.style.position = "absolute";
+    btn.style.left = "50%";
+    btn.style.bottom = "calc(88px + env(safe-area-inset-bottom, 0px))";
+    btn.style.transform = "translateX(-50%) translateY(8px) scale(0.96)";
+    btn.style.width = "46px";
+    btn.style.height = "46px";
+    btn.style.padding = "0";
+    btn.style.border = "1px solid rgba(255, 255, 255, 0.56)";
+    btn.style.borderRadius = "999px";
+    btn.style.background = "rgba(255, 255, 255, 0.72)";
+    btn.style.color = "#245e66";
+    btn.style.boxShadow = "0 10px 24px rgba(36, 94, 102, 0.12), 0 1px 0 rgba(255, 255, 255, 0.5) inset";
+    btn.style.backdropFilter = "blur(14px)";
+    btn.style.webkitBackdropFilter = "blur(14px)";
+    btn.style.display = "flex";
+    btn.style.alignItems = "center";
+    btn.style.justifyContent = "center";
+    btn.style.opacity = "0";
+    btn.style.pointerEvents = "none";
+    btn.style.transition = "opacity 0.22s ease, transform 0.22s ease";
+    btn.style.zIndex = "41";
+    btn.style.webkitTapHighlightColor = "transparent";
+
+    btn.addEventListener("click", () => {
+      const chat = document.getElementById("chat");
+      if (!chat) return;
+
+      chat.scrollTo({
+        top: chat.scrollHeight,
+        behavior: "smooth"
       });
     });
-    
-    function syncDebugVisibility() {
-      const isAdminUI = localStorage.getItem(ADMIN_UI_KEY) === "1";
-      const debugBtn = document.getElementById("debugToggleBtn");
-      const chatScreen = document.getElementById("chatScreen");
-      const isChatActive = chatScreen.classList.contains("active");
-      
-      if (!isAdminUI) {
-        showDebug = false;
-      }
-      
-      if (!debugBtn) return;
-      
-      debugBtn.style.display = isAdminUI && isChatActive ? "block" : "none";
-      
-      if (!(isAdminUI && isChatActive)) {
-        debugBtn.textContent = "logs";
-        return;
-      }
-      
-      debugBtn.textContent = "logs";
-      debugBtn.style.width = "36px";
-      debugBtn.style.height = "36px";
-      debugBtn.style.minWidth = "36px";
-      debugBtn.style.padding = "0";
-      debugBtn.style.borderRadius = "999px";
-      debugBtn.style.fontSize = "9px";
-      debugBtn.style.fontWeight = "700";
-      debugBtn.style.letterSpacing = "0.02em";
-      debugBtn.style.textTransform = "lowercase";
-      debugBtn.style.lineHeight = "1";
-      debugBtn.style.boxShadow = showDebug ?
-        "0 12px 24px rgba(36, 94, 102, 0.18), 0 1px 0 rgba(255, 255, 255, 0.18) inset" :
-        "0 8px 18px rgba(36, 94, 102, 0.08), 0 1px 0 rgba(255, 255, 255, 0.42) inset";
-      debugBtn.style.background = showDebug ?
-        "#245e66" :
-        "rgba(255, 255, 255, 0.84)";
-      debugBtn.style.color = showDebug ?
-        "#ffffff" :
-        "rgba(36, 94, 102, 0.68)";
-      
-      document.body.classList.toggle("show-debug", isAdminUI && showDebug);
+
+    chatScreen.appendChild(btn);
+    scrollToBottomBtnEl = btn;
+    return btn;
+  }
+
+  function stopScrollToBottomPulse() {
+    if (scrollToBottomBtnPulseAnim) {
+      scrollToBottomBtnPulseAnim.cancel();
+      scrollToBottomBtnPulseAnim = null;
     }
-    
-    function isChatAtBottom() {
-      const chat = document.getElementById("chat");
-      if (!chat) return true;
-      
-      const remaining = chat.scrollHeight - chat.clientHeight - chat.scrollTop;
-      return remaining <= 12;
-    }
-    
-    function ensureScrollToBottomBtn() {
-      if (scrollToBottomBtnEl) return scrollToBottomBtnEl;
-      
-      const chatScreen = document.getElementById("chatScreen");
-      if (!chatScreen) return null;
-      
-      const btn = document.createElement("button");
-      btn.id = "scrollToBottomBtn";
-      btn.type = "button";
-      btn.setAttribute("aria-label", "Aller en bas");
-      btn.innerHTML = `
-    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-      <path d="M12 6v12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"></path>
-      <path d="M6 14l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path>
-    </svg>
-  `;
-      
-      btn.style.position = "absolute";
-      btn.style.left = "50%";
-      btn.style.bottom = "calc(88px + env(safe-area-inset-bottom, 0px))";
-      btn.style.transform = "translateX(-50%) translateY(8px) scale(0.96)";
-      btn.style.width = "46px";
-      btn.style.height = "46px";
-      btn.style.padding = "0";
-      btn.style.border = "1px solid rgba(255, 255, 255, 0.56)";
-      btn.style.borderRadius = "999px";
-      btn.style.background = "rgba(255, 255, 255, 0.72)";
-      btn.style.color = "#245e66";
-      btn.style.boxShadow = "0 10px 24px rgba(36, 94, 102, 0.12), 0 1px 0 rgba(255, 255, 255, 0.5) inset";
-      btn.style.backdropFilter = "blur(14px)";
-      btn.style.webkitBackdropFilter = "blur(14px)";
-      btn.style.display = "flex";
-      btn.style.alignItems = "center";
-      btn.style.justifyContent = "center";
-      btn.style.opacity = "0";
-      btn.style.pointerEvents = "none";
-      btn.style.transition = "opacity 0.22s ease, transform 0.22s ease";
-      btn.style.zIndex = "41";
-      btn.style.webkitTapHighlightColor = "transparent";
-      
-      btn.addEventListener("click", () => {
-        const chat = document.getElementById("chat");
-        if (!chat) return;
-        
-        chat.scrollTo({
-          top: chat.scrollHeight,
-          behavior: "smooth"
-        });
-      });
-      
-      chatScreen.appendChild(btn);
-      scrollToBottomBtnEl = btn;
-      return btn;
-    }
-    
-    function stopScrollToBottomPulse() {
-      if (scrollToBottomBtnPulseAnim) {
-        scrollToBottomBtnPulseAnim.cancel();
-        scrollToBottomBtnPulseAnim = null;
-      }
-    }
-    
-    function pulseScrollToBottomBtn() {
-      const btn = ensureScrollToBottomBtn();
-      if (!btn || !scrollToBottomBtnVisible) return;
-      
-      stopScrollToBottomPulse();
-      
-      if (!btn.animate) return;
-      
-      scrollToBottomBtnPulseAnim = btn.animate(
-        [
+  }
+
+  function pulseScrollToBottomBtn() {
+    const btn = ensureScrollToBottomBtn();
+    if (!btn || !scrollToBottomBtnVisible) return;
+
+    stopScrollToBottomPulse();
+
+    if (!btn.animate) return;
+
+    scrollToBottomBtnPulseAnim = btn.animate(
+      [
         {
           transform: "translateX(-50%) translateY(0) scale(1)",
           background: "rgba(255, 255, 255, 0.72)",
@@ -2462,1225 +2462,1158 @@
           transform: "translateX(-50%) translateY(0) scale(1)",
           background: "rgba(255, 255, 255, 0.72)",
           boxShadow: "0 10px 24px rgba(36, 94, 102, 0.12), 0 1px 0 rgba(255, 255, 255, 0.5) inset"
-        }],
-        {
-          duration: 820,
-          iterations: 2,
-          easing: "ease-in-out"
         }
-      );
-      
-      scrollToBottomBtnPulseAnim.onfinish = () => {
-        scrollToBottomBtnPulseAnim = null;
-      };
-    }
-    
-    function updateScrollToBottomBtn(options = {}) {
-      const { forcePulse = false } = options;
-      const btn = ensureScrollToBottomBtn();
-      const chatScreen = document.getElementById("chatScreen");
-      const chat = document.getElementById("chat");
-      
-      if (!btn || !chatScreen || !chat || !chatScreen.classList.contains("active")) {
-        if (btn) {
-          btn.style.opacity = "0";
-          btn.style.pointerEvents = "none";
-          btn.style.transform = "translateX(-50%) translateY(8px) scale(0.96)";
-        }
-        scrollToBottomBtnVisible = false;
-        stopScrollToBottomPulse();
-        return;
+      ],
+      {
+        duration: 820,
+        iterations: 2,
+        easing: "ease-in-out"
       }
-      
-      const hasScrollableOverflow = (chat.scrollHeight - chat.clientHeight) > 12;
-      const shouldShow = hasScrollableOverflow && !isChatAtBottom();
-      
-      if (shouldShow) {
-        btn.style.opacity = "1";
-        btn.style.pointerEvents = "auto";
-        btn.style.transform = "translateX(-50%) translateY(0) scale(1)";
-        scrollToBottomBtnVisible = true;
-        
-        if (forcePulse) {
-          pulseScrollToBottomBtn();
-        }
-        return;
+    );
+
+    scrollToBottomBtnPulseAnim.onfinish = () => {
+      scrollToBottomBtnPulseAnim = null;
+    };
+  }
+
+  function updateScrollToBottomBtn(options = {}) {
+    const { forcePulse = false } = options;
+    const btn = ensureScrollToBottomBtn();
+    const chatScreen = document.getElementById("chatScreen");
+    const chat = document.getElementById("chat");
+
+    if (!btn || !chatScreen || !chat || !chatScreen.classList.contains("active")) {
+      if (btn) {
+        btn.style.opacity = "0";
+        btn.style.pointerEvents = "none";
+        btn.style.transform = "translateX(-50%) translateY(8px) scale(0.96)";
       }
-      
-      btn.style.opacity = "0";
-      btn.style.pointerEvents = "none";
-      btn.style.transform = "translateX(-50%) translateY(8px) scale(0.96)";
       scrollToBottomBtnVisible = false;
       stopScrollToBottomPulse();
+      return;
     }
-    
-    function scrollChatToBottom(options = {}) {
-      const { smooth = false } = options;
-      const chat = document.getElementById("chat");
-      if (!chat) return;
-      
-      const top = chat.scrollHeight;
-      
-      if (smooth) {
-        chat.scrollTo({ top, behavior: "smooth" });
-        return;
+
+    const hasScrollableOverflow = (chat.scrollHeight - chat.clientHeight) > 12;
+    const shouldShow = hasScrollableOverflow && !isChatAtBottom();
+
+    if (shouldShow) {
+      btn.style.opacity = "1";
+      btn.style.pointerEvents = "auto";
+      btn.style.transform = "translateX(-50%) translateY(0) scale(1)";
+      scrollToBottomBtnVisible = true;
+
+      if (forcePulse) {
+        pulseScrollToBottomBtn();
       }
-      
-      function apply() {
-        chat.scrollTop = chat.scrollHeight;
-      }
-      
+      return;
+    }
+
+    btn.style.opacity = "0";
+    btn.style.pointerEvents = "none";
+    btn.style.transform = "translateX(-50%) translateY(8px) scale(0.96)";
+    scrollToBottomBtnVisible = false;
+    stopScrollToBottomPulse();
+  }
+
+  function scrollChatToBottom(options = {}) {
+    const { smooth = false } = options;
+    const chat = document.getElementById("chat");
+    if (!chat) return;
+
+    const top = chat.scrollHeight;
+
+    if (smooth) {
+      chat.scrollTo({ top, behavior: "smooth" });
+      return;
+    }
+
+    function apply() {
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    apply();
+    requestAnimationFrame(apply);
+    setTimeout(apply, 50);
+    setTimeout(apply, 150);
+    setTimeout(() => {
       apply();
-      requestAnimationFrame(apply);
-      setTimeout(apply, 50);
-      setTimeout(apply, 150);
-      setTimeout(() => {
-        apply();
+      updateScrollToBottomBtn();
+    }, 300);
+  }
+
+  function defocusInput() {
+    const input = document.getElementById("input");
+    const chatScreen = document.getElementById("chatScreen");
+
+    const applyDefocus = () => {
+      input.blur();
+
+      if (document.activeElement && typeof document.activeElement.blur === "function") {
+        document.activeElement.blur();
+      }
+
+      chatScreen.focus();
+    };
+
+    applyDefocus();
+    setTimeout(applyDefocus, 50);
+    setTimeout(applyDefocus, 150);
+  }
+
+  function renderBotMessageContent(bubble, text, options = {}) {
+    const {
+      progressive = true,
+      wasAtBottomBeforeInsert = false
+    } = options;
+
+    const chat = document.getElementById("chat");
+
+    if (!chat) {
+      bubble.textContent = text;
+      return;
+    }
+
+    if (!progressive || !wasAtBottomBeforeInsert || text.length < 500) {
+      bubble.textContent = text;
+      return;
+    }
+
+    let index = 0;
+    let interrupted = false;
+    const totalLength = text.length;
+
+    const chunkSize =
+      totalLength < 400 ? 2 :
+      totalLength < 800 ? 3 :
+      totalLength < 1400 ? 4 : 5;
+
+    const wheelListenerOptions = { passive: true };
+
+    function keepBottomLocked() {
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    function cleanup() {
+      window.removeEventListener("touchstart", onUserInterrupt);
+      window.removeEventListener("wheel", onUserInterrupt, wheelListenerOptions);
+      window.removeEventListener("mousedown", onUserInterrupt);
+      window.removeEventListener("keydown", onUserInterrupt);
+    }
+
+    function completeFast() {
+      bubble.style.transition = "opacity 120ms ease";
+      bubble.style.opacity = "0.6";
+      bubble.textContent = text;
+
+      requestAnimationFrame(() => {
+        keepBottomLocked();
+        bubble.style.opacity = "1";
+      });
+    }
+
+    function onUserInterrupt() {
+      if (interrupted) return;
+      interrupted = true;
+      cleanup();
+      completeFast();
+      requestAnimationFrame(() => {
         updateScrollToBottomBtn();
-      }, 300);
+      });
     }
-    
-    function defocusInput() {
-      const input = document.getElementById("input");
-      const chatScreen = document.getElementById("chatScreen");
-      
-      const applyDefocus = () => {
-        input.blur();
-        
-        if (document.activeElement && typeof document.activeElement.blur === "function") {
-          document.activeElement.blur();
-        }
-        
-        chatScreen.focus();
-      };
-      
-      applyDefocus();
-      setTimeout(applyDefocus, 50);
-      setTimeout(applyDefocus, 150);
-    }
-    
-    function renderBotMessageContent(bubble, text, options = {}) {
-      const {
-        progressive = true,
-          wasAtBottomBeforeInsert = false
-      } = options;
-      
-      const chat = document.getElementById("chat");
-      
-      if (!chat) {
-        bubble.textContent = text;
-        return;
-      }
-      
-      if (!wasAtBottomBeforeInsert || text.length < 500) {
-        bubble.textContent = text;
-        return;
-      }
-      
-      let index = 0;
-      let interrupted = false;
-      const totalLength = text.length;
-      
-      const chunkSize =
-        totalLength < 400 ? 2 :
-        totalLength < 800 ? 3 :
-        totalLength < 1400 ? 4 : 5;
-      
-      const wheelListenerOptions = { passive: true };
-      
-      function keepBottomLocked() {
-        chat.scrollTop = chat.scrollHeight;
-      }
-      
-      function cleanup() {
-        window.removeEventListener("touchstart", onUserInterrupt);
-        window.removeEventListener("wheel", onUserInterrupt, wheelListenerOptions);
-        window.removeEventListener("mousedown", onUserInterrupt);
-        window.removeEventListener("keydown", onUserInterrupt);
-      }
-      
-      function completeFast() {
-        bubble.style.transition = "opacity 120ms ease";
-        bubble.style.opacity = "0.6";
-        bubble.textContent = text;
-        
+
+    function step() {
+      if (interrupted) return;
+
+      index += chunkSize;
+      bubble.textContent = text.slice(0, index);
+      keepBottomLocked();
+
+      if (index < totalLength) {
+        requestAnimationFrame(step);
+      } else {
+        cleanup();
         requestAnimationFrame(() => {
           keepBottomLocked();
-          bubble.style.opacity = "1";
-        });
-      }
-      
-      function onUserInterrupt() {
-        if (interrupted) return;
-        interrupted = true;
-        cleanup();
-        completeFast();
-        requestAnimationFrame(() => {
           updateScrollToBottomBtn();
         });
       }
-      
-      function step() {
-        if (interrupted) return;
-        
-        index += chunkSize;
-        bubble.textContent = text.slice(0, index);
+    }
+
+    window.addEventListener("touchstart", onUserInterrupt);
+    window.addEventListener("wheel", onUserInterrupt, wheelListenerOptions);
+    window.addEventListener("mousedown", onUserInterrupt);
+    window.addEventListener("keydown", onUserInterrupt);
+
+    setTimeout(() => {
+      if (interrupted) return;
+
+      requestAnimationFrame(() => {
         keepBottomLocked();
-        
-        if (index < totalLength) {
-          requestAnimationFrame(step);
-        } else {
-          cleanup();
-          requestAnimationFrame(() => {
-            keepBottomLocked();
-            updateScrollToBottomBtn();
-          });
-        }
-      }
-      
-      window.addEventListener("touchstart", onUserInterrupt);
-      window.addEventListener("wheel", onUserInterrupt, wheelListenerOptions);
-      window.addEventListener("mousedown", onUserInterrupt);
-      window.addEventListener("keydown", onUserInterrupt);
-      
-      setTimeout(() => {
-        if (interrupted) return;
-        
-        requestAnimationFrame(() => {
-          keepBottomLocked();
-          requestAnimationFrame(step);
-        });
-      }, 50);
+        requestAnimationFrame(step);
+      });
+    }, 50);
+  }
+
+  function showTemporaryNotice(message) {
+    let notice = document.getElementById("chatTemporaryNotice");
+
+    if (!notice) {
+      notice = document.createElement("div");
+      notice.id = "chatTemporaryNotice";
+      notice.style.position = "absolute";
+      notice.style.left = "50%";
+      notice.style.bottom = "calc(112px + env(safe-area-inset-bottom, 0px))";
+      notice.style.transform = "translateX(-50%) translateY(8px)";
+      notice.style.maxWidth = "calc(100% - 32px)";
+      notice.style.padding = "10px 14px";
+      notice.style.borderRadius = "14px";
+      notice.style.background = "rgba(36, 94, 102, 0.92)";
+      notice.style.color = "#ffffff";
+      notice.style.fontSize = "13px";
+      notice.style.lineHeight = "1.35";
+      notice.style.boxShadow = "0 12px 24px rgba(36, 94, 102, 0.18)";
+      notice.style.opacity = "0";
+      notice.style.pointerEvents = "none";
+      notice.style.zIndex = "55";
+      notice.style.transition = "opacity 0.18s ease, transform 0.18s ease";
+      document.getElementById("chatScreen").appendChild(notice);
     }
-    
-    function showTemporaryNotice(message) {
-      let notice = document.getElementById("chatTemporaryNotice");
-      
-      if (!notice) {
-        notice = document.createElement("div");
-        notice.id = "chatTemporaryNotice";
-        notice.style.position = "absolute";
-        notice.style.left = "50%";
-        notice.style.bottom = "calc(112px + env(safe-area-inset-bottom, 0px))";
-        notice.style.transform = "translateX(-50%) translateY(8px)";
-        notice.style.maxWidth = "calc(100% - 32px)";
-        notice.style.padding = "10px 14px";
-        notice.style.borderRadius = "14px";
-        notice.style.background = "rgba(36, 94, 102, 0.92)";
-        notice.style.color = "#ffffff";
-        notice.style.fontSize = "13px";
-        notice.style.lineHeight = "1.35";
-        notice.style.boxShadow = "0 12px 24px rgba(36, 94, 102, 0.18)";
-        notice.style.opacity = "0";
-        notice.style.pointerEvents = "none";
-        notice.style.zIndex = "55";
-        notice.style.transition = "opacity 0.18s ease, transform 0.18s ease";
-        document.getElementById("chatScreen").appendChild(notice);
-      }
-      
-      notice.textContent = message;
-      notice.style.opacity = "1";
-      notice.style.transform = "translateX(-50%) translateY(0)";
-      
-      clearTimeout(notice._hideTimer);
-      notice._hideTimer = setTimeout(() => {
-        notice.style.opacity = "0";
-        notice.style.transform = "translateX(-50%) translateY(8px)";
-      }, 1700);
-    }
-    
-    function ensureEditModeBar() {
-      let bar = document.getElementById("editModeBar");
-      if (bar) return bar;
-      
-      const inputArea = document.getElementById("inputArea");
-      if (!inputArea) return null;
-      
-      bar = document.createElement("div");
-      bar.id = "editModeBar";
-      bar.style.position = "absolute";
-      bar.style.left = "50%";
-      bar.style.bottom = "calc(92px + env(safe-area-inset-bottom, 0px))";
-      bar.style.transform = "translateX(-50%) translateY(6px)";
-      bar.style.width = "calc(100% - 28px)";
-      bar.style.maxWidth = "700px";
-      bar.style.boxSizing = "border-box";
-      bar.style.display = "flex";
-      bar.style.alignItems = "center";
-      bar.style.justifyContent = "space-between";
-      bar.style.gap = "12px";
-      bar.style.padding = "10px 14px";
-      bar.style.borderRadius = "16px";
-      bar.style.background = "rgba(255, 255, 255, 0.92)";
-      bar.style.border = "1px solid rgba(214, 230, 233, 0.95)";
-      bar.style.boxShadow = "0 12px 28px rgba(36, 94, 102, 0.14)";
-      bar.style.backdropFilter = "blur(14px)";
-      bar.style.webkitBackdropFilter = "blur(14px)";
+
+    notice.textContent = message;
+    notice.style.opacity = "1";
+    notice.style.transform = "translateX(-50%) translateY(0)";
+
+    clearTimeout(notice._hideTimer);
+    notice._hideTimer = setTimeout(() => {
+      notice.style.opacity = "0";
+      notice.style.transform = "translateX(-50%) translateY(8px)";
+    }, 1700);
+  }
+
+  function ensureEditModeBar() {
+    let bar = document.getElementById("editModeBar");
+    if (bar) return bar;
+
+    const inputArea = document.getElementById("inputArea");
+    if (!inputArea) return null;
+
+    bar = document.createElement("div");
+    bar.id = "editModeBar";
+    bar.style.position = "absolute";
+    bar.style.left = "50%";
+    bar.style.bottom = "calc(92px + env(safe-area-inset-bottom, 0px))";
+    bar.style.transform = "translateX(-50%) translateY(6px)";
+    bar.style.width = "calc(100% - 28px)";
+    bar.style.maxWidth = "700px";
+    bar.style.boxSizing = "border-box";
+    bar.style.display = "flex";
+    bar.style.alignItems = "center";
+    bar.style.justifyContent = "space-between";
+    bar.style.gap = "12px";
+    bar.style.padding = "10px 14px";
+    bar.style.borderRadius = "16px";
+    bar.style.background = "rgba(255, 255, 255, 0.92)";
+    bar.style.border = "1px solid rgba(214, 230, 233, 0.95)";
+    bar.style.boxShadow = "0 12px 28px rgba(36, 94, 102, 0.14)";
+    bar.style.backdropFilter = "blur(14px)";
+    bar.style.webkitBackdropFilter = "blur(14px)";
+    bar.style.opacity = "0";
+    bar.style.pointerEvents = "none";
+    bar.style.zIndex = "41";
+    bar.style.transition = "opacity 0.18s ease, transform 0.18s ease";
+
+    const label = document.createElement("div");
+    label.id = "editModeBarLabel";
+    label.textContent = "Modification du dernier message";
+    label.style.fontSize = "13px";
+    label.style.lineHeight = "1.3";
+    label.style.color = "#245e66";
+    label.style.fontWeight = "600";
+    label.style.minWidth = "0";
+
+    const closeBtn = document.createElement("button");
+    closeBtn.type = "button";
+    closeBtn.id = "editModeBarClose";
+    closeBtn.setAttribute("aria-label", "Annuler la modification");
+    closeBtn.textContent = "×";
+    closeBtn.style.width = "28px";
+    closeBtn.style.height = "28px";
+    closeBtn.style.minWidth = "28px";
+    closeBtn.style.border = "none";
+    closeBtn.style.borderRadius = "999px";
+    closeBtn.style.padding = "0";
+    closeBtn.style.margin = "0";
+    closeBtn.style.display = "flex";
+    closeBtn.style.alignItems = "center";
+    closeBtn.style.justifyContent = "center";
+    closeBtn.style.background = "rgba(36, 94, 102, 0.12)";
+    closeBtn.style.color = "#245e66";
+    closeBtn.style.fontSize = "20px";
+    closeBtn.style.lineHeight = "1";
+    closeBtn.style.cursor = "pointer";
+    closeBtn.style.webkitTapHighlightColor = "transparent";
+
+    closeBtn.onclick = () => {
+      cancelEditMode();
+    };
+
+    bar.appendChild(label);
+    bar.appendChild(closeBtn);
+    inputArea.appendChild(bar);
+
+    return bar;
+  }
+
+  let editMode = {
+    active: false,
+    conversationId: null,
+    targetHistoryIndex: -1,
+    originalText: ""
+  };
+
+  let draftBeforeEdit = "";
+
+  function openEditMode(historyIndex, text) {
+    const input = document.getElementById("input");
+    const bar = ensureEditModeBar();
+    if (!input || !bar) return;
+
+    draftBeforeEdit = input.value;
+
+    editMode.active = true;
+    editMode.conversationId = getConversationId();
+    editMode.targetHistoryIndex = historyIndex;
+    editMode.originalText = text;
+
+    bar.style.opacity = "1";
+    bar.style.pointerEvents = "auto";
+    bar.style.transform = "translateX(-50%) translateY(0)";
+
+    input.value = text;
+    input.focus();
+    input.setSelectionRange(input.value.length, input.value.length);
+  }
+
+  function closeEditMode(options = {}) {
+    const { restoreDraft = true } = options;
+    const input = document.getElementById("input");
+    const bar = document.getElementById("editModeBar");
+
+    if (bar) {
       bar.style.opacity = "0";
       bar.style.pointerEvents = "none";
-      bar.style.zIndex = "41";
-      bar.style.transition = "opacity 0.18s ease, transform 0.18s ease";
-      
-      const label = document.createElement("div");
-      label.id = "editModeBarLabel";
-      label.textContent = "Modification du dernier message";
-      label.style.fontSize = "13px";
-      label.style.lineHeight = "1.3";
-      label.style.color = "#245e66";
-      label.style.fontWeight = "600";
-      label.style.minWidth = "0";
-      
-      const closeBtn = document.createElement("button");
-      closeBtn.type = "button";
-      closeBtn.id = "editModeBarClose";
-      closeBtn.setAttribute("aria-label", "Annuler la modification");
-      closeBtn.textContent = "×";
-      closeBtn.style.width = "28px";
-      closeBtn.style.height = "28px";
-      closeBtn.style.minWidth = "28px";
-      closeBtn.style.border = "none";
-      closeBtn.style.borderRadius = "999px";
-      closeBtn.style.padding = "0";
-      closeBtn.style.margin = "0";
-      closeBtn.style.display = "flex";
-      closeBtn.style.alignItems = "center";
-      closeBtn.style.justifyContent = "center";
-      closeBtn.style.background = "rgba(36, 94, 102, 0.12)";
-      closeBtn.style.color = "#245e66";
-      closeBtn.style.fontSize = "20px";
-      closeBtn.style.lineHeight = "1";
-      closeBtn.style.cursor = "pointer";
-      closeBtn.style.webkitTapHighlightColor = "transparent";
-      
-      closeBtn.onclick = () => {
-        cancelEditMode();
+      bar.style.transform = "translateX(-50%) translateY(6px)";
+    }
+
+    if (input && restoreDraft) {
+      input.value = draftBeforeEdit || "";
+    }
+
+    editMode.active = false;
+    editMode.conversationId = null;
+    editMode.targetHistoryIndex = -1;
+    editMode.originalText = "";
+    draftBeforeEdit = "";
+  }
+
+  function cancelEditMode() {
+    closeEditMode({ restoreDraft: true });
+  }
+
+  function getLastUserHistoryIndex(history) {
+    for (let i = history.length - 1; i >= 0; i -= 1) {
+      if (history[i] && history[i].role === "user") {
+        return i;
+      }
+    }
+    return -1;
+  }
+
+  function addMessage(role, text, debug, options = {}) {
+    const {
+      shouldAutoScroll = true,
+      pulseScrollButton = false,
+      progressive = true,
+      historyIndex = -1
+    } = options;
+
+    const chat = document.getElementById("chat");
+    if (!chat) return;
+
+    const wasAtBottomBeforeInsert = isChatAtBottom();
+
+    const msg = document.createElement("div");
+    msg.className = "message " + role;
+
+    const contentWrap = document.createElement("div");
+    contentWrap.className = "message-content";
+
+    if (role === "bot" && Array.isArray(debug) && debug.length) {
+      const dbg = document.createElement("div");
+      dbg.className = "debug-block";
+
+      debug.forEach(line => {
+        const chip = document.createElement("span");
+        chip.className = "debug-chip";
+        if (line === "mode: exploration") chip.textContent = "EXPLORATION";
+        else if (line === "mode: info") chip.textContent = "INFORMATION";
+        else if (line === "mode: contact") chip.textContent = "CONTACT";
+        else if (line === "suicide: N1") chip.textContent = "Possible risque suicidaire";
+        else if (line === "suicide: N2") chip.textContent = "Risque suicidaire avéré";
+        else if (line === "calledMemory: shortTermMemory") chip.textContent = "Appel à la mémoire à court terme";
+        else if (line === "calledMemory: longTermMemory") chip.textContent = "Appel à la mémoire à long terme";
+        else if (line.startsWith("modelConflict")) chip.textContent = "Conflit avec le modèle théorique";
+        else if (line.startsWith("explorationDirectivityLevel")) {
+          const val = line.split(":")[1]?.trim();
+          chip.textContent = "Niveau de directivité : " + val + "/4";
+        } else if (line.startsWith("explorationRelanceWindow")) {
+          const val = line.split(":")[1]?.trim();
+          chip.textContent = "Relance aux derniers tours " + val;
+        } else return;
+        dbg.appendChild(chip);
+      });
+
+      contentWrap.appendChild(dbg);
+    }
+
+    const bubble = document.createElement("div");
+    bubble.className = "bubble";
+
+    if (role === "bot") {
+      renderBotMessageContent(bubble, text, {
+        progressive,
+        wasAtBottomBeforeInsert
+      });
+    } else {
+      bubble.textContent = text;
+
+      let longPressTimer = null;
+      let longPressTriggered = false;
+      let startX = 0;
+      let startY = 0;
+
+      bubble.style.webkitTouchCallout = "none";
+      bubble.style.webkitUserSelect = "none";
+      bubble.style.userSelect = "none";
+
+      const clearLongPress = () => {
+        clearTimeout(longPressTimer);
+        longPressTimer = null;
       };
-      
-      bar.appendChild(label);
-      bar.appendChild(closeBtn);
-      inputArea.appendChild(bar);
-      
-      return bar;
-    }
-    
-    let editMode = {
-      active: false,
-      conversationId: null,
-      targetHistoryIndex: -1,
-      originalText: ""
-    };
-    
-    let draftBeforeEdit = "";
-    
-    function openEditMode(historyIndex, text) {
-      const input = document.getElementById("input");
-      const bar = ensureEditModeBar();
-      if (!input || !bar) return;
-      
-      draftBeforeEdit = input.value;
-      
-      editMode.active = true;
-      editMode.conversationId = getConversationId();
-      editMode.targetHistoryIndex = historyIndex;
-      editMode.originalText = text;
-      
-      bar.style.opacity = "1";
-      bar.style.pointerEvents = "auto";
-      bar.style.transform = "translateX(-50%) translateY(0)";
-      
-      input.value = text;
-      input.focus();
-      input.setSelectionRange(input.value.length, input.value.length);
-    }
-    
-    function closeEditMode(options = {}) {
-      const { restoreDraft = true } = options;
-      const input = document.getElementById("input");
-      const bar = document.getElementById("editModeBar");
-      
-      if (bar) {
-        bar.style.opacity = "0";
-        bar.style.pointerEvents = "none";
-        bar.style.transform = "translateX(-50%) translateY(6px)";
-      }
-      
-      if (input && restoreDraft) {
-        input.value = draftBeforeEdit || "";
-      }
-      
-      editMode.active = false;
-      editMode.conversationId = null;
-      editMode.targetHistoryIndex = -1;
-      editMode.originalText = "";
-      draftBeforeEdit = "";
-    }
-    
-    function cancelEditMode() {
-      closeEditMode({ restoreDraft: true });
-    }
-    
-    function getLastUserHistoryIndex(history) {
-      for (let i = history.length - 1; i >= 0; i -= 1) {
-        if (history[i] && history[i].role === "user") {
-          return i;
-        }
-      }
-      return -1;
-    }
-    
-    function addMessage(role, text, debug, options = {}) {
-      const {
-        shouldAutoScroll = true,
-          pulseScrollButton = false,
-          progressive = true,
-          historyIndex = -1
-      } = options;
-      
-      const chat = document.getElementById("chat");
-      if (!chat) return;
-      
-      const wasAtBottomBeforeInsert = isChatAtBottom();
-      
-      const msg = document.createElement("div");
-      msg.className = "message " + role;
-      
-      const contentWrap = document.createElement("div");
-      contentWrap.className = "message-content";
-      
-      if (role === "bot" && Array.isArray(debug) && debug.length) {
-        const dbg = document.createElement("div");
-        dbg.className = "debug-block";
-        
-        debug.forEach(line => {
-          const chip = document.createElement("span");
-          chip.className = "debug-chip";
-          if (line === "mode: exploration") chip.textContent = "EXPLORATION";
-          else if (line === "mode: info") chip.textContent = "INFORMATION";
-          else if (line === "mode: contact") chip.textContent = "CONTACT";
-          else if (line === "suicide: N1") chip.textContent = "Possible risque suicidaire";
-          else if (line === "suicide: N2") chip.textContent = "Risque suicidaire avéré";
-          else if (line === "calledMemory: shortTermMemory") chip.textContent = "Appel à la mémoire à court terme";
-          else if (line === "calledMemory: longTermMemory") chip.textContent = "Appel à la mémoire à long terme";
-          else if (line.startsWith("modelConflict")) chip.textContent = "Conflit avec le modèle théorique";
-          else if (line.startsWith("explorationDirectivityLevel")) {
-            const val = line.split(":")[1]?.trim();
-            chip.textContent = "Niveau de directivité : " + val + "/4";
-          } else if (line.startsWith("explorationRelanceWindow")) {
-            const val = line.split(":")[1]?.trim();
-            chip.textContent = "Relance aux derniers tours " + val;
-          } else return;
-          dbg.appendChild(chip);
-        });
-        
-        contentWrap.appendChild(dbg);
-      }
-      
-      const bubble = document.createElement("div");
-      bubble.className = "bubble";
-      
-      if (role === "bot") {
-        renderBotMessageContent(bubble, text, {
-          progressive,
-          wasAtBottomBeforeInsert
-        });
-      } else {
-        bubble.textContent = text;
-        
-        let longPressTimer = null;
-        let longPressTriggered = false;
-        let startX = 0;
-        let startY = 0;
-        
-        bubble.style.webkitTouchCallout = "none";
-        bubble.style.webkitUserSelect = "none";
-        bubble.style.userSelect = "none";
-        
-        const clearLongPress = () => {
-          clearTimeout(longPressTimer);
-          longPressTimer = null;
-        };
-        
-        const triggerEditIntent = () => {
-          const history = loadHistory();
-          const lastUserHistoryIndex = getLastUserHistoryIndex(history);
-          
-          if (historyIndex !== lastUserHistoryIndex) {
-            msg.style.transition = "transform 0.14s ease";
-            msg.style.transform = "translateX(-3px)";
+
+      const triggerEditIntent = () => {
+        const history = loadHistory();
+        const lastUserHistoryIndex = getLastUserHistoryIndex(history);
+
+        if (historyIndex !== lastUserHistoryIndex) {
+          msg.style.transition = "transform 0.14s ease";
+          msg.style.transform = "translateX(-3px)";
+          setTimeout(() => {
+            msg.style.transform = "translateX(3px)";
             setTimeout(() => {
-              msg.style.transform = "translateX(3px)";
-              setTimeout(() => {
-                msg.style.transform = "";
-              }, 70);
+              msg.style.transform = "";
             }, 70);
-            
-            showTemporaryNotice("Seul le dernier message est modifiable");
-            return;
-          }
-          
-          openEditMode(historyIndex, text);
-        };
-        
-        const startLongPress = event => {
-          if (event.type === "mousedown" && event.button !== 0) return;
-          
-          longPressTriggered = false;
-          clearLongPress();
-          
-          if (event.type === "touchstart" && event.touches && event.touches[0]) {
-            startX = event.touches[0].clientX;
-            startY = event.touches[0].clientY;
-          } else {
-            startX = event.clientX || 0;
-            startY = event.clientY || 0;
-          }
-          
-          longPressTimer = setTimeout(() => {
-            longPressTriggered = true;
-            triggerEditIntent();
-          }, 480);
-        };
-        
-        const moveLongPress = event => {
-          let currentX = 0;
-          let currentY = 0;
-          
-          if (event.type === "touchmove" && event.touches && event.touches[0]) {
-            currentX = event.touches[0].clientX;
-            currentY = event.touches[0].clientY;
-          } else {
-            currentX = event.clientX || 0;
-            currentY = event.clientY || 0;
-          }
-          
-          if (Math.abs(currentX - startX) > 8 || Math.abs(currentY - startY) > 8) {
-            clearLongPress();
-          }
-        };
-        
-        const endLongPress = () => {
-          clearLongPress();
-        };
-        
-        bubble.addEventListener("contextmenu", event => {
-          event.preventDefault();
-        });
-        
-        bubble.addEventListener("selectstart", event => {
-          event.preventDefault();
-        });
-        
-        bubble.addEventListener("dragstart", event => {
-          event.preventDefault();
-        });
-        
-        bubble.addEventListener("touchstart", startLongPress, { passive: true });
-        bubble.addEventListener("touchmove", moveLongPress, { passive: true });
-        bubble.addEventListener("touchend", endLongPress);
-        bubble.addEventListener("touchcancel", endLongPress);
-        
-        bubble.addEventListener("mousedown", startLongPress);
-        bubble.addEventListener("mousemove", moveLongPress);
-        bubble.addEventListener("mouseup", endLongPress);
-        bubble.addEventListener("mouseleave", endLongPress);
-        
-        bubble.addEventListener("click", event => {
-          if (longPressTriggered) {
-            event.preventDefault();
-            event.stopPropagation();
-            longPressTriggered = false;
-          }
-        });
-      }
-      
-      contentWrap.appendChild(bubble);
-      msg.appendChild(contentWrap);
-      chat.appendChild(msg);
-      
-      if (shouldAutoScroll && wasAtBottomBeforeInsert) {
-        scrollChatToBottom();
-        return;
-      }
-      
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          updateScrollToBottomBtn({
-            forcePulse: role === "bot" && pulseScrollButton && !wasAtBottomBeforeInsert
-          });
-        });
-      });
-    }
-    
-    function renderHistory() {
-      const chat = document.getElementById("chat");
-      if (!chat) return;
-      
-      chat.innerHTML = "";
-      
-      loadHistory().forEach((m, index) => {
-        addMessage(
-          m.role === "user" ? "user" : "bot",
-          m.content,
-          m.debug || [],
-          {
-            shouldAutoScroll: false,
-            progressive: false,
-            pulseScrollButton: false,
-            historyIndex: index
-          }
-        );
-      });
-      
-      syncInputAvailability();
-      
-      requestAnimationFrame(() => {
-        const shouldScrollToBottom = chat.scrollHeight > chat.clientHeight + 40;
-        
-        if (shouldScrollToBottom) {
-          scrollChatToBottom();
-        } else {
-          chat.scrollTop = 0;
-          updateScrollToBottomBtn();
+          }, 70);
+
+          showTemporaryNotice("Seul le dernier message est modifiable");
+          return;
         }
-      });
-    }
-    
-    function fadeChatThenReset(callback) {
-      const chat = document.getElementById("chat");
-      chat.classList.add("fading");
-      
-      setTimeout(() => {
-        chat.classList.remove("fading");
-        callback();
-      }, 180);
-    }
-    
-    function setInputDisabled(disabled) {
-      const input = document.getElementById("input");
-      const sendBtn = document.getElementById("sendBtn");
-      
-      input.disabled = disabled;
-      sendBtn.disabled = disabled;
-    }
-    
-    function openModal(id) {
-      document.getElementById(id).style.display = "flex";
-    }
-    
-    function closeModal(id) {
-      document.getElementById(id).style.display = "none";
-    }
-    
-    function resetEditTitleModal() {
-      const input = document.getElementById("editTitleInput");
-      input.value = "";
-      input.dataset.conversationId = "";
-      updateTitleCounter();
-    }
-    
-    function closeEditTitleModal() {
-      resetEditTitleModal();
-      closeModal("editTitleModal");
-    }
-    
-    function openSessionInfoModal() {
-      document.getElementById("sessionInfoDontShow").checked = loadSessionInfoDismissed();
-      openModal("sessionInfoModal");
-    }
-    
-    function closeSessionInfoModal() {
-      closeModal("sessionInfoModal");
-    }
-    
-    function openConfirmNewSessionModal() {
-      openModal("confirmNewSessionModal");
-    }
-    
-    function closeConfirmNewSessionModal() {
-      closeModal("confirmNewSessionModal");
-    }
-    
-    function openExpiredSessionModal() {
-      openModal("expiredSessionModal");
-    }
-    
-    function closeExpiredSessionModal() {
-      closeModal("expiredSessionModal");
-    }
-    
-    function openTerminatedSessionModal(message) {
-      document.getElementById("terminatedSessionText").textContent = message;
-      openModal("terminatedSessionModal");
-    }
-    
-    function closeTerminatedSessionModal() {
-      closeModal("terminatedSessionModal");
-    }
-    
-    function setSessionStatus(nextStatus) {
-      sessionStatus = nextStatus;
-      syncInputAvailability();
-    }
-    
-    function syncInputAvailability() {
-      const blocked = sessionStatus === "terminated" || sessionStatus === "closing";
-      setInputDisabled(blocked);
-    }
-    
-    function resetLocalSessionState() {}
-    
-    function clearSessionStorageExceptMemory() {
-      localStorage.removeItem(ACTIVITY_KEY);
-    }
-    
-    function buildSessionPayloadForClose() {
-      return {
-        memory: loadMemory(),
-        flags: loadFlags()
+
+        openEditMode(historyIndex, text);
       };
-    }
-    
-    async function closeSessionBackend() {
-      const payload = buildSessionPayloadForClose();
-      
-      try {
-        const res = await fetch("/session/close", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
-        
-        const data = await res.json();
-        
-        if (data && data.memory) {
-          saveMemory(data.memory);
-        }
-      } catch {}
-    }
-    
-    async function finalizeAndStartNewSession() {
-      if (sessionStatus === "closing") return;
-      
-      setSessionStatus("closing");
-      closeConfirmNewSessionModal();
-      closeExpiredSessionModal();
-      closeTerminatedSessionModal();
-      
-      await closeSessionBackend();
-      
-      fadeChatThenReset(() => {
-        clearSessionStorageExceptMemory();
-        resetLocalSessionState();
-        localStorage.removeItem(CONVERSATION_ID_KEY);
-        closeEditMode({ restoreDraft: false });
-        renderHistory();
-        showScreen("chatScreen", { pushHistory: true });
-        
-        if (loadSessionInfoDismissed()) {
-          startFreshSession();
+
+      const startLongPress = event => {
+        if (event.type === "mousedown" && event.button !== 0) return;
+
+        longPressTriggered = false;
+        clearLongPress();
+
+        if (event.type === "touchstart" && event.touches && event.touches[0]) {
+          startX = event.touches[0].clientX;
+          startY = event.touches[0].clientY;
         } else {
-          openSessionInfoModal();
-          setSessionStatus("active");
+          startX = event.clientX || 0;
+          startY = event.clientY || 0;
         }
-        
-        defocusInput();
+
+        longPressTimer = setTimeout(() => {
+          longPressTriggered = true;
+          triggerEditIntent();
+        }, 480);
+      };
+
+      const moveLongPress = event => {
+        let currentX = 0;
+        let currentY = 0;
+
+        if (event.type === "touchmove" && event.touches && event.touches[0]) {
+          currentX = event.touches[0].clientX;
+          currentY = event.touches[0].clientY;
+        } else {
+          currentX = event.clientX || 0;
+          currentY = event.clientY || 0;
+        }
+
+        if (Math.abs(currentX - startX) > 8 || Math.abs(currentY - startY) > 8) {
+          clearLongPress();
+        }
+      };
+
+      const endLongPress = () => {
+        clearLongPress();
+      };
+
+      bubble.addEventListener("contextmenu", event => {
+        event.preventDefault();
+      });
+
+      bubble.addEventListener("selectstart", event => {
+        event.preventDefault();
+      });
+
+      bubble.addEventListener("dragstart", event => {
+        event.preventDefault();
+      });
+
+      bubble.addEventListener("touchstart", startLongPress, { passive: true });
+      bubble.addEventListener("touchmove", moveLongPress, { passive: true });
+      bubble.addEventListener("touchend", endLongPress);
+      bubble.addEventListener("touchcancel", endLongPress);
+
+      bubble.addEventListener("mousedown", startLongPress);
+      bubble.addEventListener("mousemove", moveLongPress);
+      bubble.addEventListener("mouseup", endLongPress);
+      bubble.addEventListener("mouseleave", endLongPress);
+
+      bubble.addEventListener("click", event => {
+        if (longPressTriggered) {
+          event.preventDefault();
+          event.stopPropagation();
+          longPressTriggered = false;
+        }
       });
     }
-    
-    function startFreshSession() {
-      setSessionStatus("active");
-      saveFlags({});
-      updateActivity();
-      
-      let conversationId = getConversationId();
-      
-      if (!conversationId) {
-        conversationId = createConversationId();
+
+    contentWrap.appendChild(bubble);
+    msg.appendChild(contentWrap);
+    chat.appendChild(msg);
+
+    if (shouldAutoScroll && wasAtBottomBeforeInsert) {
+      scrollChatToBottom();
+      return;
+    }
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        updateScrollToBottomBtn({
+          forcePulse: role === "bot" && pulseScrollButton && !wasAtBottomBeforeInsert
+        });
+      });
+    });
+  }
+
+  function renderHistory() {
+    const chat = document.getElementById("chat");
+    if (!chat) return;
+
+    chat.innerHTML = "";
+
+    loadHistory().forEach((m, index) => {
+      addMessage(
+        m.role === "user" ? "user" : "bot",
+        m.content,
+        m.debug || [],
+        {
+          shouldAutoScroll: false,
+          progressive: false,
+          pulseScrollButton: false,
+          historyIndex: index
+        }
+      );
+    });
+
+    syncInputAvailability();
+
+    requestAnimationFrame(() => {
+      const shouldScrollToBottom = chat.scrollHeight > chat.clientHeight + 40;
+
+      if (shouldScrollToBottom) {
+        scrollChatToBottom();
+      } else {
+        chat.scrollTop = 0;
+        updateScrollToBottomBtn();
       }
-      
-      const history = loadHistory();
-      
-      if (history.length === 0) {
-        pushHistory("assistant", "Bienvenue dans cette nouvelle session. Que veux-tu explorer aujourd'hui ?", []);
+    });
+  }
+
+  function fadeChatThenReset(callback) {
+    const chat = document.getElementById("chat");
+    chat.classList.add("fading");
+
+    setTimeout(() => {
+      chat.classList.remove("fading");
+      callback();
+    }, 180);
+  }
+
+  function setInputDisabled(disabled) {
+    const input = document.getElementById("input");
+    const sendBtn = document.getElementById("sendBtn");
+
+    input.disabled = disabled;
+    sendBtn.disabled = disabled;
+  }
+
+  function openModal(id) {
+    document.getElementById(id).style.display = "flex";
+  }
+
+  function closeModal(id) {
+    document.getElementById(id).style.display = "none";
+  }
+
+  function resetEditTitleModal() {
+    const input = document.getElementById("editTitleInput");
+    input.value = "";
+    input.dataset.conversationId = "";
+    updateTitleCounter();
+  }
+
+  function closeEditTitleModal() {
+    resetEditTitleModal();
+    closeModal("editTitleModal");
+  }
+
+  function openSessionInfoModal() {
+    document.getElementById("sessionInfoDontShow").checked = loadSessionInfoDismissed();
+    openModal("sessionInfoModal");
+  }
+
+  function closeSessionInfoModal() {
+    closeModal("sessionInfoModal");
+  }
+
+  function openConfirmNewSessionModal() {
+    openModal("confirmNewSessionModal");
+  }
+
+  function closeConfirmNewSessionModal() {
+    closeModal("confirmNewSessionModal");
+  }
+
+  function openExpiredSessionModal() {
+    openModal("expiredSessionModal");
+  }
+
+  function closeExpiredSessionModal() {
+    closeModal("expiredSessionModal");
+  }
+
+  function openTerminatedSessionModal(message) {
+    document.getElementById("terminatedSessionText").textContent = message;
+    openModal("terminatedSessionModal");
+  }
+
+  function closeTerminatedSessionModal() {
+    closeModal("terminatedSessionModal");
+  }
+
+  function setSessionStatus(nextStatus) {
+    sessionStatus = nextStatus;
+    syncInputAvailability();
+  }
+
+  function syncInputAvailability() {
+    const blocked = sessionStatus === "terminated" || sessionStatus === "closing";
+    setInputDisabled(blocked);
+  }
+
+  function resetLocalSessionState() {}
+
+  function clearSessionStorageExceptMemory() {
+    localStorage.removeItem(ACTIVITY_KEY);
+  }
+
+  function buildSessionPayloadForClose() {
+    return {
+      memory: loadMemory(),
+      flags: loadFlags()
+    };
+  }
+
+  async function closeSessionBackend() {
+    const payload = buildSessionPayloadForClose();
+
+    try {
+      const res = await fetch("/session/close", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json();
+
+      if (data && data.memory) {
+        saveMemory(data.memory);
       }
-      
+    } catch {}
+  }
+
+  async function finalizeAndStartNewSession() {
+    if (sessionStatus === "closing") return;
+
+    setSessionStatus("closing");
+    closeConfirmNewSessionModal();
+    closeExpiredSessionModal();
+    closeTerminatedSessionModal();
+
+    await closeSessionBackend();
+
+    fadeChatThenReset(() => {
+      clearSessionStorageExceptMemory();
+      resetLocalSessionState();
+      localStorage.removeItem(CONVERSATION_ID_KEY);
       closeEditMode({ restoreDraft: false });
       renderHistory();
-      
-      const input = document.getElementById("input");
-      input.value = "";
-      defocusInput();
-    }
-    
-    function handleExpiredSessionOnEntry() {
-      setSessionStatus("expired");
-      renderHistory();
-      openExpiredSessionModal();
-    }
-    
-    function enterChat() {
       showScreen("chatScreen", { pushHistory: true });
-      updateActivity();
-      
-      if (isSessionExpired() && loadHistory().length > 0) {
-        handleExpiredSessionOnEntry();
-        return;
-      }
-      
+
       if (loadSessionInfoDismissed()) {
-        startFreshOrResumeSession();
+        startFreshSession();
       } else {
         openSessionInfoModal();
+        setSessionStatus("active");
       }
+
+      defocusInput();
+    });
+  }
+
+  function startFreshSession() {
+    setSessionStatus("active");
+    saveFlags({});
+    updateActivity();
+
+    let conversationId = getConversationId();
+
+    if (!conversationId) {
+      conversationId = createConversationId();
     }
-    
-    function renderConversationsList() {
-      const listEl = document.getElementById("conversationsList");
-      const template = document.getElementById("conversationItemTemplate");
-      
-      const items = loadConversationsIndex()
-        .slice()
-        .sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0));
-      
-      closeConversationMenus();
-      listEl.innerHTML = "";
-      
-      if (items.length === 0) {
-        const itemEl = document.createElement("div");
-        itemEl.className = "conversationItem";
-        
-        const textEl = document.createElement("div");
-        textEl.className = "conversationItemPlaceholder";
-        textEl.textContent = "Aucune conversation locale pour le moment.";
-        
-        itemEl.appendChild(textEl);
-        listEl.appendChild(itemEl);
-        return;
-      }
-      
-      items.forEach(item => {
-        const safeTitle = item.title && String(item.title).trim() ?
-          String(item.title).trim() :
-          "Conversation sans titre";
-        
-        const node = template.content.cloneNode(true);
-        
-        const root = node.querySelector(".conversationItem");
-        const openBtn = node.querySelector("[data-open-conversation]");
-        const titleEl = node.querySelector(".conversationItemPlaceholder");
-        const toggleBtn = node.querySelector("[data-menu-toggle]");
-        const menu = node.querySelector("[data-menu]");
-        const renameBtn = node.querySelector("[data-rename-conversation]");
-        const deleteBtn = node.querySelector("[data-delete-conversation]");
-        
-        root.dataset.conversationId = item.id;
-        openBtn.dataset.openConversation = item.id;
-        titleEl.textContent = safeTitle;
-        toggleBtn.dataset.menuToggle = item.id;
-        menu.dataset.menu = item.id;
-        renameBtn.dataset.renameConversation = item.id;
-        deleteBtn.dataset.deleteConversation = item.id;
-        
-        openBtn.onclick = () => {
-          closeConversationMenus();
-          openConversation(item.id);
-        };
-        
-        toggleBtn.onclick = e => {
-          e.preventDefault();
-          e.stopPropagation();
-          
-          const isOpening = menu.style.display !== "block";
-          
-          if (isOpening) {
-            openConversationMenu(toggleBtn, menu);
-          } else {
-            closeConversationMenus();
-          }
-        };
-        
-        renameBtn.onclick = e => {
-          e.preventDefault();
-          e.stopPropagation();
-          closeConversationMenus();
-          openEditTitleModal(item.id);
-        };
-        
-        deleteBtn.onclick = e => {
-          e.preventDefault();
-          e.stopPropagation();
-          closeConversationMenus();
-          pendingDeleteConversationId = item.id;
-          openModal("deleteConversationModal");
-        };
-        
-        listEl.appendChild(node);
-      });
+
+    const history = loadHistory();
+
+    if (history.length === 0) {
+      pushHistory("assistant", "Bienvenue dans cette nouvelle session. Que veux-tu explorer aujourd'hui ?", []);
     }
-    
-    function enterConversations() {
-      const welcomeScreen = document.getElementById("welcomeScreen");
-      const conversationsScreen = document.getElementById("conversationsScreen");
-      const bgValue = window.getComputedStyle(conversationsScreen).backgroundImage || "";
-      const match = bgValue.match(/url\(["']?(.*?)["']?\)/);
-      const bgUrl = match ? match[1] : "";
-      
-      renderConversationsList();
-      
-      function pushConversationsHistory() {
-        const currentState = history.state || {};
-        
-        if (currentState.screenId !== "conversationsScreen") {
-          history.pushState({ screenId: "conversationsScreen" }, "", window.location.href);
+
+    closeEditMode({ restoreDraft: false });
+    renderHistory();
+
+    const input = document.getElementById("input");
+    input.value = "";
+    defocusInput();
+  }
+
+  function handleExpiredSessionOnEntry() {
+    setSessionStatus("expired");
+    renderHistory();
+    openExpiredSessionModal();
+  }
+
+  function enterChat() {
+    showScreen("chatScreen", { pushHistory: true });
+    updateActivity();
+
+    if (isSessionExpired() && loadHistory().length > 0) {
+      handleExpiredSessionOnEntry();
+      return;
+    }
+
+    if (loadSessionInfoDismissed()) {
+      startFreshOrResumeSession();
+    } else {
+      openSessionInfoModal();
+    }
+  }
+
+  function renderConversationsList() {
+    const listEl = document.getElementById("conversationsList");
+    const template = document.getElementById("conversationItemTemplate");
+
+    const items = loadConversationsIndex()
+      .slice()
+      .sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0));
+
+    closeConversationMenus();
+    listEl.innerHTML = "";
+
+    if (items.length === 0) {
+      const itemEl = document.createElement("div");
+      itemEl.className = "conversationItem";
+
+      const textEl = document.createElement("div");
+      textEl.className = "conversationItemPlaceholder";
+      textEl.textContent = "Aucune conversation locale pour le moment.";
+
+      itemEl.appendChild(textEl);
+      listEl.appendChild(itemEl);
+      return;
+    }
+
+    items.forEach(item => {
+      const safeTitle = item.title && String(item.title).trim() ?
+        String(item.title).trim() :
+        "Conversation sans titre";
+
+      const node = template.content.cloneNode(true);
+
+      const root = node.querySelector(".conversationItem");
+      const openBtn = node.querySelector("[data-open-conversation]");
+      const titleEl = node.querySelector(".conversationItemPlaceholder");
+      const toggleBtn = node.querySelector("[data-menu-toggle]");
+      const menu = node.querySelector("[data-menu]");
+      const renameBtn = node.querySelector("[data-rename-conversation]");
+      const deleteBtn = node.querySelector("[data-delete-conversation]");
+
+      root.dataset.conversationId = item.id;
+      openBtn.dataset.openConversation = item.id;
+      titleEl.textContent = safeTitle;
+      toggleBtn.dataset.menuToggle = item.id;
+      menu.dataset.menu = item.id;
+      renameBtn.dataset.renameConversation = item.id;
+      deleteBtn.dataset.deleteConversation = item.id;
+
+      openBtn.onclick = () => {
+        closeConversationMenus();
+        openConversation(item.id);
+      };
+
+      toggleBtn.onclick = e => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const isOpening = menu.style.display !== "block";
+
+        if (isOpening) {
+          openConversationMenu(toggleBtn, menu);
+        } else {
+          closeConversationMenus();
         }
+      };
+
+      renameBtn.onclick = e => {
+        e.preventDefault();
+        e.stopPropagation();
+        closeConversationMenus();
+        openEditTitleModal(item.id);
+      };
+
+      deleteBtn.onclick = e => {
+        e.preventDefault();
+        e.stopPropagation();
+        closeConversationMenus();
+        pendingDeleteConversationId = item.id;
+        openModal("deleteConversationModal");
+      };
+
+      listEl.appendChild(node);
+    });
+  }
+
+  function enterConversations() {
+    const welcomeScreen = document.getElementById("welcomeScreen");
+    const conversationsScreen = document.getElementById("conversationsScreen");
+    const bgValue = window.getComputedStyle(conversationsScreen).backgroundImage || "";
+    const match = bgValue.match(/url\(["']?(.*?)["']?\)/);
+    const bgUrl = match ? match[1] : "";
+
+    renderConversationsList();
+
+    function pushConversationsHistory() {
+      const currentState = history.state || {};
+
+      if (currentState.screenId !== "conversationsScreen") {
+        history.pushState({ screenId: "conversationsScreen" }, "", window.location.href);
       }
-      
-      function fadeOutWelcomeThenShow() {
-        welcomeScreen.style.transition = "opacity 0.38s ease";
-        welcomeScreen.style.opacity = "0";
-        
+    }
+
+    function fadeOutWelcomeThenShow() {
+      welcomeScreen.style.transition = "opacity 0.38s ease";
+      welcomeScreen.style.opacity = "0";
+
+      setTimeout(() => {
+        conversationsScreen.style.transition = "none";
+        conversationsScreen.style.opacity = "0";
+
+        applyScreen("conversationsScreen");
+        pushConversationsHistory();
+
         setTimeout(() => {
-          conversationsScreen.style.transition = "none";
-          conversationsScreen.style.opacity = "0";
-          
-          applyScreen("conversationsScreen");
-          pushConversationsHistory();
-          
-          setTimeout(() => {
-            conversationsScreen.style.transition = "opacity 0.7s ease";
-            conversationsScreen.style.opacity = "1";
-          }, 90);
-          
-          welcomeScreen.style.transition = "";
-          welcomeScreen.style.opacity = "";
-        }, 380);
-      }
-      
-      if (!bgUrl) {
-        fadeOutWelcomeThenShow();
-        return;
-      }
-      
-      if (enterConversations._loadedUrl === bgUrl) {
-        fadeOutWelcomeThenShow();
-        return;
-      }
-      
-      if (enterConversations._loadingPromise && enterConversations._loadingUrl === bgUrl) {
-        enterConversations._loadingPromise.then(() => {
-          fadeOutWelcomeThenShow();
-        });
-        return;
-      }
-      
-      enterConversations._loadingUrl = bgUrl;
-      enterConversations._loadingPromise = new Promise(resolve => {
-        const img = new Image();
-        
-        img.onload = () => {
-          enterConversations._loadedUrl = bgUrl;
-          enterConversations._loadingPromise = null;
-          resolve();
-        };
-        
-        img.onerror = () => {
-          enterConversations._loadingPromise = null;
-          resolve();
-        };
-        
-        img.src = bgUrl;
-      });
-      
+          conversationsScreen.style.transition = "opacity 0.7s ease";
+          conversationsScreen.style.opacity = "1";
+        }, 90);
+
+        welcomeScreen.style.transition = "";
+        welcomeScreen.style.opacity = "";
+      }, 380);
+    }
+
+    if (!bgUrl) {
+      fadeOutWelcomeThenShow();
+      return;
+    }
+
+    if (enterConversations._loadedUrl === bgUrl) {
+      fadeOutWelcomeThenShow();
+      return;
+    }
+
+    if (enterConversations._loadingPromise && enterConversations._loadingUrl === bgUrl) {
       enterConversations._loadingPromise.then(() => {
         fadeOutWelcomeThenShow();
       });
+      return;
     }
-    
-    function startFreshOrResumeSession() {
-      closeSessionInfoModal();
-      showScreen("chatScreen", { pushHistory: true });
-      updateActivity();
-      
-      const history = loadHistory();
-      
-      if (history.length > 0) {
-        setSessionStatus("active");
-        closeEditMode({ restoreDraft: false });
-        renderHistory();
-        
-        const chat = document.getElementById("chat");
-        if (chat && chat.scrollHeight > chat.clientHeight + 40) {
-          scrollChatToBottom();
-        }
-        
-        defocusInput();
-      } else {
-        startFreshSession();
-      }
-    }
-    
-    function buildPayload(message) {
-      const full = loadHistory().map(({ role, content }) => ({ role, content }));
-      
-      return {
-        message,
-        userId: getOrCreateUserId(),
-        conversationId: getConversationId(),
-        recentHistory: full.slice(-MAX_RECENT_TURNS),
-        memory: loadMemory(),
-        flags: loadFlags()
+
+    enterConversations._loadingUrl = bgUrl;
+    enterConversations._loadingPromise = new Promise(resolve => {
+      const img = new Image();
+
+      img.onload = () => {
+        enterConversations._loadedUrl = bgUrl;
+        enterConversations._loadingPromise = null;
+        resolve();
       };
+
+      img.onerror = () => {
+        enterConversations._loadingPromise = null;
+        resolve();
+      };
+
+      img.src = bgUrl;
+    });
+
+    enterConversations._loadingPromise.then(() => {
+      fadeOutWelcomeThenShow();
+    });
+  }
+
+  function startFreshOrResumeSession() {
+    closeSessionInfoModal();
+    showScreen("chatScreen", { pushHistory: true });
+    updateActivity();
+
+    const history = loadHistory();
+
+    if (history.length > 0) {
+      setSessionStatus("active");
+      closeEditMode({ restoreDraft: false });
+      renderHistory();
+
+      const chat = document.getElementById("chat");
+      if (chat && chat.scrollHeight > chat.clientHeight + 40) {
+        scrollChatToBottom();
+      }
+
+      defocusInput();
+    } else {
+      startFreshSession();
     }
-    
-    async function refreshConversationTitle(conversationId, attempt = 0) {
-      if (!conversationId) return;
-      
-      const index = loadConversationsIndex();
-      const existingItem = index.find(item => item && item.id === conversationId);
-      
-      if (existingItem && existingItem.isCustomTitle) {
+  }
+
+  function buildPayload(message) {
+    const full = loadHistory().map(({ role, content }) => ({ role, content }));
+
+    return {
+      message,
+      userId: getOrCreateUserId(),
+      conversationId: getConversationId(),
+      recentHistory: full.slice(-MAX_RECENT_TURNS),
+      memory: loadMemory(),
+      flags: loadFlags()
+    };
+  }
+
+  async function refreshConversationTitle(conversationId, attempt = 0) {
+    if (!conversationId) return;
+
+    const index = loadConversationsIndex();
+    const existingItem = index.find(item => item && item.id === conversationId);
+
+    if (existingItem && existingItem.isCustomTitle) {
+      return;
+    }
+
+    const localData = loadConversationData(conversationId);
+    const userMessages = (localData.messages || []).filter(m => m.role === "user");
+    const firstUserTitle = String(userMessages[0]?.content || "").trim().replace(/\s+/g, " ").slice(0, 60);
+    const shouldWaitForSmartTitle = false;
+
+    try {
+      const titleRes = await fetch(`/api/conversations/${encodeURIComponent(conversationId)}/title`, {
+        cache: "no-store"
+      });
+
+      if (!titleRes.ok) {
         return;
       }
-      
-      const localData = loadConversationData(conversationId);
-      const userMessages = (localData.messages || []).filter(m => m.role === "user");
-      const firstUserTitle = String(userMessages[0]?.content || "").trim().replace(/\s+/g, " ").slice(0, 60);
-      const shouldWaitForSmartTitle = false;
-      
-      try {
-        const titleRes = await fetch(`/api/conversations/${encodeURIComponent(conversationId)}/title`, {
-          cache: "no-store"
-        });
-        
-        if (!titleRes.ok) {
-          return;
-        }
-        
-        const titleData = await titleRes.json();
-        const serverTitle = String(titleData.title || "").trim();
-        
-        if (serverTitle) {
-          const hasSmartTitle = !firstUserTitle || serverTitle !== firstUserTitle;
-          
-          if (hasSmartTitle || !shouldWaitForSmartTitle) {
-            upsertConversationIndexItem({
-              id: conversationId,
-              title: serverTitle,
-              updatedAt: titleData.updatedAt ? new Date(titleData.updatedAt).getTime() : Date.now(),
-              isCustomTitle: false
-            });
-            
-            if (document.getElementById("conversationsScreen").classList.contains("active")) {
-              renderConversationsList();
-            }
+
+      const titleData = await titleRes.json();
+      const serverTitle = String(titleData.title || "").trim();
+
+      if (serverTitle) {
+        const hasSmartTitle = !firstUserTitle || serverTitle !== firstUserTitle;
+
+        if (hasSmartTitle || !shouldWaitForSmartTitle) {
+          upsertConversationIndexItem({
+            id: conversationId,
+            title: serverTitle,
+            updatedAt: titleData.updatedAt ? new Date(titleData.updatedAt).getTime() : Date.now(),
+            isCustomTitle: false
+          });
+
+          if (document.getElementById("conversationsScreen").classList.contains("active")) {
+            renderConversationsList();
           }
         }
-      } catch {}
+      }
+    } catch {}
+  }
+
+  async function send() {
+    if (isSending) return;
+    if (sessionStatus === "terminated" || sessionStatus === "closing") return;
+    if (sessionStatus === "expired") return;
+
+    const input = document.getElementById("input");
+    const sendBtn = document.getElementById("sendBtn");
+    const chat = document.getElementById("chat");
+    const nextMessage = input.value.trim();
+
+    if (!nextMessage) return;
+
+    const isEditing = editMode.active;
+    const conversationIdBeforeSend = getConversationId();
+    const wasAtBottom = isEditing ? true : isChatAtBottom();
+    const restoredDraft = isEditing ? draftBeforeEdit : "";
+
+    let message = nextMessage;
+
+    isSending = true;
+    updateActivity();
+    sendBtn.disabled = true;
+
+    if (isEditing) {
+      const history = loadHistory();
+      const targetIndex = editMode.targetHistoryIndex;
+      const lastUserIndex = getLastUserHistoryIndex(history);
+
+      if (
+        targetIndex < 0 ||
+        targetIndex !== lastUserIndex ||
+        editMode.conversationId !== conversationIdBeforeSend ||
+        !history[targetIndex] ||
+        history[targetIndex].role !== "user"
+      ) {
+        closeEditMode({ restoreDraft: true });
+        isSending = false;
+        syncInputAvailability();
+        showTemporaryNotice("Modification impossible");
+        return;
+      }
+
+      history[targetIndex] = {
+        ...history[targetIndex],
+        content: message,
+        t: Date.now()
+      };
+
+      const truncatedHistory = history.slice(0, targetIndex + 1);
+      saveHistory(truncatedHistory);
+      closeEditMode({ restoreDraft: false });
+      renderHistory();
+      scrollChatToBottom();
+
+      input.value = restoredDraft || "";
+    } else {
+      pushHistory("user", message, []);
+      addMessage("user", message, [], {
+        shouldAutoScroll: wasAtBottom,
+        pulseScrollButton: false,
+        progressive: false,
+        historyIndex: loadHistory().length - 1
+      });
+
+      input.value = "";
     }
-    
-    async function send() {
-      if (isSending) return;
-      if (sessionStatus === "terminated" || sessionStatus === "closing") return;
-      if (sessionStatus === "expired") return;
-      
-      const input = document.getElementById("input");
-      const sendBtn = document.getElementById("sendBtn");
-      const chat = document.getElementById("chat");
-      const nextMessage = input.value.trim();
-      
-      if (!nextMessage) return;
-      
-      const isEditing = editMode.active;
-      const conversationIdBeforeSend = getConversationId();
-      const wasAtBottom = isEditing ? true : isChatAtBottom();
-      const restoredDraft = isEditing ? draftBeforeEdit : "";
-      
-      let message = nextMessage;
-      
-      isSending = true;
-      updateActivity();
-      sendBtn.disabled = true;
-      
-      if (isEditing) {
-        const history = loadHistory();
-        const targetIndex = editMode.targetHistoryIndex;
-        const lastUserIndex = getLastUserHistoryIndex(history);
-        
-        if (
-          targetIndex < 0 ||
-          targetIndex !== lastUserIndex ||
-          editMode.conversationId !== conversationIdBeforeSend ||
-          !history[targetIndex] ||
-          history[targetIndex].role !== "user"
-        ) {
-          closeEditMode({ restoreDraft: true });
-          isSending = false;
-          syncInputAvailability();
-          showTemporaryNotice("Modification impossible");
-          return;
-        }
-        
-        history[targetIndex] = {
-          ...history[targetIndex],
-          content: message,
-          t: Date.now()
-        };
-        
-        const truncatedHistory = history.slice(0, targetIndex + 1);
-        saveHistory(truncatedHistory);
-        closeEditMode({ restoreDraft: false });
-        renderHistory();
-        scrollChatToBottom();
-        
-        input.value = restoredDraft || "";
-      } else {
-        pushHistory("user", message, []);
-        addMessage("user", message, [], {
-          shouldAutoScroll: wasAtBottom,
-          pulseScrollButton: false,
-          progressive: false,
-          historyIndex: loadHistory().length - 1
-        });
-        
-        input.value = "";
-      }
-      
-      const requestConversationId = getConversationId();
-      const requestScreenId = document.querySelector(".screen.active")?.id || "";
-      
-      const waitingMsg = document.createElement("div");
-      waitingMsg.className = "message bot";
-      
-      const waitingContent = document.createElement("div");
-      waitingContent.className = "message-content";
-      
-      const waitingBubble = document.createElement("div");
-      waitingBubble.className = "bubble waiting-bubble";
-      
-      const waitingDot = document.createElement("span");
-      waitingDot.id = "waitingDot";
-      waitingDot.className = "waiting-dot";
-      
-      waitingBubble.appendChild(waitingDot);
-      waitingContent.appendChild(waitingBubble);
-      waitingMsg.appendChild(waitingContent);
-      
-      chat.appendChild(waitingMsg);
-      
-      if (wasAtBottom || isEditing) {
-        scrollChatToBottom();
-      } else {
-        requestAnimationFrame(() => {
-          updateScrollToBottomBtn();
-        });
-      }
-      
-      let dotAnimation = null;
-      
-      if (waitingDot && waitingDot.animate) {
-        dotAnimation = waitingDot.animate(
-          [
-            { transform: "scale(0.8)" },
-            { transform: "scale(1.2)" },
-            { transform: "scale(0.8)" }
-          ],
-          {
-            duration: 900,
-            iterations: Infinity,
-            easing: "ease-in-out"
-          }
-        );
-      }
-      
-      try {
-        const res = await fetch("/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            message,
-            isEdited: isEditing === true,
-            userId: getOrCreateUserId(),
-            conversationId: requestConversationId,
-            recentHistory: loadHistory().map(({ role, content }) => ({ role, content })).slice(-MAX_RECENT_TURNS),
-            memory: loadMemory(),
-            flags: loadFlags()
-          })
-        });
-        
-        const data = await res.json();
-        
-        if (dotAnimation) dotAnimation.cancel();
-        if (waitingMsg.parentNode) waitingMsg.parentNode.removeChild(waitingMsg);
-        
-        if (!res.ok || !data || !data.reply) {
-          if (
-            getConversationId() === requestConversationId &&
-            document.querySelector(".screen.active")?.id === requestScreenId &&
-            requestScreenId === "chatScreen"
-          ) {
-            const chatNow = document.getElementById("chat");
-            const isAtBottomNow = chatNow ?
-              (chatNow.scrollHeight - chatNow.clientHeight - chatNow.scrollTop) <= 12 :
-              true;
-            
-            addMessage("bot", data.reply, data.debug || [], {
-              shouldAutoScroll: isAtBottomNow || isEditing,
-              pulseScrollButton: !isAtBottomNow && !isEditing,
-              progressive: isAtBottomNow && !isEditing
-            });
-          }
-          return;
-        }
-        
-        const currentConversationId = getConversationId();
-        
-        if (currentConversationId === requestConversationId) {
-          if (data.memory) saveMemory(data.memory);
-          if (data.flags) saveFlags(data.flags);
-          pushHistory("assistant", data.reply, data.debug || []);
-        } else {
-          const storedData = loadConversationData(requestConversationId);
-          saveConversationData(requestConversationId, {
-            ...storedData,
-            memory: data.memory || storedData.memory,
-            flags: data.flags || storedData.flags,
-            messages: [
-              ...(Array.isArray(storedData.messages) ? storedData.messages : []),
-              {
-                role: "assistant",
-                content: data.reply,
-                debug: Array.isArray(data.debug) ? data.debug : [],
-                t: Date.now()
-              }
-            ],
-            updatedAt: Date.now()
-          });
-        }
-        
-        if (
-          getConversationId() === requestConversationId &&
-          document.querySelector(".screen.active")?.id === requestScreenId &&
-          requestScreenId === "chatScreen"
-        ) {
-          addMessage("bot", data.reply, data.debug || [], {
-            shouldAutoScroll: wasAtBottom || isEditing,
-            pulseScrollButton: !wasAtBottom && !isEditing
-          });
-        }
-        
-        if (data.conversationId) {
-          refreshConversationTitle(data.conversationId);
-        }
-        
-        updateActivity();
-      } catch {
-        const shouldRevealProgressively = !!waitingMsg.parentNode;
 
-if (dotAnimation) dotAnimation.cancel();
-if (waitingMsg.parentNode) waitingMsg.parentNode.removeChild(waitingMsg);
+    const requestConversationId = getConversationId();
+    const requestScreenId = document.querySelector(".screen.active")?.id || "";
 
-if (!res.ok || !data || !data.reply) {
-        
+    const waitingMsg = document.createElement("div");
+    waitingMsg.className = "message bot";
+
+    const waitingContent = document.createElement("div");
+    waitingContent.className = "message-content";
+
+    const waitingBubble = document.createElement("div");
+    waitingBubble.className = "bubble waiting-bubble";
+
+    const waitingDot = document.createElement("span");
+    waitingDot.id = "waitingDot";
+    waitingDot.className = "waiting-dot";
+
+    waitingBubble.appendChild(waitingDot);
+    waitingContent.appendChild(waitingBubble);
+    waitingMsg.appendChild(waitingContent);
+
+    chat.appendChild(waitingMsg);
+
+    if (wasAtBottom || isEditing) {
+      scrollChatToBottom();
+    } else {
+      requestAnimationFrame(() => {
+        updateScrollToBottomBtn();
+      });
+    }
+
+    let dotAnimation = null;
+
+    if (waitingDot && waitingDot.animate) {
+      dotAnimation = waitingDot.animate(
+        [
+          { transform: "scale(0.8)" },
+          { transform: "scale(1.2)" },
+          { transform: "scale(0.8)" }
+        ],
+        {
+          duration: 900,
+          iterations: Infinity,
+          easing: "ease-in-out"
+        }
+      );
+    }
+
+    try {
+      const res = await fetch("/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message,
+          isEdited: isEditing === true,
+          userId: getOrCreateUserId(),
+          conversationId: requestConversationId,
+          recentHistory: loadHistory().map(({ role, content }) => ({ role, content })).slice(-MAX_RECENT_TURNS),
+          memory: loadMemory(),
+          flags: loadFlags()
+        })
+      });
+
+      const data = await res.json();
+
+      if (dotAnimation) dotAnimation.cancel();
+      if (waitingMsg.parentNode) waitingMsg.parentNode.removeChild(waitingMsg);
+
+      if (!res.ok || !data || !data.reply) {
         if (
           getConversationId() === requestConversationId &&
           document.querySelector(".screen.active")?.id === requestScreenId &&
@@ -3691,1009 +3624,1067 @@ if (!res.ok || !data || !data.reply) {
             pulseScrollButton: !wasAtBottom && !isEditing
           });
         }
-      } finally {
-        isSending = false;
-        syncInputAvailability();
-        updateScrollToBottomBtn();
-      }
-    }
-    
-    document.getElementById("cancelEditTitleBtn").onclick = () => {
-      closeEditTitleModal();
-    };
-    
-    document.getElementById("editTitleModal").addEventListener("click", e => {
-      if (e.target.id === "editTitleModal") {
-        closeEditTitleModal();
-      }
-    });
-    
-    document.getElementById("editTitleInput").addEventListener("keydown", e => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        document.getElementById("confirmEditTitleBtn").click();
-      }
-    });
-    
-    document.getElementById("confirmEditTitleBtn").onclick = () => {
-      const input = document.getElementById("editTitleInput");
-      const conversationId = input.dataset.conversationId;
-      
-      if (!conversationId) return;
-      
-      let newTitle = input.value.trim();
-      
-      if (newTitle.length > 60) {
-        newTitle = newTitle.slice(0, 60);
-      }
-      
-      upsertConversationIndexItem({
-        id: conversationId,
-        title: newTitle || null,
-        updatedAt: Date.now(),
-        isCustomTitle: true
-      });
-      
-      renderConversationsList();
-      closeEditTitleModal();
-    };
-    
-    const editTitleInput = document.getElementById("editTitleInput");
-    const editTitleCounter = document.getElementById("editTitleCounter");
-    
-    function updateTitleCounter() {
-      const length = editTitleInput.value.length;
-      editTitleCounter.textContent = length + "/60";
-    }
-    
-    editTitleInput.addEventListener("input", updateTitleCounter);
-    
-    let pendingDeleteConversationId = null;
-    
-    function ensureConversationMenuOverlay() {
-      let overlay = document.getElementById("conversationMenuOverlay");
-      
-      if (overlay) return overlay;
-      
-      overlay = document.createElement("div");
-      overlay.id = "conversationMenuOverlay";
-      overlay.style.position = "fixed";
-      overlay.style.inset = "0";
-      overlay.style.zIndex = "240";
-      overlay.style.display = "none";
-      overlay.style.opacity = "0";
-      overlay.style.pointerEvents = "none";
-      overlay.style.transition = "opacity 0.22s ease";
-      overlay.style.background = "rgba(20, 36, 40, 0.14)";
-      
-      document.body.appendChild(overlay);
-      return overlay;
-    }
-    
-    function ensureConversationMenuPortal() {
-      let portal = document.getElementById("conversationMenuPortal");
-      
-      if (portal) return portal;
-      
-      portal = document.createElement("div");
-      portal.id = "conversationMenuPortal";
-      portal.style.position = "fixed";
-      portal.style.inset = "0";
-      portal.style.zIndex = "260";
-      portal.style.pointerEvents = "none";
-      
-      document.body.appendChild(portal);
-      return portal;
-    }
-    
-    function resetConversationMenuStyles(menu) {
-      if (!menu) return;
-      
-      menu.style.display = "none";
-      menu.style.position = "";
-      menu.style.top = "";
-      menu.style.left = "";
-      menu.style.right = "";
-      menu.style.minWidth = "";
-      menu.style.maxWidth = "";
-      menu.style.background = "";
-      menu.style.border = "";
-      menu.style.borderRadius = "";
-      menu.style.boxShadow = "";
-      menu.style.backdropFilter = "";
-      menu.style.webkitBackdropFilter = "";
-      menu.style.overflow = "";
-      menu.style.zIndex = "";
-      menu.style.padding = "";
-      menu.style.opacity = "";
-      menu.style.transform = "";
-      menu.style.transition = "";
-      menu.style.pointerEvents = "";
-    }
-    
-    function closeConversationMenus() {
-      const overlay = ensureConversationMenuOverlay();
-      const portal = ensureConversationMenuPortal();
-      
-      overlay.style.opacity = "0";
-      overlay.style.pointerEvents = "none";
-      
-      setTimeout(() => {
-        if (overlay.style.opacity === "0") {
-          overlay.style.display = "none";
-        }
-      }, 220);
-      
-      document.querySelectorAll("[data-menu]").forEach(menu => {
-        const originalParent = menu.__originalParent;
-        const originalNextSibling = menu.__originalNextSibling;
-        
-        resetConversationMenuStyles(menu);
-        
-        if (originalParent) {
-          if (originalNextSibling && originalNextSibling.parentNode === originalParent) {
-            originalParent.insertBefore(menu, originalNextSibling);
-          } else {
-            originalParent.appendChild(menu);
-          }
-        }
-      });
-      
-      if (portal) {
-        portal.innerHTML = "";
-      }
-      
-      document.querySelectorAll(".conversationItem").forEach(item => {
-        item.style.zIndex = "";
-        item.style.position = "";
-      });
-    }
-    
-    function openConversationMenu(toggleBtn, menu) {
-      if (!toggleBtn || !menu) return;
-      
-      const overlay = ensureConversationMenuOverlay();
-      const portal = ensureConversationMenuPortal();
-      const rect = toggleBtn.getBoundingClientRect();
-      const panelWidth = 196;
-      const panelTop = Math.round(rect.bottom + 10);
-      const panelLeft = Math.round(
-        Math.max(16, Math.min(window.innerWidth - panelWidth - 16, rect.right - panelWidth))
-      );
-      const item = toggleBtn.closest(".conversationItem");
-      
-      closeConversationMenus();
-      
-      portal.style.zIndex = "420";
-      
-      if (!menu.__originalParent) {
-        menu.__originalParent = menu.parentNode;
-      }
-      menu.__originalNextSibling = menu.nextSibling;
-      
-      portal.appendChild(menu);
-      
-      if (item) {
-        item.style.position = "relative";
-        item.style.zIndex = "300";
-      }
-      
-      menu.style.display = "block";
-      menu.style.position = "fixed";
-      menu.style.top = panelTop + "px";
-      menu.style.left = panelLeft + "px";
-      menu.style.right = "auto";
-      menu.style.minWidth = panelWidth + "px";
-      menu.style.maxWidth = "calc(100vw - 32px)";
-      menu.style.background = "rgba(255, 255, 255, 0.96)";
-      menu.style.border = "1px solid rgba(222, 228, 230, 0.92)";
-      menu.style.borderRadius = "26px";
-      menu.style.boxShadow = "0 22px 46px rgba(20, 36, 40, 0.18)";
-      menu.style.backdropFilter = "blur(8px)";
-      menu.style.webkitBackdropFilter = "blur(8px)";
-      menu.style.overflow = "hidden";
-      menu.style.zIndex = "430";
-      menu.style.padding = "8px 0";
-      menu.style.opacity = "0";
-      menu.style.transform = "translateY(-4px) scale(0.985)";
-      menu.style.transition = "opacity 0.2s ease, transform 0.2s ease";
-      menu.style.pointerEvents = "auto";
-      
-      const centerX = Math.round(rect.right - 16);
-      const centerY = Math.round(rect.top + rect.height / 2);
-      
-      overlay.style.zIndex = "410";
-      overlay.style.display = "block";
-      overlay.style.pointerEvents = "auto";
-      overlay.style.background =
-        "radial-gradient(circle at " + centerX + "px " + centerY + "px, rgba(255,255,255,0) 0px, rgba(255,255,255,0) 84px, rgba(20,36,40,0.04) 140px, rgba(20,36,40,0.14) 100%)";
-      
-      requestAnimationFrame(() => {
-        overlay.style.opacity = "1";
-        menu.style.opacity = "1";
-        menu.style.transform = "translateY(0) scale(1)";
-      });
-    }
-    
-    document.addEventListener("click", e => {
-      if (!e.target.closest("[data-menu-toggle]") && !e.target.closest("[data-menu]")) {
-        closeConversationMenus();
-      }
-    });
-    
-    window.addEventListener("resize", () => {
-      closeConversationMenus();
-      updateScrollToBottomBtn();
-    });
-    window.addEventListener("scroll", closeConversationMenus, true);
-    
-    document.getElementById("cancelDeleteConversationBtn").onclick = () => {
-      pendingDeleteConversationId = null;
-      closeModal("deleteConversationModal");
-    };
-    
-    document.getElementById("confirmDeleteConversationBtn").onclick = () => {
-      if (!pendingDeleteConversationId) {
-        closeModal("deleteConversationModal");
         return;
       }
-      
-      deleteConversationData(pendingDeleteConversationId);
-      
-      if (getConversationId() === pendingDeleteConversationId) {
-        localStorage.removeItem(CONVERSATION_ID_KEY);
+
+      const currentConversationId = getConversationId();
+
+      if (currentConversationId === requestConversationId) {
+        if (data.memory) saveMemory(data.memory);
+        if (data.flags) saveFlags(data.flags);
+        pushHistory("assistant", data.reply, data.debug || []);
+      } else {
+        const storedData = loadConversationData(requestConversationId);
+        saveConversationData(requestConversationId, {
+          ...storedData,
+          memory: data.memory || storedData.memory,
+          flags: data.flags || storedData.flags,
+          messages: [
+            ...(Array.isArray(storedData.messages) ? storedData.messages : []),
+            {
+              role: "assistant",
+              content: data.reply,
+              debug: Array.isArray(data.debug) ? data.debug : [],
+              t: Date.now()
+            }
+          ],
+          updatedAt: Date.now()
+        });
       }
-      
-      pendingDeleteConversationId = null;
-      closeModal("deleteConversationModal");
-      renderConversationsList();
-    };
-    
-    document.getElementById("deleteConversationModal").addEventListener("click", e => {
-      if (e.target.id === "deleteConversationModal") {
-        pendingDeleteConversationId = null;
-        closeModal("deleteConversationModal");
+
+      if (
+        getConversationId() === requestConversationId &&
+        document.querySelector(".screen.active")?.id === requestScreenId &&
+        requestScreenId === "chatScreen"
+      ) {
+        addMessage("bot", data.reply, data.debug || [], {
+          shouldAutoScroll: wasAtBottom || isEditing,
+          pulseScrollButton: !wasAtBottom && !isEditing
+        });
+      }
+
+      if (data.conversationId) {
+        refreshConversationTitle(data.conversationId);
+      }
+
+      updateActivity();
+    } catch {
+      if (dotAnimation) dotAnimation.cancel();
+      if (waitingMsg.parentNode) waitingMsg.parentNode.removeChild(waitingMsg);
+
+      if (
+        getConversationId() === requestConversationId &&
+        document.querySelector(".screen.active")?.id === requestScreenId &&
+        requestScreenId === "chatScreen"
+      ) {
+        addMessage("bot", "Erreur serveur", [], {
+          shouldAutoScroll: wasAtBottom || isEditing,
+          pulseScrollButton: !wasAtBottom && !isEditing
+        });
+      }
+    } finally {
+      isSending = false;
+      syncInputAvailability();
+      updateScrollToBottomBtn();
+    }
+  }
+
+  document.getElementById("cancelEditTitleBtn").onclick = () => {
+    closeEditTitleModal();
+  };
+
+  document.getElementById("editTitleModal").addEventListener("click", e => {
+    if (e.target.id === "editTitleModal") {
+      closeEditTitleModal();
+    }
+  });
+
+  document.getElementById("editTitleInput").addEventListener("keydown", e => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      document.getElementById("confirmEditTitleBtn").click();
+    }
+  });
+
+  document.getElementById("confirmEditTitleBtn").onclick = () => {
+    const input = document.getElementById("editTitleInput");
+    const conversationId = input.dataset.conversationId;
+
+    if (!conversationId) return;
+
+    let newTitle = input.value.trim();
+
+    if (newTitle.length > 60) {
+      newTitle = newTitle.slice(0, 60);
+    }
+
+    upsertConversationIndexItem({
+      id: conversationId,
+      title: newTitle || null,
+      updatedAt: Date.now(),
+      isCustomTitle: true
+    });
+
+    renderConversationsList();
+    closeEditTitleModal();
+  };
+
+  const editTitleInput = document.getElementById("editTitleInput");
+  const editTitleCounter = document.getElementById("editTitleCounter");
+
+  function updateTitleCounter() {
+    const length = editTitleInput.value.length;
+    editTitleCounter.textContent = length + "/60";
+  }
+
+  editTitleInput.addEventListener("input", updateTitleCounter);
+
+  let pendingDeleteConversationId = null;
+
+  function ensureConversationMenuOverlay() {
+    let overlay = document.getElementById("conversationMenuOverlay");
+
+    if (overlay) return overlay;
+
+    overlay = document.createElement("div");
+    overlay.id = "conversationMenuOverlay";
+    overlay.style.position = "fixed";
+    overlay.style.inset = "0";
+    overlay.style.zIndex = "240";
+    overlay.style.display = "none";
+    overlay.style.opacity = "0";
+    overlay.style.pointerEvents = "none";
+    overlay.style.transition = "opacity 0.22s ease";
+    overlay.style.background = "rgba(20, 36, 40, 0.14)";
+
+    document.body.appendChild(overlay);
+    return overlay;
+  }
+
+  function ensureConversationMenuPortal() {
+    let portal = document.getElementById("conversationMenuPortal");
+
+    if (portal) return portal;
+
+    portal = document.createElement("div");
+    portal.id = "conversationMenuPortal";
+    portal.style.position = "fixed";
+    portal.style.inset = "0";
+    portal.style.zIndex = "260";
+    portal.style.pointerEvents = "none";
+
+    document.body.appendChild(portal);
+    return portal;
+  }
+
+  function resetConversationMenuStyles(menu) {
+    if (!menu) return;
+
+    menu.style.display = "none";
+    menu.style.position = "";
+    menu.style.top = "";
+    menu.style.left = "";
+    menu.style.right = "";
+    menu.style.minWidth = "";
+    menu.style.maxWidth = "";
+    menu.style.background = "";
+    menu.style.border = "";
+    menu.style.borderRadius = "";
+    menu.style.boxShadow = "";
+    menu.style.backdropFilter = "";
+    menu.style.webkitBackdropFilter = "";
+    menu.style.overflow = "";
+    menu.style.zIndex = "";
+    menu.style.padding = "";
+    menu.style.opacity = "";
+    menu.style.transform = "";
+    menu.style.transition = "";
+    menu.style.pointerEvents = "";
+  }
+
+  function closeConversationMenus() {
+    const overlay = ensureConversationMenuOverlay();
+    const portal = ensureConversationMenuPortal();
+
+    overlay.style.opacity = "0";
+    overlay.style.pointerEvents = "none";
+
+    setTimeout(() => {
+      if (overlay.style.opacity === "0") {
+        overlay.style.display = "none";
+      }
+    }, 220);
+
+    document.querySelectorAll("[data-menu]").forEach(menu => {
+      const originalParent = menu.__originalParent;
+      const originalNextSibling = menu.__originalNextSibling;
+
+      resetConversationMenuStyles(menu);
+
+      if (originalParent) {
+        if (originalNextSibling && originalNextSibling.parentNode === originalParent) {
+          originalParent.insertBefore(menu, originalNextSibling);
+        } else {
+          originalParent.appendChild(menu);
+        }
       }
     });
-    
-    const welcomeEnterBtn = document.getElementById("welcomeEnterBtn");
-    if (welcomeEnterBtn) {
-      welcomeEnterBtn.onclick = () => {
-        enterConversations();
-      };
+
+    if (portal) {
+      portal.innerHTML = "";
     }
-    
-    const welcomeAboutBtn = document.getElementById("welcomeAboutBtn");
-    if (welcomeAboutBtn) {
-      welcomeAboutBtn.onclick = () => {
-        openAboutModal();
-      };
+
+    document.querySelectorAll(".conversationItem").forEach(item => {
+      item.style.zIndex = "";
+      item.style.position = "";
+    });
+  }
+
+  function openConversationMenu(toggleBtn, menu) {
+    if (!toggleBtn || !menu) return;
+
+    const overlay = ensureConversationMenuOverlay();
+    const portal = ensureConversationMenuPortal();
+    const rect = toggleBtn.getBoundingClientRect();
+    const panelWidth = 196;
+    const panelTop = Math.round(rect.bottom + 10);
+    const panelLeft = Math.round(
+      Math.max(16, Math.min(window.innerWidth - panelWidth - 16, rect.right - panelWidth))
+    );
+    const item = toggleBtn.closest(".conversationItem");
+
+    closeConversationMenus();
+
+    portal.style.zIndex = "420";
+
+    if (!menu.__originalParent) {
+      menu.__originalParent = menu.parentNode;
     }
-    
-    const welcomeDevAccessBtn = document.getElementById("welcomeDevAccessBtn");
-    if (welcomeDevAccessBtn) {
-      welcomeDevAccessBtn.onclick = () => {
-        openDevAccessModal();
-      };
+    menu.__originalNextSibling = menu.nextSibling;
+
+    portal.appendChild(menu);
+
+    if (item) {
+      item.style.position = "relative";
+      item.style.zIndex = "300";
     }
-    
-    const sendBtn = document.getElementById("sendBtn");
-    if (sendBtn) {
-      sendBtn.onclick = send;
+
+    menu.style.display = "block";
+    menu.style.position = "fixed";
+    menu.style.top = panelTop + "px";
+    menu.style.left = panelLeft + "px";
+    menu.style.right = "auto";
+    menu.style.minWidth = panelWidth + "px";
+    menu.style.maxWidth = "calc(100vw - 32px)";
+    menu.style.background = "rgba(255, 255, 255, 0.96)";
+    menu.style.border = "1px solid rgba(222, 228, 230, 0.92)";
+    menu.style.borderRadius = "26px";
+    menu.style.boxShadow = "0 22px 46px rgba(20, 36, 40, 0.18)";
+    menu.style.backdropFilter = "blur(8px)";
+    menu.style.webkitBackdropFilter = "blur(8px)";
+    menu.style.overflow = "hidden";
+    menu.style.zIndex = "430";
+    menu.style.padding = "8px 0";
+    menu.style.opacity = "0";
+    menu.style.transform = "translateY(-4px) scale(0.985)";
+    menu.style.transition = "opacity 0.2s ease, transform 0.2s ease";
+    menu.style.pointerEvents = "auto";
+
+    const centerX = Math.round(rect.right - 16);
+    const centerY = Math.round(rect.top + rect.height / 2);
+
+    overlay.style.zIndex = "410";
+    overlay.style.display = "block";
+    overlay.style.pointerEvents = "auto";
+    overlay.style.background =
+      "radial-gradient(circle at " + centerX + "px " + centerY + "px, rgba(255,255,255,0) 0px, rgba(255,255,255,0) 84px, rgba(20,36,40,0.04) 140px, rgba(20,36,40,0.14) 100%)";
+
+    requestAnimationFrame(() => {
+      overlay.style.opacity = "1";
+      menu.style.opacity = "1";
+      menu.style.transform = "translateY(0) scale(1)";
+    });
+  }
+
+  document.addEventListener("click", e => {
+    if (!e.target.closest("[data-menu-toggle]") && !e.target.closest("[data-menu]")) {
+      closeConversationMenus();
     }
-    
-    const menuBtn = document.getElementById("menuBtn");
-    if (menuBtn) {
-      menuBtn.onclick = () => {
-        enterConversations();
-      };
+  });
+
+  window.addEventListener("resize", () => {
+    closeConversationMenus();
+    updateScrollToBottomBtn();
+  });
+  window.addEventListener("scroll", closeConversationMenus, true);
+
+  document.getElementById("cancelDeleteConversationBtn").onclick = () => {
+    pendingDeleteConversationId = null;
+    closeModal("deleteConversationModal");
+  };
+
+  document.getElementById("confirmDeleteConversationBtn").onclick = () => {
+    if (!pendingDeleteConversationId) {
+      closeModal("deleteConversationModal");
+      return;
     }
-    
-    const conversationsBackBtn = document.getElementById("conversationsBackBtn");
-    if (conversationsBackBtn) {
-      conversationsBackBtn.onclick = () => {
-        history.back();
-      };
+
+    deleteConversationData(pendingDeleteConversationId);
+
+    if (getConversationId() === pendingDeleteConversationId) {
+      localStorage.removeItem(CONVERSATION_ID_KEY);
     }
-    
-    const debugToggleBtn = document.getElementById("debugToggleBtn");
-    if (debugToggleBtn) {
-      debugToggleBtn.onclick = () => {
-        showDebug = !showDebug;
-        syncDebugVisibility();
-      };
+
+    pendingDeleteConversationId = null;
+    closeModal("deleteConversationModal");
+    renderConversationsList();
+  };
+
+  document.getElementById("deleteConversationModal").addEventListener("click", e => {
+    if (e.target.id === "deleteConversationModal") {
+      pendingDeleteConversationId = null;
+      closeModal("deleteConversationModal");
     }
-    
-    const conversationsFabBtn = document.getElementById("conversationsFabBtn");
-    if (conversationsFabBtn) {
-      conversationsFabBtn.onclick = async () => {
-        await finalizeAndStartNewSession();
-      };
-    }
-    
-    const cancelNewSessionBtn = document.getElementById("cancelNewSessionBtn");
-    if (cancelNewSessionBtn) {
-      cancelNewSessionBtn.onclick = () => {
-        closeConfirmNewSessionModal();
-      };
-    }
-    
-    const confirmNewSessionBtn = document.getElementById("confirmNewSessionBtn");
-    if (confirmNewSessionBtn) {
-      confirmNewSessionBtn.onclick = async () => {
-        await finalizeAndStartNewSession();
-      };
-    }
-    
-    const expiredNewSessionBtn = document.getElementById("expiredNewSessionBtn");
-    if (expiredNewSessionBtn) {
-      expiredNewSessionBtn.onclick = async () => {
-        await finalizeAndStartNewSession();
-      };
-    }
-    
-    const terminatedNewSessionBtn = document.getElementById("terminatedNewSessionBtn");
-    if (terminatedNewSessionBtn) {
-      terminatedNewSessionBtn.onclick = async () => {
-        await finalizeAndStartNewSession();
-      };
-    }
-    
-    const devAccessModal = document.getElementById("devAccessModal");
-    if (devAccessModal) {
-      devAccessModal.addEventListener("click", e => {
-        if (e.target.id === "devAccessModal") {
-          closeDevAccessModal();
-        }
-      });
-    }
-    
-    const sessionInfoContinueBtn = document.getElementById("sessionInfoContinueBtn");
-    if (sessionInfoContinueBtn) {
-      sessionInfoContinueBtn.onclick = () => {
-        saveSessionInfoDismissed(document.getElementById("sessionInfoDontShow").checked);
-        startFreshOrResumeSession();
-      };
-    }
-    
-    const inputEl = document.getElementById("input");
-    if (inputEl) {
-      const inputShellEl = document.getElementById("inputShell");
-      const sendBtnEl = document.getElementById("sendBtn");
-      
-      function getInputMaxHeightPx() {
-        const computed = window.getComputedStyle(inputEl);
-        const lineHeight = parseFloat(computed.lineHeight) || 24;
-        return lineHeight * 10;
-      }
-      
-      function resizeComposerInput() {
-        inputEl.style.height = "auto";
-        
-        const maxHeight = getInputMaxHeightPx();
-        const nextHeight = Math.min(inputEl.scrollHeight, maxHeight);
-        
-        inputEl.style.height = nextHeight + "px";
-        inputEl.style.overflowY = inputEl.scrollHeight > maxHeight ? "auto" : "hidden";
-      }
-      
-      function syncComposerUi() {
-        const hasText = inputEl.value.trim().length > 0;
-        const isFocused = document.activeElement === inputEl;
-        
-        if (inputShellEl) {
-          inputShellEl.classList.toggle("is-active", isFocused || hasText);
-        }
-        
-        if (sendBtnEl) {
-          sendBtnEl.disabled = inputEl.disabled || isSending || !hasText;
-        }
-        
-        resizeComposerInput();
-      }
-      
-      const originalSend = send;
-      send = async function() {
-        const hadTextBeforeSend = inputEl.value.trim().length > 0;
-        
-        const sendPromise = originalSend();
-        
-        if (hadTextBeforeSend) {
-          requestAnimationFrame(syncComposerUi);
-          setTimeout(syncComposerUi, 0);
-          setTimeout(syncComposerUi, 60);
-        }
-        
-        try {
-          await sendPromise;
-        } finally {
-          syncComposerUi();
-        }
-      };
-      
-      if (sendBtnEl) {
-        sendBtnEl.onclick = send;
-      }
-      
-      const originalOpenEditMode = openEditMode;
-      openEditMode = function(historyIndex, text) {
-        originalOpenEditMode(historyIndex, text);
-        requestAnimationFrame(syncComposerUi);
-      };
-      
-      const originalCloseEditMode = closeEditMode;
-      closeEditMode = function(options = {}) {
-        originalCloseEditMode(options);
-        requestAnimationFrame(syncComposerUi);
-      };
-      
-      const originalStartFreshSession = startFreshSession;
-      startFreshSession = function() {
-        originalStartFreshSession();
-        requestAnimationFrame(syncComposerUi);
-      };
-      
-      const originalStartFreshOrResumeSession = startFreshOrResumeSession;
-      startFreshOrResumeSession = function() {
-        originalStartFreshOrResumeSession();
-        requestAnimationFrame(syncComposerUi);
-      };
-      
-      inputEl.addEventListener("keydown", e => {
-        if (e.key === "Enter" && e.ctrlKey) {
-          e.preventDefault();
-          send();
-        }
-      });
-      
-      inputEl.addEventListener("input", () => {
-        updateActivity();
-        syncComposerUi();
-      });
-      
-      inputEl.addEventListener("focus", () => {
-        updateActivity();
-        syncComposerUi();
-      });
-      
-      inputEl.addEventListener("blur", () => {
-        syncComposerUi();
-      });
-      
-      requestAnimationFrame(syncComposerUi);
-    }
-    
-    const chatEl = document.getElementById("chat");
-    if (chatEl) {
-      const topBarEl = document.getElementById("topBar");
-      const menuBtnEl = document.getElementById("menuBtn");
-      
-      function syncTopBarElevation() {
-        if (!topBarEl) return;
-        
-        const elevated = chatEl.scrollTop > 12;
-        
-        topBarEl.classList.toggle("is-elevated", elevated);
-        
-        topBarEl.style.background = elevated ?
-          "rgba(255, 255, 255, 0.58)" :
-          "rgba(255, 255, 255, 0.42)";
-        topBarEl.style.backdropFilter = elevated ? "blur(12px)" : "blur(10px)";
-        topBarEl.style.webkitBackdropFilter = elevated ? "blur(12px)" : "blur(10px)";
-        topBarEl.style.borderBottom = elevated ?
-          "1px solid rgba(255, 255, 255, 0.24)" :
-          "1px solid rgba(255, 255, 255, 0.14)";
-        topBarEl.style.boxShadow = elevated ?
-          "0 8px 22px rgba(36, 94, 102, 0.05)" :
-          "none";
-      }
-      
-      if (menuBtnEl) {
-        menuBtnEl.style.display = "none";
-      }
-      
-      ensureScrollToBottomBtn();
-      syncTopBarElevation();
-      
-      chatEl.addEventListener("scroll", () => {
-        updateActivity();
-        updateScrollToBottomBtn();
-        syncTopBarElevation();
-      });
-      
-      const originalRenderHistory = renderHistory;
-      renderHistory = function() {
-        originalRenderHistory();
-        requestAnimationFrame(syncTopBarElevation);
-        setTimeout(syncTopBarElevation, 40);
-      };
-      
-      const originalScrollChatToBottom = scrollChatToBottom;
-      scrollChatToBottom = function(options = {}) {
-        originalScrollChatToBottom(options);
-        requestAnimationFrame(syncTopBarElevation);
-        setTimeout(syncTopBarElevation, 40);
-        setTimeout(syncTopBarElevation, 180);
-      };
-    }
-    
-    const aboutModal = document.getElementById("aboutModal");
-    if (aboutModal) {
-      aboutModal.addEventListener("click", e => {
-        if (e.target.id === "aboutModal") {
-          closeAboutModal();
-        }
-      });
-    }
-    
-    const confirmNewSessionModal = document.getElementById("confirmNewSessionModal");
-    if (confirmNewSessionModal) {
-      confirmNewSessionModal.addEventListener("click", e => {
-        if (e.target.id === "confirmNewSessionModal") {
-          closeConfirmNewSessionModal();
-        }
-      });
-    }
-    
-    const sessionInfoModal = document.getElementById("sessionInfoModal");
-    if (sessionInfoModal) {
-      sessionInfoModal.addEventListener("click", e => {
-        if (e.target.id === "sessionInfoModal") {
-          closeSessionInfoModal();
-        }
-      });
-    }
-    
-    window.addEventListener("load", () => {
-      const params = new URLSearchParams(window.location.search);
-      
-      if (params.get("admin") === "1") {
-        localStorage.setItem(ADMIN_UI_KEY, "1");
-      }
-      if (params.get("admin") === "0") {
-        localStorage.removeItem(ADMIN_UI_KEY);
-      }
-      
-      const isAdminUI = localStorage.getItem(ADMIN_UI_KEY) === "1";
-      const shouldSkipWelcomeAnimation = isAdminUI;
-      
-      document.body.classList.toggle("admin-ui", isAdminUI);
+  });
+
+  const welcomeEnterBtn = document.getElementById("welcomeEnterBtn");
+  if (welcomeEnterBtn) {
+    welcomeEnterBtn.onclick = () => {
+      enterConversations();
+    };
+  }
+
+  const welcomeAboutBtn = document.getElementById("welcomeAboutBtn");
+  if (welcomeAboutBtn) {
+    welcomeAboutBtn.onclick = () => {
+      openAboutModal();
+    };
+  }
+
+  const welcomeDevAccessBtn = document.getElementById("welcomeDevAccessBtn");
+  if (welcomeDevAccessBtn) {
+    welcomeDevAccessBtn.onclick = () => {
+      openDevAccessModal();
+    };
+  }
+
+  const sendBtn = document.getElementById("sendBtn");
+  if (sendBtn) {
+    sendBtn.onclick = send;
+  }
+
+  const menuBtn = document.getElementById("menuBtn");
+  if (menuBtn) {
+    menuBtn.onclick = () => {
+      enterConversations();
+    };
+  }
+
+  const conversationsBackBtn = document.getElementById("conversationsBackBtn");
+  if (conversationsBackBtn) {
+    conversationsBackBtn.onclick = () => {
+      history.back();
+    };
+  }
+
+  const debugToggleBtn = document.getElementById("debugToggleBtn");
+  if (debugToggleBtn) {
+    debugToggleBtn.onclick = () => {
+      showDebug = !showDebug;
       syncDebugVisibility();
-      ensureScrollToBottomBtn();
+    };
+  }
+
+  const conversationsFabBtn = document.getElementById("conversationsFabBtn");
+  if (conversationsFabBtn) {
+    conversationsFabBtn.onclick = async () => {
+      await finalizeAndStartNewSession();
+    };
+  }
+
+  const cancelNewSessionBtn = document.getElementById("cancelNewSessionBtn");
+  if (cancelNewSessionBtn) {
+    cancelNewSessionBtn.onclick = () => {
+      closeConfirmNewSessionModal();
+    };
+  }
+
+  const confirmNewSessionBtn = document.getElementById("confirmNewSessionBtn");
+  if (confirmNewSessionBtn) {
+    confirmNewSessionBtn.onclick = async () => {
+      await finalizeAndStartNewSession();
+    };
+  }
+
+  const expiredNewSessionBtn = document.getElementById("expiredNewSessionBtn");
+  if (expiredNewSessionBtn) {
+    expiredNewSessionBtn.onclick = async () => {
+      await finalizeAndStartNewSession();
+    };
+  }
+
+  const terminatedNewSessionBtn = document.getElementById("terminatedNewSessionBtn");
+  if (terminatedNewSessionBtn) {
+    terminatedNewSessionBtn.onclick = async () => {
+      await finalizeAndStartNewSession();
+    };
+  }
+
+  const devAccessModal = document.getElementById("devAccessModal");
+  if (devAccessModal) {
+    devAccessModal.addEventListener("click", e => {
+      if (e.target.id === "devAccessModal") {
+        closeDevAccessModal();
+      }
+    });
+  }
+
+  const sessionInfoContinueBtn = document.getElementById("sessionInfoContinueBtn");
+  if (sessionInfoContinueBtn) {
+    sessionInfoContinueBtn.onclick = () => {
+      saveSessionInfoDismissed(document.getElementById("sessionInfoDontShow").checked);
+      startFreshOrResumeSession();
+    };
+  }
+
+  const inputEl = document.getElementById("input");
+  if (inputEl) {
+    const inputShellEl = document.getElementById("inputShell");
+    const sendBtnEl = document.getElementById("sendBtn");
+
+    function getInputMaxHeightPx() {
+      const computed = window.getComputedStyle(inputEl);
+      const lineHeight = parseFloat(computed.lineHeight) || 24;
+      return lineHeight * 10;
+    }
+
+    function resizeComposerInput() {
+      inputEl.style.height = "auto";
+
+      const maxHeight = getInputMaxHeightPx();
+      const nextHeight = Math.min(inputEl.scrollHeight, maxHeight);
+
+      inputEl.style.height = nextHeight + "px";
+      inputEl.style.overflowY = inputEl.scrollHeight > maxHeight ? "auto" : "hidden";
+    }
+
+    function syncComposerUi() {
+      const hasText = inputEl.value.trim().length > 0;
+      const isFocused = document.activeElement === inputEl;
+
+      if (inputShellEl) {
+        inputShellEl.classList.toggle("is-active", isFocused || hasText);
+      }
+
+      if (sendBtnEl) {
+        sendBtnEl.disabled = inputEl.disabled || isSending || !hasText;
+      }
+
+      resizeComposerInput();
+    }
+
+    const originalSend = send;
+    send = async function() {
+      const hadTextBeforeSend = inputEl.value.trim().length > 0;
+
+      const sendPromise = originalSend();
+
+      if (hadTextBeforeSend) {
+        requestAnimationFrame(syncComposerUi);
+        setTimeout(syncComposerUi, 0);
+        setTimeout(syncComposerUi, 60);
+      }
+
+      try {
+        await sendPromise;
+      } finally {
+        syncComposerUi();
+      }
+    };
+
+    if (sendBtnEl) {
+      sendBtnEl.onclick = send;
+    }
+
+    const originalOpenEditMode = openEditMode;
+    openEditMode = function(historyIndex, text) {
+      originalOpenEditMode(historyIndex, text);
+      requestAnimationFrame(syncComposerUi);
+    };
+
+    const originalCloseEditMode = closeEditMode;
+    closeEditMode = function(options = {}) {
+      originalCloseEditMode(options);
+      requestAnimationFrame(syncComposerUi);
+    };
+
+    const originalStartFreshSession = startFreshSession;
+    startFreshSession = function() {
+      originalStartFreshSession();
+      requestAnimationFrame(syncComposerUi);
+    };
+
+    const originalStartFreshOrResumeSession = startFreshOrResumeSession;
+    startFreshOrResumeSession = function() {
+      originalStartFreshOrResumeSession();
+      requestAnimationFrame(syncComposerUi);
+    };
+
+    inputEl.addEventListener("keydown", e => {
+      if (e.key === "Enter" && e.ctrlKey) {
+        e.preventDefault();
+        send();
+      }
+    });
+
+    inputEl.addEventListener("input", () => {
+      updateActivity();
+      syncComposerUi();
+    });
+
+    inputEl.addEventListener("focus", () => {
+      updateActivity();
+      syncComposerUi();
+    });
+
+    inputEl.addEventListener("blur", () => {
+      syncComposerUi();
+    });
+
+    requestAnimationFrame(syncComposerUi);
+  }
+
+  const chatEl = document.getElementById("chat");
+  if (chatEl) {
+    const topBarEl = document.getElementById("topBar");
+    const menuBtnEl = document.getElementById("menuBtn");
+
+    function syncTopBarElevation() {
+      if (!topBarEl) return;
+
+      const elevated = chatEl.scrollTop > 12;
+
+      topBarEl.classList.toggle("is-elevated", elevated);
+
+      topBarEl.style.background = elevated ?
+        "rgba(255, 255, 255, 0.58)" :
+        "rgba(255, 255, 255, 0.42)";
+      topBarEl.style.backdropFilter = elevated ? "blur(12px)" : "blur(10px)";
+      topBarEl.style.webkitBackdropFilter = elevated ? "blur(12px)" : "blur(10px)";
+      topBarEl.style.borderBottom = elevated ?
+        "1px solid rgba(255, 255, 255, 0.24)" :
+        "1px solid rgba(255, 255, 255, 0.14)";
+      topBarEl.style.boxShadow = elevated ?
+        "0 8px 22px rgba(36, 94, 102, 0.05)" :
+        "none";
+    }
+
+    if (menuBtnEl) {
+      menuBtnEl.style.display = "none";
+    }
+
+    ensureScrollToBottomBtn();
+    syncTopBarElevation();
+
+    chatEl.addEventListener("scroll", () => {
+      updateActivity();
       updateScrollToBottomBtn();
-      
-      const logo = document.getElementById("welcomeLogo");
-      const welcome = document.getElementById("welcomeScreen");
-      
-      async function waitForBackendReady() {
-        try {
-          const res = await fetch("/health", { cache: "no-store" });
-          if (res.ok) return true;
-        } catch {}
-        
-        return false;
+      syncTopBarElevation();
+    });
+
+    const originalRenderHistory = renderHistory;
+    renderHistory = function() {
+      originalRenderHistory();
+      requestAnimationFrame(syncTopBarElevation);
+      setTimeout(syncTopBarElevation, 40);
+    };
+
+    const originalScrollChatToBottom = scrollChatToBottom;
+    scrollChatToBottom = function(options = {}) {
+      originalScrollChatToBottom(options);
+      requestAnimationFrame(syncTopBarElevation);
+      setTimeout(syncTopBarElevation, 40);
+      setTimeout(syncTopBarElevation, 180);
+    };
+  }
+
+  const aboutModal = document.getElementById("aboutModal");
+  if (aboutModal) {
+    aboutModal.addEventListener("click", e => {
+      if (e.target.id === "aboutModal") {
+        closeAboutModal();
       }
-      
-      const WELCOME_RITUAL = [
-        "Se comprendre",
-        "S'accepter",
-        "Se faire confiance",
-        "Liberer son potentiel..."
-      ];
-      
-      const WELCOME_BOOT_PAUSE_MS = 750;
-      const WELCOME_RITUAL_TEXT_DURATION = 2000;
-      const WELCOME_RITUAL_GAP_DURATION = 400;
-      const WELCOME_RITUAL_SKIP_TEXT_DURATION = 160;
-      const WELCOME_RITUAL_SKIP_GAP_DURATION = 80;
-      const WELCOME_LOGO_DELAY_MS = 0;
-      const WELCOME_LOGO_FADE_DURATION_MS = 1200;
-      const WELCOME_RITUAL_START_DELAY_MS = 2400;
-      const WELCOME_ACTIONS_DELAY_MS = 200;
-      const WELCOME_SKIP_ACTIONS_REMAINING_MS = 160;
-      
-      let ritualIndex = 0;
-      let ritualRunning = false;
-      let ritualInterrupted = false;
-      let ritualTextTimeout = null;
-      let ritualGapTimeout = null;
-      let ritualStartTimeout = null;
-      let actionsRevealTimeout = null;
-      let bootPauseTimeout = null;
-      let logoFadeTimeout = null;
-      let welcomeInteractionBound = false;
-      let welcomeHasInteracted = false;
-      
-      let welcomePhase = "idle";
-      let firstPhraseShown = false;
-      let actionsVisible = false;
-      
-      function clearWelcomeRitualTimers() {
-        if (ritualTextTimeout) {
-          clearTimeout(ritualTextTimeout);
-          ritualTextTimeout = null;
-        }
-        
-        if (ritualGapTimeout) {
-          clearTimeout(ritualGapTimeout);
-          ritualGapTimeout = null;
-        }
-        
-        if (ritualStartTimeout) {
-          clearTimeout(ritualStartTimeout);
-          ritualStartTimeout = null;
-        }
-        
-        if (actionsRevealTimeout) {
-          clearTimeout(actionsRevealTimeout);
-          actionsRevealTimeout = null;
-        }
-        
-        if (bootPauseTimeout) {
-          clearTimeout(bootPauseTimeout);
-          bootPauseTimeout = null;
-        }
-        
-        if (logoFadeTimeout) {
-          clearTimeout(logoFadeTimeout);
-          logoFadeTimeout = null;
-        }
+    });
+  }
+
+  const confirmNewSessionModal = document.getElementById("confirmNewSessionModal");
+  if (confirmNewSessionModal) {
+    confirmNewSessionModal.addEventListener("click", e => {
+      if (e.target.id === "confirmNewSessionModal") {
+        closeConfirmNewSessionModal();
       }
-      
-      function resetWelcomeRitualUI() {
-        const logoWrap = document.getElementById("welcomeLogoWrap");
-        const textEl = document.getElementById("welcomeRitualText");
-        const actions = document.getElementById("welcomeActions");
-        
-        if (!logoWrap) return;
-        
-        logoWrap.style.transition = "none";
-        logoWrap.style.opacity = "0";
-        
-        if (textEl) {
-          textEl.textContent = "";
-          textEl.classList.remove("is-visible", "is-hidden");
-        }
-        
-        if (actions) {
-          actions.classList.remove("is-visible");
-        }
-        
-        welcomeHasInteracted = false;
-        firstPhraseShown = false;
-        actionsVisible = false;
-        welcomePhase = "boot_pause";
+    });
+  }
+
+  const sessionInfoModal = document.getElementById("sessionInfoModal");
+  if (sessionInfoModal) {
+    sessionInfoModal.addEventListener("click", e => {
+      if (e.target.id === "sessionInfoModal") {
+        closeSessionInfoModal();
       }
-      
-      function fastForwardWelcomeVisuals() {
-        const logoWrap = document.getElementById("welcomeLogoWrap");
-        
-        if (bootPauseTimeout) {
-          clearTimeout(bootPauseTimeout);
-          bootPauseTimeout = null;
-        }
-        
-        if (logoFadeTimeout) {
-          clearTimeout(logoFadeTimeout);
-          logoFadeTimeout = null;
-        }
-        
-        if (welcome) {
-          welcome.style.transition = "none";
-          welcome.classList.add("ready");
-        }
-        
-        if (logoWrap) {
-          logoWrap.style.transition = "none";
-          logoWrap.style.opacity = "1";
-        }
+    });
+  }
+
+  window.addEventListener("load", () => {
+    const params = new URLSearchParams(window.location.search);
+
+    if (params.get("admin") === "1") {
+      localStorage.setItem(ADMIN_UI_KEY, "1");
+    }
+    if (params.get("admin") === "0") {
+      localStorage.removeItem(ADMIN_UI_KEY);
+    }
+
+    const isAdminUI = localStorage.getItem(ADMIN_UI_KEY) === "1";
+    const shouldSkipWelcomeAnimation = isAdminUI;
+
+    document.body.classList.toggle("admin-ui", isAdminUI);
+    syncDebugVisibility();
+    ensureScrollToBottomBtn();
+    updateScrollToBottomBtn();
+
+    const logo = document.getElementById("welcomeLogo");
+    const welcome = document.getElementById("welcomeScreen");
+
+    async function waitForBackendReady() {
+      try {
+        const res = await fetch("/health", { cache: "no-store" });
+        if (res.ok) return true;
+      } catch {}
+
+      return false;
+    }
+
+    const WELCOME_RITUAL = [
+      "Se comprendre",
+      "S'accepter",
+      "Se faire confiance",
+      "Liberer son potentiel..."
+    ];
+
+    const WELCOME_BOOT_PAUSE_MS = 750;
+    const WELCOME_RITUAL_TEXT_DURATION = 2000;
+    const WELCOME_RITUAL_GAP_DURATION = 400;
+    const WELCOME_RITUAL_SKIP_TEXT_DURATION = 160;
+    const WELCOME_RITUAL_SKIP_GAP_DURATION = 80;
+    const WELCOME_LOGO_DELAY_MS = 0;
+    const WELCOME_LOGO_FADE_DURATION_MS = 1200;
+    const WELCOME_RITUAL_START_DELAY_MS = 2400;
+    const WELCOME_ACTIONS_DELAY_MS = 200;
+    const WELCOME_SKIP_ACTIONS_REMAINING_MS = 160;
+
+    let ritualIndex = 0;
+    let ritualRunning = false;
+    let ritualInterrupted = false;
+    let ritualTextTimeout = null;
+    let ritualGapTimeout = null;
+    let ritualStartTimeout = null;
+    let actionsRevealTimeout = null;
+    let bootPauseTimeout = null;
+    let logoFadeTimeout = null;
+    let welcomeInteractionBound = false;
+    let welcomeHasInteracted = false;
+
+    let welcomePhase = "idle";
+    let firstPhraseShown = false;
+    let actionsVisible = false;
+
+    function clearWelcomeRitualTimers() {
+      if (ritualTextTimeout) {
+        clearTimeout(ritualTextTimeout);
+        ritualTextTimeout = null;
       }
-      
-      function revealActions(withDelay = true) {
-        const actions = document.getElementById("welcomeActions");
-        if (!actions || actionsVisible) return;
-        
-        const delay = withDelay ? WELCOME_ACTIONS_DELAY_MS : WELCOME_SKIP_ACTIONS_REMAINING_MS;
-        
-        if (actionsRevealTimeout) {
-          clearTimeout(actionsRevealTimeout);
-          actionsRevealTimeout = null;
-        }
-        
-        welcomePhase = "actions_pending";
-        
-        actionsRevealTimeout = setTimeout(() => {
-          actions.classList.add("is-visible");
-          actionsVisible = true;
-          welcomePhase = "done";
-          actionsRevealTimeout = null;
-        }, delay);
+
+      if (ritualGapTimeout) {
+        clearTimeout(ritualGapTimeout);
+        ritualGapTimeout = null;
       }
-      
-      function showWelcomeLogo(immediate = false) {
-        const logoWrap = document.getElementById("welcomeLogoWrap");
-        if (!logoWrap) return;
-        
-        if (logoFadeTimeout) {
-          clearTimeout(logoFadeTimeout);
-          logoFadeTimeout = null;
-        }
-        
-        const delay = immediate ? 0 : WELCOME_LOGO_DELAY_MS;
-        const duration = immediate ? 0 : WELCOME_LOGO_FADE_DURATION_MS;
-        
-        logoFadeTimeout = setTimeout(() => {
-          logoWrap.style.transition = duration > 0 ? "opacity " + duration + "ms ease" : "none";
-          logoWrap.style.opacity = "1";
-          logoFadeTimeout = null;
-          
-          if (welcomePhase === "logo_pending") {
-            welcomePhase = "logo_visible";
-          }
-        }, delay);
+
+      if (ritualStartTimeout) {
+        clearTimeout(ritualStartTimeout);
+        ritualStartTimeout = null;
       }
-      
-      function endWelcomeRitual() {
-        if (ritualTextTimeout) {
-          clearTimeout(ritualTextTimeout);
-          ritualTextTimeout = null;
-        }
-        
-        if (ritualGapTimeout) {
-          clearTimeout(ritualGapTimeout);
-          ritualGapTimeout = null;
-        }
-        
-        ritualRunning = false;
-        
-        const textEl = document.getElementById("welcomeRitualText");
-        
-        if (textEl) {
-          textEl.textContent = "";
-          textEl.classList.remove("is-visible", "is-hidden");
-          textEl.style.transition = "none";
-          textEl.style.opacity = "0";
-          textEl.style.transform = "translateY(10px)";
-        }
-        
-        revealActions(!ritualInterrupted);
+
+      if (actionsRevealTimeout) {
+        clearTimeout(actionsRevealTimeout);
+        actionsRevealTimeout = null;
       }
-      
-      function showWelcomeRitualPhrase() {
-        const textEl = document.getElementById("welcomeRitualText");
-        if (!textEl) return;
-        
-        if (ritualIndex >= WELCOME_RITUAL.length) {
-          endWelcomeRitual();
-          return;
-        }
-        
-        const isFirstPhrase = ritualIndex === 0;
-        const isLastPhrase = ritualIndex === WELCOME_RITUAL.length - 1;
-        
-        welcomePhase = "ritual";
-        textEl.textContent = WELCOME_RITUAL[ritualIndex];
+
+      if (bootPauseTimeout) {
+        clearTimeout(bootPauseTimeout);
+        bootPauseTimeout = null;
+      }
+
+      if (logoFadeTimeout) {
+        clearTimeout(logoFadeTimeout);
+        logoFadeTimeout = null;
+      }
+    }
+
+    function resetWelcomeRitualUI() {
+      const logoWrap = document.getElementById("welcomeLogoWrap");
+      const textEl = document.getElementById("welcomeRitualText");
+      const actions = document.getElementById("welcomeActions");
+
+      if (!logoWrap) return;
+
+      logoWrap.style.transition = "none";
+      logoWrap.style.opacity = "0";
+
+      if (textEl) {
+        textEl.textContent = "";
         textEl.classList.remove("is-visible", "is-hidden");
-        
-        if (isFirstPhrase) {
-          textEl.style.transition = "none";
-          textEl.style.opacity = "1";
-          textEl.style.transform = "translateX(-120vw)";
-          
+      }
+
+      if (actions) {
+        actions.classList.remove("is-visible");
+      }
+
+      welcomeHasInteracted = false;
+      firstPhraseShown = false;
+      actionsVisible = false;
+      welcomePhase = "boot_pause";
+    }
+
+    function fastForwardWelcomeVisuals() {
+      const logoWrap = document.getElementById("welcomeLogoWrap");
+
+      if (bootPauseTimeout) {
+        clearTimeout(bootPauseTimeout);
+        bootPauseTimeout = null;
+      }
+
+      if (logoFadeTimeout) {
+        clearTimeout(logoFadeTimeout);
+        logoFadeTimeout = null;
+      }
+
+      if (welcome) {
+        welcome.style.transition = "none";
+        welcome.classList.add("ready");
+      }
+
+      if (logoWrap) {
+        logoWrap.style.transition = "none";
+        logoWrap.style.opacity = "1";
+      }
+    }
+
+    function revealActions(withDelay = true) {
+      const actions = document.getElementById("welcomeActions");
+      if (!actions || actionsVisible) return;
+
+      const delay = withDelay ? WELCOME_ACTIONS_DELAY_MS : WELCOME_SKIP_ACTIONS_REMAINING_MS;
+
+      if (actionsRevealTimeout) {
+        clearTimeout(actionsRevealTimeout);
+        actionsRevealTimeout = null;
+      }
+
+      welcomePhase = "actions_pending";
+
+      actionsRevealTimeout = setTimeout(() => {
+        actions.classList.add("is-visible");
+        actionsVisible = true;
+        welcomePhase = "done";
+        actionsRevealTimeout = null;
+      }, delay);
+    }
+
+    function showWelcomeLogo(immediate = false) {
+      const logoWrap = document.getElementById("welcomeLogoWrap");
+      if (!logoWrap) return;
+
+      if (logoFadeTimeout) {
+        clearTimeout(logoFadeTimeout);
+        logoFadeTimeout = null;
+      }
+
+      const delay = immediate ? 0 : WELCOME_LOGO_DELAY_MS;
+      const duration = immediate ? 0 : WELCOME_LOGO_FADE_DURATION_MS;
+
+      logoFadeTimeout = setTimeout(() => {
+        logoWrap.style.transition = duration > 0 ? "opacity " + duration + "ms ease" : "none";
+        logoWrap.style.opacity = "1";
+        logoFadeTimeout = null;
+
+        if (welcomePhase === "logo_pending") {
+          welcomePhase = "logo_visible";
+        }
+      }, delay);
+    }
+
+    function endWelcomeRitual() {
+      if (ritualTextTimeout) {
+        clearTimeout(ritualTextTimeout);
+        ritualTextTimeout = null;
+      }
+
+      if (ritualGapTimeout) {
+        clearTimeout(ritualGapTimeout);
+        ritualGapTimeout = null;
+      }
+
+      ritualRunning = false;
+
+      const textEl = document.getElementById("welcomeRitualText");
+
+      if (textEl) {
+        textEl.textContent = "";
+        textEl.classList.remove("is-visible", "is-hidden");
+        textEl.style.transition = "none";
+        textEl.style.opacity = "0";
+        textEl.style.transform = "translateY(10px)";
+      }
+
+      revealActions(!ritualInterrupted);
+    }
+
+    function showWelcomeRitualPhrase() {
+      const textEl = document.getElementById("welcomeRitualText");
+      if (!textEl) return;
+
+      if (ritualIndex >= WELCOME_RITUAL.length) {
+        endWelcomeRitual();
+        return;
+      }
+
+      const isFirstPhrase = ritualIndex === 0;
+      const isLastPhrase = ritualIndex === WELCOME_RITUAL.length - 1;
+
+      welcomePhase = "ritual";
+      textEl.textContent = WELCOME_RITUAL[ritualIndex];
+      textEl.classList.remove("is-visible", "is-hidden");
+
+      if (isFirstPhrase) {
+        textEl.style.transition = "none";
+        textEl.style.opacity = "1";
+        textEl.style.transform = "translateX(-120vw)";
+
+        requestAnimationFrame(() => {
           requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-              textEl.style.transition = "transform 1.05s ease";
-              textEl.style.transform = "translateX(0)";
-            });
+            textEl.style.transition = "transform 1.05s ease";
+            textEl.style.transform = "translateX(0)";
           });
-          
-          firstPhraseShown = true;
+        });
+
+        firstPhraseShown = true;
+      } else {
+        textEl.style.transition = "";
+        textEl.style.opacity = "";
+        textEl.style.transform = "";
+        textEl.classList.remove("is-hidden");
+        textEl.classList.add("is-visible");
+      }
+
+      const textDuration = ritualInterrupted ?
+        WELCOME_RITUAL_SKIP_TEXT_DURATION :
+        WELCOME_RITUAL_TEXT_DURATION;
+
+      ritualTextTimeout = setTimeout(() => {
+        if (isLastPhrase) {
+          textEl.classList.remove("is-visible", "is-hidden");
+          textEl.style.transition = "transform 2.5s ease";
+          textEl.style.opacity = "1";
+          textEl.style.transform = "translateX(120vw)";
         } else {
           textEl.style.transition = "";
           textEl.style.opacity = "";
           textEl.style.transform = "";
-          textEl.classList.remove("is-hidden");
-          textEl.classList.add("is-visible");
+          textEl.classList.remove("is-visible");
+          textEl.classList.add("is-hidden");
         }
-        
-        const textDuration = ritualInterrupted ?
-          WELCOME_RITUAL_SKIP_TEXT_DURATION :
-          WELCOME_RITUAL_TEXT_DURATION;
-        
-        ritualTextTimeout = setTimeout(() => {
-          if (isLastPhrase) {
-            textEl.classList.remove("is-visible", "is-hidden");
-            textEl.style.transition = "transform 2.5s ease";
-            textEl.style.opacity = "1";
-            textEl.style.transform = "translateX(120vw)";
-          } else {
-            textEl.style.transition = "";
-            textEl.style.opacity = "";
-            textEl.style.transform = "";
-            textEl.classList.remove("is-visible");
-            textEl.classList.add("is-hidden");
-          }
-          
-          const gapDuration = ritualInterrupted ?
-            WELCOME_RITUAL_SKIP_GAP_DURATION :
-            (isLastPhrase ? 1400 : WELCOME_RITUAL_GAP_DURATION);
-          
-          ritualGapTimeout = setTimeout(() => {
-            ritualIndex += 1;
-            showWelcomeRitualPhrase();
-          }, gapDuration);
-        }, textDuration);
+
+        const gapDuration = ritualInterrupted ?
+          WELCOME_RITUAL_SKIP_GAP_DURATION :
+          (isLastPhrase ? 1400 : WELCOME_RITUAL_GAP_DURATION);
+
+        ritualGapTimeout = setTimeout(() => {
+          ritualIndex += 1;
+          showWelcomeRitualPhrase();
+        }, gapDuration);
+      }, textDuration);
+    }
+
+    function startWelcomeRitual() {
+      if (ritualStartTimeout) {
+        clearTimeout(ritualStartTimeout);
+        ritualStartTimeout = null;
       }
-      
-      function startWelcomeRitual() {
-        if (ritualStartTimeout) {
-          clearTimeout(ritualStartTimeout);
-          ritualStartTimeout = null;
-        }
-        
-        if (actionsRevealTimeout) {
-          clearTimeout(actionsRevealTimeout);
-          actionsRevealTimeout = null;
-        }
-        
-        ritualIndex = 0;
-        ritualRunning = true;
-        ritualInterrupted = false;
-        
-        const textEl = document.getElementById("welcomeRitualText");
-        const actions = document.getElementById("welcomeActions");
-        
+
+      if (actionsRevealTimeout) {
+        clearTimeout(actionsRevealTimeout);
+        actionsRevealTimeout = null;
+      }
+
+      ritualIndex = 0;
+      ritualRunning = true;
+      ritualInterrupted = false;
+
+      const textEl = document.getElementById("welcomeRitualText");
+      const actions = document.getElementById("welcomeActions");
+
+      if (textEl) {
+        textEl.textContent = "";
+        textEl.classList.remove("is-visible", "is-hidden");
+      }
+
+      if (actions) {
+        actions.classList.remove("is-visible");
+      }
+
+      actionsVisible = false;
+      showWelcomeRitualPhrase();
+    }
+
+    function interruptWelcomeRitual() {
+      if (!ritualRunning || ritualInterrupted) return;
+
+      ritualInterrupted = true;
+
+      const textEl = document.getElementById("welcomeRitualText");
+
+      if (ritualTextTimeout) {
+        clearTimeout(ritualTextTimeout);
+        ritualTextTimeout = null;
+
         if (textEl) {
-          textEl.textContent = "";
-          textEl.classList.remove("is-visible", "is-hidden");
+          textEl.classList.remove("is-visible");
+          textEl.classList.add("is-hidden");
         }
-        
-        if (actions) {
-          actions.classList.remove("is-visible");
-        }
-        
-        actionsVisible = false;
-        showWelcomeRitualPhrase();
+
+        ritualGapTimeout = setTimeout(() => {
+          ritualIndex += 1;
+          showWelcomeRitualPhrase();
+        }, WELCOME_RITUAL_SKIP_GAP_DURATION);
       }
-      
-      function interruptWelcomeRitual() {
-        if (!ritualRunning || ritualInterrupted) return;
-        
-        ritualInterrupted = true;
-        
-        const textEl = document.getElementById("welcomeRitualText");
-        
-        if (ritualTextTimeout) {
-          clearTimeout(ritualTextTimeout);
-          ritualTextTimeout = null;
-          
-          if (textEl) {
-            textEl.classList.remove("is-visible");
-            textEl.classList.add("is-hidden");
-          }
-          
-          ritualGapTimeout = setTimeout(() => {
-            ritualIndex += 1;
-            showWelcomeRitualPhrase();
-          }, WELCOME_RITUAL_SKIP_GAP_DURATION);
-        }
-      }
-      
-      function accelerateWelcomeIntro() {
-        if (!welcomeHasInteracted) {
-          welcomeHasInteracted = true;
-          fastForwardWelcomeVisuals();
-          
-          if (welcomePhase === "boot_pause") {
-            bindWelcomeInteraction();
-            startWelcomeRitual();
-            return;
-          }
-          
-          if (welcomePhase === "logo_visible" && !firstPhraseShown) {
-            if (ritualStartTimeout) {
-              clearTimeout(ritualStartTimeout);
-              ritualStartTimeout = null;
-            }
-            
-            startWelcomeRitual();
-            return;
-          }
-        }
-        
-        if (ritualRunning) {
-          interruptWelcomeRitual();
+    }
+
+    function accelerateWelcomeIntro() {
+      if (!welcomeHasInteracted) {
+        welcomeHasInteracted = true;
+        fastForwardWelcomeVisuals();
+
+        if (welcomePhase === "boot_pause") {
+          bindWelcomeInteraction();
+          startWelcomeRitual();
           return;
         }
-        
-        if (welcomePhase === "actions_pending") {
-          revealActions(false);
+
+        if (welcomePhase === "logo_visible" && !firstPhraseShown) {
+          if (ritualStartTimeout) {
+            clearTimeout(ritualStartTimeout);
+            ritualStartTimeout = null;
+          }
+
+          startWelcomeRitual();
           return;
         }
-        
-        if (!actionsVisible) {
-          revealActions(false);
-        }
       }
-      
-      function bindWelcomeInteraction() {
-        if (welcomeInteractionBound) return;
-        
-        const screen = document.getElementById("welcomeScreen");
-        if (!screen) return;
-        
-        screen.addEventListener("click", event => {
-          if (event.target.closest("#welcomeActions")) return;
-          accelerateWelcomeIntro();
-        });
-        
-        welcomeInteractionBound = true;
+
+      if (ritualRunning) {
+        interruptWelcomeRitual();
+        return;
       }
-      
-      function showWelcome() {
-        if (shouldSkipWelcomeAnimation) {
-          clearWelcomeRitualTimers();
-          prepareWelcomeScreenStatic();
-          showScreen("welcomeScreen", {
-            replaceHistory: true,
-            pushHistory: false,
-            noAnimation: true,
-            noWelcomeIntro: true
-          });
-          return;
-        }
-        
-        showScreen("welcomeScreen", { replaceHistory: true, pushHistory: false });
-        
+
+      if (welcomePhase === "actions_pending") {
+        revealActions(false);
+        return;
+      }
+
+      if (!actionsVisible) {
+        revealActions(false);
+      }
+    }
+
+    function bindWelcomeInteraction() {
+      if (welcomeInteractionBound) return;
+
+      const screen = document.getElementById("welcomeScreen");
+      if (!screen) return;
+
+      screen.addEventListener("click", event => {
+        if (event.target.closest("#welcomeActions")) return;
+        accelerateWelcomeIntro();
+      });
+
+      welcomeInteractionBound = true;
+    }
+
+    function showWelcome() {
+      if (shouldSkipWelcomeAnimation) {
         clearWelcomeRitualTimers();
-        resetWelcomeRitualUI();
-        
-        welcome.style.transition = "none";
-        welcome.classList.remove("ready");
-        
-        requestAnimationFrame(() => {
-          bootPauseTimeout = setTimeout(() => {
-            bootPauseTimeout = null;
-            
-            welcome.style.transition = "";
-            
-            requestAnimationFrame(() => {
-              welcome.classList.add("ready");
-            });
-            
-            showWelcomeLogo(false);
-            bindWelcomeInteraction();
-            
-            ritualStartTimeout = setTimeout(() => {
-              startWelcomeRitual();
-            }, WELCOME_RITUAL_START_DELAY_MS);
-            
-            welcomePhase = "logo_visible";
-          }, WELCOME_BOOT_PAUSE_MS);
+        prepareWelcomeScreenStatic();
+        showScreen("welcomeScreen", {
+          replaceHistory: true,
+          pushHistory: false,
+          noAnimation: true,
+          noWelcomeIntro: true
         });
+        return;
       }
-      
-      async function boot() {
-        if (!logo || logo.complete) {
-          await waitForBackendReady();
-          showWelcome();
-          return;
-        }
-        
-        logo.addEventListener("load", async () => {
-          await waitForBackendReady();
-          showWelcome();
-        }, { once: true });
-        
-        logo.addEventListener("error", async () => {
-          await waitForBackendReady();
-          showWelcome();
-        }, { once: true });
+
+      showScreen("welcomeScreen", { replaceHistory: true, pushHistory: false });
+
+      clearWelcomeRitualTimers();
+      resetWelcomeRitualUI();
+
+      welcome.style.transition = "none";
+      welcome.classList.remove("ready");
+
+      requestAnimationFrame(() => {
+        bootPauseTimeout = setTimeout(() => {
+          bootPauseTimeout = null;
+
+          welcome.style.transition = "";
+
+          requestAnimationFrame(() => {
+            welcome.classList.add("ready");
+          });
+
+          showWelcomeLogo(false);
+          bindWelcomeInteraction();
+
+          ritualStartTimeout = setTimeout(() => {
+            startWelcomeRitual();
+          }, WELCOME_RITUAL_START_DELAY_MS);
+
+          welcomePhase = "logo_visible";
+        }, WELCOME_BOOT_PAUSE_MS);
+      });
+    }
+
+    async function boot() {
+      if (!logo || logo.complete) {
+        await waitForBackendReady();
+        showWelcome();
+        return;
       }
-      
-      boot();
-    });
-  </script>
+
+      logo.addEventListener("load", async () => {
+        await waitForBackendReady();
+        showWelcome();
+      }, { once: true });
+
+      logo.addEventListener("error", async () => {
+        await waitForBackendReady();
+        showWelcome();
+      }, { once: true });
+    }
+
+    boot();
+  });
+</script>
 </body>
 
 </html>
