@@ -2856,18 +2856,26 @@
           chip.className = "debug-chip";
           
           if (line === "mode: EXPLORATION" || line === "mode: exploration") {
-            return;
+            chip.textContent = "EXPLORATION";
           } else if (line === "mode: INFORMATION" || line === "mode: info") {
-            return;
+            chip.textContent = "INFORMATION";
           } else if (line === "mode: CONTACT" || line === "mode: contact") {
-            return;
+            chip.textContent = "CONTACT";
           } else if (line === "suicide: N1") {
             chip.textContent = "Possible risque suicidaire";
           } else if (line === "suicide: N2") {
             chip.textContent = "Risque suicidaire avéré";
+          } else if (line === "suicideLevel: Possible risque suicidaire") {
+            chip.textContent = "Possible risque suicidaire";
+          } else if (line === "suicideLevel: Risque suicidaire avéré") {
+            chip.textContent = "Risque suicidaire avéré";
           } else if (line === "calledMemory: shortTermMemory") {
             chip.textContent = "Appel à la mémoire à court terme";
           } else if (line === "calledMemory: longTermMemory") {
+            chip.textContent = "Appel à la mémoire à long terme";
+          } else if (line === "calledMemory: Appel à la mémoire à court terme") {
+            chip.textContent = "Appel à la mémoire à court terme";
+          } else if (line === "calledMemory: Appel à la mémoire à long terme") {
             chip.textContent = "Appel à la mémoire à long terme";
           } else if (line.startsWith("modelConflict")) {
             chip.textContent = "Conflit avec le modèle théorique";
