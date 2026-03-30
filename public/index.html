@@ -4085,6 +4085,17 @@
         inputEl.style.overflowY = inputEl.scrollHeight > maxHeight ? "auto" : "hidden";
       }
       
+      function syncChatBottomInset() {
+        if (!chatElForKeyboard || !inputAreaEl || !inputAreaInnerEl) return;
+        
+        const composerHeight = inputAreaInnerEl.offsetHeight || 0;
+        const inputAreaBottom = parseFloat(window.getComputedStyle(inputAreaEl).bottom) || 0;
+        const extraBottomInset = composerHeight + inputAreaBottom + 18;
+        
+        chatElForKeyboard.style.paddingBottom =
+          `calc(${extraBottomInset}px + env(safe-area-inset-bottom, 0px))`;
+      }
+      
       function syncEditModeBarPosition() {
         const editBarEl = document.getElementById("editModeBar");
         if (!editBarEl || !inputAreaInnerEl) return;
@@ -4106,6 +4117,7 @@
         
         inputAreaEl.style.bottom = `calc(${18 + keyboardOffset}px + env(safe-area-inset-bottom, 0px))`;
         syncEditModeBarPosition();
+        syncChatBottomInset();
       }
       
       function ensureChatVisibleAboveKeyboard() {
