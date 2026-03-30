@@ -3618,12 +3618,15 @@
             document.querySelector(".screen.active")?.id === requestScreenId &&
             requestScreenId === "chatScreen"
           ) {
-            const isReturningToChat = !wasAtBottom;
+            const chatNow = document.getElementById("chat");
+            const isAtBottomNow = chatNow ?
+              (chatNow.scrollHeight - chatNow.clientHeight - chatNow.scrollTop) <= 12 :
+              true;
             
             addMessage("bot", data.reply, data.debug || [], {
-              shouldAutoScroll: wasAtBottom || isEditing,
-              pulseScrollButton: !wasAtBottom && !isEditing,
-              progressive: !isReturningToChat
+              shouldAutoScroll: isAtBottomNow || isEditing,
+              pulseScrollButton: !isAtBottomNow && !isEditing,
+              progressive: isAtBottomNow && !isEditing
             });
           }
           return;
