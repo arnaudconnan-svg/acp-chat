@@ -618,7 +618,8 @@
       min-height: 0;
       overflow-y: auto;
       margin: 0;
-      padding: 12px 16px calc(108px + env(safe-area-inset-bottom, 0px)) 16px;
+      padding:
+        calc(40px + env(safe-area-inset-top, 0px)) 16px calc(108px + env(safe-area-inset-bottom, 0px)) 16px;
       box-sizing: border-box;
       -webkit-overflow-scrolling: touch;
       transition: opacity 0.18s ease;
@@ -4309,6 +4310,24 @@
     if (chatEl) {
       const topBarEl = document.getElementById("topBar");
       const menuBtnEl = document.getElementById("menuBtn");
+      const CHAT_TOP_SPACER_PX = 40;
+      
+      function ensureChatTopSpacer() {
+        let spacer = document.getElementById("chatTopSpacer");
+        
+        if (spacer) return spacer;
+        
+        spacer = document.createElement("div");
+        spacer.id = "chatTopSpacer";
+        spacer.style.width = "100%";
+        spacer.style.height = "0px";
+        spacer.style.flex = "0 0 auto";
+        spacer.style.pointerEvents = "none";
+        spacer.style.transition = "height 0.22s ease";
+        
+        chatEl.insertBefore(spacer, chatEl.firstChild);
+        return spacer;
+      }
       
       function syncTopBarElevation() {
         if (!topBarEl) return;
@@ -4331,32 +4350,59 @@
           "none";
       }
       
+      function syncChatTopSpacing() {
+        const spacer = ensureChatTopSpacer();
+        const isScrollable = chatEl.scrollHeight > chatEl.clientHeight + 1;
+        const isAtTop = chatEl.scrollTop <= 2;
+        const shouldShowSpacer = !isScrollable || isAtTop;
+        
+        spacer.style.height = shouldShowSpacer ? CHAT_TOP_SPACER_PX + "px" : "0px";
+      }
+      
       if (menuBtnEl) {
         menuBtnEl.style.display = "none";
       }
       
       ensureScrollToBottomBtn();
+      ensureChatTopSpacer();
       syncTopBarElevation();
+      syncChatTopSpacing();
       
       chatEl.addEventListener("scroll", () => {
         updateActivity();
         updateScrollToBottomBtn();
         syncTopBarElevation();
+        syncChatTopSpacing();
       });
       
       const originalRenderHistory = renderHistory;
       renderHistory = function() {
         originalRenderHistory();
-        requestAnimationFrame(syncTopBarElevation);
-        setTimeout(syncTopBarElevation, 40);
+        requestAnimationFrame(() => {
+          syncTopBarElevation();
+          syncChatTopSpacing();
+        });
+        setTimeout(() => {
+          syncTopBarElevation();
+          syncChatTopSpacing();
+        }, 40);
       };
       
       const originalScrollChatToBottom = scrollChatToBottom;
       scrollChatToBottom = function(options = {}) {
         originalScrollChatToBottom(options);
-        requestAnimationFrame(syncTopBarElevation);
-        setTimeout(syncTopBarElevation, 40);
-        setTimeout(syncTopBarElevation, 180);
+        requestAnimationFrame(() => {
+          syncTopBarElevation();
+          syncChatTopSpacing();
+        });
+        setTimeout(() => {
+          syncTopBarElevation();
+          syncChatTopSpacing();
+        }, 40);
+        setTimeout(() => {
+          syncTopBarElevation();
+          syncChatTopSpacing();
+        }, 180);
       };
     }
     
