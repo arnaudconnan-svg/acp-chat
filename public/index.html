@@ -3618,9 +3618,12 @@
             document.querySelector(".screen.active")?.id === requestScreenId &&
             requestScreenId === "chatScreen"
           ) {
-            addMessage("bot", "Erreur serveur", [], {
+            const isReturningToChat = !wasAtBottom;
+            
+            addMessage("bot", data.reply, data.debug || [], {
               shouldAutoScroll: wasAtBottom || isEditing,
-              pulseScrollButton: !wasAtBottom && !isEditing
+              pulseScrollButton: !wasAtBottom && !isEditing,
+              progressive: !isReturningToChat
             });
           }
           return;
