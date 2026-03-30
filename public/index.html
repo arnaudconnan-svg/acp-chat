@@ -3479,1226 +3479,1220 @@
     }
     
     async function send() {
-        if (isSending) return;
-        if (sessionStatus === "terminated" || sessionStatus === "closing") return;
-        if (sessionStatus === "expired") return;
+      if (isSending) return;
+      if (sessionStatus === "terminated" || sessionStatus === "closing") return;
+      if (sessionStatus === "expired") return;
+      
+      const input = document.getElementById("input");
+      const sendBtn = document.getElementById("sendBtn");
+      const chat = document.getElementById("chat");
+      const nextMessage = input.value.trim();
+      
+      if (!nextMessage) return;
+      
+      const isEditing = editMode.active;
+      const conversationIdBeforeSend = getConversationId();
+      const wasAtBottom = isEditing ? true : isChatAtBottom();
+      const restoredDraft = isEditing ? draftBeforeEdit : "";
+      
+      let message = nextMessage;
+      
+      isSending = true;
+      updateActivity();
+      sendBtn.disabled = true;
+      
+      if (isEditing) {
+        const history = loadHistory();
+        const targetIndex = editMode.targetHistoryIndex;
+        const lastUserIndex = getLastUserHistoryIndex(history);
         
-        const input = document.getElementById("input");
-        const sendBtn = document.getElementById("sendBtn");
-        const chat = document.getElementById("chat");
-        const nextMessage = input.value.trim();
-        
-        if (!nextMessage) return;
-        
-        const isEditing = editMode.active;
-        const conversationIdBeforeSend = getConversationId();
-        const wasAtBottom = isEditing ? true : isChatAtBottom();
-        const restoredDraft = isEditing ? draftBeforeEdit : "";
-        
-        let message = nextMessage;
-        
-        isSending = true;
-        updateActivity();
-        sendBtn.disabled = true;
-        
-        if (isEditing) {
-          const history = loadHistory();
-          const targetIndex = editMode.targetHistoryIndex;
-          const lastUserIndex = getLastUserHistoryIndex(history);
-          
-          if (
-            targetIndex < 0 ||
-            targetIndex !== lastUserIndex ||
-            editMode.conversationId !== conversationIdBeforeSend ||
-            !history[targetIndex] ||
-            history[targetIndex].role !== "user"
-          ) {
-            closeEditMode({ restoreDraft: true });
-            isSending = false;
-            syncInputAvailability();
-            showTemporaryNotice("Modification impossible");
-            return;
-          }
-          
-          history[targetIndex] = {
-            ...history[targetIndex],
-            content: message,
-            t: Date.now()
-          };
-          
-          const truncatedHistory = history.slice(0, targetIndex + 1);
-          saveHistory(truncatedHistory);
-          closeEditMode({ restoreDraft: false });
-          renderHistory();
-          scrollChatToBottom();
-          
-          input.value = restoredDraft || "";
-        } else {
-          pushHistory("user", message, []);
-          addMessage("user", message, [], {
-            shouldAutoScroll: wasAtBottom,
-            pulseScrollButton: false,
-            progressive: false,
-            historyIndex: loadHistory().length - 1
-          });
-          
-          input.value = "";
+        if (
+          targetIndex < 0 ||
+          targetIndex !== lastUserIndex ||
+          editMode.conversationId !== conversationIdBeforeSend ||
+          !history[targetIndex] ||
+          history[targetIndex].role !== "user"
+        ) {
+          closeEditMode({ restoreDraft: true });
+          isSending = false;
+          syncInputAvailability();
+          showTemporaryNotice("Modification impossible");
+          return;
         }
         
-        const requestConversationId = getConversationId();
-        const requestScreenId = document.querySelector(".screen.active")?.id || "";
+        history[targetIndex] = {
+          ...history[targetIndex],
+          content: message,
+          t: Date.now()
+        };
         
-        const waitingMsg = document.createElement("div");
-        waitingMsg.className = "message bot";
+        const truncatedHistory = history.slice(0, targetIndex + 1);
+        saveHistory(truncatedHistory);
+        closeEditMode({ restoreDraft: false });
+        renderHistory();
+        scrollChatToBottom();
         
-        const waitingContent = document.createElement("div");
-        waitingContent.className = "message-content";
+        input.value = restoredDraft || "";
+      } else {
+        pushHistory("user", message, []);
+        addMessage("user", message, [], {
+          shouldAutoScroll: wasAtBottom,
+          pulseScrollButton: false,
+          progressive: false,
+          historyIndex: loadHistory().length - 1
+        });
         
-        const waitingBubble = document.createElement("div");
-        waitingBubble.className = "bubble waiting-bubble";
-        
-        const waitingDot = document.createElement("span");
-        waitingDot.id = "waitingDot";
-        waitingDot.className = "waiting-dot";
-        
-        waitingBubble.appendChild(waitingDot);
-        waitingContent.appendChild(waitingBubble);
-        waitingMsg.appendChild(waitingContent);
-        
-        chat.appendChild(waitingMsg);
-        
-        if (wasAtBottom || isEditing) {
-          scrollChatToBottom();
-        } else {
-          requestAnimationFrame(() => {
-            updateScrollToBottomBtn();
-          });
-        }
-        
-        let dotAnimation = null;
-        
-        if (waitingDot && waitingDot.animate) {
-          dotAnimation = waitingDot.animate(
-            [
-              { transform: "scale(0.8)" },
-              { transform: "scale(1.2)" },
-              { transform: "scale(0.8)" }
-            ],
-            {
-              duration: 900,
-              iterations: Infinity,
-              easing: "ease-in-out"
-            }
-          );
-        }
-        
-        try {
-          const res = await fetch("/chat", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              message,
-              isEdited: isEditing === true,
-              userId: getOrCreateUserId(),
-              conversationId: requestConversationId,
-              recentHistory: loadHistory().map(({ role, content }) => ({ role, content })).slice(-MAX_RECENT_TURNS),
-              memory: loadMemory(),
-              flags: loadFlags()
-            })
-          });
-          
-          const data = await res.json();
-          
-          if (dotAnimation) dotAnimation.cancel();
-          if (waitingMsg.parentNode) waitingMsg.parentNode.removeChild(waitingMsg);
-          
-          if (!res.ok || !data || !data.reply) {
-            if (
-              getConversationId() === requestConversationId &&
-              document.querySelector(".screen.active")?.id === requestScreenId &&
-              requestScreenId === "chatScreen"
-            ) {
-              const chatNow = document.getElementById("chat");
-              const isAtBottomNow = chatNow ?
-                (chatNow.scrollHeight - chatNow.clientHeight - chatNow.scrollTop) <= 12 :
-                true;
-              
-              addMessage("bot", data.reply, data.debug || [], {
-                shouldAutoScroll: isAtBottomNow || isEditing,
-                pulseScrollButton: !isAtBottomNow && !isEditing,
-                progressive: isAtBottomNow && !isEditing
-              });
-            }
-            return;
+        input.value = "";
+      }
+      
+      const requestConversationId = getConversationId();
+      const requestScreenId = document.querySelector(".screen.active")?.id || "";
+      
+      const waitingMsg = document.createElement("div");
+      waitingMsg.className = "message bot";
+      
+      const waitingContent = document.createElement("div");
+      waitingContent.className = "message-content";
+      
+      const waitingBubble = document.createElement("div");
+      waitingBubble.className = "bubble waiting-bubble";
+      
+      const waitingDot = document.createElement("span");
+      waitingDot.id = "waitingDot";
+      waitingDot.className = "waiting-dot";
+      
+      waitingBubble.appendChild(waitingDot);
+      waitingContent.appendChild(waitingBubble);
+      waitingMsg.appendChild(waitingContent);
+      
+      chat.appendChild(waitingMsg);
+      
+      if (wasAtBottom || isEditing) {
+        scrollChatToBottom();
+      } else {
+        requestAnimationFrame(() => {
+          updateScrollToBottomBtn();
+        });
+      }
+      
+      let dotAnimation = null;
+      
+      if (waitingDot && waitingDot.animate) {
+        dotAnimation = waitingDot.animate(
+          [
+            { transform: "scale(0.8)" },
+            { transform: "scale(1.2)" },
+            { transform: "scale(0.8)" }
+          ],
+          {
+            duration: 900,
+            iterations: Infinity,
+            easing: "ease-in-out"
           }
-          
-          const currentConversationId = getConversationId();
-          
-          if (currentConversationId === requestConversationId) {
-            if (data.memory) saveMemory(data.memory);
-            if (data.flags) saveFlags(data.flags);
-            pushHistory("assistant", data.reply, data.debug || []);
-          } else {
-            const storedData = loadConversationData(requestConversationId);
-            saveConversationData(requestConversationId, {
-              ...storedData,
-              memory: data.memory || storedData.memory,
-              flags: data.flags || storedData.flags,
-              messages: [
-                ...(Array.isArray(storedData.messages) ? storedData.messages : []),
-                {
-                  role: "assistant",
-                  content: data.reply,
-                  debug: Array.isArray(data.debug) ? data.debug : [],
-                  t: Date.now()
-                }
-              ],
-              updatedAt: Date.now()
-            });
-          }
-          
+        );
+      }
+      
+      try {
+        const res = await fetch("/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message,
+            isEdited: isEditing === true,
+            userId: getOrCreateUserId(),
+            conversationId: requestConversationId,
+            recentHistory: loadHistory().map(({ role, content }) => ({ role, content })).slice(-MAX_RECENT_TURNS),
+            memory: loadMemory(),
+            flags: loadFlags()
+          })
+        });
+        
+        const data = await res.json();
+        
+        if (dotAnimation) dotAnimation.cancel();
+        if (waitingMsg.parentNode) waitingMsg.parentNode.removeChild(waitingMsg);
+        
+        if (!res.ok || !data || !data.reply) {
           if (
             getConversationId() === requestConversationId &&
             document.querySelector(".screen.active")?.id === requestScreenId &&
             requestScreenId === "chatScreen"
           ) {
+            const chatNow = document.getElementById("chat");
+            const isAtBottomNow = chatNow ?
+              (chatNow.scrollHeight - chatNow.clientHeight - chatNow.scrollTop) <= 12 :
+              true;
+            
             addMessage("bot", data.reply, data.debug || [], {
-              shouldAutoScroll: wasAtBottom || isEditing,
-              pulseScrollButton: !wasAtBottom && !isEditing
+              shouldAutoScroll: isAtBottomNow || isEditing,
+              pulseScrollButton: !isAtBottomNow && !isEditing,
+              progressive: isAtBottomNow && !isEditing
             });
           }
-          
-          if (data.conversationId) {
-            refreshConversationTitle(data.conversationId);
-          }
-          
-          updateActivity();
-        } catch {
-          const shouldRevealProgressively = !!waitingMsg.parentNode;
-          
-          if (dotAnimation) dotAnimation.cancel();
-          if (waitingMsg.parentNode) waitingMsg.parentNode.removeChild(waitingMsg);
-          
-          if (!res.ok || !data || !data.reply) {
-            
-            if (
-              getConversationId() === requestConversationId &&
-              document.querySelector(".screen.active")?.id === requestScreenId &&
-              requestScreenId === "chatScreen"
-            ) {
-              const chatNow = document.getElementById("chat");
-              const isAtBottomNow = chatNow ?
-                (chatNow.scrollHeight - chatNow.clientHeight - chatNow.scrollTop) <= 12 :
-                true;
-              
-              addMessage("bot", data.reply, data.debug || [], {
-                shouldAutoScroll: isAtBottomNow || isEditing,
-                pulseScrollButton: !isAtBottomNow && !isEditing,
-                progressive: shouldRevealProgressively && isAtBottomNow && !isEditing
-              });
-            }
-          } finally {
-            isSending = false;
-            syncInputAvailability();
-            updateScrollToBottomBtn();
-          }
+          return;
         }
         
-        document.getElementById("cancelEditTitleBtn").onclick = () => {
-          closeEditTitleModal();
-        };
+        const currentConversationId = getConversationId();
         
-        document.getElementById("editTitleModal").addEventListener("click", e => {
-          if (e.target.id === "editTitleModal") {
-            closeEditTitleModal();
-          }
-        });
-        
-        document.getElementById("editTitleInput").addEventListener("keydown", e => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            document.getElementById("confirmEditTitleBtn").click();
-          }
-        });
-        
-        document.getElementById("confirmEditTitleBtn").onclick = () => {
-          const input = document.getElementById("editTitleInput");
-          const conversationId = input.dataset.conversationId;
-          
-          if (!conversationId) return;
-          
-          let newTitle = input.value.trim();
-          
-          if (newTitle.length > 60) {
-            newTitle = newTitle.slice(0, 60);
-          }
-          
-          upsertConversationIndexItem({
-            id: conversationId,
-            title: newTitle || null,
-            updatedAt: Date.now(),
-            isCustomTitle: true
-          });
-          
-          renderConversationsList();
-          closeEditTitleModal();
-        };
-        
-        const editTitleInput = document.getElementById("editTitleInput");
-        const editTitleCounter = document.getElementById("editTitleCounter");
-        
-        function updateTitleCounter() {
-          const length = editTitleInput.value.length;
-          editTitleCounter.textContent = length + "/60";
-        }
-        
-        editTitleInput.addEventListener("input", updateTitleCounter);
-        
-        let pendingDeleteConversationId = null;
-        
-        function ensureConversationMenuOverlay() {
-          let overlay = document.getElementById("conversationMenuOverlay");
-          
-          if (overlay) return overlay;
-          
-          overlay = document.createElement("div");
-          overlay.id = "conversationMenuOverlay";
-          overlay.style.position = "fixed";
-          overlay.style.inset = "0";
-          overlay.style.zIndex = "240";
-          overlay.style.display = "none";
-          overlay.style.opacity = "0";
-          overlay.style.pointerEvents = "none";
-          overlay.style.transition = "opacity 0.22s ease";
-          overlay.style.background = "rgba(20, 36, 40, 0.14)";
-          
-          document.body.appendChild(overlay);
-          return overlay;
-        }
-        
-        function ensureConversationMenuPortal() {
-          let portal = document.getElementById("conversationMenuPortal");
-          
-          if (portal) return portal;
-          
-          portal = document.createElement("div");
-          portal.id = "conversationMenuPortal";
-          portal.style.position = "fixed";
-          portal.style.inset = "0";
-          portal.style.zIndex = "260";
-          portal.style.pointerEvents = "none";
-          
-          document.body.appendChild(portal);
-          return portal;
-        }
-        
-        function resetConversationMenuStyles(menu) {
-          if (!menu) return;
-          
-          menu.style.display = "none";
-          menu.style.position = "";
-          menu.style.top = "";
-          menu.style.left = "";
-          menu.style.right = "";
-          menu.style.minWidth = "";
-          menu.style.maxWidth = "";
-          menu.style.background = "";
-          menu.style.border = "";
-          menu.style.borderRadius = "";
-          menu.style.boxShadow = "";
-          menu.style.backdropFilter = "";
-          menu.style.webkitBackdropFilter = "";
-          menu.style.overflow = "";
-          menu.style.zIndex = "";
-          menu.style.padding = "";
-          menu.style.opacity = "";
-          menu.style.transform = "";
-          menu.style.transition = "";
-          menu.style.pointerEvents = "";
-        }
-        
-        function closeConversationMenus() {
-          const overlay = ensureConversationMenuOverlay();
-          const portal = ensureConversationMenuPortal();
-          
-          overlay.style.opacity = "0";
-          overlay.style.pointerEvents = "none";
-          
-          setTimeout(() => {
-            if (overlay.style.opacity === "0") {
-              overlay.style.display = "none";
-            }
-          }, 220);
-          
-          document.querySelectorAll("[data-menu]").forEach(menu => {
-            const originalParent = menu.__originalParent;
-            const originalNextSibling = menu.__originalNextSibling;
-            
-            resetConversationMenuStyles(menu);
-            
-            if (originalParent) {
-              if (originalNextSibling && originalNextSibling.parentNode === originalParent) {
-                originalParent.insertBefore(menu, originalNextSibling);
-              } else {
-                originalParent.appendChild(menu);
+        if (currentConversationId === requestConversationId) {
+          if (data.memory) saveMemory(data.memory);
+          if (data.flags) saveFlags(data.flags);
+          pushHistory("assistant", data.reply, data.debug || []);
+        } else {
+          const storedData = loadConversationData(requestConversationId);
+          saveConversationData(requestConversationId, {
+            ...storedData,
+            memory: data.memory || storedData.memory,
+            flags: data.flags || storedData.flags,
+            messages: [
+              ...(Array.isArray(storedData.messages) ? storedData.messages : []),
+              {
+                role: "assistant",
+                content: data.reply,
+                debug: Array.isArray(data.debug) ? data.debug : [],
+                t: Date.now()
               }
-            }
-          });
-          
-          if (portal) {
-            portal.innerHTML = "";
-          }
-          
-          document.querySelectorAll(".conversationItem").forEach(item => {
-            item.style.zIndex = "";
-            item.style.position = "";
+            ],
+            updatedAt: Date.now()
           });
         }
         
-        function openConversationMenu(toggleBtn, menu) {
-          if (!toggleBtn || !menu) return;
-          
-          const overlay = ensureConversationMenuOverlay();
-          const portal = ensureConversationMenuPortal();
-          const rect = toggleBtn.getBoundingClientRect();
-          const panelWidth = 196;
-          const panelTop = Math.round(rect.bottom + 10);
-          const panelLeft = Math.round(
-            Math.max(16, Math.min(window.innerWidth - panelWidth - 16, rect.right - panelWidth))
-          );
-          const item = toggleBtn.closest(".conversationItem");
-          
-          closeConversationMenus();
-          
-          portal.style.zIndex = "420";
-          
-          if (!menu.__originalParent) {
-            menu.__originalParent = menu.parentNode;
+        if (
+          getConversationId() === requestConversationId &&
+          document.querySelector(".screen.active")?.id === requestScreenId &&
+          requestScreenId === "chatScreen"
+        ) {
+          addMessage("bot", data.reply, data.debug || [], {
+            shouldAutoScroll: wasAtBottom || isEditing,
+            pulseScrollButton: !wasAtBottom && !isEditing
+          });
+        }
+        
+        if (data.conversationId) {
+          refreshConversationTitle(data.conversationId);
+        }
+        
+        updateActivity();
+      } catch {
+        const shouldRevealProgressively = !!waitingMsg.parentNode;
+
+if (dotAnimation) dotAnimation.cancel();
+if (waitingMsg.parentNode) waitingMsg.parentNode.removeChild(waitingMsg);
+
+if (!res.ok || !data || !data.reply) {
+        
+        if (
+          getConversationId() === requestConversationId &&
+          document.querySelector(".screen.active")?.id === requestScreenId &&
+          requestScreenId === "chatScreen"
+        ) {
+          addMessage("bot", "Erreur serveur", [], {
+            shouldAutoScroll: wasAtBottom || isEditing,
+            pulseScrollButton: !wasAtBottom && !isEditing
+          });
+        }
+      } finally {
+        isSending = false;
+        syncInputAvailability();
+        updateScrollToBottomBtn();
+      }
+    }
+    
+    document.getElementById("cancelEditTitleBtn").onclick = () => {
+      closeEditTitleModal();
+    };
+    
+    document.getElementById("editTitleModal").addEventListener("click", e => {
+      if (e.target.id === "editTitleModal") {
+        closeEditTitleModal();
+      }
+    });
+    
+    document.getElementById("editTitleInput").addEventListener("keydown", e => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        document.getElementById("confirmEditTitleBtn").click();
+      }
+    });
+    
+    document.getElementById("confirmEditTitleBtn").onclick = () => {
+      const input = document.getElementById("editTitleInput");
+      const conversationId = input.dataset.conversationId;
+      
+      if (!conversationId) return;
+      
+      let newTitle = input.value.trim();
+      
+      if (newTitle.length > 60) {
+        newTitle = newTitle.slice(0, 60);
+      }
+      
+      upsertConversationIndexItem({
+        id: conversationId,
+        title: newTitle || null,
+        updatedAt: Date.now(),
+        isCustomTitle: true
+      });
+      
+      renderConversationsList();
+      closeEditTitleModal();
+    };
+    
+    const editTitleInput = document.getElementById("editTitleInput");
+    const editTitleCounter = document.getElementById("editTitleCounter");
+    
+    function updateTitleCounter() {
+      const length = editTitleInput.value.length;
+      editTitleCounter.textContent = length + "/60";
+    }
+    
+    editTitleInput.addEventListener("input", updateTitleCounter);
+    
+    let pendingDeleteConversationId = null;
+    
+    function ensureConversationMenuOverlay() {
+      let overlay = document.getElementById("conversationMenuOverlay");
+      
+      if (overlay) return overlay;
+      
+      overlay = document.createElement("div");
+      overlay.id = "conversationMenuOverlay";
+      overlay.style.position = "fixed";
+      overlay.style.inset = "0";
+      overlay.style.zIndex = "240";
+      overlay.style.display = "none";
+      overlay.style.opacity = "0";
+      overlay.style.pointerEvents = "none";
+      overlay.style.transition = "opacity 0.22s ease";
+      overlay.style.background = "rgba(20, 36, 40, 0.14)";
+      
+      document.body.appendChild(overlay);
+      return overlay;
+    }
+    
+    function ensureConversationMenuPortal() {
+      let portal = document.getElementById("conversationMenuPortal");
+      
+      if (portal) return portal;
+      
+      portal = document.createElement("div");
+      portal.id = "conversationMenuPortal";
+      portal.style.position = "fixed";
+      portal.style.inset = "0";
+      portal.style.zIndex = "260";
+      portal.style.pointerEvents = "none";
+      
+      document.body.appendChild(portal);
+      return portal;
+    }
+    
+    function resetConversationMenuStyles(menu) {
+      if (!menu) return;
+      
+      menu.style.display = "none";
+      menu.style.position = "";
+      menu.style.top = "";
+      menu.style.left = "";
+      menu.style.right = "";
+      menu.style.minWidth = "";
+      menu.style.maxWidth = "";
+      menu.style.background = "";
+      menu.style.border = "";
+      menu.style.borderRadius = "";
+      menu.style.boxShadow = "";
+      menu.style.backdropFilter = "";
+      menu.style.webkitBackdropFilter = "";
+      menu.style.overflow = "";
+      menu.style.zIndex = "";
+      menu.style.padding = "";
+      menu.style.opacity = "";
+      menu.style.transform = "";
+      menu.style.transition = "";
+      menu.style.pointerEvents = "";
+    }
+    
+    function closeConversationMenus() {
+      const overlay = ensureConversationMenuOverlay();
+      const portal = ensureConversationMenuPortal();
+      
+      overlay.style.opacity = "0";
+      overlay.style.pointerEvents = "none";
+      
+      setTimeout(() => {
+        if (overlay.style.opacity === "0") {
+          overlay.style.display = "none";
+        }
+      }, 220);
+      
+      document.querySelectorAll("[data-menu]").forEach(menu => {
+        const originalParent = menu.__originalParent;
+        const originalNextSibling = menu.__originalNextSibling;
+        
+        resetConversationMenuStyles(menu);
+        
+        if (originalParent) {
+          if (originalNextSibling && originalNextSibling.parentNode === originalParent) {
+            originalParent.insertBefore(menu, originalNextSibling);
+          } else {
+            originalParent.appendChild(menu);
           }
-          menu.__originalNextSibling = menu.nextSibling;
+        }
+      });
+      
+      if (portal) {
+        portal.innerHTML = "";
+      }
+      
+      document.querySelectorAll(".conversationItem").forEach(item => {
+        item.style.zIndex = "";
+        item.style.position = "";
+      });
+    }
+    
+    function openConversationMenu(toggleBtn, menu) {
+      if (!toggleBtn || !menu) return;
+      
+      const overlay = ensureConversationMenuOverlay();
+      const portal = ensureConversationMenuPortal();
+      const rect = toggleBtn.getBoundingClientRect();
+      const panelWidth = 196;
+      const panelTop = Math.round(rect.bottom + 10);
+      const panelLeft = Math.round(
+        Math.max(16, Math.min(window.innerWidth - panelWidth - 16, rect.right - panelWidth))
+      );
+      const item = toggleBtn.closest(".conversationItem");
+      
+      closeConversationMenus();
+      
+      portal.style.zIndex = "420";
+      
+      if (!menu.__originalParent) {
+        menu.__originalParent = menu.parentNode;
+      }
+      menu.__originalNextSibling = menu.nextSibling;
+      
+      portal.appendChild(menu);
+      
+      if (item) {
+        item.style.position = "relative";
+        item.style.zIndex = "300";
+      }
+      
+      menu.style.display = "block";
+      menu.style.position = "fixed";
+      menu.style.top = panelTop + "px";
+      menu.style.left = panelLeft + "px";
+      menu.style.right = "auto";
+      menu.style.minWidth = panelWidth + "px";
+      menu.style.maxWidth = "calc(100vw - 32px)";
+      menu.style.background = "rgba(255, 255, 255, 0.96)";
+      menu.style.border = "1px solid rgba(222, 228, 230, 0.92)";
+      menu.style.borderRadius = "26px";
+      menu.style.boxShadow = "0 22px 46px rgba(20, 36, 40, 0.18)";
+      menu.style.backdropFilter = "blur(8px)";
+      menu.style.webkitBackdropFilter = "blur(8px)";
+      menu.style.overflow = "hidden";
+      menu.style.zIndex = "430";
+      menu.style.padding = "8px 0";
+      menu.style.opacity = "0";
+      menu.style.transform = "translateY(-4px) scale(0.985)";
+      menu.style.transition = "opacity 0.2s ease, transform 0.2s ease";
+      menu.style.pointerEvents = "auto";
+      
+      const centerX = Math.round(rect.right - 16);
+      const centerY = Math.round(rect.top + rect.height / 2);
+      
+      overlay.style.zIndex = "410";
+      overlay.style.display = "block";
+      overlay.style.pointerEvents = "auto";
+      overlay.style.background =
+        "radial-gradient(circle at " + centerX + "px " + centerY + "px, rgba(255,255,255,0) 0px, rgba(255,255,255,0) 84px, rgba(20,36,40,0.04) 140px, rgba(20,36,40,0.14) 100%)";
+      
+      requestAnimationFrame(() => {
+        overlay.style.opacity = "1";
+        menu.style.opacity = "1";
+        menu.style.transform = "translateY(0) scale(1)";
+      });
+    }
+    
+    document.addEventListener("click", e => {
+      if (!e.target.closest("[data-menu-toggle]") && !e.target.closest("[data-menu]")) {
+        closeConversationMenus();
+      }
+    });
+    
+    window.addEventListener("resize", () => {
+      closeConversationMenus();
+      updateScrollToBottomBtn();
+    });
+    window.addEventListener("scroll", closeConversationMenus, true);
+    
+    document.getElementById("cancelDeleteConversationBtn").onclick = () => {
+      pendingDeleteConversationId = null;
+      closeModal("deleteConversationModal");
+    };
+    
+    document.getElementById("confirmDeleteConversationBtn").onclick = () => {
+      if (!pendingDeleteConversationId) {
+        closeModal("deleteConversationModal");
+        return;
+      }
+      
+      deleteConversationData(pendingDeleteConversationId);
+      
+      if (getConversationId() === pendingDeleteConversationId) {
+        localStorage.removeItem(CONVERSATION_ID_KEY);
+      }
+      
+      pendingDeleteConversationId = null;
+      closeModal("deleteConversationModal");
+      renderConversationsList();
+    };
+    
+    document.getElementById("deleteConversationModal").addEventListener("click", e => {
+      if (e.target.id === "deleteConversationModal") {
+        pendingDeleteConversationId = null;
+        closeModal("deleteConversationModal");
+      }
+    });
+    
+    const welcomeEnterBtn = document.getElementById("welcomeEnterBtn");
+    if (welcomeEnterBtn) {
+      welcomeEnterBtn.onclick = () => {
+        enterConversations();
+      };
+    }
+    
+    const welcomeAboutBtn = document.getElementById("welcomeAboutBtn");
+    if (welcomeAboutBtn) {
+      welcomeAboutBtn.onclick = () => {
+        openAboutModal();
+      };
+    }
+    
+    const welcomeDevAccessBtn = document.getElementById("welcomeDevAccessBtn");
+    if (welcomeDevAccessBtn) {
+      welcomeDevAccessBtn.onclick = () => {
+        openDevAccessModal();
+      };
+    }
+    
+    const sendBtn = document.getElementById("sendBtn");
+    if (sendBtn) {
+      sendBtn.onclick = send;
+    }
+    
+    const menuBtn = document.getElementById("menuBtn");
+    if (menuBtn) {
+      menuBtn.onclick = () => {
+        enterConversations();
+      };
+    }
+    
+    const conversationsBackBtn = document.getElementById("conversationsBackBtn");
+    if (conversationsBackBtn) {
+      conversationsBackBtn.onclick = () => {
+        history.back();
+      };
+    }
+    
+    const debugToggleBtn = document.getElementById("debugToggleBtn");
+    if (debugToggleBtn) {
+      debugToggleBtn.onclick = () => {
+        showDebug = !showDebug;
+        syncDebugVisibility();
+      };
+    }
+    
+    const conversationsFabBtn = document.getElementById("conversationsFabBtn");
+    if (conversationsFabBtn) {
+      conversationsFabBtn.onclick = async () => {
+        await finalizeAndStartNewSession();
+      };
+    }
+    
+    const cancelNewSessionBtn = document.getElementById("cancelNewSessionBtn");
+    if (cancelNewSessionBtn) {
+      cancelNewSessionBtn.onclick = () => {
+        closeConfirmNewSessionModal();
+      };
+    }
+    
+    const confirmNewSessionBtn = document.getElementById("confirmNewSessionBtn");
+    if (confirmNewSessionBtn) {
+      confirmNewSessionBtn.onclick = async () => {
+        await finalizeAndStartNewSession();
+      };
+    }
+    
+    const expiredNewSessionBtn = document.getElementById("expiredNewSessionBtn");
+    if (expiredNewSessionBtn) {
+      expiredNewSessionBtn.onclick = async () => {
+        await finalizeAndStartNewSession();
+      };
+    }
+    
+    const terminatedNewSessionBtn = document.getElementById("terminatedNewSessionBtn");
+    if (terminatedNewSessionBtn) {
+      terminatedNewSessionBtn.onclick = async () => {
+        await finalizeAndStartNewSession();
+      };
+    }
+    
+    const devAccessModal = document.getElementById("devAccessModal");
+    if (devAccessModal) {
+      devAccessModal.addEventListener("click", e => {
+        if (e.target.id === "devAccessModal") {
+          closeDevAccessModal();
+        }
+      });
+    }
+    
+    const sessionInfoContinueBtn = document.getElementById("sessionInfoContinueBtn");
+    if (sessionInfoContinueBtn) {
+      sessionInfoContinueBtn.onclick = () => {
+        saveSessionInfoDismissed(document.getElementById("sessionInfoDontShow").checked);
+        startFreshOrResumeSession();
+      };
+    }
+    
+    const inputEl = document.getElementById("input");
+    if (inputEl) {
+      const inputShellEl = document.getElementById("inputShell");
+      const sendBtnEl = document.getElementById("sendBtn");
+      
+      function getInputMaxHeightPx() {
+        const computed = window.getComputedStyle(inputEl);
+        const lineHeight = parseFloat(computed.lineHeight) || 24;
+        return lineHeight * 10;
+      }
+      
+      function resizeComposerInput() {
+        inputEl.style.height = "auto";
+        
+        const maxHeight = getInputMaxHeightPx();
+        const nextHeight = Math.min(inputEl.scrollHeight, maxHeight);
+        
+        inputEl.style.height = nextHeight + "px";
+        inputEl.style.overflowY = inputEl.scrollHeight > maxHeight ? "auto" : "hidden";
+      }
+      
+      function syncComposerUi() {
+        const hasText = inputEl.value.trim().length > 0;
+        const isFocused = document.activeElement === inputEl;
+        
+        if (inputShellEl) {
+          inputShellEl.classList.toggle("is-active", isFocused || hasText);
+        }
+        
+        if (sendBtnEl) {
+          sendBtnEl.disabled = inputEl.disabled || isSending || !hasText;
+        }
+        
+        resizeComposerInput();
+      }
+      
+      const originalSend = send;
+      send = async function() {
+        const hadTextBeforeSend = inputEl.value.trim().length > 0;
+        
+        const sendPromise = originalSend();
+        
+        if (hadTextBeforeSend) {
+          requestAnimationFrame(syncComposerUi);
+          setTimeout(syncComposerUi, 0);
+          setTimeout(syncComposerUi, 60);
+        }
+        
+        try {
+          await sendPromise;
+        } finally {
+          syncComposerUi();
+        }
+      };
+      
+      if (sendBtnEl) {
+        sendBtnEl.onclick = send;
+      }
+      
+      const originalOpenEditMode = openEditMode;
+      openEditMode = function(historyIndex, text) {
+        originalOpenEditMode(historyIndex, text);
+        requestAnimationFrame(syncComposerUi);
+      };
+      
+      const originalCloseEditMode = closeEditMode;
+      closeEditMode = function(options = {}) {
+        originalCloseEditMode(options);
+        requestAnimationFrame(syncComposerUi);
+      };
+      
+      const originalStartFreshSession = startFreshSession;
+      startFreshSession = function() {
+        originalStartFreshSession();
+        requestAnimationFrame(syncComposerUi);
+      };
+      
+      const originalStartFreshOrResumeSession = startFreshOrResumeSession;
+      startFreshOrResumeSession = function() {
+        originalStartFreshOrResumeSession();
+        requestAnimationFrame(syncComposerUi);
+      };
+      
+      inputEl.addEventListener("keydown", e => {
+        if (e.key === "Enter" && e.ctrlKey) {
+          e.preventDefault();
+          send();
+        }
+      });
+      
+      inputEl.addEventListener("input", () => {
+        updateActivity();
+        syncComposerUi();
+      });
+      
+      inputEl.addEventListener("focus", () => {
+        updateActivity();
+        syncComposerUi();
+      });
+      
+      inputEl.addEventListener("blur", () => {
+        syncComposerUi();
+      });
+      
+      requestAnimationFrame(syncComposerUi);
+    }
+    
+    const chatEl = document.getElementById("chat");
+    if (chatEl) {
+      const topBarEl = document.getElementById("topBar");
+      const menuBtnEl = document.getElementById("menuBtn");
+      
+      function syncTopBarElevation() {
+        if (!topBarEl) return;
+        
+        const elevated = chatEl.scrollTop > 12;
+        
+        topBarEl.classList.toggle("is-elevated", elevated);
+        
+        topBarEl.style.background = elevated ?
+          "rgba(255, 255, 255, 0.58)" :
+          "rgba(255, 255, 255, 0.42)";
+        topBarEl.style.backdropFilter = elevated ? "blur(12px)" : "blur(10px)";
+        topBarEl.style.webkitBackdropFilter = elevated ? "blur(12px)" : "blur(10px)";
+        topBarEl.style.borderBottom = elevated ?
+          "1px solid rgba(255, 255, 255, 0.24)" :
+          "1px solid rgba(255, 255, 255, 0.14)";
+        topBarEl.style.boxShadow = elevated ?
+          "0 8px 22px rgba(36, 94, 102, 0.05)" :
+          "none";
+      }
+      
+      if (menuBtnEl) {
+        menuBtnEl.style.display = "none";
+      }
+      
+      ensureScrollToBottomBtn();
+      syncTopBarElevation();
+      
+      chatEl.addEventListener("scroll", () => {
+        updateActivity();
+        updateScrollToBottomBtn();
+        syncTopBarElevation();
+      });
+      
+      const originalRenderHistory = renderHistory;
+      renderHistory = function() {
+        originalRenderHistory();
+        requestAnimationFrame(syncTopBarElevation);
+        setTimeout(syncTopBarElevation, 40);
+      };
+      
+      const originalScrollChatToBottom = scrollChatToBottom;
+      scrollChatToBottom = function(options = {}) {
+        originalScrollChatToBottom(options);
+        requestAnimationFrame(syncTopBarElevation);
+        setTimeout(syncTopBarElevation, 40);
+        setTimeout(syncTopBarElevation, 180);
+      };
+    }
+    
+    const aboutModal = document.getElementById("aboutModal");
+    if (aboutModal) {
+      aboutModal.addEventListener("click", e => {
+        if (e.target.id === "aboutModal") {
+          closeAboutModal();
+        }
+      });
+    }
+    
+    const confirmNewSessionModal = document.getElementById("confirmNewSessionModal");
+    if (confirmNewSessionModal) {
+      confirmNewSessionModal.addEventListener("click", e => {
+        if (e.target.id === "confirmNewSessionModal") {
+          closeConfirmNewSessionModal();
+        }
+      });
+    }
+    
+    const sessionInfoModal = document.getElementById("sessionInfoModal");
+    if (sessionInfoModal) {
+      sessionInfoModal.addEventListener("click", e => {
+        if (e.target.id === "sessionInfoModal") {
+          closeSessionInfoModal();
+        }
+      });
+    }
+    
+    window.addEventListener("load", () => {
+      const params = new URLSearchParams(window.location.search);
+      
+      if (params.get("admin") === "1") {
+        localStorage.setItem(ADMIN_UI_KEY, "1");
+      }
+      if (params.get("admin") === "0") {
+        localStorage.removeItem(ADMIN_UI_KEY);
+      }
+      
+      const isAdminUI = localStorage.getItem(ADMIN_UI_KEY) === "1";
+      const shouldSkipWelcomeAnimation = isAdminUI;
+      
+      document.body.classList.toggle("admin-ui", isAdminUI);
+      syncDebugVisibility();
+      ensureScrollToBottomBtn();
+      updateScrollToBottomBtn();
+      
+      const logo = document.getElementById("welcomeLogo");
+      const welcome = document.getElementById("welcomeScreen");
+      
+      async function waitForBackendReady() {
+        try {
+          const res = await fetch("/health", { cache: "no-store" });
+          if (res.ok) return true;
+        } catch {}
+        
+        return false;
+      }
+      
+      const WELCOME_RITUAL = [
+        "Se comprendre",
+        "S'accepter",
+        "Se faire confiance",
+        "Liberer son potentiel..."
+      ];
+      
+      const WELCOME_BOOT_PAUSE_MS = 750;
+      const WELCOME_RITUAL_TEXT_DURATION = 2000;
+      const WELCOME_RITUAL_GAP_DURATION = 400;
+      const WELCOME_RITUAL_SKIP_TEXT_DURATION = 160;
+      const WELCOME_RITUAL_SKIP_GAP_DURATION = 80;
+      const WELCOME_LOGO_DELAY_MS = 0;
+      const WELCOME_LOGO_FADE_DURATION_MS = 1200;
+      const WELCOME_RITUAL_START_DELAY_MS = 2400;
+      const WELCOME_ACTIONS_DELAY_MS = 200;
+      const WELCOME_SKIP_ACTIONS_REMAINING_MS = 160;
+      
+      let ritualIndex = 0;
+      let ritualRunning = false;
+      let ritualInterrupted = false;
+      let ritualTextTimeout = null;
+      let ritualGapTimeout = null;
+      let ritualStartTimeout = null;
+      let actionsRevealTimeout = null;
+      let bootPauseTimeout = null;
+      let logoFadeTimeout = null;
+      let welcomeInteractionBound = false;
+      let welcomeHasInteracted = false;
+      
+      let welcomePhase = "idle";
+      let firstPhraseShown = false;
+      let actionsVisible = false;
+      
+      function clearWelcomeRitualTimers() {
+        if (ritualTextTimeout) {
+          clearTimeout(ritualTextTimeout);
+          ritualTextTimeout = null;
+        }
+        
+        if (ritualGapTimeout) {
+          clearTimeout(ritualGapTimeout);
+          ritualGapTimeout = null;
+        }
+        
+        if (ritualStartTimeout) {
+          clearTimeout(ritualStartTimeout);
+          ritualStartTimeout = null;
+        }
+        
+        if (actionsRevealTimeout) {
+          clearTimeout(actionsRevealTimeout);
+          actionsRevealTimeout = null;
+        }
+        
+        if (bootPauseTimeout) {
+          clearTimeout(bootPauseTimeout);
+          bootPauseTimeout = null;
+        }
+        
+        if (logoFadeTimeout) {
+          clearTimeout(logoFadeTimeout);
+          logoFadeTimeout = null;
+        }
+      }
+      
+      function resetWelcomeRitualUI() {
+        const logoWrap = document.getElementById("welcomeLogoWrap");
+        const textEl = document.getElementById("welcomeRitualText");
+        const actions = document.getElementById("welcomeActions");
+        
+        if (!logoWrap) return;
+        
+        logoWrap.style.transition = "none";
+        logoWrap.style.opacity = "0";
+        
+        if (textEl) {
+          textEl.textContent = "";
+          textEl.classList.remove("is-visible", "is-hidden");
+        }
+        
+        if (actions) {
+          actions.classList.remove("is-visible");
+        }
+        
+        welcomeHasInteracted = false;
+        firstPhraseShown = false;
+        actionsVisible = false;
+        welcomePhase = "boot_pause";
+      }
+      
+      function fastForwardWelcomeVisuals() {
+        const logoWrap = document.getElementById("welcomeLogoWrap");
+        
+        if (bootPauseTimeout) {
+          clearTimeout(bootPauseTimeout);
+          bootPauseTimeout = null;
+        }
+        
+        if (logoFadeTimeout) {
+          clearTimeout(logoFadeTimeout);
+          logoFadeTimeout = null;
+        }
+        
+        if (welcome) {
+          welcome.style.transition = "none";
+          welcome.classList.add("ready");
+        }
+        
+        if (logoWrap) {
+          logoWrap.style.transition = "none";
+          logoWrap.style.opacity = "1";
+        }
+      }
+      
+      function revealActions(withDelay = true) {
+        const actions = document.getElementById("welcomeActions");
+        if (!actions || actionsVisible) return;
+        
+        const delay = withDelay ? WELCOME_ACTIONS_DELAY_MS : WELCOME_SKIP_ACTIONS_REMAINING_MS;
+        
+        if (actionsRevealTimeout) {
+          clearTimeout(actionsRevealTimeout);
+          actionsRevealTimeout = null;
+        }
+        
+        welcomePhase = "actions_pending";
+        
+        actionsRevealTimeout = setTimeout(() => {
+          actions.classList.add("is-visible");
+          actionsVisible = true;
+          welcomePhase = "done";
+          actionsRevealTimeout = null;
+        }, delay);
+      }
+      
+      function showWelcomeLogo(immediate = false) {
+        const logoWrap = document.getElementById("welcomeLogoWrap");
+        if (!logoWrap) return;
+        
+        if (logoFadeTimeout) {
+          clearTimeout(logoFadeTimeout);
+          logoFadeTimeout = null;
+        }
+        
+        const delay = immediate ? 0 : WELCOME_LOGO_DELAY_MS;
+        const duration = immediate ? 0 : WELCOME_LOGO_FADE_DURATION_MS;
+        
+        logoFadeTimeout = setTimeout(() => {
+          logoWrap.style.transition = duration > 0 ? "opacity " + duration + "ms ease" : "none";
+          logoWrap.style.opacity = "1";
+          logoFadeTimeout = null;
           
-          portal.appendChild(menu);
-          
-          if (item) {
-            item.style.position = "relative";
-            item.style.zIndex = "300";
+          if (welcomePhase === "logo_pending") {
+            welcomePhase = "logo_visible";
           }
-          
-          menu.style.display = "block";
-          menu.style.position = "fixed";
-          menu.style.top = panelTop + "px";
-          menu.style.left = panelLeft + "px";
-          menu.style.right = "auto";
-          menu.style.minWidth = panelWidth + "px";
-          menu.style.maxWidth = "calc(100vw - 32px)";
-          menu.style.background = "rgba(255, 255, 255, 0.96)";
-          menu.style.border = "1px solid rgba(222, 228, 230, 0.92)";
-          menu.style.borderRadius = "26px";
-          menu.style.boxShadow = "0 22px 46px rgba(20, 36, 40, 0.18)";
-          menu.style.backdropFilter = "blur(8px)";
-          menu.style.webkitBackdropFilter = "blur(8px)";
-          menu.style.overflow = "hidden";
-          menu.style.zIndex = "430";
-          menu.style.padding = "8px 0";
-          menu.style.opacity = "0";
-          menu.style.transform = "translateY(-4px) scale(0.985)";
-          menu.style.transition = "opacity 0.2s ease, transform 0.2s ease";
-          menu.style.pointerEvents = "auto";
-          
-          const centerX = Math.round(rect.right - 16);
-          const centerY = Math.round(rect.top + rect.height / 2);
-          
-          overlay.style.zIndex = "410";
-          overlay.style.display = "block";
-          overlay.style.pointerEvents = "auto";
-          overlay.style.background =
-            "radial-gradient(circle at " + centerX + "px " + centerY + "px, rgba(255,255,255,0) 0px, rgba(255,255,255,0) 84px, rgba(20,36,40,0.04) 140px, rgba(20,36,40,0.14) 100%)";
+        }, delay);
+      }
+      
+      function endWelcomeRitual() {
+        if (ritualTextTimeout) {
+          clearTimeout(ritualTextTimeout);
+          ritualTextTimeout = null;
+        }
+        
+        if (ritualGapTimeout) {
+          clearTimeout(ritualGapTimeout);
+          ritualGapTimeout = null;
+        }
+        
+        ritualRunning = false;
+        
+        const textEl = document.getElementById("welcomeRitualText");
+        
+        if (textEl) {
+          textEl.textContent = "";
+          textEl.classList.remove("is-visible", "is-hidden");
+          textEl.style.transition = "none";
+          textEl.style.opacity = "0";
+          textEl.style.transform = "translateY(10px)";
+        }
+        
+        revealActions(!ritualInterrupted);
+      }
+      
+      function showWelcomeRitualPhrase() {
+        const textEl = document.getElementById("welcomeRitualText");
+        if (!textEl) return;
+        
+        if (ritualIndex >= WELCOME_RITUAL.length) {
+          endWelcomeRitual();
+          return;
+        }
+        
+        const isFirstPhrase = ritualIndex === 0;
+        const isLastPhrase = ritualIndex === WELCOME_RITUAL.length - 1;
+        
+        welcomePhase = "ritual";
+        textEl.textContent = WELCOME_RITUAL[ritualIndex];
+        textEl.classList.remove("is-visible", "is-hidden");
+        
+        if (isFirstPhrase) {
+          textEl.style.transition = "none";
+          textEl.style.opacity = "1";
+          textEl.style.transform = "translateX(-120vw)";
           
           requestAnimationFrame(() => {
-            overlay.style.opacity = "1";
-            menu.style.opacity = "1";
-            menu.style.transform = "translateY(0) scale(1)";
+            requestAnimationFrame(() => {
+              textEl.style.transition = "transform 1.05s ease";
+              textEl.style.transform = "translateX(0)";
+            });
           });
+          
+          firstPhraseShown = true;
+        } else {
+          textEl.style.transition = "";
+          textEl.style.opacity = "";
+          textEl.style.transform = "";
+          textEl.classList.remove("is-hidden");
+          textEl.classList.add("is-visible");
         }
         
-        document.addEventListener("click", e => {
-          if (!e.target.closest("[data-menu-toggle]") && !e.target.closest("[data-menu]")) {
-            closeConversationMenus();
+        const textDuration = ritualInterrupted ?
+          WELCOME_RITUAL_SKIP_TEXT_DURATION :
+          WELCOME_RITUAL_TEXT_DURATION;
+        
+        ritualTextTimeout = setTimeout(() => {
+          if (isLastPhrase) {
+            textEl.classList.remove("is-visible", "is-hidden");
+            textEl.style.transition = "transform 2.5s ease";
+            textEl.style.opacity = "1";
+            textEl.style.transform = "translateX(120vw)";
+          } else {
+            textEl.style.transition = "";
+            textEl.style.opacity = "";
+            textEl.style.transform = "";
+            textEl.classList.remove("is-visible");
+            textEl.classList.add("is-hidden");
           }
-        });
+          
+          const gapDuration = ritualInterrupted ?
+            WELCOME_RITUAL_SKIP_GAP_DURATION :
+            (isLastPhrase ? 1400 : WELCOME_RITUAL_GAP_DURATION);
+          
+          ritualGapTimeout = setTimeout(() => {
+            ritualIndex += 1;
+            showWelcomeRitualPhrase();
+          }, gapDuration);
+        }, textDuration);
+      }
+      
+      function startWelcomeRitual() {
+        if (ritualStartTimeout) {
+          clearTimeout(ritualStartTimeout);
+          ritualStartTimeout = null;
+        }
         
-        window.addEventListener("resize", () => {
-          closeConversationMenus();
-          updateScrollToBottomBtn();
-        });
-        window.addEventListener("scroll", closeConversationMenus, true);
+        if (actionsRevealTimeout) {
+          clearTimeout(actionsRevealTimeout);
+          actionsRevealTimeout = null;
+        }
         
-        document.getElementById("cancelDeleteConversationBtn").onclick = () => {
-          pendingDeleteConversationId = null;
-          closeModal("deleteConversationModal");
-        };
+        ritualIndex = 0;
+        ritualRunning = true;
+        ritualInterrupted = false;
         
-        document.getElementById("confirmDeleteConversationBtn").onclick = () => {
-          if (!pendingDeleteConversationId) {
-            closeModal("deleteConversationModal");
+        const textEl = document.getElementById("welcomeRitualText");
+        const actions = document.getElementById("welcomeActions");
+        
+        if (textEl) {
+          textEl.textContent = "";
+          textEl.classList.remove("is-visible", "is-hidden");
+        }
+        
+        if (actions) {
+          actions.classList.remove("is-visible");
+        }
+        
+        actionsVisible = false;
+        showWelcomeRitualPhrase();
+      }
+      
+      function interruptWelcomeRitual() {
+        if (!ritualRunning || ritualInterrupted) return;
+        
+        ritualInterrupted = true;
+        
+        const textEl = document.getElementById("welcomeRitualText");
+        
+        if (ritualTextTimeout) {
+          clearTimeout(ritualTextTimeout);
+          ritualTextTimeout = null;
+          
+          if (textEl) {
+            textEl.classList.remove("is-visible");
+            textEl.classList.add("is-hidden");
+          }
+          
+          ritualGapTimeout = setTimeout(() => {
+            ritualIndex += 1;
+            showWelcomeRitualPhrase();
+          }, WELCOME_RITUAL_SKIP_GAP_DURATION);
+        }
+      }
+      
+      function accelerateWelcomeIntro() {
+        if (!welcomeHasInteracted) {
+          welcomeHasInteracted = true;
+          fastForwardWelcomeVisuals();
+          
+          if (welcomePhase === "boot_pause") {
+            bindWelcomeInteraction();
+            startWelcomeRitual();
             return;
           }
           
-          deleteConversationData(pendingDeleteConversationId);
-          
-          if (getConversationId() === pendingDeleteConversationId) {
-            localStorage.removeItem(CONVERSATION_ID_KEY);
+          if (welcomePhase === "logo_visible" && !firstPhraseShown) {
+            if (ritualStartTimeout) {
+              clearTimeout(ritualStartTimeout);
+              ritualStartTimeout = null;
+            }
+            
+            startWelcomeRitual();
+            return;
           }
-          
-          pendingDeleteConversationId = null;
-          closeModal("deleteConversationModal");
-          renderConversationsList();
-        };
+        }
         
-        document.getElementById("deleteConversationModal").addEventListener("click", e => {
-          if (e.target.id === "deleteConversationModal") {
-            pendingDeleteConversationId = null;
-            closeModal("deleteConversationModal");
-          }
+        if (ritualRunning) {
+          interruptWelcomeRitual();
+          return;
+        }
+        
+        if (welcomePhase === "actions_pending") {
+          revealActions(false);
+          return;
+        }
+        
+        if (!actionsVisible) {
+          revealActions(false);
+        }
+      }
+      
+      function bindWelcomeInteraction() {
+        if (welcomeInteractionBound) return;
+        
+        const screen = document.getElementById("welcomeScreen");
+        if (!screen) return;
+        
+        screen.addEventListener("click", event => {
+          if (event.target.closest("#welcomeActions")) return;
+          accelerateWelcomeIntro();
         });
         
-        const welcomeEnterBtn = document.getElementById("welcomeEnterBtn");
-        if (welcomeEnterBtn) {
-          welcomeEnterBtn.onclick = () => {
-            enterConversations();
-          };
-        }
-        
-        const welcomeAboutBtn = document.getElementById("welcomeAboutBtn");
-        if (welcomeAboutBtn) {
-          welcomeAboutBtn.onclick = () => {
-            openAboutModal();
-          };
-        }
-        
-        const welcomeDevAccessBtn = document.getElementById("welcomeDevAccessBtn");
-        if (welcomeDevAccessBtn) {
-          welcomeDevAccessBtn.onclick = () => {
-            openDevAccessModal();
-          };
-        }
-        
-        const sendBtn = document.getElementById("sendBtn");
-        if (sendBtn) {
-          sendBtn.onclick = send;
-        }
-        
-        const menuBtn = document.getElementById("menuBtn");
-        if (menuBtn) {
-          menuBtn.onclick = () => {
-            enterConversations();
-          };
-        }
-        
-        const conversationsBackBtn = document.getElementById("conversationsBackBtn");
-        if (conversationsBackBtn) {
-          conversationsBackBtn.onclick = () => {
-            history.back();
-          };
-        }
-        
-        const debugToggleBtn = document.getElementById("debugToggleBtn");
-        if (debugToggleBtn) {
-          debugToggleBtn.onclick = () => {
-            showDebug = !showDebug;
-            syncDebugVisibility();
-          };
-        }
-        
-        const conversationsFabBtn = document.getElementById("conversationsFabBtn");
-        if (conversationsFabBtn) {
-          conversationsFabBtn.onclick = async () => {
-            await finalizeAndStartNewSession();
-          };
-        }
-        
-        const cancelNewSessionBtn = document.getElementById("cancelNewSessionBtn");
-        if (cancelNewSessionBtn) {
-          cancelNewSessionBtn.onclick = () => {
-            closeConfirmNewSessionModal();
-          };
-        }
-        
-        const confirmNewSessionBtn = document.getElementById("confirmNewSessionBtn");
-        if (confirmNewSessionBtn) {
-          confirmNewSessionBtn.onclick = async () => {
-            await finalizeAndStartNewSession();
-          };
-        }
-        
-        const expiredNewSessionBtn = document.getElementById("expiredNewSessionBtn");
-        if (expiredNewSessionBtn) {
-          expiredNewSessionBtn.onclick = async () => {
-            await finalizeAndStartNewSession();
-          };
-        }
-        
-        const terminatedNewSessionBtn = document.getElementById("terminatedNewSessionBtn");
-        if (terminatedNewSessionBtn) {
-          terminatedNewSessionBtn.onclick = async () => {
-            await finalizeAndStartNewSession();
-          };
-        }
-        
-        const devAccessModal = document.getElementById("devAccessModal");
-        if (devAccessModal) {
-          devAccessModal.addEventListener("click", e => {
-            if (e.target.id === "devAccessModal") {
-              closeDevAccessModal();
-            }
+        welcomeInteractionBound = true;
+      }
+      
+      function showWelcome() {
+        if (shouldSkipWelcomeAnimation) {
+          clearWelcomeRitualTimers();
+          prepareWelcomeScreenStatic();
+          showScreen("welcomeScreen", {
+            replaceHistory: true,
+            pushHistory: false,
+            noAnimation: true,
+            noWelcomeIntro: true
           });
+          return;
         }
         
-        const sessionInfoContinueBtn = document.getElementById("sessionInfoContinueBtn");
-        if (sessionInfoContinueBtn) {
-          sessionInfoContinueBtn.onclick = () => {
-            saveSessionInfoDismissed(document.getElementById("sessionInfoDontShow").checked);
-            startFreshOrResumeSession();
-          };
-        }
+        showScreen("welcomeScreen", { replaceHistory: true, pushHistory: false });
         
-        const inputEl = document.getElementById("input");
-        if (inputEl) {
-          const inputShellEl = document.getElementById("inputShell");
-          const sendBtnEl = document.getElementById("sendBtn");
-          
-          function getInputMaxHeightPx() {
-            const computed = window.getComputedStyle(inputEl);
-            const lineHeight = parseFloat(computed.lineHeight) || 24;
-            return lineHeight * 10;
-          }
-          
-          function resizeComposerInput() {
-            inputEl.style.height = "auto";
-            
-            const maxHeight = getInputMaxHeightPx();
-            const nextHeight = Math.min(inputEl.scrollHeight, maxHeight);
-            
-            inputEl.style.height = nextHeight + "px";
-            inputEl.style.overflowY = inputEl.scrollHeight > maxHeight ? "auto" : "hidden";
-          }
-          
-          function syncComposerUi() {
-            const hasText = inputEl.value.trim().length > 0;
-            const isFocused = document.activeElement === inputEl;
-            
-            if (inputShellEl) {
-              inputShellEl.classList.toggle("is-active", isFocused || hasText);
-            }
-            
-            if (sendBtnEl) {
-              sendBtnEl.disabled = inputEl.disabled || isSending || !hasText;
-            }
-            
-            resizeComposerInput();
-          }
-          
-          const originalSend = send;
-          send = async function() {
-            const hadTextBeforeSend = inputEl.value.trim().length > 0;
-            
-            const sendPromise = originalSend();
-            
-            if (hadTextBeforeSend) {
-              requestAnimationFrame(syncComposerUi);
-              setTimeout(syncComposerUi, 0);
-              setTimeout(syncComposerUi, 60);
-            }
-            
-            try {
-              await sendPromise;
-            } finally {
-              syncComposerUi();
-            }
-          };
-          
-          if (sendBtnEl) {
-            sendBtnEl.onclick = send;
-          }
-          
-          const originalOpenEditMode = openEditMode;
-          openEditMode = function(historyIndex, text) {
-            originalOpenEditMode(historyIndex, text);
-            requestAnimationFrame(syncComposerUi);
-          };
-          
-          const originalCloseEditMode = closeEditMode;
-          closeEditMode = function(options = {}) {
-            originalCloseEditMode(options);
-            requestAnimationFrame(syncComposerUi);
-          };
-          
-          const originalStartFreshSession = startFreshSession;
-          startFreshSession = function() {
-            originalStartFreshSession();
-            requestAnimationFrame(syncComposerUi);
-          };
-          
-          const originalStartFreshOrResumeSession = startFreshOrResumeSession;
-          startFreshOrResumeSession = function() {
-            originalStartFreshOrResumeSession();
-            requestAnimationFrame(syncComposerUi);
-          };
-          
-          inputEl.addEventListener("keydown", e => {
-            if (e.key === "Enter" && e.ctrlKey) {
-              e.preventDefault();
-              send();
-            }
-          });
-          
-          inputEl.addEventListener("input", () => {
-            updateActivity();
-            syncComposerUi();
-          });
-          
-          inputEl.addEventListener("focus", () => {
-            updateActivity();
-            syncComposerUi();
-          });
-          
-          inputEl.addEventListener("blur", () => {
-            syncComposerUi();
-          });
-          
-          requestAnimationFrame(syncComposerUi);
-        }
+        clearWelcomeRitualTimers();
+        resetWelcomeRitualUI();
         
-        const chatEl = document.getElementById("chat");
-        if (chatEl) {
-          const topBarEl = document.getElementById("topBar");
-          const menuBtnEl = document.getElementById("menuBtn");
-          
-          function syncTopBarElevation() {
-            if (!topBarEl) return;
-            
-            const elevated = chatEl.scrollTop > 12;
-            
-            topBarEl.classList.toggle("is-elevated", elevated);
-            
-            topBarEl.style.background = elevated ?
-              "rgba(255, 255, 255, 0.58)" :
-              "rgba(255, 255, 255, 0.42)";
-            topBarEl.style.backdropFilter = elevated ? "blur(12px)" : "blur(10px)";
-            topBarEl.style.webkitBackdropFilter = elevated ? "blur(12px)" : "blur(10px)";
-            topBarEl.style.borderBottom = elevated ?
-              "1px solid rgba(255, 255, 255, 0.24)" :
-              "1px solid rgba(255, 255, 255, 0.14)";
-            topBarEl.style.boxShadow = elevated ?
-              "0 8px 22px rgba(36, 94, 102, 0.05)" :
-              "none";
-          }
-          
-          if (menuBtnEl) {
-            menuBtnEl.style.display = "none";
-          }
-          
-          ensureScrollToBottomBtn();
-          syncTopBarElevation();
-          
-          chatEl.addEventListener("scroll", () => {
-            updateActivity();
-            updateScrollToBottomBtn();
-            syncTopBarElevation();
-          });
-          
-          const originalRenderHistory = renderHistory;
-          renderHistory = function() {
-            originalRenderHistory();
-            requestAnimationFrame(syncTopBarElevation);
-            setTimeout(syncTopBarElevation, 40);
-          };
-          
-          const originalScrollChatToBottom = scrollChatToBottom;
-          scrollChatToBottom = function(options = {}) {
-            originalScrollChatToBottom(options);
-            requestAnimationFrame(syncTopBarElevation);
-            setTimeout(syncTopBarElevation, 40);
-            setTimeout(syncTopBarElevation, 180);
-          };
-        }
+        welcome.style.transition = "none";
+        welcome.classList.remove("ready");
         
-        const aboutModal = document.getElementById("aboutModal");
-        if (aboutModal) {
-          aboutModal.addEventListener("click", e => {
-            if (e.target.id === "aboutModal") {
-              closeAboutModal();
-            }
-          });
-        }
-        
-        const confirmNewSessionModal = document.getElementById("confirmNewSessionModal");
-        if (confirmNewSessionModal) {
-          confirmNewSessionModal.addEventListener("click", e => {
-            if (e.target.id === "confirmNewSessionModal") {
-              closeConfirmNewSessionModal();
-            }
-          });
-        }
-        
-        const sessionInfoModal = document.getElementById("sessionInfoModal");
-        if (sessionInfoModal) {
-          sessionInfoModal.addEventListener("click", e => {
-            if (e.target.id === "sessionInfoModal") {
-              closeSessionInfoModal();
-            }
-          });
-        }
-        
-        window.addEventListener("load", () => {
-          const params = new URLSearchParams(window.location.search);
-          
-          if (params.get("admin") === "1") {
-            localStorage.setItem(ADMIN_UI_KEY, "1");
-          }
-          if (params.get("admin") === "0") {
-            localStorage.removeItem(ADMIN_UI_KEY);
-          }
-          
-          const isAdminUI = localStorage.getItem(ADMIN_UI_KEY) === "1";
-          const shouldSkipWelcomeAnimation = isAdminUI;
-          
-          document.body.classList.toggle("admin-ui", isAdminUI);
-          syncDebugVisibility();
-          ensureScrollToBottomBtn();
-          updateScrollToBottomBtn();
-          
-          const logo = document.getElementById("welcomeLogo");
-          const welcome = document.getElementById("welcomeScreen");
-          
-          async function waitForBackendReady() {
-            try {
-              const res = await fetch("/health", { cache: "no-store" });
-              if (res.ok) return true;
-            } catch {}
+        requestAnimationFrame(() => {
+          bootPauseTimeout = setTimeout(() => {
+            bootPauseTimeout = null;
             
-            return false;
-          }
-          
-          const WELCOME_RITUAL = [
-            "Se comprendre",
-            "S'accepter",
-            "Se faire confiance",
-            "Liberer son potentiel..."
-          ];
-          
-          const WELCOME_BOOT_PAUSE_MS = 750;
-          const WELCOME_RITUAL_TEXT_DURATION = 2000;
-          const WELCOME_RITUAL_GAP_DURATION = 400;
-          const WELCOME_RITUAL_SKIP_TEXT_DURATION = 160;
-          const WELCOME_RITUAL_SKIP_GAP_DURATION = 80;
-          const WELCOME_LOGO_DELAY_MS = 0;
-          const WELCOME_LOGO_FADE_DURATION_MS = 1200;
-          const WELCOME_RITUAL_START_DELAY_MS = 2400;
-          const WELCOME_ACTIONS_DELAY_MS = 200;
-          const WELCOME_SKIP_ACTIONS_REMAINING_MS = 160;
-          
-          let ritualIndex = 0;
-          let ritualRunning = false;
-          let ritualInterrupted = false;
-          let ritualTextTimeout = null;
-          let ritualGapTimeout = null;
-          let ritualStartTimeout = null;
-          let actionsRevealTimeout = null;
-          let bootPauseTimeout = null;
-          let logoFadeTimeout = null;
-          let welcomeInteractionBound = false;
-          let welcomeHasInteracted = false;
-          
-          let welcomePhase = "idle";
-          let firstPhraseShown = false;
-          let actionsVisible = false;
-          
-          function clearWelcomeRitualTimers() {
-            if (ritualTextTimeout) {
-              clearTimeout(ritualTextTimeout);
-              ritualTextTimeout = null;
-            }
-            
-            if (ritualGapTimeout) {
-              clearTimeout(ritualGapTimeout);
-              ritualGapTimeout = null;
-            }
-            
-            if (ritualStartTimeout) {
-              clearTimeout(ritualStartTimeout);
-              ritualStartTimeout = null;
-            }
-            
-            if (actionsRevealTimeout) {
-              clearTimeout(actionsRevealTimeout);
-              actionsRevealTimeout = null;
-            }
-            
-            if (bootPauseTimeout) {
-              clearTimeout(bootPauseTimeout);
-              bootPauseTimeout = null;
-            }
-            
-            if (logoFadeTimeout) {
-              clearTimeout(logoFadeTimeout);
-              logoFadeTimeout = null;
-            }
-          }
-          
-          function resetWelcomeRitualUI() {
-            const logoWrap = document.getElementById("welcomeLogoWrap");
-            const textEl = document.getElementById("welcomeRitualText");
-            const actions = document.getElementById("welcomeActions");
-            
-            if (!logoWrap) return;
-            
-            logoWrap.style.transition = "none";
-            logoWrap.style.opacity = "0";
-            
-            if (textEl) {
-              textEl.textContent = "";
-              textEl.classList.remove("is-visible", "is-hidden");
-            }
-            
-            if (actions) {
-              actions.classList.remove("is-visible");
-            }
-            
-            welcomeHasInteracted = false;
-            firstPhraseShown = false;
-            actionsVisible = false;
-            welcomePhase = "boot_pause";
-          }
-          
-          function fastForwardWelcomeVisuals() {
-            const logoWrap = document.getElementById("welcomeLogoWrap");
-            
-            if (bootPauseTimeout) {
-              clearTimeout(bootPauseTimeout);
-              bootPauseTimeout = null;
-            }
-            
-            if (logoFadeTimeout) {
-              clearTimeout(logoFadeTimeout);
-              logoFadeTimeout = null;
-            }
-            
-            if (welcome) {
-              welcome.style.transition = "none";
-              welcome.classList.add("ready");
-            }
-            
-            if (logoWrap) {
-              logoWrap.style.transition = "none";
-              logoWrap.style.opacity = "1";
-            }
-          }
-          
-          function revealActions(withDelay = true) {
-            const actions = document.getElementById("welcomeActions");
-            if (!actions || actionsVisible) return;
-            
-            const delay = withDelay ? WELCOME_ACTIONS_DELAY_MS : WELCOME_SKIP_ACTIONS_REMAINING_MS;
-            
-            if (actionsRevealTimeout) {
-              clearTimeout(actionsRevealTimeout);
-              actionsRevealTimeout = null;
-            }
-            
-            welcomePhase = "actions_pending";
-            
-            actionsRevealTimeout = setTimeout(() => {
-              actions.classList.add("is-visible");
-              actionsVisible = true;
-              welcomePhase = "done";
-              actionsRevealTimeout = null;
-            }, delay);
-          }
-          
-          function showWelcomeLogo(immediate = false) {
-            const logoWrap = document.getElementById("welcomeLogoWrap");
-            if (!logoWrap) return;
-            
-            if (logoFadeTimeout) {
-              clearTimeout(logoFadeTimeout);
-              logoFadeTimeout = null;
-            }
-            
-            const delay = immediate ? 0 : WELCOME_LOGO_DELAY_MS;
-            const duration = immediate ? 0 : WELCOME_LOGO_FADE_DURATION_MS;
-            
-            logoFadeTimeout = setTimeout(() => {
-              logoWrap.style.transition = duration > 0 ? "opacity " + duration + "ms ease" : "none";
-              logoWrap.style.opacity = "1";
-              logoFadeTimeout = null;
-              
-              if (welcomePhase === "logo_pending") {
-                welcomePhase = "logo_visible";
-              }
-            }, delay);
-          }
-          
-          function endWelcomeRitual() {
-            if (ritualTextTimeout) {
-              clearTimeout(ritualTextTimeout);
-              ritualTextTimeout = null;
-            }
-            
-            if (ritualGapTimeout) {
-              clearTimeout(ritualGapTimeout);
-              ritualGapTimeout = null;
-            }
-            
-            ritualRunning = false;
-            
-            const textEl = document.getElementById("welcomeRitualText");
-            
-            if (textEl) {
-              textEl.textContent = "";
-              textEl.classList.remove("is-visible", "is-hidden");
-              textEl.style.transition = "none";
-              textEl.style.opacity = "0";
-              textEl.style.transform = "translateY(10px)";
-            }
-            
-            revealActions(!ritualInterrupted);
-          }
-          
-          function showWelcomeRitualPhrase() {
-            const textEl = document.getElementById("welcomeRitualText");
-            if (!textEl) return;
-            
-            if (ritualIndex >= WELCOME_RITUAL.length) {
-              endWelcomeRitual();
-              return;
-            }
-            
-            const isFirstPhrase = ritualIndex === 0;
-            const isLastPhrase = ritualIndex === WELCOME_RITUAL.length - 1;
-            
-            welcomePhase = "ritual";
-            textEl.textContent = WELCOME_RITUAL[ritualIndex];
-            textEl.classList.remove("is-visible", "is-hidden");
-            
-            if (isFirstPhrase) {
-              textEl.style.transition = "none";
-              textEl.style.opacity = "1";
-              textEl.style.transform = "translateX(-120vw)";
-              
-              requestAnimationFrame(() => {
-                requestAnimationFrame(() => {
-                  textEl.style.transition = "transform 1.05s ease";
-                  textEl.style.transform = "translateX(0)";
-                });
-              });
-              
-              firstPhraseShown = true;
-            } else {
-              textEl.style.transition = "";
-              textEl.style.opacity = "";
-              textEl.style.transform = "";
-              textEl.classList.remove("is-hidden");
-              textEl.classList.add("is-visible");
-            }
-            
-            const textDuration = ritualInterrupted ?
-              WELCOME_RITUAL_SKIP_TEXT_DURATION :
-              WELCOME_RITUAL_TEXT_DURATION;
-            
-            ritualTextTimeout = setTimeout(() => {
-              if (isLastPhrase) {
-                textEl.classList.remove("is-visible", "is-hidden");
-                textEl.style.transition = "transform 2.5s ease";
-                textEl.style.opacity = "1";
-                textEl.style.transform = "translateX(120vw)";
-              } else {
-                textEl.style.transition = "";
-                textEl.style.opacity = "";
-                textEl.style.transform = "";
-                textEl.classList.remove("is-visible");
-                textEl.classList.add("is-hidden");
-              }
-              
-              const gapDuration = ritualInterrupted ?
-                WELCOME_RITUAL_SKIP_GAP_DURATION :
-                (isLastPhrase ? 1400 : WELCOME_RITUAL_GAP_DURATION);
-              
-              ritualGapTimeout = setTimeout(() => {
-                ritualIndex += 1;
-                showWelcomeRitualPhrase();
-              }, gapDuration);
-            }, textDuration);
-          }
-          
-          function startWelcomeRitual() {
-            if (ritualStartTimeout) {
-              clearTimeout(ritualStartTimeout);
-              ritualStartTimeout = null;
-            }
-            
-            if (actionsRevealTimeout) {
-              clearTimeout(actionsRevealTimeout);
-              actionsRevealTimeout = null;
-            }
-            
-            ritualIndex = 0;
-            ritualRunning = true;
-            ritualInterrupted = false;
-            
-            const textEl = document.getElementById("welcomeRitualText");
-            const actions = document.getElementById("welcomeActions");
-            
-            if (textEl) {
-              textEl.textContent = "";
-              textEl.classList.remove("is-visible", "is-hidden");
-            }
-            
-            if (actions) {
-              actions.classList.remove("is-visible");
-            }
-            
-            actionsVisible = false;
-            showWelcomeRitualPhrase();
-          }
-          
-          function interruptWelcomeRitual() {
-            if (!ritualRunning || ritualInterrupted) return;
-            
-            ritualInterrupted = true;
-            
-            const textEl = document.getElementById("welcomeRitualText");
-            
-            if (ritualTextTimeout) {
-              clearTimeout(ritualTextTimeout);
-              ritualTextTimeout = null;
-              
-              if (textEl) {
-                textEl.classList.remove("is-visible");
-                textEl.classList.add("is-hidden");
-              }
-              
-              ritualGapTimeout = setTimeout(() => {
-                ritualIndex += 1;
-                showWelcomeRitualPhrase();
-              }, WELCOME_RITUAL_SKIP_GAP_DURATION);
-            }
-          }
-          
-          function accelerateWelcomeIntro() {
-            if (!welcomeHasInteracted) {
-              welcomeHasInteracted = true;
-              fastForwardWelcomeVisuals();
-              
-              if (welcomePhase === "boot_pause") {
-                bindWelcomeInteraction();
-                startWelcomeRitual();
-                return;
-              }
-              
-              if (welcomePhase === "logo_visible" && !firstPhraseShown) {
-                if (ritualStartTimeout) {
-                  clearTimeout(ritualStartTimeout);
-                  ritualStartTimeout = null;
-                }
-                
-                startWelcomeRitual();
-                return;
-              }
-            }
-            
-            if (ritualRunning) {
-              interruptWelcomeRitual();
-              return;
-            }
-            
-            if (welcomePhase === "actions_pending") {
-              revealActions(false);
-              return;
-            }
-            
-            if (!actionsVisible) {
-              revealActions(false);
-            }
-          }
-          
-          function bindWelcomeInteraction() {
-            if (welcomeInteractionBound) return;
-            
-            const screen = document.getElementById("welcomeScreen");
-            if (!screen) return;
-            
-            screen.addEventListener("click", event => {
-              if (event.target.closest("#welcomeActions")) return;
-              accelerateWelcomeIntro();
-            });
-            
-            welcomeInteractionBound = true;
-          }
-          
-          function showWelcome() {
-            if (shouldSkipWelcomeAnimation) {
-              clearWelcomeRitualTimers();
-              prepareWelcomeScreenStatic();
-              showScreen("welcomeScreen", {
-                replaceHistory: true,
-                pushHistory: false,
-                noAnimation: true,
-                noWelcomeIntro: true
-              });
-              return;
-            }
-            
-            showScreen("welcomeScreen", { replaceHistory: true, pushHistory: false });
-            
-            clearWelcomeRitualTimers();
-            resetWelcomeRitualUI();
-            
-            welcome.style.transition = "none";
-            welcome.classList.remove("ready");
+            welcome.style.transition = "";
             
             requestAnimationFrame(() => {
-              bootPauseTimeout = setTimeout(() => {
-                bootPauseTimeout = null;
-                
-                welcome.style.transition = "";
-                
-                requestAnimationFrame(() => {
-                  welcome.classList.add("ready");
-                });
-                
-                showWelcomeLogo(false);
-                bindWelcomeInteraction();
-                
-                ritualStartTimeout = setTimeout(() => {
-                  startWelcomeRitual();
-                }, WELCOME_RITUAL_START_DELAY_MS);
-                
-                welcomePhase = "logo_visible";
-              }, WELCOME_BOOT_PAUSE_MS);
+              welcome.classList.add("ready");
             });
-          }
-          
-          async function boot() {
-            if (!logo || logo.complete) {
-              await waitForBackendReady();
-              showWelcome();
-              return;
-            }
             
-            logo.addEventListener("load", async () => {
-              await waitForBackendReady();
-              showWelcome();
-            }, { once: true });
+            showWelcomeLogo(false);
+            bindWelcomeInteraction();
             
-            logo.addEventListener("error", async () => {
-              await waitForBackendReady();
-              showWelcome();
-            }, { once: true });
-          }
-          
-          boot();
+            ritualStartTimeout = setTimeout(() => {
+              startWelcomeRitual();
+            }, WELCOME_RITUAL_START_DELAY_MS);
+            
+            welcomePhase = "logo_visible";
+          }, WELCOME_BOOT_PAUSE_MS);
         });
+      }
+      
+      async function boot() {
+        if (!logo || logo.complete) {
+          await waitForBackendReady();
+          showWelcome();
+          return;
+        }
+        
+        logo.addEventListener("load", async () => {
+          await waitForBackendReady();
+          showWelcome();
+        }, { once: true });
+        
+        logo.addEventListener("error", async () => {
+          await waitForBackendReady();
+          showWelcome();
+        }, { once: true });
+      }
+      
+      boot();
+    });
   </script>
 </body>
 
