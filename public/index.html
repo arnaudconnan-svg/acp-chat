@@ -1281,17 +1281,12 @@
   </div>
   
   <div id="conversationsScreen" class="screen">
-    <div id="conversationsTopBar">
-      <button id="conversationsBackBtn" type="button" aria-label="Retour">
-        <span id="menuIcon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" width="16" height="16" role="presentation">
-            <path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-          </svg>
-        </span>
-      </button>
-      
-      <h2 id="conversationsTitle">Conversations</h2>
-    </div>
+    <div id="conversationsTopBar" class="topBar">
+  <div class="topBarContent">
+    <img src="/images/logo.png" class="topBarLogo">
+    <span class="topBarTitle">Facilitat.io</span>
+  </div>
+</div>
     
     <div id="conversationsListWrap">
       <div id="conversationsList">
@@ -4256,6 +4251,19 @@
       
       requestAnimationFrame(syncComposerUi);
     }
+    
+    const conversationsEl = document.getElementById("conversationsList");
+const conversationsTopBar = document.getElementById("conversationsTopBar");
+
+if (conversationsEl && conversationsTopBar) {
+  conversationsEl.addEventListener("scroll", () => {
+    const scrollTop = conversationsEl.scrollTop;
+    
+    const opacity = Math.min(1, scrollTop / 60);
+    conversationsTopBar.style.background = `rgba(255,255,255,${0.6 + opacity * 0.4})`;
+    conversationsTopBar.style.backdropFilter = `blur(${4 + opacity * 6}px)`;
+  });
+}
     
     const chatEl = document.getElementById("chat");
     if (chatEl) {
