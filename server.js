@@ -2157,7 +2157,8 @@ app.post("/chat", async (req, res) => {
         content: isEdited ? reply + "\n[MODIFIÉ]" : reply,
         timestamp: Date.now(),
         userId,
-        conversationId
+        conversationId,
+        debug: Array.isArray(debug) ? debug : []
       });
       
       await convRef.update({
