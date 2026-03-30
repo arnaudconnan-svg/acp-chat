@@ -3587,6 +3587,8 @@
         });
       }
       
+      const shouldAutoScrollReply = isEditing || wasAtBottom || isChatAtBottom();
+      
       let dotAnimation = null;
       
       if (waitingDot && waitingDot.animate) {
