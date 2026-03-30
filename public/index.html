@@ -2571,13 +2571,8 @@
         bubble.textContent = text;
         return;
       }
-      showTemporaryNotice("len bot = " + text.length);
-      if (!progressive) {
-        bubble.textContent = text;
-        return;
-      }
       
-      if (!wasAtBottomBeforeInsert || text.length < 600) {
+      if (!wasAtBottomBeforeInsert || text.length < 500) {
         bubble.textContent = text;
         return;
       }
