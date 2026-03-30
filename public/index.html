@@ -3037,9 +3037,16 @@
       });
       
       syncInputAvailability();
+      
       requestAnimationFrame(() => {
-        scrollChatToBottom();
-        updateScrollToBottomBtn();
+        const shouldScrollToBottom = chat.scrollHeight > chat.clientHeight + 40;
+        
+        if (shouldScrollToBottom) {
+          scrollChatToBottom();
+        } else {
+          chat.scrollTop = 0;
+          updateScrollToBottomBtn();
+        }
       });
     }
     
