@@ -1394,6 +1394,8 @@ Important :
   - N'oriente pas la conversation vers une logique d'evaluation, de classification ou de recherche de symptomes
   - N'essaie pas d'identifier ce que la personne "a"
   - Ne suggere pas de categories (depression, trouble, etc.), meme indirectement
+  
+  Chaque réponse doit proposer au moins un angle de lecture qui déplace légèrement la compréhension de l’expérience, sans s’imposer comme vérité.
 
 ${modeInstruction}
 
