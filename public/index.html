@@ -2144,8 +2144,13 @@
       if (id === "chatScreen") {
         const chat = document.getElementById("chat");
         
+        const shouldScrollToBottom = () => {
+          if (!chat) return false;
+          return chat.scrollHeight > chat.clientHeight + 40;
+        };
+        
         const forceBottomNow = () => {
-          if (!chat) return;
+          if (!chat || !shouldScrollToBottom()) return;
           
           const previousScrollBehavior = chat.style.scrollBehavior;
           chat.style.scrollBehavior = "auto";
