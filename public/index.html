@@ -4061,8 +4061,11 @@
     const inputEl = document.getElementById("input");
     if (inputEl) {
       const inputShellEl = document.getElementById("inputShell");
+      const inputAreaEl = document.getElementById("inputArea");
       const inputAreaInnerEl = document.getElementById("inputAreaInner");
       const sendBtnEl = document.getElementById("sendBtn");
+      const chatElForKeyboard = document.getElementById("chat");
+      const visualViewportRef = window.visualViewport || null;
       
       function getInputMaxHeightPx() {
         const computed = window.getComputedStyle(inputEl);
@@ -4085,7 +4088,32 @@
         if (!editBarEl || !inputAreaInnerEl) return;
         
         const composerHeight = inputAreaInnerEl.offsetHeight || 0;
-        editBarEl.style.bottom = (composerHeight + 10) + "px";
+        const inputAreaBottom = parseFloat(window.getComputedStyle(inputAreaEl).bottom) || 0;
+        editBarEl.style.bottom = (composerHeight + inputAreaBottom + 10) + "px";
+      }
+      
+      function syncKeyboardOffset() {
+        if (!inputAreaEl) return;
+        
+        let keyboardOffset = 0;
+        
+        if (visualViewportRef) {
+          const viewportBottom = visualViewportRef.offsetTop + visualViewportRef.height;
+          keyboardOffset = Math.max(0, window.innerHeight - viewportBottom);
+        }
+        
+        inputAreaEl.style.bottom = `calc(${18 + keyboardOffset}px + env(safe-area-inset-bottom, 0px))`;
+        syncEditModeBarPosition();
+      }
+      
+      function ensureChatVisibleAboveKeyboard() {
+        if (!chatElForKeyboard) return;
+        if (document.activeElement !== inputEl) return;
+        if (!isChatAtBottom()) return;
+        
+        requestAnimationFrame(() => {
+          scrollChatToBottom();
+        });
       }
       
       function syncComposerUi() {
@@ -4101,7 +4129,12 @@
         }
         
         resizeComposerInput();
-        syncEditModeBarPosition();
+        syncKeyboardOffset();
+      }
+      
+      function handleViewportChange() {
+        syncKeyboardOffset();
+        ensureChatVisibleAboveKeyboard();
       }
       
       const originalSend = send;
@@ -4161,16 +4194,27 @@
       inputEl.addEventListener("input", () => {
         updateActivity();
         syncComposerUi();
+        ensureChatVisibleAboveKeyboard();
       });
       
       inputEl.addEventListener("focus", () => {
         updateActivity();
         syncComposerUi();
+        setTimeout(handleViewportChange, 40);
+        setTimeout(handleViewportChange, 140);
+        setTimeout(handleViewportChange, 260);
       });
       
       inputEl.addEventListener("blur", () => {
         syncComposerUi();
+        setTimeout(handleViewportChange, 40);
+        setTimeout(handleViewportChange, 140);
       });
+      
+      if (visualViewportRef) {
+        visualViewportRef.addEventListener("resize", handleViewportChange);
+        visualViewportRef.addEventListener("scroll", handleViewportChange);
+      }
       
       requestAnimationFrame(syncComposerUi);
     }
