@@ -4106,7 +4106,7 @@
       }
       
       function syncKeyboardOffset() {
-        if (!inputAreaEl) return;
+        if (!inputAreaEl) return 0;
         
         let keyboardOffset = 0;
         
@@ -4118,21 +4118,36 @@
         inputAreaEl.style.bottom = `calc(${18 + keyboardOffset}px + env(safe-area-inset-bottom, 0px))`;
         syncEditModeBarPosition();
         syncChatBottomInset();
+        
+        return keyboardOffset;
       }
       
-      function ensureChatVisibleAboveKeyboard() {
+      function ensureChatVisibleAboveKeyboard(force = false) {
         if (!chatElForKeyboard) return;
         if (document.activeElement !== inputEl) return;
-        if (!isChatAtBottom()) return;
+        if (!force && !isChatAtBottom()) return;
         
-        requestAnimationFrame(() => {
-          scrollChatToBottom();
-        });
+        const applyBottomLock = () => {
+          const previousScrollBehavior = chatElForKeyboard.style.scrollBehavior;
+          chatElForKeyboard.style.scrollBehavior = "auto";
+          chatElForKeyboard.scrollTop = chatElForKeyboard.scrollHeight;
+          chatElForKeyboard.style.scrollBehavior = previousScrollBehavior || "";
+        };
+        
+        applyBottomLock();
+        requestAnimationFrame(applyBottomLock);
+        setTimeout(applyBottomLock, 0);
+        setTimeout(() => {
+          applyBottomLock();
+          updateScrollToBottomBtn();
+        }, 40);
       }
       
-      function syncComposerUi() {
+      function syncComposerUi(options = {}) {
+        const { keepBottom = false } = options;
         const hasText = inputEl.value.trim().length > 0;
         const isFocused = document.activeElement === inputEl;
+        const wasAtBottomBeforeLayout = isChatAtBottom();
         
         if (inputShellEl) {
           inputShellEl.classList.toggle("is-active", isFocused || hasText);
@@ -4144,11 +4159,20 @@
         
         resizeComposerInput();
         syncKeyboardOffset();
+        
+        if (keepBottom && wasAtBottomBeforeLayout) {
+          ensureChatVisibleAboveKeyboard(true);
+        }
       }
       
       function handleViewportChange() {
+        const wasAtBottomBeforeLayout = isChatAtBottom();
+        
         syncKeyboardOffset();
-        ensureChatVisibleAboveKeyboard();
+        
+        if (wasAtBottomBeforeLayout) {
+          ensureChatVisibleAboveKeyboard(true);
+        }
       }
       
       const originalSend = send;
