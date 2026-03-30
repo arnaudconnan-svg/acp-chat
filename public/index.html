@@ -313,32 +313,32 @@
       padding: calc(10px + env(safe-area-inset-top, 0px)) 18px 12px 18px;
       box-sizing: border-box;
       background: linear-gradient(to bottom,
-          rgba(255, 255, 255, 0.82) 0%,
-          rgba(255, 255, 255, 0.58) 38%,
-          rgba(255, 255, 255, 0.24) 72%,
-          rgba(255, 255, 255, 0.04) 100%);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+          #F8F8F6 0%,
+          #F8F8F6 34%,
+          rgba(248, 248, 246, 0.96) 48%,
+          rgba(248, 248, 246, 0.82) 62%,
+          rgba(248, 248, 246, 0.58) 76%,
+          rgba(248, 248, 246, 0.28) 88%,
+          rgba(248, 248, 246, 0.08) 96%,
+          rgba(248, 248, 246, 0) 100%);
       box-shadow: none;
       transition:
         background 0.25s ease,
         box-shadow 0.25s ease,
-        border-bottom-color 0.25s ease,
-        backdrop-filter 0.25s ease,
         opacity 0.25s ease;
       pointer-events: none;
     }
     
     #conversationsTopBar.is-elevated {
       background: linear-gradient(to bottom,
-          rgba(255, 255, 255, 0.9) 0%,
-          rgba(255, 255, 255, 0.7) 38%,
-          rgba(255, 255, 255, 0.34) 72%,
-          rgba(255, 255, 255, 0.08) 100%);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.24);
+          #F8F8F6 0%,
+          #F8F8F6 38%,
+          rgba(248, 248, 246, 0.97) 52%,
+          rgba(248, 248, 246, 0.86) 66%,
+          rgba(248, 248, 246, 0.64) 80%,
+          rgba(248, 248, 246, 0.34) 91%,
+          rgba(248, 248, 246, 0.1) 97%,
+          rgba(248, 248, 246, 0) 100%);
       box-shadow: 0 8px 22px rgba(36, 94, 102, 0.05);
     }
     
@@ -548,6 +548,7 @@
     /* ---------- CHAT ---------- */
     
     #chatScreen {
+      --chat-topbar-height: calc(58px + env(safe-area-inset-top, 0px));
       position: relative;
       flex-direction: column;
       min-height: 0;
@@ -568,7 +569,7 @@
     }
     
     #topBar {
-      position: sticky;
+      position: absolute;
       top: 0;
       left: 0;
       right: 0;
@@ -577,71 +578,37 @@
       align-items: center;
       justify-content: center;
       gap: 10px;
-      min-height: calc(58px + env(safe-area-inset-top, 0px));
-      padding:
-        calc(10px + env(safe-area-inset-top, 0px)) 18px 12px 18px;
+      height: var(--chat-topbar-height);
+      padding: env(safe-area-inset-top, 0px) 18px 0 18px;
       box-sizing: border-box;
-      background: rgba(255, 255, 255, 0.55);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.42);
-      transition: background 0.25s ease, box-shadow 0.25s ease;
+      background: linear-gradient(to bottom,
+          #F8F8F6 0%,
+          #F8F8F6 34%,
+          rgba(248, 248, 246, 0.96) 48%,
+          rgba(248, 248, 246, 0.82) 62%,
+          rgba(248, 248, 246, 0.58) 76%,
+          rgba(248, 248, 246, 0.28) 88%,
+          rgba(248, 248, 246, 0.08) 96%,
+          rgba(248, 248, 246, 0) 100%);
+      box-shadow: none;
+      transition:
+        background 0.25s ease,
+        box-shadow 0.25s ease,
+        opacity 0.25s ease;
+      pointer-events: none;
     }
     
     #topBar.is-elevated {
-      background: rgba(255, 255, 255, 0.75);
-      box-shadow: 0 2px 88px rgba(0, 0, 0, 0, 04);
-      border-bottom-color: rgba(215, 228, 230, 0.88);
-    }
-    
-    h2 {
-      text-align: center;
-      font-size: 19px;
-      font-weight: 600;
-      line-height: 1.2;
-      margin: 0;
-      color: #245e66;
-      letter-spacing: 0.01em;
-      flex: 0 1 auto;
-    }
-    
-    #menuBtn {
-      position: absolute;
-      left: 14px;
-      top: calc(50% + env(safe-area-inset-top, 0px) / 2);
-      transform: translateY(-50%);
-      width: 34px;
-      height: 34px;
-      padding: 0;
-      border: none;
-      border-radius: 999px;
-      background: rgba(255, 255, 255, 0.9);
-      color: #4b5563;
-      cursor: pointer;
-      display: none !important;
-      align-items: center;
-      justify-content: center;
-      box-shadow:
-        0 6px 18px rgba(36, 94, 102, 0.08),
-        0 1px 0 rgba(255, 255, 255, 0.45) inset;
-      -webkit-tap-highlight-color: transparent;
-    }
-    
-    #menuIcon {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 100%;
-      height: 100%;
-      line-height: 1;
-    }
-    
-    #menuText {
-      display: none;
-    }
-    
-    #newSessionWrap {
-      display: none;
+      background: linear-gradient(to bottom,
+          #F8F8F6 0%,
+          #F8F8F6 38%,
+          rgba(248, 248, 246, 0.97) 52%,
+          rgba(248, 248, 246, 0.86) 66%,
+          rgba(248, 248, 246, 0.64) 80%,
+          rgba(248, 248, 246, 0.34) 91%,
+          rgba(248, 248, 246, 0.1) 97%,
+          rgba(248, 248, 246, 0) 100%);
+      box-shadow: 0 8px 22px rgba(36, 94, 102, 0.05);
     }
     
     #chat {
@@ -651,8 +618,7 @@
       min-height: 0;
       overflow-y: auto;
       margin: 0;
-      padding:
-        calc(36px + env(safe-area-inset-top, 0px)) 16px calc(108px + env(safe-area-inset-bottom, 0px)) 16px;
+      padding: 12px 16px calc(108px + env(safe-area-inset-bottom, 0px)) 16px;
       box-sizing: border-box;
       -webkit-overflow-scrolling: touch;
       transition: opacity 0.18s ease;
@@ -2183,6 +2149,28 @@
       document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
       document.getElementById(id).classList.add("active");
       syncDebugVisibility();
+      
+      if (id === "conversationsScreen") {
+        renderConversationsList();
+        
+        requestAnimationFrame(() => {
+          const conversationsEl = document.getElementById("conversationsListWrap");
+          const conversationsTopBar = document.getElementById("conversationsTopBar");
+          
+          if (conversationsEl && conversationsTopBar) {
+            const scrollTop = conversationsEl.scrollTop;
+            const opacity = Math.min(1, scrollTop / 60);
+            
+            conversationsTopBar.style.backdropFilter = `blur(${4 + opacity * 6}px)`;
+            conversationsTopBar.style.webkitBackdropFilter = `blur(${4 + opacity * 6}px)`;
+            conversationsTopBar.style.opacity = String(0.88 + opacity * 0.12);
+          }
+          
+          updateScrollToBottomBtn();
+        });
+        
+        return;
+      }
       
       if (id === "chatScreen") {
         const chat = document.getElementById("chat");
