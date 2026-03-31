@@ -3286,6 +3286,28 @@
       }
     }
     
+    function handleExpiredSessionOnEntry() {
+      setSessionStatus("expired");
+      renderHistory();
+      openExpiredSessionModal();
+    }
+    
+    function enterChat() {
+      showScreen("chatScreen", { pushHistory: true });
+      updateActivity();
+      
+      if (isSessionExpired() && loadHistory().length > 0) {
+        handleExpiredSessionOnEntry();
+        return;
+      }
+      
+      if (loadSessionInfoDismissed()) {
+        startFreshOrResumeSession();
+      } else {
+        openSessionInfoModal();
+      }
+    }
+    
     function renderConversationsList() {
       const listEl = document.getElementById("conversationsList");
       const template = document.getElementById("conversationItemTemplate");
