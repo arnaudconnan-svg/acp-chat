@@ -2626,6 +2626,7 @@
       
       let index = 0;
       let interrupted = false;
+      let shouldKeepBottomLocked = true;
       const totalLength = text.length;
       
       const chunkSize =
@@ -2651,7 +2652,10 @@
       }
       
       function keepBottomLocked() {
+        const previousBehavior = chat.style.scrollBehavior;
+        chat.style.scrollBehavior = "auto";
         chat.scrollTop = chat.scrollHeight;
+        chat.style.scrollBehavior = previousBehavior || "";
       }
       
       function cleanup() {
@@ -2661,24 +2665,12 @@
         window.removeEventListener("keydown", onUserInterrupt);
       }
       
-      function revealInstantWithoutMovingViewport() {
-        const previousScrollTop = chat.scrollTop;
-        const previousScrollHeight = chat.scrollHeight;
-        
+      function revealInstant() {
         bubble.style.transition = "opacity 120ms ease";
         bubble.style.opacity = "0.6";
         bubble.textContent = text;
         
         requestAnimationFrame(() => {
-          const newScrollHeight = chat.scrollHeight;
-          const addedHeight = newScrollHeight - previousScrollHeight;
-          
-          chat.scrollTop = previousScrollTop;
-          
-          if (addedHeight > 0) {
-            chat.scrollTop = previousScrollTop;
-          }
-          
           bubble.style.opacity = "1";
           updateScrollToBottomBtn();
         });
@@ -2688,7 +2680,7 @@
         if (interrupted) return;
         interrupted = true;
         cleanup();
-        revealInstantWithoutMovingViewport();
+        revealInstant();
       }
       
       function step() {
@@ -2697,14 +2689,13 @@
         index += chunkSize;
         bubble.textContent = text.slice(0, index);
         
-        if (hasBubbleReachedReadingPosition()) {
-          interrupted = true;
-          cleanup();
-          revealInstantWithoutMovingViewport();
-          return;
+        if (shouldKeepBottomLocked) {
+          keepBottomLocked();
+          
+          if (hasBubbleReachedReadingPosition()) {
+            shouldKeepBottomLocked = false;
+          }
         }
-        
-        keepBottomLocked();
         
         if (index < totalLength) {
           requestAnimationFrame(step);
@@ -2714,7 +2705,6 @@
         cleanup();
         
         requestAnimationFrame(() => {
-          keepBottomLocked();
           updateScrollToBottomBtn();
         });
       }
@@ -2728,9 +2718,14 @@
         if (interrupted) return;
         
         requestAnimationFrame(() => {
-          if (!hasBubbleReachedReadingPosition()) {
+          if (shouldKeepBottomLocked) {
             keepBottomLocked();
+            
+            if (hasBubbleReachedReadingPosition()) {
+              shouldKeepBottomLocked = false;
+            }
           }
+          
           requestAnimationFrame(step);
         });
       }, 50);
