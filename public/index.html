@@ -9,6 +9,9 @@
   <meta name="theme-color" content="#ffffff">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="color-scheme" content="light">
+  <!-- Markdown parser et sanitizer -->
+<script src="https://cdn.jsdelivr.net/npm/markdown-it@13/dist/markdown-it.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.3/dist/purify.min.js"></script>
   
   <style>
     html,
@@ -2636,131 +2639,139 @@
       setTimeout(applyDefocus, 150);
     }
     
-    function renderBotMessageContent(bubble, text, options = {}) {
-      const {
-        progressive = true,
-          wasAtBottomBeforeInsert = false
-      } = options;
-      
-      const chat = document.getElementById("chat");
-      const topBar = document.getElementById("topBar");
-      
-      if (!chat) {
-        bubble.textContent = text;
-        return;
+    /**
+ * Rendu progressif + Markdown sécurisé pour les bulles bot.
+ * – On conserve toute la logique d’origine (scroll-lock, stop-line,
+ *   interruption utilisateur, reveal instant, etc.)
+ * – À la fin (ou en cas d’interruption) on remplace silencieusement
+ *   le texte brut par la version HTML issue de `safeMarkdownToHtml`.
+ */
+function renderBotMessageContent(bubble, text, options = {}) {
+  const {
+    progressive = true,
+      wasAtBottomBeforeInsert = false
+  } = options;
+  
+  const chat = document.getElementById("chat");
+  const topBar = document.getElementById("topBar");
+  
+  /* ---------- Cas simples : pas de rendu progressif ---------- */
+  if (!chat) {
+    bubble.innerHTML = safeMarkdownToHtml(text);
+    fixLinks(bubble);
+    return;
+  }
+  
+  if (!progressive || !wasAtBottomBeforeInsert || text.length < 500) {
+    bubble.innerHTML = safeMarkdownToHtml(text);
+    fixLinks(bubble);
+    return;
+  }
+  
+  /* ---------- Rendu progressif ---------- */
+  let index = 0;
+  let interrupted = false;
+  let shouldKeepBottomLocked = true;
+  const totalLength = text.length;
+  
+  const chunkSize =
+    totalLength < 400 ? 2 :
+    totalLength < 800 ? 3 :
+    totalLength < 1400 ? 4 : 5;
+  
+  const wheelListenerOpts = { passive: true };
+  
+  function getStopLineY() {
+    if (!topBar) return null;
+    const { bottom } = topBar.getBoundingClientRect();
+    return bottom; // + safetyGap si besoin
+  }
+  
+  function hasBubbleReachedReadingPosition() {
+    const stopLineY = getStopLineY();
+    if (stopLineY === null) return false;
+    return bubble.getBoundingClientRect().top <= stopLineY;
+  }
+  
+  function keepBottomLocked() {
+    const prev = chat.style.scrollBehavior;
+    chat.style.scrollBehavior = "auto";
+    chat.scrollTop = chat.scrollHeight;
+    chat.style.scrollBehavior = prev || "";
+  }
+  
+  function cleanupListeners() {
+    window.removeEventListener("touchstart", onInterrupt);
+    window.removeEventListener("wheel", onInterrupt, wheelListenerOpts);
+    window.removeEventListener("mousedown", onInterrupt);
+    window.removeEventListener("keydown", onInterrupt);
+  }
+  
+  function revealInstant() {
+    bubble.style.transition = "opacity 120ms ease";
+    bubble.style.opacity = "0.6";
+    bubble.innerHTML = safeMarkdownToHtml(text);
+    fixLinks(bubble);
+    requestAnimationFrame(() => {
+      bubble.style.opacity = "1";
+      updateScrollToBottomBtn();
+    });
+  }
+  
+  function onInterrupt() {
+    if (interrupted) return;
+    interrupted = true;
+    cleanupListeners();
+    revealInstant();
+  }
+  
+  function step() {
+    if (interrupted) return; // déjà révélé
+    
+    index += chunkSize;
+    bubble.textContent = text.slice(0, index);
+    
+    if (shouldKeepBottomLocked) {
+      keepBottomLocked();
+      if (hasBubbleReachedReadingPosition()) {
+        shouldKeepBottomLocked = false;
       }
-      
-      if (!progressive || !wasAtBottomBeforeInsert || text.length < 500) {
-        bubble.textContent = text;
-        return;
-      }
-      
-      let index = 0;
-      let interrupted = false;
-      let shouldKeepBottomLocked = true;
-      const totalLength = text.length;
-      
-      const chunkSize =
-        totalLength < 400 ? 2 :
-        totalLength < 800 ? 3 :
-        totalLength < 1400 ? 4 : 5;
-      
-      const wheelListenerOptions = { passive: true };
-      
-      function getStopLineY() {
-        if (!topBar) return null;
-        const topBarRect = topBar.getBoundingClientRect();
-        const safetyGap = 0;
-        return topBarRect.bottom + safetyGap;
-      }
-      
-      function hasBubbleReachedReadingPosition() {
-        const stopLineY = getStopLineY();
-        if (stopLineY === null) return false;
-        
-        const bubbleRect = bubble.getBoundingClientRect();
-        return bubbleRect.top <= stopLineY;
-      }
-      
-      function keepBottomLocked() {
-        const previousBehavior = chat.style.scrollBehavior;
-        chat.style.scrollBehavior = "auto";
-        chat.scrollTop = chat.scrollHeight;
-        chat.style.scrollBehavior = previousBehavior || "";
-      }
-      
-      function cleanup() {
-        window.removeEventListener("touchstart", onUserInterrupt);
-        window.removeEventListener("wheel", onUserInterrupt, wheelListenerOptions);
-        window.removeEventListener("mousedown", onUserInterrupt);
-        window.removeEventListener("keydown", onUserInterrupt);
-      }
-      
-      function revealInstant() {
-        bubble.style.transition = "opacity 120ms ease";
-        bubble.style.opacity = "0.6";
-        bubble.textContent = text;
-        
-        requestAnimationFrame(() => {
-          bubble.style.opacity = "1";
-          updateScrollToBottomBtn();
-        });
-      }
-      
-      function onUserInterrupt() {
-        if (interrupted) return;
-        interrupted = true;
-        cleanup();
-        revealInstant();
-      }
-      
-      function step() {
-        if (interrupted) return;
-        
-        index += chunkSize;
-        bubble.textContent = text.slice(0, index);
-        
-        if (shouldKeepBottomLocked) {
-          keepBottomLocked();
-          
-          if (hasBubbleReachedReadingPosition()) {
-            shouldKeepBottomLocked = false;
-          }
-        }
-        
-        if (index < totalLength) {
-          requestAnimationFrame(step);
-          return;
-        }
-        
-        cleanup();
-        
-        requestAnimationFrame(() => {
-          updateScrollToBottomBtn();
-        });
-      }
-      
-      window.addEventListener("touchstart", onUserInterrupt);
-      window.addEventListener("wheel", onUserInterrupt, wheelListenerOptions);
-      window.addEventListener("mousedown", onUserInterrupt);
-      window.addEventListener("keydown", onUserInterrupt);
-      
-      setTimeout(() => {
-        if (interrupted) return;
-        
-        requestAnimationFrame(() => {
-          if (shouldKeepBottomLocked) {
-            keepBottomLocked();
-            
-            if (hasBubbleReachedReadingPosition()) {
-              shouldKeepBottomLocked = false;
-            }
-          }
-          
-          requestAnimationFrame(step);
-        });
-      }, 50);
     }
+    
+    if (index < totalLength) {
+      requestAnimationFrame(step);
+      return;
+    }
+    
+    // Fin du rendu progressif
+    cleanupListeners();
+    bubble.innerHTML = safeMarkdownToHtml(text);
+    fixLinks(bubble);
+    
+    requestAnimationFrame(updateScrollToBottomBtn);
+  }
+  
+  // Écouteurs pour interrompre le rendu progressif
+  window.addEventListener("touchstart", onInterrupt);
+  window.addEventListener("wheel", onInterrupt, wheelListenerOpts);
+  window.addEventListener("mousedown", onInterrupt);
+  window.addEventListener("keydown", onInterrupt);
+  
+  // Petit délai pour laisser la bulle s’insérer dans le DOM
+  setTimeout(() => {
+    if (interrupted) return;
+    
+    requestAnimationFrame(() => {
+      if (shouldKeepBottomLocked) {
+        keepBottomLocked();
+        if (hasBubbleReachedReadingPosition()) {
+          shouldKeepBottomLocked = false;
+        }
+      }
+      requestAnimationFrame(step);
+    });
+  }, 50);
+}
     
     function showTemporaryNotice(message) {
       let notice = document.getElementById("chatTemporaryNotice");
@@ -2936,6 +2947,58 @@
       }
       return -1;
     }
+    
+    /* ---------- MARKDOWN SAFE RENDER ---------- */
+
+/**
+ * Retourne l’instance (singleton) du parser markdown-it
+ * avec les règles non autorisées désactivées.
+ */
+function getMd() {
+  if (window.__md) return window.__md;
+  
+  // autorise gras, italique, titres, listes, citations, hr, liens
+  const md = window.markdownit({
+      html: false, // pas de HTML brut
+      breaks: true, // \n => <br>
+      linkify: true // auto-link
+    })
+    // désactive code & html
+    .disable(['code', 'fence', 'html_inline', 'html_block']);
+  
+  window.__md = md;
+  return md;
+}
+
+/**
+ * Convertit du Markdown « intermédiaire » en HTML puis
+ * passe le résultat dans DOMPurify :
+ *   – seules les balises whitelistées subsistent
+ *   – tous les attributs sont filtrés sauf href des <a>
+ */
+function safeMarkdownToHtml(rawText = '') {
+  const dirty = getMd().render(String(rawText));
+  
+  return DOMPurify.sanitize(dirty, {
+    ALLOWED_TAGS: [
+      'p', 'br', 'strong', 'b', 'em', 'i',
+      'ul', 'ol', 'li', 'blockquote', 'hr',
+      'h1', 'h2', 'h3', 'h4', 'a'
+    ],
+    ALLOWED_ATTR: { 'a': ['href'] }
+  });
+}
+
+/**
+ * Transforme les liens pour qu’ils s’ouvrent
+ * dans le navigateur externe.
+ */
+function fixLinks(containerEl) {
+  containerEl.querySelectorAll('a').forEach(a => {
+    a.setAttribute('target', '_blank');
+    a.setAttribute('rel', 'noopener');
+  });
+}
     
     function addMessage(role, text, debug, options = {}) {
       const {
