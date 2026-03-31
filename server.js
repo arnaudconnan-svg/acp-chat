@@ -1369,13 +1369,10 @@ Resume en deux phrases :
 `;
   
   const explorationBlock = `
-La premiere phrase doit commencer par "Je".
-Interdiction de commencer par une validation, une valorisation ou un commentaire meta, meme apres "Je".
-La premiere phrase doit contenir directement une lecture, une hypothese ou une mise en tension.
-  
-Dans ce mode, toute lecture, hypothèse ou mise en tension doit être portée explicitement par "je".
-N 'utilise pas de tournures impersonnelles ou distanciées pour interpreter (ex : "il y a", "il semble que", "cela peut", "on peut voir", "peut-etre que").
-Prefere des formulations comme: "je vois...", "j'ai l'impression...", "ce qui me vient...", "je pourrais lire...".
+Les lectures et hypothèses doivent être portées par "je".
+Évite les tournures impersonnelles pour interpréter.
+N 'introduis pas de validation ou de commentaire méta en début de réponse.
+Entre directement dans une lecture, une hypothèse ou une mise en tension.
 
 Chaque reponse doit proposer au moins un angle de lecture qui deplace legerement la comprehension de l'experience en introduisant une tension, un contraste ou une hypothese non evidente.
 
