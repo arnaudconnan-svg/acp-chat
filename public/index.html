@@ -2681,20 +2681,27 @@
       const chat = document.getElementById("chat");
       const topBar = document.getElementById("topBar");
       
-      /* ---------- Cas simples : pas de rendu progressif ---------- */
-      if (!chat) {
+      function renderFinalHtml() {
+        bubble.style.whiteSpace = "normal";
         bubble.innerHTML = safeMarkdownToHtml(text);
         fixLinks(bubble);
+      }
+      
+      function renderProgressiveText(slice) {
+        bubble.style.whiteSpace = "pre-wrap";
+        bubble.textContent = slice;
+      }
+      
+      if (!chat) {
+        renderFinalHtml();
         return;
       }
       
       if (!progressive || !wasAtBottomBeforeInsert || text.length < 500) {
-        bubble.innerHTML = safeMarkdownToHtml(text);
-        fixLinks(bubble);
+        renderFinalHtml();
         return;
       }
       
-      /* ---------- Rendu progressif ---------- */
       let index = 0;
       let interrupted = false;
       let shouldKeepBottomLocked = true;
@@ -2710,7 +2717,7 @@
       function getStopLineY() {
         if (!topBar) return null;
         const { bottom } = topBar.getBoundingClientRect();
-        return bottom; // + safetyGap si besoin
+        return bottom;
       }
       
       function hasBubbleReachedReadingPosition() {
@@ -2736,8 +2743,8 @@
       function revealInstant() {
         bubble.style.transition = "opacity 120ms ease";
         bubble.style.opacity = "0.6";
-        bubble.innerHTML = safeMarkdownToHtml(text);
-        fixLinks(bubble);
+        renderFinalHtml();
+        
         requestAnimationFrame(() => {
           bubble.style.opacity = "1";
           updateScrollToBottomBtn();
@@ -2752,13 +2759,14 @@
       }
       
       function step() {
-        if (interrupted) return; // déjà révélé
+        if (interrupted) return;
         
         index += chunkSize;
-        bubble.textContent = text.slice(0, index);
+        renderProgressiveText(text.slice(0, index));
         
         if (shouldKeepBottomLocked) {
           keepBottomLocked();
+          
           if (hasBubbleReachedReadingPosition()) {
             shouldKeepBottomLocked = false;
           }
@@ -2769,31 +2777,31 @@
           return;
         }
         
-        // Fin du rendu progressif
         cleanupListeners();
-        bubble.innerHTML = safeMarkdownToHtml(text);
-        fixLinks(bubble);
+        renderFinalHtml();
         
-        requestAnimationFrame(updateScrollToBottomBtn);
+        requestAnimationFrame(() => {
+          updateScrollToBottomBtn();
+        });
       }
       
-      // Écouteurs pour interrompre le rendu progressif
       window.addEventListener("touchstart", onInterrupt);
       window.addEventListener("wheel", onInterrupt, wheelListenerOpts);
       window.addEventListener("mousedown", onInterrupt);
       window.addEventListener("keydown", onInterrupt);
       
-      // Petit délai pour laisser la bulle s’insérer dans le DOM
       setTimeout(() => {
         if (interrupted) return;
         
         requestAnimationFrame(() => {
           if (shouldKeepBottomLocked) {
             keepBottomLocked();
+            
             if (hasBubbleReachedReadingPosition()) {
               shouldKeepBottomLocked = false;
             }
           }
+          
           requestAnimationFrame(step);
         });
       }, 50);
