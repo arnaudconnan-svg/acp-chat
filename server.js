@@ -1369,9 +1369,9 @@ Resume en deux phrases :
 `;
   
   const explorationBlock = `
-Parle exclusivement depuis ta propre perspective.
-Utilise "je" pour porter l'ensemble de ton discours.
-Interdiction d'utiliser des tournures impersonnelles ou distanciées ("il y a", "il semble que", "cela peut", "on peut", etc.).
+Chaque phrase doit etre formulee a la premiere personne ("je").
+Toute phrase sans "je" est incorrecte et doit etre reformulee.
+Interdiction d'utiliser des tournures impersonnelles ou distanciées.
 
 N'introduis pas de validation ou de commentaire méta en début de réponse.
 Entre directement dans une lecture, une hypothèse ou une mise en tension.
