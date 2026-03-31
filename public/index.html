@@ -2052,8 +2052,9 @@
       );
       
       /* Ne crée (ou ne met à jour) l’entrée d’index
-         que si la conversation contient au moins un message */
-      if (safeData.messages.length > 0) {
+   que si AU MOINS un message utilisateur existe. */
+      const hasUserMsg = safeData.messages.some(m => m && m.role === "user");
+      if (hasUserMsg) {
         upsertConversationIndexItem({
           id: conversationId,
           updatedAt: safeData.updatedAt
