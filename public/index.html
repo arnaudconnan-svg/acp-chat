@@ -4136,7 +4136,8 @@
         
         const composerHeight = inputAreaInnerEl.offsetHeight || 0;
         const inputAreaBottom = parseFloat(window.getComputedStyle(inputAreaEl).bottom) || 0;
-        const extraBottomInset = composerHeight + inputAreaBottom + 18;
+        const safeBottom = 18;
+        const extraBottomInset = composerHeight + inputAreaBottom + safeBottom;
         
         chatElForKeyboard.style.paddingBottom =
           `calc(${extraBottomInset}px + env(safe-area-inset-bottom, 0px))`;
@@ -4170,7 +4171,7 @@
       
       function ensureChatVisibleAboveKeyboard(force = false) {
         if (!chatElForKeyboard) return;
-        if (document.activeElement !== inputEl) return;
+        if (document.activeElement !== inputEl && !force) return;
         if (!force && !isChatAtBottom()) return;
         
         const applyBottomLock = () => {
@@ -4194,6 +4195,8 @@
         const hasText = inputEl.value.trim().length > 0;
         const isFocused = document.activeElement === inputEl;
         const wasAtBottomBeforeLayout = isChatAtBottom();
+        const chatScreenEl = document.getElementById("chatScreen");
+        const isChatActive = chatScreenEl && chatScreenEl.classList.contains("active");
         
         if (inputShellEl) {
           inputShellEl.classList.toggle("is-active", isFocused || hasText);
@@ -4206,7 +4209,7 @@
         resizeComposerInput();
         syncKeyboardOffset();
         
-        if (keepBottom && wasAtBottomBeforeLayout) {
+        if (isChatActive && (keepBottom || wasAtBottomBeforeLayout)) {
           ensureChatVisibleAboveKeyboard(true);
         }
       }
