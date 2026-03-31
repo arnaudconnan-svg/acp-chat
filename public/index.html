@@ -3245,50 +3245,44 @@
       });
     }
     
-    function startFreshSession() {
-      setSessionStatus("active");
-      saveFlags({});
-      updateActivity();
-      
-      let conversationId = getConversationId();
-      
-      if (!conversationId) {
-        conversationId = createConversationId();
-      }
-      
-      const history = loadHistory();
-      
-      if (history.length === 0) {
-        pushHistory("assistant", "Bienvenue dans cette nouvelle session. Que veux-tu explorer aujourd'hui ?", []);
-      }
-      
-      closeEditMode({ restoreDraft: false });
-      renderHistory();
-      
-      const input = document.getElementById("input");
-      input.value = "";
-      defocusInput();
-    }
-    
-    function handleExpiredSessionOnEntry() {
-      setSessionStatus("expired");
-      renderHistory();
-      openExpiredSessionModal();
-    }
-    
-    function enterChat() {
+    function startFreshOrResumeSession() {
+      closeSessionInfoModal();
       showScreen("chatScreen", { pushHistory: true });
       updateActivity();
       
-      if (isSessionExpired() && loadHistory().length > 0) {
-        handleExpiredSessionOnEntry();
-        return;
-      }
+      const history = loadHistory();
       
-      if (loadSessionInfoDismissed()) {
-        startFreshOrResumeSession();
+      if (history.length > 0) {
+        setSessionStatus("active");
+        closeEditMode({ restoreDraft: false });
+        renderHistory();
+        
+        const chat = document.getElementById("chat");
+        
+        function forceStableBottom() {
+          if (!chat) return;
+          
+          const previousBehavior = chat.style.scrollBehavior;
+          chat.style.scrollBehavior = "auto";
+          chat.scrollTop = chat.scrollHeight;
+          chat.style.scrollBehavior = previousBehavior || "";
+          
+          if (typeof updateScrollToBottomBtn === "function") {
+            updateScrollToBottomBtn();
+          }
+        }
+        
+        requestAnimationFrame(forceStableBottom);
+        requestAnimationFrame(() => {
+          requestAnimationFrame(forceStableBottom);
+        });
+        setTimeout(forceStableBottom, 60);
+        setTimeout(forceStableBottom, 180);
+        setTimeout(forceStableBottom, 320);
+        
+        defocusInput();
       } else {
-        openSessionInfoModal();
+        startFreshSession();
       }
     }
     
