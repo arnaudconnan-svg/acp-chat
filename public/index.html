@@ -2725,10 +2725,12 @@
       
       const wheelListenerOpts = { passive: true };
       
+      const EXTRA_MARGIN = 12; // px de marge souhaitée
+      
       function getStopLineY() {
         if (!topBar) return null;
         const { bottom } = topBar.getBoundingClientRect();
-        return bottom;
+        return bottom + EXTRA_MARGIN; // décale la ligne d’arrêt
       }
       
       function hasBubbleReachedReadingPosition() {
