@@ -1481,7 +1481,7 @@ async function generateReply({
   
   const r = await client.chat.completions.create({
     model: "gpt-4o",
-    temperature: 1.0,
+    temperature: 0.8,
     max_tokens: 500,
     messages
   });
