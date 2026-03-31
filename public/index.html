@@ -2612,8 +2612,7 @@
       } = options;
       
       const chat = document.getElementById("chat");
-      const inputArea = document.getElementById("inputArea");
-      const chatScreen = document.getElementById("chatScreen");
+      const topBar = document.getElementById("topBar");
       
       if (!chat) {
         bubble.textContent = text;
@@ -2637,20 +2636,18 @@
       const wheelListenerOptions = { passive: true };
       
       function getStopLineY() {
-        if (!chatScreen || !inputArea) return null;
-        
-        const inputRect = inputArea.getBoundingClientRect();
-        const safetyGap = 20;
-        
-        return inputRect.top - safetyGap;
+        if (!topBar) return null;
+        const topBarRect = topBar.getBoundingClientRect();
+        const safetyGap = 10;
+        return topBarRect.bottom + safetyGap;
       }
       
-      function isBubbleNearInput() {
+      function hasBubbleReachedReadingPosition() {
         const stopLineY = getStopLineY();
         if (stopLineY === null) return false;
         
         const bubbleRect = bubble.getBoundingClientRect();
-        return bubbleRect.bottom >= stopLineY;
+        return bubbleRect.top <= stopLineY;
       }
       
       function keepBottomLocked() {
@@ -2677,6 +2674,7 @@
           const addedHeight = newScrollHeight - previousScrollHeight;
           
           chat.scrollTop = previousScrollTop;
+          
           if (addedHeight > 0) {
             chat.scrollTop = previousScrollTop;
           }
@@ -2699,7 +2697,7 @@
         index += chunkSize;
         bubble.textContent = text.slice(0, index);
         
-        if (isBubbleNearInput()) {
+        if (hasBubbleReachedReadingPosition()) {
           interrupted = true;
           cleanup();
           revealInstantWithoutMovingViewport();
@@ -2730,7 +2728,7 @@
         if (interrupted) return;
         
         requestAnimationFrame(() => {
-          if (!isBubbleNearInput()) {
+          if (!hasBubbleReachedReadingPosition()) {
             keepBottomLocked();
           }
           requestAnimationFrame(step);
