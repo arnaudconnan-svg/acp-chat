@@ -2636,22 +2636,21 @@
       
       const wheelListenerOptions = { passive: true };
       
-      function getReadingStopLine() {
+      function getStopLineY() {
         if (!chatScreen || !inputArea) return null;
         
-        const chatScreenRect = chatScreen.getBoundingClientRect();
-        const inputAreaRect = inputArea.getBoundingClientRect();
+        const inputRect = inputArea.getBoundingClientRect();
         const safetyGap = 20;
         
-        return Math.max(chatScreenRect.top, inputAreaRect.top - safetyGap);
+        return inputRect.top - safetyGap;
       }
       
-      function isBubbleBottomNearInput() {
-        const stopLine = getReadingStopLine();
-        if (stopLine === null) return false;
+      function isBubbleNearInput() {
+        const stopLineY = getStopLineY();
+        if (stopLineY === null) return false;
         
         const bubbleRect = bubble.getBoundingClientRect();
-        return bubbleRect.bottom >= stopLine;
+        return bubbleRect.bottom >= stopLineY;
       }
       
       function keepBottomLocked() {
@@ -2665,15 +2664,23 @@
         window.removeEventListener("keydown", onUserInterrupt);
       }
       
-      function completeFast(lockBottom = false) {
+      function revealInstantWithoutMovingViewport() {
+        const previousScrollTop = chat.scrollTop;
+        const previousScrollHeight = chat.scrollHeight;
+        
         bubble.style.transition = "opacity 120ms ease";
         bubble.style.opacity = "0.6";
         bubble.textContent = text;
         
         requestAnimationFrame(() => {
-          if (lockBottom) {
-            keepBottomLocked();
+          const newScrollHeight = chat.scrollHeight;
+          const addedHeight = newScrollHeight - previousScrollHeight;
+          
+          chat.scrollTop = previousScrollTop;
+          if (addedHeight > 0) {
+            chat.scrollTop = previousScrollTop;
           }
+          
           bubble.style.opacity = "1";
           updateScrollToBottomBtn();
         });
@@ -2683,7 +2690,7 @@
         if (interrupted) return;
         interrupted = true;
         cleanup();
-        completeFast(false);
+        revealInstantWithoutMovingViewport();
       }
       
       function step() {
@@ -2692,18 +2699,16 @@
         index += chunkSize;
         bubble.textContent = text.slice(0, index);
         
-        if (!isBubbleBottomNearInput()) {
-          keepBottomLocked();
+        if (isBubbleNearInput()) {
+          interrupted = true;
+          cleanup();
+          revealInstantWithoutMovingViewport();
+          return;
         }
         
+        keepBottomLocked();
+        
         if (index < totalLength) {
-          if (isBubbleBottomNearInput()) {
-            interrupted = true;
-            cleanup();
-            completeFast(false);
-            return;
-          }
-          
           requestAnimationFrame(step);
           return;
         }
@@ -2711,9 +2716,7 @@
         cleanup();
         
         requestAnimationFrame(() => {
-          if (!isBubbleBottomNearInput()) {
-            keepBottomLocked();
-          }
+          keepBottomLocked();
           updateScrollToBottomBtn();
         });
       }
@@ -2727,7 +2730,7 @@
         if (interrupted) return;
         
         requestAnimationFrame(() => {
-          if (!isBubbleBottomNearInput()) {
+          if (!isBubbleNearInput()) {
             keepBottomLocked();
           }
           requestAnimationFrame(step);
