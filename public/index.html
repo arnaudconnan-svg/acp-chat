@@ -1125,8 +1125,12 @@
     }
     
     .modal.bottom-sheet {
-      align-items: flex-end;
-      padding: 12px 12px 0 12px;
+      display: none;
+      position: fixed;
+      inset: 0;
+      padding: 0;
+      align-items: stretch;
+      justify-content: flex-end;
     }
     
     .modalBox {
@@ -1140,7 +1144,12 @@
     }
     
     .modal.bottom-sheet .modalBox {
-      width: min(640px, 100vw);
+      position: absolute;
+      left: 12px;
+      right: 12px;
+      bottom: 0;
+      width: auto;
+      margin: 0;
       border-radius: 20px 20px 0 0;
       padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
       max-height: 100dvh;
