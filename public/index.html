@@ -10,8 +10,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="color-scheme" content="light">
   <!-- Markdown parser et sanitizer -->
-<script src="https://cdn.jsdelivr.net/npm/markdown-it@13/dist/markdown-it.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.3/dist/purify.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/markdown-it@13/dist/markdown-it.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.3/dist/purify.min.js"></script>
   
   <style>
     html,
@@ -927,6 +927,11 @@
     
     .bot .bubble::-moz-selection {
       background: transparent;
+    }
+    
+    .bot .bubble a {
+      color: #245e66;
+      text-decoration: underline;
     }
     
     @keyframes userMessageIn {
@@ -2640,138 +2645,138 @@
     }
     
     /**
- * Rendu progressif + Markdown sécurisé pour les bulles bot.
- * – On conserve toute la logique d’origine (scroll-lock, stop-line,
- *   interruption utilisateur, reveal instant, etc.)
- * – À la fin (ou en cas d’interruption) on remplace silencieusement
- *   le texte brut par la version HTML issue de `safeMarkdownToHtml`.
- */
-function renderBotMessageContent(bubble, text, options = {}) {
-  const {
-    progressive = true,
-      wasAtBottomBeforeInsert = false
-  } = options;
-  
-  const chat = document.getElementById("chat");
-  const topBar = document.getElementById("topBar");
-  
-  /* ---------- Cas simples : pas de rendu progressif ---------- */
-  if (!chat) {
-    bubble.innerHTML = safeMarkdownToHtml(text);
-    fixLinks(bubble);
-    return;
-  }
-  
-  if (!progressive || !wasAtBottomBeforeInsert || text.length < 500) {
-    bubble.innerHTML = safeMarkdownToHtml(text);
-    fixLinks(bubble);
-    return;
-  }
-  
-  /* ---------- Rendu progressif ---------- */
-  let index = 0;
-  let interrupted = false;
-  let shouldKeepBottomLocked = true;
-  const totalLength = text.length;
-  
-  const chunkSize =
-    totalLength < 400 ? 2 :
-    totalLength < 800 ? 3 :
-    totalLength < 1400 ? 4 : 5;
-  
-  const wheelListenerOpts = { passive: true };
-  
-  function getStopLineY() {
-    if (!topBar) return null;
-    const { bottom } = topBar.getBoundingClientRect();
-    return bottom; // + safetyGap si besoin
-  }
-  
-  function hasBubbleReachedReadingPosition() {
-    const stopLineY = getStopLineY();
-    if (stopLineY === null) return false;
-    return bubble.getBoundingClientRect().top <= stopLineY;
-  }
-  
-  function keepBottomLocked() {
-    const prev = chat.style.scrollBehavior;
-    chat.style.scrollBehavior = "auto";
-    chat.scrollTop = chat.scrollHeight;
-    chat.style.scrollBehavior = prev || "";
-  }
-  
-  function cleanupListeners() {
-    window.removeEventListener("touchstart", onInterrupt);
-    window.removeEventListener("wheel", onInterrupt, wheelListenerOpts);
-    window.removeEventListener("mousedown", onInterrupt);
-    window.removeEventListener("keydown", onInterrupt);
-  }
-  
-  function revealInstant() {
-    bubble.style.transition = "opacity 120ms ease";
-    bubble.style.opacity = "0.6";
-    bubble.innerHTML = safeMarkdownToHtml(text);
-    fixLinks(bubble);
-    requestAnimationFrame(() => {
-      bubble.style.opacity = "1";
-      updateScrollToBottomBtn();
-    });
-  }
-  
-  function onInterrupt() {
-    if (interrupted) return;
-    interrupted = true;
-    cleanupListeners();
-    revealInstant();
-  }
-  
-  function step() {
-    if (interrupted) return; // déjà révélé
-    
-    index += chunkSize;
-    bubble.textContent = text.slice(0, index);
-    
-    if (shouldKeepBottomLocked) {
-      keepBottomLocked();
-      if (hasBubbleReachedReadingPosition()) {
-        shouldKeepBottomLocked = false;
+     * Rendu progressif + Markdown sécurisé pour les bulles bot.
+     * – On conserve toute la logique d’origine (scroll-lock, stop-line,
+     *   interruption utilisateur, reveal instant, etc.)
+     * – À la fin (ou en cas d’interruption) on remplace silencieusement
+     *   le texte brut par la version HTML issue de `safeMarkdownToHtml`.
+     */
+    function renderBotMessageContent(bubble, text, options = {}) {
+      const {
+        progressive = true,
+          wasAtBottomBeforeInsert = false
+      } = options;
+      
+      const chat = document.getElementById("chat");
+      const topBar = document.getElementById("topBar");
+      
+      /* ---------- Cas simples : pas de rendu progressif ---------- */
+      if (!chat) {
+        bubble.innerHTML = safeMarkdownToHtml(text);
+        fixLinks(bubble);
+        return;
       }
-    }
-    
-    if (index < totalLength) {
-      requestAnimationFrame(step);
-      return;
-    }
-    
-    // Fin du rendu progressif
-    cleanupListeners();
-    bubble.innerHTML = safeMarkdownToHtml(text);
-    fixLinks(bubble);
-    
-    requestAnimationFrame(updateScrollToBottomBtn);
-  }
-  
-  // Écouteurs pour interrompre le rendu progressif
-  window.addEventListener("touchstart", onInterrupt);
-  window.addEventListener("wheel", onInterrupt, wheelListenerOpts);
-  window.addEventListener("mousedown", onInterrupt);
-  window.addEventListener("keydown", onInterrupt);
-  
-  // Petit délai pour laisser la bulle s’insérer dans le DOM
-  setTimeout(() => {
-    if (interrupted) return;
-    
-    requestAnimationFrame(() => {
-      if (shouldKeepBottomLocked) {
-        keepBottomLocked();
-        if (hasBubbleReachedReadingPosition()) {
-          shouldKeepBottomLocked = false;
+      
+      if (!progressive || !wasAtBottomBeforeInsert || text.length < 500) {
+        bubble.innerHTML = safeMarkdownToHtml(text);
+        fixLinks(bubble);
+        return;
+      }
+      
+      /* ---------- Rendu progressif ---------- */
+      let index = 0;
+      let interrupted = false;
+      let shouldKeepBottomLocked = true;
+      const totalLength = text.length;
+      
+      const chunkSize =
+        totalLength < 400 ? 2 :
+        totalLength < 800 ? 3 :
+        totalLength < 1400 ? 4 : 5;
+      
+      const wheelListenerOpts = { passive: true };
+      
+      function getStopLineY() {
+        if (!topBar) return null;
+        const { bottom } = topBar.getBoundingClientRect();
+        return bottom; // + safetyGap si besoin
+      }
+      
+      function hasBubbleReachedReadingPosition() {
+        const stopLineY = getStopLineY();
+        if (stopLineY === null) return false;
+        return bubble.getBoundingClientRect().top <= stopLineY;
+      }
+      
+      function keepBottomLocked() {
+        const prev = chat.style.scrollBehavior;
+        chat.style.scrollBehavior = "auto";
+        chat.scrollTop = chat.scrollHeight;
+        chat.style.scrollBehavior = prev || "";
+      }
+      
+      function cleanupListeners() {
+        window.removeEventListener("touchstart", onInterrupt);
+        window.removeEventListener("wheel", onInterrupt, wheelListenerOpts);
+        window.removeEventListener("mousedown", onInterrupt);
+        window.removeEventListener("keydown", onInterrupt);
+      }
+      
+      function revealInstant() {
+        bubble.style.transition = "opacity 120ms ease";
+        bubble.style.opacity = "0.6";
+        bubble.innerHTML = safeMarkdownToHtml(text);
+        fixLinks(bubble);
+        requestAnimationFrame(() => {
+          bubble.style.opacity = "1";
+          updateScrollToBottomBtn();
+        });
+      }
+      
+      function onInterrupt() {
+        if (interrupted) return;
+        interrupted = true;
+        cleanupListeners();
+        revealInstant();
+      }
+      
+      function step() {
+        if (interrupted) return; // déjà révélé
+        
+        index += chunkSize;
+        bubble.textContent = text.slice(0, index);
+        
+        if (shouldKeepBottomLocked) {
+          keepBottomLocked();
+          if (hasBubbleReachedReadingPosition()) {
+            shouldKeepBottomLocked = false;
+          }
         }
+        
+        if (index < totalLength) {
+          requestAnimationFrame(step);
+          return;
+        }
+        
+        // Fin du rendu progressif
+        cleanupListeners();
+        bubble.innerHTML = safeMarkdownToHtml(text);
+        fixLinks(bubble);
+        
+        requestAnimationFrame(updateScrollToBottomBtn);
       }
-      requestAnimationFrame(step);
-    });
-  }, 50);
-}
+      
+      // Écouteurs pour interrompre le rendu progressif
+      window.addEventListener("touchstart", onInterrupt);
+      window.addEventListener("wheel", onInterrupt, wheelListenerOpts);
+      window.addEventListener("mousedown", onInterrupt);
+      window.addEventListener("keydown", onInterrupt);
+      
+      // Petit délai pour laisser la bulle s’insérer dans le DOM
+      setTimeout(() => {
+        if (interrupted) return;
+        
+        requestAnimationFrame(() => {
+          if (shouldKeepBottomLocked) {
+            keepBottomLocked();
+            if (hasBubbleReachedReadingPosition()) {
+              shouldKeepBottomLocked = false;
+            }
+          }
+          requestAnimationFrame(step);
+        });
+      }, 50);
+    }
     
     function showTemporaryNotice(message) {
       let notice = document.getElementById("chatTemporaryNotice");
@@ -2949,56 +2954,56 @@ function renderBotMessageContent(bubble, text, options = {}) {
     }
     
     /* ---------- MARKDOWN SAFE RENDER ---------- */
-
-/**
- * Retourne l’instance (singleton) du parser markdown-it
- * avec les règles non autorisées désactivées.
- */
-function getMd() {
-  if (window.__md) return window.__md;
-  
-  // autorise gras, italique, titres, listes, citations, hr, liens
-  const md = window.markdownit({
-      html: false, // pas de HTML brut
-      breaks: true, // \n => <br>
-      linkify: true // auto-link
-    })
-    // désactive code & html
-    .disable(['code', 'fence', 'html_inline', 'html_block']);
-  
-  window.__md = md;
-  return md;
-}
-
-/**
- * Convertit du Markdown « intermédiaire » en HTML puis
- * passe le résultat dans DOMPurify :
- *   – seules les balises whitelistées subsistent
- *   – tous les attributs sont filtrés sauf href des <a>
- */
-function safeMarkdownToHtml(rawText = '') {
-  const dirty = getMd().render(String(rawText));
-  
-  return DOMPurify.sanitize(dirty, {
-    ALLOWED_TAGS: [
-      'p', 'br', 'strong', 'b', 'em', 'i',
-      'ul', 'ol', 'li', 'blockquote', 'hr',
-      'h1', 'h2', 'h3', 'h4', 'a'
-    ],
-    ALLOWED_ATTR: { 'a': ['href'] }
-  });
-}
-
-/**
- * Transforme les liens pour qu’ils s’ouvrent
- * dans le navigateur externe.
- */
-function fixLinks(containerEl) {
-  containerEl.querySelectorAll('a').forEach(a => {
-    a.setAttribute('target', '_blank');
-    a.setAttribute('rel', 'noopener');
-  });
-}
+    
+    /**
+     * Retourne l’instance (singleton) du parser markdown-it
+     * avec les règles non autorisées désactivées.
+     */
+    function getMd() {
+      if (window.__md) return window.__md;
+      
+      // autorise gras, italique, titres, listes, citations, hr, liens
+      const md = window.markdownit({
+          html: false, // pas de HTML brut
+          breaks: true, // \n => <br>
+          linkify: true // auto-link
+        })
+        // désactive code & html
+        .disable(['code', 'fence', 'html_inline', 'html_block']);
+      
+      window.__md = md;
+      return md;
+    }
+    
+    /**
+     * Convertit du Markdown « intermédiaire » en HTML puis
+     * passe le résultat dans DOMPurify :
+     *   – seules les balises whitelistées subsistent
+     *   – tous les attributs sont filtrés sauf href des <a>
+     */
+    function safeMarkdownToHtml(rawText = '') {
+      const dirty = getMd().render(String(rawText));
+      
+      return DOMPurify.sanitize(dirty, {
+        ALLOWED_TAGS: [
+          'p', 'br', 'strong', 'b', 'em', 'i',
+          'ul', 'ol', 'li', 'blockquote', 'hr',
+          'h1', 'h2', 'h3', 'h4', 'a'
+        ],
+        ALLOWED_ATTR: { 'a': ['href'] }
+      });
+    }
+    
+    /**
+     * Transforme les liens pour qu’ils s’ouvrent
+     * dans le navigateur externe.
+     */
+    function fixLinks(containerEl) {
+      containerEl.querySelectorAll('a').forEach(a => {
+        a.setAttribute('target', '_blank');
+        a.setAttribute('rel', 'noopener');
+      });
+    }
     
     function addMessage(role, text, debug, options = {}) {
       const {
@@ -3066,161 +3071,161 @@ function fixLinks(containerEl) {
       }
       
       const bubble = document.createElement("div");
-bubble.className = "bubble";
-
-bubble.style.padding = "13px 15px";
-bubble.style.borderRadius = "20px";
-bubble.style.lineHeight = "1.54";
-bubble.style.whiteSpace = "pre-wrap";
-bubble.style.wordBreak = "break-word";
-bubble.style.overflowWrap = "break-word";
-bubble.style.boxSizing = "border-box";
-bubble.style.transition = "transform 0.46s ease, opacity 0.46s ease, box-shadow 0.46s ease, background 0.46s ease";
-bubble.style.display = "block";
-
-if (role === "bot") {
-  bubble.style.background = "rgba(255, 255, 255, 0.62)";
-  bubble.style.color = "#3e5e62";
-  bubble.style.borderTopLeftRadius = "8px";
-  bubble.style.boxShadow = "0 10px 24px rgba(36, 94, 102, 0.05), 0 1px 0 rgba(255, 255, 255, 0.42) inset";
-  bubble.style.backdropFilter = "blur(8px)";
-  bubble.style.webkitBackdropFilter = "blur(8px)";
-  bubble.style.webkitTouchCallout = "none";
-  bubble.style.webkitUserSelect = "none";
-  bubble.style.userSelect = "none";
-  
-  bubble.addEventListener("contextmenu", event => {
-    event.preventDefault();
-  });
-  
-  bubble.addEventListener("selectstart", event => {
-    event.preventDefault();
-  });
-  
-  bubble.addEventListener("dragstart", event => {
-    event.preventDefault();
-  });
-  
-  renderBotMessageContent(bubble, text, {
-    progressive,
-    wasAtBottomBeforeInsert
-  });
-} else {
-  bubble.style.background = "rgba(36, 94, 102, 0.16)";
-  bubble.style.color = "#183f44";
-  bubble.style.borderTopRightRadius = "8px";
-  bubble.style.boxShadow = "0 10px 26px rgba(36, 94, 102, 0.08), 0 1px 0 rgba(255, 255, 255, 0.28) inset";
-  
-  bubble.textContent = text;
-  
-  let longPressTimer = null;
-  let longPressTriggered = false;
-  let startX = 0;
-  let startY = 0;
-  
-  bubble.style.webkitTouchCallout = "none";
-  bubble.style.webkitUserSelect = "none";
-  bubble.style.userSelect = "none";
-  
-  const clearLongPress = () => {
-    clearTimeout(longPressTimer);
-    longPressTimer = null;
-  };
-  
-  const triggerEditIntent = () => {
-    const history = loadHistory();
-    const lastUserHistoryIndex = getLastUserHistoryIndex(history);
-    
-    if (historyIndex !== lastUserHistoryIndex) {
-      msg.style.transition = "transform 0.14s ease";
-      msg.style.transform = "translateX(-3px)";
-      setTimeout(() => {
-        msg.style.transform = "translateX(3px)";
-        setTimeout(() => {
-          msg.style.transform = "";
-        }, 70);
-      }, 70);
+      bubble.className = "bubble";
       
-      showTemporaryNotice("Seul le dernier message est modifiable");
-      return;
-    }
-    
-    openEditMode(historyIndex, text);
-  };
-  
-  const startLongPress = event => {
-    if (event.type === "mousedown" && event.button !== 0) return;
-    
-    longPressTriggered = false;
-    clearLongPress();
-    
-    if (event.type === "touchstart" && event.touches && event.touches[0]) {
-      startX = event.touches[0].clientX;
-      startY = event.touches[0].clientY;
-    } else {
-      startX = event.clientX || 0;
-      startY = event.clientY || 0;
-    }
-    
-    longPressTimer = setTimeout(() => {
-      longPressTriggered = true;
-      triggerEditIntent();
-    }, 480);
-  };
-  
-  const moveLongPress = event => {
-    let currentX = 0;
-    let currentY = 0;
-    
-    if (event.type === "touchmove" && event.touches && event.touches[0]) {
-      currentX = event.touches[0].clientX;
-      currentY = event.touches[0].clientY;
-    } else {
-      currentX = event.clientX || 0;
-      currentY = event.clientY || 0;
-    }
-    
-    if (Math.abs(currentX - startX) > 8 || Math.abs(currentY - startY) > 8) {
-      clearLongPress();
-    }
-  };
-  
-  const endLongPress = () => {
-    clearLongPress();
-  };
-  
-  bubble.addEventListener("contextmenu", event => {
-    event.preventDefault();
-  });
-  
-  bubble.addEventListener("selectstart", event => {
-    event.preventDefault();
-  });
-  
-  bubble.addEventListener("dragstart", event => {
-    event.preventDefault();
-  });
-  
-  bubble.addEventListener("touchstart", startLongPress, { passive: true });
-  bubble.addEventListener("touchmove", moveLongPress, { passive: true });
-  bubble.addEventListener("touchend", endLongPress);
-  bubble.addEventListener("touchcancel", endLongPress);
-  
-  bubble.addEventListener("mousedown", startLongPress);
-  bubble.addEventListener("mousemove", moveLongPress);
-  bubble.addEventListener("mouseup", endLongPress);
-  bubble.addEventListener("mouseleave", endLongPress);
-  
-  bubble.addEventListener("click", event => {
-    if (longPressTriggered) {
-      event.preventDefault();
-      event.stopPropagation();
-      longPressTriggered = false;
-    }
-  });
-}
-
-contentWrap.appendChild(bubble);
+      bubble.style.padding = "13px 15px";
+      bubble.style.borderRadius = "20px";
+      bubble.style.lineHeight = "1.54";
+      bubble.style.whiteSpace = "pre-wrap";
+      bubble.style.wordBreak = "break-word";
+      bubble.style.overflowWrap = "break-word";
+      bubble.style.boxSizing = "border-box";
+      bubble.style.transition = "transform 0.46s ease, opacity 0.46s ease, box-shadow 0.46s ease, background 0.46s ease";
+      bubble.style.display = "block";
+      
+      if (role === "bot") {
+        bubble.style.background = "rgba(255, 255, 255, 0.62)";
+        bubble.style.color = "#3e5e62";
+        bubble.style.borderTopLeftRadius = "8px";
+        bubble.style.boxShadow = "0 10px 24px rgba(36, 94, 102, 0.05), 0 1px 0 rgba(255, 255, 255, 0.42) inset";
+        bubble.style.backdropFilter = "blur(8px)";
+        bubble.style.webkitBackdropFilter = "blur(8px)";
+        bubble.style.webkitTouchCallout = "none";
+        bubble.style.webkitUserSelect = "none";
+        bubble.style.userSelect = "none";
+        
+        bubble.addEventListener("contextmenu", event => {
+          event.preventDefault();
+        });
+        
+        bubble.addEventListener("selectstart", event => {
+          event.preventDefault();
+        });
+        
+        bubble.addEventListener("dragstart", event => {
+          event.preventDefault();
+        });
+        
+        renderBotMessageContent(bubble, text, {
+          progressive,
+          wasAtBottomBeforeInsert
+        });
+      } else {
+        bubble.style.background = "rgba(36, 94, 102, 0.16)";
+        bubble.style.color = "#183f44";
+        bubble.style.borderTopRightRadius = "8px";
+        bubble.style.boxShadow = "0 10px 26px rgba(36, 94, 102, 0.08), 0 1px 0 rgba(255, 255, 255, 0.28) inset";
+        
+        bubble.textContent = text;
+        
+        let longPressTimer = null;
+        let longPressTriggered = false;
+        let startX = 0;
+        let startY = 0;
+        
+        bubble.style.webkitTouchCallout = "none";
+        bubble.style.webkitUserSelect = "none";
+        bubble.style.userSelect = "none";
+        
+        const clearLongPress = () => {
+          clearTimeout(longPressTimer);
+          longPressTimer = null;
+        };
+        
+        const triggerEditIntent = () => {
+          const history = loadHistory();
+          const lastUserHistoryIndex = getLastUserHistoryIndex(history);
+          
+          if (historyIndex !== lastUserHistoryIndex) {
+            msg.style.transition = "transform 0.14s ease";
+            msg.style.transform = "translateX(-3px)";
+            setTimeout(() => {
+              msg.style.transform = "translateX(3px)";
+              setTimeout(() => {
+                msg.style.transform = "";
+              }, 70);
+            }, 70);
+            
+            showTemporaryNotice("Seul le dernier message est modifiable");
+            return;
+          }
+          
+          openEditMode(historyIndex, text);
+        };
+        
+        const startLongPress = event => {
+          if (event.type === "mousedown" && event.button !== 0) return;
+          
+          longPressTriggered = false;
+          clearLongPress();
+          
+          if (event.type === "touchstart" && event.touches && event.touches[0]) {
+            startX = event.touches[0].clientX;
+            startY = event.touches[0].clientY;
+          } else {
+            startX = event.clientX || 0;
+            startY = event.clientY || 0;
+          }
+          
+          longPressTimer = setTimeout(() => {
+            longPressTriggered = true;
+            triggerEditIntent();
+          }, 480);
+        };
+        
+        const moveLongPress = event => {
+          let currentX = 0;
+          let currentY = 0;
+          
+          if (event.type === "touchmove" && event.touches && event.touches[0]) {
+            currentX = event.touches[0].clientX;
+            currentY = event.touches[0].clientY;
+          } else {
+            currentX = event.clientX || 0;
+            currentY = event.clientY || 0;
+          }
+          
+          if (Math.abs(currentX - startX) > 8 || Math.abs(currentY - startY) > 8) {
+            clearLongPress();
+          }
+        };
+        
+        const endLongPress = () => {
+          clearLongPress();
+        };
+        
+        bubble.addEventListener("contextmenu", event => {
+          event.preventDefault();
+        });
+        
+        bubble.addEventListener("selectstart", event => {
+          event.preventDefault();
+        });
+        
+        bubble.addEventListener("dragstart", event => {
+          event.preventDefault();
+        });
+        
+        bubble.addEventListener("touchstart", startLongPress, { passive: true });
+        bubble.addEventListener("touchmove", moveLongPress, { passive: true });
+        bubble.addEventListener("touchend", endLongPress);
+        bubble.addEventListener("touchcancel", endLongPress);
+        
+        bubble.addEventListener("mousedown", startLongPress);
+        bubble.addEventListener("mousemove", moveLongPress);
+        bubble.addEventListener("mouseup", endLongPress);
+        bubble.addEventListener("mouseleave", endLongPress);
+        
+        bubble.addEventListener("click", event => {
+          if (longPressTriggered) {
+            event.preventDefault();
+            event.stopPropagation();
+            longPressTriggered = false;
+          }
+        });
+      }
+      
+      contentWrap.appendChild(bubble);
       msg.appendChild(contentWrap);
       chat.appendChild(msg);
       
