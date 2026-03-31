@@ -1369,9 +1369,8 @@ Resume en deux phrases :
 `;
   
   const explorationBlock = `
-Les lectures et hypothèses doivent être portées par "je".
-Évite les tournures impersonnelles pour interpréter.
-N 'introduis pas de validation ou de commentaire méta en début de réponse.
+La réponse doit contenir au moins une phrase d’ interprétation formulée à la première personne("je").
+Interdiction de commencer par une validation ou un commentaire méta.
 Entre directement dans une lecture, une hypothèse ou une mise en tension.
 
 Chaque reponse doit proposer au moins un angle de lecture qui deplace legerement la comprehension de l'experience en introduisant une tension, un contraste ou une hypothese non evidente.
