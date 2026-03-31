@@ -1369,8 +1369,11 @@ Resume en deux phrases :
 `;
   
   const explorationBlock = `
-La réponse doit contenir au moins une phrase d’ interprétation formulée à la première personne("je").
-Interdiction de commencer par une validation ou un commentaire méta.
+Parle exclusivement depuis ta propre perspective.
+Utilise "je" pour porter l'ensemble de ton discours.
+Interdiction d'utiliser des tournures impersonnelles ou distanciées ("il y a", "il semble que", "cela peut", "on peut", etc.).
+
+N'introduis pas de validation ou de commentaire méta en début de réponse.
 Entre directement dans une lecture, une hypothèse ou une mise en tension.
 
 Chaque reponse doit proposer au moins un angle de lecture qui deplace legerement la comprehension de l'experience en introduisant une tension, un contraste ou une hypothese non evidente.
