@@ -3003,124 +3003,161 @@
       }
       
       const bubble = document.createElement("div");
-      bubble.className = "bubble";
+bubble.className = "bubble";
+
+bubble.style.padding = "13px 15px";
+bubble.style.borderRadius = "20px";
+bubble.style.lineHeight = "1.54";
+bubble.style.whiteSpace = "pre-wrap";
+bubble.style.wordBreak = "break-word";
+bubble.style.overflowWrap = "break-word";
+bubble.style.boxSizing = "border-box";
+bubble.style.transition = "transform 0.46s ease, opacity 0.46s ease, box-shadow 0.46s ease, background 0.46s ease";
+bubble.style.display = "block";
+
+if (role === "bot") {
+  bubble.style.background = "rgba(255, 255, 255, 0.62)";
+  bubble.style.color = "#3e5e62";
+  bubble.style.borderTopLeftRadius = "8px";
+  bubble.style.boxShadow = "0 10px 24px rgba(36, 94, 102, 0.05), 0 1px 0 rgba(255, 255, 255, 0.42) inset";
+  bubble.style.backdropFilter = "blur(8px)";
+  bubble.style.webkitBackdropFilter = "blur(8px)";
+  bubble.style.webkitTouchCallout = "none";
+  bubble.style.webkitUserSelect = "none";
+  bubble.style.userSelect = "none";
+  
+  bubble.addEventListener("contextmenu", event => {
+    event.preventDefault();
+  });
+  
+  bubble.addEventListener("selectstart", event => {
+    event.preventDefault();
+  });
+  
+  bubble.addEventListener("dragstart", event => {
+    event.preventDefault();
+  });
+  
+  renderBotMessageContent(bubble, text, {
+    progressive,
+    wasAtBottomBeforeInsert
+  });
+} else {
+  bubble.style.background = "rgba(36, 94, 102, 0.16)";
+  bubble.style.color = "#183f44";
+  bubble.style.borderTopRightRadius = "8px";
+  bubble.style.boxShadow = "0 10px 26px rgba(36, 94, 102, 0.08), 0 1px 0 rgba(255, 255, 255, 0.28) inset";
+  
+  bubble.textContent = text;
+  
+  let longPressTimer = null;
+  let longPressTriggered = false;
+  let startX = 0;
+  let startY = 0;
+  
+  bubble.style.webkitTouchCallout = "none";
+  bubble.style.webkitUserSelect = "none";
+  bubble.style.userSelect = "none";
+  
+  const clearLongPress = () => {
+    clearTimeout(longPressTimer);
+    longPressTimer = null;
+  };
+  
+  const triggerEditIntent = () => {
+    const history = loadHistory();
+    const lastUserHistoryIndex = getLastUserHistoryIndex(history);
+    
+    if (historyIndex !== lastUserHistoryIndex) {
+      msg.style.transition = "transform 0.14s ease";
+      msg.style.transform = "translateX(-3px)";
+      setTimeout(() => {
+        msg.style.transform = "translateX(3px)";
+        setTimeout(() => {
+          msg.style.transform = "";
+        }, 70);
+      }, 70);
       
-      if (role === "bot") {
-        renderBotMessageContent(bubble, text, {
-          progressive,
-          wasAtBottomBeforeInsert
-        });
-      } else {
-        bubble.textContent = text;
-        
-        let longPressTimer = null;
-        let longPressTriggered = false;
-        let startX = 0;
-        let startY = 0;
-        
-        bubble.style.webkitTouchCallout = "none";
-        bubble.style.webkitUserSelect = "none";
-        bubble.style.userSelect = "none";
-        
-        const clearLongPress = () => {
-          clearTimeout(longPressTimer);
-          longPressTimer = null;
-        };
-        
-        const triggerEditIntent = () => {
-          const history = loadHistory();
-          const lastUserHistoryIndex = getLastUserHistoryIndex(history);
-          
-          if (historyIndex !== lastUserHistoryIndex) {
-            msg.style.transition = "transform 0.14s ease";
-            msg.style.transform = "translateX(-3px)";
-            setTimeout(() => {
-              msg.style.transform = "translateX(3px)";
-              setTimeout(() => {
-                msg.style.transform = "";
-              }, 70);
-            }, 70);
-            
-            showTemporaryNotice("Seul le dernier message est modifiable");
-            return;
-          }
-          
-          openEditMode(historyIndex, text);
-        };
-        
-        const startLongPress = event => {
-          if (event.type === "mousedown" && event.button !== 0) return;
-          
-          longPressTriggered = false;
-          clearLongPress();
-          
-          if (event.type === "touchstart" && event.touches && event.touches[0]) {
-            startX = event.touches[0].clientX;
-            startY = event.touches[0].clientY;
-          } else {
-            startX = event.clientX || 0;
-            startY = event.clientY || 0;
-          }
-          
-          longPressTimer = setTimeout(() => {
-            longPressTriggered = true;
-            triggerEditIntent();
-          }, 480);
-        };
-        
-        const moveLongPress = event => {
-          let currentX = 0;
-          let currentY = 0;
-          
-          if (event.type === "touchmove" && event.touches && event.touches[0]) {
-            currentX = event.touches[0].clientX;
-            currentY = event.touches[0].clientY;
-          } else {
-            currentX = event.clientX || 0;
-            currentY = event.clientY || 0;
-          }
-          
-          if (Math.abs(currentX - startX) > 8 || Math.abs(currentY - startY) > 8) {
-            clearLongPress();
-          }
-        };
-        
-        const endLongPress = () => {
-          clearLongPress();
-        };
-        
-        bubble.addEventListener("contextmenu", event => {
-          event.preventDefault();
-        });
-        
-        bubble.addEventListener("selectstart", event => {
-          event.preventDefault();
-        });
-        
-        bubble.addEventListener("dragstart", event => {
-          event.preventDefault();
-        });
-        
-        bubble.addEventListener("touchstart", startLongPress, { passive: true });
-        bubble.addEventListener("touchmove", moveLongPress, { passive: true });
-        bubble.addEventListener("touchend", endLongPress);
-        bubble.addEventListener("touchcancel", endLongPress);
-        
-        bubble.addEventListener("mousedown", startLongPress);
-        bubble.addEventListener("mousemove", moveLongPress);
-        bubble.addEventListener("mouseup", endLongPress);
-        bubble.addEventListener("mouseleave", endLongPress);
-        
-        bubble.addEventListener("click", event => {
-          if (longPressTriggered) {
-            event.preventDefault();
-            event.stopPropagation();
-            longPressTriggered = false;
-          }
-        });
-      }
-      
-      contentWrap.appendChild(bubble);
+      showTemporaryNotice("Seul le dernier message est modifiable");
+      return;
+    }
+    
+    openEditMode(historyIndex, text);
+  };
+  
+  const startLongPress = event => {
+    if (event.type === "mousedown" && event.button !== 0) return;
+    
+    longPressTriggered = false;
+    clearLongPress();
+    
+    if (event.type === "touchstart" && event.touches && event.touches[0]) {
+      startX = event.touches[0].clientX;
+      startY = event.touches[0].clientY;
+    } else {
+      startX = event.clientX || 0;
+      startY = event.clientY || 0;
+    }
+    
+    longPressTimer = setTimeout(() => {
+      longPressTriggered = true;
+      triggerEditIntent();
+    }, 480);
+  };
+  
+  const moveLongPress = event => {
+    let currentX = 0;
+    let currentY = 0;
+    
+    if (event.type === "touchmove" && event.touches && event.touches[0]) {
+      currentX = event.touches[0].clientX;
+      currentY = event.touches[0].clientY;
+    } else {
+      currentX = event.clientX || 0;
+      currentY = event.clientY || 0;
+    }
+    
+    if (Math.abs(currentX - startX) > 8 || Math.abs(currentY - startY) > 8) {
+      clearLongPress();
+    }
+  };
+  
+  const endLongPress = () => {
+    clearLongPress();
+  };
+  
+  bubble.addEventListener("contextmenu", event => {
+    event.preventDefault();
+  });
+  
+  bubble.addEventListener("selectstart", event => {
+    event.preventDefault();
+  });
+  
+  bubble.addEventListener("dragstart", event => {
+    event.preventDefault();
+  });
+  
+  bubble.addEventListener("touchstart", startLongPress, { passive: true });
+  bubble.addEventListener("touchmove", moveLongPress, { passive: true });
+  bubble.addEventListener("touchend", endLongPress);
+  bubble.addEventListener("touchcancel", endLongPress);
+  
+  bubble.addEventListener("mousedown", startLongPress);
+  bubble.addEventListener("mousemove", moveLongPress);
+  bubble.addEventListener("mouseup", endLongPress);
+  bubble.addEventListener("mouseleave", endLongPress);
+  
+  bubble.addEventListener("click", event => {
+    if (longPressTriggered) {
+      event.preventDefault();
+      event.stopPropagation();
+      longPressTriggered = false;
+    }
+  });
+}
+
+contentWrap.appendChild(bubble);
       msg.appendChild(contentWrap);
       chat.appendChild(msg);
       
