@@ -4125,204 +4125,254 @@
     }
     
     const inputEl = document.getElementById("input");
-    if (inputEl) {
-      const inputShellEl = document.getElementById("inputShell");
-      const inputAreaEl = document.getElementById("inputArea");
-      const inputAreaInnerEl = document.getElementById("inputAreaInner");
-      const sendBtnEl = document.getElementById("sendBtn");
-      const chatElForKeyboard = document.getElementById("chat");
-      const visualViewportRef = window.visualViewport || null;
-      
-      function getInputMaxHeightPx() {
-        const computed = window.getComputedStyle(inputEl);
-        const lineHeight = parseFloat(computed.lineHeight) || 24;
-        return lineHeight * 10;
-      }
-      
-      function resizeComposerInput() {
-        inputEl.style.height = "auto";
-        
-        const maxHeight = getInputMaxHeightPx();
-        const nextHeight = Math.min(inputEl.scrollHeight, maxHeight);
-        
-        inputEl.style.height = nextHeight + "px";
-        inputEl.style.overflowY = inputEl.scrollHeight > maxHeight ? "auto" : "hidden";
-      }
-      
-      function syncChatBottomInset() {
-        if (!chatElForKeyboard || !inputAreaEl || !inputAreaInnerEl) return;
-        
-        const composerHeight = inputAreaInnerEl.offsetHeight || 0;
-        const inputAreaBottom = parseFloat(window.getComputedStyle(inputAreaEl).bottom) || 0;
-        const safeBottom = 18;
-        const extraBottomInset = composerHeight + inputAreaBottom + safeBottom;
-        
-        chatElForKeyboard.style.paddingBottom =
-          `calc(${extraBottomInset}px + env(safe-area-inset-bottom, 0px))`;
-      }
-      
-      function syncEditModeBarPosition() {
-        const editBarEl = document.getElementById("editModeBar");
-        if (!editBarEl || !inputAreaInnerEl) return;
-        
-        const composerHeight = inputAreaInnerEl.offsetHeight || 0;
-        const inputAreaBottom = parseFloat(window.getComputedStyle(inputAreaEl).bottom) || 0;
-        editBarEl.style.bottom = (composerHeight + inputAreaBottom + 10) + "px";
-      }
-      
-      function syncKeyboardOffset() {
-        if (!inputAreaEl) return 0;
-        
-        let keyboardOffset = 0;
-        
-        if (visualViewportRef) {
-          const viewportBottom = visualViewportRef.offsetTop + visualViewportRef.height;
-          keyboardOffset = Math.max(0, window.innerHeight - viewportBottom);
-        }
-        
-        inputAreaEl.style.bottom = `calc(${18 + keyboardOffset}px + env(safe-area-inset-bottom, 0px))`;
-        syncEditModeBarPosition();
-        syncChatBottomInset();
-        
-        return keyboardOffset;
-      }
-      
-      function ensureChatVisibleAboveKeyboard(force = false) {
-        if (!chatElForKeyboard) return;
-        if (document.activeElement !== inputEl && !force) return;
-        if (!force && !isChatAtBottom()) return;
-        
-        const applyBottomLock = () => {
-          const previousScrollBehavior = chatElForKeyboard.style.scrollBehavior;
-          chatElForKeyboard.style.scrollBehavior = "auto";
-          chatElForKeyboard.scrollTop = chatElForKeyboard.scrollHeight;
-          chatElForKeyboard.style.scrollBehavior = previousScrollBehavior || "";
-        };
-        
-        applyBottomLock();
-        requestAnimationFrame(applyBottomLock);
-        setTimeout(applyBottomLock, 0);
-        setTimeout(() => {
-          applyBottomLock();
-          updateScrollToBottomBtn();
-        }, 40);
-      }
-      
-      function syncComposerUi(options = {}) {
-        const { keepBottom = false } = options;
-        const hasText = inputEl.value.trim().length > 0;
-        const isFocused = document.activeElement === inputEl;
-        const wasAtBottomBeforeLayout = isChatAtBottom();
-        const chatScreenEl = document.getElementById("chatScreen");
-        const isChatActive = chatScreenEl && chatScreenEl.classList.contains("active");
-        
-        if (inputShellEl) {
-          inputShellEl.classList.toggle("is-active", isFocused || hasText);
-        }
-        
-        if (sendBtnEl) {
-          sendBtnEl.disabled = inputEl.disabled || isSending || !hasText;
-        }
-        
-        resizeComposerInput();
-        syncKeyboardOffset();
-        
-        if (isChatActive && (keepBottom || wasAtBottomBeforeLayout)) {
-          ensureChatVisibleAboveKeyboard(true);
-        }
-      }
-      
-      function handleViewportChange() {
-        const wasAtBottomBeforeLayout = isChatAtBottom();
-        
-        syncKeyboardOffset();
-        
-        if (wasAtBottomBeforeLayout) {
-          ensureChatVisibleAboveKeyboard(true);
-        }
-      }
-      
-      const originalSend = send;
-      send = async function() {
-        const hadTextBeforeSend = inputEl.value.trim().length > 0;
-        
-        const sendPromise = originalSend();
-        
-        if (hadTextBeforeSend) {
-          requestAnimationFrame(syncComposerUi);
-          setTimeout(syncComposerUi, 0);
-          setTimeout(syncComposerUi, 60);
-        }
-        
-        try {
-          await sendPromise;
-        } finally {
-          syncComposerUi();
-        }
-      };
-      
-      if (sendBtnEl) {
-        sendBtnEl.onclick = send;
-      }
-      
-      const originalOpenEditMode = openEditMode;
-      openEditMode = function(historyIndex, text) {
-        originalOpenEditMode(historyIndex, text);
-        requestAnimationFrame(syncComposerUi);
-      };
-      
-      const originalCloseEditMode = closeEditMode;
-      closeEditMode = function(options = {}) {
-        originalCloseEditMode(options);
-        requestAnimationFrame(syncComposerUi);
-      };
-      
-      const originalStartFreshSession = startFreshSession;
-      startFreshSession = function() {
-        originalStartFreshSession();
-        requestAnimationFrame(syncComposerUi);
-      };
-      
-      const originalStartFreshOrResumeSession = startFreshOrResumeSession;
-      startFreshOrResumeSession = function() {
-        originalStartFreshOrResumeSession();
-        requestAnimationFrame(syncComposerUi);
-      };
-      
-      inputEl.addEventListener("keydown", e => {
-        if (e.key === "Enter" && e.ctrlKey) {
-          e.preventDefault();
-          send();
-        }
-      });
-      
-      inputEl.addEventListener("input", () => {
-        updateActivity();
-        syncComposerUi();
-        ensureChatVisibleAboveKeyboard();
-      });
-      
-      inputEl.addEventListener("focus", () => {
-        updateActivity();
-        syncComposerUi();
-        setTimeout(handleViewportChange, 40);
-        setTimeout(handleViewportChange, 140);
-        setTimeout(handleViewportChange, 260);
-      });
-      
-      inputEl.addEventListener("blur", () => {
-        syncComposerUi();
-        setTimeout(handleViewportChange, 40);
-        setTimeout(handleViewportChange, 140);
-      });
-      
-      if (visualViewportRef) {
-        visualViewportRef.addEventListener("resize", handleViewportChange);
-        visualViewportRef.addEventListener("scroll", handleViewportChange);
-      }
-      
-      requestAnimationFrame(syncComposerUi);
+if (inputEl) {
+  const inputShellEl = document.getElementById("inputShell");
+  const inputAreaEl = document.getElementById("inputArea");
+  const inputAreaInnerEl = document.getElementById("inputAreaInner");
+  const sendBtnEl = document.getElementById("sendBtn");
+  const chatElForKeyboard = document.getElementById("chat");
+  const chatScreenEl = document.getElementById("chatScreen");
+  const visualViewportRef = window.visualViewport || null;
+  
+  function getInputMaxHeightPx() {
+    const computed = window.getComputedStyle(inputEl);
+    const lineHeight = parseFloat(computed.lineHeight) || 24;
+    return lineHeight * 10;
+  }
+  
+  function resizeComposerInput() {
+    inputEl.style.height = "auto";
+    
+    const maxHeight = getInputMaxHeightPx();
+    const nextHeight = Math.min(inputEl.scrollHeight, maxHeight);
+    
+    inputEl.style.height = nextHeight + "px";
+    inputEl.style.overflowY = inputEl.scrollHeight > maxHeight ? "auto" : "hidden";
+  }
+  
+  function syncEditModeBarPosition() {
+    const editBarEl = document.getElementById("editModeBar");
+    if (!editBarEl || !inputAreaEl || !chatScreenEl) return;
+    
+    const chatScreenRect = chatScreenEl.getBoundingClientRect();
+    const inputAreaRect = inputAreaEl.getBoundingClientRect();
+    const gapAboveComposer = 10;
+    const bottomOffset = Math.max(0, chatScreenRect.bottom - inputAreaRect.top) + gapAboveComposer;
+    
+    editBarEl.style.bottom = bottomOffset + "px";
+  }
+  
+  function syncKeyboardOffset() {
+    if (!inputAreaEl) return 0;
+    
+    let keyboardOffset = 0;
+    
+    if (visualViewportRef) {
+      const viewportBottom = visualViewportRef.offsetTop + visualViewportRef.height;
+      keyboardOffset = Math.max(0, window.innerHeight - viewportBottom);
     }
+    
+    inputAreaEl.style.bottom = `calc(${18 + keyboardOffset}px + env(safe-area-inset-bottom, 0px))`;
+    syncEditModeBarPosition();
+    
+    return keyboardOffset;
+  }
+  
+  function syncChatBottomInset() {
+    if (!chatElForKeyboard || !inputAreaEl || !chatScreenEl) return;
+    
+    const chatScreenRect = chatScreenEl.getBoundingClientRect();
+    const inputAreaRect = inputAreaEl.getBoundingClientRect();
+    
+    const overlayHeight = Math.max(0, chatScreenRect.bottom - inputAreaRect.top);
+    const comfortGap = 16;
+    const finalPaddingBottom = Math.ceil(overlayHeight + comfortGap);
+    
+    chatElForKeyboard.style.paddingBottom = finalPaddingBottom + "px";
+  }
+  
+  function lockChatToBottom() {
+    if (!chatElForKeyboard) return;
+    
+    const previousScrollBehavior = chatElForKeyboard.style.scrollBehavior;
+    chatElForKeyboard.style.scrollBehavior = "auto";
+    chatElForKeyboard.scrollTop = chatElForKeyboard.scrollHeight;
+    chatElForKeyboard.style.scrollBehavior = previousScrollBehavior || "";
+  }
+  
+  function ensureChatVisibleAboveKeyboard(force = false) {
+    if (!chatElForKeyboard) return;
+    if (!force && document.activeElement !== inputEl) return;
+    if (!force && !isChatAtBottom()) return;
+    
+    lockChatToBottom();
+    
+    requestAnimationFrame(() => {
+      lockChatToBottom();
+      updateScrollToBottomBtn();
+    });
+    
+    setTimeout(() => {
+      lockChatToBottom();
+      updateScrollToBottomBtn();
+    }, 40);
+    
+    setTimeout(() => {
+      lockChatToBottom();
+      updateScrollToBottomBtn();
+    }, 160);
+  }
+  
+  function syncComposerUi(options = {}) {
+    const { keepBottom = false } = options;
+    const hasText = inputEl.value.trim().length > 0;
+    const isFocused = document.activeElement === inputEl;
+    const wasAtBottomBeforeLayout = isChatAtBottom();
+    const isChatActive = chatScreenEl && chatScreenEl.classList.contains("active");
+    
+    if (inputShellEl) {
+      inputShellEl.classList.toggle("is-active", isFocused || hasText);
+    }
+    
+    if (sendBtnEl) {
+      sendBtnEl.disabled = inputEl.disabled || isSending || !hasText;
+    }
+    
+    resizeComposerInput();
+    syncKeyboardOffset();
+    syncChatBottomInset();
+    
+    if (isChatActive && (keepBottom || wasAtBottomBeforeLayout)) {
+      ensureChatVisibleAboveKeyboard(true);
+    }
+  }
+  
+  function syncComposerUiDeferred(options = {}) {
+    syncComposerUi(options);
+    
+    requestAnimationFrame(() => {
+      syncKeyboardOffset();
+      syncChatBottomInset();
+      
+      if (options.keepBottom) {
+        ensureChatVisibleAboveKeyboard(true);
+      }
+    });
+    
+    setTimeout(() => {
+      syncKeyboardOffset();
+      syncChatBottomInset();
+      
+      if (options.keepBottom) {
+        ensureChatVisibleAboveKeyboard(true);
+      }
+    }, 40);
+    
+    setTimeout(() => {
+      syncKeyboardOffset();
+      syncChatBottomInset();
+      
+      if (options.keepBottom) {
+        ensureChatVisibleAboveKeyboard(true);
+      }
+    }, 160);
+  }
+  
+  function handleViewportChange() {
+    const wasAtBottomBeforeLayout = isChatAtBottom();
+    
+    syncKeyboardOffset();
+    syncChatBottomInset();
+    
+    if (wasAtBottomBeforeLayout) {
+      ensureChatVisibleAboveKeyboard(true);
+    }
+  }
+  
+  const originalSend = send;
+  send = async function() {
+    const hadTextBeforeSend = inputEl.value.trim().length > 0;
+    
+    const sendPromise = originalSend();
+    
+    if (hadTextBeforeSend) {
+      requestAnimationFrame(() => syncComposerUiDeferred({ keepBottom: true }));
+      setTimeout(() => syncComposerUiDeferred({ keepBottom: true }), 0);
+      setTimeout(() => syncComposerUiDeferred({ keepBottom: true }), 60);
+    }
+    
+    try {
+      await sendPromise;
+    } finally {
+      syncComposerUiDeferred({ keepBottom: true });
+    }
+  };
+  
+  if (sendBtnEl) {
+    sendBtnEl.onclick = send;
+  }
+  
+  const originalOpenEditMode = openEditMode;
+  openEditMode = function(historyIndex, text) {
+    originalOpenEditMode(historyIndex, text);
+    requestAnimationFrame(() => syncComposerUiDeferred({ keepBottom: true }));
+  };
+  
+  const originalCloseEditMode = closeEditMode;
+  closeEditMode = function(options = {}) {
+    originalCloseEditMode(options);
+    requestAnimationFrame(() => syncComposerUiDeferred({ keepBottom: true }));
+  };
+  
+  const originalStartFreshSession = startFreshSession;
+  startFreshSession = function() {
+    originalStartFreshSession();
+    requestAnimationFrame(() => syncComposerUiDeferred({ keepBottom: true }));
+  };
+  
+  const originalStartFreshOrResumeSession = startFreshOrResumeSession;
+  startFreshOrResumeSession = function() {
+    originalStartFreshOrResumeSession();
+    requestAnimationFrame(() => syncComposerUiDeferred({ keepBottom: true }));
+    setTimeout(() => syncComposerUiDeferred({ keepBottom: true }), 40);
+    setTimeout(() => syncComposerUiDeferred({ keepBottom: true }), 160);
+    setTimeout(() => syncComposerUiDeferred({ keepBottom: true }), 320);
+  };
+  
+  inputEl.addEventListener("keydown", e => {
+    if (e.key === "Enter" && e.ctrlKey) {
+      e.preventDefault();
+      send();
+    }
+  });
+  
+  inputEl.addEventListener("input", () => {
+    updateActivity();
+    syncComposerUiDeferred({ keepBottom: false });
+    ensureChatVisibleAboveKeyboard();
+  });
+  
+  inputEl.addEventListener("focus", () => {
+    updateActivity();
+    syncComposerUiDeferred({ keepBottom: true });
+    setTimeout(handleViewportChange, 40);
+    setTimeout(handleViewportChange, 140);
+    setTimeout(handleViewportChange, 260);
+  });
+  
+  inputEl.addEventListener("blur", () => {
+    syncComposerUiDeferred({ keepBottom: true });
+    setTimeout(handleViewportChange, 40);
+    setTimeout(handleViewportChange, 140);
+  });
+  
+  if (visualViewportRef) {
+    visualViewportRef.addEventListener("resize", handleViewportChange);
+    visualViewportRef.addEventListener("scroll", handleViewportChange);
+  }
+  
+  requestAnimationFrame(() => syncComposerUiDeferred({ keepBottom: true }));
+}
     
     const conversationsEl = document.getElementById("conversationsListWrap");
     const conversationsTopBar = document.getElementById("conversationsTopBar");
