@@ -3245,45 +3245,29 @@
       });
     }
     
-    function startFreshOrResumeSession() {
-      closeSessionInfoModal();
-      showScreen("chatScreen", { pushHistory: true });
+    function startFreshSession() {
+      setSessionStatus("active");
+      saveFlags({});
       updateActivity();
+      
+      let conversationId = getConversationId();
+      
+      if (!conversationId) {
+        conversationId = createConversationId();
+      }
       
       const history = loadHistory();
       
-      if (history.length > 0) {
-        setSessionStatus("active");
-        closeEditMode({ restoreDraft: false });
-        renderHistory();
-        
-        const chat = document.getElementById("chat");
-        
-        function forceStableBottom() {
-          if (!chat) return;
-          
-          const previousBehavior = chat.style.scrollBehavior;
-          chat.style.scrollBehavior = "auto";
-          chat.scrollTop = chat.scrollHeight;
-          chat.style.scrollBehavior = previousBehavior || "";
-          
-          if (typeof updateScrollToBottomBtn === "function") {
-            updateScrollToBottomBtn();
-          }
-        }
-        
-        requestAnimationFrame(forceStableBottom);
-        requestAnimationFrame(() => {
-          requestAnimationFrame(forceStableBottom);
-        });
-        setTimeout(forceStableBottom, 60);
-        setTimeout(forceStableBottom, 180);
-        setTimeout(forceStableBottom, 320);
-        
-        defocusInput();
-      } else {
-        startFreshSession();
+      if (history.length === 0) {
+        pushHistory("assistant", "Bienvenue dans cette nouvelle session. Que veux-tu explorer aujourd'hui ?", []);
       }
+      
+      closeEditMode({ restoreDraft: false });
+      renderHistory();
+      
+      const input = document.getElementById("input");
+      input.value = "";
+      defocusInput();
     }
     
     function handleExpiredSessionOnEntry() {
@@ -3483,9 +3467,27 @@
         renderHistory();
         
         const chat = document.getElementById("chat");
-        if (chat && chat.scrollHeight > chat.clientHeight + 40) {
-          scrollChatToBottom();
+        
+        function forceStableBottom() {
+          if (!chat) return;
+          
+          const previousBehavior = chat.style.scrollBehavior;
+          chat.style.scrollBehavior = "auto";
+          chat.scrollTop = chat.scrollHeight;
+          chat.style.scrollBehavior = previousBehavior || "";
+          
+          if (typeof updateScrollToBottomBtn === "function") {
+            updateScrollToBottomBtn();
+          }
         }
+        
+        requestAnimationFrame(forceStableBottom);
+        requestAnimationFrame(() => {
+          requestAnimationFrame(forceStableBottom);
+        });
+        setTimeout(forceStableBottom, 60);
+        setTimeout(forceStableBottom, 180);
+        setTimeout(forceStableBottom, 320);
         
         defocusInput();
       } else {
