@@ -934,6 +934,27 @@
       text-decoration: underline;
     }
     
+    /* Annule les marges par défaut des éléments HTML générés par Markdown
+   uniquement à l’intérieur des bulles du bot */
+    .bot .bubble p,
+    .bot .bubble h1,
+    .bot .bubble h2,
+    .bot .bubble h3,
+    .bot .bubble h4,
+    .bot .bubble ul,
+    .bot .bubble ol,
+    .bot .bubble blockquote {
+      margin: 0;
+      /* pas de marge externe */
+    }
+    
+    .bot .bubble p+p
+
+    /* petit écart entre deux paragraphes, si besoin */
+      {
+      margin-top: 8px;
+    }
+    
     @keyframes userMessageIn {
       0% {
         opacity: 0;
