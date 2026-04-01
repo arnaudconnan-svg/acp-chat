@@ -2446,26 +2446,392 @@
       });
     });
     
+    const TEST_UI_STORAGE_KEY = "facilitatio_test_ui_state";
+    
+    function loadTestUiState() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(TEST_UI_STORAGE_KEY) || "{}");
+        return {
+          logsEnabled: parsed.logsEnabled === true,
+          comparisonEnabled: parsed.comparisonEnabled === true,
+          override1: parsed.override1 && typeof parsed.override1 === "object" ? parsed.override1 : null,
+          override2: parsed.override2 && typeof parsed.override2 === "object" ? parsed.override2 : null
+        };
+      } catch {
+        return {
+          logsEnabled: false,
+          comparisonEnabled: false,
+          override1: null,
+          override2: null
+        };
+      }
+    }
+    
+    function saveTestUiState() {
+      localStorage.setItem(TEST_UI_STORAGE_KEY, JSON.stringify({
+        logsEnabled: testUiState.logsEnabled === true,
+        comparisonEnabled: testUiState.comparisonEnabled === true,
+        override1: testUiState.override1 || null,
+        override2: testUiState.override2 || null
+      }));
+    }
+    
+    let testUiState = loadTestUiState();
+    
+    function getActiveTestStatusLabel() {
+      const parts = [];
+      
+      if (testUiState.override1) {
+        parts.push("Override 1");
+      }
+      
+      if (testUiState.override2) {
+        parts.push("2");
+      }
+      
+      if (testUiState.comparisonEnabled) {
+        parts.push("comparaison");
+      }
+      
+      if (parts.length === 0) {
+        return "";
+      }
+      
+      if (parts[0] === "Override 1" && parts[1] === "2") {
+        const next = ["Override 1 + 2"];
+        if (parts.includes("comparaison")) {
+          next.push("comparaison");
+        }
+        return next.join(" + ");
+      }
+      
+      return parts.join(" + ");
+    }
+    
+    function getActiveTestPayload() {
+      return {
+        override1: testUiState.override1 ? (testUiState.override1.data || null) : null,
+        override2: testUiState.override2 ? (testUiState.override2.data || null) : null,
+        comparisonEnabled: testUiState.comparisonEnabled === true,
+        logsEnabled: testUiState.logsEnabled === true
+      };
+    }
+    
+    window.getActiveTestPayload = getActiveTestPayload;
+    
+    function ensureTestStatusBar() {
+      let bar = document.getElementById("testStatusBar");
+      if (bar) return bar;
+      
+      const inputArea = document.getElementById("inputArea");
+      if (!inputArea) return null;
+      
+      bar = document.createElement("div");
+      bar.id = "testStatusBar";
+      bar.style.position = "absolute";
+      bar.style.left = "50%";
+      bar.style.transform = "translateX(-50%)";
+      bar.style.width = "calc(100% - 28px)";
+      bar.style.maxWidth = "700px";
+      bar.style.boxSizing = "border-box";
+      bar.style.padding = "9px 14px";
+      bar.style.borderRadius = "14px";
+      bar.style.background = "rgba(36, 94, 102, 0.10)";
+      bar.style.border = "1px solid rgba(36, 94, 102, 0.14)";
+      bar.style.color = "#245e66";
+      bar.style.fontSize = "13px";
+      bar.style.lineHeight = "1.3";
+      bar.style.fontWeight = "600";
+      bar.style.boxShadow = "0 10px 22px rgba(36, 94, 102, 0.08)";
+      bar.style.backdropFilter = "blur(10px)";
+      bar.style.webkitBackdropFilter = "blur(10px)";
+      bar.style.opacity = "0";
+      bar.style.pointerEvents = "none";
+      bar.style.transition = "opacity 0.22s ease, transform 0.22s ease";
+      bar.style.zIndex = "42";
+      
+      inputArea.appendChild(bar);
+      return bar;
+    }
+    
+    function syncTestStatusBarPosition() {
+      const bar = ensureTestStatusBar();
+      const inputArea = document.getElementById("inputArea");
+      const editBar = document.getElementById("editModeBar");
+      
+      if (!bar || !inputArea) return;
+      
+      const editBarVisible =
+        editBar &&
+        editBar.style.opacity !== "0" &&
+        editBar.style.pointerEvents !== "none";
+      
+      bar.style.bottom = editBarVisible ? "calc(136px + env(safe-area-inset-bottom, 0px))" : "calc(92px + env(safe-area-inset-bottom, 0px))";
+    }
+    
+    function syncTestStatusBar() {
+      const bar = ensureTestStatusBar();
+      if (!bar) return;
+      
+      const label = getActiveTestStatusLabel();
+      syncTestStatusBarPosition();
+      
+      if (!label) {
+        bar.textContent = "";
+        bar.style.opacity = "0";
+        bar.style.pointerEvents = "none";
+        bar.style.transform = "translateX(-50%) translateY(6px)";
+        if (bar._anim) {
+          bar._anim.cancel();
+          bar._anim = null;
+        }
+        return;
+      }
+      
+      bar.textContent = label;
+      bar.style.opacity = "1";
+      bar.style.pointerEvents = "none";
+      bar.style.transform = "translateX(-50%) translateY(0)";
+      
+      if (!bar._anim && bar.animate) {
+        bar._anim = bar.animate(
+          [
+          {
+            transform: "translateX(-50%) translateY(0) scale(1)",
+            boxShadow: "0 10px 22px rgba(36, 94, 102, 0.08)"
+          },
+          {
+            transform: "translateX(-50%) translateY(0) scale(1.02)",
+            boxShadow: "0 14px 28px rgba(36, 94, 102, 0.14)"
+          },
+          {
+            transform: "translateX(-50%) translateY(0) scale(1)",
+            boxShadow: "0 10px 22px rgba(36, 94, 102, 0.08)"
+          }],
+          {
+            duration: 2600,
+            iterations: Infinity,
+            easing: "ease-in-out"
+          }
+        );
+      }
+    }
+    
+    function ensureTestPopover() {
+      let popover = document.getElementById("testPopover");
+      if (popover) return popover;
+      
+      popover = document.createElement("div");
+      popover.id = "testPopover";
+      popover.style.position = "fixed";
+      popover.style.display = "none";
+      popover.style.width = "min(320px, calc(100vw - 24px))";
+      popover.style.padding = "12px";
+      popover.style.borderRadius = "18px";
+      popover.style.background = "rgba(255, 255, 255, 0.96)";
+      popover.style.border = "1px solid rgba(222, 228, 230, 0.92)";
+      popover.style.boxShadow = "0 22px 46px rgba(20, 36, 40, 0.18)";
+      popover.style.backdropFilter = "blur(14px)";
+      popover.style.webkitBackdropFilter = "blur(14px)";
+      popover.style.zIndex = "500";
+      popover.style.boxSizing = "border-box";
+      
+      popover.innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;line-height:1.3;color:#245e66;font-weight:600;">
+        Override 1
+        <input id="testOverride1Input" type="file" accept=".json,application/json" style="font:inherit;font-size:12px;color:#24464b;">
+        <span id="testOverride1Name" style="font-size:12px;line-height:1.25;color:#5d7377;font-weight:400;"></span>
+      </label>
+
+      <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;line-height:1.3;color:#245e66;font-weight:600;">
+        Override 2
+        <input id="testOverride2Input" type="file" accept=".json,application/json" style="font:inherit;font-size:12px;color:#24464b;">
+        <span id="testOverride2Name" style="font-size:12px;line-height:1.25;color:#5d7377;font-weight:400;"></span>
+      </label>
+
+      <label style="display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:13px;line-height:1.3;color:#245e66;font-weight:600;">
+        <span>Comparaison</span>
+        <input id="testComparisonToggle" type="checkbox">
+      </label>
+
+      <label style="display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:13px;line-height:1.3;color:#245e66;font-weight:600;">
+        <span>Logs</span>
+        <input id="testLogsToggle" type="checkbox">
+      </label>
+    </div>
+  `;
+      
+      document.body.appendChild(popover);
+      
+      const override1Input = popover.querySelector("#testOverride1Input");
+      const override2Input = popover.querySelector("#testOverride2Input");
+      const override1Name = popover.querySelector("#testOverride1Name");
+      const override2Name = popover.querySelector("#testOverride2Name");
+      const comparisonToggle = popover.querySelector("#testComparisonToggle");
+      const logsToggle = popover.querySelector("#testLogsToggle");
+      
+      async function readOverrideFile(file) {
+        const rawText = await file.text();
+        let parsed;
+        
+        try {
+          parsed = JSON.parse(rawText);
+        } catch {
+          throw new Error("JSON invalide");
+        }
+        
+        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+          throw new Error("structure invalide");
+        }
+        
+        if (!parsed.replacements || typeof parsed.replacements !== "object" || Array.isArray(parsed.replacements)) {
+          throw new Error("champ replacements manquant");
+        }
+        
+        return {
+          name: String(parsed.name || file.name || "").trim(),
+          data: parsed
+        };
+      }
+      
+      function refreshPopoverFields() {
+        override1Name.textContent = testUiState.override1 ? (testUiState.override1.name || "override_1.json") : "";
+        override2Name.textContent = testUiState.override2 ? (testUiState.override2.name || "override_2.json") : "";
+        comparisonToggle.checked = testUiState.comparisonEnabled === true;
+        logsToggle.checked = testUiState.logsEnabled === true;
+      }
+      
+      override1Input.addEventListener("change", async event => {
+        const file = event.target.files && event.target.files[0];
+        if (!file) return;
+        
+        try {
+          testUiState.override1 = await readOverrideFile(file);
+          saveTestUiState();
+          refreshPopoverFields();
+          syncTestStatusBar();
+        } catch (err) {
+          alert(`Erreur : ${err.message}`);
+          event.target.value = "";
+        }
+      });
+      
+      override2Input.addEventListener("change", async event => {
+        const file = event.target.files && event.target.files[0];
+        if (!file) return;
+        
+        try {
+          testUiState.override2 = await readOverrideFile(file);
+          saveTestUiState();
+          refreshPopoverFields();
+          syncTestStatusBar();
+        } catch (err) {
+          alert(`Erreur : ${err.message}`);
+          event.target.value = "";
+        }
+      });
+      
+      comparisonToggle.addEventListener("change", () => {
+        testUiState.comparisonEnabled = comparisonToggle.checked === true;
+        saveTestUiState();
+        syncTestStatusBar();
+      });
+      
+      logsToggle.addEventListener("change", () => {
+        testUiState.logsEnabled = logsToggle.checked === true;
+        showDebug = testUiState.logsEnabled === true;
+        saveTestUiState();
+        syncDebugVisibility();
+        syncTestStatusBar();
+      });
+      
+      popover._refreshFields = refreshPopoverFields;
+      refreshPopoverFields();
+      
+      return popover;
+    }
+    
+    function positionTestPopover() {
+      const popover = ensureTestPopover();
+      const button = document.getElementById("debugToggleBtn");
+      
+      if (!popover || !button) return;
+      
+      const rect = button.getBoundingClientRect();
+      const width = Math.min(320, window.innerWidth - 24);
+      const left = Math.max(12, Math.min(window.innerWidth - width - 12, rect.right - width));
+      const top = rect.top - popover.offsetHeight - 10;
+      
+      popover.style.width = `${width}px`;
+      popover.style.left = `${left}px`;
+      popover.style.top = `${Math.max(12, top)}px`;
+    }
+    
+    function closeTestPopover() {
+      const popover = document.getElementById("testPopover");
+      if (!popover) return;
+      popover.style.display = "none";
+    }
+    
+    function openTestPopover() {
+      const popover = ensureTestPopover();
+      if (!popover) return;
+      
+      popover._refreshFields && popover._refreshFields();
+      popover.style.display = "block";
+      positionTestPopover();
+    }
+    
+    function toggleTestPopover() {
+      const popover = ensureTestPopover();
+      if (!popover) return;
+      
+      if (popover.style.display === "block") {
+        closeTestPopover();
+        return;
+      }
+      
+      openTestPopover();
+    }
+    
+    document.addEventListener("click", event => {
+      const popover = document.getElementById("testPopover");
+      const button = document.getElementById("debugToggleBtn");
+      
+      if (!popover || popover.style.display !== "block") return;
+      if (popover.contains(event.target)) return;
+      if (button && button.contains(event.target)) return;
+      
+      closeTestPopover();
+    });
+    
+    window.addEventListener("resize", () => {
+      positionTestPopover();
+      syncTestStatusBarPosition();
+    });
+    
     function syncDebugVisibility() {
       const isAdminUI = localStorage.getItem(ADMIN_UI_KEY) === "1";
       const debugBtn = document.getElementById("debugToggleBtn");
       const chatScreen = document.getElementById("chatScreen");
       const isChatActive = chatScreen.classList.contains("active");
       
-      if (!isAdminUI) {
-        showDebug = false;
-      }
+      showDebug = testUiState.logsEnabled === true;
       
       if (!debugBtn) return;
       
       debugBtn.style.display = isAdminUI && isChatActive ? "block" : "none";
       
       if (!(isAdminUI && isChatActive)) {
-        debugBtn.textContent = "logs";
+        debugBtn.textContent = "test";
+        document.body.classList.toggle("show-debug", false);
+        closeTestPopover();
+        syncTestStatusBar();
         return;
       }
       
-      debugBtn.textContent = "logs";
+      debugBtn.textContent = "test";
       debugBtn.style.width = "36px";
       debugBtn.style.height = "36px";
       debugBtn.style.minWidth = "36px";
@@ -2476,17 +2842,17 @@
       debugBtn.style.letterSpacing = "0.02em";
       debugBtn.style.textTransform = "lowercase";
       debugBtn.style.lineHeight = "1";
-      debugBtn.style.boxShadow = showDebug ?
-        "0 12px 24px rgba(36, 94, 102, 0.18), 0 1px 0 rgba(255, 255, 255, 0.18) inset" :
-        "0 8px 18px rgba(36, 94, 102, 0.08), 0 1px 0 rgba(255, 255, 255, 0.42) inset";
-      debugBtn.style.background = showDebug ?
-        "#245e66" :
-        "rgba(255, 255, 255, 0.84)";
-      debugBtn.style.color = showDebug ?
-        "#ffffff" :
-        "rgba(36, 94, 102, 0.68)";
+      debugBtn.style.boxShadow = "0 8px 18px rgba(36, 94, 102, 0.08), 0 1px 0 rgba(255, 255, 255, 0.42) inset";
+      debugBtn.style.background = "rgba(255, 255, 255, 0.84)";
+      debugBtn.style.color = "rgba(36, 94, 102, 0.68)";
+      debugBtn.onclick = event => {
+        event.preventDefault();
+        event.stopPropagation();
+        toggleTestPopover();
+      };
       
-      document.body.classList.toggle("show-debug", isAdminUI && showDebug);
+      document.body.classList.toggle("show-debug", showDebug);
+      syncTestStatusBar();
     }
     
     function isChatAtBottom() {
@@ -3064,56 +3430,257 @@
       
       const wasAtBottomBeforeInsert = isChatAtBottom();
       
+      const rawText = String(text || "");
+      let displayText = rawText;
+      let compareLabel = "";
+      
+      if (role === "bot") {
+        const match = rawText.match(/^\[(Référence|Override 1|Override 1 \+ 2)\]\n\n([\s\S]*)$/);
+        if (match) {
+          compareLabel = match[1];
+          displayText = match[2];
+        }
+      }
+      
       const msg = document.createElement("div");
       msg.className = "message " + role;
       
       const contentWrap = document.createElement("div");
       contentWrap.className = "message-content";
       
-      if (role === "bot" && Array.isArray(debug) && debug.length) {
-        const dbg = document.createElement("div");
-        dbg.className = "debug-block";
+      function buildDebugMeta(debugLines) {
+        const meta = {
+          chips: [],
+          directivityLabel: "",
+          relanceWindowLabel: "",
+          rewriteSource: "",
+          override1Applied: [],
+          override1Missing: [],
+          override2Applied: [],
+          override2Missing: []
+        };
         
-        debug.forEach(line => {
-          const chip = document.createElement("span");
-          chip.className = "debug-chip";
+        debugLines.forEach(line => {
+          const safeLine = String(line || "").trim();
+          if (!safeLine) return;
           
-          if (line === "mode: EXPLORATION" || line === "mode: exploration") {
-            chip.textContent = "EXPLORATION";
-          } else if (line === "mode: INFORMATION" || line === "mode: info") {
-            chip.textContent = "INFORMATION";
-          } else if (line === "mode: CONTACT" || line === "mode: contact") {
-            chip.textContent = "CONTACT";
-          } else if (line === "suicide: N1") {
-            chip.textContent = "Possible risque suicidaire";
-          } else if (line === "suicide: N2") {
-            chip.textContent = "Risque suicidaire avéré";
-          } else if (line === "suicideLevel: Possible risque suicidaire") {
-            chip.textContent = "Possible risque suicidaire";
-          } else if (line === "suicideLevel: Risque suicidaire avéré") {
-            chip.textContent = "Risque suicidaire avéré";
-          } else if (line === "calledMemory: shortTermMemory") {
-            chip.textContent = "Appel à la mémoire à court terme";
-          } else if (line === "calledMemory: longTermMemory") {
-            chip.textContent = "Appel à la mémoire à long terme";
-          } else if (line === "calledMemory: Appel à la mémoire à court terme") {
-            chip.textContent = "Appel à la mémoire à court terme";
-          } else if (line === "calledMemory: Appel à la mémoire à long terme") {
-            chip.textContent = "Appel à la mémoire à long terme";
-          } else if (line.startsWith("modelConflict")) {
-            chip.textContent = "Conflit avec le modèle théorique";
-          } else if (line.startsWith("explorationDirectivityLevel:")) {
-            return;
-          } else if (line.startsWith("explorationRelanceWindow:")) {
-            chip.textContent = line.slice("explorationRelanceWindow:".length).trim();
-          } else {
+          if (safeLine === "mode: EXPLORATION" || safeLine === "mode: exploration") {
+            meta.chips.push("EXPLORATION");
             return;
           }
           
+          if (safeLine === "mode: INFORMATION" || safeLine === "mode: info") {
+            meta.chips.push("INFORMATION");
+            return;
+          }
+          
+          if (safeLine === "mode: CONTACT" || safeLine === "mode: contact") {
+            meta.chips.push("CONTACT");
+            return;
+          }
+          
+          if (
+            safeLine === "suicide: N1" ||
+            safeLine === "suicideLevel: Possible risque suicidaire"
+          ) {
+            meta.chips.push("Possible risque suicidaire");
+            return;
+          }
+          
+          if (
+            safeLine === "suicide: N2" ||
+            safeLine === "suicideLevel: Risque suicidaire avéré"
+          ) {
+            meta.chips.push("Risque suicidaire avéré");
+            return;
+          }
+          
+          if (
+            safeLine === "calledMemory: shortTermMemory" ||
+            safeLine === "calledMemory: Appel à la mémoire à court terme"
+          ) {
+            meta.chips.push("Appel à la mémoire à court terme");
+            return;
+          }
+          
+          if (
+            safeLine === "calledMemory: longTermMemory" ||
+            safeLine === "calledMemory: Appel à la mémoire à long terme"
+          ) {
+            meta.chips.push("Appel à la mémoire à long terme");
+            return;
+          }
+          
+          if (safeLine.startsWith("modelConflict")) {
+            meta.chips.push("Conflit avec le modèle théorique");
+            return;
+          }
+          
+          if (safeLine.startsWith("explorationDirectivityLevel:")) {
+            meta.directivityLabel = safeLine.replace("explorationDirectivityLevel:", "").trim();
+            return;
+          }
+          
+          if (safeLine.startsWith("explorationRelanceWindow:")) {
+            meta.relanceWindowLabel = safeLine.replace("explorationRelanceWindow:", "").trim();
+            return;
+          }
+          
+          if (safeLine.startsWith("rewriteSource:")) {
+            meta.rewriteSource = safeLine.replace("rewriteSource:", "").trim();
+            return;
+          }
+          
+          if (safeLine.startsWith("override1Applied:")) {
+            meta.override1Applied = safeLine
+              .replace("override1Applied:", "")
+              .split(",")
+              .map(v => v.trim())
+              .filter(Boolean);
+            return;
+          }
+          
+          if (safeLine.startsWith("override1Missing:")) {
+            meta.override1Missing = safeLine
+              .replace("override1Missing:", "")
+              .split(",")
+              .map(v => v.trim())
+              .filter(Boolean);
+            return;
+          }
+          
+          if (safeLine.startsWith("override2Applied:")) {
+            meta.override2Applied = safeLine
+              .replace("override2Applied:", "")
+              .split(",")
+              .map(v => v.trim())
+              .filter(Boolean);
+            return;
+          }
+          
+          if (safeLine.startsWith("override2Missing:")) {
+            meta.override2Missing = safeLine
+              .replace("override2Missing:", "")
+              .split(",")
+              .map(v => v.trim())
+              .filter(Boolean);
+            return;
+          }
+        });
+        
+        return meta;
+      }
+      
+      function buildDetailBlock(title, bodyHtml) {
+        const wrapper = document.createElement("div");
+        wrapper.style.display = "none";
+        wrapper.style.marginTop = "10px";
+        wrapper.style.borderRadius = "16px";
+        wrapper.style.background = "rgba(255, 255, 255, 0.56)";
+        wrapper.style.border = "1px solid rgba(214, 230, 233, 0.88)";
+        wrapper.style.boxShadow = "0 8px 20px rgba(36, 94, 102, 0.05)";
+        wrapper.style.backdropFilter = "blur(8px)";
+        wrapper.style.webkitBackdropFilter = "blur(8px)";
+        wrapper.style.overflow = "hidden";
+        
+        const button = document.createElement("button");
+        button.type = "button";
+        button.style.width = "100%";
+        button.style.border = "none";
+        button.style.background = "transparent";
+        button.style.padding = "12px 14px";
+        button.style.display = "flex";
+        button.style.alignItems = "center";
+        button.style.justifyContent = "space-between";
+        button.style.gap = "12px";
+        button.style.cursor = "pointer";
+        button.style.textAlign = "left";
+        button.style.color = "#245e66";
+        button.style.fontSize = "13px";
+        button.style.lineHeight = "1.3";
+        button.style.fontWeight = "700";
+        button.style.webkitTapHighlightColor = "transparent";
+        
+        const titleEl = document.createElement("span");
+        titleEl.textContent = title;
+        titleEl.style.flex = "1";
+        titleEl.style.minWidth = "0";
+        
+        const icon = document.createElement("span");
+        icon.textContent = "▾";
+        icon.style.flex = "0 0 auto";
+        icon.style.fontSize = "13px";
+        icon.style.transition = "transform 0.18s ease";
+        
+        const body = document.createElement("div");
+        body.style.display = "none";
+        body.style.padding = "0 14px 14px 14px";
+        body.style.fontSize = "13px";
+        body.style.lineHeight = "1.55";
+        body.style.color = "#3e5e62";
+        body.style.whiteSpace = "normal";
+        body.innerHTML = bodyHtml;
+        
+        button.onclick = () => {
+          const isOpen = body.style.display === "block";
+          body.style.display = isOpen ? "none" : "block";
+          icon.style.transform = isOpen ? "rotate(0deg)" : "rotate(180deg)";
+        };
+        
+        button.appendChild(titleEl);
+        button.appendChild(icon);
+        wrapper.appendChild(button);
+        wrapper.appendChild(body);
+        
+        return wrapper;
+      }
+      
+      if (role === "bot" && compareLabel) {
+        const badgeWrap = document.createElement("div");
+        badgeWrap.style.display = "flex";
+        badgeWrap.style.alignItems = "center";
+        badgeWrap.style.marginBottom = "4px";
+        
+        const badge = document.createElement("div");
+        badge.textContent = compareLabel;
+        badge.style.display = "inline-flex";
+        badge.style.alignItems = "center";
+        badge.style.alignSelf = "flex-start";
+        badge.style.padding = "6px 10px";
+        badge.style.borderRadius = "999px";
+        badge.style.background = "rgba(36, 94, 102, 0.1)";
+        badge.style.border = "1px solid rgba(36, 94, 102, 0.14)";
+        badge.style.color = "#245e66";
+        badge.style.fontSize = "12px";
+        badge.style.lineHeight = "1.2";
+        badge.style.fontWeight = "700";
+        badge.style.letterSpacing = "0.01em";
+        badge.style.boxShadow = "0 6px 14px rgba(36, 94, 102, 0.06)";
+        badge.style.backdropFilter = "blur(8px)";
+        badge.style.webkitBackdropFilter = "blur(8px)";
+        
+        badgeWrap.appendChild(badge);
+        contentWrap.appendChild(badgeWrap);
+      }
+      
+      let debugMeta = null;
+      
+      if (role === "bot" && Array.isArray(debug) && debug.length) {
+        debugMeta = buildDebugMeta(debug);
+        
+        const dbg = document.createElement("div");
+        dbg.className = "debug-block";
+        
+        debugMeta.chips.forEach(label => {
+          const chip = document.createElement("span");
+          chip.className = "debug-chip";
+          chip.textContent = label;
           dbg.appendChild(chip);
         });
         
-        contentWrap.appendChild(dbg);
+        if (dbg.childNodes.length > 0) {
+          contentWrap.appendChild(dbg);
+        }
       }
       
       const bubble = document.createElement("div");
@@ -3152,7 +3719,7 @@
           event.preventDefault();
         });
         
-        renderBotMessageContent(bubble, text, {
+        renderBotMessageContent(bubble, displayText, {
           progressive,
           wasAtBottomBeforeInsert
         });
@@ -3162,7 +3729,7 @@
         bubble.style.borderTopRightRadius = "8px";
         bubble.style.boxShadow = "0 10px 26px rgba(36, 94, 102, 0.08), 0 1px 0 rgba(255, 255, 255, 0.28) inset";
         
-        bubble.textContent = text;
+        bubble.textContent = displayText;
         
         let longPressTimer = null;
         let longPressTriggered = false;
@@ -3196,7 +3763,7 @@
             return;
           }
           
-          openEditMode(historyIndex, text);
+          openEditMode(historyIndex, displayText);
         };
         
         const startLongPress = event => {
@@ -3272,6 +3839,78 @@
       }
       
       contentWrap.appendChild(bubble);
+      
+      if (role === "bot" && debugMeta) {
+        const detailBlocksWrap = document.createElement("div");
+        detailBlocksWrap.style.display = "flex";
+        detailBlocksWrap.style.flexDirection = "column";
+        detailBlocksWrap.style.gap = "0";
+        
+        if (debugMeta.directivityLabel) {
+          const bodyHtml = `
+        <div>${escapeHtml(debugMeta.directivityLabel)}</div>
+        ${debugMeta.relanceWindowLabel ? `<div style="margin-top:8px;">${escapeHtml(debugMeta.relanceWindowLabel)}</div>` : ""}
+      `;
+          const block = buildDetailBlock("Directivité", bodyHtml);
+          block.style.display = "block";
+          detailBlocksWrap.appendChild(block);
+        }
+        
+        if (debugMeta.rewriteSource) {
+          const bodyHtml = `
+        <div style="margin-bottom:8px;">Message initial avant réécriture :</div>
+        <div style="padding:10px 12px;border-radius:12px;background:rgba(36,94,102,0.06);border:1px solid rgba(36,94,102,0.1);white-space:pre-wrap;">${escapeHtml(debugMeta.rewriteSource)}</div>
+      `;
+          const block = buildDetailBlock("Réécriture après conflit modèle", bodyHtml);
+          block.style.display = "block";
+          detailBlocksWrap.appendChild(block);
+        }
+        
+        if (debugMeta.override1Applied.length || debugMeta.override1Missing.length) {
+          const bodyParts = [];
+          
+          if (debugMeta.override1Applied.length) {
+            bodyParts.push(
+              `<div><strong>Blocs remplacés</strong><br>${escapeHtml(debugMeta.override1Applied.join(", "))}</div>`
+            );
+          }
+          
+          if (debugMeta.override1Missing.length) {
+            bodyParts.push(
+              `<div style="margin-top:8px;"><strong>Marqueurs introuvables</strong><br>${escapeHtml(debugMeta.override1Missing.join(", "))}</div>`
+            );
+          }
+          
+          const block = buildDetailBlock("Override 1", bodyParts.join(""));
+          block.style.display = "block";
+          detailBlocksWrap.appendChild(block);
+        }
+        
+        if (debugMeta.override2Applied.length || debugMeta.override2Missing.length) {
+          const bodyParts = [];
+          
+          if (debugMeta.override2Applied.length) {
+            bodyParts.push(
+              `<div><strong>Blocs remplacés</strong><br>${escapeHtml(debugMeta.override2Applied.join(", "))}</div>`
+            );
+          }
+          
+          if (debugMeta.override2Missing.length) {
+            bodyParts.push(
+              `<div style="margin-top:8px;"><strong>Marqueurs introuvables</strong><br>${escapeHtml(debugMeta.override2Missing.join(", "))}</div>`
+            );
+          }
+          
+          const block = buildDetailBlock("Override 2", bodyParts.join(""));
+          block.style.display = "block";
+          detailBlocksWrap.appendChild(block);
+        }
+        
+        if (detailBlocksWrap.childNodes.length > 0) {
+          contentWrap.appendChild(detailBlocksWrap);
+        }
+      }
+      
       msg.appendChild(contentWrap);
       chat.appendChild(msg);
       
@@ -3805,6 +4444,14 @@
       const conversationIdBeforeSend = getConversationId();
       const wasAtBottom = isEditing ? true : isChatAtBottom();
       const restoredDraft = isEditing ? draftBeforeEdit : "";
+      const testPayload = typeof getActiveTestPayload === "function" ?
+        getActiveTestPayload() :
+        {
+          override1: null,
+          override2: null,
+          comparisonEnabled: false,
+          logsEnabled: false
+        };
       
       let message = nextMessage;
       
@@ -3886,7 +4533,10 @@
         });
       }
       
-      const shouldAutoScrollReply = isEditing || wasAtBottom || isChatAtBottom();
+      const shouldAutoScrollReply =
+        testPayload.comparisonEnabled === true ?
+        false :
+        (isEditing || wasAtBottom || isChatAtBottom());
       
       let dotAnimation = null;
       
@@ -3916,7 +4566,11 @@
             conversationId: requestConversationId,
             recentHistory: loadHistory().map(({ role, content }) => ({ role, content })).slice(-MAX_RECENT_TURNS),
             memory: loadMemory(),
-            flags: loadFlags()
+            flags: loadFlags(),
+            override1: testPayload.override1,
+            override2: testPayload.override2,
+            comparisonEnabled: testPayload.comparisonEnabled === true,
+            logsEnabled: testPayload.logsEnabled === true
           })
         });
         
@@ -3925,7 +4579,14 @@
         if (dotAnimation) dotAnimation.cancel();
         if (waitingMsg.parentNode) waitingMsg.parentNode.removeChild(waitingMsg);
         
-        if (!res.ok || !data || !data.reply) {
+        if (
+          !res.ok ||
+          !data ||
+          (
+            !data.reply &&
+            !(data.comparison === true && Array.isArray(data.results) && data.results.length > 0)
+          )
+        ) {
           if (
             getConversationId() === requestConversationId &&
             document.querySelector(".screen.active")?.id === requestScreenId &&
@@ -3969,10 +4630,27 @@
           document.querySelector(".screen.active")?.id === requestScreenId &&
           requestScreenId === "chatScreen"
         ) {
-          addMessage("bot", data.reply, data.debug || [], {
-            shouldAutoScroll: shouldAutoScrollReply,
-            pulseScrollButton: !shouldAutoScrollReply
-          });
+          if (data.comparison === true && Array.isArray(data.results) && data.results.length > 0) {
+            data.results.forEach((result, index) => {
+              const label = String(result?.label || "").trim();
+              const replyText = String(result?.reply || "").trim();
+              const debugLines = Array.isArray(result?.debug) ? result.debug : [];
+              
+              if (!replyText) return;
+              
+              const prefixedReply = label ? `[${label}]\n\n${replyText}` : replyText;
+              
+              addMessage("bot", prefixedReply, debugLines, {
+                shouldAutoScroll: false,
+                pulseScrollButton: index === data.results.length - 1
+              });
+            });
+          } else {
+            addMessage("bot", data.reply, data.debug || [], {
+              shouldAutoScroll: shouldAutoScrollReply,
+              pulseScrollButton: !shouldAutoScrollReply
+            });
+          }
         }
         
         if (data.conversationId) {

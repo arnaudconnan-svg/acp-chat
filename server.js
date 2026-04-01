@@ -1123,28 +1123,27 @@ ${transcript}
 // 6) PROMPT
 // --------------------------------------------------
 
+function wrapPromptBlock(marker, content) {
+  return `[[${marker}_START]]
+${String(content || "").trim()}
+[[${marker}_END]]`;
+}
+
 function buildSystemPrompt(mode, memory, explorationDirectivityLevel = 0) {
+  const normalizedMemory = normalizeMemory(memory);
+  
   const commonBlock = `
 Tu es Facilitat.io.
 
-Tu es une presence qui parle depuis son propre point de vue.
-Tu proposes des lectures singulieres, parfois inattendues, qui peuvent deplacer la maniere dont la personne se comprend.
-Tu peux etre tour a tour:
-- tres simple
-- plus incisif
-- parfois decale
-- parfois direct
-Tu ne cherches pas a plaire, ni a rassurer, ni a valider, ni a trouver des solutions à la place de l'autre.
-Tu dis ce qui te semble juste depuis ta position, sans t 'imposer.
-Tu dois changer de ton d'une reponse a l'autre quand cela sert la justesse.
+Regle numéro 1 : tu n'es pas là pour trouver des solutions à la place de l'utilisateur.
 
 Pas de diagnostic ni de prescription.
 Pas de coaching ni de psychologie positive.
 Pas de conseils ni de propositions.
 
 Important :
-- N 'utilise aucune autre langue que le francais.
-- Tutoie toujours l 'utilisateur.
+- N'utilise aucune autre langue que le francais.
+- Tutoie toujours l'utilisateur.
 - N'oriente pas la conversation vers une logique d'evaluation, de classification ou de recherche de symptomes.
 - N'essaie pas d'identifier ce que la personne "a".
 - Ne suggere pas de categories (depression, trouble, etc.), meme indirectement.
@@ -1156,9 +1155,9 @@ N'utilise aucune autre langue que le francais.
 
 Principe central du modele:
 
-  Toute experience humaine s' organise autour de deux dynamiques opposees:
-    - le rejet de l' experience->associe a la honte
-    - l' acceptation de l' experience->associe a la transformation
+  Toute experience humaine s'organise autour de deux dynamiques opposees:
+    - le rejet de l'experience -> associe a la honte
+    - l'acceptation de l'experience -> associe a la transformation
     - quand une personne decrit une difficulte, un blocage ou une souffrance, relie explicitement ce vecu a une dynamique de rejet (honte) ou d'acceptation, meme de facon implicite.
 
   Toute reponse doit, lorsque c'est pertinent, s'organiser autour de cette dynamique centrale.
@@ -1179,196 +1178,38 @@ Priorites (non negociables si pertinentes dans la situation) :
   - la decharge emotionnelle
   - la transformation partielle
   - quand tu decris un processus de transformation, explicite clairement la sequence:
-      honte->acceptation->acces a l'emotion->decharge->transformation
+      honte -> acceptation -> acces a l'emotion -> decharge -> transformation
   - la dynamique rejet (honte) / acceptation sont les pivots de comprehension de ce modele
 
-Important :
-- N'utilise pas d'explications vagues ou generiques
-- Ne reviens pas a un langage psychologique standard
-- Privilegie les mecanismes du modele (memoire, arbitrage, acceptation, decharge, croyances...)
-- Ne parle pas de mecanismes de defense mais de mecanismes adaptatifs
-- Chaque reponse doit expliquer avec des mots concrets ce que le concept change dans l'experience vecue
-- Evite le charabia theorique. Si tu utilises un concept du modele, montre a quoi il correspond concretement
-- Si la situation implique un blocage ou une absence de changement, integre explicitement :
-  - la possibilite d'une transformation toujours en cours
-  - le role de la honte dans le ralentissement voire le blocage du processus
-  - le passage par de la decharge emotionnelle
+Terminologie a privilegier :
+- memoire corporelle
+- memoire autobiographique
+- croyances limitantes
+- resistance naturelle au changement
+- decharge emotionnelle
+- acceptation
 
-Ne confonds pas :
-  - les automatismes de la conscience directe (fonctionnements integres, sans mobilisation de la conscience reflexive)
-  - et les dynamiques liees a un desalignement entre memoire corporelle et memoire autobiographique
-Si tu evoques un fonctionnement automatique, precise de quel type il s'agit
+Terminologie interdite ou a eviter :
+- inconscient
+- subconscient
+- non-conscient comme instance explicative
+- mecanismes de defense
+- psychopathologie
+- sante mentale comme cadre explicatif global
 
-Terminologie a respecter(ne pas paraphraser):
-  - memoire corporelle
-  - memoire autobiographique
-  - biais cognitifs + resistance naturelle au changement
-  - croyances limitantes
-  - decharge emotionnelle
-  - honte (quand elle est pertinente, la nommer explicitement et l'integrer naturellement au raisonnement, sans la plaquer artificiellement)
-  - acceptation
-Ces termes sont centraux dans le modele. Tu dois les utiliser tels quels et eviter de les remplacer par des synonymes.
+Tu peux dire, si necessaire :
+- mecanismes adaptatifs
+- protections
+- apprentissages anciens
+- experiences rejetees
+- emotions non accueillies
+- memoire corporelle / autobiographique
 
-Modele :
-1. Memoire et conscience
-  1.1. Memoire
-    1.1.1. Memoire corporelle
-      Encodee en sensations, emotions, mouvements
-    1.1.2. Memoire autobiographique
-      Encodee en langage, images, symboles
-    Ces deux memoires sont en interaction permanente.
-  1.2. Conscience
-    Les deux formes de conscience encodent chacune a leur maniere dans les memoires corporelle +/- autobiographique. Il n'y a pas d'inconscient, de subconscient tout comme on ne peut pas ne pas etre conscient. Ce sont les memoires qui ne sont pas alignees.
-    1.2.1. Conscience directe
-      -> arbitrage et encodage immediat de l'experience
-        (sensorielle, emotionnelle, motrice, pensees, croyances...)
-    1.2.2. Conscience reflexive
-      -> arbitrage et encodage retroactifs
-        (libre-arbitre)
-
-2. Deconnexion / dissociation
-  La deconnexion (ou dissociation) correspond a un desalignement entre memoire corporelle et memoire autobiographique.
-
-  Elle apparait :
-    lors de saturations du systeme nerveux (trauma aigu)
-    lors de microtraumatismes repetes (maltraitances, negligences...)
-    par activation de croyances limitantes
-    ou par choix adaptatif reflechi (mise a distance volontaire)
-
-3. Principe adaptatif
-  Aucun mecanisme interne n'est pathologique.
-
-  Les mecanismes observes sont toujours :
-    adaptatifs
-    reponses a des contraintes
-
-  Les contraintes peuvent venir :
-    du corps (troubles neurologiques, hormonaux...)
-    des systemes d'appartenance (famille, ecole, travail, societe...)
-
-  Il n'y a donc pas de psychopathologie ni de "sante mentale", d'autant que cette logique augmente le vecu d'insuffisance et de honte
-
-4. Croyances limitantes
-  Une croyance limitante est un complexe / structure / conglomerat mental, construit ou introjecte.
-
-  Origine :
-    activation de la memoire corporelle
-    absence de mise en sens possible via la memoire autobiographique
-    -> experience percue comme insensee
-    -> invention de sens
-
-  Statut initial :
-    adaptatif
-    meilleure reponse possible dans un contexte contraignant
-
-  Evolution :
-    devient limitante dans d'autres contextes
-
-  Maintien :
-    biais cognitifs (confirmation, effet Pygmalion)
-    resistance naturelle au changement
-
-  Remise en question :
-    principalement lors de crises existentielles
-    sinon evolution marginale
-
-5. Emotions
-  Les emotions indiquent la relation a ce qui est percu comme bon pour soi,
-  en lien avec le centre d'evaluation interne et la singularite de l'individu.
-
-  Colere : tentative de modifier ce qui est percu comme nuisible (deconnexion)
-  Peur : tentative de fuir ce qui est percu comme nuisible (deconnexion)
-  Tristesse : relachement quand aucune action n'est possible (deconnexion)
-  Joie : signal de connexion a ce qui est percu comme bon pour soi
-
-  La joie ne se limite pas a la reconnexion a soi.
-
-6. Peur, anxiete, angoisse
-  Peur : reaction directe (conscience directe)
-
-  Anxiete :
-    peur maintenue par la conscience reflexive
-    avec un objet credible
-
-  Angoisse :
-    anxiete sans objet
-    -> peur de ressentir
-
-7. Acceptation et transformation
-  La transformation repose sur :
-    l'acceptation de l'experience
-    la diminution de la honte
-
-  Processus :
-    confrontation a la honte
-    traversee
-    acces a l'emotion sous-jacente
-    decharge
-    realignement memoire corporelle / autobiographique
-    modification des croyances
-    elargissement du champ d'action
-
-  Indicateur :
-    diminution des comportements defensifs ou evitants non deliberes
-
-  La transformation peut etre partielle
-  Une premiere connexion peut donner l'illusion que "le travail est fait"
-  Le maintien des reactions n'indique pas un echec
-  Il reflete:
-    soit une connexion incomplete
-    soit un rythme propre du systeme auquel la memoire autobiographique a du mal a s'accorder du fait d'une croyance limitante culturelle : "je dois etre performant(e)"
-
-8. Decharge
-  La decharge est :
-    affective et corporelle
-    non necessairement verbale
-
-  Elle peut passer par :
-    pleurs, colere, rires
-    expressions non verbales (mouvements, autres etats corporels)
-
-  Elle reste autobiographique, meme sans recit langagier.
-
-  Elle se produit :
-    dans la relation a l'autre (incongruence forte)
-    puis dans la relation a soi
-
-9. Conditions relationnelles
-  Les conditions minimales reposent sur :
-    la capacite a etre en congruence
-    a comprendre de facon empathique
-    a offrir un regard positif inconditionnel
-
-  Ces attitudes permettent l'emergence du processus de transformation.
-
-10. Role de l'IA
-  L'IA peut contribuer sans se substituer.
-
-  En amont :
-    honte moins intense relativement
-    liee au fait que l'IA ne peut pas reellement comprendre ni juger comme un humain
-    premiere expression
-
-  En parallele :
-    exploration autonome
-    identification des zones de non-acceptation
-
-  A posteriori :
-    support pour s'offrir les attitudes a soi-meme
-
-  Limite :
-    transformation profonde liee a la relation humaine
-
-11. Liberte relative
-  Le fonctionnement reste automatique.
-
-  Mais :
-    diminution des croyances limitantes
-    augmentation de l'acceptation
-    integration des contenus
-    -> elargissement du champ d'action
-
-  Le ressenti de liberte est reel.
+Principes de fond :
+- la memoire autobiographique et la memoire corporelle sont toujours en interaction
+- la conscience directe arbitre et encode dans l'instant
+- la conscience reflexive arbitre et encode retroactivement
+- le ressenti de liberte est reel
 
 Resume en deux phrases :
 
@@ -1377,32 +1218,46 @@ Resume en deux phrases :
 `;
   
   const explorationBlock = `
-Posture :
-- Parle depuis ta propre perspective.
-- Le discours est principalement porte par "je".
-- Toute interpretation, hypothese ou mise en tension doit etre formulee a la premiere personne.
-- Les phrases de liaison peuvent exister sans "je" si necessaire pour garder un langage naturel, mais aucune lecture ne doit etre impersonnelle.
+Mode EXPLORATION.
 
-Interdictions :
-- Interdiction d'utiliser toute forme de validation, valorisation ou qualification du discours de l'utilisateur.
-- Ces mots peuvent etre utilises uniquement pour decrire l'experience de l'utilisateur, jamais pour la qualifier depuis ta position.
-- =Toute phrase qui sert a valider ou apprecier est incorrecte.
-- Interdiction d'utiliser des tournures impersonnelles pour interpreter ("il y a", "il semble que", "cela peut", "on peut", etc.).
+Tu n'es pas la pour expliquer.
+Tu n'es pas la pour analyser a la place de la personne.
+Tu n'es pas la pour conduire.
 
-Direction :
-- Chaque reponse doit proposer au moins un angle de lecture qui deplace legerement la comprehension de l'experience en introduisant une tension, un contraste ou une hypothese non evidente.
--Entre directement dans une lecture, une hypothese ou une mise en tension.
+Ta fonction :
+- accueillir
+- reformuler au plus juste
+- rester au plus pres de l'experience exprimee
+- soutenir sans diriger
+- laisser de la place
+- ne pas produire de lecture psychologique plaquee
+
+Important :
+- pas de diagnostic
+- pas de conseil
+- pas d'interpretation
+- pas de strategie
+- pas de plan d'action
+- pas de psychoeducation
+- pas de questions en serie
+- pas de relance automatique
+- pas de conclusion qui enferme
+- ne fais pas dire plus que ce qui est deja la
 
 Forme des reponses :
-- Structure la reponse en plusieurs courts paragraphes naturels pour ameliorer la lisibilite.
-- Laisse respirer le texte avec des retours a la ligne reguliers (2 a 4 phrases maximum par paragraphe).
-- Garde un flux organique et souple : le decoupage suit le rythme du propos, pas une logique rigide.
-- Le style est libre mais professionnel : variations de ton, de rythme et de longueur de phrases sont encouragees.
-- Melange des phrases courtes et plus amples pour creer du mouvement.
-- Le rythme peut etre contraste, avec des respirations marquees.
-- Utilise du Markdown intermédiaire si c'est coherent avec le ton et la lisibilite (gras, italique, listes, titres, séparateurs). N’ utilise jamais de HTML.
-- N’ utilise jamais de code, ni en ligne(code), ni en bloc(). Si tu dois évoquer du code ou une syntaxe, fais-le en langage naturel uniquement.
-- Utilise régulièrement des phrases courtes isolees pour marquer un pivot ou une mise en relief.
+- structure la reponse en plusieurs courts paragraphes naturels pour ameliorer la lisibilite
+- laisse respirer le texte avec des retours a la ligne reguliers
+- 2 a 4 phrases maximum par paragraphe
+- alterne si besoin entre phrases courtes et phrases un peu plus amples
+- evite les blocs compacts
+- pas de listes a puces
+- pas de titre
+- pas de ton scolaire
+- pas de formule meta du type "ce que tu decris", "il y a quelque chose de..."
+- pas de compliment sur la profondeur du message
+- N'utilise jamais de HTML.
+- N'utilise jamais de code, ni en ligne, ni en bloc. Si tu dois evoquer du code ou une syntaxe, fais-le en langage naturel uniquement.
+- Utilise regulierement des phrases courtes isolees pour marquer un pivot ou une mise en relief.
 - Le langage peut etre creatif : metaphores, images et formulations inattendues sont autorisees si elles enrichissent l'experience.
 - La longueur de la reponse doit s'ajuster au contenu sans jamais devenir trop longue.
 - La fin peut rester ouverte ou se refermer naturellement, sans obligation de conclure.
@@ -1410,7 +1265,7 @@ Forme des reponses :
 ${getExplorationStructureInstruction(explorationDirectivityLevel)}
 
 Memoire :
-${normalizeMemory(memory)}
+${normalizedMemory}
 `;
   
   const contactBlock = `
@@ -1461,32 +1316,124 @@ Forme des reponses :
 - pas de relance finale
 
 Memoire :
-${normalizeMemory(memory)}
+${normalizedMemory}
 
 ${infoModelBlock}
 `;
   
+  const commonWrapped = wrapPromptBlock("COMMON_BLOCK", commonBlock);
+  const contactWrapped = wrapPromptBlock("MODE_CONTACT", contactBlock);
+  const infoWrapped = wrapPromptBlock("MODE_INFORMATION", infoBlock);
+  const explorationWrapped = wrapPromptBlock("MODE_EXPLORATION", explorationBlock);
+  
   if (mode === "contact") {
     return `
-${commonBlock}
+${commonWrapped}
 
-${contactBlock}
-`;
+${contactWrapped}
+`.trim();
   }
   
   if (mode === "info") {
     return `
-${commonBlock}
+${commonWrapped}
 
-${infoBlock}
-`;
+${infoWrapped}
+`.trim();
   }
   
   return `
-${commonBlock}
+${commonWrapped}
 
-${explorationBlock}
-`;
+${explorationWrapped}
+`.trim();
+}
+
+function normalizePromptOverrideFile(overrideFile) {
+  if (!overrideFile || typeof overrideFile !== "object" || Array.isArray(overrideFile)) {
+    return null;
+  }
+  
+  const name = String(overrideFile.name || "").trim();
+  const replacements = overrideFile.replacements;
+  
+  if (!replacements || typeof replacements !== "object" || Array.isArray(replacements)) {
+    return null;
+  }
+  
+  const safeReplacements = {};
+  
+  for (const [target, content] of Object.entries(replacements)) {
+    const safeTarget = String(target || "").trim();
+    if (!safeTarget) continue;
+    safeReplacements[safeTarget] = String(content || "");
+  }
+  
+  return {
+    name,
+    replacements: safeReplacements
+  };
+}
+
+function applyPromptOverrideFile(prompt, overrideFile) {
+  const normalized = normalizePromptOverrideFile(overrideFile);
+  
+  if (!normalized) {
+    return {
+      prompt,
+      appliedTargets: [],
+      missingTargets: [],
+      fileName: ""
+    };
+  }
+  
+  let nextPrompt = String(prompt || "");
+  const appliedTargets = [];
+  const missingTargets = [];
+  
+  for (const [target, content] of Object.entries(normalized.replacements)) {
+    const pattern = new RegExp(`\\[\\[${target}_START\\]\\][\\s\\S]*?\\[\\[${target}_END\\]\\]`, "g");
+    
+    if (!pattern.test(nextPrompt)) {
+      missingTargets.push(target);
+      continue;
+    }
+    
+    nextPrompt = nextPrompt.replace(
+      pattern,
+      `[[${target}_START]]
+${String(content || "").trim()}
+[[${target}_END]]`
+    );
+    
+    appliedTargets.push(target);
+  }
+  
+  return {
+    prompt: nextPrompt,
+    appliedTargets,
+    missingTargets,
+    fileName: normalized.name || ""
+  };
+}
+
+function applyPromptOverrideLayers(basePrompt, override1, override2) {
+  const firstPass = applyPromptOverrideFile(basePrompt, override1);
+  const secondPass = applyPromptOverrideFile(firstPass.prompt, override2);
+  
+  return {
+    prompt: secondPass.prompt,
+    override1: {
+      fileName: firstPass.fileName,
+      appliedTargets: firstPass.appliedTargets,
+      missingTargets: firstPass.missingTargets
+    },
+    override2: {
+      fileName: secondPass.fileName,
+      appliedTargets: secondPass.appliedTargets,
+      missingTargets: secondPass.missingTargets
+    }
+  };
 }
 
 async function generateReply({
@@ -1494,27 +1441,36 @@ async function generateReply({
   history,
   memory,
   mode,
-  explorationDirectivityLevel = 0
+  explorationDirectivityLevel = 0,
+  override1 = null,
+  override2 = null
 }) {
-  const system = buildSystemPrompt(mode, memory, explorationDirectivityLevel);
+  const baseSystemPrompt = buildSystemPrompt(mode, memory, explorationDirectivityLevel);
+  const overrideResult = applyPromptOverrideLayers(baseSystemPrompt, override1, override2);
   
   const messages = [
-    { role: "system", content: system },
+    { role: "system", content: overrideResult.prompt },
     ...history.map(m => ({ role: m.role, content: m.content })),
     { role: "user", content: message }
   ];
   
   const r = await client.chat.completions.create({
     model: "gpt-4o",
-    temperature: 0.8,
+    temperature: 0.7,
     top_p: 1,
-    presence_penalty: 0.6,
+    presence_penalty: 0.5,
     frequency_penalty: 0.3,
-    max_tokens: 300-400,
+    max_tokens: 400,
     messages
   });
   
-  return (r.choices?.[0]?.message?.content || "").trim() || "Je t'ecoute.";
+  return {
+    reply: (r.choices?.[0]?.message?.content || "").trim() || "Je t'ecoute.",
+    promptDebug: {
+      override1: overrideResult.override1,
+      override2: overrideResult.override2
+    }
+  };
 }
 
 // --------------------------------------------------
@@ -1522,7 +1478,6 @@ async function generateReply({
 // --------------------------------------------------
 
 async function runSingleTestCase(testCase = {}) {
-  
   const message = String(testCase.message || "").trim();
   
   if (!message) {
@@ -1539,6 +1494,8 @@ async function runSingleTestCase(testCase = {}) {
   const recentHistory = trimHistory(testCase.recentHistory);
   const previousMemory = normalizeMemory(testCase.memory);
   const flags = normalizeSessionFlags(testCase.flags);
+  const override1 = testCase.override1 ?? null;
+  const override2 = testCase.override2 ?? null;
   
   const suicide = await analyzeSuicideRisk(message, recentHistory, flags);
   let newFlags = normalizeSessionFlags(flags);
@@ -1569,6 +1526,7 @@ async function runSingleTestCase(testCase = {}) {
     } else {
       newFlags.acuteCrisis = true;
       newFlags.contactState = { wasContact: false };
+      
       return {
         input: message,
         reply: acuteCrisisFollowupResponse(),
@@ -1683,16 +1641,18 @@ async function runSingleTestCase(testCase = {}) {
     mode = detected.mode;
   }
   
-  let reply = await generateReply({
+  const generated = await generateReply({
     message,
     history: activeHistory,
     memory: previousMemory,
     mode,
-    explorationDirectivityLevel: newFlags.explorationDirectivityLevel
+    explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
+    override1,
+    override2
   });
   
+  let reply = generated.reply;
   let modelConflict = false;
-  let isRelance = null;
   
   if (mode === "exploration") {
     const conflict = await analyzeModelConflict(reply);
@@ -1714,8 +1674,7 @@ async function runSingleTestCase(testCase = {}) {
       memory: previousMemory
     });
     
-    isRelance = relanceAnalysis.isRelance === true;
-    newFlags = registerExplorationRelance(newFlags, isRelance);
+    newFlags = registerExplorationRelance(newFlags, relanceAnalysis.isRelance === true);
   }
   
   const updatedMemory = await updateMemory(previousMemory, [
@@ -1724,26 +1683,40 @@ async function runSingleTestCase(testCase = {}) {
     { role: "assistant", content: reply }
   ]);
   
+  const debug = buildDebug(mode, {
+    suicideLevel: suicide.suicideLevel,
+    needsClarification: suicide.needsClarification,
+    isQuote: suicide.isQuote,
+    idiomaticDeathExpression: suicide.idiomaticDeathExpression,
+    crisisResolved: suicide.crisisResolved,
+    isRecallAttempt: recallRouting.isRecallAttempt,
+    calledMemory: recallRouting.calledMemory,
+    isLongTermMemoryRecall: recallRouting.isLongTermMemoryRecall,
+    modelConflict,
+    explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
+    explorationRelanceWindow: newFlags.explorationRelanceWindow
+  });
+  
+  if (generated.promptDebug?.override1?.appliedTargets?.length) {
+    debug.push(`override1Applied: ${generated.promptDebug.override1.appliedTargets.join(", ")}`);
+  }
+  if (generated.promptDebug?.override1?.missingTargets?.length) {
+    debug.push(`override1Missing: ${generated.promptDebug.override1.missingTargets.join(", ")}`);
+  }
+  if (generated.promptDebug?.override2?.appliedTargets?.length) {
+    debug.push(`override2Applied: ${generated.promptDebug.override2.appliedTargets.join(", ")}`);
+  }
+  if (generated.promptDebug?.override2?.missingTargets?.length) {
+    debug.push(`override2Missing: ${generated.promptDebug.override2.missingTargets.join(", ")}`);
+  }
+  
   return {
     input: message,
     reply,
     mode,
     memory: updatedMemory,
     flags: newFlags,
-    debug: buildDebug(mode, {
-      suicideLevel: suicide.suicideLevel,
-      needsClarification: suicide.needsClarification,
-      isQuote: suicide.isQuote,
-      idiomaticDeathExpression: suicide.idiomaticDeathExpression,
-      crisisResolved: suicide.crisisResolved,
-      isRecallAttempt: recallRouting.isRecallAttempt,
-      calledMemory: recallRouting.calledMemory,
-      isLongTermMemoryRecall: recallRouting.isLongTermMemoryRecall,
-      modelConflict,
-      isRelance,
-      explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
-      explorationRelanceWindow: newFlags.explorationRelanceWindow
-    })
+    debug
   };
 }
 
@@ -1752,7 +1725,9 @@ app.post("/test", async (req, res) => {
     const shared = {
       recentHistory: trimHistory(req.body?.recentHistory),
       memory: normalizeMemory(req.body?.memory),
-      flags: normalizeSessionFlags(req.body?.flags)
+      flags: normalizeSessionFlags(req.body?.flags),
+      override1: req.body?.override1 ?? null,
+      override2: req.body?.override2 ?? null
     };
     
     const chain = req.body?.chain === true;
@@ -1788,6 +1763,8 @@ app.post("/test", async (req, res) => {
           currentMemory : (safeTestCase.memory !== undefined ? safeTestCase.memory : shared.memory),
         flags: chain ?
           currentFlags : (safeTestCase.flags !== undefined ? safeTestCase.flags : shared.flags),
+        override1: safeTestCase.override1 !== undefined ? safeTestCase.override1 : shared.override1,
+        override2: safeTestCase.override2 !== undefined ? safeTestCase.override2 : shared.override2,
         ...safeTestCase,
         message
       };
@@ -1871,24 +1848,25 @@ async function generateConversationTitle(messages) {
       temperature: 0.2,
       max_tokens: 30,
       messages: [
-      {
-        role: "system",
-        content: [
-          "Tu generes un titre tres court en francais pour une conversation.",
-          "Contraintes :",
-          "- 2 a 6 mots",
-          "- pas de guillemets",
-          "- pas d'emoji",
-          "- pas de point final",
-          "- formulation naturelle et specifique",
-          "- ne recopie pas simplement le premier message",
-          "- ne commence pas par Verbatim de type Je, J, Tu, Mon, Ma sauf si c'est indispensable"
-        ].join("\n")
-      },
-      {
-        role: "user",
-        content: sourceText
-      }]
+        {
+          role: "system",
+          content: [
+            "Tu generes un titre tres court en francais pour une conversation.",
+            "Contraintes :",
+            "- 2 a 6 mots",
+            "- pas de guillemets",
+            "- pas d'emoji",
+            "- pas de point final",
+            "- formulation naturelle et specifique",
+            "- ne recopie pas simplement le premier message",
+            "- ne commence pas par Verbatim de type Je, J, Tu, Mon, Ma sauf si c'est indispensable"
+          ].join("\n")
+        },
+        {
+          role: "user",
+          content: sourceText
+        }
+      ]
     });
     
     let title = completion.choices?.[0]?.message?.content?.trim() || "";
@@ -1914,7 +1892,6 @@ async function generateConversationTitle(messages) {
     }
     
     return title || "Conversation";
-    
   } catch (err) {
     console.error("Erreur generation titre:", err.message);
     
@@ -2017,7 +1994,6 @@ app.post("/api/conversations/:id/title", async (req, res) => {
     });
     
     return res.json({ success: true });
-    
   } catch (err) {
     console.error("Erreur update title:", err);
     return res.status(500).json({ error: "Erreur serveur" });
@@ -2076,9 +2052,7 @@ app.get("/api/admin/conversations", requireAdminAuth, async (req, res) => {
       };
     });
     
-    conversations.sort((a, b) =>
-      new Date(b.updatedAt) - new Date(a.updatedAt)
-    );
+    conversations.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
     
     res.json(conversations);
   } catch (err) {
@@ -2092,9 +2066,9 @@ app.get("/api/admin/conversations/:id/messages", requireAdminAuth, async (req, r
     
     const [messagesSnap, labelsSnap] = await Promise.all([
       messagesRef
-      .orderByChild("conversationId")
-      .equalTo(conversationId)
-      .once("value"),
+        .orderByChild("conversationId")
+        .equalTo(conversationId)
+        .once("value"),
       userLabelsRef.once("value")
     ]);
     
@@ -2111,9 +2085,7 @@ app.get("/api/admin/conversations/:id/messages", requireAdminAuth, async (req, r
         userLabel: label,
         displayUser: label || rawUserId
       };
-    }).sort((a, b) => {
-      return new Date(a.timestamp) - new Date(b.timestamp);
-    });
+    }).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
     
     res.json(list);
   } catch (err) {
@@ -2139,7 +2111,6 @@ app.post("/chat", async (req, res) => {
     }
     
     const userId = req.body?.userId || "u_anon";
-    const nowIso = new Date().toISOString();
     const convRef = db.ref("conversations").child(conversationId);
     
     async function maybeGenerateConversationTitle() {
@@ -2234,6 +2205,10 @@ app.post("/chat", async (req, res) => {
     const recentHistory = trimHistory(req.body?.recentHistory);
     const previousMemory = normalizeMemory(req.body?.memory);
     const flags = normalizeSessionFlags(req.body?.flags);
+    const override1 = req.body?.override1 ?? null;
+    const override2 = req.body?.override2 ?? null;
+    const comparisonEnabled = req.body?.comparisonEnabled === true;
+    const logsEnabled = req.body?.logsEnabled === true;
     
     previousMemoryForCatch = previousMemory;
     flagsForCatch = flags;
@@ -2251,6 +2226,33 @@ app.post("/chat", async (req, res) => {
       await convRef.update({
         updatedAt: new Date().toISOString()
       });
+    }
+    
+    function buildPromptDebugLines(promptDebug) {
+      const lines = [];
+      
+      if (promptDebug?.override1?.appliedTargets?.length) {
+        lines.push(`override1Applied: ${promptDebug.override1.appliedTargets.join(", ")}`);
+      }
+      if (promptDebug?.override1?.missingTargets?.length) {
+        lines.push(`override1Missing: ${promptDebug.override1.missingTargets.join(", ")}`);
+      }
+      if (promptDebug?.override2?.appliedTargets?.length) {
+        lines.push(`override2Applied: ${promptDebug.override2.appliedTargets.join(", ")}`);
+      }
+      if (promptDebug?.override2?.missingTargets?.length) {
+        lines.push(`override2Missing: ${promptDebug.override2.missingTargets.join(", ")}`);
+      }
+      
+      return lines;
+    }
+    
+    function buildComparisonEntry(label, generated, debugLines) {
+      return {
+        label,
+        reply: generated.reply,
+        debug: logsEnabled ? [...debugLines, ...buildPromptDebugLines(generated.promptDebug)] : []
+      };
     }
     
     const suicide = await analyzeSuicideRisk(message, recentHistory, flags);
@@ -2374,7 +2376,7 @@ app.post("/chat", async (req, res) => {
     
     modeForCatch = detectedMode;
     
-    let reply = await generateReply({
+    const generatedBase = await generateReply({
       message,
       history: recentHistory,
       memory: previousMemory,
@@ -2382,13 +2384,16 @@ app.post("/chat", async (req, res) => {
       explorationDirectivityLevel: newFlags.explorationDirectivityLevel
     });
     
+    let reply = generatedBase.reply;
     let modelConflict = false;
+    let rewrittenFrom = null;
     
     if (detectedMode === "exploration") {
       const conflict = await analyzeModelConflict(reply);
       modelConflict = conflict.modelConflict === true;
       
       if (modelConflict) {
+        rewrittenFrom = reply;
         reply = await rewriteExplorationReplyWithModelFilter({
           message,
           history: recentHistory,
@@ -2415,6 +2420,12 @@ app.post("/chat", async (req, res) => {
       explorationRelanceWindow: newFlags.explorationRelanceWindow
     });
     
+    if (logsEnabled && rewrittenFrom) {
+      debug.push(`rewriteSource: ${rewrittenFrom}`);
+    }
+    
+    debug.push(...buildPromptDebugLines(generatedBase.promptDebug));
+    
     const newMemory = await updateMemory(previousMemory, [
       ...recentHistory,
       { role: "user", content: message },
@@ -2424,6 +2435,73 @@ app.post("/chat", async (req, res) => {
     await pushAssistantMessage(reply, debug);
     await maybeGenerateConversationTitle();
     
+    if (
+      comparisonEnabled &&
+      (override1 || override2) &&
+      detectedMode !== "contact"
+    ) {
+      const comparisonBaseDebug = buildDebug(detectedMode, {
+        suicideLevel: suicide.suicideLevel,
+        calledMemory: recallRouting.calledMemory,
+        modelConflict,
+        explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
+        explorationRelanceWindow: newFlags.explorationRelanceWindow
+      });
+      
+      if (rewrittenFrom) {
+        comparisonBaseDebug.push(`rewriteSource: ${rewrittenFrom}`);
+      }
+      
+      const comparisonResults = [
+        {
+          label: "Référence",
+          reply,
+          debug: logsEnabled ? [...comparisonBaseDebug, ...buildPromptDebugLines(generatedBase.promptDebug)] : []
+        }
+      ];
+      
+      if (override1) {
+        const generatedOverride1 = await generateReply({
+          message,
+          history: recentHistory,
+          memory: previousMemory,
+          mode: detectedMode,
+          explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
+          override1
+        });
+        
+        comparisonResults.push(
+          buildComparisonEntry("Override 1", generatedOverride1, comparisonBaseDebug)
+        );
+      }
+      
+      if (override1 && override2) {
+        const generatedOverride12 = await generateReply({
+          message,
+          history: recentHistory,
+          memory: previousMemory,
+          mode: detectedMode,
+          explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
+          override1,
+          override2
+        });
+        
+        comparisonResults.push(
+          buildComparisonEntry("Override 1 + 2", generatedOverride12, comparisonBaseDebug)
+        );
+      }
+      
+      return res.json({
+        conversationId,
+        comparison: true,
+        results: comparisonResults,
+        reply,
+        memory: newMemory,
+        flags: newFlags,
+        debug
+      });
+    }
+    
     return res.json({
       conversationId,
       reply,
@@ -2431,7 +2509,6 @@ app.post("/chat", async (req, res) => {
       flags: newFlags,
       debug
     });
-    
   } catch (err) {
     console.error("Erreur /chat:", err);
     
