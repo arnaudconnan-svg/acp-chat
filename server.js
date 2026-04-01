@@ -818,7 +818,7 @@ Formule une reponse de rappel honnete a partir de cette seule memoire.
   
   const r = await client.chat.completions.create({
     model: "gpt-4.1-mini",
-    temperature: 0.9,
+    temperature: 0.7,
     max_tokens: 150,
     messages: [
       { role: "system", content: system },
@@ -1108,7 +1108,7 @@ ${transcript}
   
   const r = await client.chat.completions.create({
     model: "gpt-4.1-mini",
-    temperature: 0.2,
+    temperature: 0.7,
     max_tokens: 200,
     messages: [
       { role: "system", content: system },
@@ -1507,7 +1507,10 @@ async function generateReply({
   const r = await client.chat.completions.create({
     model: "gpt-4o",
     temperature: 0.8,
-    max_tokens: 500,
+    top_p: 1,
+    presence_penalty: 0.6,
+    frequency_penalty: 0.3,
+    max_tokens: 400,
     messages
   });
   
