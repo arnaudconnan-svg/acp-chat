@@ -2529,9 +2529,10 @@
       bar = document.createElement("div");
       bar.id = "testStatusBar";
       bar.style.position = "absolute";
-      bar.style.left = "50%";
-      bar.style.transform = "translateX(-50%)";
-      bar.style.width = "calc(100% - 28px)";
+      bar.style.left = "14px";
+      bar.style.right = "70px";
+      bar.style.width = "auto";
+      bar.style.transform = "none";;
       bar.style.maxWidth = "700px";
       bar.style.boxSizing = "border-box";
       bar.style.padding = "9px 14px";
@@ -2557,16 +2558,27 @@
     function syncTestStatusBarPosition() {
       const bar = ensureTestStatusBar();
       const inputArea = document.getElementById("inputArea");
+      const inputAreaInner = document.getElementById("inputAreaInner");
       const editBar = document.getElementById("editModeBar");
       
-      if (!bar || !inputArea) return;
+      if (!bar || !inputArea || !inputAreaInner) return;
+      
+      const inputAreaRect = inputArea.getBoundingClientRect();
+      const inputAreaInnerRect = inputAreaInner.getBoundingClientRect();
       
       const editBarVisible =
         editBar &&
         editBar.style.opacity !== "0" &&
         editBar.style.pointerEvents !== "none";
       
-      bar.style.bottom = editBarVisible ? "calc(136px + env(safe-area-inset-bottom, 0px))" : "calc(92px + env(safe-area-inset-bottom, 0px))";
+      const anchorTop = editBarVisible ?
+        editBar.getBoundingClientRect().top :
+        inputAreaInnerRect.top;
+      
+      const gapPx = 5;
+      const bottomOffset = Math.max(0, inputAreaRect.bottom - anchorTop + gapPx);
+      
+      bar.style.bottom = `${bottomOffset}px`;
     }
     
     function syncTestStatusBar() {
@@ -3516,6 +3528,20 @@
             return;
           }
           
+          if (debugMeta && showDebug) {
+            const routingParts = [];
+            
+            if (debugMeta.chips.length) {
+              routingParts.push(
+                `<div><strong>Signaux détectés</strong><br>${escapeHtml(debugMeta.chips.join(" · "))}</div>`
+              );
+            }
+            
+            const block = buildDetailBlock("Route décisionnelle", routingParts.join(""));
+            block.style.display = "block";
+            detailBlocksWrap.appendChild(block);
+          }
+          
           if (safeLine.startsWith("explorationDirectivityLevel:")) {
             meta.directivityLabel = safeLine.replace("explorationDirectivityLevel:", "").trim();
             return;
@@ -3840,7 +3866,7 @@
       
       contentWrap.appendChild(bubble);
       
-      if (role === "bot" && debugMeta) {
+      if (role === "bot" && debugMeta && showDebug) {
         const detailBlocksWrap = document.createElement("div");
         detailBlocksWrap.style.display = "flex";
         detailBlocksWrap.style.flexDirection = "column";
