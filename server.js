@@ -1510,7 +1510,7 @@ async function generateReply({
     top_p: 1,
     presence_penalty: 0.6,
     frequency_penalty: 0.3,
-    max_tokens: 400,
+    max_tokens: 300-400,
     messages
   });
   
