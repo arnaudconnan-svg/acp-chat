@@ -2592,7 +2592,7 @@
         bar.textContent = "";
         bar.style.opacity = "0";
         bar.style.pointerEvents = "none";
-        bar.style.transform = "translateX(-50%) translateY(6px)";
+        bar.style.transform = "translateX(0) translateY(6px)";
         if (bar._anim) {
           bar._anim.cancel();
           bar._anim = null;
@@ -2603,21 +2603,21 @@
       bar.textContent = label;
       bar.style.opacity = "1";
       bar.style.pointerEvents = "none";
-      bar.style.transform = "translateX(-50%) translateY(0)";
+      bar.style.transform = "translateX(0) translateY(0)";
       
       if (!bar._anim && bar.animate) {
         bar._anim = bar.animate(
           [
           {
-            transform: "translateX(-50%) translateY(0) scale(1)",
+            transform: "translateX(0) translateY(0) scale(1)",
             boxShadow: "0 10px 22px rgba(36, 94, 102, 0.08)"
           },
           {
-            transform: "translateX(-50%) translateY(0) scale(1.02)",
+            transform: "translateX(0) translateY(0) scale(1.02)",
             boxShadow: "0 14px 28px rgba(36, 94, 102, 0.14)"
           },
           {
-            transform: "translateX(-50%) translateY(0) scale(1)",
+            transform: "translateX(0) translateY(0) scale(1)",
             boxShadow: "0 10px 22px rgba(36, 94, 102, 0.08)"
           }],
           {
@@ -3463,6 +3463,10 @@
       function buildDebugMeta(debugLines) {
         const meta = {
           chips: [],
+          routeMode: "",
+          routeSuicide: "",
+          routeMemory: "",
+          routeConflict: "",
           directivityLabel: "",
           relanceWindowLabel: "",
           rewriteSource: "",
@@ -3478,16 +3482,19 @@
           
           if (safeLine === "mode: EXPLORATION" || safeLine === "mode: exploration") {
             meta.chips.push("EXPLORATION");
+            meta.routeMode = "EXPLORATION";
             return;
           }
           
           if (safeLine === "mode: INFORMATION" || safeLine === "mode: info") {
             meta.chips.push("INFORMATION");
+            meta.routeMode = "INFORMATION";
             return;
           }
           
           if (safeLine === "mode: CONTACT" || safeLine === "mode: contact") {
             meta.chips.push("CONTACT");
+            meta.routeMode = "CONTACT";
             return;
           }
           
@@ -3496,6 +3503,7 @@
             safeLine === "suicideLevel: Possible risque suicidaire"
           ) {
             meta.chips.push("Possible risque suicidaire");
+            meta.routeSuicide = "Possible risque suicidaire";
             return;
           }
           
@@ -3504,6 +3512,7 @@
             safeLine === "suicideLevel: Risque suicidaire avéré"
           ) {
             meta.chips.push("Risque suicidaire avéré");
+            meta.routeSuicide = "Risque suicidaire avéré";
             return;
           }
           
@@ -3512,6 +3521,7 @@
             safeLine === "calledMemory: Appel à la mémoire à court terme"
           ) {
             meta.chips.push("Appel à la mémoire à court terme");
+            meta.routeMemory = "Appel à la mémoire à court terme";
             return;
           }
           
@@ -3520,26 +3530,14 @@
             safeLine === "calledMemory: Appel à la mémoire à long terme"
           ) {
             meta.chips.push("Appel à la mémoire à long terme");
+            meta.routeMemory = "Appel à la mémoire à long terme";
             return;
           }
           
           if (safeLine.startsWith("modelConflict")) {
             meta.chips.push("Conflit avec le modèle théorique");
+            meta.routeConflict = "Conflit avec le modèle théorique";
             return;
-          }
-          
-          if (debugMeta && showDebug) {
-            const routingParts = [];
-            
-            if (debugMeta.chips.length) {
-              routingParts.push(
-                `<div><strong>Signaux détectés</strong><br>${escapeHtml(debugMeta.chips.join(" · "))}</div>`
-              );
-            }
-            
-            const block = buildDetailBlock("Route décisionnelle", routingParts.join(""));
-            block.style.display = "block";
-            detailBlocksWrap.appendChild(block);
           }
           
           if (safeLine.startsWith("explorationDirectivityLevel:")) {
@@ -3872,22 +3870,46 @@
         detailBlocksWrap.style.flexDirection = "column";
         detailBlocksWrap.style.gap = "0";
         
+        const routingParts = [];
+        
+        if (debugMeta.routeMode) {
+          routingParts.push(`<div><strong>Mode</strong><br>${escapeHtml(debugMeta.routeMode)}</div>`);
+        }
+        
+        if (debugMeta.routeSuicide) {
+          routingParts.push(`<div style="margin-top:8px;"><strong>Risque suicidaire</strong><br>${escapeHtml(debugMeta.routeSuicide)}</div>`);
+        }
+        
+        if (debugMeta.routeMemory) {
+          routingParts.push(`<div style="margin-top:8px;"><strong>Memoire appelee</strong><br>${escapeHtml(debugMeta.routeMemory)}</div>`);
+        }
+        
+        if (debugMeta.routeConflict) {
+          routingParts.push(`<div style="margin-top:8px;"><strong>Filtre modele</strong><br>${escapeHtml(debugMeta.routeConflict)}</div>`);
+        }
+        
+        if (routingParts.length) {
+          const routingBlock = buildDetailBlock("Route decisionnelle", routingParts.join(""));
+          routingBlock.style.display = "block";
+          detailBlocksWrap.appendChild(routingBlock);
+        }
+        
         if (debugMeta.directivityLabel) {
           const bodyHtml = `
         <div>${escapeHtml(debugMeta.directivityLabel)}</div>
         ${debugMeta.relanceWindowLabel ? `<div style="margin-top:8px;">${escapeHtml(debugMeta.relanceWindowLabel)}</div>` : ""}
       `;
-          const block = buildDetailBlock("Directivité", bodyHtml);
+          const block = buildDetailBlock("Directivite", bodyHtml);
           block.style.display = "block";
           detailBlocksWrap.appendChild(block);
         }
         
         if (debugMeta.rewriteSource) {
           const bodyHtml = `
-        <div style="margin-bottom:8px;">Message initial avant réécriture :</div>
+        <div style="margin-bottom:8px;">Message initial avant reecriture :</div>
         <div style="padding:10px 12px;border-radius:12px;background:rgba(36,94,102,0.06);border:1px solid rgba(36,94,102,0.1);white-space:pre-wrap;">${escapeHtml(debugMeta.rewriteSource)}</div>
       `;
-          const block = buildDetailBlock("Réécriture après conflit modèle", bodyHtml);
+          const block = buildDetailBlock("Reecriture apres conflit modele", bodyHtml);
           block.style.display = "block";
           detailBlocksWrap.appendChild(block);
         }
@@ -3897,7 +3919,7 @@
           
           if (debugMeta.override1Applied.length) {
             bodyParts.push(
-              `<div><strong>Blocs remplacés</strong><br>${escapeHtml(debugMeta.override1Applied.join(", "))}</div>`
+              `<div><strong>Blocs remplaces</strong><br>${escapeHtml(debugMeta.override1Applied.join(", "))}</div>`
             );
           }
           
@@ -3917,7 +3939,7 @@
           
           if (debugMeta.override2Applied.length) {
             bodyParts.push(
-              `<div><strong>Blocs remplacés</strong><br>${escapeHtml(debugMeta.override2Applied.join(", "))}</div>`
+              `<div><strong>Blocs remplaces</strong><br>${escapeHtml(debugMeta.override2Applied.join(", "))}</div>`
             );
           }
           
