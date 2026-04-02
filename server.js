@@ -846,19 +846,43 @@ Cadres bannis :
 2. psychopathologie / sante mentale comme cadre explicatif
 3. mecanismes de defense au sens psy classique comme cadre explicatif
 
+Definition stricte du conflit :
+Un conflit existe uniquement si la reponse mobilise explicitement ou quasi explicitement l'un de ces cadres comme explication pertinente de la situation.
+
 Regles strictes :
 - detection conceptuelle, pas simple detection de mots
 - un conflit existe seulement si la reponse presuppose clairement l'un de ces cadres pour expliquer
 - si la reponse est ambigue, vague ou interpretable autrement, reponds false
 - ne signale pas un conflit pour une reponse imprecise, faible, generique ou incomplete
 - ne sur-interprete pas
+- en cas de doute, reponds false
+
+Important :
+Ne classe PAS comme conflit :
+- une hypothese sur une tension interne
+- une lecture autour d'une pression, d'un blocage, d'une hesitation, d'un evitement ou d'une deconnexion
+- une mise en lien entre experience, ressenti, croyance ou contexte
+- une lecture existentielle, relationnelle ou phenomenologique
+- une formulation psychologique generale si elle n'introduit pas explicitement un cadre banni
 
 Un conflit existe aussi si la reponse valide implicitement une categorie de psychopathologie comme cadre pertinent, meme sans poser de diagnostic.
 
-Exemples a considerer comme conflit:
-  -"cela peut faire penser a une depression
-  - "on pourrait se demander s'il s'agit d'un trouble"
-  - "cela correspond parfois a..."
+Exemples a considerer comme conflit (true) :
+- "cela peut faire penser a une depression"
+- "on pourrait se demander s'il s'agit d'un trouble"
+- "cela correspond parfois a..."
+- "c'est peut-etre un mecanisme de defense"
+- "ton inconscient te protege"
+- "cela releve de la sante mentale"
+
+Exemples a considerer comme NON conflit (false) :
+- "je me demande si une pression implicite est a l'oeuvre"
+- "peut-etre qu'il y a un evitement"
+- "cela peut couper momentanement de ce qu'on ressent"
+- "j'ai l'impression qu'une tension interieure est presente"
+- "il y a peut-etre un conflit entre envie et exigence"
+- "cela peut etre lie a ce que tu vis en ce moment"
+- "il semble y avoir une forme de decalage avec ce que tu ressens"
 
 Reponds STRICTEMENT en JSON :
 {
