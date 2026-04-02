@@ -2124,7 +2124,7 @@
       });
     }
     
-    function pushHistory(role, content, debug) {
+    function pushHistory(role, content, debug, debugMeta = null) {
       let conversationId = getConversationId();
       
       if (!conversationId && role === "user") {
@@ -2139,6 +2139,13 @@
         role,
         content,
         debug: Array.isArray(debug) ? debug : [],
+        debugMeta: debugMeta && typeof debugMeta === "object" ? {
+          memory: typeof debugMeta.memory === "string" ? debugMeta.memory : "",
+          rewriteSource: typeof debugMeta.rewriteSource === "string" ? debugMeta.rewriteSource : null,
+          modelConflict: debugMeta.modelConflict === true,
+          explorationDirectivityLevel: Number.isInteger(Number(debugMeta.explorationDirectivityLevel)) ?
+            Math.max(0, Math.min(4, Number(debugMeta.explorationDirectivityLevel))) : 0
+        } : null,
         t: Date.now()
       });
       
@@ -2160,18 +2167,11 @@
         return;
       }
       
-      // ---------- NE PAS TOUCHER AU DESSUS ----------
-      
       const userMessages = history.filter(m => m.role === "user");
       
-      /* S’il n’y a encore aucun message utilisateur,
-         on sort sans mettre à jour l’index :
-         la conversation restera invisible tant qu’elle est vide. */
       if (userMessages.length === 0) {
         return;
       }
-      
-      /* --- le reste du code d’origine suit, inchangé --- */
       
       if (!existingTitle || existingTitle === "Nouvelle conversation" || existingTitle === "Conversation sans titre") {
         const firstUserTitle = String(userMessages[0].content || "")
@@ -3490,7 +3490,8 @@
         shouldAutoScroll = true,
           pulseScrollButton = false,
           progressive = true,
-          historyIndex = -1
+          historyIndex = -1,
+          debugMeta: debugMetaInput = null
       } = options;
       
       const chat = document.getElementById("chat");
@@ -3516,86 +3517,54 @@
       const contentWrap = document.createElement("div");
       contentWrap.className = "message-content";
       
-      function buildDebugMeta(debugLines) {
+      function buildDebugMeta(debugLines, debugMetaValue) {
         const meta = {
-          chips: [],
+          memory: "",
           directivityLabel: "",
-          relanceWindowLabel: "",
+          modelConflict: false,
           rewriteSource: "",
           override1Applied: [],
           override1Missing: [],
           override2Applied: [],
-          override2Missing: [],
-          traceLines: []
+          override2Missing: []
         };
         
-        debugLines.forEach(line => {
+        if (debugMetaValue && typeof debugMetaValue === "object") {
+          if (typeof debugMetaValue.memory === "string") {
+            meta.memory = debugMetaValue.memory.trim();
+          }
+          
+          if (debugMetaValue.modelConflict === true) {
+            meta.modelConflict = true;
+          }
+          
+          if (typeof debugMetaValue.rewriteSource === "string") {
+            meta.rewriteSource = debugMetaValue.rewriteSource.trim();
+          }
+          
+          if (debugMetaValue.explorationDirectivityLevel !== undefined) {
+            const level = Number(debugMetaValue.explorationDirectivityLevel);
+            if (Number.isInteger(level)) {
+              meta.directivityLabel = `Niveau de directivité : ${Math.max(0, Math.min(4, level))}/4`;
+            }
+          }
+        }
+        
+        (Array.isArray(debugLines) ? debugLines : []).forEach(line => {
           const safeLine = String(line || "").trim();
           if (!safeLine) return;
           
-          if (safeLine === "mode: EXPLORATION" || safeLine === "mode: exploration") {
-            meta.chips.push("EXPLORATION");
-            return;
-          }
-          
-          if (safeLine === "mode: INFORMATION" || safeLine === "mode: info") {
-            meta.chips.push("INFORMATION");
-            return;
-          }
-          
-          if (safeLine === "mode: CONTACT" || safeLine === "mode: contact") {
-            meta.chips.push("CONTACT");
-            return;
-          }
-          
-          if (
-            safeLine === "suicide: N1" ||
-            safeLine === "suicideLevel: Possible risque suicidaire"
-          ) {
-            meta.chips.push("Possible risque suicidaire");
-            return;
-          }
-          
-          if (
-            safeLine === "suicide: N2" ||
-            safeLine === "suicideLevel: Risque suicidaire avéré"
-          ) {
-            meta.chips.push("Risque suicidaire avéré");
-            return;
-          }
-          
-          if (
-            safeLine === "calledMemory: shortTermMemory" ||
-            safeLine === "calledMemory: Appel à la mémoire à court terme"
-          ) {
-            meta.chips.push("Appel à la mémoire à court terme");
-            return;
-          }
-          
-          if (
-            safeLine === "calledMemory: longTermMemory" ||
-            safeLine === "calledMemory: Appel à la mémoire à long terme"
-          ) {
-            meta.chips.push("Appel à la mémoire à long terme");
-            return;
-          }
-          
-          if (safeLine.startsWith("modelConflict")) {
-            meta.chips.push("Conflit avec le modèle théorique");
-            return;
-          }
-          
-          if (safeLine.startsWith("explorationDirectivityLevel:")) {
+          if (!meta.directivityLabel && safeLine.startsWith("explorationDirectivityLevel:")) {
             meta.directivityLabel = safeLine.replace("explorationDirectivityLevel:", "").trim();
             return;
           }
           
-          if (safeLine.startsWith("explorationRelanceWindow:")) {
-            meta.relanceWindowLabel = safeLine.replace("explorationRelanceWindow:", "").trim();
+          if (!meta.modelConflict && safeLine.startsWith("modelConflict")) {
+            meta.modelConflict = true;
             return;
           }
           
-          if (safeLine.startsWith("rewriteSource:")) {
+          if (!meta.rewriteSource && safeLine.startsWith("rewriteSource:")) {
             meta.rewriteSource = safeLine.replace("rewriteSource:", "").trim();
             return;
           }
@@ -3633,99 +3602,210 @@
               .split(",")
               .map(v => v.trim())
               .filter(Boolean);
-            return;
-          }
-          
-          if (safeLine.startsWith("trace.")) {
-            meta.traceLines.push(safeLine);
-            return;
           }
         });
         
         return meta;
       }
       
-      function buildDetailBlock(title, bodyHtml) {
-        const wrapper = document.createElement("div");
-        wrapper.style.display = "none";
-        wrapper.style.marginTop = "10px";
-        wrapper.style.borderRadius = "16px";
-        wrapper.style.background = "rgba(255, 255, 255, 0.56)";
-        wrapper.style.border = "1px solid rgba(214, 230, 233, 0.88)";
-        wrapper.style.boxShadow = "0 8px 20px rgba(36, 94, 102, 0.05)";
-        wrapper.style.backdropFilter = "blur(8px)";
-        wrapper.style.webkitBackdropFilter = "blur(8px)";
-        wrapper.style.overflow = "hidden";
-        
-        const button = document.createElement("button");
-        button.type = "button";
-        button.style.width = "100%";
-        button.style.border = "none";
-        button.style.background = "transparent";
-        button.style.padding = "12px 14px";
-        button.style.display = "flex";
-        button.style.alignItems = "center";
-        button.style.justifyContent = "space-between";
-        button.style.gap = "12px";
-        button.style.cursor = "pointer";
-        button.style.textAlign = "left";
-        button.style.color = "#245e66";
-        button.style.fontSize = "13px";
-        button.style.lineHeight = "1.3";
-        button.style.fontWeight = "700";
-        button.style.webkitTapHighlightColor = "transparent";
-        
-        const titleEl = document.createElement("span");
-        titleEl.textContent = title;
-        titleEl.style.flex = "1";
-        titleEl.style.minWidth = "0";
-        
-        const icon = document.createElement("span");
-        icon.textContent = "▾";
-        icon.style.flex = "0 0 auto";
-        icon.style.fontSize = "13px";
-        icon.style.transition = "transform 0.18s ease";
-        
-        const body = document.createElement("div");
-        body.style.display = "none";
-        body.style.padding = "0 14px 14px 14px";
-        body.style.fontSize = "13px";
-        body.style.lineHeight = "1.55";
-        body.style.color = "#3e5e62";
-        body.style.whiteSpace = "normal";
-        body.innerHTML = bodyHtml;
-        
-        button.onclick = () => {
-          const isOpen = body.style.display === "block";
-          body.style.display = isOpen ? "none" : "block";
-          icon.style.transform = isOpen ? "rotate(0deg)" : "rotate(180deg)";
-        };
-        
-        button.appendChild(titleEl);
-        button.appendChild(icon);
-        wrapper.appendChild(button);
-        wrapper.appendChild(body);
-        
-        return wrapper;
-      }
-      
       let debugMeta = null;
       
-      if (role === "bot" && Array.isArray(debug) && debug.length) {
-        debugMeta = buildDebugMeta(debug);
+      if (role === "bot") {
+        debugMeta = buildDebugMeta(debug, debugMetaInput);
         
-        const dbg = document.createElement("div");
-        dbg.className = "debug-block";
-        
-        debugMeta.chips.forEach(label => {
-          const chip = document.createElement("span");
-          chip.className = "debug-chip";
-          chip.textContent = label;
-          dbg.appendChild(chip);
-        });
-        
-        if (dbg.childNodes.length > 0) {
-          contentWrap.appendChild(dbg);
+        if (showDebug) {
+          const chipsBlock = document.createElement("div");
+          chipsBlock.className = "debug-block";
+          
+          const memoryChip = document.createElement("span");
+          memoryChip.className = "debug-chip";
+          memoryChip.textContent = "Mémoire";
+          chipsBlock.appendChild(memoryChip);
+          
+          if (debugMeta.directivityLabel) {
+            const directivityChip = document.createElement("span");
+            directivityChip.className = "debug-chip";
+            directivityChip.textContent = "Directivité";
+            chipsBlock.appendChild(directivityChip);
+          }
+          
+          if (debugMeta.modelConflict) {
+            const conflictChip = document.createElement("span");
+            conflictChip.className = "debug-chip";
+            conflictChip.textContent = "Conflit avec le modèle théorique";
+            chipsBlock.appendChild(conflictChip);
+          }
+          
+          contentWrap.appendChild(chipsBlock);
+          
+          const detailBlocksWrap = document.createElement("div");
+          detailBlocksWrap.style.display = "flex";
+          detailBlocksWrap.style.flexDirection = "column";
+          detailBlocksWrap.style.gap = "0";
+          
+          if (debugMeta.memory) {
+            const memoryBlock = document.createElement("div");
+            memoryBlock.className = "debug-block";
+            
+            const details = document.createElement("details");
+            details.style.width = "100%";
+            details.style.marginTop = "8px";
+            details.style.borderRadius = "16px";
+            details.style.background = "rgba(255, 255, 255, 0.56)";
+            details.style.border = "1px solid rgba(214, 230, 233, 0.88)";
+            details.style.boxShadow = "0 8px 20px rgba(36, 94, 102, 0.05)";
+            details.style.backdropFilter = "blur(8px)";
+            details.style.webkitBackdropFilter = "blur(8px)";
+            details.style.overflow = "hidden";
+            
+            const summary = document.createElement("summary");
+            summary.textContent = "Mémoire";
+            summary.style.cursor = "pointer";
+            summary.style.listStyle = "none";
+            summary.style.padding = "12px 14px";
+            summary.style.color = "#245e66";
+            summary.style.fontSize = "13px";
+            summary.style.lineHeight = "1.3";
+            summary.style.fontWeight = "700";
+            summary.style.webkitTapHighlightColor = "transparent";
+            
+            const body = document.createElement("div");
+            body.style.padding = "0 14px 14px 14px";
+            body.style.fontSize = "13px";
+            body.style.lineHeight = "1.55";
+            body.style.color = "#3e5e62";
+            body.style.whiteSpace = "pre-wrap";
+            body.textContent = debugMeta.memory;
+            
+            details.appendChild(summary);
+            details.appendChild(body);
+            memoryBlock.appendChild(details);
+            detailBlocksWrap.appendChild(memoryBlock);
+          }
+          
+          if (debugMeta.directivityLabel) {
+            const directivityBlock = document.createElement("div");
+            directivityBlock.className = "debug-block";
+            
+            const details = document.createElement("details");
+            details.style.width = "100%";
+            details.style.marginTop = "8px";
+            details.style.borderRadius = "16px";
+            details.style.background = "rgba(255, 255, 255, 0.56)";
+            details.style.border = "1px solid rgba(214, 230, 233, 0.88)";
+            details.style.boxShadow = "0 8px 20px rgba(36, 94, 102, 0.05)";
+            details.style.backdropFilter = "blur(8px)";
+            details.style.webkitBackdropFilter = "blur(8px)";
+            details.style.overflow = "hidden";
+            
+            const summary = document.createElement("summary");
+            summary.textContent = "Directivité";
+            summary.style.cursor = "pointer";
+            summary.style.listStyle = "none";
+            summary.style.padding = "12px 14px";
+            summary.style.color = "#245e66";
+            summary.style.fontSize = "13px";
+            summary.style.lineHeight = "1.3";
+            summary.style.fontWeight = "700";
+            summary.style.webkitTapHighlightColor = "transparent";
+            
+            const body = document.createElement("div");
+            body.style.padding = "0 14px 14px 14px";
+            body.style.fontSize = "13px";
+            body.style.lineHeight = "1.55";
+            body.style.color = "#3e5e62";
+            body.style.whiteSpace = "pre-wrap";
+            body.textContent = debugMeta.directivityLabel;
+            
+            details.appendChild(summary);
+            details.appendChild(body);
+            directivityBlock.appendChild(details);
+            detailBlocksWrap.appendChild(directivityBlock);
+          }
+          
+          if (debugMeta.modelConflict && debugMeta.rewriteSource) {
+            const conflictBlock = document.createElement("div");
+            conflictBlock.className = "debug-block";
+            
+            const details = document.createElement("details");
+            details.style.width = "100%";
+            details.style.marginTop = "8px";
+            details.style.borderRadius = "16px";
+            details.style.background = "rgba(255, 255, 255, 0.56)";
+            details.style.border = "1px solid rgba(214, 230, 233, 0.88)";
+            details.style.boxShadow = "0 8px 20px rgba(36, 94, 102, 0.05)";
+            details.style.backdropFilter = "blur(8px)";
+            details.style.webkitBackdropFilter = "blur(8px)";
+            details.style.overflow = "hidden";
+            
+            const summary = document.createElement("summary");
+            summary.textContent = "Conflit avec le modèle théorique";
+            summary.style.cursor = "pointer";
+            summary.style.listStyle = "none";
+            summary.style.padding = "12px 14px";
+            summary.style.color = "#245e66";
+            summary.style.fontSize = "13px";
+            summary.style.lineHeight = "1.3";
+            summary.style.fontWeight = "700";
+            summary.style.webkitTapHighlightColor = "transparent";
+            
+            const body = document.createElement("div");
+            body.style.padding = "0 14px 14px 14px";
+            body.style.fontSize = "13px";
+            body.style.lineHeight = "1.55";
+            body.style.color = "#3e5e62";
+            body.style.whiteSpace = "pre-wrap";
+            body.textContent = debugMeta.rewriteSource;
+            
+            details.appendChild(summary);
+            details.appendChild(body);
+            conflictBlock.appendChild(details);
+            detailBlocksWrap.appendChild(conflictBlock);
+          }
+          
+          if (debugMeta.override1Applied.length || debugMeta.override1Missing.length) {
+            const bodyParts = [];
+            
+            if (debugMeta.override1Applied.length) {
+              bodyParts.push(
+                `<div><strong>Blocs remplaces</strong><br>${escapeHtml(debugMeta.override1Applied.join(", "))}</div>`
+              );
+            }
+            
+            if (debugMeta.override1Missing.length) {
+              bodyParts.push(
+                `<div style="margin-top:8px;"><strong>Marqueurs introuvables</strong><br>${escapeHtml(debugMeta.override1Missing.join(", "))}</div>`
+              );
+            }
+            
+            const block = buildDetailBlock("Override 1", bodyParts.join(""));
+            block.style.display = "block";
+            detailBlocksWrap.appendChild(block);
+          }
+          
+          if (debugMeta.override2Applied.length || debugMeta.override2Missing.length) {
+            const bodyParts = [];
+            
+            if (debugMeta.override2Applied.length) {
+              bodyParts.push(
+                `<div><strong>Blocs remplaces</strong><br>${escapeHtml(debugMeta.override2Applied.join(", "))}</div>`
+              );
+            }
+            
+            if (debugMeta.override2Missing.length) {
+              bodyParts.push(
+                `<div style="margin-top:8px;"><strong>Marqueurs introuvables</strong><br>${escapeHtml(debugMeta.override2Missing.join(", "))}</div>`
+              );
+            }
+            
+            const block = buildDetailBlock("Override 2", bodyParts.join(""));
+            block.style.display = "block";
+            detailBlocksWrap.appendChild(block);
+          }
+          
+          if (detailBlocksWrap.childNodes.length > 0) {
+            contentWrap.appendChild(detailBlocksWrap);
+          }
         }
       }
       
@@ -3868,111 +3948,22 @@
       
       contentWrap.appendChild(bubble);
       
-      if (role === "bot" && debugMeta && showDebug) {
-        const detailBlocksWrap = document.createElement("div");
-        detailBlocksWrap.style.display = "flex";
-        detailBlocksWrap.style.flexDirection = "column";
-        detailBlocksWrap.style.gap = "0";
-        
-        if (debugMeta.chips.length) {
-          const routingParts = [
-            `<div><strong>Signaux detectes</strong><br>${escapeHtml(debugMeta.chips.join(" · "))}</div>`
-          ];
-          const block = buildDetailBlock("Route decisionnelle", routingParts.join(""));
-          block.style.display = "block";
-          detailBlocksWrap.appendChild(block);
-        }
-        
-        if (debugMeta.directivityLabel) {
-          const bodyHtml = `
-      <div>${escapeHtml(debugMeta.directivityLabel)}</div>
-      ${debugMeta.relanceWindowLabel ? `<div style="margin-top:8px;">${escapeHtml(debugMeta.relanceWindowLabel)}</div>` : ""}
-    `;
-          const block = buildDetailBlock("Directivite", bodyHtml);
-          block.style.display = "block";
-          detailBlocksWrap.appendChild(block);
-        }
-        
-        if (debugMeta.rewriteSource) {
-          const bodyHtml = `
-      <div style="margin-bottom:8px;">Message initial avant reecriture :</div>
-      <div style="padding:10px 12px;border-radius:12px;background:rgba(36,94,102,0.06);border:1px solid rgba(36,94,102,0.1);white-space:pre-wrap;">${escapeHtml(debugMeta.rewriteSource)}</div>
-    `;
-          const block = buildDetailBlock("Reecriture apres conflit modele", bodyHtml);
-          block.style.display = "block";
-          detailBlocksWrap.appendChild(block);
-        }
-        
-        if (debugMeta.override1Applied.length || debugMeta.override1Missing.length) {
-          const bodyParts = [];
-          
-          if (debugMeta.override1Applied.length) {
-            bodyParts.push(
-              `<div><strong>Blocs remplaces</strong><br>${escapeHtml(debugMeta.override1Applied.join(", "))}</div>`
-            );
-          }
-          
-          if (debugMeta.override1Missing.length) {
-            bodyParts.push(
-              `<div style="margin-top:8px;"><strong>Marqueurs introuvables</strong><br>${escapeHtml(debugMeta.override1Missing.join(", "))}</div>`
-            );
-          }
-          
-          const block = buildDetailBlock("Override 1", bodyParts.join(""));
-          block.style.display = "block";
-          detailBlocksWrap.appendChild(block);
-        }
-        
-        if (debugMeta.override2Applied.length || debugMeta.override2Missing.length) {
-          const bodyParts = [];
-          
-          if (debugMeta.override2Applied.length) {
-            bodyParts.push(
-              `<div><strong>Blocs remplaces</strong><br>${escapeHtml(debugMeta.override2Applied.join(", "))}</div>`
-            );
-          }
-          
-          if (debugMeta.override2Missing.length) {
-            bodyParts.push(
-              `<div style="margin-top:8px;"><strong>Marqueurs introuvables</strong><br>${escapeHtml(debugMeta.override2Missing.join(", "))}</div>`
-            );
-          }
-          
-          const block = buildDetailBlock("Override 2", bodyParts.join(""));
-          block.style.display = "block";
-          detailBlocksWrap.appendChild(block);
-        }
-        
-        if (debugMeta.traceLines.length) {
-          const traceHtml = `
-      <div style="font-family:monospace;font-size:12px;line-height:1.5;white-space:pre-wrap;">${escapeHtml(debugMeta.traceLines.join("\n"))}</div>
-    `;
-          const block = buildDetailBlock("Trace technique", traceHtml);
-          block.style.display = "block";
-          detailBlocksWrap.appendChild(block);
-        }
-        
-        if (detailBlocksWrap.childNodes.length > 0) {
-          contentWrap.appendChild(detailBlocksWrap);
-        }
+      msg.appendChild(contentWrap);
+      chat.appendChild(msg);
+      
+      if (shouldAutoScroll) {
+        scrollChatToBottom();
+        return;
       }
-    
-    msg.appendChild(contentWrap);
-    chat.appendChild(msg);
-    
-    if (shouldAutoScroll) {
-      scrollChatToBottom();
-      return;
-    }
-    
-    requestAnimationFrame(() => {
+      
       requestAnimationFrame(() => {
-        updateScrollToBottomBtn({
-          forcePulse: role === "bot" && pulseScrollButton && !wasAtBottomBeforeInsert
+        requestAnimationFrame(() => {
+          updateScrollToBottomBtn({
+            forcePulse: role === "bot" && pulseScrollButton && !wasAtBottomBeforeInsert
+          });
         });
       });
-    });
-  }
+    }
     
     function renderHistory() {
       const chat = document.getElementById("chat");
@@ -3989,7 +3980,8 @@
             shouldAutoScroll: false,
             progressive: false,
             pulseScrollButton: false,
-            historyIndex: index
+            historyIndex: index,
+            debugMeta: m.debugMeta || null
           }
         );
       });
@@ -4651,7 +4643,7 @@
         if (currentConversationId === requestConversationId) {
           if (data.memory) saveMemory(data.memory);
           if (data.flags) saveFlags(data.flags);
-          pushHistory("assistant", data.reply, data.debug || []);
+          pushHistory("assistant", data.reply, data.debug || [], data.debugMeta || null);
         } else {
           const storedData = loadConversationData(requestConversationId);
           saveConversationData(requestConversationId, {
@@ -4664,6 +4656,7 @@
                 role: "assistant",
                 content: data.reply,
                 debug: Array.isArray(data.debug) ? data.debug : [],
+                debugMeta: data.debugMeta && typeof data.debugMeta === "object" ? data.debugMeta : null,
                 t: Date.now()
               }
             ],
@@ -4688,13 +4681,15 @@
               
               addMessage("bot", prefixedReply, debugLines, {
                 shouldAutoScroll: false,
-                pulseScrollButton: index === data.results.length - 1
+                pulseScrollButton: index === data.results.length - 1,
+                debugMeta: null
               });
             });
           } else {
             addMessage("bot", data.reply, data.debug || [], {
               shouldAutoScroll: shouldAutoScrollReply,
-              pulseScrollButton: !shouldAutoScrollReply
+              pulseScrollButton: !shouldAutoScrollReply,
+              debugMeta: data.debugMeta || null
             });
           }
         }

@@ -2512,14 +2512,20 @@ app.post("/chat", async (req, res) => {
     previousMemoryForCatch = previousMemory;
     flagsForCatch = flags;
     
-    async function pushAssistantMessage(reply, debug) {
+    async function pushAssistantMessage(reply, debug, debugMeta = {}) {
       await messagesRef.push({
         role: "assistant",
         content: isEdited ? reply + "\n[MODIFIÉ]" : reply,
         timestamp: Date.now(),
         userId,
         conversationId,
-        debug: Array.isArray(debug) ? debug : []
+        debug: Array.isArray(debug) ? debug : [],
+        debugMeta: {
+          memory: normalizeMemory(debugMeta.memory),
+          rewriteSource: typeof debugMeta.rewriteSource === "string" ? debugMeta.rewriteSource : null,
+          modelConflict: debugMeta.modelConflict === true,
+          explorationDirectivityLevel: clampExplorationDirectivityLevel(debugMeta.explorationDirectivityLevel)
+        }
       });
       
       await convRef.update({
@@ -2570,16 +2576,28 @@ app.post("/chat", async (req, res) => {
         suicideLevel: "N2"
       });
       const reply = n2Response();
+      const responseMemory = previousMemory;
       
-      await pushAssistantMessage(reply, debug);
+      await pushAssistantMessage(reply, debug, {
+        memory: responseMemory,
+        rewriteSource: null,
+        modelConflict: false,
+        explorationDirectivityLevel: newFlags.explorationDirectivityLevel
+      });
       await maybeGenerateConversationTitle();
       
       return res.json({
         conversationId,
         reply,
-        memory: previousMemory,
+        memory: responseMemory,
         flags: newFlags,
-        debug
+        debug,
+        debugMeta: {
+          memory: responseMemory,
+          rewriteSource: null,
+          modelConflict: false,
+          explorationDirectivityLevel: newFlags.explorationDirectivityLevel
+        }
       });
     }
     
@@ -2592,16 +2610,28 @@ app.post("/chat", async (req, res) => {
           suicideLevel: suicide.suicideLevel
         });
         const reply = acuteCrisisFollowupResponse();
+        const responseMemory = previousMemory;
         
-        await pushAssistantMessage(reply, debug);
+        await pushAssistantMessage(reply, debug, {
+          memory: responseMemory,
+          rewriteSource: null,
+          modelConflict: false,
+          explorationDirectivityLevel: newFlags.explorationDirectivityLevel
+        });
         await maybeGenerateConversationTitle();
         
         return res.json({
           conversationId,
           reply,
-          memory: previousMemory,
+          memory: responseMemory,
           flags: newFlags,
-          debug
+          debug,
+          debugMeta: {
+            memory: responseMemory,
+            rewriteSource: null,
+            modelConflict: false,
+            explorationDirectivityLevel: newFlags.explorationDirectivityLevel
+          }
         });
       }
       
@@ -2615,16 +2645,28 @@ app.post("/chat", async (req, res) => {
       const debug = buildDebug("clarification", {
         suicideLevel: "N1"
       });
+      const responseMemory = previousMemory;
       
-      await pushAssistantMessage(reply, debug);
+      await pushAssistantMessage(reply, debug, {
+        memory: responseMemory,
+        rewriteSource: null,
+        modelConflict: false,
+        explorationDirectivityLevel: newFlags.explorationDirectivityLevel
+      });
       await maybeGenerateConversationTitle();
       
       return res.json({
         conversationId,
         reply,
-        memory: previousMemory,
+        memory: responseMemory,
         flags: newFlags,
-        debug
+        debug,
+        debugMeta: {
+          memory: responseMemory,
+          rewriteSource: null,
+          modelConflict: false,
+          explorationDirectivityLevel: newFlags.explorationDirectivityLevel
+        }
       });
     }
     
@@ -2640,32 +2682,56 @@ app.post("/chat", async (req, res) => {
       const debug = buildDebug("memoryRecall", {
         calledMemory: "longTermMemory"
       });
+      const responseMemory = previousMemory;
       
-      await pushAssistantMessage(reply, debug);
+      await pushAssistantMessage(reply, debug, {
+        memory: responseMemory,
+        rewriteSource: null,
+        modelConflict: false,
+        explorationDirectivityLevel: newFlags.explorationDirectivityLevel
+      });
       await maybeGenerateConversationTitle();
       
       return res.json({
         conversationId,
         reply,
-        memory: previousMemory,
+        memory: responseMemory,
         flags: newFlags,
-        debug
+        debug,
+        debugMeta: {
+          memory: responseMemory,
+          rewriteSource: null,
+          modelConflict: false,
+          explorationDirectivityLevel: newFlags.explorationDirectivityLevel
+        }
       });
     }
     
     if (recallRouting.isRecallAttempt && recallRouting.calledMemory === "none") {
       const reply = buildNoMemoryRecallResponse();
       const debug = buildDebug("memoryRecall", {});
+      const responseMemory = previousMemory;
       
-      await pushAssistantMessage(reply, debug);
+      await pushAssistantMessage(reply, debug, {
+        memory: responseMemory,
+        rewriteSource: null,
+        modelConflict: false,
+        explorationDirectivityLevel: newFlags.explorationDirectivityLevel
+      });
       await maybeGenerateConversationTitle();
       
       return res.json({
         conversationId,
         reply,
-        memory: previousMemory,
+        memory: responseMemory,
         flags: newFlags,
-        debug
+        debug,
+        debugMeta: {
+          memory: responseMemory,
+          rewriteSource: null,
+          modelConflict: false,
+          explorationDirectivityLevel: newFlags.explorationDirectivityLevel
+        }
       });
     }
     
@@ -2735,24 +2801,11 @@ app.post("/chat", async (req, res) => {
       explorationRelanceWindow: newFlags.explorationRelanceWindow
     });
     
-    const advancedDebug = buildAdvancedDebugTrace({
-      suicide,
-      recallRouting,
-      contactAnalysis,
-      detectedMode,
-      flagsBefore: flags,
-      flagsAfter: newFlags,
-      generatedBase,
-      modelConflict,
-      relanceAnalysis
-    });
-    
     if (logsEnabled && rewrittenFrom) {
       debug.push(`rewriteSource: ${rewrittenFrom}`);
     }
     
     debug.push(...buildPromptDebugLines(generatedBase.promptDebug));
-    debug.push(...advancedDebug);
     
     const newMemory = await updateMemory(previousMemory, [
       ...recentHistory,
@@ -2760,7 +2813,14 @@ app.post("/chat", async (req, res) => {
       { role: "assistant", content: reply }
     ], promptRegistry);
     
-    await pushAssistantMessage(reply, debug);
+    const responseDebugMeta = {
+      memory: newMemory,
+      rewriteSource: rewrittenFrom,
+      modelConflict,
+      explorationDirectivityLevel: newFlags.explorationDirectivityLevel
+    };
+    
+    await pushAssistantMessage(reply, debug, responseDebugMeta);
     await maybeGenerateConversationTitle();
     
     if (
@@ -2824,7 +2884,8 @@ app.post("/chat", async (req, res) => {
         reply,
         memory: newMemory,
         flags: newFlags,
-        debug
+        debug,
+        debugMeta: responseDebugMeta
       });
     }
     
@@ -2833,7 +2894,8 @@ app.post("/chat", async (req, res) => {
       reply,
       memory: newMemory,
       flags: newFlags,
-      debug
+      debug,
+      debugMeta: responseDebugMeta
     });
   } catch (err) {
     console.error("Erreur /chat:", err);
@@ -2842,7 +2904,13 @@ app.post("/chat", async (req, res) => {
       reply: modeForCatch === "contact" ? "Je suis la." : "Desole, reformule.",
       memory: previousMemoryForCatch,
       flags: flagsForCatch,
-      debug: ["error"]
+      debug: ["error"],
+      debugMeta: {
+        memory: previousMemoryForCatch,
+        rewriteSource: null,
+        modelConflict: false,
+        explorationDirectivityLevel: flagsForCatch.explorationDirectivityLevel || 0
+      }
     });
   }
 });
