@@ -159,6 +159,8 @@ function requireAdminAuth(req, res, next) {
 
 function buildDefaultPromptRegistry() {
   return {
+    IDENTITY_BLOCK: "",
+    
     NORMALIZE_MEMORY_TEMPLATE: [
       "Themes deja evoques :",
       "- ",
@@ -426,6 +428,127 @@ Important :
 - ne sur-interprete pas
 `,
     
+    ANALYZE_SUICIDE_RISK: `
+Tu fais une analyse rapide du message utilisateur et du contexte recent.
+Contexte de session :
+- acuteCrisis actuellement active : {{acuteCrisis}}
+
+Tu dois produire :
+1. le niveau de risque suicidaire
+2. si une clarification suicidaire est necessaire
+3. si le message evoque les paroles de quelqu'un d'autre
+4. si l'expression de mort est idiomatique ou non litterale
+5. un indicateur pour gerer la sortie de crise si une sequence N2 est deja en cours
+
+Reponds STRICTEMENT par JSON :
+{
+  "suicideLevel": "N0|N1|N2",
+  "needsClarification": true|false,
+  "isQuote": true|false,
+  "idiomaticDeathExpression": true|false,
+  "crisisResolved": true|false
+}
+
+Risque suicidaire :
+- N0 : pas de contenu suicidaire explicite
+- N1 : ideation passive explicite de mourir, d'en finir, de ne plus etre la
+- N2 : intention, plan, moyen, imminence, ou projet explicite de mettre fin a sa vie
+
+Ne classe en N1 ou N2 que s'il existe une reference explicite et personnelle :
+- a mourir
+- au suicide
+- a se tuer
+- a mettre fin a sa vie
+- a en finir
+- a ne plus vouloir etre en vie
+- ou a disparaitre dans un sens vital
+
+NeedsClarification ne doit etre true que si une intention de mourir
+ou de mettre fin a sa vie est possible, mais ambigue.
+
+Une detresse forte ne suffit pas.
+Une fatigue intense ne suffit pas.
+Le fait de se dire deprime, depressif, vide, epuise, incapable, sans energie,
+ou decourage ne suffit pas.
+
+Exemples a classer N0 :
+- "Je suis epuise"
+- "Je n'ai plus d'energie"
+- "Tu crois que je suis depressif ?"
+- "Je me sens au bout"
+- "Je suis incapable de faire quoi que ce soit"
+
+Les expressions idiomatiques ou non litterales doivent rester en N0
+et ne demandent pas de clarification suicidaire.
+
+Exemples :
+- "Ce boulot me tue"
+- "Tu vas me tuer"
+- "J'ai envie de mourir de honte"
+- "J'ai envie de disparaitre sous ma couette"
+
+Dans ces cas :
+- idiomaticDeathExpression = true
+- suicideLevel = N0
+- needsClarification = false
+
+Les comportements d'auto-agression ne doivent pas etre interpretes
+automatiquement comme suicidaires.
+
+Exemples a classer N0 sauf intention explicite de mourir :
+- "Je me scarifie parfois"
+- "J'ai envie de me couper"
+- "J'ai envie de me faire mal"
+- "Je me brule pour me calmer"
+
+Une question banale de reprise de conversation comme
+"Ou en etait-on ?",
+"On en etait ou ?",
+"De quoi on parlait deja ?"
+doit etre classee N0.
+
+isQuote = true si le message rapporte les paroles de quelqu'un d'autre,
+cite une phrase, un film, un patient, un proche, ou un exemple,
+sans indiquer que cela concerne directement l'utilisateur.
+
+Exemples :
+- "Une amie m'a dit : j'ai envie de mourir"
+- "Dans un film quelqu'un dit : je vais me tuer"
+- "Je cite juste cette phrase"
+
+Dans ces cas :
+- ne pas inferer automatiquement un risque suicidaire personnel
+- crisisResolved peut etre true si le message clarifie explicitement qu'il s'agit d'une citation, d'un test ou d'un contenu non personnel
+
+crisisResolved :
+- true seulement si le message actuel indique clairement
+qu'il n'y a plus de danger immediat,
+ou qu'il s'agissait explicitement d'un test, d'une citation,
+ou que la personne dit explicitement qu'elle n'est plus en danger immediat
+- ne mets pas true pour un simple changement de sujet
+- ne mets pas true pour une plaisanterie ambigue
+- ne mets pas true pour une simple baisse apparente d'intensite
+`,
+    
+    N1_RESPONSE_LLM: `
+Tu t'adresses directement a la personne en la tutoyant.
+N'utilise aucune autre langue que le francais
+Ta seule tache est de poser une question de clarification
+breve, claire et non dramatique.
+Tu ne dois jamais :
+- parler de "la personne"
+- decrire ou analyser le message
+- faire une meta-explication
+- repondre comme un evaluateur
+Tu poses simplement une question directe pour clarifier
+si la personne parle :
+- d'une envie de mourir
+- d'une disparition au sens vital
+- d'une intention de mettre fin a sa vie
+- ou d'autre chose
+Reponse : une seule phrase.
+`,
+    
     MEMORY_RECALL_RESPONSE: `
 Tu reponds a une tentative de rappel en t'appuyant uniquement sur une memoire resumee.
 
@@ -434,7 +557,7 @@ N'utilise aucune autre langue que le francais.
 Tutoie l'utilisateur.
 
 Contraintes :
-- ne parle pas de l'utilisateur à la troisième personne 
+- ne parle pas de l'utilisateur a la troisieme personne
 - reponse breve, naturelle et sobre
 - dis clairement qu'il s'agit de reperes generaux et non d'un souvenir detaille
 - n'invente aucun detail
@@ -618,110 +741,16 @@ function getExplorationStructureInstruction(
 // 2) SUICIDE RISK
 // --------------------------------------------------
 
-async function analyzeSuicideRisk(message = "", history = [], sessionFlags = {}) {
+async function analyzeSuicideRisk(
+  message = "",
+  history = [],
+  sessionFlags = {},
+  promptRegistry = buildDefaultPromptRegistry()
+) {
   const safeFlags = normalizeSessionFlags(sessionFlags);
   
-  const system = `
-Tu fais une analyse rapide du message utilisateur et du contexte recent.
-Contexte de session :
-- acuteCrisis actuellement active : ${safeFlags.acuteCrisis ? "oui" : "non"}
-
-Tu dois produire :
-1. le niveau de risque suicidaire
-2. si une clarification suicidaire est necessaire
-3. si le message evoque les paroles de quelqu'un d'autre
-4. si l'expression de mort est idiomatique ou non litterale
-5. un indicateur pour gerer la sortie de crise si une sequence N2 est deja en cours
-
-Reponds STRICTEMENT par JSON :
-{
-  "suicideLevel": "N0|N1|N2",
-  "needsClarification": true|false,
-  "isQuote": true|false,
-  "idiomaticDeathExpression": true|false,
-  "crisisResolved": true|false
-}
-
-Risque suicidaire :
-- N0 : pas de contenu suicidaire explicite
-- N1 : ideation passive explicite de mourir, d'en finir, de ne plus etre la
-- N2 : intention, plan, moyen, imminence, ou projet explicite de mettre fin a sa vie
-
-Ne classe en N1 ou N2 que s'il existe une reference explicite et personnelle :
-- a mourir
-- au suicide
-- a se tuer
-- a mettre fin a sa vie
-- a en finir
-- a ne plus vouloir etre en vie
-- ou a disparaitre dans un sens vital
-
-NeedsClarification ne doit etre true que si une intention de mourir
-ou de mettre fin a sa vie est possible, mais ambigue.
-
-Une detresse forte ne suffit pas.
-Une fatigue intense ne suffit pas.
-Le fait de se dire deprime, depressif, vide, epuise, incapable, sans energie,
-ou decourage ne suffit pas.
-
-Exemples a classer N0 :
-- "Je suis epuise"
-- "Je n'ai plus d'energie"
-- "Tu crois que je suis depressif ?"
-- "Je me sens au bout"
-- "Je suis incapable de faire quoi que ce soit"
-
-Les expressions idiomatiques ou non litterales doivent rester en N0
-et ne demandent pas de clarification suicidaire.
-
-Exemples :
-- "Ce boulot me tue"
-- "Tu vas me tuer"
-- "J'ai envie de mourir de honte"
-- "J'ai envie de disparaitre sous ma couette"
-
-Dans ces cas :
-- idiomaticDeathExpression = true
-- suicideLevel = N0
-- needsClarification = false
-
-Les comportements d'auto-agression ne doivent pas etre interpretes
-automatiquement comme suicidaires.
-
-Exemples a classer N0 sauf intention explicite de mourir :
-- "Je me scarifie parfois"
-- "J'ai envie de me couper"
-- "J'ai envie de me faire mal"
-- "Je me brule pour me calmer"
-
-Une question banale de reprise de conversation comme
-"Ou en etait-on ?",
-"On en etait ou ?",
-"De quoi on parlait deja ?"
-doit etre classee N0.
-
-isQuote = true si le message rapporte les paroles de quelqu'un d'autre,
-cite une phrase, un film, un patient, un proche, ou un exemple,
-sans indiquer que cela concerne directement l'utilisateur.
-
-Exemples :
-- "Une amie m'a dit : j'ai envie de mourir"
-- "Dans un film quelqu'un dit : je vais me tuer"
-- "Je cite juste cette phrase"
-
-Dans ces cas :
-- ne pas inferer automatiquement un risque suicidaire personnel
-- crisisResolved peut etre true si le message clarifie explicitement qu'il s'agit d'une citation, d'un test ou d'un contenu non personnel
-
-crisisResolved :
-- true seulement si le message actuel indique clairement
-qu'il n'y a plus de danger immediat,
-ou qu'il s'agissait explicitement d'un test, d'une citation,
-ou que la personne dit explicitement qu'elle n'est plus en danger immediat
-- ne mets pas true pour un simple changement de sujet
-- ne mets pas true pour une plaisanterie ambigue
-- ne mets pas true pour une simple baisse apparente d'intensite
-`;
+  const system = String(promptRegistry.ANALYZE_SUICIDE_RISK || "")
+    .replace("{{acuteCrisis}}", safeFlags.acuteCrisis ? "oui" : "non");
   
   const context = trimSuicideAnalysisHistory(history);
   
@@ -753,7 +782,7 @@ ou que la personne dit explicitement qu'elle n'est plus en danger immediat
     }
     
     let needsClarification =
-      (suicideLevel === "N1" || suicideLevel === "N2") ?
+      suicideLevel === "N1" || suicideLevel === "N2" ?
       obj.needsClarification === true :
       false;
     
@@ -783,25 +812,11 @@ function n1Fallback() {
   return "Quand tu dis ca, est-ce que tu parles d'une envie de mourir, de disparaitre au sens vital, ou d'autre chose ?";
 }
 
-async function n1ResponseLLM(message) {
-  const system = `
-Tu t'adresses directement a la personne en la tutoyant.
-N'utilise aucune autre langue que le francais
-Ta seule tache est de poser une question de clarification
-breve, claire et non dramatique.
-Tu ne dois jamais :
-- parler de "la personne"
-- decrire ou analyser le message
-- faire une meta-explication
-- repondre comme un evaluateur
-Tu poses simplement une question directe pour clarifier
-si la personne parle :
-- d'une envie de mourir
-- d'une disparition au sens vital
-- d'une intention de mettre fin a sa vie
-- ou d'autre chose
-Reponse : une seule phrase.
-`;
+async function n1ResponseLLM(
+  message,
+  promptRegistry = buildDefaultPromptRegistry()
+) {
+  const system = promptRegistry.N1_RESPONSE_LLM;
   
   const r = await client.chat.completions.create({
     model: "gpt-4o",
@@ -1652,43 +1667,62 @@ async function generateReply({
   message,
   history,
   memory,
-  mode,
-  explorationDirectivityLevel = 0,
-  override1 = null,
-  override2 = null
+  flags,
+  promptRegistry = buildDefaultPromptRegistry()
 }) {
-  const promptRegistry = resolvePromptRegistry([override1, override2]);
-  const baseSystemPrompt = buildSystemPrompt(
-    mode,
+  const context = trimHistory(history);
+  
+  const modeInstruction = getModeInstruction(flags.mode, promptRegistry);
+  
+  const explorationStructureInstruction =
+    flags.mode === "exploration" ?
+    getExplorationStructureInstruction(flags.explorationDirectivityLevel, promptRegistry) :
+    "";
+  
+  const modelBlock = buildModelBlock({
+    message,
+    history: context,
     memory,
-    explorationDirectivityLevel,
+    flags,
     promptRegistry
-  );
-  const overrideResult = applyPromptOverrideLayers(baseSystemPrompt, override1, override2);
+  });
+  
+  const memoryBlock = normalizeMemory(memory);
   
   const messages = [
-    { role: "system", content: overrideResult.prompt },
-    ...history.map(m => ({ role: m.role, content: m.content })),
-    { role: "user", content: message }
+    {
+      role: "system",
+      content: `
+${promptRegistry.IDENTITY_BLOCK}
+
+${modeInstruction}
+
+${explorationStructureInstruction}
+
+${modelBlock}
+
+Mémoire :
+${memoryBlock}
+`
+    },
+    ...context.map(m => ({
+      role: m.role,
+      content: m.content
+    })),
+    {
+      role: "user",
+      content: message
+    }
   ];
   
   const r = await client.chat.completions.create({
     model: "gpt-4o",
     temperature: 0.7,
-    top_p: 1,
-    presence_penalty: 0.5,
-    frequency_penalty: 0.3,
-    max_tokens: 400,
+    max_tokens: 500,
     messages
   });
   
-  return {
-    reply: (r.choices?.[0]?.message?.content || "").trim() || "Je t'ecoute.",
-    promptDebug: {
-      override1: overrideResult.override1,
-      override2: overrideResult.override2
-    }
-  };
+  return (r.choices?.[0]?.message?.content || "").trim();
 }
 
 // --------------------------------------------------
@@ -1716,7 +1750,12 @@ async function runSingleTestCase(testCase = {}) {
   const override2 = testCase.override2 ?? null;
   const promptRegistry = resolvePromptRegistry([override1, override2]);
   
-  const suicide = await analyzeSuicideRisk(message, recentHistory, flags);
+  const suicide = await analyzeSuicideRisk(
+    message,
+    recentHistory,
+    flags,
+    promptRegistry
+  );
   let newFlags = normalizeSessionFlags(flags);
   
   if (suicide.suicideLevel === "N2") {
@@ -1764,7 +1803,7 @@ async function runSingleTestCase(testCase = {}) {
   }
   
   if (suicide.suicideLevel === "N1" || suicide.needsClarification) {
-    const reply = await n1ResponseLLM(message);
+    const reply = await n1ResponseLLM(message, promptRegistry);
     newFlags.contactState = { wasContact: false };
     
     return {
@@ -2325,238 +2364,104 @@ app.get("/api/admin/conversations/:id/messages", requireAdminAuth, async (req, r
 });
 
 app.post("/chat", async (req, res) => {
-  console.log("CHAT INPUT conversationId:", req.body?.conversationId);
-  
-  let modeForCatch = "exploration";
-  let previousMemoryForCatch = normalizeMemory("");
-  let flagsForCatch = normalizeSessionFlags({});
-  
   try {
-    const message = String(req.body?.message || "");
-    const isEdited = req.body?.isEdited === true;
-    const conversationId = req.body?.conversationId;
+    const {
+      message = "",
+        history = [],
+        memory = "",
+        flags = {},
+        override1 = null,
+        override2 = null
+    } = req.body || {};
     
-    if (!conversationId) {
-      return res.status(400).json({ error: "Missing conversationId" });
+    const cleanMessage = String(message).trim();
+    
+    if (!cleanMessage) {
+      return res.json({
+        reply: "",
+        mode: "error",
+        memory: normalizeMemory(memory),
+        flags: normalizeSessionFlags(flags),
+        debug: ["empty_message"]
+      });
     }
     
-    const userId = req.body?.userId || "u_anon";
-    const convRef = db.ref("conversations").child(conversationId);
+    const recentHistory = trimHistory(history);
+    const previousMemory = normalizeMemory(memory);
+    let newFlags = normalizeSessionFlags(flags);
     
-    async function maybeGenerateConversationTitle() {
-      try {
-        const convSnap = await convRef.once("value");
-        const convData = convSnap.val() || {};
-        
-        if (convData.titleLocked === true) {
-          return;
-        }
-        
-        const messagesSnap = await messagesRef
-          .orderByChild("conversationId")
-          .equalTo(conversationId)
-          .once("value");
-        
-        const conversationMessages = Object.values(messagesSnap.val() || {})
-          .filter(m => m && typeof m.content === "string")
-          .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-        
-        const userMessages = conversationMessages
-          .filter(m => m.role === "user")
-          .map(m => String(m.content || "").trim())
-          .filter(Boolean);
-        
-        if (userMessages.length === 0) {
-          return;
-        }
-        
-        const currentTitle = String(convData.title || "").trim();
-        const firstUserMessage = userMessages[0] || "";
-        
-        const shouldGenerateTitle = !currentTitle ||
-          currentTitle === "Nouvelle conversation" ||
-          currentTitle === "Conversation sans titre" ||
-          currentTitle === "Conversation" ||
-          currentTitle === firstUserMessage;
-        
-        if (!shouldGenerateTitle) {
-          return;
-        }
-        
-        const generatedTitle = await generateConversationTitle(conversationMessages);
-        
-        if (!generatedTitle || !generatedTitle.trim()) {
-          return;
-        }
-        
-        await convRef.update({
-          title: generatedTitle.trim(),
-          updatedAt: new Date().toISOString()
-        });
-        
-        console.log("AUTO TITLE UPDATED:", conversationId, "->", generatedTitle.trim());
-      } catch (titleErr) {
-        console.error("Erreur auto-title /chat:", titleErr.message);
-      }
-    }
-    
-    await messagesRef.push({
-      role: "user",
-      content: isEdited ? message + "\n[MODIFIÉ]" : message,
-      timestamp: Date.now(),
-      userId,
-      conversationId
-    });
-    
-    await convRef.transaction(current => {
-      const now = new Date().toISOString();
-      
-      if (!current) {
-        return {
-          userId,
-          createdAt: now,
-          updatedAt: now,
-          title: null,
-          titleLocked: false,
-          messageCount: 1,
-          lastUserMessage: message
-        };
-      }
-      
-      return {
-        ...current,
-        userId,
-        updatedAt: now,
-        messageCount: (Number(current.messageCount) || 0) + 1,
-        lastUserMessage: message
-      };
-    });
-    
-    const recentHistory = trimHistory(req.body?.recentHistory);
-    const previousMemory = normalizeMemory(req.body?.memory);
-    const flags = normalizeSessionFlags(req.body?.flags);
-    const override1 = req.body?.override1 ?? null;
-    const override2 = req.body?.override2 ?? null;
-    const comparisonEnabled = req.body?.comparisonEnabled === true;
-    const logsEnabled = req.body?.logsEnabled === true;
     const promptRegistry = resolvePromptRegistry([override1, override2]);
     
-    previousMemoryForCatch = previousMemory;
-    flagsForCatch = flags;
-    
-    async function pushAssistantMessage(reply, debug) {
-      await messagesRef.push({
-        role: "assistant",
-        content: isEdited ? reply + "\n[MODIFIÉ]" : reply,
-        timestamp: Date.now(),
-        userId,
-        conversationId,
-        debug: Array.isArray(debug) ? debug : []
-      });
-      
-      await convRef.update({
-        updatedAt: new Date().toISOString()
-      });
-    }
-    
-    function buildPromptDebugLines(promptDebug) {
-      const lines = [];
-      
-      if (promptDebug?.override1?.appliedTargets?.length) {
-        lines.push(`override1Applied: ${promptDebug.override1.appliedTargets.join(", ")}`);
-      }
-      if (promptDebug?.override1?.missingTargets?.length) {
-        lines.push(`override1Missing: ${promptDebug.override1.missingTargets.join(", ")}`);
-      }
-      if (promptDebug?.override2?.appliedTargets?.length) {
-        lines.push(`override2Applied: ${promptDebug.override2.appliedTargets.join(", ")}`);
-      }
-      if (promptDebug?.override2?.missingTargets?.length) {
-        lines.push(`override2Missing: ${promptDebug.override2.missingTargets.join(", ")}`);
-      }
-      
-      return lines;
-    }
-    
-    function buildComparisonEntry(label, generated, debugLines) {
-      return {
-        label,
-        reply: generated.reply,
-        debug: logsEnabled ? [...debugLines, ...buildPromptDebugLines(generated.promptDebug)] : []
-      };
-    }
-    
-    const suicide = await analyzeSuicideRisk(message, recentHistory, flags);
-    let newFlags = normalizeSessionFlags(flags);
+    const suicide = await analyzeSuicideRisk(
+      cleanMessage,
+      recentHistory,
+      newFlags,
+      promptRegistry
+    );
     
     if (suicide.suicideLevel === "N2") {
       newFlags.acuteCrisis = true;
       newFlags.contactState = { wasContact: false };
       
-      const debug = buildDebug("override", {
-        suicideLevel: "N2"
-      });
-      const reply = n2Response();
-      
-      await pushAssistantMessage(reply, debug);
-      await maybeGenerateConversationTitle();
-      
       return res.json({
-        conversationId,
-        reply,
+        reply: n2Response(),
+        mode: "override",
         memory: previousMemory,
         flags: newFlags,
-        debug
+        debug: buildDebug("override", {
+          suicideLevel: "N2",
+          needsClarification: suicide.needsClarification,
+          isQuote: suicide.isQuote,
+          idiomaticDeathExpression: suicide.idiomaticDeathExpression,
+          crisisResolved: suicide.crisisResolved
+        })
       });
     }
     
-    if (flags.acuteCrisis === true) {
-      if (suicide.crisisResolved !== true) {
+    if (newFlags.acuteCrisis === true) {
+      if (suicide.crisisResolved === true) {
+        newFlags.acuteCrisis = false;
+      } else {
         newFlags.acuteCrisis = true;
         newFlags.contactState = { wasContact: false };
         
-        const debug = buildDebug("override", {
-          suicideLevel: suicide.suicideLevel
-        });
-        const reply = acuteCrisisFollowupResponse();
-        
-        await pushAssistantMessage(reply, debug);
-        await maybeGenerateConversationTitle();
-        
         return res.json({
-          conversationId,
-          reply,
+          reply: acuteCrisisFollowupResponse(),
+          mode: "override",
           memory: previousMemory,
           flags: newFlags,
-          debug
+          debug: buildDebug("override", {
+            suicideLevel: suicide.suicideLevel,
+            needsClarification: suicide.needsClarification,
+            isQuote: suicide.isQuote,
+            idiomaticDeathExpression: suicide.idiomaticDeathExpression,
+            crisisResolved: suicide.crisisResolved
+          })
         });
       }
-      
-      newFlags.acuteCrisis = false;
     }
     
     if (suicide.suicideLevel === "N1" || suicide.needsClarification) {
-      const reply = await n1ResponseLLM(message);
+      const reply = await n1ResponseLLM(cleanMessage, promptRegistry);
       newFlags.contactState = { wasContact: false };
       
-      const debug = buildDebug("clarification", {
-        suicideLevel: "N1"
-      });
-      
-      await pushAssistantMessage(reply, debug);
-      await maybeGenerateConversationTitle();
-      
       return res.json({
-        conversationId,
         reply,
+        mode: "clarification",
         memory: previousMemory,
         flags: newFlags,
-        debug
+        debug: buildDebug("clarification", {
+          suicideLevel: "N1",
+          needsClarification: suicide.needsClarification,
+          isQuote: suicide.isQuote,
+          idiomaticDeathExpression: suicide.idiomaticDeathExpression,
+          crisisResolved: suicide.crisisResolved
+        })
       });
     }
     
     const recallRouting = await analyzeRecallRouting(
-      message,
+      cleanMessage,
       recentHistory,
       previousMemory,
       promptRegistry
@@ -2564,77 +2469,120 @@ app.post("/chat", async (req, res) => {
     
     if (recallRouting.isLongTermMemoryRecall) {
       const reply = await buildLongTermMemoryRecallResponse(previousMemory, promptRegistry);
-      const debug = buildDebug("memoryRecall", {
-        calledMemory: "longTermMemory"
-      });
       
-      await pushAssistantMessage(reply, debug);
-      await maybeGenerateConversationTitle();
+      const updatedMemory = await updateMemory(
+        previousMemory,
+        [
+          ...recentHistory,
+          { role: "user", content: cleanMessage },
+          { role: "assistant", content: reply }
+        ],
+        promptRegistry
+      );
       
       return res.json({
-        conversationId,
         reply,
-        memory: previousMemory,
+        mode: "memoryRecall",
+        memory: updatedMemory,
         flags: newFlags,
-        debug
+        debug: buildDebug("memoryRecall", {
+          suicideLevel: suicide.suicideLevel,
+          needsClarification: suicide.needsClarification,
+          isQuote: suicide.isQuote,
+          idiomaticDeathExpression: suicide.idiomaticDeathExpression,
+          crisisResolved: suicide.crisisResolved,
+          isRecallAttempt: recallRouting.isRecallAttempt,
+          calledMemory: recallRouting.calledMemory,
+          isLongTermMemoryRecall: recallRouting.isLongTermMemoryRecall
+        })
       });
     }
     
     if (recallRouting.isRecallAttempt && recallRouting.calledMemory === "none") {
       const reply = buildNoMemoryRecallResponse();
-      const debug = buildDebug("memoryRecall", {});
       
-      await pushAssistantMessage(reply, debug);
-      await maybeGenerateConversationTitle();
+      const updatedMemory = await updateMemory(
+        previousMemory,
+        [
+          ...recentHistory,
+          { role: "user", content: cleanMessage },
+          { role: "assistant", content: reply }
+        ],
+        promptRegistry
+      );
       
       return res.json({
-        conversationId,
         reply,
-        memory: previousMemory,
+        mode: "memoryRecall",
+        memory: updatedMemory,
         flags: newFlags,
-        debug
+        debug: buildDebug("memoryRecall", {
+          suicideLevel: suicide.suicideLevel,
+          needsClarification: suicide.needsClarification,
+          isQuote: suicide.isQuote,
+          idiomaticDeathExpression: suicide.idiomaticDeathExpression,
+          crisisResolved: suicide.crisisResolved,
+          isRecallAttempt: recallRouting.isRecallAttempt,
+          calledMemory: recallRouting.calledMemory,
+          isLongTermMemoryRecall: recallRouting.isLongTermMemoryRecall
+        })
       });
     }
     
+    const previousContactState = normalizeContactState(newFlags.contactState);
+    
     const contactAnalysis = await analyzeContactState(
-      message,
+      cleanMessage,
       recentHistory,
-      newFlags.contactState,
+      previousContactState,
       promptRegistry
     );
+    
+    const justExitedContact =
+      previousContactState.wasContact === true &&
+      contactAnalysis.isContact !== true;
+    
+    if (justExitedContact) {
+      newFlags.explorationRelanceWindow = [false, true, true, true];
+      newFlags.explorationDirectivityLevel = 3;
+    }
     
     newFlags.contactState = {
       wasContact: contactAnalysis.isContact === true
     };
     
-    const detectedMode = contactAnalysis.isContact ?
-      "contact" :
-      (await detectMode(message, recentHistory, promptRegistry)).mode;
+    let mode = "contact";
     
-    modeForCatch = detectedMode;
+    if (!contactAnalysis.isContact) {
+      const detected = await detectMode(
+        cleanMessage,
+        recentHistory,
+        promptRegistry
+      );
+      mode = detected.mode;
+    }
     
-    const generatedBase = await generateReply({
-      message,
+    const generated = await generateReply({
+      message: cleanMessage,
       history: recentHistory,
       memory: previousMemory,
-      mode: detectedMode,
-      explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
-      override1,
-      override2
+      flags: {
+        ...newFlags,
+        mode
+      },
+      promptRegistry
     });
     
-    let reply = generatedBase.reply;
+    let reply = generated;
     let modelConflict = false;
-    let rewrittenFrom = null;
     
-    if (detectedMode === "exploration") {
+    if (mode === "exploration") {
       const conflict = await analyzeModelConflict(reply, promptRegistry);
       modelConflict = conflict.modelConflict === true;
       
       if (modelConflict) {
-        rewrittenFrom = reply;
         reply = await rewriteExplorationReplyWithModelFilter({
-          message,
+          message: cleanMessage,
           history: recentHistory,
           memory: previousMemory,
           originalReply: reply,
@@ -2642,121 +2590,57 @@ app.post("/chat", async (req, res) => {
         });
       }
       
-      const relance = await analyzeExplorationRelance({
-        message,
+      const relanceAnalysis = await analyzeExplorationRelance({
+        message: cleanMessage,
         reply,
         history: recentHistory,
         memory: previousMemory,
         promptRegistry
       });
       
-      newFlags = registerExplorationRelance(newFlags, relance.isRelance);
+      newFlags = registerExplorationRelance(
+        newFlags,
+        relanceAnalysis.isRelance === true
+      );
     }
     
-    const debug = buildDebug(detectedMode, {
+    const updatedMemory = await updateMemory(
+      previousMemory,
+      [
+        ...recentHistory,
+        { role: "user", content: cleanMessage },
+        { role: "assistant", content: reply }
+      ],
+      promptRegistry
+    );
+    
+    const debug = buildDebug(mode, {
       suicideLevel: suicide.suicideLevel,
+      needsClarification: suicide.needsClarification,
+      isQuote: suicide.isQuote,
+      idiomaticDeathExpression: suicide.idiomaticDeathExpression,
+      crisisResolved: suicide.crisisResolved,
+      isRecallAttempt: recallRouting.isRecallAttempt,
       calledMemory: recallRouting.calledMemory,
+      isLongTermMemoryRecall: recallRouting.isLongTermMemoryRecall,
       modelConflict,
       explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
       explorationRelanceWindow: newFlags.explorationRelanceWindow
     });
     
-    if (logsEnabled && rewrittenFrom) {
-      debug.push(`rewriteSource: ${rewrittenFrom}`);
-    }
-    
-    debug.push(...buildPromptDebugLines(generatedBase.promptDebug));
-    
-    const newMemory = await updateMemory(previousMemory, [
-      ...recentHistory,
-      { role: "user", content: message },
-      { role: "assistant", content: reply }
-    ], promptRegistry);
-    
-    await pushAssistantMessage(reply, debug);
-    await maybeGenerateConversationTitle();
-    
-    if (
-      comparisonEnabled &&
-      (override1 || override2) &&
-      detectedMode !== "contact"
-    ) {
-      const comparisonBaseDebug = buildDebug(detectedMode, {
-        suicideLevel: suicide.suicideLevel,
-        calledMemory: recallRouting.calledMemory,
-        modelConflict,
-        explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
-        explorationRelanceWindow: newFlags.explorationRelanceWindow
-      });
-      
-      if (rewrittenFrom) {
-        comparisonBaseDebug.push(`rewriteSource: ${rewrittenFrom}`);
-      }
-      
-      const comparisonResults = [
-      {
-        label: "Référence",
-        reply,
-        debug: logsEnabled ? [...comparisonBaseDebug, ...buildPromptDebugLines(generatedBase.promptDebug)] : []
-      }];
-      
-      if (override1) {
-        const generatedOverride1 = await generateReply({
-          message,
-          history: recentHistory,
-          memory: previousMemory,
-          mode: detectedMode,
-          explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
-          override1
-        });
-        
-        comparisonResults.push(
-          buildComparisonEntry("Override 1", generatedOverride1, comparisonBaseDebug)
-        );
-      }
-      
-      if (override1 && override2) {
-        const generatedOverride12 = await generateReply({
-          message,
-          history: recentHistory,
-          memory: previousMemory,
-          mode: detectedMode,
-          explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
-          override1,
-          override2
-        });
-        
-        comparisonResults.push(
-          buildComparisonEntry("Override 1 + 2", generatedOverride12, comparisonBaseDebug)
-        );
-      }
-      
-      return res.json({
-        conversationId,
-        comparison: true,
-        results: comparisonResults,
-        reply,
-        memory: newMemory,
-        flags: newFlags,
-        debug
-      });
-    }
-    
     return res.json({
-      conversationId,
       reply,
-      memory: newMemory,
+      mode,
+      memory: updatedMemory,
       flags: newFlags,
       debug
     });
-  } catch (err) {
-    console.error("Erreur /chat:", err);
-    
-    return res.json({
-      reply: modeForCatch === "contact" ? "Je suis la." : "Desole, reformule.",
-      memory: previousMemoryForCatch,
-      flags: flagsForCatch,
-      debug: ["error"]
+  } catch (e) {
+    console.error("chat_error", e);
+    return res.status(500).json({
+      reply: "",
+      mode: "error",
+      debug: ["chat_exception"]
     });
   }
 });
