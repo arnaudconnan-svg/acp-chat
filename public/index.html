@@ -3522,11 +3522,7 @@
           memory: "",
           directivityLabel: "",
           modelConflict: false,
-          rewriteSource: "",
-          override1Applied: [],
-          override1Missing: [],
-          override2Applied: [],
-          override2Missing: []
+          rewriteSource: ""
         };
         
         if (debugMetaValue && typeof debugMetaValue === "object") {
@@ -3566,263 +3562,14 @@
           
           if (!meta.rewriteSource && safeLine.startsWith("rewriteSource:")) {
             meta.rewriteSource = safeLine.replace("rewriteSource:", "").trim();
-            return;
-          }
-          
-          if (safeLine.startsWith("override1Applied:")) {
-            meta.override1Applied = safeLine
-              .replace("override1Applied:", "")
-              .split(",")
-              .map(v => v.trim())
-              .filter(Boolean);
-            return;
-          }
-          
-          if (safeLine.startsWith("override1Missing:")) {
-            meta.override1Missing = safeLine
-              .replace("override1Missing:", "")
-              .split(",")
-              .map(v => v.trim())
-              .filter(Boolean);
-            return;
-          }
-          
-          if (safeLine.startsWith("override2Applied:")) {
-            meta.override2Applied = safeLine
-              .replace("override2Applied:", "")
-              .split(",")
-              .map(v => v.trim())
-              .filter(Boolean);
-            return;
-          }
-          
-          if (safeLine.startsWith("override2Missing:")) {
-            meta.override2Missing = safeLine
-              .replace("override2Missing:", "")
-              .split(",")
-              .map(v => v.trim())
-              .filter(Boolean);
           }
         });
         
         return meta;
       }
       
-      let debugMeta = null;
+      const debugMeta = role === "bot" ? buildDebugMeta(debug, debugMetaInput) : null;
       
-      if (role === "bot") {
-        debugMeta = buildDebugMeta(debug, debugMetaInput);
-        
-        if (showDebug) {
-          const chipsBlock = document.createElement("div");
-          chipsBlock.className = "debug-block";
-          
-          const memoryChip = document.createElement("span");
-          memoryChip.className = "debug-chip";
-          memoryChip.textContent = "Mémoire";
-          chipsBlock.appendChild(memoryChip);
-          
-          if (debugMeta.directivityLabel) {
-            const directivityChip = document.createElement("span");
-            directivityChip.className = "debug-chip";
-            directivityChip.textContent = "Directivité";
-            chipsBlock.appendChild(directivityChip);
-          }
-          
-          if (debugMeta.modelConflict) {
-            const conflictChip = document.createElement("span");
-            conflictChip.className = "debug-chip";
-            conflictChip.textContent = "Conflit avec le modèle théorique";
-            chipsBlock.appendChild(conflictChip);
-          }
-          
-          contentWrap.appendChild(chipsBlock);
-          
-          const detailBlocksWrap = document.createElement("div");
-          detailBlocksWrap.style.display = "flex";
-          detailBlocksWrap.style.flexDirection = "column";
-          detailBlocksWrap.style.gap = "0";
-          
-          if (debugMeta.memory) {
-            const memoryBlock = document.createElement("div");
-            memoryBlock.className = "debug-block";
-            
-            const details = document.createElement("details");
-            details.style.width = "100%";
-            details.style.marginTop = "8px";
-            details.style.borderRadius = "16px";
-            details.style.background = "rgba(255, 255, 255, 0.56)";
-            details.style.border = "1px solid rgba(214, 230, 233, 0.88)";
-            details.style.boxShadow = "0 8px 20px rgba(36, 94, 102, 0.05)";
-            details.style.backdropFilter = "blur(8px)";
-            details.style.webkitBackdropFilter = "blur(8px)";
-            details.style.overflow = "hidden";
-            
-            const summary = document.createElement("summary");
-            summary.textContent = "Mémoire";
-            summary.style.cursor = "pointer";
-            summary.style.listStyle = "none";
-            summary.style.padding = "12px 14px";
-            summary.style.color = "#245e66";
-            summary.style.fontSize = "13px";
-            summary.style.lineHeight = "1.3";
-            summary.style.fontWeight = "700";
-            summary.style.webkitTapHighlightColor = "transparent";
-            
-            const body = document.createElement("div");
-            body.style.padding = "0 14px 14px 14px";
-            body.style.fontSize = "13px";
-            body.style.lineHeight = "1.55";
-            body.style.color = "#3e5e62";
-            body.style.whiteSpace = "pre-wrap";
-            body.textContent = debugMeta.memory;
-            
-            details.appendChild(summary);
-            details.appendChild(body);
-            memoryBlock.appendChild(details);
-            detailBlocksWrap.appendChild(memoryBlock);
-          }
-          
-          if (debugMeta.directivityLabel) {
-            const directivityBlock = document.createElement("div");
-            directivityBlock.className = "debug-block";
-            
-            const details = document.createElement("details");
-            details.style.width = "100%";
-            details.style.marginTop = "8px";
-            details.style.borderRadius = "16px";
-            details.style.background = "rgba(255, 255, 255, 0.56)";
-            details.style.border = "1px solid rgba(214, 230, 233, 0.88)";
-            details.style.boxShadow = "0 8px 20px rgba(36, 94, 102, 0.05)";
-            details.style.backdropFilter = "blur(8px)";
-            details.style.webkitBackdropFilter = "blur(8px)";
-            details.style.overflow = "hidden";
-            
-            const summary = document.createElement("summary");
-            summary.textContent = "Directivité";
-            summary.style.cursor = "pointer";
-            summary.style.listStyle = "none";
-            summary.style.padding = "12px 14px";
-            summary.style.color = "#245e66";
-            summary.style.fontSize = "13px";
-            summary.style.lineHeight = "1.3";
-            summary.style.fontWeight = "700";
-            summary.style.webkitTapHighlightColor = "transparent";
-            
-            const body = document.createElement("div");
-            body.style.padding = "0 14px 14px 14px";
-            body.style.fontSize = "13px";
-            body.style.lineHeight = "1.55";
-            body.style.color = "#3e5e62";
-            body.style.whiteSpace = "pre-wrap";
-            body.textContent = debugMeta.directivityLabel;
-            
-            details.appendChild(summary);
-            details.appendChild(body);
-            directivityBlock.appendChild(details);
-            detailBlocksWrap.appendChild(directivityBlock);
-          }
-          
-          if (debugMeta.modelConflict && debugMeta.rewriteSource) {
-            const conflictBlock = document.createElement("div");
-            conflictBlock.className = "debug-block";
-            
-            const details = document.createElement("details");
-            details.style.width = "100%";
-            details.style.marginTop = "8px";
-            details.style.borderRadius = "16px";
-            details.style.background = "rgba(255, 255, 255, 0.56)";
-            details.style.border = "1px solid rgba(214, 230, 233, 0.88)";
-            details.style.boxShadow = "0 8px 20px rgba(36, 94, 102, 0.05)";
-            details.style.backdropFilter = "blur(8px)";
-            details.style.webkitBackdropFilter = "blur(8px)";
-            details.style.overflow = "hidden";
-            
-            const summary = document.createElement("summary");
-            summary.textContent = "Conflit avec le modèle théorique";
-            summary.style.cursor = "pointer";
-            summary.style.listStyle = "none";
-            summary.style.padding = "12px 14px";
-            summary.style.color = "#245e66";
-            summary.style.fontSize = "13px";
-            summary.style.lineHeight = "1.3";
-            summary.style.fontWeight = "700";
-            summary.style.webkitTapHighlightColor = "transparent";
-            
-            const body = document.createElement("div");
-            body.style.padding = "0 14px 14px 14px";
-            body.style.fontSize = "13px";
-            body.style.lineHeight = "1.55";
-            body.style.color = "#3e5e62";
-            body.style.whiteSpace = "pre-wrap";
-            body.textContent = debugMeta.rewriteSource;
-            
-            details.appendChild(summary);
-            details.appendChild(body);
-            conflictBlock.appendChild(details);
-            detailBlocksWrap.appendChild(conflictBlock);
-          }
-          
-          if (debugMeta.override1Applied.length || debugMeta.override1Missing.length) {
-            const bodyParts = [];
-            
-            if (debugMeta.override1Applied.length) {
-              bodyParts.push(
-                `<div><strong>Blocs remplaces</strong><br>${escapeHtml(debugMeta.override1Applied.join(", "))}</div>`
-              );
-            }
-            
-            if (debugMeta.override1Missing.length) {
-              bodyParts.push(
-                `<div style="margin-top:8px;"><strong>Marqueurs introuvables</strong><br>${escapeHtml(debugMeta.override1Missing.join(", "))}</div>`
-              );
-            }
-            
-            const block = buildDetailBlock("Override 1", bodyParts.join(""));
-            block.style.display = "block";
-            detailBlocksWrap.appendChild(block);
-          }
-          
-          if (debugMeta.override2Applied.length || debugMeta.override2Missing.length) {
-            const bodyParts = [];
-            
-            if (debugMeta.override2Applied.length) {
-              bodyParts.push(
-                `<div><strong>Blocs remplaces</strong><br>${escapeHtml(debugMeta.override2Applied.join(", "))}</div>`
-              );
-            }
-            
-            if (debugMeta.override2Missing.length) {
-              bodyParts.push(
-                `<div style="margin-top:8px;"><strong>Marqueurs introuvables</strong><br>${escapeHtml(debugMeta.override2Missing.join(", "))}</div>`
-              );
-            }
-            
-            const block = buildDetailBlock("Override 2", bodyParts.join(""));
-            block.style.display = "block";
-            detailBlocksWrap.appendChild(block);
-          }
-          
-          if (detailBlocksWrap.childNodes.length > 0) {
-            contentWrap.appendChild(detailBlocksWrap);
-          }
-        }
-      }
-      
-      const bubble = document.createElement("div");
-      bubble.className = "bubble";
-      
-      bubble.style.padding = "13px 15px";
-      bubble.style.borderRadius = "20px";
-      bubble.style.lineHeight = "1.54";
-      bubble.style.whiteSpace = "pre-wrap";
-      bubble.style.wordBreak = "break-word";
-      bubble.style.overflowWrap = "break-word";
-      bubble.style.boxSizing = "border-box";
-      bubble.style.transition = "transform 0.46s ease, opacity 0.46s ease, box-shadow 0.46s ease, background 0.46s ease";
-      bubble.style.display = "block";
-      
-      /* ---------- TAG COMPARAISON ---------- */
       if (role === "bot" && compareLabel) {
         const compareTag = document.createElement("div");
         compareTag.textContent = compareLabel;
@@ -3842,7 +3589,19 @@
         contentWrap.appendChild(compareTag);
       }
       
-      /* ---------- STYLE BULLE ---------- */
+      const bubble = document.createElement("div");
+      bubble.className = "bubble";
+      
+      bubble.style.padding = "13px 15px";
+      bubble.style.borderRadius = "20px";
+      bubble.style.lineHeight = "1.54";
+      bubble.style.whiteSpace = "pre-wrap";
+      bubble.style.wordBreak = "break-word";
+      bubble.style.overflowWrap = "break-word";
+      bubble.style.boxSizing = "border-box";
+      bubble.style.transition = "transform 0.46s ease, opacity 0.46s ease, box-shadow 0.46s ease, background 0.46s ease";
+      bubble.style.display = "block";
+      
       if (role === "bot") {
         bubble.style.background = "rgba(255, 255, 255, 0.62)";
         bubble.style.color = "#3e5e62";
@@ -3854,7 +3613,6 @@
         bubble.style.webkitUserSelect = "none";
         bubble.style.userSelect = "none";
         
-        /* --- DIFFÉRENCIATION COMPARAISON --- */
         if (compareLabel === "Référence") {
           bubble.style.border = "1px solid rgba(36,94,102,0.2)";
         } else if (compareLabel === "Override 1") {
@@ -3871,7 +3629,6 @@
           progressive,
           wasAtBottomBeforeInsert
         });
-        
       } else {
         bubble.style.background = "rgba(36, 94, 102, 0.16)";
         bubble.style.color = "#183f44";
@@ -3934,7 +3691,9 @@
           }
         };
         
-        const endLongPress = () => clearLongPress();
+        const endLongPress = () => {
+          clearLongPress();
+        };
         
         bubble.addEventListener("contextmenu", e => e.preventDefault());
         bubble.addEventListener("selectstart", e => e.preventDefault());
@@ -3961,7 +3720,6 @@
       
       contentWrap.appendChild(bubble);
       
-      /* ---------- DEBUG CHIPS SIMPLIFIÉS ---------- */
       if (role === "bot" && debugMeta && showDebug) {
         const chipsBlock = document.createElement("div");
         chipsBlock.className = "debug-block";
@@ -3986,6 +3744,135 @@
         }
         
         contentWrap.appendChild(chipsBlock);
+        
+        const detailBlocksWrap = document.createElement("div");
+        detailBlocksWrap.style.display = "flex";
+        detailBlocksWrap.style.flexDirection = "column";
+        detailBlocksWrap.style.gap = "0";
+        
+        if (debugMeta.memory) {
+          const memoryBlock = document.createElement("div");
+          memoryBlock.className = "debug-block";
+          
+          const details = document.createElement("details");
+          details.style.width = "100%";
+          details.style.marginTop = "8px";
+          details.style.borderRadius = "16px";
+          details.style.background = "rgba(255, 255, 255, 0.56)";
+          details.style.border = "1px solid rgba(214, 230, 233, 0.88)";
+          details.style.boxShadow = "0 8px 20px rgba(36, 94, 102, 0.05)";
+          details.style.backdropFilter = "blur(8px)";
+          details.style.webkitBackdropFilter = "blur(8px)";
+          details.style.overflow = "hidden";
+          
+          const summary = document.createElement("summary");
+          summary.textContent = "Mémoire";
+          summary.style.cursor = "pointer";
+          summary.style.listStyle = "none";
+          summary.style.padding = "12px 14px";
+          summary.style.color = "#245e66";
+          summary.style.fontSize = "13px";
+          summary.style.lineHeight = "1.3";
+          summary.style.fontWeight = "700";
+          summary.style.webkitTapHighlightColor = "transparent";
+          
+          const body = document.createElement("div");
+          body.style.padding = "0 14px 14px 14px";
+          body.style.fontSize = "13px";
+          body.style.lineHeight = "1.55";
+          body.style.color = "#3e5e62";
+          body.style.whiteSpace = "pre-wrap";
+          body.textContent = debugMeta.memory;
+          
+          details.appendChild(summary);
+          details.appendChild(body);
+          memoryBlock.appendChild(details);
+          detailBlocksWrap.appendChild(memoryBlock);
+        }
+        
+        if (debugMeta.directivityLabel) {
+          const directivityBlock = document.createElement("div");
+          directivityBlock.className = "debug-block";
+          
+          const details = document.createElement("details");
+          details.style.width = "100%";
+          details.style.marginTop = "8px";
+          details.style.borderRadius = "16px";
+          details.style.background = "rgba(255, 255, 255, 0.56)";
+          details.style.border = "1px solid rgba(214, 230, 233, 0.88)";
+          details.style.boxShadow = "0 8px 20px rgba(36, 94, 102, 0.05)";
+          details.style.backdropFilter = "blur(8px)";
+          details.style.webkitBackdropFilter = "blur(8px)";
+          details.style.overflow = "hidden";
+          
+          const summary = document.createElement("summary");
+          summary.textContent = "Directivité";
+          summary.style.cursor = "pointer";
+          summary.style.listStyle = "none";
+          summary.style.padding = "12px 14px";
+          summary.style.color = "#245e66";
+          summary.style.fontSize = "13px";
+          summary.style.lineHeight = "1.3";
+          summary.style.fontWeight = "700";
+          summary.style.webkitTapHighlightColor = "transparent";
+          
+          const body = document.createElement("div");
+          body.style.padding = "0 14px 14px 14px";
+          body.style.fontSize = "13px";
+          body.style.lineHeight = "1.55";
+          body.style.color = "#3e5e62";
+          body.style.whiteSpace = "pre-wrap";
+          body.textContent = debugMeta.directivityLabel;
+          
+          details.appendChild(summary);
+          details.appendChild(body);
+          directivityBlock.appendChild(details);
+          detailBlocksWrap.appendChild(directivityBlock);
+        }
+        
+        if (debugMeta.modelConflict && debugMeta.rewriteSource) {
+          const conflictBlock = document.createElement("div");
+          conflictBlock.className = "debug-block";
+          
+          const details = document.createElement("details");
+          details.style.width = "100%";
+          details.style.marginTop = "8px";
+          details.style.borderRadius = "16px";
+          details.style.background = "rgba(255, 255, 255, 0.56)";
+          details.style.border = "1px solid rgba(214, 230, 233, 0.88)";
+          details.style.boxShadow = "0 8px 20px rgba(36, 94, 102, 0.05)";
+          details.style.backdropFilter = "blur(8px)";
+          details.style.webkitBackdropFilter = "blur(8px)";
+          details.style.overflow = "hidden";
+          
+          const summary = document.createElement("summary");
+          summary.textContent = "Conflit avec le modèle théorique";
+          summary.style.cursor = "pointer";
+          summary.style.listStyle = "none";
+          summary.style.padding = "12px 14px";
+          summary.style.color = "#245e66";
+          summary.style.fontSize = "13px";
+          summary.style.lineHeight = "1.3";
+          summary.style.fontWeight = "700";
+          summary.style.webkitTapHighlightColor = "transparent";
+          
+          const body = document.createElement("div");
+          body.style.padding = "0 14px 14px 14px";
+          body.style.fontSize = "13px";
+          body.style.lineHeight = "1.55";
+          body.style.color = "#3e5e62";
+          body.style.whiteSpace = "pre-wrap";
+          body.textContent = debugMeta.rewriteSource;
+          
+          details.appendChild(summary);
+          details.appendChild(body);
+          conflictBlock.appendChild(details);
+          detailBlocksWrap.appendChild(conflictBlock);
+        }
+        
+        if (detailBlocksWrap.childNodes.length > 0) {
+          contentWrap.appendChild(detailBlocksWrap);
+        }
       }
       
       msg.appendChild(contentWrap);
