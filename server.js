@@ -157,20 +157,351 @@ function requireAdminAuth(req, res, next) {
   next();
 }
 
+function buildDefaultPromptRegistry() {
+  return {
+    NORMALIZE_MEMORY_TEMPLATE: [
+      "Themes deja evoques :",
+      "- ",
+      "",
+      "Points de vigilance relationnels :",
+      "- ",
+      "",
+      "Questions encore ouvertes :",
+      "- "
+    ].join("\n"),
+    
+    EXPLORATION_STRUCTURE_CASE_1: `
+Contrainte structurelle tres legere :
+- n'utilise aucune autre langue que le francais
+- reste libre, chaleureux, simple et proche de ce qui vient d'etre dit
+- une relance est possible si elle vient naturellement
+- evite seulement d'enchainer plusieurs mouvements de guidage dans la meme reponse
+- privilegie l'accueil, le reflet ou la reformulation plutot qu'une prise en main de la suite
+`,
+    
+    EXPLORATION_STRUCTURE_CASE_2: `
+Contrainte structurelle legere :
+- n'utilise aucune autre langue que le francais
+- garde une tonalite contenante, humaine et vivante
+- privilegie une reponse assez breve, proche de ce qui est la
+- une relance reste possible, mais evite qu'elle prenne toute la place
+- evite les formulations trop pilotantes ou trop scolaires
+- tu peux aider a poser un peu ce qui est la sans organiser la suite a la place de l'utilisateur
+- tu peux, si c'est juste dans le flux de la reponse, reconnaitre qu'un besoin de soutien, d'appui ou de presence peut exister, sans te proposer comme solution ni orienter explicitement vers quelqu'un
+`,
+    
+    EXPLORATION_STRUCTURE_CASE_3: `
+Contrainte structurelle moderee :
+- n'utilise aucune autre langue que le francais
+- fais une reponse plutot courte, contenante et globalement autoportante
+- evite les questions sauf si elles paraissent vraiment necessaires
+- evite les invitations a decrire, preciser, observer, explorer ou approfondir
+- evite aussi les formulations de suggestion indirecte comme "il peut etre utile de", "cela peut aider de", "parfois on peut"
+- privilegie un reflet simple, une reformulation sobre, ou un accueil bref
+- tu peux, si c'est juste dans le flux de la reponse, reconnaitre qu'un besoin de soutien, d'appui ou de presence peut exister, sans te proposer comme solution ni orienter explicitement vers quelqu'un
+`,
+    
+    EXPLORATION_STRUCTURE_CASE_4: `
+Contrainte structurelle forte :
+- n'utilise aucune autre langue que le francais
+- fais une reponse breve, sobre et autoportante
+- aucune question
+- aucune consigne implicite ou explicite
+- aucune invitation a continuer, decrire, observer, explorer, approfondir ou laisser emerger quoi que ce soit
+- aucune formulation de type conseil, suggestion ou orientation douce
+- reste au plus pres de ce qui est deja la, puis arrete-toi
+- tu peux, si c'est juste dans le flux de la reponse, reconnaitre qu'un besoin de soutien, d'appui ou de presence peut exister, sans te proposer comme solution ni orienter explicitement vers quelqu'un
+`,
+    
+    ANALYZE_INFO: `
+Tu determines si le message utilisateur releve surtout d'une demande d'information factuelle, theorique, historique ou scientifique.
+
+Reponds STRICTEMENT en JSON :
+
+{
+  "isInfoRequest": true|false
+}
+
+Regles :
+- true seulement si la personne demande principalement une information generale, theorique ou impersonnelle
+- false si la personne parle surtout de ce qu'elle vit, ressent, traverse, comprend mal, ou cherche a mettre du sens sur sa propre experience
+- ne sur-interprete pas
+- base-toi d'abord sur le message actuel, puis sur le contexte recent si necessaire
+- sois restrictif : en cas de doute, reponds false
+
+Important :
+- une demande de comprehension de soi n'est pas une demande d'information
+- une question portant sur sa propre experience doit etre classee en exploration
+- la forme interrogative ne suffit pas a classer en info
+- des formulations comme "j'ai besoin de comprendre", "je veux comprendre ce qui se passe", "qu'est-ce qui m'arrive", "comment comprendre ce que je vis" doivent etre classees false si elles portent sur l'experience de l'utilisateur
+
+Exemples a classer false :
+- "Je crois que j'ai besoin de comprendre ce qui se passe"
+- "Comment comprendre ce que je ressens ?"
+- "Qu'est-ce qui m'arrive en ce moment ?"
+- "Je me demande si ce que je vis est de l'angoisse"
+- "C'est normal de ressentir ca ?"
+- "Tu crois que je suis depressif ?"
+
+Exemples a classer true :
+- "Qu'est-ce que l'angoisse ?"
+- "Quelle est la difference entre angoisse et anxiete ?"
+- "Comment fonctionne une crise d'angoisse ?"
+- "Qu'est-ce qu'une croyance limitante ?"
+
+Reponds uniquement par le JSON.
+`,
+    
+    ANALYZE_CONTACT: `
+Tu determines si, dans le message actuel et le contexte recent, la personne est au contact direct d'un processus interne en train de se faire maintenant.
+
+Reponds STRICTEMENT en JSON :
+{
+  "isContact": true|false
+}
+
+Principes :
+- base-toi d'abord sur le message actuel ; le contexte recent peut aider a comprendre mais ne suffit pas a lui seul
+- fais une analyse contextuelle, pas un simple reperage de mots
+- sois selectif : contact doit rester relativement rare
+
+Met isContact = true seulement si la personne semble etre en train de vivre le processus, et pas seulement d'en parler.
+
+Indications de contact :
+- quelque chose monte, lache, pousse, retient, revient, se debloque, se relache
+- la personne semble au bord d'une decharge emotionnelle ou en train de la vivre
+- il y a une tension explicite entre retenue et laisser-faire
+- le message donne l'impression que ca se passe maintenant, en direct
+
+Ne mets pas contact = true si le message est surtout :
+- une description generale d'un ressenti ou d'un etat
+- un ressenti simplement nomme sans mouvement en cours
+- une sensation evoquee a distance ou de facon vague
+- une analyse ou une tentative de comprendre
+- un recit distancie
+- une demande d'information
+- une reprise de controle ou de mise en sens, meme apres un moment de contact
+
+Exemples a classer false :
+- "Je me sens un peu tendu aujourd'hui"
+- "Je suis triste"
+- "Je crois que j'ai besoin de comprendre ce qui se passe"
+- "J'essaie d'analyser ce que je ressens"
+- "Il y a un truc bizarre dans mon ventre, je sais pas trop ce que c'est"
+- "Attends... ca se calme un peu. J'essaie de reprendre."
+
+Exemples a classer true :
+- "Je sens que ca monte"
+- "Ca lache un peu"
+- "Il y a quelque chose qui pousse dans la poitrine"
+- "J'ai envie de pleurer et en meme temps quelque chose retient"
+
+Si previousContactState.wasContact = true, sois un peu plus sensible a la possibilite que le contact soit encore present, sans le forcer.
+
+Reponds uniquement par le JSON.
+`,
+    
+    ANALYZE_RECALL: `
+Tu determines si le message utilisateur est une tentative de rappel conversationnel, c'est-a-dire une demande de retrouver, reprendre ou rappeler un contenu deja evoque dans l'echange.
+
+Reponds STRICTEMENT en JSON :
+
+{
+  "isRecallAttempt": true|false,
+  "calledMemory": "shortTermMemory|longTermMemory|none"
+}
+
+Definitions :
+- shortTermMemory : recentHistory suffit a repondre honnetement
+- longTermMemory : recentHistory ne suffit pas, mais la memoire resumee contient des reperes utiles
+- none : c'est une tentative de rappel, mais ni recentHistory ni la memoire resumee ne permettent un rappel honnete
+
+Regles :
+- isRecallAttempt = true seulement si la personne cherche a retrouver un contenu deja evoque dans la conversation
+- il doit s'agir d'un rappel conversationnel, pas d'une reprise de soi, d'un retour au calme, d'une reprise de controle ou d'une remise en mouvement
+- une simple question d'information ne doit pas etre classee comme recall
+- si isRecallAttempt = false, calledMemory doit etre "none"
+- shortTermMemory seulement si les derniers tours permettent vraiment de repondre sans faire semblant d'avoir plus de continuite que recentHistory
+- longTermMemory seulement si la memoire resumee contient des reperes generaux exploitables
+- none si l'utilisateur demande un rappel mais qu'il n'y a pas assez de reperes fiables
+
+Exemples a classer true :
+- "De quoi on parlait deja ?"
+- "On en etait ou ?"
+- "Tu te souviens de ce que je t'ai dit sur..."
+- "Qu'est-ce que tu gardes de ce qu'on s'est dit ?"
+- "Tu peux me rappeler ce qu'on disait tout a l'heure ?"
+- "On peut reprendre ce qu'on disait sur ma mere ?"
+
+Exemples a classer false :
+- "J'essaie de reprendre"
+- "Attends, je reprends"
+- "Je reprends un peu mes esprits"
+- "Je reviens a moi"
+- "Je retrouve un peu mon calme"
+- "Je me remets a penser"
+- "J'ai besoin de comprendre ce qui se passe"
+- "Je veux reprendre le controle"
+
+Important :
+- les verbes comme reprendre, revenir, retrouver, se souvenir ou rappeler ne suffisent pas a eux seuls
+- ils ne comptent comme recall que s'ils portent clairement sur le fil de la conversation ou sur un contenu deja evoque
+- ne sur-interprete pas
+
+Reponds uniquement par le JSON.
+`,
+    
+    ANALYZE_MODEL_CONFLICT: `
+Tu analyses uniquement la reponse du bot.
+
+Ta tache n'est PAS d'evaluer si la reponse est bonne, utile, precise ou fidele a un modele complet.
+Tu dois uniquement detecter si elle reintroduit clairement au moins un des cadres conceptuels explicitement bannis ci-dessous.
+
+Cadres bannis :
+1. inconscient / subconscient / non-conscient comme instance explicative
+2. psychopathologie / sante mentale comme cadre explicatif
+3. mecanismes de defense au sens psy classique comme cadre explicatif
+
+Definition stricte du conflit :
+Un conflit existe uniquement si la reponse mobilise explicitement ou quasi explicitement l'un de ces cadres comme explication pertinente de la situation.
+
+Regles strictes :
+- detection conceptuelle, pas simple detection de mots
+- un conflit existe seulement si la reponse presuppose clairement l'un de ces cadres pour expliquer
+- si la reponse est ambigue, vague ou interpretable autrement, reponds false
+- ne signale pas un conflit pour une reponse imprecise, faible, generique ou incomplete
+- ne sur-interprete pas
+- en cas de doute, reponds false
+
+Important :
+Ne classe PAS comme conflit :
+- une hypothese sur une tension interne
+- une lecture autour d'une pression, d'un blocage, d'une hesitation, d'un evitement ou d'une deconnexion
+- une mise en lien entre experience, ressenti, croyance ou contexte
+- une lecture existentielle, relationnelle ou phenomenologique
+- une formulation psychologique generale si elle n'introduit pas explicitement un cadre banni
+
+Un conflit existe aussi si la reponse valide implicitement une categorie de psychopathologie comme cadre pertinent, meme sans poser de diagnostic.
+
+Exemples a considerer comme conflit (true) :
+- "cela peut faire penser a une depression"
+- "on pourrait se demander s'il s'agit d'un trouble"
+- "cela correspond parfois a..."
+- "c'est peut-etre un mecanisme de defense"
+- "ton inconscient te protege"
+- "cela releve de la sante mentale"
+
+Exemples a considerer comme NON conflit (false) :
+- "je me demande si une pression implicite est a l'oeuvre"
+- "peut-etre qu'il y a un evitement"
+- "cela peut couper momentanement de ce qu'on ressent"
+- "j'ai l'impression qu'une tension interieure est presente"
+- "il y a peut-etre un conflit entre envie et exigence"
+- "cela peut etre lie a ce que tu vis en ce moment"
+- "il semble y avoir une forme de decalage avec ce que tu ressens"
+
+Reponds STRICTEMENT en JSON :
+{
+  "modelConflict": true|false
+}
+`,
+    
+    ANALYZE_RELANCE: `
+Tu analyses uniquement si la reponse du bot contient une relance au sens relationnel.
+
+Reponds STRICTEMENT en JSON :
+{
+  "isRelance": true|false
+}
+
+Definition :
+- true si la reponse pousse l'utilisateur a continuer, preciser, decrire, clarifier, approfondir, expliquer, observer davantage, ou si elle ouvre explicitement vers la suite
+- true si elle contient une question, une invitation implicite ou explicite, une incitation a explorer davantage
+- false si la reponse peut se suffire a elle-meme, reste avec ce qui est la, reflete, reformule, accueille, ou s'arrete sans pousser
+
+Important :
+- ne te base pas seulement sur la ponctuation
+- une phrase sans point d'interrogation peut quand meme etre une relance
+- une question de clarification suicidaire n'est pas concernee ici ; tu analyses seulement une reponse de mode exploration ordinaire
+- ne sur-interprete pas
+`,
+    
+    MEMORY_RECALL_RESPONSE: `
+Tu reponds a une tentative de rappel en t'appuyant uniquement sur une memoire resumee.
+
+N'utilise aucune autre langue que le francais.
+
+Tutoie l'utilisateur.
+
+Contraintes :
+- ne parle pas de l'utilisateur à la troisième personne 
+- reponse breve, naturelle et sobre
+- dis clairement qu'il s'agit de reperes generaux et non d'un souvenir detaille
+- n'invente aucun detail
+- si la memoire contient plusieurs themes, cite seulement les reperes les plus plausibles et generaux
+`,
+    
+    REWRITE_EXPLORATION_REPLY_WITH_MODEL_FILTER: `
+Tu reecris une reponse de mode exploration.
+
+N'utilise aucune autre langue que le francais
+
+But :
+- conserver l'intention, le ton global, la direction relationnelle et le niveau de langage de la reponse initiale
+- enlever uniquement ce qui la met en opposition avec le filtre theorique ci-dessous
+- rester en exploration, sans guider, sans diagnostiquer, sans coacher, sans prescrire
+- repondre uniquement en francais
+
+Filtre theorique explicite :
+- il n'y a pas d'inconscient, de subconscient ni de non-conscient comme instance explicative
+- il n'y a pas de psychopathologie ni de sante mentale comme cadre explicatif
+- ne parle pas de mecanismes de defense ; prefere, si necessaire, mecanismes adaptatifs
+- si tu reformules, reste concret et sobre
+- n'ajoute pas un cours theorique
+- ne plaque pas le modele si ce n'est pas necessaire
+
+Terminologie autorisee si utile :
+- memoire corporelle
+- memoire autobiographique
+- croyances limitantes
+- mecanismes adaptatifs
+
+Reecris uniquement la reponse finale, sans commentaire.
+`,
+    
+    UPDATE_MEMORY: `
+Tu mets a jour une memoire legere.
+
+Format strict.
+Pas de psychologie identitaire.
+Items courts.
+`
+  };
+}
+
+function resolvePromptRegistry(overrideFiles = []) {
+  const base = buildDefaultPromptRegistry();
+  const next = { ...base };
+  
+  for (const file of overrideFiles) {
+    const normalized = normalizePromptOverrideFile(file);
+    if (!normalized) continue;
+    
+    for (const [target, content] of Object.entries(normalized.replacements)) {
+      if (Object.prototype.hasOwnProperty.call(next, target)) {
+        next[target] = String(content || "");
+      }
+    }
+  }
+  
+  return next;
+}
+
 function normalizeMemory(memory) {
   const text = String(memory || "").trim();
   if (text) return text;
   
-  return [
-    "Themes deja evoques :",
-    "- ",
-    "",
-    "Points de vigilance relationnels :",
-    "- ",
-    "",
-    "Questions encore ouvertes :",
-    "- "
-  ].join("\n");
+  return buildDefaultPromptRegistry().NORMALIZE_MEMORY_TEMPLATE;
 }
 
 function trimHistory(history) {
@@ -261,60 +592,23 @@ function registerExplorationRelance(flags, isRelance) {
   };
 }
 
-function getExplorationStructureInstruction(explorationDirectivityLevel) {
+function getExplorationStructureInstruction(
+  explorationDirectivityLevel,
+  promptRegistry = buildDefaultPromptRegistry()
+) {
   const safeLevel = clampExplorationDirectivityLevel(explorationDirectivityLevel);
   
   switch (safeLevel) {
     case 0:
       return "";
-      
     case 1:
-      return `
-Contrainte structurelle tres legere :
-- n'utilise aucune autre langue que le francais
-- reste libre, chaleureux, simple et proche de ce qui vient d'etre dit
-- une relance est possible si elle vient naturellement
-- evite seulement d'enchainer plusieurs mouvements de guidage dans la meme reponse
-- privilegie l'accueil, le reflet ou la reformulation plutot qu'une prise en main de la suite
-`;
-      
+      return promptRegistry.EXPLORATION_STRUCTURE_CASE_1;
     case 2:
-      return `
-Contrainte structurelle legere :
-- n'utilise aucune autre langue que le francais
-- garde une tonalite contenante, humaine et vivante
-- privilegie une reponse assez breve, proche de ce qui est la
-- une relance reste possible, mais evite qu'elle prenne toute la place
-- evite les formulations trop pilotantes ou trop scolaires
-- tu peux aider a poser un peu ce qui est la sans organiser la suite a la place de l'utilisateur
-- tu peux, si c'est juste dans le flux de la reponse, reconnaitre qu'un besoin de soutien, d'appui ou de presence peut exister, sans te proposer comme solution ni orienter explicitement vers quelqu'un
-`;
-      
+      return promptRegistry.EXPLORATION_STRUCTURE_CASE_2;
     case 3:
-      return `
-Contrainte structurelle moderee :
-- n'utilise aucune autre langue que le francais
-- fais une reponse plutot courte, contenante et globalement autoportante
-- evite les questions sauf si elles paraissent vraiment necessaires
-- evite les invitations a decrire, preciser, observer, explorer ou approfondir
-- evite aussi les formulations de suggestion indirecte comme "il peut etre utile de", "cela peut aider de", "parfois on peut"
-- privilegie un reflet simple, une reformulation sobre, ou un accueil bref
-- tu peux, si c'est juste dans le flux de la reponse, reconnaitre qu'un besoin de soutien, d'appui ou de presence peut exister, sans te proposer comme solution ni orienter explicitement vers quelqu'un
-`;
-      
+      return promptRegistry.EXPLORATION_STRUCTURE_CASE_3;
     case 4:
-      return `
-Contrainte structurelle forte :
-- n'utilise aucune autre langue que le francais
-- fais une reponse breve, sobre et autoportante
-- aucune question
-- aucune consigne implicite ou explicite
-- aucune invitation a continuer, decrire, observer, explorer, approfondir ou laisser emerger quoi que ce soit
-- aucune formulation de type conseil, suggestion ou orientation douce
-- reste au plus pres de ce qui est deja la, puis arrete-toi
-- tu peux, si c'est juste dans le flux de la reponse, reconnaitre qu'un besoin de soutien, d'appui ou de presence peut exister, sans te proposer comme solution ni orienter explicitement vers quelqu'un
-`;
-      
+      return promptRegistry.EXPLORATION_STRUCTURE_CASE_4;
     default:
       return "";
   }
@@ -536,54 +830,15 @@ function acuteCrisisFollowupResponse() {
 // 3) ANALYSE INFO + CONTACT + RECALL + CONFLIT MODELE + RELANCE
 // --------------------------------------------------
 
-async function llmInfoAnalysis(message = "", history = []) {
+async function llmInfoAnalysis(message = "", history = [], promptRegistry = buildDefaultPromptRegistry()) {
   const context = trimInfoAnalysisHistory(history);
-  
-  const system = `
-Tu determines si le message utilisateur releve surtout d'une demande d'information factuelle, theorique, historique ou scientifique.
-
-Reponds STRICTEMENT en JSON :
-
-{
-  "isInfoRequest": true|false
-}
-
-Regles :
-- true seulement si la personne demande principalement une information generale, theorique ou impersonnelle
-- false si la personne parle surtout de ce qu'elle vit, ressent, traverse, comprend mal, ou cherche a mettre du sens sur sa propre experience
-- ne sur-interprete pas
-- base-toi d'abord sur le message actuel, puis sur le contexte recent si necessaire
-- sois restrictif : en cas de doute, reponds false
-
-Important :
-- une demande de comprehension de soi n'est pas une demande d'information
-- une question portant sur sa propre experience doit etre classee en exploration
-- la forme interrogative ne suffit pas a classer en info
-- des formulations comme "j'ai besoin de comprendre", "je veux comprendre ce qui se passe", "qu'est-ce qui m'arrive", "comment comprendre ce que je vis" doivent etre classees false si elles portent sur l'experience de l'utilisateur
-
-Exemples a classer false :
-- "Je crois que j'ai besoin de comprendre ce qui se passe"
-- "Comment comprendre ce que je ressens ?"
-- "Qu'est-ce qui m'arrive en ce moment ?"
-- "Je me demande si ce que je vis est de l'angoisse"
-- "C'est normal de ressentir ca ?"
-- "Tu crois que je suis depressif ?"
-
-Exemples a classer true :
-- "Qu'est-ce que l'angoisse ?"
-- "Quelle est la difference entre angoisse et anxiete ?"
-- "Comment fonctionne une crise d'angoisse ?"
-- "Qu'est-ce qu'une croyance limitante ?"
-
-Reponds uniquement par le JSON.
-`;
   
   const r = await client.chat.completions.create({
     model: "gpt-4.1-mini",
     temperature: 0,
     max_tokens: 60,
     messages: [
-      { role: "system", content: system },
+      { role: "system", content: promptRegistry.ANALYZE_INFO },
       ...context.map(m => ({ role: m.role, content: m.content })),
       { role: "user", content: message }
     ]
@@ -605,62 +860,18 @@ Reponds uniquement par le JSON.
   }
 }
 
-async function analyzeInfoRequest(message = "", history = []) {
-  return await llmInfoAnalysis(message, history);
+async function analyzeInfoRequest(message = "", history = [], promptRegistry = buildDefaultPromptRegistry()) {
+  return await llmInfoAnalysis(message, history, promptRegistry);
 }
 
-async function analyzeContactState(message = "", history = [], previousContactState = { wasContact: false }) {
+async function analyzeContactState(
+  message = "",
+  history = [],
+  previousContactState = { wasContact: false },
+  promptRegistry = buildDefaultPromptRegistry()
+) {
   const context = trimHistory(history);
   const safePreviousContactState = normalizeContactState(previousContactState);
-  
-  const system = `
-Tu determines si, dans le message actuel et le contexte recent, la personne est au contact direct d'un processus interne en train de se faire maintenant.
-
-Reponds STRICTEMENT en JSON :
-{
-  "isContact": true|false
-}
-
-Principes :
-- base-toi d'abord sur le message actuel ; le contexte recent peut aider a comprendre mais ne suffit pas a lui seul
-- fais une analyse contextuelle, pas un simple reperage de mots
-- sois selectif : contact doit rester relativement rare
-
-Met isContact = true seulement si la personne semble etre en train de vivre le processus, et pas seulement d'en parler.
-
-Indications de contact :
-- quelque chose monte, lache, pousse, retient, revient, se debloque, se relache
-- la personne semble au bord d'une decharge emotionnelle ou en train de la vivre
-- il y a une tension explicite entre retenue et laisser-faire
-- le message donne l'impression que ca se passe maintenant, en direct
-
-Ne mets pas contact = true si le message est surtout :
-- une description generale d'un ressenti ou d'un etat
-- un ressenti simplement nomme sans mouvement en cours
-- une sensation evoquee a distance ou de facon vague
-- une analyse ou une tentative de comprendre
-- un recit distancie
-- une demande d'information
-- une reprise de controle ou de mise en sens, meme apres un moment de contact
-
-Exemples a classer false :
-- "Je me sens un peu tendu aujourd'hui"
-- "Je suis triste"
-- "Je crois que j'ai besoin de comprendre ce qui se passe"
-- "J'essaie d'analyser ce que je ressens"
-- "Il y a un truc bizarre dans mon ventre, je sais pas trop ce que c'est"
-- "Attends... ca se calme un peu. J'essaie de reprendre."
-
-Exemples a classer true :
-- "Je sens que ca monte"
-- "Ca lache un peu"
-- "Il y a quelque chose qui pousse dans la poitrine"
-- "J'ai envie de pleurer et en meme temps quelque chose retient"
-
-Si previousContactState.wasContact = true, sois un peu plus sensible a la possibilite que le contact soit encore present, sans le forcer.
-
-Reponds uniquement par le JSON.
-`;
   
   const user = `
 Message utilisateur actuel :
@@ -678,7 +889,7 @@ ${JSON.stringify(safePreviousContactState)}
     temperature: 0,
     max_tokens: 80,
     messages: [
-      { role: "system", content: system },
+      { role: "system", content: promptRegistry.ANALYZE_CONTACT },
       { role: "user", content: user }
     ]
   });
@@ -697,58 +908,14 @@ ${JSON.stringify(safePreviousContactState)}
   }
 }
 
-async function analyzeRecallRouting(message = "", recentHistory = [], memory = "") {
+async function analyzeRecallRouting(
+  message = "",
+  recentHistory = [],
+  memory = "",
+  promptRegistry = buildDefaultPromptRegistry()
+) {
   const context = trimRecallAnalysisHistory(recentHistory);
   
-  const system = `
-Tu determines si le message utilisateur est une tentative de rappel conversationnel, c'est-a-dire une demande de retrouver, reprendre ou rappeler un contenu deja evoque dans l'echange.
-
-Reponds STRICTEMENT en JSON :
-
-{
-  "isRecallAttempt": true|false,
-  "calledMemory": "shortTermMemory|longTermMemory|none"
-}
-
-Definitions :
-- shortTermMemory : recentHistory suffit a repondre honnetement
-- longTermMemory : recentHistory ne suffit pas, mais la memoire resumee contient des reperes utiles
-- none : c'est une tentative de rappel, mais ni recentHistory ni la memoire resumee ne permettent un rappel honnete
-
-Regles :
-- isRecallAttempt = true seulement si la personne cherche a retrouver un contenu deja evoque dans la conversation
-- il doit s'agir d'un rappel conversationnel, pas d'une reprise de soi, d'un retour au calme, d'une reprise de controle ou d'une remise en mouvement
-- une simple question d'information ne doit pas etre classee comme recall
-- si isRecallAttempt = false, calledMemory doit etre "none"
-- shortTermMemory seulement si les derniers tours permettent vraiment de repondre sans faire semblant d'avoir plus de continuite que recentHistory
-- longTermMemory seulement si la memoire resumee contient des reperes generaux exploitables
-- none si l'utilisateur demande un rappel mais qu'il n'y a pas assez de reperes fiables
-
-Exemples a classer true :
-- "De quoi on parlait deja ?"
-- "On en etait ou ?"
-- "Tu te souviens de ce que je t'ai dit sur..."
-- "Qu'est-ce que tu gardes de ce qu'on s'est dit ?"
-- "Tu peux me rappeler ce qu'on disait tout a l'heure ?"
-- "On peut reprendre ce qu'on disait sur ma mere ?"
-
-Exemples a classer false :
-- "J'essaie de reprendre"
-- "Attends, je reprends"
-- "Je reprends un peu mes esprits"
-- "Je reviens a moi"
-- "Je retrouve un peu mon calme"
-- "Je me remets a penser"
-- "J'ai besoin de comprendre ce qui se passe"
-- "Je veux reprendre le controle"
-
-Important :
-- les verbes comme reprendre, revenir, retrouver, se souvenir ou rappeler ne suffisent pas a eux seuls
-- ils ne comptent comme recall que s'ils portent clairement sur le fil de la conversation ou sur un contenu deja evoque
-- ne sur-interprete pas
-
-Reponds uniquement par le JSON.
-`;
   const user = `
 Message utilisateur :
 ${message}
@@ -765,7 +932,7 @@ ${normalizeMemory(memory)}
     temperature: 0,
     max_tokens: 80,
     messages: [
-      { role: "system", content: system },
+      { role: "system", content: promptRegistry.ANALYZE_RECALL },
       { role: "user", content: user }
     ]
   });
@@ -793,22 +960,7 @@ ${normalizeMemory(memory)}
   }
 }
 
-async function buildLongTermMemoryRecallResponse(memory = "") {
-  const system = `
-Tu reponds a une tentative de rappel en t'appuyant uniquement sur une memoire resumee.
-
-N'utilise aucune autre langue que le francais.
-
-Tutoie l'utilisateur.
-
-Contraintes :
-- ne parle pas de l'utilisateur à la troisième personne 
-- reponse breve, naturelle et sobre
-- dis clairement qu'il s'agit de reperes generaux et non d'un souvenir detaille
-- n'invente aucun detail
-- si la memoire contient plusieurs themes, cite seulement les reperes les plus plausibles et generaux
-`;
-  
+async function buildLongTermMemoryRecallResponse(memory = "", promptRegistry = buildDefaultPromptRegistry()) {
   const user = `
 Memoire resumee :
 ${normalizeMemory(memory)}
@@ -821,7 +973,7 @@ Formule une reponse de rappel honnete a partir de cette seule memoire.
     temperature: 0.7,
     max_tokens: 150,
     messages: [
-      { role: "system", content: system },
+      { role: "system", content: promptRegistry.MEMORY_RECALL_RESPONSE },
       { role: "user", content: user }
     ]
   });
@@ -834,68 +986,13 @@ function buildNoMemoryRecallResponse() {
   return "Je n'ai pas assez de reperes pour retrouver cela clairement. Tu peux me redonner un peu de contexte ?";
 }
 
-async function analyzeModelConflict(reply = "") {
-  const system = `
-Tu analyses uniquement la reponse du bot.
-
-Ta tache n'est PAS d'evaluer si la reponse est bonne, utile, precise ou fidele a un modele complet.
-Tu dois uniquement detecter si elle reintroduit clairement au moins un des cadres conceptuels explicitement bannis ci-dessous.
-
-Cadres bannis :
-1. inconscient / subconscient / non-conscient comme instance explicative
-2. psychopathologie / sante mentale comme cadre explicatif
-3. mecanismes de defense au sens psy classique comme cadre explicatif
-
-Definition stricte du conflit :
-Un conflit existe uniquement si la reponse mobilise explicitement ou quasi explicitement l'un de ces cadres comme explication pertinente de la situation.
-
-Regles strictes :
-- detection conceptuelle, pas simple detection de mots
-- un conflit existe seulement si la reponse presuppose clairement l'un de ces cadres pour expliquer
-- si la reponse est ambigue, vague ou interpretable autrement, reponds false
-- ne signale pas un conflit pour une reponse imprecise, faible, generique ou incomplete
-- ne sur-interprete pas
-- en cas de doute, reponds false
-
-Important :
-Ne classe PAS comme conflit :
-- une hypothese sur une tension interne
-- une lecture autour d'une pression, d'un blocage, d'une hesitation, d'un evitement ou d'une deconnexion
-- une mise en lien entre experience, ressenti, croyance ou contexte
-- une lecture existentielle, relationnelle ou phenomenologique
-- une formulation psychologique generale si elle n'introduit pas explicitement un cadre banni
-
-Un conflit existe aussi si la reponse valide implicitement une categorie de psychopathologie comme cadre pertinent, meme sans poser de diagnostic.
-
-Exemples a considerer comme conflit (true) :
-- "cela peut faire penser a une depression"
-- "on pourrait se demander s'il s'agit d'un trouble"
-- "cela correspond parfois a..."
-- "c'est peut-etre un mecanisme de defense"
-- "ton inconscient te protege"
-- "cela releve de la sante mentale"
-
-Exemples a considerer comme NON conflit (false) :
-- "je me demande si une pression implicite est a l'oeuvre"
-- "peut-etre qu'il y a un evitement"
-- "cela peut couper momentanement de ce qu'on ressent"
-- "j'ai l'impression qu'une tension interieure est presente"
-- "il y a peut-etre un conflit entre envie et exigence"
-- "cela peut etre lie a ce que tu vis en ce moment"
-- "il semble y avoir une forme de decalage avec ce que tu ressens"
-
-Reponds STRICTEMENT en JSON :
-{
-  "modelConflict": true|false
-}
-`;
-  
+async function analyzeModelConflict(reply = "", promptRegistry = buildDefaultPromptRegistry()) {
   const r = await client.chat.completions.create({
     model: "gpt-4.1-mini",
     temperature: 0,
     max_tokens: 40,
     messages: [
-      { role: "system", content: system },
+      { role: "system", content: promptRegistry.ANALYZE_MODEL_CONFLICT },
       { role: "user", content: reply }
     ]
   });
@@ -918,29 +1015,10 @@ async function analyzeExplorationRelance({
   message = "",
   reply = "",
   history = [],
-  memory = ""
+  memory = "",
+  promptRegistry = buildDefaultPromptRegistry()
 }) {
   const context = trimHistory(history);
-  
-  const system = `
-Tu analyses uniquement si la reponse du bot contient une relance au sens relationnel.
-
-Reponds STRICTEMENT en JSON :
-{
-  "isRelance": true|false
-}
-
-Definition :
-- true si la reponse pousse l'utilisateur a continuer, preciser, decrire, clarifier, approfondir, expliquer, observer davantage, ou si elle ouvre explicitement vers la suite
-- true si elle contient une question, une invitation implicite ou explicite, une incitation a explorer davantage
-- false si la reponse peut se suffire a elle-meme, reste avec ce qui est la, reflete, reformule, accueille, ou s'arrete sans pousser
-
-Important :
-- ne te base pas seulement sur la ponctuation
-- une phrase sans point d'interrogation peut quand meme etre une relance
-- une question de clarification suicidaire n'est pas concernee ici ; tu analyses seulement une reponse de mode exploration ordinaire
-- ne sur-interprete pas
-`;
   
   const user = `
 Message utilisateur actuel :
@@ -961,7 +1039,7 @@ ${reply}
     temperature: 0,
     max_tokens: 60,
     messages: [
-      { role: "system", content: system },
+      { role: "system", content: promptRegistry.ANALYZE_RELANCE },
       { role: "user", content: user }
     ]
   });
@@ -984,36 +1062,9 @@ async function rewriteExplorationReplyWithModelFilter({
   message,
   history,
   memory,
-  originalReply
+  originalReply,
+  promptRegistry = buildDefaultPromptRegistry()
 }) {
-  const system = `
-Tu reecris une reponse de mode exploration.
-
-N'utilise aucune autre langue que le francais
-
-But :
-- conserver l'intention, le ton global, la direction relationnelle et le niveau de langage de la reponse initiale
-- enlever uniquement ce qui la met en opposition avec le filtre theorique ci-dessous
-- rester en exploration, sans guider, sans diagnostiquer, sans coacher, sans prescrire
-- repondre uniquement en francais
-
-Filtre theorique explicite :
-- il n'y a pas d'inconscient, de subconscient ni de non-conscient comme instance explicative
-- il n'y a pas de psychopathologie ni de sante mentale comme cadre explicatif
-- ne parle pas de mecanismes de defense ; prefere, si necessaire, mecanismes adaptatifs
-- si tu reformules, reste concret et sobre
-- n'ajoute pas un cours theorique
-- ne plaque pas le modele si ce n'est pas necessaire
-
-Terminologie autorisee si utile :
-- memoire corporelle
-- memoire autobiographique
-- croyances limitantes
-- mecanismes adaptatifs
-
-Reecris uniquement la reponse finale, sans commentaire.
-`;
-  
   const user = `
 Message utilisateur :
 ${message}
@@ -1033,7 +1084,7 @@ ${originalReply}
     temperature: 0.7,
     max_tokens: 500,
     messages: [
-      { role: "system", content: system },
+      { role: "system", content: promptRegistry.REWRITE_EXPLORATION_REPLY_WITH_MODEL_FILTER },
       { role: "user", content: user }
     ]
   });
@@ -1045,8 +1096,8 @@ ${originalReply}
 // 4) MODE + DEBUG
 // --------------------------------------------------
 
-async function detectMode(message = "", history = []) {
-  const info = await analyzeInfoRequest(message, history);
+async function detectMode(message = "", history = [], promptRegistry = buildDefaultPromptRegistry()) {
+  const info = await analyzeInfoRequest(message, history, promptRegistry);
   return {
     mode: info.isInfoRequest ? "info" : "exploration",
     infoSource: info.source
@@ -1065,12 +1116,10 @@ function buildDebug(
 ) {
   const lines = [];
   
-  // MODE
   if (mode === "exploration") lines.push("mode: EXPLORATION");
   if (mode === "info") lines.push("mode: INFORMATION");
   if (mode === "contact") lines.push("mode: CONTACT");
   
-  // SUICIDE
   if (suicideLevel === "N1") {
     lines.push("suicideLevel: Possible risque suicidaire");
   }
@@ -1078,7 +1127,6 @@ function buildDebug(
     lines.push("suicideLevel: Risque suicidaire avéré");
   }
   
-  // MEMORY
   if (calledMemory === "shortTermMemory") {
     lines.push("calledMemory: Appel à la mémoire à court terme");
   }
@@ -1086,12 +1134,10 @@ function buildDebug(
     lines.push("calledMemory: Appel à la mémoire à long terme");
   }
   
-  // MODEL
   if (modelConflict) {
     lines.push("modelConflict: Conflit avec le modèle théorique");
   }
   
-  // EXPLORATION ONLY
   if (mode === "exploration") {
     lines.push(`explorationDirectivityLevel: Niveau de directivité : ${clampExplorationDirectivityLevel(explorationDirectivityLevel)}/4`);
     
@@ -1109,18 +1155,12 @@ function buildDebug(
 // 5) MEMOIRE
 // --------------------------------------------------
 
-async function updateMemory(previousMemory, history) {
+async function updateMemory(previousMemory, history, promptRegistry = buildDefaultPromptRegistry()) {
   const transcript = history
     .map(m => `${m.role === "user" ? "Utilisateur" : "Assistant"} : ${m.content}`)
     .join("\n");
   
-  const system = `
-Tu mets a jour une memoire legere.
-
-Format strict.
-Pas de psychologie identitaire.
-Items courts.
-`;
+  const system = promptRegistry.UPDATE_MEMORY;
   
   const user = `
 Memoire precedente :
@@ -1153,10 +1193,10 @@ ${String(content || "").trim()}
 [[${marker}_END]]`;
 }
 
-function buildSystemPrompt(mode, memory, explorationDirectivityLevel = 0) {
+function buildSystemPrompt(mode, memory, explorationDirectivityLevel = 0, promptRegistry = buildDefaultPromptRegistry()) {
   const normalizedMemory = normalizeMemory(memory);
   
-  const identityBlock = `
+  const identityBlock = String(promptRegistry.IDENTITY_BLOCK || `
 Tu es Facilitat.io, une présence qui accompagne le developpement de la personne
 
 Tu t'appuies sur le modele theorique ci-dessous pour orienter ta comprehension et tes reponses
@@ -1331,7 +1371,7 @@ Ce modele constitue ton cadre de reference principal
 Tu adaptes ton usage de ce modele selon le mode actif
 
 N'utilise aucune autre langue que le francais et tutoie toujours l'utilisateur
-`;
+`).trim();
   
   const commonBlock = `
 Pas de diagnostic ni de prescription
@@ -1379,7 +1419,7 @@ Forme des reponses :
 - La longueur de la reponse doit s'ajuster au contenu sans jamais devenir trop longue (max 300 tokens)
 - La fin peut rester ouverte ou se refermer naturellement, sans obligation de conclure.
 
-${getExplorationStructureInstruction(explorationDirectivityLevel)}
+${getExplorationStructureInstruction(explorationDirectivityLevel, promptRegistry)}
 
 Memoire :
 ${normalizedMemory}
@@ -1486,6 +1526,7 @@ Memoire :
 ${normalizedMemory}
 `;
   
+  const identityWrapped = wrapPromptBlock("IDENTITY_BLOCK", identityBlock);
   const commonWrapped = wrapPromptBlock("COMMON_BLOCK", commonBlock);
   const contactWrapped = wrapPromptBlock("MODE_CONTACT", contactBlock);
   const infoWrapped = wrapPromptBlock("MODE_INFORMATION", infoBlock);
@@ -1493,7 +1534,7 @@ ${normalizedMemory}
   
   if (mode === "contact") {
     return `
-${identityBlock.trim()}
+${identityWrapped}
 
 ${commonWrapped}
 
@@ -1503,7 +1544,7 @@ ${contactWrapped}
   
   if (mode === "info") {
     return `
-${identityBlock.trim()}
+${identityWrapped}
 
 ${commonWrapped}
 
@@ -1512,7 +1553,7 @@ ${infoWrapped}
   }
   
   return `
-${identityBlock.trim()}
+${identityWrapped}
 
 ${commonWrapped}
 
@@ -1616,7 +1657,13 @@ async function generateReply({
   override1 = null,
   override2 = null
 }) {
-  const baseSystemPrompt = buildSystemPrompt(mode, memory, explorationDirectivityLevel);
+  const promptRegistry = resolvePromptRegistry([override1, override2]);
+  const baseSystemPrompt = buildSystemPrompt(
+    mode,
+    memory,
+    explorationDirectivityLevel,
+    promptRegistry
+  );
   const overrideResult = applyPromptOverrideLayers(baseSystemPrompt, override1, override2);
   
   const messages = [
@@ -1667,6 +1714,7 @@ async function runSingleTestCase(testCase = {}) {
   const flags = normalizeSessionFlags(testCase.flags);
   const override1 = testCase.override1 ?? null;
   const override2 = testCase.override2 ?? null;
+  const promptRegistry = resolvePromptRegistry([override1, override2]);
   
   const suicide = await analyzeSuicideRisk(message, recentHistory, flags);
   let newFlags = normalizeSessionFlags(flags);
@@ -1735,15 +1783,20 @@ async function runSingleTestCase(testCase = {}) {
     };
   }
   
-  const recallRouting = await analyzeRecallRouting(message, recentHistory, previousMemory);
+  const recallRouting = await analyzeRecallRouting(
+    message,
+    recentHistory,
+    previousMemory,
+    promptRegistry
+  );
   
   if (recallRouting.isLongTermMemoryRecall) {
-    const reply = await buildLongTermMemoryRecallResponse(previousMemory);
+    const reply = await buildLongTermMemoryRecallResponse(previousMemory, promptRegistry);
     const updatedMemory = await updateMemory(previousMemory, [
       ...recentHistory,
       { role: "user", content: message },
       { role: "assistant", content: reply }
-    ]);
+    ], promptRegistry);
     
     return {
       input: message,
@@ -1770,7 +1823,7 @@ async function runSingleTestCase(testCase = {}) {
       ...recentHistory,
       { role: "user", content: message },
       { role: "assistant", content: reply }
-    ]);
+    ], promptRegistry);
     
     return {
       input: message,
@@ -1793,7 +1846,12 @@ async function runSingleTestCase(testCase = {}) {
   
   const activeHistory = recentHistory;
   const previousContactState = normalizeContactState(newFlags.contactState);
-  const contactAnalysis = await analyzeContactState(message, activeHistory, previousContactState);
+  const contactAnalysis = await analyzeContactState(
+    message,
+    activeHistory,
+    previousContactState,
+    promptRegistry
+  );
   const justExitedContact = previousContactState.wasContact === true && contactAnalysis.isContact !== true;
   
   if (justExitedContact) {
@@ -1808,7 +1866,7 @@ async function runSingleTestCase(testCase = {}) {
   let mode = "contact";
   
   if (!contactAnalysis.isContact) {
-    const detected = await detectMode(message, activeHistory);
+    const detected = await detectMode(message, activeHistory, promptRegistry);
     mode = detected.mode;
   }
   
@@ -1826,7 +1884,7 @@ async function runSingleTestCase(testCase = {}) {
   let modelConflict = false;
   
   if (mode === "exploration") {
-    const conflict = await analyzeModelConflict(reply);
+    const conflict = await analyzeModelConflict(reply, promptRegistry);
     modelConflict = conflict.modelConflict === true;
     
     if (modelConflict) {
@@ -1834,7 +1892,8 @@ async function runSingleTestCase(testCase = {}) {
         message,
         history: activeHistory,
         memory: previousMemory,
-        originalReply: reply
+        originalReply: reply,
+        promptRegistry
       });
     }
     
@@ -1842,7 +1901,8 @@ async function runSingleTestCase(testCase = {}) {
       message,
       reply,
       history: activeHistory,
-      memory: previousMemory
+      memory: previousMemory,
+      promptRegistry
     });
     
     newFlags = registerExplorationRelance(newFlags, relanceAnalysis.isRelance === true);
@@ -1852,7 +1912,7 @@ async function runSingleTestCase(testCase = {}) {
     ...activeHistory,
     { role: "user", content: message },
     { role: "assistant", content: reply }
-  ]);
+  ], promptRegistry);
   
   const debug = buildDebug(mode, {
     suicideLevel: suicide.suicideLevel,
@@ -2019,25 +2079,24 @@ async function generateConversationTitle(messages) {
       temperature: 0.2,
       max_tokens: 30,
       messages: [
-        {
-          role: "system",
-          content: [
-            "Tu generes un titre tres court en francais pour une conversation.",
-            "Contraintes :",
-            "- 2 a 6 mots",
-            "- pas de guillemets",
-            "- pas d'emoji",
-            "- pas de point final",
-            "- formulation naturelle et specifique",
-            "- ne recopie pas simplement le premier message",
-            "- ne commence pas par Verbatim de type Je, J, Tu, Mon, Ma sauf si c'est indispensable"
-          ].join("\n")
-        },
-        {
-          role: "user",
-          content: sourceText
-        }
-      ]
+      {
+        role: "system",
+        content: [
+          "Tu generes un titre tres court en francais pour une conversation.",
+          "Contraintes :",
+          "- 2 a 6 mots",
+          "- pas de guillemets",
+          "- pas d'emoji",
+          "- pas de point final",
+          "- formulation naturelle et specifique",
+          "- ne recopie pas simplement le premier message",
+          "- ne commence pas par Verbatim de type Je, J, Tu, Mon, Ma sauf si c'est indispensable"
+        ].join("\n")
+      },
+      {
+        role: "user",
+        content: sourceText
+      }]
     });
     
     let title = completion.choices?.[0]?.message?.content?.trim() || "";
@@ -2237,9 +2296,9 @@ app.get("/api/admin/conversations/:id/messages", requireAdminAuth, async (req, r
     
     const [messagesSnap, labelsSnap] = await Promise.all([
       messagesRef
-        .orderByChild("conversationId")
-        .equalTo(conversationId)
-        .once("value"),
+      .orderByChild("conversationId")
+      .equalTo(conversationId)
+      .once("value"),
       userLabelsRef.once("value")
     ]);
     
@@ -2380,6 +2439,7 @@ app.post("/chat", async (req, res) => {
     const override2 = req.body?.override2 ?? null;
     const comparisonEnabled = req.body?.comparisonEnabled === true;
     const logsEnabled = req.body?.logsEnabled === true;
+    const promptRegistry = resolvePromptRegistry([override1, override2]);
     
     previousMemoryForCatch = previousMemory;
     flagsForCatch = flags;
@@ -2495,10 +2555,15 @@ app.post("/chat", async (req, res) => {
       });
     }
     
-    const recallRouting = await analyzeRecallRouting(message, recentHistory, previousMemory);
+    const recallRouting = await analyzeRecallRouting(
+      message,
+      recentHistory,
+      previousMemory,
+      promptRegistry
+    );
     
     if (recallRouting.isLongTermMemoryRecall) {
-      const reply = await buildLongTermMemoryRecallResponse(previousMemory);
+      const reply = await buildLongTermMemoryRecallResponse(previousMemory, promptRegistry);
       const debug = buildDebug("memoryRecall", {
         calledMemory: "longTermMemory"
       });
@@ -2534,7 +2599,8 @@ app.post("/chat", async (req, res) => {
     const contactAnalysis = await analyzeContactState(
       message,
       recentHistory,
-      newFlags.contactState
+      newFlags.contactState,
+      promptRegistry
     );
     
     newFlags.contactState = {
@@ -2543,7 +2609,7 @@ app.post("/chat", async (req, res) => {
     
     const detectedMode = contactAnalysis.isContact ?
       "contact" :
-      (await detectMode(message, recentHistory)).mode;
+      (await detectMode(message, recentHistory, promptRegistry)).mode;
     
     modeForCatch = detectedMode;
     
@@ -2552,7 +2618,9 @@ app.post("/chat", async (req, res) => {
       history: recentHistory,
       memory: previousMemory,
       mode: detectedMode,
-      explorationDirectivityLevel: newFlags.explorationDirectivityLevel
+      explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
+      override1,
+      override2
     });
     
     let reply = generatedBase.reply;
@@ -2560,7 +2628,7 @@ app.post("/chat", async (req, res) => {
     let rewrittenFrom = null;
     
     if (detectedMode === "exploration") {
-      const conflict = await analyzeModelConflict(reply);
+      const conflict = await analyzeModelConflict(reply, promptRegistry);
       modelConflict = conflict.modelConflict === true;
       
       if (modelConflict) {
@@ -2569,7 +2637,8 @@ app.post("/chat", async (req, res) => {
           message,
           history: recentHistory,
           memory: previousMemory,
-          originalReply: reply
+          originalReply: reply,
+          promptRegistry
         });
       }
       
@@ -2577,7 +2646,8 @@ app.post("/chat", async (req, res) => {
         message,
         reply,
         history: recentHistory,
-        memory: previousMemory
+        memory: previousMemory,
+        promptRegistry
       });
       
       newFlags = registerExplorationRelance(newFlags, relance.isRelance);
@@ -2601,7 +2671,7 @@ app.post("/chat", async (req, res) => {
       ...recentHistory,
       { role: "user", content: message },
       { role: "assistant", content: reply }
-    ]);
+    ], promptRegistry);
     
     await pushAssistantMessage(reply, debug);
     await maybeGenerateConversationTitle();
@@ -2624,12 +2694,11 @@ app.post("/chat", async (req, res) => {
       }
       
       const comparisonResults = [
-        {
-          label: "Référence",
-          reply,
-          debug: logsEnabled ? [...comparisonBaseDebug, ...buildPromptDebugLines(generatedBase.promptDebug)] : []
-        }
-      ];
+      {
+        label: "Référence",
+        reply,
+        debug: logsEnabled ? [...comparisonBaseDebug, ...buildPromptDebugLines(generatedBase.promptDebug)] : []
+      }];
       
       if (override1) {
         const generatedOverride1 = await generateReply({
@@ -2690,8 +2759,4 @@ app.post("/chat", async (req, res) => {
       debug: ["error"]
     });
   }
-});
-
-app.listen(port, () => {
-  console.log(`Serveur lance sur http://localhost:${port}`);
 });
