@@ -3822,6 +3822,27 @@
       bubble.style.transition = "transform 0.46s ease, opacity 0.46s ease, box-shadow 0.46s ease, background 0.46s ease";
       bubble.style.display = "block";
       
+      /* ---------- TAG COMPARAISON ---------- */
+      if (role === "bot" && compareLabel) {
+        const compareTag = document.createElement("div");
+        compareTag.textContent = compareLabel;
+        compareTag.style.fontSize = "11px";
+        compareTag.style.fontWeight = "600";
+        compareTag.style.marginBottom = "6px";
+        compareTag.style.opacity = "0.7";
+        
+        if (compareLabel === "Référence") {
+          compareTag.style.color = "#245e66";
+        } else if (compareLabel === "Override 1") {
+          compareTag.style.color = "#7a3fd1";
+        } else if (compareLabel === "Override 1 + 2") {
+          compareTag.style.color = "#c05621";
+        }
+        
+        contentWrap.appendChild(compareTag);
+      }
+      
+      /* ---------- STYLE BULLE ---------- */
       if (role === "bot") {
         bubble.style.background = "rgba(255, 255, 255, 0.62)";
         bubble.style.color = "#3e5e62";
@@ -3833,22 +3854,24 @@
         bubble.style.webkitUserSelect = "none";
         bubble.style.userSelect = "none";
         
-        bubble.addEventListener("contextmenu", event => {
-          event.preventDefault();
-        });
+        /* --- DIFFÉRENCIATION COMPARAISON --- */
+        if (compareLabel === "Référence") {
+          bubble.style.border = "1px solid rgba(36,94,102,0.2)";
+        } else if (compareLabel === "Override 1") {
+          bubble.style.border = "1px solid rgba(122,63,209,0.3)";
+        } else if (compareLabel === "Override 1 + 2") {
+          bubble.style.border = "1px solid rgba(192,86,33,0.3)";
+        }
         
-        bubble.addEventListener("selectstart", event => {
-          event.preventDefault();
-        });
-        
-        bubble.addEventListener("dragstart", event => {
-          event.preventDefault();
-        });
+        bubble.addEventListener("contextmenu", e => e.preventDefault());
+        bubble.addEventListener("selectstart", e => e.preventDefault());
+        bubble.addEventListener("dragstart", e => e.preventDefault());
         
         renderBotMessageContent(bubble, displayText, {
           progressive,
           wasAtBottomBeforeInsert
         });
+        
       } else {
         bubble.style.background = "rgba(36, 94, 102, 0.16)";
         bubble.style.color = "#183f44";
@@ -3911,21 +3934,11 @@
           }
         };
         
-        const endLongPress = () => {
-          clearLongPress();
-        };
+        const endLongPress = () => clearLongPress();
         
-        bubble.addEventListener("contextmenu", event => {
-          event.preventDefault();
-        });
-        
-        bubble.addEventListener("selectstart", event => {
-          event.preventDefault();
-        });
-        
-        bubble.addEventListener("dragstart", event => {
-          event.preventDefault();
-        });
+        bubble.addEventListener("contextmenu", e => e.preventDefault());
+        bubble.addEventListener("selectstart", e => e.preventDefault());
+        bubble.addEventListener("dragstart", e => e.preventDefault());
         
         bubble.addEventListener("touchstart", startLongPress, { passive: true });
         bubble.addEventListener("touchmove", moveLongPress, { passive: true });
@@ -3948,7 +3961,32 @@
       
       contentWrap.appendChild(bubble);
       
-      msg.appendChild(contentWrap);
+      /* ---------- DEBUG CHIPS SIMPLIFIÉS ---------- */
+      if (role === "bot" && debugMeta && showDebug) {
+        const chipsBlock = document.createElement("div");
+        chipsBlock.className = "debug-block";
+        
+        const memoryChip = document.createElement("span");
+        memoryChip.className = "debug-chip";
+        memoryChip.textContent = "Mémoire";
+        chipsBlock.appendChild(memoryChip);
+        
+        if (debugMeta.directivityLabel) {
+          const directivityChip = document.createElement("span");
+          directivityChip.className = "debug-chip";
+          directivityChip.textContent = "Directivité";
+          chipsBlock.appendChild(directivityChip);
+        }
+        
+        if (debugMeta.modelConflict) {
+          const conflictChip = document.createElement("span");
+          conflictChip.className = "debug-chip";
+          conflictChip.textContent = "Conflit avec le modèle théorique";
+          chipsBlock.appendChild(conflictChip);
+        }
+        
+        contentWrap.appendChild(chipsBlock);
+      }
       chat.appendChild(msg);
       
       if (shouldAutoScroll) {
