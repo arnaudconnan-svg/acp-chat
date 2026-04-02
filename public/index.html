@@ -5180,7 +5180,7 @@
         const inputAreaRect = inputAreaEl.getBoundingClientRect();
         
         const overlayHeight = Math.max(0, chatScreenRect.bottom - inputAreaRect.top);
-        const comfortGap = 16;
+        const comfortGap = 64;
         const finalPaddingBottom = Math.ceil(overlayHeight + comfortGap);
         
         chatElForKeyboard.style.paddingBottom = finalPaddingBottom + "px";
@@ -5236,10 +5236,23 @@
         resizeComposerInput();
         syncKeyboardOffset();
         syncChatBottomInset();
+        syncEditModeBarPosition();
+        syncTestStatusBarPosition();
         
         if (isChatActive && (keepBottom || wasAtBottomBeforeLayout)) {
           ensureChatVisibleAboveKeyboard(true);
         }
+        
+        requestAnimationFrame(() => {
+          syncKeyboardOffset();
+          syncChatBottomInset();
+          syncEditModeBarPosition();
+          syncTestStatusBarPosition();
+          
+          if (isChatActive && (keepBottom || wasAtBottomBeforeLayout)) {
+            ensureChatVisibleAboveKeyboard(true);
+          }
+        });
       }
       
       function syncComposerUiDeferred(options = {}) {
@@ -5248,6 +5261,8 @@
         requestAnimationFrame(() => {
           syncKeyboardOffset();
           syncChatBottomInset();
+          syncEditModeBarPosition();
+          syncTestStatusBarPosition();
           
           if (options.keepBottom) {
             ensureChatVisibleAboveKeyboard(true);
@@ -5257,6 +5272,8 @@
         setTimeout(() => {
           syncKeyboardOffset();
           syncChatBottomInset();
+          syncEditModeBarPosition();
+          syncTestStatusBarPosition();
           
           if (options.keepBottom) {
             ensureChatVisibleAboveKeyboard(true);
@@ -5266,6 +5283,8 @@
         setTimeout(() => {
           syncKeyboardOffset();
           syncChatBottomInset();
+          syncEditModeBarPosition();
+          syncTestStatusBarPosition();
           
           if (options.keepBottom) {
             ensureChatVisibleAboveKeyboard(true);
@@ -5278,6 +5297,19 @@
         
         syncKeyboardOffset();
         syncChatBottomInset();
+        syncEditModeBarPosition();
+        syncTestStatusBarPosition();
+        
+        requestAnimationFrame(() => {
+          syncKeyboardOffset();
+          syncChatBottomInset();
+          syncEditModeBarPosition();
+          syncTestStatusBarPosition();
+          
+          if (wasAtBottomBeforeLayout) {
+            ensureChatVisibleAboveKeyboard(true);
+          }
+        });
         
         if (wasAtBottomBeforeLayout) {
           ensureChatVisibleAboveKeyboard(true);
