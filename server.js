@@ -1166,6 +1166,56 @@ function buildDebug(
   return lines;
 }
 
+function buildAdvancedDebugTrace({
+  suicide = {},
+  recallRouting = {},
+  contactAnalysis = {},
+  detectedMode = "exploration",
+  flagsBefore = {},
+  flagsAfter = {},
+  generatedBase = null,
+  modelConflict = false,
+  relanceAnalysis = null
+} = {}) {
+  const lines = [];
+  
+  const safeFlagsBefore = normalizeSessionFlags(flagsBefore);
+  const safeFlagsAfter = normalizeSessionFlags(flagsAfter);
+  
+  lines.push(`trace.modeDetected: ${detectedMode}`);
+  lines.push(`trace.suicideLevelRaw: ${suicide.suicideLevel || "N0"}`);
+  lines.push(`trace.suicideNeedsClarification: ${suicide.needsClarification === true ? "true" : "false"}`);
+  lines.push(`trace.suicideIsQuote: ${suicide.isQuote === true ? "true" : "false"}`);
+  lines.push(`trace.suicideIdiomatic: ${suicide.idiomaticDeathExpression === true ? "true" : "false"}`);
+  lines.push(`trace.suicideCrisisResolved: ${suicide.crisisResolved === true ? "true" : "false"}`);
+  
+  lines.push(`trace.recallAttempt: ${recallRouting.isRecallAttempt === true ? "true" : "false"}`);
+  lines.push(`trace.calledMemory: ${recallRouting.calledMemory || "none"}`);
+  lines.push(`trace.longTermMemoryRecall: ${recallRouting.isLongTermMemoryRecall === true ? "true" : "false"}`);
+  
+  lines.push(`trace.contactDetected: ${contactAnalysis.isContact === true ? "true" : "false"}`);
+  lines.push(`trace.previousWasContact: ${safeFlagsBefore.contactState?.wasContact === true ? "true" : "false"}`);
+  lines.push(`trace.currentWasContact: ${safeFlagsAfter.contactState?.wasContact === true ? "true" : "false"}`);
+  
+  lines.push(`trace.acuteCrisisBefore: ${safeFlagsBefore.acuteCrisis === true ? "true" : "false"}`);
+  lines.push(`trace.acuteCrisisAfter: ${safeFlagsAfter.acuteCrisis === true ? "true" : "false"}`);
+  
+  lines.push(`trace.modelConflict: ${modelConflict === true ? "true" : "false"}`);
+  
+  if (relanceAnalysis) {
+    lines.push(`trace.relanceDetected: ${relanceAnalysis.isRelance === true ? "true" : "false"}`);
+  }
+  
+  if (generatedBase?.promptDebug?.override1?.appliedTargets?.length) {
+    lines.push(`trace.override1AppliedCount: ${generatedBase.promptDebug.override1.appliedTargets.length}`);
+  }
+  if (generatedBase?.promptDebug?.override2?.appliedTargets?.length) {
+    lines.push(`trace.override2AppliedCount: ${generatedBase.promptDebug.override2.appliedTargets.length}`);
+  }
+  
+  return lines;
+}
+
 // --------------------------------------------------
 // 5) MEMOIRE
 // --------------------------------------------------
@@ -1388,7 +1438,7 @@ Tu adaptes ton usage de ce modele selon le mode actif
 N'utilise aucune autre langue que le francais et tutoie toujours l'utilisateur
 `).trim();
   
-  const commonBlock = `
+  const commonBlock = String(promptRegistry.COMMON_BLOCK || `
 Pas de diagnostic ni de prescription
 Pas de coaching ni de psychologie positive
 Pas de recherche de solution à la place de la personne
@@ -1409,9 +1459,9 @@ Interdictions :
 - Des mots comme "intéressant", "fascinant", "rare" peuvent etre utilises uniquement s'ils viennent d'être écrits par l'utilisateur, jamais pour qualifier son expérience depuis ta position
 - Toute phrase qui sert a valider ou apprecier est incorrecte
 - Interdiction d'utiliser des tournures impersonnelles pour interpreter ("il y a", "il semble que", "cela peut", "on peut", etc.)
-`;
+`).trim();
   
-  const explorationBlock = `
+  const explorationBlock = String(promptRegistry.MODE_EXPLORATION || `
 Mode EXPLORATION.
 
 Tu t'appuies implicitement sur le modele pour comprendre ce qui se joue
@@ -1438,9 +1488,9 @@ ${getExplorationStructureInstruction(explorationDirectivityLevel, promptRegistry
 
 Memoire :
 ${normalizedMemory}
-`;
+`).trim();
   
-  const contactBlock = `
+  const contactBlock = String(promptRegistry.MODE_CONTACT || `
 Mode CONTACT.
 
 Le modele reste en arriere-plan
@@ -1476,9 +1526,9 @@ Direction :
 - parle simplement, humainement, sobrement
 - tu peux nommer tres doucement une dynamique immediate si elle est deja evidente dans le message
 - puis tu t'arretes
-`;
+`).trim();
   
-  const infoBlock = `
+  const infoBlock = String(promptRegistry.MODE_INFORMATION || `
 Mode INFORMATION.
 
 Tu t'appuies explicitement sur le modele pour structurer ta reponse.
@@ -1539,7 +1589,7 @@ Forme des reponses :
 
 Memoire :
 ${normalizedMemory}
-`;
+`).trim();
   
   const identityWrapped = wrapPromptBlock("IDENTITY_BLOCK", identityBlock);
   const commonWrapped = wrapPromptBlock("COMMON_BLOCK", commonBlock);
@@ -2314,9 +2364,9 @@ app.get("/api/admin/conversations/:id/messages", requireAdminAuth, async (req, r
     
     const [messagesSnap, labelsSnap] = await Promise.all([
       messagesRef
-        .orderByChild("conversationId")
-        .equalTo(conversationId)
-        .once("value"),
+      .orderByChild("conversationId")
+      .equalTo(conversationId)
+      .once("value"),
       userLabelsRef.once("value")
     ]);
     
@@ -2649,6 +2699,7 @@ app.post("/chat", async (req, res) => {
     let reply = generatedBase.reply;
     let modelConflict = false;
     let rewrittenFrom = null;
+    let relanceAnalysis = null;
     
     if (detectedMode === "exploration") {
       const conflict = await analyzeModelConflict(reply, promptRegistry);
@@ -2665,7 +2716,7 @@ app.post("/chat", async (req, res) => {
         });
       }
       
-      const relance = await analyzeExplorationRelance({
+      relanceAnalysis = await analyzeExplorationRelance({
         message,
         reply,
         history: recentHistory,
@@ -2673,7 +2724,7 @@ app.post("/chat", async (req, res) => {
         promptRegistry
       });
       
-      newFlags = registerExplorationRelance(newFlags, relance.isRelance);
+      newFlags = registerExplorationRelance(newFlags, relanceAnalysis.isRelance === true);
     }
     
     const debug = buildDebug(detectedMode, {
@@ -2684,11 +2735,24 @@ app.post("/chat", async (req, res) => {
       explorationRelanceWindow: newFlags.explorationRelanceWindow
     });
     
+    const advancedDebug = buildAdvancedDebugTrace({
+      suicide,
+      recallRouting,
+      contactAnalysis,
+      detectedMode,
+      flagsBefore: flags,
+      flagsAfter: newFlags,
+      generatedBase,
+      modelConflict,
+      relanceAnalysis
+    });
+    
     if (logsEnabled && rewrittenFrom) {
       debug.push(`rewriteSource: ${rewrittenFrom}`);
     }
     
     debug.push(...buildPromptDebugLines(generatedBase.promptDebug));
+    debug.push(...advancedDebug);
     
     const newMemory = await updateMemory(previousMemory, [
       ...recentHistory,

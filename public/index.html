@@ -3525,7 +3525,8 @@
           override1Applied: [],
           override1Missing: [],
           override2Applied: [],
-          override2Missing: []
+          override2Missing: [],
+          traceLines: []
         };
         
         debugLines.forEach(line => {
@@ -3584,20 +3585,6 @@
             return;
           }
           
-          if (debugMeta && showDebug) {
-            const routingParts = [];
-            
-            if (debugMeta.chips.length) {
-              routingParts.push(
-                `<div><strong>Signaux détectés</strong><br>${escapeHtml(debugMeta.chips.join(" · "))}</div>`
-              );
-            }
-            
-            const block = buildDetailBlock("Route décisionnelle", routingParts.join(""));
-            block.style.display = "block";
-            detailBlocksWrap.appendChild(block);
-          }
-          
           if (safeLine.startsWith("explorationDirectivityLevel:")) {
             meta.directivityLabel = safeLine.replace("explorationDirectivityLevel:", "").trim();
             return;
@@ -3646,6 +3633,11 @@
               .split(",")
               .map(v => v.trim())
               .filter(Boolean);
+            return;
+          }
+          
+          if (safeLine.startsWith("trace.")) {
+            meta.traceLines.push(safeLine);
             return;
           }
         });
@@ -3715,34 +3707,6 @@
         wrapper.appendChild(body);
         
         return wrapper;
-      }
-      
-      if (role === "bot" && compareLabel) {
-        const badgeWrap = document.createElement("div");
-        badgeWrap.style.display = "flex";
-        badgeWrap.style.alignItems = "center";
-        badgeWrap.style.marginBottom = "4px";
-        
-        const badge = document.createElement("div");
-        badge.textContent = compareLabel;
-        badge.style.display = "inline-flex";
-        badge.style.alignItems = "center";
-        badge.style.alignSelf = "flex-start";
-        badge.style.padding = "6px 10px";
-        badge.style.borderRadius = "999px";
-        badge.style.background = "rgba(36, 94, 102, 0.1)";
-        badge.style.border = "1px solid rgba(36, 94, 102, 0.14)";
-        badge.style.color = "#245e66";
-        badge.style.fontSize = "12px";
-        badge.style.lineHeight = "1.2";
-        badge.style.fontWeight = "700";
-        badge.style.letterSpacing = "0.01em";
-        badge.style.boxShadow = "0 6px 14px rgba(36, 94, 102, 0.06)";
-        badge.style.backdropFilter = "blur(8px)";
-        badge.style.webkitBackdropFilter = "blur(8px)";
-        
-        badgeWrap.appendChild(badge);
-        contentWrap.appendChild(badgeWrap);
       }
       
       let debugMeta = null;
@@ -3823,38 +3787,18 @@
         bubble.style.userSelect = "none";
         
         const clearLongPress = () => {
-          clearTimeout(longPressTimer);
-          longPressTimer = null;
-        };
-        
-        const triggerEditIntent = () => {
-          const history = loadHistory();
-          const lastUserHistoryIndex = getLastUserHistoryIndex(history);
-          
-          if (historyIndex !== lastUserHistoryIndex) {
-            msg.style.transition = "transform 0.14s ease";
-            msg.style.transform = "translateX(-3px)";
-            setTimeout(() => {
-              msg.style.transform = "translateX(3px)";
-              setTimeout(() => {
-                msg.style.transform = "";
-              }, 70);
-            }, 70);
-            
-            showTemporaryNotice("Seul le dernier message est modifiable");
-            return;
+          if (longPressTimer) {
+            clearTimeout(longPressTimer);
+            longPressTimer = null;
           }
-          
-          openEditMode(historyIndex, displayText);
         };
         
         const startLongPress = event => {
-          if (event.type === "mousedown" && event.button !== 0) return;
+          if (historyIndex < 0) return;
           
           longPressTriggered = false;
-          clearLongPress();
           
-          if (event.type === "touchstart" && event.touches && event.touches[0]) {
+          if (event.touches && event.touches[0]) {
             startX = event.touches[0].clientX;
             startY = event.touches[0].clientY;
           } else {
@@ -3862,17 +3806,19 @@
             startY = event.clientY || 0;
           }
           
+          clearLongPress();
+          
           longPressTimer = setTimeout(() => {
             longPressTriggered = true;
-            triggerEditIntent();
-          }, 480);
+            openEditMode(historyIndex, displayText);
+          }, 420);
         };
         
         const moveLongPress = event => {
           let currentX = 0;
           let currentY = 0;
           
-          if (event.type === "touchmove" && event.touches && event.touches[0]) {
+          if (event.touches && event.touches[0]) {
             currentX = event.touches[0].clientX;
             currentY = event.touches[0].clientY;
           } else {
@@ -3928,22 +3874,31 @@
         detailBlocksWrap.style.flexDirection = "column";
         detailBlocksWrap.style.gap = "0";
         
+        if (debugMeta.chips.length) {
+          const routingParts = [
+            `<div><strong>Signaux detectes</strong><br>${escapeHtml(debugMeta.chips.join(" · "))}</div>`
+          ];
+          const block = buildDetailBlock("Route decisionnelle", routingParts.join(""));
+          block.style.display = "block";
+          detailBlocksWrap.appendChild(block);
+        }
+        
         if (debugMeta.directivityLabel) {
           const bodyHtml = `
-        <div>${escapeHtml(debugMeta.directivityLabel)}</div>
-        ${debugMeta.relanceWindowLabel ? `<div style="margin-top:8px;">${escapeHtml(debugMeta.relanceWindowLabel)}</div>` : ""}
-      `;
-          const block = buildDetailBlock("Directivité", bodyHtml);
+      <div>${escapeHtml(debugMeta.directivityLabel)}</div>
+      ${debugMeta.relanceWindowLabel ? `<div style="margin-top:8px;">${escapeHtml(debugMeta.relanceWindowLabel)}</div>` : ""}
+    `;
+          const block = buildDetailBlock("Directivite", bodyHtml);
           block.style.display = "block";
           detailBlocksWrap.appendChild(block);
         }
         
         if (debugMeta.rewriteSource) {
           const bodyHtml = `
-        <div style="margin-bottom:8px;">Message initial avant réécriture :</div>
-        <div style="padding:10px 12px;border-radius:12px;background:rgba(36,94,102,0.06);border:1px solid rgba(36,94,102,0.1);white-space:pre-wrap;">${escapeHtml(debugMeta.rewriteSource)}</div>
-      `;
-          const block = buildDetailBlock("Réécriture après conflit modèle", bodyHtml);
+      <div style="margin-bottom:8px;">Message initial avant reecriture :</div>
+      <div style="padding:10px 12px;border-radius:12px;background:rgba(36,94,102,0.06);border:1px solid rgba(36,94,102,0.1);white-space:pre-wrap;">${escapeHtml(debugMeta.rewriteSource)}</div>
+    `;
+          const block = buildDetailBlock("Reecriture apres conflit modele", bodyHtml);
           block.style.display = "block";
           detailBlocksWrap.appendChild(block);
         }
@@ -3953,7 +3908,7 @@
           
           if (debugMeta.override1Applied.length) {
             bodyParts.push(
-              `<div><strong>Blocs remplacés</strong><br>${escapeHtml(debugMeta.override1Applied.join(", "))}</div>`
+              `<div><strong>Blocs remplaces</strong><br>${escapeHtml(debugMeta.override1Applied.join(", "))}</div>`
             );
           }
           
@@ -3973,7 +3928,7 @@
           
           if (debugMeta.override2Applied.length) {
             bodyParts.push(
-              `<div><strong>Blocs remplacés</strong><br>${escapeHtml(debugMeta.override2Applied.join(", "))}</div>`
+              `<div><strong>Blocs remplaces</strong><br>${escapeHtml(debugMeta.override2Applied.join(", "))}</div>`
             );
           }
           
@@ -3988,26 +3943,36 @@
           detailBlocksWrap.appendChild(block);
         }
         
+        if (debugMeta.traceLines.length) {
+          const traceHtml = `
+      <div style="font-family:monospace;font-size:12px;line-height:1.5;white-space:pre-wrap;">${escapeHtml(debugMeta.traceLines.join("\n"))}</div>
+    `;
+          const block = buildDetailBlock("Trace technique", traceHtml);
+          block.style.display = "block";
+          detailBlocksWrap.appendChild(block);
+        }
+        
         if (detailBlocksWrap.childNodes.length > 0) {
           contentWrap.appendChild(detailBlocksWrap);
         }
       }
-      
-      msg.appendChild(contentWrap);
-      chat.appendChild(msg);
-      
-      if (shouldAutoScroll) {
-        scrollChatToBottom();
-        return;
-      }
-      
+    }
+    
+    msg.appendChild(contentWrap);
+    chat.appendChild(msg);
+    
+    if (shouldAutoScroll) {
+      scrollChatToBottom();
+      return;
+    }
+    
+    requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          updateScrollToBottomBtn({
-            forcePulse: role === "bot" && pulseScrollButton && !wasAtBottomBeforeInsert
-          });
+        updateScrollToBottomBtn({
+          forcePulse: role === "bot" && pulseScrollButton && !wasAtBottomBeforeInsert
         });
       });
+    });
     }
     
     function renderHistory() {
@@ -5061,9 +5026,10 @@
     
     const debugToggleBtn = document.getElementById("debugToggleBtn");
     if (debugToggleBtn) {
-      debugToggleBtn.onclick = () => {
-        showDebug = !showDebug;
-        syncDebugVisibility();
+      debugToggleBtn.onclick = event => {
+        event.preventDefault();
+        event.stopPropagation();
+        toggleTestPopover();
       };
     }
     
