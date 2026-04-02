@@ -2532,9 +2532,7 @@
       bar.style.left = "14px";
       bar.style.right = "85px";
       bar.style.width = "auto";
-      bar.style.transform = "none";
-      bar.style.bottom = "100%";
-      bar.style.marginBottom = "8px";
+      bar.style.transform = "translateY(6px)";
       bar.style.maxWidth = "700px";
       bar.style.boxSizing = "border-box";
       bar.style.padding = "9px 14px";
@@ -2594,7 +2592,8 @@
         bar.textContent = "";
         bar.style.opacity = "0";
         bar.style.pointerEvents = "none";
-        bar.style.transform = "translateX(-50%) translateY(6px)";
+        bar.style.transform = "translateY(6px)";
+        
         if (bar._anim) {
           bar._anim.cancel();
           bar._anim = null;
@@ -2605,21 +2604,21 @@
       bar.textContent = label;
       bar.style.opacity = "1";
       bar.style.pointerEvents = "none";
-      bar.style.transform = "translateX(-50%) translateY(0)";
+      bar.style.transform = "translateY(0)";
       
       if (!bar._anim && bar.animate) {
         bar._anim = bar.animate(
           [
           {
-            transform: "translateX(-50%) translateY(0) scale(1)",
+            transform: "translateY(0) scale(1)",
             boxShadow: "0 10px 22px rgba(36, 94, 102, 0.08)"
           },
           {
-            transform: "translateX(-50%) translateY(0) scale(1.02)",
+            transform: "translateY(0) scale(1.02)",
             boxShadow: "0 14px 28px rgba(36, 94, 102, 0.14)"
           },
           {
-            transform: "translateX(-50%) translateY(0) scale(1)",
+            transform: "translateY(0) scale(1)",
             boxShadow: "0 10px 22px rgba(36, 94, 102, 0.08)"
           }],
           {
@@ -2652,17 +2651,21 @@
       
       popover.innerHTML = `
     <div style="display:flex;flex-direction:column;gap:10px;">
-      <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;line-height:1.3;color:#245e66;font-weight:600;">
-        Override 1
-        <input id="testOverride1Input" type="file" accept=".json,application/json" style="font:inherit;font-size:12px;color:#24464b;">
-        <span id="testOverride1Name" style="font-size:12px;line-height:1.25;color:#5d7377;font-weight:400;"></span>
-      </label>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        <div style="font-size:13px;line-height:1.3;color:#245e66;font-weight:600;">Override 1</div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <input id="testOverride1Input" type="file" accept=".json,application/json" style="flex:1 1 auto;font:inherit;font-size:12px;color:#24464b;min-width:0;">
+          <button id="testOverride1Clear" type="button" style="flex:0 0 auto;border:none;border-radius:10px;padding:7px 10px;background:rgba(36, 94, 102, 0.10);color:#245e66;font-size:12px;line-height:1.2;font-weight:600;cursor:pointer;display:none;">Effacer</button>
+        </div>
+      </div>
 
-      <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;line-height:1.3;color:#245e66;font-weight:600;">
-        Override 2
-        <input id="testOverride2Input" type="file" accept=".json,application/json" style="font:inherit;font-size:12px;color:#24464b;">
-        <span id="testOverride2Name" style="font-size:12px;line-height:1.25;color:#5d7377;font-weight:400;"></span>
-      </label>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        <div style="font-size:13px;line-height:1.3;color:#245e66;font-weight:600;">Override 2</div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <input id="testOverride2Input" type="file" accept=".json,application/json" style="flex:1 1 auto;font:inherit;font-size:12px;color:#24464b;min-width:0;">
+          <button id="testOverride2Clear" type="button" style="flex:0 0 auto;border:none;border-radius:10px;padding:7px 10px;background:rgba(36, 94, 102, 0.10);color:#245e66;font-size:12px;line-height:1.2;font-weight:600;cursor:pointer;display:none;">Effacer</button>
+        </div>
+      </div>
 
       <label style="display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:13px;line-height:1.3;color:#245e66;font-weight:600;">
         <span>Comparaison</span>
@@ -2680,8 +2683,8 @@
       
       const override1Input = popover.querySelector("#testOverride1Input");
       const override2Input = popover.querySelector("#testOverride2Input");
-      const override1Name = popover.querySelector("#testOverride1Name");
-      const override2Name = popover.querySelector("#testOverride2Name");
+      const override1Clear = popover.querySelector("#testOverride1Clear");
+      const override2Clear = popover.querySelector("#testOverride2Clear");
       const comparisonToggle = popover.querySelector("#testComparisonToggle");
       const logsToggle = popover.querySelector("#testLogsToggle");
       
@@ -2710,15 +2713,31 @@
       }
       
       function refreshPopoverFields() {
-        override1Name.textContent = testUiState.override1 ? (testUiState.override1.name || "override_1.json") : "";
-        override2Name.textContent = testUiState.override2 ? (testUiState.override2.name || "override_2.json") : "";
         comparisonToggle.checked = testUiState.comparisonEnabled === true;
         logsToggle.checked = testUiState.logsEnabled === true;
+        
+        override1Clear.style.display = testUiState.override1 ? "inline-flex" : "none";
+        override2Clear.style.display = testUiState.override2 ? "inline-flex" : "none";
+        
+        if (!testUiState.override1) {
+          override1Input.value = "";
+        }
+        
+        if (!testUiState.override2) {
+          override2Input.value = "";
+        }
       }
       
       override1Input.addEventListener("change", async event => {
         const file = event.target.files && event.target.files[0];
-        if (!file) return;
+        
+        if (!file) {
+          testUiState.override1 = null;
+          saveTestUiState();
+          refreshPopoverFields();
+          syncTestStatusBar();
+          return;
+        }
         
         try {
           testUiState.override1 = await readOverrideFile(file);
@@ -2733,7 +2752,14 @@
       
       override2Input.addEventListener("change", async event => {
         const file = event.target.files && event.target.files[0];
-        if (!file) return;
+        
+        if (!file) {
+          testUiState.override2 = null;
+          saveTestUiState();
+          refreshPopoverFields();
+          syncTestStatusBar();
+          return;
+        }
         
         try {
           testUiState.override2 = await readOverrideFile(file);
@@ -2744,6 +2770,22 @@
           alert(`Erreur : ${err.message}`);
           event.target.value = "";
         }
+      });
+      
+      override1Clear.addEventListener("click", () => {
+        testUiState.override1 = null;
+        override1Input.value = "";
+        saveTestUiState();
+        refreshPopoverFields();
+        syncTestStatusBar();
+      });
+      
+      override2Clear.addEventListener("click", () => {
+        testUiState.override2 = null;
+        override2Input.value = "";
+        saveTestUiState();
+        refreshPopoverFields();
+        syncTestStatusBar();
       });
       
       comparisonToggle.addEventListener("change", () => {
@@ -2824,6 +2866,18 @@
       positionTestPopover();
       syncTestStatusBarPosition();
     });
+    
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", () => {
+        positionTestPopover();
+        syncTestStatusBarPosition();
+      });
+      
+      window.visualViewport.addEventListener("scroll", () => {
+        positionTestPopover();
+        syncTestStatusBarPosition();
+      });
+    }
     
     function syncDebugVisibility() {
       const isAdminUI = localStorage.getItem(ADMIN_UI_KEY) === "1";
@@ -5429,484 +5483,484 @@
         }, 180);
       };
     }
-
+    
+    
+    const aboutModal = document.getElementById("aboutModal");
+    if (aboutModal) {
+      aboutModal.addEventListener("click", e => {
+        if (e.target.id === "aboutModal") {
+          closeAboutModal();
+        }
+      });
+    }
+    
+    const confirmNewSessionModal = document.getElementById("confirmNewSessionModal");
+    if (confirmNewSessionModal) {
+      confirmNewSessionModal.addEventListener("click", e => {
+        if (e.target.id === "confirmNewSessionModal") {
+          closeConfirmNewSessionModal();
+        }
+      });
+    }
+    
+    const sessionInfoModal = document.getElementById("sessionInfoModal");
+    if (sessionInfoModal) {
+      sessionInfoModal.addEventListener("click", e => {
+        if (e.target.id === "sessionInfoModal") {
+          closeSessionInfoModal();
+        }
+      });
+    }
+    
+    window.addEventListener("load", () => {
+      const params = new URLSearchParams(window.location.search);
       
-      const aboutModal = document.getElementById("aboutModal");
-      if (aboutModal) {
-        aboutModal.addEventListener("click", e => {
-          if (e.target.id === "aboutModal") {
-            closeAboutModal();
-          }
-        });
+      if (params.get("admin") === "1") {
+        localStorage.setItem(ADMIN_UI_KEY, "1");
+      }
+      if (params.get("admin") === "0") {
+        localStorage.removeItem(ADMIN_UI_KEY);
       }
       
-      const confirmNewSessionModal = document.getElementById("confirmNewSessionModal");
-      if (confirmNewSessionModal) {
-        confirmNewSessionModal.addEventListener("click", e => {
-          if (e.target.id === "confirmNewSessionModal") {
-            closeConfirmNewSessionModal();
-          }
-        });
+      const isAdminUI = localStorage.getItem(ADMIN_UI_KEY) === "1";
+      const shouldSkipWelcomeAnimation = isAdminUI;
+      
+      document.body.classList.toggle("admin-ui", isAdminUI);
+      syncDebugVisibility();
+      ensureScrollToBottomBtn();
+      updateScrollToBottomBtn();
+      
+      const logo = document.getElementById("welcomeLogo");
+      const welcome = document.getElementById("welcomeScreen");
+      
+      async function waitForBackendReady() {
+        try {
+          const res = await fetch("/health", { cache: "no-store" });
+          if (res.ok) return true;
+        } catch {}
+        
+        return false;
       }
       
-      const sessionInfoModal = document.getElementById("sessionInfoModal");
-      if (sessionInfoModal) {
-        sessionInfoModal.addEventListener("click", e => {
-          if (e.target.id === "sessionInfoModal") {
-            closeSessionInfoModal();
-          }
-        });
+      const WELCOME_RITUAL = [
+        "Se comprendre",
+        "S'accepter",
+        "Se faire confiance",
+        "Liberer son potentiel..."
+      ];
+      
+      const WELCOME_BOOT_PAUSE_MS = 750;
+      const WELCOME_RITUAL_TEXT_DURATION = 2000;
+      const WELCOME_RITUAL_GAP_DURATION = 400;
+      const WELCOME_RITUAL_SKIP_TEXT_DURATION = 160;
+      const WELCOME_RITUAL_SKIP_GAP_DURATION = 80;
+      const WELCOME_LOGO_DELAY_MS = 0;
+      const WELCOME_LOGO_FADE_DURATION_MS = 1200;
+      const WELCOME_RITUAL_START_DELAY_MS = 2400;
+      const WELCOME_ACTIONS_DELAY_MS = 200;
+      const WELCOME_SKIP_ACTIONS_REMAINING_MS = 160;
+      
+      let ritualIndex = 0;
+      let ritualRunning = false;
+      let ritualInterrupted = false;
+      let ritualTextTimeout = null;
+      let ritualGapTimeout = null;
+      let ritualStartTimeout = null;
+      let actionsRevealTimeout = null;
+      let bootPauseTimeout = null;
+      let logoFadeTimeout = null;
+      let welcomeInteractionBound = false;
+      let welcomeHasInteracted = false;
+      
+      let welcomePhase = "idle";
+      let firstPhraseShown = false;
+      let actionsVisible = false;
+      
+      function clearWelcomeRitualTimers() {
+        if (ritualTextTimeout) {
+          clearTimeout(ritualTextTimeout);
+          ritualTextTimeout = null;
+        }
+        
+        if (ritualGapTimeout) {
+          clearTimeout(ritualGapTimeout);
+          ritualGapTimeout = null;
+        }
+        
+        if (ritualStartTimeout) {
+          clearTimeout(ritualStartTimeout);
+          ritualStartTimeout = null;
+        }
+        
+        if (actionsRevealTimeout) {
+          clearTimeout(actionsRevealTimeout);
+          actionsRevealTimeout = null;
+        }
+        
+        if (bootPauseTimeout) {
+          clearTimeout(bootPauseTimeout);
+          bootPauseTimeout = null;
+        }
+        
+        if (logoFadeTimeout) {
+          clearTimeout(logoFadeTimeout);
+          logoFadeTimeout = null;
+        }
       }
       
-      window.addEventListener("load", () => {
-        const params = new URLSearchParams(window.location.search);
+      function resetWelcomeRitualUI() {
+        const logoWrap = document.getElementById("welcomeLogoWrap");
+        const textEl = document.getElementById("welcomeRitualText");
+        const actions = document.getElementById("welcomeActions");
         
-        if (params.get("admin") === "1") {
-          localStorage.setItem(ADMIN_UI_KEY, "1");
-        }
-        if (params.get("admin") === "0") {
-          localStorage.removeItem(ADMIN_UI_KEY);
-        }
+        if (!logoWrap) return;
         
-        const isAdminUI = localStorage.getItem(ADMIN_UI_KEY) === "1";
-        const shouldSkipWelcomeAnimation = isAdminUI;
+        logoWrap.style.transition = "none";
+        logoWrap.style.opacity = "0";
         
-        document.body.classList.toggle("admin-ui", isAdminUI);
-        syncDebugVisibility();
-        ensureScrollToBottomBtn();
-        updateScrollToBottomBtn();
-        
-        const logo = document.getElementById("welcomeLogo");
-        const welcome = document.getElementById("welcomeScreen");
-        
-        async function waitForBackendReady() {
-          try {
-            const res = await fetch("/health", { cache: "no-store" });
-            if (res.ok) return true;
-          } catch {}
-          
-          return false;
-        }
-        
-        const WELCOME_RITUAL = [
-          "Se comprendre",
-          "S'accepter",
-          "Se faire confiance",
-          "Liberer son potentiel..."
-        ];
-        
-        const WELCOME_BOOT_PAUSE_MS = 750;
-        const WELCOME_RITUAL_TEXT_DURATION = 2000;
-        const WELCOME_RITUAL_GAP_DURATION = 400;
-        const WELCOME_RITUAL_SKIP_TEXT_DURATION = 160;
-        const WELCOME_RITUAL_SKIP_GAP_DURATION = 80;
-        const WELCOME_LOGO_DELAY_MS = 0;
-        const WELCOME_LOGO_FADE_DURATION_MS = 1200;
-        const WELCOME_RITUAL_START_DELAY_MS = 2400;
-        const WELCOME_ACTIONS_DELAY_MS = 200;
-        const WELCOME_SKIP_ACTIONS_REMAINING_MS = 160;
-        
-        let ritualIndex = 0;
-        let ritualRunning = false;
-        let ritualInterrupted = false;
-        let ritualTextTimeout = null;
-        let ritualGapTimeout = null;
-        let ritualStartTimeout = null;
-        let actionsRevealTimeout = null;
-        let bootPauseTimeout = null;
-        let logoFadeTimeout = null;
-        let welcomeInteractionBound = false;
-        let welcomeHasInteracted = false;
-        
-        let welcomePhase = "idle";
-        let firstPhraseShown = false;
-        let actionsVisible = false;
-        
-        function clearWelcomeRitualTimers() {
-          if (ritualTextTimeout) {
-            clearTimeout(ritualTextTimeout);
-            ritualTextTimeout = null;
-          }
-          
-          if (ritualGapTimeout) {
-            clearTimeout(ritualGapTimeout);
-            ritualGapTimeout = null;
-          }
-          
-          if (ritualStartTimeout) {
-            clearTimeout(ritualStartTimeout);
-            ritualStartTimeout = null;
-          }
-          
-          if (actionsRevealTimeout) {
-            clearTimeout(actionsRevealTimeout);
-            actionsRevealTimeout = null;
-          }
-          
-          if (bootPauseTimeout) {
-            clearTimeout(bootPauseTimeout);
-            bootPauseTimeout = null;
-          }
-          
-          if (logoFadeTimeout) {
-            clearTimeout(logoFadeTimeout);
-            logoFadeTimeout = null;
-          }
-        }
-        
-        function resetWelcomeRitualUI() {
-          const logoWrap = document.getElementById("welcomeLogoWrap");
-          const textEl = document.getElementById("welcomeRitualText");
-          const actions = document.getElementById("welcomeActions");
-          
-          if (!logoWrap) return;
-          
-          logoWrap.style.transition = "none";
-          logoWrap.style.opacity = "0";
-          
-          if (textEl) {
-            textEl.textContent = "";
-            textEl.classList.remove("is-visible", "is-hidden");
-          }
-          
-          if (actions) {
-            actions.classList.remove("is-visible");
-          }
-          
-          welcomeHasInteracted = false;
-          firstPhraseShown = false;
-          actionsVisible = false;
-          welcomePhase = "boot_pause";
-        }
-        
-        function fastForwardWelcomeVisuals() {
-          const logoWrap = document.getElementById("welcomeLogoWrap");
-          
-          if (bootPauseTimeout) {
-            clearTimeout(bootPauseTimeout);
-            bootPauseTimeout = null;
-          }
-          
-          if (logoFadeTimeout) {
-            clearTimeout(logoFadeTimeout);
-            logoFadeTimeout = null;
-          }
-          
-          if (welcome) {
-            welcome.style.transition = "none";
-            welcome.classList.add("ready");
-          }
-          
-          if (logoWrap) {
-            logoWrap.style.transition = "none";
-            logoWrap.style.opacity = "1";
-          }
-        }
-        
-        function revealActions(withDelay = true) {
-          const actions = document.getElementById("welcomeActions");
-          if (!actions || actionsVisible) return;
-          
-          const delay = withDelay ? WELCOME_ACTIONS_DELAY_MS : WELCOME_SKIP_ACTIONS_REMAINING_MS;
-          
-          if (actionsRevealTimeout) {
-            clearTimeout(actionsRevealTimeout);
-            actionsRevealTimeout = null;
-          }
-          
-          welcomePhase = "actions_pending";
-          
-          actionsRevealTimeout = setTimeout(() => {
-            actions.classList.add("is-visible");
-            actionsVisible = true;
-            welcomePhase = "done";
-            actionsRevealTimeout = null;
-          }, delay);
-        }
-        
-        function showWelcomeLogo(immediate = false) {
-          const logoWrap = document.getElementById("welcomeLogoWrap");
-          if (!logoWrap) return;
-          
-          if (logoFadeTimeout) {
-            clearTimeout(logoFadeTimeout);
-            logoFadeTimeout = null;
-          }
-          
-          const delay = immediate ? 0 : WELCOME_LOGO_DELAY_MS;
-          const duration = immediate ? 0 : WELCOME_LOGO_FADE_DURATION_MS;
-          
-          logoFadeTimeout = setTimeout(() => {
-            logoWrap.style.transition = duration > 0 ? "opacity " + duration + "ms ease" : "none";
-            logoWrap.style.opacity = "1";
-            logoFadeTimeout = null;
-            
-            if (welcomePhase === "logo_pending") {
-              welcomePhase = "logo_visible";
-            }
-          }, delay);
-        }
-        
-        function endWelcomeRitual() {
-          if (ritualTextTimeout) {
-            clearTimeout(ritualTextTimeout);
-            ritualTextTimeout = null;
-          }
-          
-          if (ritualGapTimeout) {
-            clearTimeout(ritualGapTimeout);
-            ritualGapTimeout = null;
-          }
-          
-          ritualRunning = false;
-          
-          const textEl = document.getElementById("welcomeRitualText");
-          
-          if (textEl) {
-            textEl.textContent = "";
-            textEl.classList.remove("is-visible", "is-hidden");
-            textEl.style.transition = "none";
-            textEl.style.opacity = "0";
-            textEl.style.transform = "translateY(10px)";
-          }
-          
-          revealActions(!ritualInterrupted);
-        }
-        
-        function showWelcomeRitualPhrase() {
-          const textEl = document.getElementById("welcomeRitualText");
-          if (!textEl) return;
-          
-          if (ritualIndex >= WELCOME_RITUAL.length) {
-            endWelcomeRitual();
-            return;
-          }
-          
-          const isFirstPhrase = ritualIndex === 0;
-          const isLastPhrase = ritualIndex === WELCOME_RITUAL.length - 1;
-          
-          welcomePhase = "ritual";
-          textEl.textContent = WELCOME_RITUAL[ritualIndex];
+        if (textEl) {
+          textEl.textContent = "";
           textEl.classList.remove("is-visible", "is-hidden");
+        }
+        
+        if (actions) {
+          actions.classList.remove("is-visible");
+        }
+        
+        welcomeHasInteracted = false;
+        firstPhraseShown = false;
+        actionsVisible = false;
+        welcomePhase = "boot_pause";
+      }
+      
+      function fastForwardWelcomeVisuals() {
+        const logoWrap = document.getElementById("welcomeLogoWrap");
+        
+        if (bootPauseTimeout) {
+          clearTimeout(bootPauseTimeout);
+          bootPauseTimeout = null;
+        }
+        
+        if (logoFadeTimeout) {
+          clearTimeout(logoFadeTimeout);
+          logoFadeTimeout = null;
+        }
+        
+        if (welcome) {
+          welcome.style.transition = "none";
+          welcome.classList.add("ready");
+        }
+        
+        if (logoWrap) {
+          logoWrap.style.transition = "none";
+          logoWrap.style.opacity = "1";
+        }
+      }
+      
+      function revealActions(withDelay = true) {
+        const actions = document.getElementById("welcomeActions");
+        if (!actions || actionsVisible) return;
+        
+        const delay = withDelay ? WELCOME_ACTIONS_DELAY_MS : WELCOME_SKIP_ACTIONS_REMAINING_MS;
+        
+        if (actionsRevealTimeout) {
+          clearTimeout(actionsRevealTimeout);
+          actionsRevealTimeout = null;
+        }
+        
+        welcomePhase = "actions_pending";
+        
+        actionsRevealTimeout = setTimeout(() => {
+          actions.classList.add("is-visible");
+          actionsVisible = true;
+          welcomePhase = "done";
+          actionsRevealTimeout = null;
+        }, delay);
+      }
+      
+      function showWelcomeLogo(immediate = false) {
+        const logoWrap = document.getElementById("welcomeLogoWrap");
+        if (!logoWrap) return;
+        
+        if (logoFadeTimeout) {
+          clearTimeout(logoFadeTimeout);
+          logoFadeTimeout = null;
+        }
+        
+        const delay = immediate ? 0 : WELCOME_LOGO_DELAY_MS;
+        const duration = immediate ? 0 : WELCOME_LOGO_FADE_DURATION_MS;
+        
+        logoFadeTimeout = setTimeout(() => {
+          logoWrap.style.transition = duration > 0 ? "opacity " + duration + "ms ease" : "none";
+          logoWrap.style.opacity = "1";
+          logoFadeTimeout = null;
           
-          if (isFirstPhrase) {
-            textEl.style.transition = "none";
-            textEl.style.opacity = "1";
-            textEl.style.transform = "translateX(-120vw)";
-            
+          if (welcomePhase === "logo_pending") {
+            welcomePhase = "logo_visible";
+          }
+        }, delay);
+      }
+      
+      function endWelcomeRitual() {
+        if (ritualTextTimeout) {
+          clearTimeout(ritualTextTimeout);
+          ritualTextTimeout = null;
+        }
+        
+        if (ritualGapTimeout) {
+          clearTimeout(ritualGapTimeout);
+          ritualGapTimeout = null;
+        }
+        
+        ritualRunning = false;
+        
+        const textEl = document.getElementById("welcomeRitualText");
+        
+        if (textEl) {
+          textEl.textContent = "";
+          textEl.classList.remove("is-visible", "is-hidden");
+          textEl.style.transition = "none";
+          textEl.style.opacity = "0";
+          textEl.style.transform = "translateY(10px)";
+        }
+        
+        revealActions(!ritualInterrupted);
+      }
+      
+      function showWelcomeRitualPhrase() {
+        const textEl = document.getElementById("welcomeRitualText");
+        if (!textEl) return;
+        
+        if (ritualIndex >= WELCOME_RITUAL.length) {
+          endWelcomeRitual();
+          return;
+        }
+        
+        const isFirstPhrase = ritualIndex === 0;
+        const isLastPhrase = ritualIndex === WELCOME_RITUAL.length - 1;
+        
+        welcomePhase = "ritual";
+        textEl.textContent = WELCOME_RITUAL[ritualIndex];
+        textEl.classList.remove("is-visible", "is-hidden");
+        
+        if (isFirstPhrase) {
+          textEl.style.transition = "none";
+          textEl.style.opacity = "1";
+          textEl.style.transform = "translateX(-120vw)";
+          
+          requestAnimationFrame(() => {
             requestAnimationFrame(() => {
-              requestAnimationFrame(() => {
-                textEl.style.transition = "transform 1.05s ease";
-                textEl.style.transform = "translateX(0)";
-              });
+              textEl.style.transition = "transform 1.05s ease";
+              textEl.style.transform = "translateX(0)";
             });
-            
-            firstPhraseShown = true;
+          });
+          
+          firstPhraseShown = true;
+        } else {
+          textEl.style.transition = "";
+          textEl.style.opacity = "";
+          textEl.style.transform = "";
+          textEl.classList.remove("is-hidden");
+          textEl.classList.add("is-visible");
+        }
+        
+        const textDuration = ritualInterrupted ?
+          WELCOME_RITUAL_SKIP_TEXT_DURATION :
+          WELCOME_RITUAL_TEXT_DURATION;
+        
+        ritualTextTimeout = setTimeout(() => {
+          if (isLastPhrase) {
+            textEl.classList.remove("is-visible", "is-hidden");
+            textEl.style.transition = "transform 2.5s ease";
+            textEl.style.opacity = "1";
+            textEl.style.transform = "translateX(120vw)";
           } else {
             textEl.style.transition = "";
             textEl.style.opacity = "";
             textEl.style.transform = "";
-            textEl.classList.remove("is-hidden");
-            textEl.classList.add("is-visible");
+            textEl.classList.remove("is-visible");
+            textEl.classList.add("is-hidden");
           }
           
-          const textDuration = ritualInterrupted ?
-            WELCOME_RITUAL_SKIP_TEXT_DURATION :
-            WELCOME_RITUAL_TEXT_DURATION;
+          const gapDuration = ritualInterrupted ?
+            WELCOME_RITUAL_SKIP_GAP_DURATION :
+            (isLastPhrase ? 1400 : WELCOME_RITUAL_GAP_DURATION);
           
-          ritualTextTimeout = setTimeout(() => {
-            if (isLastPhrase) {
-              textEl.classList.remove("is-visible", "is-hidden");
-              textEl.style.transition = "transform 2.5s ease";
-              textEl.style.opacity = "1";
-              textEl.style.transform = "translateX(120vw)";
-            } else {
-              textEl.style.transition = "";
-              textEl.style.opacity = "";
-              textEl.style.transform = "";
-              textEl.classList.remove("is-visible");
-              textEl.classList.add("is-hidden");
-            }
-            
-            const gapDuration = ritualInterrupted ?
-              WELCOME_RITUAL_SKIP_GAP_DURATION :
-              (isLastPhrase ? 1400 : WELCOME_RITUAL_GAP_DURATION);
-            
-            ritualGapTimeout = setTimeout(() => {
-              ritualIndex += 1;
-              showWelcomeRitualPhrase();
-            }, gapDuration);
-          }, textDuration);
+          ritualGapTimeout = setTimeout(() => {
+            ritualIndex += 1;
+            showWelcomeRitualPhrase();
+          }, gapDuration);
+        }, textDuration);
+      }
+      
+      function startWelcomeRitual() {
+        if (ritualStartTimeout) {
+          clearTimeout(ritualStartTimeout);
+          ritualStartTimeout = null;
         }
         
-        function startWelcomeRitual() {
-          if (ritualStartTimeout) {
-            clearTimeout(ritualStartTimeout);
-            ritualStartTimeout = null;
-          }
-          
-          if (actionsRevealTimeout) {
-            clearTimeout(actionsRevealTimeout);
-            actionsRevealTimeout = null;
-          }
-          
-          ritualIndex = 0;
-          ritualRunning = true;
-          ritualInterrupted = false;
-          
-          const textEl = document.getElementById("welcomeRitualText");
-          const actions = document.getElementById("welcomeActions");
+        if (actionsRevealTimeout) {
+          clearTimeout(actionsRevealTimeout);
+          actionsRevealTimeout = null;
+        }
+        
+        ritualIndex = 0;
+        ritualRunning = true;
+        ritualInterrupted = false;
+        
+        const textEl = document.getElementById("welcomeRitualText");
+        const actions = document.getElementById("welcomeActions");
+        
+        if (textEl) {
+          textEl.textContent = "";
+          textEl.classList.remove("is-visible", "is-hidden");
+        }
+        
+        if (actions) {
+          actions.classList.remove("is-visible");
+        }
+        
+        actionsVisible = false;
+        showWelcomeRitualPhrase();
+      }
+      
+      function interruptWelcomeRitual() {
+        if (!ritualRunning || ritualInterrupted) return;
+        
+        ritualInterrupted = true;
+        
+        const textEl = document.getElementById("welcomeRitualText");
+        
+        if (ritualTextTimeout) {
+          clearTimeout(ritualTextTimeout);
+          ritualTextTimeout = null;
           
           if (textEl) {
-            textEl.textContent = "";
-            textEl.classList.remove("is-visible", "is-hidden");
+            textEl.classList.remove("is-visible");
+            textEl.classList.add("is-hidden");
           }
           
-          if (actions) {
-            actions.classList.remove("is-visible");
-          }
-          
-          actionsVisible = false;
-          showWelcomeRitualPhrase();
+          ritualGapTimeout = setTimeout(() => {
+            ritualIndex += 1;
+            showWelcomeRitualPhrase();
+          }, WELCOME_RITUAL_SKIP_GAP_DURATION);
         }
-        
-        function interruptWelcomeRitual() {
-          if (!ritualRunning || ritualInterrupted) return;
+      }
+      
+      function accelerateWelcomeIntro() {
+        if (!welcomeHasInteracted) {
+          welcomeHasInteracted = true;
+          fastForwardWelcomeVisuals();
           
-          ritualInterrupted = true;
-          
-          const textEl = document.getElementById("welcomeRitualText");
-          
-          if (ritualTextTimeout) {
-            clearTimeout(ritualTextTimeout);
-            ritualTextTimeout = null;
-            
-            if (textEl) {
-              textEl.classList.remove("is-visible");
-              textEl.classList.add("is-hidden");
-            }
-            
-            ritualGapTimeout = setTimeout(() => {
-              ritualIndex += 1;
-              showWelcomeRitualPhrase();
-            }, WELCOME_RITUAL_SKIP_GAP_DURATION);
-          }
-        }
-        
-        function accelerateWelcomeIntro() {
-          if (!welcomeHasInteracted) {
-            welcomeHasInteracted = true;
-            fastForwardWelcomeVisuals();
-            
-            if (welcomePhase === "boot_pause") {
-              bindWelcomeInteraction();
-              startWelcomeRitual();
-              return;
-            }
-            
-            if (welcomePhase === "logo_visible" && !firstPhraseShown) {
-              if (ritualStartTimeout) {
-                clearTimeout(ritualStartTimeout);
-                ritualStartTimeout = null;
-              }
-              
-              startWelcomeRitual();
-              return;
-            }
-          }
-          
-          if (ritualRunning) {
-            interruptWelcomeRitual();
+          if (welcomePhase === "boot_pause") {
+            bindWelcomeInteraction();
+            startWelcomeRitual();
             return;
           }
           
-          if (welcomePhase === "actions_pending") {
-            revealActions(false);
+          if (welcomePhase === "logo_visible" && !firstPhraseShown) {
+            if (ritualStartTimeout) {
+              clearTimeout(ritualStartTimeout);
+              ritualStartTimeout = null;
+            }
+            
+            startWelcomeRitual();
             return;
-          }
-          
-          if (!actionsVisible) {
-            revealActions(false);
           }
         }
         
-        function bindWelcomeInteraction() {
-          if (welcomeInteractionBound) return;
-          
-          const screen = document.getElementById("welcomeScreen");
-          if (!screen) return;
-          
-          screen.addEventListener("click", event => {
-            if (event.target.closest("#welcomeActions")) return;
-            accelerateWelcomeIntro();
-          });
-          
-          welcomeInteractionBound = true;
+        if (ritualRunning) {
+          interruptWelcomeRitual();
+          return;
         }
         
-        function showWelcome() {
-          if (shouldSkipWelcomeAnimation) {
-            clearWelcomeRitualTimers();
-            prepareWelcomeScreenStatic();
-            showScreen("welcomeScreen", {
-              replaceHistory: true,
-              pushHistory: false,
-              noAnimation: true,
-              noWelcomeIntro: true
-            });
-            return;
-          }
-          
-          showScreen("welcomeScreen", { replaceHistory: true, pushHistory: false });
-          
+        if (welcomePhase === "actions_pending") {
+          revealActions(false);
+          return;
+        }
+        
+        if (!actionsVisible) {
+          revealActions(false);
+        }
+      }
+      
+      function bindWelcomeInteraction() {
+        if (welcomeInteractionBound) return;
+        
+        const screen = document.getElementById("welcomeScreen");
+        if (!screen) return;
+        
+        screen.addEventListener("click", event => {
+          if (event.target.closest("#welcomeActions")) return;
+          accelerateWelcomeIntro();
+        });
+        
+        welcomeInteractionBound = true;
+      }
+      
+      function showWelcome() {
+        if (shouldSkipWelcomeAnimation) {
           clearWelcomeRitualTimers();
-          resetWelcomeRitualUI();
-          
-          welcome.style.transition = "none";
-          welcome.classList.remove("ready");
-          
-          requestAnimationFrame(() => {
-            bootPauseTimeout = setTimeout(() => {
-              bootPauseTimeout = null;
-              
-              welcome.style.transition = "";
-              
-              requestAnimationFrame(() => {
-                welcome.classList.add("ready");
-              });
-              
-              showWelcomeLogo(false);
-              bindWelcomeInteraction();
-              
-              ritualStartTimeout = setTimeout(() => {
-                startWelcomeRitual();
-              }, WELCOME_RITUAL_START_DELAY_MS);
-              
-              welcomePhase = "logo_visible";
-            }, WELCOME_BOOT_PAUSE_MS);
+          prepareWelcomeScreenStatic();
+          showScreen("welcomeScreen", {
+            replaceHistory: true,
+            pushHistory: false,
+            noAnimation: true,
+            noWelcomeIntro: true
           });
+          return;
         }
         
-        async function boot() {
-          if (!logo || logo.complete) {
-            await waitForBackendReady();
-            showWelcome();
-            return;
-          }
-          
-          logo.addEventListener("load", async () => {
-            await waitForBackendReady();
-            showWelcome();
-          }, { once: true });
-          
-          logo.addEventListener("error", async () => {
-            await waitForBackendReady();
-            showWelcome();
-          }, { once: true });
+        showScreen("welcomeScreen", { replaceHistory: true, pushHistory: false });
+        
+        clearWelcomeRitualTimers();
+        resetWelcomeRitualUI();
+        
+        welcome.style.transition = "none";
+        welcome.classList.remove("ready");
+        
+        requestAnimationFrame(() => {
+          bootPauseTimeout = setTimeout(() => {
+            bootPauseTimeout = null;
+            
+            welcome.style.transition = "";
+            
+            requestAnimationFrame(() => {
+              welcome.classList.add("ready");
+            });
+            
+            showWelcomeLogo(false);
+            bindWelcomeInteraction();
+            
+            ritualStartTimeout = setTimeout(() => {
+              startWelcomeRitual();
+            }, WELCOME_RITUAL_START_DELAY_MS);
+            
+            welcomePhase = "logo_visible";
+          }, WELCOME_BOOT_PAUSE_MS);
+        });
+      }
+      
+      async function boot() {
+        if (!logo || logo.complete) {
+          await waitForBackendReady();
+          showWelcome();
+          return;
         }
         
-        boot();
-      });
+        logo.addEventListener("load", async () => {
+          await waitForBackendReady();
+          showWelcome();
+        }, { once: true });
+        
+        logo.addEventListener("error", async () => {
+          await waitForBackendReady();
+          showWelcome();
+        }, { once: true });
+      }
+      
+      boot();
+    });
   </script>
 </body>
 
