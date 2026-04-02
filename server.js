@@ -1667,62 +1667,43 @@ async function generateReply({
   message,
   history,
   memory,
-  flags,
-  promptRegistry = buildDefaultPromptRegistry()
+  mode,
+  explorationDirectivityLevel = 0,
+  override1 = null,
+  override2 = null
 }) {
-  const context = trimHistory(history);
-  
-  const modeInstruction = getModeInstruction(flags.mode, promptRegistry);
-  
-  const explorationStructureInstruction =
-    flags.mode === "exploration" ?
-    getExplorationStructureInstruction(flags.explorationDirectivityLevel, promptRegistry) :
-    "";
-  
-  const modelBlock = buildModelBlock({
-    message,
-    history: context,
+  const promptRegistry = resolvePromptRegistry([override1, override2]);
+  const baseSystemPrompt = buildSystemPrompt(
+    mode,
     memory,
-    flags,
+    explorationDirectivityLevel,
     promptRegistry
-  });
-  
-  const memoryBlock = normalizeMemory(memory);
+  );
+  const overrideResult = applyPromptOverrideLayers(baseSystemPrompt, override1, override2);
   
   const messages = [
-    {
-      role: "system",
-      content: `
-${promptRegistry.IDENTITY_BLOCK}
-
-${modeInstruction}
-
-${explorationStructureInstruction}
-
-${modelBlock}
-
-Mémoire :
-${memoryBlock}
-`
-    },
-    ...context.map(m => ({
-      role: m.role,
-      content: m.content
-    })),
-    {
-      role: "user",
-      content: message
-    }
+    { role: "system", content: overrideResult.prompt },
+    ...history.map(m => ({ role: m.role, content: m.content })),
+    { role: "user", content: message }
   ];
   
   const r = await client.chat.completions.create({
     model: "gpt-4o",
     temperature: 0.7,
-    max_tokens: 500,
+    top_p: 1,
+    presence_penalty: 0.5,
+    frequency_penalty: 0.3,
+    max_tokens: 400,
     messages
   });
   
-  return (r.choices?.[0]?.message?.content || "").trim();
+  return {
+    reply: (r.choices?.[0]?.message?.content || "").trim() || "Je t'ecoute.",
+    promptDebug: {
+      override1: overrideResult.override1,
+      override2: overrideResult.override2
+    }
+  };
 }
 
 // --------------------------------------------------
@@ -2117,8 +2098,7 @@ async function generateConversationTitle(messages) {
       model: "gpt-4o-mini",
       temperature: 0.2,
       max_tokens: 30,
-      messages: [
-      {
+      messages: [{
         role: "system",
         content: [
           "Tu generes un titre tres court en francais pour une conversation.",
@@ -2131,8 +2111,7 @@ async function generateConversationTitle(messages) {
           "- ne recopie pas simplement le premier message",
           "- ne commence pas par Verbatim de type Je, J, Tu, Mon, Ma sauf si c'est indispensable"
         ].join("\n")
-      },
-      {
+      }, {
         role: "user",
         content: sourceText
       }]
@@ -2335,9 +2314,9 @@ app.get("/api/admin/conversations/:id/messages", requireAdminAuth, async (req, r
     
     const [messagesSnap, labelsSnap] = await Promise.all([
       messagesRef
-      .orderByChild("conversationId")
-      .equalTo(conversationId)
-      .once("value"),
+        .orderByChild("conversationId")
+        .equalTo(conversationId)
+        .once("value"),
       userLabelsRef.once("value")
     ]);
     
@@ -2364,104 +2343,243 @@ app.get("/api/admin/conversations/:id/messages", requireAdminAuth, async (req, r
 });
 
 app.post("/chat", async (req, res) => {
+  console.log("CHAT INPUT conversationId:", req.body?.conversationId);
+  
+  let modeForCatch = "exploration";
+  let previousMemoryForCatch = normalizeMemory("");
+  let flagsForCatch = normalizeSessionFlags({});
+  
   try {
-    const {
-      message = "",
-        history = [],
-        memory = "",
-        flags = {},
-        override1 = null,
-        override2 = null
-    } = req.body || {};
+    const message = String(req.body?.message || "");
+    const isEdited = req.body?.isEdited === true;
+    const conversationId = req.body?.conversationId;
     
-    const cleanMessage = String(message).trim();
+    if (!conversationId) {
+      return res.status(400).json({ error: "Missing conversationId" });
+    }
     
-    if (!cleanMessage) {
-      return res.json({
-        reply: "",
-        mode: "error",
-        memory: normalizeMemory(memory),
-        flags: normalizeSessionFlags(flags),
-        debug: ["empty_message"]
+    const userId = req.body?.userId || "u_anon";
+    const convRef = db.ref("conversations").child(conversationId);
+    
+    async function maybeGenerateConversationTitle() {
+      try {
+        const convSnap = await convRef.once("value");
+        const convData = convSnap.val() || {};
+        
+        if (convData.titleLocked === true) {
+          return;
+        }
+        
+        const messagesSnap = await messagesRef
+          .orderByChild("conversationId")
+          .equalTo(conversationId)
+          .once("value");
+        
+        const conversationMessages = Object.values(messagesSnap.val() || {})
+          .filter(m => m && typeof m.content === "string")
+          .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+        
+        const userMessages = conversationMessages
+          .filter(m => m.role === "user")
+          .map(m => String(m.content || "").trim())
+          .filter(Boolean);
+        
+        if (userMessages.length === 0) {
+          return;
+        }
+        
+        const currentTitle = String(convData.title || "").trim();
+        const firstUserMessage = userMessages[0] || "";
+        
+        const shouldGenerateTitle = !currentTitle ||
+          currentTitle === "Nouvelle conversation" ||
+          currentTitle === "Conversation sans titre" ||
+          currentTitle === "Conversation" ||
+          currentTitle === firstUserMessage;
+        
+        if (!shouldGenerateTitle) {
+          return;
+        }
+        
+        const generatedTitle = await generateConversationTitle(conversationMessages);
+        
+        if (!generatedTitle || !generatedTitle.trim()) {
+          return;
+        }
+        
+        await convRef.update({
+          title: generatedTitle.trim(),
+          updatedAt: new Date().toISOString()
+        });
+        
+        console.log("AUTO TITLE UPDATED:", conversationId, "->", generatedTitle.trim());
+      } catch (titleErr) {
+        console.error("Erreur auto-title /chat:", titleErr.message);
+      }
+    }
+    
+    await messagesRef.push({
+      role: "user",
+      content: isEdited ? message + "\n[MODIFIÉ]" : message,
+      timestamp: Date.now(),
+      userId,
+      conversationId
+    });
+    
+    await convRef.transaction(current => {
+      const now = new Date().toISOString();
+      
+      if (!current) {
+        return {
+          userId,
+          createdAt: now,
+          updatedAt: now,
+          title: null,
+          titleLocked: false,
+          messageCount: 1,
+          lastUserMessage: message
+        };
+      }
+      
+      return {
+        ...current,
+        userId,
+        updatedAt: now,
+        messageCount: (Number(current.messageCount) || 0) + 1,
+        lastUserMessage: message
+      };
+    });
+    
+    const recentHistory = trimHistory(req.body?.recentHistory);
+    const previousMemory = normalizeMemory(req.body?.memory);
+    const flags = normalizeSessionFlags(req.body?.flags);
+    const override1 = req.body?.override1 ?? null;
+    const override2 = req.body?.override2 ?? null;
+    const comparisonEnabled = req.body?.comparisonEnabled === true;
+    const logsEnabled = req.body?.logsEnabled === true;
+    const promptRegistry = resolvePromptRegistry([override1, override2]);
+    
+    previousMemoryForCatch = previousMemory;
+    flagsForCatch = flags;
+    
+    async function pushAssistantMessage(reply, debug) {
+      await messagesRef.push({
+        role: "assistant",
+        content: isEdited ? reply + "\n[MODIFIÉ]" : reply,
+        timestamp: Date.now(),
+        userId,
+        conversationId,
+        debug: Array.isArray(debug) ? debug : []
+      });
+      
+      await convRef.update({
+        updatedAt: new Date().toISOString()
       });
     }
     
-    const recentHistory = trimHistory(history);
-    const previousMemory = normalizeMemory(memory);
-    let newFlags = normalizeSessionFlags(flags);
+    function buildPromptDebugLines(promptDebug) {
+      const lines = [];
+      
+      if (promptDebug?.override1?.appliedTargets?.length) {
+        lines.push(`override1Applied: ${promptDebug.override1.appliedTargets.join(", ")}`);
+      }
+      if (promptDebug?.override1?.missingTargets?.length) {
+        lines.push(`override1Missing: ${promptDebug.override1.missingTargets.join(", ")}`);
+      }
+      if (promptDebug?.override2?.appliedTargets?.length) {
+        lines.push(`override2Applied: ${promptDebug.override2.appliedTargets.join(", ")}`);
+      }
+      if (promptDebug?.override2?.missingTargets?.length) {
+        lines.push(`override2Missing: ${promptDebug.override2.missingTargets.join(", ")}`);
+      }
+      
+      return lines;
+    }
     
-    const promptRegistry = resolvePromptRegistry([override1, override2]);
+    function buildComparisonEntry(label, generated, debugLines) {
+      return {
+        label,
+        reply: generated.reply,
+        debug: logsEnabled ? [...debugLines, ...buildPromptDebugLines(generated.promptDebug)] : []
+      };
+    }
     
     const suicide = await analyzeSuicideRisk(
-      cleanMessage,
+      message,
       recentHistory,
-      newFlags,
+      flags,
       promptRegistry
     );
+    let newFlags = normalizeSessionFlags(flags);
     
     if (suicide.suicideLevel === "N2") {
       newFlags.acuteCrisis = true;
       newFlags.contactState = { wasContact: false };
       
+      const debug = buildDebug("override", {
+        suicideLevel: "N2"
+      });
+      const reply = n2Response();
+      
+      await pushAssistantMessage(reply, debug);
+      await maybeGenerateConversationTitle();
+      
       return res.json({
-        reply: n2Response(),
-        mode: "override",
+        conversationId,
+        reply,
         memory: previousMemory,
         flags: newFlags,
-        debug: buildDebug("override", {
-          suicideLevel: "N2",
-          needsClarification: suicide.needsClarification,
-          isQuote: suicide.isQuote,
-          idiomaticDeathExpression: suicide.idiomaticDeathExpression,
-          crisisResolved: suicide.crisisResolved
-        })
+        debug
       });
     }
     
-    if (newFlags.acuteCrisis === true) {
-      if (suicide.crisisResolved === true) {
-        newFlags.acuteCrisis = false;
-      } else {
+    if (flags.acuteCrisis === true) {
+      if (suicide.crisisResolved !== true) {
         newFlags.acuteCrisis = true;
         newFlags.contactState = { wasContact: false };
         
+        const debug = buildDebug("override", {
+          suicideLevel: suicide.suicideLevel
+        });
+        const reply = acuteCrisisFollowupResponse();
+        
+        await pushAssistantMessage(reply, debug);
+        await maybeGenerateConversationTitle();
+        
         return res.json({
-          reply: acuteCrisisFollowupResponse(),
-          mode: "override",
+          conversationId,
+          reply,
           memory: previousMemory,
           flags: newFlags,
-          debug: buildDebug("override", {
-            suicideLevel: suicide.suicideLevel,
-            needsClarification: suicide.needsClarification,
-            isQuote: suicide.isQuote,
-            idiomaticDeathExpression: suicide.idiomaticDeathExpression,
-            crisisResolved: suicide.crisisResolved
-          })
+          debug
         });
       }
+      
+      newFlags.acuteCrisis = false;
     }
     
     if (suicide.suicideLevel === "N1" || suicide.needsClarification) {
-      const reply = await n1ResponseLLM(cleanMessage, promptRegistry);
+      const reply = await n1ResponseLLM(message, promptRegistry);
       newFlags.contactState = { wasContact: false };
       
+      const debug = buildDebug("clarification", {
+        suicideLevel: "N1"
+      });
+      
+      await pushAssistantMessage(reply, debug);
+      await maybeGenerateConversationTitle();
+      
       return res.json({
+        conversationId,
         reply,
-        mode: "clarification",
         memory: previousMemory,
         flags: newFlags,
-        debug: buildDebug("clarification", {
-          suicideLevel: "N1",
-          needsClarification: suicide.needsClarification,
-          isQuote: suicide.isQuote,
-          idiomaticDeathExpression: suicide.idiomaticDeathExpression,
-          crisisResolved: suicide.crisisResolved
-        })
+        debug
       });
     }
     
     const recallRouting = await analyzeRecallRouting(
-      cleanMessage,
+      message,
       recentHistory,
       previousMemory,
       promptRegistry
@@ -2469,120 +2587,77 @@ app.post("/chat", async (req, res) => {
     
     if (recallRouting.isLongTermMemoryRecall) {
       const reply = await buildLongTermMemoryRecallResponse(previousMemory, promptRegistry);
+      const debug = buildDebug("memoryRecall", {
+        calledMemory: "longTermMemory"
+      });
       
-      const updatedMemory = await updateMemory(
-        previousMemory,
-        [
-          ...recentHistory,
-          { role: "user", content: cleanMessage },
-          { role: "assistant", content: reply }
-        ],
-        promptRegistry
-      );
+      await pushAssistantMessage(reply, debug);
+      await maybeGenerateConversationTitle();
       
       return res.json({
+        conversationId,
         reply,
-        mode: "memoryRecall",
-        memory: updatedMemory,
+        memory: previousMemory,
         flags: newFlags,
-        debug: buildDebug("memoryRecall", {
-          suicideLevel: suicide.suicideLevel,
-          needsClarification: suicide.needsClarification,
-          isQuote: suicide.isQuote,
-          idiomaticDeathExpression: suicide.idiomaticDeathExpression,
-          crisisResolved: suicide.crisisResolved,
-          isRecallAttempt: recallRouting.isRecallAttempt,
-          calledMemory: recallRouting.calledMemory,
-          isLongTermMemoryRecall: recallRouting.isLongTermMemoryRecall
-        })
+        debug
       });
     }
     
     if (recallRouting.isRecallAttempt && recallRouting.calledMemory === "none") {
       const reply = buildNoMemoryRecallResponse();
+      const debug = buildDebug("memoryRecall", {});
       
-      const updatedMemory = await updateMemory(
-        previousMemory,
-        [
-          ...recentHistory,
-          { role: "user", content: cleanMessage },
-          { role: "assistant", content: reply }
-        ],
-        promptRegistry
-      );
+      await pushAssistantMessage(reply, debug);
+      await maybeGenerateConversationTitle();
       
       return res.json({
+        conversationId,
         reply,
-        mode: "memoryRecall",
-        memory: updatedMemory,
+        memory: previousMemory,
         flags: newFlags,
-        debug: buildDebug("memoryRecall", {
-          suicideLevel: suicide.suicideLevel,
-          needsClarification: suicide.needsClarification,
-          isQuote: suicide.isQuote,
-          idiomaticDeathExpression: suicide.idiomaticDeathExpression,
-          crisisResolved: suicide.crisisResolved,
-          isRecallAttempt: recallRouting.isRecallAttempt,
-          calledMemory: recallRouting.calledMemory,
-          isLongTermMemoryRecall: recallRouting.isLongTermMemoryRecall
-        })
+        debug
       });
     }
     
-    const previousContactState = normalizeContactState(newFlags.contactState);
-    
     const contactAnalysis = await analyzeContactState(
-      cleanMessage,
+      message,
       recentHistory,
-      previousContactState,
+      newFlags.contactState,
       promptRegistry
     );
-    
-    const justExitedContact =
-      previousContactState.wasContact === true &&
-      contactAnalysis.isContact !== true;
-    
-    if (justExitedContact) {
-      newFlags.explorationRelanceWindow = [false, true, true, true];
-      newFlags.explorationDirectivityLevel = 3;
-    }
     
     newFlags.contactState = {
       wasContact: contactAnalysis.isContact === true
     };
     
-    let mode = "contact";
+    const detectedMode = contactAnalysis.isContact ?
+      "contact" :
+      (await detectMode(message, recentHistory, promptRegistry)).mode;
     
-    if (!contactAnalysis.isContact) {
-      const detected = await detectMode(
-        cleanMessage,
-        recentHistory,
-        promptRegistry
-      );
-      mode = detected.mode;
-    }
+    modeForCatch = detectedMode;
     
-    const generated = await generateReply({
-      message: cleanMessage,
+    const generatedBase = await generateReply({
+      message,
       history: recentHistory,
       memory: previousMemory,
-      flags: {
-        ...newFlags,
-        mode
-      },
-      promptRegistry
+      mode: detectedMode,
+      explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
+      override1,
+      override2
     });
     
-    let reply = generated;
+    let reply = generatedBase.reply;
     let modelConflict = false;
+    let rewrittenFrom = null;
     
-    if (mode === "exploration") {
+    if (detectedMode === "exploration") {
       const conflict = await analyzeModelConflict(reply, promptRegistry);
       modelConflict = conflict.modelConflict === true;
       
       if (modelConflict) {
+        rewrittenFrom = reply;
         reply = await rewriteExplorationReplyWithModelFilter({
-          message: cleanMessage,
+          message,
           history: recentHistory,
           memory: previousMemory,
           originalReply: reply,
@@ -2590,57 +2665,124 @@ app.post("/chat", async (req, res) => {
         });
       }
       
-      const relanceAnalysis = await analyzeExplorationRelance({
-        message: cleanMessage,
+      const relance = await analyzeExplorationRelance({
+        message,
         reply,
         history: recentHistory,
         memory: previousMemory,
         promptRegistry
       });
       
-      newFlags = registerExplorationRelance(
-        newFlags,
-        relanceAnalysis.isRelance === true
-      );
+      newFlags = registerExplorationRelance(newFlags, relance.isRelance);
     }
     
-    const updatedMemory = await updateMemory(
-      previousMemory,
-      [
-        ...recentHistory,
-        { role: "user", content: cleanMessage },
-        { role: "assistant", content: reply }
-      ],
-      promptRegistry
-    );
-    
-    const debug = buildDebug(mode, {
+    const debug = buildDebug(detectedMode, {
       suicideLevel: suicide.suicideLevel,
-      needsClarification: suicide.needsClarification,
-      isQuote: suicide.isQuote,
-      idiomaticDeathExpression: suicide.idiomaticDeathExpression,
-      crisisResolved: suicide.crisisResolved,
-      isRecallAttempt: recallRouting.isRecallAttempt,
       calledMemory: recallRouting.calledMemory,
-      isLongTermMemoryRecall: recallRouting.isLongTermMemoryRecall,
       modelConflict,
       explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
       explorationRelanceWindow: newFlags.explorationRelanceWindow
     });
     
+    if (logsEnabled && rewrittenFrom) {
+      debug.push(`rewriteSource: ${rewrittenFrom}`);
+    }
+    
+    debug.push(...buildPromptDebugLines(generatedBase.promptDebug));
+    
+    const newMemory = await updateMemory(previousMemory, [
+      ...recentHistory,
+      { role: "user", content: message },
+      { role: "assistant", content: reply }
+    ], promptRegistry);
+    
+    await pushAssistantMessage(reply, debug);
+    await maybeGenerateConversationTitle();
+    
+    if (
+      comparisonEnabled &&
+      (override1 || override2) &&
+      detectedMode !== "contact"
+    ) {
+      const comparisonBaseDebug = buildDebug(detectedMode, {
+        suicideLevel: suicide.suicideLevel,
+        calledMemory: recallRouting.calledMemory,
+        modelConflict,
+        explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
+        explorationRelanceWindow: newFlags.explorationRelanceWindow
+      });
+      
+      if (rewrittenFrom) {
+        comparisonBaseDebug.push(`rewriteSource: ${rewrittenFrom}`);
+      }
+      
+      const comparisonResults = [{
+        label: "Référence",
+        reply,
+        debug: logsEnabled ? [...comparisonBaseDebug, ...buildPromptDebugLines(generatedBase.promptDebug)] : []
+      }];
+      
+      if (override1) {
+        const generatedOverride1 = await generateReply({
+          message,
+          history: recentHistory,
+          memory: previousMemory,
+          mode: detectedMode,
+          explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
+          override1
+        });
+        
+        comparisonResults.push(
+          buildComparisonEntry("Override 1", generatedOverride1, comparisonBaseDebug)
+        );
+      }
+      
+      if (override1 && override2) {
+        const generatedOverride12 = await generateReply({
+          message,
+          history: recentHistory,
+          memory: previousMemory,
+          mode: detectedMode,
+          explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
+          override1,
+          override2
+        });
+        
+        comparisonResults.push(
+          buildComparisonEntry("Override 1 + 2", generatedOverride12, comparisonBaseDebug)
+        );
+      }
+      
+      return res.json({
+        conversationId,
+        comparison: true,
+        results: comparisonResults,
+        reply,
+        memory: newMemory,
+        flags: newFlags,
+        debug
+      });
+    }
+    
     return res.json({
+      conversationId,
       reply,
-      mode,
-      memory: updatedMemory,
+      memory: newMemory,
       flags: newFlags,
       debug
     });
-  } catch (e) {
-    console.error("chat_error", e);
-    return res.status(500).json({
-      reply: "",
-      mode: "error",
-      debug: ["chat_exception"]
+  } catch (err) {
+    console.error("Erreur /chat:", err);
+    
+    return res.json({
+      reply: modeForCatch === "contact" ? "Je suis la." : "Desole, reformule.",
+      memory: previousMemoryForCatch,
+      flags: flagsForCatch,
+      debug: ["error"]
     });
   }
+});
+
+app.listen(port, () => {
+  console.log(`Serveur lance sur http://localhost:${port}`);
 });
