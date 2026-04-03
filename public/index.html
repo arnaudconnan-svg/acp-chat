@@ -4343,312 +4343,292 @@
     }
     
     async function send() {
-  if (isSending) return;
-  if (sessionStatus === "terminated" || sessionStatus === "closing") return;
-  if (sessionStatus === "expired") return;
-  
-  const input = document.getElementById("input");
-  const sendBtn = document.getElementById("sendBtn");
-  const chat = document.getElementById("chat");
-  const nextMessage = input.value.trim();
-  
-  if (!nextMessage) return;
-  
-  const isEditing = editMode.active;
-  const conversationIdBeforeSend = getConversationId();
-  const wasAtBottom = isEditing ? true : isChatAtBottom();
-  const restoredDraft = isEditing ? draftBeforeEdit : "";
-  const testPayload = typeof getActiveTestPayload === "function" ?
-    getActiveTestPayload() :
-    {
-      override1: null,
-      override2: null,
-      comparisonEnabled: false,
-      logsEnabled: false
-    };
-  
-  let message = nextMessage;
-  
-  isSending = true;
-  updateActivity();
-  sendBtn.disabled = true;
-  
-  if (isEditing) {
-    const history = loadHistory();
-    const targetIndex = editMode.targetHistoryIndex;
-    const lastUserIndex = getLastUserHistoryIndex(history);
-    
-    if (
-      targetIndex < 0 ||
-      targetIndex !== lastUserIndex ||
-      editMode.conversationId !== conversationIdBeforeSend ||
-      !history[targetIndex] ||
-      history[targetIndex].role !== "user"
-    ) {
-      closeEditMode({ restoreDraft: true });
-      isSending = false;
-      syncInputAvailability();
-      showTemporaryNotice("Modification impossible");
-      return;
-    }
-    
-    history[targetIndex] = {
-      ...history[targetIndex],
-      content: message,
-      t: Date.now()
-    };
-    
-    const truncatedHistory = history.slice(0, targetIndex + 1);
-    saveHistory(truncatedHistory);
-    closeEditMode({ restoreDraft: false });
-    renderHistory();
-    scrollChatToBottom();
-    
-    input.value = restoredDraft || "";
-  } else {
-    pushHistory("user", message, []);
-    addMessage("user", message, [], {
-      shouldAutoScroll: wasAtBottom,
-      pulseScrollButton: false,
-      progressive: false,
-      historyIndex: loadHistory().length - 1
-    });
-    
-    input.value = "";
-  }
-  
-  const requestConversationId = getConversationId();
-  const requestScreenId = document.querySelector(".screen.active")?.id || "";
-  
-  const waitingMsg = document.createElement("div");
-  waitingMsg.className = "message bot";
-  
-  const waitingContent = document.createElement("div");
-  waitingContent.className = "message-content";
-  
-  const waitingBubble = document.createElement("div");
-  waitingBubble.className = "bubble waiting-bubble";
-  
-  const waitingDot = document.createElement("span");
-  waitingDot.id = "waitingDot";
-  waitingDot.className = "waiting-dot";
-  
-  waitingBubble.appendChild(waitingDot);
-  waitingContent.appendChild(waitingBubble);
-  waitingMsg.appendChild(waitingContent);
-  
-  chat.appendChild(waitingMsg);
-  
-  if (wasAtBottom || isEditing) {
-    scrollChatToBottom();
-  } else {
-    requestAnimationFrame(() => {
-      updateScrollToBottomBtn();
-    });
-  }
-  
-  const shouldAutoScrollReply =
-    testPayload.comparisonEnabled === true ?
-    false :
-    (isEditing || wasAtBottom || isChatAtBottom());
-  
-  let dotAnimation = null;
-  
-  if (waitingDot && waitingDot.animate) {
-    dotAnimation = waitingDot.animate(
-      [
-        { transform: "scale(0.8)" },
-        { transform: "scale(1.2)" },
-        { transform: "scale(0.8)" }
-      ],
-      {
-        duration: 900,
-        iterations: Infinity,
-        easing: "ease-in-out"
-      }
-    );
-  }
-  
-  try {
-    const res = await fetch("/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        message,
-        isEdited: isEditing === true,
-        userId: getOrCreateUserId(),
-        conversationId: requestConversationId,
-        recentHistory: loadHistory().map(({ role, content }) => ({ role, content })).slice(-MAX_RECENT_TURNS),
-        memory: loadMemory(),
-        flags: loadFlags(),
-        override1: testPayload.override1,
-        override2: testPayload.override2,
-        comparisonEnabled: testPayload.comparisonEnabled === true,
-        logsEnabled: testPayload.logsEnabled === true
-      })
-    });
-    
-    const data = await res.json();
-    
-    if (dotAnimation) dotAnimation.cancel();
-    if (waitingMsg.parentNode) waitingMsg.parentNode.removeChild(waitingMsg);
-    
-    if (
-      !res.ok ||
-      !data ||
-      (
-        !data.reply &&
-        !(data.comparison === true && Array.isArray(data.results) && data.results.length > 0)
-      )
-    ) {
-      if (
-        getConversationId() === requestConversationId &&
-        document.querySelector(".screen.active")?.id === requestScreenId &&
-        requestScreenId === "chatScreen"
-      ) {
-        addMessage("bot", "Erreur serveur", [], {
-          shouldAutoScroll: wasAtBottom || isEditing,
-          pulseScrollButton: !wasAtBottom && !isEditing
-        });
-      }
-      return;
-    }
-    
-    const currentConversationId = getConversationId();
-    const isSameConversation = currentConversationId === requestConversationId;
-    const responseTimestampBase = Date.now();
-    
-    if (isSameConversation) {
-      if (data.memory) saveMemory(data.memory);
-      if (data.flags) saveFlags(data.flags);
+      if (isSending) return;
+      if (sessionStatus === "terminated" || sessionStatus === "closing") return;
+      if (sessionStatus === "expired") return;
       
-      if (data.comparison === true && Array.isArray(data.results) && data.results.length > 0) {
-        data.results.forEach((result, index) => {
-          const label = String(result?.label || "").trim();
-          const replyText = String(result?.reply || "").trim();
-          const debugLines = Array.isArray(result?.debug) ? result.debug : [];
-          const resultDebugMeta =
-            result?.debugMeta && typeof result.debugMeta === "object" ?
-            result.debugMeta :
-            null;
-          
-          if (!replyText) return;
-          
-          const prefixedReply = label ? `[${label}]\n\n${replyText}` : replyText;
-          
-          pushHistory("assistant", prefixedReply, debugLines, resultDebugMeta);
-        });
+      const input = document.getElementById("input");
+      const sendBtn = document.getElementById("sendBtn");
+      const chat = document.getElementById("chat");
+      const nextMessage = input.value.trim();
+      
+      if (!nextMessage) return;
+      
+      const isEditing = editMode.active;
+      const conversationIdBeforeSend = getConversationId();
+      const wasAtBottom = isEditing ? true : isChatAtBottom();
+      const restoredDraft = isEditing ? draftBeforeEdit : "";
+      const testPayload = typeof getActiveTestPayload === "function" ?
+        getActiveTestPayload() :
+        {
+          override1: null,
+          override2: null,
+          comparisonEnabled: false,
+          logsEnabled: false
+        };
+      
+      let message = nextMessage;
+      
+      isSending = true;
+      updateActivity();
+      sendBtn.disabled = true;
+      
+      if (isEditing) {
+        const history = loadHistory();
+        const targetIndex = editMode.targetHistoryIndex;
+        const lastUserIndex = getLastUserHistoryIndex(history);
+        
+        if (
+          targetIndex < 0 ||
+          targetIndex !== lastUserIndex ||
+          editMode.conversationId !== conversationIdBeforeSend ||
+          !history[targetIndex] ||
+          history[targetIndex].role !== "user"
+        ) {
+          closeEditMode({ restoreDraft: true });
+          isSending = false;
+          syncInputAvailability();
+          showTemporaryNotice("Modification impossible");
+          return;
+        }
+        
+        history[targetIndex] = {
+          ...history[targetIndex],
+          content: message,
+          t: Date.now()
+        };
+        
+        const truncatedHistory = history.slice(0, targetIndex + 1);
+        saveHistory(truncatedHistory);
+        closeEditMode({ restoreDraft: false });
+        renderHistory();
+        scrollChatToBottom();
+        
+        input.value = restoredDraft || "";
       } else {
-        pushHistory("assistant", data.reply, data.debug || [], data.debugMeta || null);
+        pushHistory("user", message, []);
+        addMessage("user", message, [], {
+          shouldAutoScroll: wasAtBottom,
+          pulseScrollButton: false,
+          progressive: false,
+          historyIndex: loadHistory().length - 1
+        });
+        
+        input.value = "";
       }
-    } else {
-      const storedData = loadConversationData(requestConversationId);
-      const existingMessages = Array.isArray(storedData.messages) ? storedData.messages : [];
-      const appendedMessages = [];
       
-      if (data.comparison === true && Array.isArray(data.results) && data.results.length > 0) {
-        data.results.forEach((result, index) => {
-          const label = String(result?.label || "").trim();
-          const replyText = String(result?.reply || "").trim();
-          const debugLines = Array.isArray(result?.debug) ? result.debug : [];
-          const resultDebugMeta =
-            result?.debugMeta && typeof result.debugMeta === "object" ?
-            result.debugMeta :
-            null;
+      const requestConversationId = getConversationId();
+      const requestScreenId = document.querySelector(".screen.active")?.id || "";
+      
+      const waitingMsg = document.createElement("div");
+      waitingMsg.className = "message bot";
+      
+      const waitingContent = document.createElement("div");
+      waitingContent.className = "message-content";
+      
+      const waitingBubble = document.createElement("div");
+      waitingBubble.className = "bubble waiting-bubble";
+      
+      const waitingDot = document.createElement("span");
+      waitingDot.id = "waitingDot";
+      waitingDot.className = "waiting-dot";
+      
+      waitingBubble.appendChild(waitingDot);
+      waitingContent.appendChild(waitingBubble);
+      waitingMsg.appendChild(waitingContent);
+      
+      chat.appendChild(waitingMsg);
+      
+      if (wasAtBottom || isEditing) {
+        scrollChatToBottom();
+      } else {
+        requestAnimationFrame(() => {
+          updateScrollToBottomBtn();
+        });
+      }
+      
+      const shouldAutoScrollReply =
+        testPayload.comparisonEnabled === true ?
+        false :
+        (isEditing || wasAtBottom || isChatAtBottom());
+      
+      let dotAnimation = null;
+      
+      if (waitingDot && waitingDot.animate) {
+        dotAnimation = waitingDot.animate(
+          [
+            { transform: "scale(0.8)" },
+            { transform: "scale(1.2)" },
+            { transform: "scale(0.8)" }
+          ],
+          {
+            duration: 900,
+            iterations: Infinity,
+            easing: "ease-in-out"
+          }
+        );
+      }
+      
+      try {
+        const res = await fetch("/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message,
+            isEdited: isEditing === true,
+            userId: getOrCreateUserId(),
+            conversationId: requestConversationId,
+            recentHistory: loadHistory().map(({ role, content }) => ({ role, content })).slice(-MAX_RECENT_TURNS),
+            memory: loadMemory(),
+            flags: loadFlags(),
+            override1: testPayload.override1,
+            override2: testPayload.override2,
+            comparisonEnabled: testPayload.comparisonEnabled === true,
+            logsEnabled: testPayload.logsEnabled === true
+          })
+        });
+        
+        const data = await res.json();
+        
+        if (dotAnimation) dotAnimation.cancel();
+        if (waitingMsg.parentNode) waitingMsg.parentNode.removeChild(waitingMsg);
+        
+        if (
+          !res.ok ||
+          !data ||
+          (
+            !data.reply &&
+            !(data.comparison === true && Array.isArray(data.results) && data.results.length > 0)
+          )
+        ) {
+          if (
+            getConversationId() === requestConversationId &&
+            document.querySelector(".screen.active")?.id === requestScreenId &&
+            requestScreenId === "chatScreen"
+          ) {
+            addMessage("bot", "Erreur serveur", [], {
+              shouldAutoScroll: wasAtBottom || isEditing,
+              pulseScrollButton: !wasAtBottom && !isEditing
+            });
+          }
+          return;
+        }
+        
+        const normalizedComparisonResults =
+          data.comparison === true && Array.isArray(data.results) && data.results.length > 0 ?
+          data.results
+          .map(result => {
+            const label = String(result?.label || "").trim();
+            const replyText = String(result?.reply || "").trim();
+            const debugLines = Array.isArray(result?.debug) ? result.debug : [];
+            const resultDebugMeta =
+              result?.debugMeta && typeof result.debugMeta === "object" ?
+              result.debugMeta :
+              null;
+            
+            if (!replyText) return null;
+            
+            return {
+              label,
+              content: label ? `[${label}]\n\n${replyText}` : replyText,
+              debug: debugLines,
+              debugMeta: resultDebugMeta
+            };
+          })
+          .filter(Boolean) : [];
+        
+        const currentConversationId = getConversationId();
+        const isSameConversation = currentConversationId === requestConversationId;
+        
+        if (isSameConversation) {
+          if (data.memory) saveMemory(data.memory);
+          if (data.flags) saveFlags(data.flags);
           
-          if (!replyText) return;
+          if (normalizedComparisonResults.length > 0) {
+            normalizedComparisonResults.forEach(result => {
+              pushHistory("assistant", result.content, result.debug, result.debugMeta);
+            });
+          } else {
+            pushHistory("assistant", data.reply, data.debug || [], data.debugMeta || null);
+          }
+        } else {
+          const storedData = loadConversationData(requestConversationId);
+          const existingMessages = Array.isArray(storedData.messages) ? storedData.messages : [];
+          const nextAssistantMessages =
+            normalizedComparisonResults.length > 0 ?
+            normalizedComparisonResults.map((result, index) => ({
+              role: "assistant",
+              content: result.content,
+              debug: result.debug,
+              debugMeta: result.debugMeta,
+              t: Date.now() + index
+            })) : [{
+              role: "assistant",
+              content: data.reply,
+              debug: Array.isArray(data.debug) ? data.debug : [],
+              debugMeta: data.debugMeta && typeof data.debugMeta === "object" ? data.debugMeta : null,
+              t: Date.now()
+            }];
           
-          const prefixedReply = label ? `[${label}]\n\n${replyText}` : replyText;
-          
-          appendedMessages.push({
-            role: "assistant",
-            content: prefixedReply,
-            debug: debugLines,
-            debugMeta: resultDebugMeta,
-            t: responseTimestampBase + index
+          saveConversationData(requestConversationId, {
+            ...storedData,
+            memory: data.memory || storedData.memory,
+            flags: data.flags || storedData.flags,
+            messages: [
+              ...existingMessages,
+              ...nextAssistantMessages
+            ],
+            updatedAt: Date.now()
           });
-        });
-      } else {
-        appendedMessages.push({
-          role: "assistant",
-          content: data.reply,
-          debug: Array.isArray(data.debug) ? data.debug : [],
-          debugMeta: data.debugMeta && typeof data.debugMeta === "object" ? data.debugMeta : null,
-          t: responseTimestampBase
-        });
-      }
-      
-      saveConversationData(requestConversationId, {
-        ...storedData,
-        memory: data.memory || storedData.memory,
-        flags: data.flags || storedData.flags,
-        messages: [
-          ...existingMessages,
-          ...appendedMessages
-        ],
-        updatedAt: Date.now()
-      });
-    }
-    
-    if (
-      getConversationId() === requestConversationId &&
-      document.querySelector(".screen.active")?.id === requestScreenId &&
-      requestScreenId === "chatScreen"
-    ) {
-      if (data.comparison === true && Array.isArray(data.results) && data.results.length > 0) {
-        data.results.forEach((result, index) => {
-          const label = String(result?.label || "").trim();
-          const replyText = String(result?.reply || "").trim();
-          const debugLines = Array.isArray(result?.debug) ? result.debug : [];
-          const resultDebugMeta =
-            result?.debugMeta && typeof result.debugMeta === "object" ?
-            result.debugMeta :
-            null;
-          
-          if (!replyText) return;
-          
-          const prefixedReply = label ? `[${label}]\n\n${replyText}` : replyText;
-          
-          addMessage("bot", prefixedReply, debugLines, {
-            shouldAutoScroll: false,
-            pulseScrollButton: index === data.results.length - 1,
-            debugMeta: resultDebugMeta
+        }
+        
+        if (
+          getConversationId() === requestConversationId &&
+          document.querySelector(".screen.active")?.id === requestScreenId &&
+          requestScreenId === "chatScreen"
+        ) {
+          if (normalizedComparisonResults.length > 0) {
+            normalizedComparisonResults.forEach((result, index) => {
+              addMessage("bot", result.content, result.debug, {
+                shouldAutoScroll: false,
+                pulseScrollButton: index === normalizedComparisonResults.length - 1,
+                debugMeta: result.debugMeta
+              });
+            });
+          } else {
+            addMessage("bot", data.reply, data.debug || [], {
+              shouldAutoScroll: shouldAutoScrollReply,
+              pulseScrollButton: !shouldAutoScrollReply,
+              debugMeta: data.debugMeta || null
+            });
+          }
+        }
+        
+        if (data.conversationId) {
+          refreshConversationTitle(data.conversationId);
+        }
+        
+        updateActivity();
+      } catch {
+        if (dotAnimation) dotAnimation.cancel();
+        if (waitingMsg.parentNode) waitingMsg.parentNode.removeChild(waitingMsg);
+        
+        if (
+          getConversationId() === requestConversationId &&
+          document.querySelector(".screen.active")?.id === requestScreenId &&
+          requestScreenId === "chatScreen"
+        ) {
+          addMessage("bot", "Erreur serveur", [], {
+            shouldAutoScroll: shouldAutoScrollReply,
+            pulseScrollButton: !shouldAutoScrollReply
           });
-        });
-      } else {
-        addMessage("bot", data.reply, data.debug || [], {
-          shouldAutoScroll: shouldAutoScrollReply,
-          pulseScrollButton: !shouldAutoScrollReply,
-          debugMeta: data.debugMeta || null
-        });
+        }
+      } finally {
+        isSending = false;
+        syncInputAvailability();
+        updateScrollToBottomBtn();
       }
     }
-    
-    if (data.conversationId) {
-      refreshConversationTitle(data.conversationId);
-    }
-    
-    updateActivity();
-  } catch {
-    if (dotAnimation) dotAnimation.cancel();
-    if (waitingMsg.parentNode) waitingMsg.parentNode.removeChild(waitingMsg);
-    
-    if (
-      getConversationId() === requestConversationId &&
-      document.querySelector(".screen.active")?.id === requestScreenId &&
-      requestScreenId === "chatScreen"
-    ) {
-      addMessage("bot", "Erreur serveur", [], {
-        shouldAutoScroll: shouldAutoScrollReply,
-        pulseScrollButton: !shouldAutoScrollReply
-      });
-    }
-  } finally {
-    isSending = false;
-    syncInputAvailability();
-    updateScrollToBottomBtn();
-  }
-}
     
     document.getElementById("cancelEditTitleBtn").onclick = () => {
       closeEditTitleModal();
