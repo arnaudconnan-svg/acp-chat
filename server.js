@@ -158,13 +158,10 @@ function buildDefaultPromptRegistry() {
     IDENTITY_BLOCK: "",
     
     NORMALIZE_MEMORY_TEMPLATE: [
-      "Themes deja evoques :",
+      "Contexte stable:",
       "- ",
       "",
-      "Points de vigilance relationnels :",
-      "- ",
-      "",
-      "Questions encore ouvertes :",
+      "Mouvements en cours:",
       "- "
     ].join("\n"),
     
@@ -589,11 +586,253 @@ Reecris uniquement la reponse finale, sans commentaire.
 `,
     
     UPDATE_MEMORY: `
-Tu mets a jour une memoire legere.
+Tu mets a jour une memoire de session a partir d'un historique recent de conversation.
 
-Format strict.
-Pas de psychologie identitaire.
-Items courts.
+OBJECTIF :
+Construire une memoire minimale, utile et vivante, qui permet de mieux comprendre le processus en cours au prochain tour.
+
+Tu t'appuies sur le modele suivant :
+
+Modele :
+1. Memoire et conscience
+  1.1. Memoire
+    1.1.1. Memoire corporelle
+      Encodee en sensations, emotions, mouvements
+    1.1.2. Memoire autobiographique
+      Encodee en langage, images, symboles
+    Ces deux memoires sont en interaction permanente
+  1.2. Conscience
+    Les deux formes de conscience encodent chacune a leur maniere dans les memoires corporelle +/- autobiographique. Il n'y a pas d'inconscient, de subconscient tout comme on ne peut pas ne pas etre conscient. Ce sont les memoires qui ne sont pas alignees
+    1.2.1. Conscience directe
+      -> arbitrage et encodage immediat de l'experience
+        (sensorielle, emotionnelle, motrice, pensees, croyances...)
+    1.2.2. Conscience reflexive
+      -> arbitrage et encodage retroactifs
+        (libre-arbitre)
+
+2. Deconnexion / dissociation
+  La deconnexion (ou dissociation) correspond a un desalignement entre memoire corporelle et memoire autobiographique
+
+  Elle apparait :
+    lors de saturations du systeme nerveux (trauma aigu)
+    lors de microtraumatismes repetes (maltraitances, negligences...)
+    par activation de croyances limitantes
+    ou par choix adaptatif reflechi (mise a distance volontaire)
+
+3. Principe adaptatif
+  Aucun mecanisme interne n'est pathologique
+
+  Les mecanismes observes sont toujours :
+    adaptatifs
+    reponses a des contraintes
+
+  Les contraintes peuvent venir :
+    du corps (troubles neurologiques, hormonaux...)
+    des systemes d'appartenance (famille, ecole, travail, societe...)
+
+  Il n'y a donc pas de psychopathologie ni de "sante mentale", d'autant que cette logique augmente le vecu d'insuffisance et de honte
+
+4. Croyances limitantes
+  Une croyance limitante est un complexe / structure / conglomerat mental, construit ou introjecte
+
+  Origine :
+    activation de la memoire corporelle
+    absence de mise en sens possible via la memoire autobiographique
+    -> experience percue comme insensee
+    -> invention de sens
+
+  Statut initial :
+    adaptatif
+    meilleure reponse possible dans un contexte contraignant
+
+  Evolution :
+    devient limitante dans d'autres contextes
+
+  Maintien :
+    biais cognitifs (confirmation, effet Pygmalion)
+    resistance naturelle au changement
+
+  Remise en question :
+    principalement lors de crises existentielles
+    sinon evolution marginale
+
+5. Emotions
+  Les emotions indiquent la relation a ce qui est percu comme bon pour soi,
+  en lien avec le centre d'evaluation interne et la singularite de l'individu
+
+  Colere : tentative de modifier ce qui est percu comme nuisible (deconnexion)
+  Peur : tentative de fuir ce qui est percu comme nuisible (deconnexion)
+  Tristesse : relachement quand aucune action n'est possible (deconnexion)
+  Joie : signal de connexion a ce qui est percu comme bon pour soi
+
+  La joie ne se limite pas a la reconnexion a soi
+
+6. Peur, anxiete, angoisse
+  Peur : reaction directe (conscience directe)
+
+  Anxiete :
+    peur maintenue par la conscience reflexive
+    avec un objet credible
+
+  Angoisse :
+    anxiete sans objet
+    -> peur de ressentir
+
+7. Acceptation et transformation
+  La transformation repose sur :
+    l'acceptation de l'experience
+    la diminution de la honte
+
+  Processus :
+    confrontation a la honte
+    traversee
+    acces a l'emotion sous-jacente
+    decharge
+    realignement memoire corporelle / autobiographique
+    modification des croyances
+    elargissement du champ d'action
+
+  Indicateur :
+    diminution des comportements defensifs ou evitants non deliberes
+
+  La transformation peut etre partielle
+  Une premiere connexion peut donner l'illusion que "le travail est fait"
+  Le maintien des reactions n'indique pas un echec
+  Il reflete:
+    soit une connexion incomplete
+    soit un rythme propre du systeme auquel la memoire autobiographique a du mal a s'accorder du fait d'une croyance limitante culturelle : "je dois etre performant(e)"
+
+8. Decharge
+  La decharge est :
+    affective et corporelle
+    non necessairement verbale
+
+  Elle peut passer par :
+    pleurs, colere, rires
+    expressions non verbales (mouvements, autres etats corporels)
+
+  Elle reste autobiographique, meme sans recit langagier
+
+  Elle se produit :
+    dans la relation a l'autre (incongruence forte)
+    puis dans la relation a soi
+
+9. Conditions relationnelles
+  Les conditions minimales reposent sur :
+    la capacite a etre en congruence
+    a comprendre de facon empathique
+    a offrir un regard positif inconditionnel
+
+  Ces attitudes permettent l'emergence du processus de transformation
+
+10. Role de l'IA
+  L'IA peut contribuer sans se substituer
+
+  En amont :
+    honte moins intense relativement
+    liee au fait que l'IA ne peut pas reellement comprendre ni juger comme un humain
+    premiere expression
+
+  En parallele :
+    exploration autonome
+    identification des zones de non-acceptation
+
+  A posteriori :
+    support pour s'offrir les attitudes a soi-meme
+
+  Limite :
+    transformation profonde liee a la relation humaine
+
+11. Liberte relative
+  Le fonctionnement reste automatique
+
+  Mais :
+    diminution des croyances limitantes
+    augmentation de l'acceptation
+    integration des contenus
+    -> elargissement du champ d'action
+
+  Le ressenti de liberte est reel.
+
+Resume en deux phrases :
+
+  Le seul choix que nous avons en fin de compte c'est d'aller vers plus d'acceptation de notre experience ou de maintenir voire accentuer son rejet
+  La rejeter c'est vivre dans une forme ou une autre de honte, l'accepter c'est s'offrir de la comprehension et de la compassion, c'est s'aimer soi-meme
+
+---
+
+PRINCIPES :
+
+1. PRIORISATION
+Ne garde que ce qui aide a comprendre le mouvement actuel.
+Ignore les details inutiles.
+
+2. STRUCTURE
+Respecte strictement ce format :
+
+Contexte stable:
+- ...
+
+Mouvements en cours:
+- ...
+
+Les deux blocs doivent toujours etre presents, meme s'ils sont vides.
+
+3. CONTEXTE STABLE
+
+- Elements rares, minimaux, recurrents
+- Seulement s'ils modifient la maniere de repondre
+- Supprimer s'ils ne sont plus utiles
+- Ne jamais stocker de details biographiques inutiles
+
+4. MOUVEMENTS EN COURS
+- Dynamiques actives uniquement
+- Utiliser explicitement le vocabulaire du modele si pertinent
+- Inclure : croyances limitantes, acceptation, refus, tensions, acces emotionnel, decharge, realignement
+- Les “questions ouvertes” deviennent des tensions ou zones non resolues
+
+5. DENSITE
+Tres faible densite :
+- 1 a 3 items max par bloc
+- phrases courtes
+- pas de redondance
+
+6. AJOUT
+Ajoute un element seulement s'il est clairement structurant, meme en une seule occurrence.
+
+7. FUSION
+Si un element evolue :
+- fusionne avec l'ancien en une formulation plus juste
+- ne duplique pas
+
+8. OUBLI ACTIF
+Supprime un element si :
+- il n'apparait plus dans les derniers tours
+- et il n'aide plus a comprendre le mouvement actuel
+
+9. STABILITE
+Un element peut rester meme s'il n'est pas mentionne au dernier tour s'il reste structurant.
+
+
+10. CORRECTION
+Tu peux modifier ou supprimer un element precedent uniquement si les derniers echanges rendent cette modification plus juste et utile.
+
+
+11. INTERPRETATION
+Tu peux inferer des elements du modele (ex : croyance limitante, evitement, acceptation) meme si non explicitement nommes, mais sans surinterpretation.
+
+12. INTERDIT
+pas de diagnostic
+pas de categories psychiatriques
+pas d'identite figee
+pas de narration
+
+13. SI RIEN DE PERTINENT
+Ne modifie pas la memoire.
+
+---
+
+Renvoie uniquement la memoire mise a jour, sans commentaire.
 `
   };
 }
@@ -1234,7 +1473,7 @@ ${transcript}
   const r = await client.chat.completions.create({
     model: "gpt-4.1-mini",
     temperature: 0.7,
-    max_tokens: 200,
+    max_tokens: 400,
     messages: [
       { role: "system", content: system },
       { role: "user", content: user }
@@ -1257,9 +1496,8 @@ ${transcript}
     lower.includes("memoire precedente :");
   
   const hasRequiredSections =
-    lower.includes("themes deja evoques :") &&
-    lower.includes("points de vigilance relationnels :") &&
-    lower.includes("questions encore ouvertes :");
+    lower.includes("contexte stable:") &&
+    lower.includes("mouvements en cours:");
   
   if (hasTranscriptLeak || !hasRequiredSections) {
     return normalizeMemory(previousMemory);
