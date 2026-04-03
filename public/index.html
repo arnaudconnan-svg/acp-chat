@@ -1034,16 +1034,18 @@
       -webkit-backdrop-filter: blur(8px);
     }
     
-    /* Chips debug non sélectionnables */
+    /* Chips debug + labels comparaison non selectionnables */
     .debug-chip,
-    .debug-chip * {
+    .debug-chip *,
+    .message-content>div:first-child,
+    .message-content>div:first-child * {
       user-select: none;
       -webkit-user-select: none;
       -ms-user-select: none;
     }
     
-    /* Optionnel : empêche aussi le menu long press sur mobile */
-    .debug-chip {
+    .debug-chip,
+    .message-content>div:first-child {
       -webkit-touch-callout: none;
     }
     
