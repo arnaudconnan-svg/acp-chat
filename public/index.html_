@@ -3486,318 +3486,336 @@
     }
     
     function addMessage(role, text, debug, options = {}) {
-      const {
-        shouldAutoScroll = true,
-          pulseScrollButton = false,
-          progressive = true,
-          historyIndex = -1,
-          debugMeta: debugMetaInput = null
-      } = options;
-      
-      const chat = document.getElementById("chat");
-      if (!chat) return;
-      
-      const wasAtBottomBeforeInsert = isChatAtBottom();
-      
-      const rawText = String(text || "");
-      let displayText = rawText;
-      let compareLabel = "";
-      
-      if (role === "bot") {
-        const match = rawText.match(/^\[(Référence|Override 1|Override 1 \+ 2)\]\n\n([\s\S]*)$/);
-        if (match) {
-          compareLabel = match[1];
-          displayText = match[2];
-        }
+  const {
+    shouldAutoScroll = true,
+    pulseScrollButton = false,
+    progressive = true,
+    historyIndex = -1,
+    debugMeta: debugMetaInput = null
+  } = options;
+  
+  const chat = document.getElementById("chat");
+  if (!chat) return;
+  
+  const wasAtBottomBeforeInsert = isChatAtBottom();
+  
+  const rawText = String(text || "");
+  let displayText = rawText;
+  let compareLabel = "";
+  
+  if (role === "bot") {
+    const match = rawText.match(/^\[(Référence|Override 1|Override 1 \+ 2)\]\n\n([\s\S]*)$/);
+    if (match) {
+      compareLabel = match[1];
+      displayText = match[2];
+    }
+  }
+  
+  const msg = document.createElement("div");
+  msg.className = "message " + role;
+  
+  const contentWrap = document.createElement("div");
+  contentWrap.className = "message-content";
+  
+  function buildDebugMeta(debugLines, debugMetaValue) {
+    const meta = {
+      memory: "",
+      directivityLabel: "",
+      modelConflict: false,
+      rewriteSource: ""
+    };
+    
+    if (debugMetaValue && typeof debugMetaValue === "object") {
+      if (typeof debugMetaValue.memory === "string") {
+        meta.memory = debugMetaValue.memory.trim();
       }
       
-      const msg = document.createElement("div");
-      msg.className = "message " + role;
-      
-      const contentWrap = document.createElement("div");
-      contentWrap.className = "message-content";
-      
-      function buildDebugMeta(debugMetaValue) {
-        const meta = {
-          topChips: [],
-          memory: "",
-          directivityLabel: "",
-          modelConflict: false,
-          rewriteSource: ""
-        };
-        
-        if (!debugMetaValue || typeof debugMetaValue !== "object") {
-          return meta;
-        }
-        
-        if (Array.isArray(debugMetaValue.topChips)) {
-          meta.topChips = debugMetaValue.topChips
-            .map(value => String(value || "").trim())
-            .filter(Boolean);
-        }
-        
-        if (typeof debugMetaValue.memory === "string") {
-          meta.memory = debugMetaValue.memory.trim();
-        }
-        
-        if (typeof debugMetaValue.directivityText === "string" && debugMetaValue.directivityText.trim()) {
-          meta.directivityLabel = debugMetaValue.directivityText.trim();
-        } else if (typeof debugMetaValue.directivityLabel === "string" && debugMetaValue.directivityLabel.trim()) {
-          meta.directivityLabel = debugMetaValue.directivityLabel.trim();
-        }
-        
-        if (debugMetaValue.modelConflict === true) {
-          meta.modelConflict = true;
-        }
-        
-        if (typeof debugMetaValue.rewriteSource === "string") {
-          meta.rewriteSource = debugMetaValue.rewriteSource.trim();
-        }
-        
-        return meta;
+      if (debugMetaValue.modelConflict === true) {
+        meta.modelConflict = true;
       }
       
-      const debugMeta = role === "bot" ? buildDebugMeta(debugMetaInput) : null;
-      
-      if (role === "bot" && compareLabel) {
-        const compareTag = document.createElement("div");
-        compareTag.textContent = compareLabel;
-        compareTag.style.fontSize = "11px";
-        compareTag.style.fontWeight = "600";
-        compareTag.style.marginBottom = "6px";
-        compareTag.style.opacity = "0.7";
-        
-        if (compareLabel === "Référence") {
-          compareTag.style.color = "#245e66";
-        } else if (compareLabel === "Override 1") {
-          compareTag.style.color = "#7a3fd1";
-        } else if (compareLabel === "Override 1 + 2") {
-          compareTag.style.color = "#c05621";
-        }
-        
-        contentWrap.appendChild(compareTag);
+      if (typeof debugMetaValue.rewriteSource === "string") {
+        meta.rewriteSource = debugMetaValue.rewriteSource.trim();
       }
       
-      const bubble = document.createElement("div");
-      bubble.className = "bubble";
-      
-      bubble.style.padding = "13px 15px";
-      bubble.style.borderRadius = "20px";
-      bubble.style.lineHeight = "1.54";
-      bubble.style.whiteSpace = "pre-wrap";
-      bubble.style.wordBreak = "break-word";
-      bubble.style.overflowWrap = "break-word";
-      bubble.style.boxSizing = "border-box";
-      bubble.style.transition = "transform 0.46s ease, opacity 0.46s ease, box-shadow 0.46s ease, background 0.46s ease";
-      bubble.style.display = "block";
-      
-      if (role === "bot") {
-        bubble.style.background = "rgba(255, 255, 255, 0.62)";
-        bubble.style.color = "#3e5e62";
-        bubble.style.borderTopLeftRadius = "8px";
-        bubble.style.boxShadow = "0 10px 24px rgba(36, 94, 102, 0.05), 0 1px 0 rgba(255, 255, 255, 0.42) inset";
-        bubble.style.backdropFilter = "blur(8px)";
-        bubble.style.webkitBackdropFilter = "blur(8px)";
-        bubble.style.webkitTouchCallout = "none";
-        bubble.style.webkitUserSelect = "none";
-        bubble.style.userSelect = "none";
-        
-        if (compareLabel === "Référence") {
-          bubble.style.border = "1px solid rgba(36,94,102,0.2)";
-        } else if (compareLabel === "Override 1") {
-          bubble.style.border = "1px solid rgba(122,63,209,0.3)";
-        } else if (compareLabel === "Override 1 + 2") {
-          bubble.style.border = "1px solid rgba(192,86,33,0.3)";
+      if (debugMetaValue.explorationDirectivityLevel !== undefined) {
+        const level = Number(debugMetaValue.explorationDirectivityLevel);
+        if (Number.isInteger(level)) {
+          meta.directivityLabel = `Niveau de directivité : ${Math.max(0, Math.min(4, level))}/4`;
         }
-        
-        bubble.addEventListener("contextmenu", e => e.preventDefault());
-        bubble.addEventListener("selectstart", e => e.preventDefault());
-        bubble.addEventListener("dragstart", e => e.preventDefault());
-        
-        renderBotMessageContent(bubble, displayText, {
-          progressive,
-          wasAtBottomBeforeInsert
-        });
-      } else {
-        bubble.style.background = "rgba(36, 94, 102, 0.16)";
-        bubble.style.color = "#183f44";
-        bubble.style.borderTopRightRadius = "8px";
-        bubble.style.boxShadow = "0 10px 26px rgba(36, 94, 102, 0.08), 0 1px 0 rgba(255, 255, 255, 0.28) inset";
-        
-        bubble.textContent = displayText;
-        
-        let longPressTimer = null;
-        let longPressTriggered = false;
-        let startX = 0;
-        let startY = 0;
-        
-        bubble.style.webkitTouchCallout = "none";
-        bubble.style.webkitUserSelect = "none";
-        bubble.style.userSelect = "none";
-        
-        const clearLongPress = () => {
-          if (longPressTimer) {
-            clearTimeout(longPressTimer);
-            longPressTimer = null;
-          }
-        };
-        
-        const startLongPress = event => {
-          if (historyIndex < 0) return;
-          
-          longPressTriggered = false;
-          
-          if (event.touches && event.touches[0]) {
-            startX = event.touches[0].clientX;
-            startY = event.touches[0].clientY;
-          } else {
-            startX = event.clientX || 0;
-            startY = event.clientY || 0;
-          }
-          
-          clearLongPress();
-          
-          longPressTimer = setTimeout(() => {
-            longPressTriggered = true;
-            openEditMode(historyIndex, displayText);
-          }, 420);
-        };
-        
-        const moveLongPress = event => {
-          let currentX = 0;
-          let currentY = 0;
-          
-          if (event.touches && event.touches[0]) {
-            currentX = event.touches[0].clientX;
-            currentY = event.touches[0].clientY;
-          } else {
-            currentX = event.clientX || 0;
-            currentY = event.clientY || 0;
-          }
-          
-          if (Math.abs(currentX - startX) > 8 || Math.abs(currentY - startY) > 8) {
-            clearLongPress();
-          }
-        };
-        
-        const endLongPress = () => {
-          clearLongPress();
-        };
-        
-        bubble.addEventListener("contextmenu", e => e.preventDefault());
-        bubble.addEventListener("selectstart", e => e.preventDefault());
-        bubble.addEventListener("dragstart", e => e.preventDefault());
-        
-        bubble.addEventListener("touchstart", startLongPress, { passive: true });
-        bubble.addEventListener("touchmove", moveLongPress, { passive: true });
-        bubble.addEventListener("touchend", endLongPress);
-        bubble.addEventListener("touchcancel", endLongPress);
-        
-        bubble.addEventListener("mousedown", startLongPress);
-        bubble.addEventListener("mousemove", moveLongPress);
-        bubble.addEventListener("mouseup", endLongPress);
-        bubble.addEventListener("mouseleave", endLongPress);
-        
-        bubble.addEventListener("click", event => {
-          if (longPressTriggered) {
-            event.preventDefault();
-            event.stopPropagation();
-            longPressTriggered = false;
-          }
-        });
       }
+    }
+    
+    (Array.isArray(debugLines) ? debugLines : []).forEach(line => {
+      const safeLine = String(line || "").trim();
+      if (!safeLine) return;
       
-      if (role === "bot" && debugMeta && showDebug && debugMeta.topChips.length > 0) {
-        const top = document.createElement("div");
-        top.style.display = "flex";
-        top.style.flexWrap = "wrap";
-        top.style.gap = "6px";
-        top.style.marginBottom = "6px";
-        
-        debugMeta.topChips.forEach(label => {
-          const chip = document.createElement("div");
-          chip.className = "debug-chip";
-          chip.textContent = label;
-          top.appendChild(chip);
-        });
-        
-        contentWrap.appendChild(top);
-      }
-      
-      contentWrap.appendChild(bubble);
-      
-      if (role === "bot" && debugMeta && showDebug) {
-        const bottom = document.createElement("div");
-        bottom.style.display = "flex";
-        bottom.style.flexWrap = "wrap";
-        bottom.style.gap = "6px";
-        bottom.style.marginTop = "6px";
-        
-        const mem = document.createElement("details");
-        
-        const memSum = document.createElement("summary");
-        memSum.className = "debug-chip";
-        memSum.textContent = "Mémoire";
-        
-        const memContent = document.createElement("div");
-        memContent.className = "debug-block";
-        memContent.textContent = debugMeta.memory || "";
-        
-        mem.appendChild(memSum);
-        mem.appendChild(memContent);
-        bottom.appendChild(mem);
-        
-        if (debugMeta.directivityLabel) {
-          const dir = document.createElement("details");
-          
-          const dirSum = document.createElement("summary");
-          dirSum.className = "debug-chip";
-          dirSum.textContent = "Directivité";
-          
-          const dirContent = document.createElement("div");
-          dirContent.className = "debug-block";
-          dirContent.textContent = debugMeta.directivityLabel;
-          
-          dir.appendChild(dirSum);
-          dir.appendChild(dirContent);
-          bottom.appendChild(dir);
-        }
-        
-        if (debugMeta.modelConflict && debugMeta.rewriteSource) {
-          const conf = document.createElement("details");
-          
-          const confSum = document.createElement("summary");
-          confSum.className = "debug-chip";
-          confSum.textContent = "Conflit avec le modèle théorique";
-          
-          const confContent = document.createElement("div");
-          confContent.className = "debug-block";
-          confContent.textContent = debugMeta.rewriteSource;
-          
-          conf.appendChild(confSum);
-          conf.appendChild(confContent);
-          bottom.appendChild(conf);
-        }
-        
-        contentWrap.appendChild(bottom);
-      }
-      
-      msg.appendChild(contentWrap);
-      chat.appendChild(msg);
-      
-      if (shouldAutoScroll) {
-        scrollChatToBottom();
+      if (!meta.directivityLabel && safeLine.startsWith("explorationDirectivityLevel:")) {
+        meta.directivityLabel = safeLine.replace("explorationDirectivityLevel:", "").trim();
         return;
       }
       
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          updateScrollToBottomBtn({
-            forcePulse: role === "bot" && pulseScrollButton && !wasAtBottomBeforeInsert
-          });
-        });
-      });
+      if (!meta.modelConflict && safeLine.startsWith("modelConflict")) {
+        meta.modelConflict = true;
+        return;
+      }
+      
+      if (!meta.rewriteSource && safeLine.startsWith("rewriteSource:")) {
+        meta.rewriteSource = safeLine.replace("rewriteSource:", "").trim();
+      }
+    });
+    
+    return meta;
+  }
+  
+  const debugMeta = role === "bot" ? buildDebugMeta(debug, debugMetaInput) : null;
+  
+  if (role === "bot" && compareLabel) {
+    const compareTag = document.createElement("div");
+    compareTag.textContent = compareLabel;
+    compareTag.style.fontSize = "11px";
+    compareTag.style.fontWeight = "600";
+    compareTag.style.marginBottom = "6px";
+    compareTag.style.opacity = "0.7";
+    
+    if (compareLabel === "Référence") {
+      compareTag.style.color = "#245e66";
+    } else if (compareLabel === "Override 1") {
+      compareTag.style.color = "#7a3fd1";
+    } else if (compareLabel === "Override 1 + 2") {
+      compareTag.style.color = "#c05621";
     }
+    
+    contentWrap.appendChild(compareTag);
+  }
+  
+  const bubble = document.createElement("div");
+  bubble.className = "bubble";
+  
+  bubble.style.padding = "13px 15px";
+  bubble.style.borderRadius = "20px";
+  bubble.style.lineHeight = "1.54";
+  bubble.style.whiteSpace = "pre-wrap";
+  bubble.style.wordBreak = "break-word";
+  bubble.style.overflowWrap = "break-word";
+  bubble.style.boxSizing = "border-box";
+  bubble.style.transition = "transform 0.46s ease, opacity 0.46s ease, box-shadow 0.46s ease, background 0.46s ease";
+  bubble.style.display = "block";
+  
+  if (role === "bot") {
+    bubble.style.background = "rgba(255, 255, 255, 0.62)";
+    bubble.style.color = "#3e5e62";
+    bubble.style.borderTopLeftRadius = "8px";
+    bubble.style.boxShadow = "0 10px 24px rgba(36, 94, 102, 0.05), 0 1px 0 rgba(255, 255, 255, 0.42) inset";
+    bubble.style.backdropFilter = "blur(8px)";
+    bubble.style.webkitBackdropFilter = "blur(8px)";
+    bubble.style.webkitTouchCallout = "none";
+    bubble.style.webkitUserSelect = "none";
+    bubble.style.userSelect = "none";
+    
+    if (compareLabel === "Référence") {
+      bubble.style.border = "1px solid rgba(36,94,102,0.2)";
+    } else if (compareLabel === "Override 1") {
+      bubble.style.border = "1px solid rgba(122,63,209,0.3)";
+    } else if (compareLabel === "Override 1 + 2") {
+      bubble.style.border = "1px solid rgba(192,86,33,0.3)";
+    }
+    
+    bubble.addEventListener("contextmenu", e => e.preventDefault());
+    bubble.addEventListener("selectstart", e => e.preventDefault());
+    bubble.addEventListener("dragstart", e => e.preventDefault());
+    
+    renderBotMessageContent(bubble, displayText, {
+      progressive,
+      wasAtBottomBeforeInsert
+    });
+  } else {
+    bubble.style.background = "rgba(36, 94, 102, 0.16)";
+    bubble.style.color = "#183f44";
+    bubble.style.borderTopRightRadius = "8px";
+    bubble.style.boxShadow = "0 10px 26px rgba(36, 94, 102, 0.08), 0 1px 0 rgba(255, 255, 255, 0.28) inset";
+    
+    bubble.textContent = displayText;
+    
+    let longPressTimer = null;
+    let longPressTriggered = false;
+    let startX = 0;
+    let startY = 0;
+    
+    bubble.style.webkitTouchCallout = "none";
+    bubble.style.webkitUserSelect = "none";
+    bubble.style.userSelect = "none";
+    
+    const clearLongPress = () => {
+      if (longPressTimer) {
+        clearTimeout(longPressTimer);
+        longPressTimer = null;
+      }
+    };
+    
+    const startLongPress = event => {
+      if (historyIndex < 0) return;
+      
+      longPressTriggered = false;
+      
+      if (event.touches && event.touches[0]) {
+        startX = event.touches[0].clientX;
+        startY = event.touches[0].clientY;
+      } else {
+        startX = event.clientX || 0;
+        startY = event.clientY || 0;
+      }
+      
+      clearLongPress();
+      
+      longPressTimer = setTimeout(() => {
+        longPressTriggered = true;
+        openEditMode(historyIndex, displayText);
+      }, 420);
+    };
+    
+    const moveLongPress = event => {
+      let currentX = 0;
+      let currentY = 0;
+      
+      if (event.touches && event.touches[0]) {
+        currentX = event.touches[0].clientX;
+        currentY = event.touches[0].clientY;
+      } else {
+        currentX = event.clientX || 0;
+        currentY = event.clientY || 0;
+      }
+      
+      if (Math.abs(currentX - startX) > 8 || Math.abs(currentY - startY) > 8) {
+        clearLongPress();
+      }
+    };
+    
+    const endLongPress = () => {
+      clearLongPress();
+    };
+    
+    bubble.addEventListener("contextmenu", e => e.preventDefault());
+    bubble.addEventListener("selectstart", e => e.preventDefault());
+    bubble.addEventListener("dragstart", e => e.preventDefault());
+    
+    bubble.addEventListener("touchstart", startLongPress, { passive: true });
+    bubble.addEventListener("touchmove", moveLongPress, { passive: true });
+    bubble.addEventListener("touchend", endLongPress);
+    bubble.addEventListener("touchcancel", endLongPress);
+    
+    bubble.addEventListener("mousedown", startLongPress);
+    bubble.addEventListener("mousemove", moveLongPress);
+    bubble.addEventListener("mouseup", endLongPress);
+    bubble.addEventListener("mouseleave", endLongPress);
+    
+    bubble.addEventListener("click", event => {
+      if (longPressTriggered) {
+        event.preventDefault();
+        event.stopPropagation();
+        longPressTriggered = false;
+      }
+    });
+  }
+  
+  contentWrap.appendChild(bubble);
+  
+  // ===== DEBUG UI (messages bot uniquement) =====
+if (role === "bot" && debugMeta && showDebug) {
+  
+  // ----- TOP CHIPS (au-dessus de la bulle) -----
+  if (Array.isArray(debugMeta.topChips) && debugMeta.topChips.length > 0) {
+    const topContainer = document.createElement("div");
+    topContainer.style.display = "flex";
+    topContainer.style.flexWrap = "wrap";
+    topContainer.style.gap = "6px";
+    topContainer.style.marginBottom = "6px";
+    
+    debugMeta.topChips.forEach(label => {
+      const chip = document.createElement("div");
+      chip.className = "debug-chip";
+      chip.textContent = label;
+      topContainer.appendChild(chip);
+    });
+    
+    contentWrap.insertBefore(topContainer, bubble);
+  }
+  
+  // ----- BOTTOM CHIPS (sous la bulle) -----
+  const bottomContainer = document.createElement("div");
+  bottomContainer.style.display = "flex";
+  bottomContainer.style.flexWrap = "wrap";
+  bottomContainer.style.gap = "6px";
+  bottomContainer.style.marginTop = "6px";
+  
+  // --- MÉMOIRE (toujours visible) ---
+  const memoryBlock = document.createElement("details");
+  
+  const memorySummary = document.createElement("summary");
+  memorySummary.className = "debug-chip";
+  memorySummary.textContent = "Mémoire";
+  
+  const memoryContent = document.createElement("div");
+  memoryContent.className = "debug-block";
+  memoryContent.textContent = debugMeta.memory || "";
+  
+  memoryBlock.appendChild(memorySummary);
+  memoryBlock.appendChild(memoryContent);
+  bottomContainer.appendChild(memoryBlock);
+  
+  // --- DIRECTIVITÉ (si actif) ---
+  if (debugMeta.directivityLabel) {
+    const dirBlock = document.createElement("details");
+    
+    const dirSummary = document.createElement("summary");
+    dirSummary.className = "debug-chip";
+    dirSummary.textContent = "Directivité";
+    
+    const dirContent = document.createElement("div");
+    dirContent.className = "debug-block";
+    dirContent.textContent = debugMeta.directivityLabel;
+    
+    dirBlock.appendChild(dirSummary);
+    dirBlock.appendChild(dirContent);
+    bottomContainer.appendChild(dirBlock);
+  }
+  
+  // --- CONFLIT MODÈLE (si actif) ---
+  if (debugMeta.modelConflict && debugMeta.rewriteSource) {
+    const conflictBlock = document.createElement("details");
+    
+    const conflictSummary = document.createElement("summary");
+    conflictSummary.className = "debug-chip";
+    conflictSummary.textContent = "Conflit avec le modèle théorique";
+    
+    const conflictContent = document.createElement("div");
+    conflictContent.className = "debug-block";
+    conflictContent.textContent = debugMeta.rewriteSource;
+    
+    conflictBlock.appendChild(conflictSummary);
+    conflictBlock.appendChild(conflictContent);
+    bottomContainer.appendChild(conflictBlock);
+  }
+  
+  contentWrap.appendChild(bottomContainer);
+}
+  
+  msg.appendChild(contentWrap);
+  chat.appendChild(msg);
+  
+  if (shouldAutoScroll) {
+    scrollChatToBottom();
+    return;
+  }
+  
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      updateScrollToBottomBtn({
+        forcePulse: role === "bot" && pulseScrollButton && !wasAtBottomBeforeInsert
+      });
+    });
+  });
+}
     
     function renderHistory() {
       const chat = document.getElementById("chat");
@@ -4508,10 +4526,6 @@
               const label = String(result?.label || "").trim();
               const replyText = String(result?.reply || "").trim();
               const debugLines = Array.isArray(result?.debug) ? result.debug : [];
-              const resultDebugMeta =
-                result?.debugMeta && typeof result.debugMeta === "object" ?
-                result.debugMeta :
-                null;
               
               if (!replyText) return;
               
@@ -4520,7 +4534,7 @@
               addMessage("bot", prefixedReply, debugLines, {
                 shouldAutoScroll: false,
                 pulseScrollButton: index === data.results.length - 1,
-                debugMeta: resultDebugMeta
+                debugMeta: null
               });
             });
           } else {
