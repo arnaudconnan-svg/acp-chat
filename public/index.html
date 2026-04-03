@@ -2140,11 +2140,14 @@
         content,
         debug: Array.isArray(debug) ? debug : [],
         debugMeta: debugMeta && typeof debugMeta === "object" ? {
+          topChips: Array.isArray(debugMeta.topChips) ?
+            debugMeta.topChips
+            .map(value => String(value || "").trim())
+            .filter(Boolean) : [],
           memory: typeof debugMeta.memory === "string" ? debugMeta.memory : "",
+          directivityText: typeof debugMeta.directivityText === "string" ? debugMeta.directivityText : (typeof debugMeta.directivityLabel === "string" ? debugMeta.directivityLabel : ""),
           rewriteSource: typeof debugMeta.rewriteSource === "string" ? debugMeta.rewriteSource : null,
-          modelConflict: debugMeta.modelConflict === true,
-          explorationDirectivityLevel: Number.isInteger(Number(debugMeta.explorationDirectivityLevel)) ?
-            Math.max(0, Math.min(4, Number(debugMeta.explorationDirectivityLevel))) : 0
+          modelConflict: debugMeta.modelConflict === true
         } : null,
         t: Date.now()
       });
