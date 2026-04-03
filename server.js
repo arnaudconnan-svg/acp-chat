@@ -1241,7 +1241,31 @@ ${transcript}
     ]
   });
   
-  return (r.choices?.[0]?.message?.content || "").trim() || normalizeMemory(previousMemory);
+  const rawOutput = String(r.choices?.[0]?.message?.content || "").trim();
+  
+  if (!rawOutput) {
+    return normalizeMemory(previousMemory);
+  }
+  
+  const cleaned = rawOutput.replace(/```[\s\S]*?```/g, "").trim();
+  
+  const lower = cleaned.toLowerCase();
+  const hasTranscriptLeak =
+    lower.includes("conversation :") ||
+    lower.includes("utilisateur :") ||
+    lower.includes("assistant :") ||
+    lower.includes("memoire precedente :");
+  
+  const hasRequiredSections =
+    lower.includes("themes deja evoques :") &&
+    lower.includes("points de vigilance relationnels :") &&
+    lower.includes("questions encore ouvertes :");
+  
+  if (hasTranscriptLeak || !hasRequiredSections) {
+    return normalizeMemory(previousMemory);
+  }
+  
+  return cleaned;
 }
 
 // --------------------------------------------------
