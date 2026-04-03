@@ -2795,11 +2795,21 @@
       });
       
       logsToggle.addEventListener("change", () => {
+        const wasAtBottom = isChatAtBottom();
+        
         testUiState.logsEnabled = logsToggle.checked === true;
         showDebug = testUiState.logsEnabled === true;
+        
         saveTestUiState();
         syncDebugVisibility();
         syncTestStatusBar();
+        renderHistory();
+        
+        if (wasAtBottom) {
+          scrollChatToBottom();
+        } else {
+          updateScrollToBottomBtn();
+        }
       });
       
       popover._refreshFields = refreshPopoverFields;
