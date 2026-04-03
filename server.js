@@ -1980,13 +1980,14 @@ async function generateReply({
   override1 = null,
   override2 = null
 }) {
-  const promptRegistry = resolvePromptRegistry([override1, override2]);
+  const basePromptRegistry = buildDefaultPromptRegistry();
   const baseSystemPrompt = buildSystemPrompt(
     mode,
     memory,
     explorationDirectivityLevel,
-    promptRegistry
+    basePromptRegistry
   );
+  
   const overrideResult = applyPromptOverrideLayers(baseSystemPrompt, override1, override2);
   
   const messages = [

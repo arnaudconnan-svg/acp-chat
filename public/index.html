@@ -2716,6 +2716,20 @@
         };
       }
       
+      function syncOverride2Availability() {
+        const hasOverride1 = !!testUiState.override1;
+        
+        override2Input.disabled = !hasOverride1;
+        override2Input.style.opacity = hasOverride1 ? "1" : "0.5";
+        override2Input.style.cursor = hasOverride1 ? "pointer" : "not-allowed";
+        
+        if (!hasOverride1) {
+          testUiState.override2 = null;
+          override2Input.value = "";
+          override2Clear.style.display = "none";
+        }
+      }
+      
       function refreshPopoverFields() {
         comparisonToggle.checked = testUiState.comparisonEnabled === true;
         logsToggle.checked = testUiState.logsEnabled === true;
@@ -2730,6 +2744,8 @@
         if (!testUiState.override2) {
           override2Input.value = "";
         }
+        
+        syncOverride2Availability();
       }
       
       override1Input.addEventListener("change", async event => {
@@ -2737,6 +2753,7 @@
         
         if (!file) {
           testUiState.override1 = null;
+          testUiState.override2 = null;
           saveTestUiState();
           refreshPopoverFields();
           syncTestStatusBar();
@@ -2755,6 +2772,15 @@
       });
       
       override2Input.addEventListener("change", async event => {
+        if (!testUiState.override1) {
+          testUiState.override2 = null;
+          event.target.value = "";
+          saveTestUiState();
+          refreshPopoverFields();
+          syncTestStatusBar();
+          return;
+        }
+        
         const file = event.target.files && event.target.files[0];
         
         if (!file) {
@@ -2778,7 +2804,9 @@
       
       override1Clear.addEventListener("click", () => {
         testUiState.override1 = null;
+        testUiState.override2 = null;
         override1Input.value = "";
+        override2Input.value = "";
         saveTestUiState();
         refreshPopoverFields();
         syncTestStatusBar();
