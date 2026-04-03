@@ -1034,6 +1034,19 @@
       -webkit-backdrop-filter: blur(8px);
     }
     
+    /* Chips debug non sélectionnables */
+    .debug-chip,
+    .debug-chip * {
+      user-select: none;
+      -webkit-user-select: none;
+      -ms-user-select: none;
+    }
+    
+    /* Optionnel : empêche aussi le menu long press sur mobile */
+    .debug-chip {
+      -webkit-touch-callout: none;
+    }
+    
     #debugToggleBtn {
       display: none;
       position: absolute;
