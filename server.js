@@ -2761,9 +2761,7 @@ app.post("/chat", async (req, res) => {
       history: recentHistory,
       memory: previousMemory,
       mode: detectedMode,
-      explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
-      override1,
-      override2
+      explorationDirectivityLevel: newFlags.explorationDirectivityLevel
     });
     
     let reply = generatedBase.reply;
