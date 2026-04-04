@@ -2321,6 +2321,82 @@ app.post("/chat", async (req, res) => {
   let previousMemoryForCatch = normalizeMemory("");
   let flagsForCatch = normalizeSessionFlags({});
   
+  function buildFallbackResponseDebugMeta({
+    memory = "",
+    suicideLevel = "N0",
+    mode = null,
+    isRecallRequest = false,
+    explorationDirectivityLevel = 0,
+    explorationRelanceWindow = [],
+    rewriteSource = null,
+    modelConflict = false
+  } = {}) {
+    function buildTopChips({
+      suicideLevel = "N0",
+      mode = null,
+      isRecallRequest = false
+    } = {}) {
+      const chips = [];
+      
+      if (suicideLevel === "N2") {
+        chips.push("URGENCE : risque suicidaire");
+      } else if (suicideLevel === "N1") {
+        chips.push("Risque suicidaire à clarifier");
+      } else if (mode === "exploration") {
+        chips.push("EXPLORATION");
+      } else if (mode === "info") {
+        chips.push("INFO");
+      } else if (mode === "contact") {
+        chips.push("CONTACT");
+      }
+      
+      if (isRecallRequest === true) {
+        chips.push("Demande de rappel mémoire");
+      }
+      
+      return chips;
+    }
+    
+    function buildDirectivityText({
+      mode = null,
+      explorationDirectivityLevel = 0,
+      explorationRelanceWindow = []
+    } = {}) {
+      if (mode !== "exploration") {
+        return "";
+      }
+      
+      const safeLevel = clampExplorationDirectivityLevel(explorationDirectivityLevel);
+      
+      if (safeLevel <= 0) {
+        return "";
+      }
+      
+      const safeWindow = normalizeExplorationRelanceWindow(explorationRelanceWindow);
+      
+      return [
+        `Niveau de directivité : ${safeLevel}/4`,
+        `Relances aux quatre derniers tours : [${safeWindow.map(v => (v ? "1" : "0")).join("-")}]`
+      ].join("\n");
+    }
+    
+    return {
+      topChips: buildTopChips({
+        suicideLevel,
+        mode,
+        isRecallRequest
+      }),
+      memory: normalizeMemory(memory),
+      directivityText: buildDirectivityText({
+        mode,
+        explorationDirectivityLevel,
+        explorationRelanceWindow
+      }),
+      rewriteSource: typeof rewriteSource === "string" ? rewriteSource : null,
+      modelConflict: modelConflict === true
+    };
+  }
+  
   try {
     const message = String(req.body?.message || "");
     const isEdited = req.body?.isEdited === true;
@@ -2429,7 +2505,10 @@ app.post("/chat", async (req, res) => {
     const override2 = req.body?.override2 ?? null;
     const comparisonEnabled = req.body?.comparisonEnabled === true;
     const logsEnabled = req.body?.logsEnabled === true;
-    const promptRegistry = resolvePromptRegistry([override1, override2]);
+    
+    const basePromptRegistry = resolvePromptRegistry([]);
+    const override1PromptRegistry = resolvePromptRegistry([override1]);
+    const override12PromptRegistry = resolvePromptRegistry([override1, override2]);
     
     previousMemoryForCatch = previousMemory;
     flagsForCatch = flags;
@@ -2551,11 +2630,11 @@ app.post("/chat", async (req, res) => {
       };
     }
     
-    async function buildComparisonEntry(label, generated, debugLines, debugMetaBase) {
+    async function buildComparisonEntry(label, generated, debugLines, debugMetaBase, comparisonPromptRegistry) {
       let comparisonModelConflict = false;
       
       if (detectedMode === "exploration") {
-        const conflict = await analyzeModelConflict(generated.reply, promptRegistry);
+        const conflict = await analyzeModelConflict(generated.reply, comparisonPromptRegistry);
         comparisonModelConflict = conflict.modelConflict === true;
       }
       
@@ -2574,8 +2653,9 @@ app.post("/chat", async (req, res) => {
       message,
       recentHistory,
       flags,
-      promptRegistry
+      basePromptRegistry
     );
+    
     let newFlags = normalizeSessionFlags(flags);
     
     if (suicide.suicideLevel === "N2") {
@@ -2649,7 +2729,7 @@ app.post("/chat", async (req, res) => {
     }
     
     if (suicide.suicideLevel === "N1" || suicide.needsClarification) {
-      const reply = await n1ResponseLLM(message, promptRegistry);
+      const reply = await n1ResponseLLM(message, basePromptRegistry);
       newFlags.contactState = { wasContact: false };
       
       const debug = buildDebug("clarification", {
@@ -2684,11 +2764,11 @@ app.post("/chat", async (req, res) => {
       message,
       recentHistory,
       previousMemory,
-      promptRegistry
+      basePromptRegistry
     );
     
     if (recallRouting.isLongTermMemoryRecall) {
-      const reply = await buildLongTermMemoryRecallResponse(previousMemory, promptRegistry);
+      const reply = await buildLongTermMemoryRecallResponse(previousMemory, basePromptRegistry);
       const debug = buildDebug("memoryRecall", {
         calledMemory: "longTermMemory"
       });
@@ -2749,7 +2829,7 @@ app.post("/chat", async (req, res) => {
       message,
       recentHistory,
       newFlags.contactState,
-      promptRegistry
+      basePromptRegistry
     );
     
     newFlags.contactState = {
@@ -2758,7 +2838,7 @@ app.post("/chat", async (req, res) => {
     
     const detectedMode = contactAnalysis.isContact ?
       "contact" :
-      (await detectMode(message, recentHistory, promptRegistry)).mode;
+      (await detectMode(message, recentHistory, basePromptRegistry)).mode;
     
     modeForCatch = detectedMode;
     
@@ -2776,7 +2856,7 @@ app.post("/chat", async (req, res) => {
     let relanceAnalysis = null;
     
     if (detectedMode === "exploration") {
-      const conflict = await analyzeModelConflict(reply, promptRegistry);
+      const conflict = await analyzeModelConflict(reply, basePromptRegistry);
       modelConflict = conflict.modelConflict === true;
       
       if (modelConflict) {
@@ -2786,7 +2866,7 @@ app.post("/chat", async (req, res) => {
           history: recentHistory,
           memory: previousMemory,
           originalReply: reply,
-          promptRegistry
+          promptRegistry: basePromptRegistry
         });
       }
       
@@ -2795,7 +2875,7 @@ app.post("/chat", async (req, res) => {
         reply,
         history: recentHistory,
         memory: previousMemory,
-        promptRegistry
+        promptRegistry: basePromptRegistry
       });
       
       newFlags = registerExplorationRelance(newFlags, relanceAnalysis.isRelance === true);
@@ -2819,7 +2899,7 @@ app.post("/chat", async (req, res) => {
       ...recentHistory,
       { role: "user", content: message },
       { role: "assistant", content: reply }
-    ], promptRegistry);
+    ], basePromptRegistry);
     
     const responseDebugMeta = buildResponseDebugMeta({
       memory: newMemory,
@@ -2881,7 +2961,13 @@ app.post("/chat", async (req, res) => {
         });
         
         comparisonResults.push(
-          await buildComparisonEntry("Override 1", generatedOverride1, comparisonBaseDebug, comparisonBaseMeta)
+          await buildComparisonEntry(
+            "Override 1",
+            generatedOverride1,
+            comparisonBaseDebug,
+            comparisonBaseMeta,
+            override1PromptRegistry
+          )
         );
       }
       
@@ -2897,7 +2983,13 @@ app.post("/chat", async (req, res) => {
         });
         
         comparisonResults.push(
-          await buildComparisonEntry("Override 1 + 2", generatedOverride12, comparisonBaseDebug, comparisonBaseMeta)
+          await buildComparisonEntry(
+            "Override 1 + 2",
+            generatedOverride12,
+            comparisonBaseDebug,
+            comparisonBaseMeta,
+            override12PromptRegistry
+          )
         );
       }
       
@@ -2929,7 +3021,7 @@ app.post("/chat", async (req, res) => {
       memory: previousMemoryForCatch,
       flags: flagsForCatch,
       debug: ["error"],
-      debugMeta: buildResponseDebugMeta({
+      debugMeta: buildFallbackResponseDebugMeta({
         memory: previousMemoryForCatch,
         suicideLevel: "N0",
         mode: modeForCatch === "contact" ? "contact" : "exploration",
