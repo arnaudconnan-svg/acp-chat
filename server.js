@@ -926,25 +926,55 @@ function normalizeContactState(contactState) {
 
 function normalizeSessionFlags(flags) {
   const safe = normalizeFlags(flags);
-  const explorationRelanceWindow = normalizeExplorationRelanceWindow(safe.explorationRelanceWindow);
+  
+  const hasExplicitRelanceWindow = Array.isArray(safe.explorationRelanceWindow);
+  const hasExplicitDirectivityLevel = safe.explorationDirectivityLevel !== undefined;
+  const hasExplicitBootstrapPending = safe.explorationBootstrapPending === true || safe.explorationBootstrapPending === false;
+  
+  const bootstrapWindow = [true, true, true];
+  const explorationRelanceWindow = hasExplicitRelanceWindow ?
+    normalizeExplorationRelanceWindow(safe.explorationRelanceWindow) :
+    bootstrapWindow;
+  
   const computedLevel = computeExplorationDirectivityLevel(explorationRelanceWindow);
+  
+  const explorationDirectivityLevel = hasExplicitDirectivityLevel ?
+    clampExplorationDirectivityLevel(safe.explorationDirectivityLevel) :
+    computedLevel;
+  
+  const explorationBootstrapPending = hasExplicitBootstrapPending ?
+    safe.explorationBootstrapPending === true :
+    !hasExplicitRelanceWindow && !hasExplicitDirectivityLevel;
   
   return {
     ...safe,
     acuteCrisis: safe.acuteCrisis === true,
     contactState: normalizeContactState(safe.contactState),
     explorationRelanceWindow,
-    explorationDirectivityLevel: safe.explorationDirectivityLevel !== undefined ?
-      clampExplorationDirectivityLevel(safe.explorationDirectivityLevel) : computedLevel
+    explorationDirectivityLevel,
+    explorationBootstrapPending
   };
 }
 
 function registerExplorationRelance(flags, isRelance) {
   const safeFlags = normalizeSessionFlags(flags);
+  
+  if (safeFlags.explorationBootstrapPending === true) {
+    const nextWindow = isRelance === true ? [true, true, true, true] : [true, true, false, false];
+    
+    return {
+      ...safeFlags,
+      explorationBootstrapPending: false,
+      explorationRelanceWindow: nextWindow,
+      explorationDirectivityLevel: computeExplorationDirectivityLevel(nextWindow)
+    };
+  }
+  
   const nextWindow = [...safeFlags.explorationRelanceWindow, isRelance === true].slice(-RELANCE_WINDOW_SIZE);
   
   return {
     ...safeFlags,
+    explorationBootstrapPending: false,
     explorationRelanceWindow: nextWindow,
     explorationDirectivityLevel: computeExplorationDirectivityLevel(nextWindow)
   };
