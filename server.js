@@ -2075,6 +2075,67 @@ function normalizePromptOverrideFile(overrideFile) {
   };
 }
 
+function applyPromptOverrideFile(prompt, overrideFile) {
+  const normalized = normalizePromptOverrideFile(overrideFile);
+  
+  if (!normalized) {
+    return {
+      prompt: String(prompt || ""),
+      appliedTargets: [],
+      missingTargets: [],
+      fileName: ""
+    };
+  }
+  
+  let nextPrompt = String(prompt || "");
+  const appliedTargets = [];
+  const missingTargets = [];
+  
+  for (const [target, content] of Object.entries(normalized.replacements)) {
+    const pattern = new RegExp(`\\[\\[${target}_START\\]\\][\\s\\S]*?\\[\\[${target}_END\\]\\]`, "g");
+    
+    if (!pattern.test(nextPrompt)) {
+      missingTargets.push(target);
+      continue;
+    }
+    
+    nextPrompt = nextPrompt.replace(
+      pattern,
+      `[[${target}_START]]
+${String(content || "").trim()}
+[[${target}_END]]`
+    );
+    
+    appliedTargets.push(target);
+  }
+  
+  return {
+    prompt: nextPrompt,
+    appliedTargets,
+    missingTargets,
+    fileName: normalized.name || ""
+  };
+}
+
+function applyPromptOverrideLayers(basePrompt, override1, override2) {
+  const firstPass = applyPromptOverrideFile(basePrompt, override1);
+  const secondPass = applyPromptOverrideFile(firstPass.prompt, override2);
+  
+  return {
+    prompt: secondPass.prompt,
+    override1: {
+      fileName: firstPass.fileName,
+      appliedTargets: firstPass.appliedTargets,
+      missingTargets: firstPass.missingTargets
+    },
+    override2: {
+      fileName: secondPass.fileName,
+      appliedTargets: secondPass.appliedTargets,
+      missingTargets: secondPass.missingTargets
+    }
+  };
+}
+
 function buildPromptOverrideLayersDebug(override1, override2) {
   return buildPromptRegistryDebug(buildDefaultPromptRegistry(), override1, override2);
 }
@@ -2089,15 +2150,21 @@ async function generateReply({
   override1 = null,
   override2 = null
 }) {
-  const systemPrompt = buildSystemPrompt(
+  const baseSystemPrompt = buildSystemPrompt(
     mode,
     memory,
     explorationDirectivityLevel,
     promptRegistry
   );
   
+  const overrideResult = applyPromptOverrideLayers(
+    baseSystemPrompt,
+    override1,
+    override2
+  );
+  
   const messages = [
-    { role: "system", content: systemPrompt },
+    { role: "system", content: overrideResult.prompt },
     ...history.map(m => ({ role: m.role, content: m.content })),
     { role: "user", content: message }
   ];
@@ -2114,7 +2181,10 @@ async function generateReply({
   
   return {
     reply: (r.choices?.[0]?.message?.content || "").trim() || "Je t'ecoute.",
-    promptDebug: buildPromptOverrideLayersDebug(override1, override2)
+    promptDebug: {
+      override1: overrideResult.override1,
+      override2: overrideResult.override2
+    }
   };
 }
 
