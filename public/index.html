@@ -3621,7 +3621,18 @@
         return meta;
       }
       
-      const debugMeta = role === "bot" ? buildDebugMeta(debugMetaInput) : null;
+      const debugMeta = role === "bot" ? buildDebugMeta(debugMetaRaw) : null;
+      
+      const hasDebugContent =
+        role === "bot" &&
+        !isFirstBotMessage &&
+        !!debugMeta &&
+        (
+          debugMeta.topChips.length > 0 ||
+          !!debugMeta.memory ||
+          !!debugMeta.directivityLabel ||
+          (debugMeta.modelConflict && !!debugMeta.rewriteSource)
+        );
       
       if (role === "bot" && compareLabel) {
         const compareTag = document.createElement("div");
