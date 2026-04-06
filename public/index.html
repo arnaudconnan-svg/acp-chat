@@ -719,7 +719,7 @@
       min-width: 0;
       border: none;
       background: transparent;
-      font-size: 17px;
+      font-size: 14px;
       padding: 8px 12px;
       margin: 0;
       box-sizing: border-box;
@@ -3570,6 +3570,11 @@
         }
       }
       
+      const shouldRevealProgressively =
+        role === "bot" &&
+        progressive === true &&
+        !compareLabel;
+      
       const msg = document.createElement("div");
       msg.className = "message " + role;
       
@@ -3616,18 +3621,7 @@
         return meta;
       }
       
-      const debugMeta =
-        role === "bot" && !isFirstBotMessage ?
-        buildDebugMeta(debugMetaRaw) :
-        null;
-      
-      const hasDebugContent = !!debugMeta &&
-        (
-          debugMeta.topChips.length > 0 ||
-          !!debugMeta.memory ||
-          !!debugMeta.directivityLabel ||
-          (debugMeta.modelConflict && !!debugMeta.rewriteSource)
-        );
+      const debugMeta = role === "bot" ? buildDebugMeta(debugMetaInput) : null;
       
       if (role === "bot" && compareLabel) {
         const compareTag = document.createElement("div");
@@ -3685,7 +3679,7 @@
         bubble.addEventListener("dragstart", e => e.preventDefault());
         
         renderBotMessageContent(bubble, displayText, {
-          progressive,
+          progressive: shouldRevealProgressively,
           wasAtBottomBeforeInsert
         });
       } else {
