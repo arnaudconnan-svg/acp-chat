@@ -3556,8 +3556,6 @@
         role === "bot" &&
         chat.querySelectorAll(".message").length === 0;
       
-      const debugMetaInput = isFirstBotMessage ? null : debugMetaRaw;
-      
       const wasAtBottomBeforeInsert = isChatAtBottom();
       
       const rawText = String(text || "");
@@ -3618,7 +3616,18 @@
         return meta;
       }
       
-      const debugMeta = role === "bot" ? buildDebugMeta(debugMetaInput) : null;
+      const debugMeta =
+        role === "bot" && !isFirstBotMessage ?
+        buildDebugMeta(debugMetaRaw) :
+        null;
+      
+      const hasDebugContent = !!debugMeta &&
+        (
+          debugMeta.topChips.length > 0 ||
+          !!debugMeta.memory ||
+          !!debugMeta.directivityLabel ||
+          (debugMeta.modelConflict && !!debugMeta.rewriteSource)
+        );
       
       if (role === "bot" && compareLabel) {
         const compareTag = document.createElement("div");
@@ -3768,7 +3777,7 @@
         });
       }
       
-      if (role === "bot" && debugMeta && showDebug && debugMeta.topChips.length > 0) {
+      if (role === "bot" && hasDebugContent && showDebug && debugMeta.topChips.length > 0) {
         const top = document.createElement("div");
         top.style.display = "flex";
         top.style.flexWrap = "wrap";
@@ -3787,26 +3796,28 @@
       
       contentWrap.appendChild(bubble);
       
-      if (role === "bot" && debugMeta && showDebug) {
+      if (role === "bot" && hasDebugContent && showDebug) {
         const bottom = document.createElement("div");
         bottom.style.display = "flex";
         bottom.style.flexWrap = "wrap";
         bottom.style.gap = "6px";
         bottom.style.marginTop = "6px";
         
-        const mem = document.createElement("details");
-        
-        const memSum = document.createElement("summary");
-        memSum.className = "debug-chip";
-        memSum.textContent = "Mémoire";
-        
-        const memContent = document.createElement("div");
-        memContent.className = "debug-block";
-        memContent.textContent = debugMeta.memory || "";
-        
-        mem.appendChild(memSum);
-        mem.appendChild(memContent);
-        bottom.appendChild(mem);
+        if (debugMeta.memory) {
+          const mem = document.createElement("details");
+          
+          const memSum = document.createElement("summary");
+          memSum.className = "debug-chip";
+          memSum.textContent = "Mémoire";
+          
+          const memContent = document.createElement("div");
+          memContent.className = "debug-block";
+          memContent.textContent = debugMeta.memory;
+          
+          mem.appendChild(memSum);
+          mem.appendChild(memContent);
+          bottom.appendChild(mem);
+        }
         
         if (debugMeta.directivityLabel) {
           const dir = document.createElement("details");
@@ -3840,7 +3851,9 @@
           bottom.appendChild(conf);
         }
         
-        contentWrap.appendChild(bottom);
+        if (bottom.children.length > 0) {
+          contentWrap.appendChild(bottom);
+        }
       }
       
       msg.appendChild(contentWrap);
