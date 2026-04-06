@@ -355,35 +355,6 @@
           return;
         }
         
-        function formatDebugValue(value, indent = 0) {
-          const pad = "  ".repeat(indent);
-          
-          if (value === null) return "null";
-          if (value === undefined) return "undefined";
-          if (typeof value === "string") return value;
-          if (typeof value === "number" || typeof value === "boolean") return String(value);
-          
-          if (Array.isArray(value)) {
-            if (value.length === 0) return "[]";
-            return value.map(item => {
-              if (item && typeof item === "object") {
-                return pad + "-\n" + formatDebugValue(item, indent + 1);
-              }
-              return pad + "- " + formatDebugValue(item, 0);
-            }).join("\n");
-          }
-          
-          const entries = Object.entries(value);
-          if (entries.length === 0) return "{}";
-          
-          return entries.map(([key, val]) => {
-            if (val && typeof val === "object") {
-              return pad + key + ":\n" + formatDebugValue(val, indent + 1);
-            }
-            return pad + key + ": " + formatDebugValue(val, 0);
-          }).join("\n");
-        }
-        
         function extractCompareLabel(content) {
           const text = String(content || "");
           const match = text.match(/^\[(Référence|Override 1|Override 1 \+ 2)\]\n\n([\s\S]*)$/);
@@ -433,91 +404,226 @@
           };
         }
         
-        function buildDebugSections(msg) {
+        function normalizeDebugMeta(debugMeta) {
+          const safe = debugMeta && typeof debugMeta === "object" ? debugMeta : {};
+          
+          return {
+            topChips: Array.isArray(safe.topChips) ?
+              safe.topChips.map(v => String(v || "").trim()).filter(Boolean) : [],
+            memory: typeof safe.memory === "string" ? safe.memory.trim() : "",
+            directivityText: typeof safe.directivityText === "string" && safe.directivityText.trim() ?
+              safe.directivityText.trim() : (
+                typeof safe.directivityLabel === "string" && safe.directivityLabel.trim() ?
+                safe.directivityLabel.trim() :
+                ""
+              ),
+            modelConflict: safe.modelConflict === true,
+            rewriteSource: typeof safe.rewriteSource === "string" ? safe.rewriteSource.trim() : ""
+          };
+        }
+        
+        function buildDebugSections(debug, debugMeta) {
+          const safeDebug = Array.isArray(debug) ? debug : [];
+          const meta = normalizeDebugMeta(debugMeta);
           const sections = [];
-          const debug = Array.isArray(msg.debug) ? msg.debug : [];
-          const debugMeta = msg.debugMeta && typeof msg.debugMeta === "object" ? msg.debugMeta : {};
           
-          const topChips = Array.isArray(debugMeta.topChips) ?
-            debugMeta.topChips.map(v => String(v || "").trim()).filter(Boolean) :
-            [];
-          
-          if (topChips.length) {
+          if (meta.topChips.length) {
             sections.push({
               title: "Chips",
-              content: topChips.join("\n")
+              content: meta.topChips.join("\n")
             });
           }
           
-          const memory = typeof debugMeta.memory === "string" ? debugMeta.memory.trim() : "";
-          if (memory) {
+          if (meta.memory) {
             sections.push({
               title: "Mémoire",
-              content: memory
+              content: meta.memory
             });
           }
           
-          const directivityText =
-            typeof debugMeta.directivityText === "string" && debugMeta.directivityText.trim() ?
-            debugMeta.directivityText.trim() :
-            (
-              typeof debugMeta.directivityLabel === "string" && debugMeta.directivityLabel.trim() ?
-              debugMeta.directivityLabel.trim() :
-              ""
-            );
-          
-          if (directivityText) {
+          if (meta.directivityText) {
             sections.push({
               title: "Directivité",
-              content: directivityText
+              content: meta.directivityText
             });
           }
           
-          if (debugMeta.modelConflict === true && typeof debugMeta.rewriteSource === "string" && debugMeta.rewriteSource.trim()) {
+          if (meta.modelConflict && meta.rewriteSource) {
             sections.push({
               title: "Conflit avec le modèle théorique",
-              content: debugMeta.rewriteSource.trim()
+              content: meta.rewriteSource
             });
           }
           
-          const traceLines = debug.filter(line => {
+          const overrideLines = safeDebug.filter(line => {
             const text = String(line || "");
             return (
-              text.startsWith("mode:") ||
-              text.startsWith("suicideLevel:") ||
-              text.startsWith("calledMemory:") ||
-              text.startsWith("modelConflict:") ||
-              text.startsWith("explorationDirectivityLevel:") ||
-              text.startsWith("explorationRelanceWindow:") ||
               text.startsWith("override1Applied:") ||
               text.startsWith("override1Missing:") ||
               text.startsWith("override2Applied:") ||
-              text.startsWith("override2Missing:") ||
-              text.startsWith("trace.") ||
-              text.startsWith("rewriteSource:")
+              text.startsWith("override2Missing:")
             );
           });
           
-          if (traceLines.length) {
+          if (overrideLines.length) {
             sections.push({
-              title: "Trace serveur",
-              content: traceLines.join("\n")
-            });
-          }
-          
-          const rawDebugMeta = Object.keys(debugMeta).length ? formatDebugValue(debugMeta) : "";
-          if (rawDebugMeta) {
-            sections.push({
-              title: "debugMeta brut",
-              content: rawDebugMeta
+              title: "Overrides appliqués",
+              content: overrideLines.join("\n")
             });
           }
           
           return sections.filter(section => String(section.content || "").trim());
         }
         
-        const assistantEntries = data.filter(msg => msg && msg.role === "assistant");
-        const hasAnyAssistantDebug = assistantEntries.some(msg => buildDebugSections(msg).length > 0);
+        function buildAssistantVariants(msg) {
+          const source = Array.isArray(msg.comparisonResults) && msg.comparisonResults.length ?
+            msg.comparisonResults :
+            Array.isArray(msg.results) && msg.results.length ?
+            msg.results :
+            null;
+          
+          if (source) {
+            return source.map(entry => ({
+              label: String(entry.label || "").trim(),
+              content: String(entry.reply || ""),
+              debug: Array.isArray(entry.debug) ? entry.debug : [],
+              debugMeta: entry.debugMeta && typeof entry.debugMeta === "object" ? entry.debugMeta : {}
+            }));
+          }
+          
+          const parsed = extractCompareLabel(msg.content || "");
+          
+          return [{
+            label: parsed.label,
+            content: parsed.content,
+            debug: Array.isArray(msg.debug) ? msg.debug : [],
+            debugMeta: msg.debugMeta && typeof msg.debugMeta === "object" ? msg.debugMeta : {}
+          }];
+        }
+        
+        function createDebugDetails(debugSections) {
+          if (!Array.isArray(debugSections) || debugSections.length === 0) {
+            return null;
+          }
+          
+          const debugWrap = document.createElement("div");
+          debugWrap.style.marginTop = "10px";
+          
+          const debugDetails = document.createElement("details");
+          debugDetails.className = "admin-debug-details";
+          debugDetails.style.border = "1px solid #d6e2e1";
+          debugDetails.style.borderRadius = "12px";
+          debugDetails.style.background = "#f8fbfb";
+          debugDetails.style.overflow = "hidden";
+          
+          const debugSummary = document.createElement("summary");
+          debugSummary.textContent = "Debug";
+          debugSummary.style.listStyle = "none";
+          debugSummary.style.cursor = "pointer";
+          debugSummary.style.padding = "10px 12px";
+          debugSummary.style.fontSize = "13px";
+          debugSummary.style.fontWeight = "700";
+          debugSummary.style.color = "#245e66";
+          debugSummary.style.userSelect = "none";
+          
+          const debugBox = document.createElement("div");
+          debugBox.style.padding = "10px";
+          debugBox.style.borderTop = "1px solid #d6e2e1";
+          debugBox.style.background = "#eef4f4";
+          debugBox.style.display = "flex";
+          debugBox.style.flexDirection = "column";
+          debugBox.style.gap = "8px";
+          
+          debugSections.forEach(section => {
+            const sectionBlock = document.createElement("div");
+            
+            const sectionTitle = document.createElement("div");
+            sectionTitle.textContent = section.title;
+            sectionTitle.style.fontSize = "12px";
+            sectionTitle.style.fontWeight = "700";
+            sectionTitle.style.textTransform = "uppercase";
+            sectionTitle.style.letterSpacing = "0.04em";
+            sectionTitle.style.color = "#245e66";
+            sectionTitle.style.marginBottom = "4px";
+            
+            const sectionContent = document.createElement("div");
+            sectionContent.style.padding = "10px";
+            sectionContent.style.borderRadius = "10px";
+            sectionContent.style.background = "#ffffff";
+            sectionContent.style.border = "1px solid #d6e2e1";
+            sectionContent.style.fontSize = "13px";
+            sectionContent.style.lineHeight = "1.45";
+            sectionContent.style.color = "#334155";
+            sectionContent.style.whiteSpace = "pre-wrap";
+            sectionContent.style.wordBreak = "break-word";
+            sectionContent.style.overflowWrap = "break-word";
+            sectionContent.style.userSelect = "text";
+            sectionContent.style.webkitUserSelect = "text";
+            sectionContent.style.cursor = "text";
+            sectionContent.textContent = section.content;
+            
+            sectionBlock.appendChild(sectionTitle);
+            sectionBlock.appendChild(sectionContent);
+            debugBox.appendChild(sectionBlock);
+          });
+          
+          debugDetails.appendChild(debugSummary);
+          debugDetails.appendChild(debugBox);
+          debugWrap.appendChild(debugDetails);
+          
+          return debugWrap;
+        }
+        
+        function createAssistantVariantCard(variant) {
+          const parsed = extractCompareLabel(
+            variant.label ? `[${variant.label}]\n\n${variant.content}` : variant.content
+          );
+          
+          const box = document.createElement("div");
+          box.style.marginTop = "10px";
+          box.style.padding = "12px";
+          box.style.borderRadius = "14px";
+          box.style.background = "#f8fbfb";
+          box.style.border = "1px solid #d6e2e1";
+          
+          if (parsed.label) {
+            const compareTag = document.createElement("div");
+            const compareStyle = getCompareLabelStyle(parsed.label);
+            
+            compareTag.textContent = parsed.label;
+            compareTag.style.display = "inline-flex";
+            compareTag.style.alignItems = "center";
+            compareTag.style.padding = "5px 9px";
+            compareTag.style.marginBottom = "8px";
+            compareTag.style.borderRadius = "999px";
+            compareTag.style.fontSize = "12px";
+            compareTag.style.fontWeight = "700";
+            compareTag.style.lineHeight = "1";
+            compareTag.style.color = compareStyle.color;
+            compareTag.style.border = compareStyle.border;
+            compareTag.style.background = compareStyle.background;
+            
+            box.appendChild(compareTag);
+          }
+          
+          const main = document.createElement("div");
+          main.className = "main";
+          main.textContent = parsed.content || "";
+          box.appendChild(main);
+          
+          const debugDetails = createDebugDetails(buildDebugSections(variant.debug, variant.debugMeta));
+          if (debugDetails) {
+            box.appendChild(debugDetails);
+          }
+          
+          return box;
+        }
+        
+        const hasAnyAssistantDebug = data.some(msg => {
+          if (msg.role !== "assistant") return false;
+          const variants = buildAssistantVariants(msg);
+          return variants.some(variant => buildDebugSections(variant.debug, variant.debugMeta).length > 0);
+        });
         
         if (hasAnyAssistantDebug) {
           const toolbar = document.createElement("div");
@@ -575,7 +681,6 @@
         
         data.forEach(msg => {
           const isUser = msg.role === "user";
-          const parsedContent = extractCompareLabel(msg.content || "");
           
           const wrapper = document.createElement("div");
           wrapper.className = "message-row";
@@ -594,104 +699,40 @@
             " • " +
             (isUser ? userDisplay : "assistant");
           
-          const main = document.createElement("div");
-          main.className = "main";
-          main.textContent = parsedContent.content || "";
-          
           card.appendChild(meta);
           
-          if (!isUser && parsedContent.label) {
-            const compareTag = document.createElement("div");
-            const compareStyle = getCompareLabelStyle(parsedContent.label);
+          if (isUser) {
+            const main = document.createElement("div");
+            main.className = "main";
+            main.textContent = msg.content || "";
+            card.appendChild(main);
+          } else {
+            const variants = buildAssistantVariants(msg);
             
-            compareTag.textContent = parsedContent.label;
-            compareTag.style.display = "inline-flex";
-            compareTag.style.alignItems = "center";
-            compareTag.style.padding = "5px 9px";
-            compareTag.style.marginBottom = "8px";
-            compareTag.style.borderRadius = "999px";
-            compareTag.style.fontSize = "12px";
-            compareTag.style.fontWeight = "700";
-            compareTag.style.lineHeight = "1";
-            compareTag.style.color = compareStyle.color;
-            compareTag.style.border = compareStyle.border;
-            compareTag.style.background = compareStyle.background;
-            
-            card.appendChild(compareTag);
-          }
-          
-          card.appendChild(main);
-          
-          if (!isUser) {
-            const debugSections = buildDebugSections(msg);
-            
-            if (debugSections.length > 0) {
-              const debugWrap = document.createElement("div");
-              debugWrap.style.marginTop = "10px";
-              
-              const debugDetails = document.createElement("details");
-              debugDetails.className = "admin-debug-details";
-              debugDetails.style.border = "1px solid #d6e2e1";
-              debugDetails.style.borderRadius = "12px";
-              debugDetails.style.background = "#f8fbfb";
-              debugDetails.style.overflow = "hidden";
-              
-              const debugSummary = document.createElement("summary");
-              debugSummary.textContent = "Debug";
-              debugSummary.style.listStyle = "none";
-              debugSummary.style.cursor = "pointer";
-              debugSummary.style.padding = "10px 12px";
-              debugSummary.style.fontSize = "13px";
-              debugSummary.style.fontWeight = "700";
-              debugSummary.style.color = "#245e66";
-              debugSummary.style.userSelect = "none";
-              
-              const debugBox = document.createElement("div");
-              debugBox.style.padding = "10px";
-              debugBox.style.borderTop = "1px solid #d6e2e1";
-              debugBox.style.background = "#eef4f4";
-              debugBox.style.display = "flex";
-              debugBox.style.flexDirection = "column";
-              debugBox.style.gap = "8px";
-              
-              debugSections.forEach(section => {
-                const sectionBlock = document.createElement("div");
+            variants.forEach((variant, index) => {
+              if (variants.length === 1 && !variant.label) {
+                const main = document.createElement("div");
+                main.className = "main";
+                main.textContent = variant.content || "";
+                card.appendChild(main);
                 
-                const sectionTitle = document.createElement("div");
-                sectionTitle.textContent = section.title;
-                sectionTitle.style.fontSize = "12px";
-                sectionTitle.style.fontWeight = "700";
-                sectionTitle.style.textTransform = "uppercase";
-                sectionTitle.style.letterSpacing = "0.04em";
-                sectionTitle.style.color = "#245e66";
-                sectionTitle.style.marginBottom = "4px";
-                
-                const sectionContent = document.createElement("div");
-                sectionContent.style.padding = "10px";
-                sectionContent.style.borderRadius = "10px";
-                sectionContent.style.background = "#ffffff";
-                sectionContent.style.border = "1px solid #d6e2e1";
-                sectionContent.style.fontSize = "13px";
-                sectionContent.style.lineHeight = "1.45";
-                sectionContent.style.color = "#334155";
-                sectionContent.style.whiteSpace = "pre-wrap";
-                sectionContent.style.wordBreak = "break-word";
-                sectionContent.style.overflowWrap = "break-word";
-                sectionContent.style.userSelect = "text";
-                sectionContent.style.webkitUserSelect = "text";
-                sectionContent.style.cursor = "text";
-                sectionContent.textContent = section.content;
-                
-                sectionBlock.appendChild(sectionTitle);
-                sectionBlock.appendChild(sectionContent);
-                debugBox.appendChild(sectionBlock);
-              });
+                const debugDetails = createDebugDetails(buildDebugSections(variant.debug, variant.debugMeta));
+                if (debugDetails) {
+                  card.appendChild(debugDetails);
+                }
+                return;
+              }
               
-              debugDetails.appendChild(debugSummary);
-              debugDetails.appendChild(debugBox);
-              debugWrap.appendChild(debugDetails);
-              card.appendChild(debugWrap);
-            }
+              if (index > 0) {
+                const separator = document.createElement("div");
+                separator.style.height = "1px";
+                separator.style.margin = "10px 0";
+                separator.style.background = "#d6e2e1";
+                card.appendChild(separator);
+              }
+              
+              card.appendChild(createAssistantVariantCard(variant));
+            });
           }
           
           wrapper.appendChild(card);

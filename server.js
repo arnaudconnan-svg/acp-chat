@@ -2620,7 +2620,22 @@ app.post("/chat", async (req, res) => {
       };
     });
     
-    async function pushAssistantMessage(reply, debug, debugMeta = {}) {
+    async function pushAssistantMessage(reply, debug, debugMeta = {}, comparisonResults = null) {
+      const safeComparisonResults = Array.isArray(comparisonResults) ?
+        comparisonResults.map(entry => ({
+          label: String(entry?.label || "").trim(),
+          reply: isEdited ? String(entry?.reply || "") + "\n[MODIFIÉ]" : String(entry?.reply || ""),
+          debug: Array.isArray(entry?.debug) ? entry.debug : [],
+          debugMeta: {
+            topChips: Array.isArray(entry?.debugMeta?.topChips) ? entry.debugMeta.topChips : [],
+            memory: normalizeMemory(entry?.debugMeta?.memory, activePromptRegistry),
+            directivityText: typeof entry?.debugMeta?.directivityText === "string" ? entry.debugMeta.directivityText : "",
+            rewriteSource: typeof entry?.debugMeta?.rewriteSource === "string" ? entry.debugMeta.rewriteSource : null,
+            modelConflict: entry?.debugMeta?.modelConflict === true
+          }
+        })) :
+        null;
+      
       await messagesRef.push({
         role: "assistant",
         content: isEdited ? reply + "\n[MODIFIÉ]" : reply,
@@ -2634,7 +2649,8 @@ app.post("/chat", async (req, res) => {
           directivityText: typeof debugMeta.directivityText === "string" ? debugMeta.directivityText : "",
           rewriteSource: typeof debugMeta.rewriteSource === "string" ? debugMeta.rewriteSource : null,
           modelConflict: debugMeta.modelConflict === true
-        }
+        },
+        comparisonResults: safeComparisonResults
       });
       
       await convRef.update({
@@ -3035,9 +3051,6 @@ app.post("/chat", async (req, res) => {
       promptRegistry: activePromptRegistry
     });
     
-    await pushAssistantMessage(reply, debug, responseDebugMeta);
-    await maybeGenerateConversationTitle();
-    
     if (
       comparisonEnabled &&
       (override1 || override2) &&
@@ -3120,6 +3133,9 @@ app.post("/chat", async (req, res) => {
         );
       }
       
+      await pushAssistantMessage(reply, debug, responseDebugMeta, comparisonResults);
+      await maybeGenerateConversationTitle();
+      
       return res.json({
         conversationId,
         comparison: true,
@@ -3131,6 +3147,9 @@ app.post("/chat", async (req, res) => {
         debugMeta: responseDebugMeta
       });
     }
+    
+    await pushAssistantMessage(reply, debug, responseDebugMeta);
+    await maybeGenerateConversationTitle();
     
     return res.json({
       conversationId,
