@@ -360,7 +360,6 @@
           
           if (value === null) return "null";
           if (value === undefined) return "undefined";
-          
           if (typeof value === "string") return value;
           if (typeof value === "number" || typeof value === "boolean") return String(value);
           
@@ -385,44 +384,198 @@
           }).join("\n");
         }
         
-        function renderDebugChips(debugArray) {
-          if (!Array.isArray(debugArray)) return "";
+        function extractCompareLabel(content) {
+          const text = String(content || "");
+          const match = text.match(/^\[(Référence|Override 1|Override 1 \+ 2)\]\n\n([\s\S]*)$/);
           
-          return debugArray
-            .map(line => {
-              if (line === "mode: EXPLORATION") return "EXPLORATION";
-              if (line === "mode: INFORMATION") return "INFORMATION";
-              if (line === "mode: CONTACT") return "CONTACT";
-              
-              if (line === "suicideLevel: Possible risque suicidaire") {
-                return "Possible risque suicidaire";
-              }
-              if (line === "suicideLevel: Risque suicidaire avéré") {
-                return "Risque suicidaire avéré";
-              }
-              
-              if (line === "calledMemory: Appel à la mémoire à court terme") {
-                return "Mémoire court terme";
-              }
-              if (line === "calledMemory: Appel à la mémoire à long terme") {
-                return "Mémoire long terme";
-              }
-              
-              if (line.startsWith("explorationRelanceWindow:")) {
-                return line.replace("explorationRelanceWindow:", "").trim();
-              }
-              
-              // on ignore volontairement :
-              if (line.startsWith("explorationDirectivityLevel:")) return null;
-              
-              return null;
-            })
-            .filter(Boolean)
-            .join("\n");
+          if (!match) {
+            return {
+              label: "",
+              content: text
+            };
+          }
+          
+          return {
+            label: match[1],
+            content: match[2]
+          };
+        }
+        
+        function getCompareLabelStyle(label) {
+          if (label === "Référence") {
+            return {
+              color: "#245e66",
+              border: "1px solid rgba(36,94,102,0.22)",
+              background: "rgba(36,94,102,0.08)"
+            };
+          }
+          
+          if (label === "Override 1") {
+            return {
+              color: "#7a3fd1",
+              border: "1px solid rgba(122,63,209,0.22)",
+              background: "rgba(122,63,209,0.08)"
+            };
+          }
+          
+          if (label === "Override 1 + 2") {
+            return {
+              color: "#c05621",
+              border: "1px solid rgba(192,86,33,0.22)",
+              background: "rgba(192,86,33,0.08)"
+            };
+          }
+          
+          return {
+            color: "#245e66",
+            border: "1px solid rgba(36,94,102,0.18)",
+            background: "rgba(36,94,102,0.06)"
+          };
+        }
+        
+        function buildDebugSections(msg) {
+          const sections = [];
+          const debug = Array.isArray(msg.debug) ? msg.debug : [];
+          const debugMeta = msg.debugMeta && typeof msg.debugMeta === "object" ? msg.debugMeta : {};
+          
+          const topChips = Array.isArray(debugMeta.topChips) ?
+            debugMeta.topChips.map(v => String(v || "").trim()).filter(Boolean) :
+            [];
+          
+          if (topChips.length) {
+            sections.push({
+              title: "Chips",
+              content: topChips.join("\n")
+            });
+          }
+          
+          const memory = typeof debugMeta.memory === "string" ? debugMeta.memory.trim() : "";
+          if (memory) {
+            sections.push({
+              title: "Mémoire",
+              content: memory
+            });
+          }
+          
+          const directivityText =
+            typeof debugMeta.directivityText === "string" && debugMeta.directivityText.trim() ?
+            debugMeta.directivityText.trim() :
+            (
+              typeof debugMeta.directivityLabel === "string" && debugMeta.directivityLabel.trim() ?
+              debugMeta.directivityLabel.trim() :
+              ""
+            );
+          
+          if (directivityText) {
+            sections.push({
+              title: "Directivité",
+              content: directivityText
+            });
+          }
+          
+          if (debugMeta.modelConflict === true && typeof debugMeta.rewriteSource === "string" && debugMeta.rewriteSource.trim()) {
+            sections.push({
+              title: "Conflit avec le modèle théorique",
+              content: debugMeta.rewriteSource.trim()
+            });
+          }
+          
+          const traceLines = debug.filter(line => {
+            const text = String(line || "");
+            return (
+              text.startsWith("mode:") ||
+              text.startsWith("suicideLevel:") ||
+              text.startsWith("calledMemory:") ||
+              text.startsWith("modelConflict:") ||
+              text.startsWith("explorationDirectivityLevel:") ||
+              text.startsWith("explorationRelanceWindow:") ||
+              text.startsWith("override1Applied:") ||
+              text.startsWith("override1Missing:") ||
+              text.startsWith("override2Applied:") ||
+              text.startsWith("override2Missing:") ||
+              text.startsWith("trace.") ||
+              text.startsWith("rewriteSource:")
+            );
+          });
+          
+          if (traceLines.length) {
+            sections.push({
+              title: "Trace serveur",
+              content: traceLines.join("\n")
+            });
+          }
+          
+          const rawDebugMeta = Object.keys(debugMeta).length ? formatDebugValue(debugMeta) : "";
+          if (rawDebugMeta) {
+            sections.push({
+              title: "debugMeta brut",
+              content: rawDebugMeta
+            });
+          }
+          
+          return sections.filter(section => String(section.content || "").trim());
+        }
+        
+        const assistantEntries = data.filter(msg => msg && msg.role === "assistant");
+        const hasAnyAssistantDebug = assistantEntries.some(msg => buildDebugSections(msg).length > 0);
+        
+        if (hasAnyAssistantDebug) {
+          const toolbar = document.createElement("div");
+          toolbar.style.display = "flex";
+          toolbar.style.gap = "8px";
+          toolbar.style.marginBottom = "12px";
+          toolbar.style.position = "sticky";
+          toolbar.style.top = "74px";
+          toolbar.style.zIndex = "15";
+          toolbar.style.padding = "8px 0";
+          toolbar.style.background = "#d7e4e3";
+          
+          const expandBtn = document.createElement("button");
+          expandBtn.type = "button";
+          expandBtn.textContent = "Tout déplier";
+          expandBtn.style.flex = "1";
+          expandBtn.style.minHeight = "44px";
+          expandBtn.style.border = "1px solid #cfd8db";
+          expandBtn.style.borderRadius = "12px";
+          expandBtn.style.background = "white";
+          expandBtn.style.color = "#245e66";
+          expandBtn.style.fontSize = "15px";
+          expandBtn.style.fontWeight = "600";
+          expandBtn.style.cursor = "pointer";
+          
+          const collapseBtn = document.createElement("button");
+          collapseBtn.type = "button";
+          collapseBtn.textContent = "Tout replier";
+          collapseBtn.style.flex = "1";
+          collapseBtn.style.minHeight = "44px";
+          collapseBtn.style.border = "1px solid #cfd8db";
+          collapseBtn.style.borderRadius = "12px";
+          collapseBtn.style.background = "white";
+          collapseBtn.style.color = "#245e66";
+          collapseBtn.style.fontSize = "15px";
+          collapseBtn.style.fontWeight = "600";
+          collapseBtn.style.cursor = "pointer";
+          
+          expandBtn.onclick = () => {
+            list.querySelectorAll(".admin-debug-details").forEach(el => {
+              el.open = true;
+            });
+          };
+          
+          collapseBtn.onclick = () => {
+            list.querySelectorAll(".admin-debug-details").forEach(el => {
+              el.open = false;
+            });
+          };
+          
+          toolbar.appendChild(expandBtn);
+          toolbar.appendChild(collapseBtn);
+          list.appendChild(toolbar);
         }
         
         data.forEach(msg => {
           const isUser = msg.role === "user";
+          const parsedContent = extractCompareLabel(msg.content || "");
           
           const wrapper = document.createElement("div");
           wrapper.className = "message-row";
@@ -443,67 +596,102 @@
           
           const main = document.createElement("div");
           main.className = "main";
-          main.textContent = msg.content || "";
+          main.textContent = parsedContent.content || "";
           
           card.appendChild(meta);
+          
+          if (!isUser && parsedContent.label) {
+            const compareTag = document.createElement("div");
+            const compareStyle = getCompareLabelStyle(parsedContent.label);
+            
+            compareTag.textContent = parsedContent.label;
+            compareTag.style.display = "inline-flex";
+            compareTag.style.alignItems = "center";
+            compareTag.style.padding = "5px 9px";
+            compareTag.style.marginBottom = "8px";
+            compareTag.style.borderRadius = "999px";
+            compareTag.style.fontSize = "12px";
+            compareTag.style.fontWeight = "700";
+            compareTag.style.lineHeight = "1";
+            compareTag.style.color = compareStyle.color;
+            compareTag.style.border = compareStyle.border;
+            compareTag.style.background = compareStyle.background;
+            
+            card.appendChild(compareTag);
+          }
+          
           card.appendChild(main);
           
-          if (!isUser && msg.debug !== undefined) {
-            const debugWrap = document.createElement("div");
-            debugWrap.style.marginTop = "10px";
+          if (!isUser) {
+            const debugSections = buildDebugSections(msg);
             
-            const debugToggle = document.createElement("button");
-            debugToggle.type = "button";
-            debugToggle.textContent = "Afficher le debug";
-            debugToggle.style.display = "block";
-            debugToggle.style.width = "100%";
-            debugToggle.style.padding = "10px 12px";
-            debugToggle.style.borderRadius = "12px";
-            debugToggle.style.border = "1px solid #d6e2e1";
-            debugToggle.style.background = "#f8fbfb";
-            debugToggle.style.color = "#245e66";
-            debugToggle.style.fontSize = "13px";
-            debugToggle.style.fontWeight = "700";
-            debugToggle.style.cursor = "pointer";
-            debugToggle.style.textAlign = "left";
-            
-            const debugBox = document.createElement("div");
-            debugBox.style.display = "none";
-            debugBox.style.marginTop = "8px";
-            debugBox.style.padding = "10px";
-            debugBox.style.borderRadius = "12px";
-            debugBox.style.background = "#eef4f4";
-            debugBox.style.border = "1px solid #d6e2e1";
-            debugBox.style.fontSize = "13px";
-            debugBox.style.lineHeight = "1.45";
-            debugBox.style.color = "#334155";
-            debugBox.style.whiteSpace = "pre-wrap";
-            debugBox.style.wordBreak = "break-word";
-            debugBox.style.overflowWrap = "break-word";
-            
-            const debugTitle = document.createElement("div");
-            debugTitle.textContent = "debug";
-            debugTitle.style.fontSize = "12px";
-            debugTitle.style.fontWeight = "700";
-            debugTitle.style.textTransform = "uppercase";
-            debugTitle.style.letterSpacing = "0.04em";
-            debugTitle.style.color = "#245e66";
-            debugTitle.style.marginBottom = "6px";
-            
-            const debugContent = document.createElement("div");
-            debugContent.textContent = renderDebugChips(msg.debug);
-            
-            debugToggle.onclick = () => {
-              const isOpen = debugBox.style.display !== "none";
-              debugBox.style.display = isOpen ? "none" : "block";
-              debugToggle.textContent = isOpen ? "Afficher le debug" : "Masquer le debug";
-            };
-            
-            debugBox.appendChild(debugTitle);
-            debugBox.appendChild(debugContent);
-            debugWrap.appendChild(debugToggle);
-            debugWrap.appendChild(debugBox);
-            card.appendChild(debugWrap);
+            if (debugSections.length > 0) {
+              const debugWrap = document.createElement("div");
+              debugWrap.style.marginTop = "10px";
+              
+              const debugDetails = document.createElement("details");
+              debugDetails.className = "admin-debug-details";
+              debugDetails.style.border = "1px solid #d6e2e1";
+              debugDetails.style.borderRadius = "12px";
+              debugDetails.style.background = "#f8fbfb";
+              debugDetails.style.overflow = "hidden";
+              
+              const debugSummary = document.createElement("summary");
+              debugSummary.textContent = "Debug";
+              debugSummary.style.listStyle = "none";
+              debugSummary.style.cursor = "pointer";
+              debugSummary.style.padding = "10px 12px";
+              debugSummary.style.fontSize = "13px";
+              debugSummary.style.fontWeight = "700";
+              debugSummary.style.color = "#245e66";
+              debugSummary.style.userSelect = "none";
+              
+              const debugBox = document.createElement("div");
+              debugBox.style.padding = "10px";
+              debugBox.style.borderTop = "1px solid #d6e2e1";
+              debugBox.style.background = "#eef4f4";
+              debugBox.style.display = "flex";
+              debugBox.style.flexDirection = "column";
+              debugBox.style.gap = "8px";
+              
+              debugSections.forEach(section => {
+                const sectionBlock = document.createElement("div");
+                
+                const sectionTitle = document.createElement("div");
+                sectionTitle.textContent = section.title;
+                sectionTitle.style.fontSize = "12px";
+                sectionTitle.style.fontWeight = "700";
+                sectionTitle.style.textTransform = "uppercase";
+                sectionTitle.style.letterSpacing = "0.04em";
+                sectionTitle.style.color = "#245e66";
+                sectionTitle.style.marginBottom = "4px";
+                
+                const sectionContent = document.createElement("div");
+                sectionContent.style.padding = "10px";
+                sectionContent.style.borderRadius = "10px";
+                sectionContent.style.background = "#ffffff";
+                sectionContent.style.border = "1px solid #d6e2e1";
+                sectionContent.style.fontSize = "13px";
+                sectionContent.style.lineHeight = "1.45";
+                sectionContent.style.color = "#334155";
+                sectionContent.style.whiteSpace = "pre-wrap";
+                sectionContent.style.wordBreak = "break-word";
+                sectionContent.style.overflowWrap = "break-word";
+                sectionContent.style.userSelect = "text";
+                sectionContent.style.webkitUserSelect = "text";
+                sectionContent.style.cursor = "text";
+                sectionContent.textContent = section.content;
+                
+                sectionBlock.appendChild(sectionTitle);
+                sectionBlock.appendChild(sectionContent);
+                debugBox.appendChild(sectionBlock);
+              });
+              
+              debugDetails.appendChild(debugSummary);
+              debugDetails.appendChild(debugBox);
+              debugWrap.appendChild(debugDetails);
+              card.appendChild(debugWrap);
+            }
           }
           
           wrapper.appendChild(card);
