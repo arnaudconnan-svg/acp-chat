@@ -3541,6 +3541,13 @@
     }
     
     function addMessage(role, text, debug, options = {}) {
+      const isFirstAssistantMessage =
+        role === "assistant" &&
+        document.querySelectorAll(".message").length === 0;
+      
+      if (isFirstAssistantMessage) {
+        debug = null;
+      }
       const {
         shouldAutoScroll = true,
           pulseScrollButton = false,
