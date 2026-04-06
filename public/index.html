@@ -3541,23 +3541,22 @@
     }
     
     function addMessage(role, text, debug, options = {}) {
-      const isFirstAssistantMessage =
-        role === "assistant" &&
-        document.querySelectorAll(".message").length === 0;
-      
-      if (isFirstAssistantMessage) {
-        debug = null;
-      }
       const {
         shouldAutoScroll = true,
           pulseScrollButton = false,
           progressive = true,
           historyIndex = -1,
-          debugMeta: debugMetaInput = null
+          debugMeta: debugMetaRaw = null
       } = options;
       
       const chat = document.getElementById("chat");
       if (!chat) return;
+      
+      const isFirstBotMessage =
+        role === "bot" &&
+        chat.querySelectorAll(".message").length === 0;
+      
+      const debugMetaInput = isFirstBotMessage ? null : debugMetaRaw;
       
       const wasAtBottomBeforeInsert = isChatAtBottom();
       
