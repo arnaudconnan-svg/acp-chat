@@ -2674,6 +2674,7 @@
           <input id="testOverride1Input" type="file" accept=".json,application/json" style="flex:1 1 auto;font:inherit;font-size:12px;color:#24464b;min-width:0;">
           <button id="testOverride1Clear" type="button" style="flex:0 0 auto;border:none;border-radius:10px;padding:7px 10px;background:rgba(36, 94, 102, 0.10);color:#245e66;font-size:12px;line-height:1.2;font-weight:600;cursor:pointer;display:none;">Effacer</button>
         </div>
+        <div id="testOverride1Name" style="display:none;font-size:11px;line-height:1.3;color:#5f7478;word-break:break-word;"></div>
       </div>
 
       <div style="display:flex;flex-direction:column;gap:6px;">
@@ -2682,6 +2683,7 @@
           <input id="testOverride2Input" type="file" accept=".json,application/json" style="flex:1 1 auto;font:inherit;font-size:12px;color:#24464b;min-width:0;">
           <button id="testOverride2Clear" type="button" style="flex:0 0 auto;border:none;border-radius:10px;padding:7px 10px;background:rgba(36, 94, 102, 0.10);color:#245e66;font-size:12px;line-height:1.2;font-weight:600;cursor:pointer;display:none;">Effacer</button>
         </div>
+        <div id="testOverride2Name" style="display:none;font-size:11px;line-height:1.3;color:#5f7478;word-break:break-word;"></div>
       </div>
 
       <label style="display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:13px;line-height:1.3;color:#245e66;font-weight:600;">
@@ -2702,6 +2704,8 @@
       const override2Input = popover.querySelector("#testOverride2Input");
       const override1Clear = popover.querySelector("#testOverride1Clear");
       const override2Clear = popover.querySelector("#testOverride2Clear");
+      const override1Name = popover.querySelector("#testOverride1Name");
+      const override2Name = popover.querySelector("#testOverride2Name");
       const comparisonToggle = popover.querySelector("#testComparisonToggle");
       const logsToggle = popover.querySelector("#testLogsToggle");
       
@@ -2729,6 +2733,19 @@
         };
       }
       
+      function setLoadedFileName(targetEl, overrideState, fallbackText) {
+        const label = overrideState && typeof overrideState.name === "string" ? overrideState.name.trim() : "";
+        
+        if (!label) {
+          targetEl.textContent = "";
+          targetEl.style.display = "none";
+          return;
+        }
+        
+        targetEl.textContent = fallbackText + label;
+        targetEl.style.display = "block";
+      }
+      
       function syncOverride2Availability() {
         const hasOverride1 = !!testUiState.override1;
         
@@ -2740,6 +2757,8 @@
           testUiState.override2 = null;
           override2Input.value = "";
           override2Clear.style.display = "none";
+          override2Name.textContent = "";
+          override2Name.style.display = "none";
         }
       }
       
@@ -2757,6 +2776,9 @@
         if (!testUiState.override2) {
           override2Input.value = "";
         }
+        
+        setLoadedFileName(override1Name, testUiState.override1, "Charge : ");
+        setLoadedFileName(override2Name, testUiState.override2, "Charge : ");
         
         syncOverride2Availability();
       }
