@@ -2559,26 +2559,8 @@ app.post("/chat", async (req, res) => {
     const activePromptRegistry = hasOverrides ? override12PromptRegistry : basePromptRegistry;
     
     const previousMemory = normalizeMemory(req.body?.memory, activePromptRegistry);
-    
     const rawFlags = normalizeFlags(req.body?.flags);
-    const isFirstTurnOfConversation = recentHistory.length === 0;
-    const hasExplicitRelanceWindow = Array.isArray(rawFlags.explorationRelanceWindow);
-    const hasExplicitDirectivityLevel = rawFlags.explorationDirectivityLevel !== undefined;
-    const hasExplicitBootstrapPending =
-      rawFlags.explorationBootstrapPending === true ||
-      rawFlags.explorationBootstrapPending === false;
-    
-    const flags = isFirstTurnOfConversation &&
-      !hasExplicitRelanceWindow &&
-      !hasExplicitDirectivityLevel &&
-      !hasExplicitBootstrapPending ?
-      normalizeSessionFlags({
-        ...rawFlags,
-        explorationRelanceWindow: [true, true, true],
-        explorationDirectivityLevel: 3,
-        explorationBootstrapPending: false
-      }) :
-      normalizeSessionFlags(rawFlags);
+    const flags = normalizeSessionFlags(rawFlags);
     
     previousMemoryForCatch = previousMemory;
     flagsForCatch = flags;
@@ -3024,14 +3006,13 @@ app.post("/chat", async (req, res) => {
     
     modeForCatch = detectedMode;
     
-    const isFirstExplorationGeneration =
+    const shouldForceInitialDirectivityLevel3 =
       detectedMode === "exploration" &&
-      recentHistory.length === 0 &&
-      !Array.isArray(rawFlags.explorationRelanceWindow) &&
       rawFlags.explorationDirectivityLevel === undefined &&
+      !Array.isArray(rawFlags.explorationRelanceWindow) &&
       rawFlags.explorationBootstrapPending === undefined;
     
-    const effectiveExplorationDirectivityLevel = isFirstExplorationGeneration ?
+    const effectiveExplorationDirectivityLevel = shouldForceInitialDirectivityLevel3 ?
       3 :
       newFlags.explorationDirectivityLevel;
     
@@ -3144,18 +3125,20 @@ app.post("/chat", async (req, res) => {
         promptRegistry: referencePromptRegistry
       });
       
+      const generatedReference = await generateReply({
+        message,
+        history: recentHistory,
+        memory: previousMemory,
+        mode: detectedMode,
+        explorationDirectivityLevel: effectiveExplorationDirectivityLevel,
+        promptRegistry: referencePromptRegistry,
+        override1: null,
+        override2: null
+      });
+      
       const comparisonResults = [{
         label: "Référence",
-        reply: await generateReply({
-          message,
-          history: recentHistory,
-          memory: previousMemory,
-          mode: detectedMode,
-          explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
-          promptRegistry: referencePromptRegistry,
-          override1: null,
-          override2: null
-        }).then(result => result.reply),
+        reply: generatedReference.reply,
         debug: logsEnabled ? [...comparisonBaseDebug, ...buildPromptDebugLines(buildPromptOverrideLayersDebug(null, null, referencePromptRegistry))] : [],
         debugMeta: comparisonBaseMeta
       }];
@@ -3166,7 +3149,7 @@ app.post("/chat", async (req, res) => {
           history: recentHistory,
           memory: previousMemory,
           mode: detectedMode,
-          explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
+          explorationDirectivityLevel: effectiveExplorationDirectivityLevel,
           promptRegistry: override1PromptRegistry,
           override1,
           override2: null
@@ -3189,7 +3172,7 @@ app.post("/chat", async (req, res) => {
           history: recentHistory,
           memory: previousMemory,
           mode: detectedMode,
-          explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
+          explorationDirectivityLevel: effectiveExplorationDirectivityLevel,
           promptRegistry: override12PromptRegistry,
           override1,
           override2
