@@ -2559,30 +2559,30 @@ app.post("/chat", async (req, res) => {
     const activePromptRegistry = hasOverrides ? override12PromptRegistry : basePromptRegistry;
     
     const previousMemory = normalizeMemory(req.body?.memory, activePromptRegistry);
-
-const rawFlags = normalizeFlags(req.body?.flags);
-const isFirstTurnOfConversation = recentHistory.length === 0;
-const hasExplicitRelanceWindow = Array.isArray(rawFlags.explorationRelanceWindow);
-const hasExplicitDirectivityLevel = rawFlags.explorationDirectivityLevel !== undefined;
-const hasExplicitBootstrapPending =
-  rawFlags.explorationBootstrapPending === true ||
-  rawFlags.explorationBootstrapPending === false;
-
-const flags = isFirstTurnOfConversation &&
-  !hasExplicitRelanceWindow &&
-  !hasExplicitDirectivityLevel &&
-  !hasExplicitBootstrapPending ?
-  normalizeSessionFlags({
-    ...rawFlags,
-    explorationRelanceWindow: [true, true, true],
-    explorationDirectivityLevel: 3,
-    explorationBootstrapPending: false
-  }) :
-  normalizeSessionFlags(rawFlags);
-
-previousMemoryForCatch = previousMemory;
-flagsForCatch = flags;
-promptRegistryForCatch = activePromptRegistry;
+    
+    const rawFlags = normalizeFlags(req.body?.flags);
+    const isFirstTurnOfConversation = recentHistory.length === 0;
+    const hasExplicitRelanceWindow = Array.isArray(rawFlags.explorationRelanceWindow);
+    const hasExplicitDirectivityLevel = rawFlags.explorationDirectivityLevel !== undefined;
+    const hasExplicitBootstrapPending =
+      rawFlags.explorationBootstrapPending === true ||
+      rawFlags.explorationBootstrapPending === false;
+    
+    const flags = isFirstTurnOfConversation &&
+      !hasExplicitRelanceWindow &&
+      !hasExplicitDirectivityLevel &&
+      !hasExplicitBootstrapPending ?
+      normalizeSessionFlags({
+        ...rawFlags,
+        explorationRelanceWindow: [true, true, true],
+        explorationDirectivityLevel: 3,
+        explorationBootstrapPending: false
+      }) :
+      normalizeSessionFlags(rawFlags);
+    
+    previousMemoryForCatch = previousMemory;
+    flagsForCatch = flags;
+    promptRegistryForCatch = activePromptRegistry;
     
     async function maybeGenerateConversationTitle() {
       try {
@@ -3024,6 +3024,17 @@ promptRegistryForCatch = activePromptRegistry;
     
     modeForCatch = detectedMode;
     
+    const isFirstExplorationGeneration =
+      detectedMode === "exploration" &&
+      recentHistory.length === 0 &&
+      !Array.isArray(rawFlags.explorationRelanceWindow) &&
+      rawFlags.explorationDirectivityLevel === undefined &&
+      rawFlags.explorationBootstrapPending === undefined;
+    
+    const effectiveExplorationDirectivityLevel = isFirstExplorationGeneration ?
+      3 :
+      newFlags.explorationDirectivityLevel;
+    
     const mainPromptDebug = hasOverrides ?
       buildPromptOverrideLayersDebug(override1, override2, activePromptRegistry) :
       buildPromptOverrideLayersDebug(null, null, activePromptRegistry);
@@ -3033,7 +3044,7 @@ promptRegistryForCatch = activePromptRegistry;
       history: recentHistory,
       memory: previousMemory,
       mode: detectedMode,
-      explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
+      explorationDirectivityLevel: effectiveExplorationDirectivityLevel,
       promptRegistry: activePromptRegistry,
       override1: hasOverrides ? override1 : null,
       override2: hasOverrides ? override2 : null
