@@ -2559,11 +2559,30 @@ app.post("/chat", async (req, res) => {
     const activePromptRegistry = hasOverrides ? override12PromptRegistry : basePromptRegistry;
     
     const previousMemory = normalizeMemory(req.body?.memory, activePromptRegistry);
-    const flags = normalizeSessionFlags(req.body?.flags);
-    
-    previousMemoryForCatch = previousMemory;
-    flagsForCatch = flags;
-    promptRegistryForCatch = activePromptRegistry;
+
+const rawFlags = normalizeFlags(req.body?.flags);
+const isFirstTurnOfConversation = recentHistory.length === 0;
+const hasExplicitRelanceWindow = Array.isArray(rawFlags.explorationRelanceWindow);
+const hasExplicitDirectivityLevel = rawFlags.explorationDirectivityLevel !== undefined;
+const hasExplicitBootstrapPending =
+  rawFlags.explorationBootstrapPending === true ||
+  rawFlags.explorationBootstrapPending === false;
+
+const flags = isFirstTurnOfConversation &&
+  !hasExplicitRelanceWindow &&
+  !hasExplicitDirectivityLevel &&
+  !hasExplicitBootstrapPending ?
+  normalizeSessionFlags({
+    ...rawFlags,
+    explorationRelanceWindow: [true, true, true],
+    explorationDirectivityLevel: 3,
+    explorationBootstrapPending: false
+  }) :
+  normalizeSessionFlags(rawFlags);
+
+previousMemoryForCatch = previousMemory;
+flagsForCatch = flags;
+promptRegistryForCatch = activePromptRegistry;
     
     async function maybeGenerateConversationTitle() {
       try {
