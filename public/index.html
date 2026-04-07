@@ -2714,10 +2714,12 @@
       function setLoadedFileName(targetEl, overrideState) {
         const label = overrideState?.name?.trim();
         if (!label) {
+          targetEl.textContent = "";
           targetEl.style.display = "none";
           return;
         }
-        targetEl.textContent = label;
+        
+        targetEl.textContent = `Charge : ${label}`;
         targetEl.style.display = "block";
       }
       
@@ -2752,9 +2754,7 @@
       
       override1Clear.addEventListener("click", () => {
         testUiState.override1 = null;
-        testUiState.override2 = null;
         override1Input.value = "";
-        override2Input.value = "";
         saveTestUiState();
         refreshPopoverFields();
       });
