@@ -607,6 +607,7 @@ But :
 
 Direction :
 - propose un seul angle de lecture ou un seul reflet un peu deplacant
+- ta premiere phrase doit s'ancrer dans un element concret et singulier du message, pas dans une formulation generale du ressenti
 - aucune question sauf necessite exceptionnelle
 - aucune invitation a decrire, preciser, observer, explorer ou approfondir
 - aucune suggestion indirecte
