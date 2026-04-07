@@ -2075,69 +2075,42 @@ function normalizePromptOverrideFile(overrideFile) {
   };
 }
 
-function applyPromptOverrideFile(prompt, overrideFile) {
-  const normalized = normalizePromptOverrideFile(overrideFile);
+function buildPromptOverrideLayersDebug(override1, override2, promptRegistry = buildDefaultPromptRegistry()) {
+  const availableTargets = new Set(Object.keys(promptRegistry || {}));
   
-  if (!normalized) {
+  function buildLayerDebug(overrideFile) {
+    const normalized = normalizePromptOverrideFile(overrideFile);
+    
+    if (!normalized) {
+      return {
+        fileName: "",
+        appliedTargets: [],
+        missingTargets: []
+      };
+    }
+    
+    const appliedTargets = [];
+    const missingTargets = [];
+    
+    for (const target of Object.keys(normalized.replacements)) {
+      if (availableTargets.has(target)) {
+        appliedTargets.push(target);
+      } else {
+        missingTargets.push(target);
+      }
+    }
+    
     return {
-      prompt: String(prompt || ""),
-      appliedTargets: [],
-      missingTargets: [],
-      fileName: ""
+      fileName: normalized.name || "",
+      appliedTargets,
+      missingTargets
     };
   }
   
-  let nextPrompt = String(prompt || "");
-  const appliedTargets = [];
-  const missingTargets = [];
-  
-  for (const [target, content] of Object.entries(normalized.replacements)) {
-    const pattern = new RegExp(`\\[\\[${target}_START\\]\\][\\s\\S]*?\\[\\[${target}_END\\]\\]`, "g");
-    
-    if (!pattern.test(nextPrompt)) {
-      missingTargets.push(target);
-      continue;
-    }
-    
-    nextPrompt = nextPrompt.replace(
-      pattern,
-      `[[${target}_START]]
-${String(content || "").trim()}
-[[${target}_END]]`
-    );
-    
-    appliedTargets.push(target);
-  }
-  
   return {
-    prompt: nextPrompt,
-    appliedTargets,
-    missingTargets,
-    fileName: normalized.name || ""
+    override1: buildLayerDebug(override1),
+    override2: buildLayerDebug(override2)
   };
-}
-
-function applyPromptOverrideLayers(basePrompt, override1, override2) {
-  const firstPass = applyPromptOverrideFile(basePrompt, override1);
-  const secondPass = applyPromptOverrideFile(firstPass.prompt, override2);
-  
-  return {
-    prompt: secondPass.prompt,
-    override1: {
-      fileName: firstPass.fileName,
-      appliedTargets: firstPass.appliedTargets,
-      missingTargets: firstPass.missingTargets
-    },
-    override2: {
-      fileName: secondPass.fileName,
-      appliedTargets: secondPass.appliedTargets,
-      missingTargets: secondPass.missingTargets
-    }
-  };
-}
-
-function buildPromptOverrideLayersDebug(override1, override2) {
-  return buildPromptRegistryDebug(buildDefaultPromptRegistry(), override1, override2);
 }
 
 async function generateReply({
@@ -2150,21 +2123,15 @@ async function generateReply({
   override1 = null,
   override2 = null
 }) {
-  const baseSystemPrompt = buildSystemPrompt(
+  const systemPrompt = buildSystemPrompt(
     mode,
     memory,
     explorationDirectivityLevel,
     promptRegistry
   );
   
-  const overrideResult = applyPromptOverrideLayers(
-    baseSystemPrompt,
-    override1,
-    override2
-  );
-  
   const messages = [
-    { role: "system", content: overrideResult.prompt },
+    { role: "system", content: systemPrompt },
     ...history.map(m => ({ role: m.role, content: m.content })),
     { role: "user", content: message }
   ];
@@ -2181,10 +2148,7 @@ async function generateReply({
   
   return {
     reply: (r.choices?.[0]?.message?.content || "").trim() || "Je t'ecoute.",
-    promptDebug: {
-      override1: overrideResult.override1,
-      override2: overrideResult.override2
-    }
+    promptDebug: buildPromptOverrideLayersDebug(override1, override2, promptRegistry)
   };
 }
 
@@ -2590,9 +2554,9 @@ app.post("/chat", async (req, res) => {
     const override1PromptRegistry = resolvePromptRegistry([override1]);
     const override12PromptRegistry = resolvePromptRegistry([override1, override2]);
     
-    const activePromptRegistry = comparisonEnabled ?
-      basePromptRegistry :
-      override12PromptRegistry;
+    const hasOverrides = Boolean(override1 || override2);
+    const referencePromptRegistry = basePromptRegistry;
+    const activePromptRegistry = hasOverrides ? override12PromptRegistry : basePromptRegistry;
     
     const previousMemory = normalizeMemory(req.body?.memory, activePromptRegistry);
     const flags = normalizeSessionFlags(req.body?.flags);
@@ -2698,7 +2662,7 @@ app.post("/chat", async (req, res) => {
           debug: Array.isArray(entry?.debug) ? entry.debug : [],
           debugMeta: {
             topChips: Array.isArray(entry?.debugMeta?.topChips) ? entry.debugMeta.topChips : [],
-            memory: normalizeMemory(entry?.debugMeta?.memory, activePromptRegistry),
+            memory: typeof entry?.debugMeta?.memory === "string" ? entry.debugMeta.memory : "",
             directivityText: typeof entry?.debugMeta?.directivityText === "string" ? entry.debugMeta.directivityText : "",
             rewriteSource: typeof entry?.debugMeta?.rewriteSource === "string" ? entry.debugMeta.rewriteSource : null,
             modelConflict: entry?.debugMeta?.modelConflict === true
@@ -3041,9 +3005,9 @@ app.post("/chat", async (req, res) => {
     
     modeForCatch = detectedMode;
     
-    const mainPromptDebug = comparisonEnabled ?
-      buildPromptOverrideLayersDebug(null, null) :
-      buildPromptOverrideLayersDebug(override1, override2);
+    const mainPromptDebug = hasOverrides ?
+      buildPromptOverrideLayersDebug(override1, override2, activePromptRegistry) :
+      buildPromptOverrideLayersDebug(null, null, activePromptRegistry);
     
     const generatedBase = await generateReply({
       message,
@@ -3052,8 +3016,8 @@ app.post("/chat", async (req, res) => {
       mode: detectedMode,
       explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
       promptRegistry: activePromptRegistry,
-      override1: comparisonEnabled ? null : override1,
-      override2: comparisonEnabled ? null : override2
+      override1: hasOverrides ? override1 : null,
+      override2: hasOverrides ? override2 : null
     });
     
     generatedBase.promptDebug = mainPromptDebug;
@@ -3123,7 +3087,7 @@ app.post("/chat", async (req, res) => {
     
     if (
       comparisonEnabled &&
-      (override1 || override2) &&
+      hasOverrides &&
       detectedMode !== "contact"
     ) {
       const comparisonBaseDebug = buildDebug(detectedMode, {
@@ -3147,13 +3111,22 @@ app.post("/chat", async (req, res) => {
         explorationRelanceWindow: newFlags.explorationRelanceWindow,
         rewriteSource: null,
         modelConflict: false,
-        promptRegistry: basePromptRegistry
+        promptRegistry: referencePromptRegistry
       });
       
       const comparisonResults = [{
         label: "Référence",
-        reply,
-        debug: logsEnabled ? [...comparisonBaseDebug, ...buildPromptDebugLines(buildPromptOverrideLayersDebug(null, null))] : [],
+        reply: await generateReply({
+          message,
+          history: recentHistory,
+          memory: previousMemory,
+          mode: detectedMode,
+          explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
+          promptRegistry: referencePromptRegistry,
+          override1: null,
+          override2: null
+        }).then(result => result.reply),
+        debug: logsEnabled ? [...comparisonBaseDebug, ...buildPromptDebugLines(buildPromptOverrideLayersDebug(null, null, referencePromptRegistry))] : [],
         debugMeta: comparisonBaseMeta
       }];
       
