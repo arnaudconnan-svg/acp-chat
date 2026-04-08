@@ -1945,13 +1945,24 @@ function buildAdvancedDebugTrace({
 // --------------------------------------------------
 
 async function updateMemory(previousMemory, history, promptRegistry = buildDefaultPromptRegistry()) {
+  const defaultUpdateMemoryPrompt = String(buildDefaultPromptRegistry().UPDATE_MEMORY || "").trim();
+  const currentUpdateMemoryPrompt = String(promptRegistry.UPDATE_MEMORY || "").trim();
+  
+  const forcedPrefix = "FORCE_MEMORY_OUTPUT:";
+  
+  if (
+    currentUpdateMemoryPrompt !== defaultUpdateMemoryPrompt &&
+    currentUpdateMemoryPrompt.startsWith(forcedPrefix)
+  ) {
+    const forcedMemory = currentUpdateMemoryPrompt.slice(forcedPrefix.length).trim();
+    return forcedMemory || normalizeMemory(previousMemory, promptRegistry);
+  }
+  
   const transcript = history
     .map(m => `${m.role === "user" ? "Utilisateur" : "Assistant"} : ${m.content}`)
     .join("\n");
   
-  const system = promptRegistry.UPDATE_MEMORY;
-  const defaultUpdateMemoryPrompt = String(buildDefaultPromptRegistry().UPDATE_MEMORY || "").trim();
-  const currentUpdateMemoryPrompt = String(promptRegistry.UPDATE_MEMORY || "").trim();
+  const system = currentUpdateMemoryPrompt;
   const isOverriddenUpdateMemory = currentUpdateMemoryPrompt !== defaultUpdateMemoryPrompt;
   
   const user = `
