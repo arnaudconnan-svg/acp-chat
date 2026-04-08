@@ -3017,6 +3017,22 @@ app.post("/chat", async (req, res) => {
       3 :
       newFlags.explorationDirectivityLevel;
     
+    /* =========================
+       DIRECTIVITY LOCK (TEMP)
+       ========================= */
+    
+    const FORCE_DIRECTIVITY_LEVEL = 2; // mettre a null pour desactiver
+    
+    let finalDirectivityLevel = effectiveExplorationDirectivityLevel;
+    
+    if (FORCE_DIRECTIVITY_LEVEL !== null && detectedMode === "exploration") {
+      finalDirectivityLevel = FORCE_DIRECTIVITY_LEVEL;
+    }
+    
+    /* =========================
+       END DIRECTIVITY LOCK
+       ========================= */
+    
     const mainPromptDebug = hasOverrides ?
       buildPromptOverrideLayersDebug(override1, override2, activePromptRegistry) :
       buildPromptOverrideLayersDebug(null, null, activePromptRegistry);
@@ -3026,7 +3042,8 @@ app.post("/chat", async (req, res) => {
       history: recentHistory,
       memory: previousMemory,
       mode: detectedMode,
-      explorationDirectivityLevel: effectiveExplorationDirectivityLevel,
+      /* remplacer par 'effectiveExplorationDirectivityLevel' pour deverrouiller les niveaux de directivite. */
+      explorationDirectivityLevel: finalDirectivityLevel,
       promptRegistry: activePromptRegistry,
       override1: hasOverrides ? override1 : null,
       override2: hasOverrides ? override2 : null
@@ -3069,7 +3086,8 @@ app.post("/chat", async (req, res) => {
       suicideLevel: suicide.suicideLevel,
       calledMemory: recallRouting.calledMemory,
       modelConflict,
-      explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
+      /* remplacer par 'newFlags.explorationDirectivityLevel' pour reafficher le niveau calcule reel. */
+      explorationDirectivityLevel: finalDirectivityLevel,
       explorationRelanceWindow: newFlags.explorationRelanceWindow
     });
     
@@ -3090,7 +3108,8 @@ app.post("/chat", async (req, res) => {
       suicideLevel: suicide.suicideLevel,
       mode: detectedMode,
       isRecallRequest: recallRouting.isRecallAttempt === true,
-      explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
+      /* remplacer par 'effectiveExplorationDirectivityLevel' pour deverrouiller les niveaux de directivite. */
+      explorationDirectivityLevel: finalDirectivityLevel,
       explorationRelanceWindow: newFlags.explorationRelanceWindow,
       rewriteSource: rewrittenFrom,
       modelConflict,
@@ -3106,7 +3125,8 @@ app.post("/chat", async (req, res) => {
         suicideLevel: suicide.suicideLevel,
         calledMemory: recallRouting.calledMemory,
         modelConflict,
-        explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
+        /* remplacer par 'newFlags.explorationDirectivityLevel' pour reafficher le niveau calcule reel. */
+        explorationDirectivityLevel: finalDirectivityLevel,
         explorationRelanceWindow: newFlags.explorationRelanceWindow
       });
       
@@ -3119,7 +3139,8 @@ app.post("/chat", async (req, res) => {
         suicideLevel: suicide.suicideLevel,
         mode: detectedMode,
         isRecallRequest: recallRouting.isRecallAttempt === true,
-        explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
+        /* remplacer par 'effectiveExplorationDirectivityLevel' pour deverrouiller les niveaux de directivite. */
+        explorationDirectivityLevel: finalDirectivityLevel,
         explorationRelanceWindow: newFlags.explorationRelanceWindow,
         rewriteSource: null,
         modelConflict: false,
@@ -3131,7 +3152,8 @@ app.post("/chat", async (req, res) => {
         history: recentHistory,
         memory: previousMemory,
         mode: detectedMode,
-        explorationDirectivityLevel: effectiveExplorationDirectivityLevel,
+        /* remplacer par 'effectiveExplorationDirectivityLevel' pour deverrouiller les niveaux de directivite. */
+        explorationDirectivityLevel: finalDirectivityLevel,
         promptRegistry: referencePromptRegistry,
         override1: null,
         override2: null
@@ -3150,7 +3172,8 @@ app.post("/chat", async (req, res) => {
           history: recentHistory,
           memory: previousMemory,
           mode: detectedMode,
-          explorationDirectivityLevel: effectiveExplorationDirectivityLevel,
+          /* remplacer par 'effectiveExplorationDirectivityLevel' pour deverrouiller les niveaux de directivite. */
+          explorationDirectivityLevel: finalDirectivityLevel,
           promptRegistry: override1PromptRegistry,
           override1,
           override2: null
@@ -3173,7 +3196,8 @@ app.post("/chat", async (req, res) => {
           history: recentHistory,
           memory: previousMemory,
           mode: detectedMode,
-          explorationDirectivityLevel: effectiveExplorationDirectivityLevel,
+          /* remplacer par 'effectiveExplorationDirectivityLevel' pour deverrouiller les niveaux de directivite. */
+          explorationDirectivityLevel: finalDirectivityLevel,
           promptRegistry: override12PromptRegistry,
           override1,
           override2
