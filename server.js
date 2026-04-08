@@ -1221,7 +1221,6 @@ Regle finale obligatoire :
 8. FILTRAGE DES FAUX ITEMS (CRITIQUE)
 
 Ne sont PAS des phenomenes independants :
-
 - les reformulations metaphorique ou abstraites d’un meme ressenti
 - les consequences du phenomene (ex : recherche de comprehension, tentative d'analyse)
 - les reactions cognitives simples (ex : vouloir comprendre, chercher du sens)
@@ -1256,32 +1255,55 @@ si elles sont directement liees a un phenomene principal deja present
 
 Priorite absolue :
 1. Phenomene vecu (corporel / emotionnel)
-2. Tout le reste est optionnel → et doit etre supprime si redondant
+2. Tout le reste est optionnel -> et doit etre supprime si redondant
 
 Exception :
 Garder une reaction cognitive uniquement si elle devient dominante et independante du phenomene initial
 
-10. OUBLI ACTIF
+10. COMPRESSION FORCEE (CRITIQUE)
+
+Quand un seul phenomene principal organise clairement le tour :
+- produire exactement 1 seul item dans "Mouvements en cours"
+- ne pas decomposer ce phenomene
+- ne pas ajouter sa consequence, son contexte, sa tentative de comprehension ou sa nuance
+
+Exemple obligatoire :
+
+Entree :
+"Tension diffuse, fluctuante, difficile a comprendre, avec recherche de sens"
+
+Sortie attendue :
+"Tension diffuse ressentie, fluctuante sans cause claire."
+
+Dans ce cas, sont interdits comme items separes :
+- l'incomprehension
+- la recherche de lien
+- la recherche de sens
+- l'incertitude
+- l'agacement de ne pas comprendre
+- toute hypothese sur un mecanisme sous-jacent
+
+11. OUBLI ACTIF
 Supprime un element si :
 - il n'apparait plus dans les derniers tours
 - et il n'aide plus a comprendre le mouvement actuel
 
-11. STABILITE
+12. STABILITE
 Un element peut rester s'il reste structurant, meme non mentionne au dernier tour.
 
-12. CORRECTION
+13. CORRECTION
 Tu peux modifier ou supprimer un element si les derniers echanges rendent cela plus juste.
 
-13. INTERPRETATION
+14. INTERPRETATION
 Inference possible (croyance, evitement, acceptation) sans surinterpretation.
 
-14. INTERDIT
+15. INTERDIT
 pas de diagnostic
 pas de categories psychiatriques
 pas d'identite figee
 pas de narration
 
-15. SI RIEN DE PERTINENT
+16. SI RIEN DE PERTINENT
 Ne modifie pas la memoire.
 
 ---
