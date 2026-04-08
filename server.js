@@ -2807,12 +2807,19 @@ app.post("/chat", async (req, res) => {
         comparisonModelConflict = conflict.modelConflict === true;
       }
       
+      const variantMemory = await updateMemory(previousMemory, [
+        ...recentHistory,
+        { role: "user", content: message },
+        { role: "assistant", content: generated.reply }
+      ], comparisonPromptRegistry);
+      
       return {
         label,
         reply: generated.reply,
         debug: logsEnabled ? [...debugLines, ...buildPromptDebugLines(generated.promptDebug)] : [],
         debugMeta: {
           ...debugMetaBase,
+          memory: variantMemory,
           modelConflict: comparisonModelConflict
         }
       };
@@ -3144,7 +3151,7 @@ app.post("/chat", async (req, res) => {
       }
       
       const comparisonBaseMeta = buildResponseDebugMeta({
-        memory: newMemory,
+        memory: "",
         suicideLevel: suicide.suicideLevel,
         mode: detectedMode,
         isRecallRequest: recallRouting.isRecallAttempt === true,
@@ -3168,12 +3175,15 @@ app.post("/chat", async (req, res) => {
         override2: null
       });
       
-      const comparisonResults = [{
-        label: "Référence",
-        reply: generatedReference.reply,
-        debug: logsEnabled ? [...comparisonBaseDebug, ...buildPromptDebugLines(buildPromptOverrideLayersDebug(null, null, referencePromptRegistry))] : [],
-        debugMeta: comparisonBaseMeta
-      }];
+      const comparisonResults = [
+        await buildComparisonEntry(
+          "Référence",
+          generatedReference,
+          comparisonBaseDebug,
+          comparisonBaseMeta,
+          referencePromptRegistry
+        )
+      ];
       
       if (override1) {
         const generatedOverride1 = await generateReply({
