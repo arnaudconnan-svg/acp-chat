@@ -1975,7 +1975,7 @@ ${transcript}
   
   const r = await client.chat.completions.create({
     model: "gpt-4.1-mini",
-    temperature: 0.7,
+    temperature: 0.3,
     max_tokens: 400,
     messages: [
       { role: "system", content: system },
