@@ -1197,32 +1197,91 @@ Tres faible densite :
 Ajoute un element seulement s'il est clairement structurant.
 
 7. FUSION (CRITIQUE)
-- Ne jamais garder deux items qui decrivent le meme phenomene
-- Si deux formulations sont proches, garder uniquement la plus claire et la plus utile
-- Ne pas ajouter un item qui ne fait que reformuler ou complexifier un item existant
-- Toujours fusionner en un seul item plus precis
+- Ne jamais garder deux items qui decrivent le meme phenomene, meme sous des angles differents
+- Toute variation (description, interpretation, hypothese, nuance) d’un meme mouvement doit etre fusionnee en un seul item
 
-8. OUBLI ACTIF
+Test obligatoire :
+- Si deux items peuvent etre resumes en une seule phrase sans perte d'information utile, alors ils doivent etre fusionnes
+
+- Supprimer tout item qui n'apporte pas une information structurellement nouvelle
+- Les reformulations, precisions ou hypotheses faibles sont considerees comme redondantes
+
+Priorite absolue :
+- 1 item = 1 dynamique
+
+Interdit :
+- decomposer un meme mouvement en description + interpretation
+- ajouter un item qui commence par :
+  "comme si", "peut-etre", "suggere", "donne l'impression"
+  -> ces contenus doivent etre integres dans l’item principal ou supprimes
+
+Regle finale obligatoire :
+- Si plusieurs items sont proposes, tenter systematiquement de les fusionner en un seul avant validation finale
+
+8. FILTRAGE DES FAUX ITEMS (CRITIQUE)
+
+Ne sont PAS des phenomenes independants :
+
+- les reformulations metaphorique ou abstraites d’un meme ressenti
+- les consequences du phenomene (ex : recherche de comprehension, tentative d'analyse)
+- les reactions cognitives simples (ex : vouloir comprendre, chercher du sens)
+
+Regle :
+Un item doit decrire directement un phenomene vecu, pas :
+- une interpretation
+- une hypothese
+- une consequence
+- une tentative de resolution
+
+Si un item ne decrit pas directement un phenomene vecu :
+-> il doit etre supprime
+
+Priorite :
+Ne garder que le coeur de l'experience
+
+9. HIERARCHISATION DES PHENOMENES (CRITIQUE)
+
+Lorsqu’un phenomene principal est present (corporel, emotionnel ou experiential) :
+
+- Toutes les reactions cognitives associees (incomprehension, recherche de sens, analyse, agacement) ne sont pas des phenomenes independants
+- Elles sont considerees comme secondaires et doivent etre supprimees
+
+Regle :
+Ne jamais garder :
+- une reaction mentale
+- une tentative de comprehension
+- une evaluation de l'experience
+
+si elles sont directement liees a un phenomene principal deja present
+
+Priorite absolue :
+1. Phenomene vecu (corporel / emotionnel)
+2. Tout le reste est optionnel → et doit etre supprime si redondant
+
+Exception :
+Garder une reaction cognitive uniquement si elle devient dominante et independante du phenomene initial
+
+10. OUBLI ACTIF
 Supprime un element si :
 - il n'apparait plus dans les derniers tours
 - et il n'aide plus a comprendre le mouvement actuel
 
-9. STABILITE
+11. STABILITE
 Un element peut rester s'il reste structurant, meme non mentionne au dernier tour.
 
-10. CORRECTION
+12. CORRECTION
 Tu peux modifier ou supprimer un element si les derniers echanges rendent cela plus juste.
 
-11. INTERPRETATION
+13. INTERPRETATION
 Inference possible (croyance, evitement, acceptation) sans surinterpretation.
 
-12. INTERDIT
+14. INTERDIT
 pas de diagnostic
 pas de categories psychiatriques
 pas d'identite figee
 pas de narration
 
-13. SI RIEN DE PERTINENT
+15. SI RIEN DE PERTINENT
 Ne modifie pas la memoire.
 
 ---
