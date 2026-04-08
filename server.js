@@ -1950,6 +1950,9 @@ async function updateMemory(previousMemory, history, promptRegistry = buildDefau
     .join("\n");
   
   const system = promptRegistry.UPDATE_MEMORY;
+  const defaultUpdateMemoryPrompt = String(buildDefaultPromptRegistry().UPDATE_MEMORY || "").trim();
+  const currentUpdateMemoryPrompt = String(promptRegistry.UPDATE_MEMORY || "").trim();
+  const isOverriddenUpdateMemory = currentUpdateMemoryPrompt !== defaultUpdateMemoryPrompt;
   
   const user = `
 Memoire precedente :
@@ -1977,6 +1980,10 @@ ${transcript}
   
   const cleaned = rawOutput.replace(/```[\s\S]*?```/g, "").trim();
   
+  if (!cleaned) {
+    return normalizeMemory(previousMemory, promptRegistry);
+  }
+  
   const lower = cleaned.toLowerCase();
   const hasTranscriptLeak =
     lower.includes("conversation :") ||
@@ -1988,11 +1995,19 @@ ${transcript}
     lower.includes("contexte stable:") &&
     lower.includes("mouvements en cours:");
   
-  if (hasTranscriptLeak || !hasRequiredSections) {
+  if (hasTranscriptLeak) {
     return normalizeMemory(previousMemory, promptRegistry);
   }
   
-  return cleaned;
+  if (hasRequiredSections) {
+    return cleaned;
+  }
+  
+  if (isOverriddenUpdateMemory) {
+    return cleaned;
+  }
+  
+  return normalizeMemory(previousMemory, promptRegistry);
 }
 
 // --------------------------------------------------
