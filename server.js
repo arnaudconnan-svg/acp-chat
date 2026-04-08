@@ -1140,30 +1140,67 @@ Les deux blocs doivent toujours etre presents, meme s'ils sont vides.
 
 3. CONTEXTE STABLE
 
-- Elements rares, minimaux, recurrents
-- Seulement s'ils modifient la maniere de repondre
-- Supprimer s'ils ne sont plus utiles
-- Ne jamais stocker de details biographiques inutiles
+Definition stricte :
+- Le bloc "Contexte stable" sert uniquement a memoriser des faits autobiographiques explicites, relativement stables dans le temps, et directement utiles pour mieux comprendre les prochains echanges
+- Ce bloc ne sert pas a decrire le processus psychique, emotionnel ou relationnel en cours
+- Ce bloc ne sert pas a resumer le dernier message
+- Ce bloc ne sert pas a indiquer qu'il n'y a rien a retenir
+
+Critere obligatoire :
+Un element ne peut entrer dans "Contexte stable" que s'il remplit les 3 conditions suivantes :
+- il est explicitement dit par l'utilisateur
+- il s'agit d'un fait autobiographique ou contextuel relativement stable
+- il peut encore etre utile plusieurs tours plus tard
+
+Types d'elements autorises :
+- elements de vie stables (role, cadre, situation, activite)
+- relations stables
+- contraintes concretes durables
+
+Types d'elements interdits :
+- tout ressenti actuel
+- toute tension ou fluctuation
+- toute absence de clarte ou de mise en sens
+- toute dynamique emotionnelle
+- toute acceptation ou non-acceptation
+- tout evitement
+- toute deconnexion
+- toute interpretation
+- tout mouvement interne
+- tout resume du processus en cours
+- toute mention du fait qu'il n'y a pas d'element autobiographique
+
+Regle de classement :
+- si l'element decrit quelque chose qui se passe maintenant (psychique, emotionnel, corporel), il va dans "Mouvements en cours"
+- si ce n'est pas un fait autobiographique explicite et stable, il ne va pas dans "Contexte stable"
+- en cas de doute, ne rien mettre
+
+Regle de vide :
+- si aucun element pertinent : laisser
+  Contexte stable:
+  -
+- ne jamais ajouter de phrase pour dire qu'il n'y a rien
 
 4. MOUVEMENTS EN COURS
 - Dynamiques actives uniquement
-- Utiliser explicitement le vocabulaire du modele si pertinent
-- Inclure : croyances limitantes, acceptation, refus, tensions, acces emotionnel, decharge, realignement
-- Les “questions ouvertes” deviennent des tensions ou zones non resolues
+- Utiliser le vocabulaire du modele si pertinent
+- Inclure : tensions, evitement, acceptation, croyances limitantes, acces emotionnel, decharge, realignement
+- Les questions ouvertes deviennent des tensions ou zones non resolues
 
 5. DENSITE
 Tres faible densite :
 - 1 a 3 items max par bloc
 - phrases courtes
-- pas de redondance
+- aucune redondance
 
 6. AJOUT
-Ajoute un element seulement s'il est clairement structurant, meme en une seule occurrence.
+Ajoute un element seulement s'il est clairement structurant.
 
-7. FUSION
-Si un element evolue :
-- fusionne avec l'ancien en une formulation plus juste
-- ne duplique pas
+7. FUSION (CRITIQUE)
+- Ne jamais garder deux items qui decrivent le meme phenomene
+- Si deux formulations sont proches, garder uniquement la plus claire et la plus utile
+- Ne pas ajouter un item qui ne fait que reformuler ou complexifier un item existant
+- Toujours fusionner en un seul item plus precis
 
 8. OUBLI ACTIF
 Supprime un element si :
@@ -1171,13 +1208,13 @@ Supprime un element si :
 - et il n'aide plus a comprendre le mouvement actuel
 
 9. STABILITE
-Un element peut rester meme s'il n'est pas mentionne au dernier tour s'il reste structurant.
+Un element peut rester s'il reste structurant, meme non mentionne au dernier tour.
 
 10. CORRECTION
-Tu peux modifier ou supprimer un element precedent uniquement si les derniers echanges rendent cette modification plus juste et utile.
+Tu peux modifier ou supprimer un element si les derniers echanges rendent cela plus juste.
 
 11. INTERPRETATION
-Tu peux inferer des elements du modele (ex : croyance limitante, evitement, acceptation) meme si non explicitement nommes, mais sans surinterpretation.
+Inference possible (croyance, evitement, acceptation) sans surinterpretation.
 
 12. INTERDIT
 pas de diagnostic
