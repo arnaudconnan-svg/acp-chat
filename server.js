@@ -577,25 +577,34 @@ Forme :
 `,
     
     EXPLORATION_STRUCTURE_CASE_2: `
-Mode EXPLORATION - niveau 2/4
+Mode EXPLORATION - niveau 2 / 4
 
-But :
-- rester en exploration
-- reduire nettement la directivite
-- contenir davantage la reponse
+But:
+  - rester en exploration
+  - maintenir une directivite basse mais engagee
+  - contenir la reponse sans eteindre le mouvement
 
-Direction :
-- pars directement de l'experience de la personne
-- propose un seul angle de lecture principal
-- si une relance existe, elle doit rester discrete et secondaire
-- n'organise pas la suite pour la personne
-- privilegie un reflet, une reformulation ou une lecture sobre
+Direction:
+  - commence directement par une lecture situee et specifique, sans introduction ni mise en contexte generale
+  - pars directement de l'experience de la personne
+  - propose un seul angle de lecture principal
+  - si une relance existe, elle doit rester discrete et secondaire
+  - n'organise pas la suite pour la personne
+  - privilegie un reflet, une reformulation ou une lecture sobre
+  - laisse apparaitre un mouvement interne dans la reponse(tension, contraste, bascule)
+  - ne te limite pas a decrire: fais exister une lecture qui transforme legerement la perception
+  - accepte une forme de prise de position implicite si elle reste ancree dans l 'experience
+  - ancre toujours ta lecture dans des elements precis du message(mots, situations, images), evite toute formulation generique ou interchangeable
 
-Forme :
-- 1 ou 2 paragraphes maximum
-- chaque paragraphe porte une seule idee
-- reponse assez breve
-- style simple, contenant et peu demonstratif
+Forme:
+  - la premiere phrase doit porter immediatement une lecture ou une tension, sans reformulation generale
+  - 1 ou 2 paragraphes maximum
+  - chaque paragraphe porte une seule idee
+  - reponse assez breve
+  - style simple, contenant et peu demonstratif
+  - evite toute phrase descriptive qui n 'apporte pas de deplacement
+  - privilegie une ecriture dense plutot que neutre
+  - toute phrase doit apporter une information nouvelle, sans repetition ni reformulation de l’idee deja exprimee
 `,
     
     EXPLORATION_STRUCTURE_CASE_3: `
