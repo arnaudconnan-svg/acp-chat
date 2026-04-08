@@ -2828,10 +2828,20 @@ app.post("/chat", async (req, res) => {
         { role: "assistant", content: generated.reply }
       ], comparisonPromptRegistry);
       
+      console.log("[COMPARE][ENTRY]", {
+        label,
+        promptRegistryUpdateMemoryPreview: String(comparisonPromptRegistry?.UPDATE_MEMORY || "").slice(0, 160),
+        variantMemory
+      });
+      
       return {
         label,
         reply: generated.reply,
-        debug: logsEnabled ? [...debugLines, ...buildPromptDebugLines(generated.promptDebug)] : [],
+        debug: logsEnabled ? [
+          ...debugLines,
+          ...buildPromptDebugLines(generated.promptDebug),
+          `variantMemory: ${variantMemory}`
+        ] : [],
         debugMeta: {
           ...debugMetaBase,
           memory: variantMemory,
@@ -3048,21 +3058,13 @@ app.post("/chat", async (req, res) => {
       3 :
       newFlags.explorationDirectivityLevel;
     
-    /* =========================
-       DIRECTIVITY LOCK (TEMP)
-       ========================= */
-    
-    const FORCE_DIRECTIVITY_LEVEL = 2; // mettre a null pour desactiver
+    const FORCE_DIRECTIVITY_LEVEL = 2;
     
     let finalDirectivityLevel = effectiveExplorationDirectivityLevel;
     
     if (FORCE_DIRECTIVITY_LEVEL !== null && detectedMode === "exploration") {
       finalDirectivityLevel = FORCE_DIRECTIVITY_LEVEL;
     }
-    
-    /* =========================
-       END DIRECTIVITY LOCK
-       ========================= */
     
     const mainPromptDebug = hasOverrides ?
       buildPromptOverrideLayersDebug(override1, override2, activePromptRegistry) :
@@ -3073,7 +3075,6 @@ app.post("/chat", async (req, res) => {
       history: recentHistory,
       memory: previousMemory,
       mode: detectedMode,
-      /* remplacer par 'effectiveExplorationDirectivityLevel' pour deverrouiller les niveaux de directivite. */
       explorationDirectivityLevel: finalDirectivityLevel,
       promptRegistry: activePromptRegistry,
       override1: hasOverrides ? override1 : null,
@@ -3117,7 +3118,6 @@ app.post("/chat", async (req, res) => {
       suicideLevel: suicide.suicideLevel,
       calledMemory: recallRouting.calledMemory,
       modelConflict,
-      /* remplacer par 'newFlags.explorationDirectivityLevel' pour reafficher le niveau calcule reel. */
       explorationDirectivityLevel: finalDirectivityLevel,
       explorationRelanceWindow: newFlags.explorationRelanceWindow
     });
@@ -3134,12 +3134,16 @@ app.post("/chat", async (req, res) => {
       { role: "assistant", content: reply }
     ], activePromptRegistry);
     
+    console.log("[COMPARE][MAIN]", {
+      activeUpdateMemoryPreview: String(activePromptRegistry?.UPDATE_MEMORY || "").slice(0, 160),
+      newMemory
+    });
+    
     const responseDebugMeta = buildResponseDebugMeta({
       memory: newMemory,
       suicideLevel: suicide.suicideLevel,
       mode: detectedMode,
       isRecallRequest: recallRouting.isRecallAttempt === true,
-      /* remplacer par 'effectiveExplorationDirectivityLevel' pour deverrouiller les niveaux de directivite. */
       explorationDirectivityLevel: finalDirectivityLevel,
       explorationRelanceWindow: newFlags.explorationRelanceWindow,
       rewriteSource: rewrittenFrom,
@@ -3156,7 +3160,6 @@ app.post("/chat", async (req, res) => {
         suicideLevel: suicide.suicideLevel,
         calledMemory: recallRouting.calledMemory,
         modelConflict,
-        /* remplacer par 'newFlags.explorationDirectivityLevel' pour reafficher le niveau calcule reel. */
         explorationDirectivityLevel: finalDirectivityLevel,
         explorationRelanceWindow: newFlags.explorationRelanceWindow
       });
@@ -3170,7 +3173,6 @@ app.post("/chat", async (req, res) => {
         suicideLevel: suicide.suicideLevel,
         mode: detectedMode,
         isRecallRequest: recallRouting.isRecallAttempt === true,
-        /* remplacer par 'effectiveExplorationDirectivityLevel' pour deverrouiller les niveaux de directivite. */
         explorationDirectivityLevel: finalDirectivityLevel,
         explorationRelanceWindow: newFlags.explorationRelanceWindow,
         rewriteSource: null,
@@ -3183,7 +3185,6 @@ app.post("/chat", async (req, res) => {
         history: recentHistory,
         memory: previousMemory,
         mode: detectedMode,
-        /* remplacer par 'effectiveExplorationDirectivityLevel' pour deverrouiller les niveaux de directivite. */
         explorationDirectivityLevel: finalDirectivityLevel,
         promptRegistry: referencePromptRegistry,
         override1: null,
@@ -3206,7 +3207,6 @@ app.post("/chat", async (req, res) => {
           history: recentHistory,
           memory: previousMemory,
           mode: detectedMode,
-          /* remplacer par 'effectiveExplorationDirectivityLevel' pour deverrouiller les niveaux de directivite. */
           explorationDirectivityLevel: finalDirectivityLevel,
           promptRegistry: override1PromptRegistry,
           override1,
@@ -3230,7 +3230,6 @@ app.post("/chat", async (req, res) => {
           history: recentHistory,
           memory: previousMemory,
           mode: detectedMode,
-          /* remplacer par 'effectiveExplorationDirectivityLevel' pour deverrouiller les niveaux de directivite. */
           explorationDirectivityLevel: finalDirectivityLevel,
           promptRegistry: override12PromptRegistry,
           override1,
@@ -3247,6 +3246,11 @@ app.post("/chat", async (req, res) => {
           )
         );
       }
+      
+      console.log("[COMPARE][RESULTS]", comparisonResults.map(entry => ({
+        label: entry.label,
+        memory: entry?.debugMeta?.memory || ""
+      })));
       
       await pushAssistantMessage(reply, debug, responseDebugMeta, comparisonResults);
       await maybeGenerateConversationTitle();
