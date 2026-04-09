@@ -656,89 +656,6 @@ Forme :
 - aucune ouverture finale
 `,
     
-    ANALYZE_MODEL_CONFLICT: `
-Tu analyses uniquement la reponse du bot.
-
-Ta tache n'est PAS d'evaluer si la reponse est bonne, utile, precise ou fidele a un modele complet.
-Tu dois uniquement detecter si elle reintroduit clairement au moins un des cadres conceptuels explicitement bannis ci-dessous.
-
-Cadres bannis :
-1. inconscient / subconscient / non-conscient comme instance explicative
-2. psychopathologie / sante mentale comme cadre explicatif
-3. mecanismes de defense au sens psy classique comme cadre explicatif
-
-Definition stricte du conflit :
-Un conflit existe uniquement si la reponse mobilise explicitement ou quasi explicitement l'un de ces cadres comme explication pertinente de la situation.
-
-Regles strictes :
-- detection conceptuelle, pas simple detection de mots
-- un conflit existe seulement si la reponse presuppose clairement l'un de ces cadres pour expliquer
-- si la reponse est ambigue, vague ou interpretable autrement, reponds false
-- ne signale pas un conflit pour une reponse imprecise, faible, generique ou incomplete
-- ne sur-interprete pas
-- en cas de doute, reponds false
-
-Important :
-Ne classe PAS comme conflit :
-- une hypothese sur une tension interne
-- une lecture autour d'une pression, d'un blocage, d'une hesitation, d'un evitement ou d'une deconnexion
-- une mise en lien entre experience, ressenti, croyance ou contexte
-- une lecture existentielle, relationnelle ou phenomenologique
-- une formulation psychologique generale si elle n'introduit pas explicitement un cadre banni
-
-Un conflit existe aussi si la reponse valide implicitement une categorie de psychopathologie comme cadre pertinent, meme sans poser de diagnostic.
-
-Exemples a considerer comme conflit (true) :
-- "cela peut faire penser a une depression"
-- "on pourrait se demander s'il s'agit d'un trouble"
-- "cela correspond parfois a..."
-- "c'est peut-etre un mecanisme de defense"
-- "ton inconscient te protege"
-- "cela releve de la sante mentale"
-
-Exemples a considerer comme NON conflit (false) :
-- "je me demande si une pression implicite est a l'oeuvre"
-- "peut-etre qu'il y a un evitement"
-- "cela peut couper momentanement de ce qu'on ressent"
-- "j'ai l'impression qu'une tension interieure est presente"
-- "il y a peut-etre un conflit entre envie et exigence"
-- "cela peut etre lie a ce que tu vis en ce moment"
-- "il semble y avoir une forme de decalage avec ce que tu ressens"
-
-Reponds STRICTEMENT en JSON :
-{
-  "modelConflict": true|false
-}
-`,
-    
-    REWRITE_EXPLORATION_REPLY_WITH_MODEL_FILTER: `
-Tu reecris une reponse de mode exploration.
-
-N'utilise aucune autre langue que le francais
-
-But :
-- conserver l'intention, le ton global, la direction relationnelle et le niveau de langage de la reponse initiale
-- enlever uniquement ce qui la met en opposition avec le filtre theorique ci-dessous
-- rester en exploration, sans guider, sans diagnostiquer, sans coacher, sans prescrire
-- repondre uniquement en francais
-
-Filtre theorique explicite :
-- il n'y a pas d'inconscient, de subconscient ni de non-conscient comme instance explicative
-- il n'y a pas de psychopathologie ni de sante mentale comme cadre explicatif
-- ne parle pas de mecanismes de defense ; prefere, si necessaire, mecanismes adaptatifs
-- si tu reformules, reste concret et sobre
-- n'ajoute pas un cours theorique
-- ne plaque pas le modele si ce n'est pas necessaire
-
-Terminologie autorisee si utile :
-- memoire corporelle
-- memoire autobiographique
-- croyances limitantes
-- mecanismes adaptatifs
-
-Reecris uniquement la reponse finale, sans commentaire.
-`,
-    
     // ------------------------------------
     // GESTION DU MODE INFORMATION
     // ------------------------------------
@@ -1306,6 +1223,24 @@ pas de narration
 16. SI RIEN DE PERTINENT
 Ne modifie pas la memoire.
 
+17. LISIBILITE UTILISATEUR (CRITIQUE)
+
+Ecris chaque element comme si l’utilisateur pouvait le lire directement.
+
+Contraintes :
+- aucune formulation incriminante
+- aucune attribution implicite de responsabilite
+- aucun vocabulaire pouvant etre interprete comme un choix volontaire si ce n’est pas explicitement le cas
+
+Remplacer systematiquement :
+- termes agentifs (ex : evitement, resistance)
+par
+- formulations descriptives neutres (ex : difficulte a rester avec, mise a distance automatique, reduction du contact)
+
+Priorite :
+- decrire l’experience
+- jamais suggerer une faute ou une strategie du sujet
+
 ---
 
 Renvoie uniquement la memoire mise a jour, sans commentaire.
@@ -1373,7 +1308,127 @@ Contraintes :
 - reponse breve, naturelle et sobre
 - dis clairement qu'il s'agit de reperes generaux et non d'un souvenir detaille
 - n'invente aucun detail
-- si la memoire contient plusieurs themes, cite seulement les reperes les plus plausibles et generaux`
+- si la memoire contient plusieurs themes, cite seulement les reperes les plus plausibles et generaux
+`,
+    
+    // ------------------------------------
+    // GESTION DE CONFLITS MODELE
+    // ------------------------------------
+    
+    
+    ANALYZE_CONFLICT_MODEL: `
+Tu analyses uniquement un contenu genere par le systeme.
+
+Ta tache n'est PAS d'evaluer si ce contenu est bon, utile, precis ou fidele a un mode complet.
+Tu dois uniquement detecter s'il reintroduit clairement au moins un des cadres conceptuels explicitement bannis ci-dessous.
+
+Le contenu analyse peut etre :
+- une reponse utilisateur-visible
+- une memoire de session
+- un texte de rappel
+- un texte de clarification
+- tout autre texte genere par le systeme
+
+Cadres bannis :
+1. inconscient / subconscient / non-conscient comme instance explicative
+2. psychopathologie / sante mentale comme cadre explicatif
+3. mecanismes de defense au sens psy classique comme cadre explicatif
+4. attribution implicite d'une agentivite inappropriee au sujet (ex : evitement, resistance, refus implicite)
+
+Definition stricte du conflit :
+Un conflit existe uniquement si le contenu mobilise explicitement ou quasi explicitement l'un de ces cadres comme explication pertinente.
+
+Regles strictes :
+- detection conceptuelle, pas simple detection de mots
+- un conflit existe seulement si le contenu presuppose clairement l'un de ces cadres pour expliquer
+- si le contenu est ambigu, vague ou interpretable autrement, reponds false
+- ne signale pas un conflit pour un contenu imprecis, faible, generique ou incomplet
+- ne sur-interprete pas
+- en cas de doute, reponds false
+
+Important :
+Ne classe PAS comme conflit :
+- une hypothese sur une tension interne
+- une lecture autour d'une pression, d'un blocage, d'une hesitation ou d'une deconnexion
+- une mise en lien entre experience, ressenti, croyance ou contexte
+- une lecture existentielle, relationnelle ou phenomenologique
+- une formulation psychologique generale si elle n'introduit pas explicitement un cadre banni
+- une description non-agentive d'une difficulte (ex : difficulte a rester avec, mise a distance automatique)
+
+Un conflit existe aussi si le contenu valide implicitement une categorie de psychopathologie comme cadre pertinent, meme sans poser de diagnostic.
+
+Cas specifique (agentivite) :
+Un conflit existe si le contenu :
+- attribue au sujet une action implicite de type evitement, resistance, refus
+- suggere que le sujet "fait" quelque chose contre son experience sans que cela soit explicitement formule comme un mouvement automatique ou systemique
+
+Exemples a considerer comme conflit (true) :
+- "cela peut faire penser a une depression"
+- "on pourrait se demander s'il s'agit d'un trouble"
+- "cela correspond parfois a..."
+- "c'est peut-etre un mecanisme de defense"
+- "ton inconscient te protege"
+- "cela releve de la sante mentale"
+- "tu evites ce ressenti"
+- "il y a une forme de resistance en toi"
+
+Exemples a considerer comme NON conflit (false) :
+- "je me demande si une pression implicite est a l'oeuvre"
+- "il semble y avoir une difficulte a rester avec cette sensation"
+- "cela peut couper momentanement de ce qu'on ressent"
+- "j'ai l'impression qu'une tension interieure est presente"
+- "il y a peut-etre un conflit entre envie et exigence"
+- "cela peut etre lie a ce que tu vis en ce moment"
+- "il semble y avoir une forme de decalage avec ce que tu ressens"
+- "une mise a distance automatique semble se produire"
+
+Reponds STRICTEMENT en JSON :
+{
+  "modelConflict": true|false
+}
+`,
+    
+    REWRITE_CONFLICT_MODEL: `
+Tu reecris un contenu genere par le systeme apres detection d'un conflit theorique.
+
+N'utilise aucune autre langue que le francais.
+
+Le contenu a corriger peut etre :
+- une reponse utilisateur-visible
+- une memoire de session
+- un texte de rappel
+- un texte de clarification
+- tout autre texte genere par le systeme
+
+But :
+- conserver au maximum l'intention, la fonction, le ton global, la structure utile et le niveau de langage du contenu initial
+- enlever uniquement ce qui le met en opposition avec le filtre theorique ci-dessous
+- produire une version compatible, sans commentaire, sans justification, sans meta-discours
+- rester compatible avec la couleur du contenu d'origine
+- ne pas transformer un contenu bref en contenu developpe
+- ne pas transformer un contenu developpe en contenu telegraphique sauf necessite de correction
+
+Filtre theorique explicite :
+- il n'y a pas d'inconscient, de subconscient ni de non-conscient comme instance explicative
+- il n'y a pas de psychopathologie ni de sante mentale comme cadre explicatif
+- ne parle pas de mecanismes de defense ; prefere, si necessaire, mecanismes adaptatifs
+- n'attribue pas au sujet une agentivite implicite inappropriee
+- remplace toute formulation incriminante ou quasi incriminante par une formulation descriptive, neutre ou systemique
+- si tu reformules, reste concret et sobre
+- n'ajoute pas un cours theorique
+- ne plaque pas le modele si ce n'est pas necessaire
+
+Terminologie autorisee si utile :
+- memoire corporelle
+- memoire autobiographique
+- croyances limitantes
+- mecanismes adaptatifs
+- mise a distance automatique
+- difficulte a rester avec
+- reduction du contact
+
+Reecris uniquement le contenu final, sans commentaire.
+`,
   };
 }
 
@@ -1843,14 +1898,14 @@ function buildNoMemoryRecallResponse() {
   return "Je n'ai pas assez de reperes pour retrouver cela clairement. Tu peux me redonner un peu de contexte ?";
 }
 
-async function analyzeModelConflict(reply = "", promptRegistry = buildDefaultPromptRegistry()) {
+async function analyzeModelConflict(content = "", promptRegistry = buildDefaultPromptRegistry()) {
   const r = await client.chat.completions.create({
     model: "gpt-4.1-mini",
     temperature: 0,
     max_tokens: 40,
     messages: [
-      { role: "system", content: promptRegistry.ANALYZE_MODEL_CONFLICT },
-      { role: "user", content: reply }
+      { role: "system", content: promptRegistry.ANALYZE_CONFLICT_MODEL },
+      { role: "user", content: content }
     ]
   });
   
@@ -1866,6 +1921,40 @@ async function analyzeModelConflict(reply = "", promptRegistry = buildDefaultPro
       modelConflict: false
     };
   }
+}
+
+async function rewriteConflictModelContent({
+  message = "",
+  history = [],
+  memory = "",
+  originalContent,
+  promptRegistry = buildDefaultPromptRegistry()
+}) {
+  const user = `
+Message utilisateur :
+${message}
+
+Contexte recent :
+${history.map(m => `${m.role === "user" ? "Utilisateur" : "Assistant"} : ${m.content}`).join("\n")}
+
+Memoire :
+${normalizeMemory(memory, promptRegistry)}
+
+Contenu initial a reformuler :
+${originalContent}
+`;
+  
+  const r = await client.chat.completions.create({
+    model: "gpt-4o",
+    temperature: 0.3,
+    max_tokens: 500,
+    messages: [
+      { role: "system", content: promptRegistry.REWRITE_CONFLICT_MODEL },
+      { role: "user", content: user }
+    ]
+  });
+  
+  return (r.choices?.[0]?.message?.content || "").trim() || originalContent;
 }
 
 async function analyzeExplorationRelance({
@@ -1913,40 +2002,6 @@ ${reply}
       isRelance: false
     };
   }
-}
-
-async function rewriteExplorationReplyWithModelFilter({
-  message,
-  history,
-  memory,
-  originalReply,
-  promptRegistry = buildDefaultPromptRegistry()
-}) {
-  const user = `
-Message utilisateur :
-${message}
-
-Contexte recent :
-${history.map(m => `${m.role === "user" ? "Utilisateur" : "Assistant"} : ${m.content}`).join("\n")}
-
-Memoire :
-${normalizeMemory(memory, promptRegistry)}
-
-Reponse initiale a reformuler :
-${originalReply}
-`;
-  
-  const r = await client.chat.completions.create({
-    model: "gpt-4o",
-    temperature: 0.7,
-    max_tokens: 500,
-    messages: [
-      { role: "system", content: promptRegistry.REWRITE_EXPLORATION_REPLY_WITH_MODEL_FILTER },
-      { role: "user", content: user }
-    ]
-  });
-  
-  return (r.choices?.[0]?.message?.content || "").trim() || originalReply;
 }
 
 // --------------------------------------------------
@@ -2618,6 +2673,7 @@ app.post("/chat", async (req, res) => {
     explorationDirectivityLevel = 0,
     explorationRelanceWindow = [],
     rewriteSource = null,
+    memoryRewriteSource = null,
     modelConflict = false,
     promptRegistry = buildDefaultPromptRegistry()
   } = {}) {
@@ -2683,6 +2739,7 @@ app.post("/chat", async (req, res) => {
         explorationRelanceWindow
       }),
       rewriteSource: typeof rewriteSource === "string" ? rewriteSource : null,
+      memoryRewriteSource: typeof memoryRewriteSource === "string" ? memoryRewriteSource : null,
       modelConflict: modelConflict === true
     };
   }
@@ -2820,6 +2877,7 @@ app.post("/chat", async (req, res) => {
             memory: typeof entry?.debugMeta?.memory === "string" ? entry.debugMeta.memory : "",
             directivityText: typeof entry?.debugMeta?.directivityText === "string" ? entry.debugMeta.directivityText : "",
             rewriteSource: typeof entry?.debugMeta?.rewriteSource === "string" ? entry.debugMeta.rewriteSource : null,
+            memoryRewriteSource: typeof entry?.debugMeta?.memoryRewriteSource === "string" ? entry.debugMeta.memoryRewriteSource : null,
             modelConflict: entry?.debugMeta?.modelConflict === true
           }
         })) :
@@ -2837,6 +2895,7 @@ app.post("/chat", async (req, res) => {
           memory: normalizeMemory(debugMeta.memory, activePromptRegistry),
           directivityText: typeof debugMeta.directivityText === "string" ? debugMeta.directivityText : "",
           rewriteSource: typeof debugMeta.rewriteSource === "string" ? debugMeta.rewriteSource : null,
+          memoryRewriteSource: typeof debugMeta.memoryRewriteSource === "string" ? debugMeta.memoryRewriteSource : null,
           modelConflict: debugMeta.modelConflict === true
         },
         comparisonResults: safeComparisonResults
@@ -2923,6 +2982,7 @@ app.post("/chat", async (req, res) => {
       explorationDirectivityLevel = 0,
       explorationRelanceWindow = [],
       rewriteSource = null,
+      memoryRewriteSource = null,
       modelConflict = false,
       promptRegistry = activePromptRegistry
     } = {}) {
@@ -2939,42 +2999,124 @@ app.post("/chat", async (req, res) => {
           explorationRelanceWindow
         }),
         rewriteSource: typeof rewriteSource === "string" ? rewriteSource : null,
+        memoryRewriteSource: typeof memoryRewriteSource === "string" ? memoryRewriteSource : null,
         modelConflict: modelConflict === true
       };
     }
     
-    async function buildComparisonEntry(label, generated, debugLines, debugMetaBase, comparisonPromptRegistry) {
-      let comparisonModelConflict = false;
+    async function applyModelConflictPipeline({
+      content = "",
+      message = "",
+      history = [],
+      memory = "",
+      promptRegistry = activePromptRegistry
+    } = {}) {
+      const originalContent = String(content || "").trim();
       
-      if (detectedMode === "exploration") {
-        const conflict = await analyzeModelConflict(generated.reply, comparisonPromptRegistry);
-        comparisonModelConflict = conflict.modelConflict === true;
+      if (!originalContent) {
+        return {
+          content: originalContent,
+          modelConflict: false,
+          rewriteSource: null
+        };
       }
       
-      const variantMemory = await updateMemory(previousMemory, [
-        ...recentHistory,
-        { role: "user", content: message },
-        { role: "assistant", content: generated.reply }
-      ], comparisonPromptRegistry);
+      const conflictAnalysis = await analyzeModelConflict(
+        originalContent,
+        promptRegistry
+      );
+      
+      const modelConflict = conflictAnalysis.modelConflict === true;
+      
+      if (!modelConflict) {
+        return {
+          content: originalContent,
+          modelConflict: false,
+          rewriteSource: null
+        };
+      }
+      
+      const rewrittenContent = await rewriteConflictModelContent({
+        message,
+        history,
+        memory,
+        originalContent,
+        promptRegistry
+      });
+      
+      return {
+        content: String(rewrittenContent || "").trim() || originalContent,
+        modelConflict: true,
+        rewriteSource: originalContent
+      };
+    }
+    
+    async function buildComparisonEntry(label, generated, debugMetaBase, comparisonPromptRegistry) {
+      const replyPipeline = await applyModelConflictPipeline({
+        content: generated.reply,
+        message,
+        history: recentHistory,
+        memory: previousMemory,
+        promptRegistry: comparisonPromptRegistry
+      });
+      
+      const rawVariantMemory = await updateMemory(
+        previousMemory,
+        [
+          ...recentHistory,
+          { role: "user", content: message },
+          { role: "assistant", content: replyPipeline.content }
+        ],
+        comparisonPromptRegistry
+      );
+      
+      const memoryPipeline = await applyModelConflictPipeline({
+        content: rawVariantMemory,
+        message,
+        history: [
+          ...recentHistory,
+          { role: "user", content: message },
+          { role: "assistant", content: replyPipeline.content }
+        ],
+        memory: previousMemory,
+        promptRegistry: comparisonPromptRegistry
+      });
+      
+      const variantDebug = buildDebug(detectedMode, {
+        suicideLevel: suicide.suicideLevel,
+        calledMemory: recallRouting.calledMemory,
+        modelConflict: replyPipeline.modelConflict || memoryPipeline.modelConflict,
+        explorationDirectivityLevel: finalDirectivityLevel,
+        explorationRelanceWindow: newFlags.explorationRelanceWindow
+      });
+      
+      if (replyPipeline.rewriteSource) {
+        variantDebug.push(`rewriteSource: ${replyPipeline.rewriteSource}`);
+      }
+      
+      if (memoryPipeline.rewriteSource) {
+        variantDebug.push(`memoryRewriteSource: ${memoryPipeline.rewriteSource}`);
+      }
+      
+      variantDebug.push(...buildPromptDebugLines(generated.promptDebug));
+      variantDebug.push(`variantMemory: ${memoryPipeline.content}`);
       
       console.log("[COMPARE][ENTRY]", {
         label,
         promptRegistryUpdateMemoryPreview: String(comparisonPromptRegistry?.UPDATE_MEMORY || "").slice(0, 160),
-        variantMemory
+        variantMemory: memoryPipeline.content
       });
       
       return {
         label,
-        reply: generated.reply,
-        debug: logsEnabled ? [
-          ...debugLines,
-          ...buildPromptDebugLines(generated.promptDebug),
-          `variantMemory: ${variantMemory}`
-        ] : [],
+        reply: replyPipeline.content,
+        debug: logsEnabled ? variantDebug : [],
         debugMeta: {
           ...debugMetaBase,
-          memory: variantMemory,
-          modelConflict: comparisonModelConflict
+          memory: memoryPipeline.content,
+          rewriteSource: replyPipeline.rewriteSource,
+          memoryRewriteSource: memoryPipeline.rewriteSource,
+          modelConflict: replyPipeline.modelConflict || memoryPipeline.modelConflict
         }
       };
     }
@@ -2995,8 +3137,10 @@ app.post("/chat", async (req, res) => {
       const debug = buildDebug("override", {
         suicideLevel: "N2"
       });
+      
       const reply = n2Response();
       const responseMemory = previousMemory;
+      
       const responseDebugMeta = buildResponseDebugMeta({
         memory: responseMemory,
         suicideLevel: "N2",
@@ -3005,6 +3149,7 @@ app.post("/chat", async (req, res) => {
         explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
         explorationRelanceWindow: newFlags.explorationRelanceWindow,
         rewriteSource: null,
+        memoryRewriteSource: null,
         modelConflict: false,
         promptRegistry: activePromptRegistry
       });
@@ -3061,12 +3206,27 @@ app.post("/chat", async (req, res) => {
     }
     
     if (suicide.suicideLevel === "N1" || suicide.needsClarification) {
-      const reply = await n1ResponseLLM(message, activePromptRegistry);
+      const rawReply = await n1ResponseLLM(message, activePromptRegistry);
+      
+      const replyPipeline = await applyModelConflictPipeline({
+        content: rawReply,
+        message,
+        history: recentHistory,
+        memory: previousMemory,
+        promptRegistry: activePromptRegistry
+      });
+      
       newFlags.contactState = { wasContact: false };
       
       const debug = buildDebug("clarification", {
-        suicideLevel: "N1"
+        suicideLevel: "N1",
+        modelConflict: replyPipeline.modelConflict
       });
+      
+      if (logsEnabled && replyPipeline.rewriteSource) {
+        debug.push(`rewriteSource: ${replyPipeline.rewriteSource}`);
+      }
+      
       const responseMemory = previousMemory;
       const responseDebugMeta = buildResponseDebugMeta({
         memory: responseMemory,
@@ -3075,17 +3235,17 @@ app.post("/chat", async (req, res) => {
         isRecallRequest: false,
         explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
         explorationRelanceWindow: newFlags.explorationRelanceWindow,
-        rewriteSource: null,
-        modelConflict: false,
+        rewriteSource: replyPipeline.rewriteSource,
+        modelConflict: replyPipeline.modelConflict,
         promptRegistry: activePromptRegistry
       });
       
-      await pushAssistantMessage(reply, debug, responseDebugMeta);
+      await pushAssistantMessage(replyPipeline.content, debug, responseDebugMeta);
       await maybeGenerateConversationTitle();
       
       return res.json({
         conversationId,
-        reply,
+        reply: replyPipeline.content,
         memory: responseMemory,
         flags: newFlags,
         debug,
@@ -3101,10 +3261,25 @@ app.post("/chat", async (req, res) => {
     );
     
     if (recallRouting.isLongTermMemoryRecall) {
-      const reply = await buildLongTermMemoryRecallResponse(previousMemory, activePromptRegistry);
-      const debug = buildDebug("memoryRecall", {
-        calledMemory: "longTermMemory"
+      const rawReply = await buildLongTermMemoryRecallResponse(previousMemory, activePromptRegistry);
+      
+      const replyPipeline = await applyModelConflictPipeline({
+        content: rawReply,
+        message,
+        history: recentHistory,
+        memory: previousMemory,
+        promptRegistry: activePromptRegistry
       });
+      
+      const debug = buildDebug("memoryRecall", {
+        calledMemory: "longTermMemory",
+        modelConflict: replyPipeline.modelConflict
+      });
+      
+      if (logsEnabled && replyPipeline.rewriteSource) {
+        debug.push(`rewriteSource: ${replyPipeline.rewriteSource}`);
+      }
+      
       const responseMemory = previousMemory;
       const responseDebugMeta = buildResponseDebugMeta({
         memory: responseMemory,
@@ -3113,17 +3288,17 @@ app.post("/chat", async (req, res) => {
         isRecallRequest: true,
         explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
         explorationRelanceWindow: newFlags.explorationRelanceWindow,
-        rewriteSource: null,
-        modelConflict: false,
+        rewriteSource: replyPipeline.rewriteSource,
+        modelConflict: replyPipeline.modelConflict,
         promptRegistry: activePromptRegistry
       });
       
-      await pushAssistantMessage(reply, debug, responseDebugMeta);
+      await pushAssistantMessage(replyPipeline.content, debug, responseDebugMeta);
       await maybeGenerateConversationTitle();
       
       return res.json({
         conversationId,
-        reply,
+        reply: replyPipeline.content,
         memory: responseMemory,
         flags: newFlags,
         debug,
@@ -3212,26 +3387,19 @@ app.post("/chat", async (req, res) => {
     
     generatedBase.promptDebug = mainPromptDebug;
     
-    let reply = generatedBase.reply;
-    let modelConflict = false;
-    let rewrittenFrom = null;
     let relanceAnalysis = null;
     
+    const replyPipeline = await applyModelConflictPipeline({
+      content: generatedBase.reply,
+      message,
+      history: recentHistory,
+      memory: previousMemory,
+      promptRegistry: activePromptRegistry
+    });
+    
+    const reply = replyPipeline.content;
+    
     if (detectedMode === "exploration") {
-      const conflict = await analyzeModelConflict(reply, activePromptRegistry);
-      modelConflict = conflict.modelConflict === true;
-      
-      if (modelConflict) {
-        rewrittenFrom = reply;
-        reply = await rewriteExplorationReplyWithModelFilter({
-          message,
-          history: recentHistory,
-          memory: previousMemory,
-          originalReply: reply,
-          promptRegistry: activePromptRegistry
-        });
-      }
-      
       relanceAnalysis = await analyzeExplorationRelance({
         message,
         reply,
@@ -3246,22 +3414,44 @@ app.post("/chat", async (req, res) => {
     const debug = buildDebug(detectedMode, {
       suicideLevel: suicide.suicideLevel,
       calledMemory: recallRouting.calledMemory,
-      modelConflict,
+      modelConflict: replyPipeline.modelConflict,
       explorationDirectivityLevel: finalDirectivityLevel,
       explorationRelanceWindow: newFlags.explorationRelanceWindow
     });
     
-    if (logsEnabled && rewrittenFrom) {
-      debug.push(`rewriteSource: ${rewrittenFrom}`);
+    if (logsEnabled && replyPipeline.rewriteSource) {
+      debug.push(`rewriteSource: ${replyPipeline.rewriteSource}`);
     }
     
     debug.push(...buildPromptDebugLines(generatedBase.promptDebug));
     
-    const newMemory = await updateMemory(previousMemory, [
-      ...recentHistory,
-      { role: "user", content: message },
-      { role: "assistant", content: reply }
-    ], activePromptRegistry);
+    const rawNewMemory = await updateMemory(
+      previousMemory,
+      [
+        ...recentHistory,
+        { role: "user", content: message },
+        { role: "assistant", content: reply }
+      ],
+      activePromptRegistry
+    );
+    
+    const memoryPipeline = await applyModelConflictPipeline({
+      content: rawNewMemory,
+      message,
+      history: [
+        ...recentHistory,
+        { role: "user", content: message },
+        { role: "assistant", content: reply }
+      ],
+      memory: previousMemory,
+      promptRegistry: activePromptRegistry
+    });
+    
+    const newMemory = memoryPipeline.content;
+    
+    if (logsEnabled && memoryPipeline.rewriteSource) {
+      debug.push(`memoryRewriteSource: ${memoryPipeline.rewriteSource}`);
+    }
     
     console.log("[COMPARE][MAIN]", {
       activeUpdateMemoryPreview: String(activePromptRegistry?.UPDATE_MEMORY || "").slice(0, 160),
@@ -3275,8 +3465,8 @@ app.post("/chat", async (req, res) => {
       isRecallRequest: recallRouting.isRecallAttempt === true,
       explorationDirectivityLevel: finalDirectivityLevel,
       explorationRelanceWindow: newFlags.explorationRelanceWindow,
-      rewriteSource: rewrittenFrom,
-      modelConflict,
+      rewriteSource: replyPipeline.rewriteSource,
+      modelConflict: replyPipeline.modelConflict || memoryPipeline.modelConflict,
       promptRegistry: activePromptRegistry
     });
     
@@ -3285,18 +3475,6 @@ app.post("/chat", async (req, res) => {
       hasOverrides &&
       detectedMode !== "contact"
     ) {
-      const comparisonBaseDebug = buildDebug(detectedMode, {
-        suicideLevel: suicide.suicideLevel,
-        calledMemory: recallRouting.calledMemory,
-        modelConflict,
-        explorationDirectivityLevel: finalDirectivityLevel,
-        explorationRelanceWindow: newFlags.explorationRelanceWindow
-      });
-      
-      if (rewrittenFrom) {
-        comparisonBaseDebug.push(`rewriteSource: ${rewrittenFrom}`);
-      }
-      
       const comparisonBaseMeta = buildResponseDebugMeta({
         memory: "",
         suicideLevel: suicide.suicideLevel,
@@ -3324,7 +3502,6 @@ app.post("/chat", async (req, res) => {
         await buildComparisonEntry(
           "Référence",
           generatedReference,
-          comparisonBaseDebug,
           comparisonBaseMeta,
           referencePromptRegistry
         )
@@ -3346,7 +3523,6 @@ app.post("/chat", async (req, res) => {
           await buildComparisonEntry(
             "Override 1",
             generatedOverride1,
-            comparisonBaseDebug,
             comparisonBaseMeta,
             override1PromptRegistry
           )
@@ -3369,7 +3545,6 @@ app.post("/chat", async (req, res) => {
           await buildComparisonEntry(
             "Override 1 + 2",
             generatedOverride12,
-            comparisonBaseDebug,
             comparisonBaseMeta,
             override12PromptRegistry
           )
@@ -3423,6 +3598,7 @@ app.post("/chat", async (req, res) => {
         explorationDirectivityLevel: flagsForCatch.explorationDirectivityLevel || 0,
         explorationRelanceWindow: flagsForCatch.explorationRelanceWindow || [],
         rewriteSource: null,
+        memoryRewriteSource: null,
         modelConflict: false,
         promptRegistry: promptRegistryForCatch
       })
