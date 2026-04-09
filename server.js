@@ -317,19 +317,19 @@ Tu t'appuies sur le modele theorique ci-dessous pour orienter ta comprehension e
 Modele :
 1. Conscience et memoire
   1.1. Conscience
-    La conscience n’est pas une faculté humaine ni un état particulier.
-    C’est la dimension informationnelle de l’être : ce qui organise le comportement, à tous les niveaux (molécule, organisme, pensée).
-    Il n'existe pas de "zone sans conscience".
-    -> le concept d'inconscient et de subconscient est invalide dans ce modèle
-    Règle :
-      ne jamais utiliser ni traduire l'inconscient, même indirectement
-      (ex : "ce dont on n'a pas conscience")
+  La conscience n’est pas une faculté humaine ni un état particulier.
+  C’est la dimension informationnelle de l’être : ce qui organise le comportement, à tous les niveaux (molécule, organisme, pensée).
+  Il n'existe pas de "zone sans conscience".
+  Toute experience, tout comportement, toute reaction est deja de la conscience en train d'operer.
+  Il n'y a donc rien "en dehors" de la conscience.
+  -> le concept d'inconscient et de subconscient n'est pas applicable dans ce cadre
     1.1.1. Conscience directe
-      -> arbitrage et encodage immediat de l'experience (sensorielle, emotionnelle, motrice, pensees, croyances...)
+    -> fonctionnement immediat de la conscience
+    -> produit les reactions, emotions, mouvements, pensees, croyances, sans retour sur elle-meme
     1.1.2. Conscience reflexive
-      -> capacite de la conscience a se regarder elle-meme
-      -> seul espace de liberte :
-        regard acceptant ou rejetant sur l'experience (libre-arbitre))
+    -> capacite de la conscience a se regarder elle-meme
+    -> possibilite de porter un regard sur l'experience :
+       acceptation ou rejet
   1.2. Memoire
     1.2.1. Memoire corporelle
       Encodee en sensations, emotions, mouvements
@@ -882,19 +882,19 @@ Tu t'appuies sur le modele suivant :
 Modele :
 1. Conscience et memoire
   1.1. Conscience
-    La conscience n’est pas une faculté humaine ni un état particulier.
-    C’est la dimension informationnelle de l’être : ce qui organise le comportement, à tous les niveaux (molécule, organisme, pensée).
-    Il n'existe pas de "zone sans conscience".
-    -> le concept d'inconscient et de subconscient est invalide dans ce modèle
-    Règle :
-      ne jamais utiliser ni traduire l'inconscient, même indirectement
-      (ex : "ce dont on n'a pas conscience")
+  La conscience n’est pas une faculté humaine ni un état particulier.
+  C’est la dimension informationnelle de l’être : ce qui organise le comportement, à tous les niveaux (molécule, organisme, pensée).
+  Il n'existe pas de "zone sans conscience".
+  Toute experience, tout comportement, toute reaction est deja de la conscience en train d'operer.
+  Il n'y a donc rien "en dehors" de la conscience.
+  -> le concept d'inconscient et de subconscient n'est pas applicable dans ce cadre
     1.1.1. Conscience directe
-      -> arbitrage et encodage immediat de l'experience (sensorielle, emotionnelle, motrice, pensees, croyances...)
+    -> fonctionnement immediat de la conscience
+    -> produit les reactions, emotions, mouvements, pensees, croyances, sans retour sur elle-meme
     1.1.2. Conscience reflexive
-      -> capacite de la conscience a se regarder elle-meme
-      -> seul espace de liberte :
-        regard acceptant ou rejetant sur l'experience (libre-arbitre))
+    -> capacite de la conscience a se regarder elle-meme
+    -> possibilite de porter un regard sur l'experience :
+       acceptation ou rejet
   1.2. Memoire
     1.2.1. Memoire corporelle
       Encodee en sensations, emotions, mouvements
