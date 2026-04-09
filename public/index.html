@@ -2648,25 +2648,25 @@
     }
     
     function ensureTestPopover() {
-  let popover = document.getElementById("testPopover");
-  if (popover) return popover;
-  
-  popover = document.createElement("div");
-  popover.id = "testPopover";
-  popover.style.position = "fixed";
-  popover.style.display = "none";
-  popover.style.width = "min(320px, calc(100vw - 24px))";
-  popover.style.padding = "12px";
-  popover.style.borderRadius = "18px";
-  popover.style.background = "rgba(255, 255, 255, 0.96)";
-  popover.style.border = "1px solid rgba(222, 228, 230, 0.92)";
-  popover.style.boxShadow = "0 22px 46px rgba(20, 36, 40, 0.18)";
-  popover.style.backdropFilter = "blur(14px)";
-  popover.style.webkitBackdropFilter = "blur(14px)";
-  popover.style.zIndex = "500";
-  popover.style.boxSizing = "border-box";
-  
-  popover.innerHTML = `
+      let popover = document.getElementById("testPopover");
+      if (popover) return popover;
+      
+      popover = document.createElement("div");
+      popover.id = "testPopover";
+      popover.style.position = "fixed";
+      popover.style.display = "none";
+      popover.style.width = "min(320px, calc(100vw - 24px))";
+      popover.style.padding = "12px";
+      popover.style.borderRadius = "18px";
+      popover.style.background = "rgba(255, 255, 255, 0.96)";
+      popover.style.border = "1px solid rgba(222, 228, 230, 0.92)";
+      popover.style.boxShadow = "0 22px 46px rgba(20, 36, 40, 0.18)";
+      popover.style.backdropFilter = "blur(14px)";
+      popover.style.webkitBackdropFilter = "blur(14px)";
+      popover.style.zIndex = "500";
+      popover.style.boxSizing = "border-box";
+      
+      popover.innerHTML = `
     <div style="display:flex;flex-direction:column;gap:10px;">
       
       <div style="display:flex;flex-direction:column;gap:6px;">
@@ -2701,110 +2701,110 @@
       
     </div>
   `;
-  
-  document.body.appendChild(popover);
-  
-  const override1Input = popover.querySelector("#testOverride1Input");
-  const override2Input = popover.querySelector("#testOverride2Input");
-  const override1Pick = popover.querySelector("#testOverride1Pick");
-  const override2Pick = popover.querySelector("#testOverride2Pick");
-  const override1Clear = popover.querySelector("#testOverride1Clear");
-  const override2Clear = popover.querySelector("#testOverride2Clear");
-  const override1Name = popover.querySelector("#testOverride1Name");
-  const override2Name = popover.querySelector("#testOverride2Name");
-  const comparisonToggle = popover.querySelector("#testComparisonToggle");
-  const logsToggle = popover.querySelector("#testLogsToggle");
-  
-  function setLoadedFileName(targetEl, overrideState) {
-    const label = overrideState?.name?.trim();
-    if (!label) {
-      targetEl.textContent = "";
-      targetEl.style.display = "none";
-      return;
+      
+      document.body.appendChild(popover);
+      
+      const override1Input = popover.querySelector("#testOverride1Input");
+      const override2Input = popover.querySelector("#testOverride2Input");
+      const override1Pick = popover.querySelector("#testOverride1Pick");
+      const override2Pick = popover.querySelector("#testOverride2Pick");
+      const override1Clear = popover.querySelector("#testOverride1Clear");
+      const override2Clear = popover.querySelector("#testOverride2Clear");
+      const override1Name = popover.querySelector("#testOverride1Name");
+      const override2Name = popover.querySelector("#testOverride2Name");
+      const comparisonToggle = popover.querySelector("#testComparisonToggle");
+      const logsToggle = popover.querySelector("#testLogsToggle");
+      
+      function setLoadedFileName(targetEl, overrideState) {
+        const label = overrideState?.name?.trim();
+        if (!label) {
+          targetEl.textContent = "";
+          targetEl.style.display = "none";
+          return;
+        }
+        
+        targetEl.textContent = `Charge : ${label}`;
+        targetEl.style.display = "block";
+      }
+      
+      function refreshPopoverFields() {
+        comparisonToggle.checked = testUiState.comparisonEnabled === true;
+        logsToggle.checked = testUiState.logsEnabled === true;
+        
+        override1Clear.style.display = testUiState.override1 ? "inline-flex" : "none";
+        override2Clear.style.display = testUiState.override2 ? "inline-flex" : "none";
+        
+        setLoadedFileName(override1Name, testUiState.override1);
+        setLoadedFileName(override2Name, testUiState.override2);
+      }
+      
+      function refreshTestUi(options = {}) {
+        const {
+          rerenderHistory = false
+        } = options;
+        
+        saveTestUiState();
+        refreshPopoverFields();
+        syncDebugVisibility();
+        syncTestStatusBar();
+        syncTestStatusBarPosition();
+        
+        if (rerenderHistory) {
+          renderHistory();
+        }
+      }
+      
+      override1Pick.addEventListener("click", () => {
+        override1Input.click();
+      });
+      
+      override2Pick.addEventListener("click", () => {
+        override2Input.click();
+      });
+      
+      override1Input.addEventListener("change", async e => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+        const data = JSON.parse(await file.text());
+        testUiState.override1 = { name: file.name, data };
+        refreshTestUi();
+      });
+      
+      override2Input.addEventListener("change", async e => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+        const data = JSON.parse(await file.text());
+        testUiState.override2 = { name: file.name, data };
+        refreshTestUi();
+      });
+      
+      override1Clear.addEventListener("click", () => {
+        testUiState.override1 = null;
+        override1Input.value = "";
+        refreshTestUi();
+      });
+      
+      override2Clear.addEventListener("click", () => {
+        testUiState.override2 = null;
+        override2Input.value = "";
+        refreshTestUi();
+      });
+      
+      comparisonToggle.addEventListener("change", () => {
+        testUiState.comparisonEnabled = comparisonToggle.checked;
+        refreshTestUi();
+      });
+      
+      logsToggle.addEventListener("change", () => {
+        testUiState.logsEnabled = logsToggle.checked;
+        refreshTestUi({ rerenderHistory: true });
+      });
+      
+      popover._refreshFields = refreshPopoverFields;
+      refreshPopoverFields();
+      
+      return popover;
     }
-    
-    targetEl.textContent = `Charge : ${label}`;
-    targetEl.style.display = "block";
-  }
-  
-  function refreshPopoverFields() {
-    comparisonToggle.checked = testUiState.comparisonEnabled === true;
-    logsToggle.checked = testUiState.logsEnabled === true;
-    
-    override1Clear.style.display = testUiState.override1 ? "inline-flex" : "none";
-    override2Clear.style.display = testUiState.override2 ? "inline-flex" : "none";
-    
-    setLoadedFileName(override1Name, testUiState.override1);
-    setLoadedFileName(override2Name, testUiState.override2);
-  }
-  
-  function refreshTestUi(options = {}) {
-    const {
-      rerenderHistory = false
-    } = options;
-    
-    saveTestUiState();
-    refreshPopoverFields();
-    syncDebugVisibility();
-    syncTestStatusBar();
-    syncTestStatusBarPosition();
-    
-    if (rerenderHistory) {
-      renderHistory();
-    }
-  }
-  
-  override1Pick.addEventListener("click", () => {
-    override1Input.click();
-  });
-  
-  override2Pick.addEventListener("click", () => {
-    override2Input.click();
-  });
-  
-  override1Input.addEventListener("change", async e => {
-    const file = e.target.files && e.target.files[0];
-    if (!file) return;
-    const data = JSON.parse(await file.text());
-    testUiState.override1 = { name: file.name, data };
-    refreshTestUi();
-  });
-  
-  override2Input.addEventListener("change", async e => {
-    const file = e.target.files && e.target.files[0];
-    if (!file) return;
-    const data = JSON.parse(await file.text());
-    testUiState.override2 = { name: file.name, data };
-    refreshTestUi();
-  });
-  
-  override1Clear.addEventListener("click", () => {
-    testUiState.override1 = null;
-    override1Input.value = "";
-    refreshTestUi();
-  });
-  
-  override2Clear.addEventListener("click", () => {
-    testUiState.override2 = null;
-    override2Input.value = "";
-    refreshTestUi();
-  });
-  
-  comparisonToggle.addEventListener("change", () => {
-    testUiState.comparisonEnabled = comparisonToggle.checked;
-    refreshTestUi();
-  });
-  
-  logsToggle.addEventListener("change", () => {
-    testUiState.logsEnabled = logsToggle.checked;
-    refreshTestUi({ rerenderHistory: true });
-  });
-  
-  popover._refreshFields = refreshPopoverFields;
-  refreshPopoverFields();
-  
-  return popover;
-}
     
     function positionTestPopover() {
       const popover = ensureTestPopover();
@@ -3530,7 +3530,8 @@
           memory: "",
           directivityLabel: "",
           modelConflict: false,
-          rewriteSource: ""
+          rewriteSource: "",
+          memoryRewriteSource: ""
         };
         
         if (!debugMetaValue || typeof debugMetaValue !== "object") {
@@ -3561,6 +3562,10 @@
           meta.rewriteSource = debugMetaValue.rewriteSource.trim();
         }
         
+        if (typeof debugMetaValue.memoryRewriteSource === "string") {
+          meta.memoryRewriteSource = debugMetaValue.memoryRewriteSource.trim();
+        }
+        
         return meta;
       }
       
@@ -3574,7 +3579,8 @@
           debugMeta.topChips.length > 0 ||
           !!debugMeta.memory ||
           !!debugMeta.directivityLabel ||
-          (debugMeta.modelConflict && !!debugMeta.rewriteSource)
+          (debugMeta.modelConflict && !!debugMeta.rewriteSource) ||
+          (debugMeta.modelConflict && !!debugMeta.memoryRewriteSource)
         );
       
       if (role === "bot" && compareLabel) {
@@ -3788,7 +3794,7 @@
           
           const confSum = document.createElement("summary");
           confSum.className = "debug-chip";
-          confSum.textContent = "Conflit avec le modèle théorique";
+          confSum.textContent = "Conflit modèle - réponse";
           
           const confContent = document.createElement("div");
           confContent.className = "debug-block";
@@ -3797,6 +3803,22 @@
           conf.appendChild(confSum);
           conf.appendChild(confContent);
           bottom.appendChild(conf);
+        }
+        
+        if (debugMeta.modelConflict && debugMeta.memoryRewriteSource) {
+          const memConf = document.createElement("details");
+          
+          const memConfSum = document.createElement("summary");
+          memConfSum.className = "debug-chip";
+          memConfSum.textContent = "Conflit modèle - mémoire";
+          
+          const memConfContent = document.createElement("div");
+          memConfContent.className = "debug-block";
+          memConfContent.textContent = debugMeta.memoryRewriteSource;
+          
+          memConf.appendChild(memConfSum);
+          memConf.appendChild(memConfContent);
+          bottom.appendChild(memConf);
         }
         
         if (bottom.children.length > 0) {
