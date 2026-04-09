@@ -2445,11 +2445,39 @@ async function generateConversationTitle(messages) {
         .filter(Boolean)
         .slice(0, 5);
       
-      return words.length ? words.join(" ") : "Conversation";
+      title = words.length ? words.join(" ") : "Conversation";
     }
     
     if (title.length > 40) {
       title = title.slice(0, 40).trim();
+    }
+    
+    if (!title) {
+      title = "Conversation";
+    }
+    
+    const titleConflict = await analyzeModelConflict(title, buildDefaultPromptRegistry());
+    
+    if (titleConflict.modelConflict === true) {
+      title = await rewriteConflictModelContent({
+        message: sourceText,
+        history: messages
+          .filter(m => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
+          .slice(-MAX_RECENT_TURNS)
+          .map(m => ({ role: m.role, content: m.content })),
+        memory: "",
+        originalContent: title,
+        promptRegistry: buildDefaultPromptRegistry()
+      });
+      
+      title = String(title || "")
+        .replace(/^["'«]+|["'»]+$/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+      
+      if (title.length > 40) {
+        title = title.slice(0, 40).trim();
+      }
     }
     
     return title || "Conversation";
@@ -2469,7 +2497,37 @@ async function generateConversationTitle(messages) {
       .filter(Boolean)
       .slice(0, 5);
     
-    return words.length ? words.join(" ") : "Conversation";
+    let fallbackTitle = words.length ? words.join(" ") : "Conversation";
+    
+    try {
+      const titleConflict = await analyzeModelConflict(fallbackTitle, buildDefaultPromptRegistry());
+      
+      if (titleConflict.modelConflict === true) {
+        fallbackTitle = await rewriteConflictModelContent({
+          message: merged,
+          history: messages
+            .filter(m => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
+            .slice(-MAX_RECENT_TURNS)
+            .map(m => ({ role: m.role, content: m.content })),
+          memory: "",
+          originalContent: fallbackTitle,
+          promptRegistry: buildDefaultPromptRegistry()
+        });
+        
+        fallbackTitle = String(fallbackTitle || "")
+          .replace(/^["'«]+|["'»]+$/g, "")
+          .replace(/\s+/g, " ")
+          .trim();
+        
+        if (fallbackTitle.length > 40) {
+          fallbackTitle = fallbackTitle.slice(0, 40).trim();
+        }
+      }
+    } catch (rewriteErr) {
+      console.error("Erreur rewrite titre:", rewriteErr.message);
+    }
+    
+    return fallbackTitle || "Conversation";
   }
 }
 
