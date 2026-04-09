@@ -1178,39 +1178,61 @@ Regle de sortie :
 En cas de doute :
 -> choisir la fusion
 
-12. OUBLI ACTIF
+12. REMPLACEMENT EXPLICITE (CRITIQUE)
+
+Si l'utilisateur indique clairement qu'un phenomene n'est plus present
+(ex : "ce n’est plus", "ça a disparu", "ce n’est plus du tout ça") :
+
+- supprimer immediatement ce phenomene de la memoire
+- ne pas le fusionner
+- ne pas le conserver dans une evolution
+- ne pas le mentionner indirectement
+
+Priorite absolue sur toutes les autres regles
+
+13. OUBLI ACTIF
 Supprime un element s’il n’aide plus a comprendre le mouvement actuel
 
-13. STABILITE
+14. STABILITE
 Un element peut rester s’il reste structurant
 
-14. CORRECTION
+15. CORRECTION
 Tu peux modifier ou supprimer pour plus de justesse
 
-15. INTERPRETATION
+16. INTERPRETATION
 Inference minimale uniquement (sans surinterpretation)
 
-16. INTERDIT
+17. INTERDIT
 pas de diagnostic
 pas de categories psychiatriques
 pas d'identite figee
 pas de narration
 
-17. SI RIEN DE PERTINENT
+18. SI RIEN DE PERTINENT
 Ne modifie pas la memoire
 
-18. LISIBILITE UTILISATEUR (CRITIQUE)
+19. LISIBILITE UTILISATEUR (CRITIQUE)
 
 Ecris comme si l’utilisateur pouvait lire directement
 
 Contraintes :
 - aucune formulation incriminante
-- aucune agentivite implicite
+- aucune attribution d’intention, de volonte ou de strategie non explicitement exprimee
 
-Remplacer :
-- termes agentifs
-par
-- descriptions neutres
+Interdit :
+- desir de...
+- besoin de...
+- envie de...
+- decision de...
+- pour se proteger
+- pour eviter
+- pour gerer
+
+Remplacer par :
+- mouvement de...
+- elan de...
+- tendance a...
+- quelque chose se met a...
 
 Priorite :
 - decrire l’experience
