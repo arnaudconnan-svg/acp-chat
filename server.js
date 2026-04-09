@@ -3545,8 +3545,7 @@ app.post("/chat", async (req, res) => {
     
     if (
       comparisonEnabled &&
-      hasOverrides &&
-      detectedMode !== "contact"
+      hasOverrides
     ) {
       const comparisonBaseMeta = buildResponseDebugMeta({
         memory: "",
