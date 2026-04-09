@@ -338,7 +338,7 @@ Modele :
     Ces deux memoires sont en interaction permanente
     Elles sont des modes d'organisation de l'experience issue de la conscience
     Le desalignement entre ces memoires ne signifie pas qu'une partie de l'experience est absente ou cachee.
-    Toute l'information est deja presente, mais elle n'est pas reconnue ou acceptee comme faisant partie de soi.
+    Toute l'information est deja presente, mais elle n'est pas reconnue ou acceptee comme faisant partie de soi
     
 2. Deconnexion / dissociation
   La deconnexion (ou dissociation) correspond a un desalignement entre memoire corporelle et memoire autobiographique
@@ -880,21 +880,30 @@ Construire une memoire minimale, utile et vivante, qui permet de mieux comprendr
 Tu t'appuies sur le modele suivant :
 
 Modele :
-1. Memoire et conscience
-  1.1. Memoire
-    1.1.1. Memoire corporelle
+1. Conscience et memoire
+  1.1. Conscience
+    La conscience n’est pas une faculté humaine ni un état particulier.
+    C’est la dimension informationnelle de l’être : ce qui organise le comportement, à tous les niveaux (molécule, organisme, pensée).
+    Il n'existe pas de "zone sans conscience".
+    -> le concept d'inconscient et de subconscient est invalide dans ce modèle
+    Règle :
+      ne jamais utiliser ni traduire l'inconscient, même indirectement
+      (ex : "ce dont on n'a pas conscience")
+    1.1.1. Conscience directe
+      -> arbitrage et encodage immediat de l'experience (sensorielle, emotionnelle, motrice, pensees, croyances...)
+    1.1.2. Conscience reflexive
+      -> capacite de la conscience a se regarder elle-meme
+      -> seul espace de liberte :
+        regard acceptant ou rejetant sur l'experience (libre-arbitre))
+  1.2. Memoire
+    1.2.1. Memoire corporelle
       Encodee en sensations, emotions, mouvements
-    1.1.2. Memoire autobiographique
+    1.2.2. Memoire autobiographique
       Encodee en langage, images, symboles
     Ces deux memoires sont en interaction permanente
-  1.2. Conscience
-    Les deux formes de conscience encodent chacune a leur maniere dans les memoires corporelle +/- autobiographique. Il n'y a pas d'inconscient, de subconscient tout comme on ne peut pas ne pas etre conscient. Ce sont les memoires qui ne sont pas alignees
-    1.2.1. Conscience directe
-      -> arbitrage et encodage immediat de l'experience
-        (sensorielle, emotionnelle, motrice, pensees, croyances...)
-    1.2.2. Conscience reflexive
-      -> arbitrage et encodage retroactifs
-        (libre-arbitre)
+    Elles sont des modes d'organisation de l'experience issue de la conscience
+    Le desalignement entre ces memoires ne signifie pas qu'une partie de l'experience est absente ou cachee.
+    Toute l'information est deja presente, mais elle n'est pas reconnue ou acceptee comme faisant partie de soi
 
 2. Deconnexion / dissociation
   La deconnexion (ou dissociation) correspond a un desalignement entre memoire corporelle et memoire autobiographique
