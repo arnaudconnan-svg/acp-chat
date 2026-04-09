@@ -3185,6 +3185,7 @@ app.post("/chat", async (req, res) => {
           explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
           explorationRelanceWindow: newFlags.explorationRelanceWindow,
           rewriteSource: null,
+          memoryRewriteSource: null,
           modelConflict: false,
           promptRegistry: activePromptRegistry
         });
@@ -3236,6 +3237,7 @@ app.post("/chat", async (req, res) => {
         explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
         explorationRelanceWindow: newFlags.explorationRelanceWindow,
         rewriteSource: replyPipeline.rewriteSource,
+        memoryRewriteSource: null,
         modelConflict: replyPipeline.modelConflict,
         promptRegistry: activePromptRegistry
       });
@@ -3289,6 +3291,7 @@ app.post("/chat", async (req, res) => {
         explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
         explorationRelanceWindow: newFlags.explorationRelanceWindow,
         rewriteSource: replyPipeline.rewriteSource,
+        memoryRewriteSource: null,
         modelConflict: replyPipeline.modelConflict,
         promptRegistry: activePromptRegistry
       });
@@ -3318,6 +3321,7 @@ app.post("/chat", async (req, res) => {
         explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
         explorationRelanceWindow: newFlags.explorationRelanceWindow,
         rewriteSource: null,
+        memoryRewriteSource: null,
         modelConflict: false,
         promptRegistry: activePromptRegistry
       });
@@ -3466,6 +3470,7 @@ app.post("/chat", async (req, res) => {
       explorationDirectivityLevel: finalDirectivityLevel,
       explorationRelanceWindow: newFlags.explorationRelanceWindow,
       rewriteSource: replyPipeline.rewriteSource,
+      memoryRewriteSource: memoryPipeline.rewriteSource,
       modelConflict: replyPipeline.modelConflict || memoryPipeline.modelConflict,
       promptRegistry: activePromptRegistry
     });
@@ -3483,6 +3488,7 @@ app.post("/chat", async (req, res) => {
         explorationDirectivityLevel: finalDirectivityLevel,
         explorationRelanceWindow: newFlags.explorationRelanceWindow,
         rewriteSource: null,
+        memoryRewriteSource: null,
         modelConflict: false,
         promptRegistry: referencePromptRegistry
       });
