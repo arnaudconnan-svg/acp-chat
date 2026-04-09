@@ -2131,9 +2131,14 @@ async function updateMemory(previousMemory, history, promptRegistry = buildDefau
     return forcedMemory || normalizeMemory(previousMemory, promptRegistry);
   }
   
-  const transcript = history
-    .map(m => `${m.role === "user" ? "Utilisateur" : "Assistant"} : ${m.content}`)
-    .join("\n");
+  const safeHistory = Array.isArray(history) ? history : [];
+  const lastUserMessage = [...safeHistory]
+    .reverse()
+    .find(m => m && m.role === "user" && typeof m.content === "string");
+  
+  const lastAssistantMessage = [...safeHistory]
+    .reverse()
+    .find(m => m && m.role === "assistant" && typeof m.content === "string");
   
   const system = currentUpdateMemoryPrompt;
   const isOverriddenUpdateMemory = currentUpdateMemoryPrompt !== defaultUpdateMemoryPrompt;
@@ -2142,8 +2147,11 @@ async function updateMemory(previousMemory, history, promptRegistry = buildDefau
 Memoire precedente :
 ${normalizeMemory(previousMemory, promptRegistry)}
 
-Conversation :
-${transcript}
+Dernier message utilisateur :
+${lastUserMessage?.content || ""}
+
+Derniere reponse assistant :
+${lastAssistantMessage?.content || ""}
 `;
   
   const r = await client.chat.completions.create({
@@ -2173,7 +2181,9 @@ ${transcript}
     lower.includes("conversation :") ||
     lower.includes("utilisateur :") ||
     lower.includes("assistant :") ||
-    lower.includes("memoire precedente :");
+    lower.includes("memoire precedente :") ||
+    lower.includes("dernier message utilisateur :") ||
+    lower.includes("derniere reponse assistant :");
   
   const hasRequiredSections =
     lower.includes("contexte stable:") &&
