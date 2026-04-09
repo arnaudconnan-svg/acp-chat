@@ -1080,7 +1080,7 @@ Types d'elements interdits :
 - toute absence de clarte ou de mise en sens
 - toute dynamique emotionnelle
 - toute acceptation ou non-acceptation
-- tout evitement
+- toute evitement
 - toute deconnexion
 - toute interpretation
 - tout mouvement interne
@@ -1101,12 +1101,12 @@ Regle de vide :
 4. MOUVEMENTS EN COURS
 - Dynamiques actives uniquement
 - Utiliser le vocabulaire du modele si pertinent
-- Inclure : tensions, evitement, acceptation, croyances limitantes, acces emotionnel, decharge, realignement
+- Inclure : tensions, acceptation, croyances limitantes, acces emotionnel, decharge, realignement
 - Les questions ouvertes deviennent des tensions ou zones non resolues
 
 5. DENSITE
 Tres faible densite :
-- 1 a 3 items max par bloc
+- 1 a 2 items max par bloc
 - phrases courtes
 - aucune redondance
 
@@ -1115,131 +1115,106 @@ Ajoute un element seulement s'il est clairement structurant.
 
 7. FUSION (CRITIQUE)
 - Ne jamais garder deux items qui decrivent le meme phenomene, meme sous des angles differents
-- Toute variation (description, interpretation, hypothese, nuance) d’un meme mouvement doit etre fusionnee en un seul item
+- Toute variation d’un meme mouvement doit etre fusionnee en un seul item
 
 Test obligatoire :
 - Si deux items peuvent etre resumes en une seule phrase sans perte d'information utile, alors ils doivent etre fusionnes
 
-- Supprimer tout item qui n'apporte pas une information structurellement nouvelle
-- Les reformulations, precisions ou hypotheses faibles sont considerees comme redondantes
-
 Priorite absolue :
 - 1 item = 1 dynamique
-
-Interdit :
-- decomposer un meme mouvement en description + interpretation
-- ajouter un item qui commence par :
-  "comme si", "peut-etre", "suggere", "donne l'impression"
-  -> ces contenus doivent etre integres dans l’item principal ou supprimes
-
-Regle finale obligatoire :
-- Si plusieurs items sont proposes, tenter systematiquement de les fusionner en un seul avant validation finale
 
 8. FILTRAGE DES FAUX ITEMS (CRITIQUE)
 
 Ne sont PAS des phenomenes independants :
-- les reformulations metaphorique ou abstraites d’un meme ressenti
-- les consequences du phenomene (ex : recherche de comprehension, tentative d'analyse)
-- les reactions cognitives simples (ex : vouloir comprendre, chercher du sens)
+- les reformulations d’un meme ressenti
+- les consequences (ex : recherche de comprehension)
+- les reactions cognitives simples
 
 Regle :
-Un item doit decrire directement un phenomene vecu, pas :
-- une interpretation
-- une hypothese
-- une consequence
-- une tentative de resolution
+Un item doit decrire directement un phenomene vecu
 
-Si un item ne decrit pas directement un phenomene vecu :
--> il doit etre supprime
-
-Priorite :
-Ne garder que le coeur de l'experience
+Sinon -> suppression
 
 9. HIERARCHISATION DES PHENOMENES (CRITIQUE)
 
-Lorsqu’un phenomene principal est present (corporel, emotionnel ou experiential) :
-
-- Toutes les reactions cognitives associees (incomprehension, recherche de sens, analyse, agacement) ne sont pas des phenomenes independants
-- Elles sont considerees comme secondaires et doivent etre supprimees
-
-Regle :
-Ne jamais garder :
-- une reaction mentale
-- une tentative de comprehension
-- une evaluation de l'experience
-
-si elles sont directement liees a un phenomene principal deja present
-
 Priorite absolue :
 1. Phenomene vecu (corporel / emotionnel)
-2. Tout le reste est optionnel -> et doit etre supprime si redondant
-
-Exception :
-Garder une reaction cognitive uniquement si elle devient dominante et independante du phenomene initial
+2. Tout le reste est secondaire -> supprimer si redondant
 
 10. COMPRESSION FORCEE (CRITIQUE)
 
 Quand un seul phenomene principal organise clairement le tour :
-- produire exactement 1 seul item dans "Mouvements en cours"
-- ne pas decomposer ce phenomene
-- ne pas ajouter sa consequence, son contexte, sa tentative de comprehension ou sa nuance
+- produire exactement 1 seul item
+- ne pas decomposer
 
-Exemple obligatoire :
+11. RATTACHEMENT PRIORITAIRE AU PHENOMENE EXISTANT (CRITIQUE)
 
-Entree :
-"Tension diffuse, fluctuante, difficile a comprendre, avec recherche de sens"
+Tu dois toujours tenter de rattacher toute nouvelle information a un phenomene deja present dans "Mouvements en cours".
 
-Sortie attendue :
-"Tension diffuse ressentie, fluctuante sans cause claire."
+Si une information decrit une evolution du meme phenomene :
+-> integration dans l’item existant (fusion obligatoire)
 
-Dans ce cas, sont interdits comme items separes :
-- l'incomprehension
-- la recherche de lien
-- la recherche de sens
-- l'incertitude
-- l'agacement de ne pas comprendre
-- toute hypothese sur un mecanisme sous-jacent
+Sont consideres comme evolutions du meme phenomene :
+- intensification
+- diminution
+- densification
+- mouvement (montee, descente)
+- changement de qualite
+- variation temporelle
 
-11. OUBLI ACTIF
-Supprime un element si :
-- il n'apparait plus dans les derniers tours
-- et il n'aide plus a comprendre le mouvement actuel
+Interdiction stricte :
+- ne cree pas un nouvel item si cela concerne le meme ressenti ou la meme dynamique de fond
 
-12. STABILITE
-Un element peut rester s'il reste structurant, meme non mentionne au dernier tour.
+Un nouvel item est autorise uniquement si :
+-> un phenomene clairement distinct apparait
 
-13. CORRECTION
-Tu peux modifier ou supprimer un element si les derniers echanges rendent cela plus juste.
+Test obligatoire avant validation finale :
+- est-ce une nouvelle phase du meme processus ?
+-> oui = fusion obligatoire
 
-14. INTERPRETATION
-Inference possible (croyance, evitement, acceptation) sans surinterpretation.
+Regle de sortie :
+- si un seul phenomene domine → 1 seul item
 
-15. INTERDIT
+En cas de doute :
+-> choisir la fusion
+
+12. OUBLI ACTIF
+Supprime un element s’il n’aide plus a comprendre le mouvement actuel
+
+13. STABILITE
+Un element peut rester s’il reste structurant
+
+14. CORRECTION
+Tu peux modifier ou supprimer pour plus de justesse
+
+15. INTERPRETATION
+Inference minimale uniquement (sans surinterpretation)
+
+16. INTERDIT
 pas de diagnostic
 pas de categories psychiatriques
 pas d'identite figee
 pas de narration
 
-16. SI RIEN DE PERTINENT
-Ne modifie pas la memoire.
+17. SI RIEN DE PERTINENT
+Ne modifie pas la memoire
 
-17. LISIBILITE UTILISATEUR (CRITIQUE)
+18. LISIBILITE UTILISATEUR (CRITIQUE)
 
-Ecris chaque element comme si l’utilisateur pouvait le lire directement.
+Ecris comme si l’utilisateur pouvait lire directement
 
 Contraintes :
 - aucune formulation incriminante
-- aucune attribution implicite de responsabilite
-- aucun vocabulaire pouvant etre interprete comme un choix volontaire si ce n’est pas explicitement le cas
+- aucune agentivite implicite
 
-Remplacer systematiquement :
-- termes agentifs (ex : evitement, resistance)
+Remplacer :
+- termes agentifs
 par
-- formulations descriptives neutres (ex : difficulte a rester avec, mise a distance automatique, reduction du contact)
+- descriptions neutres
 
 Priorite :
 - decrire l’experience
-- jamais suggerer une faute ou une strategie du sujet
+- jamais suggerer une faute
 
 ---
 
@@ -2131,14 +2106,11 @@ async function updateMemory(previousMemory, history, promptRegistry = buildDefau
     return forcedMemory || normalizeMemory(previousMemory, promptRegistry);
   }
   
-  const safeHistory = Array.isArray(history) ? history : [];
-  const lastUserMessage = [...safeHistory]
-    .reverse()
-    .find(m => m && m.role === "user" && typeof m.content === "string");
-  
-  const lastAssistantMessage = [...safeHistory]
-    .reverse()
-    .find(m => m && m.role === "assistant" && typeof m.content === "string");
+  const transcript = Array.isArray(history) ?
+    history
+    .map(m => `${m.role === "user" ? "Utilisateur" : "Assistant"} : ${m.content}`)
+    .join("\n") :
+    "";
   
   const system = currentUpdateMemoryPrompt;
   const isOverriddenUpdateMemory = currentUpdateMemoryPrompt !== defaultUpdateMemoryPrompt;
@@ -2147,11 +2119,8 @@ async function updateMemory(previousMemory, history, promptRegistry = buildDefau
 Memoire precedente :
 ${normalizeMemory(previousMemory, promptRegistry)}
 
-Dernier message utilisateur :
-${lastUserMessage?.content || ""}
-
-Derniere reponse assistant :
-${lastAssistantMessage?.content || ""}
+Conversation :
+${transcript}
 `;
   
   const r = await client.chat.completions.create({
@@ -2181,9 +2150,7 @@ ${lastAssistantMessage?.content || ""}
     lower.includes("conversation :") ||
     lower.includes("utilisateur :") ||
     lower.includes("assistant :") ||
-    lower.includes("memoire precedente :") ||
-    lower.includes("dernier message utilisateur :") ||
-    lower.includes("derniere reponse assistant :");
+    lower.includes("memoire precedente :");
   
   const hasRequiredSections =
     lower.includes("contexte stable:") &&
