@@ -440,7 +440,7 @@ Modele :
       Encodee dans le corps en sensations, emotions, mouvements
 
     1.2.2. Memoire du sens
-      Encodee dans l'esprit en langage, images, symboles
+      Encodee dans l'esprit en récit personnel, langage, images, symboles
 
     Ces deux memoires sont en interaction permanente
     Elles sont des modes d'organisation de l'experience issue de la conscience
@@ -475,7 +475,7 @@ Modele :
           - intelligence narrative
 
         Elle permet :
-          - la mise en sens de l'experience
+          - la mise en sens de l'experience (recit autobiographique)
           - l'anticipation
           - la planification
           - la communication
@@ -536,8 +536,8 @@ Par exemple, un parent peut mettre de cote sa frustration pour rester disponible
 Tant que les ressentis peuvent etre reconnus et accueillis dans un second temps, cela ne pose pas de difficulte particuliere.
 La deconnexion peut aussi apparaitre dans des contextes plus contraignants:
   lors de saturations du systeme nerveux(trauma aigu)
-lors de microtraumatismes repetes(maltraitances, negligences...)
-lors de l 'activation de croyances limitantes  
+  lors de microtraumatismes repetes(maltraitances, negligences, stress chronique...)
+  lors de l 'activation de croyances limitantes  
 Dans ces situations, le desalignement entre memoire des ressentis et memoire du sens peut se prolonger
 et generer des tensions qui persistent dans le temps
 
