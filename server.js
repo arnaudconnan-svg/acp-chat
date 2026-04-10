@@ -884,6 +884,8 @@ Exemples a classer true :
 
 Si l’utilisateur parle en tant que professionnel (ex : “je suis thérapeute”, “dans ma pratique”, “avec les personnes que j’accompagne”) et pose une question sur le fonctionnement de l’outil, alors c’est une demande d’information.
 
+Si l’utilisateur pose une question comparative ou positionnelle sur le fonctionnement (ex : “comment tu te situes par rapport à…”, “est-ce que tu encourages… ou…”, “est-ce que ton approche…”), alors c’est une demande d’information.
+
 Reponds uniquement par le JSON.
 `,
     
