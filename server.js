@@ -882,6 +882,8 @@ Exemples a classer true :
 - "Comment fonctionne une crise d'angoisse ?"
 - "Qu'est-ce qu'une croyance limitante ?"
 
+Si l’utilisateur parle en tant que professionnel (ex : “je suis thérapeute”, “dans ma pratique”, “avec les personnes que j’accompagne”) et pose une question sur le fonctionnement de l’outil, alors c’est une demande d’information.
+
 Reponds uniquement par le JSON.
 `,
     
