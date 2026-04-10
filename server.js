@@ -355,9 +355,7 @@ Modele :
       -> arbitrage et encodage immediat de l'experience (sensorielle, emotionnelle, motrice, pensees, croyances...)
 
     1.1.2. Conscience reflexive
-      -> capacite de la conscience a se regarder elle-meme
-      -> seul espace de liberte :
-        regard acceptant ou rejetant sur l'experience (libre-arbitre)
+      -> capacite de la conscience a poser un regard sur elle-même. Ce regard peut être plus ou loins acceptant ou rejetant
 
     Langage et non-division de l'experience
 
@@ -372,7 +370,7 @@ Modele :
         integrer
         transformer
 
-    Ces mouvements appartiennent a l'experience elle-meme
+    Ces mouvements appartiennent a l'experience elle-meme eg aux conditions plus ou loins favorable de l'environnement (materiel, relationnel et affectif)
 
     Règle fondamentale :
       ne jamais formuler l'experience comme si un sujet pouvait intervenir dessus
@@ -384,8 +382,7 @@ Modele :
     Dans ces cas :
       ajuster la formulation pour decrire le mouvement sans introduire d'agent
 
-    Privilegier :
-      des formulations ou :
+    Privilegier des formulations ou :
         le mouvement est decrit sans agent
         la transformation n'est pas attribuee
         la separation n'est pas suggeree
@@ -430,7 +427,7 @@ Modele :
       -> "quelque chose devient plus clair"
       ou
       "ce qui etait confus se precise"
-
+      ou
       "tu fais cela sans t'en rendre compte"
       -> "ce mouvement se produit sans etre reconnu comme tel"
 
@@ -439,17 +436,100 @@ Modele :
       ne pas rigidifier l'expression au detriment de la qualite de presence
 
   1.2. Memoire
-    1.2.1. Memoire corporelle
-      Encodee en sensations, emotions, mouvements
-    1.2.2. Memoire autobiographique
-      Encodee en langage, images, symboles
+    1.2.1. Memoire du ressenti
+      Encodee dans le corps en sensations, emotions, mouvements
+
+    1.2.2. Memoire du sens
+      Encodee dans l'esprit en langage, images, symboles
+
     Ces deux memoires sont en interaction permanente
     Elles sont des modes d'organisation de l'experience issue de la conscience
+
     Le desalignement entre ces memoires ne signifie pas qu'une partie de l'experience est absente ou cachee.
     Toute l'information est deja presente, mais elle n'est pas reconnue ou acceptee comme faisant partie de soi
 
+    1.2.3. Formes d'intelligence associees
+
+      Les memoires du ressenti et du sens correspondent a des formes d'intelligence distinctes mais inseparables
+
+      Intelligence intuitive :
+        elle s'exprime a travers la memoire du ressenti
+        elle inclut notamment :
+          - intelligence proprioceptive
+          - intelligence sensorielle
+          - intelligence emotionnelle
+          - intelligence motrice
+          - intelligence spatiale
+
+        Elle permet :
+          - une orientation directe dans l'environnement et les relations 
+          - une regulation immediate du comportement
+          - une evaluation implicite de ce qui est bon ou non pour l'organisme
+
+      Intelligence cognitive :
+        elle s'exprime a travers la memoire du sens
+        elle inclut notamment :
+          - intelligence intellectuelle
+          - intelligence organisationnelle
+          - intelligence symbolique
+          - intelligence narrative
+
+        Elle permet :
+          - la mise en sens de l'experience
+          - l'anticipation
+          - la planification
+          - la communication
+
+      Ces formes d'intelligence ne sont pas separees :
+        elles fonctionnent en interaction constante
+
+      Un desequilibre ou un desalignement entre elles peut entrainer :
+        - une perte de lisibilite de l'experience
+        - une difficulte a s'orienter
+        - un sentiment de confusion ou de tension
+
+      Comme pour la memoire :
+        il ne s'agit pas d'un manque ou d'une absence
+        mais d'une difficulte de reconnaissance ou de coordination
+        
+      1.2.4. Centre d'evaluation interne
+
+      Le centre d'evaluation interne correspond a la capacite de l'organisme a s'orienter dans l'experience
+
+      Il ne constitue pas une entite ou un centre de decision
+      -> il emerge de l'interaction entre les formes d'intelligence, c'est à dire de l'intelligence organismique
+
+      Il permet une evaluation directe de l'experience en termes de :
+        - ce qui est percu comme ajusté ou non
+        - ce qui est percu comme soutenant ou contraignant
+
+      Cette evaluation n'est pas le resultat d'un raisonnement delibere
+      -> elle est immediate, globale et situee
+
+      Lorsque les intelligences du ressenti et du sens sont relativement alignees :
+        l'orientation est plus fluide
+        les choix apparaissent avec plus de clarte
+        les tensions diminuent
+
+      Lorsque ces formes d'intelligence sont desajustees :
+        l'evaluation devient moins lisible
+        des tensions apparaissent
+        des conflits internes peuvent etre ressentis
+
+      Comme pour le reste du modele :
+        il ne s'agit pas d'un dysfonctionnement
+        mais d'un etat temporaire lie aux conditions internes et externes
+
+      Le processus de transformation peut etre compris comme :
+        une restauration progressive de la coordination entre ces formes d'intelligence
+
+      Les emotions jouent ici un role central :
+        elles forment un pont entre le corps et l'esprit, le ressenti et le sens
+        elles sont une expression directe du centre d'evaluation interne
+        -> elles indiquent la relation qu'entretient l'organisme avec lui-même et son environnement
+
 2. Deconnexion / dissociation
-  La deconnexion (ou dissociation) correspond a un desalignement entre memoire corporelle et memoire autobiographique
+  La deconnexion (ou dissociation) correspond a un desalignement entre memoire du ressenti et memoire du sens
   Elle apparait :
     lors de saturations du systeme nerveux (trauma aigu)
     lors de microtraumatismes repetes (maltraitances, negligences...)
