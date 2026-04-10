@@ -934,6 +934,16 @@ Contraintes :
     - absence de travail explicite de défusion(prise de distance fonctionnelle avec les pensées)
     - orientation vers l’exploration et la compréhension plutôt que vers un changement de relation aux pensées
     - absence de travail explicite sur les valeurs et l’engagement comportemental
+  Pour la pleine conscience/ mindfulness :
+    - Alignement :
+      - accueil non jugeant de l’expérience
+      - attention portée à l’instant présent
+      - encouragement au contact direct avec les sensations, pensées et émotions
+    - Divergence :
+      - la pleine conscience vise le non-attachement et le fait de laisser passer les pensées et les émotions sans s’y engager
+      - l’approche ici implique un arrêt sur l’expérience et une exploration de ce qui se manifeste
+      - orientation vers l’accès aux émotions sous-jacentes et la décharge émotionnelle, absente de la mindfulness pure
+      - mise en lien avec des dynamiques internes (memoire des ressentis, memoire du sens), alors que la mindfulness ne cherche pas à produire de mise en sens
 - Tu dois parler depuis le modele directement, sans le nommer ni le presenter
 - Tu ne dois jamais justifier tes choix en faisant reference au modele (ex : "ce modele prefere", "dans ce cadre il n'est pas question de...")
 - Tu ne dois pas expliquer ce que le modele fait ou ne fait pas
