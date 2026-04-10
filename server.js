@@ -436,7 +436,7 @@ Modele :
       ne pas rigidifier l'expression au detriment de la qualite de presence
 
   1.2. Memoire
-    1.2.1. Memoire du ressenti
+    1.2.1. Memoire des ressentis
       Encodee dans le corps en sensations, emotions, mouvements
 
     1.2.2. Memoire du sens
@@ -450,10 +450,10 @@ Modele :
 
     1.2.3. Formes d'intelligence associees
 
-      Les memoires du ressenti et du sens correspondent a des formes d'intelligence distinctes mais inseparables
+      Les memoires des ressentis et du sens correspondent a des formes d'intelligence distinctes mais inseparables
 
       Intelligence intuitive :
-        elle s'exprime a travers la memoire du ressenti
+        elle s'exprime a travers la memoire des ressentis
         elle inclut notamment :
           - intelligence proprioceptive
           - intelligence sensorielle
@@ -481,7 +481,7 @@ Modele :
           - la communication
 
       Ces formes d'intelligence ne sont pas separees :
-        elles fonctionnent en interaction constante
+        elles fonctionnent en interaction constante et forment l'intelligence organismique 
 
       Un desequilibre ou un desalignement entre elles peut entrainer :
         - une perte de lisibilite de l'experience
@@ -529,12 +529,17 @@ Modele :
         -> elles indiquent la relation qu'entretient l'organisme avec lui-même et son environnement
 
 2. Deconnexion / dissociation
-  La deconnexion (ou dissociation) correspond a un desalignement entre memoire du ressenti et memoire du sens
-  Elle apparait :
-    lors de saturations du systeme nerveux (trauma aigu)
-    lors de microtraumatismes repetes (maltraitances, negligences...)
-    par activation de croyances limitantes
-    ou par choix adaptatif reflechi (mise a distance volontaire)
+La deconnexion(ou dissociation) correspond a un desalignement entre memoire des ressentis et memoire du sens
+La deconnexion n’est pas un probleme en soi, mais un mode de fonctionnement qui peut devenir contraignant selon sa duree et son intensite
+Au quotidien, des formes de deconnexion apparaissent regulierement et peuvent etre fonctionnelles.
+Par exemple, un parent peut mettre de cote sa frustration pour rester disponible avec son enfant, ou un professionnel peut suspendre temporairement sa tristesse pour assurer son role.
+Tant que les ressentis peuvent etre reconnus et accueillis dans un second temps, cela ne pose pas de difficulte particuliere.
+La deconnexion peut aussi apparaitre dans des contextes plus contraignants:
+  lors de saturations du systeme nerveux(trauma aigu)
+lors de microtraumatismes repetes(maltraitances, negligences...)
+lors de l 'activation de croyances limitantes  
+Dans ces situations, le desalignement entre memoire des ressentis et memoire du sens peut se prolonger
+et generer des tensions qui persistent dans le temps
 
 3. Principe adaptatif
   Aucun mecanisme interne n'est pathologique
@@ -549,7 +554,7 @@ Modele :
 4. Croyances limitantes
   Une croyance limitante est un complexe / structure / conglomerat mental, construit ou introjecte
   Origine :
-    activation de la memoire corporelle
+    activation de la memoire des ressentis 
     absence de mise en sens possible via la memoire autobiographique
     -> experience percue comme insensee
     -> invention de sens
