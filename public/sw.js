@@ -28,35 +28,11 @@ self.addEventListener("activate", event => {
 
 self.addEventListener("fetch", event => {
   const request = event.request;
-  
-  if (request.mode === "navigate") {
-  event.respondWith(
-    new Response(`
-      <html>
-        <body style="background:white;display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;">
-          <div style="font-size:20px;">SW INTERCEPT OK</div>
-        </body>
-      </html>
-    `, {
-      headers: { "Content-Type": "text/html" }
-    })
-  );
-  return;
-}
-  
   const url = new URL(request.url);
   
   if (url.origin === self.location.origin && SHELL_ASSETS.includes(url.pathname)) {
     event.respondWith(
-      caches.match(request).then(cached => {
-        if (cached) {
-          console.log("[SW] ASSET -> CACHE", url.pathname);
-          return cached;
-        }
-        
-        console.log("[SW] ASSET -> NETWORK", url.pathname);
-        return fetch(request);
-      })
+      fetch(request).catch(() => caches.match(request))
     );
   }
 });
