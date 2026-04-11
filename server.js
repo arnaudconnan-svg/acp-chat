@@ -3019,6 +3019,8 @@ app.get("/api/admin/conversations/:id/messages", requireAdminAuth, async (req, r
   }
 });
 
+// Normalize incoming /chat payload into a stable request object.
+// This function keeps body parsing separated from the main pipeline logic.
 function parseChatRequest(req) {
   const message = String(req.body?.message || "");
   const isEdited = req.body?.isEdited === true;
@@ -3045,6 +3047,11 @@ function parseChatRequest(req) {
   };
 }
 
+// Resolve the different prompt registry layers for the current request.
+// - basePromptRegistry: default settings without overrides
+// - override1PromptRegistry: applying the first override only
+// - override12PromptRegistry: applying both overrides
+// - activePromptRegistry: the registry used for the main reply
 function resolveChatPromptRegistries(override1, override2) {
   const basePromptRegistry = resolvePromptRegistry([]);
   const override1PromptRegistry = resolvePromptRegistry([override1]);
@@ -3063,6 +3070,9 @@ function resolveChatPromptRegistries(override1, override2) {
   };
 }
 
+// Normalize memory and session flags before executing the chat pipeline.
+// The active prompt registry is used to ensure memory normalization matches
+// the same prompt rules that will be applied later.
 function resolveChatMemoryAndFlags(req, activePromptRegistry) {
   const previousMemory = normalizeMemory(req.body?.memory, activePromptRegistry);
   const rawFlags = normalizeFlags(req.body?.flags);
@@ -3075,6 +3085,9 @@ function resolveChatMemoryAndFlags(req, activePromptRegistry) {
   };
 }
 
+// Main chat endpoint.
+// This route orchestrates the request parsing, safety analysis, mode detection,
+// response generation, memory update, and persistence of both user and assistant messages.
 app.post("/chat", async (req, res) => {
   const requestData = parseChatRequest(req);
   console.log("CHAT INPUT conversationId:", requestData.conversationId);
@@ -3086,6 +3099,8 @@ app.post("/chat", async (req, res) => {
   let flagsForCatch = normalizeSessionFlags({});
   let promptRegistryForCatch = basePromptRegistryForCatch;
   
+  // Build metadata for the fallback response used in the catch block.
+  // This keeps the safe error path consistent with the normal debug output format.
   function buildFallbackResponseDebugMeta({
     memory = "",
     suicideLevel = "N0",
@@ -3555,6 +3570,8 @@ app.post("/chat", async (req, res) => {
     
     let newFlags = normalizeSessionFlags(flags);
     
+    // Severe suicide risk override path.
+    // If the analysis returns N2, we bypass normal generation and reply with a crisis response.
     if (suicide.suicideLevel === "N2") {
       newFlags.acuteCrisis = true;
       newFlags.contactState = { wasContact: false };
@@ -3764,6 +3781,8 @@ app.post("/chat", async (req, res) => {
       });
     }
     
+    // Determine whether the current message should be handled as a contact-style interaction.
+    // This influences mode detection and the choice between contact, info, or exploration flows.
     const contactAnalysis = await analyzeContactState(
       message,
       recentHistory,
