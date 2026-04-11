@@ -3,9 +3,16 @@ require("dotenv").config();
 const admin = require("firebase-admin");
 let serviceAccount;
 try {
-  serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-} catch {
-  throw new Error("Invalid FIREBASE_SERVICE_ACCOUNT JSON");
+  if (process.env.FIREBASE_SERVICE_ACCOUNT_PATH) {
+    const serviceAccountPath = require("path").join(__dirname, process.env.FIREBASE_SERVICE_ACCOUNT_PATH);
+    serviceAccount = require(serviceAccountPath);
+  } else if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+    serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+  } else {
+    throw new Error("Missing FIREBASE_SERVICE_ACCOUNT or FIREBASE_SERVICE_ACCOUNT_PATH");
+  }
+} catch (err) {
+  throw new Error(`Invalid FIREBASE_SERVICE_ACCOUNT JSON: ${err.message}`);
 }
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
