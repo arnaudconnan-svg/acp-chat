@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Connexion admin</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 24px;
+      max-width: 420px;
+      margin: 40px auto;
+    }
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    input, button {
+      font-size: 16px;
+      padding: 10px;
+    }
+    #error {
+      color: red;
+      min-height: 1.2em;
+    }
+  </style>
+</head>
+<body>
+  <h1>Connexion admin</h1>
+
+  <form id="loginForm">
+    <input
+      id="password"
+      type="password"
+      placeholder="Mot de passe"
+      autocomplete="current-password"
+      required
+    >
+    <button type="submit">Se connecter</button>
+    <div id="error"></div>
+  </form>
+
+  <script>
+  const form = document.getElementById("loginForm");
+  const passwordInput = document.getElementById("password");
+  const errorDiv = document.getElementById("error");
+  
+  let autoSubmitDone = false;
+  
+  history.replaceState({ adminLogin: true }, "", window.location.href);
+  history.pushState({ adminLoginBack: true }, "", window.location.href);
+  
+  window.addEventListener("popstate", () => {
+    window.location.replace("/index.html?fromAdminLogin=1");
+  });
+  
+  async function submitLogin() {
+    if (autoSubmitDone) return;
+    const password = passwordInput.value.trim();
+    if (!password) return;
+    
+    autoSubmitDone = true;
+    errorDiv.textContent = "";
+    
+    try {
+      const res = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password })
+      });
+      
+      if (!res.ok) {
+        autoSubmitDone = false;
+        errorDiv.textContent = "Mot de passe incorrect";
+        return;
+      }
+      
+      const next = new URLSearchParams(window.location.search).get("next") || "/admin.html";
+      window.location.href = next;
+    } catch {
+      autoSubmitDone = false;
+      errorDiv.textContent = "Erreur de connexion";
+    }
+  }
+  
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    submitLogin();
+  });
+  
+  window.addEventListener("load", () => {
+    let attempts = 0;
+    const maxAttempts = 20;
+    
+    const interval = setInterval(() => {
+      attempts++;
+      
+      if (passwordInput.value.trim()) {
+        clearInterval(interval);
+        submitLogin();
+      }
+      
+      if (attempts >= maxAttempts) {
+        clearInterval(interval);
+      }
+    }, 300);
+  });
+</script>
+</body>
+</html>

@@ -1,2 +1,6 @@
 .env
-node_modules
+node_modules/
+.vscode/
+.DS_Store
+npm-debug.log*
+serviceAccount.json
