@@ -1755,32 +1755,27 @@ function normalizeMemory(memory, promptRegistry = buildDefaultPromptRegistry()) 
     buildDefaultPromptRegistry().NORMALIZE_MEMORY_TEMPLATE;
 }
 
-function trimHistory(history) {
+function trimHistoryWithLimit(history, maxTurns) {
   if (!Array.isArray(history)) return [];
   return history
     .filter(m => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
-    .slice(-MAX_RECENT_TURNS);
+    .slice(-maxTurns);
+}
+
+function trimHistory(history) {
+  return trimHistoryWithLimit(history, MAX_RECENT_TURNS);
 }
 
 function trimInfoAnalysisHistory(history) {
-  if (!Array.isArray(history)) return [];
-  return history
-    .filter(m => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
-    .slice(-MAX_INFO_ANALYSIS_TURNS);
+  return trimHistoryWithLimit(history, MAX_INFO_ANALYSIS_TURNS);
 }
 
 function trimSuicideAnalysisHistory(history) {
-  if (!Array.isArray(history)) return [];
-  return history
-    .filter(m => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
-    .slice(-MAX_SUICIDE_ANALYSIS_TURNS);
+  return trimHistoryWithLimit(history, MAX_SUICIDE_ANALYSIS_TURNS);
 }
 
 function trimRecallAnalysisHistory(history) {
-  if (!Array.isArray(history)) return [];
-  return history
-    .filter(m => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
-    .slice(-MAX_RECALL_ANALYSIS_TURNS);
+  return trimHistoryWithLimit(history, MAX_RECALL_ANALYSIS_TURNS);
 }
 
 function normalizeFlags(flags) {
@@ -2503,36 +2498,49 @@ ${String(content || "").trim()}
 [[${marker}_END]]`;
 }
 
-function buildSystemPrompt(mode, memory, explorationDirectivityLevel = 0, promptRegistry = buildDefaultPromptRegistry()) {
-  const normalizedMemory = normalizeMemory(memory, promptRegistry);
-  
+function getIdentityPrompt(promptRegistry = buildDefaultPromptRegistry()) {
   const identityBlock = String(promptRegistry.IDENTITY_BLOCK || "").trim();
-  
-  const commonExplorationBlock = String(promptRegistry.COMMON_EXPLORATION || "")
-    .replace("{{MEMORY}}", normalizedMemory)
-    .trim();
-  
-  const explorationStructureBlock = String(
-    getExplorationStructureInstruction(explorationDirectivityLevel, promptRegistry) || ""
-  ).trim();
-  
-  const explorationBlock = [
-    commonExplorationBlock,
-    explorationStructureBlock
-  ].filter(Boolean).join("\n\n").trim();
-  
+  return wrapPromptBlock("IDENTITY_BLOCK", identityBlock);
+}
+
+function getContactPrompt(promptRegistry = buildDefaultPromptRegistry()) {
   const contactBlock = String(promptRegistry.MODE_CONTACT || "").trim();
-  
+  return wrapPromptBlock("MODE_CONTACT", contactBlock);
+}
+
+function getInfoPrompt(memory, promptRegistry = buildDefaultPromptRegistry()) {
+  const normalizedMemory = normalizeMemory(memory, promptRegistry);
   const infoBlock = [
     String(promptRegistry.MODE_INFORMATION || "").trim(),
     `Memoire :
 ${normalizedMemory}`
   ].filter(Boolean).join("\n\n").trim();
-  
-  const identityWrapped = wrapPromptBlock("IDENTITY_BLOCK", identityBlock);
-  const contactWrapped = wrapPromptBlock("MODE_CONTACT", contactBlock);
-  const infoWrapped = wrapPromptBlock("MODE_INFORMATION", infoBlock);
-  const explorationWrapped = wrapPromptBlock("MODE_EXPLORATION", explorationBlock);
+
+  return wrapPromptBlock("MODE_INFORMATION", infoBlock);
+}
+
+function getExplorationPrompt(memory, explorationDirectivityLevel = 0, promptRegistry = buildDefaultPromptRegistry()) {
+  const normalizedMemory = normalizeMemory(memory, promptRegistry);
+  const commonExplorationBlock = String(promptRegistry.COMMON_EXPLORATION || "")
+    .replace("{{MEMORY}}", normalizedMemory)
+    .trim();
+  const explorationStructureBlock = String(
+    getExplorationStructureInstruction(explorationDirectivityLevel, promptRegistry) || ""
+  ).trim();
+
+  const explorationBlock = [
+    commonExplorationBlock,
+    explorationStructureBlock
+  ].filter(Boolean).join("\n\n").trim();
+
+  return wrapPromptBlock("MODE_EXPLORATION", explorationBlock);
+}
+
+function buildSystemPrompt(mode, memory, explorationDirectivityLevel = 0, promptRegistry = buildDefaultPromptRegistry()) {
+  const identityWrapped = getIdentityPrompt(promptRegistry);
+  const contactWrapped = getContactPrompt(promptRegistry);
+  const infoWrapped = getInfoPrompt(memory, promptRegistry);
+  const explorationWrapped = getExplorationPrompt(memory, explorationDirectivityLevel, promptRegistry);
   
   if (mode === "contact") {
     return `
@@ -3011,8 +3019,65 @@ app.get("/api/admin/conversations/:id/messages", requireAdminAuth, async (req, r
   }
 });
 
+function parseChatRequest(req) {
+  const message = String(req.body?.message || "");
+  const isEdited = req.body?.isEdited === true;
+  const conversationId = req.body?.conversationId;
+  const userId = req.body?.userId || "u_anon";
+  const convRef = db.ref("conversations").child(String(conversationId || ""));
+  const recentHistory = trimHistory(req.body?.recentHistory);
+  const override1 = req.body?.override1 ?? null;
+  const override2 = req.body?.override2 ?? null;
+  const comparisonEnabled = req.body?.comparisonEnabled === true;
+  const logsEnabled = req.body?.logsEnabled === true;
+
+  return {
+    message,
+    isEdited,
+    conversationId,
+    userId,
+    convRef,
+    recentHistory,
+    override1,
+    override2,
+    comparisonEnabled,
+    logsEnabled
+  };
+}
+
+function resolveChatPromptRegistries(override1, override2) {
+  const basePromptRegistry = resolvePromptRegistry([]);
+  const override1PromptRegistry = resolvePromptRegistry([override1]);
+  const override12PromptRegistry = resolvePromptRegistry([override1, override2]);
+  const hasOverrides = Boolean(override1 || override2);
+  const referencePromptRegistry = basePromptRegistry;
+  const activePromptRegistry = hasOverrides ? override12PromptRegistry : basePromptRegistry;
+
+  return {
+    basePromptRegistry,
+    override1PromptRegistry,
+    override12PromptRegistry,
+    hasOverrides,
+    referencePromptRegistry,
+    activePromptRegistry
+  };
+}
+
+function resolveChatMemoryAndFlags(req, activePromptRegistry) {
+  const previousMemory = normalizeMemory(req.body?.memory, activePromptRegistry);
+  const rawFlags = normalizeFlags(req.body?.flags);
+  const flags = normalizeSessionFlags(rawFlags);
+
+  return {
+    previousMemory,
+    rawFlags,
+    flags
+  };
+}
+
 app.post("/chat", async (req, res) => {
-  console.log("CHAT INPUT conversationId:", req.body?.conversationId);
+  const requestData = parseChatRequest(req);
+  console.log("CHAT INPUT conversationId:", requestData.conversationId);
   
   const basePromptRegistryForCatch = buildDefaultPromptRegistry();
   
@@ -3101,33 +3166,37 @@ app.post("/chat", async (req, res) => {
   }
   
   try {
-    const message = String(req.body?.message || "");
-    const isEdited = req.body?.isEdited === true;
-    const conversationId = req.body?.conversationId;
+    const {
+      message,
+      isEdited,
+      conversationId,
+      userId,
+      convRef,
+      recentHistory,
+      override1,
+      override2,
+      comparisonEnabled,
+      logsEnabled
+    } = requestData;
     
     if (!conversationId) {
       return res.status(400).json({ error: "Missing conversationId" });
     }
     
-    const userId = req.body?.userId || "u_anon";
-    const convRef = db.ref("conversations").child(conversationId);
-    const recentHistory = trimHistory(req.body?.recentHistory);
-    const override1 = req.body?.override1 ?? null;
-    const override2 = req.body?.override2 ?? null;
-    const comparisonEnabled = req.body?.comparisonEnabled === true;
-    const logsEnabled = req.body?.logsEnabled === true;
+    const {
+      basePromptRegistry,
+      override1PromptRegistry,
+      override12PromptRegistry,
+      hasOverrides,
+      referencePromptRegistry,
+      activePromptRegistry
+    } = resolveChatPromptRegistries(override1, override2);
     
-    const basePromptRegistry = resolvePromptRegistry([]);
-    const override1PromptRegistry = resolvePromptRegistry([override1]);
-    const override12PromptRegistry = resolvePromptRegistry([override1, override2]);
-    
-    const hasOverrides = Boolean(override1 || override2);
-    const referencePromptRegistry = basePromptRegistry;
-    const activePromptRegistry = hasOverrides ? override12PromptRegistry : basePromptRegistry;
-    
-    const previousMemory = normalizeMemory(req.body?.memory, activePromptRegistry);
-    const rawFlags = normalizeFlags(req.body?.flags);
-    const flags = normalizeSessionFlags(rawFlags);
+    const {
+      previousMemory,
+      rawFlags,
+      flags
+    } = resolveChatMemoryAndFlags(req, activePromptRegistry);
     
     previousMemoryForCatch = previousMemory;
     flagsForCatch = flags;
