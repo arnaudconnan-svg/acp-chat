@@ -1951,6 +1951,7 @@
     const SESSION_TIMEOUT_MS = 12 * 60 * 60 * 1000;
     const MAX_RECENT_TURNS = 8;
     const ADMIN_UI_KEY = "facilitatio_admin_ui";
+    const ADMIN_REPLAY_KEY = "facilitatio_admin_replay";
     const CHAT_BOTTOM_THRESHOLD_PX = 12;
 
     async function hasValidAdminSession() {
@@ -1984,7 +1985,9 @@
             saveAdminUiState();
           }
         } catch {}
-      } else if (wantsAdminUi) {
+      } else {
+        // Active l'UI admin dès qu'une session valide existe,
+        // que ce soit via ?adminUi=1 ou un retour depuis admin.html
         safeSetLocalStorage(ADMIN_UI_KEY, "1", "syncAdminUiFromSession");
       }
 
@@ -2250,6 +2253,85 @@
           updatedAt: safeData.updatedAt
         });
       }
+    }
+
+    function readAndConsumeAdminReplayPayload(maxAgeMs = 5 * 60 * 1000) {
+      try {
+        const raw = localStorage.getItem(ADMIN_REPLAY_KEY);
+        if (!raw) {
+          return null;
+        }
+
+        localStorage.removeItem(ADMIN_REPLAY_KEY);
+
+        const parsed = JSON.parse(raw);
+        const timestamp = Number(parsed?.timestamp || 0);
+        const sourceConversationId = String(parsed?.sourceConversationId || "").trim();
+        const memory = String(parsed?.memory || "").trim();
+        const recentHistory = Array.isArray(parsed?.recentHistory) ? parsed.recentHistory : [];
+
+        if (!sourceConversationId || !Number.isFinite(timestamp) || Date.now() - timestamp > maxAgeMs) {
+          return null;
+        }
+
+        const safeRecentHistory = recentHistory
+          .map(item => ({
+            role: String(item?.role || "").trim(),
+            content: String(item?.content || "").trim(),
+            debug: Array.isArray(item?.debug) ? item.debug.map(line => String(line || "")) : [],
+            debugMeta: item?.debugMeta && typeof item.debugMeta === "object" ? {
+              topChips: Array.isArray(item.debugMeta.topChips) ? item.debugMeta.topChips : [],
+              memory: typeof item.debugMeta.memory === "string" ? item.debugMeta.memory : "",
+              directivityText: typeof item.debugMeta.directivityText === "string" ? item.debugMeta.directivityText : "",
+              rewriteSource: typeof item.debugMeta.rewriteSource === "string" ? item.debugMeta.rewriteSource : null,
+              memoryRewriteSource: typeof item.debugMeta.memoryRewriteSource === "string" ? item.debugMeta.memoryRewriteSource : null,
+              modelConflict: item.debugMeta.modelConflict === true
+            } : null,
+            comparisonResults: Array.isArray(item?.comparisonResults) ? item.comparisonResults : null
+          }))
+          .filter(item => (item.role === "user" || item.role === "assistant") && item.content)
+          .slice(-120);
+
+        if (safeRecentHistory.length === 0) {
+          return null;
+        }
+
+        return {
+          sourceConversationId,
+          memory: memory || defaultMemory(),
+          anchorMessageId: String(parsed?.anchorMessageId || "").trim(),
+          recentHistory: safeRecentHistory
+        };
+      } catch {
+        localStorage.removeItem(ADMIN_REPLAY_KEY);
+        return null;
+      }
+    }
+
+    function applyAdminReplayPayload(payload) {
+      if (!payload || typeof payload !== "object") {
+        return null;
+      }
+
+      const nextConversationId = createConversationId();
+      const baseTs = Date.now();
+      const replayMessages = payload.recentHistory.map((item, index) => ({
+        role: item.role,
+        content: item.content,
+        debug: Array.isArray(item.debug) ? item.debug : [],
+        debugMeta: item.debugMeta && typeof item.debugMeta === "object" ? item.debugMeta : null,
+        comparisonResults: Array.isArray(item.comparisonResults) ? item.comparisonResults : null,
+        t: baseTs - Math.max(payload.recentHistory.length - index, 1) * 1000
+      }));
+
+      saveConversationData(nextConversationId, {
+        messages: replayMessages,
+        memory: payload.memory,
+        flags: normalizeStoredFlags({}),
+        updatedAt: Date.now()
+      });
+
+      return nextConversationId;
     }
     
     function deleteConversationData(conversationId) {
@@ -4025,6 +4107,14 @@
           
           longPressTimer = setTimeout(() => {
             longPressTriggered = true;
+            const history = loadHistory();
+            const lastUserIndex = getLastUserHistoryIndex(history);
+
+            if (historyIndex !== lastUserIndex) {
+              showTemporaryNotice("Modification impossible");
+              return;
+            }
+
             openEditMode(historyIndex, displayText);
           }, 420);
         };
@@ -4903,6 +4993,7 @@
             isEdited: isEditing === true,
             userId: getOrCreateUserId(),
             conversationId: requestConversationId,
+            adminUiActive: document.body.classList.contains("admin-ui"),
             recentHistory: loadHistory().map(({ role, content }) => ({ role, content })).slice(-MAX_RECENT_TURNS),
             memory: loadMemory(),
             flags: normalizeStoredFlags(loadFlags()),
@@ -5842,10 +5933,35 @@
     window.addEventListener("load", async () => {
       const isAdminUI = await syncAdminUiFromSession();
       const shouldSkipWelcomeAnimation = isAdminUI;
+
+      const loadUrl = new URL(window.location.href);
+      const replayRequested = loadUrl.searchParams.get("adminReplay") === "1";
+      const replayPayload = replayRequested ? readAndConsumeAdminReplayPayload() : null;
       
       syncDebugVisibility();
       ensureScrollToBottomBtn();
       updateScrollToBottomBtn();
+
+      if (loadUrl.searchParams.has("adminReplay")) {
+        loadUrl.searchParams.delete("adminReplay");
+        const nextSearch = loadUrl.searchParams.toString();
+        history.replaceState(history.state || {}, "", `${loadUrl.pathname}${nextSearch ? `?${nextSearch}` : ""}${loadUrl.hash || ""}`);
+      }
+
+      if (isAdminUI && replayPayload) {
+        applyAdminReplayPayload(replayPayload);
+        setSessionStatus("active");
+        showScreen("chatScreen", { replaceHistory: true, pushHistory: false, noAnimation: true });
+        closeEditMode({ restoreDraft: false });
+        renderHistory();
+        const replayNotice = replayPayload.anchorMessageId ?
+          "Contexte charge depuis " + replayPayload.sourceConversationId + " (point cible + debug conserves, flags reinitialises)" :
+          "Contexte charge depuis " + replayPayload.sourceConversationId + " (debug conserve, flags reinitialises)";
+        showTemporaryNotice(replayNotice);
+        updateActivity();
+        defocusInput();
+        return;
+      }
       
       const logo = document.getElementById("welcomeLogo");
       const welcome = document.getElementById("welcomeScreen");
