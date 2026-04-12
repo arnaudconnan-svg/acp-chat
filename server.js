@@ -3533,6 +3533,7 @@ app.get("/api/premium/branches", requireUserAuth, requirePremiumCapability("bran
         seedMessageCount: Number(item?.seedMessageCount) || 0,
         createdAt: typeof item?.createdAt === "string" ? item.createdAt : null,
         updatedAt: typeof item?.updatedAt === "string" ? item.updatedAt : null,
+        activatedAt: typeof item?.activatedAt === "string" ? item.activatedAt : null,
         status: String(item?.status || "active")
       }))
       .sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
@@ -3656,6 +3657,104 @@ app.post("/api/premium/branches/from-message", requireUserAuth, requirePremiumCa
   } catch (err) {
     console.error("Erreur /api/premium/branches/from-message:", err.message);
     return res.status(500).json({ error: "Branch creation failed" });
+  }
+});
+
+app.post("/api/premium/branches/:id/activate", requireUserAuth, requirePremiumCapability("branching"), async (req, res) => {
+  try {
+    const session = req.userSession;
+    const branchId = String(req.params?.id || "").trim();
+
+    if (!branchId) {
+      return res.status(400).json({ error: "Invalid branch id" });
+    }
+
+    const branchRef = premiumBranchesRef.child(branchId);
+    const [branchSnap, seedSnap] = await Promise.all([
+      branchRef.once("value"),
+      premiumBranchSeedsRef.child(branchId).once("value")
+    ]);
+
+    const branch = branchSnap.val();
+    const seed = seedSnap.val();
+
+    if (!branch || typeof branch !== "object") {
+      return res.status(404).json({ error: "Branch not found" });
+    }
+
+    if (String(branch.userId || "") !== session.userId) {
+      return res.status(403).json({ error: "Branch ownership mismatch" });
+    }
+
+    if (!seed || typeof seed !== "object" || !Array.isArray(seed.messages)) {
+      return res.status(404).json({ error: "Branch seed not found" });
+    }
+
+    const branchConversationId = String(branch.branchConversationId || "").trim();
+    if (!branchConversationId) {
+      return res.status(500).json({ error: "Missing branch conversation id" });
+    }
+
+    const convRef = db.ref("conversations").child(branchConversationId);
+    const existingConvSnap = await convRef.once("value");
+    const existingConversation = existingConvSnap.val();
+
+    if (!existingConversation || typeof existingConversation !== "object") {
+      const seededMessages = seed.messages;
+      const lastUserMessage = [...seededMessages]
+        .reverse()
+        .find(m => String(m?.role || "") === "user");
+      const now = new Date().toISOString();
+
+      await convRef.set({
+        userId: session.userId,
+        createdAt: now,
+        updatedAt: now,
+        title: `Branche de ${String(branch.sourceConversationId || "conversation")}`,
+        titleLocked: false,
+        messageCount: seededMessages.filter(m => String(m?.role || "") === "user").length,
+        lastUserMessage: lastUserMessage ? String(lastUserMessage.content || "") : ""
+      });
+
+      // Seed all historical messages into the new conversation once.
+      await Promise.all(
+        seededMessages.map((message, index) => {
+          const timestampBase = Date.now();
+          return messagesRef.push({
+            role: String(message?.role || ""),
+            content: String(message?.content || ""),
+            timestamp: timestampBase + index,
+            userId: session.userId,
+            conversationId: branchConversationId,
+            debug: Array.isArray(message?.debug) ? message.debug : [],
+            debugMeta: message?.debugMeta && typeof message.debugMeta === "object" ? message.debugMeta : null,
+            comparisonResults: Array.isArray(message?.comparisonResults) ? message.comparisonResults : null,
+            premiumBranchId: branchId,
+            sourceMessageId: typeof message?.id === "string" ? message.id : null
+          });
+        })
+      );
+    }
+
+    const activatedAt = new Date().toISOString();
+    await branchRef.update({
+      status: "active",
+      activatedAt,
+      updatedAt: activatedAt
+    });
+
+    return res.json({
+      success: true,
+      branch: {
+        id: branchId,
+        branchConversationId,
+        activatedAt,
+        status: "active"
+      }
+    });
+  } catch (err) {
+    console.error("Erreur /api/premium/branches/:id/activate:", err.message);
+    return res.status(500).json({ error: "Branch activation failed" });
   }
 });
 

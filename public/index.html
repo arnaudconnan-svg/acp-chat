@@ -1953,6 +1953,7 @@
     const ADMIN_UI_KEY = "facilitatio_admin_ui";
     const ADMIN_REPLAY_KEY = "facilitatio_admin_replay";
     const CHAT_BOTTOM_THRESHOLD_PX = 12;
+    const PREMIUM_CAPABILITIES_KEY = "facilitatio_premium_capabilities";
     let userSessionState = {
       authenticated: false,
       user: null,
@@ -1997,6 +1998,10 @@
           }
         };
 
+        try {
+          localStorage.setItem(PREMIUM_CAPABILITIES_KEY, JSON.stringify(userSessionState.capabilities));
+        } catch {}
+
         return userSessionState;
       } catch {
         userSessionState = {
@@ -2008,9 +2013,30 @@
             multiDeviceAccess: false
           }
         };
+
+        try {
+          localStorage.removeItem(PREMIUM_CAPABILITIES_KEY);
+        } catch {}
+
         return userSessionState;
       }
     }
+
+    function getPremiumCapabilities() {
+      return {
+        branching: userSessionState.capabilities.branching === true,
+        intersessionMemory: userSessionState.capabilities.intersessionMemory === true,
+        multiDeviceAccess: userSessionState.capabilities.multiDeviceAccess === true
+      };
+    }
+
+    function hasPremiumCapability(name) {
+      const capabilities = getPremiumCapabilities();
+      return capabilities[name] === true;
+    }
+
+    window.getPremiumCapabilities = getPremiumCapabilities;
+    window.hasPremiumCapability = hasPremiumCapability;
 
     async function hasValidAdminSession() {
       try {
