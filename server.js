@@ -435,6 +435,14 @@ function toPublicUser(userId, userData) {
   };
 }
 
+function normalizePlan(value) {
+  const plan = String(value || "free").trim().toLowerCase();
+  if (plan === "premium" || plan === "pro") {
+    return plan;
+  }
+  return "free";
+}
+
 // Retrieve the admin session from cookies and validate its expiration.
 function getAdminSession(req) {
   const cookies = parseCookies(req);
@@ -3682,6 +3690,45 @@ app.post("/api/admin/user-label", requireAdminAuth, async (req, res) => {
   } catch (err) {
     console.error("Erreur user-label:", err);
     return res.status(500).json({ error: "Erreur serveur" });
+  }
+});
+
+app.post("/api/admin/users/:id/plan", requireAdminAuth, async (req, res) => {
+  try {
+    const userId = String(req.params?.id || "").trim();
+    const requestedPlan = req.body?.plan;
+
+    if (!userId || typeof requestedPlan !== "string") {
+      return res.status(400).json({ error: "Invalid plan update request" });
+    }
+
+    const plan = normalizePlan(requestedPlan);
+    const userRef = usersRef.child(userId);
+    const userSnap = await userRef.once("value");
+    const user = userSnap.val();
+
+    if (!user || typeof user !== "object") {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const now = new Date().toISOString();
+    await userRef.update({
+      plan,
+      updatedAt: now
+    });
+
+    return res.json({
+      success: true,
+      user: {
+        id: userId,
+        plan,
+        capabilities: getUserCapabilities(plan),
+        updatedAt: now
+      }
+    });
+  } catch (err) {
+    console.error("Erreur /api/admin/users/:id/plan:", err.message);
+    return res.status(500).json({ error: "Plan update failed" });
   }
 });
 
