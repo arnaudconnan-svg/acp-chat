@@ -340,7 +340,7 @@
         
         if (!res.ok) {
           const errorMessage = typeof response.data?.error === "string" ? response.data.error : "Erreur HTTP conversations: " + res.status;
-          list.innerHTML = '<div class="error">' + errorMessage + "</div>';
+            list.innerHTML = '<div class="error">' + errorMessage + '</div>';
           return;
         }
 
@@ -456,7 +456,7 @@
 
         if (!res.ok) {
           const errorMessage = typeof response.data?.error === "string" ? response.data.error : "Erreur HTTP messages: " + res.status;
-          list.innerHTML = '<div class="error">' + errorMessage + "</div>';
+            list.innerHTML = '<div class="error">' + errorMessage + '</div>';
           return;
         }
 
