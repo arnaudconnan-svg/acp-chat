@@ -292,6 +292,8 @@
 
       try {
         const requestOptions = {
+          credentials: "same-origin",
+          cache: "no-store",
           ...options,
           signal: controller.signal
         };
@@ -299,6 +301,23 @@
       } finally {
         clearTimeout(timer);
       }
+    }
+
+    async function ensureAdminSession() {
+      const res = await fetchWithTimeout("/api/admin/session", {
+        method: "GET"
+      });
+
+      const response = await readAdminJsonResponse(res);
+      const isAuthenticated = response.isJson && response.data && response.data.authenticated === true;
+
+      if (!res.ok || !isAuthenticated) {
+        const next = encodeURIComponent(window.location.pathname + window.location.search);
+        window.location.href = "/admin-login.html?next=" + next;
+        return false;
+      }
+
+      return true;
     }
     
     async function loadConversations() {
@@ -948,6 +967,14 @@
     
     async function init() {
       setupRootBackToIndex();
+
+      const list = document.getElementById("list");
+      list.textContent = "Verification de la session admin...";
+
+      const hasSession = await ensureAdminSession();
+      if (!hasSession) {
+        return;
+      }
       
       const conversationId = getConversationIdFromUrl();
       const backBtn = document.getElementById("backBtn");
@@ -968,8 +995,24 @@
         await loadConversations();
       }
     }
-    
-    init();
+
+    function renderInitError(error) {
+      const list = document.getElementById("list");
+      const message = error && error.message ? error.message : String(error || "Erreur inconnue");
+      list.innerHTML = '<div class="error">Erreur d\'initialisation admin: ' + message + '</div>';
+    }
+
+    window.addEventListener("error", event => {
+      renderInitError(event.error || event.message || "Erreur JavaScript");
+    });
+
+    window.addEventListener("unhandledrejection", event => {
+      renderInitError(event.reason || "Promesse rejetee");
+    });
+
+    document.addEventListener("DOMContentLoaded", () => {
+      init().catch(renderInitError);
+    });
   </script>
 </body>
 
