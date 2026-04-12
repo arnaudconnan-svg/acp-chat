@@ -1953,6 +1953,64 @@
     const ADMIN_UI_KEY = "facilitatio_admin_ui";
     const ADMIN_REPLAY_KEY = "facilitatio_admin_replay";
     const CHAT_BOTTOM_THRESHOLD_PX = 12;
+    let userSessionState = {
+      authenticated: false,
+      user: null,
+      capabilities: {
+        branching: false,
+        intersessionMemory: false,
+        multiDeviceAccess: false
+      }
+    };
+
+    async function syncUserSessionState() {
+      try {
+        const res = await fetch("/api/auth/session", {
+          method: "GET",
+          cache: "no-store"
+        });
+
+        if (!res.ok) {
+          userSessionState = {
+            authenticated: false,
+            user: null,
+            capabilities: {
+              branching: false,
+              intersessionMemory: false,
+              multiDeviceAccess: false
+            }
+          };
+          return userSessionState;
+        }
+
+        const data = await parseAppJsonResponseSafely(res);
+        const user = data && data.user && typeof data.user === "object" ? data.user : null;
+        const caps = user && user.capabilities && typeof user.capabilities === "object" ? user.capabilities : {};
+
+        userSessionState = {
+          authenticated: data && data.authenticated === true,
+          user,
+          capabilities: {
+            branching: caps.branching === true,
+            intersessionMemory: caps.intersessionMemory === true,
+            multiDeviceAccess: caps.multiDeviceAccess === true
+          }
+        };
+
+        return userSessionState;
+      } catch {
+        userSessionState = {
+          authenticated: false,
+          user: null,
+          capabilities: {
+            branching: false,
+            intersessionMemory: false,
+            multiDeviceAccess: false
+          }
+        };
+        return userSessionState;
+      }
+    }
 
     async function hasValidAdminSession() {
       try {
@@ -2013,6 +2071,10 @@
     }
     
     function getOrCreateUserId() {
+      if (userSessionState.authenticated && userSessionState.user && typeof userSessionState.user.id === "string" && userSessionState.user.id.trim()) {
+        return userSessionState.user.id.trim();
+      }
+
       let userId = localStorage.getItem(USER_ID_KEY);
       
       if (!userId) {
@@ -5931,6 +5993,7 @@
     }
     
     window.addEventListener("load", async () => {
+      await syncUserSessionState();
       const isAdminUI = await syncAdminUiFromSession();
       const shouldSkipWelcomeAnimation = isAdminUI;
 

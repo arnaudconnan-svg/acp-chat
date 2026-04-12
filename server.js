@@ -26,6 +26,8 @@ const db = admin.database();
 const messagesRef = db.ref("messages");
 const userLabelsRef = db.ref("userLabels");
 const usersRef = db.ref("users");
+const premiumBranchesRef = db.ref("premiumBranches");
+const premiumBranchSeedsRef = db.ref("premiumBranchSeeds");
 const crypto = require("crypto");
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 const SESSION_SECRET = process.env.SESSION_SECRET;
@@ -499,6 +501,39 @@ async function getUserSession(req) {
     token: sessionToken,
     userId: String(session.userId || ""),
     user: userData
+  };
+}
+
+async function requireUserAuth(req, res, next) {
+  try {
+    const session = await getUserSession(req);
+
+    if (!session) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    req.userSession = session;
+    return next();
+  } catch (err) {
+    console.error("Erreur requireUserAuth:", err.message);
+    return res.status(500).json({ error: "Auth check failed" });
+  }
+}
+
+function requirePremiumCapability(capability) {
+  return (req, res, next) => {
+    const session = req.userSession;
+    const plan = session?.user?.plan || "free";
+    const capabilities = getUserCapabilities(plan);
+
+    if (capabilities[capability] !== true) {
+      return res.status(403).json({
+        error: "Feature not available on current plan",
+        capability
+      });
+    }
+
+    return next();
   };
 }
 
@@ -3468,6 +3503,151 @@ app.get("/api/premium/capabilities", async (req, res) => {
   } catch (err) {
     console.error("Erreur /api/premium/capabilities:", err.message);
     return res.status(500).json({ error: "Capabilities lookup failed" });
+  }
+});
+
+app.get("/api/premium/branches", requireUserAuth, requirePremiumCapability("branching"), async (req, res) => {
+  try {
+    const session = req.userSession;
+    const snapshot = await premiumBranchesRef
+      .orderByChild("userId")
+      .equalTo(session.userId)
+      .limitToLast(100)
+      .once("value");
+
+    const raw = snapshot.val() || {};
+    const branches = Object.entries(raw)
+      .map(([id, item]) => ({
+        id,
+        sourceConversationId: String(item?.sourceConversationId || ""),
+        sourceAnchorMessageId: String(item?.sourceAnchorMessageId || ""),
+        branchConversationId: String(item?.branchConversationId || ""),
+        seedMessageCount: Number(item?.seedMessageCount) || 0,
+        createdAt: typeof item?.createdAt === "string" ? item.createdAt : null,
+        updatedAt: typeof item?.updatedAt === "string" ? item.updatedAt : null,
+        status: String(item?.status || "active")
+      }))
+      .sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
+
+    return res.json({ branches });
+  } catch (err) {
+    console.error("Erreur /api/premium/branches:", err.message);
+    return res.status(500).json({ error: "Branches lookup failed" });
+  }
+});
+
+app.post("/api/premium/branches/from-message", requireUserAuth, requirePremiumCapability("branching"), async (req, res) => {
+  try {
+    if (
+      !req.body ||
+      typeof req.body !== "object" ||
+      Array.isArray(req.body) ||
+      typeof req.body.sourceConversationId !== "string" ||
+      typeof req.body.anchorMessageId !== "string"
+    ) {
+      return res.status(400).json({ error: "Invalid branch request" });
+    }
+
+    const session = req.userSession;
+    const sourceConversationId = String(req.body.sourceConversationId || "").trim();
+    const anchorMessageId = String(req.body.anchorMessageId || "").trim();
+
+    if (!sourceConversationId || !anchorMessageId) {
+      return res.status(400).json({ error: "Missing sourceConversationId or anchorMessageId" });
+    }
+
+    const conversationSnap = await db.ref("conversations").child(sourceConversationId).once("value");
+    const sourceConversation = conversationSnap.val();
+
+    if (!sourceConversation || typeof sourceConversation !== "object") {
+      return res.status(404).json({ error: "Source conversation not found" });
+    }
+
+    if (String(sourceConversation.userId || "") !== session.userId) {
+      return res.status(403).json({ error: "Conversation ownership mismatch" });
+    }
+
+    const messagesSnap = await messagesRef
+      .orderByChild("conversationId")
+      .equalTo(sourceConversationId)
+      .once("value");
+
+    const rawMessages = messagesSnap.val() || {};
+    const messageEntries = Object.entries(rawMessages)
+      .map(([id, item]) => ({
+        id,
+        item: item && typeof item === "object" ? item : {}
+      }))
+      .sort((a, b) => {
+        const aDate = String(a.item.createdAt || "");
+        const bDate = String(b.item.createdAt || "");
+        if (aDate && bDate && aDate !== bDate) {
+          return aDate.localeCompare(bDate);
+        }
+        return String(a.id).localeCompare(String(b.id));
+      });
+
+    const anchorIndex = messageEntries.findIndex(entry => entry.id === anchorMessageId);
+
+    if (anchorIndex < 0) {
+      return res.status(404).json({ error: "Anchor message not found" });
+    }
+
+    const seededEntries = messageEntries.slice(0, anchorIndex + 1);
+    const seededMessages = seededEntries.map(entry => ({
+      id: entry.id,
+      role: String(entry.item.role || ""),
+      content: String(entry.item.content || ""),
+      debug: Array.isArray(entry.item.debug) ? entry.item.debug : [],
+      debugMeta: entry.item.debugMeta && typeof entry.item.debugMeta === "object" ? entry.item.debugMeta : null,
+      comparisonResults: Array.isArray(entry.item.comparisonResults) ? entry.item.comparisonResults : null,
+      createdAt: typeof entry.item.createdAt === "string" ? entry.item.createdAt : null
+    }));
+
+    const now = new Date().toISOString();
+    const branchConversationId = `c_branch_${Date.now()}_${crypto.randomBytes(4).toString("hex")}`;
+    const branchRef = premiumBranchesRef.push();
+    const branchId = branchRef.key;
+
+    if (!branchId) {
+      return res.status(500).json({ error: "Failed to create branch id" });
+    }
+
+    await Promise.all([
+      branchRef.set({
+        userId: session.userId,
+        planAtCreation: String(session?.user?.plan || "free").trim().toLowerCase(),
+        sourceConversationId,
+        sourceAnchorMessageId: anchorMessageId,
+        branchConversationId,
+        seedMessageCount: seededMessages.length,
+        status: "active",
+        createdAt: now,
+        updatedAt: now
+      }),
+      premiumBranchSeedsRef.child(branchId).set({
+        sourceConversationId,
+        sourceAnchorMessageId: anchorMessageId,
+        seededAt: now,
+        messages: seededMessages
+      })
+    ]);
+
+    return res.status(201).json({
+      success: true,
+      branch: {
+        id: branchId,
+        sourceConversationId,
+        sourceAnchorMessageId: anchorMessageId,
+        branchConversationId,
+        seedMessageCount: seededMessages.length,
+        createdAt: now,
+        status: "active"
+      }
+    });
+  } catch (err) {
+    console.error("Erreur /api/premium/branches/from-message:", err.message);
+    return res.status(500).json({ error: "Branch creation failed" });
   }
 });
 
