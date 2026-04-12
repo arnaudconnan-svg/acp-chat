@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Facilitat.io — Mon espace</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="color-scheme" content="light">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      min-height: 100%;
+      background: white;
+      font-family: Arial, sans-serif;
+      color: #1a1a1a;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 0 0 48px;
+    }
+
+    header {
+      width: 100%;
+      max-width: 520px;
+      padding: 28px 24px 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    header img {
+      height: 36px;
+      width: auto;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .btn-link {
+      font-size: 13px;
+      color: #888;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0;
+      text-decoration: underline;
+    }
+
+    .btn-link:hover { color: #1a1a1a; }
+
+    main {
+      width: 100%;
+      max-width: 520px;
+      padding: 28px 24px 0;
+    }
+
+    h1 {
+      font-size: 20px;
+      font-weight: 700;
+      margin: 0 0 6px;
+    }
+
+    .user-email {
+      font-size: 14px;
+      color: #666;
+      margin: 0 0 28px;
+    }
+
+    .plan-card {
+      border: 1.5px solid #e0e0e0;
+      border-radius: 12px;
+      padding: 18px 20px;
+      margin-bottom: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .plan-label {
+      font-size: 13px;
+      color: #888;
+      margin-bottom: 4px;
+    }
+
+    .plan-name {
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .plan-name.free { color: #888; }
+    .plan-name.premium { color: #7a3fd1; }
+    .plan-name.pro { color: #1a7ad4; }
+
+    .plan-caps {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      align-items: flex-end;
+    }
+
+    .cap-badge {
+      font-size: 12px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      background: #f0e8ff;
+      color: #7a3fd1;
+      font-weight: 500;
+    }
+
+    .cap-badge.inactive {
+      background: #f0f0f0;
+      color: #bbb;
+    }
+
+    section h2 {
+      font-size: 15px;
+      font-weight: 600;
+      margin: 0 0 14px;
+      color: #333;
+    }
+
+    .branch-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .branch-item {
+      border: 1.5px solid #ebebeb;
+      border-radius: 10px;
+      padding: 14px 16px;
+    }
+
+    .branch-item-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .branch-title {
+      font-size: 14px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 220px;
+    }
+
+    .branch-open-btn {
+      flex-shrink: 0;
+      font-size: 13px;
+      background: #1a1a1a;
+      color: white;
+      border: none;
+      border-radius: 7px;
+      padding: 6px 14px;
+      cursor: pointer;
+      font-weight: 500;
+    }
+
+    .branch-open-btn:hover { opacity: 0.8; }
+
+    .branch-meta {
+      font-size: 12px;
+      color: #999;
+      margin-top: 5px;
+    }
+
+    .empty-state {
+      font-size: 14px;
+      color: #aaa;
+      text-align: center;
+      padding: 32px 0;
+    }
+
+    .loading-state {
+      font-size: 14px;
+      color: #aaa;
+      text-align: center;
+      padding: 32px 0;
+    }
+
+    .error-notice {
+      font-size: 13px;
+      color: #c0392b;
+      text-align: center;
+      padding: 28px 0;
+    }
+
+    .upgrade-banner {
+      border: 1.5px solid #d0bfff;
+      border-radius: 12px;
+      padding: 16px 20px;
+      background: #faf6ff;
+      margin-bottom: 28px;
+    }
+
+    .upgrade-banner p {
+      margin: 0 0 12px;
+      font-size: 14px;
+      color: #5a2da0;
+    }
+
+    .upgrade-banner button {
+      font-size: 13px;
+      padding: 8px 18px;
+      border: none;
+      border-radius: 8px;
+      background: #7a3fd1;
+      color: white;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .upgrade-banner button:hover { opacity: 0.85; }
+  </style>
+</head>
+<body>
+  <header>
+    <a href="/"><img src="/images/logo.png" alt="Facilitat.io"></a>
+    <div class="header-actions">
+      <a href="/" style="font-size:13px;color:#888;text-decoration:none;">← Chat</a>
+      <button class="btn-link" id="logoutBtn" onclick="handleLogout()">Se déconnecter</button>
+    </div>
+  </header>
+
+  <main id="mainContent">
+    <div class="loading-state" id="loadingState">Chargement…</div>
+  </main>
+
+  <script>
+    (function () {
+      "use strict";
+
+      let currentUser = null;
+      let currentCapabilities = null;
+
+      async function init() {
+        try {
+          const res = await fetch("/api/auth/session", { credentials: "include" });
+          const data = await res.json().catch(() => ({}));
+
+          if (!data || data.authenticated !== true) {
+            window.location.href = "/auth.html?next=/premium.html";
+            return;
+          }
+
+          currentUser = data.user || {};
+          currentCapabilities = data.capabilities || {};
+          renderPage();
+        } catch (_) {
+          showError("Impossible de charger la session. Réessayez.");
+        }
+      }
+
+      function renderPage() {
+        const main = document.getElementById("mainContent");
+        const plan = String(currentUser.plan || "free");
+        const caps = currentCapabilities;
+
+        const hasBranching = caps.branching === true;
+        const hasMemory = caps.intersessionMemory === true;
+        const hasMultiDevice = caps.multiDeviceAccess === true;
+
+        main.innerHTML = "";
+
+        // Title + email
+        const h1 = document.createElement("h1");
+        h1.textContent = "Mon espace";
+        main.appendChild(h1);
+
+        const emailEl = document.createElement("p");
+        emailEl.className = "user-email";
+        emailEl.textContent = escapeText(currentUser.email || "");
+        main.appendChild(emailEl);
+
+        // Plan card
+        const planCard = document.createElement("div");
+        planCard.className = "plan-card";
+
+        const planLeft = document.createElement("div");
+        const planLabel = document.createElement("div");
+        planLabel.className = "plan-label";
+        planLabel.textContent = "Votre plan";
+        const planName = document.createElement("div");
+        planName.className = "plan-name " + plan;
+        planName.textContent = plan.charAt(0).toUpperCase() + plan.slice(1);
+        planLeft.appendChild(planLabel);
+        planLeft.appendChild(planName);
+        planCard.appendChild(planLeft);
+
+        const capsRight = document.createElement("div");
+        capsRight.className = "plan-caps";
+        [
+          { key: "branching", label: "Branches" },
+          { key: "intersessionMemory", label: "Mémoire longue" },
+          { key: "multiDeviceAccess", label: "Multi-appareils" }
+        ].forEach(({ key, label }) => {
+          const badge = document.createElement("span");
+          badge.className = "cap-badge" + (caps[key] ? "" : " inactive");
+          badge.textContent = label;
+          capsRight.appendChild(badge);
+        });
+        planCard.appendChild(capsRight);
+        main.appendChild(planCard);
+
+        // Upgrade banner for free users
+        if (plan === "free") {
+          const banner = document.createElement("div");
+          banner.className = "upgrade-banner";
+          const p = document.createElement("p");
+          p.textContent = "Passez à Premium pour accéder aux branches de conversation, à la mémoire longue et plus.";
+          banner.appendChild(p);
+          const upgradeBtn = document.createElement("button");
+          upgradeBtn.textContent = "Découvrir Premium";
+          upgradeBtn.onclick = () => { /* placeholder for upgrade flow */ };
+          banner.appendChild(upgradeBtn);
+          main.appendChild(banner);
+        }
+
+        // Branches section (only for users with branching capability)
+        if (hasBranching) {
+          const section = document.createElement("section");
+          const h2 = document.createElement("h2");
+          h2.textContent = "Mes branches";
+          section.appendChild(h2);
+          main.appendChild(section);
+          loadBranches(section);
+        }
+      }
+
+      async function loadBranches(section) {
+        const loadingEl = document.createElement("div");
+        loadingEl.className = "loading-state";
+        loadingEl.textContent = "Chargement des branches…";
+        section.appendChild(loadingEl);
+
+        try {
+          const res = await fetch("/api/premium/branches", { credentials: "include" });
+          const data = await res.json().catch(() => ({}));
+
+          section.removeChild(loadingEl);
+
+          if (!res.ok) {
+            const err = document.createElement("div");
+            err.className = "error-notice";
+            err.textContent = data.error || "Impossible de charger les branches.";
+            section.appendChild(err);
+            return;
+          }
+
+          const branches = Array.isArray(data.branches) ? data.branches : [];
+          if (branches.length === 0) {
+            const empty = document.createElement("div");
+            empty.className = "empty-state";
+            empty.textContent = "Aucune branche pour le moment.\nUtilisez le bouton ↪ sur un message du chat.";
+            empty.style.whiteSpace = "pre-line";
+            section.appendChild(empty);
+            return;
+          }
+
+          const list = document.createElement("ul");
+          list.className = "branch-list";
+          branches.forEach(branch => {
+            list.appendChild(buildBranchItem(branch));
+          });
+          section.appendChild(list);
+        } catch (_) {
+          section.removeChild(loadingEl);
+          const err = document.createElement("div");
+          err.className = "error-notice";
+          err.textContent = "Erreur réseau lors du chargement des branches.";
+          section.appendChild(err);
+        }
+      }
+
+      function buildBranchItem(branch) {
+        const li = document.createElement("li");
+        li.className = "branch-item";
+
+        const headerRow = document.createElement("div");
+        headerRow.className = "branch-item-header";
+
+        const titleEl = document.createElement("span");
+        titleEl.className = "branch-title";
+        const branchLabel = branch.id
+          ? ("Branche " + String(branch.id).slice(-6))
+          : "Branche";
+        titleEl.textContent = branchLabel;
+        titleEl.title = branchLabel;
+        headerRow.appendChild(titleEl);
+
+        const openBtn = document.createElement("button");
+        openBtn.className = "branch-open-btn";
+        openBtn.textContent = "Ouvrir";
+        openBtn.onclick = () => openBranch(branch);
+        headerRow.appendChild(openBtn);
+
+        li.appendChild(headerRow);
+
+        const meta = document.createElement("div");
+        meta.className = "branch-meta";
+        const msgs = Number(branch.seedMessageCount) || 0;
+        const dateStr = branch.activatedAt
+          ? formatDate(branch.activatedAt)
+          : (branch.createdAt ? formatDate(branch.createdAt) : "");
+        meta.textContent = msgs + " message" + (msgs !== 1 ? "s" : "") + (dateStr ? " · " + dateStr : "");
+        li.appendChild(meta);
+
+        return li;
+      }
+
+      function openBranch(branch) {
+        const branchConversationId = String(branch.branchConversationId || "").trim();
+        if (!branchConversationId) {
+          alert("Cette branche n'est pas encore activée.");
+          return;
+        }
+        // Pass the branch conversation id as a query param — index.html reads it on load
+        window.location.href = "/?branch=" + encodeURIComponent(branchConversationId);
+      }
+
+      window.handleLogout = async function handleLogout() {
+        try {
+          await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+        } catch (_) {}
+        window.location.href = "/";
+      };
+
+      function formatDate(iso) {
+        try {
+          return new Date(iso).toLocaleDateString("fr-FR", {
+            day: "numeric",
+            month: "short",
+            year: "numeric"
+          });
+        } catch (_) {
+          return "";
+        }
+      }
+
+      function escapeText(str) {
+        const div = document.createElement("div");
+        div.appendChild(document.createTextNode(str));
+        return div.innerHTML;
+      }
+
+      function showError(msg) {
+        const main = document.getElementById("mainContent");
+        main.innerHTML = "";
+        const err = document.createElement("div");
+        err.className = "error-notice";
+        err.textContent = msg;
+        main.appendChild(err);
+      }
+
+      init();
+    })();
+  </script>
+</body>
+</html>

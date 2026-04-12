@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Facilitat.io — Compte</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="color-scheme" content="light">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      background: white;
+      font-family: Arial, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .auth-card {
+      width: 100%;
+      max-width: 360px;
+      padding: 32px 28px 28px;
+      margin: 24px 16px;
+    }
+
+    .auth-logo {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 28px;
+    }
+
+    .auth-logo img {
+      height: 44px;
+      width: auto;
+    }
+
+    h1 {
+      font-size: 18px;
+      font-weight: 600;
+      color: #1a1a1a;
+      margin: 0 0 24px 0;
+      text-align: center;
+    }
+
+    .tab-row {
+      display: flex;
+      border-bottom: 2px solid #e8e8e8;
+      margin-bottom: 24px;
+    }
+
+    .tab-btn {
+      flex: 1;
+      background: none;
+      border: none;
+      padding: 10px 0 12px;
+      font-size: 14px;
+      font-weight: 500;
+      color: #888;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+      transition: color 0.15s, border-color 0.15s;
+    }
+
+    .tab-btn.active {
+      color: #1a1a1a;
+      border-bottom-color: #1a1a1a;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    label {
+      display: block;
+      font-size: 13px;
+      color: #555;
+      margin-bottom: 6px;
+    }
+
+    input[type="email"],
+    input[type="password"] {
+      width: 100%;
+      padding: 11px 14px;
+      border: 1.5px solid #ddd;
+      border-radius: 8px;
+      font-size: 15px;
+      color: #1a1a1a;
+      background: #fafafa;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    input[type="email"]:focus,
+    input[type="password"]:focus {
+      border-color: #1a1a1a;
+      background: #fff;
+    }
+
+    .submit-btn {
+      width: 100%;
+      padding: 12px;
+      background: #1a1a1a;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: opacity 0.15s;
+    }
+
+    .submit-btn:disabled {
+      opacity: 0.45;
+      cursor: default;
+    }
+
+    .notice {
+      font-size: 13px;
+      color: #c0392b;
+      margin-top: 14px;
+      text-align: center;
+      min-height: 18px;
+    }
+
+    .notice.success {
+      color: #27ae60;
+    }
+
+    .back-link {
+      display: block;
+      text-align: center;
+      margin-top: 22px;
+      font-size: 13px;
+      color: #888;
+      text-decoration: none;
+    }
+
+    .back-link:hover {
+      color: #1a1a1a;
+    }
+  </style>
+</head>
+<body>
+  <div class="auth-card">
+    <div class="auth-logo">
+      <img src="/images/logo.png" alt="Facilitat.io">
+    </div>
+
+    <h1>Mon compte</h1>
+
+    <div class="tab-row">
+      <button class="tab-btn active" id="tabLogin" onclick="showTab('login')">Connexion</button>
+      <button class="tab-btn" id="tabRegister" onclick="showTab('register')">Inscription</button>
+    </div>
+
+    <!-- LOGIN FORM -->
+    <form id="loginForm" onsubmit="handleLogin(event)">
+      <div class="form-group">
+        <label for="loginEmail">Adresse e-mail</label>
+        <input type="email" id="loginEmail" name="email" required autocomplete="email" placeholder="exemple@mail.com">
+      </div>
+      <div class="form-group">
+        <label for="loginPassword">Mot de passe</label>
+        <input type="password" id="loginPassword" name="password" required autocomplete="current-password" placeholder="••••••••">
+      </div>
+      <button type="submit" class="submit-btn" id="loginBtn">Se connecter</button>
+      <p class="notice" id="loginNotice"></p>
+    </form>
+
+    <!-- REGISTER FORM -->
+    <form id="registerForm" style="display:none" onsubmit="handleRegister(event)">
+      <div class="form-group">
+        <label for="regEmail">Adresse e-mail</label>
+        <input type="email" id="regEmail" name="email" required autocomplete="email" placeholder="exemple@mail.com">
+      </div>
+      <div class="form-group">
+        <label for="regPassword">Mot de passe</label>
+        <input type="password" id="regPassword" name="password" required autocomplete="new-password" minlength="8" placeholder="8 caractères minimum">
+      </div>
+      <div class="form-group">
+        <label for="regPassword2">Confirmer le mot de passe</label>
+        <input type="password" id="regPassword2" name="password2" required autocomplete="new-password" placeholder="••••••••">
+      </div>
+      <button type="submit" class="submit-btn" id="registerBtn">Créer mon compte</button>
+      <p class="notice" id="registerNotice"></p>
+    </form>
+
+    <a class="back-link" href="/">← Revenir au chat</a>
+  </div>
+
+  <script>
+    (function () {
+      "use strict";
+
+      // Redirect if already authenticated
+      fetch("/api/auth/session", { credentials: "include" })
+        .then(r => r.json())
+        .then(data => {
+          if (data && data.authenticated === true) {
+            const redirectTarget = getRedirectTarget();
+            window.location.href = redirectTarget;
+          }
+        })
+        .catch(() => {});
+
+      function getRedirectTarget() {
+        try {
+          const params = new URLSearchParams(window.location.search);
+          const raw = params.get("next") || "/";
+          const url = new URL(raw, window.location.origin);
+          // Only allow same-origin redirects
+          if (url.origin !== window.location.origin) return "/";
+          return url.pathname + url.search + url.hash;
+        } catch (_) {
+          return "/";
+        }
+      }
+
+      window.showTab = function showTab(tab) {
+        const isLogin = tab === "login";
+        document.getElementById("loginForm").style.display = isLogin ? "" : "none";
+        document.getElementById("registerForm").style.display = isLogin ? "none" : "";
+        document.getElementById("tabLogin").classList.toggle("active", isLogin);
+        document.getElementById("tabRegister").classList.toggle("active", !isLogin);
+      };
+
+      window.handleLogin = async function handleLogin(event) {
+        event.preventDefault();
+        const notice = document.getElementById("loginNotice");
+        const btn = document.getElementById("loginBtn");
+        notice.textContent = "";
+        notice.className = "notice";
+
+        const email = String(document.getElementById("loginEmail").value || "").trim();
+        const password = String(document.getElementById("loginPassword").value || "");
+
+        if (!email || !password) {
+          notice.textContent = "Veuillez remplir tous les champs.";
+          return;
+        }
+
+        btn.disabled = true;
+        try {
+          const res = await fetch("/api/auth/login", {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, password })
+          });
+
+          const data = await res.json().catch(() => ({}));
+
+          if (res.ok && data.success) {
+            notice.textContent = "Connexion réussie…";
+            notice.className = "notice success";
+            setTimeout(() => {
+              window.location.href = getRedirectTarget();
+            }, 600);
+          } else {
+            notice.textContent = data.error || "Identifiants incorrects.";
+          }
+        } catch (_) {
+          notice.textContent = "Erreur réseau. Réessayez.";
+        } finally {
+          btn.disabled = false;
+        }
+      };
+
+      window.handleRegister = async function handleRegister(event) {
+        event.preventDefault();
+        const notice = document.getElementById("registerNotice");
+        const btn = document.getElementById("registerBtn");
+        notice.textContent = "";
+        notice.className = "notice";
+
+        const email = String(document.getElementById("regEmail").value || "").trim();
+        const password = String(document.getElementById("regPassword").value || "");
+        const password2 = String(document.getElementById("regPassword2").value || "");
+
+        if (!email || !password || !password2) {
+          notice.textContent = "Veuillez remplir tous les champs.";
+          return;
+        }
+
+        if (password !== password2) {
+          notice.textContent = "Les mots de passe ne correspondent pas.";
+          return;
+        }
+
+        if (password.length < 8) {
+          notice.textContent = "Le mot de passe doit faire au moins 8 caractères.";
+          return;
+        }
+
+        btn.disabled = true;
+        try {
+          const res = await fetch("/api/auth/register", {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, password })
+          });
+
+          const data = await res.json().catch(() => ({}));
+
+          if (res.ok && data.success) {
+            notice.textContent = "Compte créé avec succès. Redirection…";
+            notice.className = "notice success";
+            setTimeout(() => {
+              window.location.href = getRedirectTarget();
+            }, 800);
+          } else {
+            notice.textContent = data.error || "Impossible de créer le compte.";
+          }
+        } catch (_) {
+          notice.textContent = "Erreur réseau. Réessayez.";
+        } finally {
+          btn.disabled = false;
+        }
+      };
+    })();
+  </script>
+</body>
+</html>

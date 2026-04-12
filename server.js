@@ -3814,6 +3814,48 @@ app.get("/api/premium/branches/:id", requireUserAuth, requirePremiumCapability("
   }
 });
 
+// Intersession memory endpoints (premium feature).
+// GET returns the stored long-term memory for the authenticated user.
+app.get("/api/premium/intersession-memory", requireUserAuth, requirePremiumCapability("intersessionMemory"), async (req, res) => {
+  try {
+    const session = req.userSession;
+    const snap = await usersRef.child(session.userId).child("intersessionMemory").once("value");
+    const memory = snap.val();
+    return res.json({
+      memory: typeof memory === "string" && memory.trim() ? memory : null
+    });
+  } catch (err) {
+    console.error("Erreur GET /api/premium/intersession-memory:", err.message);
+    return res.status(500).json({ error: "Intersession memory read failed" });
+  }
+});
+
+// PUT saves the long-term memory for the authenticated user.
+app.put("/api/premium/intersession-memory", requireUserAuth, requirePremiumCapability("intersessionMemory"), async (req, res) => {
+  try {
+    const session = req.userSession;
+
+    if (
+      !req.body ||
+      typeof req.body !== "object" ||
+      typeof req.body.memory !== "string"
+    ) {
+      return res.status(400).json({ error: "Invalid memory payload" });
+    }
+
+    const memory = String(req.body.memory || "").slice(0, 8000);
+    await usersRef.child(session.userId).update({
+      intersessionMemory: memory,
+      intersessionMemoryUpdatedAt: new Date().toISOString()
+    });
+
+    return res.json({ success: true });
+  } catch (err) {
+    console.error("Erreur PUT /api/premium/intersession-memory:", err.message);
+    return res.status(500).json({ error: "Intersession memory save failed" });
+  }
+});
+
 // Admin route to set or remove a human-readable label for a user.
 app.post("/api/admin/user-label", requireAdminAuth, async (req, res) => {
   try {

@@ -1964,6 +1964,10 @@
       }
     };
 
+    // Module-level intersession memory for premium accounts.
+    // Populated once on load; used as initial memory for new conversations.
+    let _pendingIntersessionMemory = null;
+
     async function syncUserSessionState() {
       try {
         const res = await fetch("/api/auth/session", {
@@ -2054,6 +2058,35 @@
       } catch {
         return false;
       }
+    }
+
+    async function syncIntersessionMemoryIfApplicable() {
+      if (!hasPremiumCapability("intersessionMemory")) return;
+      try {
+        const res = await fetch("/api/premium/intersession-memory", {
+          method: "GET",
+          cache: "no-store",
+          credentials: "include"
+        });
+        if (!res.ok) return;
+        const data = await res.json().catch(() => ({}));
+        if (typeof data.memory === "string" && data.memory.trim()) {
+          _pendingIntersessionMemory = data.memory;
+
+          // Inject into current conversation immediately if it has no messages yet.
+          const currentId = getConversationId();
+          if (currentId) {
+            const existing = loadConversationData(currentId);
+            const hasMessages = Array.isArray(existing.messages) && existing.messages.length > 0;
+            if (!hasMessages) {
+              saveConversationData(currentId, {
+                ...existing,
+                memory: _pendingIntersessionMemory
+              });
+            }
+          }
+        }
+      } catch (_) {}
     }
 
     async function syncAdminUiFromSession() {
@@ -2208,7 +2241,7 @@
     function createEmptyConversationData() {
       return {
         messages: [],
-        memory: defaultMemory(),
+        memory: _pendingIntersessionMemory !== null ? _pendingIntersessionMemory : defaultMemory(),
         flags: normalizeStoredFlags({}),
         updatedAt: Date.now()
       };
@@ -4694,6 +4727,14 @@
 
         if (data && data.memory) {
           saveMemory(data.memory);
+          if (hasPremiumCapability("intersessionMemory")) {
+            fetch("/api/premium/intersession-memory", {
+              method: "PUT",
+              credentials: "include",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ memory: data.memory })
+            }).catch(() => {});
+          }
         }
       } catch {}
     }
@@ -5267,7 +5308,17 @@
         const isSameConversation = currentConversationId === requestConversationId;
         
         if (isSameConversation) {
-          if (data.memory) saveMemory(data.memory);
+          if (data.memory) {
+            saveMemory(data.memory);
+            if (hasPremiumCapability("intersessionMemory")) {
+              fetch("/api/premium/intersession-memory", {
+                method: "PUT",
+                credentials: "include",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ memory: data.memory })
+              }).catch(() => {});
+            }
+          }
           if (data.flags) saveFlags(data.flags);
           
           if (normalizedComparisonResults.length > 0) {
@@ -6143,6 +6194,7 @@
     
     window.addEventListener("load", async () => {
       await syncUserSessionState();
+      await syncIntersessionMemoryIfApplicable();
       const isAdminUI = await syncAdminUiFromSession();
       const shouldSkipWelcomeAnimation = isAdminUI;
 
@@ -6172,6 +6224,83 @@
         showTemporaryNotice(replayNotice);
         updateActivity();
         defocusInput();
+        return;
+      }
+
+      // Branch resume: ?branch=<branchConversationId> from premium.html
+      const branchParam = loadUrl.searchParams.get("branch");
+      if (branchParam && typeof branchParam === "string" && branchParam.trim()) {
+        const branchConversationId = branchParam.trim();
+        loadUrl.searchParams.delete("branch");
+        const cleanSearch = loadUrl.searchParams.toString();
+        history.replaceState(history.state || {}, "", `${loadUrl.pathname}${cleanSearch ? `?${cleanSearch}` : ""}${loadUrl.hash || ""}`);
+
+        if (!userSessionState.authenticated) {
+          window.location.href = "/auth.html?next=" + encodeURIComponent("/?branch=" + encodeURIComponent(branchConversationId));
+          return;
+        }
+
+        // Try to load existing local data for this conversation first.
+        const existingLocal = loadConversationData(branchConversationId);
+        const hasLocal = Array.isArray(existingLocal.messages) && existingLocal.messages.length > 0;
+
+        if (hasLocal) {
+          localStorage.setItem(CONVERSATION_ID_KEY, branchConversationId);
+          setSessionStatus("active");
+          closeEditMode({ restoreDraft: false });
+          showScreen("chatScreen", { replaceHistory: true, pushHistory: false, noAnimation: true });
+          renderHistory();
+          scrollChatToBottom();
+          showTemporaryNotice("Branche chargee depuis la memoire locale");
+          updateActivity();
+          return;
+        }
+
+        // Fetch branch seed from backend.
+        try {
+          // Find the branch id by listing branches then matching on branchConversationId.
+          const branchesRes = await fetch("/api/premium/branches", { credentials: "include" });
+          if (branchesRes.ok) {
+            const branchesData = await branchesRes.json().catch(() => ({}));
+            const matchBranch = Array.isArray(branchesData.branches)
+              ? branchesData.branches.find(b => String(b.branchConversationId || "") === branchConversationId)
+              : null;
+
+            if (matchBranch) {
+              const branchRes = await fetch("/api/premium/branches/" + encodeURIComponent(matchBranch.id), { credentials: "include" });
+              if (branchRes.ok) {
+                const branchData = await branchRes.json().catch(() => ({}));
+                const seedMessages = Array.isArray(branchData.messages) ? branchData.messages : [];
+                const baseTs = Date.now();
+                const localMessages = seedMessages.map((m, index) => ({
+                  role: String(m.role || ""),
+                  content: String(m.content || ""),
+                  debug: Array.isArray(m.debug) ? m.debug : [],
+                  debugMeta: m.debugMeta && typeof m.debugMeta === "object" ? m.debugMeta : null,
+                  comparisonResults: Array.isArray(m.comparisonResults) ? m.comparisonResults : null,
+                  t: baseTs - Math.max((seedMessages.length || 1) - index, 1) * 1000
+                }));
+
+                localStorage.setItem(CONVERSATION_ID_KEY, branchConversationId);
+                saveConversationData(branchConversationId, {
+                  messages: localMessages,
+                  memory: defaultMemory(),
+                  flags: normalizeStoredFlags({}),
+                  updatedAt: Date.now()
+                });
+              }
+            }
+          }
+        } catch (_) {}
+
+        localStorage.setItem(CONVERSATION_ID_KEY, branchConversationId);
+        setSessionStatus("active");
+        closeEditMode({ restoreDraft: false });
+        showScreen("chatScreen", { replaceHistory: true, pushHistory: false, noAnimation: true });
+        renderHistory();
+        scrollChatToBottom();
+        showTemporaryNotice("Branche chargee");
+        updateActivity();
         return;
       }
       

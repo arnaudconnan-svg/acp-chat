@@ -140,6 +140,72 @@ async function run() {
 
         assertJsonError(result, 400, "Invalid JSON payload", "malformed json middleware");
       }
+    },
+    {
+      name: "auth register invalid payload",
+      run: async () => {
+        const result = await request("/api/auth/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: "not-an-email", password: 123 })
+        });
+
+        assert(result.status === 400, `auth register invalid payload: expected 400, got ${result.status}`);
+        assert(result.contentType.includes("application/json"), "auth register invalid payload: expected JSON");
+        assert(result.body && typeof result.body.error === "string", "auth register invalid payload: expected error string");
+      }
+    },
+    {
+      name: "auth login wrong credentials",
+      run: async () => {
+        const result = await request("/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: "smoke_no_such_user@example.com", password: "wrongpassword" })
+        });
+
+        assert(result.status === 401, `auth login wrong credentials: expected 401, got ${result.status}`);
+        assert(result.contentType.includes("application/json"), "auth login wrong credentials: expected JSON");
+        assert(result.body && typeof result.body.error === "string", "auth login wrong credentials: expected error string");
+      }
+    },
+    {
+      name: "auth session unauthenticated",
+      run: async () => {
+        const result = await request("/api/auth/session", { method: "GET" });
+
+        assert(result.status === 200, `auth session unauthenticated: expected 200, got ${result.status}`);
+        assert(result.contentType.includes("application/json"), "auth session unauthenticated: expected JSON");
+        assert(result.body && result.body.authenticated === false, "auth session unauthenticated: expected authenticated:false");
+      }
+    },
+    {
+      name: "premium capabilities unauthenticated",
+      run: async () => {
+        const result = await request("/api/premium/capabilities", { method: "GET" });
+
+        assert(result.status === 200, `premium capabilities unauthenticated: expected 200, got ${result.status}`);
+        assert(result.contentType.includes("application/json"), "premium capabilities unauthenticated: expected JSON");
+        assert(result.body && result.body.plan === "free", `premium capabilities unauthenticated: expected plan:free, got ${result.body?.plan}`);
+      }
+    },
+    {
+      name: "premium branches requires auth",
+      run: async () => {
+        const result = await request("/api/premium/branches", { method: "GET" });
+
+        assert(result.status === 401, `premium branches requires auth: expected 401, got ${result.status}`);
+        assert(result.contentType.includes("application/json"), "premium branches requires auth: expected JSON");
+      }
+    },
+    {
+      name: "premium intersession memory requires auth",
+      run: async () => {
+        const result = await request("/api/premium/intersession-memory", { method: "GET" });
+
+        assert(result.status === 401, `premium intersession memory requires auth: expected 401, got ${result.status}`);
+        assert(result.contentType.includes("application/json"), "premium intersession memory requires auth: expected JSON");
+      }
     }
   ];
 
