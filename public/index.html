@@ -2121,8 +2121,10 @@
       const btn = document.getElementById("accountBtn");
       if (!btn) return;
 
+      btn.style.display = "flex";
+
       if (userSessionState.authenticated) {
-        btn.style.display = "flex";
+        btn.href = "/premium.html";
         const plan = String(userSessionState.user && userSessionState.user.plan ? userSessionState.user.plan : "free");
         if (plan === "premium" || plan === "pro") {
           btn.textContent = plan.charAt(0).toUpperCase() + plan.slice(1) + " \u2736";
@@ -2130,7 +2132,8 @@
           btn.textContent = "Mon espace";
         }
       } else {
-        btn.style.display = "none";
+        btn.href = "/auth.html?next=%2Fpremium.html";
+        btn.textContent = "Connexion";
       }
     }
 
