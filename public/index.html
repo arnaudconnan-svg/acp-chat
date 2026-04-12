@@ -432,6 +432,32 @@
       letter-spacing: 0.01em;
       white-space: nowrap;
     }
+
+    #conversationsAccountBtn {
+      position: absolute;
+      right: 18px;
+      top: calc(14px + env(safe-area-inset-top, 0px));
+      display: none;
+      align-items: center;
+      gap: 5px;
+      font-size: 12px;
+      font-weight: 500;
+      color: #7a3fd1;
+      background: rgba(122, 63, 209, 0.08);
+      border: 1px solid rgba(122, 63, 209, 0.18);
+      border-radius: 20px;
+      padding: 4px 11px;
+      cursor: pointer;
+      pointer-events: auto;
+      text-decoration: none;
+      line-height: 1.4;
+      transition: background 0.15s;
+      white-space: nowrap;
+    }
+
+    #conversationsAccountBtn:hover {
+      background: rgba(122, 63, 209, 0.14);
+    }
     
     #conversationsBackBtn {
       display: none;
@@ -687,32 +713,6 @@
       pointer-events: none;
     }
 
-    #accountBtn {
-      position: absolute;
-      right: 18px;
-      bottom: 14px;
-      display: none;
-      align-items: center;
-      gap: 5px;
-      font-size: 12px;
-      font-weight: 500;
-      color: #7a3fd1;
-      background: rgba(122, 63, 209, 0.08);
-      border: 1px solid rgba(122, 63, 209, 0.18);
-      border-radius: 20px;
-      padding: 4px 11px;
-      cursor: pointer;
-      pointer-events: auto;
-      text-decoration: none;
-      line-height: 1.4;
-      transition: background 0.15s;
-      white-space: nowrap;
-    }
-
-    #accountBtn:hover {
-      background: rgba(122, 63, 209, 0.14);
-    }
-    
     #topBar.is-elevated {
       background: linear-gradient(to bottom,
           #F8F8F6 0%,
@@ -1508,6 +1508,7 @@
       <div class="topBarContent">
         <span class="topBarTitle">Facilitat.io</span>
       </div>
+      <a id="conversationsAccountBtn" href="/auth.html?next=%2F%3Fscreen%3DconversationsScreen" aria-label="Mon compte">Connexion</a>
     </div>
     
     <div id="conversationsListWrap">
@@ -1566,8 +1567,6 @@
       </button>
       
       <h2>Facilitat.io</h2>
-
-      <a id="accountBtn" href="/premium.html" aria-label="Mon compte Premium">Mon espace</a>
     </div>
     
     <div id="chat"></div>
@@ -2118,21 +2117,32 @@
     }
 
     function updateAccountBtnVisibility() {
-      const btn = document.getElementById("accountBtn");
+      const btn = document.getElementById("conversationsAccountBtn");
       if (!btn) return;
 
       btn.style.display = "flex";
+      btn.onclick = null;
 
       if (userSessionState.authenticated) {
         btn.href = "/premium.html";
+        btn.onclick = () => {
+          const currentUrl = new URL(window.location.href);
+          currentUrl.searchParams.set("screen", "conversationsScreen");
+          const nextSearch = currentUrl.searchParams.toString();
+          history.replaceState(
+            { screenId: "conversationsScreen" },
+            "",
+            `${currentUrl.pathname}${nextSearch ? `?${nextSearch}` : ""}${currentUrl.hash || ""}`
+          );
+        };
         const plan = String(userSessionState.user && userSessionState.user.plan ? userSessionState.user.plan : "free");
         if (plan === "premium" || plan === "pro") {
-          btn.textContent = plan.charAt(0).toUpperCase() + plan.slice(1) + " \u2736";
+          btn.textContent = "Mon compte";
         } else {
-          btn.textContent = "Mon espace";
+          btn.textContent = "Mon compte";
         }
       } else {
-        btn.href = "/auth.html?next=%2Fpremium.html";
+        btn.href = "/auth.html?next=%2F%3Fscreen%3DconversationsScreen";
         btn.textContent = "Connexion";
       }
     }
@@ -6273,6 +6283,18 @@
         showTemporaryNotice(replayNotice);
         updateActivity();
         defocusInput();
+        return;
+      }
+
+      const requestedScreen = loadUrl.searchParams.get("screen");
+      if (requestedScreen === "conversationsScreen") {
+        loadUrl.searchParams.delete("screen");
+        const cleanSearch = loadUrl.searchParams.toString();
+        history.replaceState({ screenId: "conversationsScreen" }, "", `${loadUrl.pathname}${cleanSearch ? `?${cleanSearch}` : ""}${loadUrl.hash || ""}`);
+        renderConversationsList();
+        setSessionStatus("idle");
+        showScreen("conversationsScreen", { replaceHistory: true, pushHistory: false, noAnimation: true });
+        updateActivity();
         return;
       }
 

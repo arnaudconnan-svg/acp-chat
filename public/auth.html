@@ -101,6 +101,38 @@
       background: #fff;
     }
 
+    .password-field-wrap {
+      position: relative;
+    }
+
+    .password-field-wrap input[type="password"],
+    .password-field-wrap input[type="text"] {
+      padding-right: 52px;
+    }
+
+    .toggle-password-btn {
+      position: absolute;
+      top: 50%;
+      right: 10px;
+      transform: translateY(-50%);
+      border: none;
+      background: transparent;
+      color: #777;
+      font-size: 12px;
+      cursor: pointer;
+      padding: 4px 6px;
+      border-radius: 6px;
+    }
+
+    .toggle-password-btn:hover {
+      background: rgba(0, 0, 0, 0.05);
+    }
+
+    input.mismatch-focus {
+      border-color: #d93025 !important;
+      background: #fff6f6 !important;
+    }
+
     .submit-btn {
       width: 100%;
       padding: 12px;
@@ -167,7 +199,10 @@
       </div>
       <div class="form-group">
         <label for="loginPassword">Mot de passe</label>
-        <input type="password" id="loginPassword" name="password" required autocomplete="current-password" placeholder="••••••••">
+        <div class="password-field-wrap">
+          <input type="password" id="loginPassword" name="password" required autocomplete="current-password" placeholder="••••••••">
+          <button type="button" class="toggle-password-btn" data-target="loginPassword">Voir</button>
+        </div>
       </div>
       <button type="submit" class="submit-btn" id="loginBtn">Se connecter</button>
       <p class="notice" id="loginNotice"></p>
@@ -181,11 +216,17 @@
       </div>
       <div class="form-group">
         <label for="regPassword">Mot de passe</label>
-        <input type="password" id="regPassword" name="password" required autocomplete="new-password" minlength="8" placeholder="8 caractères minimum">
+        <div class="password-field-wrap">
+          <input type="password" id="regPassword" name="password" required autocomplete="new-password" minlength="8" placeholder="8 caractères minimum">
+          <button type="button" class="toggle-password-btn" data-target="regPassword">Voir</button>
+        </div>
       </div>
       <div class="form-group">
         <label for="regPassword2">Confirmer le mot de passe</label>
-        <input type="password" id="regPassword2" name="password2" required autocomplete="new-password" placeholder="••••••••">
+        <div class="password-field-wrap">
+          <input type="password" id="regPassword2" name="password2" required autocomplete="new-password" placeholder="••••••••">
+          <button type="button" class="toggle-password-btn" data-target="regPassword2">Voir</button>
+        </div>
       </div>
       <button type="submit" class="submit-btn" id="registerBtn">Créer mon compte</button>
       <p class="notice" id="registerNotice"></p>
@@ -212,15 +253,49 @@
       function getRedirectTarget() {
         try {
           const params = new URLSearchParams(window.location.search);
-          const raw = params.get("next") || "/";
+          const raw = params.get("next") || "/?screen=conversationsScreen";
           const url = new URL(raw, window.location.origin);
           // Only allow same-origin redirects
-          if (url.origin !== window.location.origin) return "/";
+          if (url.origin !== window.location.origin) return "/?screen=conversationsScreen";
           return url.pathname + url.search + url.hash;
         } catch (_) {
-          return "/";
+          return "/?screen=conversationsScreen";
         }
       }
+
+      function initPasswordToggles() {
+        document.querySelectorAll(".toggle-password-btn").forEach(btn => {
+          btn.addEventListener("click", () => {
+            const targetId = btn.getAttribute("data-target");
+            const input = targetId ? document.getElementById(targetId) : null;
+            if (!input) return;
+
+            const isHidden = input.type === "password";
+            input.type = isHidden ? "text" : "password";
+            btn.textContent = isHidden ? "Masquer" : "Voir";
+          });
+        });
+      }
+
+      function initConfirmPasswordValidation() {
+        const regPassword = document.getElementById("regPassword");
+        const regPassword2 = document.getElementById("regPassword2");
+        if (!regPassword || !regPassword2) return;
+
+        function refreshMismatchState() {
+          const isFocused = document.activeElement === regPassword2;
+          const hasMismatch = regPassword2.value.length > 0 && regPassword.value !== regPassword2.value;
+          regPassword2.classList.toggle("mismatch-focus", isFocused && hasMismatch);
+        }
+
+        regPassword.addEventListener("input", refreshMismatchState);
+        regPassword2.addEventListener("input", refreshMismatchState);
+        regPassword2.addEventListener("focus", refreshMismatchState);
+        regPassword2.addEventListener("blur", refreshMismatchState);
+      }
+
+      initPasswordToggles();
+      initConfirmPasswordValidation();
 
       window.showTab = function showTab(tab) {
         const isLogin = tab === "login";

@@ -232,10 +232,8 @@
 </head>
 <body>
   <header>
-    <a href="/"><img src="/images/logo.png" alt="Facilitat.io"></a>
+    <img src="/images/logo.png" alt="Facilitat.io">
     <div class="header-actions">
-      <a href="/" style="font-size:13px;color:#888;text-decoration:none;">← Chat</a>
-      <a href="/auth.html?next=%2Fpremium.html" style="font-size:13px;color:#888;text-decoration:none;">Compte</a>
       <button class="btn-link" id="logoutBtn" onclick="handleLogout()">Se déconnecter</button>
     </div>
   </header>
@@ -307,14 +305,22 @@
 
         const capsRight = document.createElement("div");
         capsRight.className = "plan-caps";
-        [
-          { key: "branching", label: "Branches" },
-          { key: "intersessionMemory", label: "Mémoire longue" },
-          { key: "multiDeviceAccess", label: "Multi-appareils" }
-        ].forEach(({ key, label }) => {
+        const visibleFeaturesByPlan = {
+          free: ["multiDeviceAccess"],
+          premium: ["branching", "intersessionMemory"],
+          pro: ["branching", "intersessionMemory", "multiDeviceAccess"]
+        };
+        const featureLabels = {
+          branching: "Branches",
+          intersessionMemory: "Mémoire longue",
+          multiDeviceAccess: "Multi-appareils"
+        };
+        const visibleFeatures = Array.isArray(visibleFeaturesByPlan[plan]) ? visibleFeaturesByPlan[plan] : visibleFeaturesByPlan.free;
+
+        visibleFeatures.forEach(key => {
           const badge = document.createElement("span");
           badge.className = "cap-badge" + (caps[key] ? "" : " inactive");
-          badge.textContent = label;
+          badge.textContent = featureLabels[key] || key;
           capsRight.appendChild(badge);
         });
         planCard.appendChild(capsRight);
@@ -330,7 +336,7 @@
           const upgradeBtn = document.createElement("button");
           upgradeBtn.textContent = "Découvrir Premium";
           upgradeBtn.onclick = () => {
-            alert("Le parcours d'upgrade arrive bientot. Demandez une activation admin en attendant.");
+            alert("La souscription integrée arrive bientot. Cette page passera en achat direct dès qu'elle sera prête.");
           };
           banner.appendChild(upgradeBtn);
           main.appendChild(banner);
