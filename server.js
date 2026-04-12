@@ -406,7 +406,7 @@ async function findUserByEmail(email) {
 function getUserCapabilities(plan = "free") {
   const normalizedPlan = String(plan || "free").trim().toLowerCase();
 
-  if (normalizedPlan === "premium" || normalizedPlan === "pro") {
+  if (normalizedPlan === "premium") {
     return {
       branching: true,
       intersessionMemory: true,
@@ -417,13 +417,13 @@ function getUserCapabilities(plan = "free") {
   return {
     branching: false,
     intersessionMemory: false,
-    multiDeviceAccess: false
+    multiDeviceAccess: true
   };
 }
 
 function toPublicUser(userId, userData) {
   const safeUser = userData && typeof userData === "object" ? userData : {};
-  const plan = String(safeUser.plan || "free").trim().toLowerCase();
+  const plan = normalizePlan(safeUser.plan || "free");
 
   return {
     id: String(userId || ""),
@@ -437,7 +437,7 @@ function toPublicUser(userId, userData) {
 
 function normalizePlan(value) {
   const plan = String(value || "free").trim().toLowerCase();
-  if (plan === "premium" || plan === "pro") {
+  if (plan === "premium") {
     return plan;
   }
   return "free";

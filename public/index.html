@@ -433,30 +433,31 @@
       white-space: nowrap;
     }
 
-    #conversationsAccountBtn {
+    #conversationsAccountMenuWrap {
       position: absolute;
       right: 18px;
       top: calc(14px + env(safe-area-inset-top, 0px));
-      display: none;
-      align-items: center;
-      gap: 5px;
-      font-size: 12px;
-      font-weight: 500;
-      color: #7a3fd1;
-      background: rgba(122, 63, 209, 0.08);
-      border: 1px solid rgba(122, 63, 209, 0.18);
-      border-radius: 20px;
-      padding: 4px 11px;
-      cursor: pointer;
       pointer-events: auto;
-      text-decoration: none;
-      line-height: 1.4;
-      transition: background 0.15s;
-      white-space: nowrap;
     }
 
-    #conversationsAccountBtn:hover {
-      background: rgba(122, 63, 209, 0.14);
+    #conversationsAccountMenuBtn {
+      width: 32px;
+      height: 32px;
+      border: none;
+      border-radius: 50%;
+      background: transparent;
+      color: #245e66;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      padding: 0;
+      font-size: 20px;
+      line-height: 1;
+    }
+
+    #conversationsAccountMenuBtn:hover {
+      background: rgba(36, 94, 102, 0.06);
     }
     
     #conversationsBackBtn {
@@ -1508,7 +1509,12 @@
       <div class="topBarContent">
         <span class="topBarTitle">Facilitat.io</span>
       </div>
-      <a id="conversationsAccountBtn" href="/auth.html?next=%2F%3Fscreen%3DconversationsScreen" aria-label="Mon compte">Connexion</a>
+      <div id="conversationsAccountMenuWrap" class="conversationMenuWrap">
+        <button id="conversationsAccountMenuBtn" type="button" aria-label="Compte" data-menu-toggle="account-menu">⋮</button>
+        <div id="conversationsAccountMenu" class="conversationMenuPopover" data-menu="account-menu">
+          <button id="conversationsAccountMenuAction" type="button" class="conversationMenuAction">Connexion</button>
+        </div>
+      </div>
     </div>
     
     <div id="conversationsListWrap">
@@ -2117,33 +2123,16 @@
     }
 
     function updateAccountBtnVisibility() {
-      const btn = document.getElementById("conversationsAccountBtn");
-      if (!btn) return;
+      const wrap = document.getElementById("conversationsAccountMenuWrap");
+      const actionBtn = document.getElementById("conversationsAccountMenuAction");
+      if (!wrap || !actionBtn) return;
 
-      btn.style.display = "flex";
-      btn.onclick = null;
+      wrap.style.display = "block";
 
       if (userSessionState.authenticated) {
-        btn.href = "/premium.html";
-        btn.onclick = () => {
-          const currentUrl = new URL(window.location.href);
-          currentUrl.searchParams.set("screen", "conversationsScreen");
-          const nextSearch = currentUrl.searchParams.toString();
-          history.replaceState(
-            { screenId: "conversationsScreen" },
-            "",
-            `${currentUrl.pathname}${nextSearch ? `?${nextSearch}` : ""}${currentUrl.hash || ""}`
-          );
-        };
-        const plan = String(userSessionState.user && userSessionState.user.plan ? userSessionState.user.plan : "free");
-        if (plan === "premium" || plan === "pro") {
-          btn.textContent = "Mon compte";
-        } else {
-          btn.textContent = "Mon compte";
-        }
+        actionBtn.textContent = "Mon compte";
       } else {
-        btn.href = "/auth.html?next=%2F%3Fscreen%3DconversationsScreen";
-        btn.textContent = "Connexion";
+        actionBtn.textContent = "Connexion";
       }
     }
 
@@ -5723,6 +5712,41 @@
         closeModal("deleteConversationModal");
       }
     });
+
+    const conversationsAccountMenuBtn = document.getElementById("conversationsAccountMenuBtn");
+    const conversationsAccountMenu = document.getElementById("conversationsAccountMenu");
+    const conversationsAccountMenuAction = document.getElementById("conversationsAccountMenuAction");
+
+    if (conversationsAccountMenuBtn && conversationsAccountMenu) {
+      conversationsAccountMenuBtn.addEventListener("click", e => {
+        e.preventDefault();
+        e.stopPropagation();
+        openConversationMenu(conversationsAccountMenuBtn, conversationsAccountMenu);
+      });
+    }
+
+    if (conversationsAccountMenuAction) {
+      conversationsAccountMenuAction.addEventListener("click", e => {
+        e.preventDefault();
+        e.stopPropagation();
+        closeConversationMenus();
+
+        if (userSessionState.authenticated) {
+          const currentUrl = new URL(window.location.href);
+          currentUrl.searchParams.set("screen", "conversationsScreen");
+          const nextSearch = currentUrl.searchParams.toString();
+          history.replaceState(
+            { screenId: "conversationsScreen" },
+            "",
+            `${currentUrl.pathname}${nextSearch ? `?${nextSearch}` : ""}${currentUrl.hash || ""}`
+          );
+          window.location.href = "/premium.html";
+          return;
+        }
+
+        window.location.href = "/auth.html?next=%2F%3Fscreen%3DconversationsScreen";
+      });
+    }
     
     const welcomeEnterBtn = document.getElementById("welcomeEnterBtn");
     if (welcomeEnterBtn) {

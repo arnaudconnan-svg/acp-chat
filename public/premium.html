@@ -100,8 +100,6 @@
 
     .plan-name.free { color: #888; }
     .plan-name.premium { color: #7a3fd1; }
-    .plan-name.pro { color: #1a7ad4; }
-
     .plan-caps {
       display: flex;
       flex-direction: column;
@@ -273,9 +271,6 @@
         const caps = currentCapabilities;
 
         const hasBranching = caps.branching === true;
-        const hasMemory = caps.intersessionMemory === true;
-        const hasMultiDevice = caps.multiDeviceAccess === true;
-
         main.innerHTML = "";
 
         // Title + email
@@ -307,8 +302,7 @@
         capsRight.className = "plan-caps";
         const visibleFeaturesByPlan = {
           free: ["multiDeviceAccess"],
-          premium: ["branching", "intersessionMemory"],
-          pro: ["branching", "intersessionMemory", "multiDeviceAccess"]
+          premium: ["branching", "intersessionMemory", "multiDeviceAccess"]
         };
         const featureLabels = {
           branching: "Branches",
