@@ -2006,9 +2006,28 @@
         return [];
       }
     }
+
+    function safeSetLocalStorage(key, value, context = "localStorage") {
+      try {
+        localStorage.setItem(key, value);
+        return true;
+      } catch (err) {
+        const message = err && err.message ? err.message : String(err);
+        console.warn("[LOCAL_STORAGE_WRITE_FAILED]", {
+          context,
+          key,
+          error: message
+        });
+        return false;
+      }
+    }
     
     function saveConversationsIndex(index) {
-      localStorage.setItem(CONVERSATIONS_INDEX_KEY, JSON.stringify(Array.isArray(index) ? index : []));
+      safeSetLocalStorage(
+        CONVERSATIONS_INDEX_KEY,
+        JSON.stringify(Array.isArray(index) ? index : []),
+        "saveConversationsIndex"
+      );
     }
     
     function escapeHtml(value) {
@@ -2076,10 +2095,15 @@
         updatedAt: Number(data?.updatedAt || Date.now())
       };
       
-      localStorage.setItem(
+      const stored = safeSetLocalStorage(
         getConversationStorageKey(conversationId),
-        JSON.stringify(safeData)
+        JSON.stringify(safeData),
+        "saveConversationData"
       );
+
+      if (!stored) {
+        return;
+      }
       
       /* Ne crée (ou ne met à jour) l’entrée d’index
    que si AU MOINS un message utilisateur existe. */
@@ -2259,6 +2283,54 @@
       
       startFreshOrResumeSession();
     }
+
+    function syncFromStorageEvent(event) {
+      if (!event || event.storageArea !== localStorage) return;
+
+      const key = String(event.key || "");
+      if (!key) return;
+
+      const activeScreenId = document.querySelector(".screen.active")?.id || "";
+      const isChatActive = activeScreenId === "chatScreen";
+      const isConversationsActive = activeScreenId === "conversationsScreen";
+      const currentConversationId = getConversationId();
+      const currentConversationKey = currentConversationId ? getConversationStorageKey(currentConversationId) : "";
+
+      if (key === ADMIN_UI_KEY) {
+        const isAdminUI = localStorage.getItem(ADMIN_UI_KEY) === "1";
+        document.body.classList.toggle("admin-ui", isAdminUI);
+        syncDebugVisibility();
+        return;
+      }
+
+      if (key === CONVERSATIONS_INDEX_KEY) {
+        if (isConversationsActive) {
+          renderConversationsList();
+        }
+        return;
+      }
+
+      if (key === CONVERSATION_ID_KEY) {
+        if (isChatActive && !isSending && !editMode.active) {
+          renderHistory();
+          updateScrollToBottomBtn();
+        }
+        syncDebugVisibility();
+        return;
+      }
+
+      if (currentConversationKey && key === currentConversationKey) {
+        if (isChatActive && !isSending && !editMode.active) {
+          renderHistory();
+          updateScrollToBottomBtn();
+        }
+        if (isConversationsActive) {
+          renderConversationsList();
+        }
+      }
+    }
+
+    window.addEventListener("storage", syncFromStorageEvent);
     
     const SCREEN_IDS = ["welcomeScreen", "conversationsScreen", "chatScreen"];
     
@@ -3527,6 +3599,36 @@
         role === "bot" &&
         progressive === true &&
         !compareLabel;
+
+      function copyTextToClipboard(value) {
+        const textToCopy = String(value || "");
+
+        if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+          navigator.clipboard.writeText(textToCopy).catch(err => {
+            console.warn("[COPY_FAILED]", err && err.message ? err.message : String(err));
+          });
+          return;
+        }
+
+        const fallback = document.createElement("textarea");
+        fallback.value = textToCopy;
+        fallback.setAttribute("readonly", "");
+        fallback.style.position = "fixed";
+        fallback.style.opacity = "0";
+        fallback.style.pointerEvents = "none";
+        fallback.style.left = "-9999px";
+        document.body.appendChild(fallback);
+        fallback.focus();
+        fallback.select();
+
+        try {
+          document.execCommand("copy");
+        } catch (err) {
+          console.warn("[COPY_FAILED]", err && err.message ? err.message : String(err));
+        }
+
+        document.body.removeChild(fallback);
+      }
       
       const msg = document.createElement("div");
       msg.className = "message " + role;
@@ -3657,8 +3759,35 @@
         bubble.style.color = "#183f44";
         bubble.style.borderTopRightRadius = "8px";
         bubble.style.boxShadow = "0 10px 26px rgba(36, 94, 102, 0.08), 0 1px 0 rgba(255, 255, 255, 0.28) inset";
+        bubble.style.position = "relative";
+        bubble.style.paddingTop = "29px";
         
         bubble.textContent = displayText;
+
+        const copyUserBtn = document.createElement("button");
+        copyUserBtn.type = "button";
+        copyUserBtn.setAttribute("aria-label", "Copier le message");
+        copyUserBtn.title = "Copier";
+        copyUserBtn.textContent = "⎘";
+        copyUserBtn.style.position = "absolute";
+        copyUserBtn.style.top = "6px";
+        copyUserBtn.style.right = "8px";
+        copyUserBtn.style.border = "none";
+        copyUserBtn.style.background = "transparent";
+        copyUserBtn.style.color = "#183f44";
+        copyUserBtn.style.cursor = "pointer";
+        copyUserBtn.style.padding = "2px";
+        copyUserBtn.style.lineHeight = "1";
+        copyUserBtn.style.fontSize = "13px";
+        copyUserBtn.style.opacity = "0.5";
+
+        copyUserBtn.addEventListener("click", event => {
+          event.preventDefault();
+          event.stopPropagation();
+          copyTextToClipboard(displayText);
+        });
+
+        bubble.appendChild(copyUserBtn);
         
         let longPressTimer = null;
         let longPressTriggered = false;
@@ -3759,6 +3888,38 @@
       }
       
       contentWrap.appendChild(bubble);
+
+      if (role === "bot") {
+        const actionsRow = document.createElement("div");
+        actionsRow.style.display = "flex";
+        actionsRow.style.alignItems = "center";
+        actionsRow.style.gap = "8px";
+        actionsRow.style.paddingLeft = "4px";
+        actionsRow.style.marginTop = "-2px";
+
+        const copyBotBtn = document.createElement("button");
+        copyBotBtn.type = "button";
+        copyBotBtn.setAttribute("aria-label", "Copier la reponse");
+        copyBotBtn.title = "Copier";
+        copyBotBtn.textContent = "⎘";
+        copyBotBtn.style.border = "none";
+        copyBotBtn.style.background = "transparent";
+        copyBotBtn.style.color = "#245e66";
+        copyBotBtn.style.cursor = "pointer";
+        copyBotBtn.style.padding = "3px 5px";
+        copyBotBtn.style.lineHeight = "1";
+        copyBotBtn.style.fontSize = "13px";
+        copyBotBtn.style.opacity = "0.4";
+
+        copyBotBtn.addEventListener("click", event => {
+          event.preventDefault();
+          event.stopPropagation();
+          copyTextToClipboard(displayText);
+        });
+
+        actionsRow.appendChild(copyBotBtn);
+        contentWrap.appendChild(actionsRow);
+      }
       
       if (role === "bot" && hasDebugContent && showDebug) {
         const bottom = document.createElement("div");
@@ -4482,6 +4643,37 @@
       }
       
       try {
+        async function parseJsonResponseSafely(res, context = "chat") {
+          const contentType = String(res?.headers?.get("content-type") || "").toLowerCase();
+
+          if (!contentType.includes("application/json")) {
+            let rawBody = "";
+            try {
+              rawBody = await res.text();
+            } catch {}
+
+            console.warn("[NON_JSON_RESPONSE]", {
+              context,
+              status: res?.status,
+              contentType,
+              bodyPreview: String(rawBody || "").slice(0, 180)
+            });
+            return null;
+          }
+
+          try {
+            return await res.json();
+          } catch (err) {
+            const message = err && err.message ? err.message : String(err);
+            console.warn("[INVALID_JSON_RESPONSE]", {
+              context,
+              status: res?.status,
+              error: message
+            });
+            return null;
+          }
+        }
+
         const res = await fetch("/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -4499,8 +4691,8 @@
             logsEnabled: testPayload.logsEnabled === true
           })
         });
-        
-        const data = await res.json();
+
+        const data = await parseJsonResponseSafely(res, "send:/chat");
         
         if (dotAnimation) dotAnimation.cancel();
         if (waitingMsg.parentNode) waitingMsg.parentNode.removeChild(waitingMsg);
@@ -4518,7 +4710,7 @@
             document.querySelector(".screen.active")?.id === requestScreenId &&
             requestScreenId === "chatScreen"
           ) {
-            addMessage("bot", "Erreur serveur", [], {
+            addMessage("bot", "Je n'ai pas pu te répondre. Vérifie ta connexion réseau.", [], {
               shouldAutoScroll: wasAtBottom || isEditing,
               pulseScrollButton: !wasAtBottom && !isEditing
             });
@@ -4630,7 +4822,7 @@
           document.querySelector(".screen.active")?.id === requestScreenId &&
           requestScreenId === "chatScreen"
         ) {
-          addMessage("bot", "Erreur serveur", [], {
+          addMessage("bot", "Je n'ai pas pu te répondre. Vérifie ta connexion réseau.", [], {
             shouldAutoScroll: shouldAutoScrollReply,
             pulseScrollButton: !shouldAutoScrollReply
           });

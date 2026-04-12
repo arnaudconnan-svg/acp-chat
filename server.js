@@ -1,5 +1,9 @@
 require("dotenv").config();
 
+// Main server entry point.
+// - initialize Firebase admin with credentials
+// - configure Express, static asset headers, and chat pipeline
+// - preserve existing behavior while making the code easier to follow
 const admin = require("firebase-admin");
 let serviceAccount;
 try {
@@ -30,6 +34,7 @@ const ADMIN_SESSION_DURATION = 24 * 60 * 60 * 1000; // 24h
 const fs = require("fs");
 const path = require("path");
 
+// Local fallback storage for message data when needed.
 const MESSAGES_FILE = path.join(__dirname, "data/messages.json");
 
 function readMessages() {
@@ -60,6 +65,8 @@ app.get("/admin.html", requireAdminAuth, (req, res) => {
   res.sendFile(__dirname + "/public/admin.html");
 });
 
+// Serve the public folder with cache headers tuned for SPA/PWA behavior.
+// HTML and manifest files are always revalidated, while static assets are cached.
 app.use(express.static("public", {
   etag: false,
   lastModified: false,
@@ -136,6 +143,7 @@ function parseCookies(req) {
   return list;
 }
 
+// Retrieve the admin session from cookies and validate its expiration.
 function getAdminSession(req) {
   const cookies = parseCookies(req);
   const sessionId = cookies.adminSessionId;
@@ -154,6 +162,7 @@ function getAdminSession(req) {
   return session;
 }
 
+// Middleware protecting admin routes by redirecting unauthenticated users.
 function requireAdminAuth(req, res, next) {
   const session = getAdminSession(req);
   
@@ -164,6 +173,8 @@ function requireAdminAuth(req, res, next) {
   next();
 }
 
+// Build the default prompt registry used across chat analysis and generation.
+// The registry contains templates for risk detection, mode routing, and response shaping.
 function buildDefaultPromptRegistry() {
   return {
     
@@ -1729,6 +1740,8 @@ Reecris uniquement le contenu final, sans commentaire.
   };
 }
 
+// Merge the base prompt registry with optional override files.
+// Only known targets from the base registry are replaced.
 function resolvePromptRegistry(overrideFiles = []) {
   const base = buildDefaultPromptRegistry();
   const next = { ...base };
@@ -1747,6 +1760,8 @@ function resolvePromptRegistry(overrideFiles = []) {
   return next;
 }
 
+// Normalize the stored memory value.
+// If there is no explicit memory text, fall back to the registry's default template.
 function normalizeMemory(memory, promptRegistry = buildDefaultPromptRegistry()) {
   const text = String(memory || "").trim();
   if (text) return text;
@@ -1755,6 +1770,7 @@ function normalizeMemory(memory, promptRegistry = buildDefaultPromptRegistry()) 
     buildDefaultPromptRegistry().NORMALIZE_MEMORY_TEMPLATE;
 }
 
+// Keep only the last valid user/assistant turns from history.
 function trimHistoryWithLimit(history, maxTurns) {
   if (!Array.isArray(history)) return [];
   return history
@@ -1778,6 +1794,8 @@ function trimRecallAnalysisHistory(history) {
   return trimHistoryWithLimit(history, MAX_RECALL_ANALYSIS_TURNS);
 }
 
+// Normalize the raw flags payload into a safe object.
+// Arrays and non-object values are rejected.
 function normalizeFlags(flags) {
   if (!flags || typeof flags !== "object") return {};
   if (Array.isArray(flags)) return {};
@@ -1812,6 +1830,8 @@ function normalizeContactState(contactState) {
   };
 }
 
+// Compute normalized session flags with defaults for exploration state.
+// This ensures the bot always has a valid directivity level and relance window.
 function normalizeSessionFlags(flags) {
   const safe = normalizeFlags(flags);
   
@@ -1844,6 +1864,8 @@ function normalizeSessionFlags(flags) {
   };
 }
 
+// Record whether the latest assistant reply was a relance.
+// This updates the exploration relance window and recalculates directivity.
 function registerExplorationRelance(flags, isRelance) {
   const safeFlags = normalizeSessionFlags(flags);
   
@@ -1868,6 +1890,7 @@ function registerExplorationRelance(flags, isRelance) {
   };
 }
 
+// Select the exploration structure instruction based on directivity level.
 function getExplorationStructureInstruction(
   explorationDirectivityLevel,
   promptRegistry = buildDefaultPromptRegistry()
@@ -1930,6 +1953,8 @@ function buildPromptRegistryDebug(baseRegistry, override1 = null, override2 = nu
 // 2) SUICIDE RISK
 // ----------------------------------------
 
+// Analyze the user's message for suicidal risk using the prompt registry.
+// The result drives immediate override responses and clarification flows.
 async function analyzeSuicideRisk(
   message = "",
   history = [],
@@ -2001,6 +2026,8 @@ function n1Fallback() {
   return "Quand tu dis ca, est-ce que tu parles d'une envie de mourir, de disparaitre au sens vital, ou d'autre chose ?";
 }
 
+// Generate a clarification response for N1/ambiguous suicide risk.
+// Falls back to a safe canned response if LLM output is too long or missing.
 async function n1ResponseLLM(
   message,
   promptRegistry = buildDefaultPromptRegistry()
@@ -2022,10 +2049,12 @@ async function n1ResponseLLM(
   return out;
 }
 
+// Predefined crisis response used for N2 or unresolved acute crisis.
 function n2Response() {
   return "Je t'entends, et la c'est urgent. Si tu es en danger immediat, appelle le 112 ou le 3114. Si tu peux, ne reste pas seul.";
 }
 
+// Predefined follow-up response while remaining in acute crisis handling.
 function acuteCrisisFollowupResponse() {
   return "Je reste sur quelque chose de tres simple la. Si le danger est immediat, appelle le 112 ou le 3114. Si tu peux, ne reste pas seul.";
 }
@@ -2034,6 +2063,7 @@ function acuteCrisisFollowupResponse() {
 // 3) ANALYSE INFO + CONTACT + RECALL + CONFLIT MODELE + RELANCE
 // --------------------------------------------------
 
+// Detect whether the user is asking an information request.
 async function llmInfoAnalysis(message = "", history = [], promptRegistry = buildDefaultPromptRegistry()) {
   const context = trimInfoAnalysisHistory(history);
   
@@ -2068,6 +2098,7 @@ async function analyzeInfoRequest(message = "", history = [], promptRegistry = b
   return await llmInfoAnalysis(message, history, promptRegistry);
 }
 
+// Determine if the current exchange should be treated as contact-style interaction.
 async function analyzeContactState(
   message = "",
   history = [],
@@ -2112,6 +2143,7 @@ ${JSON.stringify(safePreviousContactState)}
   }
 }
 
+// Decide whether the user is requesting a memory recall and which memory type.
 async function analyzeRecallRouting(
   message = "",
   recentHistory = [],
@@ -2190,6 +2222,7 @@ function buildNoMemoryRecallResponse() {
   return "Je n'ai pas assez de reperes pour retrouver cela clairement. Tu peux me redonner un peu de contexte ?";
 }
 
+// Ask the LLM whether the generated content appears to violate the model conflict policy.
 async function analyzeModelConflict(content = "", promptRegistry = buildDefaultPromptRegistry()) {
   const r = await client.chat.completions.create({
     model: "gpt-4.1-mini",
@@ -2249,6 +2282,8 @@ ${originalContent}
   return (r.choices?.[0]?.message?.content || "").trim() || originalContent;
 }
 
+// Analyze whether the assistant reply should be considered a relational relance.
+// This is used to adjust exploration directivity based on whether the bot invited continuation.
 async function analyzeExplorationRelance({
   message = "",
   reply = "",
@@ -2300,6 +2335,7 @@ ${reply}
 // 4) MODE + DEBUG
 // --------------------------------------------------
 
+// Detect the current mode of the conversation: information or exploration.
 async function detectMode(message = "", history = [], promptRegistry = buildDefaultPromptRegistry()) {
   const info = await analyzeInfoRequest(message, history, promptRegistry);
   return {
@@ -2308,6 +2344,7 @@ async function detectMode(message = "", history = [], promptRegistry = buildDefa
   };
 }
 
+// Build a compact debug trace summarizing mode, suicide risk, memory recall and exploration state.
 function buildDebug(
   mode,
   {
@@ -2355,6 +2392,7 @@ function buildDebug(
   return lines;
 }
 
+// Build a more detailed debug trace used for deeper inspection of the request pipeline.
 function buildAdvancedDebugTrace({
   suicide = {},
   recallRouting = {},
@@ -2409,6 +2447,8 @@ function buildAdvancedDebugTrace({
 // 5) MEMOIRE
 // --------------------------------------------------
 
+// Update the session memory based on the latest conversation and prompt rules.
+// Falls back to the previous normalized memory if the model output is invalid.
 async function updateMemory(previousMemory, history, promptRegistry = buildDefaultPromptRegistry()) {
   const defaultUpdateMemoryPrompt = String(buildDefaultPromptRegistry().UPDATE_MEMORY || "").trim();
   const currentUpdateMemoryPrompt = String(promptRegistry.UPDATE_MEMORY || "").trim();
@@ -2492,22 +2532,26 @@ ${transcript}
 // 6) PROMPT
 // --------------------------------------------------
 
+// Wrap a prompt block with clear start/end markers to keep the prompt structure explicit.
 function wrapPromptBlock(marker, content) {
   return `[[${marker}_START]]
 ${String(content || "").trim()}
 [[${marker}_END]]`;
 }
 
+// Build the identity prompt block containing the assistant's persona and behavior rules.
 function getIdentityPrompt(promptRegistry = buildDefaultPromptRegistry()) {
   const identityBlock = String(promptRegistry.IDENTITY_BLOCK || "").trim();
   return wrapPromptBlock("IDENTITY_BLOCK", identityBlock);
 }
 
+// Build the contact mode prompt block for explicit contact-style responses.
 function getContactPrompt(promptRegistry = buildDefaultPromptRegistry()) {
   const contactBlock = String(promptRegistry.MODE_CONTACT || "").trim();
   return wrapPromptBlock("MODE_CONTACT", contactBlock);
 }
 
+// Build the info mode prompt block, injecting the current normalized memory.
 function getInfoPrompt(memory, promptRegistry = buildDefaultPromptRegistry()) {
   const normalizedMemory = normalizeMemory(memory, promptRegistry);
   const infoBlock = [
@@ -2519,6 +2563,7 @@ ${normalizedMemory}`
   return wrapPromptBlock("MODE_INFORMATION", infoBlock);
 }
 
+// Build the exploration prompt block, injecting memory and directivity instructions.
 function getExplorationPrompt(memory, explorationDirectivityLevel = 0, promptRegistry = buildDefaultPromptRegistry()) {
   const normalizedMemory = normalizeMemory(memory, promptRegistry);
   const commonExplorationBlock = String(promptRegistry.COMMON_EXPLORATION || "")
@@ -2536,6 +2581,7 @@ function getExplorationPrompt(memory, explorationDirectivityLevel = 0, promptReg
   return wrapPromptBlock("MODE_EXPLORATION", explorationBlock);
 }
 
+// Construct the full system prompt for the selected mode before calling the LLM.
 function buildSystemPrompt(mode, memory, explorationDirectivityLevel = 0, promptRegistry = buildDefaultPromptRegistry()) {
   const identityWrapped = getIdentityPrompt(promptRegistry);
   const contactWrapped = getContactPrompt(promptRegistry);
@@ -2565,6 +2611,8 @@ ${explorationWrapped}
 `.trim();
 }
 
+// Normalize a prompt override file structure before applying its replacements.
+// This ensures overrides are safe objects with string targets and values.
 function normalizePromptOverrideFile(overrideFile) {
   if (!overrideFile || typeof overrideFile !== "object" || Array.isArray(overrideFile)) {
     return null;
@@ -2591,6 +2639,8 @@ function normalizePromptOverrideFile(overrideFile) {
   };
 }
 
+// Build debug information for prompt override layers.
+// This reports which override targets were applied and which were ignored.
 function buildPromptOverrideLayersDebug(override1, override2, promptRegistry = buildDefaultPromptRegistry()) {
   const availableTargets = new Set(Object.keys(promptRegistry || {}));
   
@@ -2629,6 +2679,7 @@ function buildPromptOverrideLayersDebug(override1, override2, promptRegistry = b
   };
 }
 
+// Generate the assistant reply using the assembled system prompt and conversation history.
 async function generateReply({
   message,
   history,
@@ -2652,6 +2703,7 @@ async function generateReply({
     { role: "user", content: message }
   ];
   
+  // Send the assembled prompt and conversation history to the LLM.
   const r = await client.chat.completions.create({
     model: "gpt-4o",
     temperature: 0.7,
@@ -2671,12 +2723,14 @@ async function generateReply({
 // 8) SESSION CLOSE
 // --------------------------------------------------
 
+// Reset session flags and return the normalized memory/flags state when the session ends.
 app.post("/session/close", async (req, res) => {
   try {
     const promptRegistry = buildDefaultPromptRegistry();
     const previousMemory = normalizeMemory(req.body?.memory, promptRegistry);
     const flags = normalizeSessionFlags(req.body?.flags);
     
+    // Reset all session flags while preserving the normalized memory state.
     return res.json({
       memory: previousMemory,
       flags: normalizeSessionFlags({
@@ -2701,6 +2755,8 @@ app.post("/session/close", async (req, res) => {
 // GENERATION TITRE AUTO
 // ------------------------------
 
+// Generate a short, clean title for a conversation from the first user messages.
+// Uses the LLM when possible, with fallback rules to keep titles safe and concise.
 async function generateConversationTitle(messages) {
   try {
     const userMessages = messages
@@ -2841,6 +2897,7 @@ async function generateConversationTitle(messages) {
 // 9) ROUTE
 // --------------------------------------------------
 
+// Admin login route that creates a time-limited session cookie.
 app.post("/api/admin/login", (req, res) => {
   const { password } = req.body;
   
@@ -2863,6 +2920,7 @@ app.post("/api/admin/login", (req, res) => {
   res.json({ success: true });
 });
 
+// Admin logout route that clears the session cookie and removes the session.
 app.post("/api/admin/logout", (req, res) => {
   const cookies = parseCookies(req);
   const sessionId = cookies.adminSessionId;
@@ -2879,6 +2937,7 @@ app.post("/api/admin/logout", (req, res) => {
   res.json({ success: true });
 });
 
+// Admin route to set or remove a human-readable label for a user.
 app.post("/api/admin/user-label", requireAdminAuth, async (req, res) => {
   try {
     const userId = String(req.body?.userId || "").trim();
@@ -2902,6 +2961,7 @@ app.post("/api/admin/user-label", requireAdminAuth, async (req, res) => {
   }
 });
 
+// Route to manually set the title of a conversation and lock it.
 app.post("/api/conversations/:id/title", async (req, res) => {
   try {
     const conversationId = req.params.id;
@@ -2925,6 +2985,7 @@ app.post("/api/conversations/:id/title", async (req, res) => {
   }
 });
 
+// Return the title and metadata for a given conversation.
 app.get("/api/conversations/:id/title", async (req, res) => {
   try {
     const conversationId = req.params.id;
@@ -2947,6 +3008,7 @@ app.get("/api/conversations/:id/title", async (req, res) => {
   }
 });
 
+// Admin route to list all conversations with optional user labels.
 app.get("/api/admin/conversations", requireAdminAuth, async (req, res) => {
   try {
     const [convSnap, labelsSnap] = await Promise.all([
@@ -2985,6 +3047,7 @@ app.get("/api/admin/conversations", requireAdminAuth, async (req, res) => {
   }
 });
 
+// Admin route to fetch all messages for a specific conversation.
 app.get("/api/admin/conversations/:id/messages", requireAdminAuth, async (req, res) => {
   try {
     const conversationId = req.params.id;
@@ -3047,12 +3110,51 @@ function parseChatRequest(req) {
   };
 }
 
+function validateChatRequestShape(body = {}) {
+  const issues = [];
+
+  if (!body || typeof body !== "object") {
+    issues.push("body_not_object");
+    return issues;
+  }
+
+  if (typeof body.message !== "string") {
+    issues.push("message_not_string");
+  } else if (!body.message.trim()) {
+    issues.push("message_empty");
+  } else if (body.message.length > 12000) {
+    issues.push("message_too_long");
+  }
+
+  if (typeof body.userId !== "string" && body.userId !== undefined && body.userId !== null) {
+    issues.push("userId_invalid_type");
+  }
+
+  if (typeof body.conversationId !== "string" || !body.conversationId.trim()) {
+    issues.push("conversationId_missing_or_invalid");
+  }
+
+  if (body.recentHistory !== undefined && !Array.isArray(body.recentHistory)) {
+    issues.push("recentHistory_not_array");
+  }
+
+  if (body.memory !== undefined && typeof body.memory !== "string") {
+    issues.push("memory_not_string");
+  }
+
+  if (body.flags !== undefined && (typeof body.flags !== "object" || body.flags === null || Array.isArray(body.flags))) {
+    issues.push("flags_not_object");
+  }
+
+  return issues;
+}
+
 // Resolve the different prompt registry layers for the current request.
 // - basePromptRegistry: default settings without overrides
 // - override1PromptRegistry: applying the first override only
 // - override12PromptRegistry: applying both overrides
 // - activePromptRegistry: the registry used for the main reply
-function resolveChatPromptRegistries(override1, override2) {
+function resolvePromptRegistryVariants(override1, override2) {
   const basePromptRegistry = resolvePromptRegistry([]);
   const override1PromptRegistry = resolvePromptRegistry([override1]);
   const override12PromptRegistry = resolvePromptRegistry([override1, override2]);
@@ -3073,7 +3175,7 @@ function resolveChatPromptRegistries(override1, override2) {
 // Normalize memory and session flags before executing the chat pipeline.
 // The active prompt registry is used to ensure memory normalization matches
 // the same prompt rules that will be applied later.
-function resolveChatMemoryAndFlags(req, activePromptRegistry) {
+function normalizeChatMemoryAndFlags(req, activePromptRegistry) {
   const previousMemory = normalizeMemory(req.body?.memory, activePromptRegistry);
   const rawFlags = normalizeFlags(req.body?.flags);
   const flags = normalizeSessionFlags(rawFlags);
@@ -3092,8 +3194,34 @@ app.post("/chat", async (req, res) => {
   const requestData = parseChatRequest(req);
   console.log("CHAT INPUT conversationId:", requestData.conversationId);
   
+  const chatStartTime = Date.now();
+  let chatLastStage = "request_parsed";
+  let chatStageMarkTime = chatStartTime;
+  let logsEnabledForCatch = requestData.logsEnabled === true;
+  const chatStageTimings = [];
+  
+  function markChatStage(stage) {
+    const now = Date.now();
+    chatStageTimings.push({
+      stage,
+      deltaMs: now - chatStageMarkTime
+    });
+    chatStageMarkTime = now;
+    chatLastStage = stage;
+  }
+  
+  const requestIssues = validateChatRequestShape(req.body);
+  if (requestIssues.length > 0) {
+    console.warn("[CHAT][REQUEST_SHAPE]", {
+      conversationId: requestData.conversationId,
+      issues: requestIssues
+    });
+  }
+  
   const basePromptRegistryForCatch = buildDefaultPromptRegistry();
   
+  // Values preserved for the fallback error path.
+  // If the main pipeline fails, we still return a minimally valid response.
   let modeForCatch = "exploration";
   let previousMemoryForCatch = normalizeMemory("", basePromptRegistryForCatch);
   let flagsForCatch = normalizeSessionFlags({});
@@ -3194,10 +3322,15 @@ app.post("/chat", async (req, res) => {
       logsEnabled
     } = requestData;
     
+    logsEnabledForCatch = logsEnabled === true;
+    markChatStage("request_destructured");
+    
+    // Validate that the request is tied to a conversation.
     if (!conversationId) {
       return res.status(400).json({ error: "Missing conversationId" });
     }
     
+    // Resolve prompt registry variants before any generation or comparison logic.
     const {
       basePromptRegistry,
       override1PromptRegistry,
@@ -3205,18 +3338,21 @@ app.post("/chat", async (req, res) => {
       hasOverrides,
       referencePromptRegistry,
       activePromptRegistry
-    } = resolveChatPromptRegistries(override1, override2);
+    } = resolvePromptRegistryVariants(override1, override2);
     
+    // Normalize memory and flags with the active registry so all later steps use the same rules.
     const {
       previousMemory,
       rawFlags,
       flags
-    } = resolveChatMemoryAndFlags(req, activePromptRegistry);
+    } = normalizeChatMemoryAndFlags(req, activePromptRegistry);
+    markChatStage("request_normalized");
     
     previousMemoryForCatch = previousMemory;
     flagsForCatch = flags;
     promptRegistryForCatch = activePromptRegistry;
     
+    // Try to generate a conversation title if the current title is still default.
     async function maybeGenerateConversationTitle() {
       try {
         const convSnap = await convRef.once("value");
@@ -3306,7 +3442,8 @@ app.post("/chat", async (req, res) => {
       };
     });
     
-    async function pushAssistantMessage(reply, debug, debugMeta = {}, comparisonResults = null) {
+    // Persist the assistant message and attach debug metadata.
+    async function persistAssistantMessage(reply, debug, debugMeta = {}, comparisonResults = null) {
       const safeComparisonResults = Array.isArray(comparisonResults) ?
         comparisonResults.map(entry => ({
           label: String(entry?.label || "").trim(),
@@ -3346,7 +3483,7 @@ app.post("/chat", async (req, res) => {
       });
     }
     
-    function buildPromptDebugLines(promptDebug) {
+    function formatPromptOverrideDebugLines(promptDebug) {
       const lines = [];
       
       if (promptDebug?.override1?.appliedTargets?.length) {
@@ -3491,7 +3628,9 @@ app.post("/chat", async (req, res) => {
       };
     }
     
-    async function buildComparisonEntry(label, generated, debugMetaBase, comparisonPromptRegistry) {
+    // Build a comparison variant entry for override debugging.
+    // Each comparison variant is evaluated independently and then normalized.
+    async function buildComparisonVariantEntry(label, generated, debugMetaBase, comparisonPromptRegistry) {
       const replyPipeline = await applyModelConflictPipeline({
         content: generated.reply,
         message,
@@ -3538,7 +3677,7 @@ app.post("/chat", async (req, res) => {
         variantDebug.push(`memoryRewriteSource: ${memoryPipeline.rewriteSource}`);
       }
       
-      variantDebug.push(...buildPromptDebugLines(generated.promptDebug));
+      variantDebug.push(...formatPromptOverrideDebugLines(generated.promptDebug));
       variantDebug.push(`variantMemory: ${memoryPipeline.content}`);
       
       console.log("[COMPARE][ENTRY]", {
@@ -3561,6 +3700,9 @@ app.post("/chat", async (req, res) => {
       };
     }
     
+    // 1) Analyse suicide : risque immédiat et clarification possible.
+    // Cette étape peut déclencher des réponses priorisées sans aller plus loin.
+    markChatStage("suicide_analysis");
     const suicide = await analyzeSuicideRisk(
       message,
       recentHistory,
@@ -3596,7 +3738,7 @@ app.post("/chat", async (req, res) => {
         promptRegistry: activePromptRegistry
       });
       
-      await pushAssistantMessage(reply, debug, responseDebugMeta);
+      await persistAssistantMessage(reply, debug, responseDebugMeta);
       await maybeGenerateConversationTitle();
       
       return res.json({
@@ -3609,6 +3751,8 @@ app.post("/chat", async (req, res) => {
       });
     }
     
+    // 2) Crisis follow-up path for an already active acute crisis.
+    // If the crisis is not resolved, keep the bot in crisis-handling mode.
     if (flags.acuteCrisis === true) {
       if (suicide.crisisResolved !== true) {
         newFlags.acuteCrisis = true;
@@ -3632,7 +3776,7 @@ app.post("/chat", async (req, res) => {
           promptRegistry: activePromptRegistry
         });
         
-        await pushAssistantMessage(reply, debug, responseDebugMeta);
+        await persistAssistantMessage(reply, debug, responseDebugMeta);
         await maybeGenerateConversationTitle();
         
         return res.json({
@@ -3648,6 +3792,7 @@ app.post("/chat", async (req, res) => {
       newFlags.acuteCrisis = false;
     }
     
+    // 3) Clarification path for less severe suicidal risk or ambiguous intent.
     if (suicide.suicideLevel === "N1" || suicide.needsClarification) {
       const rawReply = await n1ResponseLLM(message, activePromptRegistry);
       
@@ -3684,7 +3829,7 @@ app.post("/chat", async (req, res) => {
         promptRegistry: activePromptRegistry
       });
       
-      await pushAssistantMessage(replyPipeline.content, debug, responseDebugMeta);
+      await persistAssistantMessage(replyPipeline.content, debug, responseDebugMeta);
       await maybeGenerateConversationTitle();
       
       return res.json({
@@ -3697,6 +3842,9 @@ app.post("/chat", async (req, res) => {
       });
     }
     
+    // 2) Analyse de rappel mémoire : identifier si l'utilisateur demande
+    // explicitement un rappel de la mémoire à long terme.
+    markChatStage("recall_analysis");
     const recallRouting = await analyzeRecallRouting(
       message,
       recentHistory,
@@ -3738,7 +3886,7 @@ app.post("/chat", async (req, res) => {
         promptRegistry: activePromptRegistry
       });
       
-      await pushAssistantMessage(replyPipeline.content, debug, responseDebugMeta);
+      await persistAssistantMessage(replyPipeline.content, debug, responseDebugMeta);
       await maybeGenerateConversationTitle();
       
       return res.json({
@@ -3751,6 +3899,7 @@ app.post("/chat", async (req, res) => {
       });
     }
     
+    // 5) Memory recall attempted, but no recallable memory was found.
     if (recallRouting.isRecallAttempt && recallRouting.calledMemory === "none") {
       const reply = buildNoMemoryRecallResponse();
       const debug = buildDebug("memoryRecall", {});
@@ -3768,7 +3917,7 @@ app.post("/chat", async (req, res) => {
         promptRegistry: activePromptRegistry
       });
       
-      await pushAssistantMessage(reply, debug, responseDebugMeta);
+      await persistAssistantMessage(reply, debug, responseDebugMeta);
       await maybeGenerateConversationTitle();
       
       return res.json({
@@ -3783,6 +3932,9 @@ app.post("/chat", async (req, res) => {
     
     // Determine whether the current message should be handled as a contact-style interaction.
     // This influences mode detection and the choice between contact, info, or exploration flows.
+    // 3) Passage par le mode contact / exploration / info.
+    // Cette étape détermine le style général de la réponse.
+    markChatStage("contact_mode_analysis");
     const contactAnalysis = await analyzeContactState(
       message,
       recentHistory,
@@ -3818,6 +3970,9 @@ app.post("/chat", async (req, res) => {
       finalDirectivityLevel = FORCE_DIRECTIVITY_LEVEL;
     }
     
+    // 4) Génération principale de la réponse selon le mode détecté,
+    // puis application d'un pipeline de correction si le contenu est en conflit modèle.
+    markChatStage("reply_generation");
     const mainPromptDebug = hasOverrides ?
       buildPromptOverrideLayersDebug(override1, override2, activePromptRegistry) :
       buildPromptOverrideLayersDebug(null, null, activePromptRegistry);
@@ -3871,8 +4026,10 @@ app.post("/chat", async (req, res) => {
       debug.push(`rewriteSource: ${replyPipeline.rewriteSource}`);
     }
     
-    debug.push(...buildPromptDebugLines(generatedBase.promptDebug));
+    debug.push(...formatPromptOverrideDebugLines(generatedBase.promptDebug));
     
+    // 5) Mise à jour de la mémoire interne après la réponse finale.
+    markChatStage("memory_update");
     const rawNewMemory = await updateMemory(
       previousMemory,
       [
@@ -3919,10 +4076,12 @@ app.post("/chat", async (req, res) => {
       promptRegistry: activePromptRegistry
     });
     
+    // 7) Optional comparison mode: generate alternate reply variants for override debugging.
     if (
       comparisonEnabled &&
       hasOverrides
     ) {
+      markChatStage("comparison_generation");
       const comparisonBaseMeta = buildResponseDebugMeta({
         memory: "",
         suicideLevel: suicide.suicideLevel,
@@ -3948,7 +4107,7 @@ app.post("/chat", async (req, res) => {
       });
       
       const comparisonResults = [
-        await buildComparisonEntry(
+        await buildComparisonVariantEntry(
           "Référence",
           generatedReference,
           comparisonBaseMeta,
@@ -3969,7 +4128,7 @@ app.post("/chat", async (req, res) => {
         });
         
         comparisonResults.push(
-          await buildComparisonEntry(
+          await buildComparisonVariantEntry(
             "Override 1",
             generatedOverride1,
             comparisonBaseMeta,
@@ -3991,7 +4150,7 @@ app.post("/chat", async (req, res) => {
         });
         
         comparisonResults.push(
-          await buildComparisonEntry(
+          await buildComparisonVariantEntry(
             "Override 1 + 2",
             generatedOverride12,
             comparisonBaseMeta,
@@ -4004,8 +4163,9 @@ app.post("/chat", async (req, res) => {
         label: entry.label,
         memory: entry?.debugMeta?.memory || ""
       })));
+      markChatStage("persist_response");
       
-      await pushAssistantMessage(reply, debug, responseDebugMeta, comparisonResults);
+      await persistAssistantMessage(reply, debug, responseDebugMeta, comparisonResults);
       await maybeGenerateConversationTitle();
       
       return res.json({
@@ -4019,8 +4179,9 @@ app.post("/chat", async (req, res) => {
         debugMeta: responseDebugMeta
       });
     }
+    markChatStage("persist_response");
     
-    await pushAssistantMessage(reply, debug, responseDebugMeta);
+    await persistAssistantMessage(reply, debug, responseDebugMeta);
     await maybeGenerateConversationTitle();
     
     return res.json({
@@ -4033,7 +4194,14 @@ app.post("/chat", async (req, res) => {
     });
   } catch (err) {
     console.error("Erreur /chat:", err);
+    console.error("[CHAT][ERROR_CONTEXT]", {
+      conversationId: requestData.conversationId,
+      lastStage: chatLastStage,
+      elapsedMs: Date.now() - chatStartTime
+    });
     
+    // Fallback path: if any part of the /chat pipeline throws, return a safe
+    // generic reply plus preserved memory/flags instead of crashing the server.
     return res.json({
       reply: modeForCatch === "contact" ? "Je suis la." : "Desole, reformule.",
       memory: previousMemoryForCatch,
@@ -4052,9 +4220,19 @@ app.post("/chat", async (req, res) => {
         promptRegistry: promptRegistryForCatch
       })
     });
+  } finally {
+    if (logsEnabledForCatch) {
+      console.log("[CHAT][TRACE]", {
+        conversationId: requestData.conversationId,
+        totalMs: Date.now() - chatStartTime,
+        lastStage: chatLastStage,
+        stageTimings: chatStageTimings
+      });
+    }
   }
 });
 
+// Start the HTTP server after all routes and middleware are configured.
 app.listen(port, () => {
   console.log(`Serveur lance sur http://localhost:${port}`);
 });
