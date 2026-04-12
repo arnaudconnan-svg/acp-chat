@@ -54,6 +54,20 @@
   window.addEventListener("popstate", () => {
     window.location.replace("/index.html?fromAdminLogin=1");
   });
+
+  async function parseJsonResponseSafely(res) {
+    const contentType = String(res?.headers?.get("content-type") || "").toLowerCase();
+
+    if (!contentType.includes("application/json")) {
+      return null;
+    }
+
+    try {
+      return await res.json();
+    } catch {
+      return null;
+    }
+  }
   
   async function submitLogin() {
     if (autoSubmitDone) return;
@@ -69,15 +83,25 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password })
       });
+      const data = await parseJsonResponseSafely(res);
       
       if (!res.ok) {
         autoSubmitDone = false;
-        errorDiv.textContent = "Mot de passe incorrect";
+
+        if (res.status === 401) {
+          errorDiv.textContent = "Mot de passe incorrect";
+        } else if (res.status === 400) {
+          errorDiv.textContent = typeof data?.error === "string" ? data.error : "Requete invalide";
+        } else {
+          errorDiv.textContent = "Erreur serveur";
+        }
+
         return;
       }
       
-      const next = new URLSearchParams(window.location.search).get("next") || "/admin.html";
-      window.location.href = next;
+      const requestedNext = new URLSearchParams(window.location.search).get("next") || "/admin.html";
+      const safeNext = requestedNext.startsWith("/") ? requestedNext : "/admin.html";
+      window.location.href = safeNext;
     } catch {
       autoSubmitDone = false;
       errorDiv.textContent = "Erreur de connexion";

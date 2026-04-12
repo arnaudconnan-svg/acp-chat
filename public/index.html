@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="fr">
 
 <head>
@@ -87,8 +87,8 @@
       align-items: center;
       min-height: 100%;
       box-sizing: border-box;
-      padding-top: 9vh;
-      padding-bottom: 5vh;
+      padding-top: clamp(20px, 9vh, 72px);
+      padding-bottom: clamp(16px, 5vh, 44px);
     }
     
     #welcomeLogoWrap {
@@ -108,12 +108,12 @@
     
     #welcomeRitualText {
       width: 100%;
-      min-height: 92px;
+      min-height: clamp(52px, 10vh, 92px);
       display: flex;
       align-items: center;
       justify-content: center;
       text-align: center;
-      margin-top: 10vh;
+      margin-top: clamp(8px, 10vh, 88px);
       font-size: clamp(30px, 7vw, 42px);
       font-weight: 500;
       line-height: 1.35;
@@ -146,7 +146,7 @@
       width: 100%;
       max-width: 380px;
       margin-top: auto;
-      padding-top: 6vh;
+      padding-top: clamp(8px, 6vh, 48px);
       display: flex;
       flex-direction: column;
       align-items: stretch;
@@ -261,10 +261,82 @@
       opacity: 1;
       transform: translateY(0);
     }
-    
-    body:not(.admin-ui) #welcomeDevAccessBtn {
-      visibility: hidden;
-      pointer-events: none;
+
+    @media (max-height: 760px) {
+      #welcomeInner {
+        padding-top: 24px;
+        padding-bottom: 18px;
+      }
+
+      #welcomeLogo {
+        width: min(285px, 74vw);
+      }
+
+      #welcomeLogoWrap {
+        margin: 0 0 20px 0;
+      }
+
+      #welcomeRitualText {
+        margin-top: clamp(4px, 4vh, 24px);
+        min-height: 56px;
+        font-size: clamp(23px, 6.6vw, 34px);
+      }
+
+      #welcomeActions {
+        max-width: 360px;
+        gap: 10px;
+        padding-top: 14px;
+      }
+
+      .welcomeBtnPrimary {
+        font-size: 16px;
+        padding: 13px 18px;
+      }
+
+      #welcomeEnterBtn {
+        margin-bottom: 4px;
+      }
+    }
+
+    @media (max-height: 640px) {
+      #welcomeInner {
+        padding-top: 14px;
+        padding-bottom: 12px;
+      }
+
+      #welcomeLogo {
+        width: min(220px, 62vw);
+      }
+
+      #welcomeLogoWrap {
+        margin: 0 0 12px 0;
+      }
+
+      #welcomeRitualText {
+        margin-top: 4px;
+        min-height: 42px;
+        font-size: clamp(20px, 6vw, 28px);
+        line-height: 1.25;
+      }
+
+      #welcomeActions {
+        gap: 8px;
+        padding-top: 8px;
+      }
+
+      .welcomeBtnPrimary {
+        font-size: 15px;
+        padding: 11px 16px;
+      }
+
+      .welcomeBtnSecondary {
+        font-size: 13px;
+      }
+
+      .welcomeBtnTertiary {
+        font-size: 12px;
+        padding: 8px 10px;
+      }
     }
     
     @keyframes welcomeEnterPulse {
@@ -934,8 +1006,8 @@
       text-decoration: underline;
     }
     
-    /* Annule les marges par défaut des éléments HTML générés par Markdown
-   uniquement à l’intérieur des bulles du bot */
+    /* Annule les marges par dÃƒÂ©faut des ÃƒÂ©lÃƒÂ©ments HTML gÃƒÂ©nÃƒÂ©rÃƒÂ©s par Markdown
+   uniquement ÃƒÂ  lÃ¢â‚¬â„¢intÃƒÂ©rieur des bulles du bot */
     .bot .bubble p,
     .bot .bubble h1,
     .bot .bubble h2,
@@ -960,7 +1032,7 @@
     .bot .bubble ul ul,
     .bot .bubble ol ol
 
-    /* petit écart entre deux éléments, si besoin */
+    /* petit ÃƒÂ©cart entre deux ÃƒÂ©lÃƒÂ©ments, si besoin */
       {
       margin-top: 18px;
     }
@@ -969,7 +1041,7 @@
       margin-top: 6px;
     }
     
-    /* Dans tes règles spécifiques bot */
+    /* Dans tes rÃƒÂ¨gles spÃƒÂ©cifiques bot */
     .bot .bubble br:last-child {
       display: none;
     }
@@ -1377,7 +1449,7 @@
         
         <div id="welcomeDevAccessWrap">
           <button id="welcomeDevAccessBtn" class="welcomeBtnTertiary" type="button">
-            Accès développeur
+            Acc&egrave;s d&eacute;veloppeur
           </button>
         </div>
       </div>
@@ -1386,16 +1458,16 @@
   
   <div id="devAccessModal" class="modal">
     <div class="modalBox">
-      <h3 class="modalTitle">Acces developpeur</h3>
+      <h3 class="modalTitle">Acc&egrave;s d&eacute;veloppeur</h3>
       <p class="modalText">
-        Choisis l'interface a ouvrir.
+        Choisis l'interface &agrave; ouvrir.
       </p>
       
       <div class="modalActions modalActionsStack">
-        <button class="modalBtnPrimary" type="button" onclick="window.location.href='/test.html'">
-          Interface de test
+        <button class="modalBtnPrimary" type="button" onclick="window.location.href='/admin-login.html?next=%2Findex.html%3FadminUi%3D1'">
+          Passer admin
         </button>
-        <button class="modalBtnSecondary" type="button" onclick="window.location.href='/admin.html'">
+        <button class="modalBtnSecondary" type="button" onclick="window.location.href='/admin-login.html?next=%2Fadmin.html'">
           Interface admin
         </button>
         <button class="modalBtnSecondary" type="button" onclick="closeDevAccessModal()">
@@ -1475,7 +1547,7 @@
     <div id="inputArea">
       <div id="inputAreaInner">
         <div id="inputShell">
-          <textarea id="input" placeholder="Répondre à Facilitat.io" rows="1"></textarea>
+          <textarea id="input" placeholder="R&eacute;pondre &agrave; Facilitat.io" rows="1"></textarea>
           
           <div id="inputMetaActions">
             <button id="debugToggleBtn" type="button" aria-label="Afficher ou masquer les logs">
@@ -1496,15 +1568,15 @@
         </p>
         
         <p class="about-main">
-          propose une interaction avec une IA qui facilite le développement de la personne, sans orienter ni conseiller, mais en soutenant
+          propose une interaction avec une IA qui facilite le d&eacute;veloppement de la personne, sans orienter ni conseiller, mais en soutenant
         </p>
         
         <p class="about-highlight">
-          <strong>un mouvement de compréhension et d’acceptation de soi...</strong>
+          <strong>un mouvement de compr&eacute;hension et d&rsquo;acceptation de soi...</strong>
         </p>
         
         <p class="about-footer">
-          Cet outil ne remplace pas une relation d’accompagnement humaine.
+          Cet outil ne remplace pas une relation d&rsquo;accompagnement humaine.
         </p>
       </div>
       <button onclick="closeAboutModal()">fermer</button>
@@ -1880,6 +1952,62 @@
     const MAX_RECENT_TURNS = 8;
     const ADMIN_UI_KEY = "facilitatio_admin_ui";
     const CHAT_BOTTOM_THRESHOLD_PX = 12;
+
+    async function hasValidAdminSession() {
+      try {
+        const res = await fetch("/api/admin/session", {
+          method: "GET",
+          cache: "no-store"
+        });
+
+        if (!res.ok) {
+          return false;
+        }
+
+        const data = await parseAppJsonResponseSafely(res);
+        return data && data.authenticated === true;
+      } catch {
+        return false;
+      }
+    }
+
+    async function syncAdminUiFromSession() {
+      const url = new URL(window.location.href);
+      const wantsAdminUi = url.searchParams.get("adminUi") === "1";
+      const isAuthenticated = await hasValidAdminSession();
+
+      if (!isAuthenticated) {
+        localStorage.removeItem(ADMIN_UI_KEY);
+        try {
+          if (adminUiState && typeof adminUiState === "object") {
+            adminUiState.logsEnabled = false;
+            saveAdminUiState();
+          }
+        } catch {}
+      } else if (wantsAdminUi) {
+        safeSetLocalStorage(ADMIN_UI_KEY, "1", "syncAdminUiFromSession");
+      }
+
+      const isAdminUI = isAuthenticated && localStorage.getItem(ADMIN_UI_KEY) === "1";
+      document.body.classList.toggle("admin-ui", isAdminUI);
+
+      if (!isAdminUI) {
+        closeAdminPopover();
+        const activeScreenId = document.querySelector(".screen.active")?.id || "";
+        if (activeScreenId === "chatScreen") {
+          renderHistory();
+        }
+      }
+
+      if (url.searchParams.has("adminUi")) {
+        url.searchParams.delete("adminUi");
+        const nextSearch = url.searchParams.toString();
+        const nextUrl = `${url.pathname}${nextSearch ? `?${nextSearch}` : ""}${url.hash || ""}`;
+        history.replaceState(history.state || {}, "", nextUrl);
+      }
+
+      return isAdminUI;
+    }
     
     function getOrCreateUserId() {
       let userId = localStorage.getItem(USER_ID_KEY);
@@ -1977,12 +2105,20 @@
         "- "
       ].join("\n");
     }
+
+    function normalizeStoredFlags(flags) {
+      if (!flags || typeof flags !== "object" || Array.isArray(flags)) {
+        return {};
+      }
+
+      return flags;
+    }
     
     function createEmptyConversationData() {
       return {
         messages: [],
         memory: defaultMemory(),
-        flags: {},
+        flags: normalizeStoredFlags({}),
         updatedAt: Date.now()
       };
     }
@@ -2076,7 +2212,7 @@
           messages: Array.isArray(parsed?.messages) ? parsed.messages : [],
           memory: typeof parsed?.memory === "string" && parsed.memory.trim() ?
             parsed.memory : defaultMemory(),
-          flags: parsed?.flags && typeof parsed.flags === "object" ? parsed.flags : {},
+          flags: normalizeStoredFlags(parsed?.flags),
           updatedAt: Number(parsed?.updatedAt || Date.now())
         };
       } catch {
@@ -2091,7 +2227,7 @@
         messages: Array.isArray(data?.messages) ? data.messages : [],
         memory: typeof data?.memory === "string" && data.memory.trim() ?
           data.memory : defaultMemory(),
-        flags: data?.flags && typeof data.flags === "object" ? data.flags : {},
+        flags: normalizeStoredFlags(data?.flags),
         updatedAt: Number(data?.updatedAt || Date.now())
       };
       
@@ -2105,7 +2241,7 @@
         return;
       }
       
-      /* Ne crée (ou ne met à jour) l’entrée d’index
+      /* Ne crÃƒÂ©e (ou ne met ÃƒÂ  jour) lÃ¢â‚¬â„¢entrÃƒÂ©e dÃ¢â‚¬â„¢index
    que si AU MOINS un message utilisateur existe. */
       const hasUserMsg = safeData.messages.some(m => m && m.role === "user");
       if (hasUserMsg) {
@@ -2152,7 +2288,7 @@
       
       saveConversationData(conversationId, {
         ...data,
-        flags: flags || {},
+        flags: normalizeStoredFlags(flags),
         updatedAt: Date.now()
       });
     }
@@ -2297,9 +2433,24 @@
       const currentConversationKey = currentConversationId ? getConversationStorageKey(currentConversationId) : "";
 
       if (key === ADMIN_UI_KEY) {
-        const isAdminUI = localStorage.getItem(ADMIN_UI_KEY) === "1";
-        document.body.classList.toggle("admin-ui", isAdminUI);
-        syncDebugVisibility();
+        hasValidAdminSession().then(isAuthenticated => {
+          if (!isAuthenticated) {
+            localStorage.removeItem(ADMIN_UI_KEY);
+            try {
+              adminUiState.logsEnabled = false;
+              saveAdminUiState();
+            } catch {}
+          }
+
+          const isAdminUI = isAuthenticated && localStorage.getItem(ADMIN_UI_KEY) === "1";
+          document.body.classList.toggle("admin-ui", isAdminUI);
+          syncDebugVisibility();
+
+          if (!isAdminUI && isChatActive) {
+            renderHistory();
+            updateScrollToBottomBtn();
+          }
+        });
         return;
       }
 
@@ -2545,11 +2696,13 @@
       });
     });
     
-    const TEST_UI_STORAGE_KEY = "facilitatio_test_ui_state";
+    const ADMIN_POPOVER_STATE_KEY = "facilitatio_admin_ui_state";
+    const LEGACY_TEST_UI_STORAGE_KEY = "facilitatio_test_ui_state";
     
-    function loadTestUiState() {
+    function loadAdminUiState() {
       try {
-        const parsed = JSON.parse(localStorage.getItem(TEST_UI_STORAGE_KEY) || "{}");
+        const raw = localStorage.getItem(ADMIN_POPOVER_STATE_KEY) || localStorage.getItem(LEGACY_TEST_UI_STORAGE_KEY) || "{}";
+        const parsed = JSON.parse(raw);
         return {
           logsEnabled: parsed.logsEnabled === true,
           comparisonEnabled: parsed.comparisonEnabled === true,
@@ -2566,29 +2719,29 @@
       }
     }
     
-    function saveTestUiState() {
-      localStorage.setItem(TEST_UI_STORAGE_KEY, JSON.stringify({
-        logsEnabled: testUiState.logsEnabled === true,
-        comparisonEnabled: testUiState.comparisonEnabled === true,
-        override1: testUiState.override1 || null,
-        override2: testUiState.override2 || null
+    function saveAdminUiState() {
+      localStorage.setItem(ADMIN_POPOVER_STATE_KEY, JSON.stringify({
+        logsEnabled: adminUiState.logsEnabled === true,
+        comparisonEnabled: adminUiState.comparisonEnabled === true,
+        override1: adminUiState.override1 || null,
+        override2: adminUiState.override2 || null
       }));
     }
     
-    let testUiState = loadTestUiState();
+    let adminUiState = loadAdminUiState();
     
-    function getActiveTestStatusLabel() {
+    function getActiveAdminStatusLabel() {
       const parts = [];
       
-      if (testUiState.override1) {
+      if (adminUiState.override1) {
         parts.push("Override 1");
       }
       
-      if (testUiState.override2) {
+      if (adminUiState.override2) {
         parts.push("2");
       }
       
-      if (testUiState.comparisonEnabled) {
+      if (adminUiState.comparisonEnabled) {
         parts.push("comparaison");
       }
       
@@ -2607,26 +2760,26 @@
       return parts.join(" + ");
     }
     
-    function getActiveTestPayload() {
+    function getActiveAdminPayload() {
       return {
-        override1: testUiState.override1 ? (testUiState.override1.data || null) : null,
-        override2: testUiState.override2 ? (testUiState.override2.data || null) : null,
-        comparisonEnabled: testUiState.comparisonEnabled === true,
-        logsEnabled: testUiState.logsEnabled === true
+        override1: adminUiState.override1 ? (adminUiState.override1.data || null) : null,
+        override2: adminUiState.override2 ? (adminUiState.override2.data || null) : null,
+        comparisonEnabled: adminUiState.comparisonEnabled === true,
+        logsEnabled: adminUiState.logsEnabled === true
       };
     }
     
-    window.getActiveTestPayload = getActiveTestPayload;
+    window.getActiveAdminPayload = getActiveAdminPayload;
     
-    function ensureTestStatusBar() {
-      let bar = document.getElementById("testStatusBar");
+    function ensureAdminStatusBar() {
+      let bar = document.getElementById("adminStatusBar");
       if (bar) return bar;
       
       const inputArea = document.getElementById("inputArea");
       if (!inputArea) return null;
       
       bar = document.createElement("div");
-      bar.id = "testStatusBar";
+      bar.id = "adminStatusBar";
       bar.style.position = "absolute";
       bar.style.left = "14px";
       bar.style.right = "85px";
@@ -2654,8 +2807,8 @@
       return bar;
     }
     
-    function syncTestStatusBarPosition() {
-      const bar = ensureTestStatusBar();
+    function syncAdminStatusBarPosition() {
+      const bar = ensureAdminStatusBar();
       const inputArea = document.getElementById("inputArea");
       const inputAreaInner = document.getElementById("inputAreaInner");
       const editBar = document.getElementById("editModeBar");
@@ -2680,12 +2833,12 @@
       bar.style.bottom = `${bottomOffset}px`;
     }
     
-    function syncTestStatusBar() {
-      const bar = ensureTestStatusBar();
+    function syncAdminStatusBar() {
+      const bar = ensureAdminStatusBar();
       if (!bar) return;
       
-      const label = getActiveTestStatusLabel();
-      syncTestStatusBarPosition();
+      const label = getActiveAdminStatusLabel();
+      syncAdminStatusBarPosition();
       
       if (!label) {
         bar.textContent = "";
@@ -2729,12 +2882,12 @@
       }
     }
     
-    function ensureTestPopover() {
-      let popover = document.getElementById("testPopover");
+    function ensureAdminPopover() {
+      let popover = document.getElementById("adminPopover");
       if (popover) return popover;
       
       popover = document.createElement("div");
-      popover.id = "testPopover";
+      popover.id = "adminPopover";
       popover.style.position = "fixed";
       popover.style.display = "none";
       popover.style.width = "min(320px, calc(100vw - 24px))";
@@ -2754,31 +2907,31 @@
       <div style="display:flex;flex-direction:column;gap:6px;">
         <div style="font-size:13px;line-height:1.3;color:#245e66;font-weight:600;">Override 1</div>
         <div style="display:flex;align-items:center;gap:8px;">
-          <input id="testOverride1Input" type="file" accept=".json,application/json" style="display:none;">
-          <button id="testOverride1Pick" type="button" style="flex:1 1 auto;border:1px solid rgba(36, 94, 102, 0.18);border-radius:10px;padding:9px 10px;background:white;color:#24464b;font:inherit;font-size:12px;text-align:left;cursor:pointer;min-width:0;">Choisir un fichier</button>
-          <button id="testOverride1Clear" type="button" style="flex:0 0 auto;border:none;border-radius:10px;padding:7px 10px;background:rgba(36, 94, 102, 0.10);color:#245e66;font-size:12px;font-weight:600;cursor:pointer;display:none;">Effacer</button>
+          <input id="adminOverride1Input" type="file" accept=".json,application/json" style="display:none;">
+          <button id="adminOverride1Pick" type="button" style="flex:1 1 auto;border:1px solid rgba(36, 94, 102, 0.18);border-radius:10px;padding:9px 10px;background:white;color:#24464b;font:inherit;font-size:12px;text-align:left;cursor:pointer;min-width:0;">Choisir un fichier</button>
+          <button id="adminOverride1Clear" type="button" style="flex:0 0 auto;border:none;border-radius:10px;padding:7px 10px;background:rgba(36, 94, 102, 0.10);color:#245e66;font-size:12px;font-weight:600;cursor:pointer;display:none;">Effacer</button>
         </div>
-        <div id="testOverride1Name" style="display:none;font-size:11px;color:#5f7478;"></div>
+        <div id="adminOverride1Name" style="display:none;font-size:11px;color:#5f7478;"></div>
       </div>
       
       <div style="display:flex;flex-direction:column;gap:6px;">
         <div style="font-size:13px;line-height:1.3;color:#245e66;font-weight:600;">Override 2</div>
         <div style="display:flex;align-items:center;gap:8px;">
-          <input id="testOverride2Input" type="file" accept=".json,application/json" style="display:none;">
-          <button id="testOverride2Pick" type="button" style="flex:1 1 auto;border:1px solid rgba(36, 94, 102, 0.18);border-radius:10px;padding:9px 10px;background:white;color:#24464b;font:inherit;font-size:12px;text-align:left;cursor:pointer;min-width:0;">Choisir un fichier</button>
-          <button id="testOverride2Clear" type="button" style="flex:0 0 auto;border:none;border-radius:10px;padding:7px 10px;background:rgba(36, 94, 102, 0.10);color:#245e66;font-size:12px;font-weight:600;cursor:pointer;display:none;">Effacer</button>
+          <input id="adminOverride2Input" type="file" accept=".json,application/json" style="display:none;">
+          <button id="adminOverride2Pick" type="button" style="flex:1 1 auto;border:1px solid rgba(36, 94, 102, 0.18);border-radius:10px;padding:9px 10px;background:white;color:#24464b;font:inherit;font-size:12px;text-align:left;cursor:pointer;min-width:0;">Choisir un fichier</button>
+          <button id="adminOverride2Clear" type="button" style="flex:0 0 auto;border:none;border-radius:10px;padding:7px 10px;background:rgba(36, 94, 102, 0.10);color:#245e66;font-size:12px;font-weight:600;cursor:pointer;display:none;">Effacer</button>
         </div>
-        <div id="testOverride2Name" style="display:none;font-size:11px;color:#5f7478;"></div>
+        <div id="adminOverride2Name" style="display:none;font-size:11px;color:#5f7478;"></div>
       </div>
       
       <label style="display:flex;justify-content:space-between;font-size:13px;color:#245e66;font-weight:600;">
         <span>Comparaison</span>
-        <input id="testComparisonToggle" type="checkbox">
+        <input id="adminComparisonToggle" type="checkbox">
       </label>
       
       <label style="display:flex;justify-content:space-between;font-size:13px;color:#245e66;font-weight:600;">
         <span>Logs</span>
-        <input id="testLogsToggle" type="checkbox">
+        <input id="adminLogsToggle" type="checkbox">
       </label>
       
     </div>
@@ -2786,16 +2939,16 @@
       
       document.body.appendChild(popover);
       
-      const override1Input = popover.querySelector("#testOverride1Input");
-      const override2Input = popover.querySelector("#testOverride2Input");
-      const override1Pick = popover.querySelector("#testOverride1Pick");
-      const override2Pick = popover.querySelector("#testOverride2Pick");
-      const override1Clear = popover.querySelector("#testOverride1Clear");
-      const override2Clear = popover.querySelector("#testOverride2Clear");
-      const override1Name = popover.querySelector("#testOverride1Name");
-      const override2Name = popover.querySelector("#testOverride2Name");
-      const comparisonToggle = popover.querySelector("#testComparisonToggle");
-      const logsToggle = popover.querySelector("#testLogsToggle");
+      const override1Input = popover.querySelector("#adminOverride1Input");
+      const override2Input = popover.querySelector("#adminOverride2Input");
+      const override1Pick = popover.querySelector("#adminOverride1Pick");
+      const override2Pick = popover.querySelector("#adminOverride2Pick");
+      const override1Clear = popover.querySelector("#adminOverride1Clear");
+      const override2Clear = popover.querySelector("#adminOverride2Clear");
+      const override1Name = popover.querySelector("#adminOverride1Name");
+      const override2Name = popover.querySelector("#adminOverride2Name");
+      const comparisonToggle = popover.querySelector("#adminComparisonToggle");
+      const logsToggle = popover.querySelector("#adminLogsToggle");
       
       function setLoadedFileName(targetEl, overrideState) {
         const label = overrideState?.name?.trim();
@@ -2810,29 +2963,56 @@
       }
       
       function refreshPopoverFields() {
-        comparisonToggle.checked = testUiState.comparisonEnabled === true;
-        logsToggle.checked = testUiState.logsEnabled === true;
+        const hasOverride1 = Boolean(adminUiState.override1);
+
+        if (!hasOverride1 && adminUiState.override2) {
+          adminUiState.override2 = null;
+          override2Input.value = "";
+        }
+
+        comparisonToggle.checked = adminUiState.comparisonEnabled === true;
+        logsToggle.checked = adminUiState.logsEnabled === true;
         
-        override1Clear.style.display = testUiState.override1 ? "inline-flex" : "none";
-        override2Clear.style.display = testUiState.override2 ? "inline-flex" : "none";
+        override1Clear.style.display = adminUiState.override1 ? "inline-flex" : "none";
+        override2Clear.style.display = adminUiState.override2 ? "inline-flex" : "none";
+
+        override2Pick.disabled = !hasOverride1;
+        override2Input.disabled = !hasOverride1;
+        override2Pick.style.opacity = hasOverride1 ? "1" : "0.55";
+        override2Pick.style.cursor = hasOverride1 ? "pointer" : "not-allowed";
         
-        setLoadedFileName(override1Name, testUiState.override1);
-        setLoadedFileName(override2Name, testUiState.override2);
+        setLoadedFileName(override1Name, adminUiState.override1);
+        setLoadedFileName(override2Name, adminUiState.override2);
       }
       
-      function refreshTestUi(options = {}) {
+      function refreshAdminUi(options = {}) {
         const {
           rerenderHistory = false
         } = options;
         
-        saveTestUiState();
+        saveAdminUiState();
         refreshPopoverFields();
         syncDebugVisibility();
-        syncTestStatusBar();
-        syncTestStatusBarPosition();
+        syncAdminStatusBar();
+        syncAdminStatusBarPosition();
         
         if (rerenderHistory) {
           renderHistory();
+        }
+      }
+
+      async function parseOverrideFile(file) {
+        try {
+          const raw = await file.text();
+          return {
+            ok: true,
+            data: JSON.parse(raw)
+          };
+        } catch {
+          return {
+            ok: false,
+            data: null
+          };
         }
       }
       
@@ -2841,45 +3021,68 @@
       });
       
       override2Pick.addEventListener("click", () => {
+        if (!adminUiState.override1) {
+          alert("Charge d'abord un fichier Override 1.");
+          return;
+        }
         override2Input.click();
       });
       
       override1Input.addEventListener("change", async e => {
         const file = e.target.files && e.target.files[0];
         if (!file) return;
-        const data = JSON.parse(await file.text());
-        testUiState.override1 = { name: file.name, data };
-        refreshTestUi();
+        const parsed = await parseOverrideFile(file);
+        if (!parsed.ok) {
+          alert("Le fichier Override 1 n'est pas un JSON valide.");
+          override1Input.value = "";
+          return;
+        }
+        const data = parsed.data;
+        adminUiState.override1 = { name: file.name, data };
+        refreshAdminUi();
       });
       
       override2Input.addEventListener("change", async e => {
         const file = e.target.files && e.target.files[0];
         if (!file) return;
-        const data = JSON.parse(await file.text());
-        testUiState.override2 = { name: file.name, data };
-        refreshTestUi();
+        if (!adminUiState.override1) {
+          alert("Charge d'abord un fichier Override 1.");
+          override2Input.value = "";
+          return;
+        }
+        const parsed = await parseOverrideFile(file);
+        if (!parsed.ok) {
+          alert("Le fichier Override 2 n'est pas un JSON valide.");
+          override2Input.value = "";
+          return;
+        }
+        const data = parsed.data;
+        adminUiState.override2 = { name: file.name, data };
+        refreshAdminUi();
       });
       
       override1Clear.addEventListener("click", () => {
-        testUiState.override1 = null;
+        adminUiState.override1 = null;
+        adminUiState.override2 = null;
         override1Input.value = "";
-        refreshTestUi();
+        override2Input.value = "";
+        refreshAdminUi();
       });
       
       override2Clear.addEventListener("click", () => {
-        testUiState.override2 = null;
+        adminUiState.override2 = null;
         override2Input.value = "";
-        refreshTestUi();
+        refreshAdminUi();
       });
       
       comparisonToggle.addEventListener("change", () => {
-        testUiState.comparisonEnabled = comparisonToggle.checked;
-        refreshTestUi();
+        adminUiState.comparisonEnabled = comparisonToggle.checked;
+        refreshAdminUi();
       });
       
       logsToggle.addEventListener("change", () => {
-        testUiState.logsEnabled = logsToggle.checked;
-        refreshTestUi({ rerenderHistory: true });
+        adminUiState.logsEnabled = logsToggle.checked;
+        refreshAdminUi({ rerenderHistory: true });
       });
       
       popover._refreshFields = refreshPopoverFields;
@@ -2888,8 +3091,8 @@
       return popover;
     }
     
-    function positionTestPopover() {
-      const popover = ensureTestPopover();
+    function positionAdminPopover() {
+      const popover = ensureAdminPopover();
       const button = document.getElementById("debugToggleBtn");
       
       if (!popover || !button) return;
@@ -2904,82 +3107,82 @@
       popover.style.top = `${Math.max(12, top)}px`;
     }
     
-    function closeTestPopover() {
-      const popover = document.getElementById("testPopover");
+    function closeAdminPopover() {
+      const popover = document.getElementById("adminPopover");
       if (!popover) return;
       popover.style.display = "none";
     }
     
-    function openTestPopover() {
-      const popover = ensureTestPopover();
+    function openAdminPopover() {
+      const popover = ensureAdminPopover();
       if (!popover) return;
       
       popover._refreshFields && popover._refreshFields();
       popover.style.display = "block";
-      positionTestPopover();
+      positionAdminPopover();
     }
     
-    function toggleTestPopover() {
-      const popover = ensureTestPopover();
+    function toggleAdminPopover() {
+      const popover = ensureAdminPopover();
       if (!popover) return;
       
       if (popover.style.display === "block") {
-        closeTestPopover();
+        closeAdminPopover();
         return;
       }
       
-      openTestPopover();
+      openAdminPopover();
     }
     
     document.addEventListener("click", event => {
-      const popover = document.getElementById("testPopover");
+      const popover = document.getElementById("adminPopover");
       const button = document.getElementById("debugToggleBtn");
       
       if (!popover || popover.style.display !== "block") return;
       if (popover.contains(event.target)) return;
       if (button && button.contains(event.target)) return;
       
-      closeTestPopover();
+      closeAdminPopover();
     });
     
     window.addEventListener("resize", () => {
-      positionTestPopover();
-      syncTestStatusBarPosition();
+      positionAdminPopover();
+      syncAdminStatusBarPosition();
     });
     
     if (window.visualViewport) {
       window.visualViewport.addEventListener("resize", () => {
-        positionTestPopover();
-        syncTestStatusBarPosition();
+        positionAdminPopover();
+        syncAdminStatusBarPosition();
       });
       
       window.visualViewport.addEventListener("scroll", () => {
-        positionTestPopover();
-        syncTestStatusBarPosition();
+        positionAdminPopover();
+        syncAdminStatusBarPosition();
       });
     }
     
     function syncDebugVisibility() {
-      const isAdminUI = localStorage.getItem(ADMIN_UI_KEY) === "1";
+      const isAdminUI = document.body.classList.contains("admin-ui");
       const debugBtn = document.getElementById("debugToggleBtn");
       const chatScreen = document.getElementById("chatScreen");
       const isChatActive = chatScreen.classList.contains("active");
       
-      showDebug = testUiState.logsEnabled === true;
+      showDebug = adminUiState.logsEnabled === true;
       
       if (!debugBtn) return;
       
       debugBtn.style.display = isAdminUI && isChatActive ? "block" : "none";
       
       if (!(isAdminUI && isChatActive)) {
-        debugBtn.textContent = "test";
+        debugBtn.textContent = "admin";
         document.body.classList.toggle("show-debug", false);
-        closeTestPopover();
-        syncTestStatusBar();
+        closeAdminPopover();
+        syncAdminStatusBar();
         return;
       }
       
-      debugBtn.textContent = "test";
+      debugBtn.textContent = "admin";
       debugBtn.style.width = "36px";
       debugBtn.style.height = "36px";
       debugBtn.style.minWidth = "36px";
@@ -2996,11 +3199,11 @@
       debugBtn.onclick = event => {
         event.preventDefault();
         event.stopPropagation();
-        toggleTestPopover();
+        toggleAdminPopover();
       };
       
       document.body.classList.toggle("show-debug", showDebug);
-      syncTestStatusBar();
+      syncAdminStatusBar();
     }
     
     function isChatAtBottom() {
@@ -3195,10 +3398,10 @@
     }
     
     /**
-     * Rendu progressif + Markdown sécurisé pour les bulles bot.
-     * – On conserve toute la logique d’origine (scroll-lock, stop-line,
+     * Rendu progressif + Markdown sÃƒÂ©curisÃƒÂ© pour les bulles bot.
+     * Ã¢â‚¬â€œ On conserve toute la logique dÃ¢â‚¬â„¢origine (scroll-lock, stop-line,
      *   interruption utilisateur, reveal instant, etc.)
-     * – À la fin (ou en cas d’interruption) on remplace silencieusement
+     * Ã¢â‚¬â€œ Ãƒâ‚¬ la fin (ou en cas dÃ¢â‚¬â„¢interruption) on remplace silencieusement
      *   le texte brut par la version HTML issue de `safeMarkdownToHtml`.
      */
     function renderBotMessageContent(bubble, text, options = {}) {
@@ -3243,12 +3446,12 @@
       
       const wheelListenerOpts = { passive: true };
       
-      const EXTRA_MARGIN = 12; // px de marge souhaitée
+      const EXTRA_MARGIN = 12; // px de marge souhaitÃƒÂ©e
       
       function getStopLineY() {
         if (!topBar) return null;
         const { bottom } = topBar.getBoundingClientRect();
-        return bottom + EXTRA_MARGIN; // décale la ligne d’arrêt
+        return bottom + EXTRA_MARGIN; // dÃƒÂ©cale la ligne dÃ¢â‚¬â„¢arrÃƒÂªt
       }
       
       function hasBubbleReachedReadingPosition() {
@@ -3419,7 +3622,7 @@
       closeBtn.type = "button";
       closeBtn.id = "editModeBarClose";
       closeBtn.setAttribute("aria-label", "Annuler la modification");
-      closeBtn.textContent = "×";
+      closeBtn.textContent = "\u00d7";
       closeBtn.style.width = "28px";
       closeBtn.style.height = "28px";
       closeBtn.style.minWidth = "28px";
@@ -3516,8 +3719,8 @@
     /* ---------- MARKDOWN SAFE RENDER ---------- */
     
     /**
-     * Retourne l’instance (singleton) du parser markdown-it
-     * avec les règles non autorisées désactivées.
+     * Retourne lÃ¢â‚¬â„¢instance (singleton) du parser markdown-it
+     * avec les rÃƒÂ¨gles non autorisÃƒÂ©es dÃƒÂ©sactivÃƒÂ©es.
      */
     function getMd() {
       if (window.__md) return window.__md;
@@ -3528,7 +3731,7 @@
           breaks: true, // \n => <br>
           linkify: true // auto-link
         })
-        // désactive code & html
+        // dÃƒÂ©sactive code & html
         .disable(['code', 'fence', 'html_inline', 'html_block']);
       
       window.__md = md;
@@ -3536,10 +3739,10 @@
     }
     
     /**
-     * Convertit du Markdown « intermédiaire » en HTML puis
-     * passe le résultat dans DOMPurify :
-     *   – seules les balises whitelistées subsistent
-     *   – tous les attributs sont filtrés sauf href des <a>
+     * Convertit du Markdown Ã‚Â« intermÃƒÂ©diaire Ã‚Â» en HTML puis
+     * passe le rÃƒÂ©sultat dans DOMPurify :
+     *   Ã¢â‚¬â€œ seules les balises whitelisteÃŒÂes subsistent
+     *   Ã¢â‚¬â€œ tous les attributs sont filtrÃƒÂ©s sauf href des <a>
      */
     function safeMarkdownToHtml(rawText = '') {
       const dirty = getMd().render(String(rawText));
@@ -3555,7 +3758,7 @@
     }
     
     /**
-     * Transforme les liens pour qu’ils s’ouvrent
+     * Transforme les liens pour quÃ¢â‚¬â„¢ils sÃ¢â‚¬â„¢ouvrent
      * dans le navigateur externe.
      */
     function fixLinks(containerEl) {
@@ -3588,7 +3791,7 @@
       let compareLabel = "";
       
       if (role === "bot") {
-        const match = rawText.match(/^\[(Référence|Override 1|Override 1 \+ 2)\]\n\n([\s\S]*)$/);
+        const match = rawText.match(/^\[(R\u00e9f\u00e9rence|Override 1|Override 1 \+ 2)\]\n\n([\s\S]*)$/);
         if (match) {
           compareLabel = match[1];
           displayText = match[2];
@@ -3703,7 +3906,7 @@
         compareTag.style.marginBottom = "6px";
         compareTag.style.opacity = "0.7";
         
-        if (compareLabel === "Référence") {
+        if (compareLabel === "R\u00e9f\u00e9rence") {
           compareTag.style.color = "#245e66";
         } else if (compareLabel === "Override 1") {
           compareTag.style.color = "#7a3fd1";
@@ -3738,7 +3941,7 @@
         bubble.style.webkitUserSelect = "none";
         bubble.style.userSelect = "none";
         
-        if (compareLabel === "Référence") {
+        if (compareLabel === "R\u00e9f\u00e9rence") {
           bubble.style.border = "1px solid rgba(36,94,102,0.2)";
         } else if (compareLabel === "Override 1") {
           bubble.style.border = "1px solid rgba(122,63,209,0.3)";
@@ -3768,7 +3971,7 @@
         copyUserBtn.type = "button";
         copyUserBtn.setAttribute("aria-label", "Copier le message");
         copyUserBtn.title = "Copier";
-        copyUserBtn.textContent = "⎘";
+        copyUserBtn.textContent = "\u2398";
         copyUserBtn.style.position = "absolute";
         copyUserBtn.style.top = "6px";
         copyUserBtn.style.right = "8px";
@@ -3901,7 +4104,7 @@
         copyBotBtn.type = "button";
         copyBotBtn.setAttribute("aria-label", "Copier la reponse");
         copyBotBtn.title = "Copier";
-        copyBotBtn.textContent = "⎘";
+        copyBotBtn.textContent = "\u2398";
         copyBotBtn.style.border = "none";
         copyBotBtn.style.background = "transparent";
         copyBotBtn.style.color = "#245e66";
@@ -3933,7 +4136,7 @@
           
           const memSum = document.createElement("summary");
           memSum.className = "debug-chip";
-          memSum.textContent = "Mémoire";
+          memSum.textContent = "M\u00e9moire";
           
           const memContent = document.createElement("div");
           memContent.className = "debug-block";
@@ -3949,7 +4152,7 @@
           
           const dirSum = document.createElement("summary");
           dirSum.className = "debug-chip";
-          dirSum.textContent = "Directivité";
+          dirSum.textContent = "Directivit\u00e9";
           
           const dirContent = document.createElement("div");
           dirContent.className = "debug-block";
@@ -3965,7 +4168,7 @@
           
           const confSum = document.createElement("summary");
           confSum.className = "debug-chip";
-          confSum.textContent = "Conflit modèle - réponse";
+          confSum.textContent = "Conflit mod\u00e8le - r\u00e9ponse";
           
           const confContent = document.createElement("div");
           confContent.className = "debug-block";
@@ -3981,7 +4184,7 @@
           
           const memConfSum = document.createElement("summary");
           memConfSum.className = "debug-chip";
-          memConfSum.textContent = "Conflit modèle - mémoire";
+          memConfSum.textContent = "Conflit mod\u00e8le - m\u00e9moire";
           
           const memConfContent = document.createElement("div");
           memConfContent.className = "debug-block";
@@ -4158,6 +4361,20 @@
         flags: loadFlags()
       };
     }
+
+    async function parseAppJsonResponseSafely(res) {
+      const contentType = String(res?.headers?.get("content-type") || "").toLowerCase();
+
+      if (!contentType.includes("application/json")) {
+        return null;
+      }
+
+      try {
+        return await res.json();
+      } catch {
+        return null;
+      }
+    }
     
     async function closeSessionBackend() {
       const payload = buildSessionPayloadForClose();
@@ -4168,9 +4385,13 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload)
         });
-        
-        const data = await res.json();
-        
+
+        const data = await parseAppJsonResponseSafely(res);
+
+        if (!res.ok || !data) {
+          return;
+        }
+
         if (data && data.memory) {
           saveMemory(data.memory);
         }
@@ -4488,12 +4709,12 @@
         const titleRes = await fetch(`/api/conversations/${encodeURIComponent(conversationId)}/title`, {
           cache: "no-store"
         });
+        const titleData = await parseAppJsonResponseSafely(titleRes);
         
-        if (!titleRes.ok) {
+        if (!titleRes.ok || !titleData) {
           return;
         }
-        
-        const titleData = await titleRes.json();
+
         const serverTitle = String(titleData.title || "").trim();
         
         if (serverTitle) {
@@ -4531,8 +4752,8 @@
       const conversationIdBeforeSend = getConversationId();
       const wasAtBottom = isEditing ? true : isChatAtBottom();
       const restoredDraft = isEditing ? draftBeforeEdit : "";
-      const testPayload = typeof getActiveTestPayload === "function" ?
-        getActiveTestPayload() :
+      const adminPayload = typeof getActiveAdminPayload === "function" ?
+        getActiveAdminPayload() :
         {
           override1: null,
           override2: null,
@@ -4621,7 +4842,7 @@
       }
       
       const shouldAutoScrollReply =
-        testPayload.comparisonEnabled === true ?
+        adminPayload.comparisonEnabled === true ?
         false :
         (isEditing || wasAtBottom || isChatAtBottom());
       
@@ -4684,11 +4905,11 @@
             conversationId: requestConversationId,
             recentHistory: loadHistory().map(({ role, content }) => ({ role, content })).slice(-MAX_RECENT_TURNS),
             memory: loadMemory(),
-            flags: loadFlags(),
-            override1: testPayload.override1,
-            override2: testPayload.override2,
-            comparisonEnabled: testPayload.comparisonEnabled === true,
-            logsEnabled: testPayload.logsEnabled === true
+            flags: normalizeStoredFlags(loadFlags()),
+            override1: adminPayload.override1,
+            override2: adminPayload.override2,
+            comparisonEnabled: adminPayload.comparisonEnabled === true,
+            logsEnabled: adminPayload.logsEnabled === true
           })
         });
 
@@ -4710,7 +4931,7 @@
             document.querySelector(".screen.active")?.id === requestScreenId &&
             requestScreenId === "chatScreen"
           ) {
-            addMessage("bot", "Je n'ai pas pu te répondre. Vérifie ta connexion réseau.", [], {
+            addMessage("bot", "Je n'ai pas pu te r\u00e9pondre. V\u00e9rifie ta connexion r\u00e9seau.", [], {
               shouldAutoScroll: wasAtBottom || isEditing,
               pulseScrollButton: !wasAtBottom && !isEditing
             });
@@ -4822,7 +5043,7 @@
           document.querySelector(".screen.active")?.id === requestScreenId &&
           requestScreenId === "chatScreen"
         ) {
-          addMessage("bot", "Je n'ai pas pu te répondre. Vérifie ta connexion réseau.", [], {
+          addMessage("bot", "Je n'ai pas pu te r\u00e9pondre. V\u00e9rifie ta connexion r\u00e9seau.", [], {
             shouldAutoScroll: shouldAutoScrollReply,
             pulseScrollButton: !shouldAutoScrollReply
           });
@@ -5137,7 +5358,7 @@
       debugToggleBtn.onclick = event => {
         event.preventDefault();
         event.stopPropagation();
-        toggleTestPopover();
+        toggleAdminPopover();
       };
     }
     
@@ -5311,7 +5532,7 @@
         syncKeyboardOffset();
         syncChatBottomInset();
         syncEditModeBarPosition();
-        syncTestStatusBarPosition();
+        syncAdminStatusBarPosition();
         
         if (isChatActive && (keepBottom || wasAtBottomBeforeLayout)) {
           ensureChatVisibleAboveKeyboard(true);
@@ -5321,7 +5542,7 @@
           syncKeyboardOffset();
           syncChatBottomInset();
           syncEditModeBarPosition();
-          syncTestStatusBarPosition();
+          syncAdminStatusBarPosition();
           
           if (isChatActive && (keepBottom || wasAtBottomBeforeLayout)) {
             ensureChatVisibleAboveKeyboard(true);
@@ -5336,7 +5557,7 @@
           syncKeyboardOffset();
           syncChatBottomInset();
           syncEditModeBarPosition();
-          syncTestStatusBarPosition();
+          syncAdminStatusBarPosition();
           
           if (options.keepBottom) {
             ensureChatVisibleAboveKeyboard(true);
@@ -5347,7 +5568,7 @@
           syncKeyboardOffset();
           syncChatBottomInset();
           syncEditModeBarPosition();
-          syncTestStatusBarPosition();
+          syncAdminStatusBarPosition();
           
           if (options.keepBottom) {
             ensureChatVisibleAboveKeyboard(true);
@@ -5358,7 +5579,7 @@
           syncKeyboardOffset();
           syncChatBottomInset();
           syncEditModeBarPosition();
-          syncTestStatusBarPosition();
+          syncAdminStatusBarPosition();
           
           if (options.keepBottom) {
             ensureChatVisibleAboveKeyboard(true);
@@ -5372,13 +5593,13 @@
         syncKeyboardOffset();
         syncChatBottomInset();
         syncEditModeBarPosition();
-        syncTestStatusBarPosition();
+        syncAdminStatusBarPosition();
         
         requestAnimationFrame(() => {
           syncKeyboardOffset();
           syncChatBottomInset();
           syncEditModeBarPosition();
-          syncTestStatusBarPosition();
+          syncAdminStatusBarPosition();
           
           if (wasAtBottomBeforeLayout) {
             ensureChatVisibleAboveKeyboard(true);
@@ -5618,20 +5839,10 @@
       });
     }
     
-    window.addEventListener("load", () => {
-      const params = new URLSearchParams(window.location.search);
-      
-      if (params.get("admin") === "1") {
-        localStorage.setItem(ADMIN_UI_KEY, "1");
-      }
-      if (params.get("admin") === "0") {
-        localStorage.removeItem(ADMIN_UI_KEY);
-      }
-      
-      const isAdminUI = localStorage.getItem(ADMIN_UI_KEY) === "1";
+    window.addEventListener("load", async () => {
+      const isAdminUI = await syncAdminUiFromSession();
       const shouldSkipWelcomeAnimation = isAdminUI;
       
-      document.body.classList.toggle("admin-ui", isAdminUI);
       syncDebugVisibility();
       ensureScrollToBottomBtn();
       updateScrollToBottomBtn();
@@ -6071,3 +6282,5 @@
 </body>
 
 </html>
+
+

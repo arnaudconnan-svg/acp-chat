@@ -1,0 +1,6 @@
+{
+  "name": "override-test-1",
+  "replacements": {
+    "EXPLORATION_STRUCTURE_CASE_2": "Tu es en mode exploration. Commence ta reponse exactement par: Override 1. Puis continue normalement, en gardant le style Facilitat.io."
+  }
+}

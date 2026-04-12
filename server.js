@@ -30,6 +30,7 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 const SESSION_SECRET = process.env.SESSION_SECRET;
 const adminSessions = new Map(); // sessionId -> { isAdmin: true, createdAt }
 const ADMIN_SESSION_DURATION = 24 * 60 * 60 * 1000; // 24h
+const ADMIN_SESSION_SIGNING_SECRET = process.env.ADMIN_SESSION_SECRET || SESSION_SECRET || ADMIN_PASSWORD || "dev-admin-session-secret";
 
 const fs = require("fs");
 const path = require("path");
@@ -98,6 +99,19 @@ app.use(express.static("public", {
 
 app.use(express.json());
 
+app.use((err, req, res, next) => {
+  if (err instanceof SyntaxError && err.status === 400 && "body" in err) {
+    console.warn("[HTTP][INVALID_JSON]", {
+      method: req.method,
+      path: req.originalUrl
+    });
+
+    return res.status(400).json({ error: "Invalid JSON payload" });
+  }
+
+  return next(err);
+});
+
 const MAX_RECENT_TURNS = 8;
 const MAX_INFO_ANALYSIS_TURNS = 6;
 const MAX_SUICIDE_ANALYSIS_TURNS = 10;
@@ -120,6 +134,64 @@ function disableAdminUI() {
 
 function generateSessionId() {
   return crypto.randomBytes(24).toString("hex");
+}
+
+function signAdminSessionPayload(payload) {
+  return crypto
+    .createHmac("sha256", ADMIN_SESSION_SIGNING_SECRET)
+    .update(payload)
+    .digest("hex");
+}
+
+function buildAdminSessionToken(createdAt = Date.now()) {
+  const payload = String(createdAt);
+  const signature = signAdminSessionPayload(payload);
+  return `${payload}.${signature}`;
+}
+
+function parseAndValidateAdminSessionToken(token) {
+  if (typeof token !== "string" || !token.includes(".")) {
+    return null;
+  }
+
+  const parts = token.split(".");
+  if (parts.length !== 2) {
+    return null;
+  }
+
+  const payload = String(parts[0] || "").trim();
+  const signature = String(parts[1] || "").trim();
+
+  if (!payload || !signature) {
+    return null;
+  }
+
+  const expectedSignature = signAdminSessionPayload(payload);
+
+  const signatureBuffer = Buffer.from(signature, "utf8");
+  const expectedBuffer = Buffer.from(expectedSignature, "utf8");
+
+  if (signatureBuffer.length !== expectedBuffer.length) {
+    return null;
+  }
+
+  if (!crypto.timingSafeEqual(signatureBuffer, expectedBuffer)) {
+    return null;
+  }
+
+  const createdAt = Number(payload);
+  if (!Number.isFinite(createdAt) || createdAt <= 0) {
+    return null;
+  }
+
+  if (Date.now() - createdAt > ADMIN_SESSION_DURATION) {
+    return null;
+  }
+
+  return {
+    isAdmin: true,
+    createdAt
+  };
 }
 
 function parseCookies(req) {
@@ -151,7 +223,16 @@ function getAdminSession(req) {
   if (!sessionId) return null;
   
   const session = adminSessions.get(sessionId);
-  if (!session) return null;
+  if (!session) {
+    const tokenSession = parseAndValidateAdminSessionToken(sessionId);
+
+    if (!tokenSession) {
+      return null;
+    }
+
+    adminSessions.set(sessionId, tokenSession);
+    return tokenSession;
+  }
   
   // expiration
   if (Date.now() - session.createdAt > ADMIN_SESSION_DURATION) {
@@ -2723,9 +2804,41 @@ async function generateReply({
 // 8) SESSION CLOSE
 // --------------------------------------------------
 
+function validateSessionCloseRequestShape(body = {}) {
+  const issues = [];
+
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    issues.push("body_not_object");
+    return issues;
+  }
+
+  if (body.memory !== undefined && typeof body.memory !== "string") {
+    issues.push("memory_not_string");
+  }
+
+  if (body.flags !== undefined && (typeof body.flags !== "object" || body.flags === null || Array.isArray(body.flags))) {
+    issues.push("flags_not_object");
+  }
+
+  return issues;
+}
+
 // Reset session flags and return the normalized memory/flags state when the session ends.
 app.post("/session/close", async (req, res) => {
   try {
+    const requestIssues = validateSessionCloseRequestShape(req.body);
+
+    if (requestIssues.length > 0) {
+      console.warn("[SESSION_CLOSE][REQUEST_SHAPE]", {
+        issues: requestIssues
+      });
+
+      return res.status(400).json({
+        error: "Invalid session close request",
+        issues: requestIssues
+      });
+    }
+
     const promptRegistry = buildDefaultPromptRegistry();
     const previousMemory = normalizeMemory(req.body?.memory, promptRegistry);
     const flags = normalizeSessionFlags(req.body?.flags);
@@ -2898,14 +3011,23 @@ async function generateConversationTitle(messages) {
 // --------------------------------------------------
 
 // Admin login route that creates a time-limited session cookie.
+app.get("/api/admin/session", (req, res) => {
+  const session = getAdminSession(req);
+  res.json({ authenticated: !!session });
+});
+
 app.post("/api/admin/login", (req, res) => {
+  if (!req.body || typeof req.body !== "object" || Array.isArray(req.body) || typeof req.body.password !== "string") {
+    return res.status(400).json({ error: "Invalid admin login request" });
+  }
+
   const { password } = req.body;
   
   if (!password || password !== ADMIN_PASSWORD) {
     return res.status(401).json({ error: "Unauthorized" });
   }
   
-  const sessionId = generateSessionId();
+  const sessionId = buildAdminSessionToken();
   
   adminSessions.set(sessionId, {
     isAdmin: true,
@@ -2914,7 +3036,7 @@ app.post("/api/admin/login", (req, res) => {
   
   res.setHeader(
     "Set-Cookie",
-    `adminSessionId=${sessionId}; HttpOnly; Path=/; SameSite=Lax`
+    `adminSessionId=${sessionId}; HttpOnly; Path=/; SameSite=Lax; Max-Age=${Math.floor(ADMIN_SESSION_DURATION / 1000)}`
   );
   
   res.json({ success: true });
@@ -2940,8 +3062,18 @@ app.post("/api/admin/logout", (req, res) => {
 // Admin route to set or remove a human-readable label for a user.
 app.post("/api/admin/user-label", requireAdminAuth, async (req, res) => {
   try {
-    const userId = String(req.body?.userId || "").trim();
-    const label = String(req.body?.label || "").trim();
+    if (
+      !req.body ||
+      typeof req.body !== "object" ||
+      Array.isArray(req.body) ||
+      typeof req.body.userId !== "string" ||
+      (req.body.label !== undefined && typeof req.body.label !== "string")
+    ) {
+      return res.status(400).json({ error: "Invalid user label request" });
+    }
+
+    const userId = req.body.userId.trim();
+    const label = typeof req.body.label === "string" ? req.body.label.trim() : "";
     
     if (!userId) {
       return res.status(400).json({ error: "Missing userId" });
@@ -2964,8 +3096,16 @@ app.post("/api/admin/user-label", requireAdminAuth, async (req, res) => {
 // Route to manually set the title of a conversation and lock it.
 app.post("/api/conversations/:id/title", async (req, res) => {
   try {
+    if (!req.params || typeof req.params.id !== "string" || !req.params.id.trim()) {
+      return res.status(400).json({ error: "Conversation invalide" });
+    }
+
+    if (!req.body || typeof req.body !== "object" || Array.isArray(req.body) || typeof req.body.title !== "string") {
+      return res.status(400).json({ error: "Invalid conversation title request" });
+    }
+
     const conversationId = req.params.id;
-    const title = String(req.body?.title || "").trim();
+    const title = req.body.title.trim();
     
     if (!title) {
       return res.status(400).json({ error: "Titre vide" });
@@ -2988,6 +3128,10 @@ app.post("/api/conversations/:id/title", async (req, res) => {
 // Return the title and metadata for a given conversation.
 app.get("/api/conversations/:id/title", async (req, res) => {
   try {
+    if (!req.params || typeof req.params.id !== "string" || !req.params.id.trim()) {
+      return res.status(400).json({ error: "Conversation invalide" });
+    }
+
     const conversationId = req.params.id;
     const snapshot = await db.ref("conversations").child(conversationId).once("value");
     const data = snapshot.val() || null;
@@ -3043,13 +3187,18 @@ app.get("/api/admin/conversations", requireAdminAuth, async (req, res) => {
     
     res.json(conversations);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("Erreur conversations admin:", err);
+    res.status(500).json({ error: "Erreur serveur" });
   }
 });
 
 // Admin route to fetch all messages for a specific conversation.
 app.get("/api/admin/conversations/:id/messages", requireAdminAuth, async (req, res) => {
   try {
+    if (!req.params || typeof req.params.id !== "string" || !req.params.id.trim()) {
+      return res.status(400).json({ error: "Conversation invalide" });
+    }
+
     const conversationId = req.params.id;
     
     const [messagesSnap, labelsSnap] = await Promise.all([
@@ -3209,11 +3358,28 @@ app.post("/chat", async (req, res) => {
     chatStageMarkTime = now;
     chatLastStage = stage;
   }
+
+  function logChatDecision(event, payload = {}) {
+    if (!logsEnabledForCatch) {
+      return;
+    }
+
+    console.log("[CHAT][DECISION]", {
+      conversationId: conversationIdForCatch,
+      event,
+      ...payload
+    });
+  }
   
   const requestIssues = validateChatRequestShape(req.body);
   if (requestIssues.length > 0) {
     console.warn("[CHAT][REQUEST_SHAPE]", {
       conversationId: requestData.conversationId,
+      issues: requestIssues
+    });
+    
+    return res.status(400).json({
+      error: "Invalid chat request",
       issues: requestIssues
     });
   }
@@ -3226,6 +3392,43 @@ app.post("/chat", async (req, res) => {
   let previousMemoryForCatch = normalizeMemory("", basePromptRegistryForCatch);
   let flagsForCatch = normalizeSessionFlags({});
   let promptRegistryForCatch = basePromptRegistryForCatch;
+  let conversationIdForCatch = requestData.conversationId;
+  let userIdForCatch = requestData.userId || "u_anon";
+  let convRefForCatch = requestData.convRef;
+  let isEditedForCatch = requestData.isEdited === true;
+  let userMessagePersistedForCatch = false;
+  let assistantMessagePersistedForCatch = false;
+
+  async function persistFallbackAssistantMessage(reply, debug, debugMeta = {}) {
+    if (!conversationIdForCatch) {
+      return;
+    }
+
+    await messagesRef.push({
+      role: "assistant",
+      content: isEditedForCatch ? reply + "\n[MODIFIÉ]" : reply,
+      timestamp: Date.now(),
+      userId: userIdForCatch,
+      conversationId: conversationIdForCatch,
+      debug: Array.isArray(debug) ? debug : [],
+      debugMeta: {
+        topChips: Array.isArray(debugMeta.topChips) ? debugMeta.topChips : [],
+        memory: normalizeMemory(debugMeta.memory, promptRegistryForCatch),
+        directivityText: typeof debugMeta.directivityText === "string" ? debugMeta.directivityText : "",
+        rewriteSource: typeof debugMeta.rewriteSource === "string" ? debugMeta.rewriteSource : null,
+        memoryRewriteSource: typeof debugMeta.memoryRewriteSource === "string" ? debugMeta.memoryRewriteSource : null,
+        modelConflict: debugMeta.modelConflict === true
+      }
+    });
+
+    assistantMessagePersistedForCatch = true;
+
+    if (convRefForCatch) {
+      await convRefForCatch.update({
+        updatedAt: new Date().toISOString()
+      });
+    }
+  }
   
   // Build metadata for the fallback response used in the catch block.
   // This keeps the safe error path consistent with the normal debug output format.
@@ -3321,6 +3524,11 @@ app.post("/chat", async (req, res) => {
       comparisonEnabled,
       logsEnabled
     } = requestData;
+
+    conversationIdForCatch = conversationId;
+    userIdForCatch = userId;
+    convRefForCatch = convRef;
+    isEditedForCatch = isEdited;
     
     logsEnabledForCatch = logsEnabled === true;
     markChatStage("request_destructured");
@@ -3417,6 +3625,8 @@ app.post("/chat", async (req, res) => {
       userId,
       conversationId
     });
+
+    userMessagePersistedForCatch = true;
     
     await convRef.transaction(current => {
       const now = new Date().toISOString();
@@ -3477,6 +3687,8 @@ app.post("/chat", async (req, res) => {
         },
         comparisonResults: safeComparisonResults
       });
+
+      assistantMessagePersistedForCatch = true;
       
       await convRef.update({
         updatedAt: new Date().toISOString()
@@ -3709,6 +3921,13 @@ app.post("/chat", async (req, res) => {
       flags,
       activePromptRegistry
     );
+
+    logChatDecision("suicide_analysis_result", {
+      suicideLevel: suicide.suicideLevel,
+      needsClarification: suicide.needsClarification === true,
+      crisisResolved: suicide.crisisResolved === true,
+      acuteCrisisBefore: flags.acuteCrisis === true
+    });
     
     let newFlags = normalizeSessionFlags(flags);
     
@@ -3717,6 +3936,10 @@ app.post("/chat", async (req, res) => {
     if (suicide.suicideLevel === "N2") {
       newFlags.acuteCrisis = true;
       newFlags.contactState = { wasContact: false };
+
+      logChatDecision("override_n2", {
+        acuteCrisisAfter: true
+      });
       
       const debug = buildDebug("override", {
         suicideLevel: "N2"
@@ -3757,6 +3980,11 @@ app.post("/chat", async (req, res) => {
       if (suicide.crisisResolved !== true) {
         newFlags.acuteCrisis = true;
         newFlags.contactState = { wasContact: false };
+
+        logChatDecision("override_acute_crisis_followup", {
+          suicideLevel: suicide.suicideLevel,
+          crisisResolved: false
+        });
         
         const debug = buildDebug("override", {
           suicideLevel: suicide.suicideLevel
@@ -3790,10 +4018,18 @@ app.post("/chat", async (req, res) => {
       }
       
       newFlags.acuteCrisis = false;
+      logChatDecision("acute_crisis_resolved", {
+        suicideLevel: suicide.suicideLevel
+      });
     }
     
     // 3) Clarification path for less severe suicidal risk or ambiguous intent.
     if (suicide.suicideLevel === "N1" || suicide.needsClarification) {
+      logChatDecision("override_clarification", {
+        suicideLevel: suicide.suicideLevel,
+        needsClarification: suicide.needsClarification === true
+      });
+
       const rawReply = await n1ResponseLLM(message, activePromptRegistry);
       
       const replyPipeline = await applyModelConflictPipeline({
@@ -3851,6 +4087,12 @@ app.post("/chat", async (req, res) => {
       previousMemory,
       activePromptRegistry
     );
+
+    logChatDecision("recall_routing", {
+      isRecallAttempt: recallRouting.isRecallAttempt === true,
+      isLongTermMemoryRecall: recallRouting.isLongTermMemoryRecall === true,
+      calledMemory: recallRouting.calledMemory || "none"
+    });
     
     if (recallRouting.isLongTermMemoryRecall) {
       const rawReply = await buildLongTermMemoryRecallResponse(previousMemory, activePromptRegistry);
@@ -3969,6 +4211,14 @@ app.post("/chat", async (req, res) => {
     if (FORCE_DIRECTIVITY_LEVEL !== null && detectedMode === "exploration") {
       finalDirectivityLevel = FORCE_DIRECTIVITY_LEVEL;
     }
+
+    logChatDecision("mode_detected", {
+      detectedMode,
+      isContact: contactAnalysis.isContact === true,
+      previousWasContact: flags.contactState?.wasContact === true,
+      currentWasContact: newFlags.contactState?.wasContact === true,
+      finalDirectivityLevel
+    });
     
     // 4) Génération principale de la réponse selon le mode détecté,
     // puis application d'un pipeline de correction si le contenu est en conflit modèle.
@@ -4012,6 +4262,12 @@ app.post("/chat", async (req, res) => {
       });
       
       newFlags = registerExplorationRelance(newFlags, relanceAnalysis.isRelance === true);
+
+      logChatDecision("exploration_relance_registered", {
+        isRelance: relanceAnalysis.isRelance === true,
+        explorationRelanceWindow: newFlags.explorationRelanceWindow,
+        explorationDirectivityLevel: newFlags.explorationDirectivityLevel
+      });
     }
     
     const debug = buildDebug(detectedMode, {
@@ -4081,6 +4337,11 @@ app.post("/chat", async (req, res) => {
       comparisonEnabled &&
       hasOverrides
     ) {
+      logChatDecision("comparison_generation_enabled", {
+        hasOverride1: Boolean(override1),
+        hasOverride2: Boolean(override2)
+      });
+
       markChatStage("comparison_generation");
       const comparisonBaseMeta = buildResponseDebugMeta({
         memory: "",
@@ -4197,28 +4458,48 @@ app.post("/chat", async (req, res) => {
     console.error("[CHAT][ERROR_CONTEXT]", {
       conversationId: requestData.conversationId,
       lastStage: chatLastStage,
-      elapsedMs: Date.now() - chatStartTime
+      elapsedMs: Date.now() - chatStartTime,
+      stageTimings: chatStageTimings
     });
+
+    const fallbackReply = modeForCatch === "contact" ? "Je suis la." : "Desole, reformule.";
+    const fallbackDebugMeta = buildFallbackResponseDebugMeta({
+      memory: previousMemoryForCatch,
+      suicideLevel: "N0",
+      mode: modeForCatch === "contact" ? "contact" : "exploration",
+      isRecallRequest: false,
+      explorationDirectivityLevel: flagsForCatch.explorationDirectivityLevel || 0,
+      explorationRelanceWindow: flagsForCatch.explorationRelanceWindow || [],
+      rewriteSource: null,
+      memoryRewriteSource: null,
+      modelConflict: false,
+      promptRegistry: promptRegistryForCatch
+    });
+
+    if (userMessagePersistedForCatch && !assistantMessagePersistedForCatch) {
+      try {
+        await persistFallbackAssistantMessage(fallbackReply, ["error"], fallbackDebugMeta);
+        console.warn("[CHAT][FALLBACK_PERSISTED]", {
+          conversationId: conversationIdForCatch,
+          lastStage: chatLastStage
+        });
+      } catch (persistErr) {
+        console.error("[CHAT][FALLBACK_PERSIST_FAILED]", {
+          conversationId: conversationIdForCatch,
+          lastStage: chatLastStage,
+          error: persistErr && persistErr.message ? persistErr.message : String(persistErr)
+        });
+      }
+    }
     
     // Fallback path: if any part of the /chat pipeline throws, return a safe
     // generic reply plus preserved memory/flags instead of crashing the server.
     return res.json({
-      reply: modeForCatch === "contact" ? "Je suis la." : "Desole, reformule.",
+      reply: fallbackReply,
       memory: previousMemoryForCatch,
       flags: flagsForCatch,
       debug: ["error"],
-      debugMeta: buildFallbackResponseDebugMeta({
-        memory: previousMemoryForCatch,
-        suicideLevel: "N0",
-        mode: modeForCatch === "contact" ? "contact" : "exploration",
-        isRecallRequest: false,
-        explorationDirectivityLevel: flagsForCatch.explorationDirectivityLevel || 0,
-        explorationRelanceWindow: flagsForCatch.explorationRelanceWindow || [],
-        rewriteSource: null,
-        memoryRewriteSource: null,
-        modelConflict: false,
-        promptRegistry: promptRegistryForCatch
-      })
+      debugMeta: fallbackDebugMeta
     });
   } finally {
     if (logsEnabledForCatch) {

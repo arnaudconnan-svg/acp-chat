@@ -250,6 +250,56 @@
         }
       });
     }
+
+    async function readAdminJsonResponse(res) {
+      if (res?.redirected && typeof res.url === "string" && res.url.includes("/admin-login.html")) {
+        window.location.href = res.url;
+        return {
+          data: null,
+          isJson: false,
+          redirectedToLogin: true
+        };
+      }
+
+      const contentType = String(res?.headers?.get("content-type") || "").toLowerCase();
+
+      if (!contentType.includes("application/json")) {
+        return {
+          data: null,
+          isJson: false,
+          redirectedToLogin: false
+        };
+      }
+
+      try {
+        return {
+          data: await res.json(),
+          isJson: true,
+          redirectedToLogin: false
+        };
+      } catch {
+        return {
+          data: null,
+          isJson: false,
+          redirectedToLogin: false
+        };
+      }
+    }
+
+    async function fetchWithTimeout(url, options = {}, timeoutMs = 12000) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+      try {
+        const requestOptions = {
+          ...options,
+          signal: controller.signal
+        };
+        return await fetch(url, requestOptions);
+      } finally {
+        clearTimeout(timer);
+      }
+    }
     
     async function loadConversations() {
       const list = document.getElementById("list");
@@ -261,14 +311,26 @@
       list.textContent = "Chargement des conversations...";
       
       try {
-        const res = await fetch("/api/admin/conversations");
-        
-        if (!res.ok) {
-          list.innerHTML = '<div class="error">Erreur HTTP conversations: ' + res.status + "</div>";
+        const res = await fetchWithTimeout("/api/admin/conversations");
+        const response = await readAdminJsonResponse(res);
+
+        if (response.redirectedToLogin) {
+          list.innerHTML = '<div class="error">Session admin expiree. Redirection...</div>';
           return;
         }
         
-        const data = await res.json();
+        if (!res.ok) {
+          const errorMessage = typeof response.data?.error === "string" ? response.data.error : "Erreur HTTP conversations: " + res.status;
+          list.innerHTML = '<div class="error">' + errorMessage + "</div>';
+          return;
+        }
+
+        if (!response.isJson) {
+          list.innerHTML = '<div class="error">Reponse serveur invalide</div>';
+          return;
+        }
+
+        const data = response.data;
         list.innerHTML = "";
         
         if (!Array.isArray(data) || !data.length) {
@@ -345,7 +407,10 @@
           list.appendChild(card);
         });
       } catch (err) {
-        list.innerHTML = '<div class="error">Erreur JS conversations: ' + err.message + "</div>";
+        const isTimeout = err && (err.name === "AbortError" || String(err.message || "").toLowerCase().includes("aborted"));
+        list.innerHTML = isTimeout ?
+          '<div class="error">Le serveur ne repond pas a temps. Reessaie dans quelques secondes.</div>' :
+          '<div class="error">Erreur JS conversations: ' + err.message + "</div>";
       }
     }
     
@@ -362,14 +427,26 @@
       list.textContent = "Chargement des messages...";
       
       try {
-        const res = await fetch("/api/admin/conversations/" + encodeURIComponent(conversationId) + "/messages");
-        
-        if (!res.ok) {
-          list.innerHTML = '<div class="error">Erreur HTTP messages: ' + res.status + "</div>";
+        const res = await fetchWithTimeout("/api/admin/conversations/" + encodeURIComponent(conversationId) + "/messages");
+        const response = await readAdminJsonResponse(res);
+
+        if (response.redirectedToLogin) {
+          list.innerHTML = '<div class="error">Session admin expiree. Redirection...</div>';
           return;
         }
-        
-        const data = await res.json();
+
+        if (!res.ok) {
+          const errorMessage = typeof response.data?.error === "string" ? response.data.error : "Erreur HTTP messages: " + res.status;
+          list.innerHTML = '<div class="error">' + errorMessage + "</div>';
+          return;
+        }
+
+        if (!response.isJson) {
+          list.innerHTML = '<div class="error">Reponse serveur invalide</div>';
+          return;
+        }
+
+        const data = response.data;
         list.innerHTML = "";
         
         if (!Array.isArray(data) || !data.length) {
@@ -730,7 +807,10 @@
         });
         
       } catch (err) {
-        list.innerHTML = '<div class="error">Erreur JS messages: ' + err.message + "</div>";
+        const isTimeout = err && (err.name === "AbortError" || String(err.message || "").toLowerCase().includes("aborted"));
+        list.innerHTML = isTimeout ?
+          '<div class="error">Le serveur ne repond pas a temps. Reessaie dans quelques secondes.</div>' :
+          '<div class="error">Erreur JS messages: ' + err.message + "</div>";
       }
     }
     
@@ -769,6 +849,12 @@
       input.style.padding = "10px";
       input.style.borderRadius = "10px";
       input.style.border = "1px solid #cfd8db";
+
+      const feedback = document.createElement("div");
+      feedback.style.marginTop = "8px";
+      feedback.style.minHeight = "1.2em";
+      feedback.style.fontSize = "13px";
+      feedback.style.color = "#a12d2d";
       
       const saveBtn = document.createElement("button");
       saveBtn.textContent = "Enregistrer";
@@ -783,17 +869,46 @@
       
       saveBtn.onclick = async (e) => {
         e.stopPropagation();
-        
-        await fetch("/api/admin/user-label", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            userId: conv.userId,
-            label: input.value.trim()
-          })
-        });
+
+        feedback.textContent = "";
+        saveBtn.disabled = true;
+
+        let res;
+
+        try {
+          res = await fetchWithTimeout("/api/admin/user-label", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              userId: conv.userId,
+              label: input.value.trim()
+            })
+          });
+        } catch {
+          feedback.textContent = "Erreur reseau";
+          saveBtn.disabled = false;
+          return;
+        }
+
+        const response = await readAdminJsonResponse(res);
+
+        if (response.redirectedToLogin) {
+          return;
+        }
+
+        if (!res.ok) {
+          feedback.textContent = typeof response.data?.error === "string" ? response.data.error : (res.status === 400 ? "Requete invalide" : "Erreur serveur");
+          saveBtn.disabled = false;
+          return;
+        }
+
+        if (!response.isJson) {
+          feedback.textContent = "Reponse serveur invalide";
+          saveBtn.disabled = false;
+          return;
+        }
         
         overlay.remove();
         
@@ -819,6 +934,7 @@
       overlay.appendChild(id);
       overlay.appendChild(created);
       overlay.appendChild(input);
+      overlay.appendChild(feedback);
       overlay.appendChild(saveBtn);
       
       overlay.onclick = (e) => {
