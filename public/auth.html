@@ -239,13 +239,39 @@
     (function () {
       "use strict";
 
-      function navigateAway(url) {
+      function navigateAway(url, options = {}) {
         document.body.style.animation = "none";
         document.body.style.transition = "opacity 0.32s ease, transform 0.32s ease";
         document.body.style.opacity = "0";
         document.body.style.transform = "translateY(10px)";
-        setTimeout(() => { window.location.href = url; }, 320);
+        setTimeout(() => {
+          if (options.replace === true) {
+            window.location.replace(url);
+            return;
+          }
+          window.location.href = url;
+        }, 320);
       }
+
+      const authHistoryState = history.state || {};
+      if (authHistoryState.__page !== "auth" || authHistoryState.__guard !== true) {
+        history.replaceState({ __page: "auth", __base: true }, "", window.location.href);
+        history.pushState({ __page: "auth", __guard: true }, "", window.location.href);
+      }
+
+      window.addEventListener("popstate", event => {
+        const state = event.state || {};
+        if (state.__page === "auth" && state.__base === true) {
+          navigateAway("/?screen=conversationsScreen", { replace: true });
+        }
+      });
+
+      window.addEventListener("pageshow", () => {
+        document.body.style.animation = "";
+        document.body.style.transition = "";
+        document.body.style.opacity = "";
+        document.body.style.transform = "";
+      });
 
       // Redirect if already authenticated
       fetch("/api/auth/session", { credentials: "include" })

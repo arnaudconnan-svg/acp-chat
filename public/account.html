@@ -122,9 +122,17 @@
       font-size: 12px;
       padding: 3px 10px;
       border-radius: 20px;
+      font-weight: 500;
+    }
+
+    .cap-badge-premium {
       background: rgba(36, 94, 102, 0.12);
       color: #245e66;
-      font-weight: 500;
+    }
+
+    .cap-badge-neutral {
+      background: #efefef;
+      color: #8f8f8f;
     }
 
     .cap-badge.inactive {
@@ -202,18 +210,23 @@
     .action-btn {
       width: 100%;
       padding: 12px;
-      background: #245e66;
+      background: #b8c2c4;
       color: white;
       border: none;
       border-radius: 8px;
       font-size: 15px;
       font-weight: 600;
+      cursor: default;
+      transition: background-color 0.15s ease;
+    }
+
+    .action-btn.is-ready {
+      background: #245e66;
       cursor: pointer;
-      transition: opacity 0.15s;
     }
 
     .action-btn:disabled {
-      opacity: 0.45;
+      opacity: 1;
       cursor: default;
     }
 
@@ -335,13 +348,39 @@
       let currentUser = null;
       let currentCapabilities = null;
 
-      function navigateAway(url) {
+      function navigateAway(url, options = {}) {
         document.body.style.animation = "none";
         document.body.style.transition = "opacity 0.32s ease, transform 0.32s ease";
         document.body.style.opacity = "0";
         document.body.style.transform = "translateY(10px)";
-        setTimeout(() => { window.location.href = url; }, 320);
+        setTimeout(() => {
+          if (options.replace === true) {
+            window.location.replace(url);
+            return;
+          }
+          window.location.href = url;
+        }, 320);
       }
+
+      const accountHistoryState = history.state || {};
+      if (accountHistoryState.__page !== "account" || accountHistoryState.__guard !== true) {
+        history.replaceState({ __page: "account", __base: true }, "", window.location.href);
+        history.pushState({ __page: "account", __guard: true }, "", window.location.href);
+      }
+
+      window.addEventListener("popstate", event => {
+        const state = event.state || {};
+        if (state.__page === "account" && state.__base === true) {
+          navigateAway("/?screen=conversationsScreen", { replace: true });
+        }
+      });
+
+      window.addEventListener("pageshow", () => {
+        document.body.style.animation = "";
+        document.body.style.transition = "";
+        document.body.style.opacity = "";
+        document.body.style.transform = "";
+      });
 
       async function init() {
         try {
@@ -354,7 +393,7 @@
           }
 
           currentUser = data.user || {};
-          currentCapabilities = data.capabilities || {};
+          currentCapabilities = data.capabilities || currentUser.capabilities || {};
           renderPage();
         } catch (_) {
           showError("Impossible de charger la session. Réessayez.");
@@ -363,7 +402,7 @@
 
       function renderPage() {
         const main = document.getElementById("mainContent");
-        const plan = String(currentUser.plan || "free");
+        const plan = String(currentUser.plan || "free").trim().toLowerCase();
         const caps = currentCapabilities || {};
         const hasBranching = caps.branching === true;
 
@@ -395,19 +434,22 @@
         const capsRight = document.createElement("div");
         capsRight.className = "plan-caps";
         const visibleFeaturesByPlan = {
-          free: ["multiDeviceAccess"],
-          premium: ["branching", "intersessionMemory", "multiDeviceAccess"]
-        };
-        const featureLabels = {
-          branching: "Branches",
-          intersessionMemory: "Mémoire longue",
-          multiDeviceAccess: "Multi-appareils"
+          free: [
+            { label: "Multi appareils", active: caps.multiDeviceAccess === true, tone: "neutral" },
+            { label: "Modifier seulement le dernier message", active: true, tone: "neutral" }
+          ],
+          premium: [
+            { label: "Multi appareils", active: caps.multiDeviceAccess === true, tone: "premium" },
+            { label: "Modifier n'importe quel message", active: caps.branching === true, tone: "premium" },
+            { label: "Mémoire inter-sessions", active: caps.intersessionMemory === true, tone: "premium" }
+          ]
         };
         const visibleFeatures = Array.isArray(visibleFeaturesByPlan[plan]) ? visibleFeaturesByPlan[plan] : visibleFeaturesByPlan.free;
-        visibleFeatures.forEach(key => {
+        visibleFeatures.forEach(feature => {
           const badge = document.createElement("span");
-          badge.className = "cap-badge" + (caps[key] ? "" : " inactive");
-          badge.textContent = featureLabels[key] || key;
+          const toneClass = feature.tone === "neutral" ? "cap-badge-neutral" : "cap-badge-premium";
+          badge.className = "cap-badge " + toneClass + (feature.active ? "" : " inactive");
+          badge.textContent = feature.label;
           capsRight.appendChild(badge);
         });
         planCard.appendChild(capsRight);
@@ -475,14 +517,37 @@
           '    <button type="button" class="toggle-password-btn" data-target="confirmNewPassword">Voir</button>',
           '  </div>',
           '</div>',
-          '<button type="submit" class="action-btn" id="changePasswordBtn">Enregistrer</button>',
+          '<button type="submit" class="action-btn" id="changePasswordBtn" disabled>Enregistrer</button>',
           '<div class="notice" id="changePasswordNotice"></div>'
         ].join('');
         form.addEventListener("submit", handlePasswordChange);
         card.appendChild(form);
 
         initPasswordToggles(card);
+        initChangePasswordButtonState(form);
         return card;
+      }
+
+      function initChangePasswordButtonState(form) {
+        const currentInput = form.querySelector("#currentPassword");
+        const newInput = form.querySelector("#newPassword");
+        const confirmInput = form.querySelector("#confirmNewPassword");
+        const btn = form.querySelector("#changePasswordBtn");
+        if (!currentInput || !newInput || !confirmInput || !btn) return;
+
+        const refresh = () => {
+          const currentValue = String(currentInput.value || "");
+          const newValue = String(newInput.value || "");
+          const confirmValue = String(confirmInput.value || "");
+          const ready = currentValue.length > 0 && newValue.length > 0 && confirmValue.length > 0 && newValue === confirmValue;
+          btn.disabled = !ready;
+          btn.classList.toggle("is-ready", ready);
+        };
+
+        currentInput.addEventListener("input", refresh);
+        newInput.addEventListener("input", refresh);
+        confirmInput.addEventListener("input", refresh);
+        refresh();
       }
 
       function initPasswordToggles(root) {
@@ -541,13 +606,19 @@
             event.target.querySelectorAll('.toggle-password-btn').forEach(btnEl => {
               btnEl.textContent = 'Voir';
             });
+            btn.classList.remove("is-ready");
           } else {
             notice.textContent = data.error || "Impossible de changer le mot de passe.";
           }
         } catch (_) {
           notice.textContent = "Erreur réseau. Réessayez.";
         } finally {
-          btn.disabled = false;
+          const currentValue = String(document.getElementById("currentPassword").value || "");
+          const newValue = String(document.getElementById("newPassword").value || "");
+          const confirmValue = String(document.getElementById("confirmNewPassword").value || "");
+          const ready = currentValue.length > 0 && newValue.length > 0 && confirmValue.length > 0 && newValue === confirmValue;
+          btn.disabled = !ready;
+          btn.classList.toggle("is-ready", ready);
         }
       }
 

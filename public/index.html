@@ -2885,6 +2885,14 @@
         window.location.href = url;
       }
     }
+
+    window.addEventListener("pageshow", () => {
+      document.querySelectorAll(".screen").forEach(screen => {
+        screen.style.transition = "";
+        screen.style.opacity = "";
+        screen.style.transform = "";
+      });
+    });
     
     function applyScreen(id) {
       document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
@@ -4428,8 +4436,9 @@
             longPressTriggered = true;
             const history = loadHistory();
             const lastUserIndex = getLastUserHistoryIndex(history);
+            const canEditAnyMessage = hasPremiumCapability("branching") === true;
 
-            if (historyIndex !== lastUserIndex) {
+            if (!canEditAnyMessage && historyIndex !== lastUserIndex) {
               showTemporaryNotice("Modification impossible");
               return;
             }
@@ -5276,10 +5285,11 @@
         const history = loadHistory();
         const targetIndex = editMode.targetHistoryIndex;
         const lastUserIndex = getLastUserHistoryIndex(history);
+        const canEditAnyMessage = hasPremiumCapability("branching") === true;
         
         if (
           targetIndex < 0 ||
-          targetIndex !== lastUserIndex ||
+          (!canEditAnyMessage && targetIndex !== lastUserIndex) ||
           editMode.conversationId !== conversationIdBeforeSend ||
           !history[targetIndex] ||
           history[targetIndex].role !== "user"
@@ -6432,10 +6442,12 @@
       if (requestedScreen === "conversationsScreen") {
         loadUrl.searchParams.delete("screen");
         const cleanSearch = loadUrl.searchParams.toString();
-        history.replaceState({ screenId: "conversationsScreen" }, "", `${loadUrl.pathname}${cleanSearch ? `?${cleanSearch}` : ""}${loadUrl.hash || ""}`);
+        const cleanUrl = `${loadUrl.pathname}${cleanSearch ? `?${cleanSearch}` : ""}${loadUrl.hash || ""}`;
+        history.replaceState({ screenId: "welcomeScreen" }, "", cleanUrl);
+        history.pushState({ screenId: "conversationsScreen" }, "", cleanUrl);
         renderConversationsList();
         setSessionStatus("idle");
-        showScreen("conversationsScreen", { replaceHistory: true, pushHistory: false, noAnimation: true });
+        showScreen("conversationsScreen", { replaceHistory: false, pushHistory: false, noAnimation: true });
         updateActivity();
         return;
       }

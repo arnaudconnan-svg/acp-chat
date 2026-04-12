@@ -403,7 +403,17 @@ async function findUserByEmail(email) {
   };
 }
 
-function getUserCapabilities(plan = "free") {
+function getUserCapabilities(plan = "free", options = {}) {
+  const isAdmin = options && options.isAdmin === true;
+
+  if (isAdmin) {
+    return {
+      branching: true,
+      intersessionMemory: true,
+      multiDeviceAccess: true
+    };
+  }
+
   const normalizedPlan = String(plan || "free").trim().toLowerCase();
 
   if (normalizedPlan === "premium") {
@@ -421,15 +431,16 @@ function getUserCapabilities(plan = "free") {
   };
 }
 
-function toPublicUser(userId, userData) {
+function toPublicUser(userId, userData, options = {}) {
   const safeUser = userData && typeof userData === "object" ? userData : {};
   const plan = normalizePlan(safeUser.plan || "free");
+  const isAdmin = options && options.isAdmin === true;
 
   return {
     id: String(userId || ""),
     email: normalizeEmail(safeUser.email),
     plan,
-    capabilities: getUserCapabilities(plan),
+    capabilities: getUserCapabilities(plan, { isAdmin }),
     createdAt: typeof safeUser.createdAt === "string" ? safeUser.createdAt : null,
     updatedAt: typeof safeUser.updatedAt === "string" ? safeUser.updatedAt : null
   };
@@ -532,7 +543,9 @@ function requirePremiumCapability(capability) {
   return (req, res, next) => {
     const session = req.userSession;
     const plan = session?.user?.plan || "free";
-    const capabilities = getUserCapabilities(plan);
+    const capabilities = getUserCapabilities(plan, {
+      isAdmin: Boolean(getAdminSession(req))
+    });
 
     if (capabilities[capability] !== true) {
       return res.status(403).json({
@@ -3365,6 +3378,7 @@ app.post("/api/admin/logout", (req, res) => {
 app.get("/api/auth/session", async (req, res) => {
   try {
     const session = await getUserSession(req);
+    const isAdmin = Boolean(getAdminSession(req));
 
     if (!session) {
       return res.json({ authenticated: false, user: null });
@@ -3372,7 +3386,7 @@ app.get("/api/auth/session", async (req, res) => {
 
     return res.json({
       authenticated: true,
-      user: toPublicUser(session.userId, session.user)
+      user: toPublicUser(session.userId, session.user, { isAdmin })
     });
   } catch (err) {
     console.error("Erreur /api/auth/session:", err.message);
@@ -3619,12 +3633,13 @@ app.get("/api/account/conversations/:id", requireUserAuth, async (req, res) => {
 app.get("/api/premium/capabilities", async (req, res) => {
   try {
     const session = await getUserSession(req);
+    const isAdmin = Boolean(getAdminSession(req));
     const plan = session?.user?.plan || "free";
 
     return res.json({
       authenticated: Boolean(session),
       plan: String(plan || "free").trim().toLowerCase(),
-      capabilities: getUserCapabilities(plan)
+      capabilities: getUserCapabilities(plan, { isAdmin })
     });
   } catch (err) {
     console.error("Erreur /api/premium/capabilities:", err.message);
