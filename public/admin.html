@@ -303,6 +303,105 @@
       }
     }
 
+    function normalizeReplayDebugMeta(debugMeta) {
+      const safe = debugMeta && typeof debugMeta === "object" ? debugMeta : {};
+
+      return {
+        topChips: Array.isArray(safe.topChips) ?
+          safe.topChips.map(v => String(v || "").trim()).filter(Boolean) : [],
+        memory: typeof safe.memory === "string" ? safe.memory : "",
+        directivityText: typeof safe.directivityText === "string" ?
+          safe.directivityText : (typeof safe.directivityLabel === "string" ? safe.directivityLabel : ""),
+        rewriteSource: typeof safe.rewriteSource === "string" ? safe.rewriteSource : null,
+        memoryRewriteSource: typeof safe.memoryRewriteSource === "string" ? safe.memoryRewriteSource : null,
+        modelConflict: safe.modelConflict === true
+      };
+    }
+
+    function buildReplayRecentHistory(messages) {
+      if (!Array.isArray(messages)) {
+        return [];
+      }
+
+      return messages
+        .map(item => ({
+          role: String(item?.role || "").trim(),
+          content: String(item?.content || "").trim(),
+          debug: Array.isArray(item?.debug) ? item.debug.map(line => String(line || "")) : [],
+          debugMeta: normalizeReplayDebugMeta(item?.debugMeta),
+          comparisonResults: Array.isArray(item?.comparisonResults) ? item.comparisonResults : null
+        }))
+        .filter(item => (item.role === "user" || item.role === "assistant") && item.content)
+        .slice(-120);
+    }
+
+    function extractReplayMemory(messages) {
+      if (!Array.isArray(messages)) {
+        return "";
+      }
+
+      for (let i = messages.length - 1; i >= 0; i -= 1) {
+        const candidate = messages[i];
+        const memory = String(candidate?.debugMeta?.memory || "").trim();
+        if (memory) {
+          return memory;
+        }
+      }
+
+      return "";
+    }
+
+    async function openReplayInChat(conversationId, anchorMessageId = "") {
+      if (!conversationId) {
+        return;
+      }
+
+      const list = document.getElementById("list");
+
+      try {
+        const res = await fetchWithTimeout("/api/admin/conversations/" + encodeURIComponent(conversationId) + "/messages");
+        const response = await readAdminJsonResponse(res);
+
+        if (response.redirectedToLogin) {
+          list.innerHTML = '<div class="error">Session admin expiree. Redirection...</div>';
+          return;
+        }
+
+        if (!res.ok || !response.isJson || !Array.isArray(response.data)) {
+          const errorMessage = typeof response.data?.error === "string" ? response.data.error : "Impossible de preparer le replay";
+          alert(errorMessage);
+          return;
+        }
+
+        const safeMessages = buildReplayRecentHistory(response.data);
+        if (!safeMessages.length) {
+          alert("Impossible de preparer le replay");
+          return;
+        }
+
+        let selectedMessages = safeMessages;
+        if (anchorMessageId) {
+          const anchorIndex = response.data.findIndex(item => String(item?.id || "") === anchorMessageId);
+          if (anchorIndex >= 0) {
+            selectedMessages = buildReplayRecentHistory(response.data.slice(0, anchorIndex + 1));
+          }
+        }
+
+        const replayPayload = {
+          sourceConversationId: conversationId,
+          memory: extractReplayMemory(response.data),
+          recentHistory: selectedMessages,
+          anchorMessageId: anchorMessageId || "",
+          timestamp: Date.now()
+        };
+
+        localStorage.setItem("facilitatio_admin_replay", JSON.stringify(replayPayload));
+        window.location.href = "/index.html?adminReplay=1";
+      } catch (err) {
+        alert("Erreur replay: " + (err?.message || "inconnue"));
+      }
+    }
+
     async function ensureAdminSession() {
       const res = await fetchWithTimeout("/api/admin/session", {
         method: "GET"
@@ -399,6 +498,7 @@
           
           const messageCount = conv.messageCount || 0;
           count.textContent = messageCount + " messages";
+
           
           const menuBtn = document.createElement("div");
           menuBtn.textContent = "⋮";
@@ -536,7 +636,8 @@
                 ""
               ),
             modelConflict: safe.modelConflict === true,
-            rewriteSource: typeof safe.rewriteSource === "string" ? safe.rewriteSource.trim() : ""
+            rewriteSource: typeof safe.rewriteSource === "string" ? safe.rewriteSource.trim() : "",
+            memoryRewriteSource: typeof safe.memoryRewriteSource === "string" ? safe.memoryRewriteSource.trim() : ""
           };
         }
         
@@ -570,6 +671,13 @@
             sections.push({
               title: "Conflit avec le modèle théorique",
               content: meta.rewriteSource
+            });
+          }
+
+          if (meta.memoryRewriteSource) {
+            sections.push({
+              title: "Memory rewrite source",
+              content: meta.memoryRewriteSource
             });
           }
           
@@ -784,6 +892,31 @@
             new Date(msg.timestamp || msg.createdAt || Date.now()).toLocaleString() +
             " • " +
             (isUser ? userDisplay : "assistant");
+
+          if (!isUser) {
+            const replayBtn = document.createElement("button");
+            replayBtn.type = "button";
+            replayBtn.textContent = "Tester ici";
+            replayBtn.style.marginLeft = "8px";
+            replayBtn.style.fontSize = "11px";
+            replayBtn.style.padding = "2px 7px";
+            replayBtn.style.borderRadius = "999px";
+            replayBtn.style.border = "1px solid #b4c6cb";
+            replayBtn.style.background = "#ffffff";
+            replayBtn.style.color = "#245e66";
+            replayBtn.style.cursor = "pointer";
+            replayBtn.onclick = async (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              replayBtn.disabled = true;
+              try {
+                await openReplayInChat(conversationId, String(msg.id || ""));
+              } finally {
+                replayBtn.disabled = false;
+              }
+            };
+            meta.appendChild(replayBtn);
+          }
           
           card.appendChild(meta);
           

@@ -34,6 +34,7 @@ const ADMIN_SESSION_SIGNING_SECRET = process.env.ADMIN_SESSION_SECRET || SESSION
 
 const fs = require("fs");
 const path = require("path");
+const nodemailer = require("nodemailer");
 
 // Local fallback storage for message data when needed.
 const MESSAGES_FILE = path.join(__dirname, "data/messages.json");
@@ -57,6 +58,62 @@ const OpenAI = require("openai");
 const app = express();
 const port = process.env.PORT || 3000;
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+function createEmailNotifier() {
+  const notifyTo = String(process.env.NOTIFY_EMAIL_TO || "").trim();
+  const smtpHost = String(process.env.NOTIFY_SMTP_HOST || "").trim();
+  const smtpPort = Number(process.env.NOTIFY_SMTP_PORT || 587);
+  const smtpSecure = String(process.env.NOTIFY_SMTP_SECURE || "false").trim().toLowerCase() === "true";
+  const smtpUser = String(process.env.NOTIFY_SMTP_USER || "").trim();
+  const smtpPass = String(process.env.NOTIFY_SMTP_PASSWORD || "").trim();
+  const fromAddress = String(process.env.NOTIFY_EMAIL_FROM || smtpUser).trim();
+
+  if (!notifyTo || !smtpHost || !smtpPort || !smtpUser || !smtpPass) {
+    return {
+      enabled: false,
+      sendNewMessageAlert: async () => {}
+    };
+  }
+
+  const transporter = nodemailer.createTransport({
+    host: smtpHost,
+    port: smtpPort,
+    secure: smtpSecure,
+    auth: {
+      user: smtpUser,
+      pass: smtpPass
+    }
+  });
+
+  async function send(subject, text) {
+    try {
+      await transporter.sendMail({
+        from: fromAddress,
+        to: notifyTo,
+        subject,
+        text
+      });
+    } catch (err) {
+      console.error("[NOTIFY][EMAIL_ERROR]", err.message);
+    }
+  }
+
+  return {
+    enabled: true,
+    async sendNewMessageAlert() {
+      await send(
+        "[Facilitat.io] Nouveau message utilisateur",
+        [
+          "Il y a un ou plusieurs nouveaux messages enregistres dans Firebase.",
+          "Rappel: une seule alerte est envoyee tant que l'admin n'est pas revenue sur /admin.html"
+        ].join("\n")
+      );
+    }
+  };
+}
+
+const emailNotifier = createEmailNotifier();
+let adminVisitedSinceLastAlert = true;
 
 app.get("/health", (req, res) => {
   res.status(200).json({ status: "ok" });
@@ -254,6 +311,7 @@ function requireAdminAuth(req, res, next) {
     const nextUrl = encodeURIComponent(req.originalUrl);
     return res.redirect(`/admin-login.html?next=${nextUrl}`);
   }
+  adminVisitedSinceLastAlert = true;
   next();
 }
 
@@ -3247,6 +3305,7 @@ function parseChatRequest(req) {
   const override2 = req.body?.override2 ?? null;
   const comparisonEnabled = req.body?.comparisonEnabled === true;
   const logsEnabled = req.body?.logsEnabled === true;
+  const adminUiActive = req.body?.adminUiActive === true;
 
   return {
     message,
@@ -3258,7 +3317,8 @@ function parseChatRequest(req) {
     override1,
     override2,
     comparisonEnabled,
-    logsEnabled
+    logsEnabled,
+    adminUiActive
   };
 }
 
@@ -3525,7 +3585,8 @@ app.post("/chat", async (req, res) => {
       override1,
       override2,
       comparisonEnabled,
-      logsEnabled
+      logsEnabled,
+      adminUiActive
     } = requestData;
 
     conversationIdForCatch = conversationId;
@@ -3654,6 +3715,11 @@ app.post("/chat", async (req, res) => {
         lastUserMessage: message
       };
     });
+
+    if (emailNotifier.enabled && adminVisitedSinceLastAlert && adminUiActive !== true) {
+      adminVisitedSinceLastAlert = false;
+      emailNotifier.sendNewMessageAlert();
+    }
     
     // Persist the assistant message and attach debug metadata.
     async function persistAssistantMessage(reply, debug, debugMeta = {}, comparisonResults = null) {
