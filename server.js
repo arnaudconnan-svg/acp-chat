@@ -3732,6 +3732,33 @@ app.post("/api/admin/users/:id/plan", requireAdminAuth, async (req, res) => {
   }
 });
 
+app.get("/api/admin/users", requireAdminAuth, async (req, res) => {
+  try {
+    const snapshot = await usersRef.once("value");
+    const raw = snapshot.val() || {};
+
+    const users = Object.entries(raw)
+      .map(([id, user]) => {
+        const safeUser = user && typeof user === "object" ? user : {};
+        const plan = normalizePlan(safeUser.plan || "free");
+        return {
+          id,
+          email: normalizeEmail(safeUser.email || ""),
+          plan,
+          capabilities: getUserCapabilities(plan),
+          createdAt: typeof safeUser.createdAt === "string" ? safeUser.createdAt : null,
+          updatedAt: typeof safeUser.updatedAt === "string" ? safeUser.updatedAt : null
+        };
+      })
+      .sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
+
+    return res.json({ users });
+  } catch (err) {
+    console.error("Erreur /api/admin/users:", err.message);
+    return res.status(500).json({ error: "Users lookup failed" });
+  }
+});
+
 // Route to manually set the title of a conversation and lock it.
 app.post("/api/conversations/:id/title", async (req, res) => {
   try {
