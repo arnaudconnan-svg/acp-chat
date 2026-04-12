@@ -2552,7 +2552,7 @@
       });
     }
     
-    function pushHistory(role, content, debug, debugMeta = null) {
+    function pushHistory(role, content, debug, debugMeta = null, id = null) {
       let conversationId = getConversationId();
       
       if (!conversationId && role === "user") {
@@ -2577,6 +2577,7 @@
           rewriteSource: typeof debugMeta.rewriteSource === "string" ? debugMeta.rewriteSource : null,
           modelConflict: debugMeta.modelConflict === true
         } : null,
+        id: id && typeof id === "string" ? id : undefined,
         t: Date.now()
       });
       
@@ -5274,7 +5275,7 @@
               pushHistory("assistant", result.content, result.debug, result.debugMeta);
             });
           } else {
-            pushHistory("assistant", data.reply, data.debug || [], data.debugMeta || null);
+            pushHistory("assistant", data.reply, data.debug || [], data.debugMeta || null, data.botMessageId || null);
           }
         } else {
           const storedData = loadConversationData(requestConversationId);
@@ -5292,6 +5293,7 @@
               content: data.reply,
               debug: Array.isArray(data.debug) ? data.debug : [],
               debugMeta: data.debugMeta && typeof data.debugMeta === "object" ? data.debugMeta : null,
+              id: data.botMessageId && typeof data.botMessageId === "string" ? data.botMessageId : undefined,
               t: Date.now()
             }];
           

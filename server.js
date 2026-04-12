@@ -3758,6 +3758,62 @@ app.post("/api/premium/branches/:id/activate", requireUserAuth, requirePremiumCa
   }
 });
 
+// Fetch a single branch record + seed messages (for cross-device resume).
+app.get("/api/premium/branches/:id", requireUserAuth, requirePremiumCapability("branching"), async (req, res) => {
+  try {
+    const session = req.userSession;
+    const branchId = String(req.params?.id || "").trim();
+
+    if (!branchId) {
+      return res.status(400).json({ error: "Invalid branch id" });
+    }
+
+    const [branchSnap, seedSnap] = await Promise.all([
+      premiumBranchesRef.child(branchId).once("value"),
+      premiumBranchSeedsRef.child(branchId).once("value")
+    ]);
+
+    const branch = branchSnap.val();
+    const seed = seedSnap.val();
+
+    if (!branch || typeof branch !== "object") {
+      return res.status(404).json({ error: "Branch not found" });
+    }
+
+    if (String(branch.userId || "") !== session.userId) {
+      return res.status(403).json({ error: "Branch ownership mismatch" });
+    }
+
+    const safeSeedMessages = Array.isArray(seed?.messages)
+      ? seed.messages.map(m => ({
+          role: String(m?.role || ""),
+          content: String(m?.content || ""),
+          debug: Array.isArray(m?.debug) ? m.debug : [],
+          debugMeta: m?.debugMeta && typeof m.debugMeta === "object" ? m.debugMeta : null,
+          comparisonResults: Array.isArray(m?.comparisonResults) ? m.comparisonResults : null,
+          createdAt: typeof m?.createdAt === "string" ? m.createdAt : null
+        }))
+      : [];
+
+    return res.json({
+      branch: {
+        id: branchId,
+        sourceConversationId: String(branch.sourceConversationId || ""),
+        sourceAnchorMessageId: String(branch.sourceAnchorMessageId || ""),
+        branchConversationId: String(branch.branchConversationId || ""),
+        seedMessageCount: Number(branch.seedMessageCount) || 0,
+        status: String(branch.status || "active"),
+        createdAt: typeof branch.createdAt === "string" ? branch.createdAt : null,
+        activatedAt: typeof branch.activatedAt === "string" ? branch.activatedAt : null
+      },
+      messages: safeSeedMessages
+    });
+  } catch (err) {
+    console.error("Erreur GET /api/premium/branches/:id:", err.message);
+    return res.status(500).json({ error: "Branch lookup failed" });
+  }
+});
+
 // Admin route to set or remove a human-readable label for a user.
 app.post("/api/admin/user-label", requireAdminAuth, async (req, res) => {
   try {
@@ -4443,7 +4499,7 @@ app.post("/chat", async (req, res) => {
         })) :
         null;
       
-      await messagesRef.push({
+      const pushedRef = await messagesRef.push({
         role: "assistant",
         content: isEdited ? reply + "\n[MODIFIÉ]" : reply,
         timestamp: Date.now(),
@@ -4466,6 +4522,8 @@ app.post("/chat", async (req, res) => {
       await convRef.update({
         updatedAt: new Date().toISOString()
       });
+
+      return pushedRef.key || null;
     }
     
     function formatPromptOverrideDebugLines(promptDebug) {
@@ -4734,7 +4792,7 @@ app.post("/chat", async (req, res) => {
         promptRegistry: activePromptRegistry
       });
       
-      await persistAssistantMessage(reply, debug, responseDebugMeta);
+      const botMessageId = await persistAssistantMessage(reply, debug, responseDebugMeta);
       await maybeGenerateConversationTitle();
       
       return res.json({
@@ -4743,7 +4801,8 @@ app.post("/chat", async (req, res) => {
         memory: responseMemory,
         flags: newFlags,
         debug,
-        debugMeta: responseDebugMeta
+        debugMeta: responseDebugMeta,
+        botMessageId
       });
     }
     
@@ -4777,7 +4836,7 @@ app.post("/chat", async (req, res) => {
           promptRegistry: activePromptRegistry
         });
         
-        await persistAssistantMessage(reply, debug, responseDebugMeta);
+        const botMessageId = await persistAssistantMessage(reply, debug, responseDebugMeta);
         await maybeGenerateConversationTitle();
         
         return res.json({
@@ -4786,7 +4845,8 @@ app.post("/chat", async (req, res) => {
           memory: responseMemory,
           flags: newFlags,
           debug,
-          debugMeta: responseDebugMeta
+          debugMeta: responseDebugMeta,
+          botMessageId
         });
       }
       
@@ -4838,7 +4898,7 @@ app.post("/chat", async (req, res) => {
         promptRegistry: activePromptRegistry
       });
       
-      await persistAssistantMessage(replyPipeline.content, debug, responseDebugMeta);
+      const botMessageId = await persistAssistantMessage(replyPipeline.content, debug, responseDebugMeta);
       await maybeGenerateConversationTitle();
       
       return res.json({
@@ -4847,7 +4907,8 @@ app.post("/chat", async (req, res) => {
         memory: responseMemory,
         flags: newFlags,
         debug,
-        debugMeta: responseDebugMeta
+        debugMeta: responseDebugMeta,
+        botMessageId
       });
     }
     
@@ -4901,7 +4962,7 @@ app.post("/chat", async (req, res) => {
         promptRegistry: activePromptRegistry
       });
       
-      await persistAssistantMessage(replyPipeline.content, debug, responseDebugMeta);
+      const botMessageId = await persistAssistantMessage(replyPipeline.content, debug, responseDebugMeta);
       await maybeGenerateConversationTitle();
       
       return res.json({
@@ -4910,7 +4971,8 @@ app.post("/chat", async (req, res) => {
         memory: responseMemory,
         flags: newFlags,
         debug,
-        debugMeta: responseDebugMeta
+        debugMeta: responseDebugMeta,
+        botMessageId
       });
     }
     
@@ -4932,7 +4994,7 @@ app.post("/chat", async (req, res) => {
         promptRegistry: activePromptRegistry
       });
       
-      await persistAssistantMessage(reply, debug, responseDebugMeta);
+      const botMessageId = await persistAssistantMessage(reply, debug, responseDebugMeta);
       await maybeGenerateConversationTitle();
       
       return res.json({
@@ -4941,7 +5003,8 @@ app.post("/chat", async (req, res) => {
         memory: responseMemory,
         flags: newFlags,
         debug,
-        debugMeta: responseDebugMeta
+        debugMeta: responseDebugMeta,
+        botMessageId
       });
     }
     
@@ -5199,7 +5262,7 @@ app.post("/chat", async (req, res) => {
       })));
       markChatStage("persist_response");
       
-      await persistAssistantMessage(reply, debug, responseDebugMeta, comparisonResults);
+      const botMessageId = await persistAssistantMessage(reply, debug, responseDebugMeta, comparisonResults);
       await maybeGenerateConversationTitle();
       
       return res.json({
@@ -5210,12 +5273,13 @@ app.post("/chat", async (req, res) => {
         memory: newMemory,
         flags: newFlags,
         debug,
-        debugMeta: responseDebugMeta
+        debugMeta: responseDebugMeta,
+        botMessageId
       });
     }
     markChatStage("persist_response");
     
-    await persistAssistantMessage(reply, debug, responseDebugMeta);
+    const botMessageId = await persistAssistantMessage(reply, debug, responseDebugMeta);
     await maybeGenerateConversationTitle();
     
     return res.json({
@@ -5224,7 +5288,8 @@ app.post("/chat", async (req, res) => {
       memory: newMemory,
       flags: newFlags,
       debug,
-      debugMeta: responseDebugMeta
+      debugMeta: responseDebugMeta,
+      botMessageId
     });
   } catch (err) {
     console.error("Erreur /chat:", err);
