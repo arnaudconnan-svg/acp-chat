@@ -25,12 +25,16 @@ admin.initializeApp({
 const db = admin.database();
 const messagesRef = db.ref("messages");
 const userLabelsRef = db.ref("userLabels");
+const usersRef = db.ref("users");
 const crypto = require("crypto");
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 const SESSION_SECRET = process.env.SESSION_SECRET;
 const adminSessions = new Map(); // sessionId -> { isAdmin: true, createdAt }
 const ADMIN_SESSION_DURATION = 24 * 60 * 60 * 1000; // 24h
 const ADMIN_SESSION_SIGNING_SECRET = process.env.ADMIN_SESSION_SECRET || SESSION_SECRET || ADMIN_PASSWORD || "dev-admin-session-secret";
+const userSessions = new Map(); // sessionToken -> { userId, createdAt }
+const USER_SESSION_DURATION = 30 * 24 * 60 * 60 * 1000; // 30d
+const USER_SESSION_SIGNING_SECRET = process.env.USER_SESSION_SECRET || SESSION_SECRET || ADMIN_PASSWORD || "dev-user-session-secret";
 
 const fs = require("fs");
 const path = require("path");
@@ -275,6 +279,160 @@ function parseCookies(req) {
   return list;
 }
 
+function signUserSessionPayload(payload) {
+  return crypto
+    .createHmac("sha256", USER_SESSION_SIGNING_SECRET)
+    .update(payload)
+    .digest("hex");
+}
+
+function buildUserSessionToken(userId, createdAt = Date.now()) {
+  const payload = `${String(userId || "").trim()}:${createdAt}`;
+  const signature = signUserSessionPayload(payload);
+  return `${payload}.${signature}`;
+}
+
+function parseAndValidateUserSessionToken(token) {
+  if (typeof token !== "string" || !token.includes(".")) {
+    return null;
+  }
+
+  const parts = token.split(".");
+  if (parts.length !== 2) {
+    return null;
+  }
+
+  const payload = String(parts[0] || "").trim();
+  const signature = String(parts[1] || "").trim();
+
+  if (!payload || !signature || !payload.includes(":")) {
+    return null;
+  }
+
+  const expectedSignature = signUserSessionPayload(payload);
+  const signatureBuffer = Buffer.from(signature, "utf8");
+  const expectedBuffer = Buffer.from(expectedSignature, "utf8");
+
+  if (signatureBuffer.length !== expectedBuffer.length) {
+    return null;
+  }
+
+  if (!crypto.timingSafeEqual(signatureBuffer, expectedBuffer)) {
+    return null;
+  }
+
+  const separatorIndex = payload.lastIndexOf(":");
+  const userId = payload.slice(0, separatorIndex).trim();
+  const createdAt = Number(payload.slice(separatorIndex + 1));
+
+  if (!userId || !Number.isFinite(createdAt) || createdAt <= 0) {
+    return null;
+  }
+
+  if (Date.now() - createdAt > USER_SESSION_DURATION) {
+    return null;
+  }
+
+  return {
+    userId,
+    createdAt
+  };
+}
+
+function normalizeEmail(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function hashPassword(password) {
+  const salt = crypto.randomBytes(16).toString("hex");
+  const hash = crypto.scryptSync(String(password || ""), salt, 64).toString("hex");
+  return `scrypt:${salt}:${hash}`;
+}
+
+function verifyPassword(password, storedHash) {
+  const parts = String(storedHash || "").split(":");
+  if (parts.length !== 3 || parts[0] !== "scrypt") {
+    return false;
+  }
+
+  const salt = parts[1];
+  const expectedHashHex = parts[2];
+  if (!salt || !expectedHashHex) {
+    return false;
+  }
+
+  const passwordHashHex = crypto.scryptSync(String(password || ""), salt, 64).toString("hex");
+  const passwordBuffer = Buffer.from(passwordHashHex, "hex");
+  const expectedBuffer = Buffer.from(expectedHashHex, "hex");
+
+  if (passwordBuffer.length !== expectedBuffer.length) {
+    return false;
+  }
+
+  return crypto.timingSafeEqual(passwordBuffer, expectedBuffer);
+}
+
+async function findUserByEmail(email) {
+  const normalizedEmail = normalizeEmail(email);
+  if (!normalizedEmail) {
+    return null;
+  }
+
+  const snapshot = await usersRef
+    .orderByChild("email")
+    .equalTo(normalizedEmail)
+    .limitToFirst(1)
+    .once("value");
+
+  const users = snapshot.val() || null;
+  if (!users || typeof users !== "object") {
+    return null;
+  }
+
+  const entries = Object.entries(users);
+  if (!entries.length) {
+    return null;
+  }
+
+  const [userId, userData] = entries[0];
+  return {
+    userId,
+    user: userData && typeof userData === "object" ? userData : null
+  };
+}
+
+function getUserCapabilities(plan = "free") {
+  const normalizedPlan = String(plan || "free").trim().toLowerCase();
+
+  if (normalizedPlan === "premium" || normalizedPlan === "pro") {
+    return {
+      branching: true,
+      intersessionMemory: true,
+      multiDeviceAccess: true
+    };
+  }
+
+  return {
+    branching: false,
+    intersessionMemory: false,
+    multiDeviceAccess: false
+  };
+}
+
+function toPublicUser(userId, userData) {
+  const safeUser = userData && typeof userData === "object" ? userData : {};
+  const plan = String(safeUser.plan || "free").trim().toLowerCase();
+
+  return {
+    id: String(userId || ""),
+    email: normalizeEmail(safeUser.email),
+    plan,
+    capabilities: getUserCapabilities(plan),
+    createdAt: typeof safeUser.createdAt === "string" ? safeUser.createdAt : null,
+    updatedAt: typeof safeUser.updatedAt === "string" ? safeUser.updatedAt : null
+  };
+}
+
 // Retrieve the admin session from cookies and validate its expiration.
 function getAdminSession(req) {
   const cookies = parseCookies(req);
@@ -301,6 +459,47 @@ function getAdminSession(req) {
   }
   
   return session;
+}
+
+async function getUserSession(req) {
+  const cookies = parseCookies(req);
+  const sessionToken = cookies.userSessionId;
+
+  if (!sessionToken) {
+    return null;
+  }
+
+  let session = userSessions.get(sessionToken) || null;
+
+  if (!session) {
+    const tokenSession = parseAndValidateUserSessionToken(sessionToken);
+
+    if (!tokenSession) {
+      return null;
+    }
+
+    session = tokenSession;
+    userSessions.set(sessionToken, session);
+  }
+
+  if (Date.now() - Number(session.createdAt || 0) > USER_SESSION_DURATION) {
+    userSessions.delete(sessionToken);
+    return null;
+  }
+
+  const userSnap = await usersRef.child(String(session.userId || "")).once("value");
+  const userData = userSnap.val();
+
+  if (!userData || typeof userData !== "object") {
+    userSessions.delete(sessionToken);
+    return null;
+  }
+
+  return {
+    token: sessionToken,
+    userId: String(session.userId || ""),
+    user: userData
+  };
 }
 
 // Middleware protecting admin routes by redirecting unauthenticated users.
@@ -3118,6 +3317,158 @@ app.post("/api/admin/logout", (req, res) => {
   );
   
   res.json({ success: true });
+});
+
+app.get("/api/auth/session", async (req, res) => {
+  try {
+    const session = await getUserSession(req);
+
+    if (!session) {
+      return res.json({ authenticated: false, user: null });
+    }
+
+    return res.json({
+      authenticated: true,
+      user: toPublicUser(session.userId, session.user)
+    });
+  } catch (err) {
+    console.error("Erreur /api/auth/session:", err.message);
+    return res.status(500).json({ error: "Session lookup failed" });
+  }
+});
+
+app.post("/api/auth/register", async (req, res) => {
+  try {
+    if (
+      !req.body ||
+      typeof req.body !== "object" ||
+      Array.isArray(req.body) ||
+      typeof req.body.email !== "string" ||
+      typeof req.body.password !== "string"
+    ) {
+      return res.status(400).json({ error: "Invalid register request" });
+    }
+
+    const email = normalizeEmail(req.body.email);
+    const password = String(req.body.password || "");
+
+    if (!email || !email.includes("@")) {
+      return res.status(400).json({ error: "Invalid email" });
+    }
+
+    if (password.length < 10) {
+      return res.status(400).json({ error: "Password must contain at least 10 characters" });
+    }
+
+    const existing = await findUserByEmail(email);
+    if (existing) {
+      return res.status(409).json({ error: "Email already registered" });
+    }
+
+    const now = new Date().toISOString();
+    const userId = `u_${crypto.randomBytes(12).toString("hex")}`;
+    const userRecord = {
+      email,
+      passwordHash: hashPassword(password),
+      plan: "free",
+      createdAt: now,
+      updatedAt: now
+    };
+
+    await usersRef.child(userId).set(userRecord);
+
+    const sessionToken = buildUserSessionToken(userId);
+    userSessions.set(sessionToken, {
+      userId,
+      createdAt: Date.now()
+    });
+
+    res.setHeader(
+      "Set-Cookie",
+      `userSessionId=${sessionToken}; HttpOnly; Path=/; SameSite=Lax; Max-Age=${Math.floor(USER_SESSION_DURATION / 1000)}`
+    );
+
+    return res.status(201).json({
+      success: true,
+      user: toPublicUser(userId, userRecord)
+    });
+  } catch (err) {
+    console.error("Erreur /api/auth/register:", err.message);
+    return res.status(500).json({ error: "Register failed" });
+  }
+});
+
+app.post("/api/auth/login", async (req, res) => {
+  try {
+    if (
+      !req.body ||
+      typeof req.body !== "object" ||
+      Array.isArray(req.body) ||
+      typeof req.body.email !== "string" ||
+      typeof req.body.password !== "string"
+    ) {
+      return res.status(400).json({ error: "Invalid login request" });
+    }
+
+    const email = normalizeEmail(req.body.email);
+    const password = String(req.body.password || "");
+    const found = await findUserByEmail(email);
+
+    if (!found || !found.user || !verifyPassword(password, found.user.passwordHash)) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const sessionToken = buildUserSessionToken(found.userId);
+    userSessions.set(sessionToken, {
+      userId: found.userId,
+      createdAt: Date.now()
+    });
+
+    res.setHeader(
+      "Set-Cookie",
+      `userSessionId=${sessionToken}; HttpOnly; Path=/; SameSite=Lax; Max-Age=${Math.floor(USER_SESSION_DURATION / 1000)}`
+    );
+
+    return res.json({
+      success: true,
+      user: toPublicUser(found.userId, found.user)
+    });
+  } catch (err) {
+    console.error("Erreur /api/auth/login:", err.message);
+    return res.status(500).json({ error: "Login failed" });
+  }
+});
+
+app.post("/api/auth/logout", (req, res) => {
+  const cookies = parseCookies(req);
+  const sessionToken = cookies.userSessionId;
+
+  if (sessionToken) {
+    userSessions.delete(sessionToken);
+  }
+
+  res.setHeader(
+    "Set-Cookie",
+    "userSessionId=; HttpOnly; Path=/; Max-Age=0"
+  );
+
+  return res.json({ success: true });
+});
+
+app.get("/api/premium/capabilities", async (req, res) => {
+  try {
+    const session = await getUserSession(req);
+    const plan = session?.user?.plan || "free";
+
+    return res.json({
+      authenticated: Boolean(session),
+      plan: String(plan || "free").trim().toLowerCase(),
+      capabilities: getUserCapabilities(plan)
+    });
+  } catch (err) {
+    console.error("Erreur /api/premium/capabilities:", err.message);
+    return res.status(500).json({ error: "Capabilities lookup failed" });
+  }
 });
 
 // Admin route to set or remove a human-readable label for a user.
