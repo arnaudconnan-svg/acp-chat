@@ -2396,6 +2396,78 @@
       }
     }
 
+    async function openPremiumBranchFromMessage(sourceConversationId, anchorMessageId, anchorHistory) {
+      if (!sourceConversationId || !anchorMessageId) {
+        showTemporaryNotice("Repartir impossible : identifiants manquants");
+        return;
+      }
+
+      showTemporaryNotice("Creation de la branche...");
+
+      try {
+        const createRes = await fetch("/api/premium/branches/from-message", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sourceConversationId, anchorMessageId })
+        });
+
+        if (!createRes.ok) {
+          const data = await createRes.json().catch(() => ({}));
+          showTemporaryNotice("Erreur branche : " + (data.error || createRes.status));
+          return;
+        }
+
+        const createData = await createRes.json();
+        const branchId = createData?.branch?.id;
+        const branchConversationId = createData?.branch?.branchConversationId;
+
+        if (!branchId || !branchConversationId) {
+          showTemporaryNotice("Erreur branche : reponse invalide");
+          return;
+        }
+
+        const activateRes = await fetch("/api/premium/branches/" + branchId + "/activate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" }
+        });
+
+        if (!activateRes.ok) {
+          const data = await activateRes.json().catch(() => ({}));
+          showTemporaryNotice("Erreur activation branche : " + (data.error || activateRes.status));
+          return;
+        }
+
+        // Inject branch history locally then switch to it.
+        const baseTs = Date.now();
+        const branchMessages = (Array.isArray(anchorHistory) ? anchorHistory : []).map((item, index) => ({
+          role: item.role,
+          content: item.content,
+          debug: Array.isArray(item.debug) ? item.debug : [],
+          debugMeta: item.debugMeta && typeof item.debugMeta === "object" ? item.debugMeta : null,
+          comparisonResults: Array.isArray(item.comparisonResults) ? item.comparisonResults : null,
+          t: baseTs - Math.max((anchorHistory.length || 1) - index, 1) * 1000
+        }));
+
+        localStorage.setItem(CONVERSATION_ID_KEY, branchConversationId);
+        saveConversationData(branchConversationId, {
+          messages: branchMessages,
+          memory: defaultMemory(),
+          flags: normalizeStoredFlags({}),
+          updatedAt: Date.now()
+        });
+
+        setSessionStatus("active");
+        closeEditMode({ restoreDraft: false });
+        showScreen("chatScreen", { replaceHistory: true, pushHistory: false, noAnimation: true });
+        renderHistory();
+        scrollChatToBottom();
+        showTemporaryNotice("Branche activee — conversation repartie depuis ce point");
+      } catch (err) {
+        console.error("[PREMIUM_BRANCH_ERROR]", err.message);
+        showTemporaryNotice("Erreur inattendue lors du branchement");
+      }
+    }
+
     function applyAdminReplayPayload(payload) {
       if (!payload || typeof payload !== "object") {
         return null;
@@ -4299,6 +4371,55 @@
         });
 
         actionsRow.appendChild(copyBotBtn);
+
+        if (hasPremiumCapability("branching") && historyIndex >= 0) {
+          const branchBtn = document.createElement("button");
+          branchBtn.type = "button";
+          branchBtn.setAttribute("aria-label", "Repartir d'ici");
+          branchBtn.title = "Repartir d'ici (Premium)";
+          branchBtn.textContent = "\u21AA";
+          branchBtn.style.border = "none";
+          branchBtn.style.background = "transparent";
+          branchBtn.style.color = "#7a3fd1";
+          branchBtn.style.cursor = "pointer";
+          branchBtn.style.padding = "3px 5px";
+          branchBtn.style.lineHeight = "1";
+          branchBtn.style.fontSize = "14px";
+          branchBtn.style.opacity = "0.55";
+          branchBtn.style.fontWeight = "bold";
+
+          branchBtn.addEventListener("click", event => {
+            event.preventDefault();
+            event.stopPropagation();
+
+            const history = loadHistory();
+            const botEntry = history[historyIndex];
+            const sourceConversationId = getConversationId();
+
+            if (!sourceConversationId || !botEntry) {
+              showTemporaryNotice("Repartir impossible depuis ce message");
+              return;
+            }
+
+            // We need the Firebase message id. The message may have an id field
+            // if it was persisted through admin or premium path. For fresh chat
+            // messages the id is not stored locally — we use a fallback local id.
+            const anchorMessageId = (botEntry.id && typeof botEntry.id === "string")
+              ? botEntry.id
+              : null;
+
+            if (!anchorMessageId) {
+              showTemporaryNotice("L'identifiant du message n'est pas disponible pour ce message. Sauvegardez la conversation d'abord.");
+              return;
+            }
+
+            const anchorHistory = history.slice(0, historyIndex + 1);
+            openPremiumBranchFromMessage(sourceConversationId, anchorMessageId, anchorHistory);
+          });
+
+          actionsRow.appendChild(branchBtn);
+        }
+
         contentWrap.appendChild(actionsRow);
       }
       
