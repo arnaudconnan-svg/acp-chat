@@ -686,6 +686,32 @@
         opacity 0.25s ease;
       pointer-events: none;
     }
+
+    #accountBtn {
+      position: absolute;
+      right: 18px;
+      bottom: 14px;
+      display: none;
+      align-items: center;
+      gap: 5px;
+      font-size: 12px;
+      font-weight: 500;
+      color: #7a3fd1;
+      background: rgba(122, 63, 209, 0.08);
+      border: 1px solid rgba(122, 63, 209, 0.18);
+      border-radius: 20px;
+      padding: 4px 11px;
+      cursor: pointer;
+      pointer-events: auto;
+      text-decoration: none;
+      line-height: 1.4;
+      transition: background 0.15s;
+      white-space: nowrap;
+    }
+
+    #accountBtn:hover {
+      background: rgba(122, 63, 209, 0.14);
+    }
     
     #topBar.is-elevated {
       background: linear-gradient(to bottom,
@@ -1540,6 +1566,8 @@
       </button>
       
       <h2>Facilitat.io</h2>
+
+      <a id="accountBtn" href="/premium.html" aria-label="Mon compte Premium">Mon espace</a>
     </div>
     
     <div id="chat"></div>
@@ -2087,6 +2115,23 @@
           }
         }
       } catch (_) {}
+    }
+
+    function updateAccountBtnVisibility() {
+      const btn = document.getElementById("accountBtn");
+      if (!btn) return;
+
+      if (userSessionState.authenticated) {
+        btn.style.display = "flex";
+        const plan = String(userSessionState.user && userSessionState.user.plan ? userSessionState.user.plan : "free");
+        if (plan === "premium" || plan === "pro") {
+          btn.textContent = plan.charAt(0).toUpperCase() + plan.slice(1) + " \u2736";
+        } else {
+          btn.textContent = "Mon espace";
+        }
+      } else {
+        btn.style.display = "none";
+      }
     }
 
     async function syncAdminUiFromSession() {
@@ -6195,6 +6240,7 @@
     window.addEventListener("load", async () => {
       await syncUserSessionState();
       await syncIntersessionMemoryIfApplicable();
+      updateAccountBtnVisibility();
       const isAdminUI = await syncAdminUiFromSession();
       const shouldSkipWelcomeAnimation = isAdminUI;
 

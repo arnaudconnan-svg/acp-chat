@@ -1,0 +1,16 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "messages": {
+      ".indexOn": [
+        "conversationId"
+      ]
+    },
+    "users": {
+      ".indexOn": [
+        "email"
+      ]
+    }
+  }
+}

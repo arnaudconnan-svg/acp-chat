@@ -7,6 +7,7 @@ const path = require("path");
 const admin = require("firebase-admin");
 
 const REQUIRED_INDEX = "conversationId";
+const REQUIRED_USER_INDEX = "email";
 
 function loadServiceAccount() {
   if (process.env.FIREBASE_SERVICE_ACCOUNT_PATH) {
@@ -72,6 +73,41 @@ function ensureMessagesConversationIndex(rulesContainer) {
   return { changed: true, rules: next };
 }
 
+function ensureUsersEmailIndex(rulesContainer) {
+  const next = JSON.parse(JSON.stringify(rulesContainer || { rules: {} }));
+
+  if (!next.rules || typeof next.rules !== "object" || Array.isArray(next.rules)) {
+    next.rules = {};
+  }
+
+  if (!next.rules.users || typeof next.rules.users !== "object" || Array.isArray(next.rules.users)) {
+    next.rules.users = {};
+  }
+
+  const current = next.rules.users[".indexOn"];
+
+  if (Array.isArray(current)) {
+    if (!current.includes(REQUIRED_USER_INDEX)) {
+      next.rules.users[".indexOn"] = [...current, REQUIRED_USER_INDEX];
+      return { changed: true, rules: next };
+    }
+
+    return { changed: false, rules: next };
+  }
+
+  if (typeof current === "string") {
+    if (current === REQUIRED_USER_INDEX) {
+      return { changed: false, rules: next };
+    }
+
+    next.rules.users[".indexOn"] = [current, REQUIRED_USER_INDEX];
+    return { changed: true, rules: next };
+  }
+
+  next.rules.users[".indexOn"] = [REQUIRED_USER_INDEX];
+  return { changed: true, rules: next };
+}
+
 function hasRequiredIndex(rulesContainer) {
   const value = rulesContainer?.rules?.messages?.[".indexOn"];
 
@@ -81,6 +117,20 @@ function hasRequiredIndex(rulesContainer) {
 
   if (typeof value === "string") {
     return value === REQUIRED_INDEX;
+  }
+
+  return false;
+}
+
+function hasRequiredUsersIndex(rulesContainer) {
+  const value = rulesContainer?.rules?.users?.[".indexOn"];
+
+  if (Array.isArray(value)) {
+    return value.includes(REQUIRED_USER_INDEX);
+  }
+
+  if (typeof value === "string") {
+    return value === REQUIRED_USER_INDEX;
   }
 
   return false;
@@ -114,13 +164,16 @@ async function main() {
 
   const rawRules = await fetchRules(db);
   const rulesContainer = toRulesContainer(rawRules);
-  const ensured = ensureMessagesConversationIndex(rulesContainer);
+  const ensuredMessages = ensureMessagesConversationIndex(rulesContainer);
+  const ensuredUsers = ensureUsersEmailIndex(ensuredMessages.rules);
+  const changed = ensuredMessages.changed || ensuredUsers.changed;
 
   console.log(`[RTDB-INDEX] Base URL: ${baseUrl}`);
-  console.log(`[RTDB-INDEX] Existing index present: ${hasRequiredIndex(rulesContainer)}`);
+  console.log(`[RTDB-INDEX] Existing messages index present: ${hasRequiredIndex(rulesContainer)}`);
+  console.log(`[RTDB-INDEX] Existing users index present: ${hasRequiredUsersIndex(rulesContainer)}`);
 
-  if (!ensured.changed) {
-    console.log("[RTDB-INDEX] No change needed. messages..indexOn already contains conversationId.");
+  if (!changed) {
+    console.log("[RTDB-INDEX] No change needed. Required indexes are already present.");
     return;
   }
 
@@ -134,7 +187,7 @@ async function main() {
   fs.writeFileSync(backupFile, JSON.stringify(rulesContainer, null, 2));
   console.log(`[RTDB-INDEX] Backup written: ${backupFile}`);
 
-  await putRules(db, ensured.rules);
+  await putRules(db, ensuredUsers.rules);
   console.log("[RTDB-INDEX] Rules updated.");
 
   const refreshedRawRules = await fetchRules(db);
@@ -144,7 +197,11 @@ async function main() {
     throw new Error("Post-update validation failed: conversationId index not found in rules");
   }
 
-  console.log("[RTDB-INDEX] Validation OK. messages..indexOn includes conversationId.");
+  if (!hasRequiredUsersIndex(refreshedContainer)) {
+    throw new Error("Post-update validation failed: email index not found in rules");
+  }
+
+  console.log("[RTDB-INDEX] Validation OK. messages and users indexes are present.");
 }
 
 main().catch(err => {

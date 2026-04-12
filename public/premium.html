@@ -235,6 +235,7 @@
     <a href="/"><img src="/images/logo.png" alt="Facilitat.io"></a>
     <div class="header-actions">
       <a href="/" style="font-size:13px;color:#888;text-decoration:none;">← Chat</a>
+      <a href="/auth.html?next=%2Fpremium.html" style="font-size:13px;color:#888;text-decoration:none;">Compte</a>
       <button class="btn-link" id="logoutBtn" onclick="handleLogout()">Se déconnecter</button>
     </div>
   </header>
@@ -328,7 +329,9 @@
           banner.appendChild(p);
           const upgradeBtn = document.createElement("button");
           upgradeBtn.textContent = "Découvrir Premium";
-          upgradeBtn.onclick = () => { /* placeholder for upgrade flow */ };
+          upgradeBtn.onclick = () => {
+            alert("Le parcours d'upgrade arrive bientot. Demandez une activation admin en attendant.");
+          };
           banner.appendChild(upgradeBtn);
           main.appendChild(banner);
         }
