@@ -555,24 +555,6 @@
       flex: 0 0 auto;
     }
     
-    .conversationMenuToggle {
-      width: 32px;
-      height: 32px;
-      border: none;
-      border-radius: 0;
-      background: transparent;
-      color: #5c6f73;
-      padding: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-    }
-    
-    .conversationMenuToggle svg {
-      width: 22px;
-      height: 22px;
-    }
     
     .conversationMenuPopover {
       display: none;
@@ -1510,7 +1492,13 @@
         <span class="topBarTitle">Facilitat.io</span>
       </div>
       <div id="conversationsAccountMenuWrap" class="conversationMenuWrap">
-        <button id="conversationsAccountMenuBtn" type="button" aria-label="Compte" data-menu-toggle="account-menu">⋮</button>
+        <button id="conversationsAccountMenuBtn" type="button" aria-label="Compte" data-menu-toggle="account-menu">
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+            <circle cx="12" cy="5" r="1.8" fill="currentColor"></circle>
+            <circle cx="12" cy="12" r="1.8" fill="currentColor"></circle>
+            <circle cx="12" cy="19" r="1.8" fill="currentColor"></circle>
+          </svg>
+        </button>
         <div id="conversationsAccountMenu" class="conversationMenuPopover" data-menu="account-menu">
           <button id="conversationsAccountMenuAction" type="button" class="conversationMenuAction">Connexion</button>
         </div>
@@ -1541,22 +1529,13 @@
         <button type="button" class="conversationOpenBtn" data-open-conversation="">
           <div class="conversationItemPlaceholder"></div>
         </button>
-        <div class="conversationMenuWrap">
-          <button type="button" class="conversationMenuToggle" data-menu-toggle="" aria-label="Options">
-            <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-              <circle cx="12" cy="5" r="1.8" fill="currentColor"></circle>
-              <circle cx="12" cy="12" r="1.8" fill="currentColor"></circle>
-              <circle cx="12" cy="19" r="1.8" fill="currentColor"></circle>
-            </svg>
-          </button>
-          <div class="conversationMenuPopover" data-menu="">
+        <div class="conversationMenuPopover" data-menu="">
             <button type="button" class="conversationMenuAction" data-rename-conversation="">
               Renommer
             </button>
             <button type="button" class="conversationMenuAction conversationMenuActionDanger" data-delete-conversation="">
               Supprimer
             </button>
-          </div>
         </div>
       </div>
     </template>
@@ -2336,6 +2315,93 @@
         "saveConversationsIndex"
       );
     }
+
+    async function syncRemoteConversationsIndexIfApplicable() {
+      if (!userSessionState.authenticated || hasPremiumCapability("multiDeviceAccess") !== true) {
+        return;
+      }
+
+      try {
+        const res = await fetch("/api/account/conversations", {
+          method: "GET",
+          credentials: "include",
+          cache: "no-store"
+        });
+
+        if (!res.ok) return;
+
+        const data = await res.json().catch(() => ({}));
+        const conversations = Array.isArray(data?.conversations) ? data.conversations : [];
+
+        conversations.forEach(item => {
+          upsertConversationIndexItem({
+            id: String(item?.id || ""),
+            title: typeof item?.title === "string" && item.title.trim() ? item.title : (typeof item?.lastUserMessage === "string" ? item.lastUserMessage.slice(0, 60) : "Conversation sans titre"),
+            updatedAt: Number(new Date(item?.updatedAt || item?.createdAt || Date.now())) || Date.now(),
+            isCustomTitle: item?.titleLocked === true
+          });
+        });
+      } catch {}
+    }
+
+    async function hydrateRemoteConversationIfNeeded(conversationId) {
+      if (!conversationId || !userSessionState.authenticated || hasPremiumCapability("multiDeviceAccess") !== true) {
+        return false;
+      }
+
+      const existing = loadConversationData(conversationId);
+      if (Array.isArray(existing.messages) && existing.messages.length > 0) {
+        return true;
+      }
+
+      try {
+        const res = await fetch("/api/account/conversations/" + encodeURIComponent(conversationId), {
+          method: "GET",
+          credentials: "include",
+          cache: "no-store"
+        });
+
+        if (!res.ok) {
+          return false;
+        }
+
+        const data = await res.json().catch(() => ({}));
+        const conversation = data?.conversation && typeof data.conversation === "object" ? data.conversation : null;
+        const messages = Array.isArray(data?.messages) ? data.messages : [];
+
+        if (!conversation) {
+          return false;
+        }
+
+        const normalizedMessages = messages.map((item, index) => ({
+          role: String(item?.role || ""),
+          content: String(item?.content || ""),
+          debug: Array.isArray(item?.debug) ? item.debug : [],
+          debugMeta: item?.debugMeta && typeof item.debugMeta === "object" ? item.debugMeta : null,
+          comparisonResults: Array.isArray(item?.comparisonResults) ? item.comparisonResults : null,
+          id: typeof item?.id === "string" ? item.id : undefined,
+          t: Number(item?.timestamp || 0) || (Date.now() + index)
+        }));
+
+        saveConversationData(conversationId, {
+          messages: normalizedMessages,
+          memory: typeof conversation.memory === "string" && conversation.memory.trim() ? conversation.memory : defaultMemory(),
+          flags: normalizeStoredFlags(conversation.flags || {}),
+          updatedAt: Number(new Date(conversation.updatedAt || conversation.createdAt || Date.now())) || Date.now()
+        });
+
+        upsertConversationIndexItem({
+          id: conversationId,
+          title: typeof conversation.title === "string" && conversation.title.trim() ? conversation.title : "Conversation sans titre",
+          updatedAt: Number(new Date(conversation.updatedAt || conversation.createdAt || Date.now())) || Date.now(),
+          isCustomTitle: true
+        });
+
+        return true;
+      } catch {
+        return false;
+      }
+    }
     
     function escapeHtml(value) {
       return String(value)
@@ -2731,7 +2797,8 @@
       }
     }
     
-    function openConversation(conversationId) {
+    async function openConversation(conversationId) {
+      await hydrateRemoteConversationIfNeeded(conversationId);
       localStorage.setItem(CONVERSATION_ID_KEY, conversationId);
       
       if (isSessionExpired() && loadHistory().length > 0) {
@@ -2807,6 +2874,17 @@
     window.addEventListener("storage", syncFromStorageEvent);
     
     const SCREEN_IDS = ["welcomeScreen", "conversationsScreen", "chatScreen"];
+
+    function navigateAway(url) {
+      const active = document.querySelector(".screen.active");
+      if (active) {
+        active.style.transition = "opacity 0.32s ease";
+        active.style.opacity = "0";
+        setTimeout(() => { window.location.href = url; }, 320);
+      } else {
+        window.location.href = url;
+      }
+    }
     
     function applyScreen(id) {
       document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
@@ -4896,7 +4974,6 @@
         const root = node.querySelector(".conversationItem");
         const openBtn = node.querySelector("[data-open-conversation]");
         const titleEl = node.querySelector(".conversationItemPlaceholder");
-        const toggleBtn = node.querySelector("[data-menu-toggle]");
         const menu = node.querySelector("[data-menu]");
         const renameBtn = node.querySelector("[data-rename-conversation]");
         const deleteBtn = node.querySelector("[data-delete-conversation]");
@@ -4904,28 +4981,68 @@
         root.dataset.conversationId = item.id;
         openBtn.dataset.openConversation = item.id;
         titleEl.textContent = safeTitle;
-        toggleBtn.dataset.menuToggle = item.id;
         menu.dataset.menu = item.id;
         renameBtn.dataset.renameConversation = item.id;
         deleteBtn.dataset.deleteConversation = item.id;
         
-        openBtn.onclick = () => {
-          closeConversationMenus();
-          openConversation(item.id);
+        // Long-press (touch) / hold-click (desktop) / right-click → options menu
+        let itemLPTimer = null;
+        let itemLPTriggered = false;
+        let itemLPStartX = 0;
+        let itemLPStartY = 0;
+        
+        const clearItemLP = () => {
+          if (itemLPTimer) { clearTimeout(itemLPTimer); itemLPTimer = null; }
         };
         
-        toggleBtn.onclick = e => {
-          e.preventDefault();
-          e.stopPropagation();
-          
-          const isOpening = menu.style.display !== "block";
-          
-          if (isOpening) {
-            openConversationMenu(toggleBtn, menu);
+        const startItemLP = event => {
+          itemLPTriggered = false;
+          if (event.touches && event.touches[0]) {
+            itemLPStartX = event.touches[0].clientX;
+            itemLPStartY = event.touches[0].clientY;
           } else {
-            closeConversationMenus();
+            itemLPStartX = event.clientX || 0;
+            itemLPStartY = event.clientY || 0;
           }
+          clearItemLP();
+          itemLPTimer = setTimeout(() => {
+            itemLPTriggered = true;
+            openConversationMenu(root, menu);
+          }, 500);
         };
+        
+        const moveItemLP = event => {
+          const cx = (event.touches && event.touches[0] ? event.touches[0].clientX : event.clientX) || 0;
+          const cy = (event.touches && event.touches[0] ? event.touches[0].clientY : event.clientY) || 0;
+          if (Math.abs(cx - itemLPStartX) > 10 || Math.abs(cy - itemLPStartY) > 10) { clearItemLP(); }
+        };
+        
+        const endItemLP = () => { clearItemLP(); };
+        
+        root.addEventListener("contextmenu", e => {
+          e.preventDefault();
+          openConversationMenu(root, menu);
+        });
+        
+        root.addEventListener("touchstart", startItemLP, { passive: true });
+        root.addEventListener("touchmove", moveItemLP, { passive: true });
+        root.addEventListener("touchend", endItemLP);
+        root.addEventListener("touchcancel", endItemLP);
+        root.addEventListener("mousedown", startItemLP);
+        root.addEventListener("mousemove", moveItemLP);
+        root.addEventListener("mouseup", endItemLP);
+        root.addEventListener("mouseleave", endItemLP);
+        
+        openBtn.addEventListener("click", e => {
+          if (itemLPTriggered) {
+            e.preventDefault();
+            e.stopPropagation();
+            itemLPTriggered = false;
+            return;
+          }
+          closeConversationMenus();
+          openConversation(item.id);
+        });
         
         renameBtn.onclick = e => {
           e.preventDefault();
@@ -5740,11 +5857,11 @@
             "",
             `${currentUrl.pathname}${nextSearch ? `?${nextSearch}` : ""}${currentUrl.hash || ""}`
           );
-          window.location.href = "/premium.html";
+          navigateAway("/account.html");
           return;
         }
 
-        window.location.href = "/auth.html?next=%2F%3Fscreen%3DconversationsScreen";
+        navigateAway("/auth.html?next=%2F%3Fscreen%3DconversationsScreen");
       });
     }
     
@@ -6276,6 +6393,7 @@
     
     window.addEventListener("load", async () => {
       await syncUserSessionState();
+      await syncRemoteConversationsIndexIfApplicable();
       await syncIntersessionMemoryIfApplicable();
       updateAccountBtnVisibility();
       const isAdminUI = await syncAdminUiFromSession();
@@ -6322,7 +6440,7 @@
         return;
       }
 
-      // Branch resume: ?branch=<branchConversationId> from premium.html
+      // Branch resume: ?branch=<branchConversationId> from account.html
       const branchParam = loadUrl.searchParams.get("branch");
       if (branchParam && typeof branchParam === "string" && branchParam.trim()) {
         const branchConversationId = branchParam.trim();
@@ -6331,7 +6449,7 @@
         history.replaceState(history.state || {}, "", `${loadUrl.pathname}${cleanSearch ? `?${cleanSearch}` : ""}${loadUrl.hash || ""}`);
 
         if (!userSessionState.authenticated) {
-          window.location.href = "/auth.html?next=" + encodeURIComponent("/?branch=" + encodeURIComponent(branchConversationId));
+          navigateAway("/auth.html?next=" + encodeURIComponent("/?branch=" + encodeURIComponent(branchConversationId)));
           return;
         }
 

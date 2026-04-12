@@ -3498,6 +3498,124 @@ app.post("/api/auth/logout", (req, res) => {
   return res.json({ success: true });
 });
 
+app.post("/api/auth/change-password", requireUserAuth, async (req, res) => {
+  try {
+    if (
+      !req.body ||
+      typeof req.body !== "object" ||
+      Array.isArray(req.body) ||
+      typeof req.body.currentPassword !== "string" ||
+      typeof req.body.newPassword !== "string"
+    ) {
+      return res.status(400).json({ error: "Invalid change password request" });
+    }
+
+    const session = req.userSession;
+    const currentPassword = String(req.body.currentPassword || "");
+    const newPassword = String(req.body.newPassword || "");
+
+    if (!verifyPassword(currentPassword, session.user.passwordHash)) {
+      return res.status(401).json({ error: "Current password is incorrect" });
+    }
+
+    if (newPassword.length < 10) {
+      return res.status(400).json({ error: "Password must contain at least 10 characters" });
+    }
+
+    const now = new Date().toISOString();
+    await usersRef.child(session.userId).update({
+      passwordHash: hashPassword(newPassword),
+      updatedAt: now
+    });
+
+    return res.json({ success: true, updatedAt: now });
+  } catch (err) {
+    console.error("Erreur /api/auth/change-password:", err.message);
+    return res.status(500).json({ error: "Password change failed" });
+  }
+});
+
+app.get("/api/account/conversations", requireUserAuth, async (req, res) => {
+  try {
+    const session = req.userSession;
+    const snapshot = await db.ref("conversations").once("value");
+    const raw = snapshot.val() || {};
+
+    const conversations = Object.entries(raw)
+      .filter(([, value]) => String(value?.userId || "") === session.userId)
+      .map(([id, value]) => ({
+        id,
+        title: typeof value?.title === "string" ? value.title : null,
+        updatedAt: value?.updatedAt || value?.createdAt || null,
+        createdAt: value?.createdAt || null,
+        messageCount: Number(value?.messageCount || 0),
+        titleLocked: value?.titleLocked === true,
+        lastUserMessage: typeof value?.lastUserMessage === "string" ? value.lastUserMessage : ""
+      }))
+      .sort((a, b) => String(b.updatedAt || "").localeCompare(String(a.updatedAt || "")));
+
+    return res.json({ conversations });
+  } catch (err) {
+    console.error("Erreur /api/account/conversations:", err.message);
+    return res.status(500).json({ error: "Conversation lookup failed" });
+  }
+});
+
+app.get("/api/account/conversations/:id", requireUserAuth, async (req, res) => {
+  try {
+    const session = req.userSession;
+    const conversationId = String(req.params?.id || "").trim();
+
+    if (!conversationId) {
+      return res.status(400).json({ error: "Conversation invalide" });
+    }
+
+    const convSnap = await db.ref("conversations").child(conversationId).once("value");
+    const conversation = convSnap.val();
+
+    if (!conversation || typeof conversation !== "object") {
+      return res.status(404).json({ error: "Conversation introuvable" });
+    }
+
+    if (String(conversation.userId || "") !== session.userId) {
+      return res.status(403).json({ error: "Conversation ownership mismatch" });
+    }
+
+    const messagesSnap = await messagesRef
+      .orderByChild("conversationId")
+      .equalTo(conversationId)
+      .once("value");
+
+    const messagesRaw = messagesSnap.val() || {};
+    const messages = Object.entries(messagesRaw)
+      .map(([id, value]) => ({
+        id,
+        role: String(value?.role || ""),
+        content: String(value?.content || ""),
+        debug: Array.isArray(value?.debug) ? value.debug : [],
+        debugMeta: value?.debugMeta && typeof value.debugMeta === "object" ? value.debugMeta : null,
+        comparisonResults: Array.isArray(value?.comparisonResults) ? value.comparisonResults : null,
+        timestamp: Number(value?.timestamp || 0)
+      }))
+      .sort((a, b) => Number(a.timestamp || 0) - Number(b.timestamp || 0));
+
+    return res.json({
+      conversation: {
+        id: conversationId,
+        title: typeof conversation.title === "string" ? conversation.title : null,
+        updatedAt: conversation.updatedAt || conversation.createdAt || null,
+        createdAt: conversation.createdAt || null,
+        memory: normalizeMemory(conversation.memory || "", buildDefaultPromptRegistry()),
+        flags: normalizeSessionFlags(conversation.flags || {})
+      },
+      messages
+    });
+  } catch (err) {
+    console.error("Erreur /api/account/conversations/:id:", err.message);
+    return res.status(500).json({ error: "Conversation fetch failed" });
+  }
+});
+
 app.get("/api/premium/capabilities", async (req, res) => {
   try {
     const session = await getUserSession(req);
@@ -4524,7 +4642,7 @@ app.post("/chat", async (req, res) => {
     }
     
     // Persist the assistant message and attach debug metadata.
-    async function persistAssistantMessage(reply, debug, debugMeta = {}, comparisonResults = null) {
+    async function persistAssistantMessage(reply, debug, debugMeta = {}, comparisonResults = null, conversationState = null) {
       const safeComparisonResults = Array.isArray(comparisonResults) ?
         comparisonResults.map(entry => ({
           label: String(entry?.label || "").trim(),
@@ -4561,9 +4679,19 @@ app.post("/chat", async (req, res) => {
 
       assistantMessagePersistedForCatch = true;
       
-      await convRef.update({
+      const conversationPatch = {
         updatedAt: new Date().toISOString()
-      });
+      };
+
+      if (typeof conversationState?.memory === "string") {
+        conversationPatch.memory = normalizeMemory(conversationState.memory, activePromptRegistry);
+      }
+
+      if (conversationState?.flags && typeof conversationState.flags === "object") {
+        conversationPatch.flags = normalizeSessionFlags(conversationState.flags);
+      }
+
+      await convRef.update(conversationPatch);
 
       return pushedRef.key || null;
     }
@@ -4834,7 +4962,7 @@ app.post("/chat", async (req, res) => {
         promptRegistry: activePromptRegistry
       });
       
-      const botMessageId = await persistAssistantMessage(reply, debug, responseDebugMeta);
+      const botMessageId = await persistAssistantMessage(reply, debug, responseDebugMeta, null, { memory: responseMemory, flags: newFlags });
       await maybeGenerateConversationTitle();
       
       return res.json({
@@ -4878,7 +5006,7 @@ app.post("/chat", async (req, res) => {
           promptRegistry: activePromptRegistry
         });
         
-        const botMessageId = await persistAssistantMessage(reply, debug, responseDebugMeta);
+        const botMessageId = await persistAssistantMessage(reply, debug, responseDebugMeta, null, { memory: responseMemory, flags: newFlags });
         await maybeGenerateConversationTitle();
         
         return res.json({
@@ -4940,7 +5068,7 @@ app.post("/chat", async (req, res) => {
         promptRegistry: activePromptRegistry
       });
       
-      const botMessageId = await persistAssistantMessage(replyPipeline.content, debug, responseDebugMeta);
+      const botMessageId = await persistAssistantMessage(replyPipeline.content, debug, responseDebugMeta, null, { memory: responseMemory, flags: newFlags });
       await maybeGenerateConversationTitle();
       
       return res.json({
@@ -5004,7 +5132,7 @@ app.post("/chat", async (req, res) => {
         promptRegistry: activePromptRegistry
       });
       
-      const botMessageId = await persistAssistantMessage(replyPipeline.content, debug, responseDebugMeta);
+      const botMessageId = await persistAssistantMessage(replyPipeline.content, debug, responseDebugMeta, null, { memory: responseMemory, flags: newFlags });
       await maybeGenerateConversationTitle();
       
       return res.json({
@@ -5036,7 +5164,7 @@ app.post("/chat", async (req, res) => {
         promptRegistry: activePromptRegistry
       });
       
-      const botMessageId = await persistAssistantMessage(reply, debug, responseDebugMeta);
+      const botMessageId = await persistAssistantMessage(reply, debug, responseDebugMeta, null, { memory: responseMemory, flags: newFlags });
       await maybeGenerateConversationTitle();
       
       return res.json({
@@ -5304,7 +5432,7 @@ app.post("/chat", async (req, res) => {
       })));
       markChatStage("persist_response");
       
-      const botMessageId = await persistAssistantMessage(reply, debug, responseDebugMeta, comparisonResults);
+      const botMessageId = await persistAssistantMessage(reply, debug, responseDebugMeta, comparisonResults, { memory: newMemory, flags: newFlags });
       await maybeGenerateConversationTitle();
       
       return res.json({
@@ -5321,7 +5449,7 @@ app.post("/chat", async (req, res) => {
     }
     markChatStage("persist_response");
     
-    const botMessageId = await persistAssistantMessage(reply, debug, responseDebugMeta);
+    const botMessageId = await persistAssistantMessage(reply, debug, responseDebugMeta, null, { memory: newMemory, flags: newFlags });
     await maybeGenerateConversationTitle();
     
     return res.json({

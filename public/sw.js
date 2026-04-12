@@ -1,7 +1,10 @@
-const SHELL_CACHE = "facilitatio-shell-v0.9.7";
+const SHELL_CACHE = "facilitatio-shell-v0.9.8";
 const SHELL_ASSETS = [
   "/",
   "/index.html",
+  "/auth.html",
+  "/account.html",
+  "/premium.html",
   "/manifest.json",
   "/images/icon-512.png",
   "/images/logo.png"
@@ -55,6 +58,10 @@ self.addEventListener("fetch", event => {
   if (request.mode === "navigate") {
     event.respondWith(
       fetch(request).catch(async () => {
+        const cachedPage = await caches.match(request);
+        if (cachedPage) {
+          return cachedPage;
+        }
         const cachedIndex = await caches.match("/index.html");
         return cachedIndex || caches.match("/");
       })

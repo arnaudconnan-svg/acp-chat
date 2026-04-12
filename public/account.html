@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Facilitat.io — Mon compte</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="color-scheme" content="light">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+
+    @keyframes pageIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      min-height: 100%;
+      background: white;
+      font-family: Arial, sans-serif;
+      color: #1a1a1a;
+      animation: pageIn 0.68s ease 0.05s both;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 0 0 48px;
+    }
+
+    header {
+      width: 100%;
+      max-width: 520px;
+      padding: 28px 24px 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    header img {
+      height: 36px;
+      width: auto;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .btn-link {
+      font-size: 13px;
+      color: #888;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0;
+      text-decoration: underline;
+    }
+
+    .btn-link:hover { color: #1a1a1a; }
+
+    main {
+      width: 100%;
+      max-width: 520px;
+      padding: 28px 24px 0;
+    }
+
+    h1 {
+      font-size: 20px;
+      font-weight: 700;
+      margin: 0 0 6px;
+    }
+
+    .user-email {
+      font-size: 14px;
+      color: #666;
+      margin: 0 0 28px;
+    }
+
+    .card {
+      border: 1.5px solid #e0e0e0;
+      border-radius: 12px;
+      padding: 18px 20px;
+      margin-bottom: 24px;
+      background: #fff;
+    }
+
+    .plan-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .plan-label {
+      font-size: 13px;
+      color: #888;
+      margin-bottom: 4px;
+    }
+
+    .plan-name {
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .plan-name.free { color: #888; }
+    .plan-name.premium { color: #245e66; }
+
+    .plan-caps {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      align-items: flex-end;
+    }
+
+    .cap-badge {
+      font-size: 12px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      background: rgba(36, 94, 102, 0.12);
+      color: #245e66;
+      font-weight: 500;
+    }
+
+    .cap-badge.inactive {
+      background: #f0f0f0;
+      color: #bbb;
+    }
+
+    .section-title {
+      font-size: 15px;
+      font-weight: 600;
+      margin: 0 0 14px;
+      color: #333;
+    }
+
+    .field-group {
+      margin-bottom: 14px;
+    }
+
+    .field-label {
+      display: block;
+      font-size: 13px;
+      color: #555;
+      margin-bottom: 6px;
+    }
+
+    input[type="password"],
+    input[type="text"] {
+      width: 100%;
+      padding: 11px 14px;
+      border: 1.5px solid #ddd;
+      border-radius: 8px;
+      font-size: 15px;
+      color: #1a1a1a;
+      background: #fafafa;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    input[type="password"]:focus,
+    input[type="text"]:focus {
+      border-color: #1a1a1a;
+      background: #fff;
+    }
+
+    .password-field-wrap {
+      position: relative;
+    }
+
+    .password-field-wrap input[type="password"],
+    .password-field-wrap input[type="text"] {
+      padding-right: 68px;
+    }
+
+    .toggle-password-btn {
+      position: absolute;
+      top: 50%;
+      right: 10px;
+      transform: translateY(-50%);
+      border: none;
+      background: transparent;
+      color: #777;
+      font-size: 11px;
+      cursor: pointer;
+      padding: 4px 0;
+      width: 50px;
+      text-align: center;
+      border-radius: 6px;
+      line-height: 1.1;
+    }
+
+    .toggle-password-btn:hover {
+      background: rgba(0, 0, 0, 0.05);
+    }
+
+    .action-btn {
+      width: 100%;
+      padding: 12px;
+      background: #245e66;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+
+    .action-btn:disabled {
+      opacity: 0.45;
+      cursor: default;
+    }
+
+    .notice {
+      font-size: 13px;
+      color: #c0392b;
+      margin-top: 12px;
+      min-height: 18px;
+    }
+
+    .notice.success {
+      color: #245e66;
+    }
+
+    .branch-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .branch-item {
+      border: 1.5px solid #ebebeb;
+      border-radius: 10px;
+      padding: 14px 16px;
+    }
+
+    .branch-item-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .branch-title {
+      font-size: 14px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 220px;
+    }
+
+    .branch-open-btn {
+      flex-shrink: 0;
+      font-size: 13px;
+      background: #245e66;
+      color: white;
+      border: none;
+      border-radius: 7px;
+      padding: 6px 14px;
+      cursor: pointer;
+      font-weight: 500;
+    }
+
+    .branch-open-btn:hover { opacity: 0.8; }
+
+    .branch-meta {
+      font-size: 12px;
+      color: #999;
+      margin-top: 5px;
+    }
+
+    .empty-state, .loading-state, .error-notice {
+      font-size: 14px;
+      color: #aaa;
+      text-align: center;
+      padding: 24px 0;
+    }
+
+    .error-notice { color: #c0392b; }
+
+    .upgrade-banner {
+      border: 1.5px solid #245e66;
+      border-radius: 12px;
+      padding: 16px 20px;
+      background: rgba(36, 94, 102, 0.06);
+      margin-bottom: 24px;
+    }
+
+    .upgrade-banner p {
+      margin: 0 0 12px;
+      font-size: 14px;
+      color: #245e66;
+    }
+
+    .upgrade-banner button {
+      font-size: 13px;
+      padding: 8px 18px;
+      border: none;
+      border-radius: 8px;
+      background: #245e66;
+      color: white;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .upgrade-banner button:hover { opacity: 0.85; }
+  </style>
+</head>
+<body>
+  <header>
+    <img src="/images/logo.png" alt="Facilitat.io">
+    <div class="header-actions">
+      <button class="btn-link" id="logoutBtn" onclick="handleLogout()">Se déconnecter</button>
+    </div>
+  </header>
+
+  <main id="mainContent">
+    <div class="loading-state">Chargement…</div>
+  </main>
+
+  <script>
+    (function () {
+      "use strict";
+
+      let currentUser = null;
+      let currentCapabilities = null;
+
+      function navigateAway(url) {
+        document.body.style.animation = "none";
+        document.body.style.transition = "opacity 0.32s ease, transform 0.32s ease";
+        document.body.style.opacity = "0";
+        document.body.style.transform = "translateY(10px)";
+        setTimeout(() => { window.location.href = url; }, 320);
+      }
+
+      async function init() {
+        try {
+          const res = await fetch("/api/auth/session", { credentials: "include" });
+          const data = await res.json().catch(() => ({}));
+
+          if (!data || data.authenticated !== true) {
+            navigateAway("/auth.html?next=/account.html");
+            return;
+          }
+
+          currentUser = data.user || {};
+          currentCapabilities = data.capabilities || {};
+          renderPage();
+        } catch (_) {
+          showError("Impossible de charger la session. Réessayez.");
+        }
+      }
+
+      function renderPage() {
+        const main = document.getElementById("mainContent");
+        const plan = String(currentUser.plan || "free");
+        const caps = currentCapabilities || {};
+        const hasBranching = caps.branching === true;
+
+        main.innerHTML = "";
+
+        const h1 = document.createElement("h1");
+        h1.textContent = "Mon compte";
+        main.appendChild(h1);
+
+        const emailEl = document.createElement("p");
+        emailEl.className = "user-email";
+        emailEl.textContent = String(currentUser.email || "");
+        main.appendChild(emailEl);
+
+        const planCard = document.createElement("div");
+        planCard.className = "card plan-card";
+
+        const planLeft = document.createElement("div");
+        const planLabel = document.createElement("div");
+        planLabel.className = "plan-label";
+        planLabel.textContent = "Votre plan";
+        const planName = document.createElement("div");
+        planName.className = "plan-name " + plan;
+        planName.textContent = plan.charAt(0).toUpperCase() + plan.slice(1);
+        planLeft.appendChild(planLabel);
+        planLeft.appendChild(planName);
+        planCard.appendChild(planLeft);
+
+        const capsRight = document.createElement("div");
+        capsRight.className = "plan-caps";
+        const visibleFeaturesByPlan = {
+          free: ["multiDeviceAccess"],
+          premium: ["branching", "intersessionMemory", "multiDeviceAccess"]
+        };
+        const featureLabels = {
+          branching: "Branches",
+          intersessionMemory: "Mémoire longue",
+          multiDeviceAccess: "Multi-appareils"
+        };
+        const visibleFeatures = Array.isArray(visibleFeaturesByPlan[plan]) ? visibleFeaturesByPlan[plan] : visibleFeaturesByPlan.free;
+        visibleFeatures.forEach(key => {
+          const badge = document.createElement("span");
+          badge.className = "cap-badge" + (caps[key] ? "" : " inactive");
+          badge.textContent = featureLabels[key] || key;
+          capsRight.appendChild(badge);
+        });
+        planCard.appendChild(capsRight);
+        main.appendChild(planCard);
+
+        if (plan === "free") {
+          const banner = document.createElement("div");
+          banner.className = "upgrade-banner";
+          const p = document.createElement("p");
+          p.textContent = "Passez à Premium pour accéder aux branches de conversation, à la mémoire longue et plus.";
+          banner.appendChild(p);
+          const upgradeBtn = document.createElement("button");
+          upgradeBtn.textContent = "Découvrir Premium";
+          upgradeBtn.onclick = () => {
+            alert("La souscription intégrée arrive bientôt. Cette page passera en achat direct dès qu'elle sera prête.");
+          };
+          banner.appendChild(upgradeBtn);
+          main.appendChild(banner);
+        }
+
+        main.appendChild(buildPasswordCard());
+
+        if (hasBranching) {
+          const sectionCard = document.createElement("div");
+          sectionCard.className = "card";
+          const title = document.createElement("div");
+          title.className = "section-title";
+          title.textContent = "Mes branches";
+          sectionCard.appendChild(title);
+          main.appendChild(sectionCard);
+          loadBranches(sectionCard);
+        }
+      }
+
+      function buildPasswordCard() {
+        const card = document.createElement("div");
+        card.className = "card";
+
+        const title = document.createElement("div");
+        title.className = "section-title";
+        title.textContent = "Changer mon mot de passe";
+        card.appendChild(title);
+
+        const form = document.createElement("form");
+        form.id = "changePasswordForm";
+        form.innerHTML = [
+          '<div class="field-group">',
+          '  <label class="field-label" for="currentPassword">Mot de passe actuel</label>',
+          '  <div class="password-field-wrap">',
+          '    <input type="password" id="currentPassword" autocomplete="current-password" required>',
+          '    <button type="button" class="toggle-password-btn" data-target="currentPassword">Voir</button>',
+          '  </div>',
+          '</div>',
+          '<div class="field-group">',
+          '  <label class="field-label" for="newPassword">Nouveau mot de passe</label>',
+          '  <div class="password-field-wrap">',
+          '    <input type="password" id="newPassword" autocomplete="new-password" required>',
+          '    <button type="button" class="toggle-password-btn" data-target="newPassword">Voir</button>',
+          '  </div>',
+          '</div>',
+          '<div class="field-group">',
+          '  <label class="field-label" for="confirmNewPassword">Confirmer le nouveau mot de passe</label>',
+          '  <div class="password-field-wrap">',
+          '    <input type="password" id="confirmNewPassword" autocomplete="new-password" required>',
+          '    <button type="button" class="toggle-password-btn" data-target="confirmNewPassword">Voir</button>',
+          '  </div>',
+          '</div>',
+          '<button type="submit" class="action-btn" id="changePasswordBtn">Enregistrer</button>',
+          '<div class="notice" id="changePasswordNotice"></div>'
+        ].join('');
+        form.addEventListener("submit", handlePasswordChange);
+        card.appendChild(form);
+
+        initPasswordToggles(card);
+        return card;
+      }
+
+      function initPasswordToggles(root) {
+        root.querySelectorAll(".toggle-password-btn").forEach(btn => {
+          btn.addEventListener("click", () => {
+            const targetId = btn.getAttribute("data-target");
+            const input = targetId ? document.getElementById(targetId) : null;
+            if (!input) return;
+            const isHidden = input.type === "password";
+            input.type = isHidden ? "text" : "password";
+            btn.textContent = isHidden ? "Masquer" : "Voir";
+          });
+        });
+      }
+
+      async function handlePasswordChange(event) {
+        event.preventDefault();
+        const notice = document.getElementById("changePasswordNotice");
+        const btn = document.getElementById("changePasswordBtn");
+        const currentPassword = String(document.getElementById("currentPassword").value || "");
+        const newPassword = String(document.getElementById("newPassword").value || "");
+        const confirmNewPassword = String(document.getElementById("confirmNewPassword").value || "");
+
+        notice.textContent = "";
+        notice.className = "notice";
+
+        if (!currentPassword || !newPassword || !confirmNewPassword) {
+          notice.textContent = "Veuillez remplir tous les champs.";
+          return;
+        }
+
+        if (newPassword !== confirmNewPassword) {
+          notice.textContent = "Les nouveaux mots de passe ne correspondent pas.";
+          return;
+        }
+
+        if (newPassword.length < 10) {
+          notice.textContent = "Le mot de passe doit faire au moins 10 caractères.";
+          return;
+        }
+
+        btn.disabled = true;
+        try {
+          const res = await fetch("/api/auth/change-password", {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ currentPassword, newPassword })
+          });
+          const data = await res.json().catch(() => ({}));
+
+          if (res.ok && data.success) {
+            notice.textContent = "Mot de passe mis à jour.";
+            notice.className = "notice success";
+            event.target.reset();
+            event.target.querySelectorAll('.toggle-password-btn').forEach(btnEl => {
+              btnEl.textContent = 'Voir';
+            });
+          } else {
+            notice.textContent = data.error || "Impossible de changer le mot de passe.";
+          }
+        } catch (_) {
+          notice.textContent = "Erreur réseau. Réessayez.";
+        } finally {
+          btn.disabled = false;
+        }
+      }
+
+      async function loadBranches(section) {
+        const loadingEl = document.createElement("div");
+        loadingEl.className = "loading-state";
+        loadingEl.textContent = "Chargement des branches…";
+        section.appendChild(loadingEl);
+
+        try {
+          const res = await fetch("/api/premium/branches", { credentials: "include" });
+          const data = await res.json().catch(() => ({}));
+          section.removeChild(loadingEl);
+
+          if (!res.ok) {
+            const err = document.createElement("div");
+            err.className = "error-notice";
+            err.textContent = data.error || "Impossible de charger les branches.";
+            section.appendChild(err);
+            return;
+          }
+
+          const branches = Array.isArray(data.branches) ? data.branches : [];
+          if (branches.length === 0) {
+            const empty = document.createElement("div");
+            empty.className = "empty-state";
+            empty.textContent = "Aucune branche pour le moment.\nUtilisez le bouton ↪ sur un message du chat.";
+            empty.style.whiteSpace = "pre-line";
+            section.appendChild(empty);
+            return;
+          }
+
+          const list = document.createElement("ul");
+          list.className = "branch-list";
+          branches.forEach(branch => list.appendChild(buildBranchItem(branch)));
+          section.appendChild(list);
+        } catch (_) {
+          section.removeChild(loadingEl);
+          const err = document.createElement("div");
+          err.className = "error-notice";
+          err.textContent = "Erreur réseau lors du chargement des branches.";
+          section.appendChild(err);
+        }
+      }
+
+      function buildBranchItem(branch) {
+        const li = document.createElement("li");
+        li.className = "branch-item";
+
+        const headerRow = document.createElement("div");
+        headerRow.className = "branch-item-header";
+
+        const titleEl = document.createElement("span");
+        titleEl.className = "branch-title";
+        const branchLabel = branch.id ? ("Branche " + String(branch.id).slice(-6)) : "Branche";
+        titleEl.textContent = branchLabel;
+        titleEl.title = branchLabel;
+        headerRow.appendChild(titleEl);
+
+        const openBtn = document.createElement("button");
+        openBtn.className = "branch-open-btn";
+        openBtn.textContent = "Ouvrir";
+        openBtn.onclick = () => openBranch(branch);
+        headerRow.appendChild(openBtn);
+
+        li.appendChild(headerRow);
+
+        const meta = document.createElement("div");
+        meta.className = "branch-meta";
+        const msgs = Number(branch.seedMessageCount) || 0;
+        const dateStr = branch.activatedAt ? formatDate(branch.activatedAt) : (branch.createdAt ? formatDate(branch.createdAt) : "");
+        meta.textContent = msgs + " message" + (msgs !== 1 ? "s" : "") + (dateStr ? " · " + dateStr : "");
+        li.appendChild(meta);
+
+        return li;
+      }
+
+      function openBranch(branch) {
+        const branchConversationId = String(branch.branchConversationId || "").trim();
+        if (!branchConversationId) {
+          alert("Cette branche n'est pas encore activée.");
+          return;
+        }
+        navigateAway("/?branch=" + encodeURIComponent(branchConversationId));
+      }
+
+      window.handleLogout = async function handleLogout() {
+        try {
+          await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+        } catch (_) {}
+        navigateAway("/");
+      };
+
+      function formatDate(iso) {
+        try {
+          return new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" });
+        } catch (_) {
+          return "";
+        }
+      }
+
+      function showError(msg) {
+        const main = document.getElementById("mainContent");
+        main.innerHTML = "";
+        const err = document.createElement("div");
+        err.className = "error-notice";
+        err.textContent = msg;
+        main.appendChild(err);
+      }
+
+      init();
+    })();
+  </script>
+</body>
+</html>
