@@ -2039,10 +2039,12 @@
     }
 
     function getPremiumCapabilities() {
+      const adminCapabilityOverride = document.body.classList.contains("admin-ui");
+
       return {
-        branching: userSessionState.capabilities.branching === true,
-        intersessionMemory: userSessionState.capabilities.intersessionMemory === true,
-        multiDeviceAccess: userSessionState.capabilities.multiDeviceAccess === true
+        branching: adminCapabilityOverride || userSessionState.capabilities.branching === true,
+        intersessionMemory: adminCapabilityOverride || userSessionState.capabilities.intersessionMemory === true,
+        multiDeviceAccess: adminCapabilityOverride || userSessionState.capabilities.multiDeviceAccess === true
       };
     }
 

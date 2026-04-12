@@ -1588,6 +1588,14 @@ Direction :
       "Mouvements en cours:",
       "- "
     ].join("\n"),
+
+    NORMALIZE_INTERSESSION_MEMORY_TEMPLATE: [
+      "Contexte stable:",
+      "- ",
+      "",
+      "Mouvements en cours:",
+      "- "
+    ].join("\n"),
     
     UPDATE_MEMORY: `
 Tu mets a jour une memoire de session a partir d'un historique recent de conversation.
@@ -1950,6 +1958,44 @@ Priorite :
 
 Renvoie uniquement la memoire mise a jour, sans commentaire.
 `,
+
+  UPDATE_INTERSESSION_MEMORY: `
+Tu mets a jour une memoire inter-sessions a partir :
+- d'une memoire inter-sessions existante
+- de la memoire de la session qui se ferme
+
+Objectif :
+- recuperer seulement le contexte stable utile a garder d'une session a l'autre
+- ignorer totalement le bloc "Mouvements en cours"
+- integrer a l'existant s'il y a deja une memoire inter-sessions
+
+Pour l'instant, sois minimaliste :
+- recupere seulement le prenom, l'age et la profession de l'utilisateur si tu les vois clairement dans le bloc "Contexte stable"
+- n'invente rien
+- ne deduis rien
+- si l'information n'est pas clairement presente, ne l'ajoute pas
+
+Format obligatoire :
+
+Contexte stable:
+- ...
+
+Mouvements en cours:
+-
+
+Regles :
+- ne jamais recopier ni utiliser le bloc "Mouvements en cours"
+- fusionner sans doublons avec la memoire inter-sessions precedente
+- si aucune information exploitable n'est trouvee, renvoyer simplement :
+
+Contexte stable:
+-
+
+Mouvements en cours:
+-
+
+Renvoie uniquement la memoire mise a jour, sans commentaire.
+`,
     
     ANALYZE_RECALL: `
 Tu determines si le message utilisateur est une tentative de rappel conversationnel, c'est-a-dire une demande de retrouver, reprendre ou rappeler un contenu deja evoque dans l'echange.
@@ -2165,6 +2211,14 @@ function normalizeMemory(memory, promptRegistry = buildDefaultPromptRegistry()) 
   
   return String(promptRegistry.NORMALIZE_MEMORY_TEMPLATE || "").trim() ||
     buildDefaultPromptRegistry().NORMALIZE_MEMORY_TEMPLATE;
+}
+
+function normalizeIntersessionMemory(memory, promptRegistry = buildDefaultPromptRegistry()) {
+  const text = String(memory || "").trim();
+  if (text) return text;
+
+  return String(promptRegistry.NORMALIZE_INTERSESSION_MEMORY_TEMPLATE || "").trim() ||
+    buildDefaultPromptRegistry().NORMALIZE_INTERSESSION_MEMORY_TEMPLATE;
 }
 
 // Keep only the last valid user/assistant turns from history.
@@ -2923,6 +2977,51 @@ ${transcript}
   }
   
   return normalizeMemory(previousMemory, promptRegistry);
+}
+
+async function updateIntersessionMemory(previousIntersessionMemory, sessionMemory, promptRegistry = buildDefaultPromptRegistry()) {
+  const defaultPrompt = String(buildDefaultPromptRegistry().UPDATE_INTERSESSION_MEMORY || "").trim();
+  const currentPrompt = String(promptRegistry.UPDATE_INTERSESSION_MEMORY || "").trim();
+
+  const system = currentPrompt || defaultPrompt;
+  const user = `
+Memoire inter-sessions precedente :
+${normalizeIntersessionMemory(previousIntersessionMemory, promptRegistry)}
+
+Memoire de session qui se ferme :
+${normalizeMemory(sessionMemory, promptRegistry)}
+`;
+
+  const r = await client.chat.completions.create({
+    model: "gpt-4.1-mini",
+    temperature: 0.1,
+    max_tokens: 220,
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: user }
+    ]
+  });
+
+  const rawOutput = String(r.choices?.[0]?.message?.content || "").trim();
+  if (!rawOutput) {
+    return normalizeIntersessionMemory(previousIntersessionMemory, promptRegistry);
+  }
+
+  const cleaned = rawOutput.replace(/```[\s\S]*?```/g, "").trim();
+  if (!cleaned) {
+    return normalizeIntersessionMemory(previousIntersessionMemory, promptRegistry);
+  }
+
+  const lower = cleaned.toLowerCase();
+  const hasRequiredSections =
+    lower.includes("contexte stable:") &&
+    lower.includes("mouvements en cours:");
+
+  if (!hasRequiredSections) {
+    return normalizeIntersessionMemory(previousIntersessionMemory, promptRegistry);
+  }
+
+  return cleaned;
 }
 
 // --------------------------------------------------
@@ -3976,7 +4075,15 @@ app.put("/api/premium/intersession-memory", requireUserAuth, requirePremiumCapab
       return res.status(400).json({ error: "Invalid memory payload" });
     }
 
-    const memory = String(req.body.memory || "").slice(0, 8000);
+    const sessionMemory = String(req.body.memory || "").slice(0, 8000);
+    const previousSnap = await usersRef.child(session.userId).child("intersessionMemory").once("value");
+    const previousIntersessionMemory = typeof previousSnap.val() === "string" ? previousSnap.val() : "";
+    const memory = await updateIntersessionMemory(
+      previousIntersessionMemory,
+      sessionMemory,
+      buildDefaultPromptRegistry()
+    );
+
     await usersRef.child(session.userId).update({
       intersessionMemory: memory,
       intersessionMemoryUpdatedAt: new Date().toISOString()
