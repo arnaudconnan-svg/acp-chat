@@ -26,8 +26,9 @@ const db = admin.database();
 const messagesRef = db.ref("messages");
 const userLabelsRef = db.ref("userLabels");
 const usersRef = db.ref("users");
-const premiumBranchesRef = db.ref("premiumBranches");
-const premiumBranchSeedsRef = db.ref("premiumBranchSeeds");
+// Keep legacy Firebase node names for compatibility with existing data.
+const branchRecordsRef = db.ref("premiumBranches");
+const branchSeedSnapshotsRef = db.ref("premiumBranchSeeds");
 const crypto = require("crypto");
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 const SESSION_SECRET = process.env.SESSION_SECRET;
@@ -4147,7 +4148,7 @@ app.get("/api/account/conversations/:id", requireUserAuth, async (req, res) => {
 app.get("/api/branches", requireUserAuth, async (req, res) => {
   try {
     const session = req.userSession;
-    const snapshot = await premiumBranchesRef
+    const snapshot = await branchRecordsRef
       .orderByChild("userId")
       .equalTo(session.userId)
       .limitToLast(100)
@@ -4245,7 +4246,7 @@ app.post("/api/branches/from-message", requireUserAuth, async (req, res) => {
 
     const now = new Date().toISOString();
     const branchConversationId = `c_branch_${Date.now()}_${crypto.randomBytes(4).toString("hex")}`;
-    const branchRef = premiumBranchesRef.push();
+    const branchRef = branchRecordsRef.push();
     const branchId = branchRef.key;
 
     if (!branchId) {
@@ -4263,7 +4264,7 @@ app.post("/api/branches/from-message", requireUserAuth, async (req, res) => {
         createdAt: now,
         updatedAt: now
       }),
-      premiumBranchSeedsRef.child(branchId).set({
+      branchSeedSnapshotsRef.child(branchId).set({
         sourceConversationId,
         sourceAnchorMessageId: anchorMessageId,
         seededAt: now,
@@ -4298,10 +4299,10 @@ app.post("/api/branches/:id/activate", requireUserAuth, async (req, res) => {
       return res.status(400).json({ error: "Invalid branch id" });
     }
 
-    const branchRef = premiumBranchesRef.child(branchId);
+    const branchRef = branchRecordsRef.child(branchId);
     const [branchSnap, seedSnap] = await Promise.all([
       branchRef.once("value"),
-      premiumBranchSeedsRef.child(branchId).once("value")
+      branchSeedSnapshotsRef.child(branchId).once("value")
     ]);
 
     const branch = branchSnap.val();
@@ -4358,7 +4359,7 @@ app.post("/api/branches/:id/activate", requireUserAuth, async (req, res) => {
             debug: Array.isArray(message?.debug) ? message.debug : [],
             debugMeta: message?.debugMeta && typeof message.debugMeta === "object" ? message.debugMeta : null,
             comparisonResults: Array.isArray(message?.comparisonResults) ? message.comparisonResults : null,
-            premiumBranchId: branchId,
+            branchId,
             sourceMessageId: typeof message?.id === "string" ? message.id : null
           });
         })
@@ -4398,8 +4399,8 @@ app.get("/api/branches/:id", requireUserAuth, async (req, res) => {
     }
 
     const [branchSnap, seedSnap] = await Promise.all([
-      premiumBranchesRef.child(branchId).once("value"),
-      premiumBranchSeedsRef.child(branchId).once("value")
+      branchRecordsRef.child(branchId).once("value"),
+      branchSeedSnapshotsRef.child(branchId).once("value")
     ]);
 
     const branch = branchSnap.val();
@@ -4849,6 +4850,7 @@ app.post("/chat", async (req, res) => {
   // Values preserved for the fallback error path.
   // If the main pipeline fails, we still return a minimally valid response.
   let modeForCatch = "exploration";
+  let infoSubmodeForCatch = null;
   let previousMemoryForCatch = normalizeMemory("", basePromptRegistryForCatch);
   let flagsForCatch = normalizeSessionFlags({});
   let promptRegistryForCatch = basePromptRegistryForCatch;
@@ -4875,6 +4877,9 @@ app.post("/chat", async (req, res) => {
         topChips: Array.isArray(debugMeta.topChips) ? debugMeta.topChips : [],
         memory: normalizeMemory(debugMeta.memory, promptRegistryForCatch),
         directivityText: typeof debugMeta.directivityText === "string" ? debugMeta.directivityText : "",
+        infoSubmode: debugMeta.infoSubmode === "app" ? "app" : debugMeta.infoSubmode === "pure" ? "pure" : null,
+        interpretationRejection: debugMeta.interpretationRejection === true,
+        explorationCalibrationLevel: Number.isInteger(debugMeta.explorationCalibrationLevel) ? debugMeta.explorationCalibrationLevel : null,
         rewriteSource: typeof debugMeta.rewriteSource === "string" ? debugMeta.rewriteSource : null,
         memoryRewriteSource: typeof debugMeta.memoryRewriteSource === "string" ? debugMeta.memoryRewriteSource : null,
         modelConflict: debugMeta.modelConflict === true
@@ -4896,7 +4901,10 @@ app.post("/chat", async (req, res) => {
     memory = "",
     suicideLevel = "N0",
     mode = null,
+    infoSubmode = null,
+    interpretationRejection = false,
     isRecallRequest = false,
+    explorationCalibrationLevel = null,
     explorationDirectivityLevel = 0,
     explorationRelanceWindow = [],
     rewriteSource = null,
@@ -4907,6 +4915,8 @@ app.post("/chat", async (req, res) => {
     function buildTopChips({
       suicideLevel = "N0",
       mode = null,
+      infoSubmode = null,
+      interpretationRejection = false,
       isRecallRequest = false
     } = {}) {
       const chips = [];
@@ -4918,9 +4928,13 @@ app.post("/chat", async (req, res) => {
       } else if (mode === "exploration") {
         chips.push("EXPLORATION");
       } else if (mode === "info") {
-        chips.push("INFO");
+        chips.push(infoSubmode === "app" ? "INFO APP" : infoSubmode === "pure" ? "INFO PURE" : "INFO");
       } else if (mode === "contact") {
         chips.push("CONTACT");
+      }
+
+      if (interpretationRejection === true) {
+        chips.push("Rejet d'interprétation");
       }
       
       if (isRecallRequest === true) {
@@ -4932,6 +4946,7 @@ app.post("/chat", async (req, res) => {
     
     function buildDirectivityText({
       mode = null,
+      explorationCalibrationLevel = null,
       explorationDirectivityLevel = 0,
       explorationRelanceWindow = []
     } = {}) {
@@ -4946,25 +4961,37 @@ app.post("/chat", async (req, res) => {
       }
       
       const safeWindow = normalizeExplorationRelanceWindow(explorationRelanceWindow);
+      const safeCalibrationLevel = explorationCalibrationLevel !== null && explorationCalibrationLevel !== undefined ?
+        clampExplorationDirectivityLevel(explorationCalibrationLevel) :
+        null;
       
       return [
+        safeCalibrationLevel !== null ? `Calibration exploration : ${safeCalibrationLevel}/4` : null,
         `Niveau de directivité : ${safeLevel}/4`,
         `Relances aux quatre derniers tours : [${safeWindow.map(v => (v ? "1" : "0")).join("-")}]`
-      ].join("\n");
+      ].filter(Boolean).join("\n");
     }
     
     return {
       topChips: buildTopChips({
         suicideLevel,
         mode,
+        infoSubmode,
+        interpretationRejection,
         isRecallRequest
       }),
       memory: normalizeMemory(memory, promptRegistry),
       directivityText: buildDirectivityText({
         mode,
+        explorationCalibrationLevel,
         explorationDirectivityLevel,
         explorationRelanceWindow
       }),
+      infoSubmode,
+      interpretationRejection: interpretationRejection === true,
+      explorationCalibrationLevel: explorationCalibrationLevel !== null && explorationCalibrationLevel !== undefined ?
+        clampExplorationDirectivityLevel(explorationCalibrationLevel) :
+        null,
       rewriteSource: typeof rewriteSource === "string" ? rewriteSource : null,
       memoryRewriteSource: typeof memoryRewriteSource === "string" ? memoryRewriteSource : null,
       modelConflict: modelConflict === true
@@ -5129,6 +5156,9 @@ app.post("/chat", async (req, res) => {
             topChips: Array.isArray(entry?.debugMeta?.topChips) ? entry.debugMeta.topChips : [],
             memory: typeof entry?.debugMeta?.memory === "string" ? entry.debugMeta.memory : "",
             directivityText: typeof entry?.debugMeta?.directivityText === "string" ? entry.debugMeta.directivityText : "",
+            infoSubmode: entry?.debugMeta?.infoSubmode === "app" ? "app" : entry?.debugMeta?.infoSubmode === "pure" ? "pure" : null,
+            interpretationRejection: entry?.debugMeta?.interpretationRejection === true,
+            explorationCalibrationLevel: Number.isInteger(entry?.debugMeta?.explorationCalibrationLevel) ? entry.debugMeta.explorationCalibrationLevel : null,
             rewriteSource: typeof entry?.debugMeta?.rewriteSource === "string" ? entry.debugMeta.rewriteSource : null,
             memoryRewriteSource: typeof entry?.debugMeta?.memoryRewriteSource === "string" ? entry.debugMeta.memoryRewriteSource : null,
             modelConflict: entry?.debugMeta?.modelConflict === true
@@ -5147,6 +5177,9 @@ app.post("/chat", async (req, res) => {
           topChips: Array.isArray(debugMeta.topChips) ? debugMeta.topChips : [],
           memory: normalizeMemory(debugMeta.memory, activePromptRegistry),
           directivityText: typeof debugMeta.directivityText === "string" ? debugMeta.directivityText : "",
+          infoSubmode: debugMeta.infoSubmode === "app" ? "app" : debugMeta.infoSubmode === "pure" ? "pure" : null,
+          interpretationRejection: debugMeta.interpretationRejection === true,
+          explorationCalibrationLevel: Number.isInteger(debugMeta.explorationCalibrationLevel) ? debugMeta.explorationCalibrationLevel : null,
           rewriteSource: typeof debugMeta.rewriteSource === "string" ? debugMeta.rewriteSource : null,
           memoryRewriteSource: typeof debugMeta.memoryRewriteSource === "string" ? debugMeta.memoryRewriteSource : null,
           modelConflict: debugMeta.modelConflict === true
@@ -5195,6 +5228,8 @@ app.post("/chat", async (req, res) => {
     function buildTopChips({
       suicideLevel = "N0",
       mode = null,
+      infoSubmode = null,
+      interpretationRejection = false,
       isRecallRequest = false
     } = {}) {
       const chips = [];
@@ -5206,9 +5241,13 @@ app.post("/chat", async (req, res) => {
       } else if (mode === "exploration") {
         chips.push("EXPLORATION");
       } else if (mode === "info") {
-        chips.push("INFO");
+        chips.push(infoSubmode === "app" ? "INFO APP" : infoSubmode === "pure" ? "INFO PURE" : "INFO");
       } else if (mode === "contact") {
         chips.push("CONTACT");
+      }
+
+      if (interpretationRejection === true) {
+        chips.push("Rejet d'interprétation");
       }
       
       if (isRecallRequest === true) {
@@ -5220,6 +5259,7 @@ app.post("/chat", async (req, res) => {
     
     function buildDirectivityText({
       mode = null,
+      explorationCalibrationLevel = null,
       explorationDirectivityLevel = 0,
       explorationRelanceWindow = []
     } = {}) {
@@ -5234,18 +5274,25 @@ app.post("/chat", async (req, res) => {
       }
       
       const safeWindow = normalizeExplorationRelanceWindow(explorationRelanceWindow);
+      const safeCalibrationLevel = explorationCalibrationLevel !== null && explorationCalibrationLevel !== undefined ?
+        clampExplorationDirectivityLevel(explorationCalibrationLevel) :
+        null;
       
       return [
+        safeCalibrationLevel !== null ? `Calibration exploration : ${safeCalibrationLevel}/4` : null,
         `Niveau de directivité : ${safeLevel}/4`,
         `Relances aux quatre derniers tours : [${safeWindow.map(v => (v ? "1" : "0")).join("-")}]`
-      ].join("\n");
+      ].filter(Boolean).join("\n");
     }
     
     function buildResponseDebugMeta({
       memory = "",
       suicideLevel = "N0",
       mode = null,
+      infoSubmode = null,
+      interpretationRejection = false,
       isRecallRequest = false,
+      explorationCalibrationLevel = null,
       explorationDirectivityLevel = 0,
       explorationRelanceWindow = [],
       rewriteSource = null,
@@ -5257,14 +5304,22 @@ app.post("/chat", async (req, res) => {
         topChips: buildTopChips({
           suicideLevel,
           mode,
+          infoSubmode,
+          interpretationRejection,
           isRecallRequest
         }),
         memory: normalizeMemory(memory, promptRegistry),
         directivityText: buildDirectivityText({
           mode,
+          explorationCalibrationLevel,
           explorationDirectivityLevel,
           explorationRelanceWindow
         }),
+        infoSubmode,
+        interpretationRejection: interpretationRejection === true,
+        explorationCalibrationLevel: explorationCalibrationLevel !== null && explorationCalibrationLevel !== undefined ?
+          clampExplorationDirectivityLevel(explorationCalibrationLevel) :
+          null,
         rewriteSource: typeof rewriteSource === "string" ? rewriteSource : null,
         memoryRewriteSource: typeof memoryRewriteSource === "string" ? memoryRewriteSource : null,
         modelConflict: modelConflict === true
@@ -5414,6 +5469,7 @@ app.post("/chat", async (req, res) => {
     if (suicide.suicideLevel === "N2") {
       newFlags.acuteCrisis = true;
       newFlags.contactState = { wasContact: false };
+      flagsForCatch = normalizeSessionFlags(newFlags);
 
       logChatDecision("override_n2", {
         acuteCrisisAfter: true
@@ -5459,6 +5515,7 @@ app.post("/chat", async (req, res) => {
       if (suicide.crisisResolved !== true) {
         newFlags.acuteCrisis = true;
         newFlags.contactState = { wasContact: false };
+        flagsForCatch = normalizeSessionFlags(newFlags);
 
         logChatDecision("override_acute_crisis_followup", {
           suicideLevel: suicide.suicideLevel,
@@ -5498,6 +5555,7 @@ app.post("/chat", async (req, res) => {
       }
       
       newFlags.acuteCrisis = false;
+      flagsForCatch = normalizeSessionFlags(newFlags);
       logChatDecision("acute_crisis_resolved", {
         suicideLevel: suicide.suicideLevel
       });
@@ -5521,6 +5579,7 @@ app.post("/chat", async (req, res) => {
       });
       
       newFlags.contactState = { wasContact: false };
+      flagsForCatch = normalizeSessionFlags(newFlags);
       
       const debug = buildDebug("clarification", {
         suicideLevel: "N1",
@@ -5684,6 +5743,7 @@ app.post("/chat", async (req, res) => {
     const detectedInfoSubmode = detectedMode === "info" ? detectedModeResult.infoSubmode : null;
     
     modeForCatch = detectedMode;
+  infoSubmodeForCatch = detectedInfoSubmode;
     
     const shouldForceInitialDirectivityLevel3 =
       detectedMode === "exploration" &&
@@ -5713,6 +5773,8 @@ app.post("/chat", async (req, res) => {
       newFlags.explorationCalibrationLevel = 0;
       newFlags.infoSubmode = detectedInfoSubmode;
     }
+
+    flagsForCatch = normalizeSessionFlags(newFlags);
 
     logChatDecision("mode_detected", {
       detectedMode,
@@ -5783,6 +5845,7 @@ app.post("/chat", async (req, res) => {
       });
       
       newFlags = registerExplorationRelance(newFlags, relanceAnalysis.isRelance === true);
+      flagsForCatch = normalizeSessionFlags(newFlags);
 
       logChatDecision("exploration_relance_registered", {
         isRelance: relanceAnalysis.isRelance === true,
@@ -5804,6 +5867,25 @@ app.post("/chat", async (req, res) => {
     
     if (logsEnabled && replyPipeline.rewriteSource) {
       debug.push(`rewriteSource: ${replyPipeline.rewriteSource}`);
+    }
+
+    if (logsEnabled) {
+      debug.push(
+        ...buildAdvancedDebugTrace({
+          suicide,
+          recallRouting,
+          contactAnalysis,
+          detectedMode,
+          infoSubmode: detectedInfoSubmode,
+          interpretationRejection,
+          explorationCalibrationLevel: newFlags.explorationCalibrationLevel,
+          flagsBefore: flags,
+          flagsAfter: newFlags,
+          generatedBase,
+          modelConflict: replyPipeline.modelConflict,
+          relanceAnalysis
+        })
+      );
     }
     
     debug.push(...formatPromptOverrideDebugLines(generatedBase.promptDebug));
@@ -5862,7 +5944,10 @@ app.post("/chat", async (req, res) => {
       memory: newMemory,
       suicideLevel: suicide.suicideLevel,
       mode: detectedMode,
+      infoSubmode: detectedInfoSubmode,
+      interpretationRejection: interpretationRejection.isInterpretationRejection,
       isRecallRequest: recallRouting.isRecallAttempt === true,
+      explorationCalibrationLevel: newFlags.explorationCalibrationLevel,
       explorationDirectivityLevel: finalDirectivityLevel,
       explorationRelanceWindow: newFlags.explorationRelanceWindow,
       rewriteSource: replyPipeline.rewriteSource,
@@ -5886,7 +5971,10 @@ app.post("/chat", async (req, res) => {
         memory: "",
         suicideLevel: suicide.suicideLevel,
         mode: detectedMode,
+        infoSubmode: detectedInfoSubmode,
+        interpretationRejection: interpretationRejection.isInterpretationRejection,
         isRecallRequest: recallRouting.isRecallAttempt === true,
+        explorationCalibrationLevel: newFlags.explorationCalibrationLevel,
         explorationDirectivityLevel: finalDirectivityLevel,
         explorationRelanceWindow: newFlags.explorationRelanceWindow,
         rewriteSource: null,
@@ -6010,8 +6098,10 @@ app.post("/chat", async (req, res) => {
     const fallbackDebugMeta = buildFallbackResponseDebugMeta({
       memory: previousMemoryForCatch,
       suicideLevel: "N0",
-      mode: modeForCatch === "contact" ? "contact" : "exploration",
+      mode: modeForCatch,
+      infoSubmode: infoSubmodeForCatch,
       isRecallRequest: false,
+      explorationCalibrationLevel: flagsForCatch.explorationCalibrationLevel,
       explorationDirectivityLevel: flagsForCatch.explorationDirectivityLevel || 0,
       explorationRelanceWindow: flagsForCatch.explorationRelanceWindow || [],
       rewriteSource: null,

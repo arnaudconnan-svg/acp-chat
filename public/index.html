@@ -1124,6 +1124,42 @@
       backdrop-filter: blur(8px);
       -webkit-backdrop-filter: blur(8px);
     }
+
+    .debug-chip-memory {
+      background: rgba(255, 248, 235, 0.92);
+      border-color: rgba(232, 192, 110, 0.55);
+      color: #8a5a18;
+    }
+
+    .debug-chip-directivity {
+      background: rgba(236, 245, 255, 0.92);
+      border-color: rgba(117, 163, 219, 0.5);
+      color: #2d5d96;
+    }
+
+    .debug-chip-signal {
+      background: rgba(237, 249, 241, 0.92);
+      border-color: rgba(109, 179, 128, 0.48);
+      color: #2d6a3c;
+    }
+
+    .debug-chip-conflict {
+      background: rgba(255, 240, 238, 0.94);
+      border-color: rgba(224, 126, 106, 0.48);
+      color: #9c3b2c;
+    }
+
+    .debug-detail {
+      display: block;
+    }
+
+    .debug-detail[open] {
+      flex-basis: 100%;
+    }
+
+    .debug-detail summary {
+      list-style: none;
+    }
     
     /* Chips debug + labels comparaison non selectionnables */
     .debug-chip,
@@ -2471,6 +2507,9 @@
               topChips: Array.isArray(item.debugMeta.topChips) ? item.debugMeta.topChips : [],
               memory: typeof item.debugMeta.memory === "string" ? item.debugMeta.memory : "",
               directivityText: typeof item.debugMeta.directivityText === "string" ? item.debugMeta.directivityText : "",
+              infoSubmode: item.debugMeta.infoSubmode === "app" ? "app" : item.debugMeta.infoSubmode === "pure" ? "pure" : null,
+              interpretationRejection: item.debugMeta.interpretationRejection === true,
+              explorationCalibrationLevel: Number.isInteger(item.debugMeta.explorationCalibrationLevel) ? item.debugMeta.explorationCalibrationLevel : null,
               rewriteSource: typeof item.debugMeta.rewriteSource === "string" ? item.debugMeta.rewriteSource : null,
               memoryRewriteSource: typeof item.debugMeta.memoryRewriteSource === "string" ? item.debugMeta.memoryRewriteSource : null,
               modelConflict: item.debugMeta.modelConflict === true
@@ -2674,7 +2713,11 @@
             .filter(Boolean) : [],
           memory: typeof debugMeta.memory === "string" ? debugMeta.memory : "",
           directivityText: typeof debugMeta.directivityText === "string" ? debugMeta.directivityText : (typeof debugMeta.directivityLabel === "string" ? debugMeta.directivityLabel : ""),
+          infoSubmode: debugMeta.infoSubmode === "app" ? "app" : debugMeta.infoSubmode === "pure" ? "pure" : null,
+          interpretationRejection: debugMeta.interpretationRejection === true,
+          explorationCalibrationLevel: Number.isInteger(debugMeta.explorationCalibrationLevel) ? debugMeta.explorationCalibrationLevel : null,
           rewriteSource: typeof debugMeta.rewriteSource === "string" ? debugMeta.rewriteSource : null,
+          memoryRewriteSource: typeof debugMeta.memoryRewriteSource === "string" ? debugMeta.memoryRewriteSource : null,
           modelConflict: debugMeta.modelConflict === true
         } : null,
         id: id && typeof id === "string" ? id : undefined,
@@ -4207,6 +4250,9 @@
           topChips: [],
           memory: "",
           directivityLabel: "",
+          infoSubmode: null,
+          interpretationRejection: false,
+          explorationCalibrationLevel: null,
           modelConflict: false,
           rewriteSource: "",
           memoryRewriteSource: ""
@@ -4243,11 +4289,31 @@
         if (typeof debugMetaValue.memoryRewriteSource === "string") {
           meta.memoryRewriteSource = debugMetaValue.memoryRewriteSource.trim();
         }
+
+        if (debugMetaValue.infoSubmode === "app" || debugMetaValue.infoSubmode === "pure") {
+          meta.infoSubmode = debugMetaValue.infoSubmode;
+        }
+
+        if (debugMetaValue.interpretationRejection === true) {
+          meta.interpretationRejection = true;
+        }
+
+        if (Number.isInteger(debugMetaValue.explorationCalibrationLevel)) {
+          meta.explorationCalibrationLevel = debugMetaValue.explorationCalibrationLevel;
+        }
         
         return meta;
       }
       
       const debugMeta = role === "bot" ? buildDebugMeta(debugMetaRaw) : null;
+      const hasStructuredSignals =
+        !!debugMeta &&
+        (
+          debugMeta.infoSubmode === "app" ||
+          debugMeta.infoSubmode === "pure" ||
+          debugMeta.interpretationRejection === true ||
+          Number.isInteger(debugMeta.explorationCalibrationLevel)
+        );
       
       const hasDebugContent =
         role === "bot" &&
@@ -4257,6 +4323,7 @@
           debugMeta.topChips.length > 0 ||
           !!debugMeta.memory ||
           !!debugMeta.directivityLabel ||
+          hasStructuredSignals ||
           (debugMeta.modelConflict && !!debugMeta.rewriteSource) ||
           (debugMeta.modelConflict && !!debugMeta.memoryRewriteSource)
         );
@@ -4553,9 +4620,10 @@
         
         if (debugMeta.memory) {
           const mem = document.createElement("details");
+          mem.className = "debug-detail";
           
           const memSum = document.createElement("summary");
-          memSum.className = "debug-chip";
+          memSum.className = "debug-chip debug-chip-memory";
           memSum.textContent = "M\u00e9moire";
           
           const memContent = document.createElement("div");
@@ -4569,9 +4637,10 @@
         
         if (debugMeta.directivityLabel) {
           const dir = document.createElement("details");
+          dir.className = "debug-detail";
           
           const dirSum = document.createElement("summary");
-          dirSum.className = "debug-chip";
+          dirSum.className = "debug-chip debug-chip-directivity";
           dirSum.textContent = "Directivit\u00e9";
           
           const dirContent = document.createElement("div");
@@ -4582,12 +4651,46 @@
           dir.appendChild(dirContent);
           bottom.appendChild(dir);
         }
+
+        if (hasStructuredSignals) {
+          const signals = document.createElement("details");
+          signals.className = "debug-detail";
+
+          const signalsSum = document.createElement("summary");
+          signalsSum.className = "debug-chip debug-chip-signal";
+          signalsSum.textContent = "Signaux";
+
+          const signalLines = [];
+
+          if (debugMeta.infoSubmode === "pure") {
+            signalLines.push("Sous-mode info : info pure");
+          } else if (debugMeta.infoSubmode === "app") {
+            signalLines.push("Sous-mode info : info sur l'app");
+          }
+
+          if (debugMeta.interpretationRejection === true) {
+            signalLines.push("Rejet d'interprétation détecté : oui");
+          }
+
+          if (Number.isInteger(debugMeta.explorationCalibrationLevel)) {
+            signalLines.push(`Calibration exploration : ${debugMeta.explorationCalibrationLevel}/4`);
+          }
+
+          const signalsContent = document.createElement("div");
+          signalsContent.className = "debug-block";
+          signalsContent.textContent = signalLines.join("\n");
+
+          signals.appendChild(signalsSum);
+          signals.appendChild(signalsContent);
+          bottom.appendChild(signals);
+        }
         
         if (debugMeta.modelConflict && debugMeta.rewriteSource) {
           const conf = document.createElement("details");
+          conf.className = "debug-detail";
           
           const confSum = document.createElement("summary");
-          confSum.className = "debug-chip";
+          confSum.className = "debug-chip debug-chip-conflict";
           confSum.textContent = "Conflit mod\u00e8le - r\u00e9ponse";
           
           const confContent = document.createElement("div");
@@ -4601,9 +4704,10 @@
         
         if (debugMeta.modelConflict && debugMeta.memoryRewriteSource) {
           const memConf = document.createElement("details");
+          memConf.className = "debug-detail";
           
           const memConfSum = document.createElement("summary");
-          memConfSum.className = "debug-chip";
+          memConfSum.className = "debug-chip debug-chip-conflict";
           memConfSum.textContent = "Conflit mod\u00e8le - m\u00e9moire";
           
           const memConfContent = document.createElement("div");

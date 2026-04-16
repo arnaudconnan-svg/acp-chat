@@ -312,6 +312,9 @@
         memory: typeof safe.memory === "string" ? safe.memory : "",
         directivityText: typeof safe.directivityText === "string" ?
           safe.directivityText : (typeof safe.directivityLabel === "string" ? safe.directivityLabel : ""),
+        infoSubmode: safe.infoSubmode === "app" ? "app" : safe.infoSubmode === "pure" ? "pure" : null,
+        interpretationRejection: safe.interpretationRejection === true,
+        explorationCalibrationLevel: Number.isInteger(safe.explorationCalibrationLevel) ? safe.explorationCalibrationLevel : null,
         rewriteSource: typeof safe.rewriteSource === "string" ? safe.rewriteSource : null,
         memoryRewriteSource: typeof safe.memoryRewriteSource === "string" ? safe.memoryRewriteSource : null,
         modelConflict: safe.modelConflict === true
@@ -635,6 +638,9 @@
                 safe.directivityLabel.trim() :
                 ""
               ),
+            infoSubmode: safe.infoSubmode === "app" ? "app" : safe.infoSubmode === "pure" ? "pure" : null,
+            interpretationRejection: safe.interpretationRejection === true,
+            explorationCalibrationLevel: Number.isInteger(safe.explorationCalibrationLevel) ? safe.explorationCalibrationLevel : null,
             modelConflict: safe.modelConflict === true,
             rewriteSource: typeof safe.rewriteSource === "string" ? safe.rewriteSource.trim() : "",
             memoryRewriteSource: typeof safe.memoryRewriteSource === "string" ? safe.memoryRewriteSource.trim() : ""
@@ -645,11 +651,33 @@
           const safeDebug = Array.isArray(debug) ? debug : [];
           const meta = normalizeDebugMeta(debugMeta);
           const sections = [];
+          const signalLines = [];
+
+          if (meta.infoSubmode === "pure") {
+            signalLines.push("Sous-mode info : info pure");
+          } else if (meta.infoSubmode === "app") {
+            signalLines.push("Sous-mode info : info sur l'app");
+          }
+
+          if (meta.interpretationRejection === true) {
+            signalLines.push("Rejet d'interprétation détecté : oui");
+          }
+
+          if (Number.isInteger(meta.explorationCalibrationLevel)) {
+            signalLines.push(`Calibration exploration : ${meta.explorationCalibrationLevel}/4`);
+          }
           
           if (meta.topChips.length) {
             sections.push({
               title: "Chips",
               content: meta.topChips.join("\n")
+            });
+          }
+
+          if (signalLines.length) {
+            sections.push({
+              title: "Signaux",
+              content: signalLines.join("\n")
             });
           }
           
@@ -676,7 +704,7 @@
 
           if (meta.memoryRewriteSource) {
             sections.push({
-              title: "Memory rewrite source",
+              title: "Conflit modèle - mémoire",
               content: meta.memoryRewriteSource
             });
           }
@@ -731,6 +759,46 @@
           if (!Array.isArray(debugSections) || debugSections.length === 0) {
             return null;
           }
+
+          function getSectionPalette(title) {
+            if (title === "Mémoire") {
+              return {
+                titleColor: "#8a5a18",
+                blockBackground: "#fff8eb",
+                blockBorder: "#e8c06e"
+              };
+            }
+
+            if (title === "Directivité") {
+              return {
+                titleColor: "#2d5d96",
+                blockBackground: "#ecf5ff",
+                blockBorder: "#75a3db"
+              };
+            }
+
+            if (title === "Signaux") {
+              return {
+                titleColor: "#2d6a3c",
+                blockBackground: "#edf9f1",
+                blockBorder: "#6db380"
+              };
+            }
+
+            if (title.indexOf("Conflit") === 0) {
+              return {
+                titleColor: "#9c3b2c",
+                blockBackground: "#fff0ee",
+                blockBorder: "#e07e6a"
+              };
+            }
+
+            return {
+              titleColor: "#245e66",
+              blockBackground: "#ffffff",
+              blockBorder: "#d6e2e1"
+            };
+          }
           
           const debugWrap = document.createElement("div");
           debugWrap.style.marginTop = "10px";
@@ -761,6 +829,7 @@
           debugBox.style.gap = "8px";
           
           debugSections.forEach(section => {
+            const palette = getSectionPalette(section.title);
             const sectionBlock = document.createElement("div");
             
             const sectionTitle = document.createElement("div");
@@ -769,14 +838,14 @@
             sectionTitle.style.fontWeight = "700";
             sectionTitle.style.textTransform = "uppercase";
             sectionTitle.style.letterSpacing = "0.04em";
-            sectionTitle.style.color = "#245e66";
+            sectionTitle.style.color = palette.titleColor;
             sectionTitle.style.marginBottom = "4px";
             
             const sectionContent = document.createElement("div");
             sectionContent.style.padding = "10px";
             sectionContent.style.borderRadius = "10px";
-            sectionContent.style.background = "#ffffff";
-            sectionContent.style.border = "1px solid #d6e2e1";
+            sectionContent.style.background = palette.blockBackground;
+            sectionContent.style.border = `1px solid ${palette.blockBorder}`;
             sectionContent.style.fontSize = "13px";
             sectionContent.style.lineHeight = "1.45";
             sectionContent.style.color = "#334155";
