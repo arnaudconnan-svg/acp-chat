@@ -191,57 +191,6 @@
       color: #245e66;
     }
 
-    .branch-list {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-
-    .branch-item {
-      border: 1.5px solid #ebebeb;
-      border-radius: 10px;
-      padding: 14px 16px;
-    }
-
-    .branch-item-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-    }
-
-    .branch-title {
-      font-size: 14px;
-      font-weight: 600;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      max-width: 220px;
-    }
-
-    .branch-open-btn {
-      flex-shrink: 0;
-      font-size: 13px;
-      background: #245e66;
-      color: white;
-      border: none;
-      border-radius: 7px;
-      padding: 6px 14px;
-      cursor: pointer;
-      font-weight: 500;
-    }
-
-    .branch-open-btn:hover { opacity: 0.8; }
-
-    .branch-meta {
-      font-size: 12px;
-      color: #999;
-      margin-top: 5px;
-    }
-
     .empty-state, .loading-state, .error-notice {
       font-size: 14px;
       color: #aaa;
@@ -363,15 +312,6 @@
         main.appendChild(emailEl);
 
         main.appendChild(buildPasswordCard());
-
-        const sectionCard = document.createElement("div");
-        sectionCard.className = "card";
-        const title = document.createElement("div");
-        title.className = "section-title";
-        title.textContent = "Mes branches";
-        sectionCard.appendChild(title);
-        main.appendChild(sectionCard);
-        loadBranches(sectionCard);
       }
 
       function buildPasswordCard() {
@@ -512,103 +452,12 @@
         }
       }
 
-      async function loadBranches(section) {
-        const loadingEl = document.createElement("div");
-        loadingEl.className = "loading-state";
-        loadingEl.textContent = "Chargement des branches…";
-        section.appendChild(loadingEl);
-
-        try {
-          const res = await fetch("/api/branches", { credentials: "include" });
-          const data = await res.json().catch(() => ({}));
-          section.removeChild(loadingEl);
-
-          if (!res.ok) {
-            const err = document.createElement("div");
-            err.className = "error-notice";
-            err.textContent = data.error || "Impossible de charger les branches.";
-            section.appendChild(err);
-            return;
-          }
-
-          const branches = Array.isArray(data.branches) ? data.branches : [];
-          if (branches.length === 0) {
-            const empty = document.createElement("div");
-            empty.className = "empty-state";
-            empty.textContent = "Aucune branche pour le moment.\nUtilisez le bouton ↪ sur un message du chat.";
-            empty.style.whiteSpace = "pre-line";
-            section.appendChild(empty);
-            return;
-          }
-
-          const list = document.createElement("ul");
-          list.className = "branch-list";
-          branches.forEach(branch => list.appendChild(buildBranchItem(branch)));
-          section.appendChild(list);
-        } catch (_) {
-          section.removeChild(loadingEl);
-          const err = document.createElement("div");
-          err.className = "error-notice";
-          err.textContent = "Erreur réseau lors du chargement des branches.";
-          section.appendChild(err);
-        }
-      }
-
-      function buildBranchItem(branch) {
-        const li = document.createElement("li");
-        li.className = "branch-item";
-
-        const headerRow = document.createElement("div");
-        headerRow.className = "branch-item-header";
-
-        const titleEl = document.createElement("span");
-        titleEl.className = "branch-title";
-        const branchLabel = branch.id ? ("Branche " + String(branch.id).slice(-6)) : "Branche";
-        titleEl.textContent = branchLabel;
-        titleEl.title = branchLabel;
-        headerRow.appendChild(titleEl);
-
-        const openBtn = document.createElement("button");
-        openBtn.className = "branch-open-btn";
-        openBtn.textContent = "Ouvrir";
-        openBtn.onclick = () => openBranch(branch);
-        headerRow.appendChild(openBtn);
-
-        li.appendChild(headerRow);
-
-        const meta = document.createElement("div");
-        meta.className = "branch-meta";
-        const msgs = Number(branch.seedMessageCount) || 0;
-        const dateStr = branch.activatedAt ? formatDate(branch.activatedAt) : (branch.createdAt ? formatDate(branch.createdAt) : "");
-        meta.textContent = msgs + " message" + (msgs !== 1 ? "s" : "") + (dateStr ? " · " + dateStr : "");
-        li.appendChild(meta);
-
-        return li;
-      }
-
-      function openBranch(branch) {
-        const branchConversationId = String(branch.branchConversationId || "").trim();
-        if (!branchConversationId) {
-          alert("Cette branche n'est pas encore activée.");
-          return;
-        }
-        navigateAway("/?branch=" + encodeURIComponent(branchConversationId));
-      }
-
       window.handleLogout = async function handleLogout() {
         try {
           await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
         } catch (_) {}
         navigateAway("/");
       };
-
-      function formatDate(iso) {
-        try {
-          return new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" });
-        } catch (_) {
-          return "";
-        }
-      }
 
       function showError(msg) {
         const main = document.getElementById("mainContent");

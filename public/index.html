@@ -4512,6 +4512,7 @@
         actionsRow.style.alignItems = "center";
         actionsRow.style.gap = "8px";
         actionsRow.style.paddingLeft = "4px";
+        actionsRow.style.paddingRight = "4px";
         actionsRow.style.marginTop = "-2px";
 
         const copyBotBtn = document.createElement("button");
@@ -4536,7 +4537,11 @@
 
         actionsRow.appendChild(copyBotBtn);
 
-        if (userSessionState.authenticated && historyIndex >= 0) {
+        if (
+          document.body.classList.contains("admin-ui") &&
+          adminUiState.logsEnabled === true &&
+          historyIndex >= 0
+        ) {
           const branchBtn = document.createElement("button");
           branchBtn.type = "button";
           branchBtn.setAttribute("aria-label", "Repartir d'ici");
@@ -4549,6 +4554,7 @@
           branchBtn.style.padding = "3px 5px";
           branchBtn.style.lineHeight = "1";
           branchBtn.style.fontSize = "14px";
+          branchBtn.style.marginLeft = "auto";
           branchBtn.style.opacity = "0.55";
           branchBtn.style.fontWeight = "bold";
 
