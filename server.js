@@ -5463,6 +5463,8 @@ app.post("/chat", async (req, res) => {
     });
     
     let newFlags = normalizeSessionFlags(flags);
+    newFlags.infoSubmode = null;
+    newFlags.explorationCalibrationLevel = 0;
     
     // Severe suicide risk override path.
     // If the analysis returns N2, we bypass normal generation and reply with a crisis response.
@@ -5770,7 +5772,6 @@ app.post("/chat", async (req, res) => {
       finalDirectivityLevel = calibrationAnalysis.calibrationLevel;
       newFlags.explorationCalibrationLevel = finalDirectivityLevel;
     } else {
-      newFlags.explorationCalibrationLevel = 0;
       newFlags.infoSubmode = detectedInfoSubmode;
     }
 
