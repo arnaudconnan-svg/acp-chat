@@ -5383,13 +5383,26 @@ app.post("/chat", async (req, res) => {
         memory: previousMemory,
         promptRegistry: comparisonPromptRegistry
       });
+
+      let variantReply = replyPipeline.content;
+
+      if (interpretationRejection.isInterpretationRejection && interpretationRejection.needsSoberReadjustment) {
+        variantReply = await rewriteInterpretationRejectionReply({
+          message,
+          history: recentHistory,
+          memory: previousMemory,
+          originalReply: variantReply,
+          interpretationRejection,
+          promptRegistry: comparisonPromptRegistry
+        });
+      }
       
       const rawVariantMemory = await updateMemory(
         previousMemory,
         [
           ...recentHistory,
           { role: "user", content: message },
-          { role: "assistant", content: replyPipeline.content }
+          { role: "assistant", content: variantReply }
         ],
         comparisonPromptRegistry
       );
@@ -5400,16 +5413,36 @@ app.post("/chat", async (req, res) => {
         history: [
           ...recentHistory,
           { role: "user", content: message },
-          { role: "assistant", content: replyPipeline.content }
+          { role: "assistant", content: variantReply }
         ],
         memory: previousMemory,
         promptRegistry: comparisonPromptRegistry
       });
+
+      let variantMemory = memoryPipeline.content;
+
+      if (interpretationRejection.isInterpretationRejection) {
+        variantMemory = await rewriteInterpretationRejectionMemory({
+          message,
+          history: [
+            ...recentHistory,
+            { role: "user", content: message },
+            { role: "assistant", content: variantReply }
+          ],
+          previousMemory,
+          candidateMemory: variantMemory,
+          interpretationRejection,
+          promptRegistry: comparisonPromptRegistry
+        });
+      }
       
       const variantDebug = buildDebug(detectedMode, {
         suicideLevel: suicide.suicideLevel,
         calledMemory: recallRouting.calledMemory,
         modelConflict: replyPipeline.modelConflict || memoryPipeline.modelConflict,
+        infoSubmode: detectedInfoSubmode,
+        interpretationRejection: interpretationRejection.isInterpretationRejection,
+        explorationCalibrationLevel: newFlags.explorationCalibrationLevel,
         explorationDirectivityLevel: finalDirectivityLevel,
         explorationRelanceWindow: newFlags.explorationRelanceWindow
       });
@@ -5423,21 +5456,21 @@ app.post("/chat", async (req, res) => {
       }
       
       variantDebug.push(...formatPromptOverrideDebugLines(generated.promptDebug));
-      variantDebug.push(`variantMemory: ${memoryPipeline.content}`);
+      variantDebug.push(`variantMemory: ${variantMemory}`);
       
       console.log("[COMPARE][ENTRY]", {
         label,
         promptRegistryUpdateMemoryPreview: String(comparisonPromptRegistry?.UPDATE_MEMORY || "").slice(0, 160),
-        variantMemory: memoryPipeline.content
+        variantMemory
       });
       
       return {
         label,
-        reply: replyPipeline.content,
+        reply: variantReply,
         debug: logsEnabled ? variantDebug : [],
         debugMeta: {
           ...debugMetaBase,
-          memory: memoryPipeline.content,
+          memory: variantMemory,
           rewriteSource: replyPipeline.rewriteSource,
           memoryRewriteSource: memoryPipeline.rewriteSource,
           modelConflict: replyPipeline.modelConflict || memoryPipeline.modelConflict
