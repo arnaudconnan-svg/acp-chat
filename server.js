@@ -530,15 +530,18 @@ Reponds STRICTEMENT en JSON :
 }
 
 Definition :
-- true si la reponse pousse l'utilisateur a continuer, preciser, decrire, clarifier, approfondir, expliquer, observer davantage, ou si elle ouvre explicitement vers la suite
-- true si elle contient une question, une invitation implicite ou explicite, une incitation a explorer davantage
+- true si la reponse pousse clairement l'utilisateur a continuer, preciser, decrire, clarifier, approfondir, expliquer, observer davantage, ou si elle ouvre explicitement vers la suite
+- true si elle contient une question, une invitation explicite, ou une invitation implicite nette a poursuivre l'exploration
 - false si la reponse peut se suffire a elle-meme, reste avec ce qui est la, reflete, reformule, accueille, ou s'arrete sans pousser
+- false si la reponse laisse seulement un espace, une respiration, ou une ouverture faible sans attente claire de continuation
+- false pour une simple phrase finale ouverte, une suspension legere, ou une formulation qui ne demande rien de plus a l'utilisateur
 
 Important :
 - ne te base pas seulement sur la ponctuation
 - une phrase sans point d'interrogation peut quand meme etre une relance
 - une question de clarification suicidaire n'est pas concernee ici ; tu analyses seulement une reponse de mode exploration ordinaire
 - ne sur-interprete pas
+- en cas de doute entre ouverture faible et vraie relance, reponds false
 `,
     
     // ------------------------------------
@@ -1069,6 +1072,8 @@ Cadre general :
 - privilegie une lecture simple, concrete et directement liee a l'experience de la personne
 - n'utilise jamais explicitement les termes du modele (ex : memoire des ressentis/ du sens, croyances limitantes, etc.)
 - entre directement dans une lecture, une hypothese ou une mise en tension
+- formule tes lectures principalement a la premiere personne
+- evite les lectures impersonnelles du type "il y a", "on peut", "cela peut"
 
 Forme generale :
 - la longueur de la reponse doit s'ajuster au contenu sans jamais devenir trop longue
@@ -1238,6 +1243,8 @@ Important :
 - une question portant sur sa propre experience doit etre classee en exploration
 - la forme interrogative ne suffit pas a classer en info
 - des formulations comme "j'ai besoin de comprendre", "je veux comprendre ce qui se passe", "qu'est-ce qui m'arrive", "comment comprendre ce que je vis" doivent etre classees false si elles portent sur l'experience de l'utilisateur
+  - la presence d'un terme conceptuel ou theorique (ex : inconscient, dissociation, anxiete, trauma) ne suffit jamais a elle seule a classer en info
+  - si le message parle explicitement de l'experience propre de l'utilisateur (ex : mon inconscient, ma dissociation, ce qui se passe chez moi, ce que je vis), reponds false
 
 Exemples a classer false :
 - "Je crois que j'ai besoin de comprendre ce qui se passe"
@@ -1246,6 +1253,8 @@ Exemples a classer false :
 - "Je me demande si ce que je vis est de l'angoisse"
 - "C'est normal de ressentir ca ?"
 - "Tu crois que je suis depressif ?"
+  - "Il faut qu'on parle de mon inconscient"
+  - "Il faut qu'on parle du comportement de mon inconscient"
 
 Exemples a classer true :
 - "Qu'est-ce que l'angoisse ?"
@@ -1278,6 +1287,7 @@ Regles :
 - choisis pure si l'utilisateur demande surtout une information en elle-meme, meme si cette information peut toucher a des sujets proches du modele
 - si l'utilisateur demande ce que fait l'app, ce qu'elle encourage, ce qu'elle refuse, comment elle se situe, ou si son approche est compatible avec une autre, reponds app
 - si l'utilisateur demande une explication generale, un mecanisme, une definition, une difference ou une information scientifique, reponds pure
+  - si le message parle d'abord de l'experience propre de l'utilisateur, ne choisis pas app ; ce cas devrait deja avoir ete filtre en amont comme exploration
 - en cas de doute, reponds pure
 
 Exemples a classer pure :
@@ -1623,6 +1633,7 @@ Direction :
 - reste au plus pres de ce qui semble se vivre maintenant
 - parle simplement, humainement, sobrement
 - tu peux nommer tres doucement une dynamique immediate si elle est deja evidente dans le message
+- quand tu nommes quelque chose, formule-le depuis ta propre perception plutot qu'avec une tournure impersonnelle
 - puis tu t'arretes
 - en cas de decharge agressive dirigee contre le bot, privilegie une presence minimale et non intrusive
 - ne cherche pas a contenir verbalement
@@ -2454,7 +2465,7 @@ function normalizeSessionFlags(flags) {
   const hasExplicitDirectivityLevel = safe.explorationDirectivityLevel !== undefined;
   const hasExplicitBootstrapPending = safe.explorationBootstrapPending === true || safe.explorationBootstrapPending === false;
   
-  const bootstrapWindow = [true, true, true];
+  const bootstrapWindow = new Array(RELANCE_WINDOW_SIZE).fill(false);
   const explorationRelanceWindow = hasExplicitRelanceWindow ?
     normalizeExplorationRelanceWindow(safe.explorationRelanceWindow) :
     bootstrapWindow;
@@ -2487,7 +2498,7 @@ function registerExplorationRelance(flags, isRelance) {
   const safeFlags = normalizeSessionFlags(flags);
   
   if (safeFlags.explorationBootstrapPending === true) {
-    const nextWindow = isRelance === true ? [true, true, true, true] : [true, true, false, false];
+    const nextWindow = [...safeFlags.explorationRelanceWindow, isRelance === true].slice(-RELANCE_WINDOW_SIZE);
     
     return {
       ...safeFlags,
@@ -2680,6 +2691,47 @@ function acuteCrisisFollowupResponse() {
 // 3) ANALYSE INFO + CONTACT + RECALL + CONFLIT MODELE + RELANCE
 // --------------------------------------------------
 
+function normalizeInfoRoutingText(text = "") {
+  return String(text || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+function hasAppInfoCue(message = "") {
+  const text = normalizeInfoRoutingText(message);
+
+  return [
+    /\bton app\b/,
+    /\bton outil\b/,
+    /\bton approche\b/,
+    /\bton modele\b/,
+    /\btu te situes\b/,
+    /\best-ce que ton\b/,
+    /\bcomment tu te situes\b/,
+    /\bpourquoi ton\b/,
+    /\bce que fait ton outil\b/,
+    /\bce que fait ton app\b/
+  ].some(pattern => pattern.test(text));
+}
+
+function hasSelfExplorationCue(message = "") {
+  const text = normalizeInfoRoutingText(message);
+
+  return [
+    /\bmon inconscient\b/,
+    /\bma dissociation\b/,
+    /\bmon angoisse\b/,
+    /\bmon anxiete\b/,
+    /\bmon comportement\b/,
+    /\bce qui m'arrive\b/,
+    /\bce qu[ei] je vis\b/,
+    /\bce qui se passe chez moi\b/,
+    /\ben moi\b/,
+    /\bchez moi\b/
+  ].some(pattern => pattern.test(text));
+}
+
 // Detect whether the user is asking an information request.
 async function llmInfoAnalysis(message = "", history = [], promptRegistry = buildDefaultPromptRegistry()) {
   const context = trimInfoAnalysisHistory(history);
@@ -2712,10 +2764,24 @@ async function llmInfoAnalysis(message = "", history = [], promptRegistry = buil
 }
 
 async function analyzeInfoRequest(message = "", history = [], promptRegistry = buildDefaultPromptRegistry()) {
+  if (hasSelfExplorationCue(message) && !hasAppInfoCue(message)) {
+    return {
+      isInfoRequest: false,
+      source: "self_reference_guard"
+    };
+  }
+
   return await llmInfoAnalysis(message, history, promptRegistry);
 }
 
 async function analyzeInfoSubmode(message = "", history = [], promptRegistry = buildDefaultPromptRegistry()) {
+  if (hasAppInfoCue(message)) {
+    return {
+      infoSubmode: "app",
+      source: "app_routing_guard"
+    };
+  }
+
   const context = trimInfoAnalysisHistory(history);
 
   const r = await client.chat.completions.create({
@@ -3492,18 +3558,46 @@ function getExplorationPrompt(memory, explorationDirectivityLevel = 0, promptReg
   return wrapPromptBlock("MODE_EXPLORATION", explorationBlock);
 }
 
+function buildInterpretationRejectionPromptBlock(interpretationRejection = null) {
+  if (!interpretationRejection || interpretationRejection.isInterpretationRejection !== true) {
+    return "";
+  }
+
+  const lines = [
+    "Rejet d'interpretation detecte sur le tour actuel.",
+    "- n'essaie pas de defendre la lecture precedente",
+    "- n'ajoute aucun meta-discours sur le fait de t'etre trompe",
+    interpretationRejection.rejectsUnderlyingPhenomenon === true ?
+      "- le phenomene de fond semble lui aussi rejete : repars du plus observable" :
+      "- seul l'angle precedent semble rejete : garde le phenomene de fond seulement s'il reste tres concret",
+    interpretationRejection.needsSoberReadjustment === true ?
+      "- reajuste l'axe dans la reponse presente, de maniere sobre et concrete" :
+      "- reste sobre et n'exagere pas le reajustement",
+    interpretationRejection.tensionHoldLevel === "high" ?
+      "- garde une tension ferme apres reajustement" :
+      interpretationRejection.tensionHoldLevel === "low" ?
+      "- reduis nettement la tension apres reajustement" :
+      "- garde une tension calme apres reajustement"
+  ];
+
+  return wrapPromptBlock("INTERPRETATION_REJECTION", lines.join("\n"));
+}
+
 // Construct the full system prompt for the selected mode before calling the LLM.
-function buildSystemPrompt(mode, memory, explorationDirectivityLevel = 0, promptRegistry = buildDefaultPromptRegistry(), infoSubmode = null) {
+function buildSystemPrompt(mode, memory, explorationDirectivityLevel = 0, promptRegistry = buildDefaultPromptRegistry(), infoSubmode = null, interpretationRejection = null) {
   const identityWrapped = getIdentityPrompt(promptRegistry);
   const contactWrapped = getContactPrompt(promptRegistry);
   const infoWrapped = getInfoPrompt(memory, infoSubmode, promptRegistry);
   const explorationWrapped = getExplorationPrompt(memory, explorationDirectivityLevel, promptRegistry);
+  const interpretationRejectionWrapped = buildInterpretationRejectionPromptBlock(interpretationRejection);
   
   if (mode === "contact") {
     return `
 ${identityWrapped}
 
 ${contactWrapped}
+
+${interpretationRejectionWrapped}
 `.trim();
   }
   
@@ -3512,6 +3606,8 @@ ${contactWrapped}
 ${identityWrapped}
 
 ${infoWrapped}
+
+${interpretationRejectionWrapped}
 `.trim();
   }
   
@@ -3519,6 +3615,8 @@ ${infoWrapped}
 ${identityWrapped}
 
 ${explorationWrapped}
+
+${interpretationRejectionWrapped}
 `.trim();
 }
 
@@ -3597,6 +3695,7 @@ async function generateReply({
   memory,
   mode,
   infoSubmode = null,
+  interpretationRejection = null,
   explorationDirectivityLevel = 0,
   promptRegistry = buildDefaultPromptRegistry(),
   override1 = null,
@@ -3607,7 +3706,8 @@ async function generateReply({
     memory,
     explorationDirectivityLevel,
     promptRegistry,
-    infoSubmode
+    infoSubmode,
+    interpretationRejection
   );
   
   const messages = [
@@ -5385,17 +5485,6 @@ app.post("/chat", async (req, res) => {
       });
 
       let variantReply = replyPipeline.content;
-
-      if (interpretationRejection.isInterpretationRejection && interpretationRejection.needsSoberReadjustment) {
-        variantReply = await rewriteInterpretationRejectionReply({
-          message,
-          history: recentHistory,
-          memory: previousMemory,
-          originalReply: variantReply,
-          interpretationRejection,
-          promptRegistry: comparisonPromptRegistry
-        });
-      }
       
       const rawVariantMemory = await updateMemory(
         previousMemory,
@@ -5406,9 +5495,26 @@ app.post("/chat", async (req, res) => {
         ],
         comparisonPromptRegistry
       );
-      
+
+      let variantMemoryCandidate = rawVariantMemory;
+
+      if (interpretationRejection.isInterpretationRejection) {
+        variantMemoryCandidate = await rewriteInterpretationRejectionMemory({
+          message,
+          history: [
+            ...recentHistory,
+            { role: "user", content: message },
+            { role: "assistant", content: variantReply }
+          ],
+          previousMemory,
+          candidateMemory: variantMemoryCandidate,
+          interpretationRejection,
+          promptRegistry: comparisonPromptRegistry
+        });
+      }
+
       const memoryPipeline = await applyModelConflictPipeline({
-        content: rawVariantMemory,
+        content: variantMemoryCandidate,
         message,
         history: [
           ...recentHistory,
@@ -5419,22 +5525,7 @@ app.post("/chat", async (req, res) => {
         promptRegistry: comparisonPromptRegistry
       });
 
-      let variantMemory = memoryPipeline.content;
-
-      if (interpretationRejection.isInterpretationRejection) {
-        variantMemory = await rewriteInterpretationRejectionMemory({
-          message,
-          history: [
-            ...recentHistory,
-            { role: "user", content: message },
-            { role: "assistant", content: variantReply }
-          ],
-          previousMemory,
-          candidateMemory: variantMemory,
-          interpretationRejection,
-          promptRegistry: comparisonPromptRegistry
-        });
-      }
+      const variantMemory = memoryPipeline.content;
       
       const variantDebug = buildDebug(detectedMode, {
         suicideLevel: suicide.suicideLevel,
@@ -5780,15 +5871,7 @@ app.post("/chat", async (req, res) => {
     modeForCatch = detectedMode;
   infoSubmodeForCatch = detectedInfoSubmode;
     
-    const shouldForceInitialDirectivityLevel3 =
-      detectedMode === "exploration" &&
-      rawFlags.explorationDirectivityLevel === undefined &&
-      !Array.isArray(rawFlags.explorationRelanceWindow) &&
-      rawFlags.explorationBootstrapPending === undefined;
-    
-    const effectiveExplorationDirectivityLevel = shouldForceInitialDirectivityLevel3 ?
-      3 :
-      newFlags.explorationDirectivityLevel;
+    const effectiveExplorationDirectivityLevel = newFlags.explorationDirectivityLevel;
     
     let finalDirectivityLevel = effectiveExplorationDirectivityLevel;
 
@@ -5825,6 +5908,13 @@ app.post("/chat", async (req, res) => {
     const mainPromptDebug = hasOverrides ?
       buildPromptOverrideLayersDebug(override1, override2, activePromptRegistry) :
       buildPromptOverrideLayersDebug(null, null, activePromptRegistry);
+
+    const interpretationRejection = await analyzeInterpretationRejection({
+      message,
+      history: recentHistory,
+      memory: previousMemory,
+      promptRegistry: activePromptRegistry
+    });
     
     const generatedBase = await generateReply({
       message,
@@ -5832,6 +5922,7 @@ app.post("/chat", async (req, res) => {
       memory: previousMemory,
       mode: detectedMode,
       infoSubmode: detectedInfoSubmode,
+      interpretationRejection,
       explorationDirectivityLevel: finalDirectivityLevel,
       promptRegistry: activePromptRegistry,
       override1: hasOverrides ? override1 : null,
@@ -5841,12 +5932,6 @@ app.post("/chat", async (req, res) => {
     generatedBase.promptDebug = mainPromptDebug;
     
     let relanceAnalysis = null;
-    const interpretationRejection = await analyzeInterpretationRejection({
-      message,
-      history: recentHistory,
-      memory: previousMemory,
-      promptRegistry: activePromptRegistry
-    });
     
     const replyPipeline = await applyModelConflictPipeline({
       content: generatedBase.reply,
@@ -5857,17 +5942,6 @@ app.post("/chat", async (req, res) => {
     });
 
     let reply = replyPipeline.content;
-
-    if (interpretationRejection.isInterpretationRejection && interpretationRejection.needsSoberReadjustment) {
-      reply = await rewriteInterpretationRejectionReply({
-        message,
-        history: recentHistory,
-        memory: previousMemory,
-        originalReply: reply,
-        interpretationRejection,
-        promptRegistry: activePromptRegistry
-      });
-    }
     
     if (detectedMode === "exploration") {
       relanceAnalysis = await analyzeExplorationRelance({
@@ -5935,9 +6009,26 @@ app.post("/chat", async (req, res) => {
       ],
       activePromptRegistry
     );
-    
+
+    let memoryCandidate = rawNewMemory;
+
+    if (interpretationRejection.isInterpretationRejection) {
+      memoryCandidate = await rewriteInterpretationRejectionMemory({
+        message,
+        history: [
+          ...recentHistory,
+          { role: "user", content: message },
+          { role: "assistant", content: reply }
+        ],
+        previousMemory,
+        candidateMemory: memoryCandidate,
+        interpretationRejection,
+        promptRegistry: activePromptRegistry
+      });
+    }
+
     const memoryPipeline = await applyModelConflictPipeline({
-      content: rawNewMemory,
+      content: memoryCandidate,
       message,
       history: [
         ...recentHistory,
@@ -5948,22 +6039,7 @@ app.post("/chat", async (req, res) => {
       promptRegistry: activePromptRegistry
     });
 
-    let newMemory = memoryPipeline.content;
-
-    if (interpretationRejection.isInterpretationRejection) {
-      newMemory = await rewriteInterpretationRejectionMemory({
-        message,
-        history: [
-          ...recentHistory,
-          { role: "user", content: message },
-          { role: "assistant", content: reply }
-        ],
-        previousMemory,
-        candidateMemory: newMemory,
-        interpretationRejection,
-        promptRegistry: activePromptRegistry
-      });
-    }
+    const newMemory = memoryPipeline.content;
     
     if (logsEnabled && memoryPipeline.rewriteSource) {
       debug.push(`memoryRewriteSource: ${memoryPipeline.rewriteSource}`);
@@ -6023,6 +6099,7 @@ app.post("/chat", async (req, res) => {
         memory: previousMemory,
         mode: detectedMode,
         infoSubmode: detectedInfoSubmode,
+        interpretationRejection,
         explorationDirectivityLevel: finalDirectivityLevel,
         promptRegistry: referencePromptRegistry,
         override1: null,
@@ -6045,6 +6122,7 @@ app.post("/chat", async (req, res) => {
           memory: previousMemory,
           mode: detectedMode,
           infoSubmode: detectedInfoSubmode,
+          interpretationRejection,
           explorationDirectivityLevel: finalDirectivityLevel,
           promptRegistry: override1PromptRegistry,
           override1,
@@ -6068,6 +6146,7 @@ app.post("/chat", async (req, res) => {
           memory: previousMemory,
           mode: detectedMode,
           infoSubmode: detectedInfoSubmode,
+          interpretationRejection,
           explorationDirectivityLevel: finalDirectivityLevel,
           promptRegistry: override12PromptRegistry,
           override1,
