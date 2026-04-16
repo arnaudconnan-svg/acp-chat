@@ -1,10 +1,9 @@
-const SHELL_CACHE = "facilitatio-shell-v0.9.8";
+const SHELL_CACHE = "facilitatio-shell-v0.9.9";
 const SHELL_ASSETS = [
   "/",
   "/index.html",
   "/auth.html",
   "/account.html",
-  "/premium.html",
   "/manifest.json",
   "/images/icon-512.png",
   "/images/logo.png"

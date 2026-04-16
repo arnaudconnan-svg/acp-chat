@@ -1965,18 +1965,12 @@
     const ADMIN_UI_KEY = "facilitatio_admin_ui";
     const ADMIN_REPLAY_KEY = "facilitatio_admin_replay";
     const CHAT_BOTTOM_THRESHOLD_PX = 12;
-    const PREMIUM_CAPABILITIES_KEY = "facilitatio_premium_capabilities";
     let userSessionState = {
       authenticated: false,
-      user: null,
-      capabilities: {
-        branching: false,
-        intersessionMemory: false,
-        multiDeviceAccess: false
-      }
+      user: null
     };
 
-    // Module-level intersession memory for premium accounts.
+    // Module-level intersession memory for authenticated accounts.
     // Populated once on load; used as initial memory for new conversations.
     let _pendingIntersessionMemory = null;
 
@@ -1990,71 +1984,29 @@
         if (!res.ok) {
           userSessionState = {
             authenticated: false,
-            user: null,
-            capabilities: {
-              branching: false,
-              intersessionMemory: false,
-              multiDeviceAccess: false
-            }
+            user: null
           };
           return userSessionState;
         }
 
         const data = await parseAppJsonResponseSafely(res);
         const user = data && data.user && typeof data.user === "object" ? data.user : null;
-        const caps = user && user.capabilities && typeof user.capabilities === "object" ? user.capabilities : {};
 
         userSessionState = {
           authenticated: data && data.authenticated === true,
-          user,
-          capabilities: {
-            branching: caps.branching === true,
-            intersessionMemory: caps.intersessionMemory === true,
-            multiDeviceAccess: caps.multiDeviceAccess === true
-          }
+          user
         };
-
-        try {
-          localStorage.setItem(PREMIUM_CAPABILITIES_KEY, JSON.stringify(userSessionState.capabilities));
-        } catch {}
 
         return userSessionState;
       } catch {
         userSessionState = {
           authenticated: false,
-          user: null,
-          capabilities: {
-            branching: false,
-            intersessionMemory: false,
-            multiDeviceAccess: false
-          }
+          user: null
         };
-
-        try {
-          localStorage.removeItem(PREMIUM_CAPABILITIES_KEY);
-        } catch {}
 
         return userSessionState;
       }
     }
-
-    function getPremiumCapabilities() {
-      const adminCapabilityOverride = document.body.classList.contains("admin-ui");
-
-      return {
-        branching: adminCapabilityOverride || userSessionState.capabilities.branching === true,
-        intersessionMemory: adminCapabilityOverride || userSessionState.capabilities.intersessionMemory === true,
-        multiDeviceAccess: adminCapabilityOverride || userSessionState.capabilities.multiDeviceAccess === true
-      };
-    }
-
-    function hasPremiumCapability(name) {
-      const capabilities = getPremiumCapabilities();
-      return capabilities[name] === true;
-    }
-
-    window.getPremiumCapabilities = getPremiumCapabilities;
-    window.hasPremiumCapability = hasPremiumCapability;
 
     async function hasValidAdminSession() {
       try {
@@ -2075,9 +2027,9 @@
     }
 
     async function syncIntersessionMemoryIfApplicable() {
-      if (!hasPremiumCapability("intersessionMemory")) return;
+      if (!userSessionState.authenticated) return;
       try {
-        const res = await fetch("/api/premium/intersession-memory", {
+        const res = await fetch("/api/intersession-memory", {
           method: "GET",
           cache: "no-store",
           credentials: "include"
@@ -2319,7 +2271,7 @@
     }
 
     async function syncRemoteConversationsIndexIfApplicable() {
-      if (!userSessionState.authenticated || hasPremiumCapability("multiDeviceAccess") !== true) {
+      if (!userSessionState.authenticated) {
         return;
       }
 
@@ -2347,7 +2299,7 @@
     }
 
     async function hydrateRemoteConversationIfNeeded(conversationId) {
-      if (!conversationId || !userSessionState.authenticated || hasPremiumCapability("multiDeviceAccess") !== true) {
+      if (!conversationId || !userSessionState.authenticated) {
         return false;
       }
 
@@ -2544,7 +2496,7 @@
       }
     }
 
-    async function openPremiumBranchFromMessage(sourceConversationId, anchorMessageId, anchorHistory) {
+    async function openBranchFromMessage(sourceConversationId, anchorMessageId, anchorHistory) {
       if (!sourceConversationId || !anchorMessageId) {
         showTemporaryNotice("Repartir impossible : identifiants manquants");
         return;
@@ -2553,7 +2505,7 @@
       showTemporaryNotice("Creation de la branche...");
 
       try {
-        const createRes = await fetch("/api/premium/branches/from-message", {
+        const createRes = await fetch("/api/branches/from-message", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ sourceConversationId, anchorMessageId })
@@ -2574,7 +2526,7 @@
           return;
         }
 
-        const activateRes = await fetch("/api/premium/branches/" + branchId + "/activate", {
+        const activateRes = await fetch("/api/branches/" + branchId + "/activate", {
           method: "POST",
           headers: { "Content-Type": "application/json" }
         });
@@ -2611,7 +2563,7 @@
         scrollChatToBottom();
         showTemporaryNotice("Branche activee — conversation repartie depuis ce point");
       } catch (err) {
-        console.error("[PREMIUM_BRANCH_ERROR]", err.message);
+        console.error("[BRANCH_ERROR]", err.message);
         showTemporaryNotice("Erreur inattendue lors du branchement");
       }
     }
@@ -4438,9 +4390,8 @@
             longPressTriggered = true;
             const history = loadHistory();
             const lastUserIndex = getLastUserHistoryIndex(history);
-            const canEditAnyMessage = hasPremiumCapability("branching") === true;
 
-            if (!canEditAnyMessage && historyIndex !== lastUserIndex) {
+            if (historyIndex < 0) {
               showTemporaryNotice("Modification impossible");
               return;
             }
@@ -4542,11 +4493,11 @@
 
         actionsRow.appendChild(copyBotBtn);
 
-        if (hasPremiumCapability("branching") && historyIndex >= 0) {
+        if (userSessionState.authenticated && historyIndex >= 0) {
           const branchBtn = document.createElement("button");
           branchBtn.type = "button";
           branchBtn.setAttribute("aria-label", "Repartir d'ici");
-          branchBtn.title = "Repartir d'ici (Premium)";
+          branchBtn.title = "Repartir d'ici";
           branchBtn.textContent = "\u21AA";
           branchBtn.style.border = "none";
           branchBtn.style.background = "transparent";
@@ -4572,7 +4523,7 @@
             }
 
             // We need the Firebase message id. The message may have an id field
-            // if it was persisted through admin or premium path. For fresh chat
+            // if it was persisted through admin or branch path. For fresh chat
             // messages the id is not stored locally — we use a fallback local id.
             const anchorMessageId = (botEntry.id && typeof botEntry.id === "string")
               ? botEntry.id
@@ -4584,7 +4535,7 @@
             }
 
             const anchorHistory = history.slice(0, historyIndex + 1);
-            openPremiumBranchFromMessage(sourceConversationId, anchorMessageId, anchorHistory);
+            openBranchFromMessage(sourceConversationId, anchorMessageId, anchorHistory);
           });
 
           actionsRow.appendChild(branchBtn);
@@ -4863,8 +4814,8 @@
 
         if (data && data.memory) {
           saveMemory(data.memory);
-          if (hasPremiumCapability("intersessionMemory")) {
-            fetch("/api/premium/intersession-memory", {
+          if (userSessionState.authenticated) {
+            fetch("/api/intersession-memory", {
               method: "PUT",
               credentials: "include",
               headers: { "Content-Type": "application/json" },
@@ -5287,11 +5238,9 @@
         const history = loadHistory();
         const targetIndex = editMode.targetHistoryIndex;
         const lastUserIndex = getLastUserHistoryIndex(history);
-        const canEditAnyMessage = hasPremiumCapability("branching") === true;
         
         if (
           targetIndex < 0 ||
-          (!canEditAnyMessage && targetIndex !== lastUserIndex) ||
           editMode.conversationId !== conversationIdBeforeSend ||
           !history[targetIndex] ||
           history[targetIndex].role !== "user"
@@ -5486,8 +5435,8 @@
         if (isSameConversation) {
           if (data.memory) {
             saveMemory(data.memory);
-            if (hasPremiumCapability("intersessionMemory")) {
-              fetch("/api/premium/intersession-memory", {
+            if (userSessionState.authenticated) {
+              fetch("/api/intersession-memory", {
                 method: "PUT",
                 credentials: "include",
                 headers: { "Content-Type": "application/json" },
@@ -6486,7 +6435,7 @@
         // Fetch branch seed from backend.
         try {
           // Find the branch id by listing branches then matching on branchConversationId.
-          const branchesRes = await fetch("/api/premium/branches", { credentials: "include" });
+          const branchesRes = await fetch("/api/branches", { credentials: "include" });
           if (branchesRes.ok) {
             const branchesData = await branchesRes.json().catch(() => ({}));
             const matchBranch = Array.isArray(branchesData.branches)
@@ -6494,7 +6443,7 @@
               : null;
 
             if (matchBranch) {
-              const branchRes = await fetch("/api/premium/branches/" + encodeURIComponent(matchBranch.id), { credentials: "include" });
+              const branchRes = await fetch("/api/branches/" + encodeURIComponent(matchBranch.id), { credentials: "include" });
               if (branchRes.ok) {
                 const branchData = await branchRes.json().catch(() => ({}));
                 const seedMessages = Array.isArray(branchData.messages) ? branchData.messages : [];

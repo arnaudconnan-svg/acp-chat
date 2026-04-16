@@ -180,31 +180,21 @@ async function run() {
       }
     },
     {
-      name: "premium capabilities unauthenticated",
+      name: "branches requires auth",
       run: async () => {
-        const result = await request("/api/premium/capabilities", { method: "GET" });
+        const result = await request("/api/branches", { method: "GET" });
 
-        assert(result.status === 200, `premium capabilities unauthenticated: expected 200, got ${result.status}`);
-        assert(result.contentType.includes("application/json"), "premium capabilities unauthenticated: expected JSON");
-        assert(result.body && result.body.plan === "free", `premium capabilities unauthenticated: expected plan:free, got ${result.body?.plan}`);
+        assert(result.status === 401, `branches requires auth: expected 401, got ${result.status}`);
+        assert(result.contentType.includes("application/json"), "branches requires auth: expected JSON");
       }
     },
     {
-      name: "premium branches requires auth",
+      name: "intersession memory requires auth",
       run: async () => {
-        const result = await request("/api/premium/branches", { method: "GET" });
+        const result = await request("/api/intersession-memory", { method: "GET" });
 
-        assert(result.status === 401, `premium branches requires auth: expected 401, got ${result.status}`);
-        assert(result.contentType.includes("application/json"), "premium branches requires auth: expected JSON");
-      }
-    },
-    {
-      name: "premium intersession memory requires auth",
-      run: async () => {
-        const result = await request("/api/premium/intersession-memory", { method: "GET" });
-
-        assert(result.status === 401, `premium intersession memory requires auth: expected 401, got ${result.status}`);
-        assert(result.contentType.includes("application/json"), "premium intersession memory requires auth: expected JSON");
+        assert(result.status === 401, `intersession memory requires auth: expected 401, got ${result.status}`);
+        assert(result.contentType.includes("application/json"), "intersession memory requires auth: expected JSON");
       }
     }
   ];

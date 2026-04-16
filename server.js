@@ -403,55 +403,15 @@ async function findUserByEmail(email) {
   };
 }
 
-function getUserCapabilities(plan = "free", options = {}) {
-  const isAdmin = options && options.isAdmin === true;
-
-  if (isAdmin) {
-    return {
-      branching: true,
-      intersessionMemory: true,
-      multiDeviceAccess: true
-    };
-  }
-
-  const normalizedPlan = String(plan || "free").trim().toLowerCase();
-
-  if (normalizedPlan === "premium") {
-    return {
-      branching: true,
-      intersessionMemory: true,
-      multiDeviceAccess: true
-    };
-  }
-
-  return {
-    branching: false,
-    intersessionMemory: false,
-    multiDeviceAccess: true
-  };
-}
-
 function toPublicUser(userId, userData, options = {}) {
   const safeUser = userData && typeof userData === "object" ? userData : {};
-  const plan = normalizePlan(safeUser.plan || "free");
-  const isAdmin = options && options.isAdmin === true;
 
   return {
     id: String(userId || ""),
     email: normalizeEmail(safeUser.email),
-    plan,
-    capabilities: getUserCapabilities(plan, { isAdmin }),
     createdAt: typeof safeUser.createdAt === "string" ? safeUser.createdAt : null,
     updatedAt: typeof safeUser.updatedAt === "string" ? safeUser.updatedAt : null
   };
-}
-
-function normalizePlan(value) {
-  const plan = String(value || "free").trim().toLowerCase();
-  if (plan === "premium") {
-    return plan;
-  }
-  return "free";
 }
 
 // Retrieve the admin session from cookies and validate its expiration.
@@ -537,25 +497,6 @@ async function requireUserAuth(req, res, next) {
     console.error("Erreur requireUserAuth:", err.message);
     return res.status(500).json({ error: "Auth check failed" });
   }
-}
-
-function requirePremiumCapability(capability) {
-  return (req, res, next) => {
-    const session = req.userSession;
-    const plan = session?.user?.plan || "free";
-    const capabilities = getUserCapabilities(plan, {
-      isAdmin: Boolean(getAdminSession(req))
-    });
-
-    if (capabilities[capability] !== true) {
-      return res.status(403).json({
-        error: "Feature not available on current plan",
-        capability
-      });
-    }
-
-    return next();
-  };
 }
 
 // Middleware protecting admin routes by redirecting unauthenticated users.
@@ -1142,21 +1083,26 @@ Mode EXPLORATION - niveau 0/4
 But :
 - rester en exploration libre
 - garder toute la richesse de mouvement disponible
-- proposer une lecture qui deplace un peu la comprehension
+  - proposer une lecture qui deplace reellement la comprehension sans perdre la justesse situee
 
 Direction :
-- propose au moins un angle de lecture, une tension ou une hypothese non evidente
-- tu peux deplier un peu la lecture si cela reste organique
-- une relance est possible si elle est juste et non envahissante
-- garde une vraie liberte de mouvement dans la reponse
+  - commence directement dans le phenomene, pas par une reformulation generale du ressenti
+  - propose au moins un angle de lecture, une tension ou une hypothese non evidente, ancree dans des elements precis du message
+  - tu peux deplier un peu la lecture si cela reste organique, mais sans derivation theorique ni commentaire general
+  - si une relance existe, elle doit prolonger la tension deja la, pas organiser la suite pour la personne
+  - garde une vraie liberte de mouvement dans la reponse, mais sans dispersion ni multiplication d'angles faibles
+  - assume une prise de position plus nette si quelque chose parait tres probable, sans justification ni defense
+  - privilegie une lecture vivante, situee et un peu remuante plutot qu'un reflet propre ou consensuel
 
 Forme :
 - 1 ou 2 paragraphes maximum
-- chaque paragraphe developpe une seule idee claire
+  - chaque paragraphe developpe une seule idee claire
+  - la premiere phrase doit deja faire exister une lecture, une tension ou un deplacement
 - laisse respirer le texte
 - style libre mais professionnel
 - possibilite de phrases courtes isolees pour marquer un pivot
 - le langage peut rester creatif si cela enrichit vraiment l'experience
+  - evite les phrases de remplissage, les transitions molles et les reformulations qui n'ajoutent rien
 `,
     
     EXPLORATION_STRUCTURE_CASE_1: `
@@ -1165,20 +1111,25 @@ Mode EXPLORATION - niveau 1/4
 But :
 - rester en exploration libre
 - proposer une lecture vivante et incarnee
-- garder de la souplesse
-- une relance reste possible si elle vient naturellement
+  - garder de la souplesse sans retomber dans une reponse trop ouverte ou trop amortie
+  - une relance reste possible si elle vient naturellement
 
 Direction :
 - pars directement de l'experience de la personne
-- propose un angle de lecture, une tension ou une hypothese
-- une relance peut exister, mais elle ne doit pas prendre le dessus sur la reponse
-- privilegie le reflet, la reformulation ou une lecture simple plutot qu'une prise en main de la suite
+  - propose un angle de lecture, une tension ou une hypothese a partir d'elements concrets et singuliers du message
+  - laisse deja sentir une fermete calme dans la lecture si quelque chose se dessine nettement
+  - une relance peut exister, mais elle ne doit pas prendre le dessus sur la reponse ni ouvrir par inertie
+  - privilegie une lecture situee ou un reflet deplacant plutot qu'une simple reformulation
+  - n'organise pas la suite pour la personne
+  - evite les formulations trop prudentes, trop neutres ou generiques
 
 Forme :
 - 1 ou 2 paragraphes
 - chaque paragraphe suit une seule idee principale
+  - la premiere phrase doit s'ancrer dans quelque chose de precis, pas dans une generalite sur ce qui est ressenti
 - reste fluide, humain et naturel
 - garde une certaine liberte de style
+  - reponse plutot breve, dense et peu demonstrative
 `,
     
     EXPLORATION_STRUCTURE_CASE_2: `
@@ -1307,8 +1258,65 @@ Si l’utilisateur pose une question comparative ou positionnelle sur le fonctio
 
 Reponds uniquement par le JSON.
 `,
+
+  ANALYZE_INFO_SUBMODE: `
+Tu determines quel sous-mode d'information utiliser quand le message utilisateur releve deja d'une demande d'information.
+
+Reponds STRICTEMENT en JSON :
+
+{
+  "infoSubmode": "pure|app"
+}
+
+Definitions :
+- pure : information libre, factuelle, theorique, historique, scientifique ou conceptuelle, sans besoin de defendre l'app ni de centrer activement la reponse sur son modele
+- app : information sur l'outil, son fonctionnement, sa logique relationnelle, son approche, ses choix, ses differences avec d'autres approches, ou question comparative sur ce que fait l'app
+
+Regles :
+- choisis app seulement si la question porte principalement sur l'app, son approche, son cadre, son positionnement ou sa comparaison a d'autres approches
+- choisis pure si l'utilisateur demande surtout une information en elle-meme, meme si cette information peut toucher a des sujets proches du modele
+- si l'utilisateur demande ce que fait l'app, ce qu'elle encourage, ce qu'elle refuse, comment elle se situe, ou si son approche est compatible avec une autre, reponds app
+- si l'utilisateur demande une explication generale, un mecanisme, une definition, une difference ou une information scientifique, reponds pure
+- en cas de doute, reponds pure
+
+Exemples a classer pure :
+- "Qu'est-ce qu'une crise d'angoisse ?"
+- "Comment fonctionne la dissociation ?"
+- "Quelle difference entre peur et anxiete ?"
+- "Que se passe-t-il dans le cerveau quand on pleure ?"
+
+Exemples a classer app :
+- "Comment fonctionne ton approche ?"
+- "Est-ce que ton app cherche a faire accepter les emotions ?"
+- "Comment tu te situes par rapport a l'ACP ?"
+- "Pourquoi ton outil ne parle pas d'inconscient ?"
+
+Reponds uniquement par le JSON.
+`,
     
-    MODE_INFORMATION: `
+  MODE_INFORMATION_PURE: `
+Mode INFORMATION PURE.
+
+Tu reponds a une demande d'information sans chercher a defendre l'app ni a imposer son modele comme grille centrale.
+
+Contraintes :
+- reponds d'abord a l'information demandee
+- tu peux garder discretement une qualite relationnelle coherente avec l'app, mais sans recentrer la reponse sur son fonctionnement
+- n'introduis pas spontanement des comparaisons avec d'autres approches
+- n'essaie pas de ramener la question dans l'architecture theorique de l'app si ce n'est pas necessaire pour repondre juste
+- si des informations demandees contredisent frontalement le modele, laisse le filtre de conflit modele corriger ensuite ; ne te mets pas toi-meme en posture defensive
+- si la question porte sur un mecanisme biologique, scientifique ou historique, reponds a ce niveau-la de facon directe
+- si la question touche a un fonctionnement humain souvent vecu comme inquietant, normalise sobrement sans plaquer de doctrine
+
+Forme :
+- reponse claire, concrete et lisible
+- paragraphs courts
+- pas de relance finale
+- pas de cours inutile
+- pas de style lyrique
+`,
+
+  MODE_INFORMATION_APP: `
 Mode INFORMATION.
 
 Tu penses et reponds depuis le modele, sans jamais le presenter comme un cadre ou un point de vue.
@@ -1459,6 +1467,48 @@ Forme des reponses :
 - pas de style lyrique ou exploratoire
 - pas de relance finale
 `,
+
+    MODE_INFORMATION: `
+Mode INFORMATION.
+
+Utilise par defaut le mode information sur l'app si aucun sous-mode n'est fourni.
+
+Tu penses et reponds depuis le modele, sans jamais le presenter comme un cadre ou un point de vue.
+`,
+
+    ANALYZE_EXPLORATION_CALIBRATION: `
+Tu choisis un niveau structurel de directivite pour une reponse en mode exploration.
+
+Reponds STRICTEMENT en JSON :
+
+{
+  "calibrationLevel": 0|1|2|3|4
+}
+
+Sens des niveaux :
+- 0 : exploration la plus libre
+- 1 : exploration libre mais un peu contenue
+- 2 : exploration engagee et contenue
+- 3 : exploration courte, sobre, peu ouverte
+- 4 : exploration minimale, presque au bord du contact sans y basculer
+
+Sources a combiner :
+- message utilisateur actuel
+- contexte recent
+- memoire
+- niveau de directivite precedent
+- fenetre recente de relances
+
+Regles :
+- ne te base pas sur une regle mecanique unique
+- choisis le niveau qui donne la fermete la plus juste pour ce moment
+- n'utilise 4 que si la reponse doit rester tres minimale, tres contenante et tres peu ouvrante tout en restant en exploration
+- n'utilise pas automatiquement un niveau eleve des qu'il y a de l'intensite ; si la tension doit encore etre tenue activement, un niveau moyen peut etre plus juste
+- si le message appelle une lecture plus vivante ou un peu plus de mouvement, privilegie 0, 1 ou 2
+- en cas de doute, reponds 2
+
+Reponds uniquement par le JSON.
+`,
     
     // ------------------------------------
     // GESTION DU MODE CONTACT
@@ -1476,6 +1526,8 @@ Principes :
 - base-toi d'abord sur le message actuel ; le contexte recent peut aider a comprendre mais ne suffit pas a lui seul
 - fais une analyse contextuelle, pas un simple reperage de mots
 - sois selectif : contact doit rester relativement rare
+- la simple montee d'une tension, l'envie de pleurer, la retenue, l'ambivalence ou le fait de sentir quelque chose "venir" ne suffisent pas
+- reserve true aux moments ou quelque chose deborde, lache, se decharge, s'effondre partiellement ou attaque immediatement
 - si le message contient une violence verbale franche, une insulte directe ou une decharge agressive immediate envers le bot, cela peut compter comme contact
 - dans ce cas, ne pas traiter cela seulement comme une opposition ou un refus de parler
 - si le message donne l'impression que ca deborde maintenant, classer true
@@ -1483,14 +1535,16 @@ Principes :
 Met isContact = true seulement si la personne semble etre en train de vivre le processus, et pas seulement d'en parler.
 
 Indications de contact :
-- quelque chose monte, lache, pousse, retient, revient, se debloque, se relache
-- la personne semble au bord d'une decharge emotionnelle ou en train de la vivre
-- il y a une tension explicite entre retenue et laisser-faire
-- le message donne l'impression que ca se passe maintenant, en direct
+- decharge emotionnelle en cours ou deja en train de se faire
+- debordement manifeste, lacher, effondrement relatif, perte partielle de tenue, ou agitation immediate
+- le message donne l'impression que ca se passe maintenant, en direct, avec un processus deja engage plutot qu'encore retenu
 - decharge agressive immediate, y compris sous forme d'insultes, cris ecrits, jurons ou attaques directes contre le bot
 - message qui donne l'impression d'un debordement en cours plutot que d'une simple critique ou d'un desaccord
 
 Ne mets pas contact = true si le message est surtout :
+- une montee interne encore retenue
+- une envie de pleurer sans lacher en cours
+- une tension entre retenue et laisser-faire
 - une description generale d'un ressenti ou d'un etat
 - un ressenti simplement nomme sans mouvement en cours
 - une sensation evoquee a distance ou de facon vague
@@ -1502,6 +1556,9 @@ Ne mets pas contact = true si le message est surtout :
 Exemples a classer false :
 - "Je me sens un peu tendu aujourd'hui"
 - "Je suis triste"
+- "Je sens que quelque chose monte"
+- "J'ai envie de pleurer et en meme temps quelque chose retient"
+- "Je suis au bord de craquer"
 - "Je crois que j'ai besoin de comprendre ce qui se passe"
 - "J'essaie d'analyser ce que je ressens"
 - "Il y a un truc bizarre dans mon ventre, je sais pas trop ce que c'est"
@@ -1512,10 +1569,10 @@ Exemples a classer false :
 - "Ton explication ne tient pas"
 
 Exemples a classer true :
-- "Je sens que ca monte"
-- "Ca lache un peu"
-- "Il y a quelque chose qui pousse dans la poitrine"
-- "J'ai envie de pleurer et en meme temps quelque chose retient"
+- "Je suis en train de craquer"
+- "Ca sort, je n'arrive plus a retenir"
+- "Je pleure, ca lache maintenant"
+- "Je suis en train d'exploser"
 - "Ta gueule"
 - "Ferme ta gueule"
 - "TA GUEULE !!!"
@@ -1918,6 +1975,22 @@ Tu peux modifier ou supprimer pour plus de justesse
 16. INTERPRETATION
 Inference minimale uniquement (sans surinterpretation)
 
+16.b REJET D'INTERPRETATION (CRITIQUE)
+
+Si le dernier message utilisateur contredit explicitement une lecture precedente du bot :
+
+- ne stabilise pas cette lecture comme si elle etait confirmee
+- retire toute formulation trop interpretative qui a ete explicitement recusee
+- distingue toujours :
+  - le phenomene vecu encore plausible ou confirme
+  - la lecture du bot qui a pu etre contestee
+- si seul l'angle interpretatif est rejete, conserve le noyau phenomenologique encore appuye par l'echange
+- si le phenomene lui-meme est rejete explicitement, ne le maintiens pas par inertie
+
+Priorite :
+- ne pas fossiliser une hypothese contestee
+- ne pas aplatir pour autant tout le mouvement en cours
+
 17. INTERDIT
 pas de diagnostic
 pas de categories psychiatriques
@@ -1957,6 +2030,71 @@ Priorite :
 ---
 
 Renvoie uniquement la memoire mise a jour, sans commentaire.
+`,
+
+    ANALYZE_INTERPRETATION_REJECTION: `
+Tu determines si le message utilisateur actuel rejette explicitement une lecture, une hypothese ou un axe interpretatif precedemment proposes par le bot.
+
+Reponds STRICTEMENT en JSON :
+
+{
+  "isInterpretationRejection": true|false,
+  "rejectsUnderlyingPhenomenon": true|false,
+  "needsSoberReadjustment": true|false,
+  "tensionHoldLevel": "low|medium|high"
+}
+
+Definitions :
+- isInterpretationRejection = true si l'utilisateur corrige, contredit ou recuse explicitement une lecture du bot
+- rejectsUnderlyingPhenomenon = true seulement si l'utilisateur rejette aussi le phenomene de fond, pas seulement l'angle propose
+- needsSoberReadjustment = true si la prochaine reponse doit clairement reajuster l'axe sans se defendre ni s'ecraser
+- tensionHoldLevel indique a quel point il faut garder une tenue ferme de la tension apres reajustement
+
+Regles :
+- un simple desaccord, une critique vague ou une insatisfaction non specifiee ne suffisent pas
+- un message du type "non, ce n'est pas ca", "ce n'est pas ce qui se passe", "tu vas trop vite", "ce n'est pas de la peur", "tu confonds" compte comme rejet d'interpretation
+- si l'utilisateur rejette une lecture mais laisse entendre qu'un mouvement de fond existe encore, rejectsUnderlyingPhenomenon = false
+- si l'utilisateur rejette clairement le phenomene lui-meme (ex : "non, il n'y a pas de colere du tout"), mets rejectsUnderlyingPhenomenon = true
+- en cas de doute sur tensionHoldLevel, reponds medium
+
+Reponds uniquement par le JSON.
+`,
+
+    REWRITE_INTERPRETATION_REJECTION_REPLY: `
+Tu reecris une reponse du bot lorsqu'un rejet d'interpretation a ete detecte dans le message utilisateur actuel.
+
+But :
+- ajuster l'axe sans se defendre
+- ne pas s'ecraser
+- ne pas nier trop vite le phenomene si seul l'angle interpretatif est rejete
+- rester sobre, ferme et proche du phenomene observable
+
+Regles :
+- pas de justification de la reponse precedente
+- pas d'excuse developpee
+- pas de meta-discours sur le fait de s'etre trompe
+- si le phenomene de fond n'est pas rejete, conserve une lecture proche du concret, plus situee et moins doctrinale
+- si le phenomene de fond est aussi rejete, retire la lecture precedente et repars du plus observable
+- garde une tension calme si possible
+
+Renvoie uniquement la reponse finale reecrite.
+`,
+
+    REWRITE_INTERPRETATION_REJECTION_MEMORY: `
+Tu reecris une memoire candidate lorsqu'un rejet d'interpretation a ete detecte.
+
+But :
+- retirer une lecture du bot qui a ete explicitement contestee
+- conserver seulement le noyau phenomenologique encore confirme ou plausible
+- ne pas aplatir toute la memoire si seul l'angle est rejete
+
+Regles :
+- conserve strictement le format memoire existant
+- n'ajoute pas de commentaire
+- si le phenomene de fond est lui aussi rejete, supprime-le de la memoire candidate
+- sinon, garde seulement ce qui reste descriptif, concret et encore soutenu par l'echange
+
+Renvoie uniquement la memoire finale reecrite.
 `,
 
   UPDATE_INTERSESSION_MEMORY: `
@@ -2096,6 +2234,7 @@ Regles strictes :
 - ne signale pas un conflit pour un contenu imprecis, faible, generique ou incomplet
 - ne sur-interprete pas
 - en cas de doute, reponds false
+- ne confonds pas une formulation ferme, incisive ou un peu confrontante avec un conflit theorique
 
 Important :
 Ne classe PAS comme conflit :
@@ -2105,6 +2244,9 @@ Ne classe PAS comme conflit :
 - une lecture existentielle, relationnelle ou phenomenologique
 - une formulation psychologique generale si elle n'introduit pas explicitement un cadre banni
 - une description non-agentive d'une difficulte (ex : difficulte a rester avec, mise a distance automatique)
+- une lecture phenomenologique ferme qui reste proche du concret, meme si elle est un peu incisive
+- une phrase comme "quelque chose se resserre", "ca coupe", "ca force", "ca pousse", "ca tient", "ca se bloque", si elle ne transforme pas cela en faute du sujet
+- une mise en tension sobre entre deux mouvements observables, meme si elle a de la morsure
 
 Un conflit existe aussi si le contenu valide implicitement une categorie de psychopathologie comme cadre pertinent, meme sans poser de diagnostic.
 
@@ -2112,6 +2254,12 @@ Cas specifique (agentivite) :
 Un conflit existe si le contenu :
 - attribue au sujet une action implicite de type evitement, resistance, refus
 - suggere que le sujet "fait" quelque chose contre son experience sans que cela soit explicitement formule comme un mouvement automatique ou systemique
+- formule la lecture comme une faute, une strategie deliberee ou une intention cachee du sujet
+
+Ne classe pas comme conflit, meme si le ton est plus ferme, une formulation qui :
+- decrit un mouvement en train de se produire sans attribuer de volonte fautive
+- situe une tension, une coupure, un resserrement, une pression ou une bascule dans l'experience
+- parle de decalage, de tenue, de poussée, de retenue ou de mise a distance automatique sans moraliser
 
 Exemples a considerer comme conflit (true) :
 - "cela peut faire penser a une depression"
@@ -2122,6 +2270,8 @@ Exemples a considerer comme conflit (true) :
 - "cela releve de la sante mentale"
 - "tu evites ce ressenti"
 - "il y a une forme de resistance en toi"
+- "tu refuses de sentir cela"
+- "tu fais tout pour ne pas voir ce que tu ressens"
 
 Exemples a considerer comme NON conflit (false) :
 - "je me demande si une pression implicite est a l'oeuvre"
@@ -2132,6 +2282,10 @@ Exemples a considerer comme NON conflit (false) :
 - "cela peut etre lie a ce que tu vis en ce moment"
 - "il semble y avoir une forme de decalage avec ce que tu ressens"
 - "une mise a distance automatique semble se produire"
+- "quelque chose tient encore tres fort ici"
+- "ca pousse dans un sens et ca retient dans l'autre"
+- "j'ai l'impression que ca serre au moment meme ou ca voudrait lacher"
+- "quelque chose coupe tres vite des que ca s'approche"
 
 Reponds STRICTEMENT en JSON :
 {
@@ -2165,9 +2319,13 @@ Filtre theorique explicite :
 - ne parle pas de mecanismes de defense ; prefere, si necessaire, mecanismes adaptatifs
 - n'attribue pas au sujet une agentivite implicite inappropriee
 - remplace toute formulation incriminante ou quasi incriminante par une formulation descriptive, neutre ou systemique
+- preserve autant que possible la fermete phenomenologique, la nettete et la tension utile du contenu initial
+- ne neutralise pas une formulation seulement parce qu'elle est incisive, breve ou confrontante
+- corrige seulement l'agentivite fautive, pas la lecture situee ou la tension bien posee
 - si tu reformules, reste concret et sobre
 - n'ajoute pas un cours theorique
 - ne plaque pas le modele si ce n'est pas necessaire
+- ne transforme pas une phrase nette en phrase molle ou prudente si une reformulation plus juste et tout aussi ferme est possible
 
 Terminologie autorisee si utile :
 - memoire corporelle
@@ -2177,6 +2335,11 @@ Terminologie autorisee si utile :
 - mise a distance automatique
 - difficulte a rester avec
 - reduction du contact
+
+Exemples de correction attendue :
+- "tu evites ce ressenti" -> "quelque chose te coupe vite de ce ressenti"
+- "il y a une resistance en toi" -> "quelque chose se raidit ou se retient ici"
+- "tu refuses de voir cela" -> "ca se ferme tres vite a cet endroit"
 
 Reecris uniquement le contenu final, sans commentaire.
 `,
@@ -2311,7 +2474,9 @@ function normalizeSessionFlags(flags) {
     contactState: normalizeContactState(safe.contactState),
     explorationRelanceWindow,
     explorationDirectivityLevel,
-    explorationBootstrapPending
+    explorationBootstrapPending,
+    infoSubmode: safe.infoSubmode === "app" ? "app" : safe.infoSubmode === "pure" ? "pure" : null,
+    explorationCalibrationLevel: clampExplorationDirectivityLevel(safe.explorationCalibrationLevel)
   };
 }
 
@@ -2549,6 +2714,36 @@ async function analyzeInfoRequest(message = "", history = [], promptRegistry = b
   return await llmInfoAnalysis(message, history, promptRegistry);
 }
 
+async function analyzeInfoSubmode(message = "", history = [], promptRegistry = buildDefaultPromptRegistry()) {
+  const context = trimInfoAnalysisHistory(history);
+
+  const r = await client.chat.completions.create({
+    model: "gpt-4.1-mini",
+    temperature: 0,
+    max_tokens: 60,
+    messages: [
+      { role: "system", content: promptRegistry.ANALYZE_INFO_SUBMODE },
+      ...context.map(m => ({ role: m.role, content: m.content })),
+      { role: "user", content: message }
+    ]
+  });
+
+  try {
+    const raw = (r.choices?.[0]?.message?.content || "").replace(/```json|```/g, "").trim();
+    const parsed = JSON.parse(raw);
+
+    return {
+      infoSubmode: parsed.infoSubmode === "app" ? "app" : "pure",
+      source: "llm"
+    };
+  } catch {
+    return {
+      infoSubmode: "pure",
+      source: "llm_fallback"
+    };
+  }
+}
+
 // Determine if the current exchange should be treated as contact-style interaction.
 async function analyzeContactState(
   message = "",
@@ -2782,6 +2977,182 @@ ${reply}
   }
 }
 
+async function analyzeExplorationCalibration({
+  message = "",
+  history = [],
+  memory = "",
+  explorationDirectivityLevel = 0,
+  explorationRelanceWindow = [],
+  promptRegistry = buildDefaultPromptRegistry()
+}) {
+  const context = trimHistory(history);
+
+  const user = `
+Message utilisateur actuel :
+${message}
+
+Contexte recent :
+${context.map(m => `${m.role === "user" ? "Utilisateur" : "Assistant"} : ${m.content}`).join("\n")}
+
+Memoire :
+${normalizeMemory(memory, promptRegistry)}
+
+Niveau precedent :
+${clampExplorationDirectivityLevel(explorationDirectivityLevel)}
+
+Fenetre recente de relances :
+[${normalizeExplorationRelanceWindow(explorationRelanceWindow).map(v => (v ? "1" : "0")).join("-")}]
+`;
+
+  const r = await client.chat.completions.create({
+    model: "gpt-4.1-mini",
+    temperature: 0,
+    max_tokens: 60,
+    messages: [
+      { role: "system", content: promptRegistry.ANALYZE_EXPLORATION_CALIBRATION },
+      { role: "user", content: user }
+    ]
+  });
+
+  try {
+    const raw = (r.choices?.[0]?.message?.content || "").replace(/```json|```/g, "").trim();
+    const parsed = JSON.parse(raw);
+
+    return {
+      calibrationLevel: clampExplorationDirectivityLevel(parsed.calibrationLevel)
+    };
+  } catch {
+    return {
+      calibrationLevel: clampExplorationDirectivityLevel(explorationDirectivityLevel)
+    };
+  }
+}
+
+async function analyzeInterpretationRejection({
+  message = "",
+  history = [],
+  memory = "",
+  promptRegistry = buildDefaultPromptRegistry()
+}) {
+  const context = trimHistory(history);
+
+  const user = `
+Message utilisateur actuel :
+${message}
+
+Contexte recent :
+${context.map(m => `${m.role === "user" ? "Utilisateur" : "Assistant"} : ${m.content}`).join("\n")}
+
+Memoire :
+${normalizeMemory(memory, promptRegistry)}
+`;
+
+  const r = await client.chat.completions.create({
+    model: "gpt-4.1-mini",
+    temperature: 0,
+    max_tokens: 120,
+    messages: [
+      { role: "system", content: promptRegistry.ANALYZE_INTERPRETATION_REJECTION },
+      { role: "user", content: user }
+    ]
+  });
+
+  try {
+    const raw = (r.choices?.[0]?.message?.content || "").replace(/```json|```/g, "").trim();
+    const parsed = JSON.parse(raw);
+
+    return {
+      isInterpretationRejection: parsed.isInterpretationRejection === true,
+      rejectsUnderlyingPhenomenon: parsed.rejectsUnderlyingPhenomenon === true,
+      needsSoberReadjustment: parsed.needsSoberReadjustment === true,
+      tensionHoldLevel: ["low", "medium", "high"].includes(parsed.tensionHoldLevel) ? parsed.tensionHoldLevel : "medium"
+    };
+  } catch {
+    return {
+      isInterpretationRejection: false,
+      rejectsUnderlyingPhenomenon: false,
+      needsSoberReadjustment: false,
+      tensionHoldLevel: "medium"
+    };
+  }
+}
+
+async function rewriteInterpretationRejectionReply({
+  message = "",
+  history = [],
+  memory = "",
+  originalReply = "",
+  interpretationRejection = {},
+  promptRegistry = buildDefaultPromptRegistry()
+}) {
+  const user = `
+Message utilisateur actuel :
+${message}
+
+Contexte recent :
+${history.map(m => `${m.role === "user" ? "Utilisateur" : "Assistant"} : ${m.content}`).join("\n")}
+
+Memoire :
+${normalizeMemory(memory, promptRegistry)}
+
+Analyse du rejet :
+${JSON.stringify(interpretationRejection)}
+
+Reponse initiale a reecrire :
+${originalReply}
+`;
+
+  const r = await client.chat.completions.create({
+    model: "gpt-4o",
+    temperature: 0.3,
+    max_tokens: 300,
+    messages: [
+      { role: "system", content: promptRegistry.REWRITE_INTERPRETATION_REJECTION_REPLY },
+      { role: "user", content: user }
+    ]
+  });
+
+  return String(r.choices?.[0]?.message?.content || "").trim() || originalReply;
+}
+
+async function rewriteInterpretationRejectionMemory({
+  message = "",
+  history = [],
+  previousMemory = "",
+  candidateMemory = "",
+  interpretationRejection = {},
+  promptRegistry = buildDefaultPromptRegistry()
+}) {
+  const user = `
+Message utilisateur actuel :
+${message}
+
+Contexte recent :
+${history.map(m => `${m.role === "user" ? "Utilisateur" : "Assistant"} : ${m.content}`).join("\n")}
+
+Memoire precedente :
+${normalizeMemory(previousMemory, promptRegistry)}
+
+Memoire candidate :
+${normalizeMemory(candidateMemory, promptRegistry)}
+
+Analyse du rejet :
+${JSON.stringify(interpretationRejection)}
+`;
+
+  const r = await client.chat.completions.create({
+    model: "gpt-4.1-mini",
+    temperature: 0.2,
+    max_tokens: 220,
+    messages: [
+      { role: "system", content: promptRegistry.REWRITE_INTERPRETATION_REJECTION_MEMORY },
+      { role: "user", content: user }
+    ]
+  });
+
+  return String(r.choices?.[0]?.message?.content || "").trim() || candidateMemory;
+}
+
 // --------------------------------------------------
 // 4) MODE + DEBUG
 // --------------------------------------------------
@@ -2789,9 +3160,23 @@ ${reply}
 // Detect the current mode of the conversation: information or exploration.
 async function detectMode(message = "", history = [], promptRegistry = buildDefaultPromptRegistry()) {
   const info = await analyzeInfoRequest(message, history, promptRegistry);
+
+  if (!info.isInfoRequest) {
+    return {
+      mode: "exploration",
+      infoSource: info.source,
+      infoSubmode: null,
+      infoSubmodeSource: null
+    };
+  }
+
+  const infoSubmode = await analyzeInfoSubmode(message, history, promptRegistry);
+
   return {
-    mode: info.isInfoRequest ? "info" : "exploration",
-    infoSource: info.source
+    mode: "info",
+    infoSource: info.source,
+    infoSubmode: infoSubmode.infoSubmode,
+    infoSubmodeSource: infoSubmode.source
   };
 }
 
@@ -2802,6 +3187,9 @@ function buildDebug(
     suicideLevel = "N0",
     calledMemory = "none",
     modelConflict = false,
+    infoSubmode = null,
+    interpretationRejection = false,
+    explorationCalibrationLevel = null,
     explorationDirectivityLevel = 0,
     explorationRelanceWindow = []
   } = {}
@@ -2811,6 +3199,13 @@ function buildDebug(
   if (mode === "exploration") lines.push("mode: EXPLORATION");
   if (mode === "info") lines.push("mode: INFORMATION");
   if (mode === "contact") lines.push("mode: CONTACT");
+
+  if (mode === "info" && infoSubmode === "pure") {
+    lines.push("infoSubmode: INFORMATION PURE")
+  }
+  if (mode === "info" && infoSubmode === "app") {
+    lines.push("infoSubmode: INFORMATION APP")
+  }
   
   if (suicideLevel === "N1") {
     lines.push("suicideLevel: Possible risque suicidaire");
@@ -2829,8 +3224,16 @@ function buildDebug(
   if (modelConflict) {
     lines.push("modelConflict: Conflit avec le modèle théorique");
   }
+
+  if (interpretationRejection) {
+    lines.push("interpretationRejection: true");
+  }
   
   if (mode === "exploration") {
+    if (explorationCalibrationLevel !== null && explorationCalibrationLevel !== undefined) {
+      lines.push(`explorationCalibrationLevel: Calibration LLM : ${clampExplorationDirectivityLevel(explorationCalibrationLevel)}/4`);
+    }
+
     lines.push(`explorationDirectivityLevel: Niveau de directivité : ${clampExplorationDirectivityLevel(explorationDirectivityLevel)}/4`);
     
     lines.push(
@@ -2849,6 +3252,9 @@ function buildAdvancedDebugTrace({
   recallRouting = {},
   contactAnalysis = {},
   detectedMode = "exploration",
+  infoSubmode = null,
+  interpretationRejection = null,
+  explorationCalibrationLevel = null,
   flagsBefore = {},
   flagsAfter = {},
   generatedBase = null,
@@ -2872,6 +3278,8 @@ function buildAdvancedDebugTrace({
   lines.push(`trace.longTermMemoryRecall: ${recallRouting.isLongTermMemoryRecall === true ? "true" : "false"}`);
   
   lines.push(`trace.contactDetected: ${contactAnalysis.isContact === true ? "true" : "false"}`);
+  lines.push(`trace.infoSubmode: ${infoSubmode || "none"}`);
+  lines.push(`trace.interpretationRejection: ${interpretationRejection?.isInterpretationRejection === true ? "true" : "false"}`);
   lines.push(`trace.previousWasContact: ${safeFlagsBefore.contactState?.wasContact === true ? "true" : "false"}`);
   lines.push(`trace.currentWasContact: ${safeFlagsAfter.contactState?.wasContact === true ? "true" : "false"}`);
   
@@ -2879,6 +3287,9 @@ function buildAdvancedDebugTrace({
   lines.push(`trace.acuteCrisisAfter: ${safeFlagsAfter.acuteCrisis === true ? "true" : "false"}`);
   
   lines.push(`trace.modelConflict: ${modelConflict === true ? "true" : "false"}`);
+  if (explorationCalibrationLevel !== null && explorationCalibrationLevel !== undefined) {
+    lines.push(`trace.explorationCalibrationLevel: ${clampExplorationDirectivityLevel(explorationCalibrationLevel)}`);
+  }
   
   if (relanceAnalysis) {
     lines.push(`trace.relanceDetected: ${relanceAnalysis.isRelance === true ? "true" : "false"}`);
@@ -3048,10 +3459,13 @@ function getContactPrompt(promptRegistry = buildDefaultPromptRegistry()) {
 }
 
 // Build the info mode prompt block, injecting the current normalized memory.
-function getInfoPrompt(memory, promptRegistry = buildDefaultPromptRegistry()) {
+function getInfoPrompt(memory, infoSubmode = null, promptRegistry = buildDefaultPromptRegistry()) {
   const normalizedMemory = normalizeMemory(memory, promptRegistry);
+  const infoBlockContent = infoSubmode === "pure" ?
+    String(promptRegistry.MODE_INFORMATION_PURE || promptRegistry.MODE_INFORMATION || "").trim() :
+    String(promptRegistry.MODE_INFORMATION_APP || promptRegistry.MODE_INFORMATION || "").trim();
   const infoBlock = [
-    String(promptRegistry.MODE_INFORMATION || "").trim(),
+    infoBlockContent,
     `Memoire :
 ${normalizedMemory}`
   ].filter(Boolean).join("\n\n").trim();
@@ -3078,10 +3492,10 @@ function getExplorationPrompt(memory, explorationDirectivityLevel = 0, promptReg
 }
 
 // Construct the full system prompt for the selected mode before calling the LLM.
-function buildSystemPrompt(mode, memory, explorationDirectivityLevel = 0, promptRegistry = buildDefaultPromptRegistry()) {
+function buildSystemPrompt(mode, memory, explorationDirectivityLevel = 0, promptRegistry = buildDefaultPromptRegistry(), infoSubmode = null) {
   const identityWrapped = getIdentityPrompt(promptRegistry);
   const contactWrapped = getContactPrompt(promptRegistry);
-  const infoWrapped = getInfoPrompt(memory, promptRegistry);
+  const infoWrapped = getInfoPrompt(memory, infoSubmode, promptRegistry);
   const explorationWrapped = getExplorationPrompt(memory, explorationDirectivityLevel, promptRegistry);
   
   if (mode === "contact") {
@@ -3181,6 +3595,7 @@ async function generateReply({
   history,
   memory,
   mode,
+  infoSubmode = null,
   explorationDirectivityLevel = 0,
   promptRegistry = buildDefaultPromptRegistry(),
   override1 = null,
@@ -3190,7 +3605,8 @@ async function generateReply({
     mode,
     memory,
     explorationDirectivityLevel,
-    promptRegistry
+    promptRegistry,
+    infoSubmode
   );
   
   const messages = [
@@ -3526,7 +3942,6 @@ app.post("/api/auth/register", async (req, res) => {
     const userRecord = {
       email,
       passwordHash: hashPassword(password),
-      plan: "free",
       createdAt: now,
       updatedAt: now
     };
@@ -3729,24 +4144,7 @@ app.get("/api/account/conversations/:id", requireUserAuth, async (req, res) => {
   }
 });
 
-app.get("/api/premium/capabilities", async (req, res) => {
-  try {
-    const session = await getUserSession(req);
-    const isAdmin = Boolean(getAdminSession(req));
-    const plan = session?.user?.plan || "free";
-
-    return res.json({
-      authenticated: Boolean(session),
-      plan: String(plan || "free").trim().toLowerCase(),
-      capabilities: getUserCapabilities(plan, { isAdmin })
-    });
-  } catch (err) {
-    console.error("Erreur /api/premium/capabilities:", err.message);
-    return res.status(500).json({ error: "Capabilities lookup failed" });
-  }
-});
-
-app.get("/api/premium/branches", requireUserAuth, requirePremiumCapability("branching"), async (req, res) => {
+app.get("/api/branches", requireUserAuth, async (req, res) => {
   try {
     const session = req.userSession;
     const snapshot = await premiumBranchesRef
@@ -3772,12 +4170,12 @@ app.get("/api/premium/branches", requireUserAuth, requirePremiumCapability("bran
 
     return res.json({ branches });
   } catch (err) {
-    console.error("Erreur /api/premium/branches:", err.message);
+    console.error("Erreur /api/branches:", err.message);
     return res.status(500).json({ error: "Branches lookup failed" });
   }
 });
 
-app.post("/api/premium/branches/from-message", requireUserAuth, requirePremiumCapability("branching"), async (req, res) => {
+app.post("/api/branches/from-message", requireUserAuth, async (req, res) => {
   try {
     if (
       !req.body ||
@@ -3857,7 +4255,6 @@ app.post("/api/premium/branches/from-message", requireUserAuth, requirePremiumCa
     await Promise.all([
       branchRef.set({
         userId: session.userId,
-        planAtCreation: String(session?.user?.plan || "free").trim().toLowerCase(),
         sourceConversationId,
         sourceAnchorMessageId: anchorMessageId,
         branchConversationId,
@@ -3887,12 +4284,12 @@ app.post("/api/premium/branches/from-message", requireUserAuth, requirePremiumCa
       }
     });
   } catch (err) {
-    console.error("Erreur /api/premium/branches/from-message:", err.message);
+    console.error("Erreur /api/branches/from-message:", err.message);
     return res.status(500).json({ error: "Branch creation failed" });
   }
 });
 
-app.post("/api/premium/branches/:id/activate", requireUserAuth, requirePremiumCapability("branching"), async (req, res) => {
+app.post("/api/branches/:id/activate", requireUserAuth, async (req, res) => {
   try {
     const session = req.userSession;
     const branchId = String(req.params?.id || "").trim();
@@ -3985,13 +4382,13 @@ app.post("/api/premium/branches/:id/activate", requireUserAuth, requirePremiumCa
       }
     });
   } catch (err) {
-    console.error("Erreur /api/premium/branches/:id/activate:", err.message);
+    console.error("Erreur /api/branches/:id/activate:", err.message);
     return res.status(500).json({ error: "Branch activation failed" });
   }
 });
 
 // Fetch a single branch record + seed messages (for cross-device resume).
-app.get("/api/premium/branches/:id", requireUserAuth, requirePremiumCapability("branching"), async (req, res) => {
+app.get("/api/branches/:id", requireUserAuth, async (req, res) => {
   try {
     const session = req.userSession;
     const branchId = String(req.params?.id || "").trim();
@@ -4041,14 +4438,14 @@ app.get("/api/premium/branches/:id", requireUserAuth, requirePremiumCapability("
       messages: safeSeedMessages
     });
   } catch (err) {
-    console.error("Erreur GET /api/premium/branches/:id:", err.message);
+    console.error("Erreur GET /api/branches/:id:", err.message);
     return res.status(500).json({ error: "Branch lookup failed" });
   }
 });
 
-// Intersession memory endpoints (premium feature).
+// Intersession memory endpoints.
 // GET returns the stored long-term memory for the authenticated user.
-app.get("/api/premium/intersession-memory", requireUserAuth, requirePremiumCapability("intersessionMemory"), async (req, res) => {
+app.get("/api/intersession-memory", requireUserAuth, async (req, res) => {
   try {
     const session = req.userSession;
     const snap = await usersRef.child(session.userId).child("intersessionMemory").once("value");
@@ -4057,13 +4454,13 @@ app.get("/api/premium/intersession-memory", requireUserAuth, requirePremiumCapab
       memory: typeof memory === "string" && memory.trim() ? memory : null
     });
   } catch (err) {
-    console.error("Erreur GET /api/premium/intersession-memory:", err.message);
+    console.error("Erreur GET /api/intersession-memory:", err.message);
     return res.status(500).json({ error: "Intersession memory read failed" });
   }
 });
 
 // PUT saves the long-term memory for the authenticated user.
-app.put("/api/premium/intersession-memory", requireUserAuth, requirePremiumCapability("intersessionMemory"), async (req, res) => {
+app.put("/api/intersession-memory", requireUserAuth, async (req, res) => {
   try {
     const session = req.userSession;
 
@@ -4091,7 +4488,7 @@ app.put("/api/premium/intersession-memory", requireUserAuth, requirePremiumCapab
 
     return res.json({ success: true });
   } catch (err) {
-    console.error("Erreur PUT /api/premium/intersession-memory:", err.message);
+    console.error("Erreur PUT /api/intersession-memory:", err.message);
     return res.status(500).json({ error: "Intersession memory save failed" });
   }
 });
@@ -4130,45 +4527,6 @@ app.post("/api/admin/user-label", requireAdminAuth, async (req, res) => {
   }
 });
 
-app.post("/api/admin/users/:id/plan", requireAdminAuth, async (req, res) => {
-  try {
-    const userId = String(req.params?.id || "").trim();
-    const requestedPlan = req.body?.plan;
-
-    if (!userId || typeof requestedPlan !== "string") {
-      return res.status(400).json({ error: "Invalid plan update request" });
-    }
-
-    const plan = normalizePlan(requestedPlan);
-    const userRef = usersRef.child(userId);
-    const userSnap = await userRef.once("value");
-    const user = userSnap.val();
-
-    if (!user || typeof user !== "object") {
-      return res.status(404).json({ error: "User not found" });
-    }
-
-    const now = new Date().toISOString();
-    await userRef.update({
-      plan,
-      updatedAt: now
-    });
-
-    return res.json({
-      success: true,
-      user: {
-        id: userId,
-        plan,
-        capabilities: getUserCapabilities(plan),
-        updatedAt: now
-      }
-    });
-  } catch (err) {
-    console.error("Erreur /api/admin/users/:id/plan:", err.message);
-    return res.status(500).json({ error: "Plan update failed" });
-  }
-});
-
 app.get("/api/admin/users", requireAdminAuth, async (req, res) => {
   try {
     const snapshot = await usersRef.once("value");
@@ -4177,12 +4535,9 @@ app.get("/api/admin/users", requireAdminAuth, async (req, res) => {
     const users = Object.entries(raw)
       .map(([id, user]) => {
         const safeUser = user && typeof user === "object" ? user : {};
-        const plan = normalizePlan(safeUser.plan || "free");
         return {
           id,
           email: normalizeEmail(safeUser.email || ""),
-          plan,
-          capabilities: getUserCapabilities(plan),
           createdAt: typeof safeUser.createdAt === "string" ? safeUser.createdAt : null,
           updatedAt: typeof safeUser.updatedAt === "string" ? safeUser.updatedAt : null
         };
@@ -5316,9 +5671,17 @@ app.post("/chat", async (req, res) => {
       wasContact: contactAnalysis.isContact === true
     };
     
-    const detectedMode = contactAnalysis.isContact ?
-      "contact" :
-      (await detectMode(message, recentHistory, activePromptRegistry)).mode;
+    const detectedModeResult = contactAnalysis.isContact ?
+      {
+        mode: "contact",
+        infoSource: null,
+        infoSubmode: null,
+        infoSubmodeSource: null
+      } :
+      await detectMode(message, recentHistory, activePromptRegistry);
+
+    const detectedMode = detectedModeResult.mode;
+    const detectedInfoSubmode = detectedMode === "info" ? detectedModeResult.infoSubmode : null;
     
     modeForCatch = detectedMode;
     
@@ -5332,16 +5695,28 @@ app.post("/chat", async (req, res) => {
       3 :
       newFlags.explorationDirectivityLevel;
     
-    const FORCE_DIRECTIVITY_LEVEL = 2;
-    
     let finalDirectivityLevel = effectiveExplorationDirectivityLevel;
-    
-    if (FORCE_DIRECTIVITY_LEVEL !== null && detectedMode === "exploration") {
-      finalDirectivityLevel = FORCE_DIRECTIVITY_LEVEL;
+
+    if (detectedMode === "exploration") {
+      const calibrationAnalysis = await analyzeExplorationCalibration({
+        message,
+        history: recentHistory,
+        memory: previousMemory,
+        explorationDirectivityLevel: effectiveExplorationDirectivityLevel,
+        explorationRelanceWindow: newFlags.explorationRelanceWindow,
+        promptRegistry: activePromptRegistry
+      });
+
+      finalDirectivityLevel = calibrationAnalysis.calibrationLevel;
+      newFlags.explorationCalibrationLevel = finalDirectivityLevel;
+    } else {
+      newFlags.explorationCalibrationLevel = 0;
+      newFlags.infoSubmode = detectedInfoSubmode;
     }
 
     logChatDecision("mode_detected", {
       detectedMode,
+      infoSubmode: detectedInfoSubmode,
       isContact: contactAnalysis.isContact === true,
       previousWasContact: flags.contactState?.wasContact === true,
       currentWasContact: newFlags.contactState?.wasContact === true,
@@ -5360,6 +5735,7 @@ app.post("/chat", async (req, res) => {
       history: recentHistory,
       memory: previousMemory,
       mode: detectedMode,
+      infoSubmode: detectedInfoSubmode,
       explorationDirectivityLevel: finalDirectivityLevel,
       promptRegistry: activePromptRegistry,
       override1: hasOverrides ? override1 : null,
@@ -5369,6 +5745,12 @@ app.post("/chat", async (req, res) => {
     generatedBase.promptDebug = mainPromptDebug;
     
     let relanceAnalysis = null;
+    const interpretationRejection = await analyzeInterpretationRejection({
+      message,
+      history: recentHistory,
+      memory: previousMemory,
+      promptRegistry: activePromptRegistry
+    });
     
     const replyPipeline = await applyModelConflictPipeline({
       content: generatedBase.reply,
@@ -5377,8 +5759,19 @@ app.post("/chat", async (req, res) => {
       memory: previousMemory,
       promptRegistry: activePromptRegistry
     });
-    
-    const reply = replyPipeline.content;
+
+    let reply = replyPipeline.content;
+
+    if (interpretationRejection.isInterpretationRejection && interpretationRejection.needsSoberReadjustment) {
+      reply = await rewriteInterpretationRejectionReply({
+        message,
+        history: recentHistory,
+        memory: previousMemory,
+        originalReply: reply,
+        interpretationRejection,
+        promptRegistry: activePromptRegistry
+      });
+    }
     
     if (detectedMode === "exploration") {
       relanceAnalysis = await analyzeExplorationRelance({
@@ -5402,6 +5795,9 @@ app.post("/chat", async (req, res) => {
       suicideLevel: suicide.suicideLevel,
       calledMemory: recallRouting.calledMemory,
       modelConflict: replyPipeline.modelConflict,
+      infoSubmode: detectedInfoSubmode,
+      interpretationRejection: interpretationRejection.isInterpretationRejection,
+      explorationCalibrationLevel: newFlags.explorationCalibrationLevel,
       explorationDirectivityLevel: finalDirectivityLevel,
       explorationRelanceWindow: newFlags.explorationRelanceWindow
     });
@@ -5435,8 +5831,23 @@ app.post("/chat", async (req, res) => {
       memory: previousMemory,
       promptRegistry: activePromptRegistry
     });
-    
-    const newMemory = memoryPipeline.content;
+
+    let newMemory = memoryPipeline.content;
+
+    if (interpretationRejection.isInterpretationRejection) {
+      newMemory = await rewriteInterpretationRejectionMemory({
+        message,
+        history: [
+          ...recentHistory,
+          { role: "user", content: message },
+          { role: "assistant", content: reply }
+        ],
+        previousMemory,
+        candidateMemory: newMemory,
+        interpretationRejection,
+        promptRegistry: activePromptRegistry
+      });
+    }
     
     if (logsEnabled && memoryPipeline.rewriteSource) {
       debug.push(`memoryRewriteSource: ${memoryPipeline.rewriteSource}`);
@@ -5489,6 +5900,7 @@ app.post("/chat", async (req, res) => {
         history: recentHistory,
         memory: previousMemory,
         mode: detectedMode,
+        infoSubmode: detectedInfoSubmode,
         explorationDirectivityLevel: finalDirectivityLevel,
         promptRegistry: referencePromptRegistry,
         override1: null,
@@ -5510,6 +5922,7 @@ app.post("/chat", async (req, res) => {
           history: recentHistory,
           memory: previousMemory,
           mode: detectedMode,
+          infoSubmode: detectedInfoSubmode,
           explorationDirectivityLevel: finalDirectivityLevel,
           promptRegistry: override1PromptRegistry,
           override1,
@@ -5532,6 +5945,7 @@ app.post("/chat", async (req, res) => {
           history: recentHistory,
           memory: previousMemory,
           mode: detectedMode,
+          infoSubmode: detectedInfoSubmode,
           explorationDirectivityLevel: finalDirectivityLevel,
           promptRegistry: override12PromptRegistry,
           override1,

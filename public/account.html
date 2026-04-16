@@ -346,7 +346,6 @@
       "use strict";
 
       let currentUser = null;
-      let currentCapabilities = null;
 
       function navigateAway(url, options = {}) {
         document.body.style.animation = "none";
@@ -393,7 +392,6 @@
           }
 
           currentUser = data.user || {};
-          currentCapabilities = data.capabilities || currentUser.capabilities || {};
           renderPage();
         } catch (_) {
           showError("Impossible de charger la session. Réessayez.");
@@ -402,9 +400,6 @@
 
       function renderPage() {
         const main = document.getElementById("mainContent");
-        const plan = String(currentUser.plan || "free").trim().toLowerCase();
-        const caps = currentCapabilities || {};
-        const hasBranching = caps.branching === true;
 
         main.innerHTML = "";
 
@@ -417,71 +412,16 @@
         emailEl.textContent = String(currentUser.email || "");
         main.appendChild(emailEl);
 
-        const planCard = document.createElement("div");
-        planCard.className = "card plan-card";
-
-        const planLeft = document.createElement("div");
-        const planLabel = document.createElement("div");
-        planLabel.className = "plan-label";
-        planLabel.textContent = "Votre plan";
-        const planName = document.createElement("div");
-        planName.className = "plan-name " + plan;
-        planName.textContent = plan.charAt(0).toUpperCase() + plan.slice(1);
-        planLeft.appendChild(planLabel);
-        planLeft.appendChild(planName);
-        planCard.appendChild(planLeft);
-
-        const capsRight = document.createElement("div");
-        capsRight.className = "plan-caps";
-        const visibleFeaturesByPlan = {
-          free: [
-            { label: "Multi appareils", active: caps.multiDeviceAccess === true, tone: "neutral" },
-            { label: "Modifier seulement le dernier message", active: true, tone: "neutral" }
-          ],
-          premium: [
-            { label: "Multi appareils", active: caps.multiDeviceAccess === true, tone: "premium" },
-            { label: "Modifier n'importe quel message", active: caps.branching === true, tone: "premium" },
-            { label: "Mémoire inter-sessions", active: caps.intersessionMemory === true, tone: "premium" }
-          ]
-        };
-        const visibleFeatures = Array.isArray(visibleFeaturesByPlan[plan]) ? visibleFeaturesByPlan[plan] : visibleFeaturesByPlan.free;
-        visibleFeatures.forEach(feature => {
-          const badge = document.createElement("span");
-          const toneClass = feature.tone === "neutral" ? "cap-badge-neutral" : "cap-badge-premium";
-          badge.className = "cap-badge " + toneClass + (feature.active ? "" : " inactive");
-          badge.textContent = feature.label;
-          capsRight.appendChild(badge);
-        });
-        planCard.appendChild(capsRight);
-        main.appendChild(planCard);
-
-        if (plan === "free") {
-          const banner = document.createElement("div");
-          banner.className = "upgrade-banner";
-          const p = document.createElement("p");
-          p.textContent = "Passez à Premium pour accéder aux branches de conversation, à la mémoire longue et plus.";
-          banner.appendChild(p);
-          const upgradeBtn = document.createElement("button");
-          upgradeBtn.textContent = "Découvrir Premium";
-          upgradeBtn.onclick = () => {
-            alert("La souscription intégrée arrive bientôt. Cette page passera en achat direct dès qu'elle sera prête.");
-          };
-          banner.appendChild(upgradeBtn);
-          main.appendChild(banner);
-        }
-
         main.appendChild(buildPasswordCard());
 
-        if (hasBranching) {
-          const sectionCard = document.createElement("div");
-          sectionCard.className = "card";
-          const title = document.createElement("div");
-          title.className = "section-title";
-          title.textContent = "Mes branches";
-          sectionCard.appendChild(title);
-          main.appendChild(sectionCard);
-          loadBranches(sectionCard);
-        }
+        const sectionCard = document.createElement("div");
+        sectionCard.className = "card";
+        const title = document.createElement("div");
+        title.className = "section-title";
+        title.textContent = "Mes branches";
+        sectionCard.appendChild(title);
+        main.appendChild(sectionCard);
+        loadBranches(sectionCard);
       }
 
       function buildPasswordCard() {
@@ -629,7 +569,7 @@
         section.appendChild(loadingEl);
 
         try {
-          const res = await fetch("/api/premium/branches", { credentials: "include" });
+          const res = await fetch("/api/branches", { credentials: "include" });
           const data = await res.json().catch(() => ({}));
           section.removeChild(loadingEl);
 
