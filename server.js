@@ -5142,6 +5142,7 @@ function parseChatRequest(req) {
   const recentHistory = trimHistory(req.body?.recentHistory);
   const override1 = req.body?.override1 ?? null;
   const override2 = req.body?.override2 ?? null;
+  const mailsEnabled = req.body?.mailsEnabled !== false;
   const comparisonEnabled = req.body?.comparisonEnabled === true;
   const logsEnabled = req.body?.logsEnabled === true;
   const adminUiActive = req.body?.adminUiActive === true;
@@ -5155,6 +5156,7 @@ function parseChatRequest(req) {
     recentHistory,
     override1,
     override2,
+    mailsEnabled,
     comparisonEnabled,
     logsEnabled,
     adminUiActive
@@ -5448,6 +5450,7 @@ app.post("/chat", async (req, res) => {
       recentHistory,
       override1,
       override2,
+      mailsEnabled,
       comparisonEnabled,
       logsEnabled,
       adminUiActive
@@ -5580,7 +5583,7 @@ app.post("/chat", async (req, res) => {
       };
     });
 
-    if (emailNotifier.enabled && adminVisitedSinceLastAlert && adminUiActive !== true) {
+    if (emailNotifier.enabled && mailsEnabled !== false && adminVisitedSinceLastAlert && adminUiActive !== true) {
       adminVisitedSinceLastAlert = false;
       emailNotifier.sendNewMessageAlert();
     }

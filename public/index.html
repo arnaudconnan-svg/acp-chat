@@ -3966,6 +3966,7 @@
         const raw = localStorage.getItem(ADMIN_POPOVER_STATE_KEY) || localStorage.getItem(LEGACY_TEST_UI_STORAGE_KEY) || "{}";
         const parsed = JSON.parse(raw);
         return {
+          mailsEnabled: parsed.mailsEnabled !== false,
           logsEnabled: parsed.logsEnabled === true,
           comparisonEnabled: parsed.comparisonEnabled === true,
           override1: parsed.override1 && typeof parsed.override1 === "object" ? parsed.override1 : null,
@@ -3973,6 +3974,7 @@
         };
       } catch {
         return {
+          mailsEnabled: true,
           logsEnabled: false,
           comparisonEnabled: false,
           override1: null,
@@ -3983,6 +3985,7 @@
     
     function saveAdminUiState() {
       localStorage.setItem(ADMIN_POPOVER_STATE_KEY, JSON.stringify({
+        mailsEnabled: adminUiState.mailsEnabled !== false,
         logsEnabled: adminUiState.logsEnabled === true,
         comparisonEnabled: adminUiState.comparisonEnabled === true,
         override1: adminUiState.override1 || null,
@@ -4026,6 +4029,7 @@
       return {
         override1: adminUiState.override1 ? (adminUiState.override1.data || null) : null,
         override2: adminUiState.override2 ? (adminUiState.override2.data || null) : null,
+        mailsEnabled: adminUiState.mailsEnabled !== false,
         comparisonEnabled: adminUiState.comparisonEnabled === true,
         logsEnabled: adminUiState.logsEnabled === true
       };
@@ -4190,6 +4194,11 @@
         <span>Comparaison</span>
         <input id="adminComparisonToggle" type="checkbox">
       </label>
+
+      <label style="display:flex;justify-content:space-between;font-size:13px;color:#245e66;font-weight:600;">
+        <span>Mails</span>
+        <input id="adminMailsToggle" type="checkbox">
+      </label>
       
       <label style="display:flex;justify-content:space-between;font-size:13px;color:#245e66;font-weight:600;">
         <span>Logs</span>
@@ -4210,6 +4219,7 @@
       const override1Name = popover.querySelector("#adminOverride1Name");
       const override2Name = popover.querySelector("#adminOverride2Name");
       const comparisonToggle = popover.querySelector("#adminComparisonToggle");
+      const mailsToggle = popover.querySelector("#adminMailsToggle");
       const logsToggle = popover.querySelector("#adminLogsToggle");
       
       function setLoadedFileName(targetEl, overrideState) {
@@ -4233,6 +4243,7 @@
         }
 
         comparisonToggle.checked = adminUiState.comparisonEnabled === true;
+        mailsToggle.checked = adminUiState.mailsEnabled !== false;
         logsToggle.checked = adminUiState.logsEnabled === true;
         
         override1Clear.style.display = adminUiState.override1 ? "inline-flex" : "none";
@@ -4365,6 +4376,11 @@
       
       comparisonToggle.addEventListener("change", () => {
         adminUiState.comparisonEnabled = comparisonToggle.checked;
+        refreshAdminUi();
+      });
+
+      mailsToggle.addEventListener("change", () => {
+        adminUiState.mailsEnabled = mailsToggle.checked !== false;
         refreshAdminUi();
       });
       
@@ -6590,6 +6606,7 @@
         {
           override1: null,
           override2: null,
+          mailsEnabled: true,
           comparisonEnabled: false,
           logsEnabled: false
         };
@@ -6752,6 +6769,7 @@
             flags: normalizeStoredFlags(loadConversationData(requestConversationId).flags),
             override1: adminPayload.override1,
             override2: adminPayload.override2,
+            mailsEnabled: adminPayload.mailsEnabled !== false,
             comparisonEnabled: adminPayload.comparisonEnabled === true,
             logsEnabled: adminPayload.logsEnabled === true
           })
