@@ -3683,8 +3683,12 @@
       }
       
       if (actions) {
-        actions.classList.add("is-visible");
+        actions.classList.add("is-visible", "is-secondary-visible");
       }
+
+      actionsVisible = true;
+      welcomeHasInteracted = true;
+      welcomePhase = "done";
     }
     
     function showScreen(id, options = {}) {
