@@ -65,10 +65,15 @@ const app = express();
 const port = process.env.PORT || 3000;
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
+function readModelId(envKey, fallback) {
+  const configuredValue = String(process.env[envKey] || "").trim();
+  return configuredValue || fallback;
+}
+
 const MODEL_IDS = {
-  analysis: "gpt-4.1-mini",
-  generation: "gpt-4.1",
-  title: "gpt-4o-mini"
+  analysis: readModelId("OPENAI_MODEL_ANALYSIS", "gpt-4.1-mini"),
+  generation: readModelId("OPENAI_MODEL_GENERATION", "gpt-4.1"),
+  title: readModelId("OPENAI_MODEL_TITLE", "gpt-4o-mini")
 };
 
 function createEmailNotifier() {
@@ -2125,11 +2130,13 @@ Important :
 - distingue le rejet d'un contenu interpretatif et le sentiment de ne pas etre aide
 - un message signalant surtout que la reponse n'aide pas, tourne en rond, repete, ou manque la relation peut quand meme exiger un vrai reajustement de strategie
 - dans ce cas, si l'utilisateur ne rejette pas explicitement le phenomene de fond, isInterpretationRejection peut rester false mais needsSoberReadjustment doit passer a true
+- face a un message centre sur la mauvaise aide recue, privilegie needsSoberReadjustment = true plutot que false, sauf s'il n'y a pratiquement aucun reproche relationnel ou strategique
 
 Regles :
 - un simple desaccord vague ne suffit pas
 - un message du type "non, ce n'est pas ca", "ce n'est pas ce qui se passe", "tu vas trop vite", "ce n'est pas de la peur", "tu confonds" compte comme rejet d'interpretation
 - un message du type "tu ne m'aides pas", "j'ai l'impression de tourner en rond", "tu repetes", "ca ne m'apporte rien", "tu passes a cote" ne compte pas forcement comme rejet du phenomene, mais doit etre traite comme un signal fort de mauvaise strategie relationnelle
+- un message combinant explicitement reproche relationnel et impression de tourner autour du sujet doit presque toujours produire needsSoberReadjustment = true
 - si l'utilisateur rejette une lecture mais laisse entendre qu'un mouvement de fond existe encore, rejectsUnderlyingPhenomenon = false
 - si l'utilisateur rejette clairement le phenomene lui-meme (ex : "non, il n'y a pas de colere du tout"), mets rejectsUnderlyingPhenomenon = true
 - en cas de doute sur tensionHoldLevel, reponds medium
@@ -2154,6 +2161,9 @@ Regles :
 - si le phenomene de fond n'est pas rejete, conserve une lecture proche du concret, plus situee et moins doctrinale
 - si le phenomene de fond est aussi rejete, retire la lecture precedente et repars du plus observable
 - si le probleme principal semble etre la mauvaise aide recue, reduis nettement l'abstraction, reviens au plus concret, et change vraiment d'axe au lieu de reconditionner la meme strategie avec d'autres mots
+- si le probleme principal semble etre la mauvaise aide recue, ne finis pas par une question automatique de relance
+- dans ce cas, privilegie une reprise courte, concrete, sans lyrisme, qui nomme ce qui rate dans l'echange ou revient au point precis qui accroche
+- dans ce cas, ne reformule pas simplement le flou ou la frustration; propose un autre point d'appui concret ou retire franchement l'axe precedent
 - garde une tension calme si possible
 
 Renvoie uniquement la reponse finale reecrite.
@@ -3571,7 +3581,13 @@ function getExplorationPrompt(memory, explorationDirectivityLevel = 0, promptReg
 }
 
 function buildInterpretationRejectionPromptBlock(interpretationRejection = null) {
-  if (!interpretationRejection || interpretationRejection.isInterpretationRejection !== true) {
+  if (
+    !interpretationRejection ||
+    (
+      interpretationRejection.isInterpretationRejection !== true &&
+      interpretationRejection.needsSoberReadjustment !== true
+    )
+  ) {
     return "";
   }
 
@@ -5183,9 +5199,9 @@ app.get("/api/admin/conversations/:id/branches", requireAdminAuth, async (req, r
 function parseChatRequest(req) {
   const message = String(req.body?.message || "");
   const isEdited = req.body?.isEdited === true;
-  const conversationId = req.body?.conversationId;
+  const conversationId = typeof req.body?.conversationId === "string" ? req.body.conversationId.trim() : "";
   const userId = req.body?.userId || "u_anon";
-  const convRef = db.ref("conversations").child(String(conversationId || ""));
+  const convRef = conversationId ? db.ref("conversations").child(conversationId) : null;
   const recentHistory = trimHistory(req.body?.recentHistory);
   const override1 = req.body?.override1 ?? null;
   const override2 = req.body?.override2 ?? null;
@@ -5369,6 +5385,7 @@ app.post("/chat", async (req, res) => {
         directivityText: typeof debugMeta.directivityText === "string" ? debugMeta.directivityText : "",
         infoSubmode: debugMeta.infoSubmode === "app" ? "app" : debugMeta.infoSubmode === "pure" ? "pure" : null,
         interpretationRejection: debugMeta.interpretationRejection === true,
+        needsSoberReadjustment: debugMeta.needsSoberReadjustment === true,
         explorationCalibrationLevel: Number.isInteger(debugMeta.explorationCalibrationLevel) ? debugMeta.explorationCalibrationLevel : null,
         rewriteSource: typeof debugMeta.rewriteSource === "string" ? debugMeta.rewriteSource : null,
         memoryRewriteSource: typeof debugMeta.memoryRewriteSource === "string" ? debugMeta.memoryRewriteSource : null,
@@ -5393,6 +5410,7 @@ app.post("/chat", async (req, res) => {
     mode = null,
     infoSubmode = null,
     interpretationRejection = false,
+    needsSoberReadjustment = false,
     isRecallRequest = false,
     explorationCalibrationLevel = null,
     explorationDirectivityLevel = 0,
@@ -5478,6 +5496,7 @@ app.post("/chat", async (req, res) => {
       }),
       infoSubmode,
       interpretationRejection: interpretationRejection === true,
+      needsSoberReadjustment: needsSoberReadjustment === true,
       explorationCalibrationLevel: explorationCalibrationLevel !== null && explorationCalibrationLevel !== undefined ?
         clampExplorationDirectivityLevel(explorationCalibrationLevel) :
         null,
@@ -5648,6 +5667,7 @@ app.post("/chat", async (req, res) => {
             directivityText: typeof entry?.debugMeta?.directivityText === "string" ? entry.debugMeta.directivityText : "",
             infoSubmode: entry?.debugMeta?.infoSubmode === "app" ? "app" : entry?.debugMeta?.infoSubmode === "pure" ? "pure" : null,
             interpretationRejection: entry?.debugMeta?.interpretationRejection === true,
+            needsSoberReadjustment: entry?.debugMeta?.needsSoberReadjustment === true,
             explorationCalibrationLevel: Number.isInteger(entry?.debugMeta?.explorationCalibrationLevel) ? entry.debugMeta.explorationCalibrationLevel : null,
             rewriteSource: typeof entry?.debugMeta?.rewriteSource === "string" ? entry.debugMeta.rewriteSource : null,
             memoryRewriteSource: typeof entry?.debugMeta?.memoryRewriteSource === "string" ? entry.debugMeta.memoryRewriteSource : null,
@@ -5669,6 +5689,7 @@ app.post("/chat", async (req, res) => {
           directivityText: typeof debugMeta.directivityText === "string" ? debugMeta.directivityText : "",
           infoSubmode: debugMeta.infoSubmode === "app" ? "app" : debugMeta.infoSubmode === "pure" ? "pure" : null,
           interpretationRejection: debugMeta.interpretationRejection === true,
+          needsSoberReadjustment: debugMeta.needsSoberReadjustment === true,
           explorationCalibrationLevel: Number.isInteger(debugMeta.explorationCalibrationLevel) ? debugMeta.explorationCalibrationLevel : null,
           rewriteSource: typeof debugMeta.rewriteSource === "string" ? debugMeta.rewriteSource : null,
           memoryRewriteSource: typeof debugMeta.memoryRewriteSource === "string" ? debugMeta.memoryRewriteSource : null,
@@ -5784,6 +5805,7 @@ app.post("/chat", async (req, res) => {
       mode = null,
       infoSubmode = null,
       interpretationRejection = false,
+      needsSoberReadjustment = false,
       isRecallRequest = false,
       explorationCalibrationLevel = null,
       explorationDirectivityLevel = 0,
@@ -5810,6 +5832,7 @@ app.post("/chat", async (req, res) => {
         }),
         infoSubmode,
         interpretationRejection: interpretationRejection === true,
+        needsSoberReadjustment: needsSoberReadjustment === true,
         explorationCalibrationLevel: explorationCalibrationLevel !== null && explorationCalibrationLevel !== undefined ?
           clampExplorationDirectivityLevel(explorationCalibrationLevel) :
           null,
@@ -6326,11 +6349,31 @@ app.post("/chat", async (req, res) => {
     });
     
     generatedBase.promptDebug = mainPromptDebug;
+    let replyRewriteSource = null;
+    let replyCandidate = generatedBase.reply;
+
+    if (
+      interpretationRejection.isInterpretationRejection === true ||
+      interpretationRejection.needsSoberReadjustment === true
+    ) {
+      replyCandidate = await rewriteInterpretationRejectionReply({
+        message,
+        history: recentHistory,
+        memory: previousMemory,
+        originalReply: replyCandidate,
+        interpretationRejection,
+        promptRegistry: activePromptRegistry
+      });
+
+      replyRewriteSource = interpretationRejection.isInterpretationRejection === true ?
+        "interpretation_rejection" :
+        "sober_readjustment";
+    }
     
     let relanceAnalysis = null;
     
     const replyPipeline = await applyModelConflictPipeline({
-      content: generatedBase.reply,
+      content: replyCandidate,
       message,
       history: recentHistory,
       memory: previousMemory,
@@ -6338,6 +6381,7 @@ app.post("/chat", async (req, res) => {
     });
 
     let reply = replyPipeline.content;
+    const finalReplyRewriteSource = [replyRewriteSource, replyPipeline.rewriteSource].filter(Boolean).join("+") || null;
     
     if (detectedMode === "exploration") {
       relanceAnalysis = await analyzeExplorationRelance({
@@ -6369,8 +6413,8 @@ app.post("/chat", async (req, res) => {
       explorationRelanceWindow: newFlags.explorationRelanceWindow
     });
     
-    if (logsEnabled && replyPipeline.rewriteSource) {
-      debug.push(`rewriteSource: ${replyPipeline.rewriteSource}`);
+    if (logsEnabled && finalReplyRewriteSource) {
+      debug.push(`rewriteSource: ${finalReplyRewriteSource}`);
     }
 
     if (logsEnabled) {
@@ -6408,7 +6452,10 @@ app.post("/chat", async (req, res) => {
 
     let memoryCandidate = rawNewMemory;
 
-    if (interpretationRejection.isInterpretationRejection) {
+    if (
+      interpretationRejection.isInterpretationRejection === true ||
+      interpretationRejection.needsSoberReadjustment === true
+    ) {
       memoryCandidate = await rewriteInterpretationRejectionMemory({
         message,
         history: [
@@ -6452,11 +6499,12 @@ app.post("/chat", async (req, res) => {
       mode: detectedMode,
       infoSubmode: detectedInfoSubmode,
       interpretationRejection: interpretationRejection.isInterpretationRejection,
+      needsSoberReadjustment: interpretationRejection.needsSoberReadjustment,
       isRecallRequest: recallRouting.isRecallAttempt === true,
       explorationCalibrationLevel: newFlags.explorationCalibrationLevel,
       explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
       explorationRelanceWindow: newFlags.explorationRelanceWindow,
-      rewriteSource: replyPipeline.rewriteSource,
+      rewriteSource: finalReplyRewriteSource,
       memoryRewriteSource: memoryPipeline.rewriteSource,
       modelConflict: replyPipeline.modelConflict || memoryPipeline.modelConflict,
       promptRegistry: activePromptRegistry
@@ -6479,6 +6527,7 @@ app.post("/chat", async (req, res) => {
         mode: detectedMode,
         infoSubmode: detectedInfoSubmode,
         interpretationRejection: interpretationRejection.isInterpretationRejection,
+        needsSoberReadjustment: interpretationRejection.needsSoberReadjustment,
         isRecallRequest: recallRouting.isRecallAttempt === true,
         explorationCalibrationLevel: newFlags.explorationCalibrationLevel,
         explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
