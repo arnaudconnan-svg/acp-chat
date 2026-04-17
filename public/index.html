@@ -354,6 +354,16 @@
       transform: scale(1.12);
       filter: drop-shadow(0 4px 10px rgba(36, 94, 102, 0.14));
     }
+
+    .messageActionBtn.messageActionBtnBot {
+      width: 34px;
+      height: 34px;
+    }
+
+    .messageActionBtn.messageActionBtnBot .messageActionBtnIcon {
+      width: 21px;
+      height: 21px;
+    }
     
     #welcomeActions.is-secondary-visible #welcomeSecondaryActions {
       opacity: 1;
@@ -847,6 +857,11 @@
       -webkit-user-select: none;
       user-select: none;
       touch-action: manipulation;
+      transition:
+        transform 0.18s ease,
+        opacity 0.18s ease,
+        box-shadow 0.18s ease,
+        background 0.18s ease;
     }
     
     #conversationsFabBtn:focus,
@@ -857,6 +872,19 @@
     
     #conversationsFabBtn svg {
       display: block;
+      transition: transform 0.22s ease, opacity 0.22s ease;
+    }
+
+    #conversationsFabBtn.is-pending {
+      opacity: 0.92;
+      transform: scale(0.96);
+      box-shadow: 0 7px 18px rgba(36, 94, 102, 0.22);
+      background: #2f7079;
+      pointer-events: none;
+    }
+
+    #conversationsFabBtn.is-pending svg {
+      transform: scale(0.88) rotate(90deg);
     }
     
     /* ---------- CHAT ---------- */
@@ -2572,6 +2600,8 @@
     let scrollToBottomBtnPulseAnim = null;
     let scrollToBottomBtnHideTimer = null;
     let pendingConversationMenuHistoryClose = false;
+    let activeConversationSwipeElement = null;
+    let activeConversationSwipeCloser = null;
     
     function ensureBootOverlay() {
       if (bootOverlayEl) return bootOverlayEl;
@@ -5246,12 +5276,12 @@
         copyUserBtn.className = "messageActionBtn";
         copyUserBtn.innerHTML = getCopyIconMarkup();
         copyUserBtn.style.position = "absolute";
-        copyUserBtn.style.top = "-2px";
-        copyUserBtn.style.right = "-2px";
+        copyUserBtn.style.top = "4px";
+        copyUserBtn.style.right = "4px";
         copyUserBtn.style.color = "#183f44";
 
-        bubble.style.paddingTop = "14px";
-        bubble.style.paddingRight = "38px";
+        bubble.style.paddingTop = "16px";
+        bubble.style.paddingRight = "44px";
 
         let userCopyResetTimer = null;
 
@@ -5393,7 +5423,7 @@
         copyBotBtn.type = "button";
         copyBotBtn.setAttribute("aria-label", "Copier la reponse");
         copyBotBtn.title = "Copier";
-        copyBotBtn.className = "messageActionBtn";
+        copyBotBtn.className = "messageActionBtn messageActionBtnBot";
         copyBotBtn.innerHTML = getCopyIconMarkup();
         copyBotBtn.style.color = "#245e66";
         copyBotBtn.style.marginLeft = "12px";
@@ -5956,15 +5986,22 @@
         let swipeActive = false;
         let swipePointerId = null;
         let swipeDirectionLocked = false;
+        let swipeBaseOffset = 0;
         const swipeRevealWidth = 72;
 
         const closeSwipeActions = () => {
           swipeActive = false;
           swipeDeltaX = 0;
+          swipeBaseOffset = 0;
           swipePointerId = null;
           swipeDirectionLocked = false;
           root.classList.remove("is-swipe-open-left", "is-swipe-open-right");
           openBtn.style.transform = "translateX(0)";
+
+          if (activeConversationSwipeElement === root) {
+            activeConversationSwipeElement = null;
+            activeConversationSwipeCloser = null;
+          }
         };
 
         const applySwipeOffset = offset => {
@@ -5973,15 +6010,28 @@
           openBtn.style.transform = `translateX(${clamped}px)`;
           root.classList.toggle("is-swipe-open-left", clamped < -24);
           root.classList.toggle("is-swipe-open-right", clamped > 24);
+
+          if (clamped < -24 || clamped > 24) {
+            activeConversationSwipeElement = root;
+            activeConversationSwipeCloser = closeSwipeActions;
+          } else if (activeConversationSwipeElement === root) {
+            activeConversationSwipeElement = null;
+            activeConversationSwipeCloser = null;
+          }
         };
 
         const startSwipe = event => {
           if (event.target.closest(".conversationSwipeAction")) return;
           if (event.type === "mousedown" && event.button !== 0) return;
 
+          if (activeConversationSwipeCloser && activeConversationSwipeElement && activeConversationSwipeElement !== root) {
+            activeConversationSwipeCloser();
+          }
+
           closeConversationMenus({ skipHistorySync: true });
           swipeActive = true;
           swipeDirectionLocked = false;
+          swipeBaseOffset = swipeDeltaX;
           swipePointerId = event.pointerId || null;
           swipeStartX = event.touches && event.touches[0] ? event.touches[0].clientX : (event.clientX || 0);
           swipeStartY = event.touches && event.touches[0] ? event.touches[0].clientY : (event.clientY || 0);
@@ -6013,7 +6063,7 @@
             event.preventDefault();
           }
 
-          applySwipeOffset(deltaX);
+          applySwipeOffset(swipeBaseOffset + deltaX);
         };
 
         const endSwipe = () => {
@@ -6898,6 +6948,14 @@
     }
     
     document.addEventListener("click", e => {
+      if (
+        activeConversationSwipeCloser &&
+        activeConversationSwipeElement &&
+        !e.target.closest(".conversationItem")
+      ) {
+        activeConversationSwipeCloser();
+      }
+
       if (!e.target.closest("[data-menu-toggle]") && !e.target.closest("[data-menu]")) {
         closeConversationMenus();
       }
@@ -7081,7 +7139,13 @@
     const conversationsFabBtn = document.getElementById("conversationsFabBtn");
     if (conversationsFabBtn) {
       conversationsFabBtn.onclick = async () => {
-        await finalizeAndStartNewSession();
+        conversationsFabBtn.classList.add("is-pending");
+
+        try {
+          await finalizeAndStartNewSession();
+        } finally {
+          conversationsFabBtn.classList.remove("is-pending");
+        }
       };
     }
     
