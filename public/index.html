@@ -143,16 +143,22 @@
         opacity 0.52s ease,
         transform 0.52s ease;
     }
+
+    #welcomeRitualText:empty {
+      min-height: 0;
+      margin-top: 0;
+      padding: 0;
+    }
     
     #welcomeActions {
       width: 100%;
       max-width: 380px;
-      margin-top: clamp(20px, 6vh, 72px);
+      margin-top: clamp(2px, 1.5vh, 14px);
       padding-top: 0;
       display: flex;
       flex-direction: column;
       align-items: stretch;
-      gap: 14px;
+      gap: 22px;
       opacity: 0;
       pointer-events: none;
       transform: translateY(18px);
@@ -211,7 +217,7 @@
     
     #welcomeEnterBtn {
       transform: scale(1);
-      margin-bottom: 10px;
+      margin-bottom: 4px;
     }
     
     #welcomeActions.is-visible #welcomeEnterBtn {
@@ -299,8 +305,8 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 28px;
-      height: 28px;
+      width: 40px;
+      height: 40px;
       padding: 0;
       border-radius: 999px;
       opacity: 0.5;
@@ -317,8 +323,8 @@
     }
 
     .messageActionBtnIcon {
-      width: 16px;
-      height: 16px;
+      width: 28px;
+      height: 28px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -367,8 +373,8 @@
 
       #welcomeActions {
         max-width: 360px;
-        gap: 10px;
-        margin-top: clamp(14px, 4vh, 42px);
+        gap: 18px;
+        margin-top: clamp(0px, 1vh, 10px);
         padding-top: 0;
       }
 
@@ -404,8 +410,8 @@
       }
 
       #welcomeActions {
-        gap: 8px;
-        margin-top: clamp(10px, 3vh, 24px);
+        gap: 14px;
+        margin-top: 0;
         padding-top: 0;
       }
 
@@ -543,10 +549,6 @@
       -webkit-tap-highlight-color: transparent;
     }
 
-    #conversationsAccountMenuBtn:hover {
-      background: rgba(36, 94, 102, 0.06);
-    }
-
     #conversationsAccountMenuBtn:focus,
     #conversationsAccountMenuBtn:active,
     #conversationsAccountMenuBtn:focus-visible {
@@ -580,16 +582,22 @@
       -webkit-tap-highlight-color: transparent;
     }
 
-    #chatUndoMenuBtn:hover {
-      background: rgba(36, 94, 102, 0.06);
-    }
-
     #chatUndoMenuBtn:focus,
     #chatUndoMenuBtn:active,
     #chatUndoMenuBtn:focus-visible {
       outline: none;
       background: transparent;
       box-shadow: none;
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+      #conversationsAccountMenuBtn:hover {
+        background: rgba(36, 94, 102, 0.06);
+      }
+
+      #chatUndoMenuBtn:hover {
+        background: rgba(36, 94, 102, 0.06);
+      }
     }
 
     #chatUndoMenuAction.is-disabled {
@@ -628,17 +636,15 @@
     .conversationItem {
       border: none;
       border-radius: 22px;
-      background: rgba(36, 94, 102, 0.12);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      padding: 18px 20px;
+      background: transparent;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+      padding: 0;
       min-height: 74px;
       display: flex;
       align-items: center;
       box-sizing: border-box;
-      box-shadow:
-        0 10px 28px rgba(36, 94, 102, 0.12),
-        0 1px 0 rgba(255, 255, 255, 0.25) inset;
+      box-shadow: none;
       user-select: none;
       -webkit-user-select: none;
       -webkit-touch-callout: none;
@@ -651,7 +657,7 @@
       position: absolute;
       top: 0;
       bottom: 0;
-      width: 88px;
+      width: 72px;
       border: none;
       display: flex;
       align-items: center;
@@ -664,8 +670,8 @@
     }
 
     .conversationSwipeAction svg {
-      width: 22px;
-      height: 22px;
+      width: 26px;
+      height: 26px;
     }
 
     .conversationSwipeActionRename {
@@ -715,6 +721,9 @@
       padding: 18px 20px;
       box-sizing: border-box;
       transition: transform 0.22s ease;
+      box-shadow:
+        0 10px 28px rgba(36, 94, 102, 0.12),
+        0 1px 0 rgba(255, 255, 255, 0.25) inset;
     }
     
     .conversationOpenBtn,
@@ -4226,6 +4235,7 @@
 
       if (debugToggleBtn && typeof debugToggleBtn.blur === "function") {
         debugToggleBtn.blur();
+        debugToggleBtn.style.background = "rgba(255, 255, 255, 0.84)";
       }
 
       if (!fromPopstate && history.state && history.state.adminPopoverOpen === true) {
@@ -5186,10 +5196,13 @@
         copyUserBtn.title = "Copier";
         copyUserBtn.className = "messageActionBtn";
         copyUserBtn.innerHTML = getCopyIconMarkup();
-        copyUserBtn.style.cssFloat = "right";
-        copyUserBtn.style.marginLeft = "8px";
-        copyUserBtn.style.marginTop = "1px";
+        copyUserBtn.style.position = "absolute";
+        copyUserBtn.style.top = "4px";
+        copyUserBtn.style.right = "4px";
         copyUserBtn.style.color = "#183f44";
+
+        bubble.style.paddingTop = "16px";
+        bubble.style.paddingRight = "44px";
 
         let userCopyResetTimer = null;
 
@@ -5334,6 +5347,7 @@
         copyBotBtn.className = "messageActionBtn";
         copyBotBtn.innerHTML = getCopyIconMarkup();
         copyBotBtn.style.color = "#245e66";
+        copyBotBtn.style.marginLeft = "8px";
 
         let botCopyResetTimer = null;
 
@@ -6727,14 +6741,17 @@
 
       if (activeMenuToggle && typeof activeMenuToggle.blur === "function") {
         activeMenuToggle.blur();
+        activeMenuToggle.style.background = "transparent";
       }
 
       if (conversationsMenuBtn && typeof conversationsMenuBtn.blur === "function") {
         conversationsMenuBtn.blur();
+        conversationsMenuBtn.style.background = "transparent";
       }
 
       if (chatMenuBtn && typeof chatMenuBtn.blur === "function") {
         chatMenuBtn.blur();
+        chatMenuBtn.style.background = "transparent";
       }
 
       if (!fromPopstate && !skipHistorySync && history.state && history.state.conversationMenuOpen === true) {
