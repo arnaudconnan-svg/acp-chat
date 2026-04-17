@@ -5105,6 +5105,42 @@
         `;
       }
 
+      function getThumbUpIconMarkup() {
+        return `
+          <span class="messageActionBtnIcon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none">
+              <path d="M10.2 10.2V6.9c0-1 .4-1.9 1.1-2.6l1.3-1.3c.5-.5 1.4-.2 1.5.6l.2 2.3c.1.8-.1 1.6-.5 2.3l-.8 1.3H17a2 2 0 0 1 2 2.3l-1 6.2a2 2 0 0 1-2 1.7h-6.8" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"></path>
+              <path d="M5 10.2h3.2v9H5a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1Z" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"></path>
+            </svg>
+          </span>
+        `;
+      }
+
+      function getThumbDownIconMarkup() {
+        return `
+          <span class="messageActionBtnIcon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none">
+              <path d="M13.8 13.8v3.3c0 1-.4 1.9-1.1 2.6l-1.3 1.3c-.5.5-1.4.2-1.5-.6l-.2-2.3c-.1-.8.1-1.6.5-2.3l.8-1.3H7a2 2 0 0 1-2-2.3l1-6.2a2 2 0 0 1 2-1.7h6.8" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"></path>
+              <path d="M19 13.8h-3.2v-9H19a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1Z" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"></path>
+            </svg>
+          </span>
+        `;
+      }
+
+      function getShareIconMarkup() {
+        return `
+          <span class="messageActionBtnIcon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none">
+              <circle cx="18" cy="5" r="2.2" stroke="currentColor" stroke-width="1.9"></circle>
+              <circle cx="6" cy="12" r="2.2" stroke="currentColor" stroke-width="1.9"></circle>
+              <circle cx="18" cy="19" r="2.2" stroke="currentColor" stroke-width="1.9"></circle>
+              <path d="M7.9 11.1l8-4.3" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"></path>
+              <path d="M7.9 12.9l8 4.3" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"></path>
+            </svg>
+          </span>
+        `;
+      }
+
       function resetMenuToggleVisualState(button) {
         if (!button) return;
 
@@ -5488,6 +5524,30 @@
         copyBotBtn.style.color = "#245e66";
         copyBotBtn.style.marginLeft = "12px";
 
+        const thumbUpBtn = document.createElement("button");
+        thumbUpBtn.type = "button";
+        thumbUpBtn.setAttribute("aria-label", "Avis positif");
+        thumbUpBtn.title = "Pouce vers le haut";
+        thumbUpBtn.className = "messageActionBtn messageActionBtnBot";
+        thumbUpBtn.innerHTML = getThumbUpIconMarkup();
+        thumbUpBtn.style.color = "#245e66";
+
+        const thumbDownBtn = document.createElement("button");
+        thumbDownBtn.type = "button";
+        thumbDownBtn.setAttribute("aria-label", "Avis negatif");
+        thumbDownBtn.title = "Pouce vers le bas";
+        thumbDownBtn.className = "messageActionBtn messageActionBtnBot";
+        thumbDownBtn.innerHTML = getThumbDownIconMarkup();
+        thumbDownBtn.style.color = "#245e66";
+
+        const shareBtn = document.createElement("button");
+        shareBtn.type = "button";
+        shareBtn.setAttribute("aria-label", "Partager");
+        shareBtn.title = "Partager";
+        shareBtn.className = "messageActionBtn messageActionBtnBot";
+        shareBtn.innerHTML = getShareIconMarkup();
+        shareBtn.style.color = "#245e66";
+
         let botCopyResetTimer = null;
 
         copyBotBtn.addEventListener("click", async event => {
@@ -5505,6 +5565,9 @@
         });
 
         actionsRow.appendChild(copyBotBtn);
+        actionsRow.appendChild(thumbUpBtn);
+        actionsRow.appendChild(thumbDownBtn);
+        actionsRow.appendChild(shareBtn);
 
         if (
           document.body.classList.contains("admin-ui") &&
