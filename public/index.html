@@ -86,6 +86,7 @@
       display: flex;
       flex-direction: column;
       align-items: center;
+      justify-content: flex-start;
       min-height: 100%;
       box-sizing: border-box;
       padding-top: clamp(20px, 9vh, 72px);
@@ -146,7 +147,7 @@
     #welcomeActions {
       width: 100%;
       max-width: 380px;
-      margin-top: clamp(74px, 17vh, 190px);
+      margin-top: clamp(20px, 6vh, 72px);
       padding-top: 0;
       display: flex;
       flex-direction: column;
@@ -367,7 +368,7 @@
       #welcomeActions {
         max-width: 360px;
         gap: 10px;
-        margin-top: clamp(52px, 13vh, 132px);
+        margin-top: clamp(14px, 4vh, 42px);
         padding-top: 0;
       }
 
@@ -404,7 +405,7 @@
 
       #welcomeActions {
         gap: 8px;
-        margin-top: clamp(34px, 9vh, 72px);
+        margin-top: clamp(10px, 3vh, 24px);
         padding-top: 0;
       }
 
@@ -538,10 +539,20 @@
       padding: 0;
       font-size: 20px;
       line-height: 1;
+      outline: none;
+      -webkit-tap-highlight-color: transparent;
     }
 
     #conversationsAccountMenuBtn:hover {
       background: rgba(36, 94, 102, 0.06);
+    }
+
+    #conversationsAccountMenuBtn:focus,
+    #conversationsAccountMenuBtn:active,
+    #conversationsAccountMenuBtn:focus-visible {
+      outline: none;
+      background: transparent;
+      box-shadow: none;
     }
 
     #chatUndoMenuWrap {
@@ -565,10 +576,20 @@
       padding: 0;
       font-size: 20px;
       line-height: 1;
+      outline: none;
+      -webkit-tap-highlight-color: transparent;
     }
 
     #chatUndoMenuBtn:hover {
       background: rgba(36, 94, 102, 0.06);
+    }
+
+    #chatUndoMenuBtn:focus,
+    #chatUndoMenuBtn:active,
+    #chatUndoMenuBtn:focus-visible {
+      outline: none;
+      background: transparent;
+      box-shadow: none;
     }
 
     #chatUndoMenuAction.is-disabled {
@@ -622,6 +643,45 @@
       -webkit-user-select: none;
       -webkit-touch-callout: none;
       color: #000000;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .conversationSwipeAction {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 88px;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #ffffff;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .conversationSwipeAction svg {
+      width: 22px;
+      height: 22px;
+    }
+
+    .conversationSwipeActionRename {
+      left: 0;
+      background: #245e66;
+    }
+
+    .conversationSwipeActionDelete {
+      right: 0;
+      background: #c44c43;
+    }
+
+    .conversationItem.is-swipe-open-left .conversationSwipeActionDelete,
+    .conversationItem.is-swipe-open-right .conversationSwipeActionRename {
+      opacity: 1;
+      pointer-events: auto;
     }
     
     .conversationItemPlaceholder {
@@ -640,7 +700,7 @@
       flex: 1;
       min-width: 0;
       border: none;
-      background: transparent;
+      background: rgba(36, 94, 102, 0.12);
       padding: 0;
       text-align: left;
       color: inherit;
@@ -648,6 +708,13 @@
       cursor: pointer;
       display: flex;
       align-items: center;
+      position: relative;
+      z-index: 1;
+      min-height: 74px;
+      border-radius: 22px;
+      padding: 18px 20px;
+      box-sizing: border-box;
+      transition: transform 0.22s ease;
     }
     
     .conversationOpenBtn,
@@ -4015,8 +4082,13 @@
       
       function refreshAdminUi(options = {}) {
         const {
-          rerenderHistory = false
+          rerenderHistory = false,
+          preserveViewport = false
         } = options;
+
+        const chatEl = document.getElementById("chat");
+        const distanceFromBottom = chatEl ? Math.max(0, chatEl.scrollHeight - chatEl.clientHeight - chatEl.scrollTop) : 0;
+        const previousScrollTop = chatEl ? chatEl.scrollTop : 0;
         
         saveAdminUiState();
         refreshPopoverFields();
@@ -4025,7 +4097,11 @@
         syncAdminStatusBarPosition();
         
         if (rerenderHistory) {
-          renderHistory();
+          renderHistory({
+            preserveScroll: preserveViewport,
+            previousScrollTop,
+            distanceFromBottom
+          });
         }
       }
 
@@ -4110,7 +4186,7 @@
       
       logsToggle.addEventListener("change", () => {
         adminUiState.logsEnabled = logsToggle.checked;
-        refreshAdminUi({ rerenderHistory: true });
+        refreshAdminUi({ rerenderHistory: true, preserveViewport: true });
       });
       
       popover._refreshFields = refreshPopoverFields;
@@ -5128,7 +5204,7 @@
           setCopyButtonCopiedState(copyUserBtn, true);
           userCopyResetTimer = setTimeout(() => {
             setCopyButtonCopiedState(copyUserBtn, false);
-          }, 1200);
+          }, 3600);
         });
 
         bubble.appendChild(copyUserBtn);
@@ -5272,7 +5348,7 @@
           setCopyButtonCopiedState(copyBotBtn, true);
           botCopyResetTimer = setTimeout(() => {
             setCopyButtonCopiedState(copyBotBtn, false);
-          }, 1200);
+          }, 3600);
         });
 
         actionsRow.appendChild(copyBotBtn);
@@ -5431,7 +5507,12 @@
       });
     }
     
-    function renderHistory() {
+    function renderHistory(options = {}) {
+      const {
+        preserveScroll = false,
+        previousScrollTop = 0,
+        distanceFromBottom = 0
+      } = options;
       const chat = document.getElementById("chat");
       if (!chat) return;
       
@@ -5455,7 +5536,15 @@
       syncInputAvailability();
       
       requestAnimationFrame(() => {
-        scrollChatToBottom();
+        if (preserveScroll) {
+          const maxScrollTop = Math.max(0, chat.scrollHeight - chat.clientHeight);
+          const nextScrollTop = distanceFromBottom > 12 ?
+            Math.max(0, maxScrollTop - distanceFromBottom) :
+            Math.min(previousScrollTop, maxScrollTop);
+          chat.scrollTop = nextScrollTop;
+        } else {
+          scrollChatToBottom();
+        }
         updateScrollToBottomBtn();
       });
     }
@@ -5749,6 +5838,19 @@
         return;
       }
       
+      const copyIconMarkup = `
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <rect x="9" y="8" width="10" height="12" rx="2.2" stroke="currentColor" stroke-width="1.9"></rect>
+          <path d="M7 16H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"></path>
+        </svg>
+      `;
+      const editIconMarkup = `
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M4 20h4.2l9.7-9.7a1.8 1.8 0 0 0 0-2.6l-1.6-1.6a1.8 1.8 0 0 0-2.6 0L4 15.8V20z" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"></path>
+          <path d="M12.8 7.2l4 4" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"></path>
+        </svg>
+      `;
+
       items.forEach(item => {
         const safeTitle = item.title && String(item.title).trim() ?
           String(item.title).trim() :
@@ -5762,6 +5864,8 @@
         const menu = node.querySelector("[data-menu]");
         const renameBtn = node.querySelector("[data-rename-conversation]");
         const deleteBtn = node.querySelector("[data-delete-conversation]");
+        const renameSwipeBtn = document.createElement("button");
+        const deleteSwipeBtn = document.createElement("button");
         
         root.dataset.conversationId = item.id;
         openBtn.dataset.openConversation = item.id;
@@ -5769,64 +5873,140 @@
         menu.dataset.menu = item.id;
         renameBtn.dataset.renameConversation = item.id;
         deleteBtn.dataset.deleteConversation = item.id;
+
+        renameSwipeBtn.type = "button";
+        renameSwipeBtn.className = "conversationSwipeAction conversationSwipeActionRename";
+        renameSwipeBtn.setAttribute("aria-label", "Renommer la conversation");
+        renameSwipeBtn.innerHTML = editIconMarkup;
+
+        deleteSwipeBtn.type = "button";
+        deleteSwipeBtn.className = "conversationSwipeAction conversationSwipeActionDelete";
+        deleteSwipeBtn.setAttribute("aria-label", "Supprimer la conversation");
+        deleteSwipeBtn.innerHTML = copyIconMarkup.replace(/rect x="9" y="8" width="10" height="12" rx="2.2" stroke="currentColor" stroke-width="1.9"><\/rect>\s*<path d="M7 16H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><\/path>/, '<path d="M6 7h12" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"></path><path d="M9.5 7V5.9A1.4 1.4 0 0 1 10.9 4.5h2.2a1.4 1.4 0 0 1 1.4 1.4V7" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"></path><path d="M8.2 10.2v6.1M12 10.2v6.1M15.8 10.2v6.1" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"></path><path d="M7.2 7l.7 11.2A1.7 1.7 0 0 0 9.6 19.8h4.8a1.7 1.7 0 0 0 1.7-1.6L16.8 7" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"></path>');
+
+        root.appendChild(renameSwipeBtn);
+        root.appendChild(deleteSwipeBtn);
         
-        // Long-press (touch) / hold-click (desktop) / right-click → options menu
-        let itemLPTimer = null;
-        let itemLPTriggered = false;
-        let itemLPStartX = 0;
-        let itemLPStartY = 0;
-        
-        const clearItemLP = () => {
-          if (itemLPTimer) { clearTimeout(itemLPTimer); itemLPTimer = null; }
+        let swipeStartX = 0;
+        let swipeStartY = 0;
+        let swipeDeltaX = 0;
+        let swipeActive = false;
+        let swipePointerId = null;
+        let swipeDirectionLocked = false;
+        const swipeRevealWidth = 88;
+
+        const closeSwipeActions = () => {
+          swipeActive = false;
+          swipeDeltaX = 0;
+          swipePointerId = null;
+          swipeDirectionLocked = false;
+          root.classList.remove("is-swipe-open-left", "is-swipe-open-right");
+          openBtn.style.transform = "translateX(0)";
         };
-        
-        const startItemLP = event => {
-          itemLPTriggered = false;
-          if (event.touches && event.touches[0]) {
-            itemLPStartX = event.touches[0].clientX;
-            itemLPStartY = event.touches[0].clientY;
-          } else {
-            itemLPStartX = event.clientX || 0;
-            itemLPStartY = event.clientY || 0;
+
+        const applySwipeOffset = offset => {
+          const clamped = Math.max(-swipeRevealWidth, Math.min(swipeRevealWidth, offset));
+          swipeDeltaX = clamped;
+          openBtn.style.transform = `translateX(${clamped}px)`;
+          root.classList.toggle("is-swipe-open-left", clamped < -24);
+          root.classList.toggle("is-swipe-open-right", clamped > 24);
+        };
+
+        const startSwipe = event => {
+          if (event.target.closest(".conversationSwipeAction")) return;
+          if (event.type === "mousedown" && event.button !== 0) return;
+
+          closeConversationMenus({ skipHistorySync: true });
+          swipeActive = true;
+          swipeDirectionLocked = false;
+          swipePointerId = event.pointerId || null;
+          swipeStartX = event.touches && event.touches[0] ? event.touches[0].clientX : (event.clientX || 0);
+          swipeStartY = event.touches && event.touches[0] ? event.touches[0].clientY : (event.clientY || 0);
+        };
+
+        const moveSwipe = event => {
+          if (!swipeActive) return;
+          if (swipePointerId !== null && event.pointerId !== undefined && event.pointerId !== swipePointerId) return;
+
+          const clientX = event.touches && event.touches[0] ? event.touches[0].clientX : (event.clientX || 0);
+          const clientY = event.touches && event.touches[0] ? event.touches[0].clientY : (event.clientY || 0);
+          const deltaX = clientX - swipeStartX;
+          const deltaY = clientY - swipeStartY;
+
+          if (!swipeDirectionLocked) {
+            if (Math.abs(deltaY) > 10 && Math.abs(deltaY) > Math.abs(deltaX)) {
+              swipeActive = false;
+              return;
+            }
+
+            if (Math.abs(deltaX) > 8) {
+              swipeDirectionLocked = true;
+            } else {
+              return;
+            }
           }
-          clearItemLP();
-          itemLPTimer = setTimeout(() => {
-            itemLPTriggered = true;
-            openConversationMenu(root, menu);
-          }, 500);
+
+          if (event.cancelable) {
+            event.preventDefault();
+          }
+
+          applySwipeOffset(deltaX);
         };
-        
-        const moveItemLP = event => {
-          const cx = (event.touches && event.touches[0] ? event.touches[0].clientX : event.clientX) || 0;
-          const cy = (event.touches && event.touches[0] ? event.touches[0].clientY : event.clientY) || 0;
-          if (Math.abs(cx - itemLPStartX) > 10 || Math.abs(cy - itemLPStartY) > 10) { clearItemLP(); }
+
+        const endSwipe = () => {
+          if (!swipeActive && !swipeDirectionLocked) return;
+
+          if (swipeDeltaX <= -40) {
+            applySwipeOffset(-swipeRevealWidth);
+          } else if (swipeDeltaX >= 40) {
+            applySwipeOffset(swipeRevealWidth);
+          } else {
+            closeSwipeActions();
+          }
+
+          swipeActive = false;
+          swipePointerId = null;
+          swipeDirectionLocked = false;
         };
-        
-        const endItemLP = () => { clearItemLP(); };
         
         root.addEventListener("contextmenu", e => {
           e.preventDefault();
           openConversationMenu(root, menu);
         });
-        
-        root.addEventListener("touchstart", startItemLP, { passive: true });
-        root.addEventListener("touchmove", moveItemLP, { passive: true });
-        root.addEventListener("touchend", endItemLP);
-        root.addEventListener("touchcancel", endItemLP);
-        root.addEventListener("mousedown", startItemLP);
-        root.addEventListener("mousemove", moveItemLP);
-        root.addEventListener("mouseup", endItemLP);
-        root.addEventListener("mouseleave", endItemLP);
+
+        root.addEventListener("touchstart", startSwipe, { passive: true });
+        root.addEventListener("touchmove", moveSwipe, { passive: false });
+        root.addEventListener("touchend", endSwipe);
+        root.addEventListener("touchcancel", closeSwipeActions);
+        root.addEventListener("mousedown", startSwipe);
+        root.addEventListener("mousemove", moveSwipe);
+        root.addEventListener("mouseup", endSwipe);
+        root.addEventListener("mouseleave", endSwipe);
         
         openBtn.addEventListener("click", e => {
-          if (itemLPTriggered) {
+          if (root.classList.contains("is-swipe-open-left") || root.classList.contains("is-swipe-open-right")) {
             e.preventDefault();
             e.stopPropagation();
-            itemLPTriggered = false;
+            closeSwipeActions();
             return;
           }
           closeConversationMenus();
           openConversation(item.id);
+        });
+
+        renameSwipeBtn.addEventListener("click", e => {
+          e.preventDefault();
+          e.stopPropagation();
+          closeSwipeActions();
+          openEditTitleModal(item.id);
+        });
+
+        deleteSwipeBtn.addEventListener("click", e => {
+          e.preventDefault();
+          e.stopPropagation();
+          closeSwipeActions();
+          pendingDeleteConversationId = item.id;
+          openModal("deleteConversationModal");
         });
         
         renameBtn.onclick = e => {
@@ -6509,6 +6689,8 @@
       const overlay = ensureConversationMenuOverlay();
       const portal = ensureConversationMenuPortal();
       const activeMenuToggle = document.activeElement && document.activeElement.closest ? document.activeElement.closest("[data-menu-toggle]") : null;
+      const conversationsMenuBtn = document.getElementById("conversationsAccountMenuBtn");
+      const chatMenuBtn = document.getElementById("chatUndoMenuBtn");
       
       overlay.style.opacity = "0";
       overlay.style.pointerEvents = "none";
@@ -6545,6 +6727,14 @@
 
       if (activeMenuToggle && typeof activeMenuToggle.blur === "function") {
         activeMenuToggle.blur();
+      }
+
+      if (conversationsMenuBtn && typeof conversationsMenuBtn.blur === "function") {
+        conversationsMenuBtn.blur();
+      }
+
+      if (chatMenuBtn && typeof chatMenuBtn.blur === "function") {
+        chatMenuBtn.blur();
       }
 
       if (!fromPopstate && !skipHistorySync && history.state && history.state.conversationMenuOpen === true) {
@@ -7232,8 +7422,8 @@
       });
       
       const originalRenderHistory = renderHistory;
-      renderHistory = function() {
-        originalRenderHistory();
+      renderHistory = function(options = {}) {
+        originalRenderHistory(options);
         requestAnimationFrame(() => {
           syncTopBarElevation();
           syncChatTopSpacing();
