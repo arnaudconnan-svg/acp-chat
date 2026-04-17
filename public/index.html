@@ -364,6 +364,25 @@
       width: 21px;
       height: 21px;
     }
+
+    .messageActionBtn.messageActionBtnUser {
+      float: right;
+      width: 36px;
+      height: 36px;
+      margin-top: -2px;
+      margin-right: -2px;
+      margin-left: 10px;
+      margin-bottom: 4px;
+      color: rgba(24, 63, 68, 0.58);
+      opacity: 0.46;
+      position: relative;
+      z-index: 2;
+    }
+
+    .messageActionBtn.messageActionBtnUser .messageActionBtnIcon {
+      width: 24px;
+      height: 24px;
+    }
     
     #welcomeActions.is-secondary-visible #welcomeSecondaryActions {
       opacity: 1;
@@ -875,16 +894,33 @@
       transition: transform 0.22s ease, opacity 0.22s ease;
     }
 
+    @keyframes conversationsFabPendingBreathe {
+      0% {
+        transform: scale(1);
+        box-shadow: 0 10px 24px rgba(36, 94, 102, 0.24);
+        background: #245e66;
+      }
+      50% {
+        transform: scale(0.965);
+        box-shadow: 0 14px 30px rgba(36, 94, 102, 0.18);
+        background: #2b6a73;
+      }
+      100% {
+        transform: scale(1);
+        box-shadow: 0 10px 24px rgba(36, 94, 102, 0.24);
+        background: #245e66;
+      }
+    }
+
     #conversationsFabBtn.is-pending {
-      opacity: 0.92;
-      transform: scale(0.96);
-      box-shadow: 0 7px 18px rgba(36, 94, 102, 0.22);
-      background: #2f7079;
+      opacity: 0.94;
       pointer-events: none;
+      animation: conversationsFabPendingBreathe 1.35s ease-in-out infinite;
     }
 
     #conversationsFabBtn.is-pending svg {
-      transform: scale(0.88) rotate(90deg);
+      transform: scale(0.94);
+      opacity: 0.94;
     }
     
     /* ---------- CHAT ---------- */
@@ -970,6 +1006,7 @@
       font-size: 14px;
       line-height: 1.45;
       scroll-behavior: smooth;
+      overflow-anchor: none;
     }
     
     #chat.fading {
@@ -4159,6 +4196,21 @@
         const chatEl = document.getElementById("chat");
         const distanceFromBottom = chatEl ? Math.max(0, chatEl.scrollHeight - chatEl.clientHeight - chatEl.scrollTop) : 0;
         const previousScrollTop = chatEl ? chatEl.scrollTop : 0;
+        let anchorHistoryIndex = -1;
+        let anchorOffsetTop = 0;
+
+        if (chatEl && preserveViewport) {
+          const chatRect = chatEl.getBoundingClientRect();
+          const firstVisibleMessage = Array.from(chatEl.querySelectorAll(".message[data-history-index]")).find(node => {
+            const rect = node.getBoundingClientRect();
+            return rect.bottom > chatRect.top + 2;
+          });
+
+          if (firstVisibleMessage) {
+            anchorHistoryIndex = Number(firstVisibleMessage.dataset.historyIndex || -1);
+            anchorOffsetTop = firstVisibleMessage.getBoundingClientRect().top - chatRect.top;
+          }
+        }
         
         saveAdminUiState();
         refreshPopoverFields();
@@ -4170,7 +4222,9 @@
           renderHistory({
             preserveScroll: preserveViewport,
             previousScrollTop,
-            distanceFromBottom
+            distanceFromBottom,
+            anchorHistoryIndex,
+            anchorOffsetTop
           });
         }
       }
@@ -4256,6 +4310,7 @@
       
       logsToggle.addEventListener("change", () => {
         adminUiState.logsEnabled = logsToggle.checked;
+        logsToggle.blur();
         refreshAdminUi({ rerenderHistory: true, preserveViewport: true });
       });
       
@@ -5116,6 +5171,9 @@
       
       const msg = document.createElement("div");
       msg.className = "message " + role;
+      if (historyIndex >= 0) {
+        msg.dataset.historyIndex = String(historyIndex);
+      }
       
       const contentWrap = document.createElement("div");
       contentWrap.className = "message-content";
@@ -5273,15 +5331,10 @@
         copyUserBtn.type = "button";
         copyUserBtn.setAttribute("aria-label", "Copier le message");
         copyUserBtn.title = "Copier";
-        copyUserBtn.className = "messageActionBtn";
+        copyUserBtn.className = "messageActionBtn messageActionBtnUser";
         copyUserBtn.innerHTML = getCopyIconMarkup();
-        copyUserBtn.style.position = "absolute";
-        copyUserBtn.style.top = "4px";
-        copyUserBtn.style.right = "4px";
-        copyUserBtn.style.color = "#183f44";
-
-        bubble.style.paddingTop = "16px";
-        bubble.style.paddingRight = "44px";
+        bubble.style.paddingTop = "13px";
+        bubble.style.paddingRight = "15px";
 
         let userCopyResetTimer = null;
 
@@ -5299,8 +5352,15 @@
           }, 3600);
         });
 
-        bubble.appendChild(copyUserBtn);
-        bubble.appendChild(document.createTextNode(displayText));
+  const userTextWrap = document.createElement("span");
+  userTextWrap.style.display = "block";
+  userTextWrap.style.whiteSpace = "inherit";
+  userTextWrap.style.wordBreak = "inherit";
+  userTextWrap.style.overflowWrap = "inherit";
+  userTextWrap.textContent = displayText;
+
+  bubble.appendChild(copyUserBtn);
+  bubble.appendChild(userTextWrap);
         
         let longPressTimer = null;
         let longPressTriggered = false;
@@ -5604,7 +5664,9 @@
       const {
         preserveScroll = false,
         previousScrollTop = 0,
-        distanceFromBottom = 0
+        distanceFromBottom = 0,
+        anchorHistoryIndex = -1,
+        anchorOffsetTop = 0
       } = options;
       const chat = document.getElementById("chat");
       if (!chat) return;
@@ -5627,14 +5689,38 @@
       });
       
       syncInputAvailability();
+
+      const restorePreservedViewport = () => {
+        if (anchorHistoryIndex >= 0) {
+          const anchorNode = chat.querySelector(`.message[data-history-index="${anchorHistoryIndex}"]`);
+          if (anchorNode) {
+            const chatRect = chat.getBoundingClientRect();
+            const anchorRect = anchorNode.getBoundingClientRect();
+            const delta = anchorRect.top - chatRect.top - anchorOffsetTop;
+            chat.scrollTop += delta;
+            return;
+          }
+        }
+
+        const maxScrollTop = Math.max(0, chat.scrollHeight - chat.clientHeight);
+        const nextScrollTop = Math.min(previousScrollTop, maxScrollTop);
+        chat.scrollTop = nextScrollTop;
+      };
       
       requestAnimationFrame(() => {
         if (preserveScroll) {
-          const maxScrollTop = Math.max(0, chat.scrollHeight - chat.clientHeight);
-          const nextScrollTop = distanceFromBottom > 12 ?
-            Math.max(0, maxScrollTop - distanceFromBottom) :
-            Math.min(previousScrollTop, maxScrollTop);
-          chat.scrollTop = nextScrollTop;
+          const previousOverflowAnchor = chat.style.overflowAnchor;
+          chat.style.overflowAnchor = "none";
+          restorePreservedViewport();
+          requestAnimationFrame(restorePreservedViewport);
+          setTimeout(() => {
+            restorePreservedViewport();
+          }, 90);
+          setTimeout(restorePreservedViewport, 220);
+          setTimeout(() => {
+            restorePreservedViewport();
+            chat.style.overflowAnchor = previousOverflowAnchor || "";
+          }, 420);
         } else {
           scrollChatToBottom();
         }
