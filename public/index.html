@@ -168,7 +168,7 @@
       display: flex;
       flex-direction: column;
       gap: 33px;
-      margin-top: 33px;
+      margin-top: 50px;
       opacity: 0;
       pointer-events: none;
       transform: translateY(10px);
@@ -430,7 +430,7 @@
 
       #welcomeSecondaryActions {
         gap: 26px;
-        margin-top: 26px;
+        margin-top: 39px;
       }
 
       .welcomeBtnPrimary {
@@ -471,7 +471,7 @@
 
       #welcomeSecondaryActions {
         gap: 20px;
-        margin-top: 22px;
+        margin-top: 33px;
       }
 
       .welcomeBtnPrimary {
@@ -575,11 +575,11 @@
     }
     
     #conversationsTopBar .topBarTitle {
-      font-size: 19px;
-      font-weight: 600;
+      font-size: 24px;
+      font-weight: 700;
       line-height: 1.2;
-      color: #245e66;
-      letter-spacing: 0.01em;
+      color: #000000;
+      letter-spacing: normal;
       white-space: nowrap;
     }
 
@@ -1256,6 +1256,10 @@
     .message.bot {
       justify-content: flex-start;
       animation: botMessageIn 0.34s ease forwards;
+    }
+
+    .message.user + .message.bot {
+      margin-top: 42px;
     }
     
     .message-content {
