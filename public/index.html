@@ -6703,6 +6703,24 @@
       document.body.appendChild(overlay);
       return overlay;
     }
+
+    function resetMenuToggleVisualState(button) {
+      if (!button) return;
+
+      if (typeof button.blur === "function") {
+        button.blur();
+      }
+
+      button.style.background = "transparent";
+      button.style.backgroundColor = "transparent";
+      button.style.outline = "none";
+      button.style.boxShadow = "none";
+
+      requestAnimationFrame(() => {
+        button.style.background = "transparent";
+        button.style.backgroundColor = "transparent";
+      });
+    }
     
     function ensureConversationMenuPortal() {
       let portal = document.getElementById("conversationMenuPortal");
