@@ -7957,6 +7957,8 @@
         renderConversationsList();
         setSessionStatus("idle");
         showScreen("conversationsScreen", { replaceHistory: false, pushHistory: false, noAnimation: true });
+        await remoteConversationsSyncPromise;
+        renderConversationsList();
         updateActivity();
         return;
       }
