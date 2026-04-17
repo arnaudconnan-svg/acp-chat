@@ -885,6 +885,8 @@
       -webkit-user-select: none;
       user-select: none;
       touch-action: manipulation;
+      position: relative;
+      overflow: visible;
       transition:
         transform 0.18s ease,
         opacity 0.18s ease,
@@ -903,33 +905,74 @@
       transition: transform 0.22s ease, opacity 0.22s ease;
     }
 
-    @keyframes conversationsFabPendingBreathe {
+    #conversationsFabBtn::before {
+      content: "";
+      position: absolute;
+      inset: -8px;
+      border-radius: 999px;
+      background: radial-gradient(circle, rgba(36, 94, 102, 0.22) 0%, rgba(36, 94, 102, 0.12) 34%, rgba(36, 94, 102, 0) 72%);
+      opacity: 0;
+      transform: scale(0.72);
+      transition: opacity 0.22s ease, transform 0.26s ease;
+      pointer-events: none;
+    }
+
+    @keyframes conversationsFabTapAcknowledge {
       0% {
         transform: scale(1);
-        box-shadow: 0 10px 24px rgba(36, 94, 102, 0.24);
+        box-shadow: 0 10px 24px rgba(36, 94, 102, 0.28);
+      }
+      35% {
+        transform: scale(0.9);
+        box-shadow: 0 8px 18px rgba(36, 94, 102, 0.22);
+      }
+      100% {
+        transform: scale(1.06);
+        box-shadow: 0 18px 34px rgba(36, 94, 102, 0.34);
+      }
+    }
+
+    @keyframes conversationsFabPendingBreathe {
+      0% {
+        transform: scale(1.03);
+        box-shadow: 0 16px 34px rgba(36, 94, 102, 0.28);
         background: #245e66;
       }
       50% {
-        transform: scale(0.965);
-        box-shadow: 0 14px 30px rgba(36, 94, 102, 0.18);
-        background: #2b6a73;
+        transform: scale(0.94);
+        box-shadow: 0 10px 22px rgba(36, 94, 102, 0.2);
+        background: #2f7079;
       }
       100% {
-        transform: scale(1);
-        box-shadow: 0 10px 24px rgba(36, 94, 102, 0.24);
+        transform: scale(1.03);
+        box-shadow: 0 16px 34px rgba(36, 94, 102, 0.28);
         background: #245e66;
       }
     }
 
+    #conversationsFabBtn.is-acknowledged {
+      animation: conversationsFabTapAcknowledge 0.24s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+
+    #conversationsFabBtn.is-acknowledged::before {
+      opacity: 1;
+      transform: scale(1.06);
+    }
+
     #conversationsFabBtn.is-pending {
-      opacity: 0.94;
+      opacity: 0.98;
       pointer-events: none;
       animation: conversationsFabPendingBreathe 1.35s ease-in-out infinite;
     }
 
+    #conversationsFabBtn.is-pending::before {
+      opacity: 1;
+      transform: scale(1.1);
+    }
+
     #conversationsFabBtn.is-pending svg {
-      transform: scale(0.94);
-      opacity: 0.94;
+      transform: scale(1.02);
+      opacity: 1;
     }
     
     /* ---------- CHAT ---------- */
@@ -7344,11 +7387,28 @@
     const conversationsFabBtn = document.getElementById("conversationsFabBtn");
     if (conversationsFabBtn) {
       conversationsFabBtn.onclick = async () => {
+        if (conversationsFabBtn._ackTimer) {
+          clearTimeout(conversationsFabBtn._ackTimer);
+        }
+
+        conversationsFabBtn.classList.remove("is-acknowledged");
+        void conversationsFabBtn.offsetWidth;
+        conversationsFabBtn.classList.add("is-acknowledged");
+        conversationsFabBtn._ackTimer = setTimeout(() => {
+          conversationsFabBtn.classList.remove("is-acknowledged");
+          conversationsFabBtn._ackTimer = null;
+        }, 260);
+
         conversationsFabBtn.classList.add("is-pending");
 
         try {
           await finalizeAndStartNewSession();
         } finally {
+          if (conversationsFabBtn._ackTimer) {
+            clearTimeout(conversationsFabBtn._ackTimer);
+            conversationsFabBtn._ackTimer = null;
+          }
+          conversationsFabBtn.classList.remove("is-acknowledged");
           conversationsFabBtn.classList.remove("is-pending");
         }
       };
