@@ -65,6 +65,12 @@ const app = express();
 const port = process.env.PORT || 3000;
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
+const MODEL_IDS = {
+  analysis: "gpt-4.1-mini",
+  generation: "gpt-4.1",
+  title: "gpt-4o-mini"
+};
+
 function createEmailNotifier() {
   const notifyTo = String(process.env.NOTIFY_EMAIL_TO || "").trim();
   const smtpHost = String(process.env.NOTIFY_SMTP_HOST || "").trim();
@@ -2658,7 +2664,7 @@ async function analyzeSuicideRisk(
   const context = trimSuicideAnalysisHistory(history);
   
   const r = await client.chat.completions.create({
-    model: "gpt-4.1-mini",
+    model: MODEL_IDS.analysis,
     temperature: 0,
     max_tokens: 240,
     messages: [
@@ -2724,7 +2730,7 @@ async function n1ResponseLLM(
   const system = promptRegistry.N1_RESPONSE_LLM;
   
   const r = await client.chat.completions.create({
-    model: "gpt-4o",
+    model: MODEL_IDS.generation,
     temperature: 0,
     max_tokens: 50,
     messages: [
@@ -2757,7 +2763,7 @@ async function llmInfoAnalysis(message = "", history = [], promptRegistry = buil
   const context = trimInfoAnalysisHistory(history);
   
   const r = await client.chat.completions.create({
-    model: "gpt-4.1-mini",
+    model: MODEL_IDS.analysis,
     temperature: 0,
     max_tokens: 60,
     messages: [
@@ -2791,7 +2797,7 @@ async function analyzeInfoSubmode(message = "", history = [], promptRegistry = b
   const context = trimInfoAnalysisHistory(history);
 
   const r = await client.chat.completions.create({
-    model: "gpt-4.1-mini",
+    model: MODEL_IDS.analysis,
     temperature: 0,
     max_tokens: 60,
     messages: [
@@ -2839,7 +2845,7 @@ ${JSON.stringify(safePreviousContactState)}
 `;
   
   const r = await client.chat.completions.create({
-    model: "gpt-4.1-mini",
+    model: MODEL_IDS.analysis,
     temperature: 0,
     max_tokens: 80,
     messages: [
@@ -2883,7 +2889,7 @@ ${normalizeMemory(memory, promptRegistry)}
 `;
   
   const r = await client.chat.completions.create({
-    model: "gpt-4.1-mini",
+    model: MODEL_IDS.analysis,
     temperature: 0,
     max_tokens: 80,
     messages: [
@@ -2924,7 +2930,7 @@ Formule une reponse de rappel honnete a partir de cette seule memoire.
 `;
   
   const r = await client.chat.completions.create({
-    model: "gpt-4.1-mini",
+    model: MODEL_IDS.analysis,
     temperature: 0.7,
     max_tokens: 150,
     messages: [
@@ -2944,7 +2950,7 @@ function buildNoMemoryRecallResponse() {
 // Ask the LLM whether the generated content appears to violate the model conflict policy.
 async function analyzeModelConflict(content = "", promptRegistry = buildDefaultPromptRegistry()) {
   const r = await client.chat.completions.create({
-    model: "gpt-4.1-mini",
+    model: MODEL_IDS.analysis,
     temperature: 0,
     max_tokens: 40,
     messages: [
@@ -2989,7 +2995,7 @@ ${originalContent}
 `;
   
   const r = await client.chat.completions.create({
-    model: "gpt-4o",
+    model: MODEL_IDS.generation,
     temperature: 0.3,
     max_tokens: 500,
     messages: [
@@ -3027,7 +3033,7 @@ ${reply}
 `;
   
   const r = await client.chat.completions.create({
-    model: "gpt-4.1-mini",
+    model: MODEL_IDS.analysis,
     temperature: 0,
     max_tokens: 60,
     messages: [
@@ -3078,7 +3084,7 @@ Fenetre recente de relances :
 `;
 
   const r = await client.chat.completions.create({
-    model: "gpt-4.1-mini",
+    model: MODEL_IDS.analysis,
     temperature: 0,
     max_tokens: 60,
     messages: [
@@ -3121,7 +3127,7 @@ ${normalizeMemory(memory, promptRegistry)}
 `;
 
   const r = await client.chat.completions.create({
-    model: "gpt-4.1-mini",
+    model: MODEL_IDS.analysis,
     temperature: 0,
     max_tokens: 120,
     messages: [
@@ -3176,7 +3182,7 @@ ${originalReply}
 `;
 
   const r = await client.chat.completions.create({
-    model: "gpt-4o",
+    model: MODEL_IDS.generation,
     temperature: 0.3,
     max_tokens: 300,
     messages: [
@@ -3214,7 +3220,7 @@ ${JSON.stringify(interpretationRejection)}
 `;
 
   const r = await client.chat.completions.create({
-    model: "gpt-4.1-mini",
+    model: MODEL_IDS.analysis,
     temperature: 0.2,
     max_tokens: 220,
     messages: [
@@ -3416,7 +3422,7 @@ ${transcript}
 `;
   
   const r = await client.chat.completions.create({
-    model: "gpt-4.1-mini",
+    model: MODEL_IDS.analysis,
     temperature: 0.3,
     max_tokens: 400,
     messages: [
@@ -3477,7 +3483,7 @@ ${normalizeMemory(sessionMemory, promptRegistry)}
 `;
 
   const r = await client.chat.completions.create({
-    model: "gpt-4.1-mini",
+    model: MODEL_IDS.analysis,
     temperature: 0.1,
     max_tokens: 220,
     messages: [
@@ -3724,7 +3730,7 @@ async function generateReply({
   
   // Send the assembled prompt and conversation history to the LLM.
   const r = await client.chat.completions.create({
-    model: "gpt-4o",
+    model: MODEL_IDS.generation,
     temperature: 0.7,
     top_p: 1,
     presence_penalty: 0.5,
@@ -3821,7 +3827,7 @@ async function generateConversationTitle(messages) {
     const sourceText = userMessages.join("\n\n");
     
     const completion = await client.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: MODEL_IDS.title,
       temperature: 0.2,
       max_tokens: 30,
       messages: [{
