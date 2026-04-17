@@ -350,6 +350,10 @@
       background: rgba(36, 94, 102, 0.08);
     }
 
+    .messageActionBtn.messageActionBtnUser.is-copied {
+      background: rgba(24, 63, 68, 0.16);
+    }
+
     .messageActionBtn.is-copied .messageActionBtnIcon {
       transform: scale(1.12);
       filter: drop-shadow(0 4px 10px rgba(36, 94, 102, 0.14));
@@ -363,6 +367,11 @@
     .messageActionBtn.messageActionBtnBot .messageActionBtnIcon {
       width: 21px;
       height: 21px;
+    }
+
+    .messageActionBtn.messageActionBtnBotAux .messageActionBtnIcon {
+      width: 18px;
+      height: 18px;
     }
 
     .messageActionBtn.messageActionBtnUser {
@@ -5166,6 +5175,24 @@
         button.innerHTML = copied === true ? getCheckIconMarkup() : getCopyIconMarkup();
       }
 
+      function setButtonTemporaryCheckState(button, idleMarkup, duration = 3600) {
+        if (!button) return;
+
+        if (button._temporaryCheckTimer) {
+          clearTimeout(button._temporaryCheckTimer);
+          button._temporaryCheckTimer = null;
+        }
+
+        button.classList.add("is-copied");
+        button.innerHTML = getCheckIconMarkup();
+
+        button._temporaryCheckTimer = setTimeout(() => {
+          button.classList.remove("is-copied");
+          button.innerHTML = idleMarkup;
+          button._temporaryCheckTimer = null;
+        }, duration);
+      }
+
       async function copyTextToClipboard(value) {
         const textToCopy = String(value || "");
 
@@ -5528,24 +5555,27 @@
         thumbUpBtn.type = "button";
         thumbUpBtn.setAttribute("aria-label", "Avis positif");
         thumbUpBtn.title = "Pouce vers le haut";
-        thumbUpBtn.className = "messageActionBtn messageActionBtnBot";
-        thumbUpBtn.innerHTML = getThumbUpIconMarkup();
+        thumbUpBtn.className = "messageActionBtn messageActionBtnBot messageActionBtnBotAux";
+        const thumbUpIdleMarkup = getThumbUpIconMarkup();
+        thumbUpBtn.innerHTML = thumbUpIdleMarkup;
         thumbUpBtn.style.color = "#245e66";
 
         const thumbDownBtn = document.createElement("button");
         thumbDownBtn.type = "button";
         thumbDownBtn.setAttribute("aria-label", "Avis negatif");
         thumbDownBtn.title = "Pouce vers le bas";
-        thumbDownBtn.className = "messageActionBtn messageActionBtnBot";
-        thumbDownBtn.innerHTML = getThumbDownIconMarkup();
+        thumbDownBtn.className = "messageActionBtn messageActionBtnBot messageActionBtnBotAux";
+        const thumbDownIdleMarkup = getThumbDownIconMarkup();
+        thumbDownBtn.innerHTML = thumbDownIdleMarkup;
         thumbDownBtn.style.color = "#245e66";
 
         const shareBtn = document.createElement("button");
         shareBtn.type = "button";
         shareBtn.setAttribute("aria-label", "Partager");
         shareBtn.title = "Partager";
-        shareBtn.className = "messageActionBtn messageActionBtnBot";
-        shareBtn.innerHTML = getShareIconMarkup();
+        shareBtn.className = "messageActionBtn messageActionBtnBot messageActionBtnBotAux";
+        const shareIdleMarkup = getShareIconMarkup();
+        shareBtn.innerHTML = shareIdleMarkup;
         shareBtn.style.color = "#245e66";
 
         let botCopyResetTimer = null;
@@ -5562,6 +5592,24 @@
           botCopyResetTimer = setTimeout(() => {
             setCopyButtonCopiedState(copyBotBtn, false);
           }, 3600);
+        });
+
+        thumbUpBtn.addEventListener("click", event => {
+          event.preventDefault();
+          event.stopPropagation();
+          setButtonTemporaryCheckState(thumbUpBtn, thumbUpIdleMarkup);
+        });
+
+        thumbDownBtn.addEventListener("click", event => {
+          event.preventDefault();
+          event.stopPropagation();
+          setButtonTemporaryCheckState(thumbDownBtn, thumbDownIdleMarkup);
+        });
+
+        shareBtn.addEventListener("click", event => {
+          event.preventDefault();
+          event.stopPropagation();
+          setButtonTemporaryCheckState(shareBtn, shareIdleMarkup);
         });
 
         actionsRow.appendChild(copyBotBtn);
