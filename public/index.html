@@ -153,15 +153,25 @@
     #welcomeActions {
       width: 100%;
       max-width: 380px;
-      margin-top: clamp(2px, 1.5vh, 14px);
+      margin-top: clamp(22px, 5vh, 58px);
       padding-top: 0;
       display: flex;
       flex-direction: column;
       align-items: stretch;
-      gap: 22px;
+      gap: 0;
       opacity: 0;
       pointer-events: none;
       transform: translateY(18px);
+    }
+
+    #welcomeSecondaryActions {
+      display: flex;
+      flex-direction: column;
+      gap: 33px;
+      margin-top: 33px;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(10px);
     }
     
     #welcomeActions.is-visible {
@@ -225,12 +235,9 @@
     }
     
     #welcomeAboutBtn {
-      opacity: 0;
-      transform: translateY(8px);
-      transition:
-        opacity 0.45s ease,
-        transform 0.45s ease;
-      transition-delay: 0.36s;
+      opacity: 1;
+      transform: none;
+      transition: none;
     }
     
     #aboutContent {
@@ -257,12 +264,9 @@
     
     #welcomeDevAccessWrap {
       min-height: 36px;
-      opacity: 0;
-      transform: translateY(8px);
-      transition:
-        opacity 0.45s ease,
-        transform 0.45s ease;
-      transition-delay: 0.22s;
+      opacity: 1;
+      transform: none;
+      transition: none;
     }
 
     .about-eyebrow {
@@ -335,6 +339,12 @@
         filter 0.26s ease;
     }
 
+    .messageActionBtnIcon svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
     .messageActionBtn.is-copied {
       opacity: 0.92;
       background: rgba(36, 94, 102, 0.08);
@@ -345,10 +355,13 @@
       filter: drop-shadow(0 4px 10px rgba(36, 94, 102, 0.14));
     }
     
-    #welcomeActions.is-visible #welcomeAboutBtn,
-    #welcomeActions.is-visible #welcomeDevAccessWrap {
+    #welcomeActions.is-secondary-visible #welcomeSecondaryActions {
       opacity: 1;
       transform: translateY(0);
+      pointer-events: auto;
+      transition:
+        opacity 0.5s ease,
+        transform 0.5s ease;
     }
 
     @media (max-height: 760px) {
@@ -373,9 +386,13 @@
 
       #welcomeActions {
         max-width: 360px;
-        gap: 18px;
-        margin-top: clamp(0px, 1vh, 10px);
+        margin-top: clamp(14px, 3vh, 30px);
         padding-top: 0;
+      }
+
+      #welcomeSecondaryActions {
+        gap: 26px;
+        margin-top: 26px;
       }
 
       .welcomeBtnPrimary {
@@ -410,9 +427,13 @@
       }
 
       #welcomeActions {
-        gap: 14px;
-        margin-top: 0;
+        margin-top: clamp(10px, 2vh, 18px);
         padding-top: 0;
+      }
+
+      #welcomeSecondaryActions {
+        gap: 20px;
+        margin-top: 22px;
       }
 
       .welcomeBtnPrimary {
@@ -636,21 +657,24 @@
     .conversationItem {
       border: none;
       border-radius: 22px;
-      background: transparent;
-      backdrop-filter: none;
-      -webkit-backdrop-filter: none;
+      background: rgba(36, 94, 102, 0.12);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
       padding: 0;
       min-height: 74px;
       display: flex;
       align-items: center;
       box-sizing: border-box;
-      box-shadow: none;
+      box-shadow:
+        0 10px 28px rgba(36, 94, 102, 0.12),
+        0 1px 0 rgba(255, 255, 255, 0.25) inset;
       user-select: none;
       -webkit-user-select: none;
       -webkit-touch-callout: none;
       color: #000000;
       position: relative;
       overflow: hidden;
+      touch-action: pan-y;
     }
 
     .conversationSwipeAction {
@@ -665,8 +689,9 @@
       color: #ffffff;
       opacity: 0;
       pointer-events: none;
-      transition: opacity 0.2s ease;
+      transition: opacity 0.22s ease, transform 0.22s ease;
       -webkit-tap-highlight-color: transparent;
+      z-index: 0;
     }
 
     .conversationSwipeAction svg {
@@ -677,17 +702,20 @@
     .conversationSwipeActionRename {
       left: 0;
       background: #245e66;
+      transform: translateX(-14px);
     }
 
     .conversationSwipeActionDelete {
       right: 0;
       background: #c44c43;
+      transform: translateX(14px);
     }
 
     .conversationItem.is-swipe-open-left .conversationSwipeActionDelete,
     .conversationItem.is-swipe-open-right .conversationSwipeActionRename {
       opacity: 1;
       pointer-events: auto;
+      transform: translateX(0);
     }
     
     .conversationItemPlaceholder {
@@ -706,7 +734,7 @@
       flex: 1;
       min-width: 0;
       border: none;
-      background: rgba(36, 94, 102, 0.12);
+      background: transparent;
       padding: 0;
       text-align: left;
       color: inherit;
@@ -720,10 +748,7 @@
       border-radius: 22px;
       padding: 18px 20px;
       box-sizing: border-box;
-      transition: transform 0.22s ease;
-      box-shadow:
-        0 10px 28px rgba(36, 94, 102, 0.12),
-        0 1px 0 rgba(255, 255, 255, 0.25) inset;
+      transition: transform 0.26s cubic-bezier(0.22, 1, 0.36, 1);
     }
     
     .conversationOpenBtn,
@@ -1675,15 +1700,17 @@
           Entrer
         </button>
 
-        <div id="welcomeDevAccessWrap">
-          <button id="welcomeDevAccessBtn" class="welcomeBtnTertiary" type="button">
-            Acc&egrave;s d&eacute;veloppeur
+        <div id="welcomeSecondaryActions">
+          <div id="welcomeDevAccessWrap">
+            <button id="welcomeDevAccessBtn" class="welcomeBtnTertiary" type="button">
+              Acc&egrave;s d&eacute;veloppeur
+            </button>
+          </div>
+
+          <button id="welcomeAboutBtn" class="welcomeBtnSecondary" type="button">
+            Plus d'informations
           </button>
         </div>
-
-        <button id="welcomeAboutBtn" class="welcomeBtnSecondary" type="button">
-          Plus d'informations
-        </button>
       </div>
     </div>
   </div>
@@ -4971,7 +4998,7 @@
       function getCopyIconMarkup() {
         return `
           <span class="messageActionBtnIcon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none">
+            <svg viewBox="0 0 24 24" fill="none">
               <rect x="9" y="8" width="10" height="12" rx="2.2" stroke="currentColor" stroke-width="1.9"></rect>
               <path d="M7 16H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"></path>
             </svg>
@@ -4982,11 +5009,29 @@
       function getCheckIconMarkup() {
         return `
           <span class="messageActionBtnIcon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none">
+            <svg viewBox="0 0 24 24" fill="none">
               <path d="M5 12.5l4.1 4.1L19 7.2" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"></path>
             </svg>
           </span>
         `;
+      }
+
+      function resetMenuToggleVisualState(button) {
+        if (!button) return;
+
+        if (typeof button.blur === "function") {
+          button.blur();
+        }
+
+        button.style.background = "transparent";
+        button.style.backgroundColor = "transparent";
+        button.style.outline = "none";
+        button.style.boxShadow = "none";
+
+        requestAnimationFrame(() => {
+          button.style.background = "transparent";
+          button.style.backgroundColor = "transparent";
+        });
       }
 
       function setCopyButtonCopiedState(button, copied) {
@@ -5197,12 +5242,12 @@
         copyUserBtn.className = "messageActionBtn";
         copyUserBtn.innerHTML = getCopyIconMarkup();
         copyUserBtn.style.position = "absolute";
-        copyUserBtn.style.top = "4px";
-        copyUserBtn.style.right = "4px";
+        copyUserBtn.style.top = "-2px";
+        copyUserBtn.style.right = "-2px";
         copyUserBtn.style.color = "#183f44";
 
-        bubble.style.paddingTop = "16px";
-        bubble.style.paddingRight = "44px";
+        bubble.style.paddingTop = "14px";
+        bubble.style.paddingRight = "38px";
 
         let userCopyResetTimer = null;
 
@@ -5347,7 +5392,7 @@
         copyBotBtn.className = "messageActionBtn";
         copyBotBtn.innerHTML = getCopyIconMarkup();
         copyBotBtn.style.color = "#245e66";
-        copyBotBtn.style.marginLeft = "8px";
+        copyBotBtn.style.marginLeft = "12px";
 
         let botCopyResetTimer = null;
 
@@ -5907,7 +5952,7 @@
         let swipeActive = false;
         let swipePointerId = null;
         let swipeDirectionLocked = false;
-        const swipeRevealWidth = 88;
+        const swipeRevealWidth = 72;
 
         const closeSwipeActions = () => {
           swipeActive = false;
@@ -5983,10 +6028,12 @@
           swipeDirectionLocked = false;
         };
         
-        root.addEventListener("contextmenu", e => {
-          e.preventDefault();
-          openConversationMenu(root, menu);
-        });
+        if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
+          root.addEventListener("contextmenu", e => {
+            e.preventDefault();
+            openConversationMenu(root, menu);
+          });
+        }
 
         root.addEventListener("touchstart", startSwipe, { passive: true });
         root.addEventListener("touchmove", moveSwipe, { passive: false });
@@ -6739,20 +6786,9 @@
         item.style.position = "";
       });
 
-      if (activeMenuToggle && typeof activeMenuToggle.blur === "function") {
-        activeMenuToggle.blur();
-        activeMenuToggle.style.background = "transparent";
-      }
-
-      if (conversationsMenuBtn && typeof conversationsMenuBtn.blur === "function") {
-        conversationsMenuBtn.blur();
-        conversationsMenuBtn.style.background = "transparent";
-      }
-
-      if (chatMenuBtn && typeof chatMenuBtn.blur === "function") {
-        chatMenuBtn.blur();
-        chatMenuBtn.style.background = "transparent";
-      }
+      resetMenuToggleVisualState(activeMenuToggle);
+      resetMenuToggleVisualState(conversationsMenuBtn);
+      resetMenuToggleVisualState(chatMenuBtn);
 
       if (!fromPopstate && !skipHistorySync && history.state && history.state.conversationMenuOpen === true) {
         pendingConversationMenuHistoryClose = true;
@@ -7666,7 +7702,9 @@
       const WELCOME_LOGO_FADE_DURATION_MS = 1200;
       const WELCOME_RITUAL_START_DELAY_MS = 2400;
       const WELCOME_ACTIONS_DELAY_MS = 200;
+      const WELCOME_SECONDARY_ACTIONS_DELAY_MS = 800;
       const WELCOME_SKIP_ACTIONS_REMAINING_MS = 160;
+      const WELCOME_SKIP_SECONDARY_ACTIONS_REMAINING_MS = 220;
       
       let ritualIndex = 0;
       let ritualRunning = false;
@@ -7675,6 +7713,7 @@
       let ritualGapTimeout = null;
       let ritualStartTimeout = null;
       let actionsRevealTimeout = null;
+      let secondaryActionsRevealTimeout = null;
       let bootPauseTimeout = null;
       let logoFadeTimeout = null;
       let welcomeInteractionBound = false;
@@ -7704,6 +7743,11 @@
           clearTimeout(actionsRevealTimeout);
           actionsRevealTimeout = null;
         }
+
+        if (secondaryActionsRevealTimeout) {
+          clearTimeout(secondaryActionsRevealTimeout);
+          secondaryActionsRevealTimeout = null;
+        }
         
         if (bootPauseTimeout) {
           clearTimeout(bootPauseTimeout);
@@ -7732,7 +7776,7 @@
         }
         
         if (actions) {
-          actions.classList.remove("is-visible");
+          actions.classList.remove("is-visible", "is-secondary-visible");
         }
         
         welcomeHasInteracted = false;
@@ -7770,10 +7814,16 @@
         if (!actions || actionsVisible) return;
         
         const delay = withDelay ? WELCOME_ACTIONS_DELAY_MS : WELCOME_SKIP_ACTIONS_REMAINING_MS;
+        const secondaryDelay = withDelay ? WELCOME_SECONDARY_ACTIONS_DELAY_MS : WELCOME_SKIP_SECONDARY_ACTIONS_REMAINING_MS;
         
         if (actionsRevealTimeout) {
           clearTimeout(actionsRevealTimeout);
           actionsRevealTimeout = null;
+        }
+
+        if (secondaryActionsRevealTimeout) {
+          clearTimeout(secondaryActionsRevealTimeout);
+          secondaryActionsRevealTimeout = null;
         }
         
         welcomePhase = "actions_pending";
@@ -7781,8 +7831,13 @@
         actionsRevealTimeout = setTimeout(() => {
           actions.classList.add("is-visible");
           actionsVisible = true;
-          welcomePhase = "done";
           actionsRevealTimeout = null;
+
+          secondaryActionsRevealTimeout = setTimeout(() => {
+            actions.classList.add("is-secondary-visible");
+            welcomePhase = "done";
+            secondaryActionsRevealTimeout = null;
+          }, secondaryDelay);
         }, delay);
       }
       
@@ -7925,7 +7980,7 @@
         }
         
         if (actions) {
-          actions.classList.remove("is-visible");
+          actions.classList.remove("is-visible", "is-secondary-visible");
         }
         
         actionsVisible = false;
