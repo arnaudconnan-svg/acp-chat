@@ -146,8 +146,8 @@
     #welcomeActions {
       width: 100%;
       max-width: 380px;
-      margin-top: auto;
-      padding-top: clamp(8px, 6vh, 48px);
+      margin-top: clamp(74px, 17vh, 190px);
+      padding-top: 0;
       display: flex;
       flex-direction: column;
       align-items: stretch;
@@ -193,6 +193,7 @@
       background: transparent;
       color: #245e66;
       font-size: 14px;
+      font-weight: 600;
       padding: 2px 12px;
       -webkit-tap-highlight-color: transparent;
       outline: none;
@@ -222,7 +223,7 @@
       transition:
         opacity 0.45s ease,
         transform 0.45s ease;
-      transition-delay: 0.22s;
+      transition-delay: 0.36s;
     }
     
     #aboutContent {
@@ -254,7 +255,87 @@
       transition:
         opacity 0.45s ease,
         transform 0.45s ease;
-      transition-delay: 0.36s;
+      transition-delay: 0.22s;
+    }
+
+    .about-eyebrow {
+      margin: 0 0 14px 0;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: rgba(36, 94, 102, 0.62);
+    }
+
+    .about-lead {
+      margin: 0;
+      font-size: 21px;
+      line-height: 1.65;
+      color: #1f474d;
+      text-wrap: balance;
+    }
+
+    .about-body {
+      margin: 0;
+      font-size: 17px;
+      line-height: 1.85;
+      color: rgba(36, 70, 75, 0.88);
+    }
+
+    .about-note {
+      margin: 0;
+      padding-top: 18px;
+      border-top: 1px solid rgba(36, 94, 102, 0.12);
+      font-size: 14px;
+      line-height: 1.7;
+      color: rgba(36, 70, 75, 0.7);
+    }
+
+    .messageActionBtn {
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      padding: 0;
+      border-radius: 999px;
+      opacity: 0.5;
+      transition:
+        opacity 0.22s ease,
+        transform 0.22s ease,
+        background 0.22s ease,
+        color 0.22s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .messageActionBtn:active {
+      transform: scale(0.92);
+    }
+
+    .messageActionBtnIcon {
+      width: 16px;
+      height: 16px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transform: scale(1);
+      transition:
+        transform 0.26s ease,
+        opacity 0.26s ease,
+        filter 0.26s ease;
+    }
+
+    .messageActionBtn.is-copied {
+      opacity: 0.92;
+      background: rgba(36, 94, 102, 0.08);
+    }
+
+    .messageActionBtn.is-copied .messageActionBtnIcon {
+      transform: scale(1.12);
+      filter: drop-shadow(0 4px 10px rgba(36, 94, 102, 0.14));
     }
     
     #welcomeActions.is-visible #welcomeAboutBtn,
@@ -286,7 +367,8 @@
       #welcomeActions {
         max-width: 360px;
         gap: 10px;
-        padding-top: 14px;
+        margin-top: clamp(52px, 13vh, 132px);
+        padding-top: 0;
       }
 
       .welcomeBtnPrimary {
@@ -322,7 +404,8 @@
 
       #welcomeActions {
         gap: 8px;
-        padding-top: 8px;
+        margin-top: clamp(34px, 9vh, 72px);
+        padding-top: 0;
       }
 
       .welcomeBtnPrimary {
@@ -1515,16 +1598,16 @@
         <button id="welcomeEnterBtn" class="welcomeBtnPrimary" type="button">
           Entrer
         </button>
-        
-        <button id="welcomeAboutBtn" class="welcomeBtnSecondary" type="button">
-          Plus d'informations
-        </button>
-        
+
         <div id="welcomeDevAccessWrap">
           <button id="welcomeDevAccessBtn" class="welcomeBtnTertiary" type="button">
             Acc&egrave;s d&eacute;veloppeur
           </button>
         </div>
+
+        <button id="welcomeAboutBtn" class="welcomeBtnSecondary" type="button">
+          Plus d'informations
+        </button>
       </div>
     </div>
   </div>
@@ -1652,23 +1735,17 @@
   <div id="aboutModal">
     <div id="aboutBox">
       <div id="aboutContent">
-        <p class="about-title">
-          <strong>Facilitat.io</strong>
+        <p class="about-eyebrow">Facilitat.io</p>
+        <p class="about-lead">
+          Une interaction avec une IA qui facilite le d&eacute;veloppement de la personne, sans orienter ni conseiller.
         </p>
-        
-        <p class="about-main">
-          propose une interaction avec une IA qui facilite le d&eacute;veloppement de la personne, sans orienter ni conseiller, mais en soutenant
+        <p class="about-body">
+          Elle soutient plut&ocirc;t un mouvement de compr&eacute;hension et d&rsquo;acceptation de soi, dans une forme sobre, lente et exploratoire.
         </p>
-        
-        <p class="about-highlight">
-          <strong>un mouvement de compr&eacute;hension et d&rsquo;acceptation de soi...</strong>
-        </p>
-        
-        <p class="about-footer">
+        <p class="about-note">
           Cet outil ne remplace pas une relation d&rsquo;accompagnement humaine.
         </p>
       </div>
-      <button onclick="closeAboutModal()">fermer</button>
     </div>
   </div>
   
@@ -1844,10 +1921,14 @@
       
       if (!box || !content) return;
       
-      box.style.padding = "28px 24px calc(34px + env(safe-area-inset-bottom, 0px)) 24px";
+      box.style.padding = "32px 26px calc(30px + env(safe-area-inset-bottom, 0px)) 26px";
+      box.style.maxWidth = "540px";
       
-      content.style.marginBottom = "22px";
-      content.style.textAlign = "center";
+      content.style.marginBottom = "0";
+      content.style.textAlign = "left";
+      content.style.display = "flex";
+      content.style.flexDirection = "column";
+      content.style.gap = "18px";
       content.style.fontSize = "18px";
       content.style.lineHeight = "1.9";
       content.style.color = "#24464b";
@@ -4062,9 +4143,14 @@
     function closeAdminPopover(options = {}) {
       const { fromPopstate = false } = options;
       const popover = document.getElementById("adminPopover");
+      const debugToggleBtn = document.getElementById("debugToggleBtn");
       if (!popover) return;
 
       popover.style.display = "none";
+
+      if (debugToggleBtn && typeof debugToggleBtn.blur === "function") {
+        debugToggleBtn.blur();
+      }
 
       if (!fromPopstate && history.state && history.state.adminPopoverOpen === true) {
         history.back();
@@ -4796,14 +4882,48 @@
         progressive === true &&
         !compareLabel;
 
-      function copyTextToClipboard(value) {
+      function getCopyIconMarkup() {
+        return `
+          <span class="messageActionBtnIcon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none">
+              <rect x="9" y="8" width="10" height="12" rx="2.2" stroke="currentColor" stroke-width="1.9"></rect>
+              <path d="M7 16H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"></path>
+            </svg>
+          </span>
+        `;
+      }
+
+      function getCheckIconMarkup() {
+        return `
+          <span class="messageActionBtnIcon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none">
+              <path d="M5 12.5l4.1 4.1L19 7.2" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"></path>
+            </svg>
+          </span>
+        `;
+      }
+
+      function setCopyButtonCopiedState(button, copied) {
+        if (!button) return;
+
+        button.classList.toggle("is-copied", copied === true);
+        button.innerHTML = copied === true ? getCheckIconMarkup() : getCopyIconMarkup();
+      }
+
+      async function copyTextToClipboard(value) {
         const textToCopy = String(value || "");
 
+        if (!textToCopy) {
+          return false;
+        }
+
         if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
-          navigator.clipboard.writeText(textToCopy).catch(err => {
+          try {
+            await navigator.clipboard.writeText(textToCopy);
+            return true;
+          } catch (err) {
             console.warn("[COPY_FAILED]", err && err.message ? err.message : String(err));
-          });
-          return;
+          }
         }
 
         const fallback = document.createElement("textarea");
@@ -4819,11 +4939,14 @@
 
         try {
           document.execCommand("copy");
+          document.body.removeChild(fallback);
+          return true;
         } catch (err) {
           console.warn("[COPY_FAILED]", err && err.message ? err.message : String(err));
         }
 
         document.body.removeChild(fallback);
+        return false;
       }
       
       const msg = document.createElement("div");
@@ -4985,23 +5108,27 @@
         copyUserBtn.type = "button";
         copyUserBtn.setAttribute("aria-label", "Copier le message");
         copyUserBtn.title = "Copier";
-        copyUserBtn.textContent = "\u2398";
+        copyUserBtn.className = "messageActionBtn";
+        copyUserBtn.innerHTML = getCopyIconMarkup();
         copyUserBtn.style.cssFloat = "right";
         copyUserBtn.style.marginLeft = "8px";
         copyUserBtn.style.marginTop = "1px";
-        copyUserBtn.style.border = "none";
-        copyUserBtn.style.background = "transparent";
         copyUserBtn.style.color = "#183f44";
-        copyUserBtn.style.cursor = "pointer";
-        copyUserBtn.style.padding = "2px";
-        copyUserBtn.style.lineHeight = "1";
-        copyUserBtn.style.fontSize = "13px";
-        copyUserBtn.style.opacity = "0.5";
 
-        copyUserBtn.addEventListener("click", event => {
+        let userCopyResetTimer = null;
+
+        copyUserBtn.addEventListener("click", async event => {
           event.preventDefault();
           event.stopPropagation();
-          copyTextToClipboard(displayText);
+
+          const copied = await copyTextToClipboard(displayText);
+          if (!copied) return;
+
+          clearTimeout(userCopyResetTimer);
+          setCopyButtonCopiedState(copyUserBtn, true);
+          userCopyResetTimer = setTimeout(() => {
+            setCopyButtonCopiedState(copyUserBtn, false);
+          }, 1200);
         });
 
         bubble.appendChild(copyUserBtn);
@@ -5128,20 +5255,24 @@
         copyBotBtn.type = "button";
         copyBotBtn.setAttribute("aria-label", "Copier la reponse");
         copyBotBtn.title = "Copier";
-        copyBotBtn.textContent = "\u2398";
-        copyBotBtn.style.border = "none";
-        copyBotBtn.style.background = "transparent";
+        copyBotBtn.className = "messageActionBtn";
+        copyBotBtn.innerHTML = getCopyIconMarkup();
         copyBotBtn.style.color = "#245e66";
-        copyBotBtn.style.cursor = "pointer";
-        copyBotBtn.style.padding = "3px 5px";
-        copyBotBtn.style.lineHeight = "1";
-        copyBotBtn.style.fontSize = "13px";
-        copyBotBtn.style.opacity = "0.4";
 
-        copyBotBtn.addEventListener("click", event => {
+        let botCopyResetTimer = null;
+
+        copyBotBtn.addEventListener("click", async event => {
           event.preventDefault();
           event.stopPropagation();
-          copyTextToClipboard(displayText);
+
+          const copied = await copyTextToClipboard(displayText);
+          if (!copied) return;
+
+          clearTimeout(botCopyResetTimer);
+          setCopyButtonCopiedState(copyBotBtn, true);
+          botCopyResetTimer = setTimeout(() => {
+            setCopyButtonCopiedState(copyBotBtn, false);
+          }, 1200);
         });
 
         actionsRow.appendChild(copyBotBtn);
@@ -5149,7 +5280,8 @@
         if (
           document.body.classList.contains("admin-ui") &&
           adminUiState.logsEnabled === true &&
-          historyIndex >= 0
+          historyIndex >= 0 &&
+          !isFirstBotMessage
         ) {
           const branchBtn = document.createElement("button");
           branchBtn.type = "button";
@@ -5343,7 +5475,7 @@
       const sendBtn = document.getElementById("sendBtn");
       
       input.disabled = disabled;
-      sendBtn.disabled = disabled;
+      sendBtn.disabled = disabled || isSending || input.value.trim().length === 0;
     }
     
     function openModal(id) {
@@ -5547,13 +5679,8 @@
         closeEditMode({ restoreDraft: false });
         renderHistory();
         showScreen("chatScreen", { pushHistory: true });
-        
-        if (loadSessionInfoDismissed()) {
-          startFreshSession();
-        } else {
-          openSessionInfoModal();
-          setSessionStatus("active");
-        }
+
+        startFreshSession();
         
         defocusInput();
       });
@@ -5595,11 +5722,7 @@
         return;
       }
       
-      if (loadSessionInfoDismissed()) {
-        startFreshOrResumeSession();
-      } else {
-        openSessionInfoModal();
-      }
+      startFreshOrResumeSession();
     }
     
     function renderConversationsList() {
@@ -6385,6 +6508,7 @@
       const { fromPopstate = false, skipHistorySync = false } = options;
       const overlay = ensureConversationMenuOverlay();
       const portal = ensureConversationMenuPortal();
+      const activeMenuToggle = document.activeElement && document.activeElement.closest ? document.activeElement.closest("[data-menu-toggle]") : null;
       
       overlay.style.opacity = "0";
       overlay.style.pointerEvents = "none";
@@ -6418,6 +6542,10 @@
         item.style.zIndex = "";
         item.style.position = "";
       });
+
+      if (activeMenuToggle && typeof activeMenuToggle.blur === "function") {
+        activeMenuToggle.blur();
+      }
 
       if (!fromPopstate && !skipHistorySync && history.state && history.state.conversationMenuOpen === true) {
         pendingConversationMenuHistoryClose = true;
