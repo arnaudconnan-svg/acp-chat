@@ -2428,6 +2428,19 @@
 
       return flags;
     }
+
+    function normalizeStoredStateSnapshot(snapshot) {
+      if (!snapshot || typeof snapshot !== "object" || Array.isArray(snapshot)) {
+        return null;
+      }
+
+      return {
+        memory: typeof snapshot.memory === "string" && snapshot.memory.trim() ?
+          snapshot.memory :
+          defaultMemory(),
+        flags: normalizeStoredFlags(snapshot.flags || {})
+      };
+    }
     
     function createEmptyConversationData() {
       return {
@@ -2544,6 +2557,7 @@
           content: String(item?.content || ""),
           debug: Array.isArray(item?.debug) ? item.debug : [],
           debugMeta: item?.debugMeta && typeof item.debugMeta === "object" ? item.debugMeta : null,
+          stateSnapshot: normalizeStoredStateSnapshot(item?.stateSnapshot),
           comparisonResults: Array.isArray(item?.comparisonResults) ? item.comparisonResults : null,
           id: typeof item?.id === "string" ? item.id : undefined,
           t: Number(item?.timestamp || 0) || (Date.now() + index)
@@ -2739,6 +2753,7 @@
               memoryRewriteSource: typeof item.debugMeta.memoryRewriteSource === "string" ? item.debugMeta.memoryRewriteSource : null,
               modelConflict: item.debugMeta.modelConflict === true
             } : null,
+            stateSnapshot: normalizeStoredStateSnapshot(item?.stateSnapshot),
             comparisonResults: Array.isArray(item?.comparisonResults) ? item.comparisonResults : null
           }))
           .filter(item => (item.role === "user" || item.role === "assistant") && item.content)
@@ -2790,9 +2805,12 @@
           return;
         }
 
+        const branchState = deriveBranchConversationState(sourceConversationId, anchorHistory);
+
         const activateRes = await fetch("/api/branches/" + branchId + "/activate", {
           method: "POST",
-          headers: { "Content-Type": "application/json" }
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(branchState)
         });
 
         if (!activateRes.ok) {
@@ -2815,8 +2833,8 @@
         localStorage.setItem(CONVERSATION_ID_KEY, branchConversationId);
         saveConversationData(branchConversationId, {
           messages: branchMessages,
-          memory: defaultMemory(),
-          flags: normalizeStoredFlags({}),
+          memory: branchState.memory,
+          flags: branchState.flags,
           updatedAt: Date.now()
         });
 
@@ -2856,6 +2874,113 @@
       });
 
       return nextConversationId;
+    }
+
+    function parseBranchDirectivityText(directivityText = "") {
+      const text = String(directivityText || "").trim();
+      const windowMatch = text.match(/Fenetre de relance\s*:\s*\[([01\-\s]+)\]/i);
+      const nextLevelMatch = text.match(/Niveau de directivite\s*\(tour suivant\)\s*:\s*(\d+)\/4/i);
+
+      const explorationRelanceWindow = windowMatch ?
+        windowMatch[1]
+          .split("-")
+          .map(value => String(value || "").trim() === "1")
+          .slice(0, 4) :
+        null;
+
+      return {
+        explorationRelanceWindow:
+          Array.isArray(explorationRelanceWindow) && explorationRelanceWindow.length > 0 ?
+            explorationRelanceWindow :
+            null,
+        explorationDirectivityLevel: nextLevelMatch ? Number(nextLevelMatch[1]) : null
+      };
+    }
+
+    function deriveStateFromAssistantMessage(sourceData, assistantMessage) {
+      const stateSnapshot = normalizeStoredStateSnapshot(assistantMessage?.stateSnapshot);
+
+      if (stateSnapshot) {
+        return stateSnapshot;
+      }
+
+      const assistantDebugMeta = assistantMessage?.debugMeta && typeof assistantMessage.debugMeta === "object" ?
+        assistantMessage.debugMeta :
+        null;
+
+      if (!assistantDebugMeta) {
+        return null;
+      }
+
+      const parsedDirectivity = parseBranchDirectivityText(assistantDebugMeta?.directivityText || "");
+      const sourceFlags = normalizeStoredFlags(sourceData?.flags || {});
+      const sourceMemory = typeof sourceData?.memory === "string" && sourceData.memory.trim() ?
+        sourceData.memory :
+        defaultMemory();
+      const nextFlags = {
+        ...sourceFlags
+      };
+
+      if (Array.isArray(parsedDirectivity.explorationRelanceWindow)) {
+        nextFlags.explorationRelanceWindow = parsedDirectivity.explorationRelanceWindow;
+      }
+
+      if (Number.isInteger(parsedDirectivity.explorationDirectivityLevel)) {
+        nextFlags.explorationDirectivityLevel = parsedDirectivity.explorationDirectivityLevel;
+      }
+
+      if (Number.isInteger(assistantDebugMeta?.explorationCalibrationLevel)) {
+        nextFlags.explorationCalibrationLevel = assistantDebugMeta.explorationCalibrationLevel;
+      }
+
+      return {
+        memory: typeof assistantDebugMeta?.memory === "string" && assistantDebugMeta.memory.trim() ?
+          assistantDebugMeta.memory :
+          sourceMemory,
+        flags: normalizeStoredFlags(nextFlags)
+      };
+    }
+
+    function deriveBranchConversationState(sourceConversationId, anchorHistory) {
+      const sourceData = loadConversationData(sourceConversationId);
+      const anchorMessages = Array.isArray(anchorHistory) ? anchorHistory : [];
+      const anchorAssistantMessage = [...anchorMessages]
+        .reverse()
+        .find(item => item && item.role === "assistant" && item.debugMeta && typeof item.debugMeta === "object");
+
+      if (!anchorAssistantMessage) {
+        return {
+          memory: typeof sourceData.memory === "string" && sourceData.memory.trim() ? sourceData.memory : defaultMemory(),
+          flags: normalizeStoredFlags(sourceData.flags || {})
+        };
+      }
+
+      return deriveStateFromAssistantMessage(sourceData, anchorAssistantMessage);
+    }
+
+    function deriveEditConversationState(conversationId, history, targetIndex) {
+      const sourceData = loadConversationData(conversationId);
+      const previousAssistantMessage = (Array.isArray(history) ? history.slice(0, targetIndex) : [])
+        .reverse()
+        .find(item => item && item.role === "assistant");
+
+      if (!previousAssistantMessage) {
+        return {
+          memory: _pendingIntersessionMemory !== null ? _pendingIntersessionMemory : defaultMemory(),
+          flags: normalizeStoredFlags({})
+        };
+      }
+
+      const restoredState = deriveStateFromAssistantMessage(sourceData, previousAssistantMessage);
+
+      if (restoredState) {
+        return restoredState;
+      }
+
+      return {
+        memory: _pendingIntersessionMemory !== null ? _pendingIntersessionMemory : defaultMemory(),
+        flags: normalizeStoredFlags({})
+      };
     }
     
     function deleteConversationData(conversationId) {
@@ -2952,7 +3077,7 @@
       });
     }
     
-    function pushHistory(role, content, debug, debugMeta = null, id = null) {
+    function pushHistory(role, content, debug, debugMeta = null, id = null, stateSnapshot = null) {
       let conversationId = getConversationId();
       
       if (!conversationId && role === "user") {
@@ -2981,6 +3106,7 @@
           memoryRewriteSource: typeof debugMeta.memoryRewriteSource === "string" ? debugMeta.memoryRewriteSource : null,
           modelConflict: debugMeta.modelConflict === true
         } : null,
+        stateSnapshot: normalizeStoredStateSnapshot(stateSnapshot),
         id: id && typeof id === "string" ? id : undefined,
         t: Date.now()
       });
@@ -5657,7 +5783,15 @@
         };
         
         const truncatedHistory = history.slice(0, targetIndex + 1);
+        const editedConversationState = deriveEditConversationState(conversationIdBeforeSend, history, targetIndex);
         saveHistory(truncatedHistory);
+        saveConversationData(conversationIdBeforeSend, {
+          ...loadConversationData(conversationIdBeforeSend),
+          messages: truncatedHistory,
+          memory: editedConversationState.memory,
+          flags: editedConversationState.flags,
+          updatedAt: Date.now()
+        });
         closeEditMode({ restoreDraft: false });
         renderHistory();
         scrollChatToBottom();
@@ -5769,8 +5903,8 @@
             conversationId: requestConversationId,
             adminUiActive: document.body.classList.contains("admin-ui"),
             recentHistory: loadHistory().map(({ role, content }) => ({ role, content })).slice(-MAX_RECENT_TURNS),
-            memory: loadMemory(),
-            flags: normalizeStoredFlags(loadFlags()),
+            memory: loadConversationData(requestConversationId).memory,
+            flags: normalizeStoredFlags(loadConversationData(requestConversationId).flags),
             override1: adminPayload.override1,
             override2: adminPayload.override2,
             comparisonEnabled: adminPayload.comparisonEnabled === true,
@@ -5847,10 +5981,16 @@
           
           if (normalizedComparisonResults.length > 0) {
             normalizedComparisonResults.forEach(result => {
-              pushHistory("assistant", result.content, result.debug, result.debugMeta);
+              pushHistory("assistant", result.content, result.debug, result.debugMeta, null, {
+                memory: data.memory,
+                flags: data.flags
+              });
             });
           } else {
-            pushHistory("assistant", data.reply, data.debug || [], data.debugMeta || null, data.botMessageId || null);
+            pushHistory("assistant", data.reply, data.debug || [], data.debugMeta || null, data.botMessageId || null, {
+              memory: data.memory,
+              flags: data.flags
+            });
           }
         } else {
           const storedData = loadConversationData(requestConversationId);
@@ -5862,12 +6002,20 @@
               content: result.content,
               debug: result.debug,
               debugMeta: result.debugMeta,
+              stateSnapshot: normalizeStoredStateSnapshot({
+                memory: data.memory,
+                flags: data.flags
+              }),
               t: Date.now() + index
             })) : [{
               role: "assistant",
               content: data.reply,
               debug: Array.isArray(data.debug) ? data.debug : [],
               debugMeta: data.debugMeta && typeof data.debugMeta === "object" ? data.debugMeta : null,
+              stateSnapshot: normalizeStoredStateSnapshot({
+                memory: data.memory,
+                flags: data.flags
+              }),
               id: data.botMessageId && typeof data.botMessageId === "string" ? data.botMessageId : undefined,
               t: Date.now()
             }];

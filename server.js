@@ -4203,6 +4203,10 @@ app.get("/api/account/conversations/:id", requireUserAuth, async (req, res) => {
         content: String(value?.content || ""),
         debug: Array.isArray(value?.debug) ? value.debug : [],
         debugMeta: value?.debugMeta && typeof value.debugMeta === "object" ? value.debugMeta : null,
+        stateSnapshot: value?.stateSnapshot && typeof value?.stateSnapshot === "object" ? {
+          memory: typeof value.stateSnapshot.memory === "string" ? value.stateSnapshot.memory : "",
+          flags: normalizeSessionFlags(value.stateSnapshot.flags || {})
+        } : null,
         comparisonResults: Array.isArray(value?.comparisonResults) ? value.comparisonResults : null,
         timestamp: Number(value?.timestamp || 0)
       }))
@@ -4513,6 +4517,10 @@ app.post("/api/branches/from-message", requireUserAuth, async (req, res) => {
       content: String(entry.item.content || ""),
       debug: Array.isArray(entry.item.debug) ? entry.item.debug : [],
       debugMeta: entry.item.debugMeta && typeof entry.item.debugMeta === "object" ? entry.item.debugMeta : null,
+      stateSnapshot: entry.item.stateSnapshot && typeof entry.item.stateSnapshot === "object" ? {
+        memory: typeof entry.item.stateSnapshot.memory === "string" ? entry.item.stateSnapshot.memory : "",
+        flags: normalizeSessionFlags(entry.item.stateSnapshot.flags || {})
+      } : null,
       comparisonResults: Array.isArray(entry.item.comparisonResults) ? entry.item.comparisonResults : null,
       createdAt: typeof entry.item.createdAt === "string" ? entry.item.createdAt : null
     }));
@@ -4568,9 +4576,30 @@ app.post("/api/branches/:id/activate", requireUserAuth, async (req, res) => {
     const session = req.userSession;
     const branchId = String(req.params?.id || "").trim();
 
+    if (
+      req.body !== undefined &&
+      (typeof req.body !== "object" || req.body === null || Array.isArray(req.body))
+    ) {
+      return res.status(400).json({ error: "Invalid branch activation payload" });
+    }
+
+    if (
+      req.body?.flags !== undefined &&
+      (typeof req.body.flags !== "object" || req.body.flags === null || Array.isArray(req.body.flags))
+    ) {
+      return res.status(400).json({ error: "Invalid branch flags payload" });
+    }
+
     if (!branchId) {
       return res.status(400).json({ error: "Invalid branch id" });
     }
+
+    const requestedBranchMemory = typeof req.body?.memory === "string" && req.body.memory.trim() ?
+      normalizeMemory(req.body.memory, buildDefaultPromptRegistry()) :
+      "";
+    const requestedBranchFlags = req.body?.flags !== undefined ?
+      normalizeSessionFlags(req.body.flags) :
+      null;
 
     const branchRef = branchRecordsRef.child(branchId);
     const [branchSnap, seedSnap] = await Promise.all([
@@ -4616,7 +4645,9 @@ app.post("/api/branches/:id/activate", requireUserAuth, async (req, res) => {
         title: `Branche de ${String(branch.sourceConversationId || "conversation")}`,
         titleLocked: false,
         messageCount: seededMessages.filter(m => String(m?.role || "") === "user").length,
-        lastUserMessage: lastUserMessage ? String(lastUserMessage.content || "") : ""
+        lastUserMessage: lastUserMessage ? String(lastUserMessage.content || "") : "",
+        memory: requestedBranchMemory,
+        flags: requestedBranchFlags || normalizeSessionFlags({})
       });
 
       // Seed all historical messages into the new conversation once.
@@ -4639,6 +4670,20 @@ app.post("/api/branches/:id/activate", requireUserAuth, async (req, res) => {
       );
     }
 
+    const conversationStatePatch = {
+      updatedAt: new Date().toISOString()
+    };
+
+    if (requestedBranchMemory) {
+      conversationStatePatch.memory = requestedBranchMemory;
+    }
+
+    if (requestedBranchFlags !== null) {
+      conversationStatePatch.flags = requestedBranchFlags;
+    }
+
+    await convRef.update(conversationStatePatch);
+
     const activatedAt = new Date().toISOString();
     await branchRef.update({
       status: "active",
@@ -4653,7 +4698,9 @@ app.post("/api/branches/:id/activate", requireUserAuth, async (req, res) => {
         branchConversationId,
         activatedAt,
         status: "active"
-      }
+      },
+      memory: requestedBranchMemory,
+      flags: requestedBranchFlags !== null ? requestedBranchFlags : undefined
     });
   } catch (err) {
     console.error("Erreur /api/branches/:id/activate:", err.message);
@@ -5578,6 +5625,10 @@ app.post("/chat", async (req, res) => {
           memoryRewriteSource: typeof debugMeta.memoryRewriteSource === "string" ? debugMeta.memoryRewriteSource : null,
           modelConflict: debugMeta.modelConflict === true
         },
+        stateSnapshot: conversationState && typeof conversationState === "object" ? {
+          memory: typeof conversationState.memory === "string" ? normalizeMemory(conversationState.memory, activePromptRegistry) : "",
+          flags: normalizeSessionFlags(conversationState.flags || {})
+        } : null,
         comparisonResults: safeComparisonResults
       });
 
