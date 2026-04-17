@@ -5,6 +5,7 @@ const path = require("path");
 
 const BASE_URL = process.env.EVAL_BASE_URL || "http://localhost:3000";
 const DATASET_PATH = process.env.EVAL_DATASET_PATH || path.join(__dirname, "..", "data", "chat-evals.json");
+const OUTPUT_PATH = process.env.EVAL_OUTPUT_PATH || "";
 
 function makeUrl(routePath) {
   return `${BASE_URL}${routePath}`;
@@ -83,10 +84,18 @@ function countParagraphs(reply) {
     .length;
 }
 
+function normalizeComparableText(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
 function evaluateExpectations(testCase, result) {
   const expectations = testCase.expect || {};
   const reply = String(result.body?.reply || "");
   const debugMeta = result.body?.debugMeta || {};
+  const memory = String(debugMeta.memory || "");
   const failures = [];
 
   if (expectations.status !== undefined && result.status !== expectations.status) {
@@ -115,6 +124,25 @@ function evaluateExpectations(testCase, result) {
     failures.push(`expected debugMeta.rewriteSource='${expectations.rewriteSource}', got '${String(debugMeta.rewriteSource)}'`);
   }
 
+  if (expectations.interpretationRejection !== undefined && debugMeta.interpretationRejection !== expectations.interpretationRejection) {
+    failures.push(
+      `expected debugMeta.interpretationRejection=${expectations.interpretationRejection}, got ${String(debugMeta.interpretationRejection)}`
+    );
+  }
+
+  if (expectations.infoSubmode !== undefined && debugMeta.infoSubmode !== expectations.infoSubmode) {
+    failures.push(`expected debugMeta.infoSubmode='${expectations.infoSubmode}', got '${String(debugMeta.infoSubmode)}'`);
+  }
+
+  if (
+    expectations.explorationCalibrationLevel !== undefined &&
+    debugMeta.explorationCalibrationLevel !== expectations.explorationCalibrationLevel
+  ) {
+    failures.push(
+      `expected debugMeta.explorationCalibrationLevel=${expectations.explorationCalibrationLevel}, got ${String(debugMeta.explorationCalibrationLevel)}`
+    );
+  }
+
   if (expectations.modeChip !== undefined) {
     const chips = Array.isArray(debugMeta.topChips) ? debugMeta.topChips : [];
     if (!chips.includes(expectations.modeChip)) {
@@ -122,7 +150,55 @@ function evaluateExpectations(testCase, result) {
     }
   }
 
+  if (Array.isArray(expectations.topChipsInclude)) {
+    const chips = Array.isArray(debugMeta.topChips) ? debugMeta.topChips : [];
+    for (const chip of expectations.topChipsInclude) {
+      if (!chips.includes(chip)) {
+        failures.push(`expected topChips to include '${chip}', got [${chips.join(", ")}]`);
+      }
+    }
+  }
+
+  if (Array.isArray(expectations.memoryIncludes)) {
+    const comparableMemory = normalizeComparableText(memory);
+    for (const snippet of expectations.memoryIncludes) {
+      if (!comparableMemory.includes(normalizeComparableText(snippet))) {
+        failures.push(`expected debugMeta.memory to include '${String(snippet)}'`);
+      }
+    }
+  }
+
   return failures;
+}
+
+function buildCaseReport(label, result, failures = []) {
+  const debugMeta = result.body?.debugMeta || {};
+  return {
+    label,
+    status: result.status,
+    passed: failures.length === 0,
+    failures,
+    reply: String(result.body?.reply || result.text || ""),
+    debugMeta: {
+      topChips: Array.isArray(debugMeta.topChips) ? debugMeta.topChips : [],
+      infoSubmode: debugMeta.infoSubmode ?? null,
+      interpretationRejection: debugMeta.interpretationRejection === true,
+      needsSoberReadjustment: debugMeta.needsSoberReadjustment === true,
+      explorationCalibrationLevel: Number.isInteger(debugMeta.explorationCalibrationLevel) ? debugMeta.explorationCalibrationLevel : null,
+      rewriteSource: typeof debugMeta.rewriteSource === "string" ? debugMeta.rewriteSource : null,
+      memoryRewriteSource: typeof debugMeta.memoryRewriteSource === "string" ? debugMeta.memoryRewriteSource : null,
+      modelConflict: debugMeta.modelConflict === true,
+      memory: typeof debugMeta.memory === "string" ? debugMeta.memory : ""
+    }
+  };
+}
+
+function maybeWriteJsonReport(report) {
+  if (!OUTPUT_PATH) {
+    return;
+  }
+
+  fs.writeFileSync(OUTPUT_PATH, JSON.stringify(report, null, 2));
 }
 
 async function run() {
@@ -131,9 +207,13 @@ async function run() {
   console.log(`[EVAL] Base URL: ${BASE_URL}`);
   console.log(`[EVAL] Dataset: ${DATASET_PATH}`);
   console.log(`[EVAL] Cases: ${dataset.length}`);
+  if (OUTPUT_PATH) {
+    console.log(`[EVAL] JSON report: ${OUTPUT_PATH}`);
+  }
 
   let passed = 0;
   let failed = 0;
+  const caseReports = [];
 
   for (let index = 0; index < dataset.length; index += 1) {
     const testCase = dataset[index];
@@ -144,6 +224,7 @@ async function run() {
 
     if (failures.length > 0) {
       failed += 1;
+      caseReports.push(buildCaseReport(label, result, failures));
       console.error(`[FAIL] ${label}`);
       for (const failure of failures) {
         console.error(`  - ${failure}`);
@@ -153,6 +234,7 @@ async function run() {
     }
 
     passed += 1;
+  caseReports.push(buildCaseReport(label, result, []));
     console.log(`[PASS] ${label}`);
     console.log(`  reply: ${String(result.body?.reply || "")}`);
     console.log(`  rewriteSource: ${String(result.body?.debugMeta?.rewriteSource || "") || "null"}`);
@@ -160,11 +242,27 @@ async function run() {
   }
 
   if (failed > 0) {
+    maybeWriteJsonReport({
+      baseUrl: BASE_URL,
+      datasetPath: DATASET_PATH,
+      total: dataset.length,
+      passed,
+      failed,
+      cases: caseReports
+    });
     console.error(`[EVAL] ${passed}/${dataset.length} cases passed, ${failed} failed.`);
     process.exitCode = 1;
     return;
   }
 
+  maybeWriteJsonReport({
+    baseUrl: BASE_URL,
+    datasetPath: DATASET_PATH,
+    total: dataset.length,
+    passed,
+    failed,
+    cases: caseReports
+  });
   console.log(`[EVAL] ${passed}/${dataset.length} cases passed.`);
 }
 

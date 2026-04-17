@@ -62,9 +62,255 @@
       "modeChip": "EXPLORATION",
       "maxReplyChars": 700,
       "maxParagraphs": 2,
+      "needsSoberReadjustment": true,
+      "rewriteSource": "sober_readjustment"
+    }
+  },
+  {
+    "id": "not_helped_blunt",
+    "message": "Non mais la tu m'aides pas. Tu repetes juste le flou.",
+    "recentHistory": [
+      {
+        "role": "user",
+        "content": "Je me sens bizarre depuis que j'ai dit oui a ce truc au boulot."
+      },
+      {
+        "role": "assistant",
+        "content": "Il y a peut-etre un decalage entre ce oui et quelque chose en toi."
+      }
+    ],
+    "memory": "Depuis avoir accepte quelque chose au travail, il se sent bizarre et coince.",
+    "flags": {},
+    "expect": {
+      "status": 200,
+      "modeChip": "EXPLORATION",
+      "maxReplyChars": 500,
+      "maxParagraphs": 2,
+      "needsSoberReadjustment": true,
+      "rewriteSource": "sober_readjustment"
+    }
+  },
+  {
+    "id": "interpretation_rejection_plain",
+    "message": "Non, ce n'est pas ca du tout. Tu interpretes trop.",
+    "recentHistory": [
+      {
+        "role": "user",
+        "content": "J'ai du mal a penser a cette scene."
+      },
+      {
+        "role": "assistant",
+        "content": "On dirait peut-etre surtout de la honte."
+      }
+    ],
+    "memory": "Une scene recente reste difficile a penser.",
+    "flags": {},
+    "expect": {
+      "status": 200,
+      "topChipsInclude": [
+        "EXPLORATION",
+        "Rejet d'interprétation"
+      ],
+      "maxReplyChars": 400,
+      "maxParagraphs": 1,
+      "interpretationRejection": true,
+      "needsSoberReadjustment": true,
+      "rewriteSource": "interpretation_rejection"
+    }
+  },
+  {
+    "id": "contact_request_short_presence",
+    "message": "Tu peux juste rester avec moi deux minutes sans analyser ?",
+    "recentHistory": [],
+    "memory": "",
+    "flags": {},
+    "expect": {
+      "status": 200,
+      "modeChip": "EXPLORATION",
+      "maxReplyChars": 120,
+      "maxParagraphs": 1,
       "noQuestionEnding": true,
       "needsSoberReadjustment": true,
       "rewriteSource": "sober_readjustment"
+    }
+  },
+  {
+    "id": "info_app_privacy",
+    "message": "Si je cree un compte, est-ce que mes anciennes conversations restent visibles ?",
+    "recentHistory": [],
+    "memory": "",
+    "flags": {},
+    "expect": {
+      "status": 200,
+      "modeChip": "INFO APP",
+      "infoSubmode": "app",
+      "maxReplyChars": 1400,
+      "maxParagraphs": 4,
+      "needsSoberReadjustment": false
+    }
+  },
+  {
+    "id": "directivity_sober_no_question",
+    "message": "Franchement je tourne encore autour. Je n'arrive pas a aller plus loin.",
+    "recentHistory": [
+      {
+        "role": "user",
+        "content": "Il y a un truc qui coince depuis que j'ai accepte ca."
+      },
+      {
+        "role": "assistant",
+        "content": "Quelque chose n'a pas suivi en toi."
+      },
+      {
+        "role": "user",
+        "content": "Oui mais je vois pas quoi."
+      },
+      {
+        "role": "assistant",
+        "content": "On peut rester au plus pres de ce flottement."
+      },
+      {
+        "role": "user",
+        "content": "Toujours rien."
+      },
+      {
+        "role": "assistant",
+        "content": "Qu'est-ce qui te vient si tu te rapproches encore un peu de ce moment ?"
+      }
+    ],
+    "memory": "Il tourne autour d'un blocage sans arriver a le nommer.",
+    "flags": {
+      "explorationRelanceWindow": [true, true, true, true],
+      "explorationDirectivityLevel": 4,
+      "explorationCalibrationLevel": 3
+    },
+    "expect": {
+      "status": 200,
+      "modeChip": "EXPLORATION",
+      "maxReplyChars": 320,
+      "maxParagraphs": 1,
+      "needsSoberReadjustment": true,
+      "rewriteSource": "sober_readjustment"
+    }
+  },
+  {
+    "id": "memory_illegitimacy",
+    "message": "J'ai presque honte d'en faire tout un truc alors que c'est peut-etre rien.",
+    "recentHistory": [
+      {
+        "role": "user",
+        "content": "Depuis que j'ai accepte ce truc au boulot, je me sens serre."
+      },
+      {
+        "role": "assistant",
+        "content": "Quelque chose en toi ne s'y retrouve pas vraiment."
+      }
+    ],
+    "memory": "Depuis avoir accepte quelque chose au travail, il se sent serre et coince.",
+    "flags": {},
+    "expect": {
+      "status": 200,
+      "modeChip": "EXPLORATION",
+      "maxReplyChars": 700,
+      "maxParagraphs": 2
+    }
+  },
+  {
+    "id": "memory_not_helped_persistence",
+    "message": "Oui mais la encore j'ai surtout l'impression que tu m'aides pas vraiment.",
+    "recentHistory": [
+      {
+        "role": "user",
+        "content": "Je tourne autour de ce truc depuis un moment."
+      },
+      {
+        "role": "assistant",
+        "content": "Il y a peut-etre un conflit en toi."
+      }
+    ],
+    "memory": "Il tourne autour d'un malaise persistant sans parvenir a l'eclaircir.",
+    "flags": {},
+    "expect": {
+      "status": 200,
+      "modeChip": "EXPLORATION",
+      "maxReplyChars": 500,
+      "maxParagraphs": 2,
+      "needsSoberReadjustment": true,
+      "rewriteSource": "sober_readjustment"
+    }
+  },
+  {
+    "id": "memory_approach_feelings",
+    "message": "A chaque fois que j'essaie de dire ce que je ressens, ca se brouille direct.",
+    "recentHistory": [
+      {
+        "role": "user",
+        "content": "Il y a un truc qui coince depuis cette discussion."
+      },
+      {
+        "role": "assistant",
+        "content": "On dirait que ca reste tres difficile a approcher."
+      }
+    ],
+    "memory": "Une discussion recente laisse un blocage difficile a clarifier.",
+    "flags": {},
+    "expect": {
+      "status": 200,
+      "modeChip": "EXPLORATION",
+      "maxReplyChars": 380,
+      "maxParagraphs": 1,
+      "needsSoberReadjustment": true,
+      "rewriteSource": "sober_readjustment"
+    }
+  },
+  {
+    "id": "mode_contact_after_meta_request",
+    "message": "J'ai pas besoin d'analyse la, juste que tu sois avec moi.",
+    "recentHistory": [
+      {
+        "role": "user",
+        "content": "Je me sens au bord de craquer ce soir."
+      }
+    ],
+    "memory": "Soiree difficile avec besoin de soutien simple.",
+    "flags": {},
+    "expect": {
+      "status": 200,
+      "modeChip": "EXPLORATION",
+      "maxReplyChars": 120,
+      "maxParagraphs": 2,
+      "needsSoberReadjustment": true,
+      "rewriteSource": "sober_readjustment"
+    }
+  },
+  {
+    "id": "mode_info_pure_alt",
+    "message": "Tu peux m'expliquer ce qu'est une croyance limitante ?",
+    "recentHistory": [],
+    "memory": "",
+    "flags": {},
+    "expect": {
+      "status": 200,
+      "modeChip": "INFO PURE",
+      "infoSubmode": "pure",
+      "maxReplyChars": 1800,
+      "maxParagraphs": 6,
+      "needsSoberReadjustment": false
+    }
+  },
+  {
+    "id": "mode_info_app_export",
+    "message": "Est-ce qu'on peut exporter ses conversations ?",
+    "recentHistory": [],
+    "memory": "",
+    "flags": {},
+    "expect": {
+      "status": 200,
+      "modeChip": "INFO APP",
+      "infoSubmode": "app",
+      "maxReplyChars": 900,
+      "maxParagraphs": 4,
+      "needsSoberReadjustment": false
     }
   }
 ]
