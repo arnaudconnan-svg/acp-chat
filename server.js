@@ -26,9 +26,8 @@ const db = admin.database();
 const messagesRef = db.ref("messages");
 const userLabelsRef = db.ref("userLabels");
 const usersRef = db.ref("users");
-// Keep legacy Firebase node names for compatibility with existing data.
-const branchRecordsRef = db.ref("premiumBranches");
-const branchSeedSnapshotsRef = db.ref("premiumBranchSeeds");
+const branchRecordsRef = db.ref("branches");
+const branchSeedSnapshotsRef = db.ref("branchSeeds");
 const crypto = require("crypto");
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 const SESSION_SECRET = process.env.SESSION_SECRET;
