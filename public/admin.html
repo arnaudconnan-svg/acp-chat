@@ -38,14 +38,23 @@
       top: 0;
       z-index: 20;
       background: #d7e4e3;
-      padding: 8px 0 12px;
+      padding: 6px 0 8px;
+    }
+
+    .topbar-head {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 40px;
     }
     
     h1 {
-      font-size: 28px;
+      font-size: 20px;
       line-height: 1.15;
-      margin: 0 0 12px;
+      margin: 0;
       color: #1f3f44;
+      text-align: center;
     }
     
     #backBtn {
@@ -87,10 +96,21 @@
     .message-row .item {
       cursor: default;
       box-shadow: none;
+      -webkit-tap-highlight-color: transparent;
     }
     
     .message-row .item:hover {
       background: inherit;
+    }
+
+    .message-row .role-user:hover,
+    .message-row .role-user:active {
+      background: #4a7478;
+    }
+
+    .message-row .role-assistant:hover,
+    .message-row .role-assistant:active {
+      background: white;
     }
     
     .meta {
@@ -174,23 +194,37 @@
       background: #f7fbfa;
       border: 1px solid #d6e2e1;
       border-radius: 16px;
-      padding: 14px;
+      padding: 12px;
       box-shadow: 0 4px 14px rgba(43, 79, 82, 0.08);
+      display: flex;
+      align-items: stretch;
+      gap: 10px;
     }
 
     .branch-panel-title {
-      font-size: 14px;
+      font-size: 12px;
       font-weight: 700;
       color: #1f3f44;
-      margin-bottom: 10px;
+      margin: 0;
       text-transform: uppercase;
       letter-spacing: 0.04em;
+      writing-mode: vertical-rl;
+      transform: rotate(180deg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex: 0 0 18px;
+    }
+
+    .branch-panel-body {
+      flex: 1;
+      min-width: 0;
     }
 
     .branch-node {
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 8px;
     }
 
     .branch-card {
@@ -198,6 +232,11 @@
       border: 1px solid #d6e2e1;
       border-radius: 14px;
       padding: 12px;
+      min-width: 0;
+    }
+
+    .branch-card.clickable {
+      cursor: pointer;
     }
 
     .branch-card.current {
@@ -210,14 +249,38 @@
       display: flex;
       align-items: center;
       gap: 8px;
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
+      justify-content: space-between;
       margin-bottom: 6px;
+      min-width: 0;
     }
 
     .branch-card-title {
       font-size: 14px;
       font-weight: 700;
       color: #1f2937;
+      min-width: 0;
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .branch-card-subtitle {
+      font-size: 13px;
+      color: #4b6366;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 4px;
+    }
+
+    .branch-card-chips {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      flex: 0 0 auto;
     }
 
     .branch-badge {
@@ -237,35 +300,71 @@
       font-size: 12px;
       line-height: 1.45;
       color: #6b7280;
-    }
-
-    .branch-open-btn {
-      margin-top: 8px;
-      min-height: 34px;
-      border: 1px solid #cfd8db;
-      border-radius: 10px;
-      background: white;
-      color: #245e66;
-      font-size: 13px;
-      font-weight: 600;
-      padding: 0 10px;
-      cursor: pointer;
+      word-break: break-word;
     }
 
     .branch-children {
-      margin-left: 18px;
-      padding-left: 14px;
-      border-left: 2px solid rgba(36, 94, 102, 0.15);
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 8px;
+    }
+
+    .branch-child-row {
+      display: flex;
+      align-items: stretch;
+      gap: 8px;
+      min-width: 0;
     }
 
     .branch-edge {
-      font-size: 12px;
-      line-height: 1.4;
+      font-size: 11px;
+      line-height: 1.1;
       color: #5f6f73;
-      font-weight: 600;
+      font-weight: 700;
+      writing-mode: vertical-rl;
+      transform: rotate(180deg);
+      text-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex: 0 0 18px;
+      padding: 2px 0;
+    }
+
+    .branch-child-content {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding-left: 8px;
+      border-left: 2px solid rgba(36, 94, 102, 0.15);
+    }
+
+    .debug-toggle-btn {
+      position: absolute;
+      right: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 38px;
+      height: 38px;
+      border-radius: 999px;
+      border: 1px solid #b9cdd0;
+      background: #ffffff;
+      color: #245e66;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 10px rgba(43, 79, 82, 0.1);
+    }
+
+    .debug-toggle-btn.active {
+      background: #4a7478;
+      border-color: #4a7478;
+      color: #ffffff;
     }
     
     @media (max-width: 640px) {
@@ -275,7 +374,7 @@
       }
       
       h1 {
-        font-size: 24px;
+        font-size: 18px;
       }
       
       .item {
@@ -294,6 +393,16 @@
       .message-row .item {
         max-width: 88% !important;
       }
+
+      .branch-panel {
+        gap: 8px;
+      }
+
+      .branch-panel-title,
+      .branch-edge {
+        flex-basis: 16px;
+        font-size: 10px;
+      }
     }
   </style>
 </head>
@@ -302,25 +411,15 @@
   
   <div id="app">
     <div class="topbar">
-      
-      <h1>Conversations</h1>
-      
-      <button id="backBtn" onclick="goBack()" style="display:none;">
-        ← Retour
-      </button>
-      
-      <div id="conversationMeta" class="meta" style="display:none;"></div>
-      <div id="branchTreeWrap" style="display:none; margin-top:10px;"></div>
-      
-      <div id="debugToolbar" style="display:none; gap:8px; margin-top:8px;">
-        <button id="expandAllDebugBtn" type="button" style="flex:1; min-height:44px; border:1px solid #cfd8db; border-radius:12px; background:white; color:#245e66; font-size:15px; font-weight:600; cursor:pointer;">
-          Tout déplier
-        </button>
-        <button id="collapseAllDebugBtn" type="button" style="flex:1; min-height:44px; border:1px solid #cfd8db; border-radius:12px; background:white; color:#245e66; font-size:15px; font-weight:600; cursor:pointer;">
-          Tout replier
+      <div class="topbar-head">
+        <h1>Conversations</h1>
+        <button id="debugToggleBtn" class="debug-toggle-btn" type="button" aria-label="Basculer les panneaux Debug">
+          Debug
         </button>
       </div>
       
+      <div id="conversationMeta" class="meta" style="display:none;"></div>
+      <div id="branchTreeWrap" style="display:none; margin-top:10px;"></div>
     </div>
     
     <div id="list">Chargement...</div>
@@ -330,10 +429,6 @@
     function getConversationIdFromUrl() {
       const params = new URLSearchParams(window.location.search);
       return params.get("c");
-    }
-    
-    function goBack() {
-      window.location.href = "/admin.html";
     }
     
     function setupRootBackToIndex() {
@@ -557,6 +652,12 @@
       const currentConversationId = String(data?.currentConversationId || "").trim();
 
       wrap.innerHTML = "";
+
+      if (!rootConversationId || branches.length === 0) {
+        wrap.style.display = "none";
+        return;
+      }
+
       wrap.style.display = "block";
 
       const panel = document.createElement("div");
@@ -567,14 +668,9 @@
       title.textContent = "Arborescence des branches";
       panel.appendChild(title);
 
-      if (!rootConversationId || branches.length === 0) {
-        const empty = document.createElement("div");
-        empty.className = "branch-card-meta";
-        empty.textContent = "Aucune branche rattachee a cette conversation.";
-        panel.appendChild(empty);
-        wrap.appendChild(panel);
-        return;
-      }
+      const panelBody = document.createElement("div");
+      panelBody.className = "branch-panel-body";
+      panel.appendChild(panelBody);
 
       const conversationsById = new Map(
         conversations.map(item => [String(item?.id || "").trim(), item])
@@ -594,7 +690,15 @@
         childrenBySource.get(sourceConversationId).push(branch);
       });
 
-      function renderNode(conversationId, lineage = new Set()) {
+      function openAdminConversation(conversationId) {
+        const safeConversationId = String(conversationId || "").trim();
+        if (!safeConversationId) {
+          return;
+        }
+        window.location.href = "/admin.html?c=" + encodeURIComponent(safeConversationId);
+      }
+
+      function renderNode(conversationId, lineage = new Set(), branchLabel = "") {
         const safeConversationId = String(conversationId || "").trim();
         const node = document.createElement("div");
         node.className = "branch-node";
@@ -606,27 +710,36 @@
         const conversation = conversationsById.get(safeConversationId) || {};
         const card = document.createElement("div");
         card.className = "branch-card" + (safeConversationId === currentConversationId ? " current" : "");
+        card.className += " clickable";
+        card.onclick = () => openAdminConversation(safeConversationId);
 
         const header = document.createElement("div");
         header.className = "branch-card-header";
 
         const cardTitle = document.createElement("div");
         cardTitle.className = "branch-card-title";
-        cardTitle.textContent = String(conversation?.title || safeConversationId || "Conversation");
+        cardTitle.textContent = branchLabel || String(conversation?.title || safeConversationId || "Conversation");
         header.appendChild(cardTitle);
+
+        const chips = document.createElement("div");
+        chips.className = "branch-card-chips";
 
         if (safeConversationId === rootConversationId) {
           const rootBadge = document.createElement("span");
           rootBadge.className = "branch-badge";
           rootBadge.textContent = "Tronc";
-          header.appendChild(rootBadge);
+          chips.appendChild(rootBadge);
         }
 
         if (safeConversationId === currentConversationId) {
           const currentBadge = document.createElement("span");
           currentBadge.className = "branch-badge";
           currentBadge.textContent = "Courante";
-          header.appendChild(currentBadge);
+          chips.appendChild(currentBadge);
+        }
+
+        if (chips.childNodes.length) {
+          header.appendChild(chips);
         }
 
         card.appendChild(header);
@@ -639,17 +752,6 @@
           `Maj ${formatAdminDate(conversation?.updatedAt || conversation?.createdAt)}`
         ].join(" • ");
         card.appendChild(meta);
-
-        if (safeConversationId !== currentConversationId) {
-          const openBtn = document.createElement("button");
-          openBtn.type = "button";
-          openBtn.className = "branch-open-btn";
-          openBtn.textContent = "Ouvrir cette branche";
-          openBtn.onclick = () => {
-            window.location.href = "/admin.html?c=" + encodeURIComponent(safeConversationId);
-          };
-          card.appendChild(openBtn);
-        }
 
         node.appendChild(card);
 
@@ -671,24 +773,34 @@
         const childrenWrap = document.createElement("div");
         childrenWrap.className = "branch-children";
 
-        childBranches.forEach(branch => {
+        childBranches.forEach((branch, index) => {
+          const row = document.createElement("div");
+          row.className = "branch-child-row";
+
           const branchEdge = document.createElement("div");
           branchEdge.className = "branch-edge";
-          branchEdge.textContent = [
-            "Bifurcation",
-            `${Number(branch?.seedMessageCount || 0)} messages seed`,
-            formatAdminDate(branch?.createdAt)
-          ].join(" • ");
+          branchEdge.textContent = "Branche";
 
-          childrenWrap.appendChild(branchEdge);
-          childrenWrap.appendChild(renderNode(String(branch?.branchConversationId || "").trim(), nextLineage));
+          const childContent = document.createElement("div");
+          childContent.className = "branch-child-content";
+          childContent.appendChild(
+            renderNode(
+              String(branch?.branchConversationId || "").trim(),
+              nextLineage,
+              `Branche ${index + 1}`
+            )
+          );
+
+          row.appendChild(branchEdge);
+          row.appendChild(childContent);
+          childrenWrap.appendChild(row);
         });
 
         node.appendChild(childrenWrap);
         return node;
       }
 
-      panel.appendChild(renderNode(rootConversationId));
+      panelBody.appendChild(renderNode(rootConversationId));
       wrap.appendChild(panel);
     }
 
@@ -720,9 +832,11 @@
     
     async function loadConversations() {
       const list = document.getElementById("list");
-      const debugToolbar = document.getElementById("debugToolbar");
-      if (debugToolbar) {
-        debugToolbar.style.display = "none";
+      const debugToggleBtn = document.getElementById("debugToggleBtn");
+      if (debugToggleBtn) {
+        debugToggleBtn.style.display = "none";
+        debugToggleBtn.classList.remove("active");
+        debugToggleBtn.onclick = null;
       }
 
       hideBranchTree();
@@ -836,13 +950,13 @@
     
     async function loadMessages(conversationId) {
       const list = document.getElementById("list");
-      const debugToolbar = document.getElementById("debugToolbar");
-      const expandAllDebugBtn = document.getElementById("expandAllDebugBtn");
-      const collapseAllDebugBtn = document.getElementById("collapseAllDebugBtn");
+      const debugToggleBtn = document.getElementById("debugToggleBtn");
       const branchTreePromise = loadBranchTree(conversationId);
-      
-      if (debugToolbar) {
-        debugToolbar.style.display = "none";
+
+      if (debugToggleBtn) {
+        debugToggleBtn.style.display = "none";
+        debugToggleBtn.classList.remove("active");
+        debugToggleBtn.onclick = null;
       }
       
       list.textContent = "Chargement des messages...";
@@ -1214,27 +1328,15 @@
           const variants = buildAssistantVariants(msg);
           return variants.some(variant => buildDebugSections(variant.debug, variant.debugMeta).length > 0);
         });
-        
-        if (debugToolbar && expandAllDebugBtn && collapseAllDebugBtn) {
-          if (hasAnyAssistantDebug) {
-            debugToolbar.style.display = "flex";
-            
-            expandAllDebugBtn.onclick = () => {
-              list.querySelectorAll(".admin-debug-details").forEach(el => {
-                el.open = true;
-              });
-            };
-            
-            collapseAllDebugBtn.onclick = () => {
-              list.querySelectorAll(".admin-debug-details").forEach(el => {
-                el.open = false;
-              });
-            };
-          } else {
-            debugToolbar.style.display = "none";
-            expandAllDebugBtn.onclick = null;
-            collapseAllDebugBtn.onclick = null;
+
+        function updateDebugToggleButtonState() {
+          if (!debugToggleBtn) {
+            return;
           }
+
+          const debugPanels = Array.from(list.querySelectorAll(".admin-debug-details"));
+          const allOpen = debugPanels.length > 0 && debugPanels.every(el => el.open === true);
+          debugToggleBtn.classList.toggle("active", allOpen);
         }
         
         data.forEach(msg => {
@@ -1321,6 +1423,33 @@
           wrapper.appendChild(card);
           list.appendChild(wrapper);
         });
+
+        if (debugToggleBtn) {
+          if (hasAnyAssistantDebug) {
+            debugToggleBtn.style.display = "inline-flex";
+            debugToggleBtn.onclick = () => {
+              const debugPanels = Array.from(list.querySelectorAll(".admin-debug-details"));
+              if (!debugPanels.length) {
+                return;
+              }
+
+              const shouldOpen = !debugPanels.every(el => el.open === true);
+              debugPanels.forEach(el => {
+                el.open = shouldOpen;
+              });
+              updateDebugToggleButtonState();
+            };
+
+            list.querySelectorAll(".admin-debug-details").forEach(el => {
+              el.addEventListener("toggle", updateDebugToggleButtonState);
+            });
+            updateDebugToggleButtonState();
+          } else {
+            debugToggleBtn.style.display = "none";
+            debugToggleBtn.classList.remove("active");
+            debugToggleBtn.onclick = null;
+          }
+        }
 
         await branchTreePromise;
         
@@ -1476,19 +1605,16 @@
       }
       
       const conversationId = getConversationIdFromUrl();
-      const backBtn = document.getElementById("backBtn");
       const conversationMeta = document.getElementById("conversationMeta");
       const title = document.querySelector("h1");
       
       if (conversationId) {
         title.textContent = "Messages";
-        backBtn.style.display = "block";
-        conversationMeta.style.display = "block";
-        conversationMeta.textContent = "Conversation : " + conversationId;
+        conversationMeta.style.display = "none";
+        conversationMeta.textContent = "";
         await loadMessages(conversationId);
       } else {
         title.textContent = "Conversations";
-        backBtn.style.display = "none";
         conversationMeta.style.display = "none";
         conversationMeta.textContent = "";
         await loadConversations();

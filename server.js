@@ -1237,14 +1237,16 @@ Regles :
 - ne sur-interprete pas
 - base-toi d'abord sur le message actuel, puis sur le contexte recent si necessaire
 - sois restrictif : en cas de doute, reponds false
+- si l'utilisateur parle explicitement de l'app, de l'outil, de l'approche, de ce qu'elle fait, de ce qu'elle encourage, de ce qu'elle refuse, ou compare son fonctionnement a une autre approche, reponds true
 
 Important :
 - une demande de comprehension de soi n'est pas une demande d'information
 - une question portant sur sa propre experience doit etre classee en exploration
 - la forme interrogative ne suffit pas a classer en info
 - des formulations comme "j'ai besoin de comprendre", "je veux comprendre ce qui se passe", "qu'est-ce qui m'arrive", "comment comprendre ce que je vis" doivent etre classees false si elles portent sur l'experience de l'utilisateur
-  - la presence d'un terme conceptuel ou theorique (ex : inconscient, dissociation, anxiete, trauma) ne suffit jamais a elle seule a classer en info
-  - si le message parle explicitement de l'experience propre de l'utilisateur (ex : mon inconscient, ma dissociation, ce qui se passe chez moi, ce que je vis), reponds false
+- la presence d'un terme conceptuel ou theorique (ex : inconscient, dissociation, anxiete, trauma) ne suffit jamais a elle seule a classer en info
+- si le message parle explicitement de l'experience propre de l'utilisateur (ex : mon inconscient, ma dissociation, ce qui se passe chez moi, ce que je vis), reponds false
+- si le message mentionne l'app tout en parlant surtout du vécu propre de l'utilisateur, privilegie false
 
 Exemples a classer false :
 - "Je crois que j'ai besoin de comprendre ce qui se passe"
@@ -1261,6 +1263,7 @@ Exemples a classer true :
 - "Quelle est la difference entre angoisse et anxiete ?"
 - "Comment fonctionne une crise d'angoisse ?"
 - "Qu'est-ce qu'une croyance limitante ?"
+- "Comment ton app se situe-t-elle par rapport a l'ACP ?"
 
 Si l’utilisateur parle en tant que professionnel (ex : “je suis thérapeute”, “dans ma pratique”, “avec les personnes que j’accompagne”) et pose une question sur le fonctionnement de l’outil, alors c’est une demande d’information.
 
@@ -1279,28 +1282,37 @@ Reponds STRICTEMENT en JSON :
 }
 
 Definitions :
-- pure : information libre, factuelle, theorique, historique, scientifique ou conceptuelle, sans besoin de defendre l'app ni de centrer activement la reponse sur son modele
-- app : information sur l'outil, son fonctionnement, sa logique relationnelle, son approche, ses choix, ses differences avec d'autres approches, ou question comparative sur ce que fait l'app
+- pure : information descriptive relevant clairement du champ de la psyché, des relations humaines, des représentations, des cadres sociaux et culturels du vécu, ou des questions de sens, sans besoin de défendre l'app ni de centrer activement la réponse sur son modèle
+- app : information sur l'outil, son fonctionnement, sa logique relationnelle, son approche, ses choix, ses différences avec d'autres approches, ou toute demande qui n'entre pas clairement dans le champ strict de pure
 
 Regles :
-- choisis app seulement si la question porte principalement sur l'app, son approche, son cadre, son positionnement ou sa comparaison a d'autres approches
-- choisis pure si l'utilisateur demande surtout une information en elle-meme, meme si cette information peut toucher a des sujets proches du modele
+- le sous-mode pure est strictement borne : il couvre seulement la psychologie non psychopathologisante, les sciences cognitives, les neurosciences descriptives, la philosophie, la spiritualite, la sociologie, l'anthropologie, la phenomenologie, la psychologie sociale et les questions de sens
+- toute question de psychopathologie, de categorie clinique, de symptome, de trouble, d'etiquette diagnostique ou de fonctionnement potentiellement lu comme pathologique doit basculer vers app
+- toute question sur la honte ou sur la difference entre honte et culpabilite doit basculer vers app
+- toute question clairement hors du champ strict de pure (culture generale, trivia, science generale, geographie, technique, actualite, etc.) doit basculer vers app
+- toute question ambigue doit basculer vers app
 - si l'utilisateur demande ce que fait l'app, ce qu'elle encourage, ce qu'elle refuse, comment elle se situe, ou si son approche est compatible avec une autre, reponds app
-- si l'utilisateur demande une explication generale, un mecanisme, une definition, une difference ou une information scientifique, reponds pure
+- si l'utilisateur demande une explication generale, un mecanisme, une definition, une difference ou une information descriptive ET que le sujet entre clairement dans le champ strict de pure, reponds pure
   - si le message parle d'abord de l'experience propre de l'utilisateur, ne choisis pas app ; ce cas devrait deja avoir ete filtre en amont comme exploration
-- en cas de doute, reponds pure
+- en cas de doute, reponds app
 
 Exemples a classer pure :
-- "Qu'est-ce qu'une crise d'angoisse ?"
-- "Comment fonctionne la dissociation ?"
-- "Quelle difference entre peur et anxiete ?"
 - "Que se passe-t-il dans le cerveau quand on pleure ?"
+- "Qu'est-ce qu'une norme sociale ?"
+- "Que veut dire l'absurde chez Camus ?"
+- "Pourquoi les humains ont-ils des rituels ?"
 
 Exemples a classer app :
 - "Comment fonctionne ton approche ?"
 - "Est-ce que ton app cherche a faire accepter les emotions ?"
 - "Comment tu te situes par rapport a l'ACP ?"
 - "Pourquoi ton outil ne parle pas d'inconscient ?"
+- "Qu'est-ce que l'anxiete ?"
+- "Comment fonctionne la dissociation ?"
+- "Quelle difference entre peur et anxiete ?"
+- "Qu'est-ce que la honte ?"
+- "Quelle difference entre honte et culpabilite ?"
+- "Quel est le nom de la femelle du capybara ?"
 
 Reponds uniquement par le JSON.
 `,
@@ -1311,6 +1323,7 @@ Mode INFORMATION PURE.
 Tu reponds a une demande d'information sans chercher a defendre l'app ni a imposer son modele comme grille centrale.
 
 Contraintes :
+- ce sous-mode est strictement reserve aux demandes descriptives qui relevent clairement du champ de la psyché, des relations, des représentations, des cadres sociaux et culturels du vécu, et des questions de sens
 - reponds d'abord a l'information demandee
 - tu peux garder discretement une qualite relationnelle coherente avec l'app, mais sans recentrer la reponse sur son fonctionnement
 - n'introduis pas spontanement des comparaisons avec d'autres approches
@@ -1333,6 +1346,10 @@ Mode INFORMATION.
 Tu penses et reponds depuis le modele, sans jamais le presenter comme un cadre ou un point de vue.
 
 Contraintes :
+- ce sous-mode recoit aussi par routage toutes les demandes d'information qui ne relevent pas clairement du champ strict de INFORMATION PURE
+- si la demande est hors champ (culture generale, trivia, geographie, technique, actualite, science generale non liee a l'experience humaine, etc.), tu ne reponds pas au contenu demande comme une encyclopedie
+- dans ce cas, tu poses brievement la limite de perimetre en une ou deux phrases sobres, puis tu peux proposer seulement si c'est naturel un recentrage vers l'experience humaine, relationnelle, sociale ou existentielle
+- tu ne dois pas transformer une demande hors champ en cours generaliste
 - Tu dois utiliser activement ce modele pour structurer ta reponse
 - Tu dois rendre visibles certains elements du modele (concepts, liens, mecanismes)
 - Tu ne dois pas reciter le modele ni faire un cours complet.
@@ -1432,6 +1449,8 @@ Exemples de formes attendues:
 
 La normalisation n’est pas optionnelle :
   elle est prioritaire sur toute explication theorique
+- lorsque la demande touche a des categories cliniques, a la psychopathologie ou a des etiquettes diagnostiques, integre discretement dans la reponse qu'il s'agit de categories utiles dans certains contextes medicaux, administratifs ou judiciaires, sans en faire des verites absolues sur une personne
+- tu dois eviter toute psychopathologisation de la relation d'aide et toute reification d'une personne dans une etiquette
 
 Priorites (non negociables si pertinentes dans la situation) :
 - ce qui a ete vecu comme inacceptable sur le moment comme pivot explicatif central quand la situation implique rejet de soi, blocage, frustration, sentiment d'echec ou insuffisance
@@ -2691,47 +2710,6 @@ function acuteCrisisFollowupResponse() {
 // 3) ANALYSE INFO + CONTACT + RECALL + CONFLIT MODELE + RELANCE
 // --------------------------------------------------
 
-function normalizeInfoRoutingText(text = "") {
-  return String(text || "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase();
-}
-
-function hasAppInfoCue(message = "") {
-  const text = normalizeInfoRoutingText(message);
-
-  return [
-    /\bton app\b/,
-    /\bton outil\b/,
-    /\bton approche\b/,
-    /\bton modele\b/,
-    /\btu te situes\b/,
-    /\best-ce que ton\b/,
-    /\bcomment tu te situes\b/,
-    /\bpourquoi ton\b/,
-    /\bce que fait ton outil\b/,
-    /\bce que fait ton app\b/
-  ].some(pattern => pattern.test(text));
-}
-
-function hasSelfExplorationCue(message = "") {
-  const text = normalizeInfoRoutingText(message);
-
-  return [
-    /\bmon inconscient\b/,
-    /\bma dissociation\b/,
-    /\bmon angoisse\b/,
-    /\bmon anxiete\b/,
-    /\bmon comportement\b/,
-    /\bce qui m'arrive\b/,
-    /\bce qu[ei] je vis\b/,
-    /\bce qui se passe chez moi\b/,
-    /\ben moi\b/,
-    /\bchez moi\b/
-  ].some(pattern => pattern.test(text));
-}
-
 // Detect whether the user is asking an information request.
 async function llmInfoAnalysis(message = "", history = [], promptRegistry = buildDefaultPromptRegistry()) {
   const context = trimInfoAnalysisHistory(history);
@@ -2764,24 +2742,10 @@ async function llmInfoAnalysis(message = "", history = [], promptRegistry = buil
 }
 
 async function analyzeInfoRequest(message = "", history = [], promptRegistry = buildDefaultPromptRegistry()) {
-  if (hasSelfExplorationCue(message) && !hasAppInfoCue(message)) {
-    return {
-      isInfoRequest: false,
-      source: "self_reference_guard"
-    };
-  }
-
   return await llmInfoAnalysis(message, history, promptRegistry);
 }
 
 async function analyzeInfoSubmode(message = "", history = [], promptRegistry = buildDefaultPromptRegistry()) {
-  if (hasAppInfoCue(message)) {
-    return {
-      infoSubmode: "app",
-      source: "app_routing_guard"
-    };
-  }
-
   const context = trimInfoAnalysisHistory(history);
 
   const r = await client.chat.completions.create({
@@ -2805,7 +2769,7 @@ async function analyzeInfoSubmode(message = "", history = [], promptRegistry = b
     };
   } catch {
     return {
-      infoSubmode: "pure",
+      infoSubmode: "app",
       source: "llm_fallback"
     };
   }
@@ -4171,7 +4135,17 @@ app.get("/api/account/conversations", requireUserAuth, async (req, res) => {
     const raw = snapshot.val() || {};
 
     const conversations = Object.entries(raw)
-      .filter(([, value]) => String(value?.userId || "") === session.userId)
+      .filter(([, value]) => {
+        if (String(value?.userId || "") !== session.userId) {
+          return false;
+        }
+
+        if (typeof value?.deletedAt === "string" && value.deletedAt.trim()) {
+          return false;
+        }
+
+        return true;
+      })
       .map(([id, value]) => ({
         id,
         title: typeof value?.title === "string" ? value.title : null,
@@ -4203,6 +4177,10 @@ app.get("/api/account/conversations/:id", requireUserAuth, async (req, res) => {
     const conversation = convSnap.val();
 
     if (!conversation || typeof conversation !== "object") {
+      return res.status(404).json({ error: "Conversation introuvable" });
+    }
+
+    if (typeof conversation.deletedAt === "string" && conversation.deletedAt.trim()) {
       return res.status(404).json({ error: "Conversation introuvable" });
     }
 
@@ -4242,6 +4220,108 @@ app.get("/api/account/conversations/:id", requireUserAuth, async (req, res) => {
   } catch (err) {
     console.error("Erreur /api/account/conversations/:id:", err.message);
     return res.status(500).json({ error: "Conversation fetch failed" });
+  }
+});
+
+app.patch("/api/account/conversations/:id", requireUserAuth, async (req, res) => {
+  try {
+    const session = req.userSession;
+    const conversationId = String(req.params?.id || "").trim();
+
+    if (!conversationId) {
+      return res.status(400).json({ error: "Conversation invalide" });
+    }
+
+    if (!req.body || typeof req.body !== "object" || Array.isArray(req.body)) {
+      return res.status(400).json({ error: "Invalid conversation update request" });
+    }
+
+    const hasTitleField = Object.prototype.hasOwnProperty.call(req.body, "title");
+    if (!hasTitleField) {
+      return res.status(400).json({ error: "Missing title field" });
+    }
+
+    const rawTitle = req.body.title;
+    if (rawTitle !== null && typeof rawTitle !== "string") {
+      return res.status(400).json({ error: "Invalid title value" });
+    }
+
+    const convRef = db.ref("conversations").child(conversationId);
+    const convSnap = await convRef.once("value");
+    const conversation = convSnap.val();
+
+    if (!conversation || typeof conversation !== "object") {
+      return res.status(404).json({ error: "Conversation introuvable" });
+    }
+
+    if (typeof conversation.deletedAt === "string" && conversation.deletedAt.trim()) {
+      return res.status(404).json({ error: "Conversation introuvable" });
+    }
+
+    if (String(conversation.userId || "") !== session.userId) {
+      return res.status(403).json({ error: "Conversation ownership mismatch" });
+    }
+
+    const normalizedTitle = typeof rawTitle === "string" ? rawTitle.trim().slice(0, 60) : "";
+    const now = new Date().toISOString();
+
+    await convRef.update({
+      title: normalizedTitle || null,
+      titleLocked: normalizedTitle.length > 0,
+      updatedAt: now
+    });
+
+    return res.json({
+      success: true,
+      conversation: {
+        id: conversationId,
+        title: normalizedTitle || null,
+        titleLocked: normalizedTitle.length > 0,
+        updatedAt: now
+      }
+    });
+  } catch (err) {
+    console.error("Erreur PATCH /api/account/conversations/:id:", err.message);
+    return res.status(500).json({ error: "Conversation update failed" });
+  }
+});
+
+app.delete("/api/account/conversations/:id", requireUserAuth, async (req, res) => {
+  try {
+    const session = req.userSession;
+    const conversationId = String(req.params?.id || "").trim();
+
+    if (!conversationId) {
+      return res.status(400).json({ error: "Conversation invalide" });
+    }
+
+    const convRef = db.ref("conversations").child(conversationId);
+    const convSnap = await convRef.once("value");
+    const conversation = convSnap.val();
+
+    if (!conversation || typeof conversation !== "object") {
+      return res.status(404).json({ error: "Conversation introuvable" });
+    }
+
+    if (typeof conversation.deletedAt === "string" && conversation.deletedAt.trim()) {
+      return res.json({ success: true, alreadyDeleted: true });
+    }
+
+    if (String(conversation.userId || "") !== session.userId) {
+      return res.status(403).json({ error: "Conversation ownership mismatch" });
+    }
+
+    const now = new Date().toISOString();
+
+    await convRef.update({
+      deletedAt: now,
+      updatedAt: now
+    });
+
+    return res.json({ success: true, deletedAt: now });
+  } catch (err) {
+    console.error("Erreur DELETE /api/account/conversations/:id:", err.message);
+    return res.status(500).json({ error: "Conversation delete failed" });
   }
 });
 
