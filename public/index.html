@@ -460,6 +460,37 @@
     #conversationsAccountMenuBtn:hover {
       background: rgba(36, 94, 102, 0.06);
     }
+
+    #chatUndoMenuWrap {
+      position: absolute;
+      right: 18px;
+      top: calc(14px + env(safe-area-inset-top, 0px));
+      pointer-events: auto;
+    }
+
+    #chatUndoMenuBtn {
+      width: 32px;
+      height: 32px;
+      border: none;
+      border-radius: 50%;
+      background: transparent;
+      color: #245e66;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      padding: 0;
+      font-size: 20px;
+      line-height: 1;
+    }
+
+    #chatUndoMenuBtn:hover {
+      background: rgba(36, 94, 102, 0.06);
+    }
+
+    #chatUndoMenuAction.is-disabled {
+      color: #8fa3a6;
+    }
     
     #conversationsBackBtn {
       display: none;
@@ -1585,6 +1616,18 @@
       </button>
       
       <h2>Facilitat.io</h2>
+      <div id="chatUndoMenuWrap" class="conversationMenuWrap">
+        <button id="chatUndoMenuBtn" type="button" aria-label="Options du chat" data-menu-toggle="chat-undo-menu">
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+            <circle cx="12" cy="5" r="1.8" fill="currentColor"></circle>
+            <circle cx="12" cy="12" r="1.8" fill="currentColor"></circle>
+            <circle cx="12" cy="19" r="1.8" fill="currentColor"></circle>
+          </svg>
+        </button>
+        <div id="chatUndoMenu" class="conversationMenuPopover" data-menu="chat-undo-menu">
+          <button id="chatUndoMenuAction" type="button" class="conversationMenuAction is-disabled">Annuler la modification</button>
+        </div>
+      </div>
     </div>
     
     <div id="chat"></div>
@@ -2073,6 +2116,7 @@
     const USER_ID_KEY = "facilitatio_user_id";
     const CONVERSATION_ID_KEY = "facilitatio_conversation_id";
     const CONVERSATIONS_INDEX_KEY = "facilitatio_conversations_index";
+    const EDIT_UNDO_KEY = "facilitatio_last_edit_undo";
     const SESSION_OPENING_GREETING = "Bienvenue dans cette nouvelle session. Que veux-tu explorer aujourd'hui ?";
     const CONVERSATION_OPENING_GREETING = "Bienvenue dans cette nouvelle conversation. Que veux-tu explorer aujourd'hui ?";
     const ACTIVITY_KEY = "facilitatio_last_activity";
@@ -2342,6 +2386,7 @@
     let scrollToBottomBtnEl = null;
     let scrollToBottomBtnVisible = false;
     let scrollToBottomBtnPulseAnim = null;
+    let scrollToBottomBtnHideTimer = null;
     
     function ensureBootOverlay() {
       if (bootOverlayEl) return bootOverlayEl;
@@ -2440,6 +2485,96 @@
           defaultMemory(),
         flags: normalizeStoredFlags(snapshot.flags || {})
       };
+    }
+
+    function readEditUndoPayload() {
+      try {
+        const raw = localStorage.getItem(EDIT_UNDO_KEY);
+        if (!raw) return null;
+
+        const parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed !== "object") return null;
+
+        const conversationId = String(parsed.conversationId || "").trim();
+        const snapshot = parsed.snapshot && typeof parsed.snapshot === "object" ? parsed.snapshot : null;
+        if (!conversationId || !snapshot) return null;
+
+        return {
+          conversationId,
+          snapshot: {
+            messages: Array.isArray(snapshot.messages) ? snapshot.messages : [],
+            memory: typeof snapshot.memory === "string" && snapshot.memory.trim() ? snapshot.memory : defaultMemory(),
+            flags: normalizeStoredFlags(snapshot.flags || {}),
+            updatedAt: Number(snapshot.updatedAt || Date.now())
+          }
+        };
+      } catch {
+        localStorage.removeItem(EDIT_UNDO_KEY);
+        return null;
+      }
+    }
+
+    function canUndoLastEditedMessage() {
+      const payload = readEditUndoPayload();
+      return Boolean(payload && payload.conversationId && payload.conversationId === getConversationId());
+    }
+
+    function refreshChatUndoMenuAction() {
+      const actionBtn = document.getElementById("chatUndoMenuAction");
+      if (!actionBtn) return;
+
+      const enabled = canUndoLastEditedMessage();
+      actionBtn.classList.toggle("is-disabled", !enabled);
+      actionBtn.disabled = !enabled;
+      actionBtn.setAttribute("aria-disabled", enabled ? "false" : "true");
+    }
+
+    function clearEditUndoPayload() {
+      localStorage.removeItem(EDIT_UNDO_KEY);
+      refreshChatUndoMenuAction();
+    }
+
+    function saveEditUndoPayload(conversationId, snapshot) {
+      if (!conversationId || !snapshot || typeof snapshot !== "object") return;
+
+      safeSetLocalStorage(
+        EDIT_UNDO_KEY,
+        JSON.stringify({
+          conversationId,
+          snapshot: {
+            messages: Array.isArray(snapshot.messages) ? snapshot.messages : [],
+            memory: typeof snapshot.memory === "string" && snapshot.memory.trim() ? snapshot.memory : defaultMemory(),
+            flags: normalizeStoredFlags(snapshot.flags || {}),
+            updatedAt: Number(snapshot.updatedAt || Date.now())
+          }
+        }),
+        "saveEditUndoPayload"
+      );
+
+      refreshChatUndoMenuAction();
+    }
+
+    function restoreLastEditedConversationState() {
+      const payload = readEditUndoPayload();
+      if (!payload || payload.conversationId !== getConversationId()) {
+        refreshChatUndoMenuAction();
+        return false;
+      }
+
+      saveConversationData(payload.conversationId, {
+        messages: payload.snapshot.messages,
+        memory: payload.snapshot.memory,
+        flags: payload.snapshot.flags,
+        updatedAt: Date.now()
+      });
+
+      clearEditUndoPayload();
+      closeEditMode({ restoreDraft: false });
+      renderHistory();
+      updateScrollToBottomBtn();
+      scrollChatToBottom();
+      showTemporaryNotice("Modification annulee");
+      return true;
     }
     
     function createEmptyConversationData() {
@@ -3482,6 +3617,11 @@
         closeAdminPopover({ fromPopstate: true });
         return;
       }
+
+      if (isConversationMenuOpen() && state.conversationMenuOpen !== true) {
+        closeConversationMenus({ fromPopstate: true });
+        return;
+      }
       
       if (!SCREEN_IDS.includes(screenId)) {
         return;
@@ -4092,6 +4232,29 @@
         scrollToBottomBtnPulseAnim = null;
       }
     }
+
+    function clearScrollToBottomAutoHideTimer() {
+      if (scrollToBottomBtnHideTimer) {
+        clearTimeout(scrollToBottomBtnHideTimer);
+        scrollToBottomBtnHideTimer = null;
+      }
+    }
+
+    function scheduleScrollToBottomAutoHide() {
+      const btn = ensureScrollToBottomBtn();
+      if (!btn || !scrollToBottomBtnVisible) return;
+
+      clearScrollToBottomAutoHideTimer();
+      scrollToBottomBtnHideTimer = setTimeout(() => {
+        if (!scrollToBottomBtnEl || !scrollToBottomBtnVisible) return;
+
+        scrollToBottomBtnEl.style.opacity = "0";
+        scrollToBottomBtnEl.style.pointerEvents = "none";
+        scrollToBottomBtnEl.style.transform = "translateX(-50%) translateY(8px) scale(0.96)";
+        scrollToBottomBtnVisible = false;
+        stopScrollToBottomPulse();
+      }, 700);
+    }
     
     function pulseScrollToBottomBtn() {
       const btn = ensureScrollToBottomBtn();
@@ -4143,6 +4306,7 @@
           btn.style.transform = "translateX(-50%) translateY(8px) scale(0.96)";
         }
         scrollToBottomBtnVisible = false;
+        clearScrollToBottomAutoHideTimer();
         stopScrollToBottomPulse();
         return;
       }
@@ -4159,6 +4323,8 @@
         if (forcePulse) {
           pulseScrollToBottomBtn();
         }
+
+        scheduleScrollToBottomAutoHide();
         return;
       }
       
@@ -4166,6 +4332,7 @@
       btn.style.pointerEvents = "none";
       btn.style.transform = "translateX(-50%) translateY(8px) scale(0.96)";
       scrollToBottomBtnVisible = false;
+      clearScrollToBottomAutoHideTimer();
       stopScrollToBottomPulse();
     }
     
@@ -5762,6 +5929,7 @@
         const history = loadHistory();
         const targetIndex = editMode.targetHistoryIndex;
         const lastUserIndex = getLastUserHistoryIndex(history);
+        const previousConversationSnapshot = loadConversationData(conversationIdBeforeSend);
         
         if (
           targetIndex < 0 ||
@@ -5792,12 +5960,14 @@
           flags: editedConversationState.flags,
           updatedAt: Date.now()
         });
+        saveEditUndoPayload(conversationIdBeforeSend, previousConversationSnapshot);
         closeEditMode({ restoreDraft: false });
         renderHistory();
         scrollChatToBottom();
         
         input.value = restoredDraft || "";
       } else {
+        clearEditUndoPayload();
         pushHistory("user", message, []);
         addMessage("user", message, [], {
           shouldAutoScroll: wasAtBottom,
@@ -6197,8 +6367,13 @@
       menu.style.transition = "";
       menu.style.pointerEvents = "";
     }
+
+    function isConversationMenuOpen() {
+      return Boolean(document.querySelector('[data-menu][style*="display: block"]'));
+    }
     
-    function closeConversationMenus() {
+    function closeConversationMenus(options = {}) {
+      const { fromPopstate = false, skipHistorySync = false } = options;
       const overlay = ensureConversationMenuOverlay();
       const portal = ensureConversationMenuPortal();
       
@@ -6234,6 +6409,10 @@
         item.style.zIndex = "";
         item.style.position = "";
       });
+
+      if (!fromPopstate && !skipHistorySync && history.state && history.state.conversationMenuOpen === true) {
+        history.back();
+      }
     }
     
     function openConversationMenu(toggleBtn, menu) {
@@ -6249,7 +6428,15 @@
       );
       const item = toggleBtn.closest(".conversationItem");
       
-      closeConversationMenus();
+      closeConversationMenus({ skipHistorySync: true });
+
+      const state = history.state || {};
+      if (state.conversationMenuOpen !== true) {
+        history.pushState({
+          ...state,
+          conversationMenuOpen: true
+        }, "", window.location.href);
+      }
       
       portal.style.zIndex = "420";
       
@@ -6354,6 +6541,9 @@
     const conversationsAccountMenuBtn = document.getElementById("conversationsAccountMenuBtn");
     const conversationsAccountMenu = document.getElementById("conversationsAccountMenu");
     const conversationsAccountMenuAction = document.getElementById("conversationsAccountMenuAction");
+    const chatUndoMenuBtn = document.getElementById("chatUndoMenuBtn");
+    const chatUndoMenu = document.getElementById("chatUndoMenu");
+    const chatUndoMenuAction = document.getElementById("chatUndoMenuAction");
 
     if (conversationsAccountMenuBtn && conversationsAccountMenu) {
       conversationsAccountMenuBtn.addEventListener("click", e => {
@@ -6383,6 +6573,30 @@
         }
 
         navigateAway("/auth.html?next=%2F%3Fscreen%3DconversationsScreen");
+      });
+    }
+
+    if (chatUndoMenuBtn && chatUndoMenu) {
+      chatUndoMenuBtn.addEventListener("click", e => {
+        e.preventDefault();
+        e.stopPropagation();
+        refreshChatUndoMenuAction();
+        openConversationMenu(chatUndoMenuBtn, chatUndoMenu);
+      });
+    }
+
+    if (chatUndoMenuAction) {
+      refreshChatUndoMenuAction();
+      chatUndoMenuAction.addEventListener("click", e => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (!canUndoLastEditedMessage()) {
+          return;
+        }
+
+        closeConversationMenus();
+        restoreLastEditedConversationState();
       });
     }
     
