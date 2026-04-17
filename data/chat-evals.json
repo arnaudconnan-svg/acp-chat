@@ -1,0 +1,70 @@
+[
+  {
+    "id": "fresh_exploration_opening",
+    "message": "J'ai accepte un truc au boulot et maintenant je me sens bizarre avec ca, un peu coince.",
+    "recentHistory": [],
+    "memory": "",
+    "flags": {},
+    "expect": {
+      "status": 200,
+      "modeChip": "EXPLORATION",
+      "maxReplyChars": 900,
+      "maxParagraphs": 2
+    }
+  },
+  {
+    "id": "minimization_turn",
+    "message": "Je me dis que c'est peut-etre rien et en meme temps j'arrete pas d'y repenser.",
+    "recentHistory": [
+      {
+        "role": "user",
+        "content": "J'ai accepte un truc au boulot et maintenant je me sens bizarre avec ca, un peu coince."
+      },
+      {
+        "role": "assistant",
+        "content": "Il y a quelque chose dans ce que tu as accepte qui ne retombe pas vraiment pour toi."
+      }
+    ],
+    "memory": "Au travail, quelque chose qu'il a accepte continue de le travailler et le laisse coince.",
+    "flags": {},
+    "expect": {
+      "status": 200,
+      "modeChip": "EXPLORATION",
+      "maxReplyChars": 950,
+      "maxParagraphs": 2
+    }
+  },
+  {
+    "id": "not_helped_requires_readjustment",
+    "message": "La franchement tu m'aides pas trop. J'ai l'impression qu'on tourne autour sans toucher le truc.",
+    "recentHistory": [
+      {
+        "role": "user",
+        "content": "J'ai accepte un truc au boulot et maintenant je me sens bizarre avec ca, un peu coince."
+      },
+      {
+        "role": "assistant",
+        "content": "Il y a peut-etre une part de toi qui a senti un decalage au moment d'accepter."
+      },
+      {
+        "role": "user",
+        "content": "Oui peut-etre, mais je sais meme pas si c'est ca."
+      },
+      {
+        "role": "assistant",
+        "content": "On peut peut-etre rester encore un peu au plus pres de ce flottement pour voir ce qui s'y dessine."
+      }
+    ],
+    "memory": "Au travail, il se sent coince apres avoir accepte quelque chose et a du mal a s'approcher clairement de ce qu'il ressent.",
+    "flags": {},
+    "expect": {
+      "status": 200,
+      "modeChip": "EXPLORATION",
+      "maxReplyChars": 700,
+      "maxParagraphs": 2,
+      "noQuestionEnding": true,
+      "needsSoberReadjustment": true,
+      "rewriteSource": "sober_readjustment"
+    }
+  }
+]
