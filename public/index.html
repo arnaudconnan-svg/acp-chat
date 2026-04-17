@@ -2387,6 +2387,7 @@
     let scrollToBottomBtnVisible = false;
     let scrollToBottomBtnPulseAnim = null;
     let scrollToBottomBtnHideTimer = null;
+    let pendingConversationMenuHistoryClose = false;
     
     function ensureBootOverlay() {
       if (bootOverlayEl) return bootOverlayEl;
@@ -3615,6 +3616,14 @@
 
       if (isAdminPopoverOpen() && state.adminPopoverOpen !== true) {
         closeAdminPopover({ fromPopstate: true });
+        return;
+      }
+
+      if (pendingConversationMenuHistoryClose && state.conversationMenuOpen !== true) {
+        pendingConversationMenuHistoryClose = false;
+        if (isConversationMenuOpen()) {
+          closeConversationMenus({ fromPopstate: true });
+        }
         return;
       }
 
@@ -6411,7 +6420,13 @@
       });
 
       if (!fromPopstate && !skipHistorySync && history.state && history.state.conversationMenuOpen === true) {
+        pendingConversationMenuHistoryClose = true;
         history.back();
+        return;
+      }
+
+      if (fromPopstate) {
+        pendingConversationMenuHistoryClose = false;
       }
     }
     
