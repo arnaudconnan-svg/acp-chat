@@ -51,7 +51,8 @@
     
     #welcomeScreen {
       position: relative;
-      overflow: hidden;
+      overflow-x: hidden;
+      overflow-y: auto;
       justify-content: center;
       align-items: center;
       padding: 0 22px calc(22px + env(safe-area-inset-bottom, 0px)) 22px;
@@ -750,6 +751,26 @@
       display: flex;
       align-items: flex-end;
       gap: 10px;
+    }
+
+    #serviceStatusBanner {
+      display: none;
+      width: calc(100% - 28px);
+      max-width: 700px;
+      margin: 0 auto 10px;
+      padding: 10px 14px;
+      border-radius: 16px;
+      background: rgba(122, 73, 24, 0.94);
+      color: #fff7e8;
+      font-size: 13px;
+      line-height: 1.4;
+      box-shadow: 0 12px 24px rgba(88, 52, 17, 0.18);
+      pointer-events: auto;
+      box-sizing: border-box;
+    }
+
+    #serviceStatusBanner.is-visible {
+      display: block;
     }
     
     #inputShell {
@@ -1569,6 +1590,7 @@
     <div id="chat"></div>
     
     <div id="inputArea">
+      <div id="serviceStatusBanner" role="status" aria-live="polite"></div>
       <div id="inputAreaInner">
         <div id="inputShell">
           <textarea id="input" placeholder="R&eacute;pondre &agrave; Facilitat.io" rows="1"></textarea>
@@ -1875,6 +1897,7 @@
         syncDebugVisibility();
         await refreshDevAccessPrimaryAction();
         closeDevAccessModal();
+        window.location.reload();
         return;
       }
 
@@ -2050,6 +2073,8 @@
     const USER_ID_KEY = "facilitatio_user_id";
     const CONVERSATION_ID_KEY = "facilitatio_conversation_id";
     const CONVERSATIONS_INDEX_KEY = "facilitatio_conversations_index";
+    const SESSION_OPENING_GREETING = "Bienvenue dans cette nouvelle session. Que veux-tu explorer aujourd'hui ?";
+    const CONVERSATION_OPENING_GREETING = "Bienvenue dans cette nouvelle conversation. Que veux-tu explorer aujourd'hui ?";
     const ACTIVITY_KEY = "facilitatio_last_activity";
     const SESSION_INFO_DISMISSED_KEY = "facilitatio_session_info_dismissed";
     const SESSION_TIMEOUT_MS = 12 * 60 * 60 * 1000;
@@ -2309,6 +2334,10 @@
     let isSending = false;
     let showDebug = false;
     let sessionStatus = "welcome";
+    let serviceAvailabilityState = {
+      blocked: false,
+      message: ""
+    };
     let bootOverlayEl = null;
     let scrollToBottomBtnEl = null;
     let scrollToBottomBtnVisible = false;
@@ -2509,7 +2538,8 @@
           return false;
         }
 
-        const normalizedMessages = messages.map((item, index) => ({
+        const normalizedMessages = ensureOpeningGreeting(
+          messages.map((item, index) => ({
           role: String(item?.role || ""),
           content: String(item?.content || ""),
           debug: Array.isArray(item?.debug) ? item.debug : [],
@@ -2517,7 +2547,9 @@
           comparisonResults: Array.isArray(item?.comparisonResults) ? item.comparisonResults : null,
           id: typeof item?.id === "string" ? item.id : undefined,
           t: Number(item?.timestamp || 0) || (Date.now() + index)
-        }));
+          })),
+          SESSION_OPENING_GREETING
+        );
 
         saveConversationData(conversationId, {
           messages: normalizedMessages,
@@ -2546,6 +2578,53 @@
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#39;");
+    }
+
+    function isOpeningGreetingMessage(content) {
+      const text = String(content || "").trim();
+      return text === SESSION_OPENING_GREETING || text === CONVERSATION_OPENING_GREETING;
+    }
+
+    function ensureOpeningGreeting(messages = [], greeting = SESSION_OPENING_GREETING) {
+      const safeMessages = Array.isArray(messages) ? messages.slice() : [];
+      const firstMessage = safeMessages[0];
+
+      if (
+        firstMessage &&
+        firstMessage.role === "assistant" &&
+        isOpeningGreetingMessage(firstMessage.content)
+      ) {
+        return safeMessages;
+      }
+
+      return [{
+        role: "assistant",
+        content: greeting,
+        debug: [],
+        debugMeta: null,
+        comparisonResults: null,
+        t: Date.now()
+      }, ...safeMessages];
+    }
+
+    function ensureCurrentConversationOpeningGreeting(greeting = SESSION_OPENING_GREETING) {
+      const conversationId = getConversationId();
+      if (!conversationId) {
+        return [];
+      }
+
+      const data = loadConversationData(conversationId);
+      const nextMessages = ensureOpeningGreeting(data.messages || [], greeting);
+
+      if (nextMessages.length !== (Array.isArray(data.messages) ? data.messages.length : 0)) {
+        saveConversationData(conversationId, {
+          ...data,
+          messages: nextMessages,
+          updatedAt: data.updatedAt || Date.now()
+        });
+      }
+
+      return nextMessages;
     }
     
     function upsertConversationIndexItem(patch = {}) {
@@ -4993,11 +5072,7 @@
         conversationId = createConversationId();
       }
       
-      const history = loadHistory();
-      
-      if (history.length === 0) {
-        pushHistory("assistant", "Bienvenue dans cette nouvelle conversation. Que veux-tu explorer aujourd'hui ?", []);
-      }
+      ensureCurrentConversationOpeningGreeting(CONVERSATION_OPENING_GREETING);
       
       closeEditMode({ restoreDraft: false });
       renderHistory();
@@ -5044,9 +5119,41 @@
       sessionStatus = nextStatus;
       syncInputAvailability();
     }
+
+    function getDefaultServiceUnavailableMessage() {
+      return "Le service est temporairement indisponible car le quota API est epuise. Aucun nouveau message ne peut etre traite tant que ce quota n'est pas retabli. Recharge la page apres retablissement du quota.";
+    }
+
+    function renderServiceStatusBanner() {
+      const banner = document.getElementById("serviceStatusBanner");
+      if (!banner) return;
+
+      if (serviceAvailabilityState.blocked) {
+        banner.textContent = serviceAvailabilityState.message || getDefaultServiceUnavailableMessage();
+        banner.classList.add("is-visible");
+      } else {
+        banner.textContent = "";
+        banner.classList.remove("is-visible");
+      }
+    }
+
+    function setServiceAvailabilityBlocked(blocked, message = "") {
+      serviceAvailabilityState = {
+        blocked: blocked === true,
+        message: blocked === true ? String(message || getDefaultServiceUnavailableMessage()).trim() : ""
+      };
+      renderServiceStatusBanner();
+      syncInputAvailability();
+    }
+
+    function readServiceUnavailableMessage(data) {
+      if (!data || data.serviceUnavailable !== true) return "";
+      const userMessage = String(data.userMessage || "").trim();
+      return userMessage || getDefaultServiceUnavailableMessage();
+    }
     
     function syncInputAvailability() {
-      const blocked = sessionStatus === "terminated" || sessionStatus === "closing";
+      const blocked = sessionStatus === "terminated" || sessionStatus === "closing" || serviceAvailabilityState.blocked;
       setInputDisabled(blocked);
     }
     
@@ -5076,6 +5183,27 @@
         return null;
       }
     }
+
+    async function persistIntersessionMemoryIfApplicable(memory) {
+      if (!userSessionState.authenticated || typeof memory !== "string" || !memory.trim()) {
+        return;
+      }
+
+      try {
+        const res = await fetch("/api/intersession-memory", {
+          method: "PUT",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ memory })
+        });
+
+        const data = await parseAppJsonResponseSafely(res);
+
+        if (!res.ok && data?.serviceUnavailable === true) {
+          setServiceAvailabilityBlocked(true, readServiceUnavailableMessage(data));
+        }
+      } catch {}
+    }
     
     async function closeSessionBackend() {
       const payload = buildSessionPayloadForClose();
@@ -5095,14 +5223,7 @@
 
         if (data && data.memory) {
           saveMemory(data.memory);
-          if (userSessionState.authenticated) {
-            fetch("/api/intersession-memory", {
-              method: "PUT",
-              credentials: "include",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ memory: data.memory })
-            }).catch(() => {});
-          }
+          await persistIntersessionMemoryIfApplicable(data.memory);
         }
       } catch {}
     }
@@ -5147,11 +5268,7 @@
         conversationId = createConversationId();
       }
       
-      const history = loadHistory();
-      
-      if (history.length === 0) {
-        pushHistory("assistant", "Bienvenue dans cette nouvelle session. Que veux-tu explorer aujourd'hui ?", []);
-      }
+      ensureCurrentConversationOpeningGreeting(SESSION_OPENING_GREETING);
       
       closeEditMode({ restoreDraft: false });
       renderHistory();
@@ -5389,7 +5506,7 @@
       showScreen("chatScreen", { pushHistory: true });
       updateActivity();
       
-      const history = loadHistory();
+      const history = ensureCurrentConversationOpeningGreeting(SESSION_OPENING_GREETING);
       
       if (history.length > 0) {
         setSessionStatus("active");
@@ -5674,6 +5791,12 @@
             !(data.comparison === true && Array.isArray(data.results) && data.results.length > 0)
           )
         ) {
+          const serviceUnavailableMessage = readServiceUnavailableMessage(data);
+          if (serviceUnavailableMessage) {
+            setServiceAvailabilityBlocked(true, serviceUnavailableMessage);
+            return;
+          }
+
           if (
             getConversationId() === requestConversationId &&
             document.querySelector(".screen.active")?.id === requestScreenId &&
@@ -5686,6 +5809,8 @@
           }
           return;
         }
+
+        setServiceAvailabilityBlocked(false);
         
         const normalizedComparisonResults =
           data.comparison === true && Array.isArray(data.results) && data.results.length > 0 ?
@@ -5716,14 +5841,7 @@
         if (isSameConversation) {
           if (data.memory) {
             saveMemory(data.memory);
-            if (userSessionState.authenticated) {
-              fetch("/api/intersession-memory", {
-                method: "PUT",
-                credentials: "include",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ memory: data.memory })
-              }).catch(() => {});
-            }
+            persistIntersessionMemoryIfApplicable(data.memory);
           }
           if (data.flags) saveFlags(data.flags);
           

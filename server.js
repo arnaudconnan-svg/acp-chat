@@ -1144,7 +1144,7 @@ Mode EXPLORATION - niveau 2 / 4
 But:
   - rester en exploration
   - maintenir une directivite basse mais engagee
-  - contenir la reponse sans eteindre le mouvement
+  - contenir la reponse sans eteindre le mouvement ni neutraliser la voix
 
 Direction:
   - commence directement par une lecture situee et specifique, sans introduction ni mise en contexte generale
@@ -1152,20 +1152,22 @@ Direction:
   - propose un seul angle de lecture principal
   - si une relance existe, elle doit rester discrete et secondaire
   - n'organise pas la suite pour la personne
-  - privilegie un reflet, une reformulation ou une lecture sobre
+  - privilegie une lecture resserree et situee plutot qu'une reformulation generale
   - laisse apparaitre un mouvement interne dans la reponse(tension, contraste, bascule)
   - ne te limite pas a decrire: fais exister une lecture qui transforme legerement la perception
   - accepte une forme de prise de position implicite si elle reste ancree dans l 'experience
   - ancre toujours ta lecture dans des elements precis du message(mots, situations, images), evite toute formulation generique ou interchangeable
+  - la directivite resserre le mouvement, pas la presence relationnelle: garde une voix incarnee et principalement a la premiere personne
+  - n'utilise pas la contenance comme pretexte pour glisser vers une ecriture impersonnelle, descriptive ou desincarnee
 
 Forme:
   - la premiere phrase doit porter immediatement une lecture ou une tension, sans reformulation generale
   - 1 ou 2 paragraphes maximum
   - chaque paragraphe porte une seule idee
   - reponse assez breve
-  - style simple, contenant et peu demonstratif
+  - style simple, resserre et contenant, mais pas neutre ni desincarne
   - evite toute phrase descriptive qui n 'apporte pas de deplacement
-  - privilegie une ecriture dense plutot que neutre
+  - privilegie une ecriture dense et presente plutot que neutre
   - toute phrase doit apporter une information nouvelle, sans repetition ni reformulation de l’idee deja exprimee
 `,
     
@@ -4761,6 +4763,16 @@ app.put("/api/intersession-memory", requireUserAuth, async (req, res) => {
     return res.json({ success: true });
   } catch (err) {
     console.error("Erreur PUT /api/intersession-memory:", err.message);
+    if (err && (err.code === "insufficient_quota" || err.type === "insufficient_quota")) {
+      return res.status(503).json({
+        error: "OpenAI quota exhausted",
+        code: "insufficient_quota",
+        status: "service_unavailable",
+        serviceUnavailable: true,
+        serviceUnavailableReason: "quota_exhausted",
+        userMessage: "Le service est temporairement indisponible car le quota API est epuise. Aucun nouveau message ne peut etre traite tant que ce quota n'est pas retabli. Recharge la page apres retablissement du quota."
+      });
+    }
     return res.status(500).json({ error: "Intersession memory save failed" });
   }
 });
@@ -6166,7 +6178,10 @@ app.post("/chat", async (req, res) => {
         promptRegistry: activePromptRegistry
       });
 
-      finalDirectivityLevel = calibrationAnalysis.calibrationLevel;
+      finalDirectivityLevel = Math.min(
+        clampExplorationDirectivityLevel(effectiveExplorationDirectivityLevel),
+        clampExplorationDirectivityLevel(calibrationAnalysis.calibrationLevel)
+      );
       newFlags.explorationCalibrationLevel = finalDirectivityLevel;
     } else {
       newFlags.infoSubmode = detectedInfoSubmode;
@@ -6488,7 +6503,12 @@ app.post("/chat", async (req, res) => {
       stageTimings: chatStageTimings
     });
 
-    const fallbackReply = modeForCatch === "contact" ? "Je suis la." : "Desole, reformule.";
+    const isQuotaExhausted = err && (err.code === "insufficient_quota" || err.type === "insufficient_quota");
+    const fallbackReply = isQuotaExhausted
+      ? "Le service est temporairement indisponible car le quota API est epuise. Je ne peux pas traiter de nouveau message tant que ce quota n'est pas retabli."
+      : modeForCatch === "contact"
+        ? "Je suis la."
+        : "Desole, reformule.";
     const fallbackDebugMeta = buildFallbackResponseDebugMeta({
       memory: previousMemoryForCatch,
       suicideLevel: "N0",
@@ -6504,7 +6524,7 @@ app.post("/chat", async (req, res) => {
       promptRegistry: promptRegistryForCatch
     });
 
-    if (userMessagePersistedForCatch && !assistantMessagePersistedForCatch) {
+    if (!isQuotaExhausted && userMessagePersistedForCatch && !assistantMessagePersistedForCatch) {
       try {
         await persistFallbackAssistantMessage(fallbackReply, ["error"], fallbackDebugMeta);
         console.warn("[CHAT][FALLBACK_PERSISTED]", {
@@ -6518,6 +6538,20 @@ app.post("/chat", async (req, res) => {
           error: persistErr && persistErr.message ? persistErr.message : String(persistErr)
         });
       }
+    }
+    if (isQuotaExhausted) {
+      return res.status(503).json({
+        error: "OpenAI quota exhausted",
+        code: "insufficient_quota",
+        status: "service_unavailable",
+        serviceUnavailable: true,
+        serviceUnavailableReason: "quota_exhausted",
+        userMessage: "Le service est temporairement indisponible car le quota API est epuise. Aucun nouveau message ne peut etre traite tant que ce quota n'est pas retabli. Recharge la page apres retablissement du quota.",
+        memory: previousMemoryForCatch,
+        flags: flagsForCatch,
+        debug: ["error"],
+        debugMeta: fallbackDebugMeta
+      });
     }
     
     // Fallback path: if any part of the /chat pipeline throws, return a safe

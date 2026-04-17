@@ -440,7 +440,7 @@
       
       window.addEventListener("popstate", (e) => {
         if (e.state && e.state.adminRoot) {
-          window.location.href = "/index.html";
+          window.location.replace("/index.html");
         }
       });
     }
@@ -1594,8 +1594,6 @@
     }
     
     async function init() {
-      setupRootBackToIndex();
-
       const list = document.getElementById("list");
       list.textContent = "Verification de la session admin...";
 
@@ -1603,6 +1601,8 @@
       if (!hasSession) {
         return;
       }
+
+      setupRootBackToIndex();
       
       const conversationId = getConversationIdFromUrl();
       const conversationMeta = document.getElementById("conversationMeta");
