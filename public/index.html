@@ -1485,7 +1485,7 @@
       </p>
       
       <div class="modalActions modalActionsStack">
-        <button class="modalBtnPrimary" type="button" onclick="window.location.href='/admin-login.html?next=%2Findex.html%3FadminUi%3D1'">
+        <button id="devAccessPrimaryBtn" class="modalBtnPrimary" type="button">
           Passer admin
         </button>
         <button class="modalBtnSecondary" type="button" onclick="window.location.href='/admin-login.html?next=%2Fadmin.html'">
@@ -1713,8 +1713,28 @@
       </div>
     </div>
   </div>
+
+  <div id="claimImportModal" class="modal">
+    <div class="modalBox">
+      <h3 class="modalTitle">Rattacher les conversations</h3>
+      <p class="modalText" id="claimImportModalText">
+        Des conversations locales peuvent etre rattachees a votre compte.
+      </p>
+
+      <div class="modalActions modalActionsStack">
+        <button class="modalBtnPrimary" id="confirmClaimImportBtn" type="button">
+          Rattacher au compte
+        </button>
+        <button class="modalBtnSecondary" id="cancelClaimImportBtn" type="button">
+          Plus tard
+        </button>
+      </div>
+    </div>
+  </div>
   
   <script>
+    let pendingClaimImportResolver = null;
+
     function openEditTitleModal(conversationId) {
       if (!conversationId) return;
       
@@ -1792,13 +1812,73 @@
       closeModal("aboutModal");
     }
     
-    function openDevAccessModal() {
+    async function openDevAccessModal() {
       pushModalHistoryState("devAccessModal");
+      await refreshDevAccessPrimaryAction();
       document.getElementById("devAccessModal").style.display = "flex";
     }
     
     function closeDevAccessModal() {
       document.getElementById("devAccessModal").style.display = "none";
+    }
+
+    function openClaimImportModal(conversationCount) {
+      const text = document.getElementById("claimImportModalText");
+
+      if (text) {
+        text.textContent = `Cette connexion peut rattacher ${conversationCount} conversation(s) locale(s) de cet appareil a votre compte.`;
+      }
+
+      openModal("claimImportModal");
+
+      return new Promise(resolve => {
+        pendingClaimImportResolver = resolve;
+      });
+    }
+
+    function resolveClaimImportModal(shouldClaim) {
+      closeModal("claimImportModal");
+
+      if (typeof pendingClaimImportResolver === "function") {
+        pendingClaimImportResolver(shouldClaim === true);
+      }
+
+      pendingClaimImportResolver = null;
+    }
+
+    async function refreshDevAccessPrimaryAction() {
+      const btn = document.getElementById("devAccessPrimaryBtn");
+      if (!btn) return;
+
+      const isAdminAuthenticated = await hasValidAdminSession();
+      btn.dataset.mode = isAdminAuthenticated ? "disable-admin" : "enable-admin";
+      btn.textContent = isAdminAuthenticated ? "Revenir à l'UX normale" : "Passer admin";
+    }
+
+    async function handleDevAccessPrimaryAction() {
+      const btn = document.getElementById("devAccessPrimaryBtn");
+      if (!btn) return;
+
+      if (btn.dataset.mode === "disable-admin") {
+        try {
+          await fetch("/api/admin/logout", {
+            method: "POST",
+            credentials: "include"
+          });
+        } catch {}
+
+        localStorage.removeItem(ADMIN_UI_KEY);
+        adminUiState.logsEnabled = false;
+        saveAdminUiState();
+        document.body.classList.toggle("admin-ui", false);
+        closeAdminPopover();
+        syncDebugVisibility();
+        await refreshDevAccessPrimaryAction();
+        closeDevAccessModal();
+        return;
+      }
+
+      navigateAway("/admin-login.html?next=%2Findex.html%3FadminUi%3D1");
     }
     
     window.addEventListener("popstate", () => {
@@ -1976,6 +2056,8 @@
     const MAX_RECENT_TURNS = 8;
     const ADMIN_UI_KEY = "facilitatio_admin_ui";
     const ADMIN_REPLAY_KEY = "facilitatio_admin_replay";
+    const CLAIM_DONE_KEY_PREFIX = "facilitatio_claim_done";
+    const CLAIM_PROMPT_SESSION_KEY_PREFIX = "facilitatio_claim_prompt_seen";
     const CHAT_BOTTOM_THRESHOLD_PX = 12;
     let userSessionState = {
       authenticated: false,
@@ -2134,6 +2216,94 @@
       }
       
       return userId;
+    }
+
+    function buildClaimStateKey(prefix, accountUserId, anonymousUserId) {
+      return `${prefix}_${accountUserId}_${anonymousUserId}`;
+    }
+
+    function getStoredAnonymousUserId() {
+      return String(localStorage.getItem(USER_ID_KEY) || "").trim();
+    }
+
+    function getClaimableLocalConversationIds() {
+      return Array.from(new Set(
+        loadConversationsIndex()
+          .map(item => String(item?.id || "").trim())
+          .filter(Boolean)
+      ));
+    }
+
+    async function claimLocalConversationsIntoAuthenticatedAccountIfNeeded() {
+      if (!userSessionState.authenticated || !userSessionState.user || typeof userSessionState.user.id !== "string") {
+        return false;
+      }
+
+      const accountUserId = userSessionState.user.id.trim();
+      const anonymousUserId = getStoredAnonymousUserId();
+
+      if (!accountUserId || !anonymousUserId || anonymousUserId === accountUserId) {
+        return false;
+      }
+
+      const conversationIds = getClaimableLocalConversationIds();
+      if (conversationIds.length === 0) {
+        return false;
+      }
+
+      const claimDoneKey = buildClaimStateKey(CLAIM_DONE_KEY_PREFIX, accountUserId, anonymousUserId);
+      if (localStorage.getItem(claimDoneKey) === "1") {
+        return false;
+      }
+
+      const promptSeenKey = buildClaimStateKey(CLAIM_PROMPT_SESSION_KEY_PREFIX, accountUserId, anonymousUserId);
+      if (sessionStorage.getItem(promptSeenKey) === "1") {
+        return false;
+      }
+
+      sessionStorage.setItem(promptSeenKey, "1");
+
+      const shouldClaim = await openClaimImportModal(conversationIds.length);
+
+      if (!shouldClaim) {
+        return false;
+      }
+
+      try {
+        const res = await fetch("/api/account/conversations/claim", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            anonymousUserId,
+            conversationIds
+          })
+        });
+
+        const data = await parseAppJsonResponseSafely(res);
+
+        if (!res.ok) {
+          showTemporaryNotice("Import impossible pour le moment");
+          return false;
+        }
+
+        safeSetLocalStorage(claimDoneKey, "1", "claimLocalConversationsIntoAuthenticatedAccountIfNeeded");
+        localStorage.removeItem(USER_ID_KEY);
+
+        const claimedCount = Number(data?.claimedCount || 0);
+        const alreadyOwnedCount = Number(data?.alreadyOwnedCount || 0);
+
+        if (claimedCount > 0) {
+          showTemporaryNotice("Conversations rattachees au compte");
+        } else if (alreadyOwnedCount > 0) {
+          showTemporaryNotice("Conversations deja rattachees au compte");
+        }
+
+        return true;
+      } catch {
+        showTemporaryNotice("Import impossible pour le moment");
+        return false;
+      }
     }
     
     let isSending = false;
@@ -2615,6 +2785,42 @@
       const nextIndex = loadConversationsIndex().filter(item => item && item.id !== conversationId);
       saveConversationsIndex(nextIndex);
     }
+
+    async function persistConversationTitleIfApplicable(conversationId, title) {
+      if (!conversationId || !userSessionState.authenticated) {
+        return true;
+      }
+
+      try {
+        const res = await fetch("/api/account/conversations/" + encodeURIComponent(conversationId), {
+          method: "PATCH",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title })
+        });
+
+        return res.ok;
+      } catch {
+        return false;
+      }
+    }
+
+    async function deleteConversationRemotelyIfApplicable(conversationId) {
+      if (!conversationId || !userSessionState.authenticated) {
+        return true;
+      }
+
+      try {
+        const res = await fetch("/api/account/conversations/" + encodeURIComponent(conversationId), {
+          method: "DELETE",
+          credentials: "include"
+        });
+
+        return res.ok;
+      } catch {
+        return false;
+      }
+    }
     
     function loadMemory() {
       return loadConversationData().memory;
@@ -3066,6 +3272,11 @@
     window.addEventListener("popstate", e => {
       const state = e.state || {};
       const screenId = state.screenId;
+
+      if (isAdminPopoverOpen() && state.adminPopoverOpen !== true) {
+        closeAdminPopover({ fromPopstate: true });
+        return;
+      }
       
       if (!SCREEN_IDS.includes(screenId)) {
         return;
@@ -3489,15 +3700,34 @@
       popover.style.top = `${Math.max(12, top)}px`;
     }
     
-    function closeAdminPopover() {
+    function isAdminPopoverOpen() {
+      const popover = document.getElementById("adminPopover");
+      return Boolean(popover && popover.style.display === "block");
+    }
+
+    function closeAdminPopover(options = {}) {
+      const { fromPopstate = false } = options;
       const popover = document.getElementById("adminPopover");
       if (!popover) return;
+
       popover.style.display = "none";
+
+      if (!fromPopstate && history.state && history.state.adminPopoverOpen === true) {
+        history.back();
+      }
     }
     
     function openAdminPopover() {
       const popover = ensureAdminPopover();
       if (!popover) return;
+
+      const state = history.state || {};
+      if (state.adminPopoverOpen !== true) {
+        history.pushState({
+          ...state,
+          adminPopoverOpen: true
+        }, "", window.location.href);
+      }
       
       popover._refreshFields && popover._refreshFields();
       popover.style.display = "block";
@@ -4369,18 +4599,15 @@
         bubble.style.borderTopRightRadius = "8px";
         bubble.style.boxShadow = "0 10px 26px rgba(36, 94, 102, 0.08), 0 1px 0 rgba(255, 255, 255, 0.28) inset";
         bubble.style.position = "relative";
-        bubble.style.paddingTop = "29px";
-        
-        bubble.textContent = displayText;
 
         const copyUserBtn = document.createElement("button");
         copyUserBtn.type = "button";
         copyUserBtn.setAttribute("aria-label", "Copier le message");
         copyUserBtn.title = "Copier";
         copyUserBtn.textContent = "\u2398";
-        copyUserBtn.style.position = "absolute";
-        copyUserBtn.style.top = "6px";
-        copyUserBtn.style.right = "8px";
+        copyUserBtn.style.cssFloat = "right";
+        copyUserBtn.style.marginLeft = "8px";
+        copyUserBtn.style.marginTop = "1px";
         copyUserBtn.style.border = "none";
         copyUserBtn.style.background = "transparent";
         copyUserBtn.style.color = "#183f44";
@@ -4397,6 +4624,7 @@
         });
 
         bubble.appendChild(copyUserBtn);
+        bubble.appendChild(document.createTextNode(displayText));
         
         let longPressTimer = null;
         let longPressTriggered = false;
@@ -5603,7 +5831,7 @@
       }
     });
     
-    document.getElementById("confirmEditTitleBtn").onclick = () => {
+    document.getElementById("confirmEditTitleBtn").onclick = async () => {
       const input = document.getElementById("editTitleInput");
       const conversationId = input.dataset.conversationId;
       
@@ -5619,8 +5847,13 @@
         id: conversationId,
         title: newTitle || null,
         updatedAt: Date.now(),
-        isCustomTitle: true
+        isCustomTitle: newTitle.length > 0
       });
+
+      const persisted = await persistConversationTitleIfApplicable(conversationId, newTitle || null);
+      if (!persisted) {
+        showTemporaryNotice("Renommage enregistre localement seulement");
+      }
       
       renderConversationsList();
       closeEditTitleModal();
@@ -5820,8 +6053,16 @@
       closeModal("deleteConversationModal");
     };
     
-    document.getElementById("confirmDeleteConversationBtn").onclick = () => {
+    document.getElementById("confirmDeleteConversationBtn").onclick = async () => {
       if (!pendingDeleteConversationId) {
+        closeModal("deleteConversationModal");
+        return;
+      }
+
+      const persisted = await deleteConversationRemotelyIfApplicable(pendingDeleteConversationId);
+      if (!persisted) {
+        showTemporaryNotice("Suppression impossible pour cette conversation");
+        pendingDeleteConversationId = null;
         closeModal("deleteConversationModal");
         return;
       }
@@ -5897,6 +6138,27 @@
     if (welcomeDevAccessBtn) {
       welcomeDevAccessBtn.onclick = () => {
         openDevAccessModal();
+      };
+    }
+
+    const devAccessPrimaryBtn = document.getElementById("devAccessPrimaryBtn");
+    if (devAccessPrimaryBtn) {
+      devAccessPrimaryBtn.onclick = () => {
+        handleDevAccessPrimaryAction();
+      };
+    }
+
+    const confirmClaimImportBtn = document.getElementById("confirmClaimImportBtn");
+    if (confirmClaimImportBtn) {
+      confirmClaimImportBtn.onclick = () => {
+        resolveClaimImportModal(true);
+      };
+    }
+
+    const cancelClaimImportBtn = document.getElementById("cancelClaimImportBtn");
+    if (cancelClaimImportBtn) {
+      cancelClaimImportBtn.onclick = () => {
+        resolveClaimImportModal(false);
       };
     }
     
@@ -6407,10 +6669,18 @@
     
     window.addEventListener("load", async () => {
       await syncUserSessionState();
-      await syncRemoteConversationsIndexIfApplicable();
-      await syncIntersessionMemoryIfApplicable();
       updateAccountBtnVisibility();
+      await claimLocalConversationsIntoAuthenticatedAccountIfNeeded();
+      const remoteConversationsSyncPromise = syncRemoteConversationsIndexIfApplicable()
+        .then(() => {
+          if (activeScreenId === "conversationsScreen") {
+            renderConversationsList();
+          }
+        })
+        .catch(() => {});
+      const intersessionMemorySyncPromise = syncIntersessionMemoryIfApplicable().catch(() => {});
       const isAdminUI = await syncAdminUiFromSession();
+      await refreshDevAccessPrimaryAction();
       const shouldSkipWelcomeAnimation = isAdminUI;
 
       const loadUrl = new URL(window.location.href);
@@ -6532,6 +6802,11 @@
         updateActivity();
         return;
       }
+
+      await Promise.allSettled([
+        remoteConversationsSyncPromise,
+        intersessionMemorySyncPromise
+      ]);
       
       const logo = document.getElementById("welcomeLogo");
       const welcome = document.getElementById("welcomeScreen");

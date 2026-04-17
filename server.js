@@ -4245,6 +4245,97 @@ app.get("/api/account/conversations/:id", requireUserAuth, async (req, res) => {
   }
 });
 
+app.post("/api/account/conversations/claim", requireUserAuth, async (req, res) => {
+  try {
+    const session = req.userSession;
+
+    if (
+      !req.body ||
+      typeof req.body !== "object" ||
+      Array.isArray(req.body) ||
+      typeof req.body.anonymousUserId !== "string" ||
+      !Array.isArray(req.body.conversationIds)
+    ) {
+      return res.status(400).json({ error: "Invalid claim request" });
+    }
+
+    const anonymousUserId = String(req.body.anonymousUserId || "").trim();
+    const conversationIds = req.body.conversationIds
+      .map(value => String(value || "").trim())
+      .filter(Boolean)
+      .slice(0, 100);
+
+    if (!anonymousUserId || conversationIds.length === 0) {
+      return res.status(400).json({ error: "Claim payload incomplete" });
+    }
+
+    const uniqueConversationIds = Array.from(new Set(conversationIds));
+    const claimedConversationIds = [];
+    let alreadyOwnedCount = 0;
+    let skippedCount = 0;
+
+    for (const conversationId of uniqueConversationIds) {
+      const convRef = db.ref("conversations").child(conversationId);
+      const convSnap = await convRef.once("value");
+      const conversation = convSnap.val();
+
+      if (!conversation || typeof conversation !== "object") {
+        skippedCount += 1;
+        continue;
+      }
+
+      const ownerId = String(conversation.userId || "").trim();
+
+      if (ownerId === session.userId) {
+        alreadyOwnedCount += 1;
+        continue;
+      }
+
+      if (ownerId !== anonymousUserId) {
+        skippedCount += 1;
+        continue;
+      }
+
+      await convRef.update({ userId: session.userId });
+
+      const messagesSnap = await messagesRef
+        .orderByChild("conversationId")
+        .equalTo(conversationId)
+        .once("value");
+
+      const messages = messagesSnap.val() || {};
+      const messageUpdates = {};
+
+      Object.entries(messages).forEach(([messageId, value]) => {
+        if (typeof messageId !== "string" || !value || typeof value !== "object") {
+          return;
+        }
+
+        if (String(value.userId || "").trim() === anonymousUserId) {
+          messageUpdates[`${messageId}/userId`] = session.userId;
+        }
+      });
+
+      if (Object.keys(messageUpdates).length > 0) {
+        await messagesRef.update(messageUpdates);
+      }
+
+      claimedConversationIds.push(conversationId);
+    }
+
+    return res.json({
+      success: true,
+      claimedConversationIds,
+      claimedCount: claimedConversationIds.length,
+      alreadyOwnedCount,
+      skippedCount
+    });
+  } catch (err) {
+    console.error("Erreur /api/account/conversations/claim:", err.message);
+    return res.status(500).json({ error: "Conversation claim failed" });
+  }
+});
+
 app.get("/api/branches", requireUserAuth, async (req, res) => {
   try {
     const session = req.userSession;
@@ -4790,6 +4881,118 @@ app.get("/api/admin/conversations/:id/messages", requireAdminAuth, async (req, r
   }
 });
 
+app.get("/api/admin/conversations/:id/branches", requireAdminAuth, async (req, res) => {
+  try {
+    if (!req.params || typeof req.params.id !== "string" || !req.params.id.trim()) {
+      return res.status(400).json({ error: "Conversation invalide" });
+    }
+
+    const currentConversationId = String(req.params.id || "").trim();
+    const [convSnap, branchSnap] = await Promise.all([
+      db.ref("conversations").once("value"),
+      branchRecordsRef.once("value")
+    ]);
+
+    const conversationsRaw = convSnap.val() || {};
+    const branchesRaw = branchSnap.val() || {};
+
+    const branches = Object.entries(branchesRaw)
+      .map(([id, item]) => ({
+        id,
+        sourceConversationId: String(item?.sourceConversationId || "").trim(),
+        sourceAnchorMessageId: String(item?.sourceAnchorMessageId || "").trim(),
+        branchConversationId: String(item?.branchConversationId || "").trim(),
+        seedMessageCount: Number(item?.seedMessageCount) || 0,
+        createdAt: typeof item?.createdAt === "string" ? item.createdAt : null,
+        updatedAt: typeof item?.updatedAt === "string" ? item.updatedAt : null,
+        activatedAt: typeof item?.activatedAt === "string" ? item.activatedAt : null,
+        status: String(item?.status || "active")
+      }))
+      .filter(item => item.sourceConversationId && item.branchConversationId);
+
+    const parentBranchByConversationId = new Map();
+    const childBranchesByConversationId = new Map();
+
+    branches.forEach(branch => {
+      parentBranchByConversationId.set(branch.branchConversationId, branch);
+
+      if (!childBranchesByConversationId.has(branch.sourceConversationId)) {
+        childBranchesByConversationId.set(branch.sourceConversationId, []);
+      }
+
+      childBranchesByConversationId.get(branch.sourceConversationId).push(branch);
+    });
+
+    let rootConversationId = currentConversationId;
+    const visitedAncestorIds = new Set([rootConversationId]);
+
+    while (parentBranchByConversationId.has(rootConversationId)) {
+      const parentBranch = parentBranchByConversationId.get(rootConversationId);
+      const nextRootId = String(parentBranch?.sourceConversationId || "").trim();
+
+      if (!nextRootId || visitedAncestorIds.has(nextRootId)) {
+        break;
+      }
+
+      visitedAncestorIds.add(nextRootId);
+      rootConversationId = nextRootId;
+    }
+
+    const relatedConversationIds = new Set([rootConversationId, currentConversationId]);
+    const relevantBranches = [];
+    const pendingConversationIds = [rootConversationId];
+    const visitedTreeIds = new Set();
+
+    while (pendingConversationIds.length > 0) {
+      const sourceConversationId = pendingConversationIds.shift();
+
+      if (!sourceConversationId || visitedTreeIds.has(sourceConversationId)) {
+        continue;
+      }
+
+      visitedTreeIds.add(sourceConversationId);
+
+      const children = childBranchesByConversationId.get(sourceConversationId) || [];
+      children
+        .slice()
+        .sort((a, b) => String(a.createdAt || "").localeCompare(String(b.createdAt || "")))
+        .forEach(branch => {
+          relevantBranches.push(branch);
+          relatedConversationIds.add(branch.sourceConversationId);
+          relatedConversationIds.add(branch.branchConversationId);
+          pendingConversationIds.push(branch.branchConversationId);
+        });
+    }
+
+    const conversations = Array.from(relatedConversationIds)
+      .filter(Boolean)
+      .map(id => {
+        const value = conversationsRaw[id] && typeof conversationsRaw[id] === "object" ? conversationsRaw[id] : {};
+        const fallbackTitle = typeof value.lastUserMessage === "string" && value.lastUserMessage.trim() ?
+          value.lastUserMessage.slice(0, 48) :
+          "Conversation sans titre";
+
+        return {
+          id,
+          title: typeof value.title === "string" && value.title.trim() ? value.title.trim() : fallbackTitle,
+          createdAt: typeof value.createdAt === "string" ? value.createdAt : null,
+          updatedAt: typeof value.updatedAt === "string" ? value.updatedAt : null,
+          messageCount: Number(value.messageCount || 0)
+        };
+      });
+
+    return res.json({
+      rootConversationId,
+      currentConversationId,
+      conversations,
+      branches: relevantBranches
+    });
+  } catch (err) {
+    console.error("Erreur branches conversation admin:", err);
+    return res.status(500).json({ error: "Erreur serveur" });
+  }
+});
+
 // Normalize incoming /chat payload into a stable request object.
 // This function keeps body parsing separated from the main pipeline logic.
 function parseChatRequest(req) {
@@ -5054,21 +5257,20 @@ app.post("/chat", async (req, res) => {
         return "";
       }
       
-      const safeLevel = clampExplorationDirectivityLevel(explorationDirectivityLevel);
-      
-      if (safeLevel <= 0) {
+      const safeWindow = normalizeExplorationRelanceWindow(explorationRelanceWindow);
+      const safeNextLevel = clampExplorationDirectivityLevel(explorationDirectivityLevel);
+      const safeRetainedLevel = explorationCalibrationLevel !== null && explorationCalibrationLevel !== undefined ?
+        clampExplorationDirectivityLevel(explorationCalibrationLevel) :
+        null;
+
+      if (safeRetainedLevel === null && safeNextLevel <= 0) {
         return "";
       }
       
-      const safeWindow = normalizeExplorationRelanceWindow(explorationRelanceWindow);
-      const safeCalibrationLevel = explorationCalibrationLevel !== null && explorationCalibrationLevel !== undefined ?
-        clampExplorationDirectivityLevel(explorationCalibrationLevel) :
-        null;
-      
       return [
-        safeCalibrationLevel !== null ? `Calibration exploration : ${safeCalibrationLevel}/4` : null,
-        `Niveau de directivité : ${safeLevel}/4`,
-        `Relances aux quatre derniers tours : [${safeWindow.map(v => (v ? "1" : "0")).join("-")}]`
+        safeRetainedLevel !== null ? `Niveau de structuration retenu : ${safeRetainedLevel}/4` : null,
+        `Fenetre de relance : [${safeWindow.map(v => (v ? "1" : "0")).join("-")}]`,
+        `Niveau de directivite (tour suivant) : ${safeNextLevel}/4`
       ].filter(Boolean).join("\n");
     }
     
@@ -5367,21 +5569,20 @@ app.post("/chat", async (req, res) => {
         return "";
       }
       
-      const safeLevel = clampExplorationDirectivityLevel(explorationDirectivityLevel);
-      
-      if (safeLevel <= 0) {
+      const safeWindow = normalizeExplorationRelanceWindow(explorationRelanceWindow);
+      const safeNextLevel = clampExplorationDirectivityLevel(explorationDirectivityLevel);
+      const safeRetainedLevel = explorationCalibrationLevel !== null && explorationCalibrationLevel !== undefined ?
+        clampExplorationDirectivityLevel(explorationCalibrationLevel) :
+        null;
+
+      if (safeRetainedLevel === null && safeNextLevel <= 0) {
         return "";
       }
       
-      const safeWindow = normalizeExplorationRelanceWindow(explorationRelanceWindow);
-      const safeCalibrationLevel = explorationCalibrationLevel !== null && explorationCalibrationLevel !== undefined ?
-        clampExplorationDirectivityLevel(explorationCalibrationLevel) :
-        null;
-      
       return [
-        safeCalibrationLevel !== null ? `Calibration exploration : ${safeCalibrationLevel}/4` : null,
-        `Niveau de directivité : ${safeLevel}/4`,
-        `Relances aux quatre derniers tours : [${safeWindow.map(v => (v ? "1" : "0")).join("-")}]`
+        safeRetainedLevel !== null ? `Niveau de structuration retenu : ${safeRetainedLevel}/4` : null,
+        `Fenetre de relance : [${safeWindow.map(v => (v ? "1" : "0")).join("-")}]`,
+        `Niveau de directivite (tour suivant) : ${safeNextLevel}/4`
       ].filter(Boolean).join("\n");
     }
     
@@ -6058,7 +6259,7 @@ app.post("/chat", async (req, res) => {
       interpretationRejection: interpretationRejection.isInterpretationRejection,
       isRecallRequest: recallRouting.isRecallAttempt === true,
       explorationCalibrationLevel: newFlags.explorationCalibrationLevel,
-      explorationDirectivityLevel: finalDirectivityLevel,
+      explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
       explorationRelanceWindow: newFlags.explorationRelanceWindow,
       rewriteSource: replyPipeline.rewriteSource,
       memoryRewriteSource: memoryPipeline.rewriteSource,
@@ -6085,7 +6286,7 @@ app.post("/chat", async (req, res) => {
         interpretationRejection: interpretationRejection.isInterpretationRejection,
         isRecallRequest: recallRouting.isRecallAttempt === true,
         explorationCalibrationLevel: newFlags.explorationCalibrationLevel,
-        explorationDirectivityLevel: finalDirectivityLevel,
+        explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
         explorationRelanceWindow: newFlags.explorationRelanceWindow,
         rewriteSource: null,
         memoryRewriteSource: null,

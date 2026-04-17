@@ -169,6 +169,104 @@
       overflow: hidden;
       word-break: break-word;
     }
+
+    .branch-panel {
+      background: #f7fbfa;
+      border: 1px solid #d6e2e1;
+      border-radius: 16px;
+      padding: 14px;
+      box-shadow: 0 4px 14px rgba(43, 79, 82, 0.08);
+    }
+
+    .branch-panel-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #1f3f44;
+      margin-bottom: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .branch-node {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .branch-card {
+      background: white;
+      border: 1px solid #d6e2e1;
+      border-radius: 14px;
+      padding: 12px;
+    }
+
+    .branch-card.current {
+      border-color: #245e66;
+      box-shadow: 0 0 0 1px rgba(36, 94, 102, 0.12);
+      background: #f2fbfb;
+    }
+
+    .branch-card-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 6px;
+    }
+
+    .branch-card-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #1f2937;
+    }
+
+    .branch-badge {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 4px 8px;
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 1;
+      color: #245e66;
+      background: rgba(36, 94, 102, 0.1);
+      border: 1px solid rgba(36, 94, 102, 0.18);
+    }
+
+    .branch-card-meta {
+      font-size: 12px;
+      line-height: 1.45;
+      color: #6b7280;
+    }
+
+    .branch-open-btn {
+      margin-top: 8px;
+      min-height: 34px;
+      border: 1px solid #cfd8db;
+      border-radius: 10px;
+      background: white;
+      color: #245e66;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 0 10px;
+      cursor: pointer;
+    }
+
+    .branch-children {
+      margin-left: 18px;
+      padding-left: 14px;
+      border-left: 2px solid rgba(36, 94, 102, 0.15);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .branch-edge {
+      font-size: 12px;
+      line-height: 1.4;
+      color: #5f6f73;
+      font-weight: 600;
+    }
     
     @media (max-width: 640px) {
       #app {
@@ -212,6 +310,7 @@
       </button>
       
       <div id="conversationMeta" class="meta" style="display:none;"></div>
+      <div id="branchTreeWrap" style="display:none; margin-top:10px;"></div>
       
       <div id="debugToolbar" style="display:none; gap:8px; margin-top:8px;">
         <button id="expandAllDebugBtn" type="button" style="flex:1; min-height:44px; border:1px solid #cfd8db; border-radius:12px; background:white; color:#245e66; font-size:15px; font-weight:600; cursor:pointer;">
@@ -421,6 +520,203 @@
 
       return true;
     }
+
+    function formatAdminDate(value) {
+      if (!value) {
+        return "date inconnue";
+      }
+
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) {
+        return "date inconnue";
+      }
+
+      return date.toLocaleString("fr-FR", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit"
+      });
+    }
+
+    function hideBranchTree() {
+      const wrap = document.getElementById("branchTreeWrap");
+      if (!wrap) return;
+      wrap.style.display = "none";
+      wrap.innerHTML = "";
+    }
+
+    function renderBranchTree(data) {
+      const wrap = document.getElementById("branchTreeWrap");
+      if (!wrap) return;
+
+      const branches = Array.isArray(data?.branches) ? data.branches : [];
+      const conversations = Array.isArray(data?.conversations) ? data.conversations : [];
+      const rootConversationId = String(data?.rootConversationId || "").trim();
+      const currentConversationId = String(data?.currentConversationId || "").trim();
+
+      wrap.innerHTML = "";
+      wrap.style.display = "block";
+
+      const panel = document.createElement("div");
+      panel.className = "branch-panel";
+
+      const title = document.createElement("div");
+      title.className = "branch-panel-title";
+      title.textContent = "Arborescence des branches";
+      panel.appendChild(title);
+
+      if (!rootConversationId || branches.length === 0) {
+        const empty = document.createElement("div");
+        empty.className = "branch-card-meta";
+        empty.textContent = "Aucune branche rattachee a cette conversation.";
+        panel.appendChild(empty);
+        wrap.appendChild(panel);
+        return;
+      }
+
+      const conversationsById = new Map(
+        conversations.map(item => [String(item?.id || "").trim(), item])
+      );
+      const childrenBySource = new Map();
+
+      branches.forEach(branch => {
+        const sourceConversationId = String(branch?.sourceConversationId || "").trim();
+        if (!sourceConversationId) {
+          return;
+        }
+
+        if (!childrenBySource.has(sourceConversationId)) {
+          childrenBySource.set(sourceConversationId, []);
+        }
+
+        childrenBySource.get(sourceConversationId).push(branch);
+      });
+
+      function renderNode(conversationId, lineage = new Set()) {
+        const safeConversationId = String(conversationId || "").trim();
+        const node = document.createElement("div");
+        node.className = "branch-node";
+
+        if (!safeConversationId) {
+          return node;
+        }
+
+        const conversation = conversationsById.get(safeConversationId) || {};
+        const card = document.createElement("div");
+        card.className = "branch-card" + (safeConversationId === currentConversationId ? " current" : "");
+
+        const header = document.createElement("div");
+        header.className = "branch-card-header";
+
+        const cardTitle = document.createElement("div");
+        cardTitle.className = "branch-card-title";
+        cardTitle.textContent = String(conversation?.title || safeConversationId || "Conversation");
+        header.appendChild(cardTitle);
+
+        if (safeConversationId === rootConversationId) {
+          const rootBadge = document.createElement("span");
+          rootBadge.className = "branch-badge";
+          rootBadge.textContent = "Tronc";
+          header.appendChild(rootBadge);
+        }
+
+        if (safeConversationId === currentConversationId) {
+          const currentBadge = document.createElement("span");
+          currentBadge.className = "branch-badge";
+          currentBadge.textContent = "Courante";
+          header.appendChild(currentBadge);
+        }
+
+        card.appendChild(header);
+
+        const meta = document.createElement("div");
+        meta.className = "branch-card-meta";
+        meta.textContent = [
+          safeConversationId,
+          `${Number(conversation?.messageCount || 0)} messages`,
+          `Maj ${formatAdminDate(conversation?.updatedAt || conversation?.createdAt)}`
+        ].join(" • ");
+        card.appendChild(meta);
+
+        if (safeConversationId !== currentConversationId) {
+          const openBtn = document.createElement("button");
+          openBtn.type = "button";
+          openBtn.className = "branch-open-btn";
+          openBtn.textContent = "Ouvrir cette branche";
+          openBtn.onclick = () => {
+            window.location.href = "/admin.html?c=" + encodeURIComponent(safeConversationId);
+          };
+          card.appendChild(openBtn);
+        }
+
+        node.appendChild(card);
+
+        if (lineage.has(safeConversationId)) {
+          return node;
+        }
+
+        const nextLineage = new Set(lineage);
+        nextLineage.add(safeConversationId);
+
+        const childBranches = (childrenBySource.get(safeConversationId) || [])
+          .slice()
+          .sort((a, b) => String(a?.createdAt || "").localeCompare(String(b?.createdAt || "")));
+
+        if (childBranches.length === 0) {
+          return node;
+        }
+
+        const childrenWrap = document.createElement("div");
+        childrenWrap.className = "branch-children";
+
+        childBranches.forEach(branch => {
+          const branchEdge = document.createElement("div");
+          branchEdge.className = "branch-edge";
+          branchEdge.textContent = [
+            "Bifurcation",
+            `${Number(branch?.seedMessageCount || 0)} messages seed`,
+            formatAdminDate(branch?.createdAt)
+          ].join(" • ");
+
+          childrenWrap.appendChild(branchEdge);
+          childrenWrap.appendChild(renderNode(String(branch?.branchConversationId || "").trim(), nextLineage));
+        });
+
+        node.appendChild(childrenWrap);
+        return node;
+      }
+
+      panel.appendChild(renderNode(rootConversationId));
+      wrap.appendChild(panel);
+    }
+
+    async function loadBranchTree(conversationId) {
+      if (!conversationId) {
+        hideBranchTree();
+        return;
+      }
+
+      try {
+        const res = await fetchWithTimeout("/api/admin/conversations/" + encodeURIComponent(conversationId) + "/branches");
+        const response = await readAdminJsonResponse(res);
+
+        if (response.redirectedToLogin) {
+          hideBranchTree();
+          return;
+        }
+
+        if (!res.ok || !response.isJson) {
+          hideBranchTree();
+          return;
+        }
+
+        renderBranchTree(response.data);
+      } catch {
+        hideBranchTree();
+      }
+    }
     
     async function loadConversations() {
       const list = document.getElementById("list");
@@ -428,6 +724,8 @@
       if (debugToolbar) {
         debugToolbar.style.display = "none";
       }
+
+      hideBranchTree();
       
       list.textContent = "Chargement des conversations...";
       
@@ -541,6 +839,7 @@
       const debugToolbar = document.getElementById("debugToolbar");
       const expandAllDebugBtn = document.getElementById("expandAllDebugBtn");
       const collapseAllDebugBtn = document.getElementById("collapseAllDebugBtn");
+      const branchTreePromise = loadBranchTree(conversationId);
       
       if (debugToolbar) {
         debugToolbar.style.display = "none";
@@ -661,10 +960,6 @@
 
           if (meta.interpretationRejection === true) {
             signalLines.push("Rejet d'interprétation détecté : oui");
-          }
-
-          if (Number.isInteger(meta.explorationCalibrationLevel)) {
-            signalLines.push(`Calibration exploration : ${meta.explorationCalibrationLevel}/4`);
           }
           
           if (meta.topChips.length) {
@@ -1026,6 +1321,8 @@
           wrapper.appendChild(card);
           list.appendChild(wrapper);
         });
+
+        await branchTreePromise;
         
       } catch (err) {
         const isTimeout = err && (err.name === "AbortError" || String(err.message || "").toLowerCase().includes("aborted"));
