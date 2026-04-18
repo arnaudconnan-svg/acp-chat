@@ -1,0 +1,103 @@
+name: Eval chat A/B (gpt-4o vs gpt-4.1)
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - beta
+  pull_request:
+    branches:
+      - beta
+
+jobs:
+  eval-ab:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      FIREBASE_DATABASE_URL: ${{ secrets.FIREBASE_DATABASE_URL }}
+      FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+      EVAL_BASE_URL: http://localhost:3000
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - model: gpt-4o
+            report: reports/eval-chat_gpt-4o.json
+          - model: gpt-4.1
+            report: reports/eval-chat_gpt-4.1.json
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Create reports directory
+        run: mkdir -p reports
+
+      - name: Start server (background)
+        env:
+          OPENAI_MODEL_GENERATION: ${{ matrix.model }}
+        run: |
+          npm start &
+          echo $! > /tmp/server.pid
+
+      - name: Wait for server to be ready
+        run: |
+          echo "Waiting for /health to respond..."
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:3000/health > /dev/null; then
+              echo "Server is ready."
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Server did not start in time."
+          exit 1
+
+      - name: Run eval (${{ matrix.model }})
+        env:
+          OPENAI_MODEL_GENERATION: ${{ matrix.model }}
+          EVAL_OUTPUT_PATH: ${{ matrix.report }}
+        run: npm run eval:chat
+
+      - name: Stop server
+        if: always()
+        run: |
+          if [ -f /tmp/server.pid ]; then
+            kill "$(cat /tmp/server.pid)" 2>/dev/null || true
+          fi
+
+      - name: Print summary (${{ matrix.model }})
+        if: always()
+        run: |
+          REPORT="${{ matrix.report }}"
+          if [ -f "$REPORT" ]; then
+            node -e "
+              const r = require('./$REPORT');
+              console.log('Model: ${{ matrix.model }}');
+              console.log('  passed : ' + r.passed);
+              console.log('  failed : ' + r.failed);
+              console.log('  total  : ' + r.total);
+            "
+          else
+            echo "No report found for ${{ matrix.model }} (eval may have been skipped)."
+          fi
+
+      - name: Upload report (${{ matrix.model }})
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-chat_${{ matrix.model }}
+          path: ${{ matrix.report }}
+          if-no-files-found: warn
