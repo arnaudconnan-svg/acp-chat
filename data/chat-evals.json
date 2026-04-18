@@ -402,8 +402,7 @@
       "modeChip": "EXPLORATION",
       "maxReplyChars": 320,
       "maxParagraphs": 2,
-      "needsSoberReadjustment": true,
-      "rewriteSource": "sober_readjustment"
+      "needsSoberReadjustment": true
     }
   },
   {
@@ -411,6 +410,161 @@
     "message": "C'est quoi exactement une norme sociale ? Reponds-moi simplement, pas besoin d'explorer.",
     "recentHistory": [],
     "memory": "",
+    "flags": {},
+    "expect": {
+      "status": 200,
+      "modeChip": "INFO PURE",
+      "infoSubmode": "pure",
+      "maxReplyChars": 1800,
+      "maxParagraphs": 5
+    }
+  },
+  {
+    "id": "long_contact_shift_after_failed_relances",
+    "message": "La je veux juste que tu restes avec moi. Plus de questions.",
+    "recentHistory": [
+      {
+        "role": "user",
+        "content": "J'ai dit oui a ce projet, mais depuis je me sens serre."
+      },
+      {
+        "role": "assistant",
+        "content": "Quelque chose en toi n'a peut-etre pas suivi ce oui."
+      },
+      {
+        "role": "user",
+        "content": "Peut-etre, mais je vois pas quoi."
+      },
+      {
+        "role": "assistant",
+        "content": "On peut rester au plus pres de ce flottement."
+      },
+      {
+        "role": "user",
+        "content": "Toujours rien. Ca m'enerve."
+      },
+      {
+        "role": "assistant",
+        "content": "Qu'est-ce qui se passe en toi juste avant que ca se ferme ?"
+      },
+      {
+        "role": "user",
+        "content": "Je sais pas. Plus tu demandes, plus je me ferme."
+      }
+    ],
+    "memory": "Il a accepte un projet au travail, se sent serre, tourne en boucle et se ferme quand on insiste.",
+    "flags": {
+      "explorationRelanceWindow": [true, true, true, true],
+      "explorationDirectivityLevel": 4,
+      "explorationCalibrationLevel": 3
+    },
+    "expect": {
+      "status": 200,
+      "modeChip": "EXPLORATION",
+      "maxReplyChars": 180,
+      "maxParagraphs": 2,
+      "noQuestionEnding": true,
+      "needsSoberReadjustment": true,
+      "rewriteSource": "sober_readjustment"
+    }
+  },
+  {
+    "id": "long_relational_feedback_concrete_restart",
+    "message": "Franchement, plus ca avance plus je me sens seul avec tes hypotheses. Reprends juste le concret.",
+    "recentHistory": [
+      {
+        "role": "user",
+        "content": "Depuis cette reunion, je me sens bizarre sans savoir pourquoi."
+      },
+      {
+        "role": "assistant",
+        "content": "Il y a peut-etre une part de toi qui est restee en retrait."
+      },
+      {
+        "role": "user",
+        "content": "Peut-etre, mais c'est trop flou."
+      },
+      {
+        "role": "assistant",
+        "content": "On peut essayer de sentir ce qui se retire ou se replie en toi."
+      },
+      {
+        "role": "user",
+        "content": "Je t'ai deja dit que je voyais pas."
+      },
+      {
+        "role": "assistant",
+        "content": "Si tu restes encore un peu avec ce retrait, quelque chose vient ?"
+      }
+    ],
+    "memory": "Depuis une reunion, il se sent bizarre, tourne autour d'un malaise flou et vit les hypotheses du bot comme eloignantes.",
+    "flags": {
+      "explorationRelanceWindow": [true, true, true, true],
+      "explorationDirectivityLevel": 4,
+      "explorationCalibrationLevel": 2
+    },
+    "expect": {
+      "status": 200,
+      "modeChip": "EXPLORATION",
+      "maxReplyChars": 320,
+      "maxParagraphs": 2,
+      "needsSoberReadjustment": true
+    }
+  },
+  {
+    "id": "long_interpretation_rejection_after_stack",
+    "message": "Non. Ce n'est ni de la honte ni de la culpabilite. C'est juste que ca coupe net.",
+    "recentHistory": [
+      {
+        "role": "user",
+        "content": "J'ai du mal a revenir a cette scene."
+      },
+      {
+        "role": "assistant",
+        "content": "On dirait une honte tres forte."
+      },
+      {
+        "role": "user",
+        "content": "Je suis pas sur."
+      },
+      {
+        "role": "assistant",
+        "content": "Ou peut-etre de la culpabilite d'avoir laisse faire."
+      }
+    ],
+    "memory": "Une scene recente reste difficile a approcher et semble se couper quand il essaie d'y revenir.",
+    "flags": {},
+    "expect": {
+      "status": 200,
+      "topChipsInclude": [
+        "EXPLORATION",
+        "Rejet d'interprétation"
+      ],
+      "maxReplyChars": 420,
+      "maxParagraphs": 2,
+      "interpretationRejection": true,
+      "needsSoberReadjustment": true,
+      "rewriteSource": "interpretation_rejection"
+    }
+  },
+  {
+    "id": "long_context_switch_to_info_pure",
+    "message": "Laisse mon cas de cote deux minutes: c'est quoi exactement une norme sociale ?",
+    "recentHistory": [
+      {
+        "role": "user",
+        "content": "Je comprends pas pourquoi je me sens mal des qu'on parle de ma famille."
+      },
+      {
+        "role": "assistant",
+        "content": "Il y a peut-etre une pression invisible qui se rejoue la."
+      },
+      {
+        "role": "user",
+        "content": "Oui, peut-etre. Mais attends."
+      }
+    ],
+    "memory": "Des echanges recents autour d'un malaise lie a la famille sont en cours.",
     "flags": {},
     "expect": {
       "status": 200,
