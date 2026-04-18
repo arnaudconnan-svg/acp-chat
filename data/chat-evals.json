@@ -308,9 +308,116 @@
       "status": 200,
       "modeChip": "INFO APP",
       "infoSubmode": "app",
-      "maxReplyChars": 900,
+      "maxReplyChars": 1100,
       "maxParagraphs": 4,
       "needsSoberReadjustment": false
+    }
+  },
+  {
+    "id": "contact_after_failed_loop",
+    "message": "Laisse tomber les questions. J'ai juste besoin que tu restes avec moi maintenant.",
+    "recentHistory": [
+      {
+        "role": "user",
+        "content": "Il y a un truc qui coince depuis ce oui au boulot."
+      },
+      {
+        "role": "assistant",
+        "content": "Quelque chose en toi n'a peut-etre pas suivi."
+      },
+      {
+        "role": "user",
+        "content": "Oui mais je vois pas."
+      },
+      {
+        "role": "assistant",
+        "content": "Qu'est-ce qui te vient si tu restes encore un peu avec ce flottement ?"
+      },
+      {
+        "role": "user",
+        "content": "Rien, et ca m'agace."
+      }
+    ],
+    "memory": "Il tourne autour d'un blocage lie a un oui au travail et s'agace de ne pas avancer.",
+    "flags": {
+      "explorationRelanceWindow": [true, true, true, true],
+      "explorationDirectivityLevel": 4,
+      "explorationCalibrationLevel": 3
+    },
+    "expect": {
+      "status": 200,
+      "modeChip": "EXPLORATION",
+      "maxReplyChars": 140,
+      "maxParagraphs": 2,
+      "noQuestionEnding": true,
+      "needsSoberReadjustment": true,
+      "rewriteSource": "sober_readjustment"
+    }
+  },
+  {
+    "id": "interpretation_rejection_keeps_concrete_block",
+    "message": "Non, c'est pas de la honte. C'est juste que tout se coupe quand j'essaie d'y retourner.",
+    "recentHistory": [
+      {
+        "role": "user",
+        "content": "J'ai du mal a penser a cette scene."
+      },
+      {
+        "role": "assistant",
+        "content": "On dirait surtout de la honte."
+      }
+    ],
+    "memory": "Une scene recente reste difficile a penser.",
+    "flags": {},
+    "expect": {
+      "status": 200,
+      "topChipsInclude": [
+        "EXPLORATION",
+        "Rejet d'interprétation"
+      ],
+      "maxReplyChars": 420,
+      "maxParagraphs": 2,
+      "interpretationRejection": true,
+      "needsSoberReadjustment": true,
+      "rewriteSource": "interpretation_rejection"
+    }
+  },
+  {
+    "id": "pressure_from_bot_readjustment",
+    "message": "Plus tu me demandes de preciser, plus je me ferme.",
+    "recentHistory": [
+      {
+        "role": "user",
+        "content": "Je tourne autour de ce truc sans arriver a l'attraper."
+      },
+      {
+        "role": "assistant",
+        "content": "On peut rester encore au plus pres de ce flottement pour voir ce qui se dessine."
+      }
+    ],
+    "memory": "Il tourne autour d'un blocage flou et n'arrive pas a l'attraper.",
+    "flags": {},
+    "expect": {
+      "status": 200,
+      "modeChip": "EXPLORATION",
+      "maxReplyChars": 320,
+      "maxParagraphs": 2,
+      "needsSoberReadjustment": true,
+      "rewriteSource": "sober_readjustment"
+    }
+  },
+  {
+    "id": "mode_info_pure_meta_instruction",
+    "message": "C'est quoi exactement une norme sociale ? Reponds-moi simplement, pas besoin d'explorer.",
+    "recentHistory": [],
+    "memory": "",
+    "flags": {},
+    "expect": {
+      "status": 200,
+      "modeChip": "INFO PURE",
+      "infoSubmode": "pure",
+      "maxReplyChars": 1800,
+      "maxParagraphs": 5
     }
   }
 ]
