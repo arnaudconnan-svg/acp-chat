@@ -218,3 +218,35 @@ contrôle humain > automatisation
 
 Codex est un assistant de modification.
 Il ne décide pas de l’architecture à lui seul.
+---
+
+## 12. Eval chat A/B — configuration GitHub Actions
+
+Le workflow `.github/workflows/eval-chat-ab.yml` compare deux providers LLM (OpenAI et Anthropic) sur le même dataset d'évaluation.
+
+### Secrets à créer (Settings → Secrets and variables → Actions → Secrets)
+
+| Nom | Description |
+|-----|-------------|
+| `OPENAI_API_KEY` | Clé API OpenAI (déjà utilisée en production) |
+| `ANTHROPIC_API_KEY` | Clé API Anthropic — à créer sur console.anthropic.com |
+| `FIREBASE_DATABASE_URL` | URL de la base Firebase Realtime Database |
+| `FIREBASE_SERVICE_ACCOUNT` | JSON complet du compte de service Firebase |
+
+### Variable de repo à créer (Settings → Secrets and variables → Actions → Variables)
+
+| Nom | Valeur exemple | Description |
+|-----|---------------|-------------|
+| `ANTHROPIC_MODEL_GENERATION` | `claude-sonnet-4-5` | Identifiant exact du modèle Anthropic (ex : `claude-sonnet-4-5`, `claude-3-5-sonnet-20241022`). Le workflow échoue avec un message clair si cette variable est absente. |
+
+### Lancer le workflow manuellement
+
+1. Repo → onglet **Actions**
+2. Sélectionner **"Eval chat A/B (OpenAI vs Anthropic)"**
+3. Bouton **Run workflow** → branche `beta`
+
+### Artifacts produits
+
+Après chaque run, deux artifacts sont disponibles dans la section **Artifacts** du run :
+- `eval-chat_openai_gpt-4o` — rapport JSON OpenAI
+- `eval-chat_anthropic_sonnet` — rapport JSON Anthropic

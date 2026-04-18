@@ -65,6 +65,16 @@ const app = express();
 const port = process.env.PORT || 3000;
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
+// LLM provider selection: "openai" (default) or "anthropic"
+const LLM_PROVIDER = String(process.env.LLM_PROVIDER || "openai").trim().toLowerCase();
+
+// Anthropic client (initialized only when provider is anthropic)
+let anthropicClient = null;
+if (LLM_PROVIDER === "anthropic") {
+  const Anthropic = require("@anthropic-ai/sdk");
+  anthropicClient = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+}
+
 function readModelId(envKey, fallback) {
   const configuredValue = String(process.env[envKey] || "").trim();
   return configuredValue || fallback;
@@ -75,6 +85,49 @@ const MODEL_IDS = {
   generation: readModelId("OPENAI_MODEL_GENERATION", "gpt-4.1"),
   title: readModelId("OPENAI_MODEL_TITLE", "gpt-4o-mini")
 };
+
+// Anthropic model IDs — each defaults to ANTHROPIC_MODEL_GENERATION when not set individually.
+const ANTHROPIC_MODEL_IDS = LLM_PROVIDER === "anthropic" ? {
+  analysis: readModelId("ANTHROPIC_MODEL_ANALYSIS", readModelId("ANTHROPIC_MODEL_GENERATION", "")),
+  generation: readModelId("ANTHROPIC_MODEL_GENERATION", ""),
+  title: readModelId("ANTHROPIC_MODEL_TITLE", readModelId("ANTHROPIC_MODEL_GENERATION", ""))
+} : null;
+
+// Unified LLM call: accepts the same shape as client.chat.completions.create and
+// returns a normalized object with choices[0].message.content so all callers stay unchanged.
+async function callLLM(params) {
+  if (LLM_PROVIDER === "anthropic") {
+    // Extract the system message (first message with role "system" if any)
+    const systemMsg = params.messages.find(m => m.role === "system");
+    const userMessages = params.messages.filter(m => m.role !== "system");
+
+    // Resolve model: replace MODEL_IDS values with ANTHROPIC_MODEL_IDS equivalents
+    let model = params.model;
+    if (model === MODEL_IDS.analysis) model = ANTHROPIC_MODEL_IDS.analysis;
+    else if (model === MODEL_IDS.generation) model = ANTHROPIC_MODEL_IDS.generation;
+    else if (model === MODEL_IDS.title) model = ANTHROPIC_MODEL_IDS.title;
+
+    if (!model) {
+      throw new Error("ANTHROPIC_MODEL_GENERATION is not set. Define it as a repository variable (Settings → Secrets and variables → Actions → Variables) before running with LLM_PROVIDER=anthropic.");
+    }
+
+    const anthropicParams = {
+      model,
+      max_tokens: params.max_tokens || 1024,
+      messages: userMessages,
+      ...(systemMsg ? { system: systemMsg.content } : {}),
+      ...(params.temperature !== undefined ? { temperature: params.temperature } : {})
+    };
+
+    const r = await anthropicClient.messages.create(anthropicParams);
+    const content = r.content?.[0]?.text || "";
+    // Return normalized OpenAI-compatible shape
+    return { choices: [{ message: { content } }] };
+  }
+
+  // Default: OpenAI
+  return client.chat.completions.create(params);
+}
 
 function createEmailNotifier() {
   const notifyTo = String(process.env.NOTIFY_EMAIL_TO || "").trim();
@@ -2673,7 +2726,7 @@ async function analyzeSuicideRisk(
   
   const context = trimSuicideAnalysisHistory(history);
   
-  const r = await client.chat.completions.create({
+  const r = await callLLM({
     model: MODEL_IDS.analysis,
     temperature: 0,
     max_tokens: 240,
@@ -2739,7 +2792,7 @@ async function n1ResponseLLM(
 ) {
   const system = promptRegistry.N1_RESPONSE_LLM;
   
-  const r = await client.chat.completions.create({
+  const r = await callLLM({
     model: MODEL_IDS.generation,
     temperature: 0,
     max_tokens: 50,
@@ -2772,7 +2825,7 @@ function acuteCrisisFollowupResponse() {
 async function llmInfoAnalysis(message = "", history = [], promptRegistry = buildDefaultPromptRegistry()) {
   const context = trimInfoAnalysisHistory(history);
   
-  const r = await client.chat.completions.create({
+  const r = await callLLM({
     model: MODEL_IDS.analysis,
     temperature: 0,
     max_tokens: 60,
@@ -2806,7 +2859,7 @@ async function analyzeInfoRequest(message = "", history = [], promptRegistry = b
 async function analyzeInfoSubmode(message = "", history = [], promptRegistry = buildDefaultPromptRegistry()) {
   const context = trimInfoAnalysisHistory(history);
 
-  const r = await client.chat.completions.create({
+  const r = await callLLM({
     model: MODEL_IDS.analysis,
     temperature: 0,
     max_tokens: 60,
@@ -2854,7 +2907,7 @@ previousContactState :
 ${JSON.stringify(safePreviousContactState)}
 `;
   
-  const r = await client.chat.completions.create({
+  const r = await callLLM({
     model: MODEL_IDS.analysis,
     temperature: 0,
     max_tokens: 80,
@@ -2898,7 +2951,7 @@ Memoire resumee :
 ${normalizeMemory(memory, promptRegistry)}
 `;
   
-  const r = await client.chat.completions.create({
+  const r = await callLLM({
     model: MODEL_IDS.analysis,
     temperature: 0,
     max_tokens: 80,
@@ -2939,7 +2992,7 @@ ${normalizeMemory(memory, promptRegistry)}
 Formule une reponse de rappel honnete a partir de cette seule memoire.
 `;
   
-  const r = await client.chat.completions.create({
+  const r = await callLLM({
     model: MODEL_IDS.analysis,
     temperature: 0.7,
     max_tokens: 150,
@@ -2959,7 +3012,7 @@ function buildNoMemoryRecallResponse() {
 
 // Ask the LLM whether the generated content appears to violate the model conflict policy.
 async function analyzeModelConflict(content = "", promptRegistry = buildDefaultPromptRegistry()) {
-  const r = await client.chat.completions.create({
+  const r = await callLLM({
     model: MODEL_IDS.analysis,
     temperature: 0,
     max_tokens: 40,
@@ -3004,7 +3057,7 @@ Contenu initial a reformuler :
 ${originalContent}
 `;
   
-  const r = await client.chat.completions.create({
+  const r = await callLLM({
     model: MODEL_IDS.generation,
     temperature: 0.3,
     max_tokens: 500,
@@ -3042,7 +3095,7 @@ Reponse du bot a analyser :
 ${reply}
 `;
   
-  const r = await client.chat.completions.create({
+  const r = await callLLM({
     model: MODEL_IDS.analysis,
     temperature: 0,
     max_tokens: 60,
@@ -3093,7 +3146,7 @@ Fenetre recente de relances :
 [${normalizeExplorationRelanceWindow(explorationRelanceWindow).map(v => (v ? "1" : "0")).join("-")}]
 `;
 
-  const r = await client.chat.completions.create({
+  const r = await callLLM({
     model: MODEL_IDS.analysis,
     temperature: 0,
     max_tokens: 60,
@@ -3136,7 +3189,7 @@ Memoire :
 ${normalizeMemory(memory, promptRegistry)}
 `;
 
-  const r = await client.chat.completions.create({
+  const r = await callLLM({
     model: MODEL_IDS.analysis,
     temperature: 0,
     max_tokens: 120,
@@ -3191,7 +3244,7 @@ Reponse initiale a reecrire :
 ${originalReply}
 `;
 
-  const r = await client.chat.completions.create({
+  const r = await callLLM({
     model: MODEL_IDS.generation,
     temperature: 0.3,
     max_tokens: 300,
@@ -3229,7 +3282,7 @@ Analyse du rejet :
 ${JSON.stringify(interpretationRejection)}
 `;
 
-  const r = await client.chat.completions.create({
+  const r = await callLLM({
     model: MODEL_IDS.analysis,
     temperature: 0.2,
     max_tokens: 220,
@@ -3431,7 +3484,7 @@ Conversation :
 ${transcript}
 `;
   
-  const r = await client.chat.completions.create({
+  const r = await callLLM({
     model: MODEL_IDS.analysis,
     temperature: 0.3,
     max_tokens: 400,
@@ -3492,7 +3545,7 @@ Memoire de session qui se ferme :
 ${normalizeMemory(sessionMemory, promptRegistry)}
 `;
 
-  const r = await client.chat.completions.create({
+  const r = await callLLM({
     model: MODEL_IDS.analysis,
     temperature: 0.1,
     max_tokens: 220,
@@ -3745,7 +3798,7 @@ async function generateReply({
   ];
   
   // Send the assembled prompt and conversation history to the LLM.
-  const r = await client.chat.completions.create({
+  const r = await callLLM({
     model: MODEL_IDS.generation,
     temperature: 0.7,
     top_p: 1,
@@ -3842,7 +3895,7 @@ async function generateConversationTitle(messages) {
     
     const sourceText = userMessages.join("\n\n");
     
-    const completion = await client.chat.completions.create({
+    const completion = await callLLM({
       model: MODEL_IDS.title,
       temperature: 0.2,
       max_tokens: 30,

@@ -1,4 +1,4 @@
-name: Eval chat A/B (gpt-4o vs gpt-4.1)
+name: Eval chat A/B (OpenAI vs Anthropic)
 
 on:
   workflow_dispatch:
@@ -15,7 +15,6 @@ jobs:
     permissions:
       contents: read
     env:
-      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       FIREBASE_DATABASE_URL: ${{ secrets.FIREBASE_DATABASE_URL }}
       FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
       EVAL_BASE_URL: http://localhost:3000
@@ -24,10 +23,14 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - model: gpt-4o
-            report: reports/eval-chat_gpt-4o.json
-          - model: gpt-4.1
-            report: reports/eval-chat_gpt-4.1.json
+          - provider: openai
+            model: gpt-4o
+            report: reports/eval-chat_openai_gpt-4o.json
+            artifact: eval-chat_openai_gpt-4o
+          - provider: anthropic
+            model: ${{ vars.ANTHROPIC_MODEL_GENERATION }}
+            report: reports/eval-chat_anthropic_sonnet.json
+            artifact: eval-chat_anthropic_sonnet
 
     steps:
       - name: Checkout
@@ -42,12 +45,36 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Validate Anthropic model variable (Anthropic only)
+        if: matrix.provider == 'anthropic'
+        run: |
+          if [ -z "${{ vars.ANTHROPIC_MODEL_GENERATION }}" ]; then
+            echo "ERROR: The repository variable ANTHROPIC_MODEL_GENERATION is not set."
+            echo "Go to Settings → Secrets and variables → Actions → Variables"
+            echo "and add ANTHROPIC_MODEL_GENERATION with the Anthropic model identifier"
+            echo "(e.g. claude-sonnet-4-5)."
+            exit 1
+          fi
+
       - name: Create reports directory
         run: mkdir -p reports
 
-      - name: Start server (background)
+      - name: Start server — OpenAI
+        if: matrix.provider == 'openai'
         env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_MODEL_GENERATION: ${{ matrix.model }}
+          LLM_PROVIDER: openai
+        run: |
+          npm start &
+          echo $! > /tmp/server.pid
+
+      - name: Start server — Anthropic
+        if: matrix.provider == 'anthropic'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_MODEL_GENERATION: ${{ vars.ANTHROPIC_MODEL_GENERATION }}
+          LLM_PROVIDER: anthropic
         run: |
           npm start &
           echo $! > /tmp/server.pid
@@ -65,9 +92,8 @@ jobs:
           echo "Server did not start in time."
           exit 1
 
-      - name: Run eval (${{ matrix.model }})
+      - name: Run eval (${{ matrix.provider }} / ${{ matrix.model }})
         env:
-          OPENAI_MODEL_GENERATION: ${{ matrix.model }}
           EVAL_OUTPUT_PATH: ${{ matrix.report }}
         run: npm run eval:chat
 
@@ -78,26 +104,26 @@ jobs:
             kill "$(cat /tmp/server.pid)" 2>/dev/null || true
           fi
 
-      - name: Print summary (${{ matrix.model }})
+      - name: Print summary (${{ matrix.provider }} / ${{ matrix.model }})
         if: always()
         run: |
           REPORT="${{ matrix.report }}"
           if [ -f "$REPORT" ]; then
             node -e "
               const r = require('./$REPORT');
-              console.log('Model: ${{ matrix.model }}');
+              console.log('Provider: ${{ matrix.provider }} / Model: ${{ matrix.model }}');
               console.log('  passed : ' + r.passed);
               console.log('  failed : ' + r.failed);
               console.log('  total  : ' + r.total);
             "
           else
-            echo "No report found for ${{ matrix.model }} (eval may have been skipped)."
+            echo "No report found for ${{ matrix.provider }}/${{ matrix.model }} (eval may have been skipped)."
           fi
 
-      - name: Upload report (${{ matrix.model }})
+      - name: Upload report (${{ matrix.provider }} / ${{ matrix.model }})
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: eval-chat_${{ matrix.model }}
+          name: ${{ matrix.artifact }}
           path: ${{ matrix.report }}
           if-no-files-found: warn
