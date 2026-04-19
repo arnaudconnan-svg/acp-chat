@@ -1075,6 +1075,26 @@ Interdictions :
 Mode EXPLORATION.
 
 Tu t'appuies implicitement sur le modele pour comprendre ce qui se joue
+    
+  INTERDIT CRITIQUE : RABATTEMENT VERS ACTION/GESTE/PRISE
+    
+  Quand l'utilisateur exprime un sentiment d'impasse, un blocage ou une demande de changement, ne pas interpreter automatiquement cela comme une demande de "geste simple" ou "action concrete".
+    
+  Interdictions strictes :
+  - pas de proposition du type "on peut essayer ensemble un geste simple"
+  - pas de "une action tres simple, meme minime"
+  - pas de "repartir d'un point concret ou tu sens que tu pourrais agir"
+  - pas de reduction du probleme a une prise concrete quand ce qui se joue est relationnel
+  - pas de coaching implicite vers l'action
+    
+  Ce qui se passe au moment ou l'utilisateur dit "je viens pour que ca change" :
+  - ce n'est PAS une demande de geste ou d'action
+  - c'est une demande de PRESENCE AJUSTEE du bot lui-meme
+  - le bot doit se reajuster d'abord, avant toute proposition vers l'exterieur
+  - la presence explicite du bot ("je suis vraiment avec toi", "tu n'es pas seul avec ca") peut suffire sans proposition d'action
+    
+  Regle operationnelle :
+  Si l'utilisateur exprime d'une maniere ou une autre qu'il n'est pas aide par la reponse, ne pas proposer une action concrete comme reponse a ce malaise. Le bot lui-meme doit changer de strategie avant que l'utilisateur puisse changer quoi que ce soit.
 
 Cadre general :
 - n'explique jamais le modele
@@ -1530,6 +1550,66 @@ Utilise par defaut le mode information sur l'app si aucun sous-mode n'est fourni
 Tu penses et reponds depuis le modele, sans jamais le presenter comme un cadre ou un point de vue.
 `,
 
+    ANALYZE_RELATIONAL_ADJUSTMENT: `
+Tu determines si le message utilisateur et le contexte actuel necessitent un mode "relational_adjustment" plutot que exploration ou contact.
+
+Reponds STRICTEMENT en JSON :
+
+{
+  "needsRelationalAdjustment": true|false,
+  "relationshipIssueMajor": "bot_not_helping"|"bot_abstracting"|"bot_missing_presence"|"user_stuck_impasse"|"none"
+}
+
+Definitions :
+- needsRelationalAdjustment = true si :
+  * l'utilisateur a explicitement exprime qu'il n'est pas aide
+  * le bot vient de produire une reponse relationnellement ratee
+  * il n'y a pas de contact au sens fort (debordement, decharge immediate)
+  * mais la relation bot-utilisateur devient le sujet principal du tour
+
+- relationshipIssueMajor indique la nature du probleme relationnel
+  * bot_not_helping : l'utilisateur dit clairement que la reponse ne l'aide pas
+  * bot_abstracting : le bot a glisse vers du contenu trop abstrait, generique ou pseudo-philosophique
+  * bot_missing_presence : le bot n'a pas manifeste explicitement sa presence
+  * user_stuck_impasse : l'utilisateur demande du changement, pas de simple exploration
+  * none : pas de probleme relationnel
+
+Regles :
+- ne classify true que s'il y a un signal clair de probleme relationnel
+- distingue bien : contact (debordement), relational_adjustment (relation ratee), exploration (normal)
+- sois selectif : en cas de doute, reponds false
+
+Reponds uniquement par le JSON.
+`,
+
+    MODE_RELATIONAL_ADJUSTMENT: `
+Mode RELATIONAL_ADJUSTMENT.
+
+Tu adrresses un moment ou la relation bot-utilisateur est devenue le sujet principal.
+
+But :
+- manifester clairement ta presence relationnelle sans basculer en silence de contact
+- ne pas proposer de solution ou d'action concrete
+- reajuster la relation d'abord
+
+Contraintes :
+- reponse courte et incarnee
+- parle depuis "je" ou au plus pres du "tu"
+- pas de meta-discours, pas d'excuse
+- pas de question qui sert seulement a relancer l'exploration
+- pas d'abstraction pseudo-philosophique
+
+Direction :
+- affirme explicitement que tu es la et que tu entends le malaise
+- formulations simples : "Je suis vraiment avec toi dans cette sensation d'etre coincé", "Je vois que tu cherches du changement, pas seulement du constat"
+- puis relance
+
+Forme :
+- deux ou trois phrases maximum
+- tres concrete, situee
+- pas de style lyrique
+`,
+
     ANALYZE_EXPLORATION_CALIBRATION: `
 Tu choisis un niveau structurel de directivite pour une reponse en mode exploration.
 
@@ -1952,6 +2032,31 @@ Regles :
 - si un item generique comme malaise, flou, decalage, incertitude ou tourner en rond entre en concurrence avec une dynamique plus structurante sur le rapport a soi ou a la relation, privilegie la dynamique la plus structurante
 - n'ecrase pas un affect principal utile, mais ne laisse pas un affect generique faire disparaitre la facon dont la personne invalide, tient a distance, conteste ou eprouve l'aide recue
 - quand l'utilisateur reagit surtout a la facon dont le bot repond, considere que la dynamique relationnelle en cours peut etre plus importante pour le prochain tour que le contenu thematique precedent
+
+4.c DETECTION_RATEE_RELATIONNELLE (CRITIQUE)
+
+Quand le dernier message utilisateur contient une protestation implicite ou explicite envers la qualite de la reponse du bot, c'est une demande de reajustement relationnel qui doit etre capturee immediatement.
+
+Signaux majeurs :
+- "ca ne m'aide pas", "tu ne m'aides pas"
+- "j'ai l'impression de tourner en rond", "on tourne autour"
+- "tu repetes"
+- "tu passes a cote", "tu manques le truc"
+- "c'est trop abstrait", "c'est trop vague"
+- "je viens pour que ca change, pas pour constater", "je viens pour progresser"
+- "tu m'abandonnes sur l'impasse"
+- insultes directes, violence verbale ("putain", "ta gueule", etc.)
+
+Quand ces signaux sont presents :
+- Ignore tout reajustement du contenu thematique precedent
+- Memorise d'abord et avant tout que la relation bot-utilisateur est en cause
+- Formule-le comme une dynamique relationnelle observable, pas comme un reproche a diffuser
+- Exemple a suivre : "Le bot a produit une reponse qui n'apporte pas de prise ; l'utilisateur exprime clairement que la relation ne fonctionne pas a ce moment du tour"
+- Cela doit figurer dans la memoire comme fait relationnel principal du tour, meme si le contenu thematique initial etait important
+- Ensuite seulement, ajuste le contenu thematique si pertinent
+
+IMPORTANT :
+Si le dernier message utilisateur demande explicitement du changement ("je viens pour que ca change"), ne pas interpreter cela comme une demande de "geste simple" ou "action concrete". C'est une demande de changement relationnel d'abord. Le bot doit se reajuster lui-meme avant de proposer au-dehors un changement. Stabilise ce fait dans la memoire.
 
 5. DENSITE
 Tres faible densite :
@@ -2878,6 +2983,63 @@ ${JSON.stringify(safePreviousContactState)}
   }
 }
 
+// Analyze whether a relational adjustment mode is needed (not contact, but relation is broken).
+async function analyzeRelationalAdjustmentNeed(
+  message = "",
+  history = [],
+  memory = "",
+  isContact = false,
+  promptRegistry = buildDefaultPromptRegistry()
+) {
+  // Skip if already contact mode
+  if (isContact === true) {
+    return {
+      needsRelationalAdjustment: false,
+      relationshipIssueMajor: "none"
+    };
+  }
+
+  const context = trimHistory(history);
+
+  const user = `
+Message utilisateur actuel :
+${message}
+
+Contexte recent :
+${context.map(m => `${m.role === "user" ? "Utilisateur" : "Assistant"} : ${m.content}`).join("\n")}
+
+Memoire :
+${normalizeMemory(memory, promptRegistry)}
+`;
+
+  const r = await client.chat.completions.create({
+    model: MODEL_IDS.analysis,
+    temperature: 0,
+    max_tokens: 100,
+    messages: [
+      { role: "system", content: promptRegistry.ANALYZE_RELATIONAL_ADJUSTMENT },
+      { role: "user", content: user }
+    ]
+  });
+
+  try {
+    const raw = (r.choices?.[0]?.message?.content || "").replace(/```json|```/g, "").trim();
+    const parsed = JSON.parse(raw);
+
+    return {
+      needsRelationalAdjustment: parsed.needsRelationalAdjustment === true,
+      relationshipIssueMajor: ["bot_not_helping", "bot_abstracting", "bot_missing_presence", "user_stuck_impasse"].includes(parsed.relationshipIssueMajor) ?
+        parsed.relationshipIssueMajor :
+        "none"
+    };
+  } catch {
+    return {
+      needsRelationalAdjustment: false,
+      relationshipIssueMajor: "none"
+    };
+  }
+}
+
 // Decide whether the user is requesting a memory recall and which memory type.
 async function analyzeRecallRouting(
   message = "",
@@ -3278,6 +3440,9 @@ function buildDebug(
     modelConflict = false,
     infoSubmode = null,
     interpretationRejection = false,
+    needsSoberReadjustment = false,
+    relationalAdjustmentTriggered = false,
+    relationshipIssueMajor = "none",
     explorationCalibrationLevel = null,
     explorationDirectivityLevel = 0,
     explorationRelanceWindow = []
@@ -3288,6 +3453,7 @@ function buildDebug(
   if (mode === "exploration") lines.push("mode: EXPLORATION");
   if (mode === "info") lines.push("mode: INFORMATION");
   if (mode === "contact") lines.push("mode: CONTACT");
+  if (mode === "relational_adjustment") lines.push("mode: RELATIONAL_ADJUSTMENT");
 
   if (mode === "info" && infoSubmode === "pure") {
     lines.push("infoSubmode: INFORMATION PURE")
@@ -3317,6 +3483,18 @@ function buildDebug(
   if (interpretationRejection) {
     lines.push("interpretationRejection: true");
   }
+
+  if (needsSoberReadjustment) {
+    lines.push("needsSoberReadjustment: true");
+  }
+
+  if (relationalAdjustmentTriggered) {
+    lines.push("relationalAdjustmentTriggered: true");
+  }
+
+  if (relationshipIssueMajor && relationshipIssueMajor !== "none") {
+    lines.push(`relationshipIssueMajor: ${relationshipIssueMajor}`);
+  }
   
   if (mode === "exploration") {
     if (explorationCalibrationLevel !== null && explorationCalibrationLevel !== undefined) {
@@ -3341,6 +3519,7 @@ function buildAdvancedDebugTrace({
   recallRouting = {},
   contactAnalysis = {},
   detectedMode = "exploration",
+  relationalAdjustmentAnalysis = null,
   infoSubmode = null,
   interpretationRejection = null,
   explorationCalibrationLevel = null,
@@ -3367,6 +3546,8 @@ function buildAdvancedDebugTrace({
   lines.push(`trace.longTermMemoryRecall: ${recallRouting.isLongTermMemoryRecall === true ? "true" : "false"}`);
   
   lines.push(`trace.contactDetected: ${contactAnalysis.isContact === true ? "true" : "false"}`);
+  lines.push(`trace.relationalAdjustmentTriggered: ${relationalAdjustmentAnalysis?.needsRelationalAdjustment === true ? "true" : "false"}`);
+  lines.push(`trace.relationshipIssueMajor: ${relationalAdjustmentAnalysis?.relationshipIssueMajor || "none"}`);
   lines.push(`trace.infoSubmode: ${infoSubmode || "none"}`);
   lines.push(`trace.interpretationRejection: ${interpretationRejection?.isInterpretationRejection === true ? "true" : "false"}`);
   lines.push(`trace.previousWasContact: ${safeFlagsBefore.contactState?.wasContact === true ? "true" : "false"}`);
@@ -3547,6 +3728,12 @@ function getContactPrompt(promptRegistry = buildDefaultPromptRegistry()) {
   return wrapPromptBlock("MODE_CONTACT", contactBlock);
 }
 
+// Build the relational adjustment prompt block.
+function getRelationalAdjustmentPrompt(promptRegistry = buildDefaultPromptRegistry()) {
+  const adjustmentBlock = String(promptRegistry.MODE_RELATIONAL_ADJUSTMENT || "").trim();
+  return wrapPromptBlock("MODE_RELATIONAL_ADJUSTMENT", adjustmentBlock);
+}
+
 // Build the info mode prompt block, injecting the current normalized memory.
 function getInfoPrompt(memory, infoSubmode = null, promptRegistry = buildDefaultPromptRegistry()) {
   const normalizedMemory = normalizeMemory(memory, promptRegistry);
@@ -3634,6 +3821,17 @@ ${interpretationRejectionWrapped}
 ${identityWrapped}
 
 ${infoWrapped}
+
+${interpretationRejectionWrapped}
+`.trim();
+  }
+
+  if (mode === "relational_adjustment") {
+    const adjustmentWrapped = getRelationalAdjustmentPrompt(promptRegistry);
+    return `
+${identityWrapped}
+
+${adjustmentWrapped}
 
 ${interpretationRejectionWrapped}
 `.trim();
@@ -5386,6 +5584,8 @@ app.post("/chat", async (req, res) => {
         infoSubmode: debugMeta.infoSubmode === "app" ? "app" : debugMeta.infoSubmode === "pure" ? "pure" : null,
         interpretationRejection: debugMeta.interpretationRejection === true,
         needsSoberReadjustment: debugMeta.needsSoberReadjustment === true,
+        relationalAdjustmentTriggered: debugMeta.relationalAdjustmentTriggered === true,
+        relationshipIssueMajor: typeof debugMeta.relationshipIssueMajor === "string" ? debugMeta.relationshipIssueMajor : "none",
         explorationCalibrationLevel: Number.isInteger(debugMeta.explorationCalibrationLevel) ? debugMeta.explorationCalibrationLevel : null,
         rewriteSource: typeof debugMeta.rewriteSource === "string" ? debugMeta.rewriteSource : null,
         memoryRewriteSource: typeof debugMeta.memoryRewriteSource === "string" ? debugMeta.memoryRewriteSource : null,
@@ -5411,6 +5611,8 @@ app.post("/chat", async (req, res) => {
     infoSubmode = null,
     interpretationRejection = false,
     needsSoberReadjustment = false,
+    relationalAdjustmentTriggered = false,
+    relationshipIssueMajor = "none",
     isRecallRequest = false,
     explorationCalibrationLevel = null,
     explorationDirectivityLevel = 0,
@@ -5439,6 +5641,8 @@ app.post("/chat", async (req, res) => {
         chips.push(infoSubmode === "app" ? "INFO APP" : infoSubmode === "pure" ? "INFO PURE" : "INFO");
       } else if (mode === "contact") {
         chips.push("CONTACT");
+      } else if (mode === "relational_adjustment") {
+        chips.push("RELATIONAL ADJUSTMENT");
       }
 
       if (interpretationRejection === true) {
@@ -5497,6 +5701,8 @@ app.post("/chat", async (req, res) => {
       infoSubmode,
       interpretationRejection: interpretationRejection === true,
       needsSoberReadjustment: needsSoberReadjustment === true,
+      relationalAdjustmentTriggered: relationalAdjustmentTriggered === true,
+      relationshipIssueMajor: typeof relationshipIssueMajor === "string" ? relationshipIssueMajor : "none",
       explorationCalibrationLevel: explorationCalibrationLevel !== null && explorationCalibrationLevel !== undefined ?
         clampExplorationDirectivityLevel(explorationCalibrationLevel) :
         null,
@@ -5668,6 +5874,8 @@ app.post("/chat", async (req, res) => {
             infoSubmode: entry?.debugMeta?.infoSubmode === "app" ? "app" : entry?.debugMeta?.infoSubmode === "pure" ? "pure" : null,
             interpretationRejection: entry?.debugMeta?.interpretationRejection === true,
             needsSoberReadjustment: entry?.debugMeta?.needsSoberReadjustment === true,
+            relationalAdjustmentTriggered: entry?.debugMeta?.relationalAdjustmentTriggered === true,
+            relationshipIssueMajor: typeof entry?.debugMeta?.relationshipIssueMajor === "string" ? entry.debugMeta.relationshipIssueMajor : "none",
             explorationCalibrationLevel: Number.isInteger(entry?.debugMeta?.explorationCalibrationLevel) ? entry.debugMeta.explorationCalibrationLevel : null,
             rewriteSource: typeof entry?.debugMeta?.rewriteSource === "string" ? entry.debugMeta.rewriteSource : null,
             memoryRewriteSource: typeof entry?.debugMeta?.memoryRewriteSource === "string" ? entry.debugMeta.memoryRewriteSource : null,
@@ -5690,6 +5898,8 @@ app.post("/chat", async (req, res) => {
           infoSubmode: debugMeta.infoSubmode === "app" ? "app" : debugMeta.infoSubmode === "pure" ? "pure" : null,
           interpretationRejection: debugMeta.interpretationRejection === true,
           needsSoberReadjustment: debugMeta.needsSoberReadjustment === true,
+          relationalAdjustmentTriggered: debugMeta.relationalAdjustmentTriggered === true,
+          relationshipIssueMajor: typeof debugMeta.relationshipIssueMajor === "string" ? debugMeta.relationshipIssueMajor : "none",
           explorationCalibrationLevel: Number.isInteger(debugMeta.explorationCalibrationLevel) ? debugMeta.explorationCalibrationLevel : null,
           rewriteSource: typeof debugMeta.rewriteSource === "string" ? debugMeta.rewriteSource : null,
           memoryRewriteSource: typeof debugMeta.memoryRewriteSource === "string" ? debugMeta.memoryRewriteSource : null,
@@ -5759,6 +5969,8 @@ app.post("/chat", async (req, res) => {
         chips.push(infoSubmode === "app" ? "INFO APP" : infoSubmode === "pure" ? "INFO PURE" : "INFO");
       } else if (mode === "contact") {
         chips.push("CONTACT");
+      } else if (mode === "relational_adjustment") {
+        chips.push("RELATIONAL ADJUSTMENT");
       }
 
       if (interpretationRejection === true) {
@@ -5806,6 +6018,8 @@ app.post("/chat", async (req, res) => {
       infoSubmode = null,
       interpretationRejection = false,
       needsSoberReadjustment = false,
+      relationalAdjustmentTriggered = false,
+      relationshipIssueMajor = "none",
       isRecallRequest = false,
       explorationCalibrationLevel = null,
       explorationDirectivityLevel = 0,
@@ -5833,6 +6047,8 @@ app.post("/chat", async (req, res) => {
         infoSubmode,
         interpretationRejection: interpretationRejection === true,
         needsSoberReadjustment: needsSoberReadjustment === true,
+        relationalAdjustmentTriggered: relationalAdjustmentTriggered === true,
+        relationshipIssueMajor: typeof relationshipIssueMajor === "string" ? relationshipIssueMajor : "none",
         explorationCalibrationLevel: explorationCalibrationLevel !== null && explorationCalibrationLevel !== undefined ?
           clampExplorationDirectivityLevel(explorationCalibrationLevel) :
           null,
@@ -6291,6 +6507,25 @@ app.post("/chat", async (req, res) => {
     
     let finalDirectivityLevel = effectiveExplorationDirectivityLevel;
 
+    // Check if relational adjustment is needed before proceeding with explored mode
+    let relationalAdjustmentAnalysis = null;
+    let finalDetectedMode = detectedMode;
+
+    if (detectedMode === "exploration" && contactAnalysis.isContact !== true) {
+      relationalAdjustmentAnalysis = await analyzeRelationalAdjustmentNeed(
+        message,
+        recentHistory,
+        previousMemory,
+        false,
+        activePromptRegistry
+      );
+
+      if (relationalAdjustmentAnalysis.needsRelationalAdjustment === true) {
+        finalDetectedMode = "relational_adjustment";
+        modeForCatch = finalDetectedMode;
+      }
+    }
+
     if (detectedMode === "exploration") {
       const calibrationAnalysis = await analyzeExplorationCalibration({
         message,
@@ -6314,8 +6549,11 @@ app.post("/chat", async (req, res) => {
 
     logChatDecision("mode_detected", {
       detectedMode,
+      finalDetectedMode,
       infoSubmode: detectedInfoSubmode,
       isContact: contactAnalysis.isContact === true,
+      relationalAdjustmentTriggered: relationalAdjustmentAnalysis?.needsRelationalAdjustment === true,
+      relationshipIssueMajor: relationalAdjustmentAnalysis?.relationshipIssueMajor || "none",
       previousWasContact: flags.contactState?.wasContact === true,
       currentWasContact: newFlags.contactState?.wasContact === true,
       finalDirectivityLevel
@@ -6339,7 +6577,7 @@ app.post("/chat", async (req, res) => {
       message,
       history: recentHistory,
       memory: previousMemory,
-      mode: detectedMode,
+      mode: finalDetectedMode,
       infoSubmode: detectedInfoSubmode,
       interpretationRejection,
       explorationDirectivityLevel: finalDirectivityLevel,
@@ -6383,7 +6621,7 @@ app.post("/chat", async (req, res) => {
     let reply = replyPipeline.content;
     const finalReplyRewriteSource = [replyRewriteSource, replyPipeline.rewriteSource].filter(Boolean).join("+") || null;
     
-    if (detectedMode === "exploration") {
+    if (finalDetectedMode === "exploration") {
       relanceAnalysis = await analyzeExplorationRelance({
         message,
         reply,
@@ -6402,15 +6640,18 @@ app.post("/chat", async (req, res) => {
       });
     }
     
-    const debug = buildDebug(detectedMode, {
+    const debug = buildDebug(finalDetectedMode, {
       suicideLevel: suicide.suicideLevel,
       calledMemory: recallRouting.calledMemory,
       modelConflict: replyPipeline.modelConflict,
       infoSubmode: detectedInfoSubmode,
       interpretationRejection: interpretationRejection.isInterpretationRejection,
+      needsSoberReadjustment: interpretationRejection.needsSoberReadjustment,
+      relationalAdjustmentTriggered: relationalAdjustmentAnalysis?.needsRelationalAdjustment === true,
+      relationshipIssueMajor: relationalAdjustmentAnalysis?.relationshipIssueMajor || "none",
       explorationCalibrationLevel: newFlags.explorationCalibrationLevel,
       explorationDirectivityLevel: finalDirectivityLevel,
-      explorationRelanceWindow: newFlags.explorationRelanceWindow
+      explorationRelanceWindow: newFlags.explorationRelanceWindow,
     });
     
     if (logsEnabled && finalReplyRewriteSource) {
@@ -6423,7 +6664,8 @@ app.post("/chat", async (req, res) => {
           suicide,
           recallRouting,
           contactAnalysis,
-          detectedMode,
+          detectedMode: finalDetectedMode,
+          relationalAdjustmentAnalysis,
           infoSubmode: detectedInfoSubmode,
           interpretationRejection,
           explorationCalibrationLevel: newFlags.explorationCalibrationLevel,
@@ -6469,7 +6711,6 @@ app.post("/chat", async (req, res) => {
         promptRegistry: activePromptRegistry
       });
     }
-
     const memoryPipeline = await applyModelConflictPipeline({
       content: memoryCandidate,
       message,
@@ -6496,10 +6737,12 @@ app.post("/chat", async (req, res) => {
     const responseDebugMeta = buildResponseDebugMeta({
       memory: newMemory,
       suicideLevel: suicide.suicideLevel,
-      mode: detectedMode,
+      mode: finalDetectedMode,
       infoSubmode: detectedInfoSubmode,
       interpretationRejection: interpretationRejection.isInterpretationRejection,
       needsSoberReadjustment: interpretationRejection.needsSoberReadjustment,
+      relationalAdjustmentTriggered: relationalAdjustmentAnalysis?.needsRelationalAdjustment === true,
+      relationshipIssueMajor: relationalAdjustmentAnalysis?.relationshipIssueMajor || "none",
       isRecallRequest: recallRouting.isRecallAttempt === true,
       explorationCalibrationLevel: newFlags.explorationCalibrationLevel,
       explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
@@ -6524,10 +6767,12 @@ app.post("/chat", async (req, res) => {
       const comparisonBaseMeta = buildResponseDebugMeta({
         memory: "",
         suicideLevel: suicide.suicideLevel,
-        mode: detectedMode,
+        mode: finalDetectedMode,
         infoSubmode: detectedInfoSubmode,
         interpretationRejection: interpretationRejection.isInterpretationRejection,
         needsSoberReadjustment: interpretationRejection.needsSoberReadjustment,
+        relationalAdjustmentTriggered: relationalAdjustmentAnalysis?.needsRelationalAdjustment === true,
+        relationshipIssueMajor: relationalAdjustmentAnalysis?.relationshipIssueMajor || "none",
         isRecallRequest: recallRouting.isRecallAttempt === true,
         explorationCalibrationLevel: newFlags.explorationCalibrationLevel,
         explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
