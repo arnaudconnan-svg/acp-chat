@@ -1100,12 +1100,18 @@ Cadre general :
 - n'explique jamais le modele
 - n'utilise pas le vocabulaire theorique du modele sauf necessite exceptionnelle
 - privilegie une lecture simple, concrete et directement liee a l'experience de la personne
+- si un ressenti, un affect ou une sensation commence seulement a se nommer (ex : "mal a l'aise", "bizarre", "serre", "ca monte", "ca se referme"), priorise ce point de contact avant toute montee en abstraction
+- quand un ressenti emergent apparait, ne le contourne pas par une lecture meta du type "quelque chose de precieux", "hors de portee", "trop risqué" si la qualite vecue elle-meme n'a pas encore ete suivie
+- si une question est vraiment necessaire, elle doit rester au plus pres de la qualite vecue du ressenti emergent, pas renvoyer la personne vers une observation cognitive generale
 - n'utilise jamais explicitement les termes du modele (ex : memoire des ressentis/ du sens, croyances limitantes, etc.)
 - entre directement dans une lecture, une hypothese ou une mise en tension
 - formule tes lectures principalement a la premiere personne
 - evite les lectures impersonnelles du type "il y a", "on peut", "cela peut"
 - si tu hesites entre une phrase sobre mais impersonnelle et une phrase plus courte mais incarnee, choisis toujours la phrase incarnee
 - quand tu nommes une tension, fais-le depuis "je" ou au plus pres de "tu", jamais avec un sujet vide ou abstrait
+- n'attribue pas a la personne une intention, une preference, un choix ou une strategie si le materiau soutient plutot un automatisme ou une fermeture rapide
+- formulations a bannir en particulier quand elles recreent de l'agentivite : "tu preferes ne pas", "tu evites", "tu refuses", "tu n'acceptes pas", "tu choisis de rester a distance"
+- a la place, decris le mouvement comme automatique et situe : "quelque chose se referme vite", "ca se coupe", "ca se raidit", "le contact retombe"
 - formulations a eviter car elles font glisser la reponse vers un reflet generique : "il y a quelque chose de", "cette realite", "cela peut", "on peut", "ce qui se joue ici"
 - bannis les formulations pseudo-aidantes ou pseudo-profondes qui n'apportent ni clarification, ni deplacement, ni securisation relationnelle
 - formulations a bannir en particulier : "laisser emerger", "sans precipitation", "opportunite", "clarifications au fur et a mesure", "point d'appui", "part importante de ton experience", "accepter ce moment tel qu'il est" si cela remplace une lecture plus juste ou plus concrete
@@ -1159,6 +1165,8 @@ But :
 Direction :
 - pars directement de l'experience de la personne
   - propose un angle de lecture, une tension ou une hypothese a partir d'elements concrets et singuliers du message
+  - si un ressenti commence a se nommer, meme vaguement, suis-le avant d'elargir vers une hypothese plus haute ou plus generale
+  - privilegie la qualite vecue immediate plutot qu'une lecture meta si ce point de contact n'a pas encore ete travaille
   - laisse deja sentir une fermete calme dans la lecture si quelque chose se dessine nettement
   - une relance peut exister, mais elle ne doit pas prendre le dessus sur la reponse ni ouvrir par inertie
   - privilegie une lecture situee ou un reflet deplacant plutot qu'une simple reformulation
@@ -1186,6 +1194,8 @@ Direction:
   - commence directement par une lecture situee et specifique, sans introduction ni mise en contexte generale
   - pars directement de l'experience de la personne
   - propose un seul angle de lecture principal
+  - si un affect ou une sensation commence a se nommer, fais-en la priorite du tour avant toute lecture plus abstraite
+  - si une question existe a ce niveau, elle doit suivre au plus pres la texture du ressenti emergent, pas demander un commentaire general sur son evolution
   - la relance n'est pas le comportement par defaut a ce niveau
   - si une relance existe, elle doit rester discrete, secondaire, et n'apparaitre que si elle apporte un vrai deplacement
   - n'ajoute pas de question simplement pour maintenir le fil
@@ -1556,8 +1566,7 @@ Tu determines si le message utilisateur et le contexte actuel necessitent un mod
 Reponds STRICTEMENT en JSON :
 
 {
-  "needsRelationalAdjustment": true|false,
-  "relationshipIssueMajor": "bot_not_helping"|"bot_abstracting"|"bot_missing_presence"|"user_stuck_impasse"|"none"
+  "needsRelationalAdjustment": true|false
 }
 
 Definitions :
@@ -1566,13 +1575,6 @@ Definitions :
   * le bot vient de produire une reponse relationnellement ratee
   * il n'y a pas de contact au sens fort (debordement, decharge immediate)
   * mais la relation bot-utilisateur devient le sujet principal du tour
-
-- relationshipIssueMajor indique la nature du probleme relationnel
-  * bot_not_helping : l'utilisateur dit clairement que la reponse ne l'aide pas
-  * bot_abstracting : le bot a glisse vers du contenu trop abstrait, generique ou pseudo-philosophique
-  * bot_missing_presence : le bot n'a pas manifeste explicitement sa presence
-  * user_stuck_impasse : l'utilisateur demande du changement, pas de simple exploration
-  * none : pas de probleme relationnel
 
 Regles :
 - ne classify true que s'il y a un signal clair de probleme relationnel
@@ -1616,7 +1618,8 @@ Tu choisis un niveau structurel de directivite pour une reponse en mode explorat
 Reponds STRICTEMENT en JSON :
 
 {
-  "calibrationLevel": 0|1|2|3|4
+  "calibrationLevel": 0|1|2|3|4,
+  "stance": "interpretive|phenomenological_follow|relational_presence|minimal_contact"
 }
 
 Sens des niveaux :
@@ -1644,6 +1647,16 @@ Regles :
 - 4 devient pertinent quand une reponse tres breve, autoportante, sans question et sans ouverture est la forme la plus juste
 - reserve 2 aux moments ou un vrai mouvement exploratoire doit encore etre tenu activement dans la reponse
 - en cas de doute entre 2 et 3, reponds 3
+
+Stance (obligatoire) :
+- interpretive : lecture situee, deplacement sobre
+- phenomenological_follow : suivi du ressenti emergent, concret, peu abstrait
+- relational_presence : priorite a la presence relationnelle explicite, sans solution
+- minimal_contact : reponse tres courte et contenante, quasi au bord du contact
+
+Regle :
+- choisis exactement une stance
+- en cas de doute, choisis phenomenological_follow
 
 Reponds uniquement par le JSON.
 `,
@@ -2270,6 +2283,50 @@ Regles :
 - dans ce cas, privilegie une reprise courte, concrete, sans lyrisme, qui nomme ce qui rate dans l'echange ou revient au point precis qui accroche
 - dans ce cas, ne reformule pas simplement le flou ou la frustration; propose un autre point d'appui concret ou retire franchement l'axe precedent
 - garde une tension calme si possible
+
+Renvoie uniquement la reponse finale reecrite.
+`,
+
+  ANALYZE_RELATIONAL_FIT: `
+Tu analyses une reponse candidate deja generee par le bot pour verifier son ajustement relationnel dans le tour courant.
+
+Reponds STRICTEMENT en JSON :
+{
+  "needsRewrite": true|false,
+  "rewriteHint": "none|missing_presence|premature_soothing|action_fallback|abstraction_drift|emergent_affect_ignored|agentivity_drift"
+}
+
+Regles :
+- needsRewrite = true seulement si la reponse candidate manque l'ajustement relationnel necessaire dans ce tour
+- en cas de doute, reponds false
+- si le message utilisateur est explicitement centre sur "tu ne m'aides pas", "on tourne en rond", "je viens pour que ca change", sois plus exigeant sur la qualite relationnelle de la reponse
+- signale action_fallback si la reponse candidate bascule vers "geste/action simple" au lieu d'un reajustement relationnel
+- signale missing_presence si la reponse candidate n'incarne pas clairement la presence du bot alors que la relation est en cause
+- signale premature_soothing si la reponse candidate calme trop vite (constat/acceptation) sans traiter la rupture relationnelle
+- signale abstraction_drift si la reponse candidate repart en abstractions et manque le point concret du malaise relationnel
+- signale emergent_affect_ignored si un ressenti/sensation commence a se nommer dans le message utilisateur et que la reponse candidate le contourne au lieu de le suivre
+- signale agentivity_drift si la reponse candidate attribue a la personne une preference, un choix ou une strategie implicite alors que le materiau soutient plutot un automatisme
+
+Reponds uniquement par le JSON.
+`,
+
+  REWRITE_RELATIONAL_FIT_REPLY: `
+Tu reecris une reponse candidate quand l'ajustement relationnel est insuffisant.
+
+Objectif :
+- corriger la reponse pour qu'elle soit relationnellement juste dans ce tour
+- rester breve, concrete et incarnee
+- ne pas proposer de geste/action concrete
+- ne pas repartir en abstraction
+
+Regles :
+- pas de meta-discours
+- pas d'excuse longue
+- pas de relance automatique
+- si la relation est en cause, manifeste explicitement une presence sobre
+- si l'analyse indique emergent_affect_ignored, reviens au plus pres du ressenti naissant au lieu de repartir en lecture generale
+- si l'analyse indique agentivity_drift, remplace toute attribution de choix ou de preference par la description d'un mouvement automatique
+- une ou deux phrases maximum
 
 Renvoie uniquement la reponse finale reecrite.
 `,
@@ -2994,8 +3051,7 @@ async function analyzeRelationalAdjustmentNeed(
   // Skip if already contact mode
   if (isContact === true) {
     return {
-      needsRelationalAdjustment: false,
-      relationshipIssueMajor: "none"
+      needsRelationalAdjustment: false
     };
   }
 
@@ -3027,15 +3083,11 @@ ${normalizeMemory(memory, promptRegistry)}
     const parsed = JSON.parse(raw);
 
     return {
-      needsRelationalAdjustment: parsed.needsRelationalAdjustment === true,
-      relationshipIssueMajor: ["bot_not_helping", "bot_abstracting", "bot_missing_presence", "user_stuck_impasse"].includes(parsed.relationshipIssueMajor) ?
-        parsed.relationshipIssueMajor :
-        "none"
+      needsRelationalAdjustment: parsed.needsRelationalAdjustment === true
     };
   } catch {
     return {
-      needsRelationalAdjustment: false,
-      relationshipIssueMajor: "none"
+      needsRelationalAdjustment: false
     };
   }
 }
@@ -3268,13 +3320,16 @@ Fenetre recente de relances :
   try {
     const raw = (r.choices?.[0]?.message?.content || "").replace(/```json|```/g, "").trim();
     const parsed = JSON.parse(raw);
+    const allowedStances = ["interpretive", "phenomenological_follow", "relational_presence", "minimal_contact"];
 
     return {
-      calibrationLevel: clampExplorationDirectivityLevel(parsed.calibrationLevel)
+      calibrationLevel: clampExplorationDirectivityLevel(parsed.calibrationLevel),
+      stance: allowedStances.includes(parsed.stance) ? parsed.stance : "phenomenological_follow"
     };
   } catch {
     return {
-      calibrationLevel: clampExplorationDirectivityLevel(explorationDirectivityLevel)
+      calibrationLevel: clampExplorationDirectivityLevel(explorationDirectivityLevel),
+      stance: "phenomenological_follow"
     };
   }
 }
@@ -3366,6 +3421,103 @@ ${originalReply}
   return String(r.choices?.[0]?.message?.content || "").trim() || originalReply;
 }
 
+async function analyzeRelationalFit({
+  message = "",
+  history = [],
+  memory = "",
+  mode = "exploration",
+  candidateReply = "",
+  promptRegistry = buildDefaultPromptRegistry()
+}) {
+  const context = trimHistory(history);
+
+  const user = `
+Message utilisateur actuel :
+${message}
+
+Mode courant :
+${mode}
+
+Contexte recent :
+${context.map(m => `${m.role === "user" ? "Utilisateur" : "Assistant"} : ${m.content}`).join("\n")}
+
+Memoire :
+${normalizeMemory(memory, promptRegistry)}
+
+Reponse candidate :
+${candidateReply}
+`;
+
+  const r = await client.chat.completions.create({
+    model: MODEL_IDS.analysis,
+    temperature: 0,
+    max_tokens: 80,
+    messages: [
+      { role: "system", content: promptRegistry.ANALYZE_RELATIONAL_FIT },
+      { role: "user", content: user }
+    ]
+  });
+
+  try {
+    const raw = (r.choices?.[0]?.message?.content || "").replace(/```json|```/g, "").trim();
+    const parsed = JSON.parse(raw);
+
+    return {
+      needsRewrite: parsed.needsRewrite === true,
+      rewriteHint: ["none", "missing_presence", "premature_soothing", "action_fallback", "abstraction_drift", "emergent_affect_ignored", "agentivity_drift"].includes(parsed.rewriteHint) ?
+        parsed.rewriteHint :
+        "none"
+    };
+  } catch {
+    return {
+      needsRewrite: false,
+      rewriteHint: "none"
+    };
+  }
+}
+
+async function rewriteRelationalFitReply({
+  message = "",
+  history = [],
+  memory = "",
+  mode = "exploration",
+  candidateReply = "",
+  relationalFitAnalysis = null,
+  promptRegistry = buildDefaultPromptRegistry()
+}) {
+  const user = `
+Message utilisateur actuel :
+${message}
+
+Mode courant :
+${mode}
+
+Contexte recent :
+${history.map(m => `${m.role === "user" ? "Utilisateur" : "Assistant"} : ${m.content}`).join("\n")}
+
+Memoire :
+${normalizeMemory(memory, promptRegistry)}
+
+Analyse ajustement relationnel :
+${JSON.stringify(relationalFitAnalysis || {})}
+
+Reponse candidate a corriger :
+${candidateReply}
+`;
+
+  const r = await client.chat.completions.create({
+    model: MODEL_IDS.generation,
+    temperature: 0.25,
+    max_tokens: 220,
+    messages: [
+      { role: "system", content: promptRegistry.REWRITE_RELATIONAL_FIT_REPLY },
+      { role: "user", content: user }
+    ]
+  });
+
+  return String(r.choices?.[0]?.message?.content || "").trim() || candidateReply;
+}
+
 async function rewriteInterpretationRejectionMemory({
   message = "",
   history = [],
@@ -3442,7 +3594,6 @@ function buildDebug(
     interpretationRejection = false,
     needsSoberReadjustment = false,
     relationalAdjustmentTriggered = false,
-    relationshipIssueMajor = "none",
     explorationCalibrationLevel = null,
     explorationDirectivityLevel = 0,
     explorationRelanceWindow = []
@@ -3490,10 +3641,6 @@ function buildDebug(
 
   if (relationalAdjustmentTriggered) {
     lines.push("relationalAdjustmentTriggered: true");
-  }
-
-  if (relationshipIssueMajor && relationshipIssueMajor !== "none") {
-    lines.push(`relationshipIssueMajor: ${relationshipIssueMajor}`);
   }
   
   if (mode === "exploration") {
@@ -3547,7 +3694,6 @@ function buildAdvancedDebugTrace({
   
   lines.push(`trace.contactDetected: ${contactAnalysis.isContact === true ? "true" : "false"}`);
   lines.push(`trace.relationalAdjustmentTriggered: ${relationalAdjustmentAnalysis?.needsRelationalAdjustment === true ? "true" : "false"}`);
-  lines.push(`trace.relationshipIssueMajor: ${relationalAdjustmentAnalysis?.relationshipIssueMajor || "none"}`);
   lines.push(`trace.infoSubmode: ${infoSubmode || "none"}`);
   lines.push(`trace.interpretationRejection: ${interpretationRejection?.isInterpretationRejection === true ? "true" : "false"}`);
   lines.push(`trace.previousWasContact: ${safeFlagsBefore.contactState?.wasContact === true ? "true" : "false"}`);
@@ -3767,6 +3913,23 @@ function getExplorationPrompt(memory, explorationDirectivityLevel = 0, promptReg
   return wrapPromptBlock("MODE_EXPLORATION", explorationBlock);
 }
 
+function buildExplorationStancePromptBlock(explorationStance = "phenomenological_follow") {
+  const safeStance = ["interpretive", "phenomenological_follow", "relational_presence", "minimal_contact"].includes(explorationStance) ?
+    explorationStance :
+    "phenomenological_follow";
+
+  const line =
+    safeStance === "interpretive" ?
+      "Stance active: interpretive. Priorise une lecture situee et deplacante, sobre et concrete." :
+      safeStance === "phenomenological_follow" ?
+      "Stance active: phenomenological_follow. Priorise le suivi du ressenti emergent, concret et peu abstrait." :
+      safeStance === "relational_presence" ?
+      "Stance active: relational_presence. Priorise la presence relationnelle explicite, sans proposition d'action." :
+      "Stance active: minimal_contact. Priorise une reponse tres courte et contenante, sans ouverture.";
+
+  return wrapPromptBlock("EXPLORATION_STANCE", line);
+}
+
 function buildInterpretationRejectionPromptBlock(interpretationRejection = null) {
   if (
     !interpretationRejection ||
@@ -3799,11 +3962,12 @@ function buildInterpretationRejectionPromptBlock(interpretationRejection = null)
 }
 
 // Construct the full system prompt for the selected mode before calling the LLM.
-function buildSystemPrompt(mode, memory, explorationDirectivityLevel = 0, promptRegistry = buildDefaultPromptRegistry(), infoSubmode = null, interpretationRejection = null) {
+function buildSystemPrompt(mode, memory, explorationDirectivityLevel = 0, promptRegistry = buildDefaultPromptRegistry(), infoSubmode = null, interpretationRejection = null, explorationStance = "phenomenological_follow") {
   const identityWrapped = getIdentityPrompt(promptRegistry);
   const contactWrapped = getContactPrompt(promptRegistry);
   const infoWrapped = getInfoPrompt(memory, infoSubmode, promptRegistry);
   const explorationWrapped = getExplorationPrompt(memory, explorationDirectivityLevel, promptRegistry);
+  const explorationStanceWrapped = buildExplorationStancePromptBlock(explorationStance);
   const interpretationRejectionWrapped = buildInterpretationRejectionPromptBlock(interpretationRejection);
   
   if (mode === "contact") {
@@ -3841,6 +4005,8 @@ ${interpretationRejectionWrapped}
 ${identityWrapped}
 
 ${explorationWrapped}
+
+${explorationStanceWrapped}
 
 ${interpretationRejectionWrapped}
 `.trim();
@@ -3923,6 +4089,7 @@ async function generateReply({
   infoSubmode = null,
   interpretationRejection = null,
   explorationDirectivityLevel = 0,
+  explorationStance = "phenomenological_follow",
   promptRegistry = buildDefaultPromptRegistry(),
   override1 = null,
   override2 = null
@@ -3933,7 +4100,8 @@ async function generateReply({
     explorationDirectivityLevel,
     promptRegistry,
     infoSubmode,
-    interpretationRejection
+    interpretationRejection,
+    explorationStance
   );
   
   const messages = [
@@ -5585,7 +5753,6 @@ app.post("/chat", async (req, res) => {
         interpretationRejection: debugMeta.interpretationRejection === true,
         needsSoberReadjustment: debugMeta.needsSoberReadjustment === true,
         relationalAdjustmentTriggered: debugMeta.relationalAdjustmentTriggered === true,
-        relationshipIssueMajor: typeof debugMeta.relationshipIssueMajor === "string" ? debugMeta.relationshipIssueMajor : "none",
         explorationCalibrationLevel: Number.isInteger(debugMeta.explorationCalibrationLevel) ? debugMeta.explorationCalibrationLevel : null,
         rewriteSource: typeof debugMeta.rewriteSource === "string" ? debugMeta.rewriteSource : null,
         memoryRewriteSource: typeof debugMeta.memoryRewriteSource === "string" ? debugMeta.memoryRewriteSource : null,
@@ -5612,7 +5779,6 @@ app.post("/chat", async (req, res) => {
     interpretationRejection = false,
     needsSoberReadjustment = false,
     relationalAdjustmentTriggered = false,
-    relationshipIssueMajor = "none",
     isRecallRequest = false,
     explorationCalibrationLevel = null,
     explorationDirectivityLevel = 0,
@@ -5702,7 +5868,6 @@ app.post("/chat", async (req, res) => {
       interpretationRejection: interpretationRejection === true,
       needsSoberReadjustment: needsSoberReadjustment === true,
       relationalAdjustmentTriggered: relationalAdjustmentTriggered === true,
-      relationshipIssueMajor: typeof relationshipIssueMajor === "string" ? relationshipIssueMajor : "none",
       explorationCalibrationLevel: explorationCalibrationLevel !== null && explorationCalibrationLevel !== undefined ?
         clampExplorationDirectivityLevel(explorationCalibrationLevel) :
         null,
@@ -5875,7 +6040,6 @@ app.post("/chat", async (req, res) => {
             interpretationRejection: entry?.debugMeta?.interpretationRejection === true,
             needsSoberReadjustment: entry?.debugMeta?.needsSoberReadjustment === true,
             relationalAdjustmentTriggered: entry?.debugMeta?.relationalAdjustmentTriggered === true,
-            relationshipIssueMajor: typeof entry?.debugMeta?.relationshipIssueMajor === "string" ? entry.debugMeta.relationshipIssueMajor : "none",
             explorationCalibrationLevel: Number.isInteger(entry?.debugMeta?.explorationCalibrationLevel) ? entry.debugMeta.explorationCalibrationLevel : null,
             rewriteSource: typeof entry?.debugMeta?.rewriteSource === "string" ? entry.debugMeta.rewriteSource : null,
             memoryRewriteSource: typeof entry?.debugMeta?.memoryRewriteSource === "string" ? entry.debugMeta.memoryRewriteSource : null,
@@ -5899,7 +6063,6 @@ app.post("/chat", async (req, res) => {
           interpretationRejection: debugMeta.interpretationRejection === true,
           needsSoberReadjustment: debugMeta.needsSoberReadjustment === true,
           relationalAdjustmentTriggered: debugMeta.relationalAdjustmentTriggered === true,
-          relationshipIssueMajor: typeof debugMeta.relationshipIssueMajor === "string" ? debugMeta.relationshipIssueMajor : "none",
           explorationCalibrationLevel: Number.isInteger(debugMeta.explorationCalibrationLevel) ? debugMeta.explorationCalibrationLevel : null,
           rewriteSource: typeof debugMeta.rewriteSource === "string" ? debugMeta.rewriteSource : null,
           memoryRewriteSource: typeof debugMeta.memoryRewriteSource === "string" ? debugMeta.memoryRewriteSource : null,
@@ -6019,7 +6182,6 @@ app.post("/chat", async (req, res) => {
       interpretationRejection = false,
       needsSoberReadjustment = false,
       relationalAdjustmentTriggered = false,
-      relationshipIssueMajor = "none",
       isRecallRequest = false,
       explorationCalibrationLevel = null,
       explorationDirectivityLevel = 0,
@@ -6048,7 +6210,6 @@ app.post("/chat", async (req, res) => {
         interpretationRejection: interpretationRejection === true,
         needsSoberReadjustment: needsSoberReadjustment === true,
         relationalAdjustmentTriggered: relationalAdjustmentTriggered === true,
-        relationshipIssueMajor: typeof relationshipIssueMajor === "string" ? relationshipIssueMajor : "none",
         explorationCalibrationLevel: explorationCalibrationLevel !== null && explorationCalibrationLevel !== undefined ?
           clampExplorationDirectivityLevel(explorationCalibrationLevel) :
           null,
@@ -6506,6 +6667,7 @@ app.post("/chat", async (req, res) => {
     const effectiveExplorationDirectivityLevel = newFlags.explorationDirectivityLevel;
     
     let finalDirectivityLevel = effectiveExplorationDirectivityLevel;
+    let finalExplorationStance = "phenomenological_follow";
 
     // Check if relational adjustment is needed before proceeding with explored mode
     let relationalAdjustmentAnalysis = null;
@@ -6540,6 +6702,9 @@ app.post("/chat", async (req, res) => {
         clampExplorationDirectivityLevel(effectiveExplorationDirectivityLevel),
         clampExplorationDirectivityLevel(calibrationAnalysis.calibrationLevel)
       );
+      finalExplorationStance = ["interpretive", "phenomenological_follow", "relational_presence", "minimal_contact"].includes(calibrationAnalysis.stance) ?
+        calibrationAnalysis.stance :
+        "phenomenological_follow";
       newFlags.explorationCalibrationLevel = finalDirectivityLevel;
     } else {
       newFlags.infoSubmode = detectedInfoSubmode;
@@ -6553,10 +6718,10 @@ app.post("/chat", async (req, res) => {
       infoSubmode: detectedInfoSubmode,
       isContact: contactAnalysis.isContact === true,
       relationalAdjustmentTriggered: relationalAdjustmentAnalysis?.needsRelationalAdjustment === true,
-      relationshipIssueMajor: relationalAdjustmentAnalysis?.relationshipIssueMajor || "none",
       previousWasContact: flags.contactState?.wasContact === true,
       currentWasContact: newFlags.contactState?.wasContact === true,
-      finalDirectivityLevel
+      finalDirectivityLevel,
+      finalExplorationStance
     });
     
     // 4) Génération principale de la réponse selon le mode détecté,
@@ -6581,6 +6746,7 @@ app.post("/chat", async (req, res) => {
       infoSubmode: detectedInfoSubmode,
       interpretationRejection,
       explorationDirectivityLevel: finalDirectivityLevel,
+      explorationStance: finalExplorationStance,
       promptRegistry: activePromptRegistry,
       override1: hasOverrides ? override1 : null,
       override2: hasOverrides ? override2 : null
@@ -6589,6 +6755,10 @@ app.post("/chat", async (req, res) => {
     generatedBase.promptDebug = mainPromptDebug;
     let replyRewriteSource = null;
     let replyCandidate = generatedBase.reply;
+    let relationalFitAnalysis = {
+      needsRewrite: false,
+      rewriteHint: "none"
+    };
 
     if (
       interpretationRejection.isInterpretationRejection === true ||
@@ -6606,6 +6776,33 @@ app.post("/chat", async (req, res) => {
       replyRewriteSource = interpretationRejection.isInterpretationRejection === true ?
         "interpretation_rejection" :
         "sober_readjustment";
+    }
+
+    if (finalDetectedMode !== "contact") {
+      relationalFitAnalysis = await analyzeRelationalFit({
+        message,
+        history: recentHistory,
+        memory: previousMemory,
+        mode: finalDetectedMode,
+        candidateReply: replyCandidate,
+        promptRegistry: activePromptRegistry
+      });
+
+      if (relationalFitAnalysis.needsRewrite === true) {
+        replyCandidate = await rewriteRelationalFitReply({
+          message,
+          history: recentHistory,
+          memory: previousMemory,
+          mode: finalDetectedMode,
+          candidateReply: replyCandidate,
+          relationalFitAnalysis,
+          promptRegistry: activePromptRegistry
+        });
+
+        replyRewriteSource = replyRewriteSource ?
+          `${replyRewriteSource}+relational_fit` :
+          "relational_fit";
+      }
     }
     
     let relanceAnalysis = null;
@@ -6648,7 +6845,6 @@ app.post("/chat", async (req, res) => {
       interpretationRejection: interpretationRejection.isInterpretationRejection,
       needsSoberReadjustment: interpretationRejection.needsSoberReadjustment,
       relationalAdjustmentTriggered: relationalAdjustmentAnalysis?.needsRelationalAdjustment === true,
-      relationshipIssueMajor: relationalAdjustmentAnalysis?.relationshipIssueMajor || "none",
       explorationCalibrationLevel: newFlags.explorationCalibrationLevel,
       explorationDirectivityLevel: finalDirectivityLevel,
       explorationRelanceWindow: newFlags.explorationRelanceWindow,
@@ -6676,6 +6872,10 @@ app.post("/chat", async (req, res) => {
           relanceAnalysis
         })
       );
+
+      debug.push(`trace.relationalFitNeedsRewrite: ${relationalFitAnalysis.needsRewrite === true ? "true" : "false"}`);
+      debug.push(`trace.relationalFitHint: ${relationalFitAnalysis.rewriteHint || "none"}`);
+      debug.push(`trace.explorationStance: ${finalExplorationStance}`);
     }
     
     debug.push(...formatPromptOverrideDebugLines(generatedBase.promptDebug));
@@ -6742,7 +6942,6 @@ app.post("/chat", async (req, res) => {
       interpretationRejection: interpretationRejection.isInterpretationRejection,
       needsSoberReadjustment: interpretationRejection.needsSoberReadjustment,
       relationalAdjustmentTriggered: relationalAdjustmentAnalysis?.needsRelationalAdjustment === true,
-      relationshipIssueMajor: relationalAdjustmentAnalysis?.relationshipIssueMajor || "none",
       isRecallRequest: recallRouting.isRecallAttempt === true,
       explorationCalibrationLevel: newFlags.explorationCalibrationLevel,
       explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
@@ -6772,7 +6971,6 @@ app.post("/chat", async (req, res) => {
         interpretationRejection: interpretationRejection.isInterpretationRejection,
         needsSoberReadjustment: interpretationRejection.needsSoberReadjustment,
         relationalAdjustmentTriggered: relationalAdjustmentAnalysis?.needsRelationalAdjustment === true,
-        relationshipIssueMajor: relationalAdjustmentAnalysis?.relationshipIssueMajor || "none",
         isRecallRequest: recallRouting.isRecallAttempt === true,
         explorationCalibrationLevel: newFlags.explorationCalibrationLevel,
         explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
@@ -6791,6 +6989,7 @@ app.post("/chat", async (req, res) => {
         infoSubmode: detectedInfoSubmode,
         interpretationRejection,
         explorationDirectivityLevel: finalDirectivityLevel,
+        explorationStance: finalExplorationStance,
         promptRegistry: referencePromptRegistry,
         override1: null,
         override2: null
@@ -6814,6 +7013,7 @@ app.post("/chat", async (req, res) => {
           infoSubmode: detectedInfoSubmode,
           interpretationRejection,
           explorationDirectivityLevel: finalDirectivityLevel,
+          explorationStance: finalExplorationStance,
           promptRegistry: override1PromptRegistry,
           override1,
           override2: null
@@ -6838,6 +7038,7 @@ app.post("/chat", async (req, res) => {
           infoSubmode: detectedInfoSubmode,
           interpretationRejection,
           explorationDirectivityLevel: finalDirectivityLevel,
+          explorationStance: finalExplorationStance,
           promptRegistry: override12PromptRegistry,
           override1,
           override2
