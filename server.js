@@ -1656,7 +1656,7 @@ Stance (obligatoire) :
 
 Regle :
 - choisis exactement une stance
-- en cas de doute, choisis phenomenological_follow
+- en cas de doute, choisis interpretive
 
 Reponds uniquement par le JSON.
 `,
@@ -3324,12 +3324,12 @@ Fenetre recente de relances :
 
     return {
       calibrationLevel: clampExplorationDirectivityLevel(parsed.calibrationLevel),
-      stance: allowedStances.includes(parsed.stance) ? parsed.stance : "phenomenological_follow"
+      stance: allowedStances.includes(parsed.stance) ? parsed.stance : "interpretive"
     };
   } catch {
     return {
       calibrationLevel: clampExplorationDirectivityLevel(explorationDirectivityLevel),
-      stance: "phenomenological_follow"
+      stance: "interpretive"
     };
   }
 }
@@ -3913,10 +3913,10 @@ function getExplorationPrompt(memory, explorationDirectivityLevel = 0, promptReg
   return wrapPromptBlock("MODE_EXPLORATION", explorationBlock);
 }
 
-function buildExplorationStancePromptBlock(explorationStance = "phenomenological_follow") {
+function buildExplorationStancePromptBlock(explorationStance = "interpretive") {
   const safeStance = ["interpretive", "phenomenological_follow", "relational_presence", "minimal_contact"].includes(explorationStance) ?
     explorationStance :
-    "phenomenological_follow";
+    "interpretive";
 
   const line =
     safeStance === "interpretive" ?
@@ -3962,7 +3962,7 @@ function buildInterpretationRejectionPromptBlock(interpretationRejection = null)
 }
 
 // Construct the full system prompt for the selected mode before calling the LLM.
-function buildSystemPrompt(mode, memory, explorationDirectivityLevel = 0, promptRegistry = buildDefaultPromptRegistry(), infoSubmode = null, interpretationRejection = null, explorationStance = "phenomenological_follow") {
+function buildSystemPrompt(mode, memory, explorationDirectivityLevel = 0, promptRegistry = buildDefaultPromptRegistry(), infoSubmode = null, interpretationRejection = null, explorationStance = "interpretive") {
   const identityWrapped = getIdentityPrompt(promptRegistry);
   const contactWrapped = getContactPrompt(promptRegistry);
   const infoWrapped = getInfoPrompt(memory, infoSubmode, promptRegistry);
@@ -4089,7 +4089,7 @@ async function generateReply({
   infoSubmode = null,
   interpretationRejection = null,
   explorationDirectivityLevel = 0,
-  explorationStance = "phenomenological_follow",
+  explorationStance = "interpretive",
   promptRegistry = buildDefaultPromptRegistry(),
   override1 = null,
   override2 = null
@@ -6667,7 +6667,7 @@ app.post("/chat", async (req, res) => {
     const effectiveExplorationDirectivityLevel = newFlags.explorationDirectivityLevel;
     
     let finalDirectivityLevel = effectiveExplorationDirectivityLevel;
-    let finalExplorationStance = "phenomenological_follow";
+    let finalExplorationStance = "interpretive";
 
     // Check if relational adjustment is needed before proceeding with explored mode
     let relationalAdjustmentAnalysis = null;
@@ -6704,7 +6704,7 @@ app.post("/chat", async (req, res) => {
       );
       finalExplorationStance = ["interpretive", "phenomenological_follow", "relational_presence", "minimal_contact"].includes(calibrationAnalysis.stance) ?
         calibrationAnalysis.stance :
-        "phenomenological_follow";
+        "interpretive";
       newFlags.explorationCalibrationLevel = finalDirectivityLevel;
     } else {
       newFlags.infoSubmode = detectedInfoSubmode;
