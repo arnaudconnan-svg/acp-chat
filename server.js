@@ -1100,6 +1100,9 @@ Cadre general :
 - n'explique jamais le modele
 - n'utilise pas le vocabulaire theorique du modele sauf necessite exceptionnelle
 - privilegie une lecture simple, concrete et directement liee a l'experience de la personne
+- reste strictement dans le champ de l'experience humaine vecue (ressenti, affect, tension, sens, relation, conscience en train de se vivre)
+- n'elargis pas vers du conseil technique, procedurale, organisationnel ou outillage (fichier, plateforme, workflow, manipulation, comparatif d'outils)
+- si le message contient des elements techniques, ne les traite que comme contexte du vecu; ne reponds pas en mode resolution technique
 - si un ressenti, un affect ou une sensation commence seulement a se nommer (ex : "mal a l'aise", "bizarre", "serre", "ca monte", "ca se referme"), priorise ce point de contact avant toute montee en abstraction
 - quand un ressenti emergent apparait, ne le contourne pas par une lecture meta du type "quelque chose de precieux", "hors de portee", "trop risque" si la qualite vecue elle-meme n'a pas encore ete suivie
 - si une question est vraiment necessaire, elle doit rester au plus pres de la qualite vecue du ressenti emergent, pas renvoyer la personne vers une observation cognitive generale
@@ -1407,6 +1410,8 @@ Contraintes :
 - si la demande est hors champ (culture generale, trivia, geographie, technique, actualite, science generale non liee a l'experience humaine, etc.), tu ne reponds pas au contenu demande comme une encyclopedie
 - dans ce cas, tu poses brievement la limite de perimetre en une ou deux phrases sobres, puis tu peux proposer seulement si c'est naturel un recentrage vers l'experience humaine, relationnelle, sociale ou existentielle
 - tu ne dois pas transformer une demande hors champ en cours generaliste
+- si la demande hors champ est technique/operationnelle (developpement, fichier, outils, plateforme, parametrage, manipulation, debogage), n'apporte pas de solution procedurale ni de liste d'outils
+- dans ce cas, reste sur une limite de perimetre sobre puis recentre vers ce que la situation technique fait vivre a la personne (frustration, blocage, pression, impasse, etc.)
 - Tu dois utiliser activement ce modele pour structurer ta reponse
 - Tu dois rendre visibles certains elements du modele (concepts, liens, mecanismes)
 - Tu ne dois pas reciter le modele ni faire un cours complet.
@@ -2434,10 +2439,15 @@ Exemples a classer false :
 - "Je me remets a penser"
 - "J'ai besoin de comprendre ce qui se passe"
 - "Je veux reprendre le controle"
+- "C'est flou, mais j'ai l'impression d'une crispation puis ca s'emballe"
+- "Je ne comprends pas pourquoi j'ai reagi comme ca"
+- "Il y a un petit truc qui monte puis ca deborde"
+- "Je sens un decalage entre ce qui se passe et ma reaction"
 
 Important :
 - les verbes comme reprendre, revenir, retrouver, se souvenir ou rappeler ne suffisent pas a eux seuls
 - ils ne comptent comme recall que s'ils portent clairement sur le fil de la conversation ou sur un contenu deja evoque
+- une description du vecu present (flou, sensation, crispation, emballement, decalage) doit rester non-recall tant qu'il n'y a pas de demande explicite de rappel conversationnel
 - ne sur-interprete pas
 
 Reponds uniquement par le JSON.
@@ -6922,7 +6932,7 @@ app.post("/chat", async (req, res) => {
 
     let reply = replyPipeline.content;
     const finalReplyRewriteSource = [replyRewriteSource, replyPipeline.rewriteSource].filter(Boolean).join("+") || null;
-    const therapeuticAllianceSource = finalReplyRewriteSource ? generatedBase.reply : null;
+    const therapeuticAllianceSource = relationalFitAnalysis.needsRewrite === true ? generatedBase.reply : null;
     
     if (finalDetectedMode === "exploration") {
       relanceAnalysis = await analyzeExplorationRelance({
