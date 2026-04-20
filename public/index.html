@@ -3200,6 +3200,8 @@
               therapeuticAllianceSource: typeof item.debugMeta.therapeuticAllianceSource === "string" ? item.debugMeta.therapeuticAllianceSource : null,
               rewriteSource: typeof item.debugMeta.rewriteSource === "string" ? item.debugMeta.rewriteSource : null,
               memoryRewriteSource: typeof item.debugMeta.memoryRewriteSource === "string" ? item.debugMeta.memoryRewriteSource : null,
+              memoryCompressed: item.debugMeta.memoryCompressed === true,
+              memoryBeforeCompression: typeof item.debugMeta.memoryBeforeCompression === "string" ? item.debugMeta.memoryBeforeCompression : null,
               modelConflict: item.debugMeta.modelConflict === true
             } : null,
             stateSnapshot: normalizeStoredStateSnapshot(item?.stateSnapshot),
@@ -3555,6 +3557,8 @@
           therapeuticAllianceSource: typeof debugMeta.therapeuticAllianceSource === "string" ? debugMeta.therapeuticAllianceSource : null,
           rewriteSource: typeof debugMeta.rewriteSource === "string" ? debugMeta.rewriteSource : null,
           memoryRewriteSource: typeof debugMeta.memoryRewriteSource === "string" ? debugMeta.memoryRewriteSource : null,
+          memoryCompressed: debugMeta.memoryCompressed === true,
+          memoryBeforeCompression: typeof debugMeta.memoryBeforeCompression === "string" ? debugMeta.memoryBeforeCompression : null,
           modelConflict: debugMeta.modelConflict === true
         } : null,
         stateSnapshot: normalizeStoredStateSnapshot(stateSnapshot),
@@ -5324,7 +5328,9 @@
           therapeuticAllianceSource: "",
           modelConflict: false,
           rewriteSource: "",
-          memoryRewriteSource: ""
+          memoryRewriteSource: "",
+          memoryCompressed: false,
+          memoryBeforeCompression: ""
         };
         
         if (!debugMetaValue || typeof debugMetaValue !== "object") {
@@ -5357,6 +5363,14 @@
         
         if (typeof debugMetaValue.memoryRewriteSource === "string") {
           meta.memoryRewriteSource = debugMetaValue.memoryRewriteSource.trim();
+        }
+
+        if (debugMetaValue.memoryCompressed === true) {
+          meta.memoryCompressed = true;
+        }
+
+        if (typeof debugMetaValue.memoryBeforeCompression === "string") {
+          meta.memoryBeforeCompression = debugMetaValue.memoryBeforeCompression.trim();
         }
 
         if (debugMetaValue.infoSubmode === "app" || debugMetaValue.infoSubmode === "pure") {
@@ -5404,6 +5418,7 @@
           hasStructuredSignals ||
           !!debugMeta.explorationStance ||
           !!debugMeta.therapeuticAllianceSource ||
+          (debugMeta.memoryCompressed && !!debugMeta.memoryBeforeCompression) ||
           (debugMeta.modelConflict && !!debugMeta.rewriteSource) ||
           (debugMeta.modelConflict && !!debugMeta.memoryRewriteSource)
         );
@@ -5814,6 +5829,23 @@
           allianceEl.appendChild(allianceSum);
           allianceEl.appendChild(allianceContent);
           bottom.appendChild(allianceEl);
+        }
+
+        if (debugMeta.memoryCompressed && debugMeta.memoryBeforeCompression) {
+          const memBefore = document.createElement("details");
+          memBefore.className = "debug-detail";
+
+          const memBeforeSum = document.createElement("summary");
+          memBeforeSum.className = "debug-chip";
+          memBeforeSum.textContent = "Memoire (avant compression)";
+
+          const memBeforeContent = document.createElement("div");
+          memBeforeContent.className = "debug-block";
+          memBeforeContent.textContent = debugMeta.memoryBeforeCompression;
+
+          memBefore.appendChild(memBeforeSum);
+          memBefore.appendChild(memBeforeContent);
+          bottom.appendChild(memBefore);
         }
 
         if (debugMeta.modelConflict && debugMeta.rewriteSource) {

@@ -509,8 +509,12 @@
         infoSubmode: safe.infoSubmode === "app" ? "app" : safe.infoSubmode === "pure" ? "pure" : null,
         interpretationRejection: safe.interpretationRejection === true,
         explorationCalibrationLevel: Number.isInteger(safe.explorationCalibrationLevel) ? safe.explorationCalibrationLevel : null,
+        explorationStance: typeof safe.explorationStance === "string" ? safe.explorationStance : null,
+        therapeuticAllianceSource: typeof safe.therapeuticAllianceSource === "string" ? safe.therapeuticAllianceSource : null,
         rewriteSource: typeof safe.rewriteSource === "string" ? safe.rewriteSource : null,
         memoryRewriteSource: typeof safe.memoryRewriteSource === "string" ? safe.memoryRewriteSource : null,
+        memoryCompressed: safe.memoryCompressed === true,
+        memoryBeforeCompression: typeof safe.memoryBeforeCompression === "string" ? safe.memoryBeforeCompression : null,
         modelConflict: safe.modelConflict === true
       };
     }
@@ -1054,9 +1058,13 @@
             infoSubmode: safe.infoSubmode === "app" ? "app" : safe.infoSubmode === "pure" ? "pure" : null,
             interpretationRejection: safe.interpretationRejection === true,
             explorationCalibrationLevel: Number.isInteger(safe.explorationCalibrationLevel) ? safe.explorationCalibrationLevel : null,
+            explorationStance: typeof safe.explorationStance === "string" ? safe.explorationStance.trim() : "",
+            therapeuticAllianceSource: typeof safe.therapeuticAllianceSource === "string" ? safe.therapeuticAllianceSource.trim() : "",
             modelConflict: safe.modelConflict === true,
             rewriteSource: typeof safe.rewriteSource === "string" ? safe.rewriteSource.trim() : "",
-            memoryRewriteSource: typeof safe.memoryRewriteSource === "string" ? safe.memoryRewriteSource.trim() : ""
+            memoryRewriteSource: typeof safe.memoryRewriteSource === "string" ? safe.memoryRewriteSource.trim() : "",
+            memoryCompressed: safe.memoryCompressed === true,
+            memoryBeforeCompression: typeof safe.memoryBeforeCompression === "string" ? safe.memoryBeforeCompression.trim() : ""
           };
         }
         
@@ -1074,6 +1082,10 @@
 
           if (meta.interpretationRejection === true) {
             signalLines.push("Rejet d'interprétation détecté : oui");
+          }
+
+          if (meta.explorationStance) {
+            signalLines.push(`Stance exploration : ${meta.explorationStance}`);
           }
           
           if (meta.topChips.length) {
@@ -1101,6 +1113,20 @@
             sections.push({
               title: "Directivité",
               content: meta.directivityText
+            });
+          }
+
+          if (meta.therapeuticAllianceSource) {
+            sections.push({
+              title: "Alliance thérapeutique",
+              content: meta.therapeuticAllianceSource
+            });
+          }
+
+          if (meta.memoryCompressed && meta.memoryBeforeCompression) {
+            sections.push({
+              title: "Mémoire (avant compression)",
+              content: meta.memoryBeforeCompression
             });
           }
           

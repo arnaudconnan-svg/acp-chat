@@ -1101,8 +1101,9 @@ Cadre general :
 - n'utilise pas le vocabulaire theorique du modele sauf necessite exceptionnelle
 - privilegie une lecture simple, concrete et directement liee a l'experience de la personne
 - si un ressenti, un affect ou une sensation commence seulement a se nommer (ex : "mal a l'aise", "bizarre", "serre", "ca monte", "ca se referme"), priorise ce point de contact avant toute montee en abstraction
-- quand un ressenti emergent apparait, ne le contourne pas par une lecture meta du type "quelque chose de precieux", "hors de portee", "trop risqué" si la qualite vecue elle-meme n'a pas encore ete suivie
+- quand un ressenti emergent apparait, ne le contourne pas par une lecture meta du type "quelque chose de precieux", "hors de portee", "trop risque" si la qualite vecue elle-meme n'a pas encore ete suivie
 - si une question est vraiment necessaire, elle doit rester au plus pres de la qualite vecue du ressenti emergent, pas renvoyer la personne vers une observation cognitive generale
+- REGLE RESSENTI CORPOREL EXPLICIT : quand un ressenti corporel est clairement present maintenant dans le message (sensation physique localisee, mouvement interne decrit, pression, chaleur, serre, etc.), une simple reformulation descriptive ou un reflet plat est insuffisant ; il faut soit nommer ce que ca fait de le sentir maintenant, soit poser une question de tres grande proximite du type "c'est ou precisement ?" ou "ca se fait comment la dedans ?" ; ne pas se contenter de redire ce qui a ete dit
 - n'utilise jamais explicitement les termes du modele (ex : memoire des ressentis/ du sens, croyances limitantes, etc.)
 - entre directement dans une lecture, une hypothese ou une mise en tension
 - formule tes lectures principalement a la premiere personne
@@ -1196,6 +1197,7 @@ Direction:
   - propose un seul angle de lecture principal
   - si un affect ou une sensation commence a se nommer, fais-en la priorite du tour avant toute lecture plus abstraite
   - si une question existe a ce niveau, elle doit suivre au plus pres la texture du ressenti emergent, pas demander un commentaire general sur son evolution
+  - REGLE RESSENTI CORPOREL EXPLICIT : si un ressenti corporel est clairement en train de se faire dans le message (sensation physique, localisation, mouvement interne), une reformulation descriptive seule ne suffit pas ; soit nommer ce que ca fait de le sentir maintenant, soit poser une question de tres grande proximite ; le suivre ne signifie pas le redire
   - la relance n'est pas le comportement par defaut a ce niveau
   - si une relance existe, elle doit rester discrete, secondaire, et n'apparaitre que si elle apporte un vrai deplacement
   - n'ajoute pas de question simplement pour maintenir le fil
@@ -1230,6 +1232,7 @@ Direction :
 - propose un seul angle de lecture ou un seul reflet un peu deplacant
 - ta premiere phrase doit s'ancrer dans un element concret et singulier du message, pas dans une formulation generale du ressenti
 - aucune question sauf necessite exceptionnelle
+- EXCEPTION : si un ressenti corporel est clairement present et en train de se faire dans le message actuel (sensation physique localisee, mouvement interne explicite), une question phomenologique de tres grande proximite est alors autorisee meme a ce niveau : du type "c'est ou, exactement ?" ou "qu'est-ce que ca fait de le sentir la, maintenant ?" — une seule, tres courte, ancrée dans le corps
 - aucune invitation a decrire, preciser, observer, explorer ou approfondir
 - aucune suggestion indirecte
 - n'ouvre pas vers la suite
@@ -1647,16 +1650,18 @@ Regles :
 - 4 devient pertinent quand une reponse tres breve, autoportante, sans question et sans ouverture est la forme la plus juste
 - reserve 2 aux moments ou un vrai mouvement exploratoire doit encore etre tenu activement dans la reponse
 - en cas de doute entre 2 et 3, reponds 3
+- EXCEPTION : si un ressenti corporel est clairement devenu explicite et present dans le message actuel (sensation physique nommee, localisation, mouvement interne en cours), maintiens ou ramene a 2 meme si la fenetre de relances est saturee ; fermer a 3 ou 4 dans ce cas serait une erreur de jugement
 
 Stance (obligatoire) :
-- interpretive : lecture situee, deplacement sobre
-- phenomenological_follow : suivi strict du ressenti emergent seulement quand il est deja au premier plan, tres concret et encore en train de se faire
-- relational_presence : priorite a la presence relationnelle explicite, sans solution
-- minimal_contact : reponse tres courte et contenante, quasi au bord du contact
+- interpretive : lecture situee, deplacement sobre ; la stance par defaut quand un angle de lecture est possible
+- phenomenological_follow : suivi actif du ressenti emergent quand il est deja nettement au premier plan, tres concret, present dans le corps ou en train de se faire ; autorise et privilegie un geste de rapprochement (question de proximite, nomination de ce que ca fait) plutot qu'un simple reflet ; a utiliser quand ouvrir davantage est juste
+- relational_presence : priorite a la presence relationnelle explicite, sans solution ; quand le lien lui-meme est ce qui manque
+- minimal_contact : reponse tres courte et contenante, quasi au bord du contact ; a reserver aux moments ou ouvrir davantage risquerait d'interferer avec ce qui se passe ou de deborder ; ne pas confondre avec phenomenological_follow : minimal_contact ferme, phenomenological_follow suit et approche
 
 Regle :
 - choisis exactement une stance
-- n'utilise phenomenological_follow que si une lecture interpretive risquerait d'ecraser un ressenti emergent deja tres present et tres precis
+- n'utilise phenomenological_follow que si un ressenti emergent est deja clairement present et qu'un rapprochement est possible sans risque d'interferer
+- n'utilise minimal_contact que si ouvrir davantage risquerait reellement d'interferer ou de deborder ; ne pas l'utiliser par precaution generique
 - si une lecture situee et sobre est possible sans forcer, prefere interpretive
 - en cas de doute, choisis interpretive
 
@@ -3126,6 +3131,7 @@ ${normalizeMemory(memory, promptRegistry)}
   
   try {
     const raw = (r.choices?.[0]?.message?.content || "").replace(/```json|```/g, "").trim();
+    console.log("[RECALL][RAW_LLM]", raw);
     const parsed = JSON.parse(raw);
     
     const isRecallAttempt = parsed.isRecallAttempt === true;
@@ -3136,13 +3142,15 @@ ${normalizeMemory(memory, promptRegistry)}
     return {
       isRecallAttempt,
       calledMemory: isRecallAttempt ? calledMemory : "none",
-      isLongTermMemoryRecall: isRecallAttempt && calledMemory === "longTermMemory"
+      isLongTermMemoryRecall: isRecallAttempt && calledMemory === "longTermMemory",
+      rawLlmOutput: raw
     };
   } catch {
     return {
       isRecallAttempt: false,
       calledMemory: "none",
-      isLongTermMemoryRecall: false
+      isLongTermMemoryRecall: false,
+      rawLlmOutput: null
     };
   }
 }
@@ -3691,6 +3699,10 @@ function buildAdvancedDebugTrace({
   lines.push(`trace.recallAttempt: ${recallRouting.isRecallAttempt === true ? "true" : "false"}`);
   lines.push(`trace.calledMemory: ${recallRouting.calledMemory || "none"}`);
   lines.push(`trace.longTermMemoryRecall: ${recallRouting.isLongTermMemoryRecall === true ? "true" : "false"}`);
+  lines.push(`trace.recallRaw: ${recallRouting.rawLlmOutput != null ? recallRouting.rawLlmOutput : "(unavailable)"}`);
+  if (recallRouting.isRecallAttempt === true) {
+    lines.push(`trace.recallWARN: isRecallAttempt=true — a verifier si coherent avec le message`);
+  }
   
   lines.push(`trace.contactDetected: ${contactAnalysis.isContact === true ? "true" : "false"}`);
   lines.push(`trace.relationalAdjustmentTriggered: ${relationalAdjustmentAnalysis?.needsRelationalAdjustment === true ? "true" : "false"}`);
@@ -3804,6 +3816,71 @@ ${transcript}
   }
   
   return normalizeMemory(previousMemory, promptRegistry);
+}
+
+// Controle post-generation memoire : detecte la redondance et force une passe de compression
+// si la memoire candidate depasse 2 items dans "Mouvements en cours" ou contient des doublons manifestes.
+async function compressMemoryIfRedundant(memoryCandidate, previousMemory, promptRegistry = buildDefaultPromptRegistry()) {
+  const text = String(memoryCandidate || "").trim();
+  if (!text) return memoryCandidate;
+
+  // Compte le nombre de tirets dans "Mouvements en cours"
+  const mouvementsMatch = text.match(/Mouvements en cours\s*:\s*([\s\S]*)/i);
+  if (!mouvementsMatch) return memoryCandidate;
+
+  const mouvementsBlock = mouvementsMatch[1].trim();
+  const items = mouvementsBlock
+    .split("\n")
+    .map(l => l.trim())
+    .filter(l => l.startsWith("-") && l.length > 2);
+
+  // Ne declenche la compression que si > 2 items dans mouvements en cours
+  if (items.length <= 2) return memoryCandidate;
+
+  const system = `Tu es un compresseur de memoire de session.
+Tu recois une memoire qui contient trop d'items (plus de 2 dans "Mouvements en cours").
+Tu dois fusionner les items redondants en respectant strictement ces regles :
+- 1 a 2 items max dans "Mouvements en cours"
+- fusionner tout ce qui decrit le meme phenomene ou la meme dynamique de fond
+- supprimer tout item qui est une reformulation, une consequence ou une reaction cognitive d'un item deja present
+- garder exactement le format :
+Contexte stable:
+- ...
+
+Mouvements en cours:
+- ...
+- 1 item = 1 dynamique distincte
+- garder le phenomene le plus structurant si un seul domine
+Reponds uniquement par la memoire corrigee, sans commentaire.`;
+
+  const user = `Memoire a compresser :
+${text}`;
+
+  try {
+    const r = await client.chat.completions.create({
+      model: MODEL_IDS.analysis,
+      temperature: 0,
+      max_tokens: 300,
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: user }
+      ]
+    });
+
+    const compressed = String(r.choices?.[0]?.message?.content || "").trim();
+    if (!compressed) return memoryCandidate;
+
+    const lower = compressed.toLowerCase();
+    if (
+      lower.includes("memoire precedente :") ||
+      lower.includes("utilisateur :")
+    ) return memoryCandidate;
+
+    console.log("[MEMORY][COMPRESSION_TRIGGERED]", { itemsBefore: items.length, compressed });
+    return compressed;
+  } catch {
+    return memoryCandidate;
+  }
 }
 
 async function updateIntersessionMemory(previousIntersessionMemory, sessionMemory, promptRegistry = buildDefaultPromptRegistry()) {
@@ -6211,6 +6288,8 @@ app.post("/chat", async (req, res) => {
       therapeuticAllianceSource = null,
       rewriteSource = null,
       memoryRewriteSource = null,
+      memoryCompressed = false,
+      memoryBeforeCompression = null,
       modelConflict = false,
       promptRegistry = activePromptRegistry
     } = {}) {
@@ -6241,6 +6320,11 @@ app.post("/chat", async (req, res) => {
         therapeuticAllianceSource: typeof therapeuticAllianceSource === "string" ? therapeuticAllianceSource : null,
         rewriteSource: typeof rewriteSource === "string" ? rewriteSource : null,
         memoryRewriteSource: typeof memoryRewriteSource === "string" ? memoryRewriteSource : null,
+        memoryCompressed: memoryCompressed === true,
+        memoryBeforeCompression:
+          memoryCompressed === true && typeof memoryBeforeCompression === "string" ?
+            normalizeMemory(memoryBeforeCompression, promptRegistry) :
+            null,
         modelConflict: modelConflict === true
       };
     }
@@ -6933,6 +7017,11 @@ app.post("/chat", async (req, res) => {
         promptRegistry: activePromptRegistry
       });
     }
+    const memoryBeforeCompression = memoryCandidate;
+    const compressedCandidate = await compressMemoryIfRedundant(memoryCandidate, previousMemory, activePromptRegistry);
+    const memoryWasCompressed = compressedCandidate !== memoryCandidate;
+    memoryCandidate = compressedCandidate;
+
     const memoryPipeline = await applyModelConflictPipeline({
       content: memoryCandidate,
       message,
@@ -6949,6 +7038,9 @@ app.post("/chat", async (req, res) => {
     
     if (logsEnabled && memoryPipeline.rewriteSource) {
       debug.push(`memoryRewriteSource: ${memoryPipeline.rewriteSource}`);
+    }
+    if (logsEnabled) {
+      debug.push(`trace.memoryCompressed: ${memoryWasCompressed ? "true" : "false"}`);
     }
     
     console.log("[COMPARE][MAIN]", {
@@ -6972,6 +7064,8 @@ app.post("/chat", async (req, res) => {
       therapeuticAllianceSource,
       rewriteSource: finalReplyRewriteSource,
       memoryRewriteSource: memoryPipeline.rewriteSource,
+      memoryCompressed: memoryWasCompressed,
+      memoryBeforeCompression,
       modelConflict: replyPipeline.modelConflict || memoryPipeline.modelConflict,
       promptRegistry: activePromptRegistry
     });
