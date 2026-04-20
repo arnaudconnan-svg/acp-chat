@@ -5799,23 +5799,6 @@
           bottom.appendChild(dir);
         }
 
-        if (debugMeta.explorationStance) {
-          const stanceEl = document.createElement("details");
-          stanceEl.className = "debug-detail";
-
-          const stanceSum = document.createElement("summary");
-          stanceSum.className = "debug-chip";
-          stanceSum.textContent = "Stance";
-
-          const stanceContent = document.createElement("div");
-          stanceContent.className = "debug-block";
-          stanceContent.textContent = debugMeta.explorationStance;
-
-          stanceEl.appendChild(stanceSum);
-          stanceEl.appendChild(stanceContent);
-          bottom.appendChild(stanceEl);
-        }
-
         if (debugMeta.therapeuticAllianceSource) {
           const allianceEl = document.createElement("details");
           allianceEl.className = "debug-detail";

@@ -1650,12 +1650,14 @@ Regles :
 
 Stance (obligatoire) :
 - interpretive : lecture situee, deplacement sobre
-- phenomenological_follow : suivi du ressenti emergent, concret, peu abstrait
+- phenomenological_follow : suivi strict du ressenti emergent seulement quand il est deja au premier plan, tres concret et encore en train de se faire
 - relational_presence : priorite a la presence relationnelle explicite, sans solution
 - minimal_contact : reponse tres courte et contenante, quasi au bord du contact
 
 Regle :
 - choisis exactement une stance
+- n'utilise phenomenological_follow que si une lecture interpretive risquerait d'ecraser un ressenti emergent deja tres present et tres precis
+- si une lecture situee et sobre est possible sans forcer, prefere interpretive
 - en cas de doute, choisis interpretive
 
 Reponds uniquement par le JSON.
@@ -3601,10 +3603,8 @@ function buildDebug(
 ) {
   const lines = [];
   
-  if (mode === "exploration") lines.push("mode: EXPLORATION");
   if (mode === "info") lines.push("mode: INFORMATION");
   if (mode === "contact") lines.push("mode: CONTACT");
-  if (mode === "relational_adjustment") lines.push("mode: RELATIONAL_ADJUSTMENT");
 
   if (mode === "info" && infoSubmode === "pure") {
     lines.push("infoSubmode: INFORMATION PURE")
@@ -3920,9 +3920,9 @@ function buildExplorationStancePromptBlock(explorationStance = "interpretive") {
 
   const line =
     safeStance === "interpretive" ?
-      "Stance active: interpretive. Priorise une lecture situee et deplacante, sobre et concrete." :
+      "Stance active: interpretive. Priorise une lecture situee, deplacante et plus assumee, sobre et concrete." :
       safeStance === "phenomenological_follow" ?
-      "Stance active: phenomenological_follow. Priorise le suivi du ressenti emergent, concret et peu abstrait." :
+      "Stance active: phenomenological_follow. Priorise seulement un suivi tres proche du ressenti emergent quand il est deja nettement au premier plan, concret et encore en train de se faire." :
       safeStance === "relational_presence" ?
       "Stance active: relational_presence. Priorise la presence relationnelle explicite, sans proposition d'action." :
       "Stance active: minimal_contact. Priorise une reponse tres courte et contenante, sans ouverture.";
@@ -5784,6 +5784,7 @@ app.post("/chat", async (req, res) => {
     explorationCalibrationLevel = null,
     explorationDirectivityLevel = 0,
     explorationRelanceWindow = [],
+    explorationStance = null,
     therapeuticAllianceSource = null,
     rewriteSource = null,
     memoryRewriteSource = null,
@@ -5794,23 +5795,30 @@ app.post("/chat", async (req, res) => {
       suicideLevel = "N0",
       mode = null,
       infoSubmode = null,
+      explorationStance = null,
       interpretationRejection = false,
       isRecallRequest = false
     } = {}) {
       const chips = [];
+
+      function buildExplorationStanceChipLabel(stance = null) {
+        if (stance === "interpretive") return "EXPLORATION : interprétation";
+        if (stance === "phenomenological_follow") return "EXPLORATION : accompagnement";
+        if (stance === "relational_presence") return "EXPLORATION : présence";
+        if (stance === "minimal_contact") return "EXPLORATION : pré-contact";
+        return "EXPLORATION";
+      }
       
       if (suicideLevel === "N2") {
         chips.push("URGENCE : risque suicidaire");
       } else if (suicideLevel === "N1") {
         chips.push("Risque suicidaire à clarifier");
       } else if (mode === "exploration") {
-        chips.push("EXPLORATION");
+        chips.push(buildExplorationStanceChipLabel(explorationStance));
       } else if (mode === "info") {
         chips.push(infoSubmode === "app" ? "INFO APP" : infoSubmode === "pure" ? "INFO PURE" : "INFO");
       } else if (mode === "contact") {
         chips.push("CONTACT");
-      } else if (mode === "relational_adjustment") {
-        chips.push("RELATIONAL ADJUSTMENT");
       }
 
       if (interpretationRejection === true) {
@@ -5856,6 +5864,7 @@ app.post("/chat", async (req, res) => {
         suicideLevel,
         mode,
         infoSubmode,
+        explorationStance,
         interpretationRejection,
         isRecallRequest
       }),
@@ -6122,23 +6131,30 @@ app.post("/chat", async (req, res) => {
       suicideLevel = "N0",
       mode = null,
       infoSubmode = null,
+      explorationStance = null,
       interpretationRejection = false,
       isRecallRequest = false
     } = {}) {
       const chips = [];
+
+      function buildExplorationStanceChipLabel(stance = null) {
+        if (stance === "interpretive") return "EXPLORATION : interprétation";
+        if (stance === "phenomenological_follow") return "EXPLORATION : accompagnement";
+        if (stance === "relational_presence") return "EXPLORATION : présence";
+        if (stance === "minimal_contact") return "EXPLORATION : pré-contact";
+        return "EXPLORATION";
+      }
       
       if (suicideLevel === "N2") {
         chips.push("URGENCE : risque suicidaire");
       } else if (suicideLevel === "N1") {
         chips.push("Risque suicidaire à clarifier");
       } else if (mode === "exploration") {
-        chips.push("EXPLORATION");
+        chips.push(buildExplorationStanceChipLabel(explorationStance));
       } else if (mode === "info") {
         chips.push(infoSubmode === "app" ? "INFO APP" : infoSubmode === "pure" ? "INFO PURE" : "INFO");
       } else if (mode === "contact") {
         chips.push("CONTACT");
-      } else if (mode === "relational_adjustment") {
-        chips.push("RELATIONAL ADJUSTMENT");
       }
 
       if (interpretationRejection === true) {
@@ -6203,6 +6219,7 @@ app.post("/chat", async (req, res) => {
           suicideLevel,
           mode,
           infoSubmode,
+          explorationStance,
           interpretationRejection,
           isRecallRequest
         }),
@@ -6220,7 +6237,7 @@ app.post("/chat", async (req, res) => {
         explorationCalibrationLevel: explorationCalibrationLevel !== null && explorationCalibrationLevel !== undefined ?
           clampExplorationDirectivityLevel(explorationCalibrationLevel) :
           null,
-        explorationStance: typeof explorationStance === "string" ? explorationStance : null,
+        explorationStance: mode === "exploration" && typeof explorationStance === "string" ? explorationStance : null,
         therapeuticAllianceSource: typeof therapeuticAllianceSource === "string" ? therapeuticAllianceSource : null,
         rewriteSource: typeof rewriteSource === "string" ? rewriteSource : null,
         memoryRewriteSource: typeof memoryRewriteSource === "string" ? memoryRewriteSource : null,
@@ -6690,11 +6707,6 @@ app.post("/chat", async (req, res) => {
         false,
         activePromptRegistry
       );
-
-      if (relationalAdjustmentAnalysis.needsRelationalAdjustment === true) {
-        finalDetectedMode = "relational_adjustment";
-        modeForCatch = finalDetectedMode;
-      }
     }
 
     if (detectedMode === "exploration") {
