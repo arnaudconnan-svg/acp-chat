@@ -2716,7 +2716,7 @@ function shouldForceExplorationForSituatedImpasse(message = "") {
 function isProceduralInstrumentalReply(reply = "") {
   const text = normalizeGuardText(reply);
 
-  const hasProceduralTone = /voici quelques pistes|pour avancer|si ce n'est pas possible|tu peux aussi|tu peux |il existe|commence par|essaie de|reviens en arriere|decris brievement|cibler ensemble|copier-coller|isoler|extraire|utilise|ouvre/.test(text);
+  const hasProceduralTone = /voici quelques pistes|pour avancer|si ce n'est pas possible|tu peux aussi|tu peux |on peut |il existe|commence par|essaie de|reviens en arriere|decris brievement|cibler ensemble|copier-coller|isoler|extraire|utilise|ouvre|voir comment|contourner|repartir de|sans passer par|sans repasser par/.test(text);
   const hasInstrumentalObjects = /outil|interface|plateforme|systeme|procedure|manipulation|parametr|reglage|historique|version|fichier|document|section|portion|partie|support|editeur|application/.test(text);
   const hasListStructure = /^\s*[-•]\s/m.test(reply) || /^\s*\d+\.\s/m.test(reply);
 
