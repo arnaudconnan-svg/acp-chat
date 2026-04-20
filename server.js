@@ -2743,23 +2743,25 @@ function applyHumanFieldReplyGuard({
   infoSubmode = null,
   reply = ""
 } = {}) {
+  const proceduralRisk = isProceduralInstrumentalReply(reply);
   const guardApplies = mode === "exploration" || (mode === "info" && infoSubmode === "app");
 
   if (!guardApplies) {
-    return { reply, overridden: false, source: null };
+    return { reply, overridden: false, proceduralRisk, source: null };
   }
 
   if (!shouldForceExplorationForSituatedImpasse(message)) {
-    return { reply, overridden: false, source: null };
+    return { reply, overridden: false, proceduralRisk, source: null };
   }
 
-  if (!isProceduralInstrumentalReply(reply)) {
-    return { reply, overridden: false, source: null };
+  if (!proceduralRisk) {
+    return { reply, overridden: false, proceduralRisk, source: null };
   }
 
   return {
     reply: buildHumanFieldFallback(message),
     overridden: true,
+    proceduralRisk: true,
     source: "human_field_guard"
   };
 }
@@ -6396,6 +6398,8 @@ app.post("/chat", async (req, res) => {
       memoryCompressed = false,
       memoryBeforeCompression = null,
       modelConflict = false,
+      humanFieldRisk = false,
+      humanFieldOriginalReply = null,
       promptRegistry = activePromptRegistry
     } = {}) {
       return {
@@ -6430,7 +6434,9 @@ app.post("/chat", async (req, res) => {
           memoryCompressed === true && typeof memoryBeforeCompression === "string" ?
             normalizeMemory(memoryBeforeCompression, promptRegistry) :
             null,
-        modelConflict: modelConflict === true
+        modelConflict: modelConflict === true,
+        humanFieldRisk: humanFieldRisk === true,
+        humanFieldOriginalReply: humanFieldRisk === true && typeof humanFieldOriginalReply === "string" ? humanFieldOriginalReply : null
       };
     }
     
@@ -7034,6 +7040,9 @@ app.post("/chat", async (req, res) => {
       reply
     });
 
+    const humanFieldRisk = humanFieldGuard.proceduralRisk === true;
+    const humanFieldOriginalReply = humanFieldGuard.overridden === true ? replyPipeline.content : null;
+
     if (humanFieldGuard.overridden === true) {
       reply = humanFieldGuard.reply;
       finalReplyRewriteSources.push(humanFieldGuard.source);
@@ -7185,6 +7194,8 @@ app.post("/chat", async (req, res) => {
       memoryCompressed: memoryWasCompressed,
       memoryBeforeCompression,
       modelConflict: replyPipeline.modelConflict || memoryPipeline.modelConflict,
+      humanFieldRisk,
+      humanFieldOriginalReply,
       promptRegistry: activePromptRegistry
     });
     

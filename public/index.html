@@ -5330,7 +5330,9 @@
           rewriteSource: "",
           memoryRewriteSource: "",
           memoryCompressed: false,
-          memoryBeforeCompression: ""
+          memoryBeforeCompression: "",
+          humanFieldRisk: false,
+          humanFieldOriginalReply: ""
         };
         
         if (!debugMetaValue || typeof debugMetaValue !== "object") {
@@ -5392,6 +5394,14 @@
         if (typeof debugMetaValue.therapeuticAllianceSource === "string") {
           meta.therapeuticAllianceSource = debugMetaValue.therapeuticAllianceSource.trim();
         }
+
+        if (debugMetaValue.humanFieldRisk === true) {
+          meta.humanFieldRisk = true;
+        }
+
+        if (typeof debugMetaValue.humanFieldOriginalReply === "string") {
+          meta.humanFieldOriginalReply = debugMetaValue.humanFieldOriginalReply.trim();
+        }
         
         return meta;
       }
@@ -5420,7 +5430,8 @@
           !!debugMeta.therapeuticAllianceSource ||
           (debugMeta.memoryCompressed && !!debugMeta.memoryBeforeCompression) ||
           (debugMeta.modelConflict && !!debugMeta.rewriteSource) ||
-          (debugMeta.modelConflict && !!debugMeta.memoryRewriteSource)
+          (debugMeta.modelConflict && !!debugMeta.memoryRewriteSource) ||
+          debugMeta.humanFieldRisk === true
         );
       
       if (role === "bot" && compareLabel) {
@@ -5880,6 +5891,30 @@
           memConf.appendChild(memConfSum);
           memConf.appendChild(memConfContent);
           bottom.appendChild(memConf);
+        }
+
+        if (debugMeta.humanFieldRisk === true && !debugMeta.humanFieldOriginalReply) {
+          const riskChip = document.createElement("div");
+          riskChip.className = "debug-chip";
+          riskChip.textContent = "Risque de d\u00e9rive proc\u00e9durale";
+          bottom.appendChild(riskChip);
+        }
+
+        if (debugMeta.humanFieldRisk === true && debugMeta.humanFieldOriginalReply) {
+          const driftEl = document.createElement("details");
+          driftEl.className = "debug-detail";
+
+          const driftSum = document.createElement("summary");
+          driftSum.className = "debug-chip";
+          driftSum.textContent = "D\u00e9rive proc\u00e9durale";
+
+          const driftContent = document.createElement("div");
+          driftContent.className = "debug-block";
+          driftContent.textContent = debugMeta.humanFieldOriginalReply;
+
+          driftEl.appendChild(driftSum);
+          driftEl.appendChild(driftContent);
+          bottom.appendChild(driftEl);
         }
         
         if (bottom.children.length > 0) {

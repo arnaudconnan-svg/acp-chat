@@ -515,7 +515,9 @@
         memoryRewriteSource: typeof safe.memoryRewriteSource === "string" ? safe.memoryRewriteSource : null,
         memoryCompressed: safe.memoryCompressed === true,
         memoryBeforeCompression: typeof safe.memoryBeforeCompression === "string" ? safe.memoryBeforeCompression : null,
-        modelConflict: safe.modelConflict === true
+        modelConflict: safe.modelConflict === true,
+        humanFieldRisk: safe.humanFieldRisk === true,
+        humanFieldOriginalReply: typeof safe.humanFieldOriginalReply === "string" ? safe.humanFieldOriginalReply : null
       };
     }
 
@@ -1064,7 +1066,9 @@
             rewriteSource: typeof safe.rewriteSource === "string" ? safe.rewriteSource.trim() : "",
             memoryRewriteSource: typeof safe.memoryRewriteSource === "string" ? safe.memoryRewriteSource.trim() : "",
             memoryCompressed: safe.memoryCompressed === true,
-            memoryBeforeCompression: typeof safe.memoryBeforeCompression === "string" ? safe.memoryBeforeCompression.trim() : ""
+            memoryBeforeCompression: typeof safe.memoryBeforeCompression === "string" ? safe.memoryBeforeCompression.trim() : "",
+            humanFieldRisk: safe.humanFieldRisk === true,
+            humanFieldOriginalReply: typeof safe.humanFieldOriginalReply === "string" ? safe.humanFieldOriginalReply.trim() : ""
           };
         }
         
@@ -1141,6 +1145,20 @@
             sections.push({
               title: "Conflit modèle - mémoire",
               content: meta.memoryRewriteSource
+            });
+          }
+
+          if (meta.humanFieldRisk === true && !meta.humanFieldOriginalReply) {
+            sections.push({
+              title: "Risque de d\u00e9rive proc\u00e9durale",
+              content: "D\u00e9tect\u00e9 (pr\u00e9-traitement)"
+            });
+          }
+
+          if (meta.humanFieldRisk === true && meta.humanFieldOriginalReply) {
+            sections.push({
+              title: "D\u00e9rive proc\u00e9durale",
+              content: meta.humanFieldOriginalReply
             });
           }
           
