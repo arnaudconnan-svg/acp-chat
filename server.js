@@ -2676,6 +2676,94 @@ function trimRecallAnalysisHistory(history) {
   return trimHistoryWithLimit(history, MAX_RECALL_ANALYSIS_TURNS);
 }
 
+function normalizeGuardText(text = "") {
+  return String(text || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[’]/g, "'")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function isConceptualInformationQuestion(message = "") {
+  const text = normalizeGuardText(message);
+
+  return [
+    /qu'est-ce que/,
+    /quelle difference/,
+    /comment fonctionne/,
+    /pourquoi .*\b(est|fonctionne|refuse|encourage)\b/,
+    /est-ce que .*\b(compatible|possible|normal|encourage|refuse)\b/,
+    /comment .*se situe/
+  ].some(pattern => pattern.test(text));
+}
+
+function shouldForceExplorationForSituatedImpasse(message = "") {
+  const text = normalizeGuardText(message);
+
+  if (isConceptualInformationQuestion(text)) {
+    return false;
+  }
+
+  const hasFirstPerson = /\b(je|j'|moi|me|m'|mon|ma|mes)\b/.test(text);
+  const hasSituatedAsk = /comment je (fais|peux faire)|qu'est-ce que je fais|je voudrais|j'essaie|je viens d'essayer|je n'arrive pas|je peux pas/.test(text);
+  const hasImpasseOrAffect = /bloqu|coince|imposs|trop grand|pas acces|perdu du temps|frustr|soule|galer|decourag|incapable|ca me saoul|ca me soule/.test(text);
+
+  return hasFirstPerson && (hasSituatedAsk || hasImpasseOrAffect);
+}
+
+function isProceduralInstrumentalReply(reply = "") {
+  const text = normalizeGuardText(reply);
+
+  const hasProceduralTone = /voici quelques pistes|pour avancer|si ce n'est pas possible|tu peux aussi|tu peux |il existe|commence par|essaie de|reviens en arriere|decris brievement|cibler ensemble|copier-coller|isoler|extraire|utilise|ouvre/.test(text);
+  const hasInstrumentalObjects = /outil|interface|plateforme|systeme|procedure|manipulation|parametr|reglage|historique|version|fichier|document|section|portion|partie|support|editeur|application/.test(text);
+  const hasListStructure = /^\s*[-•]\s/m.test(reply) || /^\s*\d+\.\s/m.test(reply);
+
+  return (hasProceduralTone && hasInstrumentalObjects) || (hasListStructure && hasInstrumentalObjects);
+}
+
+function buildHumanFieldFallback(message = "") {
+  const text = normalizeGuardText(message);
+
+  if (/trop grand|impossible|je n'arrive pas|je peux pas/.test(text)) {
+    return "Je vois surtout l'impasse concrete dans laquelle tu te retrouves. Tu voudrais juste faire passer ce qu'il faut pour avancer, et ca bute deja sur la forme meme de ce que tu dois transmettre. Je recois bien a quel point ca peut couper net l'elan.";
+  }
+
+  if (/frustr|soule|decourag|perdu du temps|galer/.test(text)) {
+    return "Je sens surtout l'usure que ca rajoute pour toi. Tu essaies d'avancer, et au lieu de ca tu te retrouves repris par quelque chose de pratique qui te coupe dans ton mouvement. Je recois bien le melange de blocage et d'agacement que ca laisse.";
+  }
+
+  return "Je vois surtout le blocage concret dans lequel tu te retrouves. La, ca ne parle pas seulement d'un probleme pratique : ca vient taper exactement a l'endroit ou tu essaies d'avancer, et je recois bien la tension que ca remet.";
+}
+
+function applyHumanFieldReplyGuard({
+  message = "",
+  mode = "exploration",
+  infoSubmode = null,
+  reply = ""
+} = {}) {
+  const guardApplies = mode === "exploration" || (mode === "info" && infoSubmode === "app");
+
+  if (!guardApplies) {
+    return { reply, overridden: false, source: null };
+  }
+
+  if (!shouldForceExplorationForSituatedImpasse(message)) {
+    return { reply, overridden: false, source: null };
+  }
+
+  if (!isProceduralInstrumentalReply(reply)) {
+    return { reply, overridden: false, source: null };
+  }
+
+  return {
+    reply: buildHumanFieldFallback(message),
+    overridden: true,
+    source: "human_field_guard"
+  };
+}
+
 // Normalize the raw flags payload into a safe object.
 // Arrays and non-object values are rejected.
 function normalizeFlags(flags) {
@@ -2979,6 +3067,13 @@ async function llmInfoAnalysis(message = "", history = [], promptRegistry = buil
 }
 
 async function analyzeInfoRequest(message = "", history = [], promptRegistry = buildDefaultPromptRegistry()) {
+  if (shouldForceExplorationForSituatedImpasse(message)) {
+    return {
+      isInfoRequest: false,
+      source: "deterministic_human_field"
+    };
+  }
+
   return await llmInfoAnalysis(message, history, promptRegistry);
 }
 
@@ -6931,7 +7026,20 @@ app.post("/chat", async (req, res) => {
     });
 
     let reply = replyPipeline.content;
-    const finalReplyRewriteSource = [replyRewriteSource, replyPipeline.rewriteSource].filter(Boolean).join("+") || null;
+    const finalReplyRewriteSources = [replyRewriteSource, replyPipeline.rewriteSource].filter(Boolean);
+    const humanFieldGuard = applyHumanFieldReplyGuard({
+      message,
+      mode: finalDetectedMode,
+      infoSubmode: detectedInfoSubmode,
+      reply
+    });
+
+    if (humanFieldGuard.overridden === true) {
+      reply = humanFieldGuard.reply;
+      finalReplyRewriteSources.push(humanFieldGuard.source);
+    }
+
+    const finalReplyRewriteSource = finalReplyRewriteSources.join("+") || null;
     const therapeuticAllianceSource = relationalFitAnalysis.needsRewrite === true ? generatedBase.reply : null;
     
     if (finalDetectedMode === "exploration") {
