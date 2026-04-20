@@ -108,6 +108,92 @@
       margin-bottom: 6px;
     }
 
+    .setting-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .setting-help {
+      margin: 0;
+      font-size: 13px;
+      line-height: 1.45;
+      color: #555;
+    }
+
+    .import-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin: 12px 0;
+    }
+
+    .import-item {
+      border: 1px solid #e3e3e3;
+      border-radius: 10px;
+      padding: 10px 12px;
+      background: #fafafa;
+    }
+
+    .import-item label {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      cursor: pointer;
+    }
+
+    .import-item-main {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      min-width: 0;
+    }
+
+    .import-item-title {
+      font-size: 14px;
+      color: #1f1f1f;
+      line-height: 1.3;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .import-item-meta {
+      font-size: 12px;
+      color: #666;
+      line-height: 1.3;
+    }
+
+    .import-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .import-actions .action-btn {
+      width: auto;
+      min-width: 130px;
+      padding: 10px 14px;
+      font-size: 14px;
+    }
+
+    .secondary-btn {
+      border: 1.5px solid #d3d3d3;
+      border-radius: 8px;
+      background: #fff;
+      color: #444;
+      font-size: 14px;
+      font-weight: 600;
+      padding: 10px 14px;
+      cursor: pointer;
+    }
+
+    .secondary-btn:hover {
+      background: #f5f5f5;
+    }
+
     input[type="password"],
     input[type="text"] {
       width: 100%;
@@ -244,6 +330,10 @@
     (function () {
       "use strict";
 
+      const USER_ID_KEY = "facilitatio_user_id";
+      const CONVERSATIONS_INDEX_KEY = "facilitatio_conversations_index";
+      const CONVERSATION_STORAGE_KEY_PREFIX = "facilitatio_conversation_data_";
+
       let currentUser = null;
 
       function navigateAway(url, options = {}) {
@@ -311,7 +401,379 @@
         emailEl.textContent = String(currentUser.email || "");
         main.appendChild(emailEl);
 
+        main.appendChild(buildPrivateDefaultCard());
+        main.appendChild(buildLocalImportCard());
         main.appendChild(buildPasswordCard());
+      }
+
+      function getConversationStorageKey(conversationId) {
+        return `${CONVERSATION_STORAGE_KEY_PREFIX}${conversationId}`;
+      }
+
+      function loadLocalConversationsForImport() {
+        let index = [];
+
+        try {
+          const rawIndex = JSON.parse(localStorage.getItem(CONVERSATIONS_INDEX_KEY) || "[]");
+          index = Array.isArray(rawIndex) ? rawIndex : [];
+        } catch {
+          index = [];
+        }
+
+        return index
+          .map(item => {
+            const id = String(item?.id || "").trim();
+            if (!id) return null;
+
+            let data = null;
+            try {
+              const rawData = localStorage.getItem(getConversationStorageKey(id));
+              data = rawData ? JSON.parse(rawData) : null;
+            } catch {
+              data = null;
+            }
+
+            const messages = Array.isArray(data?.messages) ? data.messages : [];
+            const titleFromIndex = typeof item?.title === "string" ? item.title.trim() : "";
+            const fallbackTitle = messages.find(entry => entry && entry.role === "user" && typeof entry.content === "string")?.content?.slice(0, 60) || "Conversation sans titre";
+
+            return {
+              id,
+              title: titleFromIndex || fallbackTitle,
+              updatedAt: Number(item?.updatedAt || data?.updatedAt || Date.now()),
+              isCustomTitle: item?.isCustomTitle === true,
+              isPrivate: item?.isPrivate === true || data?.isPrivate === true,
+              memory: typeof data?.memory === "string" ? data.memory : "",
+              flags: data?.flags && typeof data.flags === "object" && !Array.isArray(data.flags) ? data.flags : {},
+              messages
+            };
+          })
+          .filter(Boolean)
+          .sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0));
+      }
+
+      function formatImportDate(timestamp) {
+        const value = Number(timestamp || 0);
+        if (!Number.isFinite(value) || value <= 0) return "date inconnue";
+
+        try {
+          return new Date(value).toLocaleString("fr-FR", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit"
+          });
+        } catch {
+          return "date inconnue";
+        }
+      }
+
+      function escapeHtml(value) {
+        return String(value || "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/\"/g, "&quot;")
+          .replace(/'/g, "&#39;");
+      }
+
+      function buildPrivateLockIcon() {
+        return [
+          '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" style="display:inline-block;vertical-align:middle;">',
+          '  <path d="M6.5 11.2h11a1.5 1.5 0 0 1 1.5 1.5v5.8a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-5.8a1.5 1.5 0 0 1 1.5-1.5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"></path>',
+          '  <path d="M8.4 11.2V8.9a3.6 3.6 0 1 1 7.2 0v2.3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>',
+          '</svg>'
+        ].join("");
+      }
+
+      function buildLocalImportCard() {
+        const card = document.createElement("div");
+        card.className = "card";
+
+        const title = document.createElement("div");
+        title.className = "section-title";
+        title.textContent = "Importer des conversations locales";
+        card.appendChild(title);
+
+        const help = document.createElement("p");
+        help.className = "setting-help";
+        help.textContent = "Ces conversations sont detectees uniquement sur cet appareil. Les conversations privees locales sont indiquees par un cadenas.";
+        card.appendChild(help);
+
+        const list = document.createElement("div");
+        list.className = "import-list";
+        list.id = "localImportList";
+        card.appendChild(list);
+
+        const actions = document.createElement("div");
+        actions.className = "import-actions";
+
+        const refreshBtn = document.createElement("button");
+        refreshBtn.type = "button";
+        refreshBtn.className = "secondary-btn";
+        refreshBtn.textContent = "Rafraichir";
+
+        const importBtn = document.createElement("button");
+        importBtn.type = "button";
+        importBtn.className = "action-btn";
+        importBtn.textContent = "Importer la selection";
+        importBtn.disabled = true;
+
+        actions.appendChild(refreshBtn);
+        actions.appendChild(importBtn);
+        card.appendChild(actions);
+
+        const notice = document.createElement("div");
+        notice.className = "notice";
+        notice.id = "localImportNotice";
+        card.appendChild(notice);
+
+        let localItems = [];
+        let remoteOwnedIds = new Set();
+
+        const syncRemoteOwnedConversationIds = async () => {
+          try {
+            const res = await fetch("/api/account/conversations", {
+              method: "GET",
+              credentials: "include",
+              cache: "no-store"
+            });
+
+            if (!res.ok) {
+              remoteOwnedIds = new Set();
+              return;
+            }
+
+            const data = await res.json().catch(() => ({}));
+            const conversations = Array.isArray(data?.conversations) ? data.conversations : [];
+            remoteOwnedIds = new Set(
+              conversations
+                .map(item => String(item?.id || "").trim())
+                .filter(Boolean)
+            );
+          } catch {
+            remoteOwnedIds = new Set();
+          }
+        };
+
+        const updateImportButtonState = () => {
+          const checked = Array.from(list.querySelectorAll('input[type="checkbox"]')).filter(input => input.checked);
+          const ready = checked.length > 0;
+          importBtn.disabled = !ready;
+          importBtn.classList.toggle("is-ready", ready);
+        };
+
+        const renderItems = async () => {
+          await syncRemoteOwnedConversationIds();
+
+          localItems = loadLocalConversationsForImport();
+          list.innerHTML = "";
+          notice.textContent = "";
+          notice.className = "notice";
+
+          if (localItems.length === 0) {
+            const empty = document.createElement("div");
+            empty.className = "import-item-meta";
+            empty.textContent = "Aucune conversation locale disponible sur cet appareil.";
+            list.appendChild(empty);
+            updateImportButtonState();
+            return;
+          }
+
+          localItems.forEach(item => {
+            const row = document.createElement("div");
+            row.className = "import-item";
+            const alreadyImported = remoteOwnedIds.has(item.id);
+
+            const label = document.createElement("label");
+            const checkbox = document.createElement("input");
+            checkbox.type = "checkbox";
+            checkbox.value = item.id;
+            checkbox.disabled = alreadyImported;
+            checkbox.addEventListener("change", updateImportButtonState);
+
+            const main = document.createElement("div");
+            main.className = "import-item-main";
+
+            const titleLine = document.createElement("div");
+            titleLine.className = "import-item-title";
+            titleLine.innerHTML = `${item.isPrivate ? buildPrivateLockIcon() : ""}<span>${escapeHtml(item.title)}</span>`;
+
+            const metaLine = document.createElement("div");
+            metaLine.className = "import-item-meta";
+            metaLine.textContent = `${item.messages.length} message(s) · ${formatImportDate(item.updatedAt)}${item.isPrivate ? " · locale privee" : ""}${alreadyImported ? " · deja importee" : ""}`;
+
+            main.appendChild(titleLine);
+            main.appendChild(metaLine);
+            label.appendChild(checkbox);
+            label.appendChild(main);
+            row.appendChild(label);
+            list.appendChild(row);
+          });
+
+          updateImportButtonState();
+        };
+
+        refreshBtn.addEventListener("click", async () => {
+          await renderItems();
+        });
+
+        importBtn.addEventListener("click", async () => {
+          const selectedIds = Array.from(list.querySelectorAll('input[type="checkbox"]'))
+            .filter(input => input.checked)
+            .map(input => String(input.value || "").trim())
+            .filter(Boolean);
+
+          if (selectedIds.length === 0) {
+            updateImportButtonState();
+            return;
+          }
+
+          const selectedConversations = selectedIds
+            .map(id => localItems.find(item => item.id === id))
+            .filter(Boolean);
+
+          importBtn.disabled = true;
+          importBtn.classList.remove("is-ready");
+          notice.textContent = "";
+          notice.className = "notice";
+
+          try {
+            const res = await fetch("/api/account/conversations/import-local", {
+              method: "POST",
+              credentials: "include",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                anonymousUserId: String(localStorage.getItem(USER_ID_KEY) || "").trim(),
+                conversations: selectedConversations.map(item => ({
+                  id: item.id,
+                  title: item.title,
+                  isCustomTitle: item.isCustomTitle === true,
+                  isPrivate: item.isPrivate === true,
+                  memory: item.memory,
+                  flags: item.flags,
+                  updatedAt: item.updatedAt,
+                  messages: item.messages
+                }))
+              })
+            });
+
+            const data = await res.json().catch(() => ({}));
+
+            if (!res.ok) {
+              notice.textContent = data.error || "Import impossible pour le moment.";
+              updateImportButtonState();
+              return;
+            }
+
+            const importedCount = Number(data.importedCount || 0);
+            const alreadyOwnedCount = Number(data.alreadyOwnedCount || 0);
+            const skippedCount = Number(data.skippedCount || 0);
+
+            notice.textContent = `Import termine: ${importedCount} importee(s), ${alreadyOwnedCount} deja rattachee(s), ${skippedCount} ignoree(s).`;
+            notice.className = "notice success";
+
+            await renderItems();
+          } catch (_) {
+            notice.textContent = "Erreur reseau. Reessayez.";
+            updateImportButtonState();
+          }
+        });
+
+        renderItems();
+        return card;
+      }
+
+      function buildPrivateDefaultCard() {
+        const card = document.createElement("div");
+        card.className = "card";
+
+        const title = document.createElement("div");
+        title.className = "section-title";
+        title.textContent = "Confidentialite par defaut";
+        card.appendChild(title);
+
+        const row = document.createElement("label");
+        row.className = "setting-row";
+        row.setAttribute("for", "privateDefaultToggle");
+
+        const rowText = document.createElement("span");
+        rowText.textContent = "Mode prive par defaut pour les futures conversations";
+        rowText.style.fontSize = "14px";
+        rowText.style.color = "#333";
+
+        const toggle = document.createElement("input");
+        toggle.id = "privateDefaultToggle";
+        toggle.type = "checkbox";
+        toggle.checked = currentUser && currentUser.privateConversationsByDefault === true;
+
+        row.appendChild(rowText);
+        row.appendChild(toggle);
+        card.appendChild(row);
+
+        const help = document.createElement("p");
+        help.className = "setting-help";
+        help.textContent = "Si active, les nouvelles conversations seront locales par defaut (non stockees dans Firebase), tout en transitant par ChatGPT/OpenAI pour generer les reponses.";
+        card.appendChild(help);
+
+        const saveBtn = document.createElement("button");
+        saveBtn.type = "button";
+        saveBtn.className = "action-btn";
+        saveBtn.id = "savePrivateDefaultBtn";
+        saveBtn.textContent = "Enregistrer";
+        card.appendChild(saveBtn);
+
+        const notice = document.createElement("div");
+        notice.className = "notice";
+        notice.id = "privateDefaultNotice";
+        card.appendChild(notice);
+
+        const refreshSaveButtonState = () => {
+          const current = currentUser && currentUser.privateConversationsByDefault === true;
+          const changed = toggle.checked !== current;
+          saveBtn.disabled = !changed;
+          saveBtn.classList.toggle("is-ready", changed);
+        };
+
+        toggle.addEventListener("change", refreshSaveButtonState);
+
+        saveBtn.addEventListener("click", async () => {
+          notice.textContent = "";
+          notice.className = "notice";
+          saveBtn.disabled = true;
+
+          try {
+            const res = await fetch("/api/account/preferences", {
+              method: "PUT",
+              credentials: "include",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                privateConversationsByDefault: toggle.checked === true
+              })
+            });
+
+            const data = await res.json().catch(() => ({}));
+
+            if (!res.ok) {
+              notice.textContent = data.error || "Impossible d'enregistrer la preference.";
+              refreshSaveButtonState();
+              return;
+            }
+
+            currentUser.privateConversationsByDefault = data.privateConversationsByDefault === true;
+            toggle.checked = currentUser.privateConversationsByDefault === true;
+            notice.textContent = "Preference enregistree.";
+            notice.className = "notice success";
+            refreshSaveButtonState();
+          } catch (_) {
+            notice.textContent = "Erreur reseau. Reessayez.";
+            refreshSaveButtonState();
+          }
+        });
+
+        refreshSaveButtonState();
+        return card;
       }
 
       function buildPasswordCard() {

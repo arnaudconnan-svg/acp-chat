@@ -421,7 +421,8 @@ function toPublicUser(userId, userData, options = {}) {
     id: String(userId || ""),
     email: normalizeEmail(safeUser.email),
     createdAt: typeof safeUser.createdAt === "string" ? safeUser.createdAt : null,
-    updatedAt: typeof safeUser.updatedAt === "string" ? safeUser.updatedAt : null
+    updatedAt: typeof safeUser.updatedAt === "string" ? safeUser.updatedAt : null,
+    privateConversationsByDefault: safeUser.privateConversationsByDefault === true
   };
 }
 
@@ -4621,6 +4622,7 @@ app.post("/api/auth/register", async (req, res) => {
     const userRecord = {
       email,
       passwordHash: hashPassword(password),
+      privateConversationsByDefault: false,
       createdAt: now,
       updatedAt: now
     };
@@ -4739,6 +4741,49 @@ app.post("/api/auth/change-password", requireUserAuth, async (req, res) => {
   } catch (err) {
     console.error("Erreur /api/auth/change-password:", err.message);
     return res.status(500).json({ error: "Password change failed" });
+  }
+});
+
+app.get("/api/account/preferences", requireUserAuth, async (req, res) => {
+  try {
+    const session = req.userSession;
+    return res.json({
+      privateConversationsByDefault: session?.user?.privateConversationsByDefault === true
+    });
+  } catch (err) {
+    console.error("Erreur GET /api/account/preferences:", err.message);
+    return res.status(500).json({ error: "Preferences lookup failed" });
+  }
+});
+
+app.put("/api/account/preferences", requireUserAuth, async (req, res) => {
+  try {
+    if (
+      !req.body ||
+      typeof req.body !== "object" ||
+      Array.isArray(req.body) ||
+      typeof req.body.privateConversationsByDefault !== "boolean"
+    ) {
+      return res.status(400).json({ error: "Invalid preferences payload" });
+    }
+
+    const session = req.userSession;
+    const value = req.body.privateConversationsByDefault === true;
+    const now = new Date().toISOString();
+
+    await usersRef.child(session.userId).update({
+      privateConversationsByDefault: value,
+      updatedAt: now
+    });
+
+    return res.json({
+      success: true,
+      privateConversationsByDefault: value,
+      updatedAt: now
+    });
+  } catch (err) {
+    console.error("Erreur PUT /api/account/preferences:", err.message);
+    return res.status(500).json({ error: "Preferences update failed" });
   }
 });
 
@@ -5031,6 +5076,159 @@ app.post("/api/account/conversations/claim", requireUserAuth, async (req, res) =
   } catch (err) {
     console.error("Erreur /api/account/conversations/claim:", err.message);
     return res.status(500).json({ error: "Conversation claim failed" });
+  }
+});
+
+app.post("/api/account/conversations/import-local", requireUserAuth, async (req, res) => {
+  try {
+    const session = req.userSession;
+
+    if (
+      !req.body ||
+      typeof req.body !== "object" ||
+      Array.isArray(req.body) ||
+      !Array.isArray(req.body.conversations)
+    ) {
+      return res.status(400).json({ error: "Invalid local import request" });
+    }
+
+    const conversations = req.body.conversations.slice(0, 50);
+    const importedConversationIds = [];
+    let alreadyOwnedCount = 0;
+    let skippedCount = 0;
+
+    for (const rawConversation of conversations) {
+      const safeConversation = rawConversation && typeof rawConversation === "object" && !Array.isArray(rawConversation) ? rawConversation : null;
+      const conversationId = String(safeConversation?.id || "").trim();
+
+      if (!conversationId) {
+        skippedCount += 1;
+        continue;
+      }
+
+      const convRef = db.ref("conversations").child(conversationId);
+      const convSnap = await convRef.once("value");
+      const existingConversation = convSnap.val();
+
+      if (existingConversation && typeof existingConversation === "object") {
+        const ownerId = String(existingConversation.userId || "").trim();
+
+        if (ownerId === session.userId) {
+          alreadyOwnedCount += 1;
+          continue;
+        }
+
+        skippedCount += 1;
+        continue;
+      }
+
+      const rawMessages = Array.isArray(safeConversation?.messages) ? safeConversation.messages : [];
+      const sanitizedMessages = rawMessages
+        .map((entry, index) => {
+          const safeEntry = entry && typeof entry === "object" && !Array.isArray(entry) ? entry : null;
+          const role = String(safeEntry?.role || "").trim();
+          const content = typeof safeEntry?.content === "string" ? safeEntry.content : "";
+
+          if ((role !== "user" && role !== "assistant") || !content.trim()) {
+            return null;
+          }
+
+          const timestampCandidate = Number(safeEntry?.t || safeEntry?.timestamp || 0);
+          const timestamp = Number.isFinite(timestampCandidate) && timestampCandidate > 0 ?
+            timestampCandidate :
+            Date.now() + index;
+
+          const debugMeta = safeEntry?.debugMeta && typeof safeEntry.debugMeta === "object" && !Array.isArray(safeEntry.debugMeta) ? safeEntry.debugMeta : null;
+          const stateSnapshot = safeEntry?.stateSnapshot && typeof safeEntry.stateSnapshot === "object" && !Array.isArray(safeEntry.stateSnapshot) ? safeEntry.stateSnapshot : null;
+
+          return {
+            role,
+            content,
+            timestamp,
+            debug: Array.isArray(safeEntry?.debug) ? safeEntry.debug : [],
+            debugMeta: debugMeta ? {
+              topChips: Array.isArray(debugMeta.topChips) ? debugMeta.topChips : [],
+              memory: typeof debugMeta.memory === "string" ? debugMeta.memory : "",
+              directivityText: typeof debugMeta.directivityText === "string" ? debugMeta.directivityText : "",
+              infoSubmode: debugMeta.infoSubmode === "app" ? "app" : debugMeta.infoSubmode === "pure" ? "pure" : null,
+              interpretationRejection: debugMeta.interpretationRejection === true,
+              needsSoberReadjustment: debugMeta.needsSoberReadjustment === true,
+              relationalAdjustmentTriggered: debugMeta.relationalAdjustmentTriggered === true,
+              explorationCalibrationLevel: Number.isInteger(debugMeta.explorationCalibrationLevel) ? debugMeta.explorationCalibrationLevel : null,
+              therapeuticAllianceSource: typeof debugMeta.therapeuticAllianceSource === "string" ? debugMeta.therapeuticAllianceSource : null,
+              rewriteSource: typeof debugMeta.rewriteSource === "string" ? debugMeta.rewriteSource : null,
+              memoryRewriteSource: typeof debugMeta.memoryRewriteSource === "string" ? debugMeta.memoryRewriteSource : null,
+              modelConflict: debugMeta.modelConflict === true,
+              humanFieldRisk: debugMeta.humanFieldRisk === true,
+              humanFieldOriginalReply: typeof debugMeta.humanFieldOriginalReply === "string" ? debugMeta.humanFieldOriginalReply : null
+            } : null,
+            stateSnapshot: stateSnapshot ? {
+              memory: typeof stateSnapshot.memory === "string" ? normalizeMemory(stateSnapshot.memory, buildDefaultPromptRegistry()) : "",
+              flags: normalizeSessionFlags(stateSnapshot.flags || {})
+            } : null,
+            comparisonResults: Array.isArray(safeEntry?.comparisonResults) ? safeEntry.comparisonResults : null
+          };
+        })
+        .filter(Boolean);
+
+      const normalizedMemory = normalizeMemory(
+        typeof safeConversation?.memory === "string" ? safeConversation.memory : "",
+        buildDefaultPromptRegistry()
+      );
+      const normalizedFlags = normalizeSessionFlags(safeConversation?.flags || {});
+      const conversationIsPrivate = safeConversation?.isPrivate === true;
+
+      const updatedAtCandidate = Number(safeConversation?.updatedAt || 0);
+      const updatedAtIso = Number.isFinite(updatedAtCandidate) && updatedAtCandidate > 0 ?
+        new Date(updatedAtCandidate).toISOString() :
+        new Date().toISOString();
+
+      const firstUserMessage = sanitizedMessages.find(item => item.role === "user");
+      const lastUserMessage = [...sanitizedMessages].reverse().find(item => item.role === "user");
+      const fallbackTitle = lastUserMessage?.content?.slice(0, 60) || firstUserMessage?.content?.slice(0, 60) || "Conversation sans titre";
+      const rawTitle = typeof safeConversation?.title === "string" ? safeConversation.title.trim() : "";
+
+      await convRef.set({
+        userId: session.userId,
+        title: rawTitle || fallbackTitle,
+        titleLocked: safeConversation?.isCustomTitle === true,
+        messageCount: sanitizedMessages.length,
+        lastUserMessage: lastUserMessage?.content || "",
+        memory: normalizedMemory,
+        flags: normalizedFlags,
+        importedFromLocal: true,
+        importedFromLocalPrivate: conversationIsPrivate,
+        createdAt: updatedAtIso,
+        updatedAt: updatedAtIso
+      });
+
+      for (const message of sanitizedMessages) {
+        await messagesRef.push({
+          role: message.role,
+          content: message.content,
+          timestamp: message.timestamp,
+          userId: session.userId,
+          conversationId,
+          debug: message.debug,
+          debugMeta: message.debugMeta,
+          stateSnapshot: message.stateSnapshot,
+          comparisonResults: message.comparisonResults
+        });
+      }
+
+      importedConversationIds.push(conversationId);
+    }
+
+    return res.json({
+      success: true,
+      importedConversationIds,
+      importedCount: importedConversationIds.length,
+      alreadyOwnedCount,
+      skippedCount
+    });
+  } catch (err) {
+    console.error("Erreur /api/account/conversations/import-local:", err.message);
+    return res.status(500).json({ error: "Local conversation import failed" });
   }
 });
 
@@ -5750,8 +5948,9 @@ function parseChatRequest(req) {
   const message = String(req.body?.message || "");
   const isEdited = req.body?.isEdited === true;
   const conversationId = typeof req.body?.conversationId === "string" ? req.body.conversationId.trim() : "";
+  const isPrivateConversation = req.body?.isPrivateConversation === true;
   const userId = req.body?.userId || "u_anon";
-  const convRef = conversationId ? db.ref("conversations").child(conversationId) : null;
+  const convRef = conversationId && !isPrivateConversation ? db.ref("conversations").child(conversationId) : null;
   const recentHistory = trimHistory(req.body?.recentHistory);
   const override1 = req.body?.override1 ?? null;
   const override2 = req.body?.override2 ?? null;
@@ -5764,6 +5963,7 @@ function parseChatRequest(req) {
     message,
     isEdited,
     conversationId,
+    isPrivateConversation,
     userId,
     convRef,
     recentHistory,
@@ -5798,6 +5998,10 @@ function validateChatRequestShape(body = {}) {
 
   if (typeof body.conversationId !== "string" || !body.conversationId.trim()) {
     issues.push("conversationId_missing_or_invalid");
+  }
+
+  if (body.isPrivateConversation !== undefined && typeof body.isPrivateConversation !== "boolean") {
+    issues.push("isPrivateConversation_not_boolean");
   }
 
   if (body.recentHistory !== undefined && !Array.isArray(body.recentHistory)) {
@@ -5913,12 +6117,13 @@ app.post("/chat", async (req, res) => {
   let conversationIdForCatch = requestData.conversationId;
   let userIdForCatch = requestData.userId || "u_anon";
   let convRefForCatch = requestData.convRef;
+  let isPrivateConversationForCatch = requestData.isPrivateConversation === true;
   let isEditedForCatch = requestData.isEdited === true;
   let userMessagePersistedForCatch = false;
   let assistantMessagePersistedForCatch = false;
 
   async function persistFallbackAssistantMessage(reply, debug, debugMeta = {}) {
-    if (!conversationIdForCatch) {
+    if (!conversationIdForCatch || isPrivateConversationForCatch) {
       return;
     }
 
@@ -6078,6 +6283,7 @@ app.post("/chat", async (req, res) => {
       message,
       isEdited,
       conversationId,
+      isPrivateConversation,
       userId,
       convRef,
       recentHistory,
@@ -6092,6 +6298,7 @@ app.post("/chat", async (req, res) => {
     conversationIdForCatch = conversationId;
     userIdForCatch = userId;
     convRefForCatch = convRef;
+    isPrivateConversationForCatch = isPrivateConversation === true;
     isEditedForCatch = isEdited;
     
     logsEnabledForCatch = logsEnabled === true;
@@ -6126,6 +6333,10 @@ app.post("/chat", async (req, res) => {
     
     // Try to generate a conversation title if the current title is still default.
     async function maybeGenerateConversationTitle() {
+      if (isPrivateConversation === true || !convRef) {
+        return;
+      }
+
       try {
         const convSnap = await convRef.once("value");
         const convData = convSnap.val() || {};
@@ -6182,41 +6393,43 @@ app.post("/chat", async (req, res) => {
       }
     }
     
-    await messagesRef.push({
-      role: "user",
-      content: isEdited ? message + "\n[MODIFIÉ]" : message,
-      timestamp: Date.now(),
-      userId,
-      conversationId
-    });
+    if (!isPrivateConversation) {
+      await messagesRef.push({
+        role: "user",
+        content: isEdited ? message + "\n[MODIFIÉ]" : message,
+        timestamp: Date.now(),
+        userId,
+        conversationId
+      });
 
-    userMessagePersistedForCatch = true;
-    
-    await convRef.transaction(current => {
-      const now = new Date().toISOString();
+      userMessagePersistedForCatch = true;
       
-      if (!current) {
+      await convRef.transaction(current => {
+        const now = new Date().toISOString();
+        
+        if (!current) {
+          return {
+            userId,
+            createdAt: now,
+            updatedAt: now,
+            title: null,
+            titleLocked: false,
+            messageCount: 1,
+            lastUserMessage: message
+          };
+        }
+        
         return {
+          ...current,
           userId,
-          createdAt: now,
           updatedAt: now,
-          title: null,
-          titleLocked: false,
-          messageCount: 1,
+          messageCount: (Number(current.messageCount) || 0) + 1,
           lastUserMessage: message
         };
-      }
-      
-      return {
-        ...current,
-        userId,
-        updatedAt: now,
-        messageCount: (Number(current.messageCount) || 0) + 1,
-        lastUserMessage: message
-      };
-    });
+      });
+    }
 
-    if (emailNotifier.enabled && mailsEnabled !== false && adminVisitedSinceLastAlert && adminUiActive !== true) {
+    if (!isPrivateConversation && emailNotifier.enabled && mailsEnabled !== false && adminVisitedSinceLastAlert && adminUiActive !== true) {
       adminVisitedSinceLastAlert = false;
       emailNotifier.sendNewMessageAlert();
     }
@@ -6245,6 +6458,10 @@ app.post("/chat", async (req, res) => {
         })) :
         null;
       
+      if (isPrivateConversation) {
+        return null;
+      }
+
       const pushedRef = await messagesRef.push({
         role: "assistant",
         content: isEdited ? reply + "\n[MODIFIÉ]" : reply,

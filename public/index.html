@@ -2084,26 +2084,27 @@
     </div>
   </div>
 
-  <div id="claimImportModal" class="modal">
+  <div id="privateConversationModal" class="modal">
     <div class="modalBox">
-      <h3 class="modalTitle">Rattacher les conversations</h3>
-      <p class="modalText" id="claimImportModalText">
-        Des conversations locales peuvent etre rattachees a votre compte.
+      <h3 class="modalTitle">Conversation privee (locale)</h3>
+      <p class="modalText">
+        Cette conversation restera sur cet appareil et ne sera pas enregistree dans Firebase par defaut.
       </p>
-
-      <div class="modalActions modalActionsStack">
-        <button class="modalBtnPrimary" id="confirmClaimImportBtn" type="button">
-          Rattacher au compte
-        </button>
-        <button class="modalBtnSecondary" id="cancelClaimImportBtn" type="button">
-          Plus tard
-        </button>
+      <p class="modalText">
+        Les messages transitent tout de meme par ChatGPT/OpenAI pour generer les reponses.
+      </p>
+      <p class="modalText">
+        La memoire inter-session est desactivee pour cette conversation.
+      </p>
+      <div class="modalActions">
+        <button class="modalBtnSecondary" id="cancelPrivateConversationBtn" type="button">Annuler</button>
+        <button class="modalBtnPrimary" id="confirmPrivateConversationBtn" type="button">Accepter</button>
       </div>
     </div>
   </div>
   
   <script>
-    let pendingClaimImportResolver = null;
+    let pendingPrivateConversationResolver = null;
 
     function openEditTitleModal(conversationId) {
       if (!conversationId) return;
@@ -2196,28 +2197,22 @@
       document.getElementById("devAccessModal").style.display = "none";
     }
 
-    function openClaimImportModal(conversationCount) {
-      const text = document.getElementById("claimImportModalText");
-
-      if (text) {
-        text.textContent = `Cette connexion peut rattacher ${conversationCount} conversation(s) locale(s) de cet appareil a votre compte.`;
-      }
-
-      openModal("claimImportModal");
+    function openPrivateConversationModal() {
+      openModal("privateConversationModal");
 
       return new Promise(resolve => {
-        pendingClaimImportResolver = resolve;
+        pendingPrivateConversationResolver = resolve;
       });
     }
 
-    function resolveClaimImportModal(shouldClaim) {
-      closeModal("claimImportModal");
+    function resolvePrivateConversationModal(accepted) {
+      closeModal("privateConversationModal");
 
-      if (typeof pendingClaimImportResolver === "function") {
-        pendingClaimImportResolver(shouldClaim === true);
+      if (typeof pendingPrivateConversationResolver === "function") {
+        pendingPrivateConversationResolver(accepted === true);
       }
 
-      pendingClaimImportResolver = null;
+      pendingPrivateConversationResolver = null;
     }
 
     async function refreshDevAccessPrimaryAction() {
@@ -2434,8 +2429,6 @@
     const MAX_RECENT_TURNS = 8;
     const ADMIN_UI_KEY = "facilitatio_admin_ui";
     const ADMIN_REPLAY_KEY = "facilitatio_admin_replay";
-    const CLAIM_DONE_KEY_PREFIX = "facilitatio_claim_done";
-    const CLAIM_PROMPT_SESSION_KEY_PREFIX = "facilitatio_claim_prompt_seen";
     const CHAT_BOTTOM_THRESHOLD_PX = 12;
     let userSessionState = {
       authenticated: false,
@@ -2515,6 +2508,9 @@
           const currentId = getConversationId();
           if (currentId) {
             const existing = loadConversationData(currentId);
+            if (existing.isPrivate === true) {
+              return;
+            }
             const hasMessages = Array.isArray(existing.messages) && existing.messages.length > 0;
             if (!hasMessages) {
               saveConversationData(currentId, {
@@ -2539,6 +2535,14 @@
       } else {
         actionBtn.textContent = "Connexion";
       }
+    }
+
+    function shouldCreatePrivateConversationByDefault() {
+      return (
+        userSessionState.authenticated === true &&
+        userSessionState.user &&
+        userSessionState.user.privateConversationsByDefault === true
+      );
     }
 
     async function syncAdminUiFromSession() {
@@ -2596,94 +2600,6 @@
       return userId;
     }
 
-    function buildClaimStateKey(prefix, accountUserId, anonymousUserId) {
-      return `${prefix}_${accountUserId}_${anonymousUserId}`;
-    }
-
-    function getStoredAnonymousUserId() {
-      return String(localStorage.getItem(USER_ID_KEY) || "").trim();
-    }
-
-    function getClaimableLocalConversationIds() {
-      return Array.from(new Set(
-        loadConversationsIndex()
-          .map(item => String(item?.id || "").trim())
-          .filter(Boolean)
-      ));
-    }
-
-    async function claimLocalConversationsIntoAuthenticatedAccountIfNeeded() {
-      if (!userSessionState.authenticated || !userSessionState.user || typeof userSessionState.user.id !== "string") {
-        return false;
-      }
-
-      const accountUserId = userSessionState.user.id.trim();
-      const anonymousUserId = getStoredAnonymousUserId();
-
-      if (!accountUserId || !anonymousUserId || anonymousUserId === accountUserId) {
-        return false;
-      }
-
-      const conversationIds = getClaimableLocalConversationIds();
-      if (conversationIds.length === 0) {
-        return false;
-      }
-
-      const claimDoneKey = buildClaimStateKey(CLAIM_DONE_KEY_PREFIX, accountUserId, anonymousUserId);
-      if (localStorage.getItem(claimDoneKey) === "1") {
-        return false;
-      }
-
-      const promptSeenKey = buildClaimStateKey(CLAIM_PROMPT_SESSION_KEY_PREFIX, accountUserId, anonymousUserId);
-      if (sessionStorage.getItem(promptSeenKey) === "1") {
-        return false;
-      }
-
-      sessionStorage.setItem(promptSeenKey, "1");
-
-      const shouldClaim = await openClaimImportModal(conversationIds.length);
-
-      if (!shouldClaim) {
-        return false;
-      }
-
-      try {
-        const res = await fetch("/api/account/conversations/claim", {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            anonymousUserId,
-            conversationIds
-          })
-        });
-
-        const data = await parseAppJsonResponseSafely(res);
-
-        if (!res.ok) {
-          showTemporaryNotice("Import impossible pour le moment");
-          return false;
-        }
-
-        safeSetLocalStorage(claimDoneKey, "1", "claimLocalConversationsIntoAuthenticatedAccountIfNeeded");
-        localStorage.removeItem(USER_ID_KEY);
-
-        const claimedCount = Number(data?.claimedCount || 0);
-        const alreadyOwnedCount = Number(data?.alreadyOwnedCount || 0);
-
-        if (claimedCount > 0) {
-          showTemporaryNotice("Conversations rattachees au compte");
-        } else if (alreadyOwnedCount > 0) {
-          showTemporaryNotice("Conversations deja rattachees au compte");
-        }
-
-        return true;
-      } catch {
-        showTemporaryNotice("Import impossible pour le moment");
-        return false;
-      }
-    }
-    
     let isSending = false;
     let showDebug = false;
     let sessionStatus = "welcome";
@@ -2889,12 +2805,15 @@
       return true;
     }
     
-    function createEmptyConversationData() {
+    function createEmptyConversationData(options = {}) {
+      const isPrivate = options.isPrivate === true;
+
       return {
         messages: [],
-        memory: _pendingIntersessionMemory !== null ? _pendingIntersessionMemory : defaultMemory(),
+        memory: !isPrivate && _pendingIntersessionMemory !== null ? _pendingIntersessionMemory : defaultMemory(),
         flags: normalizeStoredFlags({}),
-        updatedAt: Date.now()
+        updatedAt: Date.now(),
+        isPrivate
       };
     }
     
@@ -2902,9 +2821,11 @@
       return localStorage.getItem(CONVERSATION_ID_KEY);
     }
     
-    function createConversationId() {
+    function createConversationId(options = {}) {
+      const isPrivate = options.isPrivate === true;
       const id = "c_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6);
       localStorage.setItem(CONVERSATION_ID_KEY, id);
+      saveConversationData(id, createEmptyConversationData({ isPrivate }));
       console.log("NEW conversationId:", id);
       return id;
     }
@@ -3103,7 +3024,9 @@
           (previous ? previous.updatedAt : Date.now())
         ),
         isCustomTitle: Object.prototype.hasOwnProperty.call(patch, "isCustomTitle") ?
-          !!patch.isCustomTitle : (previous ? !!previous.isCustomTitle : false)
+          !!patch.isCustomTitle : (previous ? !!previous.isCustomTitle : false),
+        isPrivate: Object.prototype.hasOwnProperty.call(patch, "isPrivate") ?
+          !!patch.isPrivate : (previous ? !!previous.isPrivate : false)
       };
       
       if (existingIndex >= 0) {
@@ -3126,7 +3049,8 @@
           memory: typeof parsed?.memory === "string" && parsed.memory.trim() ?
             parsed.memory : defaultMemory(),
           flags: normalizeStoredFlags(parsed?.flags),
-          updatedAt: Number(parsed?.updatedAt || Date.now())
+          updatedAt: Number(parsed?.updatedAt || Date.now()),
+          isPrivate: parsed?.isPrivate === true
         };
       } catch {
         return createEmptyConversationData();
@@ -3141,7 +3065,8 @@
         memory: typeof data?.memory === "string" && data.memory.trim() ?
           data.memory : defaultMemory(),
         flags: normalizeStoredFlags(data?.flags),
-        updatedAt: Number(data?.updatedAt || Date.now())
+        updatedAt: Number(data?.updatedAt || Date.now()),
+        isPrivate: data?.isPrivate === true
       };
       
       const stored = safeSetLocalStorage(
@@ -3160,7 +3085,8 @@
       if (hasUserMsg) {
         upsertConversationIndexItem({
           id: conversationId,
-          updatedAt: safeData.updatedAt
+          updatedAt: safeData.updatedAt,
+          isPrivate: safeData.isPrivate === true
         });
       }
     }
@@ -3415,9 +3341,13 @@
         .reverse()
         .find(item => item && item.role === "assistant");
 
+      const defaultStateMemory = sourceData.isPrivate === true ?
+        defaultMemory() :
+        (_pendingIntersessionMemory !== null ? _pendingIntersessionMemory : defaultMemory());
+
       if (!previousAssistantMessage) {
         return {
-          memory: _pendingIntersessionMemory !== null ? _pendingIntersessionMemory : defaultMemory(),
+          memory: defaultStateMemory,
           flags: normalizeStoredFlags({})
         };
       }
@@ -3429,7 +3359,7 @@
       }
 
       return {
-        memory: _pendingIntersessionMemory !== null ? _pendingIntersessionMemory : defaultMemory(),
+        memory: defaultStateMemory,
         flags: normalizeStoredFlags({})
       };
     }
@@ -3637,7 +3567,10 @@
     }
     
     async function openConversation(conversationId) {
-      await hydrateRemoteConversationIfNeeded(conversationId);
+      const localConversationData = loadConversationData(conversationId);
+      if (localConversationData.isPrivate !== true) {
+        await hydrateRemoteConversationIfNeeded(conversationId);
+      }
       localStorage.setItem(CONVERSATION_ID_KEY, conversationId);
       
       if (isSessionExpired() && loadHistory().length > 0) {
@@ -6050,7 +5983,9 @@
       
       let conversationId = getConversationId();
       if (!conversationId) {
-        conversationId = createConversationId();
+        conversationId = createConversationId({
+          isPrivate: shouldCreatePrivateConversationByDefault()
+        });
       }
       
       ensureCurrentConversationOpeningGreeting(CONVERSATION_OPENING_GREETING);
@@ -6170,6 +6105,14 @@
         return;
       }
 
+      const currentConversationId = getConversationId();
+      if (currentConversationId) {
+        const currentConversationData = loadConversationData(currentConversationId);
+        if (currentConversationData.isPrivate === true) {
+          return;
+        }
+      }
+
       try {
         const res = await fetch("/api/intersession-memory", {
           method: "PUT",
@@ -6209,7 +6152,9 @@
       } catch {}
     }
     
-    async function finalizeAndStartNewSession() {
+    async function finalizeAndStartNewSession(options = {}) {
+      const isPrivate = options.isPrivate === true;
+
       if (sessionStatus === "closing") return;
       
       setSessionStatus("closing");
@@ -6227,13 +6172,17 @@
         renderHistory();
         showScreen("chatScreen", { pushHistory: true });
 
-        startFreshSession();
+        startFreshSession({ isPrivate });
         
         defocusInput();
       });
     }
     
-    function startFreshSession() {
+    function startFreshSession(options = {}) {
+      const requestedPrivate = options.isPrivate === true;
+      const useDefault = options.useDefault !== false;
+      const isPrivate = requestedPrivate || (useDefault && shouldCreatePrivateConversationByDefault());
+
       setSessionStatus("active");
       saveFlags({});
       updateActivity();
@@ -6241,7 +6190,17 @@
       let conversationId = getConversationId();
       
       if (!conversationId) {
-        conversationId = createConversationId();
+        conversationId = createConversationId({ isPrivate });
+      }
+
+      if (isPrivate) {
+        const privateData = loadConversationData(conversationId);
+        saveConversationData(conversationId, {
+          ...privateData,
+          memory: defaultMemory(),
+          isPrivate: true,
+          updatedAt: Date.now()
+        });
       }
       
       ensureCurrentConversationOpeningGreeting(SESSION_OPENING_GREETING);
@@ -6327,7 +6286,47 @@
         
         root.dataset.conversationId = item.id;
         openBtn.dataset.openConversation = item.id;
-        titleEl.textContent = safeTitle;
+        titleEl.textContent = "";
+
+        const titleRow = document.createElement("span");
+        titleRow.style.display = "inline-flex";
+        titleRow.style.alignItems = "center";
+        titleRow.style.gap = "6px";
+
+        if (item.isPrivate === true) {
+          const privateIcon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+          privateIcon.setAttribute("viewBox", "0 0 24 24");
+          privateIcon.setAttribute("width", "14");
+          privateIcon.setAttribute("height", "14");
+          privateIcon.setAttribute("aria-hidden", "true");
+          privateIcon.style.flex = "0 0 auto";
+
+          const bodyPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+          bodyPath.setAttribute("d", "M6.5 11.2h11a1.5 1.5 0 0 1 1.5 1.5v5.8a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-5.8a1.5 1.5 0 0 1 1.5-1.5z");
+          bodyPath.setAttribute("fill", "none");
+          bodyPath.setAttribute("stroke", "currentColor");
+          bodyPath.setAttribute("stroke-width", "1.8");
+          bodyPath.setAttribute("stroke-linejoin", "round");
+
+          const shacklePath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+          shacklePath.setAttribute("d", "M8.4 11.2V8.9a3.6 3.6 0 1 1 7.2 0v2.3");
+          shacklePath.setAttribute("fill", "none");
+          shacklePath.setAttribute("stroke", "currentColor");
+          shacklePath.setAttribute("stroke-width", "1.8");
+          shacklePath.setAttribute("stroke-linecap", "round");
+
+          privateIcon.appendChild(bodyPath);
+          privateIcon.appendChild(shacklePath);
+          titleRow.appendChild(privateIcon);
+
+          openBtn.setAttribute("aria-label", `Ouvrir la conversation privee: ${safeTitle}`);
+        }
+
+        const titleText = document.createElement("span");
+        titleText.textContent = safeTitle;
+        titleRow.appendChild(titleText);
+
+        titleEl.appendChild(titleRow);
         menu.dataset.menu = item.id;
         renameBtn.dataset.renameConversation = item.id;
         deleteBtn.dataset.deleteConversation = item.id;
@@ -6864,6 +6863,7 @@
             isEdited: isEditing === true,
             userId: getOrCreateUserId(),
             conversationId: requestConversationId,
+            isPrivateConversation: loadConversationData(requestConversationId).isPrivate === true,
             adminUiActive: document.body.classList.contains("admin-ui"),
             recentHistory: loadHistory().map(({ role, content }) => ({ role, content })).slice(-MAX_RECENT_TURNS),
             memory: loadConversationData(requestConversationId).memory,
@@ -7461,17 +7461,17 @@
       };
     }
 
-    const confirmClaimImportBtn = document.getElementById("confirmClaimImportBtn");
-    if (confirmClaimImportBtn) {
-      confirmClaimImportBtn.onclick = () => {
-        resolveClaimImportModal(true);
+    const confirmPrivateConversationBtn = document.getElementById("confirmPrivateConversationBtn");
+    if (confirmPrivateConversationBtn) {
+      confirmPrivateConversationBtn.onclick = () => {
+        resolvePrivateConversationModal(true);
       };
     }
 
-    const cancelClaimImportBtn = document.getElementById("cancelClaimImportBtn");
-    if (cancelClaimImportBtn) {
-      cancelClaimImportBtn.onclick = () => {
-        resolveClaimImportModal(false);
+    const cancelPrivateConversationBtn = document.getElementById("cancelPrivateConversationBtn");
+    if (cancelPrivateConversationBtn) {
+      cancelPrivateConversationBtn.onclick = () => {
+        resolvePrivateConversationModal(false);
       };
     }
     
@@ -7505,7 +7505,25 @@
     
     const conversationsFabBtn = document.getElementById("conversationsFabBtn");
     if (conversationsFabBtn) {
-      conversationsFabBtn.onclick = async () => {
+      const FAB_LONG_PRESS_MS = 620;
+      let fabLongPressTimer = null;
+      let fabLongPressTriggered = false;
+
+      const clearFabLongPress = () => {
+        if (fabLongPressTimer) {
+          clearTimeout(fabLongPressTimer);
+          fabLongPressTimer = null;
+        }
+      };
+
+      const triggerPrivateConversationFlow = async () => {
+        if (sessionStatus === "closing") return;
+
+        const accepted = await openPrivateConversationModal();
+        if (!accepted) {
+          return;
+        }
+
         if (conversationsFabBtn._ackTimer) {
           clearTimeout(conversationsFabBtn._ackTimer);
         }
@@ -7521,7 +7539,61 @@
         conversationsFabBtn.classList.add("is-pending");
 
         try {
-          await finalizeAndStartNewSession();
+          await finalizeAndStartNewSession({ isPrivate: true });
+        } finally {
+          if (conversationsFabBtn._ackTimer) {
+            clearTimeout(conversationsFabBtn._ackTimer);
+            conversationsFabBtn._ackTimer = null;
+          }
+          conversationsFabBtn.classList.remove("is-acknowledged");
+          conversationsFabBtn.classList.remove("is-pending");
+        }
+      };
+
+      conversationsFabBtn.addEventListener("pointerdown", event => {
+        if (event.pointerType === "mouse" && event.button !== 0) {
+          return;
+        }
+
+        fabLongPressTriggered = false;
+        clearFabLongPress();
+
+        fabLongPressTimer = setTimeout(() => {
+          fabLongPressTriggered = true;
+          triggerPrivateConversationFlow();
+        }, FAB_LONG_PRESS_MS);
+      });
+
+      conversationsFabBtn.addEventListener("pointerup", clearFabLongPress);
+      conversationsFabBtn.addEventListener("pointerleave", clearFabLongPress);
+      conversationsFabBtn.addEventListener("pointercancel", clearFabLongPress);
+
+      conversationsFabBtn.onclick = async () => {
+        if (fabLongPressTriggered) {
+          fabLongPressTriggered = false;
+          return;
+        }
+
+        clearFabLongPress();
+
+        if (conversationsFabBtn._ackTimer) {
+          clearTimeout(conversationsFabBtn._ackTimer);
+        }
+
+        conversationsFabBtn.classList.remove("is-acknowledged");
+        void conversationsFabBtn.offsetWidth;
+        conversationsFabBtn.classList.add("is-acknowledged");
+        conversationsFabBtn._ackTimer = setTimeout(() => {
+          conversationsFabBtn.classList.remove("is-acknowledged");
+          conversationsFabBtn._ackTimer = null;
+        }, 260);
+
+        conversationsFabBtn.classList.add("is-pending");
+
+        try {
+          await finalizeAndStartNewSession({
+            isPrivate: shouldCreatePrivateConversationByDefault()
+          });
         } finally {
           if (conversationsFabBtn._ackTimer) {
             clearTimeout(conversationsFabBtn._ackTimer);
@@ -8002,11 +8074,19 @@
         }
       });
     }
+
+    const privateConversationModal = document.getElementById("privateConversationModal");
+    if (privateConversationModal) {
+      privateConversationModal.addEventListener("click", e => {
+        if (e.target.id === "privateConversationModal") {
+          resolvePrivateConversationModal(false);
+        }
+      });
+    }
     
     window.addEventListener("load", async () => {
       await syncUserSessionState();
       updateAccountBtnVisibility();
-      await claimLocalConversationsIntoAuthenticatedAccountIfNeeded();
       const remoteConversationsSyncPromise = syncRemoteConversationsIndexIfApplicable()
         .then(() => {
           if (activeScreenId === "conversationsScreen") {
