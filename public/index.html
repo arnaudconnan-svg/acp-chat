@@ -3196,6 +3196,8 @@
               infoSubmode: item.debugMeta.infoSubmode === "app" ? "app" : item.debugMeta.infoSubmode === "pure" ? "pure" : null,
               interpretationRejection: item.debugMeta.interpretationRejection === true,
               explorationCalibrationLevel: Number.isInteger(item.debugMeta.explorationCalibrationLevel) ? item.debugMeta.explorationCalibrationLevel : null,
+              explorationStance: typeof item.debugMeta.explorationStance === "string" ? item.debugMeta.explorationStance : null,
+              therapeuticAllianceSource: typeof item.debugMeta.therapeuticAllianceSource === "string" ? item.debugMeta.therapeuticAllianceSource : null,
               rewriteSource: typeof item.debugMeta.rewriteSource === "string" ? item.debugMeta.rewriteSource : null,
               memoryRewriteSource: typeof item.debugMeta.memoryRewriteSource === "string" ? item.debugMeta.memoryRewriteSource : null,
               modelConflict: item.debugMeta.modelConflict === true
@@ -3549,6 +3551,8 @@
           infoSubmode: debugMeta.infoSubmode === "app" ? "app" : debugMeta.infoSubmode === "pure" ? "pure" : null,
           interpretationRejection: debugMeta.interpretationRejection === true,
           explorationCalibrationLevel: Number.isInteger(debugMeta.explorationCalibrationLevel) ? debugMeta.explorationCalibrationLevel : null,
+          explorationStance: typeof debugMeta.explorationStance === "string" ? debugMeta.explorationStance : null,
+          therapeuticAllianceSource: typeof debugMeta.therapeuticAllianceSource === "string" ? debugMeta.therapeuticAllianceSource : null,
           rewriteSource: typeof debugMeta.rewriteSource === "string" ? debugMeta.rewriteSource : null,
           memoryRewriteSource: typeof debugMeta.memoryRewriteSource === "string" ? debugMeta.memoryRewriteSource : null,
           modelConflict: debugMeta.modelConflict === true
@@ -5316,6 +5320,8 @@
           infoSubmode: null,
           interpretationRejection: false,
           explorationCalibrationLevel: null,
+          explorationStance: null,
+          therapeuticAllianceSource: "",
           modelConflict: false,
           rewriteSource: "",
           memoryRewriteSource: ""
@@ -5364,6 +5370,14 @@
         if (Number.isInteger(debugMetaValue.explorationCalibrationLevel)) {
           meta.explorationCalibrationLevel = debugMetaValue.explorationCalibrationLevel;
         }
+
+        if (typeof debugMetaValue.explorationStance === "string" && debugMetaValue.explorationStance) {
+          meta.explorationStance = debugMetaValue.explorationStance;
+        }
+
+        if (typeof debugMetaValue.therapeuticAllianceSource === "string") {
+          meta.therapeuticAllianceSource = debugMetaValue.therapeuticAllianceSource.trim();
+        }
         
         return meta;
       }
@@ -5375,7 +5389,8 @@
           debugMeta.infoSubmode === "app" ||
           debugMeta.infoSubmode === "pure" ||
           debugMeta.interpretationRejection === true ||
-          Number.isInteger(debugMeta.explorationCalibrationLevel)
+          Number.isInteger(debugMeta.explorationCalibrationLevel) ||
+          !!debugMeta.explorationStance
         );
       
       const hasDebugContent =
@@ -5387,6 +5402,8 @@
           !!debugMeta.memory ||
           !!debugMeta.directivityLabel ||
           hasStructuredSignals ||
+          !!debugMeta.explorationStance ||
+          !!debugMeta.therapeuticAllianceSource ||
           (debugMeta.modelConflict && !!debugMeta.rewriteSource) ||
           (debugMeta.modelConflict && !!debugMeta.memoryRewriteSource)
         );
@@ -5780,6 +5797,40 @@
           dir.appendChild(dirSum);
           dir.appendChild(dirContent);
           bottom.appendChild(dir);
+        }
+
+        if (debugMeta.explorationStance) {
+          const stanceEl = document.createElement("details");
+          stanceEl.className = "debug-detail";
+
+          const stanceSum = document.createElement("summary");
+          stanceSum.className = "debug-chip";
+          stanceSum.textContent = "Stance";
+
+          const stanceContent = document.createElement("div");
+          stanceContent.className = "debug-block";
+          stanceContent.textContent = debugMeta.explorationStance;
+
+          stanceEl.appendChild(stanceSum);
+          stanceEl.appendChild(stanceContent);
+          bottom.appendChild(stanceEl);
+        }
+
+        if (debugMeta.therapeuticAllianceSource) {
+          const allianceEl = document.createElement("details");
+          allianceEl.className = "debug-detail";
+
+          const allianceSum = document.createElement("summary");
+          allianceSum.className = "debug-chip";
+          allianceSum.textContent = "Alliance thérapeutique";
+
+          const allianceContent = document.createElement("div");
+          allianceContent.className = "debug-block";
+          allianceContent.textContent = debugMeta.therapeuticAllianceSource;
+
+          allianceEl.appendChild(allianceSum);
+          allianceEl.appendChild(allianceContent);
+          bottom.appendChild(allianceEl);
         }
 
         if (debugMeta.modelConflict && debugMeta.rewriteSource) {
