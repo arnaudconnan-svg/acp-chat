@@ -6146,6 +6146,11 @@ app.post("/chat", async (req, res) => {
         therapeuticAllianceSource: typeof debugMeta.therapeuticAllianceSource === "string" ? debugMeta.therapeuticAllianceSource : null,
         rewriteSource: typeof debugMeta.rewriteSource === "string" ? debugMeta.rewriteSource : null,
         memoryRewriteSource: typeof debugMeta.memoryRewriteSource === "string" ? debugMeta.memoryRewriteSource : null,
+        memoryCompressed: debugMeta.memoryCompressed === true,
+        memoryBeforeCompression:
+          debugMeta.memoryCompressed === true && typeof debugMeta.memoryBeforeCompression === "string" ?
+            normalizeMemory(debugMeta.memoryBeforeCompression, promptRegistryForCatch) :
+            null,
         modelConflict: debugMeta.modelConflict === true
       }
     });
@@ -6453,6 +6458,11 @@ app.post("/chat", async (req, res) => {
             therapeuticAllianceSource: typeof entry?.debugMeta?.therapeuticAllianceSource === "string" ? entry.debugMeta.therapeuticAllianceSource : null,
             rewriteSource: typeof entry?.debugMeta?.rewriteSource === "string" ? entry.debugMeta.rewriteSource : null,
             memoryRewriteSource: typeof entry?.debugMeta?.memoryRewriteSource === "string" ? entry.debugMeta.memoryRewriteSource : null,
+            memoryCompressed: entry?.debugMeta?.memoryCompressed === true,
+            memoryBeforeCompression:
+              entry?.debugMeta?.memoryCompressed === true && typeof entry?.debugMeta?.memoryBeforeCompression === "string" ?
+                normalizeMemory(entry.debugMeta.memoryBeforeCompression, activePromptRegistry) :
+                null,
             modelConflict: entry?.debugMeta?.modelConflict === true
           }
         })) :
@@ -6481,6 +6491,11 @@ app.post("/chat", async (req, res) => {
           therapeuticAllianceSource: typeof debugMeta.therapeuticAllianceSource === "string" ? debugMeta.therapeuticAllianceSource : null,
           rewriteSource: typeof debugMeta.rewriteSource === "string" ? debugMeta.rewriteSource : null,
           memoryRewriteSource: typeof debugMeta.memoryRewriteSource === "string" ? debugMeta.memoryRewriteSource : null,
+          memoryCompressed: debugMeta.memoryCompressed === true,
+          memoryBeforeCompression:
+            debugMeta.memoryCompressed === true && typeof debugMeta.memoryBeforeCompression === "string" ?
+              normalizeMemory(debugMeta.memoryBeforeCompression, activePromptRegistry) :
+              null,
           modelConflict: debugMeta.modelConflict === true
         },
         stateSnapshot: conversationState && typeof conversationState === "object" ? {
