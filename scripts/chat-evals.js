@@ -5,7 +5,7 @@ const path = require("path");
 
 const BASE_URL = process.env.EVAL_BASE_URL || "http://localhost:3000";
 const DATASET_PATH = process.env.EVAL_DATASET_PATH || path.join(__dirname, "..", "data", "chat-evals.json");
-const OUTPUT_PATH = process.env.EVAL_OUTPUT_PATH || "";
+const OUTPUT_PATH = process.env.EVAL_OUTPUT_PATH || path.join(__dirname, "..", "data", "chat-evals-report.latest.json");
 
 function makeUrl(routePath) {
   return `${BASE_URL}${routePath}`;
@@ -212,12 +212,23 @@ function buildCaseReport(label, result, failures = []) {
   };
 }
 
-function maybeWriteJsonReport(report) {
-  if (!OUTPUT_PATH) {
-    return;
-  }
-
+function writeJsonReport(report) {
+  fs.mkdirSync(path.dirname(OUTPUT_PATH), { recursive: true });
   fs.writeFileSync(OUTPUT_PATH, JSON.stringify(report, null, 2));
+}
+
+function buildJsonReport({ datasetLength, passed, failed, caseReports, completed, runtimeError = null }) {
+  return {
+    baseUrl: BASE_URL,
+    datasetPath: DATASET_PATH,
+    outputPath: OUTPUT_PATH,
+    total: datasetLength,
+    passed,
+    failed,
+    completed,
+    runtimeError,
+    cases: caseReports
+  };
 }
 
 async function run() {
@@ -226,66 +237,97 @@ async function run() {
   console.log(`[EVAL] Base URL: ${BASE_URL}`);
   console.log(`[EVAL] Dataset: ${DATASET_PATH}`);
   console.log(`[EVAL] Cases: ${dataset.length}`);
-  if (OUTPUT_PATH) {
-    console.log(`[EVAL] JSON report: ${OUTPUT_PATH}`);
-  }
+  console.log(`[EVAL] JSON report: ${OUTPUT_PATH}`);
 
   let passed = 0;
   let failed = 0;
   const caseReports = [];
 
-  for (let index = 0; index < dataset.length; index += 1) {
-    const testCase = dataset[index];
-    const label = String(testCase.id || `case-${index + 1}`);
-    const payload = buildPayload(testCase, index);
-    const result = await requestChat(payload);
-    const failures = evaluateExpectations(testCase, result);
+  writeJsonReport(buildJsonReport({
+    datasetLength: dataset.length,
+    passed,
+    failed,
+    caseReports,
+    completed: false
+  }));
 
-    if (failures.length > 0) {
-      failed += 1;
-      caseReports.push(buildCaseReport(label, result, failures));
-      console.error(`[FAIL] ${label}`);
-      for (const failure of failures) {
-        console.error(`  - ${failure}`);
+  try {
+    for (let index = 0; index < dataset.length; index += 1) {
+      const testCase = dataset[index];
+      const label = String(testCase.id || `case-${index + 1}`);
+      const payload = buildPayload(testCase, index);
+      const result = await requestChat(payload);
+      const failures = evaluateExpectations(testCase, result);
+
+      if (failures.length > 0) {
+        failed += 1;
+        caseReports.push(buildCaseReport(label, result, failures));
+        writeJsonReport(buildJsonReport({
+          datasetLength: dataset.length,
+          passed,
+          failed,
+          caseReports,
+          completed: false
+        }));
+        console.error(`[FAIL] ${label}`);
+        for (const failure of failures) {
+          console.error(`  - ${failure}`);
+        }
+        console.error(`  reply: ${String(result.body?.reply || result.text || "")}`);
+        continue;
       }
-      console.error(`  reply: ${String(result.body?.reply || result.text || "")}`);
-      continue;
-    }
 
-    passed += 1;
-  caseReports.push(buildCaseReport(label, result, []));
-    console.log(`[PASS] ${label}`);
-    console.log(`  reply: ${String(result.body?.reply || "")}`);
-    console.log(`  rewriteSource: ${String(result.body?.debugMeta?.rewriteSource || "") || "null"}`);
-    console.log(`  needsSoberReadjustment: ${String(result.body?.debugMeta?.needsSoberReadjustment === true)}`);
+      passed += 1;
+      caseReports.push(buildCaseReport(label, result, []));
+      writeJsonReport(buildJsonReport({
+        datasetLength: dataset.length,
+        passed,
+        failed,
+        caseReports,
+        completed: false
+      }));
+      console.log(`[PASS] ${label}`);
+      console.log(`  reply: ${String(result.body?.reply || "")}`);
+      console.log(`  rewriteSource: ${String(result.body?.debugMeta?.rewriteSource || "") || "null"}`);
+      console.log(`  needsSoberReadjustment: ${String(result.body?.debugMeta?.needsSoberReadjustment === true)}`);
+    }
+  } catch (err) {
+    writeJsonReport(buildJsonReport({
+      datasetLength: dataset.length,
+      passed,
+      failed,
+      caseReports,
+      completed: false,
+      runtimeError: err.message
+    }));
+    throw err;
   }
 
   if (failed > 0) {
-    maybeWriteJsonReport({
-      baseUrl: BASE_URL,
-      datasetPath: DATASET_PATH,
-      total: dataset.length,
+    writeJsonReport(buildJsonReport({
+      datasetLength: dataset.length,
       passed,
       failed,
-      cases: caseReports
-    });
+      caseReports,
+      completed: true
+    }));
     console.error(`[EVAL] ${passed}/${dataset.length} cases passed, ${failed} failed.`);
     process.exitCode = 1;
     return;
   }
 
-  maybeWriteJsonReport({
-    baseUrl: BASE_URL,
-    datasetPath: DATASET_PATH,
-    total: dataset.length,
+  writeJsonReport(buildJsonReport({
+    datasetLength: dataset.length,
     passed,
     failed,
-    cases: caseReports
-  });
+    caseReports,
+    completed: true
+  }));
   console.log(`[EVAL] ${passed}/${dataset.length} cases passed.`);
 }
 
 run().catch(err => {
-  console.error(`[FAIL] eval runtime: ${err.message}`);
+  const message = err && err.message ? err.message : String(err);
+  console.error(`[FAIL] eval runtime: ${message}`);
   process.exitCode = 1;
 });
