@@ -218,3 +218,46 @@ contrôle humain > automatisation
 
 Codex est un assistant de modification.
 Il ne décide pas de l’architecture à lui seul.
+
+---
+
+## 12. Routine test conversationnel en direct (assistée)
+
+Objectif :
+
+- tester le comportement du bot en boucle courte avec pilotage humain
+
+Protocole :
+
+1. Codex propose 3 messages utilisateur fictifs, style casual
+2. l'utilisateur choisit un message via son numero, ou envoie `send: ...`
+3. Codex envoie ce message au serveur local (`/chat`)
+4. Codex renvoie :
+	- la reponse brute du bot
+	- 3 nouvelles propositions de message utilisateur
+5. on repete jusqu'a demande explicite d'arret
+
+Contraintes de generation des 3 propositions :
+
+- profils humains plausibles, parfois peu a l'aise emotionnellement
+- longueurs variees (court, moyen, long)
+- ajout possible de bruit naturel (hesitations, auto-corrections, ellipses)
+- ton casual, non force
+
+Usage de la balise `<notes>` :
+
+- l'utilisateur peut fournir des informations hors flux via `<notes>...</notes>`
+- ces notes servent a orienter les essais et l'analyse
+- elles ne sont pas envoyees telles quelles au serveur sauf demande explicite
+
+Commandes operatoires :
+
+- `send: <texte>` : envoyer exactement le texte indique
+- `stop` : arreter la boucle de test
+- apres `stop` : lancer un debrief synthese (patterns observes, points de risque, idees d'ajustement)
+
+Verification minimale a chaque tour :
+
+- confirmer le message effectivement envoye
+- afficher la reponse du bot recue
+- proposer immediatement 3 nouvelles options
