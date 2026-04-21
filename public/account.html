@@ -470,10 +470,17 @@
             }
 
             const messages = Array.isArray(data?.messages) ? data.messages : [];
+            const hasUserMessage = messages.some(entry => entry && entry.role === "user" && typeof entry.content === "string" && entry.content.trim());
             const titleFromIndex = typeof indexItem?.title === "string" ? indexItem.title.trim() : "";
             const fallbackTitle = messages.find(entry => entry && entry.role === "user" && typeof entry.content === "string")?.content?.slice(0, 60) || "Conversation sans titre";
 
             if (!indexItem && !data) {
+              return null;
+            }
+
+            // Ignore orphan local artifacts that never reached the app conversation index
+            // and never received a real user message.
+            if (!indexItem && !hasUserMessage) {
               return null;
             }
 
