@@ -2592,11 +2592,16 @@
         "markConversationPrivate:data"
       );
 
-      upsertConversationIndexItem({
-        id,
-        updatedAt: nextData.updatedAt,
-        isPrivate: true
-      });
+      const hasUserMessage = Array.isArray(nextData.messages) && nextData.messages.some(item => item && item.role === "user");
+      const existingIndexItem = loadConversationsIndex().find(item => item && item.id === id);
+
+      if (existingIndexItem || hasUserMessage) {
+        upsertConversationIndexItem({
+          id,
+          updatedAt: nextData.updatedAt,
+          isPrivate: true
+        });
+      }
     }
 
     function isConversationPrivateById(conversationId, knownData = null) {
