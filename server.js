@@ -1357,6 +1357,7 @@ Important :
 - la presence d'un terme conceptuel ou theorique (ex : inconscient, dissociation, anxiete, trauma) ne suffit jamais a elle seule a classer en info
 - si le message parle explicitement de l'experience propre de l'utilisateur (ex : mon inconscient, ma dissociation, ce qui se passe chez moi, ce que je vis), reponds false
 - si le message mentionne l'app tout en parlant surtout du vécu propre de l'utilisateur, privilegie false
+- exception : si la demande porte explicitement sur l'usage de l'app, ses fonctionnalites, ou une facon concrete d'utiliser l'app dans la situation de l'utilisateur, reponds true
 
 Exemples a classer false :
 - "Je crois que j'ai besoin de comprendre ce qui se passe"
@@ -1388,23 +1389,25 @@ Tu determines quel sous-mode d'information utiliser quand le message utilisateur
 Reponds STRICTEMENT en JSON :
 
 {
-  "infoSubmode": "pure|app"
+  "infoSubmode": "pure|app_theoretical_model|app_features"
 }
 
 Definitions :
 - pure : information descriptive relevant clairement du champ de la psyché, des relations humaines, des représentations, des cadres sociaux et culturels du vécu, ou des questions de sens, sans besoin de défendre l'app ni de centrer activement la réponse sur son modèle
-- app : information sur l'outil, son fonctionnement, sa logique relationnelle, son approche, ses choix, ses différences avec d'autres approches, ou toute demande qui n'entre pas clairement dans le champ strict de pure
+- app_theoretical_model : information sur la logique, les choix d'approche, les positionnements et les differences de l'app
+- app_features : information pratique sur les usages, les fonctionnalites, les parcours et ce que l'app peut faire dans une situation concrete
 
 Regles :
 - le sous-mode pure est strictement borne : il couvre seulement la psychologie non psychopathologisante, les sciences cognitives, les neurosciences descriptives, la philosophie, la spiritualite, la sociologie, l'anthropologie, la phenomenologie, la psychologie sociale et les questions de sens
-- toute question de psychopathologie, de categorie clinique, de symptome, de trouble, d'etiquette diagnostique ou de fonctionnement potentiellement lu comme pathologique doit basculer vers app
-- toute question sur la honte ou sur la difference entre honte et culpabilite doit basculer vers app
-- toute question clairement hors du champ strict de pure (culture generale, trivia, science generale, geographie, technique, actualite, etc.) doit basculer vers app
-- toute question ambigue doit basculer vers app
-- si l'utilisateur demande ce que fait l'app, ce qu'elle encourage, ce qu'elle refuse, comment elle se situe, ou si son approche est compatible avec une autre, reponds app
+- toute question de psychopathologie, de categorie clinique, de symptome, de trouble, d'etiquette diagnostique ou de fonctionnement potentiellement lu comme pathologique doit basculer vers app_theoretical_model
+- toute question sur la honte ou sur la difference entre honte et culpabilite doit basculer vers app_theoretical_model
+- toute question clairement hors du champ strict de pure (culture generale, trivia, science generale, geographie, technique, actualite, etc.) doit basculer vers app_features
+- toute question ambigue doit basculer vers app_theoretical_model
+- si l'utilisateur demande ce que fait l'app dans un usage concret, quoi faire dans l'app, comment l'utiliser en situation, quelles etapes suivre, reponds app_features
+- si l'utilisateur demande ce que l'app encourage, refuse, comment elle se situe, ou si son approche est compatible avec une autre, reponds app_theoretical_model
 - si l'utilisateur demande une explication generale, un mecanisme, une definition, une difference ou une information descriptive ET que le sujet entre clairement dans le champ strict de pure, reponds pure
-  - si le message parle d'abord de l'experience propre de l'utilisateur, ne choisis pas app ; ce cas devrait deja avoir ete filtre en amont comme exploration
-- en cas de doute, reponds app
+  - si le message parle d'abord de l'experience propre de l'utilisateur, ne choisis pas app_theoretical_model ; ce cas devrait deja avoir ete filtre en amont comme exploration
+- en cas de doute, reponds app_theoretical_model
 
 Exemples a classer pure :
 - "Que se passe-t-il dans le cerveau quand on pleure ?"
@@ -1412,7 +1415,7 @@ Exemples a classer pure :
 - "Que veut dire l'absurde chez Camus ?"
 - "Pourquoi les humains ont-ils des rituels ?"
 
-Exemples a classer app :
+Exemples a classer app_theoretical_model :
 - "Comment fonctionne ton approche ?"
 - "Est-ce que ton app cherche a faire accepter les emotions ?"
 - "Comment tu te situes par rapport a l'ACP ?"
@@ -1422,6 +1425,12 @@ Exemples a classer app :
 - "Quelle difference entre peur et anxiete ?"
 - "Qu'est-ce que la honte ?"
 - "Quelle difference entre honte et culpabilite ?"
+
+Exemples a classer app_features :
+- "Comment utiliser l'app quand ca monte ?"
+- "Tu peux me donner 3 etapes simples dans l'app ?"
+- "Que peut faire l'app si je sens l'angoisse qui monte ?"
+- "Dans l'app, je fais quoi en premier si je veux me poser ?"
 - "Quel est le nom de la femelle du capybara ?"
 
 Reponds uniquement par le JSON.
@@ -1610,6 +1619,34 @@ Forme des reponses :
 - pas de relance finale
 `,
 
+  MODE_INFORMATION_APP_THEORETICAL_MODEL: `
+Mode INFORMATION APP - THEORETICAL MODEL.
+
+Utilise les memes regles que MODE_INFORMATION_APP.
+Ce sous-mode sert pour expliquer la logique de l'approche, son positionnement, et ses differences avec d'autres approches.
+`,
+
+  MODE_INFORMATION_APP_FEATURES: `
+Mode INFORMATION APP - FEATURES.
+
+But :
+- repondre de facon pratique a une question d'usage de l'app
+- rester dans le perimetre exact de la question
+- expliquer ce que l'app peut faire concretement dans la situation demandee
+
+Contraintes :
+- reponse operationnelle, simple, sans jargon theorique
+- ne pas detailler le pipeline interne
+- ne pas basculer en exploration relationnelle si une demande pratique claire est formulee
+- rester concret sur les fonctionnalites, options et usages immediats
+- garder un ton sobre, non solutionniste, non proceduraliste excessif
+
+Forme :
+- paragraphes courts
+- listes autorisees seulement si elles augmentent la lisibilite
+- pas de relance finale
+`,
+
     MODE_INFORMATION: `
 Mode INFORMATION.
 
@@ -1745,7 +1782,8 @@ Tu determines si, dans le message actuel et le contexte recent, la personne est 
 
 Reponds STRICTEMENT en JSON :
 {
-  "isContact": true|false
+  "isContact": true|false,
+  "contactSubmode": "regulated|dysregulated|null"
 }
 
 Principes :
@@ -1754,11 +1792,16 @@ Principes :
 - sois selectif : contact doit rester relativement rare
 - la simple montee d'une tension, l'envie de pleurer, la retenue, l'ambivalence ou le fait de sentir quelque chose "venir" ne suffisent pas
 - reserve true aux moments ou quelque chose deborde, lache, se decharge, s'effondre partiellement ou attaque immediatement
+- exception explicite : si le message decrit une montee anxieuse tres rapide avec sensation de perte de controle et urgence d'arreter immediatement, classe isContact = true avec contactSubmode = dysregulated
+- quand isContact = true, choisis un sous-mode :
+  - regulated : contact present mais encore tenable (decharge en cours, rage ou pleurs en cours, tension vive)
+  - dysregulated : attaque de panique ou deregulation aiguë avec urgence de coupure, impression de perte de controle, etouffement, ou escalade anxieuse immediate
 - si le message contient une violence verbale franche, une insulte directe ou une decharge agressive immediate envers le bot, cela peut compter comme contact
 - dans ce cas, ne pas traiter cela seulement comme une opposition ou un refus de parler
 - si le message donne l'impression que ca deborde maintenant, classer true
 
 Met isContact = true seulement si la personne semble etre en train de vivre le processus, et pas seulement d'en parler.
+Si isContact = false, contactSubmode doit etre null.
 
 Indications de contact :
 - decharge emotionnelle en cours ou deja en train de se faire
@@ -1860,6 +1903,38 @@ Direction :
     "Recu." -
     "Je me tais."
 `,
+
+    CONTACT_SUBMODE_REGULATED: `
+  Sous-mode CONTACT : regule.
+
+  But :
+  - accompagner minimalement un mouvement deja present
+  - manifester une comprehension simple et chaleureuse
+  - rester tres bref et non intrusif
+
+  Contraintes :
+  - une ou deux phrases max
+  - pas de question
+  - pas de guidage technique
+  - pas d'analyse
+  - pas d'ouverture large
+  `,
+
+    CONTACT_SUBMODE_DYSREGULATED: `
+  Sous-mode CONTACT : deregule (panique / escalation aiguë).
+
+  But :
+  - priorite a la stabilisation immediate
+  - reconnaitre l'urgence vecue sans dramatiser
+  - offrir un appui tres concret, court, faisable maintenant
+
+  Contraintes :
+  - style tres sobre, contenant, direct
+  - 2 a 4 phrases max
+  - pas d'interpretation
+  - pas de question ouverte
+  - privilegie une micro-sequence simple de regulation immediatement applicable
+  `,
     
     // ------------------------------------
     // GESTION DE LA MEMOIRE
@@ -2113,6 +2188,8 @@ Priorite utile au prochain tour :
 - si c'est plausible dans l'echange, privilegie la trace de difficultes a s'approcher de ses ressentis
 - si c'est plausible dans l'echange, privilegie la trace d'une colere exprimee
 - si c'est plausible dans l'echange, privilegie la trace d'un sentiment de ne pas etre aide
+- si c'est explicite dans le message, privilegie la trace d'une auto-devalorisation (ex : "je me deteste", "je suis ridicule")
+- si c'est explicite dans le message, privilegie la trace d'une minimisation de soi ou d'un mouvement de honte a parler
 
 Regles :
 - ces formulations doivent rester lisibles et justes si l'utilisateur lit la memoire
@@ -2120,6 +2197,7 @@ Regles :
 - si un item generique comme malaise, flou, decalage, incertitude ou tourner en rond entre en concurrence avec une dynamique plus structurante sur le rapport a soi ou a la relation, privilegie la dynamique la plus structurante
 - n'ecrase pas un affect principal utile, mais ne laisse pas un affect generique faire disparaitre la facon dont la personne invalide, tient a distance, conteste ou eprouve l'aide recue
 - quand l'utilisateur reagit surtout a la facon dont le bot repond, considere que la dynamique relationnelle en cours peut etre plus importante pour le prochain tour que le contenu thematique precedent
+- n'ecrase pas ces signaux relationnels ou d'auto-devalorisation sous un item generique de tension, malaise ou flou
 
 4.c DETECTION_RATEE_RELATIONNELLE (CRITIQUE)
 
@@ -2806,6 +2884,24 @@ function shouldForceExplorationForSituatedImpasse(message = "") {
   return hasFirstPerson && (hasSituatedAsk || hasImpasseOrAffect);
 }
 
+function isExplicitAppFeatureRequest(message = "") {
+  const text = normalizeGuardText(message);
+
+  const mentionsApp = /\b(app|application|outil|plateforme|assistant)\b/.test(text);
+  const asksUsage = /comment (utiliser|fonctionne|ca marche)|que fait l'app|quoi faire dans l'app|mode d'emploi|etapes|fonctionnalites|plan d'urgence|dans l'app/.test(text);
+
+  return mentionsApp && asksUsage;
+}
+
+function isDysregulatedContactSignal(message = "") {
+  const text = normalizeGuardText(message);
+
+  const hasImmediateAnxiety = /angoiss|panique|j'etouffe|j etouffe|je suffoque|je perds le controle|ca monte tres fort|ca monte d'un coup/.test(text);
+  const hasImmediateStopImpulse = /je veux arreter|j'ai envie d'arreter|stop tout de suite|tout de suite|urgence|je n'y arrive plus/.test(text);
+
+  return hasImmediateAnxiety && hasImmediateStopImpulse;
+}
+
 function isProceduralInstrumentalReply(reply = "") {
   const text = normalizeGuardText(reply);
 
@@ -2837,7 +2933,7 @@ function applyHumanFieldReplyGuard({
   reply = ""
 } = {}) {
   const proceduralRisk = isProceduralInstrumentalReply(reply);
-  const guardApplies = mode === "exploration" || (mode === "info" && infoSubmode === "app");
+  const guardApplies = mode === "exploration" || (mode === "info" && ["app_features", "app_theoretical_model"].includes(normalizeInfoSubmode(infoSubmode)));
 
   if (!guardApplies) {
     return { reply, overridden: false, proceduralRisk, source: null };
@@ -2895,6 +2991,21 @@ function normalizeContactState(contactState) {
   };
 }
 
+function normalizeInfoSubmode(infoSubmode) {
+  if (infoSubmode === "pure") return "pure";
+  if (infoSubmode === "app_theoretical_model") return "app_theoretical_model";
+  if (infoSubmode === "app_features") return "app_features";
+  // Backward compatibility for historical payloads.
+  if (infoSubmode === "app") return "app_features";
+  return null;
+}
+
+function normalizeContactSubmode(contactSubmode) {
+  if (contactSubmode === "regulated") return "regulated";
+  if (contactSubmode === "dysregulated") return "dysregulated";
+  return null;
+}
+
 // Compute normalized session flags with defaults for exploration state.
 // This ensures the bot always has a valid directivity level and relance window.
 function normalizeSessionFlags(flags) {
@@ -2926,7 +3037,7 @@ function normalizeSessionFlags(flags) {
     explorationRelanceWindow,
     explorationDirectivityLevel,
     explorationBootstrapPending,
-    infoSubmode: safe.infoSubmode === "app" ? "app" : safe.infoSubmode === "pure" ? "pure" : null,
+    infoSubmode: normalizeInfoSubmode(safe.infoSubmode),
     explorationCalibrationLevel: clampExplorationDirectivityLevel(safe.explorationCalibrationLevel)
   };
 }
@@ -3162,6 +3273,13 @@ async function llmInfoAnalysis(message = "", history = [], promptRegistry = buil
 }
 
 async function analyzeInfoRequest(message = "", history = [], promptRegistry = buildDefaultPromptRegistry()) {
+  if (isExplicitAppFeatureRequest(message)) {
+    return {
+      isInfoRequest: true,
+      source: "deterministic_app_features"
+    };
+  }
+
   if (shouldForceExplorationForSituatedImpasse(message)) {
     return {
       isInfoRequest: false,
@@ -3173,6 +3291,13 @@ async function analyzeInfoRequest(message = "", history = [], promptRegistry = b
 }
 
 async function analyzeInfoSubmode(message = "", history = [], promptRegistry = buildDefaultPromptRegistry()) {
+  if (isExplicitAppFeatureRequest(message)) {
+    return {
+      infoSubmode: "app_features",
+      source: "deterministic_app_features"
+    };
+  }
+
   const context = trimInfoAnalysisHistory(history);
 
   const r = await client.chat.completions.create({
@@ -3191,12 +3316,12 @@ async function analyzeInfoSubmode(message = "", history = [], promptRegistry = b
     const parsed = JSON.parse(raw);
 
     return {
-      infoSubmode: parsed.infoSubmode === "app" ? "app" : "pure",
+      infoSubmode: normalizeInfoSubmode(parsed.infoSubmode) || "app_features",
       source: "llm"
     };
   } catch {
     return {
-      infoSubmode: "app",
+      infoSubmode: "app_features",
       source: "llm_fallback"
     };
   }
@@ -3238,11 +3363,13 @@ ${JSON.stringify(safePreviousContactState)}
     const parsed = JSON.parse(raw);
     
     return {
-      isContact: parsed.isContact === true
+      isContact: parsed.isContact === true,
+      contactSubmode: parsed.isContact === true ? normalizeContactSubmode(parsed.contactSubmode) || "regulated" : null
     };
   } catch {
     return {
-      isContact: false
+      isContact: false,
+      contactSubmode: null
     };
   }
 }
@@ -3802,6 +3929,7 @@ function buildDebug(
     calledMemory = "none",
     modelConflict = false,
     infoSubmode = null,
+    contactSubmode = null,
     interpretationRejection = false,
     needsSoberReadjustment = false,
     relationalAdjustmentTriggered = false,
@@ -3818,8 +3946,17 @@ function buildDebug(
   if (mode === "info" && infoSubmode === "pure") {
     lines.push("infoSubmode: INFORMATION PURE")
   }
-  if (mode === "info" && infoSubmode === "app") {
-    lines.push("infoSubmode: INFORMATION APP")
+  if (mode === "info" && infoSubmode === "app_theoretical_model") {
+    lines.push("infoSubmode: INFORMATION APP THEORETICAL MODEL")
+  }
+  if (mode === "info" && infoSubmode === "app_features") {
+    lines.push("infoSubmode: INFORMATION APP FEATURES")
+  }
+  if (mode === "contact" && contactSubmode === "regulated") {
+    lines.push("contactSubmode: CONTACT REGULE")
+  }
+  if (mode === "contact" && contactSubmode === "dysregulated") {
+    lines.push("contactSubmode: CONTACT DEREGULE")
   }
   
   if (suicideLevel === "N1") {
@@ -3874,6 +4011,7 @@ function buildAdvancedDebugTrace({
   suicide = {},
   recallRouting = {},
   contactAnalysis = {},
+  contactSubmode = null,
   detectedMode = "exploration",
   relationalAdjustmentAnalysis = null,
   infoSubmode = null,
@@ -3906,6 +4044,7 @@ function buildAdvancedDebugTrace({
   }
   
   lines.push(`trace.contactDetected: ${contactAnalysis.isContact === true ? "true" : "false"}`);
+  lines.push(`trace.contactSubmode: ${normalizeContactSubmode(contactSubmode) || "none"}`);
   lines.push(`trace.relationalAdjustmentTriggered: ${relationalAdjustmentAnalysis?.needsRelationalAdjustment === true ? "true" : "false"}`);
   lines.push(`trace.infoSubmode: ${infoSubmode || "none"}`);
   lines.push(`trace.interpretationRejection: ${interpretationRejection?.isInterpretationRejection === true ? "true" : "false"}`);
@@ -4226,9 +4365,12 @@ function getRelationalAdjustmentPrompt(promptRegistry = buildDefaultPromptRegist
 // Build the info mode prompt block, injecting the current normalized memory.
 function getInfoPrompt(memory, infoSubmode = null, promptRegistry = buildDefaultPromptRegistry()) {
   const normalizedMemory = normalizeMemory(memory, promptRegistry);
-  const infoBlockContent = infoSubmode === "pure" ?
+  const normalizedInfoSubmode = normalizeInfoSubmode(infoSubmode);
+  const infoBlockContent = normalizedInfoSubmode === "pure" ?
     String(promptRegistry.MODE_INFORMATION_PURE || promptRegistry.MODE_INFORMATION || "").trim() :
-    String(promptRegistry.MODE_INFORMATION_APP || promptRegistry.MODE_INFORMATION || "").trim();
+    normalizedInfoSubmode === "app_theoretical_model" ?
+      String(promptRegistry.MODE_INFORMATION_APP_THEORETICAL_MODEL || promptRegistry.MODE_INFORMATION_APP || promptRegistry.MODE_INFORMATION || "").trim() :
+      String(promptRegistry.MODE_INFORMATION_APP_FEATURES || promptRegistry.MODE_INFORMATION_APP || promptRegistry.MODE_INFORMATION || "").trim();
   const infoBlock = [
     infoBlockContent,
     `Memoire :
@@ -4277,6 +4419,20 @@ function buildRelationalAdjustmentPromptBlock(relationalAdjustmentTriggered = fa
   return wrapPromptBlock("RELATIONAL_ADJUSTMENT", adjustmentBlock);
 }
 
+function buildContactSubmodePromptBlock(contactSubmode = null, promptRegistry = buildDefaultPromptRegistry()) {
+  const safeContactSubmode = normalizeContactSubmode(contactSubmode);
+
+  if (!safeContactSubmode) {
+    return "";
+  }
+
+  const content = safeContactSubmode === "dysregulated" ?
+    String(promptRegistry.CONTACT_SUBMODE_DYSREGULATED || "").trim() :
+    String(promptRegistry.CONTACT_SUBMODE_REGULATED || "").trim();
+
+  return content ? wrapPromptBlock("CONTACT_SUBMODE", content) : "";
+}
+
 function buildInterpretationRejectionPromptBlock(interpretationRejection = null) {
   if (
     !interpretationRejection ||
@@ -4309,12 +4465,13 @@ function buildInterpretationRejectionPromptBlock(interpretationRejection = null)
 }
 
 // Construct the full system prompt for the selected mode before calling the LLM.
-function buildSystemPrompt(mode, memory, explorationDirectivityLevel = 0, promptRegistry = buildDefaultPromptRegistry(), infoSubmode = null, interpretationRejection = null, relationalAdjustmentTriggered = false, explorationSubmode = "interpretation") {
+function buildSystemPrompt(mode, memory, explorationDirectivityLevel = 0, promptRegistry = buildDefaultPromptRegistry(), infoSubmode = null, interpretationRejection = null, relationalAdjustmentTriggered = false, explorationSubmode = "interpretation", contactSubmode = null) {
   const identityWrapped = getIdentityPrompt(promptRegistry);
   const contactWrapped = getContactPrompt(promptRegistry);
   const infoWrapped = getInfoPrompt(memory, infoSubmode, promptRegistry);
   const explorationWrapped = getExplorationPrompt(memory, explorationDirectivityLevel, promptRegistry);
   const explorationSubmodeWrapped = buildExplorationSubmodePromptBlock(explorationSubmode, promptRegistry);
+  const contactSubmodeWrapped = buildContactSubmodePromptBlock(contactSubmode, promptRegistry);
   const relationalAdjustmentWrapped = buildRelationalAdjustmentPromptBlock(relationalAdjustmentTriggered, promptRegistry);
   const interpretationRejectionWrapped = buildInterpretationRejectionPromptBlock(interpretationRejection);
   
@@ -4323,6 +4480,8 @@ function buildSystemPrompt(mode, memory, explorationDirectivityLevel = 0, prompt
 ${identityWrapped}
 
 ${contactWrapped}
+
+${contactSubmodeWrapped}
 
 ${relationalAdjustmentWrapped}
 
@@ -4430,6 +4589,7 @@ async function generateReply({
   memory,
   mode,
   infoSubmode = null,
+  contactSubmode = null,
   interpretationRejection = null,
   relationalAdjustmentTriggered = false,
   explorationDirectivityLevel = 0,
@@ -4446,7 +4606,8 @@ async function generateReply({
     infoSubmode,
     interpretationRejection,
     relationalAdjustmentTriggered,
-    explorationSubmode
+    explorationSubmode,
+    contactSubmode
   );
   
   const messages = [
@@ -5310,7 +5471,8 @@ app.post("/api/account/conversations/import-local", requireUserAuth, async (req,
               topChips: Array.isArray(debugMeta.topChips) ? debugMeta.topChips : [],
               memory: typeof debugMeta.memory === "string" ? debugMeta.memory : "",
               directivityText: typeof debugMeta.directivityText === "string" ? debugMeta.directivityText : "",
-              infoSubmode: debugMeta.infoSubmode === "app" ? "app" : debugMeta.infoSubmode === "pure" ? "pure" : null,
+              infoSubmode: normalizeInfoSubmode(debugMeta.infoSubmode),
+              contactSubmode: normalizeContactSubmode(debugMeta.contactSubmode),
               interpretationRejection: debugMeta.interpretationRejection === true,
               needsSoberReadjustment: debugMeta.needsSoberReadjustment === true,
               relationalAdjustmentTriggered: debugMeta.relationalAdjustmentTriggered === true,
@@ -6277,6 +6439,7 @@ app.post("/chat", async (req, res) => {
   // If the main pipeline fails, we still return a minimally valid response.
   let modeForCatch = "exploration";
   let infoSubmodeForCatch = null;
+  let contactSubmodeForCatch = null;
   let previousMemoryForCatch = normalizeMemory("", basePromptRegistryForCatch);
   let flagsForCatch = normalizeSessionFlags({});
   let promptRegistryForCatch = basePromptRegistryForCatch;
@@ -6304,7 +6467,8 @@ app.post("/chat", async (req, res) => {
         topChips: Array.isArray(debugMeta.topChips) ? debugMeta.topChips : [],
         memory: normalizeMemory(debugMeta.memory, promptRegistryForCatch),
         directivityText: typeof debugMeta.directivityText === "string" ? debugMeta.directivityText : "",
-        infoSubmode: debugMeta.infoSubmode === "app" ? "app" : debugMeta.infoSubmode === "pure" ? "pure" : null,
+        infoSubmode: normalizeInfoSubmode(debugMeta.infoSubmode),
+        contactSubmode: normalizeContactSubmode(debugMeta.contactSubmode),
         interpretationRejection: debugMeta.interpretationRejection === true,
         needsSoberReadjustment: debugMeta.needsSoberReadjustment === true,
         relationalAdjustmentTriggered: debugMeta.relationalAdjustmentTriggered === true,
@@ -6337,6 +6501,7 @@ app.post("/chat", async (req, res) => {
     suicideLevel = "N0",
     mode = null,
     infoSubmode = null,
+    contactSubmode = null,
     interpretationRejection = false,
     needsSoberReadjustment = false,
     relationalAdjustmentTriggered = false,
@@ -6355,6 +6520,7 @@ app.post("/chat", async (req, res) => {
       suicideLevel = "N0",
       mode = null,
       infoSubmode = null,
+      contactSubmode = null,
       explorationSubmode = null,
       interpretationRejection = false,
       isRecallRequest = false
@@ -6374,9 +6540,20 @@ app.post("/chat", async (req, res) => {
       } else if (mode === "exploration") {
         chips.push(buildExplorationSubmodeChipLabel(explorationSubmode));
       } else if (mode === "info") {
-        chips.push(infoSubmode === "app" ? "INFO APP" : infoSubmode === "pure" ? "INFO PURE" : "INFO");
+        const safeInfoSubmode = normalizeInfoSubmode(infoSubmode);
+        chips.push(
+          safeInfoSubmode === "app_theoretical_model" ? "INFO APP : modèle" :
+          safeInfoSubmode === "app_features" ? "INFO APP : fonctionnalités" :
+          safeInfoSubmode === "pure" ? "INFO PURE" :
+          "INFO"
+        );
       } else if (mode === "contact") {
-        chips.push("CONTACT");
+        const safeContactSubmode = normalizeContactSubmode(contactSubmode);
+        chips.push(
+          safeContactSubmode === "dysregulated" ? "CONTACT : dérégulé" :
+          safeContactSubmode === "regulated" ? "CONTACT : régulé" :
+          "CONTACT"
+        );
       }
 
       if (interpretationRejection === true) {
@@ -6422,6 +6599,7 @@ app.post("/chat", async (req, res) => {
         suicideLevel,
         mode,
         infoSubmode,
+        contactSubmode,
         explorationSubmode,
         interpretationRejection,
         isRecallRequest
@@ -6433,7 +6611,8 @@ app.post("/chat", async (req, res) => {
         explorationDirectivityLevel,
         explorationRelanceWindow
       }),
-      infoSubmode,
+      infoSubmode: normalizeInfoSubmode(infoSubmode),
+      contactSubmode: normalizeContactSubmode(contactSubmode),
       interpretationRejection: interpretationRejection === true,
       needsSoberReadjustment: needsSoberReadjustment === true,
       relationalAdjustmentTriggered: relationalAdjustmentTriggered === true,
@@ -6615,7 +6794,8 @@ app.post("/chat", async (req, res) => {
             topChips: Array.isArray(entry?.debugMeta?.topChips) ? entry.debugMeta.topChips : [],
             memory: typeof entry?.debugMeta?.memory === "string" ? entry.debugMeta.memory : "",
             directivityText: typeof entry?.debugMeta?.directivityText === "string" ? entry.debugMeta.directivityText : "",
-            infoSubmode: entry?.debugMeta?.infoSubmode === "app" ? "app" : entry?.debugMeta?.infoSubmode === "pure" ? "pure" : null,
+            infoSubmode: normalizeInfoSubmode(entry?.debugMeta?.infoSubmode),
+            contactSubmode: normalizeContactSubmode(entry?.debugMeta?.contactSubmode),
             interpretationRejection: entry?.debugMeta?.interpretationRejection === true,
             needsSoberReadjustment: entry?.debugMeta?.needsSoberReadjustment === true,
             relationalAdjustmentTriggered: entry?.debugMeta?.relationalAdjustmentTriggered === true,
@@ -6648,7 +6828,8 @@ app.post("/chat", async (req, res) => {
           topChips: Array.isArray(debugMeta.topChips) ? debugMeta.topChips : [],
           memory: normalizeMemory(debugMeta.memory, activePromptRegistry),
           directivityText: typeof debugMeta.directivityText === "string" ? debugMeta.directivityText : "",
-          infoSubmode: debugMeta.infoSubmode === "app" ? "app" : debugMeta.infoSubmode === "pure" ? "pure" : null,
+          infoSubmode: normalizeInfoSubmode(debugMeta.infoSubmode),
+          contactSubmode: normalizeContactSubmode(debugMeta.contactSubmode),
           interpretationRejection: debugMeta.interpretationRejection === true,
           needsSoberReadjustment: debugMeta.needsSoberReadjustment === true,
           relationalAdjustmentTriggered: debugMeta.relationalAdjustmentTriggered === true,
@@ -6712,6 +6893,7 @@ app.post("/chat", async (req, res) => {
       suicideLevel = "N0",
       mode = null,
       infoSubmode = null,
+      contactSubmode = null,
       explorationSubmode = null,
       interpretationRejection = false,
       isRecallRequest = false
@@ -6731,9 +6913,20 @@ app.post("/chat", async (req, res) => {
       } else if (mode === "exploration") {
         chips.push(buildExplorationSubmodeChipLabel(explorationSubmode));
       } else if (mode === "info") {
-        chips.push(infoSubmode === "app" ? "INFO APP" : infoSubmode === "pure" ? "INFO PURE" : "INFO");
+        const safeInfoSubmode = normalizeInfoSubmode(infoSubmode);
+        chips.push(
+          safeInfoSubmode === "app_theoretical_model" ? "INFO APP : modèle" :
+          safeInfoSubmode === "app_features" ? "INFO APP : fonctionnalités" :
+          safeInfoSubmode === "pure" ? "INFO PURE" :
+          "INFO"
+        );
       } else if (mode === "contact") {
-        chips.push("CONTACT");
+        const safeContactSubmode = normalizeContactSubmode(contactSubmode);
+        chips.push(
+          safeContactSubmode === "dysregulated" ? "CONTACT : dérégulé" :
+          safeContactSubmode === "regulated" ? "CONTACT : régulé" :
+          "CONTACT"
+        );
       }
 
       if (interpretationRejection === true) {
@@ -6779,6 +6972,7 @@ app.post("/chat", async (req, res) => {
       suicideLevel = "N0",
       mode = null,
       infoSubmode = null,
+      contactSubmode = null,
       interpretationRejection = false,
       needsSoberReadjustment = false,
       relationalAdjustmentTriggered = false,
@@ -6802,6 +6996,7 @@ app.post("/chat", async (req, res) => {
           suicideLevel,
           mode,
           infoSubmode,
+          contactSubmode,
           explorationSubmode,
           interpretationRejection,
           isRecallRequest
@@ -6813,7 +7008,8 @@ app.post("/chat", async (req, res) => {
           explorationDirectivityLevel,
           explorationRelanceWindow
         }),
-        infoSubmode,
+        infoSubmode: normalizeInfoSubmode(infoSubmode),
+        contactSubmode: normalizeContactSubmode(contactSubmode),
         interpretationRejection: interpretationRejection === true,
         needsSoberReadjustment: needsSoberReadjustment === true,
         relationalAdjustmentTriggered: relationalAdjustmentTriggered === true,
@@ -7265,12 +7461,19 @@ app.post("/chat", async (req, res) => {
     // 3) Passage par le mode contact / exploration / info.
     // Cette étape détermine le style général de la réponse.
     markChatStage("contact_mode_analysis");
-    const contactAnalysis = await analyzeContactState(
+    let contactAnalysis = await analyzeContactState(
       message,
       recentHistory,
       newFlags.contactState,
       activePromptRegistry
     );
+
+    if (contactAnalysis.isContact !== true && isDysregulatedContactSignal(message)) {
+      contactAnalysis = {
+        isContact: true,
+        contactSubmode: "dysregulated"
+      };
+    }
     
     newFlags.contactState = {
       wasContact: contactAnalysis.isContact === true
@@ -7281,15 +7484,18 @@ app.post("/chat", async (req, res) => {
         mode: "contact",
         infoSource: null,
         infoSubmode: null,
-        infoSubmodeSource: null
+        infoSubmodeSource: null,
+        contactSubmode: normalizeContactSubmode(contactAnalysis.contactSubmode) || "regulated"
       } :
       await detectMode(message, recentHistory, activePromptRegistry);
 
     const detectedMode = detectedModeResult.mode;
-    const detectedInfoSubmode = detectedMode === "info" ? detectedModeResult.infoSubmode : null;
+    const detectedInfoSubmode = detectedMode === "info" ? normalizeInfoSubmode(detectedModeResult.infoSubmode) : null;
+    const detectedContactSubmode = detectedMode === "contact" ? normalizeContactSubmode(detectedModeResult.contactSubmode) : null;
     
     modeForCatch = detectedMode;
-  infoSubmodeForCatch = detectedInfoSubmode;
+    infoSubmodeForCatch = detectedInfoSubmode;
+    contactSubmodeForCatch = detectedContactSubmode;
     
     const effectiveExplorationDirectivityLevel = newFlags.explorationDirectivityLevel;
     
@@ -7338,6 +7544,7 @@ app.post("/chat", async (req, res) => {
       detectedMode,
       finalDetectedMode,
       infoSubmode: detectedInfoSubmode,
+      contactSubmode: detectedContactSubmode,
       isContact: contactAnalysis.isContact === true,
       relationalAdjustmentTriggered: relationalAdjustmentAnalysis?.needsRelationalAdjustment === true,
       previousWasContact: flags.contactState?.wasContact === true,
@@ -7366,6 +7573,7 @@ app.post("/chat", async (req, res) => {
       memory: previousMemory,
       mode: finalDetectedMode,
       infoSubmode: detectedInfoSubmode,
+      contactSubmode: detectedContactSubmode,
       interpretationRejection,
       relationalAdjustmentTriggered: relationalAdjustmentAnalysis?.needsRelationalAdjustment === true,
       explorationDirectivityLevel: finalDirectivityLevel,
@@ -7407,7 +7615,7 @@ app.post("/chat", async (req, res) => {
     const modelConflict = replyConflictAnalysis.modelConflict === true;
     const humanFieldRisk =
       modelConflict !== true &&
-      (finalDetectedMode === "exploration" || (finalDetectedMode === "info" && detectedInfoSubmode === "app")) &&
+      (finalDetectedMode === "exploration" || (finalDetectedMode === "info" && ["app_features", "app_theoretical_model"].includes(normalizeInfoSubmode(detectedInfoSubmode)))) &&
       shouldForceExplorationForSituatedImpasse(message) &&
       isProceduralInstrumentalReply(replyCandidate);
 
@@ -7462,6 +7670,7 @@ app.post("/chat", async (req, res) => {
       calledMemory: recallRouting.calledMemory,
       modelConflict,
       infoSubmode: detectedInfoSubmode,
+      contactSubmode: detectedContactSubmode,
       interpretationRejection: interpretationRejection.isInterpretationRejection,
       needsSoberReadjustment: interpretationRejection.needsSoberReadjustment,
       relationalAdjustmentTriggered: relationalAdjustmentAnalysis?.needsRelationalAdjustment === true,
@@ -7480,6 +7689,7 @@ app.post("/chat", async (req, res) => {
           suicide,
           recallRouting,
           contactAnalysis,
+          contactSubmode: detectedContactSubmode,
           detectedMode: finalDetectedMode,
           relationalAdjustmentAnalysis,
           infoSubmode: detectedInfoSubmode,
@@ -7541,6 +7751,7 @@ app.post("/chat", async (req, res) => {
       suicideLevel: suicide.suicideLevel,
       mode: finalDetectedMode,
       infoSubmode: detectedInfoSubmode,
+      contactSubmode: detectedContactSubmode,
       interpretationRejection: interpretationRejection.isInterpretationRejection,
       needsSoberReadjustment: interpretationRejection.needsSoberReadjustment,
       relationalAdjustmentTriggered: relationalAdjustmentAnalysis?.needsRelationalAdjustment === true,
@@ -7576,6 +7787,7 @@ app.post("/chat", async (req, res) => {
         suicideLevel: suicide.suicideLevel,
         mode: finalDetectedMode,
         infoSubmode: detectedInfoSubmode,
+        contactSubmode: detectedContactSubmode,
         interpretationRejection: interpretationRejection.isInterpretationRejection,
         needsSoberReadjustment: interpretationRejection.needsSoberReadjustment,
         relationalAdjustmentTriggered: relationalAdjustmentAnalysis?.needsRelationalAdjustment === true,
@@ -7595,6 +7807,7 @@ app.post("/chat", async (req, res) => {
         memory: previousMemory,
         mode: detectedMode,
         infoSubmode: detectedInfoSubmode,
+        contactSubmode: detectedContactSubmode,
         interpretationRejection,
         relationalAdjustmentTriggered: relationalAdjustmentAnalysis?.needsRelationalAdjustment === true,
         explorationDirectivityLevel: finalDirectivityLevel,
@@ -7620,6 +7833,7 @@ app.post("/chat", async (req, res) => {
           memory: previousMemory,
           mode: detectedMode,
           infoSubmode: detectedInfoSubmode,
+          contactSubmode: detectedContactSubmode,
           interpretationRejection,
           relationalAdjustmentTriggered: relationalAdjustmentAnalysis?.needsRelationalAdjustment === true,
           explorationDirectivityLevel: finalDirectivityLevel,
@@ -7646,6 +7860,7 @@ app.post("/chat", async (req, res) => {
           memory: previousMemory,
           mode: detectedMode,
           infoSubmode: detectedInfoSubmode,
+          contactSubmode: detectedContactSubmode,
           interpretationRejection,
           relationalAdjustmentTriggered: relationalAdjustmentAnalysis?.needsRelationalAdjustment === true,
           explorationDirectivityLevel: finalDirectivityLevel,
@@ -7720,6 +7935,7 @@ app.post("/chat", async (req, res) => {
       suicideLevel: "N0",
       mode: modeForCatch,
       infoSubmode: infoSubmodeForCatch,
+      contactSubmode: contactSubmodeForCatch,
       isRecallRequest: false,
       explorationCalibrationLevel: flagsForCatch.explorationCalibrationLevel,
       explorationDirectivityLevel: flagsForCatch.explorationDirectivityLevel || 0,
