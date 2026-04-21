@@ -2563,14 +2563,40 @@
       if (!id) return;
 
       const privateIds = new Set(loadPrivateConversationIds());
-      if (privateIds.has(id)) return;
+      if (!privateIds.has(id)) {
+        privateIds.add(id);
+        safeSetLocalStorage(
+          PRIVATE_CONVERSATION_IDS_KEY,
+          JSON.stringify(Array.from(privateIds)),
+          "markConversationPrivate"
+        );
+      }
 
-      privateIds.add(id);
+      let existingData = null;
+      try {
+        const raw = localStorage.getItem(getConversationStorageKey(id));
+        existingData = raw ? JSON.parse(raw) : null;
+      } catch {
+        existingData = null;
+      }
+
+      const nextData = {
+        ...(existingData && typeof existingData === "object" ? existingData : createEmptyConversationData({ isPrivate: true })),
+        isPrivate: true,
+        updatedAt: Number(existingData?.updatedAt || Date.now()) || Date.now()
+      };
+
       safeSetLocalStorage(
-        PRIVATE_CONVERSATION_IDS_KEY,
-        JSON.stringify(Array.from(privateIds)),
-        "markConversationPrivate"
+        getConversationStorageKey(id),
+        JSON.stringify(nextData),
+        "markConversationPrivate:data"
       );
+
+      upsertConversationIndexItem({
+        id,
+        updatedAt: nextData.updatedAt,
+        isPrivate: true
+      });
     }
 
     function isConversationPrivateById(conversationId, knownData = null) {
@@ -7573,6 +7599,7 @@
       const FAB_LONG_PRESS_MS = 620;
       let fabLongPressTimer = null;
       let fabLongPressTriggered = false;
+      let fabPrivateFlowActive = false;
 
       const clearFabLongPress = () => {
         if (fabLongPressTimer) {
@@ -7582,29 +7609,35 @@
       };
 
       const triggerPrivateConversationFlow = async () => {
-        if (sessionStatus === "closing") return;
+        if (sessionStatus === "closing" || fabPrivateFlowActive) return;
 
-        const accepted = await openPrivateConversationModal();
-        if (!accepted) {
-          return;
-        }
-
-        if (conversationsFabBtn._ackTimer) {
-          clearTimeout(conversationsFabBtn._ackTimer);
-        }
-
-        conversationsFabBtn.classList.remove("is-acknowledged");
-        void conversationsFabBtn.offsetWidth;
-        conversationsFabBtn.classList.add("is-acknowledged");
-        conversationsFabBtn._ackTimer = setTimeout(() => {
-          conversationsFabBtn.classList.remove("is-acknowledged");
-          conversationsFabBtn._ackTimer = null;
-        }, 260);
-
-        conversationsFabBtn.classList.add("is-pending");
+        fabPrivateFlowActive = true;
 
         try {
+          const accepted = await openPrivateConversationModal();
+          if (!accepted) {
+            return;
+          }
+
+          if (conversationsFabBtn._ackTimer) {
+            clearTimeout(conversationsFabBtn._ackTimer);
+          }
+
+          conversationsFabBtn.classList.remove("is-acknowledged");
+          void conversationsFabBtn.offsetWidth;
+          conversationsFabBtn.classList.add("is-acknowledged");
+          conversationsFabBtn._ackTimer = setTimeout(() => {
+            conversationsFabBtn.classList.remove("is-acknowledged");
+            conversationsFabBtn._ackTimer = null;
+          }, 260);
+
+          conversationsFabBtn.classList.add("is-pending");
           await finalizeAndStartNewSession({ isPrivate: true });
+
+          const currentConversationId = getConversationId();
+          if (currentConversationId) {
+            markConversationPrivate(currentConversationId);
+          }
         } finally {
           if (conversationsFabBtn._ackTimer) {
             clearTimeout(conversationsFabBtn._ackTimer);
@@ -7612,6 +7645,7 @@
           }
           conversationsFabBtn.classList.remove("is-acknowledged");
           conversationsFabBtn.classList.remove("is-pending");
+          fabPrivateFlowActive = false;
         }
       };
 
@@ -7634,7 +7668,7 @@
       conversationsFabBtn.addEventListener("pointercancel", clearFabLongPress);
 
       conversationsFabBtn.onclick = async () => {
-        if (fabLongPressTriggered) {
+        if (fabLongPressTriggered || fabPrivateFlowActive) {
           fabLongPressTriggered = false;
           return;
         }
@@ -7948,14 +7982,14 @@
       };
       
       const originalStartFreshSession = startFreshSession;
-      startFreshSession = function() {
-        originalStartFreshSession();
+      startFreshSession = function(...args) {
+        originalStartFreshSession.apply(this, args);
         requestAnimationFrame(() => syncComposerUiDeferred({ keepBottom: true }));
       };
       
       const originalStartFreshOrResumeSession = startFreshOrResumeSession;
-      startFreshOrResumeSession = function() {
-        originalStartFreshOrResumeSession();
+      startFreshOrResumeSession = function(...args) {
+        originalStartFreshOrResumeSession.apply(this, args);
         requestAnimationFrame(() => syncComposerUiDeferred({ keepBottom: true }));
         setTimeout(() => syncComposerUiDeferred({ keepBottom: true }), 40);
         setTimeout(() => syncComposerUiDeferred({ keepBottom: true }), 160);
