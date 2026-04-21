@@ -2733,7 +2733,8 @@
             messages: Array.isArray(snapshot.messages) ? snapshot.messages : [],
             memory: typeof snapshot.memory === "string" && snapshot.memory.trim() ? snapshot.memory : defaultMemory(),
             flags: normalizeStoredFlags(snapshot.flags || {}),
-            updatedAt: Number(snapshot.updatedAt || Date.now())
+            updatedAt: Number(snapshot.updatedAt || Date.now()),
+            isPrivate: snapshot.isPrivate === true
           }
         };
       } catch {
@@ -2773,7 +2774,8 @@
             messages: Array.isArray(snapshot.messages) ? snapshot.messages : [],
             memory: typeof snapshot.memory === "string" && snapshot.memory.trim() ? snapshot.memory : defaultMemory(),
             flags: normalizeStoredFlags(snapshot.flags || {}),
-            updatedAt: Number(snapshot.updatedAt || Date.now())
+            updatedAt: Number(snapshot.updatedAt || Date.now()),
+            isPrivate: snapshot.isPrivate === true
           }
         }),
         "saveEditUndoPayload"
@@ -2793,7 +2795,8 @@
         messages: payload.snapshot.messages,
         memory: payload.snapshot.memory,
         flags: payload.snapshot.flags,
-        updatedAt: Date.now()
+        updatedAt: Date.now(),
+        isPrivate: payload.snapshot.isPrivate === true
       });
 
       clearEditUndoPayload();
@@ -6269,6 +6272,7 @@
       `;
 
       items.forEach(item => {
+        const itemIsPrivate = item.isPrivate === true || loadConversationData(item.id).isPrivate === true;
         const safeTitle = item.title && String(item.title).trim() ?
           String(item.title).trim() :
           "Conversation sans titre";
@@ -6293,7 +6297,7 @@
         titleRow.style.alignItems = "center";
         titleRow.style.gap = "6px";
 
-        if (item.isPrivate === true) {
+        if (itemIsPrivate) {
           const privateIcon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
           privateIcon.setAttribute("viewBox", "0 0 24 24");
           privateIcon.setAttribute("width", "14");

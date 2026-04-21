@@ -568,6 +568,7 @@
           await syncRemoteOwnedConversationIds();
 
           localItems = loadLocalConversationsForImport();
+          const importableItems = localItems.filter(item => !remoteOwnedIds.has(item.id));
           list.innerHTML = "";
           notice.textContent = "";
           notice.className = "notice";
@@ -581,16 +582,23 @@
             return;
           }
 
-          localItems.forEach(item => {
+          if (importableItems.length === 0) {
+            const empty = document.createElement("div");
+            empty.className = "import-item-meta";
+            empty.textContent = "Toutes les conversations locales sont deja liees a ce compte.";
+            list.appendChild(empty);
+            updateImportButtonState();
+            return;
+          }
+
+          importableItems.forEach(item => {
             const row = document.createElement("div");
             row.className = "import-item";
-            const alreadyImported = remoteOwnedIds.has(item.id);
 
             const label = document.createElement("label");
             const checkbox = document.createElement("input");
             checkbox.type = "checkbox";
             checkbox.value = item.id;
-            checkbox.disabled = alreadyImported;
             checkbox.addEventListener("change", updateImportButtonState);
 
             const main = document.createElement("div");
@@ -602,7 +610,7 @@
 
             const metaLine = document.createElement("div");
             metaLine.className = "import-item-meta";
-            metaLine.textContent = `${item.messages.length} message(s) · ${formatImportDate(item.updatedAt)}${item.isPrivate ? " · locale privee" : ""}${alreadyImported ? " · deja importee" : ""}`;
+            metaLine.textContent = `${item.messages.length} message(s) · ${formatImportDate(item.updatedAt)}${item.isPrivate ? " · locale privee" : ""}`;
 
             main.appendChild(titleLine);
             main.appendChild(metaLine);
