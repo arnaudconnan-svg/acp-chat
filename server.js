@@ -1926,14 +1926,17 @@ Direction :
   But :
   - priorite a la stabilisation immediate
   - reconnaitre l'urgence vecue sans dramatiser
-  - offrir un appui tres concret, court, faisable maintenant
+  - offrir un guidage directif, concret et faisable maintenant
 
   Contraintes :
   - style tres sobre, contenant, direct
-  - 2 a 4 phrases max
+  - 3 a 6 phrases max
   - pas d'interpretation
   - pas de question ouverte
-  - privilegie une micro-sequence simple de regulation immediatement applicable
+  - guider explicitement une micro-sequence breve de stabilisation (type TCC)
+  - privilegie une respiration cadencee simple (ex: inspirer 4 secondes, expirer 6 secondes, 6 cycles)
+  - ajouter un ancrage sensoriel tres simple (3 choses vues, 2 choses touchees, 1 son entendu)
+  - terminer par une consigne de securite breve si aggravation (112/3114)
   `,
     
     // ------------------------------------
@@ -2891,15 +2894,6 @@ function isExplicitAppFeatureRequest(message = "") {
   const asksUsage = /comment (utiliser|fonctionne|ca marche)|que fait l'app|quoi faire dans l'app|mode d'emploi|etapes|fonctionnalites|plan d'urgence|dans l'app/.test(text);
 
   return mentionsApp && asksUsage;
-}
-
-function isDysregulatedContactSignal(message = "") {
-  const text = normalizeGuardText(message);
-
-  const hasImmediateAnxiety = /angoiss|panique|j'etouffe|j etouffe|je suffoque|je perds le controle|ca monte tres fort|ca monte d'un coup/.test(text);
-  const hasImmediateStopImpulse = /je veux arreter|j'ai envie d'arreter|stop tout de suite|tout de suite|urgence|je n'y arrive plus/.test(text);
-
-  return hasImmediateAnxiety && hasImmediateStopImpulse;
 }
 
 function isProceduralInstrumentalReply(reply = "") {
@@ -7467,13 +7461,6 @@ app.post("/chat", async (req, res) => {
       newFlags.contactState,
       activePromptRegistry
     );
-
-    if (contactAnalysis.isContact !== true && isDysregulatedContactSignal(message)) {
-      contactAnalysis = {
-        isContact: true,
-        contactSubmode: "dysregulated"
-      };
-    }
     
     newFlags.contactState = {
       wasContact: contactAnalysis.isContact === true
