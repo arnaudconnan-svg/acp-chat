@@ -66,6 +66,7 @@ function buildPayload(testCase, index) {
     userId: "eval_runner",
     message: String(testCase.message || ""),
     recentHistory: Array.isArray(testCase.recentHistory) ? testCase.recentHistory : [],
+    conversationBranchHistory: Array.isArray(testCase.conversationBranchHistory) ? testCase.conversationBranchHistory : undefined,
     memory: typeof testCase.memory === "string" ? testCase.memory : "",
     flags: normalizeCaseFlags(testCase.flags),
     debug: true
@@ -89,6 +90,10 @@ function normalizeComparableText(value) {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase();
+}
+
+function chipsIncludeExpected(chips, expectedChip) {
+  return chips.some(chip => chip === expectedChip || chip.startsWith(`${expectedChip} :`));
 }
 
 function evaluateExpectations(testCase, result) {
@@ -145,7 +150,7 @@ function evaluateExpectations(testCase, result) {
 
   if (expectations.modeChip !== undefined) {
     const chips = Array.isArray(debugMeta.topChips) ? debugMeta.topChips : [];
-    if (!chips.includes(expectations.modeChip)) {
+    if (!chipsIncludeExpected(chips, expectations.modeChip)) {
       failures.push(`expected topChips to include '${expectations.modeChip}', got [${chips.join(", ")}]`);
     }
   }
@@ -153,7 +158,7 @@ function evaluateExpectations(testCase, result) {
   if (Array.isArray(expectations.topChipsInclude)) {
     const chips = Array.isArray(debugMeta.topChips) ? debugMeta.topChips : [];
     for (const chip of expectations.topChipsInclude) {
-      if (!chips.includes(chip)) {
+      if (!chipsIncludeExpected(chips, chip)) {
         failures.push(`expected topChips to include '${chip}', got [${chips.join(", ")}]`);
       }
     }
@@ -164,6 +169,19 @@ function evaluateExpectations(testCase, result) {
     for (const snippet of expectations.memoryIncludes) {
       if (!comparableMemory.includes(normalizeComparableText(snippet))) {
         failures.push(`expected debugMeta.memory to include '${String(snippet)}'`);
+      }
+    }
+  }
+
+  if (expectations.explorationSubmode !== undefined && debugMeta.explorationSubmode !== expectations.explorationSubmode) {
+    failures.push(`expected debugMeta.explorationSubmode='${expectations.explorationSubmode}', got '${String(debugMeta.explorationSubmode)}'`);
+  }
+
+  if (Array.isArray(expectations.replyMustNotInclude)) {
+    const comparableReply = normalizeComparableText(reply);
+    for (const snippet of expectations.replyMustNotInclude) {
+      if (comparableReply.includes(normalizeComparableText(snippet))) {
+        failures.push(`expected reply not to include '${String(snippet)}'`);
       }
     }
   }
@@ -182,6 +200,7 @@ function buildCaseReport(label, result, failures = []) {
     debugMeta: {
       topChips: Array.isArray(debugMeta.topChips) ? debugMeta.topChips : [],
       infoSubmode: debugMeta.infoSubmode ?? null,
+      explorationSubmode: typeof debugMeta.explorationSubmode === "string" ? debugMeta.explorationSubmode : null,
       interpretationRejection: debugMeta.interpretationRejection === true,
       needsSoberReadjustment: debugMeta.needsSoberReadjustment === true,
       explorationCalibrationLevel: Number.isInteger(debugMeta.explorationCalibrationLevel) ? debugMeta.explorationCalibrationLevel : null,

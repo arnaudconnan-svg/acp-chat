@@ -573,5 +573,72 @@
       "maxReplyChars": 1800,
       "maxParagraphs": 5
     }
+  },
+  {
+    "id": "long_term_recall_uses_branch_history",
+    "message": "On en etait ou sur ma soeur ?",
+    "recentHistory": [
+      {
+        "role": "assistant",
+        "content": "Je peux reprendre a partir des reperes que j'ai, mais pas tout le fil exact."
+      }
+    ],
+    "conversationBranchHistory": [
+      {
+        "role": "user",
+        "content": "Je m'en veux encore pour la facon dont j'ai parle a ma soeur hier."
+      },
+      {
+        "role": "assistant",
+        "content": "On dirait que quelque chose serre encore autour de cette scene avec elle."
+      },
+      {
+        "role": "user",
+        "content": "Oui, surtout le moment ou elle m'a dit que je la prenais de haut."
+      },
+      {
+        "role": "assistant",
+        "content": "Ce moment-la semble etre reste tres accroche."
+      }
+    ],
+    "memory": "Avec sa soeur, une scene recente reste tres accrochee et chargee de culpabilite.",
+    "flags": {},
+    "expect": {
+      "status": 200,
+      "modeChip": "Demande de rappel mémoire",
+      "maxReplyChars": 260,
+      "replyMustNotInclude": [
+        "je garde quelques reperes generaux"
+      ]
+    }
+  },
+  {
+    "id": "rejects_pseudo_presence_after_failed_turns",
+    "message": "Arrete de dire que tu restes la. Ca ne m'aide pas, reprends quelque chose d'utile.",
+    "recentHistory": [
+      {
+        "role": "user",
+        "content": "Plus ca avance, plus j'ai l'impression qu'on tourne en rond."
+      },
+      {
+        "role": "assistant",
+        "content": "Je suis la avec toi dans ce moment ou rien ne se debloque."
+      }
+    ],
+    "memory": "Il vit la reponse du bot comme une presence vide et demande une reprise utile.",
+    "flags": {},
+    "expect": {
+      "status": 200,
+      "modeChip": "EXPLORATION",
+      "maxReplyChars": 320,
+      "maxParagraphs": 2,
+      "needsSoberReadjustment": true,
+      "replyMustNotInclude": [
+        "je suis la",
+        "je reste la",
+        "sans forcer",
+        "sans arranger"
+      ]
+    }
   }
 ]

@@ -3122,7 +3122,7 @@
               infoSubmode: item.debugMeta.infoSubmode === "app" ? "app" : item.debugMeta.infoSubmode === "pure" ? "pure" : null,
               interpretationRejection: item.debugMeta.interpretationRejection === true,
               explorationCalibrationLevel: Number.isInteger(item.debugMeta.explorationCalibrationLevel) ? item.debugMeta.explorationCalibrationLevel : null,
-              explorationStance: typeof item.debugMeta.explorationStance === "string" ? item.debugMeta.explorationStance : null,
+              explorationSubmode: typeof item.debugMeta.explorationSubmode === "string" ? item.debugMeta.explorationSubmode : null,
               therapeuticAllianceSource: typeof item.debugMeta.therapeuticAllianceSource === "string" ? item.debugMeta.therapeuticAllianceSource : null,
               rewriteSource: typeof item.debugMeta.rewriteSource === "string" ? item.debugMeta.rewriteSource : null,
               memoryRewriteSource: typeof item.debugMeta.memoryRewriteSource === "string" ? item.debugMeta.memoryRewriteSource : null,
@@ -3483,7 +3483,7 @@
           infoSubmode: debugMeta.infoSubmode === "app" ? "app" : debugMeta.infoSubmode === "pure" ? "pure" : null,
           interpretationRejection: debugMeta.interpretationRejection === true,
           explorationCalibrationLevel: Number.isInteger(debugMeta.explorationCalibrationLevel) ? debugMeta.explorationCalibrationLevel : null,
-          explorationStance: typeof debugMeta.explorationStance === "string" ? debugMeta.explorationStance : null,
+          explorationSubmode: typeof debugMeta.explorationSubmode === "string" ? debugMeta.explorationSubmode : null,
           therapeuticAllianceSource: typeof debugMeta.therapeuticAllianceSource === "string" ? debugMeta.therapeuticAllianceSource : null,
           rewriteSource: typeof debugMeta.rewriteSource === "string" ? debugMeta.rewriteSource : null,
           memoryRewriteSource: typeof debugMeta.memoryRewriteSource === "string" ? debugMeta.memoryRewriteSource : null,
@@ -5257,7 +5257,7 @@
           infoSubmode: null,
           interpretationRejection: false,
           explorationCalibrationLevel: null,
-          explorationStance: null,
+          explorationSubmode: null,
           therapeuticAllianceSource: "",
           modelConflict: false,
           rewriteSource: "",
@@ -5320,8 +5320,8 @@
           meta.explorationCalibrationLevel = debugMetaValue.explorationCalibrationLevel;
         }
 
-        if (typeof debugMetaValue.explorationStance === "string" && debugMetaValue.explorationStance) {
-          meta.explorationStance = debugMetaValue.explorationStance;
+        if (typeof debugMetaValue.explorationSubmode === "string" && debugMetaValue.explorationSubmode) {
+          meta.explorationSubmode = debugMetaValue.explorationSubmode;
         }
 
         if (typeof debugMetaValue.therapeuticAllianceSource === "string") {
@@ -5347,7 +5347,7 @@
           debugMeta.infoSubmode === "pure" ||
           debugMeta.interpretationRejection === true ||
           Number.isInteger(debugMeta.explorationCalibrationLevel) ||
-          !!debugMeta.explorationStance
+          !!debugMeta.explorationSubmode
         );
       
       const hasDebugContent =
@@ -5359,7 +5359,7 @@
           !!debugMeta.memory ||
           !!debugMeta.directivityLabel ||
           hasStructuredSignals ||
-          !!debugMeta.explorationStance ||
+          !!debugMeta.explorationSubmode ||
           !!debugMeta.therapeuticAllianceSource ||
           (debugMeta.memoryCompressed && !!debugMeta.memoryBeforeCompression) ||
           (debugMeta.modelConflict && !!debugMeta.rewriteSource) ||
@@ -5764,7 +5764,7 @@
 
           const allianceSum = document.createElement("summary");
           allianceSum.className = "debug-chip";
-          allianceSum.textContent = "Alliance thérapeutique";
+          allianceSum.textContent = "Réponse avant ajustement relationnel";
 
           const allianceContent = document.createElement("div");
           allianceContent.className = "debug-block";
@@ -6866,6 +6866,7 @@
             isPrivateConversation: loadConversationData(requestConversationId).isPrivate === true,
             adminUiActive: document.body.classList.contains("admin-ui"),
             recentHistory: loadHistory().map(({ role, content }) => ({ role, content })).slice(-MAX_RECENT_TURNS),
+            conversationBranchHistory: loadHistory().map(({ role, content }) => ({ role, content })),
             memory: loadConversationData(requestConversationId).memory,
             flags: normalizeStoredFlags(loadConversationData(requestConversationId).flags),
             override1: adminPayload.override1,

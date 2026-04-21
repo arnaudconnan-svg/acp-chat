@@ -65,6 +65,55 @@ const app = express();
 const port = process.env.PORT || 3000;
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
+function wait(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function isRetryableOpenAIError(err) {
+  return Boolean(
+    err && (
+      err.status === 429 ||
+      err.code === "rate_limit_exceeded" ||
+      err.type === "tokens"
+    )
+  );
+}
+
+function readRetryDelayMs(err, attempt) {
+  const retryAfterMsHeader = err?.headers?.get?.("retry-after-ms");
+  const retryAfterSecondsHeader = err?.headers?.get?.("retry-after");
+  const retryAfterMs = Number.parseInt(String(retryAfterMsHeader || ""), 10);
+
+  if (Number.isFinite(retryAfterMs) && retryAfterMs > 0) {
+    return Math.min(retryAfterMs + 150, 2500);
+  }
+
+  const retryAfterSeconds = Number.parseFloat(String(retryAfterSecondsHeader || ""));
+  if (Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0) {
+    return Math.min(Math.ceil(retryAfterSeconds * 1000) + 150, 2500);
+  }
+
+  return Math.min(400 * (attempt + 1), 2500);
+}
+
+const originalCreateChatCompletion = client.chat.completions.create.bind(client.chat.completions);
+client.chat.completions.create = async function createChatCompletionWithRetry(...args) {
+  let attempt = 0;
+
+  while (true) {
+    try {
+      return await originalCreateChatCompletion(...args);
+    } catch (err) {
+      if (!isRetryableOpenAIError(err) || attempt >= 2) {
+        throw err;
+      }
+
+      await wait(readRetryDelayMs(err, attempt));
+      attempt += 1;
+    }
+  }
+};
+
 function readModelId(envKey, fallback) {
   const configuredValue = String(process.env[envKey] || "").trim();
   return configuredValue || fallback;
@@ -1594,31 +1643,33 @@ Reponds uniquement par le JSON.
 `,
 
     MODE_RELATIONAL_ADJUSTMENT: `
-Mode RELATIONAL_ADJUSTMENT.
+  Bloc complementaire : reajustement relationnel.
 
-Tu adrresses un moment ou la relation bot-utilisateur est devenue le sujet principal.
+  Tu gardes le mode courant, mais tu tiens compte du fait que le message utilisateur signale un decalage ou une rupture dans la maniere dont tu aides.
 
-But :
-- manifester clairement ta presence relationnelle sans basculer en silence de contact
-- ne pas proposer de solution ou d'action concrete
-- reajuster la relation d'abord
+  But :
+  - reconnaitre brievement le decalage relationnel ou strategique
+  - ne pas couper la dynamique du mode en cours
+  - faire ensuite un vrai geste conversationnel compatible avec ce mode
 
-Contraintes :
-- reponse courte et incarnee
-- parle depuis "je" ou au plus pres du "tu"
-- pas de meta-discours, pas d'excuse
-- pas de question qui sert seulement a relancer l'exploration
-- pas d'abstraction pseudo-philosophique
+  Contraintes :
+  - pas de meta-discours developpe
+  - pas d'excuse longue
+  - pas de pseudo-presence vide
+  - n'interromps pas un mode information valide par une presence relationnelle seule
+  - n'interromps pas une exploration valable si elle peut etre reprise de maniere plus juste
 
-Direction :
-- affirme explicitement que tu es la et que tu entends le malaise
-- formulations simples : "Je suis vraiment avec toi dans cette sensation d'etre coincé", "Je vois que tu cherches du changement, pas seulement du constat"
-- puis relance
+  Interdit apres reproche explicite :
+  - reponses qui s'arretent a "je suis la", "je reste la", "sans forcer", "sans arranger" ou equivalent
+  - relance vide qui ignore le reproche adresse au bot
 
-Forme :
-- deux ou trois phrases maximum
-- tres concrete, situee
-- pas de style lyrique
+  Direction :
+  - nomme brievement ce qui rate dans l'echange ou ce qui ne tombe pas juste
+  - puis reprends soit par une lecture plus situee, soit par un appui plus concret, soit par un suivi phenomenologique plus proche si c'est deja ce qui emerge
+
+  Forme :
+  - bref, concret, situe
+  - pas de style lyrique
 `,
 
     ANALYZE_EXPLORATION_CALIBRATION: `
@@ -1628,7 +1679,7 @@ Reponds STRICTEMENT en JSON :
 
 {
   "calibrationLevel": 0|1|2|3|4,
-  "stance": "interpretive|phenomenological_follow|relational_presence|minimal_contact"
+  "explorationSubmode": "interpretation|phenomenological_follow"
 }
 
 Sens des niveaux :
@@ -1658,20 +1709,31 @@ Regles :
 - en cas de doute entre 2 et 3, reponds 3
 - EXCEPTION : si un ressenti corporel est clairement devenu explicite et present dans le message actuel (sensation physique nommee, localisation, mouvement interne en cours), maintiens ou ramene a 2 meme si la fenetre de relances est saturee ; fermer a 3 ou 4 dans ce cas serait une erreur de jugement
 
-Stance (obligatoire) :
-- interpretive : lecture situee, deplacement sobre ; la stance par defaut quand un angle de lecture est possible
+Sous-mode d'exploration (obligatoire) :
+- interpretation : lecture situee, deplacement sobre ; sous-mode par defaut quand un angle de lecture est possible
 - phenomenological_follow : suivi actif du ressenti emergent quand il est deja nettement au premier plan, tres concret, present dans le corps ou en train de se faire ; autorise et privilegie un geste de rapprochement (question de proximite, nomination de ce que ca fait) plutot qu'un simple reflet ; a utiliser quand ouvrir davantage est juste
-- relational_presence : priorite a la presence relationnelle explicite, sans solution ; quand le lien lui-meme est ce qui manque
-- minimal_contact : reponse tres courte et contenante, quasi au bord du contact ; a reserver aux moments ou ouvrir davantage risquerait d'interferer avec ce qui se passe ou de deborder ; ne pas confondre avec phenomenological_follow : minimal_contact ferme, phenomenological_follow suit et approche
 
 Regle :
-- choisis exactement une stance
+- choisis exactement un sous-mode
 - n'utilise phenomenological_follow que si un ressenti emergent est deja clairement present et qu'un rapprochement est possible sans risque d'interferer
-- n'utilise minimal_contact que si ouvrir davantage risquerait reellement d'interferer ou de deborder ; ne pas l'utiliser par precaution generique
-- si une lecture situee et sobre est possible sans forcer, prefere interpretive
-- en cas de doute, choisis interpretive
+- si une lecture situee et sobre est possible sans forcer, prefere interpretation
+- en cas de doute, choisis interpretation
 
 Reponds uniquement par le JSON.
+`,
+
+  EXPLORATION_SUBMODE_INTERPRETATION: `
+Sous-mode EXPLORATION : interpretation.
+
+Priorise une lecture situee, deplacante, sobre et concrete.
+Quand un angle de lecture est possible sans forcer, prefere-le a une simple presence ou a un reflet vague.
+`,
+
+  EXPLORATION_SUBMODE_PHENOMENOLOGICAL_FOLLOW: `
+Sous-mode EXPLORATION : accompagnement phenomenologique.
+
+Priorise seulement un suivi tres proche du ressenti emergent quand il est deja nettement au premier plan, concret et encore en train de se faire.
+N'ouvre pas plus large que ce que le mouvement en cours autorise vraiment.
 `,
     
     // ------------------------------------
@@ -2361,6 +2423,38 @@ Regles :
 Renvoie uniquement la memoire finale reecrite.
 `,
 
+    FINALIZE_MEMORY_CANDIDATE: `
+Tu finalises une memoire de session candidate apres sa generation initiale.
+
+Tu recois :
+- la memoire precedente
+- une memoire candidate
+- l'analyse du rejet d'interpretation du tour si elle existe
+- un signal indiquant si la memoire candidate doit etre compressee
+
+Objectif :
+- garder strictement le format memoire attendu
+- si un rejet d'interpretation ou un besoin de reajustement sobre est present, retirer les lectures contestees et prioriser ce qui aide vraiment le prochain tour
+- si la memoire candidate est trop redondante, la compresser
+- corriger au passage toute formulation qui entrerait en conflit avec le modele
+
+Regles :
+- conserve strictement le format :
+Contexte stable:
+- ...
+
+Mouvements en cours:
+- ...
+- pas de commentaire
+- pas de transcript
+- pas de troisieme bloc
+- garde 1 a 2 items max dans "Mouvements en cours" si la compression est demandee
+- priorise les elements qui changent la reponse suivante, surtout apres protestation relationnelle ou rejet d'interpretation
+- n'utilise aucun cadre banni et n'attribue pas d'agentivite fautive
+
+Renvoie uniquement la memoire finale.
+`,
+
   UPDATE_INTERSESSION_MEMORY: `
 Tu mets a jour une memoire inter-sessions a partir :
 - d'une memoire inter-sessions existante
@@ -2455,7 +2549,9 @@ Reponds uniquement par le JSON.
 `,
     
     MEMORY_RECALL_RESPONSE: `
-Tu reponds a une tentative de rappel en t'appuyant uniquement sur une memoire resumee.
+  Tu reponds a une tentative de rappel en t'appuyant sur :
+  - une memoire resumee
+  - et, quand il est fourni, le transcript complet de la branche courante
 
 N'utilise aucune autre langue que le francais.
 
@@ -2464,9 +2560,11 @@ Tutoie l'utilisateur.
 Contraintes :
 - ne parle pas de l'utilisateur a la troisieme personne
 - reponse breve, naturelle et sobre
-- dis clairement qu'il s'agit de reperes generaux et non d'un souvenir detaille
+  - si seul le resume memoire est fourni, dis clairement qu'il s'agit de reperes generaux et non d'un souvenir detaille
+  - si un transcript complet est fourni, tu peux rappeler le fil de maniere plus precise, mais sans inventer ni combler les trous
 - n'invente aucun detail
 - si la memoire contient plusieurs themes, cite seulement les reperes les plus plausibles et generaux
+  - si le transcript montre une branche precise, reste strictement sur cette branche et n'invente pas d'autre continuite
 `,
     
     // ------------------------------------
@@ -2612,6 +2710,37 @@ Exemples de correction attendue :
 
 Reecris uniquement le contenu final, sans commentaire.
 `,
+
+    REWRITE_REPLY_POSTCHECK: `
+Tu reecris une reponse utilisateur-visible apres une verification finale.
+
+Tu recois :
+- le message utilisateur
+- le contexte recent
+- la memoire
+- le mode courant
+- la reponse initiale
+- un signal indiquant soit un conflit theorique, soit un risque de reponse proceduralo-instrumentale hors du bon champ
+
+But :
+- ne faire qu'une seule correction finale si necessaire
+- conserver au maximum l'intention utile, le ton et la concision de la reponse initiale
+- ne pas ajouter de meta-discours ni d'explication sur la correction
+
+Si le probleme principal est un conflit theorique :
+- corrige uniquement ce qui reintroduit un cadre banni
+- garde autant que possible la fermete phenomenologique utile
+
+Si le probleme principal est une derive proceduralo-instrumentale :
+- reviens a une reponse strictement dans le champ humain, existentiel, relationnel ou phenomenologique
+- ne donne pas de procedure, de manipulation, de liste d'outils ou de sequence pratique
+- ne transforme pas la reponse en pseudo-presence vide
+- reste concret, situe et utile dans le champ de l'experience
+
+Si les deux signaux sont faux, ne change presque rien.
+
+Reecris uniquement la reponse finale, sans commentaire.
+`,
   };
 }
 
@@ -2659,6 +2788,13 @@ function trimHistoryWithLimit(history, maxTurns) {
   return history
     .filter(m => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
     .slice(-maxTurns);
+}
+
+function normalizeConversationBranchHistory(history) {
+  if (!Array.isArray(history)) return [];
+  return history
+    .filter(m => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
+    .map(m => ({ role: m.role, content: m.content }));
 }
 
 function trimHistory(history) {
@@ -3263,12 +3399,20 @@ ${normalizeMemory(memory, promptRegistry)}
   }
 }
 
-async function buildLongTermMemoryRecallResponse(memory = "", promptRegistry = buildDefaultPromptRegistry()) {
+async function buildLongTermMemoryRecallResponse({
+  memory = "",
+  conversationBranchHistory = [],
+  promptRegistry = buildDefaultPromptRegistry()
+} = {}) {
+  const normalizedBranchHistory = normalizeConversationBranchHistory(conversationBranchHistory);
   const user = `
 Memoire resumee :
 ${normalizeMemory(memory, promptRegistry)}
 
-Formule une reponse de rappel honnete a partir de cette seule memoire.
+Transcript complet de la branche courante :
+${normalizedBranchHistory.length > 0 ? normalizedBranchHistory.map(m => `${m.role === "user" ? "Utilisateur" : "Assistant"} : ${m.content}`).join("\n") : "(indisponible)"}
+
+Formule une reponse de rappel honnete a partir de ces reperes.
 `;
   
   const r = await client.chat.completions.create({
@@ -3282,7 +3426,49 @@ Formule une reponse de rappel honnete a partir de cette seule memoire.
   });
   
   return (r.choices?.[0]?.message?.content || "").trim() ||
-    "Je garde quelques reperes generaux d'une session a l'autre, mais pas le fil detaille exact.";
+    (normalizedBranchHistory.length > 0 ?
+      "Je peux reprendre quelques elements de ce fil, mais pas garantir chaque detail mot pour mot." :
+      "Je garde quelques reperes generaux d'une session a l'autre, mais pas le fil detaille exact.");
+}
+
+async function loadConversationBranchHistoryForRecall({
+  conversationId = "",
+  isPrivateConversation = false,
+  conversationBranchHistory = [],
+  recentHistory = []
+} = {}) {
+  const normalizedLocalBranchHistory = normalizeConversationBranchHistory(conversationBranchHistory);
+
+  if (isPrivateConversation === true || !conversationId) {
+    return normalizedLocalBranchHistory.length > 0 ? normalizedLocalBranchHistory : normalizeConversationBranchHistory(recentHistory);
+  }
+
+  try {
+    const messagesSnap = await messagesRef
+      .orderByChild("conversationId")
+      .equalTo(conversationId)
+      .once("value");
+
+    const branchHistory = Object.values(messagesSnap.val() || {})
+      .filter(m => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
+      .sort((a, b) => Number(a.timestamp) - Number(b.timestamp))
+      .map(m => ({ role: m.role, content: m.content }));
+
+    if (branchHistory.length > 0) {
+      return normalizedLocalBranchHistory.length > branchHistory.length ? normalizedLocalBranchHistory : branchHistory;
+    }
+  } catch (err) {
+    console.warn("[RECALL][BRANCH_LOAD_FAILED]", {
+      conversationId,
+      error: err && err.message ? err.message : String(err)
+    });
+  }
+
+  if (normalizedLocalBranchHistory.length > 0) {
+    return normalizedLocalBranchHistory;
+  }
+
+  return normalizeConversationBranchHistory(recentHistory);
 }
 
 function buildNoMemoryRecallResponse() {
@@ -3348,6 +3534,56 @@ ${originalContent}
   
   return (r.choices?.[0]?.message?.content || "").trim() || originalContent;
 }
+
+  async function rewriteReplyPostcheck({
+    message = "",
+    history = [],
+    memory = "",
+    mode = "exploration",
+    infoSubmode = null,
+    originalReply = "",
+    modelConflict = false,
+    humanFieldRisk = false,
+    promptRegistry = buildDefaultPromptRegistry()
+  }) {
+    const user = `
+  Message utilisateur :
+  ${message}
+
+  Contexte recent :
+  ${history.map(m => `${m.role === "user" ? "Utilisateur" : "Assistant"} : ${m.content}`).join("\n")}
+
+  Memoire :
+  ${normalizeMemory(memory, promptRegistry)}
+
+  Mode courant :
+  ${mode}
+
+  Sous-mode info :
+  ${infoSubmode || "none"}
+
+  Conflit theorique detecte :
+  ${modelConflict === true ? "true" : "false"}
+
+  Risque proceduralo-instrumental hors champ humain :
+  ${humanFieldRisk === true ? "true" : "false"}
+
+  Reponse initiale a corriger :
+  ${originalReply}
+  `;
+
+    const r = await client.chat.completions.create({
+      model: MODEL_IDS.generation,
+      temperature: 0.25,
+      max_tokens: 260,
+      messages: [
+        { role: "system", content: promptRegistry.REWRITE_REPLY_POSTCHECK },
+        { role: "user", content: user }
+      ]
+    });
+
+    return String(r.choices?.[0]?.message?.content || "").trim() || originalReply;
+  }
 
 // Analyze whether the assistant reply should be considered a relational relance.
 // This is used to adjust exploration directivity based on whether the bot invited continuation.
@@ -3438,16 +3674,14 @@ Fenetre recente de relances :
   try {
     const raw = (r.choices?.[0]?.message?.content || "").replace(/```json|```/g, "").trim();
     const parsed = JSON.parse(raw);
-    const allowedStances = ["interpretive", "phenomenological_follow", "relational_presence", "minimal_contact"];
-
     return {
       calibrationLevel: clampExplorationDirectivityLevel(parsed.calibrationLevel),
-      stance: allowedStances.includes(parsed.stance) ? parsed.stance : "interpretive"
+      explorationSubmode: ["interpretation", "phenomenological_follow"].includes(parsed.explorationSubmode) ? parsed.explorationSubmode : "interpretation"
     };
   } catch {
     return {
       calibrationLevel: clampExplorationDirectivityLevel(explorationDirectivityLevel),
-      stance: "interpretive"
+      explorationSubmode: "interpretation"
     };
   }
 }
@@ -3926,6 +4160,71 @@ ${transcript}
   return normalizeMemory(previousMemory, promptRegistry);
 }
 
+function shouldCompressMemoryCandidate(memoryCandidate = "") {
+  const text = String(memoryCandidate || "").trim();
+  if (!text) return false;
+
+  const mouvementsMatch = text.match(/Mouvements en cours\s*:\s*([\s\S]*)/i);
+  if (!mouvementsMatch) return false;
+
+  const mouvementsBlock = mouvementsMatch[1].trim();
+  const items = mouvementsBlock
+    .split("\n")
+    .map(line => line.trim())
+    .filter(line => line.startsWith("-") && line.length > 2);
+
+  return items.length > 2;
+}
+
+async function finalizeMemoryCandidate({
+  previousMemory = "",
+  candidateMemory = "",
+  interpretationRejection = {},
+  needsCompression = false,
+  promptRegistry = buildDefaultPromptRegistry()
+} = {}) {
+  const user = `
+Memoire precedente :
+${normalizeMemory(previousMemory, promptRegistry)}
+
+Memoire candidate :
+${normalizeMemory(candidateMemory, promptRegistry)}
+
+Analyse du rejet :
+${JSON.stringify(interpretationRejection || {})}
+
+Compression demandee :
+${needsCompression === true ? "true" : "false"}
+`;
+
+  const r = await client.chat.completions.create({
+    model: MODEL_IDS.analysis,
+    temperature: 0,
+    max_tokens: 320,
+    messages: [
+      { role: "system", content: promptRegistry.FINALIZE_MEMORY_CANDIDATE },
+      { role: "user", content: user }
+    ]
+  });
+
+  const finalized = String(r.choices?.[0]?.message?.content || "").trim();
+  if (!finalized) {
+    return candidateMemory;
+  }
+
+  const lower = finalized.toLowerCase();
+  if (
+    lower.includes("memoire precedente :") ||
+    lower.includes("memoire candidate :") ||
+    lower.includes("utilisateur :") ||
+    lower.includes("assistant :")
+  ) {
+    return candidateMemory;
+  }
+
+  return finalized;
+}
+
 // Controle post-generation memoire : detecte la redondance et force une passe de compression
 // si la memoire candidate depasse 2 items dans "Mouvements en cours" ou contient des doublons manifestes.
 async function compressMemoryIfRedundant(memoryCandidate, previousMemory, promptRegistry = buildDefaultPromptRegistry()) {
@@ -4098,21 +4397,25 @@ function getExplorationPrompt(memory, explorationDirectivityLevel = 0, promptReg
   return wrapPromptBlock("MODE_EXPLORATION", explorationBlock);
 }
 
-function buildExplorationStancePromptBlock(explorationStance = "interpretive") {
-  const safeStance = ["interpretive", "phenomenological_follow", "relational_presence", "minimal_contact"].includes(explorationStance) ?
-    explorationStance :
-    "interpretive";
+function buildExplorationSubmodePromptBlock(explorationSubmode = "interpretation", promptRegistry = buildDefaultPromptRegistry()) {
+  const safeExplorationSubmode = ["interpretation", "phenomenological_follow"].includes(explorationSubmode) ?
+    explorationSubmode :
+    "interpretation";
 
-  const line =
-    safeStance === "interpretive" ?
-      "Stance active: interpretive. Priorise une lecture situee, deplacante et plus assumee, sobre et concrete." :
-      safeStance === "phenomenological_follow" ?
-      "Stance active: phenomenological_follow. Priorise seulement un suivi tres proche du ressenti emergent quand il est deja nettement au premier plan, concret et encore en train de se faire." :
-      safeStance === "relational_presence" ?
-      "Stance active: relational_presence. Priorise la presence relationnelle explicite, sans proposition d'action." :
-      "Stance active: minimal_contact. Priorise une reponse tres courte et contenante, sans ouverture.";
+  const content = safeExplorationSubmode === "phenomenological_follow" ?
+    String(promptRegistry.EXPLORATION_SUBMODE_PHENOMENOLOGICAL_FOLLOW || "").trim() :
+    String(promptRegistry.EXPLORATION_SUBMODE_INTERPRETATION || "").trim();
 
-  return wrapPromptBlock("EXPLORATION_STANCE", line);
+  return wrapPromptBlock("EXPLORATION_SUBMODE", content);
+}
+
+function buildRelationalAdjustmentPromptBlock(relationalAdjustmentTriggered = false, promptRegistry = buildDefaultPromptRegistry()) {
+  if (relationalAdjustmentTriggered !== true) {
+    return "";
+  }
+
+  const adjustmentBlock = String(promptRegistry.MODE_RELATIONAL_ADJUSTMENT || "").trim();
+  return wrapPromptBlock("RELATIONAL_ADJUSTMENT", adjustmentBlock);
 }
 
 function buildInterpretationRejectionPromptBlock(interpretationRejection = null) {
@@ -4147,12 +4450,13 @@ function buildInterpretationRejectionPromptBlock(interpretationRejection = null)
 }
 
 // Construct the full system prompt for the selected mode before calling the LLM.
-function buildSystemPrompt(mode, memory, explorationDirectivityLevel = 0, promptRegistry = buildDefaultPromptRegistry(), infoSubmode = null, interpretationRejection = null, explorationStance = "interpretive") {
+function buildSystemPrompt(mode, memory, explorationDirectivityLevel = 0, promptRegistry = buildDefaultPromptRegistry(), infoSubmode = null, interpretationRejection = null, relationalAdjustmentTriggered = false, explorationSubmode = "interpretation") {
   const identityWrapped = getIdentityPrompt(promptRegistry);
   const contactWrapped = getContactPrompt(promptRegistry);
   const infoWrapped = getInfoPrompt(memory, infoSubmode, promptRegistry);
   const explorationWrapped = getExplorationPrompt(memory, explorationDirectivityLevel, promptRegistry);
-  const explorationStanceWrapped = buildExplorationStancePromptBlock(explorationStance);
+  const explorationSubmodeWrapped = buildExplorationSubmodePromptBlock(explorationSubmode, promptRegistry);
+  const relationalAdjustmentWrapped = buildRelationalAdjustmentPromptBlock(relationalAdjustmentTriggered, promptRegistry);
   const interpretationRejectionWrapped = buildInterpretationRejectionPromptBlock(interpretationRejection);
   
   if (mode === "contact") {
@@ -4160,6 +4464,8 @@ function buildSystemPrompt(mode, memory, explorationDirectivityLevel = 0, prompt
 ${identityWrapped}
 
 ${contactWrapped}
+
+${relationalAdjustmentWrapped}
 
 ${interpretationRejectionWrapped}
 `.trim();
@@ -4171,16 +4477,7 @@ ${identityWrapped}
 
 ${infoWrapped}
 
-${interpretationRejectionWrapped}
-`.trim();
-  }
-
-  if (mode === "relational_adjustment") {
-    const adjustmentWrapped = getRelationalAdjustmentPrompt(promptRegistry);
-    return `
-${identityWrapped}
-
-${adjustmentWrapped}
+${relationalAdjustmentWrapped}
 
 ${interpretationRejectionWrapped}
 `.trim();
@@ -4191,7 +4488,9 @@ ${identityWrapped}
 
 ${explorationWrapped}
 
-${explorationStanceWrapped}
+${explorationSubmodeWrapped}
+
+${relationalAdjustmentWrapped}
 
 ${interpretationRejectionWrapped}
 `.trim();
@@ -4273,8 +4572,9 @@ async function generateReply({
   mode,
   infoSubmode = null,
   interpretationRejection = null,
+  relationalAdjustmentTriggered = false,
   explorationDirectivityLevel = 0,
-  explorationStance = "interpretive",
+  explorationSubmode = "interpretation",
   promptRegistry = buildDefaultPromptRegistry(),
   override1 = null,
   override2 = null
@@ -4286,7 +4586,8 @@ async function generateReply({
     promptRegistry,
     infoSubmode,
     interpretationRejection,
-    explorationStance
+    relationalAdjustmentTriggered,
+    explorationSubmode
   );
   
   const messages = [
@@ -5952,6 +6253,7 @@ function parseChatRequest(req) {
   const userId = req.body?.userId || "u_anon";
   const convRef = conversationId && !isPrivateConversation ? db.ref("conversations").child(conversationId) : null;
   const recentHistory = trimHistory(req.body?.recentHistory);
+  const conversationBranchHistory = normalizeConversationBranchHistory(req.body?.conversationBranchHistory);
   const override1 = req.body?.override1 ?? null;
   const override2 = req.body?.override2 ?? null;
   const mailsEnabled = req.body?.mailsEnabled !== false;
@@ -5967,6 +6269,7 @@ function parseChatRequest(req) {
     userId,
     convRef,
     recentHistory,
+    conversationBranchHistory,
     override1,
     override2,
     mailsEnabled,
@@ -6006,6 +6309,10 @@ function validateChatRequestShape(body = {}) {
 
   if (body.recentHistory !== undefined && !Array.isArray(body.recentHistory)) {
     issues.push("recentHistory_not_array");
+  }
+
+  if (body.conversationBranchHistory !== undefined && !Array.isArray(body.conversationBranchHistory)) {
+    issues.push("conversationBranchHistory_not_array");
   }
 
   if (body.memory !== undefined && typeof body.memory !== "string") {
@@ -6178,7 +6485,7 @@ app.post("/chat", async (req, res) => {
     explorationCalibrationLevel = null,
     explorationDirectivityLevel = 0,
     explorationRelanceWindow = [],
-    explorationStance = null,
+    explorationSubmode = null,
     therapeuticAllianceSource = null,
     rewriteSource = null,
     memoryRewriteSource = null,
@@ -6189,17 +6496,15 @@ app.post("/chat", async (req, res) => {
       suicideLevel = "N0",
       mode = null,
       infoSubmode = null,
-      explorationStance = null,
+      explorationSubmode = null,
       interpretationRejection = false,
       isRecallRequest = false
     } = {}) {
       const chips = [];
 
-      function buildExplorationStanceChipLabel(stance = null) {
-        if (stance === "interpretive") return "EXPLORATION : interprétation";
-        if (stance === "phenomenological_follow") return "EXPLORATION : accompagnement";
-        if (stance === "relational_presence") return "EXPLORATION : présence";
-        if (stance === "minimal_contact") return "EXPLORATION : pré-contact";
+      function buildExplorationSubmodeChipLabel(submode = null) {
+        if (submode === "interpretation") return "EXPLORATION : interprétation";
+        if (submode === "phenomenological_follow") return "EXPLORATION : accompagnement";
         return "EXPLORATION";
       }
       
@@ -6208,7 +6513,7 @@ app.post("/chat", async (req, res) => {
       } else if (suicideLevel === "N1") {
         chips.push("Risque suicidaire à clarifier");
       } else if (mode === "exploration") {
-        chips.push(buildExplorationStanceChipLabel(explorationStance));
+        chips.push(buildExplorationSubmodeChipLabel(explorationSubmode));
       } else if (mode === "info") {
         chips.push(infoSubmode === "app" ? "INFO APP" : infoSubmode === "pure" ? "INFO PURE" : "INFO");
       } else if (mode === "contact") {
@@ -6258,7 +6563,7 @@ app.post("/chat", async (req, res) => {
         suicideLevel,
         mode,
         infoSubmode,
-        explorationStance,
+        explorationSubmode,
         interpretationRejection,
         isRecallRequest
       }),
@@ -6292,6 +6597,7 @@ app.post("/chat", async (req, res) => {
       userId,
       convRef,
       recentHistory,
+      conversationBranchHistory,
       override1,
       override2,
       mailsEnabled,
@@ -6547,17 +6853,15 @@ app.post("/chat", async (req, res) => {
       suicideLevel = "N0",
       mode = null,
       infoSubmode = null,
-      explorationStance = null,
+      explorationSubmode = null,
       interpretationRejection = false,
       isRecallRequest = false
     } = {}) {
       const chips = [];
 
-      function buildExplorationStanceChipLabel(stance = null) {
-        if (stance === "interpretive") return "EXPLORATION : interprétation";
-        if (stance === "phenomenological_follow") return "EXPLORATION : accompagnement";
-        if (stance === "relational_presence") return "EXPLORATION : présence";
-        if (stance === "minimal_contact") return "EXPLORATION : pré-contact";
+      function buildExplorationSubmodeChipLabel(submode = null) {
+        if (submode === "interpretation") return "EXPLORATION : interprétation";
+        if (submode === "phenomenological_follow") return "EXPLORATION : accompagnement";
         return "EXPLORATION";
       }
       
@@ -6566,7 +6870,7 @@ app.post("/chat", async (req, res) => {
       } else if (suicideLevel === "N1") {
         chips.push("Risque suicidaire à clarifier");
       } else if (mode === "exploration") {
-        chips.push(buildExplorationStanceChipLabel(explorationStance));
+        chips.push(buildExplorationSubmodeChipLabel(explorationSubmode));
       } else if (mode === "info") {
         chips.push(infoSubmode === "app" ? "INFO APP" : infoSubmode === "pure" ? "INFO PURE" : "INFO");
       } else if (mode === "contact") {
@@ -6623,7 +6927,7 @@ app.post("/chat", async (req, res) => {
       explorationCalibrationLevel = null,
       explorationDirectivityLevel = 0,
       explorationRelanceWindow = [],
-      explorationStance = null,
+      explorationSubmode = null,
       therapeuticAllianceSource = null,
       rewriteSource = null,
       memoryRewriteSource = null,
@@ -6639,7 +6943,7 @@ app.post("/chat", async (req, res) => {
           suicideLevel,
           mode,
           infoSubmode,
-          explorationStance,
+          explorationSubmode,
           interpretationRejection,
           isRecallRequest
         }),
@@ -6657,7 +6961,7 @@ app.post("/chat", async (req, res) => {
         explorationCalibrationLevel: explorationCalibrationLevel !== null && explorationCalibrationLevel !== undefined ?
           clampExplorationDirectivityLevel(explorationCalibrationLevel) :
           null,
-        explorationStance: mode === "exploration" && typeof explorationStance === "string" ? explorationStance : null,
+        explorationSubmode: mode === "exploration" && typeof explorationSubmode === "string" ? explorationSubmode : null,
         therapeuticAllianceSource: typeof therapeuticAllianceSource === "string" ? therapeuticAllianceSource : null,
         rewriteSource: typeof rewriteSource === "string" ? rewriteSource : null,
         memoryRewriteSource: typeof memoryRewriteSource === "string" ? memoryRewriteSource : null,
@@ -7007,7 +7311,18 @@ app.post("/chat", async (req, res) => {
     });
     
     if (recallRouting.isLongTermMemoryRecall) {
-      const rawReply = await buildLongTermMemoryRecallResponse(previousMemory, activePromptRegistry);
+      const recallConversationBranchHistory = await loadConversationBranchHistoryForRecall({
+        conversationId,
+        isPrivateConversation,
+        conversationBranchHistory,
+        recentHistory
+      });
+
+      const rawReply = await buildLongTermMemoryRecallResponse({
+        memory: previousMemory,
+        conversationBranchHistory: recallConversationBranchHistory,
+        promptRegistry: activePromptRegistry
+      });
       
       const replyPipeline = await applyModelConflictPipeline({
         content: rawReply,
@@ -7120,7 +7435,7 @@ app.post("/chat", async (req, res) => {
     const effectiveExplorationDirectivityLevel = newFlags.explorationDirectivityLevel;
     
     let finalDirectivityLevel = effectiveExplorationDirectivityLevel;
-    let finalExplorationStance = "interpretive";
+    let finalExplorationSubmode = "interpretation";
 
     // Check if relational adjustment is needed before proceeding with explored mode
     let relationalAdjustmentAnalysis = null;
@@ -7150,9 +7465,9 @@ app.post("/chat", async (req, res) => {
         clampExplorationDirectivityLevel(effectiveExplorationDirectivityLevel),
         clampExplorationDirectivityLevel(calibrationAnalysis.calibrationLevel)
       );
-      finalExplorationStance = ["interpretive", "phenomenological_follow", "relational_presence", "minimal_contact"].includes(calibrationAnalysis.stance) ?
-        calibrationAnalysis.stance :
-        "interpretive";
+      finalExplorationSubmode = ["interpretation", "phenomenological_follow"].includes(calibrationAnalysis.explorationSubmode) ?
+        calibrationAnalysis.explorationSubmode :
+        "interpretation";
       newFlags.explorationCalibrationLevel = finalDirectivityLevel;
     } else {
       newFlags.infoSubmode = detectedInfoSubmode;
@@ -7169,7 +7484,7 @@ app.post("/chat", async (req, res) => {
       previousWasContact: flags.contactState?.wasContact === true,
       currentWasContact: newFlags.contactState?.wasContact === true,
       finalDirectivityLevel,
-      finalExplorationStance
+      finalExplorationSubmode
     });
     
     // 4) Génération principale de la réponse selon le mode détecté,
@@ -7193,8 +7508,9 @@ app.post("/chat", async (req, res) => {
       mode: finalDetectedMode,
       infoSubmode: detectedInfoSubmode,
       interpretationRejection,
+      relationalAdjustmentTriggered: relationalAdjustmentAnalysis?.needsRelationalAdjustment === true,
       explorationDirectivityLevel: finalDirectivityLevel,
-      explorationStance: finalExplorationStance,
+      explorationSubmode: finalExplorationSubmode,
       promptRegistry: activePromptRegistry,
       override1: hasOverrides ? override1 : null,
       override2: hasOverrides ? override2 : null
@@ -7203,10 +7519,6 @@ app.post("/chat", async (req, res) => {
     generatedBase.promptDebug = mainPromptDebug;
     let replyRewriteSource = null;
     let replyCandidate = generatedBase.reply;
-    let relationalFitAnalysis = {
-      needsRewrite: false,
-      rewriteHint: "none"
-    };
 
     if (
       interpretationRejection.isInterpretationRejection === true ||
@@ -7225,63 +7537,47 @@ app.post("/chat", async (req, res) => {
         "interpretation_rejection" :
         "sober_readjustment";
     }
+    
+    let relanceAnalysis = null;
+    
+    const replyConflictAnalysis = await analyzeModelConflict(
+      replyCandidate,
+      activePromptRegistry
+    );
 
-    if (finalDetectedMode !== "contact") {
-      relationalFitAnalysis = await analyzeRelationalFit({
+    const modelConflict = replyConflictAnalysis.modelConflict === true;
+    const humanFieldRisk =
+      modelConflict !== true &&
+      (finalDetectedMode === "exploration" || (finalDetectedMode === "info" && detectedInfoSubmode === "app")) &&
+      shouldForceExplorationForSituatedImpasse(message) &&
+      isProceduralInstrumentalReply(replyCandidate);
+
+    let reply = replyCandidate;
+    const finalReplyRewriteSources = [replyRewriteSource].filter(Boolean);
+    const humanFieldOriginalReply = humanFieldRisk === true ? replyCandidate : null;
+
+    if (modelConflict === true || humanFieldRisk === true) {
+      reply = await rewriteReplyPostcheck({
         message,
         history: recentHistory,
         memory: previousMemory,
         mode: finalDetectedMode,
-        candidateReply: replyCandidate,
+        infoSubmode: detectedInfoSubmode,
+        originalReply: replyCandidate,
+        modelConflict,
+        humanFieldRisk,
         promptRegistry: activePromptRegistry
       });
 
-      if (relationalFitAnalysis.needsRewrite === true) {
-        replyCandidate = await rewriteRelationalFitReply({
-          message,
-          history: recentHistory,
-          memory: previousMemory,
-          mode: finalDetectedMode,
-          candidateReply: replyCandidate,
-          relationalFitAnalysis,
-          promptRegistry: activePromptRegistry
-        });
-
-        replyRewriteSource = replyRewriteSource ?
-          `${replyRewriteSource}+relational_fit` :
-          "relational_fit";
-      }
-    }
-    
-    let relanceAnalysis = null;
-    
-    const replyPipeline = await applyModelConflictPipeline({
-      content: replyCandidate,
-      message,
-      history: recentHistory,
-      memory: previousMemory,
-      promptRegistry: activePromptRegistry
-    });
-
-    let reply = replyPipeline.content;
-    const finalReplyRewriteSources = [replyRewriteSource, replyPipeline.rewriteSource].filter(Boolean);
-    const humanFieldGuard = applyHumanFieldReplyGuard({
-      message,
-      mode: finalDetectedMode,
-      infoSubmode: detectedInfoSubmode,
-      reply
-    });
-
-    const humanFieldRisk = humanFieldGuard.proceduralRisk === true;
-    const humanFieldOriginalReply = humanFieldGuard.overridden === true ? replyPipeline.content : null;
-
-    if (humanFieldGuard.overridden === true) {
-      reply = humanFieldGuard.reply;
-      finalReplyRewriteSources.push(humanFieldGuard.source);
+      finalReplyRewriteSources.push(
+        modelConflict === true ?
+          "reply_postcheck_model_conflict" :
+          "reply_postcheck_human_field"
+      );
     }
 
     const finalReplyRewriteSource = finalReplyRewriteSources.join("+") || null;
-    const therapeuticAllianceSource = relationalFitAnalysis.needsRewrite === true ? generatedBase.reply : null;
+    const therapeuticAllianceSource = null;
     
     if (finalDetectedMode === "exploration") {
       relanceAnalysis = await analyzeExplorationRelance({
@@ -7305,7 +7601,7 @@ app.post("/chat", async (req, res) => {
     const debug = buildDebug(finalDetectedMode, {
       suicideLevel: suicide.suicideLevel,
       calledMemory: recallRouting.calledMemory,
-      modelConflict: replyPipeline.modelConflict,
+      modelConflict,
       infoSubmode: detectedInfoSubmode,
       interpretationRejection: interpretationRejection.isInterpretationRejection,
       needsSoberReadjustment: interpretationRejection.needsSoberReadjustment,
@@ -7333,14 +7629,12 @@ app.post("/chat", async (req, res) => {
           flagsBefore: flags,
           flagsAfter: newFlags,
           generatedBase,
-          modelConflict: replyPipeline.modelConflict,
+          modelConflict,
           relanceAnalysis
         })
       );
 
-      debug.push(`trace.relationalFitNeedsRewrite: ${relationalFitAnalysis.needsRewrite === true ? "true" : "false"}`);
-      debug.push(`trace.relationalFitHint: ${relationalFitAnalysis.rewriteHint || "none"}`);
-      debug.push(`trace.explorationStance: ${finalExplorationStance}`);
+      debug.push(`trace.explorationSubmode: ${finalExplorationSubmode}`);
     }
     
     debug.push(...formatPromptOverrideDebugLines(generatedBase.promptDebug));
@@ -7358,45 +7652,21 @@ app.post("/chat", async (req, res) => {
     );
 
     let memoryCandidate = rawNewMemory;
-
-    if (
-      interpretationRejection.isInterpretationRejection === true ||
-      interpretationRejection.needsSoberReadjustment === true
-    ) {
-      memoryCandidate = await rewriteInterpretationRejectionMemory({
-        message,
-        history: [
-          ...recentHistory,
-          { role: "user", content: message },
-          { role: "assistant", content: reply }
-        ],
-        previousMemory,
-        candidateMemory: memoryCandidate,
-        interpretationRejection,
-        promptRegistry: activePromptRegistry
-      });
-    }
     const memoryBeforeCompression = memoryCandidate;
-    const compressedCandidate = await compressMemoryIfRedundant(memoryCandidate, previousMemory, activePromptRegistry);
-    const memoryWasCompressed = compressedCandidate !== memoryCandidate;
-    memoryCandidate = compressedCandidate;
-
-    const memoryPipeline = await applyModelConflictPipeline({
-      content: memoryCandidate,
-      message,
-      history: [
-        ...recentHistory,
-        { role: "user", content: message },
-        { role: "assistant", content: reply }
-      ],
-      memory: previousMemory,
+    const memoryNeedsCompression = shouldCompressMemoryCandidate(memoryCandidate);
+    const finalizedMemoryCandidate = await finalizeMemoryCandidate({
+      previousMemory,
+      candidateMemory: memoryCandidate,
+      interpretationRejection,
+      needsCompression: memoryNeedsCompression,
       promptRegistry: activePromptRegistry
     });
-
-    const newMemory = memoryPipeline.content;
+    const memoryWasCompressed = memoryNeedsCompression && finalizedMemoryCandidate !== memoryCandidate;
+    const memoryRewriteSource = finalizedMemoryCandidate !== memoryCandidate ? "memory_finalize" : null;
+    const newMemory = finalizedMemoryCandidate;
     
-    if (logsEnabled && memoryPipeline.rewriteSource) {
-      debug.push(`memoryRewriteSource: ${memoryPipeline.rewriteSource}`);
+    if (logsEnabled && memoryRewriteSource) {
+      debug.push(`memoryRewriteSource: ${memoryRewriteSource}`);
     }
     if (logsEnabled) {
       debug.push(`trace.memoryCompressed: ${memoryWasCompressed ? "true" : "false"}`);
@@ -7419,13 +7689,13 @@ app.post("/chat", async (req, res) => {
       explorationCalibrationLevel: newFlags.explorationCalibrationLevel,
       explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
       explorationRelanceWindow: newFlags.explorationRelanceWindow,
-      explorationStance: finalExplorationStance,
+      explorationSubmode: finalExplorationSubmode,
       therapeuticAllianceSource,
       rewriteSource: finalReplyRewriteSource,
-      memoryRewriteSource: memoryPipeline.rewriteSource,
+      memoryRewriteSource,
       memoryCompressed: memoryWasCompressed,
       memoryBeforeCompression,
-      modelConflict: replyPipeline.modelConflict || memoryPipeline.modelConflict,
+      modelConflict,
       humanFieldRisk,
       humanFieldOriginalReply,
       promptRegistry: activePromptRegistry
@@ -7467,8 +7737,9 @@ app.post("/chat", async (req, res) => {
         mode: detectedMode,
         infoSubmode: detectedInfoSubmode,
         interpretationRejection,
+        relationalAdjustmentTriggered: relationalAdjustmentAnalysis?.needsRelationalAdjustment === true,
         explorationDirectivityLevel: finalDirectivityLevel,
-        explorationStance: finalExplorationStance,
+        explorationSubmode: finalExplorationSubmode,
         promptRegistry: referencePromptRegistry,
         override1: null,
         override2: null
@@ -7491,8 +7762,9 @@ app.post("/chat", async (req, res) => {
           mode: detectedMode,
           infoSubmode: detectedInfoSubmode,
           interpretationRejection,
+          relationalAdjustmentTriggered: relationalAdjustmentAnalysis?.needsRelationalAdjustment === true,
           explorationDirectivityLevel: finalDirectivityLevel,
-          explorationStance: finalExplorationStance,
+          explorationSubmode: finalExplorationSubmode,
           promptRegistry: override1PromptRegistry,
           override1,
           override2: null
@@ -7516,8 +7788,9 @@ app.post("/chat", async (req, res) => {
           mode: detectedMode,
           infoSubmode: detectedInfoSubmode,
           interpretationRejection,
+          relationalAdjustmentTriggered: relationalAdjustmentAnalysis?.needsRelationalAdjustment === true,
           explorationDirectivityLevel: finalDirectivityLevel,
-          explorationStance: finalExplorationStance,
+          explorationSubmode: finalExplorationSubmode,
           promptRegistry: override12PromptRegistry,
           override1,
           override2
