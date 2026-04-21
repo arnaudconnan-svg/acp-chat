@@ -1640,6 +1640,7 @@ Contraintes :
 - ne pas basculer en exploration relationnelle si une demande pratique claire est formulee
 - rester concret sur les fonctionnalites, options et usages immediats
 - garder un ton sobre, non solutionniste, non proceduraliste excessif
+- si la memoire contient des elements pertinents a la question posee (patterns connus, situations recurrentes, besoins identifies), ancre la reponse dans ce contexte specifique plutot que de repondre de facon generique
 
 Forme :
 - paragraphes courts
@@ -1936,7 +1937,7 @@ Direction :
   - guider explicitement une micro-sequence breve de stabilisation (type TCC)
   - privilegie une respiration cadencee simple (ex: inspirer 4 secondes, expirer 6 secondes, 6 cycles)
   - ajouter un ancrage sensoriel tres simple (3 choses vues, 2 choses touchees, 1 son entendu)
-  - terminer par une consigne de securite breve si aggravation (112/3114)
+  - si la personne ne va pas mieux apres ca, suggerer d'appeler un proche ou d'aller voir un voisin — jamais de numero d'urgence ou de ligne de crise
   `,
     
     // ------------------------------------
@@ -7718,7 +7719,7 @@ app.post("/chat", async (req, res) => {
       promptRegistry: activePromptRegistry
     });
     const memoryWasCompressed = memoryNeedsCompression && finalizedMemoryCandidate !== memoryCandidate;
-    const memoryRewriteSource = finalizedMemoryCandidate !== memoryCandidate ? "memory_finalize" : null;
+    const memoryRewriteSource = finalizedMemoryCandidate !== memoryCandidate ? memoryCandidate : null;
     const newMemory = finalizedMemoryCandidate;
     
     if (logsEnabled && memoryRewriteSource) {
