@@ -2420,6 +2420,7 @@
     const USER_ID_KEY = "facilitatio_user_id";
     const CONVERSATION_ID_KEY = "facilitatio_conversation_id";
     const CONVERSATIONS_INDEX_KEY = "facilitatio_conversations_index";
+    const PRIVATE_CONVERSATION_IDS_KEY = "facilitatio_private_conversation_ids";
     const EDIT_UNDO_KEY = "facilitatio_last_edit_undo";
     const SESSION_OPENING_GREETING = "Bienvenue dans cette nouvelle session. Que veux-tu explorer aujourd'hui ?";
     const CONVERSATION_OPENING_GREETING = "Bienvenue dans cette nouvelle conversation. Que veux-tu explorer aujourd'hui ?";
@@ -2508,7 +2509,7 @@
           const currentId = getConversationId();
           if (currentId) {
             const existing = loadConversationData(currentId);
-            if (existing.isPrivate === true) {
+            if (isConversationPrivateById(currentId, existing)) {
               return;
             }
             const hasMessages = Array.isArray(existing.messages) && existing.messages.length > 0;
@@ -2543,6 +2544,50 @@
         userSessionState.user &&
         userSessionState.user.privateConversationsByDefault === true
       );
+    }
+
+    function loadPrivateConversationIds() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(PRIVATE_CONVERSATION_IDS_KEY) || "[]");
+        if (!Array.isArray(parsed)) return [];
+        return parsed
+          .map(value => String(value || "").trim())
+          .filter(Boolean);
+      } catch {
+        return [];
+      }
+    }
+
+    function markConversationPrivate(conversationId) {
+      const id = String(conversationId || "").trim();
+      if (!id) return;
+
+      const privateIds = new Set(loadPrivateConversationIds());
+      if (privateIds.has(id)) return;
+
+      privateIds.add(id);
+      safeSetLocalStorage(
+        PRIVATE_CONVERSATION_IDS_KEY,
+        JSON.stringify(Array.from(privateIds)),
+        "markConversationPrivate"
+      );
+    }
+
+    function isConversationPrivateById(conversationId, knownData = null) {
+      const id = String(conversationId || "").trim();
+      if (!id) return false;
+
+      const data = knownData && typeof knownData === "object" ? knownData : null;
+      if (data?.isPrivate === true) {
+        return true;
+      }
+
+      const indexItem = loadConversationsIndex().find(item => item && item.id === id);
+      if (indexItem?.isPrivate === true) {
+        return true;
+      }
+
+      return loadPrivateConversationIds().includes(id);
     }
 
     async function syncAdminUiFromSession() {
@@ -2829,6 +2874,9 @@
       const id = "c_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6);
       localStorage.setItem(CONVERSATION_ID_KEY, id);
       saveConversationData(id, createEmptyConversationData({ isPrivate }));
+      if (isPrivate) {
+        markConversationPrivate(id);
+      }
       console.log("NEW conversationId:", id);
       return id;
     }
@@ -3047,6 +3095,9 @@
         if (!raw) return createEmptyConversationData();
         
         const parsed = JSON.parse(raw);
+        if (parsed?.isPrivate === true) {
+          markConversationPrivate(conversationId);
+        }
         return {
           messages: Array.isArray(parsed?.messages) ? parsed.messages : [],
           memory: typeof parsed?.memory === "string" && parsed.memory.trim() ?
@@ -3080,6 +3131,10 @@
 
       if (!stored) {
         return;
+      }
+
+      if (safeData.isPrivate === true) {
+        markConversationPrivate(conversationId);
       }
       
       /* Ne crÃƒÂ©e (ou ne met ÃƒÂ  jour) lÃ¢â‚¬â„¢entrÃƒÂ©e dÃ¢â‚¬â„¢index
@@ -3571,7 +3626,7 @@
     
     async function openConversation(conversationId) {
       const localConversationData = loadConversationData(conversationId);
-      if (localConversationData.isPrivate !== true) {
+      if (!isConversationPrivateById(conversationId, localConversationData)) {
         await hydrateRemoteConversationIfNeeded(conversationId);
       }
       localStorage.setItem(CONVERSATION_ID_KEY, conversationId);
@@ -6111,7 +6166,7 @@
       const currentConversationId = getConversationId();
       if (currentConversationId) {
         const currentConversationData = loadConversationData(currentConversationId);
-        if (currentConversationData.isPrivate === true) {
+        if (isConversationPrivateById(currentConversationId, currentConversationData)) {
           return;
         }
       }
@@ -6196,6 +6251,10 @@
         conversationId = createConversationId({ isPrivate });
       }
 
+      if (isPrivate && conversationId) {
+        markConversationPrivate(conversationId);
+      }
+
       if (isPrivate) {
         const privateData = loadConversationData(conversationId);
         saveConversationData(conversationId, {
@@ -6272,7 +6331,8 @@
       `;
 
       items.forEach(item => {
-        const itemIsPrivate = item.isPrivate === true || loadConversationData(item.id).isPrivate === true;
+        const localConversationData = loadConversationData(item.id);
+        const itemIsPrivate = isConversationPrivateById(item.id, localConversationData);
         const safeTitle = item.title && String(item.title).trim() ?
           String(item.title).trim() :
           "Conversation sans titre";
@@ -6867,7 +6927,7 @@
             isEdited: isEditing === true,
             userId: getOrCreateUserId(),
             conversationId: requestConversationId,
-            isPrivateConversation: loadConversationData(requestConversationId).isPrivate === true,
+            isPrivateConversation: isConversationPrivateById(requestConversationId, loadConversationData(requestConversationId)),
             adminUiActive: document.body.classList.contains("admin-ui"),
             recentHistory: loadHistory().map(({ role, content }) => ({ role, content })).slice(-MAX_RECENT_TURNS),
             conversationBranchHistory: loadHistory().map(({ role, content }) => ({ role, content })),

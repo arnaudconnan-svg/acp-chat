@@ -333,6 +333,7 @@
       const USER_ID_KEY = "facilitatio_user_id";
       const CONVERSATIONS_INDEX_KEY = "facilitatio_conversations_index";
       const CONVERSATION_STORAGE_KEY_PREFIX = "facilitatio_conversation_data_";
+      const PRIVATE_CONVERSATION_IDS_KEY = "facilitatio_private_conversation_ids";
 
       let currentUser = null;
 
@@ -410,6 +411,20 @@
         return `${CONVERSATION_STORAGE_KEY_PREFIX}${conversationId}`;
       }
 
+      function loadPrivateConversationIds() {
+        try {
+          const raw = JSON.parse(localStorage.getItem(PRIVATE_CONVERSATION_IDS_KEY) || "[]");
+          if (!Array.isArray(raw)) return new Set();
+          return new Set(
+            raw
+              .map(value => String(value || "").trim())
+              .filter(Boolean)
+          );
+        } catch {
+          return new Set();
+        }
+      }
+
       function loadLocalConversationsForImport() {
         let index = [];
 
@@ -420,10 +435,31 @@
           index = [];
         }
 
-        return index
-          .map(item => {
-            const id = String(item?.id || "").trim();
-            if (!id) return null;
+        const privateConversationIds = loadPrivateConversationIds();
+        const indexById = new Map(
+          index
+            .map(item => [String(item?.id || "").trim(), item])
+            .filter(([id]) => Boolean(id))
+        );
+
+        const allConversationIds = new Set(indexById.keys());
+        for (const privateId of privateConversationIds) {
+          allConversationIds.add(privateId);
+        }
+
+        for (let i = 0; i < localStorage.length; i += 1) {
+          const key = String(localStorage.key(i) || "");
+          if (!key.startsWith(CONVERSATION_STORAGE_KEY_PREFIX)) continue;
+
+          const id = key.slice(CONVERSATION_STORAGE_KEY_PREFIX.length).trim();
+          if (id) {
+            allConversationIds.add(id);
+          }
+        }
+
+        return Array.from(allConversationIds)
+          .map(id => {
+            const indexItem = indexById.get(id) || null;
 
             let data = null;
             try {
@@ -434,15 +470,19 @@
             }
 
             const messages = Array.isArray(data?.messages) ? data.messages : [];
-            const titleFromIndex = typeof item?.title === "string" ? item.title.trim() : "";
+            const titleFromIndex = typeof indexItem?.title === "string" ? indexItem.title.trim() : "";
             const fallbackTitle = messages.find(entry => entry && entry.role === "user" && typeof entry.content === "string")?.content?.slice(0, 60) || "Conversation sans titre";
+
+            if (!indexItem && !data) {
+              return null;
+            }
 
             return {
               id,
               title: titleFromIndex || fallbackTitle,
-              updatedAt: Number(item?.updatedAt || data?.updatedAt || Date.now()),
-              isCustomTitle: item?.isCustomTitle === true,
-              isPrivate: item?.isPrivate === true || data?.isPrivate === true,
+              updatedAt: Number(indexItem?.updatedAt || data?.updatedAt || Date.now()),
+              isCustomTitle: indexItem?.isCustomTitle === true,
+              isPrivate: (indexItem?.isPrivate === true) || (data?.isPrivate === true) || privateConversationIds.has(id),
               memory: typeof data?.memory === "string" ? data.memory : "",
               flags: data?.flags && typeof data.flags === "object" && !Array.isArray(data.flags) ? data.flags : {},
               messages
