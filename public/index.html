@@ -7253,69 +7253,65 @@
               comparisonResults: Array.isArray(item.comparisonResults) ? item.comparisonResults : null
             }));
 
-          if (anchorMessageId || branchSeedMessages.length) {
-            try {
-              const createRes = await fetch("/api/branches/from-message", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  sourceConversationId: conversationIdBeforeSend,
-                  anchorMessageId,
-                  seedMessages: anchorMessageId ? undefined : branchSeedMessages,
-                  userId: branchUserId
-                })
-              });
+          try {
+            const createRes = await fetch("/api/branches/from-message", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                sourceConversationId: conversationIdBeforeSend,
+                anchorMessageId,
+                seedMessages: anchorMessageId ? undefined : branchSeedMessages,
+                userId: branchUserId
+              })
+            });
 
-              if (createRes.ok) {
-                const createData = await createRes.json().catch(() => ({}));
-                const branchId = String(createData?.branch?.id || "").trim();
-                const branchConversationId = String(createData?.branch?.branchConversationId || "").trim();
+            if (createRes.ok) {
+              const createData = await createRes.json().catch(() => ({}));
+              const branchId = String(createData?.branch?.id || "").trim();
+              const branchConversationId = String(createData?.branch?.branchConversationId || "").trim();
 
-                if (branchId && branchConversationId) {
-                  const activateRes = await fetch("/api/branches/" + branchId + "/activate", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      ...deriveBranchConversationState(conversationIdBeforeSend, truncatedHistory),
-                      userId: branchUserId
-                    })
+              if (branchId && branchConversationId) {
+                const activateRes = await fetch("/api/branches/" + branchId + "/activate", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    ...deriveBranchConversationState(conversationIdBeforeSend, truncatedHistory),
+                    userId: branchUserId
+                  })
+                });
+
+                if (activateRes.ok) {
+                  localStorage.setItem(CONVERSATION_ID_KEY, branchConversationId);
+                  const sourceTrunkTitle = getTrunkConversationTitle(conversationIdBeforeSend);
+                  saveConversationData(branchConversationId, {
+                    ...loadConversationData(branchConversationId),
+                    messages: truncatedHistory,
+                    memory: editedConversationState.memory,
+                    flags: editedConversationState.flags,
+                    updatedAt: Date.now()
                   });
-
-                  if (activateRes.ok) {
-                    localStorage.setItem(CONVERSATION_ID_KEY, branchConversationId);
-                    const sourceTrunkTitle = getTrunkConversationTitle(conversationIdBeforeSend);
-                    saveConversationData(branchConversationId, {
-                      ...loadConversationData(branchConversationId),
-                      messages: truncatedHistory,
-                      memory: editedConversationState.memory,
-                      flags: editedConversationState.flags,
-                      updatedAt: Date.now()
-                    });
-                    upsertConversationIndexItem({
-                      id: branchConversationId,
-                      title: sourceTrunkTitle,
-                      updatedAt: Date.now()
-                    });
-                    clearEditUndoPayload();
-                    requestIsEdited = false;
-                    shouldSkipUserHistoryInsert = true;
-                    branchActivated = true;
-                  } else {
-                    const activateData = await activateRes.json().catch(() => ({}));
-                    branchFailureMessage = "Activation branche impossible : " + (activateData.error || activateRes.status);
-                  }
+                  upsertConversationIndexItem({
+                    id: branchConversationId,
+                    title: sourceTrunkTitle,
+                    updatedAt: Date.now()
+                  });
+                  clearEditUndoPayload();
+                  requestIsEdited = false;
+                  shouldSkipUserHistoryInsert = true;
+                  branchActivated = true;
                 } else {
-                  branchFailureMessage = "Creation de branche invalide";
+                  const activateData = await activateRes.json().catch(() => ({}));
+                  branchFailureMessage = "Activation branche impossible : " + (activateData.error || activateRes.status);
                 }
               } else {
-                const createData = await createRes.json().catch(() => ({}));
-                branchFailureMessage = "Creation de branche impossible : " + (createData.error || createRes.status);
+                branchFailureMessage = "Creation de branche invalide";
               }
-            } catch (err) {
-              branchFailureMessage = "Erreur branche : " + (err && err.message ? err.message : "inconnue");
+            } else {
+              const createData = await createRes.json().catch(() => ({}));
+              branchFailureMessage = "Creation de branche impossible : " + (createData.error || createRes.status);
             }
-          } else {
-            branchFailureMessage = "Historique de branche introuvable";
+          } catch (err) {
+            branchFailureMessage = "Erreur branche : " + (err && err.message ? err.message : "inconnue");
           }
         }
 

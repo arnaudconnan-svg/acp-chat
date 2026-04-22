@@ -5672,8 +5672,8 @@ app.post("/api/branches/from-message", async (req, res) => {
     const anchorMessageId = String(req.body.anchorMessageId || "").trim();
     const requestedSeedMessages = Array.isArray(req.body.seedMessages) ? req.body.seedMessages : null;
 
-    if (!sourceConversationId || !actorUserId || (!anchorMessageId && !requestedSeedMessages?.length)) {
-      return res.status(400).json({ error: "Missing sourceConversationId or anchorMessageId" });
+    if (!sourceConversationId || !actorUserId) {
+      return res.status(400).json({ error: "Missing sourceConversationId or userId" });
     }
 
     const conversationSnap = await db.ref("conversations").child(sourceConversationId).once("value");
@@ -5732,7 +5732,7 @@ app.post("/api/branches/from-message", async (req, res) => {
         createdAt: typeof entry.item.createdAt === "string" ? entry.item.createdAt : null
       }));
     } else {
-      seededMessages = requestedSeedMessages
+      seededMessages = (requestedSeedMessages || [])
         .map(item => ({
           id: typeof item?.id === "string" && item.id.trim() ? item.id.trim() : null,
           role: String(item?.role || ""),
@@ -5751,10 +5751,6 @@ app.post("/api/branches/from-message", async (req, res) => {
       resolvedAnchorMessageId = String(
         [...seededMessages].reverse().find(item => typeof item?.id === "string" && item.id.trim())?.id || ""
       ).trim();
-    }
-
-    if (!seededMessages.length) {
-      return res.status(400).json({ error: "Seed messages not found" });
     }
 
     const now = new Date().toISOString();
