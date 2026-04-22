@@ -3143,28 +3143,17 @@
       const id = String(conversationId || "").trim();
       return id.startsWith("c_branch_");
     }
+
+    function getTrunkConversationTitle(conversationId) {
+      const index = loadConversationsIndex();
+      const item = index.find(i => i && !isBranchConversationId(i.id) && i.id === conversationId);
+      return item && typeof item.title === "string" ? item.title : null;
+    }
     
     function loadConversationsIndex() {
       try {
         const parsed = JSON.parse(localStorage.getItem(CONVERSATIONS_INDEX_KEY) || "[]");
-
-        if (!Array.isArray(parsed)) {
-          return [];
-        }
-
-        const sanitized = parsed.filter(item => {
-          if (!item || typeof item !== "object") {
-            return false;
-          }
-
-          return !isBranchConversationId(item.id);
-        });
-
-        if (sanitized.length !== parsed.length) {
-          saveConversationsIndex(sanitized);
-        }
-
-        return sanitized;
+        return Array.isArray(parsed) ? parsed : [];
       } catch {
         return [];
       }
@@ -3551,10 +3540,16 @@
         }));
 
         localStorage.setItem(CONVERSATION_ID_KEY, branchConversationId);
+        const sourceTrunkTitle = getTrunkConversationTitle(sourceConversationId);
         saveConversationData(branchConversationId, {
           messages: branchMessages,
           memory: branchState.memory,
           flags: branchState.flags,
+          updatedAt: Date.now()
+        });
+        upsertConversationIndexItem({
+          id: branchConversationId,
+          title: sourceTrunkTitle,
           updatedAt: Date.now()
         });
 
@@ -7281,11 +7276,17 @@
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                       ...deriveBranchConversationState(conversationIdBeforeSend, truncatedHistory),
-                      userId: branchUserId
-                    })
-                  });
-
-                  if (activateRes.ok) {
+                    const sourceTrunkTitle = getTrunkConversationTitle(conversationIdBeforeSend);
+                    saveConversationData(branchConversationId, {
+                      ...loadConversationData(branchConversationId),
+                      messages: truncatedHistory,
+                      memory: editedConversationState.memory,
+                      flags: editedConversationState.flags,
+                      updatedAt: Date.now()
+                    });
+                    upsertConversationIndexItem({
+                      id: branchConversationId,
+                      title: sourceTrunkTitle
                     localStorage.setItem(CONVERSATION_ID_KEY, branchConversationId);
                     saveConversationData(branchConversationId, {
                       ...loadConversationData(branchConversationId),

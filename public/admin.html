@@ -1064,7 +1064,11 @@
 
         const cardTitle = document.createElement("div");
         cardTitle.className = "branch-card-title";
-        cardTitle.textContent = branchLabel || String(conversation?.title || safeConversationId || "Conversation");
+        let titleText = String(conversation?.title || safeConversationId || "Conversation");
+        if (branchLabel && safeConversationId !== rootConversationId) {
+          titleText = branchLabel + " • " + titleText;
+        }
+        cardTitle.textContent = titleText;
         header.appendChild(cardTitle);
 
         const chips = document.createElement("div");
@@ -1119,7 +1123,7 @@
           const childBranchConversationId = String(branch?.branchConversationId || "").trim();
           const branchEdge = document.createElement("div");
           branchEdge.className = "branch-edge";
-          branchEdge.textContent = childBranchConversationId === currentConversationId ? "Courante" : String(index + 1);
+          branchEdge.textContent = childBranchConversationId === currentConversationId ? "Courante" : "";
 
           const childContent = document.createElement("div");
           childContent.className = "branch-child-content";
@@ -1198,9 +1202,8 @@
       return cursor || currentConversationId || rootConversationId || fallback;
     }
 
-    async function loadBranchTree(conversationId) {
+    async function fetchBranchTreeData(conversationId) {
       if (!conversationId) {
-        hideBranchTree();
         return null;
       }
 
@@ -1208,22 +1211,24 @@
         const res = await fetchWithTimeout("/api/admin/conversations/" + encodeURIComponent(conversationId) + "/branches");
         const response = await readAdminJsonResponse(res);
 
-        if (response.redirectedToLogin) {
-          hideBranchTree();
+        if (response.redirectedToLogin || !res.ok || !response.isJson) {
           return null;
         }
 
-        if (!res.ok || !response.isJson) {
-          hideBranchTree();
-          return null;
-        }
-
-        renderBranchTree(response.data);
         return response.data || null;
       } catch {
+        return null;
+      }
+    }
+
+    async function loadBranchTree(conversationId) {
+      const data = await fetchBranchTreeData(conversationId);
+      if (!data) {
         hideBranchTree();
         return null;
       }
+      renderBranchTree(data);
+      return data;
     }
     
     async function loadConversations() {
@@ -1535,7 +1540,7 @@
     async function loadMessages(conversationId) {
       const list = document.getElementById("list");
       const debugToggleBtn = document.getElementById("debugToggleBtn");
-      const branchTreeData = await loadBranchTree(conversationId);
+      const branchTreeData = await fetchBranchTreeData(conversationId);
       const preferredConversationId = resolvePreferredConversationIdForBranchView(branchTreeData, conversationId);
 
       if (preferredConversationId && preferredConversationId !== conversationId) {
@@ -1543,7 +1548,12 @@
         return;
       }
 
-      const branchTreePromise = Promise.resolve(branchTreeData);
+      const branchTreePromise = (async () => {
+        if (branchTreeData) {
+          renderBranchTree(branchTreeData);
+        }
+        return branchTreeData;
+      })();
 
       if (debugToggleBtn) {
         debugToggleBtn.style.display = "none";
