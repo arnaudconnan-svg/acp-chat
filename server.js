@@ -5874,7 +5874,7 @@ app.post("/api/branches/:id/activate", async (req, res) => {
     const existingConversation = existingConvSnap.val();
 
     if (!existingConversation || typeof existingConversation !== "object") {
-      const lastUserMessage = [...seededMessages]
+      const lastUserMessage = [...seedMessages]
         .reverse()
         .find(m => String(m?.role || "") === "user");
       const now = new Date().toISOString();
@@ -5887,7 +5887,7 @@ app.post("/api/branches/:id/activate", async (req, res) => {
         updatedAt: now,
         title: `Branche de ${String(branch.sourceConversationId || "conversation")}`,
         titleLocked: false,
-        messageCount: seededMessages.filter(m => String(m?.role || "") === "user").length,
+        messageCount: seedMessages.filter(m => String(m?.role || "") === "user").length,
         lastUserMessage: lastUserMessage ? String(lastUserMessage.content || "") : "",
         memory: requestedBranchMemory,
         flags: requestedBranchFlags || normalizeSessionFlags({})
@@ -5895,7 +5895,7 @@ app.post("/api/branches/:id/activate", async (req, res) => {
 
       // Seed all historical messages into the new conversation once.
       await Promise.all(
-        seededMessages.map((message, index) => {
+        seedMessages.map((message, index) => {
           const timestampBase = Date.now();
           return messagesRef.push({
             role: String(message?.role || ""),
