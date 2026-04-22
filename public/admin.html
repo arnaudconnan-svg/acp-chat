@@ -180,7 +180,6 @@
       font-weight: 600;
       color: #1f3f44;
       margin-bottom: 4px;
-      padding-right: 30px;
     }
 
     .admin-conversation-title {
@@ -196,28 +195,6 @@
     .admin-conversation-count {
       font-size: 13px;
       color: #6b7280;
-    }
-
-    .admin-conversation-menu-btn {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      width: 24px;
-      height: 24px;
-      border: none;
-      border-radius: 999px;
-      background: transparent;
-      color: #6b7280;
-      cursor: pointer;
-      font-size: 18px;
-      line-height: 1;
-      z-index: 2;
-      padding: 0;
-    }
-
-    .admin-conversation-menu-btn:hover {
-      background: rgba(36, 94, 102, 0.08);
-      color: #245e66;
     }
 
     .admin-swipe-action {
@@ -1354,18 +1331,6 @@
           count.className = "admin-conversation-count";
           count.textContent = (conv.messageCount || 0) + " messages";
 
-          const menuBtn = document.createElement("button");
-          menuBtn.type = "button";
-          menuBtn.className = "admin-conversation-menu-btn";
-          menuBtn.textContent = "⋮";
-          menuBtn.setAttribute("aria-label", "Details conversation");
-
-          menuBtn.onclick = e => {
-            e.preventDefault();
-            e.stopPropagation();
-            showBottomSheet(conv);
-          };
-
           let swipeStartX = 0;
           let swipeStartY = 0;
           let swipeDeltaX = 0;
@@ -1407,7 +1372,7 @@
           };
 
           const startSwipe = event => {
-            if (event.target.closest(".admin-swipe-action") || event.target.closest(".admin-conversation-menu-btn")) return;
+            if (event.target.closest(".admin-swipe-action")) return;
             if (event.type === "mousedown" && event.button !== 0) return;
 
             if (activeAdminConversationSwipeCloser && activeAdminConversationSwipeElement && activeAdminConversationSwipeElement !== card) {
@@ -1507,7 +1472,6 @@
           card.appendChild(renameSwipeBtn);
           card.appendChild(deleteSwipeBtn);
           card.appendChild(openBtn);
-          card.appendChild(menuBtn);
           list.appendChild(card);
         });
       } catch (err) {
@@ -2067,138 +2031,6 @@
           '<div class="error">Le serveur ne repond pas a temps. Reessaie dans quelques secondes.</div>' :
           '<div class="error">Erreur JS messages: ' + err.message + "</div>";
       }
-    }
-    
-    function showBottomSheet(conv) {
-      const existing = document.getElementById("bottomSheet");
-      if (existing) existing.remove();
-      
-      const overlay = document.createElement("div");
-      overlay.id = "bottomSheet";
-      overlay.style.position = "fixed";
-      overlay.style.left = "0";
-      overlay.style.right = "0";
-      overlay.style.bottom = "0";
-      overlay.style.background = "#ffffff";
-      overlay.style.borderTopLeftRadius = "16px";
-      overlay.style.borderTopRightRadius = "16px";
-      overlay.style.padding = "16px";
-      overlay.style.boxShadow = "0 -4px 20px rgba(0,0,0,0.15)";
-      overlay.style.zIndex = "999";
-      
-      const id = document.createElement("div");
-      id.style.marginBottom = "8px";
-      id.textContent = "ID: " + conv.id;
-      
-      const created = document.createElement("div");
-      created.textContent =
-        "Créée le: " +
-        new Date(conv.createdAt).toLocaleString();
-      
-      const input = document.createElement("input");
-      input.type = "text";
-      input.placeholder = "Nom utilisateur (ex: MOI)";
-      input.value = conv.userLabel || "";
-      input.style.width = "100%";
-      input.style.marginTop = "12px";
-      input.style.padding = "10px";
-      input.style.borderRadius = "10px";
-      input.style.border = "1px solid #cfd8db";
-
-      const feedback = document.createElement("div");
-      feedback.style.marginTop = "8px";
-      feedback.style.minHeight = "1.2em";
-      feedback.style.fontSize = "13px";
-      feedback.style.color = "#a12d2d";
-      
-      const saveBtn = document.createElement("button");
-      saveBtn.textContent = "Enregistrer";
-      saveBtn.style.marginTop = "10px";
-      saveBtn.style.width = "100%";
-      saveBtn.style.padding = "12px";
-      saveBtn.style.borderRadius = "12px";
-      saveBtn.style.border = "none";
-      saveBtn.style.background = "#245e66";
-      saveBtn.style.color = "white";
-      saveBtn.style.fontSize = "15px";
-      
-      saveBtn.onclick = async (e) => {
-        e.stopPropagation();
-
-        feedback.textContent = "";
-        saveBtn.disabled = true;
-
-        let res;
-
-        try {
-          res = await fetchWithTimeout("/api/admin/user-label", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-              userId: conv.userId,
-              label: input.value.trim()
-            })
-          });
-        } catch {
-          feedback.textContent = "Erreur reseau";
-          saveBtn.disabled = false;
-          return;
-        }
-
-        const response = await readAdminJsonResponse(res);
-
-        if (response.redirectedToLogin) {
-          return;
-        }
-
-        if (!res.ok) {
-          feedback.textContent = typeof response.data?.error === "string" ? response.data.error : (res.status === 400 ? "Requete invalide" : "Erreur serveur");
-          saveBtn.disabled = false;
-          return;
-        }
-
-        if (!response.isJson) {
-          feedback.textContent = "Reponse serveur invalide";
-          saveBtn.disabled = false;
-          return;
-        }
-        
-        overlay.remove();
-        
-        const card = document.querySelector(`.item[data-conv-id="${conv.id}"]`);
-        if (card) {
-          const mainLine = card.querySelector(".admin-conversation-main");
-          if (mainLine) {
-            const updatedDate = new Date(conv.updatedAt || conv.createdAt);
-            const formattedDate = updatedDate.toLocaleString("fr-FR", {
-              day: "2-digit",
-              month: "2-digit",
-              year: "numeric",
-              hour: "2-digit",
-              minute: "2-digit"
-            });
-            
-            mainLine.textContent =
-              formattedDate + " — " + (input.value.trim() || conv.userId);
-          }
-        }
-      };
-      
-      overlay.appendChild(id);
-      overlay.appendChild(created);
-      overlay.appendChild(input);
-      overlay.appendChild(feedback);
-      overlay.appendChild(saveBtn);
-      
-      overlay.onclick = (e) => {
-        if (e.target === overlay) {
-          overlay.remove();
-        }
-      };
-      
-      document.body.appendChild(overlay);
     }
     
     async function init() {

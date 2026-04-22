@@ -2677,6 +2677,8 @@
     }
 
     let isSending = false;
+    let sendingConversationId = "";
+    const queuedMessagesByConversation = new Map();
     let showDebug = false;
     let sessionStatus = "welcome";
     let serviceAvailabilityState = {
@@ -2691,6 +2693,155 @@
     let pendingConversationMenuHistoryClose = false;
     let activeConversationSwipeElement = null;
     let activeConversationSwipeCloser = null;
+
+    function getQueuedMessagesForConversation(conversationId) {
+      const id = String(conversationId || "").trim();
+      if (!id) return [];
+      const queue = queuedMessagesByConversation.get(id);
+      return Array.isArray(queue) ? queue : [];
+    }
+
+    function enqueueMessageForConversation(conversationId, message) {
+      const id = String(conversationId || "").trim();
+      const text = String(message || "").trim();
+      if (!id || !text) return 0;
+
+      const queue = getQueuedMessagesForConversation(id);
+      queue.push(text);
+      queuedMessagesByConversation.set(id, queue);
+      return queue.length;
+    }
+
+    function dequeueMessageForConversation(conversationId) {
+      const id = String(conversationId || "").trim();
+      if (!id) return "";
+
+      const queue = getQueuedMessagesForConversation(id);
+      if (!queue.length) {
+        queuedMessagesByConversation.delete(id);
+        return "";
+      }
+
+      const nextMessage = String(queue.shift() || "").trim();
+      if (queue.length === 0) {
+        queuedMessagesByConversation.delete(id);
+      } else {
+        queuedMessagesByConversation.set(id, queue);
+      }
+
+      return nextMessage;
+    }
+
+    function addWaitingIndicatorToChat(options = {}) {
+      const { scrollToBottom = false } = options;
+      const chat = document.getElementById("chat");
+      if (!chat) return { waitingMsg: null, dotAnimation: null };
+
+      let waitingMsg = document.getElementById("chatWaitingMsg");
+
+      if (!waitingMsg) {
+        waitingMsg = document.createElement("div");
+        waitingMsg.id = "chatWaitingMsg";
+        waitingMsg.className = "message bot";
+
+        const waitingContent = document.createElement("div");
+        waitingContent.className = "message-content";
+
+        const waitingBubble = document.createElement("div");
+        waitingBubble.className = "bubble waiting-bubble";
+
+        const waitingDot = document.createElement("span");
+        waitingDot.id = "waitingDot";
+        waitingDot.className = "waiting-dot";
+
+        waitingBubble.appendChild(waitingDot);
+        waitingContent.appendChild(waitingBubble);
+        waitingMsg.appendChild(waitingContent);
+        chat.appendChild(waitingMsg);
+      }
+
+      let dotAnimation = null;
+      const waitingDot = waitingMsg.querySelector(".waiting-dot");
+
+      if (waitingDot && waitingDot.animate) {
+        if (waitingDot._dotAnimation) {
+          waitingDot._dotAnimation.cancel();
+        }
+
+        dotAnimation = waitingDot.animate(
+          [
+            { transform: "scale(0.8)" },
+            { transform: "scale(1.2)" },
+            { transform: "scale(0.8)" }
+          ],
+          {
+            duration: 900,
+            iterations: Infinity,
+            easing: "ease-in-out"
+          }
+        );
+        waitingDot._dotAnimation = dotAnimation;
+      }
+
+      if (scrollToBottom) {
+        scrollChatToBottom();
+      }
+
+      return { waitingMsg, dotAnimation };
+    }
+
+    function removeWaitingIndicatorFromChat() {
+      const waitingMsg = document.getElementById("chatWaitingMsg");
+      if (!waitingMsg) return;
+
+      const waitingDot = waitingMsg.querySelector(".waiting-dot");
+      if (waitingDot && waitingDot._dotAnimation) {
+        waitingDot._dotAnimation.cancel();
+        waitingDot._dotAnimation = null;
+      }
+
+      if (waitingMsg.parentNode) {
+        waitingMsg.parentNode.removeChild(waitingMsg);
+      }
+    }
+
+    function syncWaitingIndicatorForCurrentConversation() {
+      const activeScreenId = document.querySelector(".screen.active")?.id || "";
+      const currentConversationId = String(getConversationId() || "").trim();
+      const shouldShow =
+        isSending === true &&
+        activeScreenId === "chatScreen" &&
+        currentConversationId &&
+        currentConversationId === String(sendingConversationId || "").trim();
+
+      if (shouldShow) {
+        addWaitingIndicatorToChat({ scrollToBottom: false });
+      } else {
+        removeWaitingIndicatorFromChat();
+      }
+    }
+
+    function processQueuedMessagesForCurrentConversation() {
+      if (isSending) return;
+      if (editMode.active) return;
+
+      const activeScreenId = document.querySelector(".screen.active")?.id || "";
+      if (activeScreenId !== "chatScreen") return;
+
+      const conversationId = String(getConversationId() || "").trim();
+      if (!conversationId) return;
+
+      const nextMessage = dequeueMessageForConversation(conversationId);
+      if (!nextMessage) return;
+
+      const input = document.getElementById("input");
+      if (!input) return;
+
+      input.value = nextMessage;
+      syncInputAvailability();
+      showTemporaryNotice("Message en file: envoi en cours...");
+      send();
+    }
     
     function ensureBootOverlay() {
       if (bootOverlayEl) return bootOverlayEl;
@@ -5990,6 +6141,7 @@
       });
       
       syncInputAvailability();
+      syncWaitingIndicatorForCurrentConversation();
 
       const restorePreservedViewport = () => {
         if (anchorHistoryIndex >= 0) {
@@ -6044,7 +6196,7 @@
       const sendBtn = document.getElementById("sendBtn");
       
       input.disabled = disabled;
-      sendBtn.disabled = disabled || isSending || input.value.trim().length === 0;
+      sendBtn.disabled = disabled || input.value.trim().length === 0;
     }
     
     function openModal(id) {
@@ -6716,6 +6868,7 @@
         setTimeout(forceStableBottom, 320);
         
         defocusInput();
+        processQueuedMessagesForCurrentConversation();
       } else {
         startFreshSession();
       }
@@ -6781,16 +6934,27 @@
     }
     
     async function send() {
-      if (isSending) return;
       if (sessionStatus === "terminated" || sessionStatus === "closing") return;
       if (sessionStatus === "expired") return;
       
       const input = document.getElementById("input");
-      const sendBtn = document.getElementById("sendBtn");
       const chat = document.getElementById("chat");
       const nextMessage = input.value.trim();
       
       if (!nextMessage) return;
+
+      if (isSending) {
+        if (editMode.active) {
+          showTemporaryNotice("Attends la reponse en cours avant de modifier un message");
+          return;
+        }
+
+        const queuedCount = enqueueMessageForConversation(getConversationId(), nextMessage);
+        input.value = "";
+        syncInputAvailability();
+        showTemporaryNotice(`Message mis en file (${queuedCount})`);
+        return;
+      }
       
       const isEditing = editMode.active;
       const conversationIdBeforeSend = getConversationId();
@@ -6810,7 +6974,6 @@
       
       isSending = true;
       updateActivity();
-      sendBtn.disabled = true;
       
       if (isEditing) {
         const history = loadHistory();
@@ -6868,29 +7031,15 @@
       
       const requestConversationId = getConversationId();
       const requestScreenId = document.querySelector(".screen.active")?.id || "";
+      sendingConversationId = requestConversationId;
       
-      const waitingMsg = document.createElement("div");
-      waitingMsg.className = "message bot";
+      const waitingState = addWaitingIndicatorToChat({
+        scrollToBottom: wasAtBottom || isEditing
+      });
+      const waitingMsg = waitingState.waitingMsg;
+      let dotAnimation = waitingState.dotAnimation;
       
-      const waitingContent = document.createElement("div");
-      waitingContent.className = "message-content";
-      
-      const waitingBubble = document.createElement("div");
-      waitingBubble.className = "bubble waiting-bubble";
-      
-      const waitingDot = document.createElement("span");
-      waitingDot.id = "waitingDot";
-      waitingDot.className = "waiting-dot";
-      
-      waitingBubble.appendChild(waitingDot);
-      waitingContent.appendChild(waitingBubble);
-      waitingMsg.appendChild(waitingContent);
-      
-      chat.appendChild(waitingMsg);
-      
-      if (wasAtBottom || isEditing) {
-        scrollChatToBottom();
-      } else {
+      if (!wasAtBottom && !isEditing) {
         requestAnimationFrame(() => {
           updateScrollToBottomBtn();
         });
@@ -6900,23 +7049,6 @@
         adminPayload.comparisonEnabled === true ?
         false :
         (isEditing || wasAtBottom || isChatAtBottom());
-      
-      let dotAnimation = null;
-      
-      if (waitingDot && waitingDot.animate) {
-        dotAnimation = waitingDot.animate(
-          [
-            { transform: "scale(0.8)" },
-            { transform: "scale(1.2)" },
-            { transform: "scale(0.8)" }
-          ],
-          {
-            duration: 900,
-            iterations: Infinity,
-            easing: "ease-in-out"
-          }
-        );
-      }
       
       try {
         async function parseJsonResponseSafely(res, context = "chat") {
@@ -6975,7 +7107,7 @@
         const data = await parseJsonResponseSafely(res, "send:/chat");
         
         if (dotAnimation) dotAnimation.cancel();
-        if (waitingMsg.parentNode) waitingMsg.parentNode.removeChild(waitingMsg);
+        removeWaitingIndicatorFromChat();
         
         if (
           !res.ok ||
@@ -7121,7 +7253,7 @@
         updateActivity();
       } catch {
         if (dotAnimation) dotAnimation.cancel();
-        if (waitingMsg.parentNode) waitingMsg.parentNode.removeChild(waitingMsg);
+        removeWaitingIndicatorFromChat();
         
         if (
           getConversationId() === requestConversationId &&
@@ -7135,7 +7267,10 @@
         }
       } finally {
         isSending = false;
+        sendingConversationId = "";
         syncInputAvailability();
+        syncWaitingIndicatorForCurrentConversation();
+        processQueuedMessagesForCurrentConversation();
         updateScrollToBottomBtn();
       }
     }
