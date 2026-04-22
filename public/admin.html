@@ -1066,7 +1066,7 @@
         cardTitle.className = "branch-card-title";
         let titleText = String(conversation?.title || safeConversationId || "Conversation");
         if (branchLabel && safeConversationId !== rootConversationId) {
-          titleText = branchLabel + " • " + titleText;
+          titleText = branchLabel + " • " + safeConversationId;
         }
         cardTitle.textContent = titleText;
         header.appendChild(cardTitle);
@@ -1089,11 +1089,18 @@
 
         const meta = document.createElement("div");
         meta.className = "branch-card-meta";
-        meta.textContent = [
-          safeConversationId,
-          `${Number(conversation?.messageCount || 0)} messages`,
-          `Maj ${formatAdminDate(conversation?.updatedAt || conversation?.createdAt)}`
-        ].join(" • ");
+        if (safeConversationId === rootConversationId) {
+          meta.textContent = [
+            safeConversationId,
+            `${Number(conversation?.messageCount || 0)} messages`,
+            `Maj ${formatAdminDate(conversation?.updatedAt || conversation?.createdAt)}`
+          ].join(" • ");
+        } else {
+          meta.textContent = [
+            `${Number(conversation?.messageCount || 0)} messages`,
+            `Maj ${formatAdminDate(conversation?.updatedAt || conversation?.createdAt)}`
+          ].join(" • ");
+        }
         card.appendChild(meta);
 
         node.appendChild(card);
@@ -1979,7 +1986,17 @@
           debugToggleBtn.classList.toggle("active", allOpen);
         }
         
+        // Deduplicate consecutive identical messages (same role and content)
+        const deduplicatedData = [];
+        let lastMsg = null;
         data.forEach(msg => {
+          if (!lastMsg || msg.role !== lastMsg.role || msg.content !== lastMsg.content) {
+            deduplicatedData.push(msg);
+            lastMsg = msg;
+          }
+        });
+        
+        deduplicatedData.forEach(msg => {
           const isUser = msg.role === "user";
           
           const wrapper = document.createElement("div");
