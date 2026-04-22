@@ -7251,8 +7251,11 @@
               stateSnapshot: normalizeStoredStateSnapshot(item.stateSnapshot),
               comparisonResults: Array.isArray(item.comparisonResults) ? item.comparisonResults : null
             }));
+          const fallbackSeedMessages = anchorMessageId ?
+            branchSeedMessages :
+            branchSeedMessages.slice(0, -1);
 
-          if (anchorMessageId || branchSeedMessages.length) {
+          if (anchorMessageId || fallbackSeedMessages.length) {
             try {
               const createRes = await fetch("/api/branches/from-message", {
                 method: "POST",
@@ -7260,7 +7263,7 @@
                 body: JSON.stringify({
                   sourceConversationId: conversationIdBeforeSend,
                   anchorMessageId,
-                  seedMessages: anchorMessageId ? undefined : branchSeedMessages,
+                  seedMessages: anchorMessageId ? undefined : fallbackSeedMessages,
                   userId: branchUserId
                 })
               });

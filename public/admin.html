@@ -1986,17 +1986,7 @@
           debugToggleBtn.classList.toggle("active", allOpen);
         }
         
-        // Deduplicate consecutive identical messages (same role and content)
-        const deduplicatedData = [];
-        let lastMsg = null;
         data.forEach(msg => {
-          if (!lastMsg || msg.role !== lastMsg.role || msg.content !== lastMsg.content) {
-            deduplicatedData.push(msg);
-            lastMsg = msg;
-          }
-        });
-        
-        deduplicatedData.forEach(msg => {
           const isUser = msg.role === "user";
           
           const wrapper = document.createElement("div");
