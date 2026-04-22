@@ -3862,6 +3862,9 @@
     }
     
     async function openConversation(conversationId) {
+      closeEditMode({ restoreDraft: false });
+      resetComposerDraftState();
+
       const localConversationData = loadConversationData(conversationId);
       if (!isConversationPrivateById(conversationId, localConversationData)) {
         await hydrateRemoteConversationIfNeeded(conversationId);
@@ -5405,6 +5408,15 @@
       editMode.targetHistoryIndex = -1;
       editMode.originalText = "";
       draftBeforeEdit = "";
+    }
+
+    function resetComposerDraftState() {
+      const input = document.getElementById("input");
+      if (input) {
+        input.value = "";
+      }
+      draftBeforeEdit = "";
+      syncInputAvailability();
     }
     
     function cancelEditMode() {
@@ -6997,10 +7009,7 @@
         setSessionStatus("active");
         closeEditMode({ restoreDraft: false });
         renderHistory();
-        const input = document.getElementById("input");
-        if (input) {
-          input.value = "";
-        }
+        resetComposerDraftState();
         
         const chat = document.getElementById("chat");
         
