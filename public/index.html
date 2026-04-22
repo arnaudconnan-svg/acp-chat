@@ -7276,6 +7276,12 @@
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                       ...deriveBranchConversationState(conversationIdBeforeSend, truncatedHistory),
+                      userId: branchUserId
+                    })
+                  });
+
+                  if (activateRes.ok) {
+                    localStorage.setItem(CONVERSATION_ID_KEY, branchConversationId);
                     const sourceTrunkTitle = getTrunkConversationTitle(conversationIdBeforeSend);
                     saveConversationData(branchConversationId, {
                       ...loadConversationData(branchConversationId),
@@ -7286,13 +7292,7 @@
                     });
                     upsertConversationIndexItem({
                       id: branchConversationId,
-                      title: sourceTrunkTitle
-                    localStorage.setItem(CONVERSATION_ID_KEY, branchConversationId);
-                    saveConversationData(branchConversationId, {
-                      ...loadConversationData(branchConversationId),
-                      messages: truncatedHistory,
-                      memory: editedConversationState.memory,
-                      flags: editedConversationState.flags,
+                      title: sourceTrunkTitle,
                       updatedAt: Date.now()
                     });
                     clearEditUndoPayload();
