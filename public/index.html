@@ -6997,6 +6997,10 @@
         setSessionStatus("active");
         closeEditMode({ restoreDraft: false });
         renderHistory();
+        const input = document.getElementById("input");
+        if (input) {
+          input.value = "";
+        }
         
         const chat = document.getElementById("chat");
         
@@ -7111,6 +7115,7 @@
       }
       
       const isEditing = editMode.active;
+      let requestIsEdited = isEditing === true;
       const conversationIdBeforeSend = getConversationId();
       const wasAtBottom = isEditing ? true : isChatAtBottom();
       const restoredDraft = isEditing ? draftBeforeEdit : "";
@@ -7156,15 +7161,73 @@
         
         const truncatedHistory = history.slice(0, targetIndex + 1);
         const editedConversationState = deriveEditConversationState(conversationIdBeforeSend, history, targetIndex);
-        saveHistory(truncatedHistory);
-        saveConversationData(conversationIdBeforeSend, {
-          ...loadConversationData(conversationIdBeforeSend),
-          messages: truncatedHistory,
-          memory: editedConversationState.memory,
-          flags: editedConversationState.flags,
-          updatedAt: Date.now()
-        });
-        saveEditUndoPayload(conversationIdBeforeSend, previousConversationSnapshot);
+
+        const canCreateBranchFromEdit =
+          targetIndex < lastUserIndex &&
+          !isConversationPrivateById(conversationIdBeforeSend, previousConversationSnapshot);
+
+        let branchActivated = false;
+
+        if (canCreateBranchFromEdit) {
+          const anchorCandidate = [...truncatedHistory]
+            .reverse()
+            .find(item => item && typeof item.id === "string" && item.id.trim());
+          const anchorMessageId = anchorCandidate ? String(anchorCandidate.id || "").trim() : "";
+
+          if (anchorMessageId) {
+            try {
+              const createRes = await fetch("/api/branches/from-message", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  sourceConversationId: conversationIdBeforeSend,
+                  anchorMessageId
+                })
+              });
+
+              if (createRes.ok) {
+                const createData = await createRes.json().catch(() => ({}));
+                const branchId = String(createData?.branch?.id || "").trim();
+                const branchConversationId = String(createData?.branch?.branchConversationId || "").trim();
+
+                if (branchId && branchConversationId) {
+                  const activateRes = await fetch("/api/branches/" + branchId + "/activate", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(deriveBranchConversationState(conversationIdBeforeSend, truncatedHistory))
+                  });
+
+                  if (activateRes.ok) {
+                    localStorage.setItem(CONVERSATION_ID_KEY, branchConversationId);
+                    saveConversationData(branchConversationId, {
+                      ...loadConversationData(branchConversationId),
+                      messages: truncatedHistory,
+                      memory: editedConversationState.memory,
+                      flags: editedConversationState.flags,
+                      updatedAt: Date.now()
+                    });
+                    clearEditUndoPayload();
+                    requestIsEdited = false;
+                    branchActivated = true;
+                  }
+                }
+              }
+            } catch {}
+          }
+        }
+
+        if (!branchActivated) {
+          saveHistory(truncatedHistory);
+          saveConversationData(conversationIdBeforeSend, {
+            ...loadConversationData(conversationIdBeforeSend),
+            messages: truncatedHistory,
+            memory: editedConversationState.memory,
+            flags: editedConversationState.flags,
+            updatedAt: Date.now()
+          });
+          saveEditUndoPayload(conversationIdBeforeSend, previousConversationSnapshot);
+        }
+
         closeEditMode({ restoreDraft: false });
         renderHistory();
         scrollChatToBottom();
@@ -7241,7 +7304,7 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             message,
-            isEdited: isEditing === true,
+            isEdited: requestIsEdited === true,
             userId: getOrCreateUserId(),
             conversationId: requestConversationId,
             isPrivateConversation: isConversationPrivateById(requestConversationId, loadConversationData(requestConversationId)),

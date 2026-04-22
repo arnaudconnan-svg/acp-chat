@@ -6952,15 +6952,15 @@ app.post("/chat", async (req, res) => {
 
     let effectiveMailsEnabled = mailsEnabled !== false;
 
-    if (effectiveMailsEnabled) {
-      try {
-        const adminMailsSnap = await adminSettingsRef.child("mailsEnabled").once("value");
-        if (adminMailsSnap.exists()) {
-          effectiveMailsEnabled = adminMailsSnap.val() !== false;
-        }
-      } catch (err) {
-        console.error("Erreur lecture adminSettings.mailsEnabled:", err.message);
+    try {
+      const adminMailsSnap = await adminSettingsRef.child("mailsEnabled").once("value");
+      if (adminMailsSnap.exists()) {
+        effectiveMailsEnabled = adminMailsSnap.val() !== false;
       }
+    } catch (err) {
+      console.error("Erreur lecture adminSettings.mailsEnabled:", err.message);
+      // Fail-safe: if settings are temporarily unavailable (e.g. during deploy), avoid sending alerts.
+      effectiveMailsEnabled = false;
     }
 
     if (!isPrivateConversation && emailNotifier.enabled && effectiveMailsEnabled && adminVisitedSinceLastAlert && adminUiActive !== true) {
