@@ -494,6 +494,33 @@
       border-left: 2px solid rgba(36, 94, 102, 0.15);
     }
 
+    .branch-collapse-chip {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      height: 24px;
+      border-radius: 999px;
+      border: 1px solid rgba(36, 94, 102, 0.24);
+      background: rgba(36, 94, 102, 0.08);
+      color: #245e66;
+      font-size: 14px;
+      line-height: 1;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .branch-collapse-chip:hover {
+      background: rgba(36, 94, 102, 0.14);
+    }
+
+    .branch-collapsed-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
     .debug-toggle-btn {
       position: absolute;
       right: 0;
@@ -1123,7 +1150,7 @@
         const childrenWrap = document.createElement("div");
         childrenWrap.className = "branch-children";
 
-        childBranches.forEach((branch, index) => {
+        function renderChildRow(branch, index) {
           const row = document.createElement("div");
           row.className = "branch-child-row";
 
@@ -1144,7 +1171,62 @@
 
           row.appendChild(branchEdge);
           row.appendChild(childContent);
-          childrenWrap.appendChild(row);
+          return row;
+        }
+
+        const currentChildIndex = childBranches.findIndex(branch =>
+          String(branch?.branchConversationId || "").trim() === currentConversationId
+        );
+
+        if (safeConversationId === rootConversationId && childBranches.length > 1 && currentChildIndex >= 0) {
+          const hiddenBranches = childBranches
+            .map((branch, index) => ({ branch, index }))
+            .filter(entry => entry.index !== currentChildIndex);
+
+          if (hiddenBranches.length > 0) {
+            const collapseRow = document.createElement("div");
+            collapseRow.className = "branch-child-row";
+
+            const collapseEdge = document.createElement("div");
+            collapseEdge.className = "branch-edge";
+
+            const collapseContent = document.createElement("div");
+            collapseContent.className = "branch-child-content";
+
+            const collapseChip = document.createElement("button");
+            collapseChip.type = "button";
+            collapseChip.className = "branch-collapse-chip";
+            collapseChip.textContent = "...";
+            collapseChip.setAttribute("aria-expanded", "false");
+
+            const hiddenList = document.createElement("div");
+            hiddenList.className = "branch-collapsed-list";
+            hiddenList.style.display = "none";
+
+            hiddenBranches.forEach(({ branch, index }) => {
+              hiddenList.appendChild(renderChildRow(branch, index));
+            });
+
+            collapseChip.addEventListener("click", () => {
+              const isOpen = hiddenList.style.display !== "none";
+              hiddenList.style.display = isOpen ? "none" : "flex";
+              collapseChip.setAttribute("aria-expanded", isOpen ? "false" : "true");
+            });
+
+            collapseContent.appendChild(collapseChip);
+            collapseContent.appendChild(hiddenList);
+            collapseRow.appendChild(collapseEdge);
+            collapseRow.appendChild(collapseContent);
+            childrenWrap.appendChild(collapseRow);
+          }
+
+          childrenWrap.appendChild(renderChildRow(childBranches[currentChildIndex], currentChildIndex));
+          node.appendChild(childrenWrap);
+          return node;
+        }
+
+        childBranches.forEach((branch, index) => {
+          childrenWrap.appendChild(renderChildRow(branch, index));
         });
 
         node.appendChild(childrenWrap);
