@@ -5850,8 +5850,18 @@ app.post("/api/branches/:id/activate", async (req, res) => {
       return res.status(403).json({ error: "Branch ownership mismatch" });
     }
 
-    if (!seed || typeof seed !== "object" || !Array.isArray(seed.messages)) {
-      return res.status(404).json({ error: "Branch seed not found" });
+    let seedMessages = (seed && typeof seed === "object" && Array.isArray(seed.messages)) ?
+      seed.messages :
+      null;
+
+    if (!Array.isArray(seedMessages)) {
+      seedMessages = [];
+      await branchSeedSnapshotsRef.child(branchId).set({
+        sourceConversationId: String(branch.sourceConversationId || ""),
+        sourceAnchorMessageId: String(branch.sourceAnchorMessageId || ""),
+        seededAt: new Date().toISOString(),
+        messages: seedMessages
+      });
     }
 
     const branchConversationId = String(branch.branchConversationId || "").trim();
@@ -5864,7 +5874,6 @@ app.post("/api/branches/:id/activate", async (req, res) => {
     const existingConversation = existingConvSnap.val();
 
     if (!existingConversation || typeof existingConversation !== "object") {
-      const seededMessages = seed.messages;
       const lastUserMessage = [...seededMessages]
         .reverse()
         .find(m => String(m?.role || "") === "user");
