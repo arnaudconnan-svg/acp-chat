@@ -1077,13 +1077,6 @@
           chips.appendChild(rootBadge);
         }
 
-        if (safeConversationId === currentConversationId) {
-          const currentBadge = document.createElement("span");
-          currentBadge.className = "branch-badge";
-          currentBadge.textContent = "Courante";
-          chips.appendChild(currentBadge);
-        }
-
         if (chips.childNodes.length) {
           header.appendChild(chips);
         }
@@ -1151,10 +1144,64 @@
       wrap.appendChild(panel);
     }
 
+    function resolvePreferredConversationIdForBranchView(data, fallbackConversationId) {
+      const fallback = String(fallbackConversationId || "").trim();
+      const rootConversationId = String(data?.rootConversationId || "").trim();
+      const currentConversationId = String(data?.currentConversationId || "").trim();
+      const branches = Array.isArray(data?.branches) ? data.branches : [];
+
+      if (!rootConversationId) {
+        return currentConversationId || fallback;
+      }
+
+      if (currentConversationId && currentConversationId !== rootConversationId) {
+        return currentConversationId;
+      }
+
+      if (branches.length === 0) {
+        return currentConversationId || rootConversationId || fallback;
+      }
+
+      const childrenBySource = new Map();
+      branches.forEach(branch => {
+        const sourceId = String(branch?.sourceConversationId || "").trim();
+        if (!sourceId) return;
+        if (!childrenBySource.has(sourceId)) {
+          childrenBySource.set(sourceId, []);
+        }
+        childrenBySource.get(sourceId).push(branch);
+      });
+
+      let cursor = rootConversationId;
+      const visited = new Set([cursor]);
+
+      while (true) {
+        const children = (childrenBySource.get(cursor) || [])
+          .slice()
+          .sort((a, b) => String(a?.createdAt || "").localeCompare(String(b?.createdAt || "")));
+
+        if (children.length === 0) {
+          break;
+        }
+
+        const newestChild = children[children.length - 1];
+        const nextId = String(newestChild?.branchConversationId || "").trim();
+
+        if (!nextId || visited.has(nextId)) {
+          break;
+        }
+
+        visited.add(nextId);
+        cursor = nextId;
+      }
+
+      return cursor || currentConversationId || rootConversationId || fallback;
+    }
+
     async function loadBranchTree(conversationId) {
       if (!conversationId) {
         hideBranchTree();
-        return;
+        return null;
       }
 
       try {
@@ -1163,17 +1210,19 @@
 
         if (response.redirectedToLogin) {
           hideBranchTree();
-          return;
+          return null;
         }
 
         if (!res.ok || !response.isJson) {
           hideBranchTree();
-          return;
+          return null;
         }
 
         renderBranchTree(response.data);
+        return response.data || null;
       } catch {
         hideBranchTree();
+        return null;
       }
     }
     
@@ -1486,7 +1535,15 @@
     async function loadMessages(conversationId) {
       const list = document.getElementById("list");
       const debugToggleBtn = document.getElementById("debugToggleBtn");
-      const branchTreePromise = loadBranchTree(conversationId);
+      const branchTreeData = await loadBranchTree(conversationId);
+      const preferredConversationId = resolvePreferredConversationIdForBranchView(branchTreeData, conversationId);
+
+      if (preferredConversationId && preferredConversationId !== conversationId) {
+        window.location.replace("/admin.html?c=" + encodeURIComponent(preferredConversationId));
+        return;
+      }
+
+      const branchTreePromise = Promise.resolve(branchTreeData);
 
       if (debugToggleBtn) {
         debugToggleBtn.style.display = "none";

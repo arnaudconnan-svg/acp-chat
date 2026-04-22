@@ -3138,11 +3138,33 @@
       console.log("NEW conversationId:", id);
       return id;
     }
+
+    function isBranchConversationId(conversationId) {
+      const id = String(conversationId || "").trim();
+      return id.startsWith("c_branch_");
+    }
     
     function loadConversationsIndex() {
       try {
         const parsed = JSON.parse(localStorage.getItem(CONVERSATIONS_INDEX_KEY) || "[]");
-        return Array.isArray(parsed) ? parsed : [];
+
+        if (!Array.isArray(parsed)) {
+          return [];
+        }
+
+        const sanitized = parsed.filter(item => {
+          if (!item || typeof item !== "object") {
+            return false;
+          }
+
+          return !isBranchConversationId(item.id);
+        });
+
+        if (sanitized.length !== parsed.length) {
+          saveConversationsIndex(sanitized);
+        }
+
+        return sanitized;
       } catch {
         return [];
       }
@@ -7131,6 +7153,7 @@
       if (sessionStatus === "expired") return;
 
       const { skipUserHistoryInsert = false } = options;
+      let shouldSkipUserHistoryInsert = skipUserHistoryInsert === true;
       
       const input = document.getElementById("input");
       const chat = document.getElementById("chat");
@@ -7273,6 +7296,7 @@
                     });
                     clearEditUndoPayload();
                     requestIsEdited = false;
+                    shouldSkipUserHistoryInsert = true;
                     branchActivated = true;
                   } else {
                     const activateData = await activateRes.json().catch(() => ({}));
@@ -7319,7 +7343,7 @@
         input.value = restoredDraft || "";
       } else {
         clearEditUndoPayload();
-        if (!skipUserHistoryInsert) {
+        if (!shouldSkipUserHistoryInsert) {
           pushHistory("user", message, []);
           addMessage("user", message, [], {
             shouldAutoScroll: wasAtBottom,
