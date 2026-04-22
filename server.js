@@ -5656,7 +5656,8 @@ app.post("/api/branches/from-message", async (req, res) => {
       typeof req.body !== "object" ||
       Array.isArray(req.body) ||
       typeof req.body.sourceConversationId !== "string" ||
-      typeof req.body.anchorMessageId !== "string" ||
+      (req.body.anchorMessageId !== undefined && typeof req.body.anchorMessageId !== "string") ||
+      (req.body.seedMessages !== undefined && !Array.isArray(req.body.seedMessages)) ||
       (req.body.userId !== undefined && typeof req.body.userId !== "string")
     ) {
       return res.status(400).json({ error: "Invalid branch request" });
@@ -5665,8 +5666,9 @@ app.post("/api/branches/from-message", async (req, res) => {
     const actorUserId = await resolveBranchActorUserId(req);
     const sourceConversationId = String(req.body.sourceConversationId || "").trim();
     const anchorMessageId = String(req.body.anchorMessageId || "").trim();
+    const requestedSeedMessages = Array.isArray(req.body.seedMessages) ? req.body.seedMessages : null;
 
-    if (!sourceConversationId || !anchorMessageId || !actorUserId) {
+    if (!sourceConversationId || !actorUserId || (!anchorMessageId && !requestedSeedMessages?.length)) {
       return res.status(400).json({ error: "Missing sourceConversationId or anchorMessageId" });
     }
 
@@ -5701,26 +5703,55 @@ app.post("/api/branches/from-message", async (req, res) => {
         return String(a.id).localeCompare(String(b.id));
       });
 
-    const anchorIndex = messageEntries.findIndex(entry => entry.id === anchorMessageId);
+    let seededMessages = [];
+    let resolvedAnchorMessageId = anchorMessageId;
 
-    if (anchorIndex < 0) {
-      return res.status(404).json({ error: "Anchor message not found" });
+    if (anchorMessageId) {
+      const anchorIndex = messageEntries.findIndex(entry => entry.id === anchorMessageId);
+
+      if (anchorIndex < 0) {
+        return res.status(404).json({ error: "Anchor message not found" });
+      }
+
+      const seededEntries = messageEntries.slice(0, anchorIndex + 1);
+      seededMessages = seededEntries.map(entry => ({
+        id: entry.id,
+        role: String(entry.item.role || ""),
+        content: String(entry.item.content || ""),
+        debug: Array.isArray(entry.item.debug) ? entry.item.debug : [],
+        debugMeta: entry.item.debugMeta && typeof entry.item.debugMeta === "object" ? entry.item.debugMeta : null,
+        stateSnapshot: entry.item.stateSnapshot && typeof entry.item.stateSnapshot === "object" ? {
+          memory: typeof entry.item.stateSnapshot.memory === "string" ? entry.item.stateSnapshot.memory : "",
+          flags: normalizeSessionFlags(entry.item.stateSnapshot.flags || {})
+        } : null,
+        comparisonResults: Array.isArray(entry.item.comparisonResults) ? entry.item.comparisonResults : null,
+        createdAt: typeof entry.item.createdAt === "string" ? entry.item.createdAt : null
+      }));
+    } else {
+      seededMessages = requestedSeedMessages
+        .map(item => ({
+          id: typeof item?.id === "string" && item.id.trim() ? item.id.trim() : null,
+          role: String(item?.role || ""),
+          content: String(item?.content || ""),
+          debug: Array.isArray(item?.debug) ? item.debug : [],
+          debugMeta: item?.debugMeta && typeof item.debugMeta === "object" ? item.debugMeta : null,
+          stateSnapshot: item?.stateSnapshot && typeof item.stateSnapshot === "object" ? {
+            memory: typeof item.stateSnapshot.memory === "string" ? item.stateSnapshot.memory : "",
+            flags: normalizeSessionFlags(item.stateSnapshot.flags || {})
+          } : null,
+          comparisonResults: Array.isArray(item?.comparisonResults) ? item.comparisonResults : null,
+          createdAt: typeof item?.createdAt === "string" ? item.createdAt : null
+        }))
+        .filter(item => item.role && item.content);
+
+      resolvedAnchorMessageId = String(
+        [...seededMessages].reverse().find(item => typeof item?.id === "string" && item.id.trim())?.id || ""
+      ).trim();
     }
 
-    const seededEntries = messageEntries.slice(0, anchorIndex + 1);
-    const seededMessages = seededEntries.map(entry => ({
-      id: entry.id,
-      role: String(entry.item.role || ""),
-      content: String(entry.item.content || ""),
-      debug: Array.isArray(entry.item.debug) ? entry.item.debug : [],
-      debugMeta: entry.item.debugMeta && typeof entry.item.debugMeta === "object" ? entry.item.debugMeta : null,
-      stateSnapshot: entry.item.stateSnapshot && typeof entry.item.stateSnapshot === "object" ? {
-        memory: typeof entry.item.stateSnapshot.memory === "string" ? entry.item.stateSnapshot.memory : "",
-        flags: normalizeSessionFlags(entry.item.stateSnapshot.flags || {})
-      } : null,
-      comparisonResults: Array.isArray(entry.item.comparisonResults) ? entry.item.comparisonResults : null,
-      createdAt: typeof entry.item.createdAt === "string" ? entry.item.createdAt : null
-    }));
+    if (!seededMessages.length) {
+      return res.status(400).json({ error: "Seed messages not found" });
+    }
 
     const now = new Date().toISOString();
     const branchConversationId = `c_branch_${Date.now()}_${crypto.randomBytes(4).toString("hex")}`;
@@ -5735,7 +5766,7 @@ app.post("/api/branches/from-message", async (req, res) => {
       branchRef.set({
         userId: actorUserId,
         sourceConversationId,
-        sourceAnchorMessageId: anchorMessageId,
+        sourceAnchorMessageId: resolvedAnchorMessageId,
         branchConversationId,
         seedMessageCount: seededMessages.length,
         status: "active",
@@ -5744,7 +5775,7 @@ app.post("/api/branches/from-message", async (req, res) => {
       }),
       branchSeedSnapshotsRef.child(branchId).set({
         sourceConversationId,
-        sourceAnchorMessageId: anchorMessageId,
+        sourceAnchorMessageId: resolvedAnchorMessageId,
         seededAt: now,
         messages: seededMessages
       })
@@ -5755,7 +5786,7 @@ app.post("/api/branches/from-message", async (req, res) => {
       branch: {
         id: branchId,
         sourceConversationId,
-        sourceAnchorMessageId: anchorMessageId,
+        sourceAnchorMessageId: resolvedAnchorMessageId,
         branchConversationId,
         seedMessageCount: seededMessages.length,
         createdAt: now,

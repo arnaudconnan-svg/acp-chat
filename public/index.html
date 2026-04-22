@@ -2756,35 +2756,57 @@
       return Array.isArray(queue) ? queue : [];
     }
 
-    function enqueueMessageForConversation(conversationId, message) {
+    function enqueueMessageForConversation(conversationId, message, options = {}) {
       const id = String(conversationId || "").trim();
       const text = String(message || "").trim();
       if (!id || !text) return 0;
 
+      const { alreadyInserted = false } = options;
+
       const queue = getQueuedMessagesForConversation(id);
-      queue.push(text);
+      queue.push({
+        text,
+        alreadyInserted: alreadyInserted === true
+      });
       queuedMessagesByConversation.set(id, queue);
       return queue.length;
     }
 
     function dequeueMessageForConversation(conversationId) {
       const id = String(conversationId || "").trim();
-      if (!id) return "";
+      if (!id) return null;
 
       const queue = getQueuedMessagesForConversation(id);
       if (!queue.length) {
         queuedMessagesByConversation.delete(id);
-        return "";
+        return null;
       }
 
-      const nextMessage = String(queue.shift() || "").trim();
+      const nextEntry = queue.shift();
       if (queue.length === 0) {
         queuedMessagesByConversation.delete(id);
       } else {
         queuedMessagesByConversation.set(id, queue);
       }
 
-      return nextMessage;
+      if (typeof nextEntry === "string") {
+        const legacyText = String(nextEntry || "").trim();
+        return legacyText ? { text: legacyText, alreadyInserted: false } : null;
+      }
+
+      if (!nextEntry || typeof nextEntry !== "object") {
+        return null;
+      }
+
+      const nextText = String(nextEntry.text || "").trim();
+      if (!nextText) {
+        return null;
+      }
+
+      return {
+        text: nextText,
+        alreadyInserted: nextEntry.alreadyInserted === true
+      };
     }
 
     function addWaitingIndicatorToChat(options = {}) {
@@ -2886,16 +2908,15 @@
       const conversationId = String(getConversationId() || "").trim();
       if (!conversationId) return;
 
-      const nextMessage = dequeueMessageForConversation(conversationId);
-      if (!nextMessage) return;
+      const nextMessageEntry = dequeueMessageForConversation(conversationId);
+      if (!nextMessageEntry || !nextMessageEntry.text) return;
 
       const input = document.getElementById("input");
       if (!input) return;
 
-      input.value = nextMessage;
+      input.value = nextMessageEntry.text;
       syncInputAvailability();
-      showTemporaryNotice("Message en file: envoi en cours...");
-      send();
+      send({ skipUserHistoryInsert: nextMessageEntry.alreadyInserted === true });
     }
     
     function ensureBootOverlay() {
@@ -7105,9 +7126,11 @@
       } catch {}
     }
     
-    async function send() {
+    async function send(options = {}) {
       if (sessionStatus === "terminated" || sessionStatus === "closing") return;
       if (sessionStatus === "expired") return;
+
+      const { skipUserHistoryInsert = false } = options;
       
       const input = document.getElementById("input");
       const chat = document.getElementById("chat");
@@ -7121,10 +7144,20 @@
           return;
         }
 
-        const queuedCount = enqueueMessageForConversation(getConversationId(), nextMessage);
+        pushHistory("user", nextMessage, []);
+        if (chat) {
+          addMessage("user", nextMessage, [], {
+            shouldAutoScroll: isChatAtBottom(),
+            pulseScrollButton: false,
+            progressive: false,
+            historyIndex: loadHistory().length - 1
+          });
+        }
+
+        enqueueMessageForConversation(getConversationId(), nextMessage, { alreadyInserted: true });
         input.value = "";
         syncInputAvailability();
-        showTemporaryNotice(`Message mis en file (${queuedCount})`);
+        updateActivity();
         return;
       }
       
@@ -7189,8 +7222,19 @@
             .reverse()
             .find(item => item && typeof item.id === "string" && item.id.trim());
           const anchorMessageId = anchorCandidate ? String(anchorCandidate.id || "").trim() : "";
+          const branchSeedMessages = truncatedHistory
+            .filter(item => item && !isOpeningGreetingMessage(item.content))
+            .map(item => ({
+              id: typeof item.id === "string" ? item.id : undefined,
+              role: String(item.role || ""),
+              content: String(item.content || ""),
+              debug: Array.isArray(item.debug) ? item.debug : [],
+              debugMeta: item.debugMeta && typeof item.debugMeta === "object" ? item.debugMeta : null,
+              stateSnapshot: normalizeStoredStateSnapshot(item.stateSnapshot),
+              comparisonResults: Array.isArray(item.comparisonResults) ? item.comparisonResults : null
+            }));
 
-          if (anchorMessageId) {
+          if (anchorMessageId || branchSeedMessages.length) {
             try {
               const createRes = await fetch("/api/branches/from-message", {
                 method: "POST",
@@ -7198,6 +7242,7 @@
                 body: JSON.stringify({
                   sourceConversationId: conversationIdBeforeSend,
                   anchorMessageId,
+                  seedMessages: anchorMessageId ? undefined : branchSeedMessages,
                   userId: branchUserId
                 })
               });
@@ -7244,7 +7289,7 @@
               branchFailureMessage = "Erreur branche : " + (err && err.message ? err.message : "inconnue");
             }
           } else {
-            branchFailureMessage = "Ancre de branche introuvable";
+            branchFailureMessage = "Historique de branche introuvable";
           }
         }
 
@@ -7274,13 +7319,15 @@
         input.value = restoredDraft || "";
       } else {
         clearEditUndoPayload();
-        pushHistory("user", message, []);
-        addMessage("user", message, [], {
-          shouldAutoScroll: wasAtBottom,
-          pulseScrollButton: false,
-          progressive: false,
-          historyIndex: loadHistory().length - 1
-        });
+        if (!skipUserHistoryInsert) {
+          pushHistory("user", message, []);
+          addMessage("user", message, [], {
+            shouldAutoScroll: wasAtBottom,
+            pulseScrollButton: false,
+            progressive: false,
+            historyIndex: loadHistory().length - 1
+          });
+        }
         
         input.value = "";
       }
