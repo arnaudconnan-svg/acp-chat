@@ -738,6 +738,10 @@
       font-size: 15px;
       line-height: 1.45;
     }
+
+    .conversationItemEmptyState .conversationItemPlaceholder {
+      padding-left: 6px;
+    }
     
     .conversationItemRow {
       justify-content: space-between;
@@ -1900,7 +1904,7 @@
     
     <div id="conversationsListWrap">
       <div id="conversationsList">
-        <div class="conversationItem">
+        <div class="conversationItem conversationItemEmptyState">
           <div class="conversationItemPlaceholder">
             Aucune conversation locale pour le moment.
           </div>
@@ -6639,7 +6643,7 @@
       
       if (items.length === 0) {
         const itemEl = document.createElement("div");
-        itemEl.className = "conversationItem";
+        itemEl.className = "conversationItem conversationItemEmptyState";
         
         const textEl = document.createElement("div");
         textEl.className = "conversationItemPlaceholder";
@@ -8089,13 +8093,11 @@
       
       function syncEditModeBarPosition() {
         const editBarEl = document.getElementById("editModeBar");
-        if (!editBarEl || !inputAreaEl || !chatScreenEl) return;
-        
-        const chatScreenRect = chatScreenEl.getBoundingClientRect();
-        const inputAreaRect = inputAreaEl.getBoundingClientRect();
-        const gapAboveComposer = 10;
-        const bottomOffset = Math.max(0, chatScreenRect.bottom - inputAreaRect.top) + gapAboveComposer;
-        
+        if (!editBarEl || !inputAreaInnerEl) return;
+
+        const gapAboveComposer = 8;
+        const bottomOffset = Math.max(0, inputAreaInnerEl.offsetHeight + gapAboveComposer);
+
         editBarEl.style.bottom = bottomOffset + "px";
       }
       
