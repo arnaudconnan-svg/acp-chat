@@ -859,6 +859,46 @@
       justify-content: flex-end;
       background: none;
     }
+
+    #conversationsPrivateFabBtn {
+      position: absolute;
+      right: 2px;
+      bottom: 68px;
+      border: none;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.96);
+      color: #245e66;
+      box-shadow: 0 10px 22px rgba(36, 94, 102, 0.18);
+      border: 1px solid rgba(36, 94, 102, 0.14);
+      min-width: 56px;
+      height: 64px;
+      padding: 6px 8px;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      cursor: pointer;
+      z-index: 22;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    #conversationsPrivateFabBtn.is-visible {
+      display: inline-flex;
+    }
+
+    #conversationsPrivateFabBtn svg {
+      width: 16px;
+      height: 16px;
+      display: block;
+    }
+
+    #conversationsPrivateFabBtnLabel {
+      font-size: 11px;
+      line-height: 1;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
     
     #conversationsFabLabel {
       display: none;
@@ -1891,6 +1931,13 @@
     </div>
     
     <div id="conversationsFabWrap">
+      <button id="conversationsPrivateFabBtn" type="button" aria-label="Nouvelle session privee">
+        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none">
+          <path d="M6.5 11.2h11a1.5 1.5 0 0 1 1.5 1.5v5.8a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-5.8a1.5 1.5 0 0 1 1.5-1.5z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"></path>
+          <path d="M8.4 11.2V8.9a3.6 3.6 0 1 1 7.2 0v2.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>
+        </svg>
+        <span id="conversationsPrivateFabBtnLabel">Privé</span>
+      </button>
       <button id="conversationsFabBtn" type="button" aria-label="Nouvelle session">
         <svg viewBox="0 0 24 24" width="22" height="22" role="presentation" aria-hidden="true">
           <path d="M12 5v14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
@@ -3957,6 +4004,10 @@
         forceBottomNow();
         requestAnimationFrame(forceBottomNow);
         setTimeout(forceBottomNow, 30);
+        requestAnimationFrame(() => {
+          syncWaitingIndicatorForCurrentConversation();
+          processQueuedMessagesForCurrentConversation();
+        });
         return;
       }
       
@@ -7736,10 +7787,21 @@
     
     const conversationsFabBtn = document.getElementById("conversationsFabBtn");
     if (conversationsFabBtn) {
+      const privateQuickBtn = document.getElementById("conversationsPrivateFabBtn");
       const FAB_LONG_PRESS_MS = 620;
       let fabLongPressTimer = null;
       let fabLongPressTriggered = false;
       let fabPrivateFlowActive = false;
+
+      const hidePrivateQuickButton = () => {
+        if (!privateQuickBtn) return;
+        privateQuickBtn.classList.remove("is-visible");
+      };
+
+      const showPrivateQuickButton = () => {
+        if (!privateQuickBtn || sessionStatus === "closing") return;
+        privateQuickBtn.classList.add("is-visible");
+      };
 
       const clearFabLongPress = () => {
         if (fabLongPressTimer) {
@@ -7752,6 +7814,7 @@
         if (sessionStatus === "closing" || fabPrivateFlowActive) return;
 
         fabPrivateFlowActive = true;
+        hidePrivateQuickButton();
 
         try {
           const accepted = await openPrivateConversationModal();
@@ -7773,11 +7836,6 @@
 
           conversationsFabBtn.classList.add("is-pending");
           await finalizeAndStartNewSession({ isPrivate: true });
-
-          const currentConversationId = getConversationId();
-          if (currentConversationId) {
-            markConversationPrivate(currentConversationId);
-          }
         } finally {
           if (conversationsFabBtn._ackTimer) {
             clearTimeout(conversationsFabBtn._ackTimer);
@@ -7799,7 +7857,7 @@
 
         fabLongPressTimer = setTimeout(() => {
           fabLongPressTriggered = true;
-          triggerPrivateConversationFlow();
+          showPrivateQuickButton();
         }, FAB_LONG_PRESS_MS);
       });
 
@@ -7814,6 +7872,7 @@
         }
 
         clearFabLongPress();
+        hidePrivateQuickButton();
 
         if (conversationsFabBtn._ackTimer) {
           clearTimeout(conversationsFabBtn._ackTimer);
@@ -7842,6 +7901,20 @@
           conversationsFabBtn.classList.remove("is-pending");
         }
       };
+
+      if (privateQuickBtn) {
+        privateQuickBtn.addEventListener("click", async event => {
+          event.preventDefault();
+          event.stopPropagation();
+          await triggerPrivateConversationFlow();
+        });
+
+        document.addEventListener("pointerdown", event => {
+          if (!privateQuickBtn.classList.contains("is-visible")) return;
+          if (event.target.closest("#conversationsPrivateFabBtn")) return;
+          hidePrivateQuickButton();
+        });
+      }
     }
     
     const cancelNewSessionBtn = document.getElementById("cancelNewSessionBtn");
