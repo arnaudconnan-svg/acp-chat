@@ -7236,11 +7236,12 @@
 
         if (canCreateBranchFromEdit) {
           const branchUserId = getOrCreateUserId();
-          const anchorCandidate = [...truncatedHistory]
+          const branchBaseHistory = truncatedHistory.slice(0, targetIndex);
+          const anchorCandidate = [...branchBaseHistory]
             .reverse()
             .find(item => item && typeof item.id === "string" && item.id.trim());
           const anchorMessageId = anchorCandidate ? String(anchorCandidate.id || "").trim() : "";
-          const branchSeedMessages = truncatedHistory
+          const branchSeedMessages = branchBaseHistory
             .filter(item => item && !isOpeningGreetingMessage(item.content))
             .map(item => ({
               id: typeof item.id === "string" ? item.id : undefined,
@@ -7251,11 +7252,8 @@
               stateSnapshot: normalizeStoredStateSnapshot(item.stateSnapshot),
               comparisonResults: Array.isArray(item.comparisonResults) ? item.comparisonResults : null
             }));
-          const fallbackSeedMessages = anchorMessageId ?
-            branchSeedMessages :
-            branchSeedMessages.slice(0, -1);
 
-          if (anchorMessageId || fallbackSeedMessages.length) {
+          if (anchorMessageId || branchSeedMessages.length) {
             try {
               const createRes = await fetch("/api/branches/from-message", {
                 method: "POST",
@@ -7263,7 +7261,7 @@
                 body: JSON.stringify({
                   sourceConversationId: conversationIdBeforeSend,
                   anchorMessageId,
-                  seedMessages: anchorMessageId ? undefined : fallbackSeedMessages,
+                  seedMessages: anchorMessageId ? undefined : branchSeedMessages,
                   userId: branchUserId
                 })
               });
