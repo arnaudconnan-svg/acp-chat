@@ -5340,15 +5340,12 @@
 
     function syncEditModeBarPosition() {
       const bar = document.getElementById("editModeBar");
-      const inputArea = document.getElementById("inputArea");
       const inputAreaInner = document.getElementById("inputAreaInner");
 
-      if (!bar || !inputArea || !inputAreaInner) return;
+      if (!bar || !inputAreaInner) return;
 
-      const inputAreaRect = inputArea.getBoundingClientRect();
-      const inputAreaInnerRect = inputAreaInner.getBoundingClientRect();
       const gapPx = 8;
-      const bottomOffset = Math.max(0, inputAreaRect.bottom - inputAreaInnerRect.top + gapPx);
+      const bottomOffset = Math.max(0, inputAreaInner.offsetHeight + gapPx);
 
       bar.style.bottom = `${bottomOffset}px`;
     }
