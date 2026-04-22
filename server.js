@@ -6108,6 +6108,139 @@ app.get("/api/admin/conversations", requireAdminAuth, async (req, res) => {
   }
 });
 
+app.patch("/api/admin/conversations/:id/title", requireAdminAuth, async (req, res) => {
+  try {
+    if (!req.params || typeof req.params.id !== "string" || !req.params.id.trim()) {
+      return res.status(400).json({ error: "Conversation invalide" });
+    }
+
+    if (!req.body || typeof req.body !== "object" || Array.isArray(req.body) || (req.body.title !== null && typeof req.body.title !== "string")) {
+      return res.status(400).json({ error: "Invalid conversation title request" });
+    }
+
+    const conversationId = String(req.params.id || "").trim();
+    const convRef = db.ref("conversations").child(conversationId);
+    const convSnap = await convRef.once("value");
+    const existing = convSnap.val();
+
+    if (!existing || typeof existing !== "object") {
+      return res.status(404).json({ error: "Conversation introuvable" });
+    }
+
+    const normalizedTitle = typeof req.body.title === "string" ? req.body.title.trim().slice(0, 60) : "";
+    const now = new Date().toISOString();
+
+    await convRef.update({
+      title: normalizedTitle || null,
+      titleLocked: normalizedTitle.length > 0,
+      updatedAt: now
+    });
+
+    return res.json({
+      success: true,
+      conversation: {
+        id: conversationId,
+        title: normalizedTitle || null,
+        titleLocked: normalizedTitle.length > 0,
+        updatedAt: now
+      }
+    });
+  } catch (err) {
+    console.error("Erreur PATCH /api/admin/conversations/:id/title:", err.message);
+    return res.status(500).json({ error: "Conversation update failed" });
+  }
+});
+
+app.delete("/api/admin/conversations/:id", requireAdminAuth, async (req, res) => {
+  try {
+    if (!req.params || typeof req.params.id !== "string" || !req.params.id.trim()) {
+      return res.status(400).json({ error: "Conversation invalide" });
+    }
+
+    const conversationId = String(req.params.id || "").trim();
+    const convRef = db.ref("conversations").child(conversationId);
+    const convSnap = await convRef.once("value");
+    const existing = convSnap.val();
+
+    if (!existing || typeof existing !== "object") {
+      return res.status(404).json({ error: "Conversation introuvable" });
+    }
+
+    const messagesSnap = await messagesRef
+      .orderByChild("conversationId")
+      .equalTo(conversationId)
+      .once("value");
+
+    const messageIds = Object.keys(messagesSnap.val() || {});
+
+    const branchSnap = await branchRecordsRef.once("value");
+    const branches = branchSnap.val() || {};
+    const relatedBranchIds = Object.entries(branches)
+      .filter(([, value]) => {
+        const sourceConversationId = String(value?.sourceConversationId || "").trim();
+        const branchConversationId = String(value?.branchConversationId || "").trim();
+        return sourceConversationId === conversationId || branchConversationId === conversationId;
+      })
+      .map(([id]) => id);
+
+    await Promise.all([
+      convRef.remove(),
+      ...messageIds.map(messageId => messagesRef.child(messageId).remove()),
+      ...relatedBranchIds.map(branchId => branchRecordsRef.child(branchId).remove()),
+      ...relatedBranchIds.map(branchId => branchSeedSnapshotsRef.child(branchId).remove())
+    ]);
+
+    return res.json({
+      success: true,
+      deletedConversationId: conversationId,
+      deletedMessageCount: messageIds.length,
+      deletedBranchCount: relatedBranchIds.length
+    });
+  } catch (err) {
+    console.error("Erreur DELETE /api/admin/conversations/:id:", err.message);
+    return res.status(500).json({ error: "Conversation delete failed" });
+  }
+});
+
+app.post("/api/admin/wipe-data", requireAdminAuth, async (req, res) => {
+  try {
+    const firebaseTargets = [
+      "conversations",
+      "messages",
+      "users",
+      "userLabels",
+      "branches",
+      "branchSeeds",
+      ["pre", "miumBranches"].join(""),
+      ["pre", "miumBranchSeeds"].join("")
+    ];
+
+    const results = await Promise.allSettled(
+      firebaseTargets.map(target => db.ref(target).remove())
+    );
+
+    const failedTargets = results
+      .map((result, index) => ({ result, target: firebaseTargets[index] }))
+      .filter(entry => entry.result.status === "rejected")
+      .map(entry => entry.target);
+
+    if (failedTargets.length > 0) {
+      return res.status(500).json({
+        error: "Wipe Firebase incomplet",
+        failedTargets
+      });
+    }
+
+    return res.json({
+      success: true,
+      wipedTargets: firebaseTargets
+    });
+  } catch (err) {
+    console.error("Erreur POST /api/admin/wipe-data:", err.message);
+    return res.status(500).json({ error: "Wipe Firebase failed" });
+  }
+});
+
 // Admin route to fetch all messages for a specific conversation.
 app.get("/api/admin/conversations/:id/messages", requireAdminAuth, async (req, res) => {
   try {

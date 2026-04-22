@@ -48,6 +48,73 @@
       justify-content: center;
       min-height: 40px;
     }
+
+    #adminActionsWrap {
+      position: absolute;
+      right: 0;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+
+    #adminActionsBtn {
+      width: 34px;
+      height: 34px;
+      border: none;
+      border-radius: 999px;
+      background: transparent;
+      color: #245e66;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      padding: 0;
+      line-height: 1;
+    }
+
+    #adminActionsBtn svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    #adminActionsBtn:hover {
+      background: rgba(36, 94, 102, 0.1);
+    }
+
+    #adminActionsMenu {
+      display: none;
+      position: absolute;
+      top: 40px;
+      right: 0;
+      min-width: 220px;
+      background: rgba(255, 255, 255, 0.96);
+      border: 1px solid rgba(222, 228, 230, 0.92);
+      border-radius: 18px;
+      box-shadow: 0 14px 28px rgba(20, 36, 40, 0.18);
+      overflow: hidden;
+      z-index: 80;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+
+    .adminActionsMenuAction {
+      width: 100%;
+      border: none;
+      background: transparent;
+      padding: 13px 14px;
+      text-align: left;
+      font: inherit;
+      font-size: 14px;
+      color: #1f3f44;
+      cursor: pointer;
+    }
+
+    .adminActionsMenuAction:hover {
+      background: rgba(36, 94, 102, 0.08);
+    }
+
+    .adminActionsMenuActionDanger {
+      color: #a63a32;
+    }
     
     h1 {
       font-size: 20px;
@@ -83,6 +150,115 @@
       padding: 14px;
       cursor: pointer;
       box-shadow: 0 4px 14px rgba(43, 79, 82, 0.08);
+    }
+
+    .admin-conversation-card {
+      position: relative;
+      overflow: hidden;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: pan-y;
+      padding: 0;
+    }
+
+    .admin-conversation-open-btn {
+      width: 100%;
+      border: none;
+      background: transparent;
+      text-align: left;
+      cursor: pointer;
+      color: inherit;
+      font: inherit;
+      padding: 14px;
+      position: relative;
+      z-index: 1;
+      transition: transform 0.26s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .admin-conversation-main {
+      font-size: 15px;
+      font-weight: 600;
+      color: #1f3f44;
+      margin-bottom: 4px;
+      padding-right: 30px;
+    }
+
+    .admin-conversation-title {
+      font-size: 15px;
+      color: #334155;
+      margin-bottom: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-weight: 500;
+    }
+
+    .admin-conversation-count {
+      font-size: 13px;
+      color: #6b7280;
+    }
+
+    .admin-conversation-menu-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      width: 24px;
+      height: 24px;
+      border: none;
+      border-radius: 999px;
+      background: transparent;
+      color: #6b7280;
+      cursor: pointer;
+      font-size: 18px;
+      line-height: 1;
+      z-index: 2;
+      padding: 0;
+    }
+
+    .admin-conversation-menu-btn:hover {
+      background: rgba(36, 94, 102, 0.08);
+      color: #245e66;
+    }
+
+    .admin-swipe-action {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 72px;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #ffffff;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.22s ease, transform 0.22s ease;
+      z-index: 0;
+      padding: 0;
+    }
+
+    .admin-swipe-action svg {
+      width: 26px;
+      height: 26px;
+    }
+
+    .admin-swipe-action-rename {
+      left: 0;
+      background: #245e66;
+      transform: translateX(-14px);
+    }
+
+    .admin-swipe-action-delete {
+      right: 0;
+      background: #c44c43;
+      transform: translateX(14px);
+    }
+
+    .admin-conversation-card.is-swipe-open-left .admin-swipe-action-delete,
+    .admin-conversation-card.is-swipe-open-right .admin-swipe-action-rename {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateX(0);
     }
     
     .item:hover {
@@ -416,6 +592,18 @@
         <button id="debugToggleBtn" class="debug-toggle-btn" type="button" aria-label="Basculer les panneaux Debug">
           Debug
         </button>
+        <div id="adminActionsWrap">
+          <button id="adminActionsBtn" type="button" aria-label="Actions admin" aria-expanded="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="5" r="1.8" fill="currentColor"></circle>
+              <circle cx="12" cy="12" r="1.8" fill="currentColor"></circle>
+              <circle cx="12" cy="19" r="1.8" fill="currentColor"></circle>
+            </svg>
+          </button>
+          <div id="adminActionsMenu">
+            <button id="adminWipeDataBtn" type="button" class="adminActionsMenuAction adminActionsMenuActionDanger">Wipe data Firebase</button>
+          </div>
+        </div>
       </div>
       
       <div id="conversationMeta" class="meta" style="display:none;"></div>
@@ -426,9 +614,184 @@
   </div>
   
   <script>
+    let activeAdminConversationSwipeElement = null;
+    let activeAdminConversationSwipeCloser = null;
+    let adminWipeCountdownTimer = null;
+
     function getConversationIdFromUrl() {
       const params = new URLSearchParams(window.location.search);
       return params.get("c");
+    }
+
+    function closeAdminActionsMenu() {
+      const menu = document.getElementById("adminActionsMenu");
+      const btn = document.getElementById("adminActionsBtn");
+      if (!menu || !btn) {
+        return;
+      }
+      menu.style.display = "none";
+      btn.setAttribute("aria-expanded", "false");
+    }
+
+    function toggleAdminActionsMenu(event) {
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+
+      const menu = document.getElementById("adminActionsMenu");
+      const btn = document.getElementById("adminActionsBtn");
+      if (!menu || !btn) {
+        return;
+      }
+
+      const shouldOpen = menu.style.display !== "block";
+      menu.style.display = shouldOpen ? "block" : "none";
+      btn.setAttribute("aria-expanded", shouldOpen ? "true" : "false");
+    }
+
+    function closeAdminWipeModal() {
+      const modal = document.getElementById("adminWipeModal");
+      if (adminWipeCountdownTimer) {
+        clearInterval(adminWipeCountdownTimer);
+        adminWipeCountdownTimer = null;
+      }
+      if (modal) {
+        modal.remove();
+      }
+    }
+
+    function openAdminWipeModal() {
+      closeAdminActionsMenu();
+      closeAdminWipeModal();
+
+      const modal = document.createElement("div");
+      modal.id = "adminWipeModal";
+      modal.style.position = "fixed";
+      modal.style.inset = "0";
+      modal.style.background = "rgba(20, 36, 40, 0.36)";
+      modal.style.display = "flex";
+      modal.style.alignItems = "center";
+      modal.style.justifyContent = "center";
+      modal.style.padding = "16px";
+      modal.style.zIndex = "1200";
+
+      const box = document.createElement("div");
+      box.style.width = "100%";
+      box.style.maxWidth = "420px";
+      box.style.background = "#ffffff";
+      box.style.borderRadius = "16px";
+      box.style.border = "1px solid #d6e2e1";
+      box.style.padding = "16px";
+      box.style.boxShadow = "0 18px 36px rgba(20, 36, 40, 0.18)";
+
+      const title = document.createElement("div");
+      title.textContent = "Confirmer le wipe Firebase";
+      title.style.fontSize = "18px";
+      title.style.fontWeight = "700";
+      title.style.color = "#1f3f44";
+      title.style.marginBottom = "10px";
+
+      const text = document.createElement("div");
+      text.textContent = "Cette action supprime conversations, messages, utilisateurs, labels et branches dans Firebase.";
+      text.style.fontSize = "14px";
+      text.style.lineHeight = "1.45";
+      text.style.color = "#4b6366";
+      text.style.marginBottom = "14px";
+
+      const actions = document.createElement("div");
+      actions.style.display = "flex";
+      actions.style.gap = "8px";
+      actions.style.justifyContent = "flex-end";
+
+      const cancelBtn = document.createElement("button");
+      cancelBtn.type = "button";
+      cancelBtn.textContent = "Annuler";
+      cancelBtn.style.border = "1px solid #cfd8db";
+      cancelBtn.style.background = "#ffffff";
+      cancelBtn.style.color = "#245e66";
+      cancelBtn.style.borderRadius = "10px";
+      cancelBtn.style.padding = "10px 14px";
+      cancelBtn.style.cursor = "pointer";
+
+      const confirmBtn = document.createElement("button");
+      confirmBtn.type = "button";
+      confirmBtn.style.border = "none";
+      confirmBtn.style.background = "#c44c43";
+      confirmBtn.style.color = "#ffffff";
+      confirmBtn.style.borderRadius = "10px";
+      confirmBtn.style.padding = "10px 14px";
+      confirmBtn.style.cursor = "pointer";
+
+      let remaining = 5;
+      confirmBtn.disabled = true;
+      confirmBtn.textContent = `Confirmer (${remaining})`;
+
+      adminWipeCountdownTimer = setInterval(() => {
+        remaining -= 1;
+        if (remaining > 0) {
+          confirmBtn.textContent = `Confirmer (${remaining})`;
+          return;
+        }
+
+        clearInterval(adminWipeCountdownTimer);
+        adminWipeCountdownTimer = null;
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = "Confirmer";
+      }, 1000);
+
+      cancelBtn.onclick = () => {
+        closeAdminWipeModal();
+      };
+
+      confirmBtn.onclick = async () => {
+        if (confirmBtn.disabled) {
+          return;
+        }
+
+        confirmBtn.disabled = true;
+        cancelBtn.disabled = true;
+        confirmBtn.textContent = "Suppression...";
+
+        try {
+          const res = await fetchWithTimeout("/api/admin/wipe-data", {
+            method: "POST"
+          }, 30000);
+          const response = await readAdminJsonResponse(res);
+
+          if (response.redirectedToLogin) {
+            return;
+          }
+
+          if (!res.ok) {
+            const message = typeof response.data?.error === "string" ? response.data.error : "Wipe impossible";
+            alert(message);
+            closeAdminWipeModal();
+            return;
+          }
+
+          closeAdminWipeModal();
+          alert("Wipe Firebase termine.");
+          await loadConversations();
+        } catch (err) {
+          alert("Erreur wipe: " + (err?.message || "inconnue"));
+          closeAdminWipeModal();
+        }
+      };
+
+      modal.onclick = event => {
+        if (event.target === modal) {
+          closeAdminWipeModal();
+        }
+      };
+
+      actions.appendChild(cancelBtn);
+      actions.appendChild(confirmBtn);
+      box.appendChild(title);
+      box.appendChild(text);
+      box.appendChild(actions);
+      modal.appendChild(box);
+      document.body.appendChild(modal);
     }
     
     function setupRootBackToIndex() {
@@ -877,18 +1240,100 @@
           return;
         }
         
+        const editIconMarkup = `
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M4 20h4.2l9.7-9.7a1.8 1.8 0 0 0 0-2.6l-1.6-1.6a1.8 1.8 0 0 0-2.6 0L4 15.8V20z" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"></path>
+            <path d="M12.8 7.2l4 4" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"></path>
+          </svg>
+        `;
+        const deleteIconMarkup = `
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M6 7h12" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"></path>
+            <path d="M9.5 7V5.9A1.4 1.4 0 0 1 10.9 4.5h2.2a1.4 1.4 0 0 1 1.4 1.4V7" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"></path>
+            <path d="M8.2 10.2v6.1M12 10.2v6.1M15.8 10.2v6.1" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"></path>
+            <path d="M7.2 7l.7 11.2A1.7 1.7 0 0 0 9.6 19.8h4.8a1.7 1.7 0 0 0 1.7-1.6L16.8 7" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"></path>
+          </svg>
+        `;
+
+        const renameConversation = async conv => {
+          const currentTitle = String(conv.displayTitle || "").trim();
+          const raw = window.prompt("Nouveau titre de conversation", currentTitle || "");
+          if (raw === null) {
+            return;
+          }
+
+          const nextTitle = String(raw || "").trim().slice(0, 60);
+
+          const res = await fetchWithTimeout("/api/admin/conversations/" + encodeURIComponent(conv.id) + "/title", {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ title: nextTitle || null })
+          });
+          const response = await readAdminJsonResponse(res);
+
+          if (response.redirectedToLogin) {
+            return;
+          }
+
+          if (!res.ok) {
+            const message = typeof response.data?.error === "string" ? response.data.error : "Renommage impossible";
+            alert(message);
+            return;
+          }
+
+          await loadConversations();
+        };
+
+        const deleteConversation = async conv => {
+          const ok = window.confirm("Supprimer cette conversation de Firebase ?\n\nCette action est irreversible.");
+          if (!ok) {
+            return;
+          }
+
+          const res = await fetchWithTimeout("/api/admin/conversations/" + encodeURIComponent(conv.id), {
+            method: "DELETE"
+          });
+          const response = await readAdminJsonResponse(res);
+
+          if (response.redirectedToLogin) {
+            return;
+          }
+
+          if (!res.ok) {
+            const message = typeof response.data?.error === "string" ? response.data.error : "Suppression impossible";
+            alert(message);
+            return;
+          }
+
+          await loadConversations();
+        };
+
         data.forEach(conv => {
           const card = document.createElement("div");
-          card.className = "item";
-          card.style.position = "relative";
+          card.className = "item admin-conversation-card";
           card.dataset.convId = conv.id;
-          
+
+          const renameSwipeBtn = document.createElement("button");
+          renameSwipeBtn.type = "button";
+          renameSwipeBtn.className = "admin-swipe-action admin-swipe-action-rename";
+          renameSwipeBtn.setAttribute("aria-label", "Renommer la conversation");
+          renameSwipeBtn.innerHTML = editIconMarkup;
+
+          const deleteSwipeBtn = document.createElement("button");
+          deleteSwipeBtn.type = "button";
+          deleteSwipeBtn.className = "admin-swipe-action admin-swipe-action-delete";
+          deleteSwipeBtn.setAttribute("aria-label", "Supprimer la conversation");
+          deleteSwipeBtn.innerHTML = deleteIconMarkup;
+
+          const openBtn = document.createElement("button");
+          openBtn.type = "button";
+          openBtn.className = "admin-conversation-open-btn";
+
           const mainLine = document.createElement("div");
-          mainLine.style.fontSize = "15px";
-          mainLine.style.fontWeight = "600";
-          mainLine.style.color = "#1f3f44";
-          mainLine.style.marginBottom = "4px";
-          
+          mainLine.className = "admin-conversation-main";
+
           const updatedDate = new Date(conv.updatedAt || conv.createdAt);
           const formattedDate = updatedDate.toLocaleString("fr-FR", {
             day: "2-digit",
@@ -897,53 +1342,172 @@
             hour: "2-digit",
             minute: "2-digit"
           });
-          
+
           const userDisplay = conv.userLabel || conv.userId || "user inconnu";
           mainLine.textContent = formattedDate + " — " + userDisplay;
-          
-          const title = document.createElement("div");
-          title.style.fontSize = "15px";
-          title.style.color = "#334155";
-          title.style.marginBottom = "4px";
-          title.style.whiteSpace = "nowrap";
-          title.style.overflow = "hidden";
-          title.style.textOverflow = "ellipsis";
-          title.style.fontWeight = "500";
-          
-          const sessionTitle = conv.displayTitle || "(sans titre)";
-          title.textContent = sessionTitle;
-          
-          const count = document.createElement("div");
-          count.style.fontSize = "13px";
-          count.style.color = "#6b7280";
-          
-          const messageCount = conv.messageCount || 0;
-          count.textContent = messageCount + " messages";
 
-          
-          const menuBtn = document.createElement("div");
+          const title = document.createElement("div");
+          title.className = "admin-conversation-title";
+          title.textContent = conv.displayTitle || "(sans titre)";
+
+          const count = document.createElement("div");
+          count.className = "admin-conversation-count";
+          count.textContent = (conv.messageCount || 0) + " messages";
+
+          const menuBtn = document.createElement("button");
+          menuBtn.type = "button";
+          menuBtn.className = "admin-conversation-menu-btn";
           menuBtn.textContent = "⋮";
-          menuBtn.style.position = "absolute";
-          menuBtn.style.top = "10px";
-          menuBtn.style.right = "10px";
-          menuBtn.style.fontSize = "18px";
-          menuBtn.style.color = "#6b7280";
-          menuBtn.style.cursor = "pointer";
-          
-          menuBtn.onclick = (e) => {
+          menuBtn.setAttribute("aria-label", "Details conversation");
+
+          menuBtn.onclick = e => {
+            e.preventDefault();
             e.stopPropagation();
             showBottomSheet(conv);
           };
-          
-          card.onclick = () => {
-            window.location.href = "/admin.html?c=" + encodeURIComponent(conv.id);
+
+          let swipeStartX = 0;
+          let swipeStartY = 0;
+          let swipeDeltaX = 0;
+          let swipeActive = false;
+          let swipePointerId = null;
+          let swipeDirectionLocked = false;
+          let swipeBaseOffset = 0;
+          const swipeRevealWidth = 72;
+
+          const closeSwipeActions = () => {
+            swipeActive = false;
+            swipeDeltaX = 0;
+            swipeBaseOffset = 0;
+            swipePointerId = null;
+            swipeDirectionLocked = false;
+            card.classList.remove("is-swipe-open-left", "is-swipe-open-right");
+            openBtn.style.transform = "translateX(0)";
+
+            if (activeAdminConversationSwipeElement === card) {
+              activeAdminConversationSwipeElement = null;
+              activeAdminConversationSwipeCloser = null;
+            }
           };
-          
-          card.appendChild(mainLine);
-          card.appendChild(title);
-          card.appendChild(count);
+
+          const applySwipeOffset = offset => {
+            const clamped = Math.max(-swipeRevealWidth, Math.min(swipeRevealWidth, offset));
+            swipeDeltaX = clamped;
+            openBtn.style.transform = `translateX(${clamped}px)`;
+            card.classList.toggle("is-swipe-open-left", clamped < -24);
+            card.classList.toggle("is-swipe-open-right", clamped > 24);
+
+            if (clamped < -24 || clamped > 24) {
+              activeAdminConversationSwipeElement = card;
+              activeAdminConversationSwipeCloser = closeSwipeActions;
+            } else if (activeAdminConversationSwipeElement === card) {
+              activeAdminConversationSwipeElement = null;
+              activeAdminConversationSwipeCloser = null;
+            }
+          };
+
+          const startSwipe = event => {
+            if (event.target.closest(".admin-swipe-action") || event.target.closest(".admin-conversation-menu-btn")) return;
+            if (event.type === "mousedown" && event.button !== 0) return;
+
+            if (activeAdminConversationSwipeCloser && activeAdminConversationSwipeElement && activeAdminConversationSwipeElement !== card) {
+              activeAdminConversationSwipeCloser();
+            }
+
+            swipeActive = true;
+            swipeDirectionLocked = false;
+            swipeBaseOffset = swipeDeltaX;
+            swipePointerId = event.pointerId || null;
+            swipeStartX = event.touches && event.touches[0] ? event.touches[0].clientX : (event.clientX || 0);
+            swipeStartY = event.touches && event.touches[0] ? event.touches[0].clientY : (event.clientY || 0);
+          };
+
+          const moveSwipe = event => {
+            if (!swipeActive) return;
+            if (swipePointerId !== null && event.pointerId !== undefined && event.pointerId !== swipePointerId) return;
+
+            const clientX = event.touches && event.touches[0] ? event.touches[0].clientX : (event.clientX || 0);
+            const clientY = event.touches && event.touches[0] ? event.touches[0].clientY : (event.clientY || 0);
+            const deltaX = clientX - swipeStartX;
+            const deltaY = clientY - swipeStartY;
+
+            if (!swipeDirectionLocked) {
+              if (Math.abs(deltaY) > 10 && Math.abs(deltaY) > Math.abs(deltaX)) {
+                swipeActive = false;
+                return;
+              }
+
+              if (Math.abs(deltaX) > 8) {
+                swipeDirectionLocked = true;
+              } else {
+                return;
+              }
+            }
+
+            if (event.cancelable) {
+              event.preventDefault();
+            }
+
+            applySwipeOffset(swipeBaseOffset + deltaX);
+          };
+
+          const endSwipe = () => {
+            if (!swipeActive && !swipeDirectionLocked) return;
+
+            if (swipeDeltaX <= -40) {
+              applySwipeOffset(-swipeRevealWidth);
+            } else if (swipeDeltaX >= 40) {
+              applySwipeOffset(swipeRevealWidth);
+            } else {
+              closeSwipeActions();
+            }
+
+            swipeActive = false;
+            swipePointerId = null;
+            swipeDirectionLocked = false;
+          };
+
+          openBtn.addEventListener("click", e => {
+            if (card.classList.contains("is-swipe-open-left") || card.classList.contains("is-swipe-open-right")) {
+              e.preventDefault();
+              e.stopPropagation();
+              closeSwipeActions();
+              return;
+            }
+            window.location.href = "/admin.html?c=" + encodeURIComponent(conv.id);
+          });
+
+          renameSwipeBtn.addEventListener("click", async e => {
+            e.preventDefault();
+            e.stopPropagation();
+            closeSwipeActions();
+            await renameConversation(conv);
+          });
+
+          deleteSwipeBtn.addEventListener("click", async e => {
+            e.preventDefault();
+            e.stopPropagation();
+            closeSwipeActions();
+            await deleteConversation(conv);
+          });
+
+          card.addEventListener("touchstart", startSwipe, { passive: true });
+          card.addEventListener("touchmove", moveSwipe, { passive: false });
+          card.addEventListener("touchend", endSwipe);
+          card.addEventListener("touchcancel", closeSwipeActions);
+          card.addEventListener("mousedown", startSwipe);
+          card.addEventListener("mousemove", moveSwipe);
+          card.addEventListener("mouseup", endSwipe);
+          card.addEventListener("mouseleave", endSwipe);
+
+          openBtn.appendChild(mainLine);
+          openBtn.appendChild(title);
+          openBtn.appendChild(count);
+
+          card.appendChild(renameSwipeBtn);
+          card.appendChild(deleteSwipeBtn);
+          card.appendChild(openBtn);
           card.appendChild(menuBtn);
-          
           list.appendChild(card);
         });
       } catch (err) {
@@ -1605,7 +2169,7 @@
         
         const card = document.querySelector(`.item[data-conv-id="${conv.id}"]`);
         if (card) {
-          const mainLine = card.firstChild;
+          const mainLine = card.querySelector(".admin-conversation-main");
           if (mainLine) {
             const updatedDate = new Date(conv.updatedAt || conv.createdAt);
             const formattedDate = updatedDate.toLocaleString("fr-FR", {
@@ -1639,6 +2203,7 @@
     
     async function init() {
       const list = document.getElementById("list");
+      const adminActionsWrap = document.getElementById("adminActionsWrap");
       list.textContent = "Verification de la session admin...";
 
       const hasSession = await ensureAdminSession();
@@ -1654,11 +2219,17 @@
       
       if (conversationId) {
         title.textContent = "Messages";
+        if (adminActionsWrap) {
+          adminActionsWrap.style.display = "none";
+        }
         conversationMeta.style.display = "none";
         conversationMeta.textContent = "";
         await loadMessages(conversationId);
       } else {
         title.textContent = "Conversations";
+        if (adminActionsWrap) {
+          adminActionsWrap.style.display = "block";
+        }
         conversationMeta.style.display = "none";
         conversationMeta.textContent = "";
         await loadConversations();
@@ -1680,6 +2251,31 @@
     });
 
     document.addEventListener("DOMContentLoaded", () => {
+      const adminActionsBtn = document.getElementById("adminActionsBtn");
+      const adminWipeDataBtn = document.getElementById("adminWipeDataBtn");
+
+      if (adminActionsBtn) {
+        adminActionsBtn.addEventListener("click", toggleAdminActionsMenu);
+      }
+
+      if (adminWipeDataBtn) {
+        adminWipeDataBtn.addEventListener("click", openAdminWipeModal);
+      }
+
+      document.addEventListener("click", event => {
+        if (!event.target.closest("#adminActionsWrap")) {
+          closeAdminActionsMenu();
+        }
+
+        if (
+          activeAdminConversationSwipeCloser &&
+          activeAdminConversationSwipeElement &&
+          !event.target.closest(".admin-conversation-card")
+        ) {
+          activeAdminConversationSwipeCloser();
+        }
+      });
+
       init().catch(renderInitError);
     });
   </script>
