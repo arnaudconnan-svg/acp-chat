@@ -1123,17 +1123,18 @@
           const row = document.createElement("div");
           row.className = "branch-child-row";
 
+          const childBranchConversationId = String(branch?.branchConversationId || "").trim();
           const branchEdge = document.createElement("div");
           branchEdge.className = "branch-edge";
-          branchEdge.textContent = "Branche";
+          branchEdge.textContent = childBranchConversationId === currentConversationId ? "Courante" : String(index + 1);
 
           const childContent = document.createElement("div");
           childContent.className = "branch-child-content";
           childContent.appendChild(
             renderNode(
-              String(branch?.branchConversationId || "").trim(),
+              childBranchConversationId,
               nextLineage,
-              `Branche ${index + 1}`
+              String(index + 1)
             )
           );
 

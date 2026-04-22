@@ -5183,6 +5183,10 @@ app.get("/api/account/conversations", requireUserAuth, async (req, res) => {
           return false;
         }
 
+        if (value?.isBranch === true) {
+          return false;
+        }
+
         return true;
       })
       .map(([id, value]) => ({
@@ -5872,6 +5876,8 @@ app.post("/api/branches/:id/activate", async (req, res) => {
 
       await convRef.set({
         userId: actorUserId,
+        isBranch: true,
+        sourceConversationId: String(branch.sourceConversationId || ""),
         createdAt: now,
         updatedAt: now,
         title: `Branche de ${String(branch.sourceConversationId || "conversation")}`,
@@ -6184,7 +6190,9 @@ app.get("/api/admin/conversations", requireAdminAuth, async (req, res) => {
     const data = convSnap.val() || {};
     const labels = labelsSnap.val() || {};
     
-    const conversations = Object.entries(data).map(([id, value]) => {
+    const conversations = Object.entries(data)
+      .filter(([, value]) => value?.isBranch !== true)
+      .map(([id, value]) => {
       const rawUserId = value.userId || null;
       const label = rawUserId && labels[rawUserId] ? labels[rawUserId] : null;
       
