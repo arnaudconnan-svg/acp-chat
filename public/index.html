@@ -3453,13 +3453,15 @@
         return;
       }
 
+      const branchUserId = getOrCreateUserId();
+
       showTemporaryNotice("Creation de la branche...");
 
       try {
         const createRes = await fetch("/api/branches/from-message", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sourceConversationId, anchorMessageId })
+          body: JSON.stringify({ sourceConversationId, anchorMessageId, userId: branchUserId })
         });
 
         if (!createRes.ok) {
@@ -3482,7 +3484,10 @@
         const activateRes = await fetch("/api/branches/" + branchId + "/activate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(branchState)
+          body: JSON.stringify({
+            ...branchState,
+            userId: branchUserId
+          })
         });
 
         if (!activateRes.ok) {
@@ -7176,8 +7181,10 @@
           !isConversationPrivateById(conversationIdBeforeSend, previousConversationSnapshot);
 
         let branchActivated = false;
+        let branchFailureMessage = "";
 
         if (canCreateBranchFromEdit) {
+          const branchUserId = getOrCreateUserId();
           const anchorCandidate = [...truncatedHistory]
             .reverse()
             .find(item => item && typeof item.id === "string" && item.id.trim());
@@ -7190,7 +7197,8 @@
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                   sourceConversationId: conversationIdBeforeSend,
-                  anchorMessageId
+                  anchorMessageId,
+                  userId: branchUserId
                 })
               });
 
@@ -7203,7 +7211,10 @@
                   const activateRes = await fetch("/api/branches/" + branchId + "/activate", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(deriveBranchConversationState(conversationIdBeforeSend, truncatedHistory))
+                    body: JSON.stringify({
+                      ...deriveBranchConversationState(conversationIdBeforeSend, truncatedHistory),
+                      userId: branchUserId
+                    })
                   });
 
                   if (activateRes.ok) {
@@ -7218,11 +7229,30 @@
                     clearEditUndoPayload();
                     requestIsEdited = false;
                     branchActivated = true;
+                  } else {
+                    const activateData = await activateRes.json().catch(() => ({}));
+                    branchFailureMessage = "Activation branche impossible : " + (activateData.error || activateRes.status);
                   }
+                } else {
+                  branchFailureMessage = "Creation de branche invalide";
                 }
+              } else {
+                const createData = await createRes.json().catch(() => ({}));
+                branchFailureMessage = "Creation de branche impossible : " + (createData.error || createRes.status);
               }
-            } catch {}
+            } catch (err) {
+              branchFailureMessage = "Erreur branche : " + (err && err.message ? err.message : "inconnue");
+            }
+          } else {
+            branchFailureMessage = "Ancre de branche introuvable";
           }
+        }
+
+        if (canCreateBranchFromEdit && !branchActivated) {
+          isSending = false;
+          syncInputAvailability();
+          showTemporaryNotice(branchFailureMessage || "Branchement impossible pour cette modification");
+          return;
         }
 
         if (!branchActivated) {
@@ -8661,7 +8691,7 @@
         // Fetch branch seed from backend.
         try {
           // Find the branch id by listing branches then matching on branchConversationId.
-          const branchesRes = await fetch("/api/branches", { credentials: "include" });
+          const branchesRes = await fetch("/api/branches?userId=" + encodeURIComponent(getOrCreateUserId()), { credentials: "include" });
           if (branchesRes.ok) {
             const branchesData = await branchesRes.json().catch(() => ({}));
             const matchBranch = Array.isArray(branchesData.branches)
@@ -8669,7 +8699,7 @@
               : null;
 
             if (matchBranch) {
-              const branchRes = await fetch("/api/branches/" + encodeURIComponent(matchBranch.id), { credentials: "include" });
+              const branchRes = await fetch("/api/branches/" + encodeURIComponent(matchBranch.id) + "?userId=" + encodeURIComponent(getOrCreateUserId()), { credentials: "include" });
               if (branchRes.ok) {
                 const branchData = await branchRes.json().catch(() => ({}));
                 const seedMessages = Array.isArray(branchData.messages) ? branchData.messages : [];

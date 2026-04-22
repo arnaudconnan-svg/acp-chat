@@ -561,6 +561,26 @@ async function requireUserAuth(req, res, next) {
   }
 }
 
+async function resolveBranchActorUserId(req) {
+  try {
+    const session = await getUserSession(req);
+
+    if (session && typeof session.userId === "string" && session.userId.trim()) {
+      return session.userId.trim();
+    }
+  } catch (err) {
+    console.error("Erreur resolveBranchActorUserId:", err.message);
+  }
+
+  const bodyUserId = typeof req.body?.userId === "string" ? req.body.userId.trim() : "";
+  if (bodyUserId) {
+    return bodyUserId;
+  }
+
+  const queryUserId = typeof req.query?.userId === "string" ? req.query.userId.trim() : "";
+  return queryUserId;
+}
+
 // Middleware protecting admin routes by redirecting unauthenticated users.
 function requireAdminAuth(req, res, next) {
   const session = getAdminSession(req);
@@ -5593,12 +5613,17 @@ app.post("/api/account/conversations/import-local", requireUserAuth, async (req,
   }
 });
 
-app.get("/api/branches", requireUserAuth, async (req, res) => {
+app.get("/api/branches", async (req, res) => {
   try {
-    const session = req.userSession;
+    const actorUserId = await resolveBranchActorUserId(req);
+
+    if (!actorUserId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
     const snapshot = await branchRecordsRef
       .orderByChild("userId")
-      .equalTo(session.userId)
+      .equalTo(actorUserId)
       .limitToLast(100)
       .once("value");
 
@@ -5624,23 +5649,24 @@ app.get("/api/branches", requireUserAuth, async (req, res) => {
   }
 });
 
-app.post("/api/branches/from-message", requireUserAuth, async (req, res) => {
+app.post("/api/branches/from-message", async (req, res) => {
   try {
     if (
       !req.body ||
       typeof req.body !== "object" ||
       Array.isArray(req.body) ||
       typeof req.body.sourceConversationId !== "string" ||
-      typeof req.body.anchorMessageId !== "string"
+      typeof req.body.anchorMessageId !== "string" ||
+      (req.body.userId !== undefined && typeof req.body.userId !== "string")
     ) {
       return res.status(400).json({ error: "Invalid branch request" });
     }
 
-    const session = req.userSession;
+    const actorUserId = await resolveBranchActorUserId(req);
     const sourceConversationId = String(req.body.sourceConversationId || "").trim();
     const anchorMessageId = String(req.body.anchorMessageId || "").trim();
 
-    if (!sourceConversationId || !anchorMessageId) {
+    if (!sourceConversationId || !anchorMessageId || !actorUserId) {
       return res.status(400).json({ error: "Missing sourceConversationId or anchorMessageId" });
     }
 
@@ -5651,7 +5677,7 @@ app.post("/api/branches/from-message", requireUserAuth, async (req, res) => {
       return res.status(404).json({ error: "Source conversation not found" });
     }
 
-    if (String(sourceConversation.userId || "") !== session.userId) {
+    if (String(sourceConversation.userId || "") !== actorUserId) {
       return res.status(403).json({ error: "Conversation ownership mismatch" });
     }
 
@@ -5707,7 +5733,7 @@ app.post("/api/branches/from-message", requireUserAuth, async (req, res) => {
 
     await Promise.all([
       branchRef.set({
-        userId: session.userId,
+        userId: actorUserId,
         sourceConversationId,
         sourceAnchorMessageId: anchorMessageId,
         branchConversationId,
@@ -5742,10 +5768,10 @@ app.post("/api/branches/from-message", requireUserAuth, async (req, res) => {
   }
 });
 
-app.post("/api/branches/:id/activate", requireUserAuth, async (req, res) => {
+app.post("/api/branches/:id/activate", async (req, res) => {
   try {
-    const session = req.userSession;
     const branchId = String(req.params?.id || "").trim();
+    const actorUserId = await resolveBranchActorUserId(req);
 
     if (
       req.body !== undefined &&
@@ -5761,7 +5787,11 @@ app.post("/api/branches/:id/activate", requireUserAuth, async (req, res) => {
       return res.status(400).json({ error: "Invalid branch flags payload" });
     }
 
-    if (!branchId) {
+    if (req.body?.userId !== undefined && typeof req.body.userId !== "string") {
+      return res.status(400).json({ error: "Invalid branch user id payload" });
+    }
+
+    if (!branchId || !actorUserId) {
       return res.status(400).json({ error: "Invalid branch id" });
     }
 
@@ -5785,7 +5815,7 @@ app.post("/api/branches/:id/activate", requireUserAuth, async (req, res) => {
       return res.status(404).json({ error: "Branch not found" });
     }
 
-    if (String(branch.userId || "") !== session.userId) {
+    if (String(branch.userId || "") !== actorUserId) {
       return res.status(403).json({ error: "Branch ownership mismatch" });
     }
 
@@ -5810,7 +5840,7 @@ app.post("/api/branches/:id/activate", requireUserAuth, async (req, res) => {
       const now = new Date().toISOString();
 
       await convRef.set({
-        userId: session.userId,
+        userId: actorUserId,
         createdAt: now,
         updatedAt: now,
         title: `Branche de ${String(branch.sourceConversationId || "conversation")}`,
@@ -5829,7 +5859,7 @@ app.post("/api/branches/:id/activate", requireUserAuth, async (req, res) => {
             role: String(message?.role || ""),
             content: String(message?.content || ""),
             timestamp: timestampBase + index,
-            userId: session.userId,
+            userId: actorUserId,
             conversationId: branchConversationId,
             debug: Array.isArray(message?.debug) ? message.debug : [],
             debugMeta: message?.debugMeta && typeof message.debugMeta === "object" ? message.debugMeta : null,
@@ -5880,12 +5910,12 @@ app.post("/api/branches/:id/activate", requireUserAuth, async (req, res) => {
 });
 
 // Fetch a single branch record + seed messages (for cross-device resume).
-app.get("/api/branches/:id", requireUserAuth, async (req, res) => {
+app.get("/api/branches/:id", async (req, res) => {
   try {
-    const session = req.userSession;
     const branchId = String(req.params?.id || "").trim();
+    const actorUserId = await resolveBranchActorUserId(req);
 
-    if (!branchId) {
+    if (!branchId || !actorUserId) {
       return res.status(400).json({ error: "Invalid branch id" });
     }
 
@@ -5901,7 +5931,7 @@ app.get("/api/branches/:id", requireUserAuth, async (req, res) => {
       return res.status(404).json({ error: "Branch not found" });
     }
 
-    if (String(branch.userId || "") !== session.userId) {
+    if (String(branch.userId || "") !== actorUserId) {
       return res.status(403).json({ error: "Branch ownership mismatch" });
     }
 
