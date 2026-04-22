@@ -26,6 +26,7 @@ const db = admin.database();
 const messagesRef = db.ref("messages");
 const userLabelsRef = db.ref("userLabels");
 const usersRef = db.ref("users");
+const adminSettingsRef = db.ref("adminSettings");
 const branchRecordsRef = db.ref("branches");
 const branchSeedSnapshotsRef = db.ref("branchSeeds");
 const crypto = require("crypto");
@@ -4838,9 +4839,52 @@ async function generateConversationTitle(messages) {
 // --------------------------------------------------
 
 // Admin login route that creates a time-limited session cookie.
-app.get("/api/admin/session", (req, res) => {
-  const session = getAdminSession(req);
-  res.json({ authenticated: !!session });
+app.get("/api/admin/session", async (req, res) => {
+  try {
+    const session = getAdminSession(req);
+    if (!session) {
+      return res.json({ authenticated: false });
+    }
+
+    const settingsSnap = await adminSettingsRef.once("value");
+    const settings = settingsSnap.val() || {};
+
+    return res.json({
+      authenticated: true,
+      settings: {
+        mailsEnabled: settings.mailsEnabled !== false
+      }
+    });
+  } catch (err) {
+    console.error("Erreur /api/admin/session:", err.message);
+    return res.status(500).json({ error: "Admin session lookup failed" });
+  }
+});
+
+app.put("/api/admin/settings", requireAdminAuth, async (req, res) => {
+  try {
+    if (
+      !req.body ||
+      typeof req.body !== "object" ||
+      Array.isArray(req.body) ||
+      typeof req.body.mailsEnabled !== "boolean"
+    ) {
+      return res.status(400).json({ error: "Invalid admin settings payload" });
+    }
+
+    const mailsEnabled = req.body.mailsEnabled === true;
+    await adminSettingsRef.update({ mailsEnabled });
+
+    return res.json({
+      success: true,
+      settings: {
+        mailsEnabled
+      }
+    });
+  } catch (err) {
+    console.error("Erreur PUT /api/admin/settings:", err.message);
+    return res.status(500).json({ error: "Admin settings update failed" });
+  }
 });
 
 app.post("/api/admin/login", (req, res) => {
@@ -6906,7 +6950,20 @@ app.post("/chat", async (req, res) => {
       });
     }
 
-    if (!isPrivateConversation && emailNotifier.enabled && mailsEnabled !== false && adminVisitedSinceLastAlert && adminUiActive !== true) {
+    let effectiveMailsEnabled = mailsEnabled !== false;
+
+    if (effectiveMailsEnabled) {
+      try {
+        const adminMailsSnap = await adminSettingsRef.child("mailsEnabled").once("value");
+        if (adminMailsSnap.exists()) {
+          effectiveMailsEnabled = adminMailsSnap.val() !== false;
+        }
+      } catch (err) {
+        console.error("Erreur lecture adminSettings.mailsEnabled:", err.message);
+      }
+    }
+
+    if (!isPrivateConversation && emailNotifier.enabled && effectiveMailsEnabled && adminVisitedSinceLastAlert && adminUiActive !== true) {
       adminVisitedSinceLastAlert = false;
       emailNotifier.sendNewMessageAlert();
     }
