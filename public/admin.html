@@ -1812,10 +1812,15 @@
             });
           }
 
-          if (meta.memoryBeforeCompression) {
+          if (meta.memoryCompressed && meta.memoryBeforeCompression) {
             sections.push({
-              title: "Mémoire (avant compression)",
+              title: "M\u00e9moire avant r\u00e9\u00e9criture",
               content: meta.memoryBeforeCompression
+            });
+          } else {
+            sections.push({
+              title: "Pas de r\u00e9\u00e9criture",
+              content: "\u2014"
             });
           }
           
