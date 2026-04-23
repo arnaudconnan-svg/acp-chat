@@ -5681,7 +5681,8 @@ app.post("/api/account/conversations/import-local", requireUserAuth, async (req,
               memoryRewriteSource: typeof debugMeta.memoryRewriteSource === "string" ? debugMeta.memoryRewriteSource : null,
               modelConflict: debugMeta.modelConflict === true,
               humanFieldRisk: debugMeta.humanFieldRisk === true,
-              humanFieldOriginalReply: typeof debugMeta.humanFieldOriginalReply === "string" ? debugMeta.humanFieldOriginalReply : null
+              humanFieldOriginalReply: typeof debugMeta.humanFieldOriginalReply === "string" ? debugMeta.humanFieldOriginalReply : null,
+              soberReadjustmentOriginalReply: typeof debugMeta.soberReadjustmentOriginalReply === "string" ? debugMeta.soberReadjustmentOriginalReply : null
             } : null,
             stateSnapshot: stateSnapshot ? {
               memory: typeof stateSnapshot.memory === "string" ? normalizeMemory(stateSnapshot.memory, buildDefaultPromptRegistry()) : "",
@@ -7861,6 +7862,7 @@ app.post("/chat", async (req, res) => {
       modelConflict = false,
       humanFieldRisk = false,
       humanFieldOriginalReply = null,
+      soberReadjustmentOriginalReply = null,
       criticTriggered = false,
       criticIssues = [],
       confidenceLevel = "high",
@@ -7909,6 +7911,7 @@ app.post("/chat", async (req, res) => {
         modelConflict: modelConflict === true,
         humanFieldRisk: humanFieldRisk === true,
         humanFieldOriginalReply: humanFieldRisk === true && typeof humanFieldOriginalReply === "string" ? humanFieldOriginalReply : null,
+        soberReadjustmentOriginalReply: typeof soberReadjustmentOriginalReply === "string" ? soberReadjustmentOriginalReply : null,
         criticTriggered: criticTriggered === true,
         criticIssues: Array.isArray(criticIssues) ? criticIssues : [],
         confidenceLevel: typeof confidenceLevel === "string" ? confidenceLevel : "high"
@@ -8486,11 +8489,16 @@ app.post("/chat", async (req, res) => {
     generatedBase.promptDebug = mainPromptDebug;
     let replyRewriteSource = null;
     let replyCandidate = generatedBase.reply;
+    let soberReadjustmentOriginalReply = null;
 
     if (
       interpretationRejection.isInterpretationRejection === true ||
       interpretationRejection.needsSoberReadjustment === true
     ) {
+      if (interpretationRejection.needsSoberReadjustment === true) {
+        soberReadjustmentOriginalReply = replyCandidate;
+      }
+
       replyCandidate = await rewriteInterpretationRejectionReply({
         message,
         history: recentHistory,
@@ -8708,6 +8716,7 @@ app.post("/chat", async (req, res) => {
       modelConflict,
       humanFieldRisk,
       humanFieldOriginalReply,
+      soberReadjustmentOriginalReply,
       criticTriggered,
       criticIssues,
       confidenceLevel,

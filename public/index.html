@@ -3601,7 +3601,8 @@
               memoryRewriteSource: typeof item.debugMeta.memoryRewriteSource === "string" ? item.debugMeta.memoryRewriteSource : null,
               memoryCompressed: item.debugMeta.memoryCompressed === true,
               memoryBeforeCompression: typeof item.debugMeta.memoryBeforeCompression === "string" ? item.debugMeta.memoryBeforeCompression : null,
-              modelConflict: item.debugMeta.modelConflict === true
+              modelConflict: item.debugMeta.modelConflict === true,
+              soberReadjustmentOriginalReply: typeof item.debugMeta.soberReadjustmentOriginalReply === "string" ? item.debugMeta.soberReadjustmentOriginalReply : null
             } : null,
             stateSnapshot: normalizeStoredStateSnapshot(item?.stateSnapshot),
             comparisonResults: Array.isArray(item?.comparisonResults) ? item.comparisonResults : null
@@ -3976,7 +3977,8 @@
           memoryRewriteSource: typeof debugMeta.memoryRewriteSource === "string" ? debugMeta.memoryRewriteSource : null,
           memoryCompressed: debugMeta.memoryCompressed === true,
           memoryBeforeCompression: typeof debugMeta.memoryBeforeCompression === "string" ? debugMeta.memoryBeforeCompression : null,
-          modelConflict: debugMeta.modelConflict === true
+          modelConflict: debugMeta.modelConflict === true,
+          soberReadjustmentOriginalReply: typeof debugMeta.soberReadjustmentOriginalReply === "string" ? debugMeta.soberReadjustmentOriginalReply : null
         } : null,
         stateSnapshot: normalizeStoredStateSnapshot(stateSnapshot),
         id: id && typeof id === "string" ? id : undefined,
@@ -6137,7 +6139,8 @@
           memoryCompressed: false,
           memoryBeforeCompression: "",
           humanFieldRisk: false,
-          humanFieldOriginalReply: ""
+          humanFieldOriginalReply: "",
+          soberReadjustmentOriginalReply: ""
         };
         
         if (!debugMetaValue || typeof debugMetaValue !== "object") {
@@ -6214,6 +6217,10 @@
 
         if (typeof debugMetaValue.humanFieldOriginalReply === "string") {
           meta.humanFieldOriginalReply = debugMetaValue.humanFieldOriginalReply.trim();
+        }
+
+        if (typeof debugMetaValue.soberReadjustmentOriginalReply === "string") {
+          meta.soberReadjustmentOriginalReply = debugMetaValue.soberReadjustmentOriginalReply.trim();
         }
         
         return meta;
@@ -6425,14 +6432,25 @@
         });
       }
       
-      if (role === "bot" && hasDebugContent && showDebug && debugMeta.topChips.length > 0) {
+      const hasSoberReadjustmentChip =
+        role === "bot" &&
+        hasDebugContent &&
+        showDebug &&
+        debugMeta.topChips.includes("Réajustement sobre");
+
+      const topChipsAboveBubble =
+        hasSoberReadjustmentChip ?
+          debugMeta.topChips.filter(label => label !== "Réajustement sobre") :
+          debugMeta.topChips;
+
+      if (role === "bot" && hasDebugContent && showDebug && topChipsAboveBubble.length > 0) {
         const top = document.createElement("div");
         top.style.display = "flex";
         top.style.flexWrap = "wrap";
         top.style.gap = "6px";
         top.style.marginBottom = "6px";
         
-        debugMeta.topChips.forEach(label => {
+        topChipsAboveBubble.forEach(label => {
           const chip = document.createElement("div");
           chip.className = "debug-chip";
           chip.textContent = label;
@@ -6443,6 +6461,24 @@
       }
       
       contentWrap.appendChild(bubble);
+
+      if (hasSoberReadjustmentChip) {
+        const soberDetails = document.createElement("details");
+        soberDetails.className = "debug-detail";
+        soberDetails.style.marginTop = "6px";
+
+        const soberSummary = document.createElement("summary");
+        soberSummary.className = "debug-chip";
+        soberSummary.textContent = "Réajustement sobre";
+
+        const soberContent = document.createElement("div");
+        soberContent.className = "debug-block";
+        soberContent.textContent = debugMeta.soberReadjustmentOriginalReply || "Réponse avant réécriture indisponible.";
+
+        soberDetails.appendChild(soberSummary);
+        soberDetails.appendChild(soberContent);
+        contentWrap.appendChild(soberDetails);
+      }
 
       if (role === "bot") {
         const actionsRow = document.createElement("div");
