@@ -370,6 +370,25 @@
       height: 18px;
     }
 
+    .messageActionBtn.is-thumb-active {
+      color: #1f535a !important;
+      background: rgba(36, 94, 102, 0.22) !important;
+      border-radius: 999px;
+      box-shadow: inset 0 0 0 1px rgba(31, 83, 90, 0.14);
+    }
+
+    #feedbackModal {
+      align-items: flex-start;
+      padding-top: calc(14px + env(safe-area-inset-top, 0px));
+      padding-bottom: 10px;
+    }
+
+    #feedbackModal .modalBox {
+      margin-top: 0;
+      max-height: calc(100dvh - 28px - env(safe-area-inset-top, 0px));
+      overflow-y: auto;
+    }
+
     #welcomeActions.is-secondary-visible #welcomeSecondaryActions {
       opacity: 1;
       transform: translateY(0);
@@ -1604,7 +1623,7 @@
       box-shadow:
         0 10px 22px rgba(36, 94, 102, 0.1),
         0 1px 0 rgba(255, 255, 255, 0.4) inset;
-      : : 9px;
+      font-size: 19px;
       font-weight: 700;
       line-height: 1;
       letter-spacing: 0.02em;
@@ -2177,6 +2196,59 @@
       <div class="modalActions">
         <button class="modalBtnSecondary" id="cancelPrivateConversationBtn" type="button">Annuler</button>
         <button class="modalBtnPrimary" id="confirmPrivateConversationBtn" type="button">Accepter</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Feedback modal: thumbs up/down with optional comment and dev-share toggle -->
+  <div id="feedbackModal" class="modal">
+    <div class="modalBox">
+      <h3 class="modalTitle" id="feedbackModalTitle">Votre avis</h3>
+      <p class="modalText" id="feedbackModalText" style="margin-bottom:0;"></p>
+      <textarea
+        id="feedbackCommentInput"
+        maxlength="1000"
+        rows="3"
+        placeholder="Commentaire optionnel..."
+        style="
+          width:100%;
+          box-sizing:border-box;
+          margin-top:12px;
+          padding:10px 12px;
+          border-radius:10px;
+          border:1px solid #c8d8d8;
+          font-size:14px;
+          line-height:1.5;
+          color:#1f3f44;
+          background:#f6fafa;
+          resize:vertical;
+          font-family:inherit;
+        "
+      ></textarea>
+      <div class="modalCheckboxRow" style="margin-top:14px;">
+        <input type="checkbox" id="feedbackDevShareToggle" checked />
+        <label for="feedbackDevShareToggle">Transmettre au développeur de Facilitat.io</label>
+      </div>
+      <div class="modalActions">
+        <button class="modalBtnSecondary" id="cancelFeedbackBtn" type="button">Annuler</button>
+        <button class="modalBtnPrimary" id="confirmFeedbackBtn" type="button">Enregistrer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Private feedback confirmation: explains a non-private snapshot branch will be created -->
+  <div id="feedbackPrivateConfirmModal" class="modal">
+    <div class="modalBox">
+      <h3 class="modalTitle">Partager ce feedback</h3>
+      <p class="modalText">
+        Cette conversation est privée. Pour transmettre votre avis au développeur, une copie non-privée de cet échange (uniquement ce message et la réponse associée) sera créée sur le serveur.
+      </p>
+      <p class="modalText" style="font-size:13px;color:#666;">
+        Aucune autre partie de votre conversation ne sera partagée.
+      </p>
+      <div class="modalActions">
+        <button class="modalBtnSecondary" id="cancelFeedbackPrivateConfirmBtn" type="button">Annuler</button>
+        <button class="modalBtnPrimary" id="confirmFeedbackPrivateConfirmBtn" type="button">Continuer</button>
       </div>
     </div>
   </div>
@@ -5390,7 +5462,267 @@
         notice.style.transform = "translateX(-50%) translateY(8px)";
       }, 1700);
     }
-    
+
+    // ── Feedback (pouces) ──────────────────────────────────────────────────────
+    // State tracking for the currently-open feedback modal
+    let _feedbackModalPending = null;
+
+    function resolveFeedbackHistoryIndex(historyIndex, botContent) {
+      const history = loadHistory();
+      if (!Array.isArray(history) || history.length === 0) return -1;
+
+      if (
+        Number.isInteger(historyIndex) &&
+        historyIndex >= 0 &&
+        historyIndex < history.length &&
+        history[historyIndex] &&
+        (history[historyIndex].role === "assistant" || history[historyIndex].role === "bot")
+      ) {
+        return historyIndex;
+      }
+
+      const normalizedBotContent = String(botContent || "").trim();
+      if (normalizedBotContent) {
+        for (let i = history.length - 1; i >= 0; i -= 1) {
+          const entry = history[i];
+          if (!entry || (entry.role !== "assistant" && entry.role !== "bot")) continue;
+          if (String(entry.content || "").trim() === normalizedBotContent) {
+            return i;
+          }
+        }
+      }
+
+      for (let i = history.length - 1; i >= 0; i -= 1) {
+        const entry = history[i];
+        if (entry && (entry.role === "assistant" || entry.role === "bot")) {
+          return i;
+        }
+      }
+
+      return -1;
+    }
+
+    function saveFeedbackLocally(historyIndex, feedbackType, comment, devShare, options = {}) {
+      const { devShareLocked = false } = options;
+      const conversationId = getConversationId();
+      if (conversationId === null || conversationId === undefined || conversationId === "") return;
+      const data = loadConversationData(conversationId);
+      const messages = Array.isArray(data.messages) ? data.messages : [];
+      if (historyIndex < 0 || historyIndex >= messages.length) return;
+      const previousFeedback = messages[historyIndex] && messages[historyIndex].feedback ? messages[historyIndex].feedback : null;
+      const nextDevShareLocked = previousFeedback && previousFeedback.devShareLocked === true ? true : devShareLocked === true;
+      const shouldForceDevShare = nextDevShareLocked === true;
+      messages[historyIndex] = {
+        ...messages[historyIndex],
+        feedback: {
+          type: feedbackType,
+          comment: comment || null,
+          devShare: shouldForceDevShare ? true : devShare,
+          timestamp: Date.now(),
+          devShareLocked: nextDevShareLocked,
+          devSharedAt: nextDevShareLocked ? (previousFeedback && previousFeedback.devSharedAt ? previousFeedback.devSharedAt : Date.now()) : null
+        }
+      };
+      saveConversationData(conversationId, {
+        ...data,
+        messages,
+        updatedAt: Date.now()
+      });
+    }
+
+    function lockFeedbackDevShareLocally(historyIndex, feedbackType, comment) {
+      if (historyIndex < 0) return;
+      saveFeedbackLocally(historyIndex, feedbackType, comment, true, { devShareLocked: true });
+    }
+
+    function applyFeedbackToggleUiState(toggleEl, labelEl, isLocked) {
+      if (!toggleEl) return;
+      toggleEl.disabled = isLocked === true;
+      if (isLocked) {
+        toggleEl.checked = true;
+      }
+      toggleEl.style.opacity = isLocked ? "0.55" : "";
+      toggleEl.style.cursor = isLocked ? "not-allowed" : "";
+      if (labelEl) {
+        labelEl.style.color = isLocked ? "#8a9698" : "";
+      }
+    }
+
+    async function submitFeedbackToServer(feedbackType, comment, devShare, historyIndex, botContent) {
+      const conversationId = getConversationId();
+      const userId = getOrCreateUserId();
+      const isPrivate = isConversationPrivateById(conversationId, loadConversationData(conversationId));
+      const resolvedHistoryIndex = resolveFeedbackHistoryIndex(historyIndex, botContent);
+
+      if (isPrivate) {
+        // Need snapshot branch
+        const history = loadHistory();
+        const botEntry = resolvedHistoryIndex >= 0 ? history[resolvedHistoryIndex] : null;
+        const userEntry = resolvedHistoryIndex > 0 ? history[resolvedHistoryIndex - 1] : null;
+        const userContent = userEntry && userEntry.role === "user" ? String(userEntry.content || "") : "";
+
+        const res = await fetch("/api/branches/feedback-snapshot", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            type: feedbackType,
+            comment: comment || null,
+            devShare,
+            userId,
+            userContent,
+            botContent: botContent || String(botEntry && botEntry.content || "")
+          })
+        });
+
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error || "Snapshot failed");
+        }
+        return await res.json();
+      }
+
+      // Non-private: use the message id stored in history
+      const history = loadHistory();
+      const botEntry = resolvedHistoryIndex >= 0 ? history[resolvedHistoryIndex] : null;
+      const messageId = botEntry && botEntry.id ? String(botEntry.id) : null;
+
+      if (!messageId) {
+        throw new Error("Identifiant du message introuvable");
+      }
+
+      const res = await fetch("/api/messages/" + encodeURIComponent(messageId) + "/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: feedbackType,
+          comment: comment || null,
+          devShare,
+          userId
+        })
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Feedback failed");
+      }
+      return await res.json();
+    }
+
+    function openFeedbackModal(feedbackType, botContent, historyIndex, thumbUpBtn, thumbDownBtn) {
+      const modal = document.getElementById("feedbackModal");
+      const titleEl = document.getElementById("feedbackModalTitle");
+      const textEl = document.getElementById("feedbackModalText");
+      const commentInput = document.getElementById("feedbackCommentInput");
+      const devShareToggle = document.getElementById("feedbackDevShareToggle");
+      const devShareLabel = document.querySelector('label[for="feedbackDevShareToggle"]');
+      const confirmBtn = document.getElementById("confirmFeedbackBtn");
+      const cancelBtn = document.getElementById("cancelFeedbackBtn");
+      if (!modal || !confirmBtn || !cancelBtn) return;
+
+      // Prepopulate if feedback already exists
+      const conversationId = getConversationId();
+      const history = conversationId ? loadHistory() : [];
+      const resolvedHistoryIndex = resolveFeedbackHistoryIndex(historyIndex, botContent);
+      const existing = resolvedHistoryIndex >= 0 && history[resolvedHistoryIndex] && history[resolvedHistoryIndex].feedback ? history[resolvedHistoryIndex].feedback : null;
+      const isDevShareLocked = existing && existing.devShareLocked === true;
+
+      titleEl.textContent = feedbackType === "thumbUp" ? "Bonne réponse ?" : "Réponse à améliorer ?";
+      textEl.textContent = feedbackType === "thumbUp"
+        ? "Merci pour votre retour positif."
+        : "Dites-nous ce qui pourrait être amélioré.";
+      commentInput.value = existing ? (existing.comment || "") : "";
+      devShareToggle.checked = existing ? existing.devShare : true;
+      applyFeedbackToggleUiState(devShareToggle, devShareLabel, isDevShareLocked);
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = "Enregistrer";
+
+      _feedbackModalPending = { feedbackType, botContent, historyIndex: resolvedHistoryIndex, thumbUpBtn, thumbDownBtn };
+      openModal("feedbackModal");
+
+      setTimeout(() => commentInput.focus(), 80);
+    }
+
+    function closeFeedbackModal() {
+      closeModal("feedbackModal");
+      _feedbackModalPending = null;
+    }
+
+    function applyThumbActiveState(thumbUpBtn, thumbDownBtn, activeType) {
+      if (!thumbUpBtn || !thumbDownBtn) return;
+      if (activeType === "thumbUp") {
+        thumbUpBtn.classList.add("is-thumb-active");
+        thumbDownBtn.classList.remove("is-thumb-active");
+      } else if (activeType === "thumbDown") {
+        thumbDownBtn.classList.add("is-thumb-active");
+        thumbUpBtn.classList.remove("is-thumb-active");
+      } else {
+        thumbUpBtn.classList.remove("is-thumb-active");
+        thumbDownBtn.classList.remove("is-thumb-active");
+      }
+    }
+
+    async function confirmFeedback() {
+      if (!_feedbackModalPending) return;
+      const { feedbackType, botContent, historyIndex, thumbUpBtn, thumbDownBtn } = _feedbackModalPending;
+      const resolvedHistoryIndex = resolveFeedbackHistoryIndex(historyIndex, botContent);
+
+      const comment = (document.getElementById("feedbackCommentInput").value || "").trim();
+      const devShareToggle = document.getElementById("feedbackDevShareToggle");
+      const existing = resolvedHistoryIndex >= 0 ? ((loadHistory()[resolvedHistoryIndex] || {}).feedback || null) : null;
+      const devShareLocked = existing && existing.devShareLocked === true;
+      const devShare = devShareLocked ? true : (devShareToggle.checked === true);
+      const confirmBtn = document.getElementById("confirmFeedbackBtn");
+
+      // Persist locally first (always)
+      saveFeedbackLocally(resolvedHistoryIndex, feedbackType, comment, devShare, { devShareLocked });
+      applyThumbActiveState(thumbUpBtn, thumbDownBtn, feedbackType);
+      closeFeedbackModal();
+
+      if (!devShare) return; // Local-only, done
+
+      // Check if private conversation needs snapshot confirmation
+      const conversationId = getConversationId();
+      const isPrivate = isConversationPrivateById(conversationId, loadConversationData(conversationId));
+
+      if (isPrivate) {
+        // Show private-snapshot confirmation modal
+        _feedbackPendingAfterPrivateConfirm = { feedbackType, botContent, historyIndex: resolvedHistoryIndex, comment, devShare };
+        openModal("feedbackPrivateConfirmModal");
+        return;
+      }
+
+      // Non-private: send directly
+      await _doSubmitFeedback(feedbackType, botContent, resolvedHistoryIndex, comment, devShare, confirmBtn);
+    }
+
+    let _feedbackPendingAfterPrivateConfirm = null;
+
+    async function confirmFeedbackPrivateSnapshot() {
+      closeModal("feedbackPrivateConfirmModal");
+      if (!_feedbackPendingAfterPrivateConfirm) return;
+      const { feedbackType, botContent, historyIndex, comment, devShare } = _feedbackPendingAfterPrivateConfirm;
+      _feedbackPendingAfterPrivateConfirm = null;
+      await _doSubmitFeedback(feedbackType, botContent, historyIndex, comment, devShare, null);
+    }
+
+    function cancelFeedbackPrivateSnapshot() {
+      closeModal("feedbackPrivateConfirmModal");
+      _feedbackPendingAfterPrivateConfirm = null;
+      // Feedback is already saved locally — no need to undo
+    }
+
+    async function _doSubmitFeedback(feedbackType, botContent, historyIndex, comment, devShare, confirmBtnEl) {
+      try {
+        await submitFeedbackToServer(feedbackType, comment, devShare, historyIndex, botContent);
+        lockFeedbackDevShareLocally(historyIndex, feedbackType, comment);
+        showTemporaryNotice("Merci pour votre retour.");
+      } catch (err) {
+        console.error("[FEEDBACK_SUBMIT]", err && err.message ? err.message : String(err));
+        showTemporaryNotice("Envoi au developpeur impossible. Retour conserve localement.");
+      }
+    }
+    // ── /Feedback ─────────────────────────────────────────────────────────────
+
     function ensureEditModeBar() {
       let bar = document.getElementById("editModeBar");
       if (bar) return bar;
@@ -6166,13 +6498,13 @@
         thumbUpBtn.addEventListener("click", event => {
           event.preventDefault();
           event.stopPropagation();
-          setButtonTemporaryCheckState(thumbUpBtn, thumbUpIdleMarkup);
+          openFeedbackModal("thumbUp", rawText, historyIndex, thumbUpBtn, thumbDownBtn);
         });
 
         thumbDownBtn.addEventListener("click", event => {
           event.preventDefault();
           event.stopPropagation();
-          setButtonTemporaryCheckState(thumbDownBtn, thumbDownIdleMarkup);
+          openFeedbackModal("thumbDown", rawText, historyIndex, thumbUpBtn, thumbDownBtn);
         });
 
         shareBtn.addEventListener("click", async event => {
@@ -6201,6 +6533,15 @@
         actionsRow.appendChild(thumbUpBtn);
         actionsRow.appendChild(thumbDownBtn);
         actionsRow.appendChild(shareBtn);
+
+        // Restore visual feedback state from local history if available
+        if (historyIndex >= 0) {
+          const localHistory = loadHistory();
+          const localEntry = localHistory[historyIndex];
+          if (localEntry && localEntry.feedback && localEntry.feedback.type) {
+            applyThumbActiveState(thumbUpBtn, thumbDownBtn, localEntry.feedback.type);
+          }
+        }
 
         if (
           document.body.classList.contains("admin-ui") &&
@@ -8118,6 +8459,32 @@
       cancelPrivateConversationBtn.onclick = () => {
         resolvePrivateConversationModal(false);
       };
+    }
+
+    // Feedback modal buttons
+    const cancelFeedbackBtn = document.getElementById("cancelFeedbackBtn");
+    if (cancelFeedbackBtn) {
+      cancelFeedbackBtn.onclick = () => closeFeedbackModal();
+    }
+    const confirmFeedbackBtn = document.getElementById("confirmFeedbackBtn");
+    if (confirmFeedbackBtn) {
+      confirmFeedbackBtn.onclick = () => confirmFeedback();
+    }
+    const feedbackModal = document.getElementById("feedbackModal");
+    if (feedbackModal) {
+      feedbackModal.addEventListener("click", e => {
+        if (e.target.id === "feedbackModal") closeFeedbackModal();
+      });
+    }
+
+    // Private feedback snapshot confirmation modal buttons
+    const cancelFeedbackPrivateConfirmBtn = document.getElementById("cancelFeedbackPrivateConfirmBtn");
+    if (cancelFeedbackPrivateConfirmBtn) {
+      cancelFeedbackPrivateConfirmBtn.onclick = () => cancelFeedbackPrivateSnapshot();
+    }
+    const confirmFeedbackPrivateConfirmBtn = document.getElementById("confirmFeedbackPrivateConfirmBtn");
+    if (confirmFeedbackPrivateConfirmBtn) {
+      confirmFeedbackPrivateConfirmBtn.onclick = () => confirmFeedbackPrivateSnapshot();
     }
     
     const sendBtn = document.getElementById("sendBtn");

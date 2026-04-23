@@ -2153,6 +2153,56 @@
               card.appendChild(createAssistantVariantCard(variant));
             });
           }
+
+          // Render feedback badge if present
+          if (msg.feedback && msg.feedback.type) {
+            const fb = msg.feedback;
+            const fbRow = document.createElement("div");
+            fbRow.style.marginTop = "6px";
+            fbRow.style.display = "flex";
+            fbRow.style.flexWrap = "wrap";
+            fbRow.style.alignItems = "center";
+            fbRow.style.gap = "6px";
+            fbRow.style.fontSize = "12px";
+
+            const thumbLabel = fb.type === "thumbUp" ? "👍" : "👎";
+            const thumbBadge = document.createElement("span");
+            thumbBadge.textContent = thumbLabel;
+            thumbBadge.style.fontSize = "15px";
+            fbRow.appendChild(thumbBadge);
+
+            if (fb.devShare) {
+              const sharedBadge = document.createElement("span");
+              sharedBadge.textContent = "Transmis au dev";
+              const isNegative = fb.type === "thumbDown";
+              sharedBadge.style.background = isNegative ? "#fde2e2" : "#d1f0e0";
+              sharedBadge.style.color = isNegative ? "#9a1f1f" : "#1a6b3b";
+              sharedBadge.style.borderRadius = "999px";
+              sharedBadge.style.padding = "2px 8px";
+              sharedBadge.style.fontWeight = "600";
+              fbRow.appendChild(sharedBadge);
+            } else {
+              const localBadge = document.createElement("span");
+              localBadge.textContent = "Local uniquement";
+              localBadge.style.background = "#f0f0f0";
+              localBadge.style.color = "#666";
+              localBadge.style.borderRadius = "999px";
+              localBadge.style.padding = "2px 8px";
+              fbRow.appendChild(localBadge);
+            }
+
+            if (fb.comment) {
+              const commentEl = document.createElement("span");
+              commentEl.textContent = "\u00ab\u00a0" + fb.comment + "\u00a0\u00bb";
+              commentEl.style.color = "#444";
+              commentEl.style.fontStyle = "italic";
+              commentEl.style.flex = "1 1 100%";
+              commentEl.style.marginTop = "2px";
+              fbRow.appendChild(commentEl);
+            }
+
+            card.appendChild(fbRow);
+          }
           
           wrapper.appendChild(card);
           list.appendChild(wrapper);

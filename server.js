@@ -5987,6 +5987,146 @@ app.post("/api/branches/create-and-activate", async (req, res) => {
   }
 });
 
+// Store feedback (thumbUp/thumbDown + optional comment) on an existing message.
+// If devShare is false, the call should not reach this endpoint — frontend handles locally only.
+app.post("/api/messages/:id/feedback", async (req, res) => {
+  try {
+    const messageId = String(req.params?.id || "").trim();
+    if (!messageId) {
+      return res.status(400).json({ error: "Missing messageId" });
+    }
+
+    if (!req.body || typeof req.body !== "object" || Array.isArray(req.body)) {
+      return res.status(400).json({ error: "Invalid payload" });
+    }
+
+    const type = req.body.type;
+    if (type !== "thumbUp" && type !== "thumbDown") {
+      return res.status(400).json({ error: "type must be thumbUp or thumbDown" });
+    }
+
+    const rawComment = typeof req.body.comment === "string" ? req.body.comment.trim() : "";
+    const comment = rawComment.slice(0, 1000); // Bound comment length
+    const devShare = req.body.devShare === true;
+    const userId = typeof req.body.userId === "string" ? req.body.userId.trim() : "";
+
+    const messageSnap = await messagesRef.child(messageId).once("value");
+    if (!messageSnap.exists()) {
+      return res.status(404).json({ error: "Message not found" });
+    }
+
+    const messageData = messageSnap.val();
+    // Allow feedback on both user and assistant messages, but only if conversationId present
+    if (!messageData || typeof messageData.conversationId !== "string") {
+      return res.status(400).json({ error: "Message has no conversationId" });
+    }
+
+    const feedback = {
+      type,
+      comment: comment || null,
+      devShare,
+      userId: userId || null,
+      timestamp: Date.now()
+    };
+
+    await messagesRef.child(messageId).update({ feedback });
+
+    console.log("[FEEDBACK]", { messageId, type, devShare, userId: userId || "anon" });
+    return res.json({ success: true, messageId, feedback });
+  } catch (err) {
+    console.error("Erreur /api/messages/:id/feedback:", err.message);
+    return res.status(500).json({ error: "Feedback failed" });
+  }
+});
+
+// Create a non-private snapshot branch containing only the target user+bot pair,
+// then attach feedback to the bot message in that snapshot.
+// Used when the source conversation is private and the user wants to share feedback.
+app.post("/api/branches/feedback-snapshot", async (req, res) => {
+  try {
+    if (!req.body || typeof req.body !== "object" || Array.isArray(req.body)) {
+      return res.status(400).json({ error: "Invalid payload" });
+    }
+
+    const type = req.body.type;
+    if (type !== "thumbUp" && type !== "thumbDown") {
+      return res.status(400).json({ error: "type must be thumbUp or thumbDown" });
+    }
+
+    const rawComment = typeof req.body.comment === "string" ? req.body.comment.trim() : "";
+    const comment = rawComment.slice(0, 1000);
+    const devShare = req.body.devShare === true;
+    const userId = typeof req.body.userId === "string" ? req.body.userId.trim() : "";
+
+    // The frontend sends the raw user + bot message content when from a private conversation
+    const userContent = typeof req.body.userContent === "string" ? req.body.userContent.trim() : "";
+    const botContent = typeof req.body.botContent === "string" ? req.body.botContent.trim() : "";
+
+    if (!userContent || !botContent) {
+      return res.status(400).json({ error: "Missing userContent or botContent" });
+    }
+
+    const now = new Date().toISOString();
+    const snapshotConversationId = "c_fbsnap_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8);
+
+    // Create a non-private conversation to hold the snapshot
+    await db.ref("conversations").child(snapshotConversationId).set({
+      userId: userId || "u_anon",
+      createdAt: now,
+      updatedAt: now,
+      title: "Feedback snapshot",
+      titleLocked: true,
+      messageCount: 2,
+      feedbackSnapshot: true,
+      isPrivate: false
+    });
+
+    // Push user message then bot message
+    const timestampBase = Date.now();
+    const userMsgRef = await messagesRef.push({
+      role: "user",
+      content: userContent,
+      timestamp: timestampBase,
+      userId: userId || "u_anon",
+      conversationId: snapshotConversationId,
+      feedbackSnapshot: true
+    });
+
+    const botMsgRef = await messagesRef.push({
+      role: "assistant",
+      content: botContent,
+      timestamp: timestampBase + 1,
+      userId: userId || "u_anon",
+      conversationId: snapshotConversationId,
+      feedbackSnapshot: true,
+      feedback: {
+        type,
+        comment: comment || null,
+        devShare,
+        userId: userId || null,
+        timestamp: Date.now()
+      }
+    });
+
+    console.log("[FEEDBACK_SNAPSHOT]", {
+      snapshotConversationId,
+      type,
+      devShare,
+      userId: userId || "anon"
+    });
+
+    return res.status(201).json({
+      success: true,
+      snapshotConversationId,
+      userMessageId: userMsgRef.key,
+      botMessageId: botMsgRef.key
+    });
+  } catch (err) {
+    console.error("Erreur /api/branches/feedback-snapshot:", err.message);
+    return res.status(500).json({ error: "Feedback snapshot failed" });
+  }
+});
+
 app.post("/api/branches/:id/activate", async (req, res) => {
   try {
     const branchId = String(req.params?.id || "").trim();
@@ -6581,10 +6721,19 @@ app.get("/api/admin/conversations/:id/messages", requireAdminAuth, async (req, r
     const list = Object.entries(data).map(([id, value]) => {
       const rawUserId = value.userId || null;
       const label = rawUserId && labels[rawUserId] ? labels[rawUserId] : null;
+
+      const rawFeedback = value.feedback && typeof value.feedback === "object" ? value.feedback : null;
+      const normalizedFeedback = rawFeedback ? {
+        type: rawFeedback.type === "thumbUp" || rawFeedback.type === "thumbDown" ? rawFeedback.type : null,
+        comment: typeof rawFeedback.comment === "string" ? rawFeedback.comment : null,
+        devShare: rawFeedback.devShare === true,
+        timestamp: typeof rawFeedback.timestamp === "number" ? rawFeedback.timestamp : null
+      } : null;
       
       return {
         id,
         ...value,
+        feedback: normalizedFeedback,
         userLabel: label,
         displayUser: label || rawUserId
       };
