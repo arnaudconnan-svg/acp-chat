@@ -2800,6 +2800,35 @@ Si les deux signaux sont faux, ne change presque rien.
 
 Reecris uniquement la reponse finale, sans commentaire.
 `,
+
+    CRITIC_PASS: `Tu es un relecteur clinique. Tu recois une reponse generee par un bot therapeutique et tu dois detecter et corriger uniquement les problemes suivants si presents :
+
+1. INJONCTIONS A AGIR : phrases du type "tu pourrais", "essaie de", "il faudrait", "tu devrais", "pourquoi ne pas", "je t'encourage", "je te conseille", "n'hesite pas a"
+2. SUR-CLINICALISATION : usage de termes comme "depression", "anxiete", "trouble", "symptome", "diagnostic" pour decrire un vecu ordinaire non-clinique
+3. FORMULES CREUSES DE PRESENCE : phrases du type "je suis la avec toi", "je reste present" quand l'utilisateur a deja rejete ce type de reponse
+
+Si aucun de ces problemes n'est present, retourne la reponse strictement inchangee.
+Ne reformule pas, ne resumes pas, ne raccourcis pas sans raison.
+
+Retourne uniquement un JSON valide sur une seule ligne :
+{"issues": [...], "reply": "..."}
+- issues : liste des problemes detectes (tableau vide si aucun)
+- reply : la reponse corrigee (identique a l'originale si aucun probleme)
+`,
+
+    UNCERTAINTY_REWRITE: `Tu reformules une reponse therapeutique pour y signaler explicitement l'incertitude interpretative du bot.
+
+Contexte : l'utilisateur a exprime une ambiguite explicite (\"je sais pas\", \"c'est melange\") ou le bot n'a pas assez de contexte pour affirmer avec confiance.
+
+Regles :
+- Signale l'incertitude en debut ou milieu de reponse (ex : "je ne suis pas certain de bien saisir", "il me semble, sans en etre sur", "je peux me tromper")
+- Ne formule pas d'hypothese affirmative sans modalisation
+- Ne supprime pas l'hypothese, reformule-la avec une modulation claire
+- Ne reduis pas la longueur de facon significative
+- Ne change pas le fond ni la direction de la reponse
+
+Retourne uniquement la reponse reformulee, sans commentaire.
+`,
   };
 }
 
@@ -2926,6 +2955,34 @@ function isProceduralInstrumentalReply(reply = "") {
   const hasListStructure = /^\s*[-•]\s/m.test(reply) || /^\s*\d+\.\s/m.test(reply);
 
   return (hasProceduralTone && hasInstrumentalObjects) || (hasListStructure && hasInstrumentalObjects);
+}
+
+// Phase 4: Detect agency injunctions in a reply (sync check).
+function hasAgencyInjectionInReply(reply = "") {
+  const text = (reply || "").toLowerCase();
+  const patterns = [
+    "tu pourrais", "essaie de", "il faudrait", "tu devrais",
+    "pourquoi ne pas", "je t'encourage", "je te conseille",
+    "n'hesite pas a", "n'hésite pas à", "tu devrais peut-etre",
+    "tu devrais peut-être"
+  ];
+  return patterns.some(p => text.includes(p));
+}
+
+// Phase 5: Estimate confidence level for an exploration reply (rule-based, no LLM).
+function estimateReplyConfidence(message = "", history = []) {
+  const text = (message || "").toLowerCase();
+  const hasExplicitAmbiguity = /je sais pas|c'est mélangé|c'est melange|je ne sais pas trop|je suis perdu|pas sur de|pas sûr de/.test(text);
+  const hasRecentRejection = (history || []).slice(-4).some(m => {
+    if (m.role !== "user") return false;
+    const c = (m.content || "").toLowerCase();
+    return /c'est pas ça|c'est pas ca|pas vraiment|pas du tout|t'as rate|t'as raté|c'est faux|pas ce que je veux dire|non,? pas /.test(c);
+  });
+  const contextLength = (history || []).filter(m => m.role === "user").length;
+  if (hasExplicitAmbiguity && (hasRecentRejection || contextLength <= 1)) return "low";
+  if (hasExplicitAmbiguity || (hasRecentRejection && contextLength <= 2)) return "low";
+  if (hasRecentRejection || contextLength <= 1) return "medium";
+  return "high";
 }
 
 function buildHumanFieldFallback(message = "") {
@@ -3683,6 +3740,72 @@ ${originalContent}
 
     return String(r.choices?.[0]?.message?.content || "").trim() || originalReply;
   }
+
+// Phase 4: Selective critic — detects and corrects agency injunctions, over-clinicalization,
+// and hollow presence formulas when triggered by a strong signal.
+async function applySelectiveCritic({
+  reply = "",
+  message = "",
+  history = [],
+  promptRegistry = buildDefaultPromptRegistry()
+}) {
+  const user = `Message utilisateur :
+${message}
+
+Contexte recent :
+${(history || []).map(m => `${m.role === "user" ? "Utilisateur" : "Assistant"} : ${m.content}`).join("\n")}
+
+Reponse a relire et corriger si necessaire :
+${reply}
+`;
+  const r = await client.chat.completions.create({
+    model: MODEL_IDS.analysis,
+    temperature: 0,
+    max_tokens: 600,
+    messages: [
+      { role: "system", content: promptRegistry.CRITIC_PASS },
+      { role: "user", content: user }
+    ]
+  });
+  try {
+    const raw = (r.choices?.[0]?.message?.content || "").replace(/```json|```/g, "").trim();
+    const parsed = JSON.parse(raw);
+    return {
+      reply: typeof parsed.reply === "string" && parsed.reply.trim() ? parsed.reply.trim() : reply,
+      criticIssues: Array.isArray(parsed.issues) ? parsed.issues.filter(i => typeof i === "string") : []
+    };
+  } catch {
+    return { reply, criticIssues: [] };
+  }
+}
+
+// Phase 5: Rewrite a reply to explicitly signal interpretive uncertainty.
+async function rewriteForUncertainty({
+  reply = "",
+  message = "",
+  history = [],
+  promptRegistry = buildDefaultPromptRegistry()
+}) {
+  const user = `Message utilisateur :
+${message}
+
+Contexte recent :
+${(history || []).map(m => `${m.role === "user" ? "Utilisateur" : "Assistant"} : ${m.content}`).join("\n")}
+
+Reponse a reformuler avec incertitude explicite :
+${reply}
+`;
+  const r = await client.chat.completions.create({
+    model: MODEL_IDS.generation,
+    temperature: 0.3,
+    max_tokens: 350,
+    messages: [
+      { role: "system", content: promptRegistry.UNCERTAINTY_REWRITE },
+      { role: "user", content: user }
+    ]
+  });
+  return String(r.choices?.[0]?.message?.content || "").trim() || reply;
+}
 
 // Analyze whether the assistant reply should be considered a relational relance.
 // This is used to adjust exploration directivity based on whether the bot invited continuation.
@@ -7310,6 +7433,10 @@ app.post("/chat", async (req, res) => {
       interpretationRejection: interpretationRejection === true,
       needsSoberReadjustment: needsSoberReadjustment === true,
       relationalAdjustmentTriggered: relationalAdjustmentTriggered === true,
+      pipelineStages: chatStageTimings.map((entry) => ({
+        stage: typeof entry?.stage === "string" ? entry.stage : null,
+        deltaMs: Number.isFinite(entry?.deltaMs) ? entry.deltaMs : null
+      })).filter((entry) => entry.stage),
       explorationCalibrationLevel: explorationCalibrationLevel !== null && explorationCalibrationLevel !== undefined ?
         clampExplorationDirectivityLevel(explorationCalibrationLevel) :
         null,
@@ -7699,6 +7826,9 @@ app.post("/chat", async (req, res) => {
       modelConflict = false,
       humanFieldRisk = false,
       humanFieldOriginalReply = null,
+      criticTriggered = false,
+      criticIssues = [],
+      confidenceLevel = "high",
       promptRegistry = activePromptRegistry
     } = {}) {
       return {
@@ -7723,6 +7853,10 @@ app.post("/chat", async (req, res) => {
         interpretationRejection: interpretationRejection === true,
         needsSoberReadjustment: needsSoberReadjustment === true,
         relationalAdjustmentTriggered: relationalAdjustmentTriggered === true,
+        pipelineStages: chatStageTimings.map((entry) => ({
+          stage: typeof entry?.stage === "string" ? entry.stage : null,
+          deltaMs: Number.isFinite(entry?.deltaMs) ? entry.deltaMs : null
+        })).filter((entry) => entry.stage),
         explorationCalibrationLevel: explorationCalibrationLevel !== null && explorationCalibrationLevel !== undefined ?
           clampExplorationDirectivityLevel(explorationCalibrationLevel) :
           null,
@@ -7737,7 +7871,10 @@ app.post("/chat", async (req, res) => {
             null,
         modelConflict: modelConflict === true,
         humanFieldRisk: humanFieldRisk === true,
-        humanFieldOriginalReply: humanFieldRisk === true && typeof humanFieldOriginalReply === "string" ? humanFieldOriginalReply : null
+        humanFieldOriginalReply: humanFieldRisk === true && typeof humanFieldOriginalReply === "string" ? humanFieldOriginalReply : null,
+        criticTriggered: criticTriggered === true,
+        criticIssues: Array.isArray(criticIssues) ? criticIssues : [],
+        confidenceLevel: typeof confidenceLevel === "string" ? confidenceLevel : "high"
       };
     }
     
@@ -8063,12 +8200,20 @@ app.post("/chat", async (req, res) => {
     // 2) Analyse de rappel mémoire : identifier si l'utilisateur demande
     // explicitement un rappel de la mémoire à long terme.
     markChatStage("recall_analysis");
-    const recallRouting = await analyzeRecallRouting(
-      message,
-      recentHistory,
-      previousMemory,
-      activePromptRegistry
-    );
+    const [recallRouting, precomputedContactAnalysis] = await Promise.all([
+      analyzeRecallRouting(
+        message,
+        recentHistory,
+        previousMemory,
+        activePromptRegistry
+      ),
+      analyzeContactState(
+        message,
+        recentHistory,
+        newFlags.contactState,
+        activePromptRegistry
+      )
+    ]);
     throwIfCanceled();
 
     logChatDecision("recall_routing", {
@@ -8173,12 +8318,7 @@ app.post("/chat", async (req, res) => {
     // 3) Passage par le mode contact / exploration / info.
     // Cette étape détermine le style général de la réponse.
     markChatStage("contact_mode_analysis");
-    let contactAnalysis = await analyzeContactState(
-      message,
-      recentHistory,
-      newFlags.contactState,
-      activePromptRegistry
-    );
+    let contactAnalysis = precomputedContactAnalysis;
     throwIfCanceled();
     
     newFlags.contactState = {
@@ -8266,13 +8406,15 @@ app.post("/chat", async (req, res) => {
       buildPromptOverrideLayersDebug(override1, override2, activePromptRegistry) :
       buildPromptOverrideLayersDebug(null, null, activePromptRegistry);
 
-    const interpretationRejection = await analyzeInterpretationRejection({
-      message,
-      history: recentHistory,
-      memory: previousMemory,
-      promptRegistry: activePromptRegistry
-    });
-    throwIfCanceled();
+    const interpretationRejection = (finalDetectedMode === "info" || finalDetectedMode === "contact")
+      ? { isInterpretationRejection: false, needsSoberReadjustment: false }
+      : await analyzeInterpretationRejection({
+          message,
+          history: recentHistory,
+          memory: previousMemory,
+          promptRegistry: activePromptRegistry
+        });
+    if (finalDetectedMode !== "info" && finalDetectedMode !== "contact") throwIfCanceled();
     
     const generatedBase = await generateReply({
       message,
@@ -8349,6 +8491,45 @@ app.post("/chat", async (req, res) => {
           "reply_postcheck_model_conflict" :
           "reply_postcheck_human_field"
       );
+    }
+
+    // Phase 4: Selective critic — triggered only on strong signals in exploration mode.
+    let criticTriggered = false;
+    let criticIssues = [];
+    if (finalDetectedMode === "exploration") {
+      const criticShouldTrigger =
+        reply.length > 600 ||
+        hasAgencyInjectionInReply(reply);
+      if (criticShouldTrigger) {
+        const criticResult = await applySelectiveCritic({
+          reply,
+          message,
+          history: recentHistory,
+          promptRegistry: activePromptRegistry
+        });
+        throwIfCanceled();
+        criticTriggered = true;
+        criticIssues = criticResult.criticIssues;
+        if (criticResult.criticIssues.length > 0) {
+          reply = criticResult.reply;
+          finalReplyRewriteSources.push("critic_pass");
+        }
+      }
+    }
+
+    // Phase 5: Uncertainty policy — rewrite exploration replies when confidence is low.
+    const confidenceLevel = finalDetectedMode === "exploration"
+      ? estimateReplyConfidence(message, recentHistory)
+      : "high";
+    if (finalDetectedMode === "exploration" && confidenceLevel === "low") {
+      reply = await rewriteForUncertainty({
+        reply,
+        message,
+        history: recentHistory,
+        promptRegistry: activePromptRegistry
+      });
+      throwIfCanceled();
+      finalReplyRewriteSources.push("uncertainty_rewrite");
     }
 
     const finalReplyRewriteSource = finalReplyRewriteSources.join("+") || null;
@@ -8477,6 +8658,9 @@ app.post("/chat", async (req, res) => {
       modelConflict,
       humanFieldRisk,
       humanFieldOriginalReply,
+      criticTriggered,
+      criticIssues,
+      confidenceLevel,
       promptRegistry: activePromptRegistry
     });
     

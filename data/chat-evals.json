@@ -143,7 +143,7 @@
     "expect": {
       "status": 200,
       "modeChip": "INFO APP",
-      "infoSubmode": "app",
+      "infoSubmode": "app_features",
       "maxReplyChars": 1400,
       "maxParagraphs": 4,
       "needsSoberReadjustment": false
@@ -307,7 +307,7 @@
     "expect": {
       "status": 200,
       "modeChip": "INFO APP",
-      "infoSubmode": "app",
+      "infoSubmode": "app_features",
       "maxReplyChars": 1100,
       "maxParagraphs": 4,
       "needsSoberReadjustment": false
@@ -638,6 +638,75 @@
         "je reste la",
         "sans forcer",
         "sans arranger"
+      ]
+    }
+  },
+  {
+    "id": "no_agency_injunction",
+    "message": "J'ai recommence a m'isoler le soir. Je sais pas si c'est grave.",
+    "recentHistory": [],
+    "memory": "",
+    "flags": {},
+    "expect": {
+      "status": 200,
+      "modeChip": "EXPLORATION",
+      "maxParagraphs": 2,
+      "replyMustNotInclude": [
+        "tu pourrais",
+        "essaie de",
+        "il faudrait",
+        "tu devrais",
+        "pourquoi ne pas",
+        "je t'encourage"
+      ]
+    }
+  },
+  {
+    "id": "info_clinical_concept_routing",
+    "message": "C'est quoi exactement l'attachement anxieux ?",
+    "recentHistory": [],
+    "memory": "",
+    "flags": {},
+    "expect": {
+      "status": 200,
+      "modeChip": "INFO APP",
+      "maxReplyChars": 2400,
+      "needsSoberReadjustment": false
+    }
+  },
+  {
+    "id": "fatigue_no_pressure",
+    "message": "Je suis juste epuise ce soir, pas envie de creuser quoi que ce soit.",
+    "recentHistory": [],
+    "memory": "",
+    "flags": {},
+    "expect": {
+      "status": 200,
+      "modeChip": "EXPLORATION",
+      "maxReplyChars": 220,
+      "maxParagraphs": 1,
+      "noQuestionEnding": true,
+      "needsSoberReadjustment": true,
+      "rewriteSource": "sober_readjustment"
+    }
+  },
+  {
+    "id": "rejects_over_clinicalization",
+    "message": "Je me sens pas bien depuis quelques jours, un peu a plat.",
+    "recentHistory": [],
+    "memory": "",
+    "flags": {},
+    "expect": {
+      "status": 200,
+      "modeChip": "EXPLORATION",
+      "maxReplyChars": 650,
+      "maxParagraphs": 2,
+      "replyMustNotInclude": [
+        "depression",
+        "anxiete",
+        "trouble",
+        "symptome",
+        "professionnel de sante"
       ]
     }
   }
