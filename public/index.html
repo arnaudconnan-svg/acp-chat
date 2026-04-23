@@ -1232,6 +1232,7 @@
     
     #sendBtn {
       position: relative;
+      z-index: 2;
       width: 44px;
       height: 44px;
       min-width: 44px;
@@ -1254,6 +1255,7 @@
         box-shadow 0.28s ease,
         opacity 0.28s ease;
       -webkit-tap-highlight-color: transparent;
+      pointer-events: auto;
       overflow: hidden;
     }
     
@@ -1330,6 +1332,33 @@
 
     @keyframes sendBtnSpinner {
       to { transform: rotate(360deg); }
+    }
+
+    #sendBtn.is-stop-mode {
+      border-radius: 999px;
+      background: #ffffff;
+      border: 1px solid #245e66;
+      color: #245e66;
+      cursor: pointer;
+      box-shadow:
+        0 12px 24px rgba(36, 94, 102, 0.16),
+        0 1px 0 rgba(255, 255, 255, 0.85) inset;
+    }
+
+    #sendBtn.is-stop-mode::before {
+      content: "";
+      width: 11px;
+      height: 11px;
+      border-radius: 2px;
+      background: #245e66;
+      mask-image: none;
+      -webkit-mask-image: none;
+    }
+
+    #sendBtn.is-stop-mode::after {
+      content: none;
+      animation: none;
+      border: none;
     }
     
     .message {
@@ -2768,6 +2797,40 @@
     let pendingConversationMenuHistoryClose = false;
     let activeConversationSwipeElement = null;
     let activeConversationSwipeCloser = null;
+    let activeChatRequestId = "";
+    let activeChatAbortController = null;
+
+    function buildChatRequestId() {
+      return "chat_" + Date.now() + "_" + Math.random().toString(36).slice(2, 10);
+    }
+
+    function syncSendButtonMode() {
+      const sendBtn = document.getElementById("sendBtn");
+      if (!sendBtn) return;
+      sendBtn.classList.toggle("is-stop-mode", !!activeChatRequestId);
+    }
+
+    async function stopCurrentChatRequest() {
+      const requestId = String(activeChatRequestId || "").trim();
+      if (!requestId) return false;
+
+      if (activeChatAbortController) {
+        activeChatAbortController.abort();
+      }
+
+      // Fire-and-forget: stop must feel instant on mobile.
+      fetch("/chat/cancel", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            requestId,
+            userId: getOrCreateUserId()
+          }),
+          keepalive: true
+      }).catch(() => {});
+
+      return true;
+    }
 
     function getQueuedMessagesForConversation(conversationId) {
       const id = String(conversationId || "").trim();
@@ -6112,10 +6175,26 @@
           setButtonTemporaryCheckState(thumbDownBtn, thumbDownIdleMarkup);
         });
 
-        shareBtn.addEventListener("click", event => {
+        shareBtn.addEventListener("click", async event => {
           event.preventDefault();
           event.stopPropagation();
-          setButtonTemporaryCheckState(shareBtn, shareIdleMarkup);
+          
+          if (navigator.share) {
+            try {
+              await navigator.share({
+                title: "Facilitat.io",
+                text: displayText,
+                url: window.location.href
+              });
+              setButtonTemporaryCheckState(shareBtn, shareIdleMarkup);
+            } catch (err) {
+              if (err.name !== "AbortError") {
+                console.error("Share failed:", err);
+              }
+            }
+          } else {
+            alert("Option indisponible sur ce navigateur");
+          }
         });
 
         actionsRow.appendChild(copyBotBtn);
@@ -6423,8 +6502,10 @@
       const input = document.getElementById("input");
       const sendBtn = document.getElementById("sendBtn");
       
-      input.disabled = disabled;
-      sendBtn.disabled = disabled || input.value.trim().length === 0;
+      input.disabled = disabled || isSending;
+      const stopModeActive = !!activeChatRequestId;
+      sendBtn.disabled = !stopModeActive && (disabled || isSending || input.value.trim().length === 0);
+      sendBtn.setAttribute("aria-disabled", sendBtn.disabled ? "true" : "false");
     }
     
     function openModal(id) {
@@ -7211,6 +7292,7 @@
       
       isSending = true;
       updateActivity();
+      syncInputAvailability();
       
       if (isEditing) {
         const history = loadHistory();
@@ -7380,6 +7462,12 @@
         adminPayload.comparisonEnabled === true ?
         false :
         (isEditing || wasAtBottom || isChatAtBottom());
+
+      const chatRequestId = buildChatRequestId();
+      const chatAbortController = new AbortController();
+      activeChatRequestId = chatRequestId;
+      activeChatAbortController = chatAbortController;
+      syncSendButtonMode();
       
       try {
         async function parseJsonResponseSafely(res, context = "chat") {
@@ -7416,9 +7504,11 @@
         const res = await fetch("/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          signal: chatAbortController.signal,
           body: JSON.stringify({
             message,
             isEdited: requestIsEdited === true,
+            requestId: chatRequestId,
             userId: getOrCreateUserId(),
             conversationId: requestConversationId,
             isPrivateConversation: isConversationPrivateById(requestConversationId, loadConversationData(requestConversationId)),
@@ -7582,9 +7672,13 @@
         }
         
         updateActivity();
-      } catch {
+      } catch (err) {
         if (dotAnimation) dotAnimation.cancel();
         removeWaitingIndicatorFromChat();
+
+        if (err && err.name === "AbortError") {
+          return;
+        }
         
         if (
           getConversationId() === requestConversationId &&
@@ -7597,6 +7691,12 @@
           });
         }
       } finally {
+        if (activeChatRequestId === chatRequestId) {
+          activeChatRequestId = "";
+          activeChatAbortController = null;
+          syncSendButtonMode();
+        }
+
         isSending = false;
         sendingConversationId = "";
         syncInputAvailability();
@@ -8022,7 +8122,13 @@
     
     const sendBtn = document.getElementById("sendBtn");
     if (sendBtn) {
-      sendBtn.onclick = send;
+      sendBtn.onclick = async () => {
+        if (activeChatRequestId) {
+          await stopCurrentChatRequest();
+          return;
+        }
+        send();
+      };
     }
     
     const menuBtn = document.getElementById("menuBtn");
@@ -8334,7 +8440,9 @@
         }
         
         if (sendBtnEl) {
-          sendBtnEl.disabled = inputEl.disabled || !hasText;
+          const stopModeActive = !!activeChatRequestId;
+          sendBtnEl.disabled = !stopModeActive && (inputEl.disabled || !hasText);
+          sendBtnEl.setAttribute("aria-disabled", sendBtnEl.disabled ? "true" : "false");
         }
         
         resizeComposerInput();
@@ -8440,7 +8548,13 @@
       };
       
       if (sendBtnEl) {
-        sendBtnEl.onclick = send;
+        sendBtnEl.onclick = async () => {
+          if (activeChatRequestId) {
+            await stopCurrentChatRequest();
+            return;
+          }
+          send();
+        };
       }
       
       const originalOpenEditMode = openEditMode;

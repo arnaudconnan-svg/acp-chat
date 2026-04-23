@@ -6714,6 +6714,7 @@ app.get("/api/admin/conversations/:id/branches", requireAdminAuth, async (req, r
 function parseChatRequest(req) {
   const message = String(req.body?.message || "");
   const isEdited = req.body?.isEdited === true;
+  const requestId = typeof req.body?.requestId === "string" ? req.body.requestId.trim() : "";
   const conversationId = typeof req.body?.conversationId === "string" ? req.body.conversationId.trim() : "";
   const isPrivateConversation = req.body?.isPrivateConversation === true;
   const userId = req.body?.userId || "u_anon";
@@ -6730,6 +6731,7 @@ function parseChatRequest(req) {
   return {
     message,
     isEdited,
+    requestId,
     conversationId,
     isPrivateConversation,
     userId,
@@ -6765,6 +6767,10 @@ function validateChatRequestShape(body = {}) {
     issues.push("userId_invalid_type");
   }
 
+  if (body.requestId !== undefined && typeof body.requestId !== "string") {
+    issues.push("requestId_invalid_type");
+  }
+
   if (typeof body.conversationId !== "string" || !body.conversationId.trim()) {
     issues.push("conversationId_missing_or_invalid");
   }
@@ -6791,6 +6797,85 @@ function validateChatRequestShape(body = {}) {
 
   return issues;
 }
+
+const activeChatRequests = new Map();
+const CHAT_REQUEST_STALE_TTL_MS = 15 * 60 * 1000;
+
+function registerActiveChatRequest(requestId, userId) {
+  const safeId = String(requestId || "").trim();
+  if (!safeId) return;
+
+  activeChatRequests.set(safeId, {
+    userId: String(userId || "").trim(),
+    canceled: false,
+    updatedAt: Date.now()
+  });
+}
+
+function cancelActiveChatRequest(requestId, userId = "") {
+  const safeId = String(requestId || "").trim();
+  if (!safeId) return false;
+
+  const entry = activeChatRequests.get(safeId);
+  if (!entry) return false;
+
+  const safeUserId = String(userId || "").trim();
+  if (safeUserId && entry.userId && entry.userId !== safeUserId) {
+    return false;
+  }
+
+  activeChatRequests.set(safeId, {
+    ...entry,
+    canceled: true,
+    updatedAt: Date.now()
+  });
+
+  return true;
+}
+
+function isActiveChatRequestCanceled(requestId) {
+  const safeId = String(requestId || "").trim();
+  if (!safeId) return false;
+
+  const entry = activeChatRequests.get(safeId);
+  if (!entry) return false;
+  return entry.canceled === true;
+}
+
+function finalizeActiveChatRequest(requestId) {
+  const safeId = String(requestId || "").trim();
+  if (!safeId) return;
+  activeChatRequests.delete(safeId);
+}
+
+function throwIfChatRequestCanceled(requestId) {
+  if (isActiveChatRequestCanceled(requestId)) {
+    const err = new Error("Chat request canceled");
+    err.code = "chat_request_canceled";
+    throw err;
+  }
+}
+
+setInterval(() => {
+  const cutoff = Date.now() - CHAT_REQUEST_STALE_TTL_MS;
+  for (const [requestId, entry] of activeChatRequests.entries()) {
+    if (!entry || Number(entry.updatedAt || 0) < cutoff) {
+      activeChatRequests.delete(requestId);
+    }
+  }
+}, CHAT_REQUEST_STALE_TTL_MS);
+
+app.post("/chat/cancel", (req, res) => {
+  const requestId = typeof req.body?.requestId === "string" ? req.body.requestId.trim() : "";
+  const userId = typeof req.body?.userId === "string" ? req.body.userId.trim() : "";
+
+  if (!requestId) {
+    return res.status(400).json({ error: "Missing requestId" });
+  }
+
+  const canceled = cancelActiveChatRequest(requestId, userId);
+  return res.json({ success: true, requestId, canceled });
+});
 
 // Resolve the different prompt registry layers for the current request.
 // - basePromptRegistry: default settings without overrides
@@ -6836,6 +6921,14 @@ function normalizeChatMemoryAndFlags(req, activePromptRegistry) {
 app.post("/chat", async (req, res) => {
   const requestData = parseChatRequest(req);
   console.log("CHAT INPUT conversationId:", requestData.conversationId);
+  const requestId = String(requestData.requestId || "").trim();
+
+  if (requestId) {
+    registerActiveChatRequest(requestId, requestData.userId || "u_anon");
+    req.on("aborted", () => {
+      cancelActiveChatRequest(requestId, requestData.userId || "u_anon");
+    });
+  }
   
   const chatStartTime = Date.now();
   let chatLastStage = "request_parsed";
@@ -6877,6 +6970,8 @@ app.post("/chat", async (req, res) => {
       issues: requestIssues
     });
   }
+
+  throwIfCanceled();
   
   const basePromptRegistryForCatch = buildDefaultPromptRegistry();
   
@@ -6895,6 +6990,11 @@ app.post("/chat", async (req, res) => {
   let isEditedForCatch = requestData.isEdited === true;
   let userMessagePersistedForCatch = false;
   let assistantMessagePersistedForCatch = false;
+  let userMessageRefForCatch = null;
+
+  function throwIfCanceled() {
+    throwIfChatRequestCanceled(requestId);
+  }
 
   async function persistFallbackAssistantMessage(reply, debug, debugMeta = {}) {
     if (!conversationIdForCatch || isPrivateConversationForCatch) {
@@ -7097,6 +7197,7 @@ app.post("/chat", async (req, res) => {
     
     logsEnabledForCatch = logsEnabled === true;
     markChatStage("request_destructured");
+    throwIfCanceled();
     
     // Validate that the request is tied to a conversation.
     if (!conversationId) {
@@ -7120,6 +7221,7 @@ app.post("/chat", async (req, res) => {
       flags
     } = normalizeChatMemoryAndFlags(req, activePromptRegistry);
     markChatStage("request_normalized");
+    throwIfCanceled();
     
     previousMemoryForCatch = previousMemory;
     flagsForCatch = flags;
@@ -7188,7 +7290,7 @@ app.post("/chat", async (req, res) => {
     }
     
     if (!isPrivateConversation) {
-      await messagesRef.push({
+      const pushedRef = await messagesRef.push({
         role: "user",
         content: isEdited ? message + "\n[MODIFIÉ]" : message,
         timestamp: Date.now(),
@@ -7197,6 +7299,7 @@ app.post("/chat", async (req, res) => {
       });
 
       userMessagePersistedForCatch = true;
+      userMessageRefForCatch = pushedRef;
       
       await convRef.transaction(current => {
         const now = new Date().toISOString();
@@ -7641,6 +7744,7 @@ app.post("/chat", async (req, res) => {
       flags,
       activePromptRegistry
     );
+    throwIfCanceled();
 
     logChatDecision("suicide_analysis_result", {
       suicideLevel: suicide.suicideLevel,
@@ -7816,6 +7920,7 @@ app.post("/chat", async (req, res) => {
       previousMemory,
       activePromptRegistry
     );
+    throwIfCanceled();
 
     logChatDecision("recall_routing", {
       isRecallAttempt: recallRouting.isRecallAttempt === true,
@@ -7925,6 +8030,7 @@ app.post("/chat", async (req, res) => {
       newFlags.contactState,
       activePromptRegistry
     );
+    throwIfCanceled();
     
     newFlags.contactState = {
       wasContact: contactAnalysis.isContact === true
@@ -8017,6 +8123,7 @@ app.post("/chat", async (req, res) => {
       memory: previousMemory,
       promptRegistry: activePromptRegistry
     });
+    throwIfCanceled();
     
     const generatedBase = await generateReply({
       message,
@@ -8033,6 +8140,7 @@ app.post("/chat", async (req, res) => {
       override1: hasOverrides ? override1 : null,
       override2: hasOverrides ? override2 : null
     });
+    throwIfCanceled();
     
     generatedBase.promptDebug = mainPromptDebug;
     let replyRewriteSource = null;
@@ -8170,6 +8278,7 @@ app.post("/chat", async (req, res) => {
       ],
       activePromptRegistry
     );
+    throwIfCanceled();
 
     let memoryCandidate = rawNewMemory;
     const memoryBeforeCompression = memoryCandidate;
@@ -8336,6 +8445,7 @@ app.post("/chat", async (req, res) => {
         memory: entry?.debugMeta?.memory || ""
       })));
       markChatStage("persist_response");
+      throwIfCanceled();
       
       const botMessageId = await persistAssistantMessage(reply, debug, responseDebugMeta, comparisonResults, { memory: newMemory, flags: newFlags });
       await maybeGenerateConversationTitle();
@@ -8353,6 +8463,7 @@ app.post("/chat", async (req, res) => {
       });
     }
     markChatStage("persist_response");
+    throwIfCanceled();
     
     const botMessageId = await persistAssistantMessage(reply, debug, responseDebugMeta, null, { memory: newMemory, flags: newFlags });
     await maybeGenerateConversationTitle();
@@ -8367,6 +8478,34 @@ app.post("/chat", async (req, res) => {
       botMessageId
     });
   } catch (err) {
+    if (err && err.code === "chat_request_canceled") {
+      // Mark the user message with [ENVOI STOPPE] if it was persisted
+      if (userMessageRefForCatch && userMessagePersistedForCatch) {
+        try {
+          const snapshot = await userMessageRefForCatch.once("value");
+          const messageData = snapshot.val();
+          if (messageData && typeof messageData.content === "string") {
+            let newContent = messageData.content;
+            // Replace [MODIFIÉ] with [ENVOI STOPPE] if present, otherwise append it
+            if (newContent.includes("[MODIFIÉ]")) {
+              newContent = newContent.replace(/\n?\[MODIFIÉ\]$/, "\n[ENVOI STOPPE]");
+            } else {
+              newContent = newContent.trim() + "\n[ENVOI STOPPE]";
+            }
+            await userMessageRefForCatch.update({ content: newContent });
+          }
+        } catch (markErr) {
+          console.warn("[CHAT][STOP_MARKING_FAILED]", markErr && markErr.message);
+        }
+      }
+
+      return res.status(499).json({
+        error: "Chat request canceled",
+        canceled: true,
+        requestId: requestId || null
+      });
+    }
+
     console.error("Erreur /chat:", err);
     console.error("[CHAT][ERROR_CONTEXT]", {
       conversationId: requestData.conversationId,
@@ -8437,6 +8576,10 @@ app.post("/chat", async (req, res) => {
       debugMeta: fallbackDebugMeta
     });
   } finally {
+    if (requestId) {
+      finalizeActiveChatRequest(requestId);
+    }
+
     if (logsEnabledForCatch) {
       console.log("[CHAT][TRACE]", {
         conversationId: requestData.conversationId,
