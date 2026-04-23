@@ -598,6 +598,7 @@
       right: 18px;
       top: calc(14px + env(safe-area-inset-top, 0px));
       pointer-events: auto;
+      visibility: hidden;
     }
 
     #chatUndoMenuBtn {
@@ -636,9 +637,6 @@
       }
     }
 
-    #chatUndoMenuAction.is-disabled {
-      color: #8fa3a6;
-    }
     
     #conversationsBackBtn {
       display: none;
@@ -1309,6 +1307,30 @@
         transform: scale(1);
       }
     }
+
+    #sendBtn.is-branching {
+      cursor: default;
+      pointer-events: none;
+    }
+
+    #sendBtn.is-branching::before {
+      opacity: 0;
+    }
+
+    #sendBtn.is-branching::after {
+      content: "";
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      border: 2.5px solid rgba(255, 255, 255, 0.28);
+      border-top-color: rgba(255, 255, 255, 0.92);
+      animation: sendBtnSpinner 0.7s linear infinite;
+    }
+
+    @keyframes sendBtnSpinner {
+      to { transform: rotate(360deg); }
+    }
     
     .message {
       margin: 14px 0;
@@ -1964,9 +1986,7 @@
             <circle cx="12" cy="19" r="1.8" fill="currentColor"></circle>
           </svg>
         </button>
-        <div id="chatUndoMenu" class="conversationMenuPopover" data-menu="chat-undo-menu">
-          <button id="chatUndoMenuAction" type="button" class="conversationMenuAction is-disabled">Annuler la modification</button>
-        </div>
+        <div id="chatUndoMenu" class="conversationMenuPopover" data-menu="chat-undo-menu"></div>
       </div>
     </div>
     
@@ -2451,7 +2471,6 @@
     const CONVERSATIONS_INDEX_KEY = "facilitatio_conversations_index";
     const HIDDEN_TRUNK_IDS_KEY = "facilitatio_hidden_trunk_ids";
     const PRIVATE_CONVERSATION_IDS_KEY = "facilitatio_private_conversation_ids";
-    const EDIT_UNDO_KEY = "facilitatio_last_edit_undo";
     const SESSION_OPENING_GREETING = "Bienvenue dans cette nouvelle session. Que veux-tu explorer aujourd'hui ?";
     const CONVERSATION_OPENING_GREETING = "Bienvenue dans cette nouvelle conversation. Que veux-tu explorer aujourd'hui ?";
     const ACTIVITY_KEY = "facilitatio_last_activity";
@@ -3019,98 +3038,7 @@
       };
     }
 
-    function readEditUndoPayload() {
-      try {
-        const raw = localStorage.getItem(EDIT_UNDO_KEY);
-        if (!raw) return null;
 
-        const parsed = JSON.parse(raw);
-        if (!parsed || typeof parsed !== "object") return null;
-
-        const conversationId = String(parsed.conversationId || "").trim();
-        const snapshot = parsed.snapshot && typeof parsed.snapshot === "object" ? parsed.snapshot : null;
-        if (!conversationId || !snapshot) return null;
-
-        return {
-          conversationId,
-          snapshot: {
-            messages: Array.isArray(snapshot.messages) ? snapshot.messages : [],
-            memory: typeof snapshot.memory === "string" && snapshot.memory.trim() ? snapshot.memory : defaultMemory(),
-            flags: normalizeStoredFlags(snapshot.flags || {}),
-            updatedAt: Number(snapshot.updatedAt || Date.now()),
-            isPrivate: snapshot.isPrivate === true
-          }
-        };
-      } catch {
-        localStorage.removeItem(EDIT_UNDO_KEY);
-        return null;
-      }
-    }
-
-    function canUndoLastEditedMessage() {
-      const payload = readEditUndoPayload();
-      return Boolean(payload && payload.conversationId && payload.conversationId === getConversationId());
-    }
-
-    function refreshChatUndoMenuAction() {
-      const actionBtn = document.getElementById("chatUndoMenuAction");
-      if (!actionBtn) return;
-
-      const enabled = canUndoLastEditedMessage();
-      actionBtn.classList.toggle("is-disabled", !enabled);
-      actionBtn.disabled = !enabled;
-      actionBtn.setAttribute("aria-disabled", enabled ? "false" : "true");
-    }
-
-    function clearEditUndoPayload() {
-      localStorage.removeItem(EDIT_UNDO_KEY);
-      refreshChatUndoMenuAction();
-    }
-
-    function saveEditUndoPayload(conversationId, snapshot) {
-      if (!conversationId || !snapshot || typeof snapshot !== "object") return;
-
-      safeSetLocalStorage(
-        EDIT_UNDO_KEY,
-        JSON.stringify({
-          conversationId,
-          snapshot: {
-            messages: Array.isArray(snapshot.messages) ? snapshot.messages : [],
-            memory: typeof snapshot.memory === "string" && snapshot.memory.trim() ? snapshot.memory : defaultMemory(),
-            flags: normalizeStoredFlags(snapshot.flags || {}),
-            updatedAt: Number(snapshot.updatedAt || Date.now()),
-            isPrivate: snapshot.isPrivate === true
-          }
-        }),
-        "saveEditUndoPayload"
-      );
-
-      refreshChatUndoMenuAction();
-    }
-
-    function restoreLastEditedConversationState() {
-      const payload = readEditUndoPayload();
-      if (!payload || payload.conversationId !== getConversationId()) {
-        refreshChatUndoMenuAction();
-        return false;
-      }
-
-      saveConversationData(payload.conversationId, {
-        messages: payload.snapshot.messages,
-        memory: payload.snapshot.memory,
-        flags: payload.snapshot.flags,
-        updatedAt: Date.now(),
-        isPrivate: payload.snapshot.isPrivate === true
-      });
-
-      clearEditUndoPayload();
-      closeEditMode({ restoreDraft: false });
-      renderHistory();
-      updateScrollToBottomBtn();
-      scrollChatToBottom();
-      showTemporaryNotice("Modification annulee");
-      return true;
-    }
     
     function createEmptyConversationData(options = {}) {
       const isPrivate = options.isPrivate === true;
@@ -5908,7 +5836,7 @@
           hasStructuredSignals ||
           !!debugMeta.explorationSubmode ||
           !!debugMeta.therapeuticAllianceSource ||
-          (debugMeta.memoryCompressed && !!debugMeta.memoryBeforeCompression) ||
+          true ||
           (debugMeta.modelConflict && !!debugMeta.rewriteSource) ||
           (debugMeta.modelConflict && !!debugMeta.memoryRewriteSource) ||
           debugMeta.humanFieldRisk === true
@@ -6316,7 +6244,7 @@
 
           const memBeforeSum = document.createElement("summary");
           memBeforeSum.className = "debug-chip";
-          memBeforeSum.textContent = "Memoire (avant compression)";
+          memBeforeSum.textContent = "M\u00e9moire avant r\u00e9\u00e9criture";
 
           const memBeforeContent = document.createElement("div");
           memBeforeContent.className = "debug-block";
@@ -6325,6 +6253,11 @@
           memBefore.appendChild(memBeforeSum);
           memBefore.appendChild(memBeforeContent);
           bottom.appendChild(memBefore);
+        } else {
+          const noRewrite = document.createElement("div");
+          noRewrite.className = "debug-chip";
+          noRewrite.textContent = "Pas de r\u00e9\u00e9criture";
+          bottom.appendChild(noRewrite);
         }
 
         if (debugMeta.modelConflict && debugMeta.rewriteSource) {
@@ -7333,68 +7266,60 @@
               comparisonResults: Array.isArray(item.comparisonResults) ? item.comparisonResults : null
             }));
 
+          const _branchSendBtn = document.getElementById("sendBtn");
+          if (_branchSendBtn) _branchSendBtn.classList.add("is-branching");
+
           try {
-            const createRes = await fetch("/api/branches/from-message", {
+            const branchState = deriveBranchConversationState(conversationIdBeforeSend, truncatedHistory);
+            const branchRes = await fetch("/api/branches/create-and-activate", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 sourceConversationId: conversationIdBeforeSend,
                 anchorMessageId,
                 seedMessages: anchorMessageId ? undefined : branchSeedMessages,
-                userId: branchUserId
+                userId: branchUserId,
+                memory: branchState.memory,
+                flags: branchState.flags
               })
             });
 
-            if (createRes.ok) {
-              const createData = await createRes.json().catch(() => ({}));
-              const branchId = String(createData?.branch?.id || "").trim();
-              const branchConversationId = String(createData?.branch?.branchConversationId || "").trim();
+            if (branchRes.ok) {
+              const branchData = await branchRes.json().catch(() => ({}));
+              const branchConversationId = String(branchData?.branch?.branchConversationId || "").trim();
 
-              if (branchId && branchConversationId) {
-                const activateRes = await fetch("/api/branches/" + branchId + "/activate", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    ...deriveBranchConversationState(conversationIdBeforeSend, truncatedHistory),
-                    userId: branchUserId
-                  })
-                });
-
-                if (activateRes.ok) {
-                  localStorage.setItem(CONVERSATION_ID_KEY, branchConversationId);
-                  const sourceTrunkTitle = getTrunkConversationTitle(conversationIdBeforeSend);
-                  if (!isBranchConversationId(conversationIdBeforeSend)) {
-                    markTrunkConversationHidden(conversationIdBeforeSend);
-                  }
-                  saveConversationData(branchConversationId, {
-                    ...loadConversationData(branchConversationId),
-                    messages: truncatedHistory,
-                    memory: editedConversationState.memory,
-                    flags: editedConversationState.flags,
-                    updatedAt: Date.now()
-                  });
-                  upsertConversationIndexItem({
-                    id: branchConversationId,
-                    title: sourceTrunkTitle || getConversationIndexTitle(conversationIdBeforeSend),
-                    updatedAt: Date.now()
-                  });
-                  clearEditUndoPayload();
-                  requestIsEdited = false;
-                  shouldSkipUserHistoryInsert = true;
-                  branchActivated = true;
-                } else {
-                  const activateData = await activateRes.json().catch(() => ({}));
-                  branchFailureMessage = "Activation branche impossible : " + (activateData.error || activateRes.status);
+              if (branchConversationId) {
+                localStorage.setItem(CONVERSATION_ID_KEY, branchConversationId);
+                const sourceTrunkTitle = getTrunkConversationTitle(conversationIdBeforeSend);
+                if (!isBranchConversationId(conversationIdBeforeSend)) {
+                  markTrunkConversationHidden(conversationIdBeforeSend);
                 }
+                saveConversationData(branchConversationId, {
+                  ...loadConversationData(branchConversationId),
+                  messages: truncatedHistory,
+                  memory: editedConversationState.memory,
+                  flags: editedConversationState.flags,
+                  updatedAt: Date.now()
+                });
+                upsertConversationIndexItem({
+                  id: branchConversationId,
+                  title: sourceTrunkTitle || getConversationIndexTitle(conversationIdBeforeSend),
+                  updatedAt: Date.now()
+                });
+                requestIsEdited = false;
+                shouldSkipUserHistoryInsert = true;
+                branchActivated = true;
               } else {
-                branchFailureMessage = "Creation de branche invalide";
+                branchFailureMessage = "Branche invalide : identifiant conversation manquant";
               }
             } else {
-              const createData = await createRes.json().catch(() => ({}));
-              branchFailureMessage = "Creation de branche impossible : " + (createData.error || createRes.status);
+              const branchData = await branchRes.json().catch(() => ({}));
+              branchFailureMessage = "Branchement impossible : " + (branchData.error || branchRes.status);
             }
           } catch (err) {
             branchFailureMessage = "Erreur branche : " + (err && err.message ? err.message : "inconnue");
+          } finally {
+            if (_branchSendBtn) _branchSendBtn.classList.remove("is-branching");
           }
         }
 
@@ -7414,7 +7339,6 @@
             flags: editedConversationState.flags,
             updatedAt: Date.now()
           });
-          saveEditUndoPayload(conversationIdBeforeSend, previousConversationSnapshot);
         }
 
         closeEditMode({ restoreDraft: false });
@@ -7423,7 +7347,6 @@
         
         input.value = restoredDraft || "";
       } else {
-        clearEditUndoPayload();
         if (!shouldSkipUserHistoryInsert) {
           pushHistory("user", message, []);
           addMessage("user", message, [], {
@@ -8015,7 +7938,6 @@
     const conversationsAccountMenuAction = document.getElementById("conversationsAccountMenuAction");
     const chatUndoMenuBtn = document.getElementById("chatUndoMenuBtn");
     const chatUndoMenu = document.getElementById("chatUndoMenu");
-    const chatUndoMenuAction = document.getElementById("chatUndoMenuAction");
 
     if (conversationsAccountMenuBtn && conversationsAccountMenu) {
       conversationsAccountMenuBtn.addEventListener("click", e => {
@@ -8052,23 +7974,7 @@
       chatUndoMenuBtn.addEventListener("click", e => {
         e.preventDefault();
         e.stopPropagation();
-        refreshChatUndoMenuAction();
         openConversationMenu(chatUndoMenuBtn, chatUndoMenu);
-      });
-    }
-
-    if (chatUndoMenuAction) {
-      refreshChatUndoMenuAction();
-      chatUndoMenuAction.addEventListener("click", e => {
-        e.preventDefault();
-        e.stopPropagation();
-
-        if (!canUndoLastEditedMessage()) {
-          return;
-        }
-
-        closeConversationMenus();
-        restoreLastEditedConversationState();
       });
     }
     

@@ -5799,6 +5799,194 @@ app.post("/api/branches/from-message", async (req, res) => {
   }
 });
 
+app.post("/api/branches/create-and-activate", async (req, res) => {
+  try {
+    if (
+      !req.body ||
+      typeof req.body !== "object" ||
+      Array.isArray(req.body) ||
+      typeof req.body.sourceConversationId !== "string" ||
+      (req.body.anchorMessageId !== undefined && typeof req.body.anchorMessageId !== "string") ||
+      (req.body.seedMessages !== undefined && !Array.isArray(req.body.seedMessages)) ||
+      (req.body.userId !== undefined && typeof req.body.userId !== "string") ||
+      (req.body.flags !== undefined && (typeof req.body.flags !== "object" || req.body.flags === null || Array.isArray(req.body.flags)))
+    ) {
+      return res.status(400).json({ error: "Invalid branch request" });
+    }
+
+    const actorUserId = await resolveBranchActorUserId(req);
+    const sourceConversationId = String(req.body.sourceConversationId || "").trim();
+    const anchorMessageId = String(req.body.anchorMessageId || "").trim();
+    const requestedSeedMessages = Array.isArray(req.body.seedMessages) ? req.body.seedMessages : null;
+
+    if (!sourceConversationId || !actorUserId) {
+      return res.status(400).json({ error: "Missing sourceConversationId or userId" });
+    }
+
+    const requestedBranchMemory = typeof req.body?.memory === "string" && req.body.memory.trim() ?
+      normalizeMemory(req.body.memory, buildDefaultPromptRegistry()) :
+      "";
+    const requestedBranchFlags = req.body?.flags !== undefined ?
+      normalizeSessionFlags(req.body.flags) :
+      null;
+
+    const [conversationSnap, messagesSnap] = await Promise.all([
+      db.ref("conversations").child(sourceConversationId).once("value"),
+      messagesRef.orderByChild("conversationId").equalTo(sourceConversationId).once("value")
+    ]);
+
+    const sourceConversation = conversationSnap.val();
+    if (!sourceConversation || typeof sourceConversation !== "object") {
+      return res.status(404).json({ error: "Source conversation not found" });
+    }
+
+    if (String(sourceConversation.userId || "") !== actorUserId) {
+      return res.status(403).json({ error: "Conversation ownership mismatch" });
+    }
+
+    const rawMessages = messagesSnap.val() || {};
+    const messageEntries = Object.entries(rawMessages)
+      .map(([id, item]) => ({
+        id,
+        item: item && typeof item === "object" ? item : {}
+      }))
+      .sort((a, b) => {
+        const aDate = String(a.item.createdAt || "");
+        const bDate = String(b.item.createdAt || "");
+        if (aDate && bDate && aDate !== bDate) return aDate.localeCompare(bDate);
+        return String(a.id).localeCompare(String(b.id));
+      });
+
+    let seededMessages = [];
+    let resolvedAnchorMessageId = anchorMessageId;
+
+    if (anchorMessageId) {
+      const anchorIndex = messageEntries.findIndex(entry => entry.id === anchorMessageId);
+      if (anchorIndex < 0) {
+        return res.status(404).json({ error: "Anchor message not found" });
+      }
+      seededMessages = messageEntries.slice(0, anchorIndex + 1).map(entry => ({
+        id: entry.id,
+        role: String(entry.item.role || ""),
+        content: String(entry.item.content || ""),
+        debug: Array.isArray(entry.item.debug) ? entry.item.debug : [],
+        debugMeta: entry.item.debugMeta && typeof entry.item.debugMeta === "object" ? entry.item.debugMeta : null,
+        stateSnapshot: entry.item.stateSnapshot && typeof entry.item.stateSnapshot === "object" ? {
+          memory: typeof entry.item.stateSnapshot.memory === "string" ? entry.item.stateSnapshot.memory : "",
+          flags: normalizeSessionFlags(entry.item.stateSnapshot.flags || {})
+        } : null,
+        comparisonResults: Array.isArray(entry.item.comparisonResults) ? entry.item.comparisonResults : null,
+        createdAt: typeof entry.item.createdAt === "string" ? entry.item.createdAt : null
+      }));
+    } else {
+      seededMessages = (requestedSeedMessages || [])
+        .map(item => ({
+          id: typeof item?.id === "string" && item.id.trim() ? item.id.trim() : null,
+          role: String(item?.role || ""),
+          content: String(item?.content || ""),
+          debug: Array.isArray(item?.debug) ? item.debug : [],
+          debugMeta: item?.debugMeta && typeof item.debugMeta === "object" ? item.debugMeta : null,
+          stateSnapshot: item?.stateSnapshot && typeof item.stateSnapshot === "object" ? {
+            memory: typeof item.stateSnapshot.memory === "string" ? item.stateSnapshot.memory : "",
+            flags: normalizeSessionFlags(item.stateSnapshot.flags || {})
+          } : null,
+          comparisonResults: Array.isArray(item?.comparisonResults) ? item.comparisonResults : null,
+          createdAt: typeof item?.createdAt === "string" ? item.createdAt : null
+        }))
+        .filter(item => item.role && item.content);
+
+      resolvedAnchorMessageId = String(
+        [...seededMessages].reverse().find(item => typeof item?.id === "string" && item.id.trim())?.id || ""
+      ).trim();
+    }
+
+    const now = new Date().toISOString();
+    const branchConversationId = `c_branch_${Date.now()}_${crypto.randomBytes(4).toString("hex")}`;
+    const branchRef = branchRecordsRef.push();
+    const branchId = branchRef.key;
+
+    if (!branchId) {
+      return res.status(500).json({ error: "Failed to create branch id" });
+    }
+
+    const sourceConversationTitle = String(sourceConversation.title || "").trim();
+
+    const lastUserMessage = [...seededMessages].reverse().find(m => String(m?.role || "") === "user");
+
+    await Promise.all([
+      branchRef.set({
+        userId: actorUserId,
+        sourceConversationId,
+        sourceAnchorMessageId: resolvedAnchorMessageId,
+        branchConversationId,
+        seedMessageCount: seededMessages.length,
+        status: "active",
+        createdAt: now,
+        updatedAt: now,
+        activatedAt: now
+      }),
+      branchSeedSnapshotsRef.child(branchId).set({
+        sourceConversationId,
+        sourceAnchorMessageId: resolvedAnchorMessageId,
+        seededAt: now,
+        messages: seededMessages
+      }),
+      db.ref("conversations").child(branchConversationId).set({
+        userId: actorUserId,
+        isBranch: true,
+        sourceConversationId,
+        createdAt: now,
+        updatedAt: now,
+        title: sourceConversationTitle || `Branche de ${sourceConversationId}`,
+        titleLocked: false,
+        messageCount: seededMessages.filter(m => String(m?.role || "") === "user").length,
+        lastUserMessage: lastUserMessage ? String(lastUserMessage.content || "") : "",
+        memory: requestedBranchMemory,
+        flags: requestedBranchFlags || normalizeSessionFlags({})
+      })
+    ]);
+
+    if (seededMessages.length > 0) {
+      await Promise.all(
+        seededMessages.map((message, index) => {
+          const timestampBase = Date.now();
+          return messagesRef.push({
+            role: String(message?.role || ""),
+            content: String(message?.content || ""),
+            timestamp: timestampBase + index,
+            userId: actorUserId,
+            conversationId: branchConversationId,
+            debug: Array.isArray(message?.debug) ? message.debug : [],
+            debugMeta: message?.debugMeta && typeof message.debugMeta === "object" ? message.debugMeta : null,
+            comparisonResults: Array.isArray(message?.comparisonResults) ? message.comparisonResults : null,
+            branchId,
+            sourceMessageId: typeof message?.id === "string" ? message.id : null
+          });
+        })
+      );
+    }
+
+    return res.status(201).json({
+      success: true,
+      branch: {
+        id: branchId,
+        sourceConversationId,
+        sourceAnchorMessageId: resolvedAnchorMessageId,
+        branchConversationId,
+        seedMessageCount: seededMessages.length,
+        createdAt: now,
+        status: "active",
+        activatedAt: now
+      },
+      memory: requestedBranchMemory,
+      flags: requestedBranchFlags !== null ? requestedBranchFlags : undefined
+    });
+  } catch (err) {
+    console.error("Erreur /api/branches/create-and-activate:", err.message);
+    return res.status(500).json({ error: "Branch create-and-activate failed" });
+  }
+});
+
 app.post("/api/branches/:id/activate", async (req, res) => {
   try {
     const branchId = String(req.params?.id || "").trim();
