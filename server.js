@@ -5874,6 +5874,17 @@ app.post("/api/branches/:id/activate", async (req, res) => {
     const existingConversation = existingConvSnap.val();
 
     if (!existingConversation || typeof existingConversation !== "object") {
+      let sourceConversationTitle = "";
+      const sourceConversationId = String(branch.sourceConversationId || "").trim();
+
+      if (sourceConversationId) {
+        const sourceConvSnap = await db.ref("conversations").child(sourceConversationId).once("value");
+        const sourceConversation = sourceConvSnap.val();
+        if (sourceConversation && typeof sourceConversation === "object") {
+          sourceConversationTitle = String(sourceConversation.title || "").trim();
+        }
+      }
+
       const lastUserMessage = [...seedMessages]
         .reverse()
         .find(m => String(m?.role || "") === "user");
@@ -5885,7 +5896,7 @@ app.post("/api/branches/:id/activate", async (req, res) => {
         sourceConversationId: String(branch.sourceConversationId || ""),
         createdAt: now,
         updatedAt: now,
-        title: `Branche de ${String(branch.sourceConversationId || "conversation")}`,
+        title: sourceConversationTitle || `Branche de ${String(branch.sourceConversationId || "conversation")}`,
         titleLocked: false,
         messageCount: seedMessages.filter(m => String(m?.role || "") === "user").length,
         lastUserMessage: lastUserMessage ? String(lastUserMessage.content || "") : "",

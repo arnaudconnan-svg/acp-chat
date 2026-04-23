@@ -2449,6 +2449,7 @@
     const USER_ID_KEY = "facilitatio_user_id";
     const CONVERSATION_ID_KEY = "facilitatio_conversation_id";
     const CONVERSATIONS_INDEX_KEY = "facilitatio_conversations_index";
+    const HIDDEN_TRUNK_IDS_KEY = "facilitatio_hidden_trunk_ids";
     const PRIVATE_CONVERSATION_IDS_KEY = "facilitatio_private_conversation_ids";
     const EDIT_UNDO_KEY = "facilitatio_last_edit_undo";
     const SESSION_OPENING_GREETING = "Bienvenue dans cette nouvelle session. Que veux-tu explorer aujourd'hui ?";
@@ -3144,10 +3145,36 @@
       return id.startsWith("c_branch_");
     }
 
-    function getTrunkConversationTitle(conversationId) {
+    function getConversationIndexTitle(conversationId) {
+      const safeConversationId = String(conversationId || "").trim();
+      if (!safeConversationId) {
+        return null;
+      }
+
       const index = loadConversationsIndex();
-      const item = index.find(i => i && !isBranchConversationId(i.id) && i.id === conversationId);
-      return item && typeof item.title === "string" ? item.title : null;
+      const item = index.find(i => i && i.id === safeConversationId);
+      return item && typeof item.title === "string" && item.title.trim() ? item.title.trim() : null;
+    }
+
+    function getTrunkConversationTitle(conversationId) {
+      const directTitle = getConversationIndexTitle(conversationId);
+      if (directTitle) {
+        return directTitle;
+      }
+
+      const safeConversationId = String(conversationId || "").trim();
+      if (!safeConversationId) {
+        return null;
+      }
+
+      const branchPrefix = "Branche de ";
+      const branchTitle = getConversationIndexTitle(safeConversationId);
+      if (branchTitle && branchTitle.startsWith(branchPrefix)) {
+        const sourceConversationId = branchTitle.slice(branchPrefix.length).trim();
+        return getConversationIndexTitle(sourceConversationId);
+      }
+
+      return null;
     }
     
     function loadConversationsIndex() {
@@ -3157,6 +3184,57 @@
       } catch {
         return [];
       }
+    }
+
+    function loadHiddenTrunkConversationIds() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(HIDDEN_TRUNK_IDS_KEY) || "[]");
+        if (!Array.isArray(parsed)) {
+          return [];
+        }
+
+        return parsed
+          .map(id => String(id || "").trim())
+          .filter(Boolean);
+      } catch {
+        return [];
+      }
+    }
+
+    function saveHiddenTrunkConversationIds(ids) {
+      const uniqueIds = Array.from(new Set((Array.isArray(ids) ? ids : [])
+        .map(id => String(id || "").trim())
+        .filter(Boolean)));
+
+      safeSetLocalStorage(
+        HIDDEN_TRUNK_IDS_KEY,
+        JSON.stringify(uniqueIds),
+        "saveHiddenTrunkConversationIds"
+      );
+    }
+
+    function markTrunkConversationHidden(conversationId) {
+      const safeConversationId = String(conversationId || "").trim();
+      if (!safeConversationId) {
+        return;
+      }
+
+      const hiddenIds = loadHiddenTrunkConversationIds();
+      if (hiddenIds.includes(safeConversationId)) {
+        return;
+      }
+
+      hiddenIds.push(safeConversationId);
+      saveHiddenTrunkConversationIds(hiddenIds);
+    }
+
+    function isTrunkConversationHidden(conversationId) {
+      const safeConversationId = String(conversationId || "").trim();
+      if (!safeConversationId) {
+        return false;
+      }
+
+      return loadHiddenTrunkConversationIds().includes(safeConversationId);
     }
 
     function safeSetLocalStorage(key, value, context = "localStorage") {
@@ -3200,8 +3278,13 @@
         const conversations = Array.isArray(data?.conversations) ? data.conversations : [];
 
         conversations.forEach(item => {
+          const safeConversationId = String(item?.id || "").trim();
+          if (!safeConversationId || isTrunkConversationHidden(safeConversationId)) {
+            return;
+          }
+
           upsertConversationIndexItem({
-            id: String(item?.id || ""),
+            id: safeConversationId,
             title: typeof item?.title === "string" && item.title.trim() ? item.title : (typeof item?.lastUserMessage === "string" ? item.lastUserMessage.slice(0, 60) : "Conversation sans titre"),
             updatedAt: Number(new Date(item?.updatedAt || item?.createdAt || Date.now())) || Date.now(),
             isCustomTitle: item?.titleLocked === true
@@ -3541,6 +3624,9 @@
 
         localStorage.setItem(CONVERSATION_ID_KEY, branchConversationId);
         const sourceTrunkTitle = getTrunkConversationTitle(sourceConversationId);
+        if (!isBranchConversationId(sourceConversationId)) {
+          markTrunkConversationHidden(sourceConversationId);
+        }
         saveConversationData(branchConversationId, {
           messages: branchMessages,
           memory: branchState.memory,
@@ -3549,7 +3635,7 @@
         });
         upsertConversationIndexItem({
           id: branchConversationId,
-          title: sourceTrunkTitle,
+          title: sourceTrunkTitle || getConversationIndexTitle(sourceConversationId),
           updatedAt: Date.now()
         });
 
@@ -6690,6 +6776,10 @@
       const template = document.getElementById("conversationItemTemplate");
       
       const items = loadConversationsIndex()
+        .filter(item => {
+          const safeConversationId = String(item?.id || "").trim();
+          return !isTrunkConversationHidden(safeConversationId);
+        })
         .slice()
         .sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0));
       
@@ -7162,17 +7252,7 @@
           return;
         }
 
-        pushHistory("user", nextMessage, []);
-        if (chat) {
-          addMessage("user", nextMessage, [], {
-            shouldAutoScroll: isChatAtBottom(),
-            pulseScrollButton: false,
-            progressive: false,
-            historyIndex: loadHistory().length - 1
-          });
-        }
-
-        enqueueMessageForConversation(getConversationId(), nextMessage, { alreadyInserted: true });
+        enqueueMessageForConversation(getConversationId(), nextMessage, { alreadyInserted: false });
         input.value = "";
         syncInputAvailability();
         updateActivity();
@@ -7283,6 +7363,9 @@
                 if (activateRes.ok) {
                   localStorage.setItem(CONVERSATION_ID_KEY, branchConversationId);
                   const sourceTrunkTitle = getTrunkConversationTitle(conversationIdBeforeSend);
+                  if (!isBranchConversationId(conversationIdBeforeSend)) {
+                    markTrunkConversationHidden(conversationIdBeforeSend);
+                  }
                   saveConversationData(branchConversationId, {
                     ...loadConversationData(branchConversationId),
                     messages: truncatedHistory,
@@ -7292,7 +7375,7 @@
                   });
                   upsertConversationIndexItem({
                     id: branchConversationId,
-                    title: sourceTrunkTitle,
+                    title: sourceTrunkTitle || getConversationIndexTitle(conversationIdBeforeSend),
                     updatedAt: Date.now()
                   });
                   clearEditUndoPayload();
