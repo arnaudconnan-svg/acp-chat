@@ -1167,6 +1167,9 @@ Tu t'appuies implicitement sur le modele pour comprendre ce qui se joue
   Regle operationnelle :
   Si l'utilisateur exprime d'une maniere ou une autre qu'il n'est pas aide par la reponse, ne pas proposer une action concrete comme reponse a ce malaise. Le bot lui-meme doit changer de strategie avant que l'utilisateur puisse changer quoi que ce soit.
 
+  Protection contre la reconduction du meme axe exploratoire (Phase 2d) :
+  Si un axe exploratoire (ex : localisation corporelle, precision sensorielle) a genere enervement, frustration ou saturation au tour precedent, ne pas reconduire cet axe au tour actuel, meme sous forme indirecte ou raffinee. Changer radicalement de point d'appui avant de relancer le mouvement exploratoire. Eviter la pseudo-adaptation ("on laisse de cote la precision") qui continue l'impasse sous une autre forme.
+
 Cadre general :
 - n'explique jamais le modele
 - n'utilise pas le vocabulaire theorique du modele sauf necessite exceptionnelle
@@ -1178,6 +1181,7 @@ Cadre general :
 - quand un ressenti emergent apparait, ne le contourne pas par une lecture meta du type "quelque chose de precieux", "hors de portee", "trop risque" si la qualite vecue elle-meme n'a pas encore ete suivie
 - si une question est vraiment necessaire, elle doit rester au plus pres de la qualite vecue du ressenti emergent, pas renvoyer la personne vers une observation cognitive generale
 - REGLE RESSENTI CORPOREL EXPLICIT : quand un ressenti corporel est clairement present maintenant dans le message (sensation physique localisee, mouvement interne decrit, pression, chaleur, serre, etc.), une simple reformulation descriptive ou un reflet plat est insuffisant ; il faut soit nommer ce que ca fait de le sentir maintenant, soit poser une question de tres grande proximite du type "c'est ou precisement ?" ou "ca se fait comment la dedans ?" ; ne pas se contenter de redire ce qui a ete dit
+- EXCEPTION A REGLE RESSENTI CORPOREL EXPLICIT (Phase 2c) : si le message actuel exprime enervement, frustration ou saturation face a l'impossibilite de localiser ou nommer le ressenti corporel (ex : "ca m'enerve de pas reussir a dire ou"), ne pas poser de question de localisation ; traiter d'abord le signal relationnel (frustration elle-meme) avant de continuer l'axe somatique. Changer radicalement de point d'appui.
 - n'utilise jamais explicitement les termes du modele (ex : memoire des ressentis/ du sens, croyances limitantes, etc.)
 - entre directement dans une lecture, une hypothese ou une mise en tension
 - formule tes lectures principalement a la premiere personne
@@ -2436,6 +2440,15 @@ Regles :
 - si l'utilisateur rejette une lecture mais laisse entendre qu'un mouvement de fond existe encore, rejectsUnderlyingPhenomenon = false
 - si l'utilisateur rejette clairement le phenomene lui-meme (ex : "non, il n'y a pas de colere du tout"), mets rejectsUnderlyingPhenomenon = true
 - en cas de doute sur tensionHoldLevel, reponds medium
+
+Regles supplementaires pour needsSoberReadjustment (Phase 2b) :
+- un message où l'utilisateur exprime enervement ou frustration directement lie a ce que le bot lui a demande (localiser, preciser, nommer) doit produire needsSoberReadjustment = true, meme si la frustration est presentee comme un echec personnel ("je n'y arrive pas" plutot que "tu m'as force a faire")
+- un message qui rapporte etre laisse dans le vide, sans appui ou sans direction suite a un retrait du bot doit produire needsSoberReadjustment = true
+- un message où l'utilisateur exprime explicitement ne pas vouloir explorer, creuser, chercher, analyser ou approfondir quoi que ce soit ("pas envie de creuser", "je veux pas aller dans les details", "pas ce soir", etc.) doit produire needsSoberReadjustment = true meme sans reproche direct envers le bot
+
+Regles importantes pour distinguer isInterpretationRejection et needsSoberReadjustment :
+- un message demandant explicitement d'arreter les questions et de juste rester present ("laisse tomber les questions", "reste juste avec moi", "j'ai juste besoin de ta presence") est une demande de presence minimale, pas un rejet d'interpretation : dans ce cas isInterpretationRejection = false et needsSoberReadjustment = true
+- "laisse tomber les questions" seul ne constitue pas un rejet d'interpretation si aucune interpretation specifique du bot n'est contestee ; traiter cela comme un signal de besoin de presence, pas comme un rejet theorique
 
 Reponds uniquement par le JSON.
 `,
@@ -7340,7 +7353,9 @@ app.post("/chat", async (req, res) => {
       contactSubmode = null,
       explorationSubmode = null,
       interpretationRejection = false,
-      isRecallRequest = false
+      isRecallRequest = false,
+      needsSoberReadjustment = false,
+      relationalAdjustmentTriggered = false
     } = {}) {
       const chips = [];
 
@@ -7381,6 +7396,14 @@ app.post("/chat", async (req, res) => {
         chips.push("Demande de rappel mémoire");
       }
       
+      if (needsSoberReadjustment === true) {
+        chips.push("Réajustement sobre");
+      }
+      
+      if (relationalAdjustmentTriggered === true) {
+        chips.push("Ajustement relationnel");
+      }
+      
       return chips;
     }
     
@@ -7419,7 +7442,9 @@ app.post("/chat", async (req, res) => {
         contactSubmode,
         explorationSubmode,
         interpretationRejection,
-        isRecallRequest
+        isRecallRequest,
+        needsSoberReadjustment,
+        relationalAdjustmentTriggered
       }),
       memory: normalizeMemory(memory, promptRegistry),
       directivityText: buildDirectivityText({
@@ -7733,7 +7758,9 @@ app.post("/chat", async (req, res) => {
       contactSubmode = null,
       explorationSubmode = null,
       interpretationRejection = false,
-      isRecallRequest = false
+      isRecallRequest = false,
+      needsSoberReadjustment = false,
+      relationalAdjustmentTriggered = false
     } = {}) {
       const chips = [];
 
@@ -7772,6 +7799,14 @@ app.post("/chat", async (req, res) => {
       
       if (isRecallRequest === true) {
         chips.push("Demande de rappel mémoire");
+      }
+      
+      if (needsSoberReadjustment === true) {
+        chips.push("Réajustement sobre");
+      }
+      
+      if (relationalAdjustmentTriggered === true) {
+        chips.push("Ajustement relationnel");
       }
       
       return chips;
@@ -7839,7 +7874,9 @@ app.post("/chat", async (req, res) => {
           contactSubmode,
           explorationSubmode,
           interpretationRejection,
-          isRecallRequest
+          isRecallRequest,
+          needsSoberReadjustment,
+          relationalAdjustmentTriggered
         }),
         memory: normalizeMemory(memory, promptRegistry),
         directivityText: buildDirectivityText({
@@ -8376,6 +8413,19 @@ app.post("/chat", async (req, res) => {
         clampExplorationDirectivityLevel(effectiveExplorationDirectivityLevel),
         clampExplorationDirectivityLevel(calibrationAnalysis.calibrationLevel)
       );
+      
+      // Phase 2a: Cap directivity when relational adjustment is triggered
+      if (relationalAdjustmentAnalysis?.needsRelationalAdjustment === true) {
+        const previousLevel = finalDirectivityLevel;
+        finalDirectivityLevel = Math.min(finalDirectivityLevel, 2);
+        
+        logChatDecision("relational_adjustment_caps_directivity", {
+          previousLevel,
+          cappedLevel: finalDirectivityLevel,
+          relationalAdjustmentTriggered: true
+        });
+      }
+      
       finalExplorationSubmode = ["interpretation", "phenomenological_follow"].includes(calibrationAnalysis.explorationSubmode) ?
         calibrationAnalysis.explorationSubmode :
         "interpretation";

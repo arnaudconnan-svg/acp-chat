@@ -6126,6 +6126,8 @@
           directivityLabel: "",
           infoSubmode: null,
           interpretationRejection: false,
+          needsSoberReadjustment: false,
+          relationalAdjustmentTriggered: false,
           explorationCalibrationLevel: null,
           explorationSubmode: null,
           therapeuticAllianceSource: "",
@@ -6186,6 +6188,14 @@
           meta.interpretationRejection = true;
         }
 
+        if (debugMetaValue.needsSoberReadjustment === true) {
+          meta.needsSoberReadjustment = true;
+        }
+
+        if (debugMetaValue.relationalAdjustmentTriggered === true) {
+          meta.relationalAdjustmentTriggered = true;
+        }
+
         if (Number.isInteger(debugMetaValue.explorationCalibrationLevel)) {
           meta.explorationCalibrationLevel = debugMetaValue.explorationCalibrationLevel;
         }
@@ -6232,8 +6242,8 @@
           !!debugMeta.explorationSubmode ||
           !!debugMeta.therapeuticAllianceSource ||
           true ||
-          (debugMeta.modelConflict && !!debugMeta.rewriteSource) ||
-          (debugMeta.modelConflict && !!debugMeta.memoryRewriteSource) ||
+          !!debugMeta.rewriteSource ||
+          !!debugMeta.memoryRewriteSource ||
           debugMeta.humanFieldRisk === true
         );
       
@@ -6680,13 +6690,13 @@
           bottom.appendChild(noRewrite);
         }
 
-        if (debugMeta.modelConflict && debugMeta.rewriteSource) {
+        if (debugMeta.rewriteSource) {
           const conf = document.createElement("details");
           conf.className = "debug-detail";
           
           const confSum = document.createElement("summary");
           confSum.className = "debug-chip";
-          confSum.textContent = "Conflit mod\u00e8le - r\u00e9ponse";
+          confSum.textContent = debugMeta.modelConflict ? "Conflit mod\u00e8le - r\u00e9ponse" : "R\u00e9ponse r\u00e9\u00e9crite";
           
           const confContent = document.createElement("div");
           confContent.className = "debug-block";
@@ -6697,13 +6707,13 @@
           bottom.appendChild(conf);
         }
         
-        if (debugMeta.modelConflict && debugMeta.memoryRewriteSource) {
+        if (debugMeta.memoryRewriteSource) {
           const memConf = document.createElement("details");
           memConf.className = "debug-detail";
           
           const memConfSum = document.createElement("summary");
           memConfSum.className = "debug-chip";
-          memConfSum.textContent = "Conflit mod\u00e8le - m\u00e9moire";
+          memConfSum.textContent = debugMeta.modelConflict ? "Conflit mod\u00e8le - m\u00e9moire" : "M\u00e9moire r\u00e9\u00e9crite";
           
           const memConfContent = document.createElement("div");
           memConfContent.className = "debug-block";
