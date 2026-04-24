@@ -177,6 +177,30 @@ function evaluateExpectations(testCase, result) {
     failures.push(`expected debugMeta.explorationSubmode='${expectations.explorationSubmode}', got '${String(debugMeta.explorationSubmode)}'`);
   }
 
+  if (expectations.conversationStateKey !== undefined && debugMeta.conversationStateKey !== expectations.conversationStateKey) {
+    failures.push(`expected debugMeta.conversationStateKey='${expectations.conversationStateKey}', got '${String(debugMeta.conversationStateKey)}'`);
+  }
+
+  if (expectations.allianceState !== undefined && debugMeta.allianceState !== expectations.allianceState) {
+    failures.push(`expected debugMeta.allianceState='${expectations.allianceState}', got '${String(debugMeta.allianceState)}'`);
+  }
+
+  if (expectations.processingWindow !== undefined && debugMeta.processingWindow !== expectations.processingWindow) {
+    failures.push(`expected debugMeta.processingWindow='${expectations.processingWindow}', got '${String(debugMeta.processingWindow)}'`);
+  }
+
+  if (expectations.dependencyRiskLevel !== undefined && debugMeta.dependencyRiskLevel !== expectations.dependencyRiskLevel) {
+    failures.push(`expected debugMeta.dependencyRiskLevel='${expectations.dependencyRiskLevel}', got '${String(debugMeta.dependencyRiskLevel)}'`);
+  }
+
+  if (expectations.externalSupportMode !== undefined && debugMeta.externalSupportMode !== expectations.externalSupportMode) {
+    failures.push(`expected debugMeta.externalSupportMode='${expectations.externalSupportMode}', got '${String(debugMeta.externalSupportMode)}'`);
+  }
+
+  if (expectations.closureIntent !== undefined && debugMeta.closureIntent !== expectations.closureIntent) {
+    failures.push(`expected debugMeta.closureIntent=${expectations.closureIntent}, got ${String(debugMeta.closureIntent)}`);
+  }
+
   if (Array.isArray(expectations.replyMustNotInclude)) {
     const comparableReply = normalizeComparableText(reply);
     for (const snippet of expectations.replyMustNotInclude) {
@@ -207,7 +231,13 @@ function buildCaseReport(label, result, failures = []) {
       rewriteSource: typeof debugMeta.rewriteSource === "string" ? debugMeta.rewriteSource : null,
       memoryRewriteSource: typeof debugMeta.memoryRewriteSource === "string" ? debugMeta.memoryRewriteSource : null,
       modelConflict: debugMeta.modelConflict === true,
-      memory: typeof debugMeta.memory === "string" ? debugMeta.memory : ""
+      memory: typeof debugMeta.memory === "string" ? debugMeta.memory : "",
+      conversationStateKey: typeof debugMeta.conversationStateKey === "string" ? debugMeta.conversationStateKey : null,
+      allianceState: typeof debugMeta.allianceState === "string" ? debugMeta.allianceState : null,
+      processingWindow: typeof debugMeta.processingWindow === "string" ? debugMeta.processingWindow : null,
+      dependencyRiskLevel: typeof debugMeta.dependencyRiskLevel === "string" ? debugMeta.dependencyRiskLevel : null,
+      externalSupportMode: typeof debugMeta.externalSupportMode === "string" ? debugMeta.externalSupportMode : null,
+      closureIntent: debugMeta.closureIntent === true
     }
   };
 }

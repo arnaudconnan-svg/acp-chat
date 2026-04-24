@@ -8,6 +8,7 @@
     "expect": {
       "status": 200,
       "modeChip": "EXPLORATION",
+      "conversationStateKey": "exploration",
       "maxReplyChars": 900,
       "maxParagraphs": 2
     }
@@ -144,6 +145,7 @@
       "status": 200,
       "modeChip": "INFO APP",
       "infoSubmode": "app_features",
+      "conversationStateKey": "info",
       "maxReplyChars": 1400,
       "maxParagraphs": 4,
       "needsSoberReadjustment": false
@@ -669,7 +671,9 @@
     "flags": {},
     "expect": {
       "status": 200,
-      "modeChip": "INFO APP",
+      "modeChip": "PSYCHOEDUCATION",
+      "infoSubmode": "psychoeducation",
+      "conversationStateKey": "info",
       "maxReplyChars": 2400,
       "needsSoberReadjustment": false
     }
@@ -708,6 +712,62 @@
         "symptome",
         "professionnel de sante"
       ]
+    }
+  },
+  {
+    "id": "phase_b_flags_baseline",
+    "message": "Je me sens un peu perdu depuis hier.",
+    "recentHistory": [],
+    "memory": "",
+    "flags": {},
+    "expect": {
+      "status": 200,
+      "modeChip": "EXPLORATION",
+      "conversationStateKey": "exploration",
+      "allianceState": "good",
+      "processingWindow": "open",
+      "dependencyRiskLevel": "low"
+    }
+  },
+  {
+    "id": "external_support_mention",
+    "message": "J'en parle aussi avec ma psy depuis quelques semaines.",
+    "recentHistory": [
+      {
+        "role": "user",
+        "content": "Je me sens deprime depuis un moment."
+      },
+      {
+        "role": "assistant",
+        "content": "Il y a un fond lourd qui ne retombe pas vraiment."
+      }
+    ],
+    "memory": "Un fond depressif persiste depuis plusieurs semaines.",
+    "flags": {},
+    "expect": {
+      "status": 200,
+      "modeChip": "EXPLORATION",
+      "externalSupportMode": "active"
+    }
+  },
+  {
+    "id": "closure_intent_wrap",
+    "message": "Je crois que c'est bon pour ce soir, merci.",
+    "recentHistory": [
+      {
+        "role": "user",
+        "content": "Je me sens un peu mieux d'en avoir parle."
+      },
+      {
+        "role": "assistant",
+        "content": "Quelque chose s'est peut-etre un peu allege en mettant des mots dessus."
+      }
+    ],
+    "memory": "Un echange recent a apporte un soulagement partiel.",
+    "flags": {},
+    "expect": {
+      "status": 200,
+      "closureIntent": true
     }
   }
 ]
