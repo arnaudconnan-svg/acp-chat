@@ -3092,6 +3092,19 @@ function normalizeContactSubmode(contactSubmode) {
   return null;
 }
 
+function normalizeConversationStateKey(conversationStateKey) {
+  if (conversationStateKey === "exploration") return "exploration";
+  if (conversationStateKey === "info") return "info";
+  if (conversationStateKey === "contact") return "contact";
+  if (conversationStateKey === "post_contact") return "post_contact";
+  return "exploration";
+}
+
+function normalizeConsecutiveNonExplorationTurns(value) {
+  if (!Number.isInteger(value) || value < 0) return 0;
+  return value;
+}
+
 // Compute normalized session flags with defaults for exploration state.
 // This ensures the bot always has a valid directivity level and relance window.
 function normalizeSessionFlags(flags) {
@@ -3124,7 +3137,9 @@ function normalizeSessionFlags(flags) {
     explorationDirectivityLevel,
     explorationBootstrapPending,
     infoSubmode: normalizeInfoSubmode(safe.infoSubmode),
-    explorationCalibrationLevel: clampExplorationDirectivityLevel(safe.explorationCalibrationLevel)
+    explorationCalibrationLevel: clampExplorationDirectivityLevel(safe.explorationCalibrationLevel),
+    conversationStateKey: normalizeConversationStateKey(safe.conversationStateKey),
+    consecutiveNonExplorationTurns: normalizeConsecutiveNonExplorationTurns(safe.consecutiveNonExplorationTurns)
   };
 }
 
@@ -7844,6 +7859,8 @@ app.post("/chat", async (req, res) => {
       memory = "",
       suicideLevel = "N0",
       mode = null,
+      conversationStateKey = "exploration",
+      consecutiveNonExplorationTurns = 0,
       infoSubmode = null,
       contactSubmode = null,
       interpretationRejection = false,
@@ -7887,6 +7904,8 @@ app.post("/chat", async (req, res) => {
           explorationDirectivityLevel,
           explorationRelanceWindow
         }),
+        conversationStateKey: normalizeConversationStateKey(conversationStateKey),
+        consecutiveNonExplorationTurns: normalizeConsecutiveNonExplorationTurns(consecutiveNonExplorationTurns),
         infoSubmode: normalizeInfoSubmode(infoSubmode),
         contactSubmode: normalizeContactSubmode(contactSubmode),
         interpretationRejection: interpretationRejection === true,
@@ -8437,6 +8456,42 @@ app.post("/chat", async (req, res) => {
       newFlags.infoSubmode = detectedInfoSubmode;
     }
 
+    // Explicit conversation state tracking + Option D non-exploration decay.
+    // State is computed after all mode/calibration logic and before generation.
+    const previousConversationStateKey = normalizeConversationStateKey(flags.conversationStateKey);
+    let conversationStateKey = "exploration";
+
+    if (contactAnalysis.isContact === true) {
+      conversationStateKey = "contact";
+    } else if (previousConversationStateKey === "contact" && detectedMode === "exploration") {
+      conversationStateKey = "post_contact";
+    } else if (detectedMode === "info") {
+      conversationStateKey = "info";
+    }
+
+    let consecutiveNonExplorationTurns = normalizeConsecutiveNonExplorationTurns(
+      newFlags.consecutiveNonExplorationTurns
+    );
+
+    if (conversationStateKey === "exploration" || conversationStateKey === "post_contact") {
+      consecutiveNonExplorationTurns = 0;
+    } else if (newFlags.explorationBootstrapPending === true) {
+      // Bootstrap phase: never decay
+      consecutiveNonExplorationTurns = 0;
+    } else if (consecutiveNonExplorationTurns === 0) {
+      // First non-exploration turn: freeze (gel)
+      consecutiveNonExplorationTurns = 1;
+    } else {
+      // Second+ non-exploration turn: inject false to decay directivity
+      consecutiveNonExplorationTurns += 1;
+      const decayedWindow = [...newFlags.explorationRelanceWindow, false].slice(-RELANCE_WINDOW_SIZE);
+      newFlags.explorationRelanceWindow = decayedWindow;
+      newFlags.explorationDirectivityLevel = computeExplorationDirectivityLevel(decayedWindow);
+    }
+
+    newFlags.conversationStateKey = conversationStateKey;
+    newFlags.consecutiveNonExplorationTurns = consecutiveNonExplorationTurns;
+
     flagsForCatch = normalizeSessionFlags(newFlags);
 
     logChatDecision("mode_detected", {
@@ -8448,6 +8503,9 @@ app.post("/chat", async (req, res) => {
       relationalAdjustmentTriggered: relationalAdjustmentAnalysis?.needsRelationalAdjustment === true,
       previousWasContact: flags.contactState?.wasContact === true,
       currentWasContact: newFlags.contactState?.wasContact === true,
+      previousConversationStateKey,
+      conversationStateKey,
+      consecutiveNonExplorationTurns,
       finalDirectivityLevel,
       finalExplorationSubmode
     });
@@ -8698,6 +8756,8 @@ app.post("/chat", async (req, res) => {
       memory: newMemory,
       suicideLevel: suicide.suicideLevel,
       mode: finalDetectedMode,
+      conversationStateKey: newFlags.conversationStateKey,
+      consecutiveNonExplorationTurns: newFlags.consecutiveNonExplorationTurns,
       infoSubmode: detectedInfoSubmode,
       contactSubmode: detectedContactSubmode,
       interpretationRejection: interpretationRejection.isInterpretationRejection,

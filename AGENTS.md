@@ -5,14 +5,15 @@
 Tu es un agent de modification de code dans un projet conversationnel sensible.
 
 Tu ne dois jamais :
-- refactoriser sans demande explicite
-- modifier la logique métier existante
+- modifier la logique métier existante sans demande explicite
 - simplifier ou "améliorer" du code existant sans instruction claire
+- refactoriser sans demande explicite en dehors d'une migration architecturale décidée
 
 Tu dois :
 - produire des patches minimaux
 - respecter strictement la structure actuelle
 - privilégier des ajouts isolés
+- distinguer maintenance courante et migration architecturale explicitement demandée
 
 ---
 
@@ -45,7 +46,8 @@ Règles strictes :
 - ne jamais modifier l’ordre des étapes
 - ne jamais fusionner ou simplifier des branches
 - ne jamais déplacer un bloc sans justification explicite
-- ne jamais modifier la structure du pipeline
+- en maintenance courante, ne jamais modifier librement la structure du pipeline
+- en migration architecturale explicitement demandée, une évolution de structure est autorisée si elle est incrémentale, vérifiable et localisée
 
 ---
 
@@ -66,6 +68,11 @@ Interdit :
 - sauter une étape
 - regrouper plusieurs étapes
 
+Tolérance de migration :
+- un nouvel état explicite, un arbitrage local ou une logique de transition peuvent être introduits en parallèle de ce pipeline
+- tant que le pipeline actuel reste le chemin effectif de production, l'ordre métier ci-dessus reste la référence obligatoire
+- aucune migration ne doit réordonner plusieurs couches décisionnelles d'un seul coup
+
 ---
 
 ## 5. Gestion des flags
@@ -79,9 +86,11 @@ Les flags pilotent le comportement conversationnel :
 - explorationBootstrapPending
 
 Règles :
-- ne jamais modifier leur structure
+- ne pas casser la structure des flags existants
 - ne jamais renommer
 - ne jamais changer leur logique sans demande explicite
+- l'ajout de nouveaux flags d'état ou de migration est autorisé s'il est explicitement justifié et compatible frontend/backend
+- exemples typiques : état conversationnel explicite (`conversationStateKey`), compteur de tours hors exploration (`consecutiveNonExplorationTurns`)
 
 ---
 
@@ -125,16 +134,39 @@ Interdit :
 - ajout de logs
 - ajout de fonctions isolées
 - modifications locales strictement nécessaires
+- migration architecturale incrémentale si elle a été explicitement demandée
 
 ### Interdit
 - refactor global
 - renommage de variables existantes
 - déplacement de blocs logiques
 - factorisation non demandée
+- réécriture from scratch de `server.js`
+- bascule big bang de plusieurs couches décisionnelles à la fois
 
 ---
 
-## 10. Gestion des contraintes
+## 10. Cadre de migration architecturale
+
+Une migration architecturale est autorisée seulement si elle a été explicitement demandée.
+
+Règles obligatoires :
+- privilégier une migration incrémentale à l'intérieur de la structure existante
+- ne jamais repartir de zéro sur `server.js` sans demande explicite exceptionnelle
+- ne jamais mélanger refonte structurelle et modifications opportunistes non demandées
+- un shadow mode peut être utilisé si c'est la meilleure stratégie technique, mais il n'est pas obligatoire
+- des changements produit peuvent être introduits dès la première phase s'ils ont été explicitement arbitrés
+- toute bascule majeure doit rester vérifiable par evals et tests manuels ciblés
+- toute évolution d'état ou d'arbitrage doit préserver la compatibilité frontend/backend
+
+Interdit :
+- contourner les garde-fous du pipeline sous prétexte de migration
+- remplacer simultanément le noyau de décision, le writer et la gestion des flags
+- introduire une migration impossible à comparer ou à valider
+
+---
+
+## 11. Gestion des contraintes
 
 Si une demande est impossible :
 
@@ -150,7 +182,7 @@ Tu ne dois jamais :
 
 ---
 
-## 11. Format attendu
+## 12. Format attendu
 
 Toujours fournir :
 
@@ -161,7 +193,7 @@ Toujours fournir :
 
 ---
 
-## 12. Principe de sécurité
+## 13. Principe de sécurité
 
 Priorité absolue :
 
@@ -169,7 +201,7 @@ stabilité du comportement > qualité du code > optimisation
 
 ---
 
-## 13. Cas particulier : logs
+## 14. Cas particulier : logs
 
 Les logs doivent :
 - être cohérents
@@ -183,10 +215,12 @@ Interdit :
 
 ---
 
-## 14. Philosophie générale
+## 15. Philosophie générale
 
-Tu n’es pas là pour améliorer le code.
+Tu n'es pas là pour améliorer opportunément le code.
 Tu es là pour exécuter précisément une intention en minimisant les risques.
+
+Une migration structurelle est autorisée seulement si elle a été explicitement demandée, bornée, réalisée par étapes et validée.
 
 En cas de doute :
 → ne rien modifier
