@@ -7601,6 +7601,62 @@ app.post("/chat", async (req, res) => {
     throwIfChatRequestCanceled(requestId);
   }
 
+  function normalizePipelineStagesForStorage(pipelineStages) {
+    if (!Array.isArray(pipelineStages)) {
+      return [];
+    }
+
+    return pipelineStages
+      .map((entry) => ({
+        stage: typeof entry?.stage === "string" ? entry.stage : null,
+        deltaMs: Number.isFinite(entry?.deltaMs) ? entry.deltaMs : null
+      }))
+      .filter((entry) => entry.stage);
+  }
+
+  function normalizeDebugMetaForStorage(debugMeta = {}, promptRegistry = buildDefaultPromptRegistry()) {
+    const safe = debugMeta && typeof debugMeta === "object" ? debugMeta : {};
+
+    return {
+      topChips: Array.isArray(safe.topChips) ? safe.topChips.map((chip) => String(chip || "").trim()).filter(Boolean) : [],
+      memory: normalizeMemory(safe.memory, promptRegistry),
+      directivityText: typeof safe.directivityText === "string" ? safe.directivityText : "",
+      conversationStateKey: normalizeConversationStateKey(safe.conversationStateKey),
+      consecutiveNonExplorationTurns: normalizeConsecutiveNonExplorationTurns(safe.consecutiveNonExplorationTurns),
+      infoSubmode: normalizeInfoSubmode(safe.infoSubmode),
+      contactSubmode: normalizeContactSubmode(safe.contactSubmode),
+      interpretationRejection: safe.interpretationRejection === true,
+      needsSoberReadjustment: safe.needsSoberReadjustment === true,
+      relationalAdjustmentTriggered: safe.relationalAdjustmentTriggered === true,
+      pipelineStages: normalizePipelineStagesForStorage(safe.pipelineStages),
+      explorationCalibrationLevel: Number.isInteger(safe.explorationCalibrationLevel) ? clampExplorationDirectivityLevel(safe.explorationCalibrationLevel) : null,
+      explorationSubmode: typeof safe.explorationSubmode === "string" ? safe.explorationSubmode : null,
+      therapeuticAllianceSource: typeof safe.therapeuticAllianceSource === "string" ? safe.therapeuticAllianceSource : null,
+      rewriteSource: typeof safe.rewriteSource === "string" ? safe.rewriteSource : null,
+      memoryRewriteSource: typeof safe.memoryRewriteSource === "string" ? safe.memoryRewriteSource : null,
+      memoryCompressed: safe.memoryCompressed === true,
+      memoryBeforeCompression:
+        safe.memoryCompressed === true && typeof safe.memoryBeforeCompression === "string" ?
+          normalizeMemory(safe.memoryBeforeCompression, promptRegistry) :
+          null,
+      modelConflict: safe.modelConflict === true,
+      humanFieldRisk: safe.humanFieldRisk === true,
+      humanFieldOriginalReply: safe.humanFieldRisk === true && typeof safe.humanFieldOriginalReply === "string" ? safe.humanFieldOriginalReply : null,
+      soberReadjustmentOriginalReply: typeof safe.soberReadjustmentOriginalReply === "string" ? safe.soberReadjustmentOriginalReply : null,
+      criticTriggered: safe.criticTriggered === true,
+      criticIssues: Array.isArray(safe.criticIssues) ? safe.criticIssues : [],
+      confidenceLevel: typeof safe.confidenceLevel === "string" ? safe.confidenceLevel : "high",
+      allianceState: normalizeAllianceState(safe.allianceState),
+      engagementLevel: normalizeEngagementLevel(safe.engagementLevel),
+      stagnationTurns: normalizeStagnationTurns(safe.stagnationTurns),
+      processingWindow: normalizeProcessingWindow(safe.processingWindow),
+      dependencyRiskScore: clampDependencyRiskScore(safe.dependencyRiskScore),
+      dependencyRiskLevel: normalizeDependencyRiskLevel(safe.dependencyRiskLevel),
+      externalSupportMode: normalizeExternalSupportMode(safe.externalSupportMode),
+      closureIntent: safe.closureIntent === true
+    };
+  }
+
   async function persistFallbackAssistantMessage(reply, debug, debugMeta = {}) {
     if (!conversationIdForCatch || isPrivateConversationForCatch) {
       return;
@@ -7613,26 +7669,7 @@ app.post("/chat", async (req, res) => {
       userId: userIdForCatch,
       conversationId: conversationIdForCatch,
       debug: Array.isArray(debug) ? debug : [],
-      debugMeta: {
-        topChips: Array.isArray(debugMeta.topChips) ? debugMeta.topChips : [],
-        memory: normalizeMemory(debugMeta.memory, promptRegistryForCatch),
-        directivityText: typeof debugMeta.directivityText === "string" ? debugMeta.directivityText : "",
-        infoSubmode: normalizeInfoSubmode(debugMeta.infoSubmode),
-        contactSubmode: normalizeContactSubmode(debugMeta.contactSubmode),
-        interpretationRejection: debugMeta.interpretationRejection === true,
-        needsSoberReadjustment: debugMeta.needsSoberReadjustment === true,
-        relationalAdjustmentTriggered: debugMeta.relationalAdjustmentTriggered === true,
-        explorationCalibrationLevel: Number.isInteger(debugMeta.explorationCalibrationLevel) ? debugMeta.explorationCalibrationLevel : null,
-        therapeuticAllianceSource: typeof debugMeta.therapeuticAllianceSource === "string" ? debugMeta.therapeuticAllianceSource : null,
-        rewriteSource: typeof debugMeta.rewriteSource === "string" ? debugMeta.rewriteSource : null,
-        memoryRewriteSource: typeof debugMeta.memoryRewriteSource === "string" ? debugMeta.memoryRewriteSource : null,
-        memoryCompressed: debugMeta.memoryCompressed === true,
-        memoryBeforeCompression:
-          debugMeta.memoryCompressed === true && typeof debugMeta.memoryBeforeCompression === "string" ?
-            normalizeMemory(debugMeta.memoryBeforeCompression, promptRegistryForCatch) :
-            null,
-        modelConflict: debugMeta.modelConflict === true
-      }
+      debugMeta: normalizeDebugMetaForStorage(debugMeta, promptRegistryForCatch)
     });
 
     assistantMessagePersistedForCatch = true;
@@ -7972,26 +8009,7 @@ app.post("/chat", async (req, res) => {
           label: String(entry?.label || "").trim(),
           reply: isEdited ? String(entry?.reply || "") + "\n[MODIFIÉ]" : String(entry?.reply || ""),
           debug: Array.isArray(entry?.debug) ? entry.debug : [],
-          debugMeta: {
-            topChips: Array.isArray(entry?.debugMeta?.topChips) ? entry.debugMeta.topChips : [],
-            memory: typeof entry?.debugMeta?.memory === "string" ? entry.debugMeta.memory : "",
-            directivityText: typeof entry?.debugMeta?.directivityText === "string" ? entry.debugMeta.directivityText : "",
-            infoSubmode: normalizeInfoSubmode(entry?.debugMeta?.infoSubmode),
-            contactSubmode: normalizeContactSubmode(entry?.debugMeta?.contactSubmode),
-            interpretationRejection: entry?.debugMeta?.interpretationRejection === true,
-            needsSoberReadjustment: entry?.debugMeta?.needsSoberReadjustment === true,
-            relationalAdjustmentTriggered: entry?.debugMeta?.relationalAdjustmentTriggered === true,
-            explorationCalibrationLevel: Number.isInteger(entry?.debugMeta?.explorationCalibrationLevel) ? entry.debugMeta.explorationCalibrationLevel : null,
-            therapeuticAllianceSource: typeof entry?.debugMeta?.therapeuticAllianceSource === "string" ? entry.debugMeta.therapeuticAllianceSource : null,
-            rewriteSource: typeof entry?.debugMeta?.rewriteSource === "string" ? entry.debugMeta.rewriteSource : null,
-            memoryRewriteSource: typeof entry?.debugMeta?.memoryRewriteSource === "string" ? entry.debugMeta.memoryRewriteSource : null,
-            memoryCompressed: entry?.debugMeta?.memoryCompressed === true,
-            memoryBeforeCompression:
-              entry?.debugMeta?.memoryCompressed === true && typeof entry?.debugMeta?.memoryBeforeCompression === "string" ?
-                normalizeMemory(entry.debugMeta.memoryBeforeCompression, activePromptRegistry) :
-                null,
-            modelConflict: entry?.debugMeta?.modelConflict === true
-          }
+          debugMeta: normalizeDebugMetaForStorage(entry?.debugMeta || {}, activePromptRegistry)
         })) :
         null;
       
@@ -8006,26 +8024,7 @@ app.post("/chat", async (req, res) => {
         userId,
         conversationId,
         debug: Array.isArray(debug) ? debug : [],
-        debugMeta: {
-          topChips: Array.isArray(debugMeta.topChips) ? debugMeta.topChips : [],
-          memory: normalizeMemory(debugMeta.memory, activePromptRegistry),
-          directivityText: typeof debugMeta.directivityText === "string" ? debugMeta.directivityText : "",
-          infoSubmode: normalizeInfoSubmode(debugMeta.infoSubmode),
-          contactSubmode: normalizeContactSubmode(debugMeta.contactSubmode),
-          interpretationRejection: debugMeta.interpretationRejection === true,
-          needsSoberReadjustment: debugMeta.needsSoberReadjustment === true,
-          relationalAdjustmentTriggered: debugMeta.relationalAdjustmentTriggered === true,
-          explorationCalibrationLevel: Number.isInteger(debugMeta.explorationCalibrationLevel) ? debugMeta.explorationCalibrationLevel : null,
-          therapeuticAllianceSource: typeof debugMeta.therapeuticAllianceSource === "string" ? debugMeta.therapeuticAllianceSource : null,
-          rewriteSource: typeof debugMeta.rewriteSource === "string" ? debugMeta.rewriteSource : null,
-          memoryRewriteSource: typeof debugMeta.memoryRewriteSource === "string" ? debugMeta.memoryRewriteSource : null,
-          memoryCompressed: debugMeta.memoryCompressed === true,
-          memoryBeforeCompression:
-            debugMeta.memoryCompressed === true && typeof debugMeta.memoryBeforeCompression === "string" ?
-              normalizeMemory(debugMeta.memoryBeforeCompression, activePromptRegistry) :
-              null,
-          modelConflict: debugMeta.modelConflict === true
-        },
+        debugMeta: normalizeDebugMetaForStorage(debugMeta, activePromptRegistry),
         stateSnapshot: conversationState && typeof conversationState === "object" ? {
           memory: typeof conversationState.memory === "string" ? normalizeMemory(conversationState.memory, activePromptRegistry) : "",
           flags: normalizeSessionFlags(conversationState.flags || {})

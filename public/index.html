@@ -3564,6 +3564,77 @@
       }
     }
 
+    function normalizeClientInfoSubmode(value) {
+      const safe = typeof value === "string" ? value.trim() : "";
+      if (safe === "app") return "app_features";
+      if (["pure", "psychoeducation", "app_features"].includes(safe)) return safe;
+      return null;
+    }
+
+    function normalizeClientContactSubmode(value) {
+      const safe = typeof value === "string" ? value.trim() : "";
+      if (["regulated", "dysregulated"].includes(safe)) return safe;
+      return null;
+    }
+
+    function normalizeClientPipelineStages(pipelineStages) {
+      if (!Array.isArray(pipelineStages)) {
+        return [];
+      }
+
+      return pipelineStages
+        .map(entry => ({
+          stage: typeof entry?.stage === "string" ? entry.stage : null,
+          deltaMs: Number.isFinite(entry?.deltaMs) ? entry.deltaMs : null
+        }))
+        .filter(entry => entry.stage);
+    }
+
+    function normalizeClientDebugMeta(debugMetaValue = null) {
+      const safe = debugMetaValue && typeof debugMetaValue === "object" ? debugMetaValue : {};
+
+      return {
+        topChips: Array.isArray(safe.topChips) ? safe.topChips.map(value => String(value || "").trim()).filter(Boolean) : [],
+        memory: typeof safe.memory === "string" ? safe.memory.trim() : "",
+        directivityText: typeof safe.directivityText === "string" && safe.directivityText.trim() ?
+          safe.directivityText.trim() : (
+            typeof safe.directivityLabel === "string" && safe.directivityLabel.trim() ?
+              safe.directivityLabel.trim() :
+              ""
+          ),
+        conversationStateKey: typeof safe.conversationStateKey === "string" ? safe.conversationStateKey.trim() : null,
+        consecutiveNonExplorationTurns: Number.isInteger(safe.consecutiveNonExplorationTurns) ? Math.max(0, safe.consecutiveNonExplorationTurns) : 0,
+        infoSubmode: normalizeClientInfoSubmode(safe.infoSubmode),
+        contactSubmode: normalizeClientContactSubmode(safe.contactSubmode),
+        interpretationRejection: safe.interpretationRejection === true,
+        needsSoberReadjustment: safe.needsSoberReadjustment === true,
+        relationalAdjustmentTriggered: safe.relationalAdjustmentTriggered === true,
+        pipelineStages: normalizeClientPipelineStages(safe.pipelineStages),
+        explorationCalibrationLevel: Number.isInteger(safe.explorationCalibrationLevel) ? safe.explorationCalibrationLevel : null,
+        explorationSubmode: typeof safe.explorationSubmode === "string" ? safe.explorationSubmode.trim() : "",
+        therapeuticAllianceSource: typeof safe.therapeuticAllianceSource === "string" ? safe.therapeuticAllianceSource.trim() : "",
+        rewriteSource: typeof safe.rewriteSource === "string" ? safe.rewriteSource.trim() : "",
+        memoryRewriteSource: typeof safe.memoryRewriteSource === "string" ? safe.memoryRewriteSource.trim() : "",
+        memoryCompressed: safe.memoryCompressed === true,
+        memoryBeforeCompression: typeof safe.memoryBeforeCompression === "string" ? safe.memoryBeforeCompression.trim() : "",
+        modelConflict: safe.modelConflict === true,
+        humanFieldRisk: safe.humanFieldRisk === true,
+        humanFieldOriginalReply: typeof safe.humanFieldOriginalReply === "string" ? safe.humanFieldOriginalReply.trim() : "",
+        soberReadjustmentOriginalReply: typeof safe.soberReadjustmentOriginalReply === "string" ? safe.soberReadjustmentOriginalReply.trim() : "",
+        criticTriggered: safe.criticTriggered === true,
+        criticIssues: Array.isArray(safe.criticIssues) ? safe.criticIssues.map(v => String(v || "").trim()).filter(Boolean) : [],
+        confidenceLevel: typeof safe.confidenceLevel === "string" ? safe.confidenceLevel.trim() : "",
+        allianceState: typeof safe.allianceState === "string" ? safe.allianceState.trim() : "good",
+        engagementLevel: typeof safe.engagementLevel === "string" ? safe.engagementLevel.trim() : "active",
+        stagnationTurns: Number.isInteger(safe.stagnationTurns) ? Math.max(0, safe.stagnationTurns) : 0,
+        processingWindow: typeof safe.processingWindow === "string" ? safe.processingWindow.trim() : "open",
+        dependencyRiskScore: Number.isFinite(safe.dependencyRiskScore) ? Math.max(0, Math.min(100, Math.round(Number(safe.dependencyRiskScore)))) : 0,
+        dependencyRiskLevel: typeof safe.dependencyRiskLevel === "string" ? safe.dependencyRiskLevel.trim() : "low",
+        externalSupportMode: typeof safe.externalSupportMode === "string" ? safe.externalSupportMode.trim() : "none",
+        closureIntent: safe.closureIntent === true
+      };
+    }
+
     function readAndConsumeAdminReplayPayload(maxAgeMs = 5 * 60 * 1000) {
       try {
         const raw = localStorage.getItem(ADMIN_REPLAY_KEY);
@@ -3588,22 +3659,7 @@
             role: String(item?.role || "").trim(),
             content: String(item?.content || "").trim(),
             debug: Array.isArray(item?.debug) ? item.debug.map(line => String(line || "")) : [],
-            debugMeta: item?.debugMeta && typeof item.debugMeta === "object" ? {
-              topChips: Array.isArray(item.debugMeta.topChips) ? item.debugMeta.topChips : [],
-              memory: typeof item.debugMeta.memory === "string" ? item.debugMeta.memory : "",
-              directivityText: typeof item.debugMeta.directivityText === "string" ? item.debugMeta.directivityText : "",
-              infoSubmode: item.debugMeta.infoSubmode === "app" ? "app" : item.debugMeta.infoSubmode === "pure" ? "pure" : null,
-              interpretationRejection: item.debugMeta.interpretationRejection === true,
-              explorationCalibrationLevel: Number.isInteger(item.debugMeta.explorationCalibrationLevel) ? item.debugMeta.explorationCalibrationLevel : null,
-              explorationSubmode: typeof item.debugMeta.explorationSubmode === "string" ? item.debugMeta.explorationSubmode : null,
-              therapeuticAllianceSource: typeof item.debugMeta.therapeuticAllianceSource === "string" ? item.debugMeta.therapeuticAllianceSource : null,
-              rewriteSource: typeof item.debugMeta.rewriteSource === "string" ? item.debugMeta.rewriteSource : null,
-              memoryRewriteSource: typeof item.debugMeta.memoryRewriteSource === "string" ? item.debugMeta.memoryRewriteSource : null,
-              memoryCompressed: item.debugMeta.memoryCompressed === true,
-              memoryBeforeCompression: typeof item.debugMeta.memoryBeforeCompression === "string" ? item.debugMeta.memoryBeforeCompression : null,
-              modelConflict: item.debugMeta.modelConflict === true,
-              soberReadjustmentOriginalReply: typeof item.debugMeta.soberReadjustmentOriginalReply === "string" ? item.debugMeta.soberReadjustmentOriginalReply : null
-            } : null,
+            debugMeta: normalizeClientDebugMeta(item?.debugMeta),
             stateSnapshot: normalizeStoredStateSnapshot(item?.stateSnapshot),
             comparisonResults: Array.isArray(item?.comparisonResults) ? item.comparisonResults : null
           }))
@@ -3681,7 +3737,7 @@
           role: item.role,
           content: item.content,
           debug: Array.isArray(item.debug) ? item.debug : [],
-          debugMeta: item.debugMeta && typeof item.debugMeta === "object" ? item.debugMeta : null,
+          debugMeta: normalizeClientDebugMeta(item.debugMeta),
           comparisonResults: Array.isArray(item.comparisonResults) ? item.comparisonResults : null,
           t: baseTs - Math.max((anchorHistory.length || 1) - index, 1) * 1000
         }));
@@ -3726,7 +3782,7 @@
         role: item.role,
         content: item.content,
         debug: Array.isArray(item.debug) ? item.debug : [],
-        debugMeta: item.debugMeta && typeof item.debugMeta === "object" ? item.debugMeta : null,
+        debugMeta: normalizeClientDebugMeta(item.debugMeta),
         comparisonResults: Array.isArray(item.comparisonResults) ? item.comparisonResults : null,
         t: baseTs - Math.max(payload.recentHistory.length - index, 1) * 1000
       }));
@@ -3961,25 +4017,7 @@
         role,
         content,
         debug: Array.isArray(debug) ? debug : [],
-        debugMeta: debugMeta && typeof debugMeta === "object" ? {
-          topChips: Array.isArray(debugMeta.topChips) ?
-            debugMeta.topChips
-            .map(value => String(value || "").trim())
-            .filter(Boolean) : [],
-          memory: typeof debugMeta.memory === "string" ? debugMeta.memory : "",
-          directivityText: typeof debugMeta.directivityText === "string" ? debugMeta.directivityText : (typeof debugMeta.directivityLabel === "string" ? debugMeta.directivityLabel : ""),
-          infoSubmode: debugMeta.infoSubmode === "app" ? "app" : debugMeta.infoSubmode === "pure" ? "pure" : null,
-          interpretationRejection: debugMeta.interpretationRejection === true,
-          explorationCalibrationLevel: Number.isInteger(debugMeta.explorationCalibrationLevel) ? debugMeta.explorationCalibrationLevel : null,
-          explorationSubmode: typeof debugMeta.explorationSubmode === "string" ? debugMeta.explorationSubmode : null,
-          therapeuticAllianceSource: typeof debugMeta.therapeuticAllianceSource === "string" ? debugMeta.therapeuticAllianceSource : null,
-          rewriteSource: typeof debugMeta.rewriteSource === "string" ? debugMeta.rewriteSource : null,
-          memoryRewriteSource: typeof debugMeta.memoryRewriteSource === "string" ? debugMeta.memoryRewriteSource : null,
-          memoryCompressed: debugMeta.memoryCompressed === true,
-          memoryBeforeCompression: typeof debugMeta.memoryBeforeCompression === "string" ? debugMeta.memoryBeforeCompression : null,
-          modelConflict: debugMeta.modelConflict === true,
-          soberReadjustmentOriginalReply: typeof debugMeta.soberReadjustmentOriginalReply === "string" ? debugMeta.soberReadjustmentOriginalReply : null
-        } : null,
+        debugMeta: normalizeClientDebugMeta(debugMeta),
         stateSnapshot: normalizeStoredStateSnapshot(stateSnapshot),
         id: id && typeof id === "string" ? id : undefined,
         t: Date.now()
@@ -6122,115 +6160,100 @@
       contentWrap.className = "message-content";
       
       function buildDebugMeta(debugMetaValue) {
-        const meta = {
-          topChips: [],
-          memory: "",
-          directivityLabel: "",
-          infoSubmode: null,
-          interpretationRejection: false,
-          needsSoberReadjustment: false,
-          relationalAdjustmentTriggered: false,
-          explorationCalibrationLevel: null,
-          explorationSubmode: null,
-          therapeuticAllianceSource: "",
-          modelConflict: false,
-          rewriteSource: "",
-          memoryRewriteSource: "",
-          memoryCompressed: false,
-          memoryBeforeCompression: "",
-          humanFieldRisk: false,
-          humanFieldOriginalReply: "",
-          soberReadjustmentOriginalReply: ""
+        const meta = normalizeClientDebugMeta(debugMetaValue);
+        return {
+          ...meta,
+          directivityLabel: meta.directivityText
         };
-        
-        if (!debugMetaValue || typeof debugMetaValue !== "object") {
-          return meta;
-        }
-        
-        if (Array.isArray(debugMetaValue.topChips)) {
-          meta.topChips = debugMetaValue.topChips
-            .map(value => String(value || "").trim())
-            .filter(Boolean);
-        }
-        
-        if (typeof debugMetaValue.memory === "string") {
-          meta.memory = debugMetaValue.memory.trim();
-        }
-        
-        if (typeof debugMetaValue.directivityText === "string" && debugMetaValue.directivityText.trim()) {
-          meta.directivityLabel = debugMetaValue.directivityText.trim();
-        } else if (typeof debugMetaValue.directivityLabel === "string" && debugMetaValue.directivityLabel.trim()) {
-          meta.directivityLabel = debugMetaValue.directivityLabel.trim();
-        }
-        
-        if (debugMetaValue.modelConflict === true) {
-          meta.modelConflict = true;
-        }
-        
-        if (typeof debugMetaValue.rewriteSource === "string") {
-          meta.rewriteSource = debugMetaValue.rewriteSource.trim();
-        }
-        
-        if (typeof debugMetaValue.memoryRewriteSource === "string") {
-          meta.memoryRewriteSource = debugMetaValue.memoryRewriteSource.trim();
+      }
+
+      function buildNaturalDebugSummary(meta) {
+        const lines = [];
+
+        const infoSubmodeLabel =
+          meta.infoSubmode === "pure" ? "information generale" :
+          meta.infoSubmode === "app_features" ? "information sur l'app" :
+          meta.infoSubmode === "psychoeducation" ? "psychoeducation" :
+          null;
+
+        if (infoSubmodeLabel) {
+          lines.push(`Le tour a ete interprete en mode ${infoSubmodeLabel}.`);
         }
 
-        if (debugMetaValue.memoryCompressed === true) {
-          meta.memoryCompressed = true;
+        if (meta.conversationStateKey) {
+          lines.push(`Etat de conversation retenu: ${meta.conversationStateKey}.`);
         }
 
-        if (typeof debugMetaValue.memoryBeforeCompression === "string") {
-          meta.memoryBeforeCompression = debugMetaValue.memoryBeforeCompression.trim();
+        if (meta.interpretationRejection === true) {
+          lines.push("Le systeme a detecte un rejet d'interpretation et a recentre la reponse.");
         }
 
-        if (debugMetaValue.infoSubmode === "app" || debugMetaValue.infoSubmode === "pure") {
-          meta.infoSubmode = debugMetaValue.infoSubmode;
+        if (meta.needsSoberReadjustment === true) {
+          lines.push("Un reajustement sobre a ete applique pour reduire la pression de la reponse.");
         }
 
-        if (debugMetaValue.interpretationRejection === true) {
-          meta.interpretationRejection = true;
+        if (meta.relationalAdjustmentTriggered === true) {
+          lines.push("Un ajustement relationnel a ete declenche pour proteger l'alliance.");
         }
 
-        if (debugMetaValue.needsSoberReadjustment === true) {
-          meta.needsSoberReadjustment = true;
+        if (Number.isInteger(meta.explorationCalibrationLevel)) {
+          lines.push(`Niveau de structuration retenu: ${meta.explorationCalibrationLevel}/4.`);
         }
 
-        if (debugMetaValue.relationalAdjustmentTriggered === true) {
-          meta.relationalAdjustmentTriggered = true;
+        if (meta.allianceState || meta.engagementLevel || meta.processingWindow) {
+          lines.push(
+            `Lecture structurelle: alliance ${meta.allianceState || "good"}, engagement ${meta.engagementLevel || "active"}, fenetre de traitement ${meta.processingWindow || "open"}.`
+          );
         }
 
-        if (Number.isInteger(debugMetaValue.explorationCalibrationLevel)) {
-          meta.explorationCalibrationLevel = debugMetaValue.explorationCalibrationLevel;
+        if (meta.stagnationTurns > 0) {
+          lines.push(`Stagnation detectee depuis ${meta.stagnationTurns} tour(s).`);
         }
 
-        if (typeof debugMetaValue.explorationSubmode === "string" && debugMetaValue.explorationSubmode) {
-          meta.explorationSubmode = debugMetaValue.explorationSubmode;
+        if (meta.dependencyRiskLevel && meta.dependencyRiskLevel !== "low") {
+          lines.push(`Risque de dependance estime: ${meta.dependencyRiskLevel} (${meta.dependencyRiskScore}/100).`);
         }
 
-        if (typeof debugMetaValue.therapeuticAllianceSource === "string") {
-          meta.therapeuticAllianceSource = debugMetaValue.therapeuticAllianceSource.trim();
+        if (meta.externalSupportMode && meta.externalSupportMode !== "none") {
+          lines.push(`Rapport au soutien externe detecte: ${meta.externalSupportMode}.`);
         }
 
-        if (debugMetaValue.humanFieldRisk === true) {
-          meta.humanFieldRisk = true;
+        if (meta.closureIntent === true) {
+          lines.push("Une intention de cloture de session a ete detectee.");
         }
 
-        if (typeof debugMetaValue.humanFieldOriginalReply === "string") {
-          meta.humanFieldOriginalReply = debugMetaValue.humanFieldOriginalReply.trim();
+        if (meta.rewriteSource) {
+          lines.push(`La reponse finale a ete re-ecrite via: ${meta.rewriteSource}.`);
         }
 
-        if (typeof debugMetaValue.soberReadjustmentOriginalReply === "string") {
-          meta.soberReadjustmentOriginalReply = debugMetaValue.soberReadjustmentOriginalReply.trim();
+        if (meta.memoryRewriteSource) {
+          lines.push(`La memoire a ete re-ecrite via: ${meta.memoryRewriteSource}.`);
         }
-        
-        return meta;
+
+        if (meta.criticTriggered === true) {
+          lines.push(meta.criticIssues.length > 0 ?
+            `Le critic pass a corrige ${meta.criticIssues.length} point(s).` :
+            "Le critic pass a ete lance sans correction necessaire.");
+        }
+
+        if (meta.confidenceLevel) {
+          lines.push(`Niveau de confiance estime: ${meta.confidenceLevel}.`);
+        }
+
+        if (meta.pipelineStages.length > 0) {
+          const totalMs = meta.pipelineStages.reduce((acc, stage) => acc + (Number.isFinite(stage.deltaMs) ? stage.deltaMs : 0), 0);
+          lines.push(`Pipeline execute en ${totalMs} ms sur ${meta.pipelineStages.length} etape(s).`);
+        }
+
+        return lines;
       }
       
       const debugMeta = role === "bot" ? buildDebugMeta(debugMetaRaw) : null;
       const hasStructuredSignals =
         !!debugMeta &&
         (
-          debugMeta.infoSubmode === "app" ||
+          debugMeta.infoSubmode === "app_features" ||
+          debugMeta.infoSubmode === "psychoeducation" ||
           debugMeta.infoSubmode === "pure" ||
           debugMeta.interpretationRejection === true ||
           Number.isInteger(debugMeta.explorationCalibrationLevel) ||
@@ -6251,6 +6274,10 @@
           true ||
           !!debugMeta.rewriteSource ||
           !!debugMeta.memoryRewriteSource ||
+          !!debugMeta.conversationStateKey ||
+          debugMeta.pipelineStages.length > 0 ||
+          !!debugMeta.confidenceLevel ||
+          !!debugMeta.dependencyRiskLevel ||
           debugMeta.humanFieldRisk === true
         );
       
@@ -6652,6 +6679,24 @@
         bottom.style.flexWrap = "wrap";
         bottom.style.gap = "6px";
         bottom.style.marginTop = "6px";
+
+        const naturalSummaryLines = buildNaturalDebugSummary(debugMeta);
+        if (naturalSummaryLines.length > 0) {
+          const summaryEl = document.createElement("details");
+          summaryEl.className = "debug-detail";
+
+          const summaryTitle = document.createElement("summary");
+          summaryTitle.className = "debug-chip";
+          summaryTitle.textContent = "Lecture interne";
+
+          const summaryContent = document.createElement("div");
+          summaryContent.className = "debug-block";
+          summaryContent.textContent = naturalSummaryLines.join("\n");
+
+          summaryEl.appendChild(summaryTitle);
+          summaryEl.appendChild(summaryContent);
+          bottom.appendChild(summaryEl);
+        }
         
         if (debugMeta.memory) {
           const mem = document.createElement("details");
@@ -7730,7 +7775,7 @@
               role: String(item.role || ""),
               content: String(item.content || ""),
               debug: Array.isArray(item.debug) ? item.debug : [],
-              debugMeta: item.debugMeta && typeof item.debugMeta === "object" ? item.debugMeta : null,
+              debugMeta: normalizeClientDebugMeta(item.debugMeta),
               stateSnapshot: normalizeStoredStateSnapshot(item.stateSnapshot),
               comparisonResults: Array.isArray(item.comparisonResults) ? item.comparisonResults : null
             }));
@@ -8011,7 +8056,7 @@
               role: "assistant",
               content: data.reply,
               debug: Array.isArray(data.debug) ? data.debug : [],
-              debugMeta: data.debugMeta && typeof data.debugMeta === "object" ? data.debugMeta : null,
+              debugMeta: normalizeClientDebugMeta(data.debugMeta),
               stateSnapshot: normalizeStoredStateSnapshot({
                 memory: data.memory,
                 flags: data.flags
@@ -9293,7 +9338,7 @@
                   role: String(m.role || ""),
                   content: String(m.content || ""),
                   debug: Array.isArray(m.debug) ? m.debug : [],
-                  debugMeta: m.debugMeta && typeof m.debugMeta === "object" ? m.debugMeta : null,
+                  debugMeta: normalizeClientDebugMeta(m.debugMeta),
                   comparisonResults: Array.isArray(m.comparisonResults) ? m.comparisonResults : null,
                   t: baseTs - Math.max((seedMessages.length || 1) - index, 1) * 1000
                 }));

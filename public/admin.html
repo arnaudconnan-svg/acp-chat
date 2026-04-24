@@ -867,26 +867,68 @@
     function normalizeReplayDebugMeta(debugMeta) {
       const safe = debugMeta && typeof debugMeta === "object" ? debugMeta : {};
 
+      function normalizeInfoSubmode(value) {
+        const raw = typeof value === "string" ? value.trim() : "";
+        if (raw === "app") return "app_features";
+        if (["pure", "psychoeducation", "app_features"].includes(raw)) return raw;
+        return null;
+      }
+
+      function normalizeContactSubmode(value) {
+        const raw = typeof value === "string" ? value.trim() : "";
+        if (["regulated", "dysregulated"].includes(raw)) return raw;
+        return null;
+      }
+
+      function normalizePipelineStages(pipelineStages) {
+        if (!Array.isArray(pipelineStages)) {
+          return [];
+        }
+
+        return pipelineStages
+          .map(entry => ({
+            stage: typeof entry?.stage === "string" ? entry.stage : null,
+            deltaMs: Number.isFinite(entry?.deltaMs) ? entry.deltaMs : null
+          }))
+          .filter(entry => entry.stage);
+      }
+
       return {
         topChips: Array.isArray(safe.topChips) ?
           safe.topChips.map(v => String(v || "").trim()).filter(Boolean) : [],
-        memory: typeof safe.memory === "string" ? safe.memory : "",
+        memory: typeof safe.memory === "string" ? safe.memory.trim() : "",
         directivityText: typeof safe.directivityText === "string" ?
-          safe.directivityText : (typeof safe.directivityLabel === "string" ? safe.directivityLabel : ""),
-        infoSubmode: safe.infoSubmode === "app" ? "app" : safe.infoSubmode === "pure" ? "pure" : null,
+          safe.directivityText.trim() : (typeof safe.directivityLabel === "string" ? safe.directivityLabel.trim() : ""),
+        conversationStateKey: typeof safe.conversationStateKey === "string" ? safe.conversationStateKey.trim() : null,
+        consecutiveNonExplorationTurns: Number.isInteger(safe.consecutiveNonExplorationTurns) ? Math.max(0, safe.consecutiveNonExplorationTurns) : 0,
+        infoSubmode: normalizeInfoSubmode(safe.infoSubmode),
+        contactSubmode: normalizeContactSubmode(safe.contactSubmode),
         interpretationRejection: safe.interpretationRejection === true,
         needsSoberReadjustment: safe.needsSoberReadjustment === true,
         relationalAdjustmentTriggered: safe.relationalAdjustmentTriggered === true,
+        pipelineStages: normalizePipelineStages(safe.pipelineStages),
         explorationCalibrationLevel: Number.isInteger(safe.explorationCalibrationLevel) ? safe.explorationCalibrationLevel : null,
-        explorationSubmode: typeof safe.explorationSubmode === "string" ? safe.explorationSubmode : null,
-        therapeuticAllianceSource: typeof safe.therapeuticAllianceSource === "string" ? safe.therapeuticAllianceSource : null,
-        rewriteSource: typeof safe.rewriteSource === "string" ? safe.rewriteSource : null,
-        memoryRewriteSource: typeof safe.memoryRewriteSource === "string" ? safe.memoryRewriteSource : null,
+        explorationSubmode: typeof safe.explorationSubmode === "string" ? safe.explorationSubmode.trim() : null,
+        therapeuticAllianceSource: typeof safe.therapeuticAllianceSource === "string" ? safe.therapeuticAllianceSource.trim() : null,
+        rewriteSource: typeof safe.rewriteSource === "string" ? safe.rewriteSource.trim() : null,
+        memoryRewriteSource: typeof safe.memoryRewriteSource === "string" ? safe.memoryRewriteSource.trim() : null,
         memoryCompressed: safe.memoryCompressed === true,
-        memoryBeforeCompression: typeof safe.memoryBeforeCompression === "string" ? safe.memoryBeforeCompression : null,
+        memoryBeforeCompression: typeof safe.memoryBeforeCompression === "string" ? safe.memoryBeforeCompression.trim() : null,
         modelConflict: safe.modelConflict === true,
         humanFieldRisk: safe.humanFieldRisk === true,
-        humanFieldOriginalReply: typeof safe.humanFieldOriginalReply === "string" ? safe.humanFieldOriginalReply : null
+        humanFieldOriginalReply: typeof safe.humanFieldOriginalReply === "string" ? safe.humanFieldOriginalReply.trim() : null,
+        soberReadjustmentOriginalReply: typeof safe.soberReadjustmentOriginalReply === "string" ? safe.soberReadjustmentOriginalReply.trim() : null,
+        criticTriggered: safe.criticTriggered === true,
+        criticIssues: Array.isArray(safe.criticIssues) ? safe.criticIssues.map(v => String(v || "").trim()).filter(Boolean) : [],
+        confidenceLevel: typeof safe.confidenceLevel === "string" ? safe.confidenceLevel.trim() : null,
+        allianceState: typeof safe.allianceState === "string" ? safe.allianceState.trim() : "good",
+        engagementLevel: typeof safe.engagementLevel === "string" ? safe.engagementLevel.trim() : "active",
+        stagnationTurns: Number.isInteger(safe.stagnationTurns) ? Math.max(0, safe.stagnationTurns) : 0,
+        processingWindow: typeof safe.processingWindow === "string" ? safe.processingWindow.trim() : "open",
+        dependencyRiskScore: Number.isFinite(safe.dependencyRiskScore) ? Math.max(0, Math.min(100, Math.round(Number(safe.dependencyRiskScore)))) : 0,
+        dependencyRiskLevel: typeof safe.dependencyRiskLevel === "string" ? safe.dependencyRiskLevel.trim() : "low",
+        externalSupportMode: typeof safe.externalSupportMode === "string" ? safe.externalSupportMode.trim() : "none",
+        closureIntent: safe.closureIntent === true
       };
     }
 
@@ -1732,33 +1774,86 @@
         }
         
         function normalizeDebugMeta(debugMeta) {
-          const safe = debugMeta && typeof debugMeta === "object" ? debugMeta : {};
-          
-          return {
-            topChips: Array.isArray(safe.topChips) ?
-              safe.topChips.map(v => String(v || "").trim()).filter(Boolean) : [],
-            memory: typeof safe.memory === "string" ? safe.memory.trim() : "",
-            directivityText: typeof safe.directivityText === "string" && safe.directivityText.trim() ?
-              safe.directivityText.trim() : (
-                typeof safe.directivityLabel === "string" && safe.directivityLabel.trim() ?
-                safe.directivityLabel.trim() :
-                ""
-              ),
-            infoSubmode: safe.infoSubmode === "app" ? "app" : safe.infoSubmode === "pure" ? "pure" : null,
-            interpretationRejection: safe.interpretationRejection === true,
-            needsSoberReadjustment: safe.needsSoberReadjustment === true,
-            relationalAdjustmentTriggered: safe.relationalAdjustmentTriggered === true,
-            explorationCalibrationLevel: Number.isInteger(safe.explorationCalibrationLevel) ? safe.explorationCalibrationLevel : null,
-            explorationSubmode: typeof safe.explorationSubmode === "string" ? safe.explorationSubmode.trim() : "",
-            therapeuticAllianceSource: typeof safe.therapeuticAllianceSource === "string" ? safe.therapeuticAllianceSource.trim() : "",
-            modelConflict: safe.modelConflict === true,
-            rewriteSource: typeof safe.rewriteSource === "string" ? safe.rewriteSource.trim() : "",
-            memoryRewriteSource: typeof safe.memoryRewriteSource === "string" ? safe.memoryRewriteSource.trim() : "",
-            memoryCompressed: safe.memoryCompressed === true,
-            memoryBeforeCompression: typeof safe.memoryBeforeCompression === "string" ? safe.memoryBeforeCompression.trim() : "",
-            humanFieldRisk: safe.humanFieldRisk === true,
-            humanFieldOriginalReply: typeof safe.humanFieldOriginalReply === "string" ? safe.humanFieldOriginalReply.trim() : ""
-          };
+          return normalizeReplayDebugMeta(debugMeta);
+        }
+
+        function buildNaturalDebugSummary(meta) {
+          const lines = [];
+
+          const infoSubmodeLabel =
+            meta.infoSubmode === "pure" ? "information generale" :
+            meta.infoSubmode === "app_features" ? "information sur l'app" :
+            meta.infoSubmode === "psychoeducation" ? "psychoeducation" :
+            null;
+
+          if (infoSubmodeLabel) {
+            lines.push(`Le tour a ete interprete en mode ${infoSubmodeLabel}.`);
+          }
+
+          if (meta.conversationStateKey) {
+            lines.push(`Etat de conversation retenu: ${meta.conversationStateKey}.`);
+          }
+
+          if (meta.interpretationRejection === true) {
+            lines.push("Un rejet d'interpretation a ete detecte et pris en compte.");
+          }
+
+          if (meta.needsSoberReadjustment === true) {
+            lines.push("Un reajustement sobre a ete applique sur ce tour.");
+          }
+
+          if (meta.relationalAdjustmentTriggered === true) {
+            lines.push("Un ajustement relationnel a ete declenche.");
+          }
+
+          if (Number.isInteger(meta.explorationCalibrationLevel)) {
+            lines.push(`Niveau de structuration retenu: ${meta.explorationCalibrationLevel}/4.`);
+          }
+
+          lines.push(
+            `Lecture structurelle: alliance ${meta.allianceState || "good"}, engagement ${meta.engagementLevel || "active"}, fenetre de traitement ${meta.processingWindow || "open"}.`
+          );
+
+          if (meta.stagnationTurns > 0) {
+            lines.push(`Stagnation detectee depuis ${meta.stagnationTurns} tour(s).`);
+          }
+
+          if (meta.dependencyRiskLevel && meta.dependencyRiskLevel !== "low") {
+            lines.push(`Risque de dependance estime: ${meta.dependencyRiskLevel} (${meta.dependencyRiskScore}/100).`);
+          }
+
+          if (meta.externalSupportMode && meta.externalSupportMode !== "none") {
+            lines.push(`Rapport au soutien externe detecte: ${meta.externalSupportMode}.`);
+          }
+
+          if (meta.closureIntent === true) {
+            lines.push("Une intention de cloture de session a ete detectee.");
+          }
+
+          if (meta.rewriteSource) {
+            lines.push(`La reponse finale a ete re-ecrite via: ${meta.rewriteSource}.`);
+          }
+
+          if (meta.memoryRewriteSource) {
+            lines.push(`La memoire a ete re-ecrite via: ${meta.memoryRewriteSource}.`);
+          }
+
+          if (meta.criticTriggered === true) {
+            lines.push(meta.criticIssues.length > 0 ?
+              `Le critic pass a corrige ${meta.criticIssues.length} point(s).` :
+              "Le critic pass a ete lance sans correction necessaire.");
+          }
+
+          if (meta.confidenceLevel) {
+            lines.push(`Niveau de confiance estime: ${meta.confidenceLevel}.`);
+          }
+
+          if (meta.pipelineStages.length > 0) {
+            const totalMs = meta.pipelineStages.reduce((acc, stage) => acc + (Number.isFinite(stage.deltaMs) ? stage.deltaMs : 0), 0);
+            lines.push(`Pipeline execute en ${totalMs} ms sur ${meta.pipelineStages.length} etape(s).`);
+          }
+
+          return lines;
         }
         
         function buildDebugSections(debug, debugMeta) {
@@ -1768,9 +1863,11 @@
           const signalLines = [];
 
           if (meta.infoSubmode === "pure") {
-            signalLines.push("Sous-mode info : info pure");
-          } else if (meta.infoSubmode === "app") {
-            signalLines.push("Sous-mode info : info sur l'app");
+            signalLines.push("Sous-mode info : information generale");
+          } else if (meta.infoSubmode === "app_features") {
+            signalLines.push("Sous-mode info : information sur l'app");
+          } else if (meta.infoSubmode === "psychoeducation") {
+            signalLines.push("Sous-mode info : psychoeducation");
           }
 
           if (meta.interpretationRejection === true) {
@@ -1792,6 +1889,14 @@
             sections.push({
               title: "Signaux",
               content: signalLines.join("\n")
+            });
+          }
+
+          const naturalSummaryLines = buildNaturalDebugSummary(meta);
+          if (naturalSummaryLines.length > 0) {
+            sections.push({
+              title: "Lecture interne",
+              content: naturalSummaryLines.join("\n")
             });
           }
           
