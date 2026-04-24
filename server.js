@@ -8407,30 +8407,41 @@ app.post("/chat", async (req, res) => {
     let finalDirectivityLevel = effectiveExplorationDirectivityLevel;
     let finalExplorationSubmode = "interpretation";
 
-    // Check if relational adjustment is needed before proceeding with explored mode
-    let relationalAdjustmentAnalysis = null;
+    // Phase 2: Run independent post-mode analyzers in parallel.
+    // relationalAdjustment, calibration and interpretationRejection all depend only on
+    // message/history/memory/flags — none depends on another's result.
     let finalDetectedMode = detectedMode;
 
-    if (detectedMode === "exploration" && contactAnalysis.isContact !== true) {
-      relationalAdjustmentAnalysis = await analyzeRelationalAdjustmentNeed(
-        message,
-        recentHistory,
-        previousMemory,
-        false,
-        activePromptRegistry
-      );
-    }
+    const [
+      relationalAdjustmentAnalysis,
+      calibrationAnalysis,
+      interpretationRejection
+    ] = await Promise.all([
+      detectedMode === "exploration" && contactAnalysis.isContact !== true
+        ? analyzeRelationalAdjustmentNeed(message, recentHistory, previousMemory, false, activePromptRegistry)
+        : Promise.resolve(null),
+      detectedMode === "exploration"
+        ? analyzeExplorationCalibration({
+            message,
+            history: recentHistory,
+            memory: previousMemory,
+            explorationDirectivityLevel: effectiveExplorationDirectivityLevel,
+            explorationRelanceWindow: newFlags.explorationRelanceWindow,
+            promptRegistry: activePromptRegistry
+          })
+        : Promise.resolve(null),
+      detectedMode !== "info" && detectedMode !== "contact"
+        ? analyzeInterpretationRejection({
+            message,
+            history: recentHistory,
+            memory: previousMemory,
+            promptRegistry: activePromptRegistry
+          })
+        : Promise.resolve({ isInterpretationRejection: false, needsSoberReadjustment: false })
+    ]);
+    throwIfCanceled();
 
     if (detectedMode === "exploration") {
-      const calibrationAnalysis = await analyzeExplorationCalibration({
-        message,
-        history: recentHistory,
-        memory: previousMemory,
-        explorationDirectivityLevel: effectiveExplorationDirectivityLevel,
-        explorationRelanceWindow: newFlags.explorationRelanceWindow,
-        promptRegistry: activePromptRegistry
-      });
-
       finalDirectivityLevel = Math.min(
         clampExplorationDirectivityLevel(effectiveExplorationDirectivityLevel),
         clampExplorationDirectivityLevel(calibrationAnalysis.calibrationLevel)
@@ -8517,16 +8528,6 @@ app.post("/chat", async (req, res) => {
       buildPromptOverrideLayersDebug(override1, override2, activePromptRegistry) :
       buildPromptOverrideLayersDebug(null, null, activePromptRegistry);
 
-    const interpretationRejection = (finalDetectedMode === "info" || finalDetectedMode === "contact")
-      ? { isInterpretationRejection: false, needsSoberReadjustment: false }
-      : await analyzeInterpretationRejection({
-          message,
-          history: recentHistory,
-          memory: previousMemory,
-          promptRegistry: activePromptRegistry
-        });
-    if (finalDetectedMode !== "info" && finalDetectedMode !== "contact") throwIfCanceled();
-    
     const generatedBase = await generateReply({
       message,
       history: recentHistory,
