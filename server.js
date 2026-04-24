@@ -4841,17 +4841,19 @@ async function generateReply({
   message,
   history,
   memory,
-  mode,
+  postureDecision,
   infoSubmode = null,
   contactSubmode = null,
   interpretationRejection = null,
-  relationalAdjustmentTriggered = false,
-  explorationDirectivityLevel = 0,
-  explorationSubmode = "interpretation",
   promptRegistry = buildDefaultPromptRegistry(),
   override1 = null,
   override2 = null
 }) {
+  const mode = postureDecision.finalDetectedMode;
+  const explorationDirectivityLevel = postureDecision.finalDirectivityLevel;
+  const explorationSubmode = postureDecision.finalExplorationSubmode;
+  const relationalAdjustmentTriggered = postureDecision.relationalAdjustmentTriggered;
+
   const systemPrompt = buildSystemPrompt(
     mode,
     memory,
@@ -8585,13 +8587,10 @@ app.post("/chat", async (req, res) => {
       message,
       history: recentHistory,
       memory: previousMemory,
-      mode: finalDetectedMode,
+      postureDecision,
       infoSubmode: detectedInfoSubmode,
       contactSubmode: detectedContactSubmode,
       interpretationRejection,
-      relationalAdjustmentTriggered: relationalAdjustmentAnalysis?.needsRelationalAdjustment === true,
-      explorationDirectivityLevel: finalDirectivityLevel,
-      explorationSubmode: finalExplorationSubmode,
       promptRegistry: activePromptRegistry,
       override1: hasOverrides ? override1 : null,
       override2: hasOverrides ? override2 : null
