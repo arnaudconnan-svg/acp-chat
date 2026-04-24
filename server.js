@@ -1735,6 +1735,20 @@ Reponds uniquement par le JSON.
   - pas de style lyrique
 `,
 
+    POST_CONTACT_LANDING: `
+Bloc complementaire : atterrissage apres un tour de presence.
+
+Le tour precedent etait un moment de presence directe ou de contact. L'utilisateur revient maintenant vers l'exploration.
+
+Consignes :
+- n'entre pas immediatement dans une question structuree ou une lecture analytique
+- accueille d'abord ce retour, meme brievement, avant toute ouverture
+- si tu ouvres, laisse une seule ouverture tres legere, non pressante
+- ne recap pas le contenu du tour contact precedent
+- ne commente pas le fait que la conversation change de registre
+- reste sobre, concret, sans style lyrique
+`,
+
     ANALYZE_EXPLORATION_CALIBRATION: `
 Tu choisis un niveau structurel de directivite pour une reponse en mode exploration.
 
@@ -4664,6 +4678,12 @@ function buildExplorationSubmodePromptBlock(explorationSubmode = "interpretation
   return wrapPromptBlock("EXPLORATION_SUBMODE", content);
 }
 
+function buildPostContactLandingPromptBlock(conversationStateKey, promptRegistry = buildDefaultPromptRegistry()) {
+  if (conversationStateKey !== "post_contact") return "";
+  const content = String(promptRegistry.POST_CONTACT_LANDING || "").trim();
+  return content ? wrapPromptBlock("POST_CONTACT_LANDING", content) : "";
+}
+
 function buildRelationalAdjustmentPromptBlock(relationalAdjustmentTriggered = false, promptRegistry = buildDefaultPromptRegistry()) {
   if (relationalAdjustmentTriggered !== true) {
     return "";
@@ -4719,7 +4739,7 @@ function buildInterpretationRejectionPromptBlock(interpretationRejection = null)
 }
 
 // Construct the full system prompt for the selected mode before calling the LLM.
-function buildSystemPrompt(mode, memory, explorationDirectivityLevel = 0, promptRegistry = buildDefaultPromptRegistry(), infoSubmode = null, interpretationRejection = null, relationalAdjustmentTriggered = false, explorationSubmode = "interpretation", contactSubmode = null) {
+function buildSystemPrompt(mode, memory, explorationDirectivityLevel = 0, promptRegistry = buildDefaultPromptRegistry(), infoSubmode = null, interpretationRejection = null, relationalAdjustmentTriggered = false, explorationSubmode = "interpretation", contactSubmode = null, conversationStateKey = null) {
   const identityWrapped = getIdentityPrompt(promptRegistry);
   const contactWrapped = getContactPrompt(promptRegistry);
   const infoWrapped = getInfoPrompt(memory, infoSubmode, promptRegistry);
@@ -4728,6 +4748,7 @@ function buildSystemPrompt(mode, memory, explorationDirectivityLevel = 0, prompt
   const contactSubmodeWrapped = buildContactSubmodePromptBlock(contactSubmode, promptRegistry);
   const relationalAdjustmentWrapped = buildRelationalAdjustmentPromptBlock(relationalAdjustmentTriggered, promptRegistry);
   const interpretationRejectionWrapped = buildInterpretationRejectionPromptBlock(interpretationRejection);
+  const postContactLandingWrapped = buildPostContactLandingPromptBlock(conversationStateKey, promptRegistry);
   
   if (mode === "contact") {
     return `
@@ -4761,6 +4782,8 @@ ${identityWrapped}
 ${explorationWrapped}
 
 ${explorationSubmodeWrapped}
+
+${postContactLandingWrapped}
 
 ${relationalAdjustmentWrapped}
 
@@ -4853,6 +4876,7 @@ async function generateReply({
   const explorationDirectivityLevel = postureDecision.finalDirectivityLevel;
   const explorationSubmode = postureDecision.finalExplorationSubmode;
   const relationalAdjustmentTriggered = postureDecision.relationalAdjustmentTriggered;
+  const conversationStateKey = postureDecision.conversationStateKey;
 
   const systemPrompt = buildSystemPrompt(
     mode,
@@ -4863,7 +4887,8 @@ async function generateReply({
     interpretationRejection,
     relationalAdjustmentTriggered,
     explorationSubmode,
-    contactSubmode
+    contactSubmode,
+    conversationStateKey
   );
   
   const messages = [
