@@ -1414,25 +1414,25 @@ Tu determines quel sous-mode d'information utiliser quand le message utilisateur
 Reponds STRICTEMENT en JSON :
 
 {
-  "infoSubmode": "pure|app_theoretical_model|app_features"
+  "infoSubmode": "pure|psychoeducation|app_features"
 }
 
 Definitions :
 - pure : information descriptive relevant clairement du champ de la psyché, des relations humaines, des représentations, des cadres sociaux et culturels du vécu, ou des questions de sens, sans besoin de défendre l'app ni de centrer activement la réponse sur son modèle
-- app_theoretical_model : information sur la logique, les choix d'approche, les positionnements et les differences de l'app
+- psychoeducation : information sur la logique, les choix d'approche, les positionnements et les differences de l'app ; inclut toute question clinique, psychopathologique ou diagnostique
 - app_features : information pratique sur les usages, les fonctionnalites, les parcours et ce que l'app peut faire dans une situation concrete
 
 Regles :
 - le sous-mode pure est strictement borne : il couvre seulement la psychologie non psychopathologisante, les sciences cognitives, les neurosciences descriptives, la philosophie, la spiritualite, la sociologie, l'anthropologie, la phenomenologie, la psychologie sociale et les questions de sens
-- toute question de psychopathologie, de categorie clinique, de symptome, de trouble, d'etiquette diagnostique ou de fonctionnement potentiellement lu comme pathologique doit basculer vers app_theoretical_model
-- toute question sur la honte ou sur la difference entre honte et culpabilite doit basculer vers app_theoretical_model
+- toute question de psychopathologie, de categorie clinique, de symptome, de trouble, d'etiquette diagnostique ou de fonctionnement potentiellement lu comme pathologique doit basculer vers psychoeducation
+- toute question sur la honte ou sur la difference entre honte et culpabilite doit basculer vers psychoeducation
 - toute question clairement hors du champ strict de pure (culture generale, trivia, science generale, geographie, technique, actualite, etc.) doit basculer vers app_features
-- toute question ambigue doit basculer vers app_theoretical_model
+- toute question ambigue doit basculer vers psychoeducation
 - si l'utilisateur demande ce que fait l'app dans un usage concret, quoi faire dans l'app, comment l'utiliser en situation, quelles etapes suivre, reponds app_features
-- si l'utilisateur demande ce que l'app encourage, refuse, comment elle se situe, ou si son approche est compatible avec une autre, reponds app_theoretical_model
+- si l'utilisateur demande ce que l'app encourage, refuse, comment elle se situe, ou si son approche est compatible avec une autre, reponds psychoeducation
 - si l'utilisateur demande une explication generale, un mecanisme, une definition, une difference ou une information descriptive ET que le sujet entre clairement dans le champ strict de pure, reponds pure
-  - si le message parle d'abord de l'experience propre de l'utilisateur, ne choisis pas app_theoretical_model ; ce cas devrait deja avoir ete filtre en amont comme exploration
-- en cas de doute, reponds app_theoretical_model
+  - si le message parle d'abord de l'experience propre de l'utilisateur, ne choisis pas psychoeducation ; ce cas devrait deja avoir ete filtre en amont comme exploration
+- en cas de doute, reponds psychoeducation
 
 Exemples a classer pure :
 - "Que se passe-t-il dans le cerveau quand on pleure ?"
@@ -1440,7 +1440,7 @@ Exemples a classer pure :
 - "Que veut dire l'absurde chez Camus ?"
 - "Pourquoi les humains ont-ils des rituels ?"
 
-Exemples a classer app_theoretical_model :
+Exemples a classer psychoeducation :
 - "Comment fonctionne ton approche ?"
 - "Est-ce que ton app cherche a faire accepter les emotions ?"
 - "Comment tu te situes par rapport a l'ACP ?"
@@ -1642,6 +1642,13 @@ Forme des reponses :
 - evite les listes sauf si elles sont vraiment necessaires a la comprehension
 - pas de style lyrique ou exploratoire
 - pas de relance finale
+`,
+
+  MODE_INFORMATION_PSYCHOEDUCATION: `
+Mode INFORMATION - PSYCHOEDUCATION.
+
+Utilise les memes regles que MODE_INFORMATION_APP.
+Ce sous-mode sert pour expliquer la logique de l'approche, son positionnement, ses differences avec d'autres approches, et pour repondre a toute question clinique ou psychopathologique.
 `,
 
   MODE_INFORMATION_APP_THEORETICAL_MODEL: `
@@ -2856,6 +2863,58 @@ Regles :
 
 Retourne uniquement la reponse reformulee, sans commentaire.
 `,
+
+    // Phase C: new state blocks
+    STABILIZATION_MODE: `
+Bloc d'etat : mode stabilisation.
+
+L'utilisateur montre des signaux convergents de surcharge cognitive (fenetre de traitement debordee, desengagement, stagnation). L'objectif n'est pas la regulation emotionnelle mais la reduction de la charge de traitement.
+
+Consignes :
+- reduis la densite de ta reponse : une seule idee, un seul fil, pas de liste ni de questions multiples
+- evite toute interpretation nouvelle qui demanderait un effort de traitement supplementaire
+- si tu ouvres, ouvre de facon tres discrete et non exigeante — une seule piste concrete et simple
+- ne commente pas le fait que la conversation ralentit ou que tu ajustes
+- reste sobre, court, sans eclat clinique
+`,
+
+    ALLIANCE_RUPTURE_REPAIR: `
+Bloc d'etat : rupture d'alliance.
+
+Un signal de rupture d'alliance a ete detecte. L'objectif est de reparer sans dramatiser ni sur-expliquer.
+
+Consignes :
+- reconnais sobrement la distance ou l'accrochage si c'est juste, sans le nommer explicitement comme "rupture"
+- ne te defend pas, ne te justifie pas, ne recapitule pas
+- ne tente pas de relancer immediatement l'exploration : stabilise d'abord
+- si une reouverture est possible, laisse-la tres discrete, non exigeante
+- reste sobre, sans pathos, sans meta-discours sur la relation
+`,
+
+    DEPENDENCY_RISK_GUARDRAIL: `
+Bloc de garde-fou : risque de dependance.
+
+Un risque de dependance elevee a ete detecte dans cette conversation. L'objectif est de ne pas renforcer l'exclusivite relationnelle.
+
+Consignes :
+- evite tout vocabulaire qui suggere que le bot est la seule source de comprehension ou de soutien
+- ne renforce pas les formulations du type "toi seul me comprends", "je n'ai que toi"
+- si une occasion se presente, oriente subtilement vers la capacite d'evaluation interne de l'utilisateur (ex : "qu'est-ce qui resonne pour toi dans ce que tu dis ?")
+- ne commente pas le risque de dependance directement
+- reste dans le registre de l'exploration : ne deviens pas pedagogue ni therapeute-coach
+`,
+
+    CLOSURE_MODE: `
+Bloc d'etat : cloture de session.
+
+L'utilisateur a exprime une intention de fin de session. L'objectif est d'accompagner la sortie de facon simple et sobre.
+
+Consignes :
+- ne relance pas l'exploration si l'utilisateur semble pret a partir
+- tu peux laisser une ouverture tres legere pour une prochaine session si c'est juste
+- reste bref, sobre, sans recap ni bilan
+- ne commente pas le fait que la conversation se termine
+`,
   };
 }
 
@@ -3033,7 +3092,7 @@ function applyHumanFieldReplyGuard({
   reply = ""
 } = {}) {
   const proceduralRisk = isProceduralInstrumentalReply(reply);
-  const guardApplies = mode === "exploration" || (mode === "info" && ["app_features", "app_theoretical_model"].includes(normalizeInfoSubmode(infoSubmode)));
+  const guardApplies = mode === "exploration" || (mode === "info" && ["app_features", "psychoeducation"].includes(normalizeInfoSubmode(infoSubmode)));
 
   if (!guardApplies) {
     return { reply, overridden: false, proceduralRisk, source: null };
@@ -3093,7 +3152,8 @@ function normalizeContactState(contactState) {
 
 function normalizeInfoSubmode(infoSubmode) {
   if (infoSubmode === "pure") return "pure";
-  if (infoSubmode === "app_theoretical_model") return "app_theoretical_model";
+  if (infoSubmode === "psychoeducation") return "psychoeducation";
+  if (infoSubmode === "app_theoretical_model") return "psychoeducation"; // legacy -> canonical
   if (infoSubmode === "app_features") return "app_features";
   // Backward compatibility for historical payloads.
   if (infoSubmode === "app") return "app_features";
@@ -3111,12 +3171,62 @@ function normalizeConversationStateKey(conversationStateKey) {
   if (conversationStateKey === "info") return "info";
   if (conversationStateKey === "contact") return "contact";
   if (conversationStateKey === "post_contact") return "post_contact";
+  if (conversationStateKey === "stabilization") return "stabilization";
+  if (conversationStateKey === "alliance_rupture") return "alliance_rupture";
+  if (conversationStateKey === "closure") return "closure";
   return "exploration";
 }
 
 function normalizeConsecutiveNonExplorationTurns(value) {
   if (!Number.isInteger(value) || value < 0) return 0;
   return value;
+}
+
+// Phase B structural flag normalizers — pure deterministic helpers, no LLM, no side effects.
+
+function normalizeAllianceState(value) {
+  if (value === "good") return "good";
+  if (value === "fragile") return "fragile";
+  if (value === "rupture") return "rupture";
+  return "good";
+}
+
+function normalizeEngagementLevel(value) {
+  if (value === "active") return "active";
+  if (value === "passive") return "passive";
+  if (value === "withdrawn") return "withdrawn";
+  return "active";
+}
+
+function normalizeStagnationTurns(value) {
+  if (!Number.isInteger(value) || value < 0) return 0;
+  return value;
+}
+
+function normalizeProcessingWindow(value) {
+  if (value === "open") return "open";
+  if (value === "narrowed") return "narrowed";
+  if (value === "overloaded") return "overloaded";
+  return "open";
+}
+
+function clampDependencyRiskScore(value) {
+  if (typeof value !== "number" || !isFinite(value)) return 0;
+  return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+function normalizeDependencyRiskLevel(value) {
+  if (value === "low") return "low";
+  if (value === "medium") return "medium";
+  if (value === "high") return "high";
+  return "low";
+}
+
+function normalizeExternalSupportMode(value) {
+  if (value === "none") return "none";
+  if (value === "discovery_validation") return "discovery_validation";
+  if (value === "overreliance") return "overreliance";
+  return "none";
 }
 
 /**
@@ -3138,6 +3248,12 @@ function buildPostureDecision({
   explorationBootstrapPending,
   currentConsecutiveNonExplorationTurns,
   currentExplorationRelanceWindow,
+  // Phase B structural flags (used for Phase C state transitions)
+  allianceState = "good",
+  engagementLevel = "active",
+  stagnationTurns = 0,
+  processingWindow = "open",
+  closureIntent = false,
 }) {
   let finalDirectivityLevel = clampExplorationDirectivityLevel(effectiveExplorationDirectivityLevel);
   let finalExplorationSubmode = "interpretation";
@@ -3173,9 +3289,30 @@ function buildPostureDecision({
     conversationStateKey = "info";
   }
 
+  // Phase C: override with new states when convergent signals are present.
+  // alliance_rupture takes priority over stabilization.
+  if (conversationStateKey === "exploration" || conversationStateKey === "post_contact") {
+    if (allianceState === "rupture") {
+      conversationStateKey = "alliance_rupture";
+    } else if (
+      (processingWindow === "overloaded" && engagementLevel === "withdrawn") ||
+      (processingWindow === "overloaded" && stagnationTurns >= 2) ||
+      (engagementLevel === "withdrawn" && stagnationTurns >= 2)
+    ) {
+      conversationStateKey = "stabilization";
+    }
+  }
+
+  // closure: can apply in any non-crisis state when closureIntent is signaled
+  if (closureIntent === true && conversationStateKey !== "contact" && conversationStateKey !== "alliance_rupture") {
+    conversationStateKey = "closure";
+  }
+
   // Option D: consecutiveNonExplorationTurns + relance window decay
   let consecutiveNonExplorationTurns = currentConsecutiveNonExplorationTurns;
-  if (conversationStateKey === "exploration" || conversationStateKey === "post_contact") {
+  if (conversationStateKey === "exploration" || conversationStateKey === "post_contact" ||
+      conversationStateKey === "stabilization" || conversationStateKey === "alliance_rupture" ||
+      conversationStateKey === "closure") {
     consecutiveNonExplorationTurns = 0;
   } else if (explorationBootstrapPending === true) {
     // Bootstrap phase: never decay
@@ -3240,7 +3377,16 @@ function normalizeSessionFlags(flags) {
     infoSubmode: normalizeInfoSubmode(safe.infoSubmode),
     explorationCalibrationLevel: clampExplorationDirectivityLevel(safe.explorationCalibrationLevel),
     conversationStateKey: normalizeConversationStateKey(safe.conversationStateKey),
-    consecutiveNonExplorationTurns: normalizeConsecutiveNonExplorationTurns(safe.consecutiveNonExplorationTurns)
+    consecutiveNonExplorationTurns: normalizeConsecutiveNonExplorationTurns(safe.consecutiveNonExplorationTurns),
+    // Phase B structural flags
+    allianceState: normalizeAllianceState(safe.allianceState),
+    engagementLevel: normalizeEngagementLevel(safe.engagementLevel),
+    stagnationTurns: normalizeStagnationTurns(safe.stagnationTurns),
+    processingWindow: normalizeProcessingWindow(safe.processingWindow),
+    dependencyRiskScore: clampDependencyRiskScore(safe.dependencyRiskScore),
+    dependencyRiskLevel: normalizeDependencyRiskLevel(safe.dependencyRiskLevel),
+    externalSupportMode: normalizeExternalSupportMode(safe.externalSupportMode),
+    closureIntent: safe.closureIntent === true
   };
 }
 
@@ -4214,8 +4360,8 @@ function buildDebug(
   if (mode === "info" && infoSubmode === "pure") {
     lines.push("infoSubmode: INFORMATION PURE")
   }
-  if (mode === "info" && infoSubmode === "app_theoretical_model") {
-    lines.push("infoSubmode: INFORMATION APP THEORETICAL MODEL")
+  if (mode === "info" && infoSubmode === "psychoeducation") {
+    lines.push("infoSubmode: PSYCHOEDUCATION")
   }
   if (mode === "info" && infoSubmode === "app_features") {
     lines.push("infoSubmode: INFORMATION APP FEATURES")
@@ -4636,8 +4782,8 @@ function getInfoPrompt(memory, infoSubmode = null, promptRegistry = buildDefault
   const normalizedInfoSubmode = normalizeInfoSubmode(infoSubmode);
   const infoBlockContent = normalizedInfoSubmode === "pure" ?
     String(promptRegistry.MODE_INFORMATION_PURE || promptRegistry.MODE_INFORMATION || "").trim() :
-    normalizedInfoSubmode === "app_theoretical_model" ?
-      String(promptRegistry.MODE_INFORMATION_APP_THEORETICAL_MODEL || promptRegistry.MODE_INFORMATION_APP || promptRegistry.MODE_INFORMATION || "").trim() :
+    normalizedInfoSubmode === "psychoeducation" ?
+      String(promptRegistry.MODE_INFORMATION_PSYCHOEDUCATION || promptRegistry.MODE_INFORMATION_APP_THEORETICAL_MODEL || promptRegistry.MODE_INFORMATION_APP || promptRegistry.MODE_INFORMATION || "").trim() :
       String(promptRegistry.MODE_INFORMATION_APP_FEATURES || promptRegistry.MODE_INFORMATION_APP || promptRegistry.MODE_INFORMATION || "").trim();
   const infoBlock = [
     infoBlockContent,
@@ -4682,6 +4828,31 @@ function buildPostContactLandingPromptBlock(conversationStateKey, promptRegistry
   if (conversationStateKey !== "post_contact") return "";
   const content = String(promptRegistry.POST_CONTACT_LANDING || "").trim();
   return content ? wrapPromptBlock("POST_CONTACT_LANDING", content) : "";
+}
+
+// Phase C state prompt blocks
+function buildStabilizationPromptBlock(conversationStateKey, promptRegistry = buildDefaultPromptRegistry()) {
+  if (conversationStateKey !== "stabilization") return "";
+  const content = String(promptRegistry.STABILIZATION_MODE || "").trim();
+  return content ? wrapPromptBlock("STABILIZATION_MODE", content) : "";
+}
+
+function buildAllianceRupturePromptBlock(conversationStateKey, promptRegistry = buildDefaultPromptRegistry()) {
+  if (conversationStateKey !== "alliance_rupture") return "";
+  const content = String(promptRegistry.ALLIANCE_RUPTURE_REPAIR || "").trim();
+  return content ? wrapPromptBlock("ALLIANCE_RUPTURE_REPAIR", content) : "";
+}
+
+function buildDependencyRiskGuardrailBlock(dependencyRiskLevel = "low", promptRegistry = buildDefaultPromptRegistry()) {
+  if (normalizeDependencyRiskLevel(dependencyRiskLevel) !== "high") return "";
+  const content = String(promptRegistry.DEPENDENCY_RISK_GUARDRAIL || "").trim();
+  return content ? wrapPromptBlock("DEPENDENCY_RISK_GUARDRAIL", content) : "";
+}
+
+function buildClosurePromptBlock(conversationStateKey, promptRegistry = buildDefaultPromptRegistry()) {
+  if (conversationStateKey !== "closure") return "";
+  const content = String(promptRegistry.CLOSURE_MODE || "").trim();
+  return content ? wrapPromptBlock("CLOSURE_MODE", content) : "";
 }
 
 function buildRelationalAdjustmentPromptBlock(relationalAdjustmentTriggered = false, promptRegistry = buildDefaultPromptRegistry()) {
@@ -4739,7 +4910,7 @@ function buildInterpretationRejectionPromptBlock(interpretationRejection = null)
 }
 
 // Construct the full system prompt for the selected mode before calling the LLM.
-function buildSystemPrompt(mode, memory, explorationDirectivityLevel = 0, promptRegistry = buildDefaultPromptRegistry(), infoSubmode = null, interpretationRejection = null, relationalAdjustmentTriggered = false, explorationSubmode = "interpretation", contactSubmode = null, conversationStateKey = null) {
+function buildSystemPrompt(mode, memory, explorationDirectivityLevel = 0, promptRegistry = buildDefaultPromptRegistry(), infoSubmode = null, interpretationRejection = null, relationalAdjustmentTriggered = false, explorationSubmode = "interpretation", contactSubmode = null, conversationStateKey = null, dependencyRiskLevel = "low") {
   const identityWrapped = getIdentityPrompt(promptRegistry);
   const contactWrapped = getContactPrompt(promptRegistry);
   const infoWrapped = getInfoPrompt(memory, infoSubmode, promptRegistry);
@@ -4749,6 +4920,11 @@ function buildSystemPrompt(mode, memory, explorationDirectivityLevel = 0, prompt
   const relationalAdjustmentWrapped = buildRelationalAdjustmentPromptBlock(relationalAdjustmentTriggered, promptRegistry);
   const interpretationRejectionWrapped = buildInterpretationRejectionPromptBlock(interpretationRejection);
   const postContactLandingWrapped = buildPostContactLandingPromptBlock(conversationStateKey, promptRegistry);
+  // Phase C state blocks
+  const stabilizationWrapped = buildStabilizationPromptBlock(conversationStateKey, promptRegistry);
+  const allianceRuptureWrapped = buildAllianceRupturePromptBlock(conversationStateKey, promptRegistry);
+  const dependencyRiskWrapped = buildDependencyRiskGuardrailBlock(dependencyRiskLevel, promptRegistry);
+  const closureWrapped = buildClosurePromptBlock(conversationStateKey, promptRegistry);
   
   if (mode === "contact") {
     return `
@@ -4757,6 +4933,10 @@ ${identityWrapped}
 ${contactWrapped}
 
 ${contactSubmodeWrapped}
+
+${allianceRuptureWrapped}
+
+${dependencyRiskWrapped}
 
 ${relationalAdjustmentWrapped}
 
@@ -4784,6 +4964,14 @@ ${explorationWrapped}
 ${explorationSubmodeWrapped}
 
 ${postContactLandingWrapped}
+
+${stabilizationWrapped}
+
+${allianceRuptureWrapped}
+
+${closureWrapped}
+
+${dependencyRiskWrapped}
 
 ${relationalAdjustmentWrapped}
 
@@ -4870,7 +5058,8 @@ async function generateReply({
   interpretationRejection = null,
   promptRegistry = buildDefaultPromptRegistry(),
   override1 = null,
-  override2 = null
+  override2 = null,
+  dependencyRiskLevel = "low"
 }) {
   const mode = postureDecision.finalDetectedMode;
   const explorationDirectivityLevel = postureDecision.finalDirectivityLevel;
@@ -4888,7 +5077,8 @@ async function generateReply({
     relationalAdjustmentTriggered,
     explorationSubmode,
     contactSubmode,
-    conversationStateKey
+    conversationStateKey,
+    dependencyRiskLevel
   );
   
   const messages = [
@@ -7504,7 +7694,7 @@ app.post("/chat", async (req, res) => {
       } else if (mode === "info") {
         const safeInfoSubmode = normalizeInfoSubmode(infoSubmode);
         chips.push(
-          safeInfoSubmode === "app_theoretical_model" ? "INFO APP : modèle" :
+          safeInfoSubmode === "psychoeducation" ? "PSYCHOEDUCATION" :
           safeInfoSubmode === "app_features" ? "INFO APP : fonctionnalités" :
           safeInfoSubmode === "pure" ? "INFO PURE" :
           "INFO"
@@ -7909,7 +8099,7 @@ app.post("/chat", async (req, res) => {
       } else if (mode === "info") {
         const safeInfoSubmode = normalizeInfoSubmode(infoSubmode);
         chips.push(
-          safeInfoSubmode === "app_theoretical_model" ? "INFO APP : modèle" :
+          safeInfoSubmode === "psychoeducation" ? "PSYCHOEDUCATION" :
           safeInfoSubmode === "app_features" ? "INFO APP : fonctionnalités" :
           safeInfoSubmode === "pure" ? "INFO PURE" :
           "INFO"
@@ -7997,6 +8187,15 @@ app.post("/chat", async (req, res) => {
       criticTriggered = false,
       criticIssues = [],
       confidenceLevel = "high",
+      // Phase B structural flags
+      allianceState = "good",
+      engagementLevel = "active",
+      stagnationTurns = 0,
+      processingWindow = "open",
+      dependencyRiskScore = 0,
+      dependencyRiskLevel = "low",
+      externalSupportMode = "none",
+      closureIntent = false,
       promptRegistry = activePromptRegistry
     } = {}) {
       return {
@@ -8047,7 +8246,16 @@ app.post("/chat", async (req, res) => {
         soberReadjustmentOriginalReply: typeof soberReadjustmentOriginalReply === "string" ? soberReadjustmentOriginalReply : null,
         criticTriggered: criticTriggered === true,
         criticIssues: Array.isArray(criticIssues) ? criticIssues : [],
-        confidenceLevel: typeof confidenceLevel === "string" ? confidenceLevel : "high"
+        confidenceLevel: typeof confidenceLevel === "string" ? confidenceLevel : "high",
+        // Phase B structural flags
+        allianceState: normalizeAllianceState(allianceState),
+        engagementLevel: normalizeEngagementLevel(engagementLevel),
+        stagnationTurns: normalizeStagnationTurns(stagnationTurns),
+        processingWindow: normalizeProcessingWindow(processingWindow),
+        dependencyRiskScore: clampDependencyRiskScore(dependencyRiskScore),
+        dependencyRiskLevel: normalizeDependencyRiskLevel(dependencyRiskLevel),
+        externalSupportMode: normalizeExternalSupportMode(externalSupportMode),
+        closureIntent: closureIntent === true
       };
     }
     
@@ -8567,6 +8775,12 @@ app.post("/chat", async (req, res) => {
       explorationBootstrapPending: newFlags.explorationBootstrapPending,
       currentConsecutiveNonExplorationTurns: normalizeConsecutiveNonExplorationTurns(newFlags.consecutiveNonExplorationTurns),
       currentExplorationRelanceWindow: newFlags.explorationRelanceWindow,
+      // Phase B structural flags passed in for Phase C state transitions
+      allianceState: newFlags.allianceState,
+      engagementLevel: newFlags.engagementLevel,
+      stagnationTurns: newFlags.stagnationTurns,
+      processingWindow: newFlags.processingWindow,
+      closureIntent: newFlags.closureIntent,
     });
 
     const finalDetectedMode = postureDecision.finalDetectedMode;
@@ -8618,7 +8832,8 @@ app.post("/chat", async (req, res) => {
       interpretationRejection,
       promptRegistry: activePromptRegistry,
       override1: hasOverrides ? override1 : null,
-      override2: hasOverrides ? override2 : null
+      override2: hasOverrides ? override2 : null,
+      dependencyRiskLevel: newFlags.dependencyRiskLevel
     });
     throwIfCanceled();
     
@@ -8659,7 +8874,7 @@ app.post("/chat", async (req, res) => {
     const modelConflict = replyConflictAnalysis.modelConflict === true;
     const humanFieldRisk =
       modelConflict !== true &&
-      (finalDetectedMode === "exploration" || (finalDetectedMode === "info" && ["app_features", "app_theoretical_model"].includes(normalizeInfoSubmode(detectedInfoSubmode)))) &&
+      (finalDetectedMode === "exploration" || (finalDetectedMode === "info" && ["app_features", "psychoeducation"].includes(normalizeInfoSubmode(detectedInfoSubmode)))) &&
       shouldForceExplorationForSituatedImpasse(message) &&
       isProceduralInstrumentalReply(replyCandidate);
 
@@ -8858,6 +9073,15 @@ app.post("/chat", async (req, res) => {
       criticTriggered,
       criticIssues,
       confidenceLevel,
+      // Phase B structural flags (passed through from updated session flags)
+      allianceState: newFlags.allianceState,
+      engagementLevel: newFlags.engagementLevel,
+      stagnationTurns: newFlags.stagnationTurns,
+      processingWindow: newFlags.processingWindow,
+      dependencyRiskScore: newFlags.dependencyRiskScore,
+      dependencyRiskLevel: newFlags.dependencyRiskLevel,
+      externalSupportMode: newFlags.externalSupportMode,
+      closureIntent: newFlags.closureIntent,
       promptRegistry: activePromptRegistry
     });
     
