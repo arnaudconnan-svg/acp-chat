@@ -3105,6 +3105,93 @@ function normalizeConsecutiveNonExplorationTurns(value) {
   return value;
 }
 
+/**
+ * Phase 3: Deterministic arbitrator — consolidates all analyzer outputs into a
+ * PostureDecision struct. Pure function: no LLM calls, no async, no external state mutations.
+ *
+ * @returns {{ finalDetectedMode, finalDirectivityLevel, finalExplorationSubmode,
+ *             conversationStateKey, consecutiveNonExplorationTurns,
+ *             relationalAdjustmentTriggered, preAdjustmentDirectivityLevel, flagUpdates }}
+ */
+function buildPostureDecision({
+  detectedMode,
+  detectedInfoSubmode,
+  contactAnalysis,
+  relationalAdjustmentAnalysis,
+  calibrationAnalysis,
+  effectiveExplorationDirectivityLevel,
+  previousConversationStateKey,
+  explorationBootstrapPending,
+  currentConsecutiveNonExplorationTurns,
+  currentExplorationRelanceWindow,
+}) {
+  let finalDirectivityLevel = clampExplorationDirectivityLevel(effectiveExplorationDirectivityLevel);
+  let finalExplorationSubmode = "interpretation";
+  let preAdjustmentDirectivityLevel = null;
+  const flagUpdates = {};
+
+  if (detectedMode === "exploration") {
+    finalDirectivityLevel = Math.min(
+      clampExplorationDirectivityLevel(effectiveExplorationDirectivityLevel),
+      clampExplorationDirectivityLevel(calibrationAnalysis.calibrationLevel)
+    );
+
+    if (relationalAdjustmentAnalysis?.needsRelationalAdjustment === true) {
+      preAdjustmentDirectivityLevel = finalDirectivityLevel;
+      finalDirectivityLevel = Math.min(finalDirectivityLevel, 2);
+    }
+
+    finalExplorationSubmode = ["interpretation", "phenomenological_follow"].includes(calibrationAnalysis.explorationSubmode)
+      ? calibrationAnalysis.explorationSubmode
+      : "interpretation";
+    flagUpdates.explorationCalibrationLevel = finalDirectivityLevel;
+  } else {
+    flagUpdates.infoSubmode = detectedInfoSubmode;
+  }
+
+  // Conversation state key
+  let conversationStateKey = "exploration";
+  if (contactAnalysis.isContact === true) {
+    conversationStateKey = "contact";
+  } else if (previousConversationStateKey === "contact" && detectedMode === "exploration") {
+    conversationStateKey = "post_contact";
+  } else if (detectedMode === "info") {
+    conversationStateKey = "info";
+  }
+
+  // Option D: consecutiveNonExplorationTurns + relance window decay
+  let consecutiveNonExplorationTurns = currentConsecutiveNonExplorationTurns;
+  if (conversationStateKey === "exploration" || conversationStateKey === "post_contact") {
+    consecutiveNonExplorationTurns = 0;
+  } else if (explorationBootstrapPending === true) {
+    // Bootstrap phase: never decay
+    consecutiveNonExplorationTurns = 0;
+  } else if (consecutiveNonExplorationTurns === 0) {
+    // First non-exploration turn: freeze (gel)
+    consecutiveNonExplorationTurns = 1;
+  } else {
+    // Second+ non-exploration turn: inject false to decay directivity
+    consecutiveNonExplorationTurns += 1;
+    const decayedWindow = [...currentExplorationRelanceWindow, false].slice(-RELANCE_WINDOW_SIZE);
+    flagUpdates.explorationRelanceWindow = decayedWindow;
+    flagUpdates.explorationDirectivityLevel = computeExplorationDirectivityLevel(decayedWindow);
+  }
+
+  flagUpdates.conversationStateKey = conversationStateKey;
+  flagUpdates.consecutiveNonExplorationTurns = consecutiveNonExplorationTurns;
+
+  return {
+    finalDetectedMode: detectedMode,
+    finalDirectivityLevel,
+    finalExplorationSubmode,
+    conversationStateKey,
+    consecutiveNonExplorationTurns,
+    relationalAdjustmentTriggered: relationalAdjustmentAnalysis?.needsRelationalAdjustment === true,
+    preAdjustmentDirectivityLevel,
+    flagUpdates,
+  };
+}
+
 // Compute normalized session flags with defaults for exploration state.
 // This ensures the bot always has a valid directivity level and relance window.
 function normalizeSessionFlags(flags) {
@@ -8410,8 +8497,6 @@ app.post("/chat", async (req, res) => {
     // Phase 2: Run independent post-mode analyzers in parallel.
     // relationalAdjustment, calibration and interpretationRejection all depend only on
     // message/history/memory/flags — none depends on another's result.
-    let finalDetectedMode = detectedMode;
-
     const [
       relationalAdjustmentAnalysis,
       calibrationAnalysis,
@@ -8441,69 +8526,37 @@ app.post("/chat", async (req, res) => {
     ]);
     throwIfCanceled();
 
-    if (detectedMode === "exploration") {
-      finalDirectivityLevel = Math.min(
-        clampExplorationDirectivityLevel(effectiveExplorationDirectivityLevel),
-        clampExplorationDirectivityLevel(calibrationAnalysis.calibrationLevel)
-      );
-      
-      // Phase 2a: Cap directivity when relational adjustment is triggered
-      if (relationalAdjustmentAnalysis?.needsRelationalAdjustment === true) {
-        const previousLevel = finalDirectivityLevel;
-        finalDirectivityLevel = Math.min(finalDirectivityLevel, 2);
-        
-        logChatDecision("relational_adjustment_caps_directivity", {
-          previousLevel,
-          cappedLevel: finalDirectivityLevel,
-          relationalAdjustmentTriggered: true
-        });
-      }
-      
-      finalExplorationSubmode = ["interpretation", "phenomenological_follow"].includes(calibrationAnalysis.explorationSubmode) ?
-        calibrationAnalysis.explorationSubmode :
-        "interpretation";
-      newFlags.explorationCalibrationLevel = finalDirectivityLevel;
-    } else {
-      newFlags.infoSubmode = detectedInfoSubmode;
-    }
-
-    // Explicit conversation state tracking + Option D non-exploration decay.
-    // State is computed after all mode/calibration logic and before generation.
+    // Phase 3: Deterministic arbitrator — consolidate all analyzer outputs into a
+    // PostureDecision struct. No LLM calls, no side effects outside this block.
     const previousConversationStateKey = normalizeConversationStateKey(flags.conversationStateKey);
-    let conversationStateKey = "exploration";
+    const postureDecision = buildPostureDecision({
+      detectedMode,
+      detectedInfoSubmode,
+      contactAnalysis,
+      relationalAdjustmentAnalysis,
+      calibrationAnalysis,
+      effectiveExplorationDirectivityLevel,
+      previousConversationStateKey,
+      explorationBootstrapPending: newFlags.explorationBootstrapPending,
+      currentConsecutiveNonExplorationTurns: normalizeConsecutiveNonExplorationTurns(newFlags.consecutiveNonExplorationTurns),
+      currentExplorationRelanceWindow: newFlags.explorationRelanceWindow,
+    });
 
-    if (contactAnalysis.isContact === true) {
-      conversationStateKey = "contact";
-    } else if (previousConversationStateKey === "contact" && detectedMode === "exploration") {
-      conversationStateKey = "post_contact";
-    } else if (detectedMode === "info") {
-      conversationStateKey = "info";
-    }
+    const finalDetectedMode = postureDecision.finalDetectedMode;
+    finalDirectivityLevel = postureDecision.finalDirectivityLevel;
+    finalExplorationSubmode = postureDecision.finalExplorationSubmode;
+    const { conversationStateKey, consecutiveNonExplorationTurns } = postureDecision;
 
-    let consecutiveNonExplorationTurns = normalizeConsecutiveNonExplorationTurns(
-      newFlags.consecutiveNonExplorationTurns
-    );
-
-    if (conversationStateKey === "exploration" || conversationStateKey === "post_contact") {
-      consecutiveNonExplorationTurns = 0;
-    } else if (newFlags.explorationBootstrapPending === true) {
-      // Bootstrap phase: never decay
-      consecutiveNonExplorationTurns = 0;
-    } else if (consecutiveNonExplorationTurns === 0) {
-      // First non-exploration turn: freeze (gel)
-      consecutiveNonExplorationTurns = 1;
-    } else {
-      // Second+ non-exploration turn: inject false to decay directivity
-      consecutiveNonExplorationTurns += 1;
-      const decayedWindow = [...newFlags.explorationRelanceWindow, false].slice(-RELANCE_WINDOW_SIZE);
-      newFlags.explorationRelanceWindow = decayedWindow;
-      newFlags.explorationDirectivityLevel = computeExplorationDirectivityLevel(decayedWindow);
-    }
-
-    newFlags.conversationStateKey = conversationStateKey;
-    newFlags.consecutiveNonExplorationTurns = consecutiveNonExplorationTurns;
-
+    Object.assign(newFlags, postureDecision.flagUpdates);
     flagsForCatch = normalizeSessionFlags(newFlags);
+
+    if (postureDecision.relationalAdjustmentTriggered) {
+      logChatDecision("relational_adjustment_caps_directivity", {
+        previousLevel: postureDecision.preAdjustmentDirectivityLevel,
+        cappedLevel: postureDecision.finalDirectivityLevel,
+        relationalAdjustmentTriggered: true
+      });
+    }
 
     logChatDecision("mode_detected", {
       detectedMode,
@@ -8511,7 +8564,7 @@ app.post("/chat", async (req, res) => {
       infoSubmode: detectedInfoSubmode,
       contactSubmode: detectedContactSubmode,
       isContact: contactAnalysis.isContact === true,
-      relationalAdjustmentTriggered: relationalAdjustmentAnalysis?.needsRelationalAdjustment === true,
+      relationalAdjustmentTriggered: postureDecision.relationalAdjustmentTriggered,
       previousWasContact: flags.contactState?.wasContact === true,
       currentWasContact: newFlags.contactState?.wasContact === true,
       previousConversationStateKey,
