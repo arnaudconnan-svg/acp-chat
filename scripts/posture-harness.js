@@ -68,6 +68,7 @@ function explorationInput(overrides = {}) {
     contactAnalysis: noContact(),
     relationalAdjustmentAnalysis: relational(),
     calibrationAnalysis: calibration(0),
+    situatedImpasseDetected: false,
     interpretationRejection: rejection(),
     effectiveExplorationDirectivityLevel: 0,
     previousConversationStateKey: "exploration",
@@ -567,7 +568,7 @@ check("confidenceSignal: recent rejection signal → 'low'", () => {
 
 check("humanFieldGuard: situated impasse + exploration → active", () => {
   const out = buildPostureDecision(explorationInput({
-    message: "je n'arrive pas à faire ça, je suis bloqué"
+    situatedImpasseDetected: true
   }));
   assert(out.humanFieldGuardActive === true,
     `expected humanFieldGuardActive true, got ${out.humanFieldGuardActive}`);
@@ -577,7 +578,7 @@ check("humanFieldGuard: situated impasse + exploration → active", () => {
 
 check("humanFieldGuard: conceptual info question → NOT active", () => {
   const out = buildPostureDecision(explorationInput({
-    message: "qu'est-ce que la régulation émotionnelle ?"
+    situatedImpasseDetected: false
   }));
   assert(out.humanFieldGuardActive === false,
     `expected humanFieldGuardActive false for conceptual question, got ${out.humanFieldGuardActive}`);
@@ -587,7 +588,7 @@ check("humanFieldGuard: info mode → NOT active (guard only for exploration/con
   const out = buildPostureDecision(explorationInput({
     detectedMode: "info",
     detectedInfoSubmode: "app_features",
-    message: "je n'arrive pas à utiliser l'app, je suis bloqué"
+    situatedImpasseDetected: true
   }));
   assert(out.humanFieldGuardActive === false,
     `expected humanFieldGuardActive false in info mode, got ${out.humanFieldGuardActive}`);

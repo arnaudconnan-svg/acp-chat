@@ -54,7 +54,6 @@ const {
   normalizeConsecutiveNonExplorationTurns,
   normalizeDependencyRiskLevel,
   normalizeEngagementLevel,
-  normalizeExplorationRelanceWindow,
   normalizeExternalSupportMode,
   normalizeFlags,
   normalizeInfoSubmode,
@@ -281,6 +280,43 @@ const MAX_INFO_ANALYSIS_TURNS = 6;
 const MAX_SUICIDE_ANALYSIS_TURNS = 10;
 const MAX_RECALL_ANALYSIS_TURNS = 6;
 const RELANCE_WINDOW_SIZE = 4;
+
+// Single declarative priority table for early /chat decision rules.
+// Lower number = higher priority.
+const CHAT_PRIORITY_RULES = Object.freeze([
+  { id: "suicide_n2", phase: "post_suicide", priority: 10 },
+  { id: "acute_crisis_followup", phase: "post_suicide", priority: 20 },
+  { id: "suicide_clarification", phase: "post_suicide", priority: 30 },
+  { id: "recall_long_term", phase: "post_recall", priority: 10 },
+  { id: "recall_none", phase: "post_recall", priority: 20 }
+]);
+
+const CHAT_PRIORITY_MATCHERS = Object.freeze({
+  suicide_n2: ({ suicide }) => suicide?.suicideLevel === "N2",
+  acute_crisis_followup: ({ suicide, flags }) => flags?.acuteCrisis === true && suicide?.crisisResolved !== true,
+  suicide_clarification: ({ suicide }) => suicide?.suicideLevel === "N1" || suicide?.needsClarification === true,
+  recall_long_term: ({ recallRouting }) => recallRouting?.isLongTermMemoryRecall === true,
+  recall_none: ({ recallRouting }) => recallRouting?.isRecallAttempt === true && recallRouting?.calledMemory === "none"
+});
+
+function resolveChatPriorityRule({ phase, suicide = null, flags = null, recallRouting = null } = {}) {
+  for (const rule of CHAT_PRIORITY_RULES) {
+    if (rule.phase !== phase) {
+      continue;
+    }
+
+    const matcher = CHAT_PRIORITY_MATCHERS[rule.id];
+    if (typeof matcher !== "function") {
+      continue;
+    }
+
+    if (matcher({ suicide, flags, recallRouting }) === true) {
+      return rule;
+    }
+  }
+
+  return null;
+}
 
 // --------------------------------------------------
 // 1) OUTILS MINIMAUX
@@ -748,49 +784,6 @@ function estimateReplyConfidence(message = "", history = []) {
   return "high";
 }
 
-function buildHumanFieldFallback(message = "") {
-  const text = normalizeGuardText(message);
-
-  if (/trop grand|impossible|je n'arrive pas|je peux pas/.test(text)) {
-    return "Je vois surtout l'impasse concrete dans laquelle tu te retrouves. Tu voudrais juste faire passer ce qu'il faut pour avancer, et ca bute deja sur la forme meme de ce que tu dois transmettre. Je recois bien a quel point ca peut couper net l'elan.";
-  }
-
-  if (/frustr|soule|decourag|perdu du temps|galer/.test(text)) {
-    return "Je sens surtout l'usure que ca rajoute pour toi. Tu essaies d'avancer, et au lieu de ca tu te retrouves repris par quelque chose de pratique qui te coupe dans ton mouvement. Je recois bien le melange de blocage et d'agacement que ca laisse.";
-  }
-
-  return "Je vois surtout le blocage concret dans lequel tu te retrouves. La, ca ne parle pas seulement d'un probleme pratique : ca vient taper exactement a l'endroit ou tu essaies d'avancer, et je recois bien la tension que ca remet.";
-}
-
-function applyHumanFieldReplyGuard({
-  message = "",
-  mode = "exploration",
-  infoSubmode = null,
-  reply = ""
-} = {}) {
-  const proceduralRisk = isProceduralInstrumentalReply(reply);
-  const guardApplies = mode === "exploration" || (mode === "info" && ["app_features", "psychoeducation"].includes(normalizeInfoSubmode(infoSubmode)));
-
-  if (!guardApplies) {
-    return { reply, overridden: false, proceduralRisk, source: null };
-  }
-
-  if (!shouldForceExplorationForSituatedImpasse(message)) {
-    return { reply, overridden: false, proceduralRisk, source: null };
-  }
-
-  if (!proceduralRisk) {
-    return { reply, overridden: false, proceduralRisk, source: null };
-  }
-
-  return {
-    reply: buildHumanFieldFallback(message),
-    overridden: true,
-    proceduralRisk: true,
-    source: "human_field_guard"
-  };
-}
-
 // ----------------------------------------
 // 2) SUICIDE RISK
 // ----------------------------------------
@@ -943,6 +936,7 @@ const {
   analyzeInfoRequest,
   analyzeInfoSubmode,
   analyzeInterpretationRejection,
+  analyzeSituatedImpasse,
   analyzeRecallRouting,
   analyzeRelationalAdjustmentNeed,
   detectMode
@@ -4080,94 +4074,6 @@ app.post("/chat", async (req, res) => {
     modelConflict = false,
     promptRegistry = buildDefaultPromptRegistry()
   } = {}) {
-    function buildTopChips({
-      suicideLevel = "N0",
-      mode = null,
-      infoSubmode = null,
-      contactSubmode = null,
-      explorationSubmode = null,
-      interpretationRejection = false,
-      isRecallRequest = false,
-      needsSoberReadjustment = false,
-      relationalAdjustmentTriggered = false
-    } = {}) {
-      const chips = [];
-
-      function buildExplorationSubmodeChipLabel(submode = null) {
-        if (submode === "interpretation") return "EXPLORATION : interprÃ©tation";
-        if (submode === "phenomenological_follow") return "EXPLORATION : accompagnement";
-        return "EXPLORATION";
-      }
-      
-      if (suicideLevel === "N2") {
-        chips.push("URGENCE : risque suicidaire");
-      } else if (suicideLevel === "N1") {
-        chips.push("Risque suicidaire Ã  clarifier");
-      } else if (mode === "exploration") {
-        chips.push(buildExplorationSubmodeChipLabel(explorationSubmode));
-      } else if (mode === "info") {
-        const safeInfoSubmode = normalizeInfoSubmode(infoSubmode);
-        chips.push(
-          safeInfoSubmode === "psychoeducation" ? "PSYCHOEDUCATION" :
-          safeInfoSubmode === "app_features" ? "INFO APP : fonctionnalitÃ©s" :
-          safeInfoSubmode === "pure" ? "INFO PURE" :
-          "INFO"
-        );
-      } else if (mode === "contact") {
-        const safeContactSubmode = normalizeContactSubmode(contactSubmode);
-        chips.push(
-          safeContactSubmode === "dysregulated" ? "CONTACT : dÃ©rÃ©gulÃ©" :
-          safeContactSubmode === "regulated" ? "CONTACT : rÃ©gulÃ©" :
-          "CONTACT"
-        );
-      }
-
-      if (interpretationRejection === true) {
-        chips.push("Rejet d'interprÃ©tation");
-      }
-      
-      if (isRecallRequest === true) {
-        chips.push("Demande de rappel mÃ©moire");
-      }
-      
-      if (needsSoberReadjustment === true) {
-        chips.push("RÃ©ajustement sobre");
-      }
-      
-      if (relationalAdjustmentTriggered === true) {
-        chips.push("Ajustement relationnel");
-      }
-      
-      return chips;
-    }
-    
-    function buildDirectivityText({
-      mode = null,
-      explorationCalibrationLevel = null,
-      explorationDirectivityLevel = 0,
-      explorationRelanceWindow = []
-    } = {}) {
-      if (mode !== "exploration") {
-        return "";
-      }
-      
-      const safeWindow = normalizeExplorationRelanceWindow(explorationRelanceWindow);
-      const safeNextLevel = clampExplorationDirectivityLevel(explorationDirectivityLevel);
-      const safeRetainedLevel = explorationCalibrationLevel !== null && explorationCalibrationLevel !== undefined ?
-        clampExplorationDirectivityLevel(explorationCalibrationLevel) :
-        null;
-
-      if (safeRetainedLevel === null && safeNextLevel <= 0) {
-        return "";
-      }
-      
-      return [
-        safeRetainedLevel !== null ? `Niveau de structuration retenu : ${safeRetainedLevel}/4` : null,
-        `Fenetre de relance : [${safeWindow.map(v => (v ? "1" : "0")).join("-")}]`,
-        `Niveau de directivite (tour suivant) : ${safeNextLevel}/4`
-      ].filter(Boolean).join("\n");
-    }
-    
     return {
       topChips: buildTopChips({
         suicideLevel,
@@ -4487,10 +4393,24 @@ app.post("/chat", async (req, res) => {
     let newFlags = normalizeSessionFlags(flags);
     newFlags.infoSubmode = null;
     newFlags.explorationCalibrationLevel = 0;
+
+    const postSuicidePriorityRule = resolveChatPriorityRule({
+      phase: "post_suicide",
+      suicide,
+      flags
+    });
+
+    if (postSuicidePriorityRule) {
+      logChatDecision("priority_rule_selected", {
+        phase: "post_suicide",
+        ruleId: postSuicidePriorityRule.id,
+        priority: postSuicidePriorityRule.priority
+      });
+    }
     
     // Severe suicide risk override path.
     // If the analysis returns N2, we bypass normal generation and reply with a crisis response.
-    if (suicide.suicideLevel === "N2") {
+    if (postSuicidePriorityRule?.id === "suicide_n2") {
       newFlags.acuteCrisis = true;
       newFlags.contactState = { wasContact: false };
       flagsForCatch = normalizeSessionFlags(newFlags);
@@ -4536,7 +4456,7 @@ app.post("/chat", async (req, res) => {
     // 2) Crisis follow-up path for an already active acute crisis.
     // If the crisis is not resolved, keep the bot in crisis-handling mode.
     if (flags.acuteCrisis === true) {
-      if (suicide.crisisResolved !== true) {
+      if (postSuicidePriorityRule?.id === "acute_crisis_followup") {
         newFlags.acuteCrisis = true;
         newFlags.contactState = { wasContact: false };
         flagsForCatch = normalizeSessionFlags(newFlags);
@@ -4586,7 +4506,7 @@ app.post("/chat", async (req, res) => {
     }
     
     // 3) Clarification path for less severe suicidal risk or ambiguous intent.
-    if (suicide.suicideLevel === "N1" || suicide.needsClarification) {
+    if (postSuicidePriorityRule?.id === "suicide_clarification") {
       logChatDecision("override_clarification", {
         suicideLevel: suicide.suicideLevel,
         needsClarification: suicide.needsClarification === true
@@ -4666,8 +4586,21 @@ app.post("/chat", async (req, res) => {
       isLongTermMemoryRecall: recallRouting.isLongTermMemoryRecall === true,
       calledMemory: recallRouting.calledMemory || "none"
     });
+
+    const postRecallPriorityRule = resolveChatPriorityRule({
+      phase: "post_recall",
+      recallRouting
+    });
+
+    if (postRecallPriorityRule) {
+      logChatDecision("priority_rule_selected", {
+        phase: "post_recall",
+        ruleId: postRecallPriorityRule.id,
+        priority: postRecallPriorityRule.priority
+      });
+    }
     
-    if (recallRouting.isLongTermMemoryRecall) {
+    if (postRecallPriorityRule?.id === "recall_long_term") {
       const recallConversationBranchHistory = await loadConversationBranchHistoryForRecall({
         conversationId,
         isPrivateConversation,
@@ -4727,7 +4660,7 @@ app.post("/chat", async (req, res) => {
     }
     
     // 5) Memory recall attempted, but no recallable memory was found.
-    if (recallRouting.isRecallAttempt && recallRouting.calledMemory === "none") {
+    if (postRecallPriorityRule?.id === "recall_none") {
       const reply = buildNoMemoryRecallResponse();
       const debug = buildDebug("memoryRecall", {});
       const responseMemory = previousMemory;
@@ -4781,6 +4714,7 @@ app.post("/chat", async (req, res) => {
       detectedModeResult,
       relationalAdjustmentAnalysis,
       calibrationAnalysis,
+      situatedImpasseAnalysis,
       interpretationRejection
     ] = await Promise.all([
       contactAnalysis.isContact
@@ -4805,6 +4739,7 @@ app.post("/chat", async (req, res) => {
             promptRegistry: activePromptRegistry
           })
         : Promise.resolve(null),
+      analyzeSituatedImpasse(message),
       shouldRunNonContactAnalyzers
         ? analyzeInterpretationRejection({
             message,
@@ -4836,6 +4771,7 @@ app.post("/chat", async (req, res) => {
       contactAnalysis,
       relationalAdjustmentAnalysis,
       calibrationAnalysis,
+      situatedImpasseDetected: situatedImpasseAnalysis?.situatedImpasseDetected === true,
       interpretationRejection: safeInterpretationRejection,
       effectiveExplorationDirectivityLevel,
       previousConversationStateKey,
