@@ -106,7 +106,28 @@ Les tests de comportement fins (tests manuels, live test) restent de la responsa
 
 ---
 
-## 8. Philosophie
+## 8. Prompt engineering — séparation stricte des couches
+
+Avant d'ajouter ou modifier une instruction dans un prompt de writer (mode, niveau, tone) :
+
+**Question de contrôle :** cette instruction *décide* quelque chose, ou elle *formule* une décision déjà prise ?
+
+| Type d'instruction | Couche correcte | Exemples |
+|---|---|---|
+| Détecter un signal dans le message utilisateur | Couche 2 — analyseur | registre de langue, signal somatique, friction, impasse |
+| Décider d'une politique (longueur, relance, registre cible) | Couche 3 — arbitrage → champ dans le contrat de posture | `phraseLength`, `relancePolicy`, `responseRegister` |
+| Formuler une décision déjà contenue dans le contrat reçu | Couche 4 — writer prompt | interdictions de formulations, structure de paragraphe, voix |
+| Vérifier une violation grave du contrat | Couche 5 — critic | non-respect d'une interdiction explicite |
+
+**Mnémonique : le writer ne découvre pas la politique, il la formule.**
+
+Si une instruction dans un prompt de writer contient un `si` conditionnel sur un signal runtime (registre de l'utilisateur, présence d'un affect, niveau d'un paramètre détecté), c'est un signal fort qu'elle appartient en couche 2 ou 3, pas 4.
+
+Cette règle s'applique aussi aux refactorings incrémentaux : si une instruction ne peut pas encore migrer (le champ du contrat n'existe pas), signaler explicitement la dette plutôt que la laisser silencieuse dans le prompt.
+
+---
+
+## 9. Philosophie
 
 La stabilité du comportement prime sur la qualité du code.
 La qualité du code prime sur l'optimisation.
