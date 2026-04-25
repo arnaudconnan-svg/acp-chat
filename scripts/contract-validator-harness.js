@@ -42,7 +42,7 @@ function baseInput(overrides = {}) {
     contactAnalysis: { isContact: false, contactSubmode: null },
     relationalAdjustmentAnalysis: { needsRelationalAdjustment: false },
     calibrationAnalysis: { calibrationLevel: 0, explorationSubmode: "interpretation" },
-    situatedImpasseDetected: false,
+    technicalContextDetected: false,
     interpretationRejection: {
       isInterpretationRejection: false,
       needsSoberReadjustment: false,
@@ -131,7 +131,7 @@ check("posture decision always returns known writer mode", () => {
   }
 });
 
-check("confidenceSignal only emits low|high", () => {
+check("confidenceSignal is float between 0 and 1", () => {
   const cases = [
     baseInput({ message: "je sais pas", recentHistory: [{ role: "user", content: "c'est pas ca" }] }),
     baseInput({ message: "ok", recentHistory: [{ role: "user", content: "merci" }] })
@@ -139,7 +139,8 @@ check("confidenceSignal only emits low|high", () => {
 
   for (const input of cases) {
     const out = buildPostureDecision(input);
-    assert(["low", "high"].includes(out.confidenceSignal), `invalid confidenceSignal '${out.confidenceSignal}'`);
+    assert(typeof out.confidenceSignal === "number" && out.confidenceSignal >= 0 && out.confidenceSignal <= 1,
+      `invalid confidenceSignal '${out.confidenceSignal}' (must be number 0.00-1.00)`);
   }
 });
 
@@ -168,7 +169,7 @@ check("relancePolicy follows contract constraints", () => {
 check("situated impasse activates action collapse guard", () => {
   const out = buildPostureDecision(baseInput({
     detectedMode: "exploration",
-    situatedImpasseDetected: true
+    technicalContextDetected: true
   }));
   assert(out.actionCollapseGuardActive === true, "actionCollapseGuardActive should be true");
   assert(out.forbidden.includes("action_concrete_proposal"), "forbidden should include action_concrete_proposal");

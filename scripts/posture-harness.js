@@ -68,7 +68,7 @@ function explorationInput(overrides = {}) {
     contactAnalysis: noContact(),
     relationalAdjustmentAnalysis: relational(),
     calibrationAnalysis: calibration(0),
-    situatedImpasseDetected: false,
+    technicalContextDetected: false,
     interpretationRejection: rejection(),
     effectiveExplorationDirectivityLevel: 0,
     previousConversationStateKey: "exploration",
@@ -85,11 +85,11 @@ function explorationInput(overrides = {}) {
 check("output: all required fields present", () => {
   const out = buildPostureDecision(explorationInput());
   const requiredStrings = ["finalDetectedMode", "finalExplorationSubmode", "conversationStateKey",
-    "writerMode", "intent", "confidenceSignal"];
+    "writerMode", "intent"];
   for (const f of requiredStrings) {
     assert(typeof out[f] === "string", `field '${f}' must be a string, got ${typeof out[f]}`);
   }
-  const requiredNumbers = ["finalDirectivityLevel", "consecutiveNonExplorationTurns"];
+  const requiredNumbers = ["finalDirectivityLevel", "consecutiveNonExplorationTurns", "confidenceSignal"];
   for (const f of requiredNumbers) {
     assert(typeof out[f] === "number", `field '${f}' must be a number, got ${typeof out[f]}`);
   }
@@ -588,40 +588,40 @@ check("consecutiveTurns: post_contact resets to 0", () => {
 
 // ─── confidenceSignal ─────────────────────────────────────────────────────────
 
-check("confidenceSignal: default with no ambiguity → 'high'", () => {
+check("confidenceSignal: default with no ambiguity → 0.8", () => {
   const out = buildPostureDecision(explorationInput({
     message: "Je veux avancer sur quelque chose.",
     recentHistory: []
   }));
-  assert(out.confidenceSignal === "high",
-    `expected 'high', got '${out.confidenceSignal}'`);
+  assert(out.confidenceSignal === 0.8,
+    `expected 0.8, got ${out.confidenceSignal}`);
 });
 
-check("confidenceSignal: explicit ambiguity + no context → 'low'", () => {
+check("confidenceSignal: explicit ambiguity + no context → 0.4", () => {
   const out = buildPostureDecision(explorationInput({
     message: "je sais pas, c'est mélangé pour moi.",
     recentHistory: []
   }));
-  assert(out.confidenceSignal === "low",
-    `expected 'low', got '${out.confidenceSignal}'`);
+  assert(out.confidenceSignal === 0.4,
+    `expected 0.4, got ${out.confidenceSignal}`);
 });
 
-check("confidenceSignal: recent rejection signal → 'low'", () => {
+check("confidenceSignal: recent rejection signal → 0.1", () => {
   const out = buildPostureDecision(explorationInput({
     message: "je sais pas",
     recentHistory: [
       { role: "user", content: "c'est pas ça du tout" }
     ]
   }));
-  assert(out.confidenceSignal === "low",
-    `expected 'low', got '${out.confidenceSignal}'`);
+  assert(out.confidenceSignal === 0.1,
+    `expected 0.1, got ${out.confidenceSignal}`);
 });
 
 // ─── humanFieldGuardActive ────────────────────────────────────────────────────
 
 check("humanFieldGuard: situated impasse + exploration → active", () => {
   const out = buildPostureDecision(explorationInput({
-    situatedImpasseDetected: true
+    technicalContextDetected: true
   }));
   assert(out.humanFieldGuardActive === true,
     `expected humanFieldGuardActive true, got ${out.humanFieldGuardActive}`);
@@ -631,7 +631,7 @@ check("humanFieldGuard: situated impasse + exploration → active", () => {
 
 check("humanFieldGuard: conceptual info question → NOT active", () => {
   const out = buildPostureDecision(explorationInput({
-    situatedImpasseDetected: false
+    technicalContextDetected: false
   }));
   assert(out.humanFieldGuardActive === false,
     `expected humanFieldGuardActive false for conceptual question, got ${out.humanFieldGuardActive}`);
@@ -641,7 +641,7 @@ check("humanFieldGuard: info mode → NOT active (guard only for exploration/con
   const out = buildPostureDecision(explorationInput({
     detectedMode: "info",
     detectedInfoSubmode: "app_features",
-    situatedImpasseDetected: true
+    technicalContextDetected: true
   }));
   assert(out.humanFieldGuardActive === false,
     `expected humanFieldGuardActive false in info mode, got ${out.humanFieldGuardActive}`);

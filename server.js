@@ -735,7 +735,7 @@ const {
   analyzeInfoRequest,
   analyzeInfoSubmode,
   analyzeInterpretationRejection,
-  analyzeSituatedImpasse,
+  analyzeTechnicalContext,
   analyzeSomaticSignal,
   analyzeUserRegister,
   analyzeRecallRouting,
@@ -4173,7 +4173,7 @@ app.post("/chat", async (req, res) => {
       detectedModeResult,
       relationalAdjustmentAnalysis,
       calibrationAnalysis,
-      situatedImpasseAnalysis,
+      technicalContextAnalysis,
       interpretationRejection,
       somaticSignalAnalysis,
       userRegisterAnalysis
@@ -4200,7 +4200,7 @@ app.post("/chat", async (req, res) => {
             promptRegistry: activePromptRegistry
           })
         : Promise.resolve(null)),
-      withAnalyzerTiming("situated_impasse", analyzeSituatedImpasse(message)),
+      withAnalyzerTiming("technical_context", analyzeTechnicalContext(message)),
       withAnalyzerTiming("interpretation_rejection", shouldRunNonContactAnalyzers
         ? analyzeInterpretationRejection({
             message,
@@ -4252,7 +4252,7 @@ app.post("/chat", async (req, res) => {
       contactAnalysis,
       relationalAdjustmentAnalysis,
       calibrationAnalysis,
-      situatedImpasseDetected: situatedImpasseAnalysis?.situatedImpasseDetected === true,
+      technicalContextDetected: technicalContextAnalysis?.technicalContextDetected === true,
       somaticSignalAnalysis,
       userRegisterAnalysis,
       interpretationRejection: safeInterpretationRejection,

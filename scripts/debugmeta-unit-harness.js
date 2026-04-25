@@ -139,7 +139,7 @@ assertDeepEqual("default values", base, {
   writerMode: null,
   intent: null,
   forbidden: [],
-  confidenceSignal: "high",
+  confidenceSignal: 1.0,
   responseRegister: "courant",
   phraseLengthPolicy: "moyenne",
   relancePolicy: "selective",
@@ -200,7 +200,7 @@ assert("exploration topChips", explo.topChips, ["EXPLORATION : accompagnement"])
 assert("exploration writerMode", explo.writerMode, "open_exploration");
 assert("exploration intent", explo.intent, "accompagner_sans_guider");
 assert("exploration forbidden", explo.forbidden, ["diagnostic", "conseil_direct"]);
-assert("exploration confidenceSignal", explo.confidenceSignal, "medium");
+assert("exploration confidenceSignal", explo.confidenceSignal, 1.0);
 assert("exploration responseRegister", explo.responseRegister, "familier");
 assert("exploration phraseLengthPolicy", explo.phraseLengthPolicy, "courte");
 assert("exploration relancePolicy", explo.relancePolicy, "discouraged");
