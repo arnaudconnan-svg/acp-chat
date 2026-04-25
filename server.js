@@ -4367,26 +4367,11 @@ app.post("/chat", async (req, res) => {
 
     const finalReplyRewriteSource = finalReplyRewriteSources.join("+") || null;
 
-    // Capture the reply before relational adjustment for debug observability.
-    // When relational adjustment triggers, a second LLM call generates the reply without
-    // the adjustment block, so the debug panel can show both versions.
-    let therapeuticAllianceSource = null;
-    if (postureDecision.relationalAdjustmentTriggered === true) {
-      const t_noAdj = Date.now();
-      const generatedWithoutAdjustment = await generateReply({
-        message,
-        history: recentHistory,
-        memory: previousMemory,
-        postureDecision: { ...postureDecision, relationalAdjustmentTriggered: false },
-        infoSubmode: detectedInfoSubmode,
-        contactSubmode: detectedContactSubmode,
-        interpretationRejection: safeInterpretationRejection,
-        promptRegistry: activePromptRegistry,
-      });
-      chatStageTimings.push({ stage: "therapeutic_alliance_source", deltaMs: Date.now() - t_noAdj });
-      throwIfCanceled();
-      therapeuticAllianceSource = generatedWithoutAdjustment.reply;
-    }
+    // therapeuticAllianceSource: intentionally null.
+    // Capturing the reply before relational adjustment would require a second generateReply call,
+    // which violates the single-generation rule (critic is the only post-generation pass).
+    // Populate only if a no-LLM alternative is available (e.g., prompt diffing or writer artifacts).
+    const therapeuticAllianceSource = null;
     
     if (finalDetectedMode === "exploration") {
       relanceAnalysis = await analyzeExplorationRelance({
