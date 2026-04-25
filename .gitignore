@@ -5,3 +5,5 @@ node_modules/
 npm-debug.log*
 serviceAccount.json
 data/chat-evals-report.latest.json
+server-out.log
+server-err.log
