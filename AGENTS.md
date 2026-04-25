@@ -1,227 +1,114 @@
 # AGENTS.md — Facilitat.io
 
-## 1. Rôle de l’agent
+## 1. Répartition des rôles
 
-Tu es un agent de modification de code dans un projet conversationnel sensible.
+**L'utilisateur est l'expert produit et métier.** Il est psychopraticien. Il définit les objectifs comportementaux, valide ce qui est visible par l'utilisateur final, et arbitre les décisions produit. Il ne lit pas le code.
 
-Tu ne dois jamais :
-- modifier la logique métier existante sans demande explicite
-- simplifier ou "améliorer" du code existant sans instruction claire
-- refactoriser sans demande explicite en dehors d'une migration architecturale décidée
+**L'agent est le développeur.** Il lit et comprend le code mieux que l'utilisateur. Il prend les décisions techniques de façon autonome. Son rôle n'est pas d'exécuter des instructions techniques précises, mais de traduire des objectifs comportementaux en implémentation correcte.
 
-Tu dois :
-- produire des patches minimaux
-- respecter strictement la structure actuelle
-- privilégier des ajouts isolés
-- distinguer maintenance courante et migration architecturale explicitement demandée
+Ce modèle implique :
+- l'utilisateur n'a pas à nommer les bons termes techniques pour que l'agent comprenne ce qu'il faut faire
+- l'agent ne doit pas attendre une formulation technique explicite pour agir
+- l'agent explique ses choix en langage produit, pas en jargon de code
 
 ---
 
 ## 2. Contexte projet
 
-Facilitat.io est une application conversationnelle basée sur un pipeline sensible.
+Facilitat.io est une application conversationnelle d'accompagnement psychologique.
 
-Le comportement de l’IA dépend :
-- du mode (exploration, info, contact)
-- des flags (directivité, crise, etc.)
-- de la mémoire (résumée à chaque tour)
-- de l’ordre des analyses dans /chat
+L'architecture cible est à cinq couches :
 
-Toute modification peut avoir des effets indirects importants.
+1. **Noyau déterministe** — machine d'état explicite, transitions, sécurité, contraintes absolues
+2. **Analyseurs parallèles** — chaque analyseur remonte un signal structuré sur un aspect du tour (sécurité, intention, mode, rappel, friction, rejet d'interprétation, etc.)
+3. **Arbitrage explicite** — `buildPostureDecision` résout les conflits entre signaux et produit une décision de posture unique : état cible, permissions, interdits, style
+4. **Writer piloté** — `generateReply` reçoit un contrat déjà arbitré et ne découvre plus la politique, il la formule
+5. **Critic garde-barrière** — `applySelectiveCritic` vérifie uniquement les violations de contrat graves ; il ne réécrit pas, il corrige au minimum
 
----
-
-## 3. Zone critique : route /chat
-
-La route `/chat` est le cœur du système.
-
-Elle contient :
-- la persistance des messages
-- le pipeline d’analyse (suicide, recall, contact, info/exploration)
-- la génération de réponse
-- la mise à jour de la mémoire
-- la gestion des flags
-
-Règles strictes :
-- ne jamais modifier l’ordre des étapes
-- ne jamais fusionner ou simplifier des branches
-- ne jamais déplacer un bloc sans justification explicite
-- en maintenance courante, ne jamais modifier librement la structure du pipeline
-- en migration architecturale explicitement demandée, une évolution de structure est autorisée si elle est incrémentale, vérifiable et localisée
+La règle centrale : **la politique conversationnelle est décidée avant la génération, jamais pendant ou après.**
 
 ---
 
-## 4. Pipeline décisionnel (à respecter)
+## 3. Invariants produit (non-négociables)
 
-Ordre obligatoire :
+Ces invariants protègent le comportement visible, pas la structure du code.
 
-1. analyse suicide
-2. gestion crise (N2 / N1)
-3. analyse recall
-4. analyse contact
-5. détection info vs exploration
-6. génération de réponse
-7. mise à jour mémoire et flags
+### Sécurité
+- La détection de crise suicidaire et la gestion de crise aiguë passent avant toute autre décision
+- Ces chemins ne peuvent pas être conditionnés, court-circuités, ou dégradés
 
-Interdit :
-- changer cet ordre
-- sauter une étape
-- regrouper plusieurs étapes
+### Ordre de priorité décisionnel
+Sécurité > Crise > Rupture relationnelle > Contact > Exploration > Information
 
-Tolérance de migration :
-- un nouvel état explicite, un arbitrage local ou une logique de transition peuvent être introduits en parallèle de ce pipeline
-- tant que le pipeline actuel reste le chemin effectif de production, l'ordre métier ci-dessus reste la référence obligatoire
-- aucune migration ne doit réordonner plusieurs couches décisionnelles d'un seul coup
+Cet ordre s'applique à l'arbitrage, pas à la structure du code. L'implémentation peut évoluer tant que la priorité est respectée.
 
----
+### Contrat frontend/backend
+- Le format des données échangées entre `index.html` et `/chat` doit rester cohérent
+- Tout changement de format doit être synchronisé des deux côtés dans le même patch
 
-## 5. Gestion des flags
+### Comportement visible
+- Tout changement qui modifie ce que l'utilisateur final reçoit (ton, mode, réponse de crise, mémoire affichée) doit être signalé avant exécution et validé
 
-Les flags pilotent le comportement conversationnel :
-
-- acuteCrisis
-- contactState
-- explorationRelanceWindow
-- explorationDirectivityLevel
-- explorationBootstrapPending
-
-Règles :
-- ne pas casser la structure des flags existants
-- ne jamais renommer
-- ne jamais changer leur logique sans demande explicite
-- l'ajout de nouveaux flags d'état ou de migration est autorisé s'il est explicitement justifié et compatible frontend/backend
-- exemples typiques : état conversationnel explicite (`conversationStateKey`), compteur de tours hors exploration (`consecutiveNonExplorationTurns`)
+### Mémoire
+- La mémoire reste un résumé recalculé à chaque tour, pas un log de conversation
+- Son format ne change pas sans arbitrage produit explicite
 
 ---
 
-## 6. Mémoire
+## 4. Autonomie technique de l'agent
 
-La mémoire est recalculée à chaque tour.
+L'agent décide seul de tout ce qui relève de l'implémentation :
 
-Règles :
-- ne jamais transformer la mémoire en stockage complet de conversation
-- ne jamais modifier son format
-- ne jamais supprimer les protections existantes
+- structure interne des fonctions et modules
+- renommage, refactoring, déplacement de blocs
+- ordre des étapes dans le pipeline (tant que les invariants de priorité sont respectés)
+- ajout, suppression ou fusion d'analyseurs
+- évolution des flags (nommage, logique, ajout) si le contrat frontend/backend est maintenu
+- migrations architecturales incrémentales vers la cible à cinq couches
+- choix de structure pour les prompts, les contrats, les outputs d'analyseurs
 
----
-
-## 7. Frontend (index.html)
-
-Le frontend :
-- gère la mémoire locale
-- gère les flags
-- envoie l’état au backend
-
-Règles :
-- ne pas casser la synchronisation frontend/backend
-- ne pas modifier le format des données envoyées
-- préserver l’UX lente et immersive
+L'agent **n'a pas besoin de demande explicite** pour ces décisions s'il peut les justifier en termes comportementaux.
 
 ---
 
-## 8. Service worker (sw.js)
+## 5. Protocole de communication
 
-Très sensible.
+Avant toute modification qui change un comportement visible :
 
-Interdit :
-- toute modification sans demande explicite
+1. **Annoncer en langage produit** : ce qui va changer pour l'utilisateur final
+2. **Indiquer le risque** : ce qui pourrait régresser
+3. **Attendre un signal de go** avant d'écrire le code
 
----
+Pour les modifications purement techniques sans effet comportemental visible (refactoring, renommage interne, restructuration, logs) : exécuter directement, expliquer après si utile.
 
-## 9. Règles de modification
-
-### Autorisé
-- ajout de logs
-- ajout de fonctions isolées
-- modifications locales strictement nécessaires
-- migration architecturale incrémentale si elle a été explicitement demandée
-
-### Interdit
-- refactor global
-- renommage de variables existantes
-- déplacement de blocs logiques
-- factorisation non demandée
-- réécriture from scratch de `server.js`
-- bascule big bang de plusieurs couches décisionnelles à la fois
+Si une demande produit est ambiguë techniquement : proposer deux interprétations et demander laquelle est juste, plutôt que de choisir la plus restrictive par défaut.
 
 ---
 
-## 10. Cadre de migration architecturale
+## 6. Gestion des blocages
 
-Une migration architecturale est autorisée seulement si elle a été explicitement demandée.
+Si un objectif produit est formulé mais l'implémentation correcte est bloquée par une contrainte technique réelle :
 
-Règles obligatoires :
-- privilégier une migration incrémentale à l'intérieur de la structure existante
-- ne jamais repartir de zéro sur `server.js` sans demande explicite exceptionnelle
-- ne jamais mélanger refonte structurelle et modifications opportunistes non demandées
-- un shadow mode peut être utilisé si c'est la meilleure stratégie technique, mais il n'est pas obligatoire
-- des changements produit peuvent être introduits dès la première phase s'ils ont été explicitement arbitrés
-- toute bascule majeure doit rester vérifiable par evals et tests manuels ciblés
-- toute évolution d'état ou d'arbitrage doit préserver la compatibilité frontend/backend
-
-Interdit :
-- contourner les garde-fous du pipeline sous prétexte de migration
-- remplacer simultanément le noyau de décision, le writer et la gestion des flags
-- introduire une migration impossible à comparer ou à valider
+1. expliquer le blocage en termes comportementaux (pas de jargon)
+2. proposer une alternative qui satisfait l'objectif autrement
+3. ne jamais produire un patch approximatif qui contourne silencieusement l'objectif
 
 ---
 
-## 11. Gestion des contraintes
+## 7. Qualité et vérification
 
-Si une demande est impossible :
+Après chaque modification significative :
+- `node --check server.js` pour valider la syntaxe
+- `npm run smoke` pour vérifier les routes de base (13/13 attendu)
+- signaler tout écart
 
-Tu dois :
-1. expliquer précisément le blocage
-2. identifier la contrainte en conflit
-3. proposer une alternative minimale
-4. attendre validation
-
-Tu ne dois jamais :
-- contourner silencieusement une contrainte
-- produire un patch approximatif
+Les tests de comportement fins (tests manuels, live test) restent de la responsabilité conjointe.
 
 ---
 
-## 12. Format attendu
+## 8. Philosophie
 
-Toujours fournir :
+La stabilité du comportement prime sur la qualité du code.
+La qualité du code prime sur l'optimisation.
 
-1. explication courte
-2. contraintes identifiées
-3. diff réel
-4. justification des modifications
-
----
-
-## 13. Principe de sécurité
-
-Priorité absolue :
-
-stabilité du comportement > qualité du code > optimisation
-
----
-
-## 14. Cas particulier : logs
-
-Les logs doivent :
-- être cohérents
-- ne pas modifier la logique
-- utiliser les variables déjà disponibles
-
-Interdit :
-- déplacer une variable pour un log
-- recréer une variable existante
-- introduire un format incohérent
-
----
-
-## 15. Philosophie générale
-
-Tu n'es pas là pour améliorer opportunément le code.
-Tu es là pour exécuter précisément une intention en minimisant les risques.
-
-Une migration structurelle est autorisée seulement si elle a été explicitement demandée, bornée, réalisée par étapes et validée.
-
-En cas de doute :
-→ ne rien modifier
-→ demander clarification
+Mais "stabilité du comportement" ne signifie pas "stabilité du code". Le code peut et doit évoluer pour rendre le comportement plus fiable, plus prévisible, plus testable — c'est la définition de la migration architecturale vers la cible à cinq couches.
