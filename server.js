@@ -3245,7 +3245,6 @@ function buildPostureDecision({
   calibrationAnalysis,
   effectiveExplorationDirectivityLevel,
   previousConversationStateKey,
-  explorationBootstrapPending,
   currentConsecutiveNonExplorationTurns,
   currentExplorationRelanceWindow,
   // Phase B structural flags (used for Phase C state transitions)
@@ -3314,9 +3313,6 @@ function buildPostureDecision({
       conversationStateKey === "stabilization" || conversationStateKey === "alliance_rupture" ||
       conversationStateKey === "closure") {
     consecutiveNonExplorationTurns = 0;
-  } else if (explorationBootstrapPending === true) {
-    // Bootstrap phase: never decay
-    consecutiveNonExplorationTurns = 0;
   } else if (consecutiveNonExplorationTurns === 0) {
     // First non-exploration turn: freeze (gel)
     consecutiveNonExplorationTurns = 1;
@@ -3350,7 +3346,6 @@ function normalizeSessionFlags(flags) {
   
   const hasExplicitRelanceWindow = Array.isArray(safe.explorationRelanceWindow);
   const hasExplicitDirectivityLevel = safe.explorationDirectivityLevel !== undefined;
-  const hasExplicitBootstrapPending = safe.explorationBootstrapPending === true || safe.explorationBootstrapPending === false;
   
   const bootstrapWindow = new Array(RELANCE_WINDOW_SIZE).fill(false);
   const explorationRelanceWindow = hasExplicitRelanceWindow ?
@@ -3363,17 +3358,12 @@ function normalizeSessionFlags(flags) {
     clampExplorationDirectivityLevel(safe.explorationDirectivityLevel) :
     computedLevel;
   
-  const explorationBootstrapPending = hasExplicitBootstrapPending ?
-    safe.explorationBootstrapPending === true :
-    !hasExplicitRelanceWindow && !hasExplicitDirectivityLevel;
-  
   return {
     ...safe,
     acuteCrisis: safe.acuteCrisis === true,
     contactState: normalizeContactState(safe.contactState),
     explorationRelanceWindow,
     explorationDirectivityLevel,
-    explorationBootstrapPending,
     infoSubmode: normalizeInfoSubmode(safe.infoSubmode),
     explorationCalibrationLevel: clampExplorationDirectivityLevel(safe.explorationCalibrationLevel),
     conversationStateKey: normalizeConversationStateKey(safe.conversationStateKey),
@@ -3394,23 +3384,10 @@ function normalizeSessionFlags(flags) {
 // This updates the exploration relance window and recalculates directivity.
 function registerExplorationRelance(flags, isRelance) {
   const safeFlags = normalizeSessionFlags(flags);
-  
-  if (safeFlags.explorationBootstrapPending === true) {
-    const nextWindow = [...safeFlags.explorationRelanceWindow, isRelance === true].slice(-RELANCE_WINDOW_SIZE);
-    
-    return {
-      ...safeFlags,
-      explorationBootstrapPending: false,
-      explorationRelanceWindow: nextWindow,
-      explorationDirectivityLevel: computeExplorationDirectivityLevel(nextWindow)
-    };
-  }
-  
   const nextWindow = [...safeFlags.explorationRelanceWindow, isRelance === true].slice(-RELANCE_WINDOW_SIZE);
   
   return {
     ...safeFlags,
-    explorationBootstrapPending: false,
     explorationRelanceWindow: nextWindow,
     explorationDirectivityLevel: computeExplorationDirectivityLevel(nextWindow)
   };
@@ -8771,7 +8748,6 @@ app.post("/chat", async (req, res) => {
       calibrationAnalysis,
       effectiveExplorationDirectivityLevel,
       previousConversationStateKey,
-      explorationBootstrapPending: newFlags.explorationBootstrapPending,
       currentConsecutiveNonExplorationTurns: normalizeConsecutiveNonExplorationTurns(newFlags.consecutiveNonExplorationTurns),
       currentExplorationRelanceWindow: newFlags.explorationRelanceWindow,
       // Phase B structural flags passed in for Phase C state transitions
