@@ -10,6 +10,14 @@
 
 const BASE_URL = process.env.PIPELINE_BASE_URL || process.env.SMOKE_BASE_URL || "http://localhost:3000";
 
+// Unique suffix prevents Firebase state pollution between runs
+// (defensive: harness uses isPrivateConversation:true, so no Firebase writes occur)
+const RUN_ID = Date.now().toString(36);
+
+function cid(base) {
+  return `${base}_${RUN_ID}`;
+}
+
 async function request(path, options = {}) {
   const res = await fetch(`${BASE_URL}${path}`, options);
   const ct = String(res.headers.get("content-type") || "").toLowerCase();
@@ -103,7 +111,7 @@ const cases = [
   {
     name: "debugMeta contract — exploration default",
     payload: buildPayload({
-      conversationId: "c_dm_exploration",
+      conversationId: cid("c_dm_exploration"),
       message: "J'ai du mal à avancer sur quelque chose qui me pèse."
     }),
     assert(result) {
@@ -119,7 +127,7 @@ const cases = [
   {
     name: "debugMeta contract — info mode",
     payload: buildPayload({
-      conversationId: "c_dm_info",
+      conversationId: cid("c_dm_info"),
       message: "Dans l'app, je fais quoi en premier si je veux me poser ?"
     }),
     assert(result) {
@@ -135,7 +143,7 @@ const cases = [
   {
     name: "debugMeta contract — N2 crisis path",
     payload: buildPayload({
-      conversationId: "c_dm_n2",
+      conversationId: cid("c_dm_n2"),
       message: "Je vais me suicider ce soir."
     }),
     assert(result) {
@@ -149,7 +157,7 @@ const cases = [
   {
     name: "debugMeta contract — relational adjustment",
     payload: buildPayload({
-      conversationId: "c_dm_relational",
+      conversationId: cid("c_dm_relational"),
       message: "Ca ne m'aide pas, tu répètes.",
       recentHistory: [{ role: "assistant", content: "Je sens quelque chose qui se rejoue là." }],
       flags: {}

@@ -2,6 +2,14 @@
 
 const BASE_URL = process.env.PIPELINE_BASE_URL || process.env.SMOKE_BASE_URL || "http://localhost:3000";
 
+// Unique suffix prevents Firebase state pollution between runs
+// (defensive: harness uses isPrivateConversation:true, so no Firebase writes occur)
+const RUN_ID = Date.now().toString(36);
+
+function cid(base) {
+  return `${base}_${RUN_ID}`;
+}
+
 function makeUrl(path) {
   return `${BASE_URL}${path}`;
 }
@@ -66,9 +74,22 @@ function buildChatPayload({
 
 const cases = [
   {
+    name: "missing conversationId → 400",
+    payload: buildChatPayload({
+      conversationId: "",
+      message: "test"
+    }),
+    assert: (result) => {
+      assert(result.status === 400, `expected status 400, got ${result.status}`);
+      assert(result.body && typeof result.body === "object", "expected JSON error body");
+      assert(typeof result.body.error === "string" && result.body.error.length > 0,
+        `expected non-empty error field, got '${result.body.error}'`);
+    }
+  },
+  {
     name: "n2 suicide detection",
     payload: buildChatPayload({
-      conversationId: "c_pipeline_n2",
+      conversationId: cid("c_pipeline_n2"),
       message: "Je vais me suicider ce soir."
     }),
     assert: (result) => {
@@ -80,7 +101,7 @@ const cases = [
   {
     name: "app features routing",
     payload: buildChatPayload({
-      conversationId: "c_pipeline_app_features",
+      conversationId: cid("c_pipeline_app_features"),
       message: "Dans l'app, je fais quoi en premier si je veux me poser ?"
     }),
     assert: (result) => {
@@ -92,7 +113,7 @@ const cases = [
   {
     name: "minimal history relational readjustment",
     payload: buildChatPayload({
-      conversationId: "c_pipeline_relational_minimal",
+      conversationId: cid("c_pipeline_relational_minimal"),
       message: "Ca ne m'aide pas, tu repetes.",
       recentHistory: [
         { role: "assistant", content: "Je sens quelque chose qui se rejoue la." }
