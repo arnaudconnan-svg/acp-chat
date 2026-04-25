@@ -6,6 +6,16 @@ const path = require("path");
 const BASE_URL = process.env.EVAL_BASE_URL || "http://localhost:3000";
 const DATASET_PATH = process.env.EVAL_DATASET_PATH || path.join(__dirname, "..", "data", "chat-evals.json");
 const OUTPUT_PATH = process.env.EVAL_OUTPUT_PATH || path.join(__dirname, "..", "data", "chat-evals-report.latest.json");
+const EVAL_MAX_RETRIES = Number.parseInt(process.env.EVAL_MAX_RETRIES || "5", 10);
+const EVAL_RETRY_BASE_MS = Number.parseInt(process.env.EVAL_RETRY_BASE_MS || "500", 10);
+const EVAL_RETRY_MAX_MS = Number.parseInt(process.env.EVAL_RETRY_MAX_MS || "8000", 10);
+const EVAL_PACING_MS = Number.parseInt(process.env.EVAL_PACING_MS || "350", 10);
+const EVAL_BATCH_SIZE = Number.parseInt(process.env.EVAL_BATCH_SIZE || "8", 10);
+const EVAL_BATCH_PAUSE_MS = Number.parseInt(process.env.EVAL_BATCH_PAUSE_MS || "1800", 10);
+const EVAL_RECENT_HISTORY_TAIL = Number.parseInt(process.env.EVAL_RECENT_HISTORY_TAIL || "6", 10);
+const EVAL_BRANCH_HISTORY_TAIL = Number.parseInt(process.env.EVAL_BRANCH_HISTORY_TAIL || "8", 10);
+const EVAL_HISTORY_CONTENT_MAX_CHARS = Number.parseInt(process.env.EVAL_HISTORY_CONTENT_MAX_CHARS || "240", 10);
+const EVAL_MEMORY_MAX_CHARS = Number.parseInt(process.env.EVAL_MEMORY_MAX_CHARS || "420", 10);
 
 function makeUrl(routePath) {
   return `${BASE_URL}${routePath}`;
@@ -23,33 +33,91 @@ function readDataset() {
 }
 
 async function requestChat(payload) {
-  const response = await fetch(makeUrl("/chat"), {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify(payload)
-  });
-
-  const contentType = String(response.headers.get("content-type") || "").toLowerCase();
-  const text = await response.text();
-  let body = null;
-
-  if (contentType.includes("application/json")) {
+  for (let attempt = 0; attempt <= EVAL_MAX_RETRIES; attempt += 1) {
     try {
-      body = JSON.parse(text);
-    } catch {
-      body = null;
+      const response = await fetch(makeUrl("/chat"), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const contentType = String(response.headers.get("content-type") || "").toLowerCase();
+      const text = await response.text();
+      let body = null;
+
+      if (contentType.includes("application/json")) {
+        try {
+          body = JSON.parse(text);
+        } catch {
+          body = null;
+        }
+      }
+
+      const shouldRetryStatus = [408, 429, 500, 502, 503, 504].includes(response.status);
+      if (shouldRetryStatus && attempt < EVAL_MAX_RETRIES) {
+        const retryAfterHeader = response.headers.get("retry-after-ms") || response.headers.get("retry-after");
+        const retryAfterMs = Number.parseFloat(retryAfterHeader || "0");
+        const backoffMs = Math.min(EVAL_RETRY_MAX_MS, EVAL_RETRY_BASE_MS * Math.pow(2, attempt));
+        const jitterMs = Math.floor(Math.random() * 250);
+        await sleep(Math.max(Number.isFinite(retryAfterMs) ? retryAfterMs : 0, backoffMs + jitterMs));
+        continue;
+      }
+
+      return {
+        status: response.status,
+        ok: response.ok,
+        contentType,
+        body,
+        text
+      };
+    } catch (err) {
+      if (attempt >= EVAL_MAX_RETRIES) {
+        throw err;
+      }
+
+      const backoffMs = Math.min(EVAL_RETRY_MAX_MS, EVAL_RETRY_BASE_MS * Math.pow(2, attempt));
+      const jitterMs = Math.floor(Math.random() * 250);
+      await sleep(backoffMs + jitterMs);
     }
   }
 
-  return {
-    status: response.status,
-    ok: response.ok,
-    contentType,
-    body,
-    text
-  };
+  throw new Error("requestChat retry loop exhausted unexpectedly");
+}
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, Math.max(0, ms)));
+}
+
+function truncateText(value, maxChars) {
+  if (maxChars <= 0) {
+    return String(value || "");
+  }
+
+  const normalized = String(value || "").trim();
+  if (normalized.length <= maxChars) {
+    return normalized;
+  }
+
+  return `${normalized.slice(0, Math.max(0, maxChars - 1)).trimEnd()}…`;
+}
+
+function normalizeHistoryEntries(history, tailCount, maxContentChars) {
+  if (!Array.isArray(history)) {
+    return [];
+  }
+
+  const safeTail = Number.isInteger(tailCount) && tailCount > 0 ? tailCount : history.length;
+  const slice = history.slice(-safeTail);
+
+  return slice.map(item => {
+    const role = String(item?.role || "").trim();
+    return {
+      role: role || "user",
+      content: truncateText(item?.content, maxContentChars)
+    };
+  });
 }
 
 function normalizeCaseFlags(flags) {
@@ -61,13 +129,22 @@ function normalizeCaseFlags(flags) {
 }
 
 function buildPayload(testCase, index) {
+  const recentHistoryTail = Number.isInteger(testCase.recentHistoryTail) ? testCase.recentHistoryTail : EVAL_RECENT_HISTORY_TAIL;
+  const branchHistoryTail = Number.isInteger(testCase.branchHistoryTail) ? testCase.branchHistoryTail : EVAL_BRANCH_HISTORY_TAIL;
+  const historyMaxChars = Number.isInteger(testCase.historyContentMaxChars)
+    ? testCase.historyContentMaxChars
+    : EVAL_HISTORY_CONTENT_MAX_CHARS;
+  const memoryMaxChars = Number.isInteger(testCase.memoryMaxChars) ? testCase.memoryMaxChars : EVAL_MEMORY_MAX_CHARS;
+
   return {
     conversationId: `eval-${testCase.id || `case-${index + 1}`}`,
     userId: "eval_runner",
     message: String(testCase.message || ""),
-    recentHistory: Array.isArray(testCase.recentHistory) ? testCase.recentHistory : [],
-    conversationBranchHistory: Array.isArray(testCase.conversationBranchHistory) ? testCase.conversationBranchHistory : undefined,
-    memory: typeof testCase.memory === "string" ? testCase.memory : "",
+    recentHistory: normalizeHistoryEntries(testCase.recentHistory, recentHistoryTail, historyMaxChars),
+    conversationBranchHistory: Array.isArray(testCase.conversationBranchHistory)
+      ? normalizeHistoryEntries(testCase.conversationBranchHistory, branchHistoryTail, historyMaxChars)
+      : undefined,
+    memory: truncateText(typeof testCase.memory === "string" ? testCase.memory : "", memoryMaxChars),
     flags: normalizeCaseFlags(testCase.flags),
     debug: true
   };
@@ -127,6 +204,17 @@ function evaluateExpectations(testCase, result) {
 
   if (expectations.rewriteSource !== undefined && debugMeta.rewriteSource !== expectations.rewriteSource) {
     failures.push(`expected debugMeta.rewriteSource='${expectations.rewriteSource}', got '${String(debugMeta.rewriteSource)}'`);
+  }
+
+  if (Array.isArray(expectations.rewriteSourceIncludes)) {
+    const actualRewriteSource = String(debugMeta.rewriteSource || "");
+    for (const expectedPart of expectations.rewriteSourceIncludes) {
+      if (!actualRewriteSource.includes(String(expectedPart))) {
+        failures.push(
+          `expected debugMeta.rewriteSource to include '${String(expectedPart)}', got '${actualRewriteSource || "null"}'`
+        );
+      }
+    }
   }
 
   if (expectations.interpretationRejection !== undefined && debugMeta.interpretationRejection !== expectations.interpretationRejection) {
@@ -268,6 +356,11 @@ async function run() {
   console.log(`[EVAL] Dataset: ${DATASET_PATH}`);
   console.log(`[EVAL] Cases: ${dataset.length}`);
   console.log(`[EVAL] JSON report: ${OUTPUT_PATH}`);
+  console.log(`[EVAL] Retry: max=${EVAL_MAX_RETRIES}, base=${EVAL_RETRY_BASE_MS}ms, maxBackoff=${EVAL_RETRY_MAX_MS}ms`);
+  console.log(`[EVAL] Pacing: interCase=${EVAL_PACING_MS}ms, batch=${EVAL_BATCH_SIZE}, batchPause=${EVAL_BATCH_PAUSE_MS}ms`);
+  console.log(
+    `[EVAL] Payload lightening: recentTail=${EVAL_RECENT_HISTORY_TAIL}, branchTail=${EVAL_BRANCH_HISTORY_TAIL}, historyChars=${EVAL_HISTORY_CONTENT_MAX_CHARS}, memoryChars=${EVAL_MEMORY_MAX_CHARS}`
+  );
 
   let passed = 0;
   let failed = 0;
@@ -304,6 +397,20 @@ async function run() {
           console.error(`  - ${failure}`);
         }
         console.error(`  reply: ${String(result.body?.reply || result.text || "")}`);
+
+        if (index < dataset.length - 1 && EVAL_PACING_MS > 0) {
+          await sleep(EVAL_PACING_MS);
+        }
+
+        if (
+          index < dataset.length - 1 &&
+          EVAL_BATCH_SIZE > 0 &&
+          EVAL_BATCH_PAUSE_MS > 0 &&
+          (index + 1) % EVAL_BATCH_SIZE === 0
+        ) {
+          await sleep(EVAL_BATCH_PAUSE_MS);
+        }
+
         continue;
       }
 
@@ -320,6 +427,19 @@ async function run() {
       console.log(`  reply: ${String(result.body?.reply || "")}`);
       console.log(`  rewriteSource: ${String(result.body?.debugMeta?.rewriteSource || "") || "null"}`);
       console.log(`  needsSoberReadjustment: ${String(result.body?.debugMeta?.needsSoberReadjustment === true)}`);
+
+      if (index < dataset.length - 1 && EVAL_PACING_MS > 0) {
+        await sleep(EVAL_PACING_MS);
+      }
+
+      if (
+        index < dataset.length - 1 &&
+        EVAL_BATCH_SIZE > 0 &&
+        EVAL_BATCH_PAUSE_MS > 0 &&
+        (index + 1) % EVAL_BATCH_SIZE === 0
+      ) {
+        await sleep(EVAL_BATCH_PAUSE_MS);
+      }
     }
   } catch (err) {
     writeJsonReport(buildJsonReport({

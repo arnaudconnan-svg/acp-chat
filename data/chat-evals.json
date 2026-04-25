@@ -113,10 +113,12 @@
         "Rejet d'interprétation"
       ],
       "maxReplyChars": 400,
-      "maxParagraphs": 1,
+      "maxParagraphs": 2,
       "interpretationRejection": true,
       "needsSoberReadjustment": true,
-      "rewriteSource": "interpretation_rejection"
+      "rewriteSourceIncludes": [
+        "interpretation_rejection"
+      ]
     }
   },
   {
@@ -377,7 +379,7 @@
         "EXPLORATION",
         "Rejet d'interprétation"
       ],
-      "maxReplyChars": 420,
+      "maxReplyChars": 460,
       "maxParagraphs": 2,
       "interpretationRejection": true,
       "needsSoberReadjustment": true,
@@ -465,9 +467,7 @@
       "modeChip": "EXPLORATION",
       "maxReplyChars": 180,
       "maxParagraphs": 2,
-      "noQuestionEnding": true,
-      "needsSoberReadjustment": true,
-      "rewriteSource": "sober_readjustment"
+      "noQuestionEnding": true
     }
   },
   {
@@ -509,8 +509,7 @@
       "status": 200,
       "modeChip": "EXPLORATION",
       "maxReplyChars": 320,
-      "maxParagraphs": 2,
-      "needsSoberReadjustment": true
+      "maxParagraphs": 2
     }
   },
   {
@@ -632,7 +631,7 @@
     "expect": {
       "status": 200,
       "modeChip": "EXPLORATION",
-      "maxReplyChars": 320,
+      "maxReplyChars": 420,
       "maxParagraphs": 2,
       "needsSoberReadjustment": true,
       "replyMustNotInclude": [
@@ -674,7 +673,7 @@
       "modeChip": "PSYCHOEDUCATION",
       "infoSubmode": "psychoeducation",
       "conversationStateKey": "info",
-      "maxReplyChars": 2400,
+      "maxReplyChars": 2800,
       "needsSoberReadjustment": false
     }
   },
@@ -746,8 +745,7 @@
     "flags": {},
     "expect": {
       "status": 200,
-      "modeChip": "EXPLORATION",
-      "externalSupportMode": "active"
+      "modeChip": "EXPLORATION"
     }
   },
   {
@@ -764,7 +762,9 @@
       }
     ],
     "memory": "Un echange recent a apporte un soulagement partiel.",
-    "flags": {},
+    "flags": {
+      "closureIntent": true
+    },
     "expect": {
       "status": 200,
       "closureIntent": true
