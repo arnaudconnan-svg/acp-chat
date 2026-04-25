@@ -87,7 +87,8 @@ const { buildLLMUserTurns } = require("./lib/llm-messages");
 const {
   CHAT_PRIORITY_RULES,
   CHAT_PRIORITY_MATCHERS,
-  resolveChatPriorityRule
+  resolveChatPriorityRule,
+  buildCrisisRoutingDecision
 } = require("./lib/chat-routing");
 const { createWriter } = require("./lib/writer");
 
@@ -3846,23 +3847,19 @@ app.post("/chat", async (req, res) => {
     newFlags.infoSubmode = null;
     newFlags.explorationCalibrationLevel = 0;
 
-    const postSuicidePriorityRule = resolveChatPriorityRule({
-      phase: "post_suicide",
-      suicide,
-      flags
-    });
+    const crisisDecision = buildCrisisRoutingDecision(suicide, flags);
 
-    if (postSuicidePriorityRule) {
+    if (crisisDecision.route) {
       logChatDecision("priority_rule_selected", {
         phase: "post_suicide",
-        ruleId: postSuicidePriorityRule.id,
-        priority: postSuicidePriorityRule.priority
+        ruleId: crisisDecision.ruleId,
+        priority: crisisDecision.priority
       });
     }
     
     // Severe suicide risk override path.
     // If the analysis returns N2, we bypass normal generation and reply with a crisis response.
-    if (postSuicidePriorityRule?.id === "suicide_n2") {
+    if (crisisDecision.route === "n2") {
       newFlags.acuteCrisis = true;
       newFlags.contactState = { wasContact: false };
       flagsForCatch = normalizeSessionFlags(newFlags);
@@ -3908,7 +3905,7 @@ app.post("/chat", async (req, res) => {
     // 2) Crisis follow-up path for an already active acute crisis.
     // If the crisis is not resolved, keep the bot in crisis-handling mode.
     if (flags.acuteCrisis === true) {
-      if (postSuicidePriorityRule?.id === "acute_crisis_followup") {
+      if (crisisDecision.route === "acute_followup") {
         newFlags.acuteCrisis = true;
         newFlags.contactState = { wasContact: false };
         flagsForCatch = normalizeSessionFlags(newFlags);
@@ -3958,7 +3955,7 @@ app.post("/chat", async (req, res) => {
     }
     
     // 3) Clarification path for less severe suicidal risk or ambiguous intent.
-    if (postSuicidePriorityRule?.id === "suicide_clarification") {
+    if (crisisDecision.route === "n1_clarification") {
       logChatDecision("override_clarification", {
         suicideLevel: suicide.suicideLevel,
         needsClarification: suicide.needsClarification === true
