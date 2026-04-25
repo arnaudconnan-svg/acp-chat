@@ -111,6 +111,57 @@ const cases = [
     }
   },
   {
+    name: "generic discovery routes app_features with operational intent",
+    payload: buildChatPayload({
+      conversationId: cid("c_pipeline_app_features_discovery"),
+      message: "Comment tu fonctionnes ?"
+    }),
+    assert: (result) => {
+      assertChatOk(result, "generic discovery routes app_features with operational intent");
+      const meta = result.body.debugMeta;
+      assert(meta.infoSubmode === "app_features", `generic discovery: expected infoSubmode 'app_features', got '${String(meta.infoSubmode)}'`);
+      assert(meta.writerMode === "info_app_features", `generic discovery: expected writerMode 'info_app_features', got '${String(meta.writerMode)}'`);
+      assert(
+        meta.intent === "decrire uniquement les usages et fonctionnalites reellement disponibles",
+        `generic discovery: expected operational app_features intent, got '${String(meta.intent)}'`
+      );
+    }
+  },
+  {
+    name: "psychoeducation intent is mode-specific",
+    payload: buildChatPayload({
+      conversationId: cid("c_pipeline_intent_psychoeducation"),
+      message: "Comment fonctionne ton approche ?"
+    }),
+    assert: (result) => {
+      assertChatOk(result, "psychoeducation intent is mode-specific");
+      const meta = result.body.debugMeta;
+      assert(meta.infoSubmode === "psychoeducation", `psychoeducation intent: expected infoSubmode 'psychoeducation', got '${String(meta.infoSubmode)}'`);
+      assert(meta.writerMode === "info_psychoeducation", `psychoeducation intent: expected writerMode 'info_psychoeducation', got '${String(meta.writerMode)}'`);
+      assert(
+        meta.intent === "expliquer le positionnement et les mecanismes de l'approche au bon niveau de detail",
+        `psychoeducation intent: expected operational psychoeducation intent, got '${String(meta.intent)}'`
+      );
+    }
+  },
+  {
+    name: "pure info intent is mode-specific",
+    payload: buildChatPayload({
+      conversationId: cid("c_pipeline_intent_pure"),
+      message: "Que se passe-t-il dans le cerveau quand on pleure ?"
+    }),
+    assert: (result) => {
+      assertChatOk(result, "pure info intent is mode-specific");
+      const meta = result.body.debugMeta;
+      assert(meta.infoSubmode === "pure", `pure info intent: expected infoSubmode 'pure', got '${String(meta.infoSubmode)}'`);
+      assert(meta.writerMode === "info_pure", `pure info intent: expected writerMode 'info_pure', got '${String(meta.writerMode)}'`);
+      assert(
+        meta.intent === "donner une explication descriptive directe sans recentrer sur l'app",
+        `pure info intent: expected operational pure intent, got '${String(meta.intent)}'`
+      );
+    }
+  },
+  {
     name: "minimal history relational readjustment",
     payload: buildChatPayload({
       conversationId: cid("c_pipeline_relational_minimal"),
