@@ -6603,19 +6603,19 @@
       }
       
       if (role === "bot" && hasDebugContent && showDebug) {
-        const bottom = document.createElement("div");
-        bottom.style.display = "flex";
-        bottom.style.flexWrap = "wrap";
-        bottom.style.gap = "6px";
-        bottom.style.marginTop = "6px";
-      if (role === "bot" && hasDebugContent && showDebug) {
         const debugSections = buildDebugSections(debugMeta);
         const debugEl = createDebugDetails(debugSections);
         if (debugEl) contentWrap.appendChild(debugEl);
       }
+
+      msg.appendChild(contentWrap);
+      chat.appendChild(msg);
+
+      if (shouldAutoScroll) {
+        scrollChatToBottom();
         return;
       }
-      
+
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           updateScrollToBottomBtn({
