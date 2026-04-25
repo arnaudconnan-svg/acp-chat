@@ -736,6 +736,8 @@ const {
   analyzeInfoSubmode,
   analyzeInterpretationRejection,
   analyzeSituatedImpasse,
+  analyzeSomaticSignal,
+  analyzeUserRegister,
   analyzeRecallRouting,
   analyzeRelationalAdjustmentNeed,
   analyzeSuicideRisk,
@@ -4172,7 +4174,9 @@ app.post("/chat", async (req, res) => {
       relationalAdjustmentAnalysis,
       calibrationAnalysis,
       situatedImpasseAnalysis,
-      interpretationRejection
+      interpretationRejection,
+      somaticSignalAnalysis,
+      userRegisterAnalysis
     ] = await Promise.all([
       withAnalyzerTiming("detect_mode", contactAnalysis.isContact
         ? Promise.resolve({
@@ -4204,7 +4208,11 @@ app.post("/chat", async (req, res) => {
             memory: previousMemory,
             promptRegistry: activePromptRegistry
           })
-        : Promise.resolve({ isInterpretationRejection: false, needsSoberReadjustment: false }))
+        : Promise.resolve({ isInterpretationRejection: false, needsSoberReadjustment: false })),
+      withAnalyzerTiming("somatic_signal", shouldRunNonContactAnalyzers
+        ? analyzeSomaticSignal(message)
+        : Promise.resolve({ somaticSignalActive: false, somaticLocalizationBlocked: false })),
+      withAnalyzerTiming("user_register", analyzeUserRegister(message))
     ]);
     throwIfCanceled();
 
@@ -4245,6 +4253,8 @@ app.post("/chat", async (req, res) => {
       relationalAdjustmentAnalysis,
       calibrationAnalysis,
       situatedImpasseDetected: situatedImpasseAnalysis?.situatedImpasseDetected === true,
+      somaticSignalAnalysis,
+      userRegisterAnalysis,
       interpretationRejection: safeInterpretationRejection,
       effectiveExplorationDirectivityLevel,
       previousConversationStateKey,
@@ -4290,7 +4300,12 @@ app.post("/chat", async (req, res) => {
       conversationStateKey,
       consecutiveNonExplorationTurns,
       finalDirectivityLevel,
-      finalExplorationSubmode
+      finalExplorationSubmode,
+      responseRegister: postureDecision.responseRegister,
+      phraseLengthPolicy: postureDecision.phraseLengthPolicy,
+      relancePolicy: postureDecision.relancePolicy,
+      somaticFocusPolicy: postureDecision.somaticFocusPolicy,
+      actionCollapseGuardActive: postureDecision.actionCollapseGuardActive
     });
 
     if (postureDecision.stateTransitionValid === false) {
@@ -4498,6 +4513,11 @@ app.post("/chat", async (req, res) => {
       intent: postureDecision.intent,
       forbidden: postureDecision.forbidden,
       confidenceSignal: postureDecision.confidenceSignal,
+      responseRegister: postureDecision.responseRegister,
+      phraseLengthPolicy: postureDecision.phraseLengthPolicy,
+      relancePolicy: postureDecision.relancePolicy,
+      somaticFocusPolicy: postureDecision.somaticFocusPolicy,
+      actionCollapseGuardActive: postureDecision.actionCollapseGuardActive,
       stateTransitionFrom: postureDecision.previousConversationStateKey,
       stateTransitionValid: postureDecision.stateTransitionValid,
       stateTransitionRequested: postureDecision.stateTransitionValid === false

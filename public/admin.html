@@ -919,6 +919,11 @@
         intent: typeof safe.intent === "string" ? safe.intent.trim() : null,
         forbidden: Array.isArray(safe.forbidden) ? safe.forbidden.map(v => String(v || "").trim()).filter(Boolean) : [],
         confidenceSignal: typeof safe.confidenceSignal === "string" ? safe.confidenceSignal.trim() : "high",
+        responseRegister: typeof safe.responseRegister === "string" ? safe.responseRegister.trim() : "courant",
+        phraseLengthPolicy: typeof safe.phraseLengthPolicy === "string" ? safe.phraseLengthPolicy.trim() : "moyenne",
+        relancePolicy: typeof safe.relancePolicy === "string" ? safe.relancePolicy.trim() : "selective",
+        somaticFocusPolicy: typeof safe.somaticFocusPolicy === "string" ? safe.somaticFocusPolicy.trim() : "none",
+        actionCollapseGuardActive: safe.actionCollapseGuardActive === true,
         stateTransitionFrom: typeof safe.stateTransitionFrom === "string" ? safe.stateTransitionFrom.trim() : null,
         stateTransitionValid: safe.stateTransitionValid !== false,
         stateTransitionRequested: typeof safe.stateTransitionRequested === "string" ? safe.stateTransitionRequested.trim() : null,
@@ -1805,9 +1810,34 @@
             list:                    "liste",
             self_justification:      "auto-justification",
             recap:                   "r\u00e9capitulatif",
-            single_anchor_proposal:  "proposition d'ancrage"
+            single_anchor_proposal:  "proposition d'ancrage",
+            action_concrete_proposal:"proposition d'action concrete"
           };
           return MAP[value] || value;
+        }
+
+        function translateRegister(value) {
+          if (value === "familier") return "familier";
+          if (value === "soutenu") return "soutenu";
+          return "courant";
+        }
+
+        function translatePhraseLengthPolicy(value) {
+          if (value === "courte") return "phrases courtes";
+          return "phrases moyennes";
+        }
+
+        function translateRelancePolicy(value) {
+          if (value === "forbidden") return "interdite";
+          if (value === "discouraged") return "deconseillee";
+          if (value === "open") return "ouverte";
+          return "selective";
+        }
+
+        function translateSomaticFocusPolicy(value) {
+          if (value === "prioritize_somatic_proximity") return "priorite proximite somatique";
+          if (value === "address_frustration_before_somatic_relocalization") return "frustration d'abord, pas de relocalisation imposee";
+          return "aucune";
         }
 
         function translateConfidenceSignal(value) {
@@ -1898,6 +1928,11 @@
                 meta.intent ? `Intention : ${meta.intent}` : null,
                 (meta.forbidden && meta.forbidden.length) ? `Interdit : ${meta.forbidden.map(translateForbidden).join(", ")}` : null,
                 meta.confidenceSignal ? `Signal confiance : ${translateConfidenceSignal(meta.confidenceSignal)}` : null,
+                meta.responseRegister ? `Registre cible : ${translateRegister(meta.responseRegister)}` : null,
+                meta.phraseLengthPolicy ? `Longueur phrase : ${translatePhraseLengthPolicy(meta.phraseLengthPolicy)}` : null,
+                meta.relancePolicy ? `Politique relance : ${translateRelancePolicy(meta.relancePolicy)}` : null,
+                meta.somaticFocusPolicy ? `Politique somatique : ${translateSomaticFocusPolicy(meta.somaticFocusPolicy)}` : null,
+                meta.actionCollapseGuardActive === true ? "Garde anti-rabattement action: active" : null,
                 meta.infoRoutingSource ? `Routage info : ${translateInfoRoutingSource(meta.infoRoutingSource)}` : null,
                 meta.stateTransitionValid === false && meta.stateTransitionRequested
                   ? `Transition refus\u00e9e : ${meta.stateTransitionFrom || "(inconnu)"} -> ${meta.stateTransitionRequested}`

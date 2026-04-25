@@ -106,6 +106,7 @@ for (const field of [
   "memoryCompressed", "memoryBeforeCompression",
   "criticTriggered", "criticIssues",
   "writerMode", "intent", "forbidden", "confidenceSignal",
+  "responseRegister", "phraseLengthPolicy", "relancePolicy", "somaticFocusPolicy", "actionCollapseGuardActive",
   "stateTransitionFrom", "stateTransitionValid", "stateTransitionRequested",
   "allianceState", "engagementLevel", "stagnationTurns", "processingWindow",
   "dependencyRiskScore", "dependencyRiskLevel", "externalSupportMode",
@@ -139,6 +140,11 @@ assertDeepEqual("default values", base, {
   intent: null,
   forbidden: [],
   confidenceSignal: "high",
+  responseRegister: "courant",
+  phraseLengthPolicy: "moyenne",
+  relancePolicy: "selective",
+  somaticFocusPolicy: "none",
+  actionCollapseGuardActive: false,
   stateTransitionFrom: null,
   stateTransitionValid: true,
   stateTransitionRequested: null,
@@ -177,6 +183,11 @@ const explo = buildResponseDebugMeta({
   intent: "accompagner_sans_guider",
   forbidden: ["diagnostic", "conseil_direct"],
   confidenceSignal: "medium",
+  responseRegister: "familier",
+  phraseLengthPolicy: "courte",
+  relancePolicy: "discouraged",
+  somaticFocusPolicy: "prioritize_somatic_proximity",
+  actionCollapseGuardActive: true,
   explorationDirectivityLevel: 2,
   explorationCalibrationLevel: 3,
   explorationRelanceWindow: [true, false, true],
@@ -190,6 +201,11 @@ assert("exploration writerMode", explo.writerMode, "open_exploration");
 assert("exploration intent", explo.intent, "accompagner_sans_guider");
 assert("exploration forbidden", explo.forbidden, ["diagnostic", "conseil_direct"]);
 assert("exploration confidenceSignal", explo.confidenceSignal, "medium");
+assert("exploration responseRegister", explo.responseRegister, "familier");
+assert("exploration phraseLengthPolicy", explo.phraseLengthPolicy, "courte");
+assert("exploration relancePolicy", explo.relancePolicy, "discouraged");
+assert("exploration somaticFocusPolicy", explo.somaticFocusPolicy, "prioritize_somatic_proximity");
+assert("exploration actionCollapseGuardActive", explo.actionCollapseGuardActive, true);
 assert("exploration explorationSubmode", explo.explorationSubmode, "phenomenological_follow");
 assert("exploration directivityText includes calibration",
   explo.directivityText.includes("Niveau de structuration retenu : 3/4"), true);

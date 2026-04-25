@@ -143,6 +143,37 @@ check("confidenceSignal only emits low|high", () => {
   }
 });
 
+check("relancePolicy follows contract constraints", () => {
+  const forbiddenRelance = buildPostureDecision(baseInput({
+    detectedMode: "contact",
+    contactAnalysis: { isContact: true, contactSubmode: "dysregulated" }
+  }));
+  assert(forbiddenRelance.relancePolicy === "forbidden", "contact dysregulated should forbid relance");
+
+  const openExploration = buildPostureDecision(baseInput({
+    detectedMode: "exploration",
+    effectiveExplorationDirectivityLevel: 0,
+    calibrationAnalysis: { calibrationLevel: 0, explorationSubmode: "interpretation" }
+  }));
+  assert(openExploration.relancePolicy === "open", "exploration level 0 should keep relance open");
+
+  const discouragedExploration = buildPostureDecision(baseInput({
+    detectedMode: "exploration",
+    effectiveExplorationDirectivityLevel: 4,
+    calibrationAnalysis: { calibrationLevel: 4, explorationSubmode: "interpretation" }
+  }));
+  assert(discouragedExploration.relancePolicy === "discouraged", "exploration level 4 should discourage relance");
+});
+
+check("situated impasse activates action collapse guard", () => {
+  const out = buildPostureDecision(baseInput({
+    detectedMode: "exploration",
+    situatedImpasseDetected: true
+  }));
+  assert(out.actionCollapseGuardActive === true, "actionCollapseGuardActive should be true");
+  assert(out.forbidden.includes("action_concrete_proposal"), "forbidden should include action_concrete_proposal");
+});
+
 if (failed > 0) {
   console.error(`\n[CONTRACT-VALIDATOR] ${passed} passed, ${failed} failed.`);
   process.exit(1);
