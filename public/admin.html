@@ -909,7 +909,6 @@
         pipelineStages: normalizePipelineStages(safe.pipelineStages),
         explorationCalibrationLevel: Number.isInteger(safe.explorationCalibrationLevel) ? safe.explorationCalibrationLevel : null,
         explorationSubmode: typeof safe.explorationSubmode === "string" ? safe.explorationSubmode.trim() : null,
-        therapeuticAllianceSource: typeof safe.therapeuticAllianceSource === "string" ? safe.therapeuticAllianceSource.trim() : null,
         rewriteSource: typeof safe.rewriteSource === "string" ? safe.rewriteSource.trim() : null,
         memoryRewriteSource: typeof safe.memoryRewriteSource === "string" ? safe.memoryRewriteSource.trim() : null,
         memoryCompressed: safe.memoryCompressed === true,
@@ -1910,13 +1909,6 @@
             sections.push({
               title: "Directivité",
               content: meta.directivityText
-            });
-          }
-
-          if (meta.therapeuticAllianceSource) {
-            sections.push({
-              title: "Réponse avant ajustement relationnel",
-              content: meta.therapeuticAllianceSource
             });
           }
 

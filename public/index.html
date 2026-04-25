@@ -3597,7 +3597,6 @@
         pipelineStages: normalizeClientPipelineStages(safe.pipelineStages),
         explorationCalibrationLevel: Number.isInteger(safe.explorationCalibrationLevel) ? safe.explorationCalibrationLevel : null,
         explorationSubmode: typeof safe.explorationSubmode === "string" ? safe.explorationSubmode.trim() : "",
-        therapeuticAllianceSource: typeof safe.therapeuticAllianceSource === "string" ? safe.therapeuticAllianceSource.trim() : "",
         rewriteSource: typeof safe.rewriteSource === "string" ? safe.rewriteSource.trim() : "",
         memoryRewriteSource: typeof safe.memoryRewriteSource === "string" ? safe.memoryRewriteSource.trim() : "",
         memoryCompressed: safe.memoryCompressed === true,
@@ -6084,10 +6083,6 @@
           sections.push({ title: "Directivit\u00e9", content: meta.directivityLabel });
         }
 
-        if (meta.therapeuticAllianceSource) {
-          sections.push({ title: "R\u00e9ponse avant ajustement relationnel", content: meta.therapeuticAllianceSource });
-        }
-
         if (meta.memoryCompressed && meta.memoryBeforeCompression) {
           sections.push({ title: "M\u00e9moire avant r\u00e9\u00e9criture", content: meta.memoryBeforeCompression });
         } else {
@@ -6225,7 +6220,6 @@
           !!debugMeta.directivityLabel ||
           hasStructuredSignals ||
           !!debugMeta.explorationSubmode ||
-          !!debugMeta.therapeuticAllianceSource ||
           !!debugMeta.rewriteSource ||
           !!debugMeta.memoryRewriteSource ||
           !!debugMeta.conversationStateKey ||

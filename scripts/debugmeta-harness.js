@@ -86,7 +86,7 @@ function assertDebugMetaContract(debugMeta, label) {
   // Nullable strings (must be string or null, not undefined)
   // writerMode and intent are null on deterministic override paths (N2, N1, recall) — non-null in normal generation paths
   const nullableStrings = ["directivityText", "infoSubmode", "contactSubmode", "explorationSubmode",
-    "therapeuticAllianceSource", "rewriteSource", "memoryRewriteSource", "soberReadjustmentOriginalReply",
+    "rewriteSource", "memoryRewriteSource", "soberReadjustmentOriginalReply",
     "dependencyRiskLevel", "externalSupportMode", "processingWindow", "allianceState", "engagementLevel",
     "writerMode", "intent",
     // State transition fields (null on first turn or valid transitions)

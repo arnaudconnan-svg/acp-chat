@@ -1852,7 +1852,6 @@ app.post("/api/account/conversations/import-local", requireUserAuth, async (req,
               needsSoberReadjustment: debugMeta.needsSoberReadjustment === true,
               relationalAdjustmentTriggered: debugMeta.relationalAdjustmentTriggered === true,
               explorationCalibrationLevel: Number.isInteger(debugMeta.explorationCalibrationLevel) ? debugMeta.explorationCalibrationLevel : null,
-              therapeuticAllianceSource: typeof debugMeta.therapeuticAllianceSource === "string" ? debugMeta.therapeuticAllianceSource : null,
               rewriteSource: typeof debugMeta.rewriteSource === "string" ? debugMeta.rewriteSource : null,
               memoryRewriteSource: typeof debugMeta.memoryRewriteSource === "string" ? debugMeta.memoryRewriteSource : null,
               modelConflict: debugMeta.modelConflict === true,
@@ -3454,7 +3453,6 @@ app.post("/chat", async (req, res) => {
       pipelineStages: normalizePipelineStagesForStorage(safe.pipelineStages),
       explorationCalibrationLevel: Number.isInteger(safe.explorationCalibrationLevel) ? clampExplorationDirectivityLevel(safe.explorationCalibrationLevel) : null,
       explorationSubmode: typeof safe.explorationSubmode === "string" ? safe.explorationSubmode : null,
-      therapeuticAllianceSource: typeof safe.therapeuticAllianceSource === "string" ? safe.therapeuticAllianceSource : null,
       rewriteSource: typeof safe.rewriteSource === "string" ? safe.rewriteSource : null,
       memoryRewriteSource: typeof safe.memoryRewriteSource === "string" ? safe.memoryRewriteSource : null,
       memoryCompressed: safe.memoryCompressed === true,
@@ -3524,7 +3522,6 @@ app.post("/chat", async (req, res) => {
     explorationDirectivityLevel = 0,
     explorationRelanceWindow = [],
     explorationSubmode = null,
-    therapeuticAllianceSource = null,
     rewriteSource = null,
     memoryRewriteSource = null,
     modelConflict = false,
@@ -3561,7 +3558,6 @@ app.post("/chat", async (req, res) => {
       explorationCalibrationLevel: explorationCalibrationLevel !== null && explorationCalibrationLevel !== undefined ?
         clampExplorationDirectivityLevel(explorationCalibrationLevel) :
         null,
-      therapeuticAllianceSource: typeof therapeuticAllianceSource === "string" ? therapeuticAllianceSource : null,
       rewriteSource: typeof rewriteSource === "string" ? rewriteSource : null,
       memoryRewriteSource: typeof memoryRewriteSource === "string" ? memoryRewriteSource : null,
       modelConflict: modelConflict === true
@@ -4367,12 +4363,6 @@ app.post("/chat", async (req, res) => {
 
     const finalReplyRewriteSource = finalReplyRewriteSources.join("+") || null;
 
-    // therapeuticAllianceSource: intentionally null.
-    // Capturing the reply before relational adjustment would require a second generateReply call,
-    // which violates the single-generation rule (critic is the only post-generation pass).
-    // Populate only if a no-LLM alternative is available (e.g., prompt diffing or writer artifacts).
-    const therapeuticAllianceSource = null;
-    
     if (finalDetectedMode === "exploration") {
       relanceAnalysis = await analyzeExplorationRelance({
         message,
@@ -4482,7 +4472,6 @@ app.post("/chat", async (req, res) => {
       explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
       explorationRelanceWindow: newFlags.explorationRelanceWindow,
       explorationSubmode: finalExplorationSubmode,
-      therapeuticAllianceSource,
       rewriteSource: finalReplyRewriteSource,
       memoryRewriteSource,
       memoryCompressed: memoryWasCompressed,
