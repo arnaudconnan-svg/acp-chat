@@ -630,13 +630,6 @@ function requireAdminAuth(req, res, next) {
   next();
 }
 
-// Merge the base prompt registry with optional override files.
-// Only known targets from the base registry are replaced.
-// Only known targets from the base registry are replaced.
-function resolvePromptRegistry(overrideFiles = []) {
-  return buildDefaultPromptRegistry();
-}
-
 // Normalize the stored memory value.
 // If there is no explicit memory text, fall back to the registry's default template.
 function normalizeMemory(memory, promptRegistry = buildDefaultPromptRegistry()) {
@@ -3721,16 +3714,6 @@ app.post("/chat/cancel", (req, res) => {
   return res.json({ success: true, requestId, canceled });
 });
 
-// Resolve the prompt registry for the current request.
-function resolvePromptRegistryVariants() {
-  const basePromptRegistry = resolvePromptRegistry([]);
-
-  return {
-    basePromptRegistry,
-    activePromptRegistry: basePromptRegistry
-  };
-}
-
 // Normalize memory and session flags before executing the chat pipeline.
 // The active prompt registry is used to ensure memory normalization matches
 // the same prompt rules that will be applied later.
@@ -4003,12 +3986,8 @@ app.post("/chat", async (req, res) => {
       return res.status(400).json({ error: "Missing conversationId" });
     }
     
-    // Resolve prompt registry variants before generation logic.
-    const {
-      activePromptRegistry
-    } = resolvePromptRegistryVariants();
-    
     // Normalize memory and flags with the active registry so all later steps use the same rules.
+    const activePromptRegistry = buildDefaultPromptRegistry();
     const {
       previousMemory,
       rawFlags,
