@@ -2766,21 +2766,7 @@ Regles :
 // Only known targets from the base registry are replaced.
 // Only known targets from the base registry are replaced.
 function resolvePromptRegistry(overrideFiles = []) {
-  const base = buildDefaultPromptRegistry();
-  const next = { ...base };
-  
-  for (const file of overrideFiles) {
-    const normalized = normalizePromptOverrideFile(file);
-    if (!normalized) continue;
-    
-    for (const [target, content] of Object.entries(normalized.replacements)) {
-      if (Object.prototype.hasOwnProperty.call(next, target)) {
-        next[target] = String(content || "");
-      }
-    }
-  }
-  
-  return next;
+  return buildDefaultPromptRegistry();
 }
 
 // Normalize the stored memory value.
@@ -3334,42 +3320,6 @@ function getExplorationStructureInstruction(
     default:
       return String(promptRegistry.EXPLORATION_STRUCTURE_CASE_0 || "");
   }
-}
-
-function buildPromptRegistryDebug(baseRegistry, override1 = null, override2 = null) {
-  function buildLayerDebug(overrideFile) {
-    const normalized = normalizePromptOverrideFile(overrideFile);
-    
-    if (!normalized) {
-      return {
-        fileName: "",
-        appliedTargets: [],
-        missingTargets: []
-      };
-    }
-    
-    const appliedTargets = [];
-    const missingTargets = [];
-    
-    for (const target of Object.keys(normalized.replacements)) {
-      if (Object.prototype.hasOwnProperty.call(baseRegistry, target)) {
-        appliedTargets.push(target);
-      } else {
-        missingTargets.push(target);
-      }
-    }
-    
-    return {
-      fileName: normalized.name || "",
-      appliedTargets,
-      missingTargets
-    };
-  }
-  
-  return {
-    override1: buildLayerDebug(override1),
-    override2: buildLayerDebug(override2)
-  };
 }
 
 // ----------------------------------------
@@ -4378,13 +4328,6 @@ function buildAdvancedDebugTrace({
     lines.push(`trace.relanceDetected: ${relanceAnalysis.isRelance === true ? "true" : "false"}`);
   }
   
-  if (generatedBase?.promptDebug?.override1?.appliedTargets?.length) {
-    lines.push(`trace.override1AppliedCount: ${generatedBase.promptDebug.override1.appliedTargets.length}`);
-  }
-  if (generatedBase?.promptDebug?.override2?.appliedTargets?.length) {
-    lines.push(`trace.override2AppliedCount: ${generatedBase.promptDebug.override2.appliedTargets.length}`);
-  }
-  
   return lines;
 }
 
@@ -4899,74 +4842,6 @@ function buildSystemPrompt(postureDecision, memory, promptRegistry = buildDefaul
   ].filter(Boolean).join("\n\n").trim();
 }
 
-// Normalize a prompt override file structure before applying its replacements.
-// This ensures overrides are safe objects with string targets and values.
-function normalizePromptOverrideFile(overrideFile) {
-  if (!overrideFile || typeof overrideFile !== "object" || Array.isArray(overrideFile)) {
-    return null;
-  }
-  
-  const name = String(overrideFile.name || "").trim();
-  const replacements = overrideFile.replacements;
-  
-  if (!replacements || typeof replacements !== "object" || Array.isArray(replacements)) {
-    return null;
-  }
-  
-  const safeReplacements = {};
-  
-  for (const [target, content] of Object.entries(replacements)) {
-    const safeTarget = String(target || "").trim();
-    if (!safeTarget) continue;
-    safeReplacements[safeTarget] = String(content || "");
-  }
-  
-  return {
-    name,
-    replacements: safeReplacements
-  };
-}
-
-// Build debug information for prompt override layers.
-// This reports which override targets were applied and which were ignored.
-function buildPromptOverrideLayersDebug(override1, override2, promptRegistry = buildDefaultPromptRegistry()) {
-  const availableTargets = new Set(Object.keys(promptRegistry || {}));
-  
-  function buildLayerDebug(overrideFile) {
-    const normalized = normalizePromptOverrideFile(overrideFile);
-    
-    if (!normalized) {
-      return {
-        fileName: "",
-        appliedTargets: [],
-        missingTargets: []
-      };
-    }
-    
-    const appliedTargets = [];
-    const missingTargets = [];
-    
-    for (const target of Object.keys(normalized.replacements)) {
-      if (availableTargets.has(target)) {
-        appliedTargets.push(target);
-      } else {
-        missingTargets.push(target);
-      }
-    }
-    
-    return {
-      fileName: normalized.name || "",
-      appliedTargets,
-      missingTargets
-    };
-  }
-  
-  return {
-    override1: buildLayerDebug(override1),
-    override2: buildLayerDebug(override2)
-  };
-}
-
 // Generate the assistant reply using the assembled system prompt and conversation history.
 async function generateReply({
   message,
@@ -4977,8 +4852,6 @@ async function generateReply({
   contactSubmode = null,
   interpretationRejection = null,
   promptRegistry = buildDefaultPromptRegistry(),
-  override1 = null,
-  override2 = null,
 }) {
   const systemPrompt = buildSystemPrompt(
     postureDecision,
@@ -5006,8 +4879,7 @@ async function generateReply({
   });
   
   return {
-    reply: (r.choices?.[0]?.message?.content || "").trim() || "Je t'ecoute.",
-    promptDebug: buildPromptOverrideLayersDebug(override1, override2, promptRegistry)
+    reply: (r.choices?.[0]?.message?.content || "").trim() || "Je t'ecoute."
   };
 }
 
@@ -7234,10 +7106,7 @@ function parseChatRequest(req) {
   const convRef = conversationId && !isPrivateConversation ? db.ref("conversations").child(conversationId) : null;
   const recentHistory = trimHistory(req.body?.recentHistory);
   const conversationBranchHistory = normalizeConversationBranchHistory(req.body?.conversationBranchHistory);
-  const override1 = req.body?.override1 ?? null;
-  const override2 = req.body?.override2 ?? null;
   const mailsEnabled = req.body?.mailsEnabled !== false;
-  const comparisonEnabled = req.body?.comparisonEnabled === true;
   const logsEnabled = req.body?.logsEnabled === true;
   const adminUiActive = req.body?.adminUiActive === true;
 
@@ -7251,10 +7120,7 @@ function parseChatRequest(req) {
     convRef,
     recentHistory,
     conversationBranchHistory,
-    override1,
-    override2,
     mailsEnabled,
-    comparisonEnabled,
     logsEnabled,
     adminUiActive
   };
@@ -7390,26 +7256,13 @@ app.post("/chat/cancel", (req, res) => {
   return res.json({ success: true, requestId, canceled });
 });
 
-// Resolve the different prompt registry layers for the current request.
-// - basePromptRegistry: default settings without overrides
-// - override1PromptRegistry: applying the first override only
-// - override12PromptRegistry: applying both overrides
-// - activePromptRegistry: the registry used for the main reply
-function resolvePromptRegistryVariants(override1, override2) {
+// Resolve the prompt registry for the current request.
+function resolvePromptRegistryVariants() {
   const basePromptRegistry = resolvePromptRegistry([]);
-  const override1PromptRegistry = resolvePromptRegistry([override1]);
-  const override12PromptRegistry = resolvePromptRegistry([override1, override2]);
-  const hasOverrides = Boolean(override1 || override2);
-  const referencePromptRegistry = basePromptRegistry;
-  const activePromptRegistry = hasOverrides ? override12PromptRegistry : basePromptRegistry;
 
   return {
     basePromptRegistry,
-    override1PromptRegistry,
-    override12PromptRegistry,
-    hasOverrides,
-    referencePromptRegistry,
-    activePromptRegistry
+    activePromptRegistry: basePromptRegistry
   };
 }
 
@@ -7748,10 +7601,7 @@ app.post("/chat", async (req, res) => {
       convRef,
       recentHistory,
       conversationBranchHistory,
-      override1,
-      override2,
       mailsEnabled,
-      comparisonEnabled,
       logsEnabled,
       adminUiActive
     } = requestData;
@@ -7771,15 +7621,10 @@ app.post("/chat", async (req, res) => {
       return res.status(400).json({ error: "Missing conversationId" });
     }
     
-    // Resolve prompt registry variants before any generation or comparison logic.
+    // Resolve prompt registry variants before generation logic.
     const {
-      basePromptRegistry,
-      override1PromptRegistry,
-      override12PromptRegistry,
-      hasOverrides,
-      referencePromptRegistry,
       activePromptRegistry
-    } = resolvePromptRegistryVariants(override1, override2);
+    } = resolvePromptRegistryVariants();
     
     // Normalize memory and flags with the active registry so all later steps use the same rules.
     const {
@@ -7912,16 +7757,7 @@ app.post("/chat", async (req, res) => {
     }
     
     // Persist the assistant message and attach debug metadata.
-    async function persistAssistantMessage(reply, debug, debugMeta = {}, comparisonResults = null, conversationState = null) {
-      const safeComparisonResults = Array.isArray(comparisonResults) ?
-        comparisonResults.map(entry => ({
-          label: String(entry?.label || "").trim(),
-          reply: isEdited ? String(entry?.reply || "") + "\n[MODIFIÃ‰]" : String(entry?.reply || ""),
-          debug: Array.isArray(entry?.debug) ? entry.debug : [],
-          debugMeta: normalizeDebugMetaForStorage(entry?.debugMeta || {}, activePromptRegistry)
-        })) :
-        null;
-      
+    async function persistAssistantMessage(reply, debug, debugMeta = {}, conversationState = null) {
       if (isPrivateConversation) {
         return null;
       }
@@ -7937,8 +7773,7 @@ app.post("/chat", async (req, res) => {
         stateSnapshot: conversationState && typeof conversationState === "object" ? {
           memory: typeof conversationState.memory === "string" ? normalizeMemory(conversationState.memory, activePromptRegistry) : "",
           flags: normalizeSessionFlags(conversationState.flags || {})
-        } : null,
-        comparisonResults: safeComparisonResults
+        } : null
       });
 
       assistantMessagePersistedForCatch = true;
@@ -7958,25 +7793,6 @@ app.post("/chat", async (req, res) => {
       await convRef.update(conversationPatch);
 
       return pushedRef.key || null;
-    }
-    
-    function formatPromptOverrideDebugLines(promptDebug) {
-      const lines = [];
-      
-      if (promptDebug?.override1?.appliedTargets?.length) {
-        lines.push(`override1Applied: ${promptDebug.override1.appliedTargets.join(", ")}`);
-      }
-      if (promptDebug?.override1?.missingTargets?.length) {
-        lines.push(`override1Missing: ${promptDebug.override1.missingTargets.join(", ")}`);
-      }
-      if (promptDebug?.override2?.appliedTargets?.length) {
-        lines.push(`override2Applied: ${promptDebug.override2.appliedTargets.join(", ")}`);
-      }
-      if (promptDebug?.override2?.missingTargets?.length) {
-        lines.push(`override2Missing: ${promptDebug.override2.missingTargets.join(", ")}`);
-      }
-      
-      return lines;
     }
     
     function buildTopChips({
@@ -8216,102 +8032,6 @@ app.post("/chat", async (req, res) => {
       };
     }
     
-    // Build a comparison variant entry for override debugging.
-    // Each comparison variant is evaluated independently and then normalized.
-    async function buildComparisonVariantEntry(label, generated, debugMetaBase, comparisonPromptRegistry) {
-      const replyPipeline = await applyModelConflictPipeline({
-        content: generated.reply,
-        message,
-        history: recentHistory,
-        memory: previousMemory,
-        promptRegistry: comparisonPromptRegistry
-      });
-
-      let variantReply = replyPipeline.content;
-      
-      const rawVariantMemory = await updateMemory(
-        previousMemory,
-        [
-          ...recentHistory,
-          { role: "user", content: message },
-          { role: "assistant", content: variantReply }
-        ],
-        comparisonPromptRegistry
-      );
-
-      let variantMemoryCandidate = rawVariantMemory;
-
-      if (interpretationRejection.isInterpretationRejection) {
-        variantMemoryCandidate = await rewriteInterpretationRejectionMemory({
-          message,
-          history: [
-            ...recentHistory,
-            { role: "user", content: message },
-            { role: "assistant", content: variantReply }
-          ],
-          previousMemory,
-          candidateMemory: variantMemoryCandidate,
-          interpretationRejection,
-          promptRegistry: comparisonPromptRegistry
-        });
-      }
-
-      const memoryPipeline = await applyModelConflictPipeline({
-        content: variantMemoryCandidate,
-        message,
-        history: [
-          ...recentHistory,
-          { role: "user", content: message },
-          { role: "assistant", content: variantReply }
-        ],
-        memory: previousMemory,
-        promptRegistry: comparisonPromptRegistry
-      });
-
-      const variantMemory = memoryPipeline.content;
-      
-      const variantDebug = buildDebug(detectedMode, {
-        suicideLevel: suicide.suicideLevel,
-        calledMemory: recallRouting.calledMemory,
-        modelConflict: replyPipeline.modelConflict || memoryPipeline.modelConflict,
-        infoSubmode: detectedInfoSubmode,
-        interpretationRejection: interpretationRejection.isInterpretationRejection,
-        explorationCalibrationLevel: newFlags.explorationCalibrationLevel,
-        explorationDirectivityLevel: finalDirectivityLevel,
-        explorationRelanceWindow: newFlags.explorationRelanceWindow
-      });
-      
-      if (replyPipeline.rewriteSource) {
-        variantDebug.push(`rewriteSource: ${replyPipeline.rewriteSource}`);
-      }
-      
-      if (memoryPipeline.rewriteSource) {
-        variantDebug.push(`memoryRewriteSource: ${memoryPipeline.rewriteSource}`);
-      }
-      
-      variantDebug.push(...formatPromptOverrideDebugLines(generated.promptDebug));
-      variantDebug.push(`variantMemory: ${variantMemory}`);
-      
-      console.log("[COMPARE][ENTRY]", {
-        label,
-        promptRegistryUpdateMemoryPreview: String(comparisonPromptRegistry?.UPDATE_MEMORY || "").slice(0, 160),
-        variantMemory
-      });
-      
-      return {
-        label,
-        reply: variantReply,
-        debug: logsEnabled ? variantDebug : [],
-        debugMeta: {
-          ...debugMetaBase,
-          memory: variantMemory,
-          rewriteSource: replyPipeline.rewriteSource,
-          memoryRewriteSource: memoryPipeline.rewriteSource,
-          modelConflict: replyPipeline.modelConflict || memoryPipeline.modelConflict
-        }
-      };
-    }
-    
     // 1) Analyse suicide : risque immÃ©diat et clarification possible.
     // Cette Ã©tape peut dÃ©clencher des rÃ©ponses priorisÃ©es sans aller plus loin.
     markChatStage("suicide_analysis");
@@ -8365,7 +8085,7 @@ app.post("/chat", async (req, res) => {
         promptRegistry: activePromptRegistry
       });
       
-      const botMessageId = await persistAssistantMessage(reply, debug, responseDebugMeta, null, { memory: responseMemory, flags: newFlags });
+      const botMessageId = await persistAssistantMessage(reply, debug, responseDebugMeta, { memory: responseMemory, flags: newFlags });
       await maybeGenerateConversationTitle();
       
       return res.json({
@@ -8410,7 +8130,7 @@ app.post("/chat", async (req, res) => {
           promptRegistry: activePromptRegistry
         });
         
-        const botMessageId = await persistAssistantMessage(reply, debug, responseDebugMeta, null, { memory: responseMemory, flags: newFlags });
+        const botMessageId = await persistAssistantMessage(reply, debug, responseDebugMeta, { memory: responseMemory, flags: newFlags });
         await maybeGenerateConversationTitle();
         
         return res.json({
@@ -8474,7 +8194,7 @@ app.post("/chat", async (req, res) => {
         promptRegistry: activePromptRegistry
       });
       
-      const botMessageId = await persistAssistantMessage(replyPipeline.content, debug, responseDebugMeta, null, { memory: responseMemory, flags: newFlags });
+      const botMessageId = await persistAssistantMessage(replyPipeline.content, debug, responseDebugMeta, { memory: responseMemory, flags: newFlags });
       await maybeGenerateConversationTitle();
       
       return res.json({
@@ -8558,7 +8278,7 @@ app.post("/chat", async (req, res) => {
         promptRegistry: activePromptRegistry
       });
       
-      const botMessageId = await persistAssistantMessage(replyPipeline.content, debug, responseDebugMeta, null, { memory: responseMemory, flags: newFlags });
+      const botMessageId = await persistAssistantMessage(replyPipeline.content, debug, responseDebugMeta, { memory: responseMemory, flags: newFlags });
       await maybeGenerateConversationTitle();
       
       return res.json({
@@ -8590,7 +8310,7 @@ app.post("/chat", async (req, res) => {
         promptRegistry: activePromptRegistry
       });
       
-      const botMessageId = await persistAssistantMessage(reply, debug, responseDebugMeta, null, { memory: responseMemory, flags: newFlags });
+      const botMessageId = await persistAssistantMessage(reply, debug, responseDebugMeta, { memory: responseMemory, flags: newFlags });
       await maybeGenerateConversationTitle();
       
       return res.json({
@@ -8730,9 +8450,6 @@ app.post("/chat", async (req, res) => {
     // 4) GÃ©nÃ©ration principale de la rÃ©ponse selon le mode dÃ©tectÃ©,
     // puis application d'un pipeline de correction si le contenu est en conflit modÃ¨le.
     markChatStage("reply_generation");
-    const mainPromptDebug = hasOverrides ?
-      buildPromptOverrideLayersDebug(override1, override2, activePromptRegistry) :
-      buildPromptOverrideLayersDebug(null, null, activePromptRegistry);
 
     const generatedBase = await generateReply({
       message,
@@ -8743,12 +8460,9 @@ app.post("/chat", async (req, res) => {
       contactSubmode: detectedContactSubmode,
       interpretationRejection,
       promptRegistry: activePromptRegistry,
-      override1: hasOverrides ? override1 : null,
-      override2: hasOverrides ? override2 : null,
     });
     throwIfCanceled();
-    
-    generatedBase.promptDebug = mainPromptDebug;
+
     let replyRewriteSource = null;
     let replyCandidate = generatedBase.reply;
     let soberReadjustmentOriginalReply = null;
@@ -8870,8 +8584,7 @@ app.post("/chat", async (req, res) => {
       debug.push(`trace.explorationSubmode: ${finalExplorationSubmode}`);
     }
     
-    debug.push(...formatPromptOverrideDebugLines(generatedBase.promptDebug));
-    
+
     // 5) Mise Ã  jour de la mÃ©moire interne aprÃ¨s la rÃ©ponse finale.
     markChatStage("memory_update");
     const rawNewMemory = await updateMemory(
@@ -8952,141 +8665,11 @@ app.post("/chat", async (req, res) => {
       promptRegistry: activePromptRegistry
     });
     
-    // 7) Optional comparison mode: generate alternate reply variants for override debugging.
-    if (
-      comparisonEnabled &&
-      hasOverrides
-    ) {
-      logChatDecision("comparison_generation_enabled", {
-        hasOverride1: Boolean(override1),
-        hasOverride2: Boolean(override2)
-      });
 
-      markChatStage("comparison_generation");
-      const comparisonBaseMeta = buildResponseDebugMeta({
-        memory: "",
-        suicideLevel: suicide.suicideLevel,
-        mode: finalDetectedMode,
-        infoSubmode: detectedInfoSubmode,
-        contactSubmode: detectedContactSubmode,
-        interpretationRejection: interpretationRejection.isInterpretationRejection,
-        needsSoberReadjustment: interpretationRejection.needsSoberReadjustment,
-        relationalAdjustmentTriggered: relationalAdjustmentAnalysis?.needsRelationalAdjustment === true,
-        isRecallRequest: recallRouting.isRecallAttempt === true,
-        explorationCalibrationLevel: newFlags.explorationCalibrationLevel,
-        explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
-        explorationRelanceWindow: newFlags.explorationRelanceWindow,
-        rewriteSource: null,
-        memoryRewriteSource: null,
-        modelConflict: false,
-        promptRegistry: referencePromptRegistry
-      });
-      
-      const generatedReference = await generateReply({
-        message,
-        history: recentHistory,
-        memory: previousMemory,
-        mode: detectedMode,
-        infoSubmode: detectedInfoSubmode,
-        contactSubmode: detectedContactSubmode,
-        interpretationRejection,
-        relationalAdjustmentTriggered: relationalAdjustmentAnalysis?.needsRelationalAdjustment === true,
-        explorationDirectivityLevel: finalDirectivityLevel,
-        explorationSubmode: finalExplorationSubmode,
-        promptRegistry: referencePromptRegistry,
-        override1: null,
-        override2: null
-      });
-      
-      const comparisonResults = [
-        await buildComparisonVariantEntry(
-          "RÃ©fÃ©rence",
-          generatedReference,
-          comparisonBaseMeta,
-          referencePromptRegistry
-        )
-      ];
-      
-      if (override1) {
-        const generatedOverride1 = await generateReply({
-          message,
-          history: recentHistory,
-          memory: previousMemory,
-          mode: detectedMode,
-          infoSubmode: detectedInfoSubmode,
-          contactSubmode: detectedContactSubmode,
-          interpretationRejection,
-          relationalAdjustmentTriggered: relationalAdjustmentAnalysis?.needsRelationalAdjustment === true,
-          explorationDirectivityLevel: finalDirectivityLevel,
-          explorationSubmode: finalExplorationSubmode,
-          promptRegistry: override1PromptRegistry,
-          override1,
-          override2: null
-        });
-        
-        comparisonResults.push(
-          await buildComparisonVariantEntry(
-            "Override 1",
-            generatedOverride1,
-            comparisonBaseMeta,
-            override1PromptRegistry
-          )
-        );
-      }
-      
-      if (override1 && override2) {
-        const generatedOverride12 = await generateReply({
-          message,
-          history: recentHistory,
-          memory: previousMemory,
-          mode: detectedMode,
-          infoSubmode: detectedInfoSubmode,
-          contactSubmode: detectedContactSubmode,
-          interpretationRejection,
-          relationalAdjustmentTriggered: relationalAdjustmentAnalysis?.needsRelationalAdjustment === true,
-          explorationDirectivityLevel: finalDirectivityLevel,
-          explorationSubmode: finalExplorationSubmode,
-          promptRegistry: override12PromptRegistry,
-          override1,
-          override2
-        });
-        
-        comparisonResults.push(
-          await buildComparisonVariantEntry(
-            "Override 1 + 2",
-            generatedOverride12,
-            comparisonBaseMeta,
-            override12PromptRegistry
-          )
-        );
-      }
-      
-      console.log("[COMPARE][RESULTS]", comparisonResults.map(entry => ({
-        label: entry.label,
-        memory: entry?.debugMeta?.memory || ""
-      })));
-      markChatStage("persist_response");
-      throwIfCanceled();
-      
-      const botMessageId = await persistAssistantMessage(reply, debug, responseDebugMeta, comparisonResults, { memory: newMemory, flags: newFlags });
-      await maybeGenerateConversationTitle();
-      
-      return res.json({
-        conversationId,
-        comparison: true,
-        results: comparisonResults,
-        reply,
-        memory: newMemory,
-        flags: newFlags,
-        debug,
-        debugMeta: responseDebugMeta,
-        botMessageId
-      });
-    }
     markChatStage("persist_response");
     throwIfCanceled();
-    
-    const botMessageId = await persistAssistantMessage(reply, debug, responseDebugMeta, null, { memory: newMemory, flags: newFlags });
+
+    const botMessageId = await persistAssistantMessage(reply, debug, responseDebugMeta, { memory: newMemory, flags: newFlags });
     await maybeGenerateConversationTitle();
     
     return res.json({

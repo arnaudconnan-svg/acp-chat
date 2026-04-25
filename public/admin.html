@@ -1952,23 +1952,6 @@
             });
           }
           
-          const overrideLines = safeDebug.filter(line => {
-            const text = String(line || "");
-            return (
-              text.startsWith("override1Applied:") ||
-              text.startsWith("override1Missing:") ||
-              text.startsWith("override2Applied:") ||
-              text.startsWith("override2Missing:")
-            );
-          });
-          
-          if (overrideLines.length) {
-            sections.push({
-              title: "Overrides appliqués",
-              content: overrideLines.join("\n")
-            });
-          }
-          
           return sections.filter(section => String(section.content || "").trim());
         }
         

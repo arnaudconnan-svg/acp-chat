@@ -4442,18 +4442,12 @@
         const parsed = JSON.parse(raw);
         return {
           mailsEnabled: parsed.mailsEnabled !== false,
-          logsEnabled: parsed.logsEnabled === true,
-          comparisonEnabled: parsed.comparisonEnabled === true,
-          override1: parsed.override1 && typeof parsed.override1 === "object" ? parsed.override1 : null,
-          override2: parsed.override2 && typeof parsed.override2 === "object" ? parsed.override2 : null
+          logsEnabled: parsed.logsEnabled === true
         };
       } catch {
         return {
           mailsEnabled: true,
-          logsEnabled: false,
-          comparisonEnabled: false,
-          override1: null,
-          override2: null
+          logsEnabled: false
         };
       }
     }
@@ -4461,51 +4455,19 @@
     function saveAdminUiState() {
       localStorage.setItem(ADMIN_POPOVER_STATE_KEY, JSON.stringify({
         mailsEnabled: adminUiState.mailsEnabled !== false,
-        logsEnabled: adminUiState.logsEnabled === true,
-        comparisonEnabled: adminUiState.comparisonEnabled === true,
-        override1: adminUiState.override1 || null,
-        override2: adminUiState.override2 || null
+        logsEnabled: adminUiState.logsEnabled === true
       }));
     }
     
     let adminUiState = loadAdminUiState();
     
     function getActiveAdminStatusLabel() {
-      const parts = [];
-      
-      if (adminUiState.override1) {
-        parts.push("Override 1");
-      }
-      
-      if (adminUiState.override2) {
-        parts.push("2");
-      }
-      
-      if (adminUiState.comparisonEnabled) {
-        parts.push("comparaison");
-      }
-      
-      if (parts.length === 0) {
-        return "";
-      }
-      
-      if (parts[0] === "Override 1" && parts[1] === "2") {
-        const next = ["Override 1 + 2"];
-        if (parts.includes("comparaison")) {
-          next.push("comparaison");
-        }
-        return next.join(" + ");
-      }
-      
-      return parts.join(" + ");
+      return "";
     }
     
     function getActiveAdminPayload() {
       return {
-        override1: adminUiState.override1 ? (adminUiState.override1.data || null) : null,
-        override2: adminUiState.override2 ? (adminUiState.override2.data || null) : null,
         mailsEnabled: adminUiState.mailsEnabled !== false,
-        comparisonEnabled: adminUiState.comparisonEnabled === true,
         logsEnabled: adminUiState.logsEnabled === true
       };
     }
@@ -4644,32 +4606,6 @@
       
       popover.innerHTML = `
     <div style="display:flex;flex-direction:column;gap:10px;">
-      
-      <div style="display:flex;flex-direction:column;gap:6px;">
-        <div style="font-size:13px;line-height:1.3;color:#245e66;font-weight:600;">Override 1</div>
-        <div style="display:flex;align-items:center;gap:8px;">
-          <input id="adminOverride1Input" type="file" accept=".json,application/json" style="display:none;">
-          <button id="adminOverride1Pick" type="button" style="flex:1 1 auto;border:1px solid rgba(36, 94, 102, 0.18);border-radius:10px;padding:9px 10px;background:white;color:#24464b;font:inherit;font-size:12px;text-align:left;cursor:pointer;min-width:0;">Choisir un fichier</button>
-          <button id="adminOverride1Clear" type="button" style="flex:0 0 auto;border:none;border-radius:10px;padding:7px 10px;background:rgba(36, 94, 102, 0.10);color:#245e66;font-size:12px;font-weight:600;cursor:pointer;display:none;">Effacer</button>
-        </div>
-        <div id="adminOverride1Name" style="display:none;font-size:11px;color:#5f7478;"></div>
-      </div>
-      
-      <div style="display:flex;flex-direction:column;gap:6px;">
-        <div style="font-size:13px;line-height:1.3;color:#245e66;font-weight:600;">Override 2</div>
-        <div style="display:flex;align-items:center;gap:8px;">
-          <input id="adminOverride2Input" type="file" accept=".json,application/json" style="display:none;">
-          <button id="adminOverride2Pick" type="button" style="flex:1 1 auto;border:1px solid rgba(36, 94, 102, 0.18);border-radius:10px;padding:9px 10px;background:white;color:#24464b;font:inherit;font-size:12px;text-align:left;cursor:pointer;min-width:0;">Choisir un fichier</button>
-          <button id="adminOverride2Clear" type="button" style="flex:0 0 auto;border:none;border-radius:10px;padding:7px 10px;background:rgba(36, 94, 102, 0.10);color:#245e66;font-size:12px;font-weight:600;cursor:pointer;display:none;">Effacer</button>
-        </div>
-        <div id="adminOverride2Name" style="display:none;font-size:11px;color:#5f7478;"></div>
-      </div>
-      
-      <label style="display:flex;justify-content:space-between;font-size:13px;color:#245e66;font-weight:600;">
-        <span>Comparaison</span>
-        <input id="adminComparisonToggle" type="checkbox">
-      </label>
-
       <label style="display:flex;justify-content:space-between;font-size:13px;color:#245e66;font-weight:600;">
         <span>Notifications mail</span>
         <input id="adminMailsToggle" type="checkbox">
@@ -4684,53 +4620,13 @@
   `;
       
       document.body.appendChild(popover);
-      
-      const override1Input = popover.querySelector("#adminOverride1Input");
-      const override2Input = popover.querySelector("#adminOverride2Input");
-      const override1Pick = popover.querySelector("#adminOverride1Pick");
-      const override2Pick = popover.querySelector("#adminOverride2Pick");
-      const override1Clear = popover.querySelector("#adminOverride1Clear");
-      const override2Clear = popover.querySelector("#adminOverride2Clear");
-      const override1Name = popover.querySelector("#adminOverride1Name");
-      const override2Name = popover.querySelector("#adminOverride2Name");
-      const comparisonToggle = popover.querySelector("#adminComparisonToggle");
+
       const mailsToggle = popover.querySelector("#adminMailsToggle");
       const logsToggle = popover.querySelector("#adminLogsToggle");
       
-      function setLoadedFileName(targetEl, overrideState) {
-        const label = overrideState?.name?.trim();
-        if (!label) {
-          targetEl.textContent = "";
-          targetEl.style.display = "none";
-          return;
-        }
-        
-        targetEl.textContent = `Charge : ${label}`;
-        targetEl.style.display = "block";
-      }
-      
       function refreshPopoverFields() {
-        const hasOverride1 = Boolean(adminUiState.override1);
-
-        if (!hasOverride1 && adminUiState.override2) {
-          adminUiState.override2 = null;
-          override2Input.value = "";
-        }
-
-        comparisonToggle.checked = adminUiState.comparisonEnabled === true;
         mailsToggle.checked = adminUiState.mailsEnabled !== false;
         logsToggle.checked = adminUiState.logsEnabled === true;
-        
-        override1Clear.style.display = adminUiState.override1 ? "inline-flex" : "none";
-        override2Clear.style.display = adminUiState.override2 ? "inline-flex" : "none";
-
-        override2Pick.disabled = !hasOverride1;
-        override2Input.disabled = !hasOverride1;
-        override2Pick.style.opacity = hasOverride1 ? "1" : "0.55";
-        override2Pick.style.cursor = hasOverride1 ? "pointer" : "not-allowed";
-        
-        setLoadedFileName(override1Name, adminUiState.override1);
-        setLoadedFileName(override2Name, adminUiState.override2);
       }
       
       function refreshAdminUi(options = {}) {
@@ -4774,85 +4670,6 @@
           });
         }
       }
-
-      async function parseOverrideFile(file) {
-        try {
-          const raw = await file.text();
-          return {
-            ok: true,
-            data: JSON.parse(raw)
-          };
-        } catch {
-          return {
-            ok: false,
-            data: null
-          };
-        }
-      }
-      
-      override1Pick.addEventListener("click", () => {
-        override1Input.click();
-      });
-      
-      override2Pick.addEventListener("click", () => {
-        if (!adminUiState.override1) {
-          alert("Charge d'abord un fichier Override 1.");
-          return;
-        }
-        override2Input.click();
-      });
-      
-      override1Input.addEventListener("change", async e => {
-        const file = e.target.files && e.target.files[0];
-        if (!file) return;
-        const parsed = await parseOverrideFile(file);
-        if (!parsed.ok) {
-          alert("Le fichier Override 1 n'est pas un JSON valide.");
-          override1Input.value = "";
-          return;
-        }
-        const data = parsed.data;
-        adminUiState.override1 = { name: file.name, data };
-        refreshAdminUi();
-      });
-      
-      override2Input.addEventListener("change", async e => {
-        const file = e.target.files && e.target.files[0];
-        if (!file) return;
-        if (!adminUiState.override1) {
-          alert("Charge d'abord un fichier Override 1.");
-          override2Input.value = "";
-          return;
-        }
-        const parsed = await parseOverrideFile(file);
-        if (!parsed.ok) {
-          alert("Le fichier Override 2 n'est pas un JSON valide.");
-          override2Input.value = "";
-          return;
-        }
-        const data = parsed.data;
-        adminUiState.override2 = { name: file.name, data };
-        refreshAdminUi();
-      });
-      
-      override1Clear.addEventListener("click", () => {
-        adminUiState.override1 = null;
-        adminUiState.override2 = null;
-        override1Input.value = "";
-        override2Input.value = "";
-        refreshAdminUi();
-      });
-      
-      override2Clear.addEventListener("click", () => {
-        adminUiState.override2 = null;
-        override2Input.value = "";
-        refreshAdminUi();
-      });
-      
-      comparisonToggle.addEventListener("change", () => {
-        adminUiState.comparisonEnabled = comparisonToggle.checked;
-        refreshAdminUi();
-      });
 
       mailsToggle.addEventListener("change", () => {
         adminUiState.mailsEnabled = mailsToggle.checked !== false;
@@ -7709,10 +7526,7 @@
       const adminPayload = typeof getActiveAdminPayload === "function" ?
         getActiveAdminPayload() :
         {
-          override1: null,
-          override2: null,
           mailsEnabled: true,
-          comparisonEnabled: false,
           logsEnabled: false
         };
       
@@ -7886,10 +7700,7 @@
         });
       }
       
-      const shouldAutoScrollReply =
-        adminPayload.comparisonEnabled === true ?
-        false :
-        (isEditing || wasAtBottom || isChatAtBottom());
+      const shouldAutoScrollReply = isEditing || wasAtBottom || isChatAtBottom();
 
       const chatRequestId = buildChatRequestId();
       const chatAbortController = new AbortController();
@@ -7945,10 +7756,7 @@
             conversationBranchHistory: loadHistory().map(({ role, content }) => ({ role, content })),
             memory: loadConversationData(requestConversationId).memory,
             flags: normalizeStoredFlags(loadConversationData(requestConversationId).flags),
-            override1: adminPayload.override1,
-            override2: adminPayload.override2,
             mailsEnabled: adminPayload.mailsEnabled !== false,
-            comparisonEnabled: adminPayload.comparisonEnabled === true,
             logsEnabled: adminPayload.logsEnabled === true
           })
         });
@@ -7961,10 +7769,7 @@
         if (
           !res.ok ||
           !data ||
-          (
-            !data.reply &&
-            !(data.comparison === true && Array.isArray(data.results) && data.results.length > 0)
-          )
+          !data.reply
         ) {
           const serviceUnavailableMessage = readServiceUnavailableMessage(data);
           if (serviceUnavailableMessage) {
@@ -7986,30 +7791,7 @@
         }
 
         setServiceAvailabilityBlocked(false);
-        
-        const normalizedComparisonResults =
-          data.comparison === true && Array.isArray(data.results) && data.results.length > 0 ?
-          data.results
-          .map(result => {
-            const label = String(result?.label || "").trim();
-            const replyText = String(result?.reply || "").trim();
-            const debugLines = Array.isArray(result?.debug) ? result.debug : [];
-            const resultDebugMeta =
-              result?.debugMeta && typeof result.debugMeta === "object" ?
-              result.debugMeta :
-              null;
-            
-            if (!replyText) return null;
-            
-            return {
-              label,
-              content: label ? `[${label}]\n\n${replyText}` : replyText,
-              debug: debugLines,
-              debugMeta: resultDebugMeta
-            };
-          })
-          .filter(Boolean) : [];
-        
+
         const currentConversationId = getConversationId();
         const isSameConversation = currentConversationId === requestConversationId;
         
@@ -8019,47 +7801,26 @@
             persistIntersessionMemoryIfApplicable(data.memory);
           }
           if (data.flags) saveFlags(data.flags);
-          
-          if (normalizedComparisonResults.length > 0) {
-            normalizedComparisonResults.forEach(result => {
-              pushHistory("assistant", result.content, result.debug, result.debugMeta, null, {
-                memory: data.memory,
-                flags: data.flags
-              });
-            });
-          } else {
-            pushHistory("assistant", data.reply, data.debug || [], data.debugMeta || null, data.botMessageId || null, {
-              memory: data.memory,
-              flags: data.flags
-            });
-          }
+
+          pushHistory("assistant", data.reply, data.debug || [], data.debugMeta || null, data.botMessageId || null, {
+            memory: data.memory,
+            flags: data.flags
+          });
         } else {
           const storedData = loadConversationData(requestConversationId);
           const existingMessages = Array.isArray(storedData.messages) ? storedData.messages : [];
-          const nextAssistantMessages =
-            normalizedComparisonResults.length > 0 ?
-            normalizedComparisonResults.map((result, index) => ({
-              role: "assistant",
-              content: result.content,
-              debug: result.debug,
-              debugMeta: result.debugMeta,
-              stateSnapshot: normalizeStoredStateSnapshot({
-                memory: data.memory,
-                flags: data.flags
-              }),
-              t: Date.now() + index
-            })) : [{
-              role: "assistant",
-              content: data.reply,
-              debug: Array.isArray(data.debug) ? data.debug : [],
-              debugMeta: normalizeClientDebugMeta(data.debugMeta),
-              stateSnapshot: normalizeStoredStateSnapshot({
-                memory: data.memory,
-                flags: data.flags
-              }),
-              id: data.botMessageId && typeof data.botMessageId === "string" ? data.botMessageId : undefined,
-              t: Date.now()
-            }];
+          const nextAssistantMessages = [{
+            role: "assistant",
+            content: data.reply,
+            debug: Array.isArray(data.debug) ? data.debug : [],
+            debugMeta: normalizeClientDebugMeta(data.debugMeta),
+            stateSnapshot: normalizeStoredStateSnapshot({
+              memory: data.memory,
+              flags: data.flags
+            }),
+            id: data.botMessageId && typeof data.botMessageId === "string" ? data.botMessageId : undefined,
+            t: Date.now()
+          }];
           
           saveConversationData(requestConversationId, {
             ...storedData,
@@ -8078,21 +7839,11 @@
           document.querySelector(".screen.active")?.id === requestScreenId &&
           requestScreenId === "chatScreen"
         ) {
-          if (normalizedComparisonResults.length > 0) {
-            normalizedComparisonResults.forEach((result, index) => {
-              addMessage("bot", result.content, result.debug, {
-                shouldAutoScroll: false,
-                pulseScrollButton: index === normalizedComparisonResults.length - 1,
-                debugMeta: result.debugMeta
-              });
-            });
-          } else {
-            addMessage("bot", data.reply, data.debug || [], {
-              shouldAutoScroll: shouldAutoScrollReply,
-              pulseScrollButton: !shouldAutoScrollReply,
-              debugMeta: data.debugMeta || null
-            });
-          }
+          addMessage("bot", data.reply, data.debug || [], {
+            shouldAutoScroll: shouldAutoScrollReply,
+            pulseScrollButton: !shouldAutoScrollReply,
+            debugMeta: data.debugMeta || null
+          });
         }
         
         if (data.conversationId) {
