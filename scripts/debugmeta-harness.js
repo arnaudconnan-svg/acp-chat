@@ -88,13 +88,21 @@ function assertDebugMetaContract(debugMeta, label) {
   const nullableStrings = ["directivityText", "infoSubmode", "contactSubmode", "explorationSubmode",
     "therapeuticAllianceSource", "rewriteSource", "memoryRewriteSource", "soberReadjustmentOriginalReply",
     "dependencyRiskLevel", "externalSupportMode", "processingWindow", "allianceState", "engagementLevel",
-    "writerMode", "intent"];
+    "writerMode", "intent",
+    // State transition fields (null on first turn or valid transitions)
+    "stateTransitionFrom", "stateTransitionRequested"];
   for (const field of nullableStrings) {
     assert(field in debugMeta,
       `${label}: debugMeta must contain field '${field}' (got undefined)`);
     assert(debugMeta[field] === null || typeof debugMeta[field] === "string",
       `${label}: '${field}' must be string or null, got ${typeof debugMeta[field]}`);
   }
+
+  // stateTransitionValid must be boolean
+  assert("stateTransitionValid" in debugMeta,
+    `${label}: debugMeta must contain field 'stateTransitionValid'`);
+  assert(typeof debugMeta.stateTransitionValid === "boolean",
+    `${label}: stateTransitionValid must be boolean, got ${typeof debugMeta.stateTransitionValid}`);
 
   // pipelineStages entries have expected shape
   for (const entry of debugMeta.pipelineStages) {

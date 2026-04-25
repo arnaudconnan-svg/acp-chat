@@ -280,6 +280,16 @@ check("state transition guard: known valid exploration -> contact is valid", () 
     `expected stateTransitionValid=true for exploration -> contact, got '${out.stateTransitionValid}'`);
 });
 
+check("state transition guard: first turn (no previous state) is always valid", () => {
+  const out = buildPostureDecision(explorationInput({
+    previousConversationStateKey: null
+  }));
+  assert(out.stateTransitionValid === true,
+    `expected stateTransitionValid=true for first turn (null prev), got '${out.stateTransitionValid}'`);
+  assert(out.previousConversationStateKey === null,
+    `expected previousConversationStateKey null, got '${out.previousConversationStateKey}'`);
+});
+
 // ─── writerMode derivation ────────────────────────────────────────────────────
 
 check("writerMode: exploration + level 0 → exploration_open", () => {

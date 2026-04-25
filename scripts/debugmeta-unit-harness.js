@@ -106,6 +106,7 @@ for (const field of [
   "memoryCompressed", "memoryBeforeCompression", "soberReadjustmentOriginalReply",
   "criticTriggered", "criticIssues",
   "writerMode", "intent", "forbidden", "confidenceSignal",
+  "stateTransitionFrom", "stateTransitionValid", "stateTransitionRequested",
   "allianceState", "engagementLevel", "stagnationTurns", "processingWindow",
   "dependencyRiskScore", "dependencyRiskLevel", "externalSupportMode",
   "closureIntent", "traceId"
@@ -140,6 +141,9 @@ assertDeepEqual("default values", base, {
   intent: null,
   forbidden: [],
   confidenceSignal: "high",
+  stateTransitionFrom: null,
+  stateTransitionValid: true,
+  stateTransitionRequested: null,
   allianceState: "good",
   engagementLevel: "active",
   stagnationTurns: 0,
@@ -332,6 +336,45 @@ console.log("\n── buildResponseDebugMeta — conversationStateKey ───�
 assert("exploration state key", buildResponseDebugMeta({ conversationStateKey: "exploration" }).conversationStateKey, "exploration");
 assert("unknown state key → exploration", buildResponseDebugMeta({ conversationStateKey: "unknown_state" }).conversationStateKey, "exploration");
 assert("null state key → exploration", buildResponseDebugMeta({ conversationStateKey: null }).conversationStateKey, "exploration");
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 14. buildResponseDebugMeta — stateTransition fields
+// ═══════════════════════════════════════════════════════════════════════════════
+console.log("\n── buildResponseDebugMeta — stateTransition fields ───────");
+
+// Default: valid first-turn (no previous state)
+const stDefault = buildResponseDebugMeta();
+assert("stateTransitionFrom default", stDefault.stateTransitionFrom, null);
+assert("stateTransitionValid default", stDefault.stateTransitionValid, true);
+assert("stateTransitionRequested default", stDefault.stateTransitionRequested, null);
+
+// Valid transition with previous state
+const stValid = buildResponseDebugMeta({
+  stateTransitionFrom: "exploration",
+  stateTransitionValid: true,
+  stateTransitionRequested: null
+});
+assert("stateTransitionFrom string pass-through", stValid.stateTransitionFrom, "exploration");
+assert("stateTransitionValid true", stValid.stateTransitionValid, true);
+assert("stateTransitionRequested null on valid transition", stValid.stateTransitionRequested, null);
+
+// Invalid transition: enforcement kicked in
+const stInvalid = buildResponseDebugMeta({
+  stateTransitionFrom: "closure",
+  stateTransitionValid: false,
+  stateTransitionRequested: "alliance_rupture"
+});
+assert("stateTransitionFrom on invalid", stInvalid.stateTransitionFrom, "closure");
+assert("stateTransitionValid false", stInvalid.stateTransitionValid, false);
+assert("stateTransitionRequested on invalid", stInvalid.stateTransitionRequested, "alliance_rupture");
+
+// Non-string stateTransitionFrom → null
+const stBadFrom = buildResponseDebugMeta({ stateTransitionFrom: 42 });
+assert("stateTransitionFrom non-string → null", stBadFrom.stateTransitionFrom, null);
+
+// stateTransitionValid: false coercion
+const stFalseCoerce = buildResponseDebugMeta({ stateTransitionValid: false });
+assert("stateTransitionValid false coercion", stFalseCoerce.stateTransitionValid, false);
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Summary

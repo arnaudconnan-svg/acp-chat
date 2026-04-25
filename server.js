@@ -4890,6 +4890,12 @@ app.post("/chat", async (req, res) => {
         hasAgencyInjectionInReply(reply) ||
         hasTheoreticalViolationHeuristic(reply);
       if (criticShouldTrigger) {
+        logChatDecision("critic_triggered", {
+          writerMode: postureDecision.writerMode,
+          contractLengthExceeded,
+          humanFieldRisk,
+          sentenceCount
+        });
         const criticResult = await applySelectiveCritic({
           reply,
           message,
@@ -4903,6 +4909,10 @@ app.post("/chat", async (req, res) => {
         if (criticResult.criticIssues.length > 0) {
           reply = criticResult.reply;
           finalReplyRewriteSources.push("critic_pass");
+          logChatDecision("critic_rewrote", {
+            issueCount: criticResult.criticIssues.length,
+            issues: criticResult.criticIssues
+          });
         }
       }
     }
