@@ -682,6 +682,10 @@ function trimRecallAnalysisHistory(history) {
 function isExplicitAppFeatureRequest(message = "") {
   const text = normalizeGuardText(message);
 
+  // Questions de decouverte generale : pas besoin de mentionner "app" explicitement
+  const isGenericDiscovery = /^(comment (ca|cela|tu) (marche|fonctionnes?)|c'est quoi (cette app|ca|cela)\??|(tu peux|vous pouvez) faire quoi|qu'est-ce que (tu peux|vous pouvez) faire|a quoi (tu sers|vous servez))[\s?!.]*$/.test(text);
+  if (isGenericDiscovery) return true;
+
   const mentionsApp = /\b(app|application|outil|plateforme|assistant)\b/.test(text);
   const asksUsage = /comment (utiliser|fonctionne|ca marche)|que fait l'app|quoi faire dans l'app|mode d'emploi|etapes|fonctionnalites|plan d'urgence|dans l'app/.test(text);
 
