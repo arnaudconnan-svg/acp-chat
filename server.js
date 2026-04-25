@@ -2686,6 +2686,79 @@ Contraintes :
 - si la memoire contient plusieurs themes, cite seulement les reperes les plus plausibles et generaux
   - si le transcript montre une branche precise, reste strictement sur cette branche et n'invente pas d'autre continuite
 `,
+
+    // ------------------------------------
+    // CRITIC PASS (garde-barriere post-generation)
+    // ------------------------------------
+
+    CRITIC_PASS: `
+Tu es un garde-barriere post-generation. Tu relis la reponse du bot et tu corriges uniquement les violations reelles.
+
+Tu verifies exactement quatre types de violations, dans cet ordre de priorite :
+
+1. AGENTIVITE IMPLICITE : le texte attribue a l'utilisateur une intention, un choix ou une strategie ("tu evites", "tu preferes ne pas", "tu refuses", "tu n'acceptes pas", "tu choisis de rester a distance"). Remplace par un mouvement automatique et situe ("quelque chose se referme", "ca se coupe", "ca se raidit").
+
+2. VIOLATION THEORIQUE : le texte mobilise des concepts cliniques ou psychologiques formels : inconscient/subconscient, mecanismes de defense, pathologie/sante mentale, diagnose, processus intrapsychiques. Retire ou reformule en restant dans l'experience vecue.
+
+3. CLINICALISATION EXCESSIVE : le texte sur-diagnostique, sur-evalue ou sur-nomme. Un seul mouvement, sobre et concret, suffit. Retire les formulations qui accumulent les lectures ou empilent les interpretations.
+
+4. PRESENCE CREUSE : le texte utilise des formules pseudo-empathiques sans contenu reel ("je suis vraiment la pour toi", "je t'entends vraiment", "c'est un espace precieux", "laisser emerger", "sans precipitation"). Retire ou remplace par quelque chose de concret.
+
+Si le contrat actif est fourni dans le message, verifie aussi que les termes marques "Interdit ce tour" ne sont pas presents dans la reponse.
+
+Definitions operatoires des termes interdits :
+- relance : toute invite explicite ou implicite a continuer/approfondir/preciser (question directe, invitation implicite nette)
+- interpretive_hypothesis : toute formulation du type "peut-etre que", "il semblerait que", "quelque chose comme", "j'ai l'impression que ca pourrait"
+- open_question : toute question ouverte commencant par quoi, comment, qu'est-ce qui, de quoi, comment ca
+- prescriptive_language : toute instruction ou suggestion d'action a l'utilisateur ("essaie de", "tu pourrais", "je t'invite a")
+- list : enumeration ou bullet points dans la reponse
+- recap : synthese ou recapitulatif de ce qui a ete dit avant
+- self_justification : explication ou defense de la reponse precedente du bot
+
+Regles :
+- ne corrige QUE ce qui viole reellement ces criteres
+- ne refais pas la reponse de zero
+- ne change pas le sens ou le mouvement central si ce n'est pas en violation
+- si aucune violation n'est detectee, renvoie la reponse originale sans modification et issues = []
+- si issues est vide, la reponse retournee doit etre identique a l'originale
+
+Reponds STRICTEMENT en JSON :
+{
+  "reply": "...",
+  "issues": []
+}
+
+issues contient uniquement les violations corrigees, par nom court (ex: "agentivite_implicite", "violation_theorique", "clinicalisation_excessive", "presence_creuse", "forbidden_relance", "forbidden_open_question", etc.). Si aucune : tableau vide.
+`,
+
+    // ------------------------------------
+    // CONFLICT MODEL (paths secondaires N1/recall/comparison)
+    // ------------------------------------
+
+    ANALYZE_CONFLICT_MODEL: `
+Tu analyses si le contenu suivant mobilise des concepts cliniques ou theoriques interdits.
+
+Concepts interdits : inconscient, subconscient, mecanismes de defense, pathologie, diagnostic, sante mentale, processus intrapsychiques, agentivite implicite attribuee au sujet.
+
+Reponds STRICTEMENT en JSON :
+{ "modelConflict": true|false }
+
+- true seulement si un concept interdit est clairement present et constitutif du sens
+- false en cas de doute ou si le concept n'est que contextuel ou cite
+`,
+
+    REWRITE_CONFLICT_MODEL: `
+Tu reformules le contenu pour retirer les references aux concepts cliniques ou theoriques interdits, en conservant le mouvement et le sens de la reponse originale.
+
+Concepts a retirer : inconscient, subconscient, mecanismes de defense, pathologie, diagnostic, sante mentale, processus intrapsychiques, agentivite implicite attribuee au sujet.
+
+Regles :
+- ne changes que ce qui est en violation
+- reste sobre et concret
+- ne justifie pas la reformulation
+- renvoie uniquement le texte reformule, sans commentaire
+`,
+
   };
 }
 
@@ -3840,23 +3913,33 @@ ${originalContent}
     return String(r.choices?.[0]?.message?.content || "").trim() || originalReply;
   }
 
-// Phase 4: Selective critic â€” detects and corrects agency injunctions, over-clinicalization,
+// Phase 4: Selective critic - detects and corrects agency injunctions, over-clinicalization,
 // and hollow presence formulas when triggered by a strong signal.
+// Receives postureDecision to enforce the active contract (writerMode + forbidden).
 async function applySelectiveCritic({
   reply = "",
   message = "",
   history = [],
+  postureDecision = {},
   promptRegistry = buildDefaultPromptRegistry()
 }) {
-  const user = `Message utilisateur :
-${message}
+  const writerMode = postureDecision.writerMode || null;
+  const forbidden = Array.isArray(postureDecision.forbidden) && postureDecision.forbidden.length > 0
+    ? postureDecision.forbidden
+    : [];
 
-Contexte recent :
-${(history || []).map(m => `${m.role === "user" ? "Utilisateur" : "Assistant"} : ${m.content}`).join("\n")}
+  const contractLine = writerMode
+    ? `Contrat actif : mode ${writerMode}${forbidden.length ? `, interdit ce tour : ${forbidden.join(", ")}` : ""}`
+    : null;
 
-Reponse a relire et corriger si necessaire :
-${reply}
-`;
+  const userParts = [
+    contractLine,
+    `Message utilisateur :\n${message}`,
+    `Contexte recent :\n${(history || []).map(m => `${m.role === "user" ? "Utilisateur" : "Assistant"} : ${m.content}`).join("\n")}`,
+    `Reponse a relire et corriger si necessaire :\n${reply}`
+  ].filter(Boolean);
+  const user = userParts.join("\n\n");
+
   const r = await client.chat.completions.create({
     model: MODEL_IDS.analysis,
     temperature: 0,
@@ -4598,6 +4681,24 @@ function buildPostureContractBlock(postureDecision = {}) {
   if (maxSentences) lines.push(`Longueur : max ${maxSentences} phrases`);
   if (toneConstraint) lines.push(`Ton : ${toneConstraint}`);
 
+  // Inject operational definitions only for terms that are actually forbidden this turn
+  if (Array.isArray(postureDecision.forbidden) && postureDecision.forbidden.length > 0) {
+    const forbiddenDefs = {
+      relance: "toute invite explicite ou implicite a continuer/approfondir/preciser",
+      interpretive_hypothesis: 'toute formulation du type "peut-etre que", "il semblerait que", "quelque chose comme"',
+      open_question: "toute question ouverte (quoi, comment, qu est-ce qui...)",
+      prescriptive_language: "toute instruction ou suggestion d action a l utilisateur (essaie de, tu pourrais)",
+      list: "enumeration ou bullet points dans la reponse",
+      recap: "synthese ou recapitulatif de ce qui a ete dit avant",
+      self_justification: "explication ou defense de la reponse precedente du bot"
+    };
+    const defs = postureDecision.forbidden
+      .filter(term => forbiddenDefs[term])
+      .map(term => `  - ${term} : ${forbiddenDefs[term]}`)
+      .join("\n");
+    if (defs) lines.splice(3, 0, `Definitions des termes interdits :\n${defs}`);
+  }
+
   return wrapPromptBlock("POSTURE_CONTRACT", lines.join("\n"));
 }
 
@@ -4770,14 +4871,20 @@ function buildSystemPrompt(postureDecision, memory, promptRegistry = buildDefaul
 
   // Single style block selected by writerMode
   let styleBlock = "";
+  const PHASE_C_STATES = ["stabilization", "alliance_rupture", "closure", "post_contact"];
   if (mode === "contact") {
     const contactWrapped = getContactPrompt(promptRegistry);
     const contactSubmodeWrapped = buildContactSubmodePromptBlock(contactSubmode, promptRegistry);
     styleBlock = [contactWrapped, contactSubmodeWrapped].filter(Boolean).join("\n\n");
   } else if (mode === "info") {
     styleBlock = getInfoPrompt(memory, infoSubmode, promptRegistry);
+  } else if (PHASE_C_STATES.includes(writerMode)) {
+    // Phase C states: contract block is the sole policy source.
+    // COMMON_EXPLORATION would introduce contradictory invitations (open questions, hypotheses).
+    // No style block injected — identity + contract is sufficient.
+    styleBlock = "";
   } else {
-    // exploration variants and all Phase-C states use the exploration style
+    // exploration_open and exploration_guided
     const explorationWrapped = getExplorationPrompt(memory, explorationDirectivityLevel, promptRegistry);
     const explorationSubmodeWrapped = buildExplorationSubmodePromptBlock(explorationSubmode, promptRegistry);
     styleBlock = [explorationWrapped, explorationSubmodeWrapped].filter(Boolean).join("\n\n");
@@ -8688,6 +8795,7 @@ app.post("/chat", async (req, res) => {
           reply,
           message,
           history: recentHistory,
+          postureDecision,
           promptRegistry: activePromptRegistry
         });
         throwIfCanceled();
