@@ -1,223 +1,124 @@
 # WORKFLOW.md — Facilitat.io
 
-## 1. Objectif
+## 1. Objet
 
-Ce projet est développé avec deux environnements :
+Ce fichier decrit le mode de travail reel du projet.
 
-- Android + Spck : édition rapide, mobilité, petites retouches
-- Windows + VS Code + Codex : analyse, modifications structurées, revue des diffs
+- l'utilisateur formule un objectif produit, un probleme visible, ou une contrainte metier
+- l'agent choisit l'implementation technique, structure le chantier, modifie le code, puis verifie
+- GitHub reste la source de verite
+- la branche `beta` reste la base de travail principale sauf besoin explicite contraire
 
-GitHub est la source de vérité.
-La branche `beta` sert de base de travail principale.
-Les modifications avec Codex doivent se faire sur une branche dédiée.
+## 2. Regle generale
 
----
-
-## 2. Règle générale
-
-Ne jamais laisser Codex modifier le projet sans contrôle.
+Le controle porte sur le comportement visible, pas sur chaque decision de code.
 
 Toujours :
-1. formuler une demande précise
-2. demander un diff réel
-3. relire le diff
-4. valider ou refuser
-5. tester
-6. commit ensuite
+1. formuler l'objectif en langage produit ou comportemental
+2. laisser l'agent choisir le moyen technique
+3. tester ce qui est modifie
+4. conserver un historique git lisible
 
 Ne jamais :
-- valider un patch sans lire le diff
-- accepter un refactor non demandé
-- accepter un patch plus large que l’objectif demandé
+- valider un changement visible non compris
+- melanger un vrai changement produit et un refactoring large sans l'annoncer
+- supposer qu'un diff court est automatiquement plus sur qu'un diff structurel propre
 
----
+## 3. Changement purement technique vs changement visible
 
-## 3. Workflow Windows
+### Changement purement technique
 
-### Avant de commencer
-1. ouvrir le repo local propre dans VS Code
-2. vérifier la branche active
-3. partir d’une branche dédiée si la modification n’est pas triviale
+Exemples :
+- logs
+- renommage interne
+- extraction en modules
+- refactoring local
+- factorisation
 
-Exemple :
-```bash
-git checkout beta
-git pull origin beta
-git checkout -b codex/nom-de-tache
+Dans ces cas :
+- l'agent agit directement
+- il explique apres coup ce qu'il a fait
+- il valide localement avec les commandes adaptees
 
-### Pendant le travail avec Codex
+### Changement visible pour l'utilisateur final
 
-Toujours demander :
+Exemples :
+- ton de reponse
+- routing de mode
+- reponse de crise
+- forme de la memoire affichee
+- comportement frontend perceptible
 
-un patch minimal
-la préservation de la logique métier
-l’absence de refactor global
-un diff réel avant application
-Après proposition de Codex
+Dans ces cas :
+1. l'agent annonce ce qui va changer
+2. l'agent indique le risque principal
+3. il attend un go avant de coder
 
-Vérifier :
+## 4. Verification attendue
 
-taille du diff
-suppressions inattendues
-déplacements de blocs
-modifications hors périmètre
-cohérence avec la demande initiale
-Après validation
-tester
-relire rapidement le code final
-commit
-push si nécessaire
+Verification minimale apres changement backend significatif :
 
----
+1. `node --check server.js`
+2. `npm run smoke`
 
-## 4. Workflow Android
+Verification complementaire selon le chantier :
 
-Android + Spck sert principalement à :
+- lecture des logs `[PIPELINE]` pour un diagnostic fin de `/chat`
+- harness comportemental centre sur `debugMeta`
+- test manuel cible quand le changement est visible
 
-corriger du texte
-ajuster du CSS
-faire de petites modifications locales
-consulter rapidement le projet
+## 5. Strategie de chantier
 
-Éviter sur Android :
+L'ordre prefere est :
 
-modifications complexes de server.js
-changements structurels
-modifications critiques du pipeline /chat
+1. observabilite
+2. correction locale ou refactoring necessaire
+3. validation et seulement ensuite elargissement
 
-Quand une modification devient sensible ou difficile à relire sur téléphone :
-→ basculer sur Windows
+Pour les gros chantiers techniques, privilegier :
 
----
+- extraction modulaire incrementale
+- validation apres chaque extraction
+- un seul type de risque a la fois
 
-## 5. Quand utiliser Codex
+Exemple recommande pour `server.js` :
 
-Utiliser Codex pour :
+1. `prompts`
+2. `flags`
+3. `analyzers`
+4. `memory`
+5. `pipeline`
 
-analyser un fichier ou une zone du projet
-proposer un patch localisé
-ajouter une route simple
-ajouter des logs
-faire une modification ciblée dans un fichier précis
-repérer une incohérence ou un blocage
+## 6. Zones sensibles
 
-Ne pas utiliser Codex en premier recours pour :
+Les zones qui demandent le plus de rigueur sont :
 
-refactor global
-réécriture large de server.js
-réorganisation importante de index.html
-modifications sensibles du pipeline sans revue humaine stricte
+- `server.js` et la route `/chat`
+- les fonctions de memoire
+- les transitions d'etat conversationnel
+- le contrat frontend/backend entre `public/index.html` et `/chat`
+- `public/sw.js`
 
----
+La sensibilite d'une zone ne signifie pas qu'elle est intouchable.
+Elle signifie qu'elle doit etre modifiee avec verification adaptee.
 
-## 6. Quand refuser un patch
+## 7. Git
 
-Refuser immédiatement si :
+Regles pratiques :
 
-le diff est beaucoup plus grand que prévu
-il y a des suppressions inattendues
-Codex déplace des blocs sans nécessité claire
-Codex modifie la logique métier
-Codex touche plusieurs zones alors qu’une seule était demandée
-le résumé de Codex ne correspond pas au diff
-le patch "semble intelligent" mais n’est pas strictement demandé
+- preferer des commits lisibles et thematiques
+- ne pas melanger plusieurs chantiers sans lien dans un meme commit
+- ne jamais utiliser de reset destructif sans demande explicite
+- si le working tree est sale, ne pas revert les changements utilisateur sans accord
 
-En cas de doute :
-→ refuser
-→ reformuler
-→ demander un patch plus petit
-
----
-
-## 7. Zones les plus sensibles
-
-Les zones suivantes demandent une vigilance maximale :
-
-server.js
-
-Très sensible, surtout :
-
-registre de prompts
-flags
-mémoire
-pipeline d’analyse
-route /chat
-public/index.html
-
-Très sensible, surtout :
-
-stockage local
-transitions et temporisations
-logique d’envoi/réception
-comportement UX lent et immersif
-public/sw.js
-
-Ne pas modifier sans intention explicite.
-
----
-
-## 8. Méthode de demande à Codex
-
-Préférer ce format :
-
-objectif
-invariants à préserver
-niveau de modification autorisé
-demande de diff réel
-interdictions claires
-
-Exemple :
-
-"Objectif : ajouter une route GET /health.
-Contraintes :
-
-patch minimal
-ne modifier aucune autre logique
-ne pas refactoriser
-montrer le diff réel avant application."
-
----
-
-## 9. Règle de sécurité Git
-
-Avant une tâche Codex importante :
-
-partir d’une branche dédiée
-ne jamais travailler directement sur une branche critique si le changement est risqué
-
-Si un patch tourne mal :
-
-git restore nom-du-fichier
-
-Si tout tourne mal sur la branche :
-
-git reset --hard HEAD
-
-À utiliser seulement si on sait qu’on veut jeter les modifications locales non committées.
-
----
-
-## 10. Discipline de validation
-
-Le résumé de Codex n’est jamais une preuve.
-Le diff réel est la référence.
-
-Toujours juger sur :
-
-les lignes réellement modifiées
-l’emplacement exact
-la taille réelle du patch
-11. Philosophie de travail
+## 8. Philosophie
 
 Sur ce projet :
 
-stabilité > élégance
-clarté > abstraction
-patch local > refactor
-contrôle humain > automatisation
-
-Codex est un assistant de modification.
-Il ne décide pas de l’architecture à lui seul.
+- stabilite du comportement > qualite du code > optimisation
+- mais stabilite du comportement ne signifie pas immobilite du code
+- si une structure interne freine la fiabilite, l'agent doit la faire evoluer
+- l'architecture doit progressivement converger vers : noyau deterministe, analyseurs paralleles, arbitrage explicite, writer pilote, critic garde-barriere
 
 ---
 
