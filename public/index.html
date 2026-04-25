@@ -6042,7 +6042,167 @@
 
         return lines;
       }
-      
+
+      function buildDebugSections(meta) {
+        const sections = [];
+        const signalLines = [];
+
+        if (meta.infoSubmode === "pure") {
+          signalLines.push("Sous-mode info : information generale");
+        } else if (meta.infoSubmode === "app_features") {
+          signalLines.push("Sous-mode info : information sur l'app");
+        } else if (meta.infoSubmode === "psychoeducation") {
+          signalLines.push("Sous-mode info : psychoeducation");
+        }
+
+        if (meta.interpretationRejection === true) {
+          signalLines.push("Rejet d'interpr\u00e9tation d\u00e9tect\u00e9 : oui");
+        }
+
+        if (meta.explorationSubmode) {
+          signalLines.push(`Sous-mode exploration : ${meta.explorationSubmode}`);
+        }
+
+        if (meta.topChips.length) {
+          sections.push({ title: "Chips", content: meta.topChips.join("\n") });
+        }
+
+        if (signalLines.length) {
+          sections.push({ title: "Signaux", content: signalLines.join("\n") });
+        }
+
+        const naturalSummaryLines = buildNaturalDebugSummary(meta);
+        if (naturalSummaryLines.length > 0) {
+          sections.push({ title: "Lecture interne", content: naturalSummaryLines.join("\n") });
+        }
+
+        if (meta.memory) {
+          sections.push({ title: "M\u00e9moire", content: meta.memory });
+        }
+
+        if (meta.directivityLabel) {
+          sections.push({ title: "Directivit\u00e9", content: meta.directivityLabel });
+        }
+
+        if (meta.therapeuticAllianceSource) {
+          sections.push({ title: "R\u00e9ponse avant ajustement relationnel", content: meta.therapeuticAllianceSource });
+        }
+
+        if (meta.memoryCompressed && meta.memoryBeforeCompression) {
+          sections.push({ title: "M\u00e9moire avant r\u00e9\u00e9criture", content: meta.memoryBeforeCompression });
+        } else {
+          sections.push({ title: "Pas de r\u00e9\u00e9criture", content: "\u2014" });
+        }
+
+        if (meta.writerMode) {
+          sections.push({
+            title: "Contrat de posture (V3)",
+            content: [
+              `Mode : ${meta.writerMode}`,
+              meta.intent ? `Intention : ${meta.intent}` : null,
+              (meta.forbidden && meta.forbidden.length) ? `Interdit : ${meta.forbidden.join(", ")}` : null,
+              meta.confidenceSignal ? `Signal confiance : ${meta.confidenceSignal}` : null,
+            ].filter(Boolean).join("\n")
+          });
+        }
+
+        if (meta.memoryRewriteSource) {
+          sections.push({ title: "R\u00e9\u00e9criture m\u00e9moire", content: meta.memoryRewriteSource });
+        }
+
+        if (meta.rewriteSource) {
+          sections.push({ title: "R\u00e9ponse r\u00e9\u00e9crite", content: meta.rewriteSource });
+        }
+
+        return sections.filter(section => String(section.content || "").trim());
+      }
+
+      function getSectionPalette(title) {
+        if (title === "M\u00e9moire" || title === "M\u00e9moire avant r\u00e9\u00e9criture" || title === "R\u00e9\u00e9criture m\u00e9moire") {
+          return { titleColor: "#8a5a18", blockBackground: "#fff8eb", blockBorder: "#e8c06e" };
+        }
+        if (title === "Directivit\u00e9") {
+          return { titleColor: "#2d5d96", blockBackground: "#ecf5ff", blockBorder: "#75a3db" };
+        }
+        if (title === "Signaux") {
+          return { titleColor: "#2d6a3c", blockBackground: "#edf9f1", blockBorder: "#6db380" };
+        }
+        if (title === "Contrat de posture (V3)") {
+          return { titleColor: "#6b3a7d", blockBackground: "#f8f0ff", blockBorder: "#c9a3e0" };
+        }
+        return { titleColor: "#245e66", blockBackground: "#ffffff", blockBorder: "#d6e2e1" };
+      }
+
+      function createDebugDetails(debugSections) {
+        if (!Array.isArray(debugSections) || debugSections.length === 0) return null;
+
+        const debugWrap = document.createElement("div");
+        debugWrap.style.marginTop = "10px";
+
+        const debugDetails = document.createElement("details");
+        debugDetails.style.border = "1px solid #d6e2e1";
+        debugDetails.style.borderRadius = "12px";
+        debugDetails.style.background = "#f8fbfb";
+        debugDetails.style.overflow = "hidden";
+
+        const debugSummary = document.createElement("summary");
+        debugSummary.textContent = "Debug";
+        debugSummary.style.listStyle = "none";
+        debugSummary.style.cursor = "pointer";
+        debugSummary.style.padding = "10px 12px";
+        debugSummary.style.fontSize = "13px";
+        debugSummary.style.fontWeight = "700";
+        debugSummary.style.color = "#245e66";
+        debugSummary.style.userSelect = "none";
+
+        const debugBox = document.createElement("div");
+        debugBox.style.padding = "10px";
+        debugBox.style.borderTop = "1px solid #d6e2e1";
+        debugBox.style.background = "#eef4f4";
+        debugBox.style.display = "flex";
+        debugBox.style.flexDirection = "column";
+        debugBox.style.gap = "8px";
+
+        debugSections.forEach(section => {
+          const palette = getSectionPalette(section.title);
+          const sectionBlock = document.createElement("div");
+
+          const sectionTitle = document.createElement("div");
+          sectionTitle.textContent = section.title;
+          sectionTitle.style.fontSize = "12px";
+          sectionTitle.style.fontWeight = "700";
+          sectionTitle.style.textTransform = "uppercase";
+          sectionTitle.style.letterSpacing = "0.04em";
+          sectionTitle.style.color = palette.titleColor;
+          sectionTitle.style.marginBottom = "4px";
+
+          const sectionContent = document.createElement("div");
+          sectionContent.style.padding = "10px";
+          sectionContent.style.borderRadius = "10px";
+          sectionContent.style.background = palette.blockBackground;
+          sectionContent.style.border = `1px solid ${palette.blockBorder}`;
+          sectionContent.style.fontSize = "13px";
+          sectionContent.style.lineHeight = "1.45";
+          sectionContent.style.color = "#334155";
+          sectionContent.style.whiteSpace = "pre-wrap";
+          sectionContent.style.wordBreak = "break-word";
+          sectionContent.style.overflowWrap = "break-word";
+          sectionContent.style.userSelect = "text";
+          sectionContent.style.webkitUserSelect = "text";
+          sectionContent.style.cursor = "text";
+          sectionContent.textContent = section.content;
+
+          sectionBlock.appendChild(sectionTitle);
+          sectionBlock.appendChild(sectionContent);
+          debugBox.appendChild(sectionBlock);
+        });
+
+        debugDetails.appendChild(debugSummary);
+        debugDetails.appendChild(debugBox);
+        debugWrap.appendChild(debugDetails);
+        return debugWrap;
+      }
+
       const debugMeta = role === "bot" ? buildDebugMeta(debugMetaRaw) : null;
       const hasStructuredSignals =
         !!debugMeta &&
@@ -6066,7 +6226,6 @@
           hasStructuredSignals ||
           !!debugMeta.explorationSubmode ||
           !!debugMeta.therapeuticAllianceSource ||
-          true ||
           !!debugMeta.rewriteSource ||
           !!debugMeta.memoryRewriteSource ||
           !!debugMeta.conversationStateKey ||
@@ -6449,163 +6608,11 @@
         bottom.style.flexWrap = "wrap";
         bottom.style.gap = "6px";
         bottom.style.marginTop = "6px";
-
-        const naturalSummaryLines = buildNaturalDebugSummary(debugMeta);
-        if (naturalSummaryLines.length > 0) {
-          const summaryEl = document.createElement("details");
-          summaryEl.className = "debug-detail";
-
-          const summaryTitle = document.createElement("summary");
-          summaryTitle.className = "debug-chip";
-          summaryTitle.textContent = "Lecture interne";
-
-          const summaryContent = document.createElement("div");
-          summaryContent.className = "debug-block";
-          summaryContent.textContent = naturalSummaryLines.join("\n");
-
-          summaryEl.appendChild(summaryTitle);
-          summaryEl.appendChild(summaryContent);
-          bottom.appendChild(summaryEl);
-        }
-        
-        if (debugMeta.memory) {
-          const mem = document.createElement("details");
-          mem.className = "debug-detail";
-          
-          const memSum = document.createElement("summary");
-          memSum.className = "debug-chip";
-          memSum.textContent = "M\u00e9moire";
-          
-          const memContent = document.createElement("div");
-          memContent.className = "debug-block";
-          memContent.textContent = debugMeta.memory;
-          
-          mem.appendChild(memSum);
-          mem.appendChild(memContent);
-          bottom.appendChild(mem);
-        }
-        
-        if (debugMeta.directivityLabel) {
-          const dir = document.createElement("details");
-          dir.className = "debug-detail";
-          
-          const dirSum = document.createElement("summary");
-          dirSum.className = "debug-chip";
-          dirSum.textContent = "Directivit\u00e9";
-          
-          const dirContent = document.createElement("div");
-          dirContent.className = "debug-block";
-          dirContent.textContent = debugMeta.directivityLabel;
-          
-          dir.appendChild(dirSum);
-          dir.appendChild(dirContent);
-          bottom.appendChild(dir);
-        }
-
-        if (debugMeta.therapeuticAllianceSource) {
-          const allianceEl = document.createElement("details");
-          allianceEl.className = "debug-detail";
-
-          const allianceSum = document.createElement("summary");
-          allianceSum.className = "debug-chip";
-          allianceSum.textContent = "Réponse avant ajustement relationnel";
-
-          const allianceContent = document.createElement("div");
-          allianceContent.className = "debug-block";
-          allianceContent.textContent = debugMeta.therapeuticAllianceSource;
-
-          allianceEl.appendChild(allianceSum);
-          allianceEl.appendChild(allianceContent);
-          bottom.appendChild(allianceEl);
-        }
-
-        if (debugMeta.memoryCompressed && debugMeta.memoryBeforeCompression) {
-          const memBefore = document.createElement("details");
-          memBefore.className = "debug-detail";
-
-          const memBeforeSum = document.createElement("summary");
-          memBeforeSum.className = "debug-chip";
-          memBeforeSum.textContent = "M\u00e9moire avant r\u00e9\u00e9criture";
-
-          const memBeforeContent = document.createElement("div");
-          memBeforeContent.className = "debug-block";
-          memBeforeContent.textContent = debugMeta.memoryBeforeCompression;
-
-          memBefore.appendChild(memBeforeSum);
-          memBefore.appendChild(memBeforeContent);
-          bottom.appendChild(memBefore);
-        } else {
-          const noRewrite = document.createElement("div");
-          noRewrite.className = "debug-chip";
-          noRewrite.textContent = "Pas de r\u00e9\u00e9criture";
-          bottom.appendChild(noRewrite);
-        }
-
-        if (debugMeta.rewriteSource) {
-          const conf = document.createElement("details");
-          conf.className = "debug-detail";
-          
-          const confSum = document.createElement("summary");
-          confSum.className = "debug-chip";
-          confSum.textContent = "R\u00e9ponse r\u00e9\u00e9crite";
-          
-          const confContent = document.createElement("div");
-          confContent.className = "debug-block";
-          confContent.textContent = debugMeta.rewriteSource;
-          
-          conf.appendChild(confSum);
-          conf.appendChild(confContent);
-          bottom.appendChild(conf);
-        }
-        
-        if (debugMeta.writerMode) {
-          const contractEl = document.createElement("details");
-          contractEl.className = "debug-detail";
-
-          const contractSum = document.createElement("summary");
-          contractSum.className = "debug-chip";
-          contractSum.textContent = `Posture: ${debugMeta.writerMode}`;
-
-          const contractContent = document.createElement("div");
-          contractContent.className = "debug-block";
-          const contractLines = [];
-          if (debugMeta.intent) contractLines.push(`Intention : ${debugMeta.intent}`);
-          if (debugMeta.forbidden && debugMeta.forbidden.length) contractLines.push(`Interdit : ${debugMeta.forbidden.join(", ")}`);
-          if (debugMeta.confidenceSignal) contractLines.push(`Signal confiance : ${debugMeta.confidenceSignal}`);
-          contractContent.textContent = contractLines.join("\n") || "—";
-
-          contractEl.appendChild(contractSum);
-          contractEl.appendChild(contractContent);
-          bottom.appendChild(contractEl);
-        }
-        
-        if (debugMeta.memoryRewriteSource) {
-          const memConf = document.createElement("details");
-          memConf.className = "debug-detail";
-          
-          const memConfSum = document.createElement("summary");
-          memConfSum.className = "debug-chip";
-          memConfSum.textContent = "M\u00e9moire r\u00e9\u00e9crite";
-          
-          const memConfContent = document.createElement("div");
-          memConfContent.className = "debug-block";
-          memConfContent.textContent = debugMeta.memoryRewriteSource;
-          
-          memConf.appendChild(memConfSum);
-          memConf.appendChild(memConfContent);
-          bottom.appendChild(memConf);
-        }
-        
-        if (bottom.children.length > 0) {
-          contentWrap.appendChild(bottom);
-        }
+      if (role === "bot" && hasDebugContent && showDebug) {
+        const debugSections = buildDebugSections(debugMeta);
+        const debugEl = createDebugDetails(debugSections);
+        if (debugEl) contentWrap.appendChild(debugEl);
       }
-      
-      msg.appendChild(contentWrap);
-      chat.appendChild(msg);
-      
-      if (shouldAutoScroll) {
-        scrollChatToBottom();
         return;
       }
       

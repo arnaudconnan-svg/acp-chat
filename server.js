@@ -3490,7 +3490,7 @@ app.post("/chat", async (req, res) => {
 
     await messagesRef.push({
       role: "assistant",
-      content: isEditedForCatch ? reply + "\n[MODIFIÃ‰]" : reply,
+      content: isEditedForCatch ? reply + "\n[MODIFIÉ]" : reply,
       timestamp: Date.now(),
       userId: userIdForCatch,
       conversationId: conversationIdForCatch,
@@ -3676,7 +3676,7 @@ app.post("/chat", async (req, res) => {
     if (!isPrivateConversation) {
       const pushedRef = await messagesRef.push({
         role: "user",
-        content: isEdited ? message + "\n[MODIFIÃ‰]" : message,
+        content: isEdited ? message + "\n[MODIFIÉ]" : message,
         timestamp: Date.now(),
         userId,
         conversationId
@@ -3736,7 +3736,7 @@ app.post("/chat", async (req, res) => {
 
       const pushedRef = await messagesRef.push({
         role: "assistant",
-        content: isEdited ? reply + "\n[MODIFIÃ‰]" : reply,
+        content: isEdited ? reply + "\n[MODIFIÉ]" : reply,
         timestamp: Date.now(),
         userId,
         conversationId,
@@ -3823,8 +3823,8 @@ app.post("/chat", async (req, res) => {
       };
     }
     
-    // 1) Analyse suicide : risque immÃ©diat et clarification possible.
-    // Cette Ã©tape peut dÃ©clencher des rÃ©ponses priorisÃ©es sans aller plus loin.
+    // 1) Analyse suicide : risque immédiat et clarification possible.
+    // Cette étape peut déclencher des réponses priorisées sans aller plus loin.
     markChatStage("suicide_analysis");
     const suicide = await analyzeSuicideRisk(
       message,
@@ -4013,8 +4013,8 @@ app.post("/chat", async (req, res) => {
       });
     }
     
-    // 2) Analyse de rappel mÃ©moire : identifier si l'utilisateur demande
-    // explicitement un rappel de la mÃ©moire Ã  long terme.
+    // 2) Analyse de rappel mémoire : identifier si l'utilisateur demande
+    // explicitement un rappel de la mémoire à long terme.
     markChatStage("recall_analysis");
     const [recallRouting, precomputedContactAnalysis] = await Promise.all([
       analyzeRecallRouting(
@@ -4145,7 +4145,7 @@ app.post("/chat", async (req, res) => {
     // Determine whether the current message should be handled as a contact-style interaction.
     // This influences mode detection and the choice between contact, info, or exploration flows.
     // 3) Passage par le mode contact / exploration / info.
-    // Cette Ã©tape dÃ©termine le style gÃ©nÃ©ral de la rÃ©ponse.
+    // Cette étape détermine le style général de la réponse.
     markChatStage("contact_mode_analysis");
     let contactAnalysis = precomputedContactAnalysis;
     throwIfCanceled();
@@ -4288,8 +4288,8 @@ app.post("/chat", async (req, res) => {
       });
     }
     
-    // 4) GÃ©nÃ©ration principale de la rÃ©ponse selon le mode dÃ©tectÃ©,
-    // puis application d'un pipeline de correction si le contenu est en conflit modÃ¨le.
+    // 4) Génération principale de la réponse selon le mode détecté,
+    // puis application d'un pipeline de correction si le contenu est en conflit modèle.
     markChatStage("reply_generation");
 
     const generatedBase = await generateReply({
@@ -4424,7 +4424,7 @@ app.post("/chat", async (req, res) => {
     }
     
 
-    // 5) Mise Ã  jour de la mÃ©moire interne aprÃ¨s la rÃ©ponse finale.
+    // 5) Mise à jour de la mémoire interne après la réponse finale.
     markChatStage("memory_update");
     const rawNewMemory = await updateMemory(
       previousMemory,
@@ -4560,9 +4560,9 @@ app.post("/chat", async (req, res) => {
           const messageData = snapshot.val();
           if (messageData && typeof messageData.content === "string") {
             let newContent = messageData.content;
-            // Replace [MODIFIÃ‰] with [ENVOI STOPPE] if present, otherwise append it
-            if (newContent.includes("[MODIFIÃ‰]")) {
-              newContent = newContent.replace(/\n?\[MODIFIÃ‰\]$/, "\n[ENVOI STOPPE]");
+            // Replace [MODIFIÉ] with [ENVOI STOPPE] if present, otherwise append it
+            if (newContent.includes("[MODIFIÉ]")) {
+              newContent = newContent.replace(/\n?\[MODIFIÉ\]$/, "\n[ENVOI STOPPE]");
             } else {
               newContent = newContent.trim() + "\n[ENVOI STOPPE]";
             }
