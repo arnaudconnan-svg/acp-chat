@@ -3601,7 +3601,6 @@
         memoryRewriteSource: typeof safe.memoryRewriteSource === "string" ? safe.memoryRewriteSource.trim() : "",
         memoryCompressed: safe.memoryCompressed === true,
         memoryBeforeCompression: typeof safe.memoryBeforeCompression === "string" ? safe.memoryBeforeCompression.trim() : "",
-        soberReadjustmentOriginalReply: typeof safe.soberReadjustmentOriginalReply === "string" ? safe.soberReadjustmentOriginalReply.trim() : "",
         criticTriggered: safe.criticTriggered === true,
         criticIssues: Array.isArray(safe.criticIssues) ? safe.criticIssues.map(v => String(v || "").trim()).filter(Boolean) : [],
         writerMode: typeof safe.writerMode === "string" ? safe.writerMode.trim() : "",

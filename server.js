@@ -1857,7 +1857,6 @@ app.post("/api/account/conversations/import-local", requireUserAuth, async (req,
               modelConflict: debugMeta.modelConflict === true,
               humanFieldRisk: debugMeta.humanFieldRisk === true,
               humanFieldOriginalReply: typeof debugMeta.humanFieldOriginalReply === "string" ? debugMeta.humanFieldOriginalReply : null,
-              soberReadjustmentOriginalReply: typeof debugMeta.soberReadjustmentOriginalReply === "string" ? debugMeta.soberReadjustmentOriginalReply : null
             } : null,
             stateSnapshot: stateSnapshot ? {
               memory: typeof stateSnapshot.memory === "string" ? normalizeMemory(stateSnapshot.memory, buildDefaultPromptRegistry()) : "",
@@ -3460,7 +3459,6 @@ app.post("/chat", async (req, res) => {
         safe.memoryCompressed === true && typeof safe.memoryBeforeCompression === "string" ?
           normalizeMemory(safe.memoryBeforeCompression, promptRegistry) :
           null,
-      soberReadjustmentOriginalReply: typeof safe.soberReadjustmentOriginalReply === "string" ? safe.soberReadjustmentOriginalReply : null,
       criticTriggered: safe.criticTriggered === true,
       criticIssues: Array.isArray(safe.criticIssues) ? safe.criticIssues : [],
       // Posture contract (V3)
@@ -4304,8 +4302,6 @@ app.post("/chat", async (req, res) => {
     throwIfCanceled();
 
     let reply = generatedBase.reply;
-    let soberReadjustmentOriginalReply = null;
-
     let relanceAnalysis = null;
     const finalReplyRewriteSources = [];
 
@@ -4476,7 +4472,6 @@ app.post("/chat", async (req, res) => {
       memoryRewriteSource,
       memoryCompressed: memoryWasCompressed,
       memoryBeforeCompression,
-      soberReadjustmentOriginalReply,
       criticTriggered,
       criticIssues,
       humanFieldRisk,

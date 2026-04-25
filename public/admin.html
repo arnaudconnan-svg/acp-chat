@@ -913,7 +913,6 @@
         memoryRewriteSource: typeof safe.memoryRewriteSource === "string" ? safe.memoryRewriteSource.trim() : null,
         memoryCompressed: safe.memoryCompressed === true,
         memoryBeforeCompression: typeof safe.memoryBeforeCompression === "string" ? safe.memoryBeforeCompression.trim() : null,
-        soberReadjustmentOriginalReply: typeof safe.soberReadjustmentOriginalReply === "string" ? safe.soberReadjustmentOriginalReply.trim() : null,
         criticTriggered: safe.criticTriggered === true,
         criticIssues: Array.isArray(safe.criticIssues) ? safe.criticIssues.map(v => String(v || "").trim()).filter(Boolean) : [],
         writerMode: typeof safe.writerMode === "string" ? safe.writerMode.trim() : null,
