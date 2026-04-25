@@ -126,6 +126,38 @@ const cases = [
       assertChatOk(result, "minimal history relational readjustment");
       assert(result.body.debugMeta.relationalAdjustmentTriggered === true || result.body.debugMeta.needsSoberReadjustment === true, "minimal history relational readjustment: expected a relational readjustment signal in debugMeta");
     }
+  },
+  {
+    name: "debugMeta transition fields present on standard turn",
+    payload: buildChatPayload({
+      conversationId: cid("c_pipeline_transition_fields"),
+      message: "Comment tu vas ?",
+      flags: { conversationStateKey: "exploration" }
+    }),
+    assert: (result) => {
+      assertChatOk(result, "debugMeta transition fields present on standard turn");
+      const meta = result.body.debugMeta;
+      assert(typeof meta.conversationStateKey === "string" && meta.conversationStateKey.length > 0,
+        `expected non-empty conversationStateKey, got '${meta.conversationStateKey}'`);
+      assert(typeof meta.stateTransitionValid === "boolean",
+        `expected stateTransitionValid to be boolean, got '${typeof meta.stateTransitionValid}'`);
+      assert(meta.stateTransitionFrom === null || typeof meta.stateTransitionFrom === "string",
+        `expected stateTransitionFrom to be null or string, got '${typeof meta.stateTransitionFrom}'`);
+    }
+  },
+  {
+    name: "debugMeta transition valid for known good path",
+    payload: buildChatPayload({
+      conversationId: cid("c_pipeline_transition_valid"),
+      message: "Quelque chose me pese la.",
+      flags: { conversationStateKey: "exploration" }
+    }),
+    assert: (result) => {
+      assertChatOk(result, "debugMeta transition valid for known good path");
+      const meta = result.body.debugMeta;
+      assert(meta.stateTransitionValid === true,
+        `expected stateTransitionValid=true for exploration->exploration, got '${meta.stateTransitionValid}'`);
+    }
   }
 ];
 

@@ -64,6 +64,11 @@ for (const s of CONVERSATION_STATES) {
 assert(isValidTransition("exploration", "contact"), "isValidTransition: exploration -> contact");
 assert(isValidTransition("contact", "post_contact"), "isValidTransition: contact -> post_contact");
 assert(isValidTransition("stabilization", "closure"), "isValidTransition: stabilization -> closure");
+// Self-transitions
+assert(isValidTransition("exploration", "exploration"), "isValidTransition: exploration -> exploration (self)");
+assert(isValidTransition("contact", "contact"), "isValidTransition: contact -> contact (self)");
+assert(isValidTransition("stabilization", "stabilization"), "isValidTransition: stabilization -> stabilization (self)");
+assert(isValidTransition("info", "info"), "isValidTransition: info -> info (self)");
 // closure has restricted successors
 assert(!isValidTransition("closure", "alliance_rupture"), "isValidTransition: closure -> alliance_rupture BLOCKED");
 assert(!isValidTransition("closure", "stabilization"), "isValidTransition: closure -> stabilization BLOCKED");

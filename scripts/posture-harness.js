@@ -251,6 +251,29 @@ check("state transition guard: closure -> stabilization marked invalid", () => {
     `expected stateTransitionValid=false for closure -> stabilization, got '${out.stateTransitionValid}'`);
 });
 
+check("state transition guard: closure -> alliance_rupture marked invalid", () => {
+  const out = buildPostureDecision(explorationInput({
+    previousConversationStateKey: "closure",
+    allianceState: "rupture"
+  }));
+  assert(out.conversationStateKey === "alliance_rupture",
+    `expected 'alliance_rupture', got '${out.conversationStateKey}'`);
+  assert(out.stateTransitionValid === false,
+    `expected stateTransitionValid=false for closure -> alliance_rupture, got '${out.stateTransitionValid}'`);
+});
+
+check("state transition guard: known valid exploration -> contact is valid", () => {
+  const out = buildPostureDecision(explorationInput({
+    previousConversationStateKey: "exploration",
+    detectedMode: "contact",
+    contactAnalysis: { isContact: true, contactSubmode: "regulated" }
+  }));
+  assert(out.conversationStateKey === "contact",
+    `expected 'contact', got '${out.conversationStateKey}'`);
+  assert(out.stateTransitionValid === true,
+    `expected stateTransitionValid=true for exploration -> contact, got '${out.stateTransitionValid}'`);
+});
+
 // ─── writerMode derivation ────────────────────────────────────────────────────
 
 check("writerMode: exploration + level 0 → exploration_open", () => {
