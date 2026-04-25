@@ -73,6 +73,11 @@ const {
   shouldForceExplorationForSituatedImpasse
 } = require("./lib/pipeline");
 const { buildDefaultPromptRegistry } = require("./lib/prompts");
+const {
+  buildTopChips,
+  buildDirectivityText,
+  buildResponseDebugMeta: _buildResponseDebugMeta
+} = require("./lib/debugmeta");
 
 // Local fallback storage for message data when needed.
 const MESSAGES_FILE = path.join(__dirname, "data/messages.json");
@@ -4405,195 +4410,13 @@ app.post("/chat", async (req, res) => {
       return pushedRef.key || null;
     }
     
-    function buildTopChips({
-      suicideLevel = "N0",
-      mode = null,
-      infoSubmode = null,
-      contactSubmode = null,
-      explorationSubmode = null,
-      interpretationRejection = false,
-      isRecallRequest = false,
-      needsSoberReadjustment = false,
-      relationalAdjustmentTriggered = false
-    } = {}) {
-      const chips = [];
-
-      function buildExplorationSubmodeChipLabel(submode = null) {
-        if (submode === "interpretation") return "EXPLORATION : interprÃ©tation";
-        if (submode === "phenomenological_follow") return "EXPLORATION : accompagnement";
-        return "EXPLORATION";
-      }
-      
-      if (suicideLevel === "N2") {
-        chips.push("URGENCE : risque suicidaire");
-      } else if (suicideLevel === "N1") {
-        chips.push("Risque suicidaire Ã  clarifier");
-      } else if (mode === "exploration") {
-        chips.push(buildExplorationSubmodeChipLabel(explorationSubmode));
-      } else if (mode === "info") {
-        const safeInfoSubmode = normalizeInfoSubmode(infoSubmode);
-        chips.push(
-          safeInfoSubmode === "psychoeducation" ? "PSYCHOEDUCATION" :
-          safeInfoSubmode === "app_features" ? "INFO APP : fonctionnalitÃ©s" :
-          safeInfoSubmode === "pure" ? "INFO PURE" :
-          "INFO"
-        );
-      } else if (mode === "contact") {
-        const safeContactSubmode = normalizeContactSubmode(contactSubmode);
-        chips.push(
-          safeContactSubmode === "dysregulated" ? "CONTACT : dÃ©rÃ©gulÃ©" :
-          safeContactSubmode === "regulated" ? "CONTACT : rÃ©gulÃ©" :
-          "CONTACT"
-        );
-      }
-
-      if (interpretationRejection === true) {
-        chips.push("Rejet d'interprÃ©tation");
-      }
-      
-      if (isRecallRequest === true) {
-        chips.push("Demande de rappel mÃ©moire");
-      }
-      
-      if (needsSoberReadjustment === true) {
-        chips.push("RÃ©ajustement sobre");
-      }
-      
-      if (relationalAdjustmentTriggered === true) {
-        chips.push("Ajustement relationnel");
-      }
-      
-      return chips;
-    }
-    
-    function buildDirectivityText({
-      mode = null,
-      explorationCalibrationLevel = null,
-      explorationDirectivityLevel = 0,
-      explorationRelanceWindow = []
-    } = {}) {
-      if (mode !== "exploration") {
-        return "";
-      }
-      
-      const safeWindow = normalizeExplorationRelanceWindow(explorationRelanceWindow);
-      const safeNextLevel = clampExplorationDirectivityLevel(explorationDirectivityLevel);
-      const safeRetainedLevel = explorationCalibrationLevel !== null && explorationCalibrationLevel !== undefined ?
-        clampExplorationDirectivityLevel(explorationCalibrationLevel) :
-        null;
-
-      if (safeRetainedLevel === null && safeNextLevel <= 0) {
-        return "";
-      }
-      
-      return [
-        safeRetainedLevel !== null ? `Niveau de structuration retenu : ${safeRetainedLevel}/4` : null,
-        `Fenetre de relance : [${safeWindow.map(v => (v ? "1" : "0")).join("-")}]`,
-        `Niveau de directivite (tour suivant) : ${safeNextLevel}/4`
-      ].filter(Boolean).join("\n");
-    }
-    
-    function buildResponseDebugMeta({
-      memory = "",
-      suicideLevel = "N0",
-      mode = null,
-      conversationStateKey = "exploration",
-      consecutiveNonExplorationTurns = 0,
-      infoSubmode = null,
-      contactSubmode = null,
-      interpretationRejection = false,
-      needsSoberReadjustment = false,
-      relationalAdjustmentTriggered = false,
-      isRecallRequest = false,
-      explorationCalibrationLevel = null,
-      explorationDirectivityLevel = 0,
-      explorationRelanceWindow = [],
-      explorationSubmode = null,
-      therapeuticAllianceSource = null,
-      rewriteSource = null,
-      memoryRewriteSource = null,
-      memoryCompressed = false,
-      memoryBeforeCompression = null,
-      soberReadjustmentOriginalReply = null,
-      criticTriggered = false,
-      criticIssues = [],
-      // Posture contract (V3)
-      writerMode = null,
-      intent = null,
-      forbidden = [],
-      confidenceSignal = "high",
-      // Phase B structural flags
-      allianceState = "good",
-      engagementLevel = "active",
-      stagnationTurns = 0,
-      processingWindow = "open",
-      dependencyRiskScore = 0,
-      dependencyRiskLevel = "low",
-      externalSupportMode = "none",
-      closureIntent = false,
-      promptRegistry = activePromptRegistry
-    } = {}) {
-      return {
-        topChips: buildTopChips({
-          suicideLevel,
-          mode,
-          infoSubmode,
-          contactSubmode,
-          explorationSubmode,
-          interpretationRejection,
-          isRecallRequest,
-          needsSoberReadjustment,
-          relationalAdjustmentTriggered
-        }),
-        memory: normalizeMemory(memory, promptRegistry),
-        directivityText: buildDirectivityText({
-          mode,
-          explorationCalibrationLevel,
-          explorationDirectivityLevel,
-          explorationRelanceWindow
-        }),
-        conversationStateKey: normalizeConversationStateKey(conversationStateKey),
-        consecutiveNonExplorationTurns: normalizeConsecutiveNonExplorationTurns(consecutiveNonExplorationTurns),
-        infoSubmode: normalizeInfoSubmode(infoSubmode),
-        contactSubmode: normalizeContactSubmode(contactSubmode),
-        interpretationRejection: interpretationRejection === true,
-        needsSoberReadjustment: needsSoberReadjustment === true,
-        relationalAdjustmentTriggered: relationalAdjustmentTriggered === true,
-        pipelineStages: chatStageTimings.map((entry) => ({
-          stage: typeof entry?.stage === "string" ? entry.stage : null,
-          deltaMs: Number.isFinite(entry?.deltaMs) ? entry.deltaMs : null
-        })).filter((entry) => entry.stage),
-        explorationCalibrationLevel: explorationCalibrationLevel !== null && explorationCalibrationLevel !== undefined ?
-          clampExplorationDirectivityLevel(explorationCalibrationLevel) :
-          null,
-        explorationSubmode: mode === "exploration" && typeof explorationSubmode === "string" ? explorationSubmode : null,
-        therapeuticAllianceSource: typeof therapeuticAllianceSource === "string" ? therapeuticAllianceSource : null,
-        rewriteSource: typeof rewriteSource === "string" ? rewriteSource : null,
-        memoryRewriteSource: typeof memoryRewriteSource === "string" ? memoryRewriteSource : null,
-        memoryCompressed: memoryCompressed === true,
-        memoryBeforeCompression:
-          memoryCompressed === true && typeof memoryBeforeCompression === "string" ?
-            normalizeMemory(memoryBeforeCompression, promptRegistry) :
-            null,
-        soberReadjustmentOriginalReply: typeof soberReadjustmentOriginalReply === "string" ? soberReadjustmentOriginalReply : null,
-        criticTriggered: criticTriggered === true,
-        criticIssues: Array.isArray(criticIssues) ? criticIssues : [],
-        // Posture contract (V3)
-        writerMode: typeof writerMode === "string" ? writerMode : null,
-        intent: typeof intent === "string" ? intent : null,
-        forbidden: Array.isArray(forbidden) ? forbidden : [],
-        confidenceSignal: typeof confidenceSignal === "string" ? confidenceSignal : "high",
-        // Phase B structural flags
-        allianceState: normalizeAllianceState(allianceState),
-        engagementLevel: normalizeEngagementLevel(engagementLevel),
-        stagnationTurns: normalizeStagnationTurns(stagnationTurns),
-        processingWindow: normalizeProcessingWindow(processingWindow),
-        dependencyRiskScore: clampDependencyRiskScore(dependencyRiskScore),
-        dependencyRiskLevel: normalizeDependencyRiskLevel(dependencyRiskLevel),
-        externalSupportMode: normalizeExternalSupportMode(externalSupportMode),
-        closureIntent: closureIntent === true,
-        traceId
-      };
+    function buildResponseDebugMeta(params) {
+      return _buildResponseDebugMeta({
+        ...params,
+        pipelineStages: chatStageTimings,
+        traceId,
+        normalizeMemory: (m) => normalizeMemory(m, params.promptRegistry || activePromptRegistry)
+      });
     }
     
     async function applyModelConflictPipeline({
