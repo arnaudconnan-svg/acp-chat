@@ -78,6 +78,7 @@ const {
   buildDirectivityText,
   buildResponseDebugMeta: _buildResponseDebugMeta
 } = require("./lib/debugmeta");
+const { buildLLMUserTurns } = require("./lib/llm-messages");
 
 // Local fallback storage for message data when needed.
 const MESSAGES_FILE = path.join(__dirname, "data/messages.json");
@@ -1485,18 +1486,9 @@ async function generateReply({
     contactSubmode,
   );
 
-  const safeHistory = Array.isArray(history) ? history : [];
-  const safeMessage = String(message || "");
-  const lastHistoryEntry = safeHistory.length > 0 ? safeHistory[safeHistory.length - 1] : null;
-  const historyAlreadyContainsCurrentUserMessage =
-    lastHistoryEntry &&
-    lastHistoryEntry.role === "user" &&
-    String(lastHistoryEntry.content || "").trim() === safeMessage.trim();
-  
   const messages = [
     { role: "system", content: systemPrompt },
-    ...safeHistory.map(m => ({ role: m.role, content: m.content })),
-    ...(historyAlreadyContainsCurrentUserMessage ? [] : [{ role: "user", content: safeMessage }])
+    ...buildLLMUserTurns(message, history),
   ];
   
   // Send the assembled prompt and conversation history to the LLM.

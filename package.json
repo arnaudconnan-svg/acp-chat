@@ -12,7 +12,10 @@
     "flags:harness": "node scripts/flags-harness.js",
     "debugmeta-unit:harness": "node scripts/debugmeta-unit-harness.js",
     "debugmeta:harness": "node scripts/debugmeta-harness.js",
-    "verify": "node --check server.js && npm run smoke && npm run state:harness && npm run posture:harness && npm run flags:harness && npm run debugmeta-unit:harness && npm run pipeline:harness && npm run debugmeta:harness",
+    "llm-messages:harness": "node scripts/llm-messages-harness.js",
+    "smoke:ui": "node scripts/ui-smoke.js",
+    "eval:chat": "node scripts/chat-evals.js",
+    "verify": "node --check server.js && npm run smoke && npm run state:harness && npm run posture:harness && npm run flags:harness && npm run debugmeta-unit:harness && npm run pipeline:harness && npm run debugmeta:harness && npm run llm-messages:harness",
     "reset:data": "node scripts/reset-app-data.js --apply",
     "rtdb:index": "node scripts/ensure-rtdb-index.js",
     "rtdb:index:apply": "node scripts/ensure-rtdb-index.js --apply",
@@ -28,5 +31,8 @@
     "firebase-admin": "^12.0.0",
     "nodemailer": "^8.0.5",
     "openai": "^6.25.0"
+  },
+  "devDependencies": {
+    "playwright": "^1.59.1"
   }
 }
