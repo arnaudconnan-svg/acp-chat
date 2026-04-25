@@ -1778,6 +1778,52 @@
           return normalizeReplayDebugMeta(debugMeta);
         }
 
+        function translateWriterMode(mode) {
+          const MAP = {
+            exploration_open:     "exploration ouverte",
+            exploration_guided:   "exploration guid\u00e9e",
+            post_contact:         "post-contact",
+            stabilization:        "stabilisation",
+            alliance_rupture:     "rupture d'alliance",
+            closure:              "cl\u00f4ture",
+            contact_regulated:    "contact r\u00e9gul\u00e9",
+            contact_dysregulated: "contact d\u00e9r\u00e9gul\u00e9",
+            info_pure:            "info pure",
+            info_psychoeducation: "info psycho\u00e9ducation",
+            info_app_features:    "info app",
+            n1_crisis:            "crise N1"
+          };
+          return MAP[mode] || mode;
+        }
+
+        function translateForbidden(value) {
+          const MAP = {
+            prescriptive_language:   "langage prescriptif",
+            relance:                 "relance",
+            interpretive_hypothesis: "hypoth\u00e8se interpr\u00e9tative",
+            open_question:           "question ouverte",
+            list:                    "liste",
+            self_justification:      "auto-justification",
+            recap:                   "r\u00e9capitulatif",
+            single_anchor_proposal:  "proposition d'ancrage"
+          };
+          return MAP[value] || value;
+        }
+
+        function translateConfidenceSignal(value) {
+          if (value === "low") return "faible";
+          if (value === "high") return "\u00e9lev\u00e9";
+          return value;
+        }
+
+        function translateInfoRoutingSource(value) {
+          if (!value) return null;
+          if (value === "deterministic_app_features" || value === "deterministic_human_field") return "d\u00e9terministe";
+          if (value === "llm") return "LLM";
+          if (value === "llm_fallback") return "LLM (fallback)";
+          return value;
+        }
+
         function buildNaturalDebugSummary(meta) {
           const lines = [];
 
@@ -1811,10 +1857,6 @@
 
           if (meta.rewriteSource) {
             lines.push(`La reponse finale a ete re-ecrite via: ${meta.rewriteSource}.`);
-          }
-
-          if (meta.memoryRewriteSource) {
-            lines.push(`La memoire a ete re-ecrite via: ${meta.memoryRewriteSource}.`);
           }
 
           if (meta.criticTriggered === true) {
@@ -1852,20 +1894,29 @@
             sections.push({
               title: "Contrat de posture",
               content: [
-                `Mode : ${meta.writerMode}`,
-                (isExplorationMode && Number.isInteger(meta.explorationCalibrationLevel)) ?
-                  `Niveau de structuration retenu : ${meta.explorationCalibrationLevel}/4` : null,
+                `Mode : ${translateWriterMode(meta.writerMode)}`,
                 meta.intent ? `Intention : ${meta.intent}` : null,
-                (meta.forbidden && meta.forbidden.length) ? `Interdit : ${meta.forbidden.join(", ")}` : null,
-                meta.confidenceSignal ? `Signal confiance : ${meta.confidenceSignal}` : null,
-                meta.infoRoutingSource ? `Routage info : ${meta.infoRoutingSource}` : null,
+                (meta.forbidden && meta.forbidden.length) ? `Interdit : ${meta.forbidden.map(translateForbidden).join(", ")}` : null,
+                meta.confidenceSignal ? `Signal confiance : ${translateConfidenceSignal(meta.confidenceSignal)}` : null,
+                meta.infoRoutingSource ? `Routage info : ${translateInfoRoutingSource(meta.infoRoutingSource)}` : null,
                 meta.stateTransitionValid === false && meta.stateTransitionRequested
-                  ? `Transition refusée : ${meta.stateTransitionFrom || "(inconnu)"} -> ${meta.stateTransitionRequested}`
+                  ? `Transition refus\u00e9e : ${meta.stateTransitionFrom || "(inconnu)"} -> ${meta.stateTransitionRequested}`
                   : null,
                 meta.stateTransitionValid === false
                   ? `Transition retenue : ${meta.conversationStateKey || "(inconnu)"}`
                   : null,
               ].filter(Boolean).join("\n")
+            });
+          }
+
+          const shouldShowDirectivity =
+            !!meta.directivityText &&
+            (meta.conversationStateKey === "exploration" ||
+              (typeof meta.writerMode === "string" && meta.writerMode.indexOf("exploration") === 0));
+          if (shouldShowDirectivity) {
+            sections.push({
+              title: "Directivit\u00e9",
+              content: meta.directivityText
             });
           }
 
@@ -1879,19 +1930,8 @@
           
           if (meta.memory) {
             sections.push({
-              title: "Mémoire",
+              title: "M\u00e9moire",
               content: meta.memory
-            });
-          }
-          
-          const shouldShowDirectivity =
-            !!meta.directivityText &&
-            (meta.conversationStateKey === "exploration" ||
-              (typeof meta.writerMode === "string" && meta.writerMode.indexOf("exploration") === 0));
-          if (shouldShowDirectivity) {
-            sections.push({
-              title: "Directivité",
-              content: meta.directivityText
             });
           }
 
@@ -1962,6 +2002,22 @@
                 titleColor: "#9c3b2c",
                 blockBackground: "#fff0ee",
                 blockBorder: "#e07e6a"
+              };
+            }
+
+            if (title === "Contrat de posture") {
+              return {
+                titleColor: "#888888",
+                blockBackground: "#ffffff",
+                blockBorder: "#e0e0e0"
+              };
+            }
+
+            if (title === "R\u00e9\u00e9criture m\u00e9moire") {
+              return {
+                titleColor: "#9c2d6c",
+                blockBackground: "#fff0f7",
+                blockBorder: "#f0a0c8"
               };
             }
 
