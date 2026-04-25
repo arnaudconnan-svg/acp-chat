@@ -4366,7 +4366,26 @@ app.post("/chat", async (req, res) => {
     }
 
     const finalReplyRewriteSource = finalReplyRewriteSources.join("+") || null;
-    const therapeuticAllianceSource = null;
+
+    // Capture the reply before relational adjustment for debug observability.
+    // Only performed in debug mode (logsEnabled) to avoid an extra LLM call in production.
+    let therapeuticAllianceSource = null;
+    if (logsEnabled && postureDecision.relationalAdjustmentTriggered === true) {
+      const t_noAdj = Date.now();
+      const generatedWithoutAdjustment = await generateReply({
+        message,
+        history: recentHistory,
+        memory: previousMemory,
+        postureDecision: { ...postureDecision, relationalAdjustmentTriggered: false },
+        infoSubmode: detectedInfoSubmode,
+        contactSubmode: detectedContactSubmode,
+        interpretationRejection: safeInterpretationRejection,
+        promptRegistry: activePromptRegistry,
+      });
+      chatStageTimings.push({ stage: "therapeutic_alliance_source", deltaMs: Date.now() - t_noAdj });
+      throwIfCanceled();
+      therapeuticAllianceSource = generatedWithoutAdjustment.reply;
+    }
     
     if (finalDetectedMode === "exploration") {
       relanceAnalysis = await analyzeExplorationRelance({
