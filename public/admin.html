@@ -942,8 +942,7 @@
           role: String(item?.role || "").trim(),
           content: String(item?.content || "").trim(),
           debug: Array.isArray(item?.debug) ? item.debug.map(line => String(line || "")) : [],
-          debugMeta: normalizeReplayDebugMeta(item?.debugMeta),
-          comparisonResults: Array.isArray(item?.comparisonResults) ? item.comparisonResults : null
+          debugMeta: normalizeReplayDebugMeta(item?.debugMeta)
         }))
         .filter(item => (item.role === "user" || item.role === "assistant") && item.content)
         .slice(-120);
@@ -1956,21 +1955,6 @@
         }
         
         function buildAssistantVariants(msg) {
-          const source = Array.isArray(msg.comparisonResults) && msg.comparisonResults.length ?
-            msg.comparisonResults :
-            Array.isArray(msg.results) && msg.results.length ?
-            msg.results :
-            null;
-          
-          if (source) {
-            return source.map(entry => ({
-              label: String(entry.label || "").trim(),
-              content: String(entry.reply || ""),
-              debug: Array.isArray(entry.debug) ? entry.debug : [],
-              debugMeta: entry.debugMeta && typeof entry.debugMeta === "object" ? entry.debugMeta : {}
-            }));
-          }
-          
           const parsed = extractCompareLabel(msg.content || "");
           
           return [{

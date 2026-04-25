@@ -5483,7 +5483,6 @@ app.get("/api/account/conversations/:id", requireUserAuth, async (req, res) => {
           memory: typeof value.stateSnapshot.memory === "string" ? value.stateSnapshot.memory : "",
           flags: normalizeSessionFlags(value.stateSnapshot.flags || {})
         } : null,
-        comparisonResults: Array.isArray(value?.comparisonResults) ? value.comparisonResults : null,
         timestamp: Number(value?.timestamp || 0)
       }))
       .sort((a, b) => Number(a.timestamp || 0) - Number(b.timestamp || 0));
@@ -5786,8 +5785,7 @@ app.post("/api/account/conversations/import-local", requireUserAuth, async (req,
             stateSnapshot: stateSnapshot ? {
               memory: typeof stateSnapshot.memory === "string" ? normalizeMemory(stateSnapshot.memory, buildDefaultPromptRegistry()) : "",
               flags: normalizeSessionFlags(stateSnapshot.flags || {})
-            } : null,
-            comparisonResults: Array.isArray(safeEntry?.comparisonResults) ? safeEntry.comparisonResults : null
+            } : null
           };
         })
         .filter(Boolean);
@@ -5832,8 +5830,7 @@ app.post("/api/account/conversations/import-local", requireUserAuth, async (req,
           conversationId,
           debug: message.debug,
           debugMeta: message.debugMeta,
-          stateSnapshot: message.stateSnapshot,
-          comparisonResults: message.comparisonResults
+          stateSnapshot: message.stateSnapshot
         });
       }
 
@@ -5964,7 +5961,6 @@ app.post("/api/branches/from-message", async (req, res) => {
           memory: typeof entry.item.stateSnapshot.memory === "string" ? entry.item.stateSnapshot.memory : "",
           flags: normalizeSessionFlags(entry.item.stateSnapshot.flags || {})
         } : null,
-        comparisonResults: Array.isArray(entry.item.comparisonResults) ? entry.item.comparisonResults : null,
         createdAt: typeof entry.item.createdAt === "string" ? entry.item.createdAt : null
       }));
     } else {
@@ -5979,7 +5975,6 @@ app.post("/api/branches/from-message", async (req, res) => {
             memory: typeof item.stateSnapshot.memory === "string" ? item.stateSnapshot.memory : "",
             flags: normalizeSessionFlags(item.stateSnapshot.flags || {})
           } : null,
-          comparisonResults: Array.isArray(item?.comparisonResults) ? item.comparisonResults : null,
           createdAt: typeof item?.createdAt === "string" ? item.createdAt : null
         }))
         .filter(item => item.role && item.content);
@@ -6111,7 +6106,6 @@ app.post("/api/branches/create-and-activate", async (req, res) => {
           memory: typeof entry.item.stateSnapshot.memory === "string" ? entry.item.stateSnapshot.memory : "",
           flags: normalizeSessionFlags(entry.item.stateSnapshot.flags || {})
         } : null,
-        comparisonResults: Array.isArray(entry.item.comparisonResults) ? entry.item.comparisonResults : null,
         createdAt: typeof entry.item.createdAt === "string" ? entry.item.createdAt : null
       }));
     } else {
@@ -6126,7 +6120,6 @@ app.post("/api/branches/create-and-activate", async (req, res) => {
             memory: typeof item.stateSnapshot.memory === "string" ? item.stateSnapshot.memory : "",
             flags: normalizeSessionFlags(item.stateSnapshot.flags || {})
           } : null,
-          comparisonResults: Array.isArray(item?.comparisonResults) ? item.comparisonResults : null,
           createdAt: typeof item?.createdAt === "string" ? item.createdAt : null
         }))
         .filter(item => item.role && item.content);
@@ -6194,7 +6187,6 @@ app.post("/api/branches/create-and-activate", async (req, res) => {
             conversationId: branchConversationId,
             debug: Array.isArray(message?.debug) ? message.debug : [],
             debugMeta: message?.debugMeta && typeof message.debugMeta === "object" ? message.debugMeta : null,
-            comparisonResults: Array.isArray(message?.comparisonResults) ? message.comparisonResults : null,
             branchId,
             sourceMessageId: typeof message?.id === "string" ? message.id : null
           });
@@ -6480,7 +6472,6 @@ app.post("/api/branches/:id/activate", async (req, res) => {
             conversationId: branchConversationId,
             debug: Array.isArray(message?.debug) ? message.debug : [],
             debugMeta: message?.debugMeta && typeof message.debugMeta === "object" ? message.debugMeta : null,
-            comparisonResults: Array.isArray(message?.comparisonResults) ? message.comparisonResults : null,
             branchId,
             sourceMessageId: typeof message?.id === "string" ? message.id : null
           });
@@ -6558,7 +6549,6 @@ app.get("/api/branches/:id", async (req, res) => {
           content: String(m?.content || ""),
           debug: Array.isArray(m?.debug) ? m.debug : [],
           debugMeta: m?.debugMeta && typeof m.debugMeta === "object" ? m.debugMeta : null,
-          comparisonResults: Array.isArray(m?.comparisonResults) ? m.comparisonResults : null,
           createdAt: typeof m?.createdAt === "string" ? m.createdAt : null
         }))
       : [];

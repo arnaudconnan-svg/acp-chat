@@ -3392,7 +3392,6 @@
           debug: Array.isArray(item?.debug) ? item.debug : [],
           debugMeta: item?.debugMeta && typeof item.debugMeta === "object" ? item.debugMeta : null,
           stateSnapshot: normalizeStoredStateSnapshot(item?.stateSnapshot),
-          comparisonResults: Array.isArray(item?.comparisonResults) ? item.comparisonResults : null,
           id: typeof item?.id === "string" ? item.id : undefined,
           t: Number(item?.timestamp || 0) || (Date.now() + index)
           })),
@@ -3450,7 +3449,6 @@
         content: greeting,
         debug: [],
         debugMeta: null,
-        comparisonResults: null,
         t: Date.now()
       }, ...safeMessages];
     }
@@ -3660,8 +3658,7 @@
             content: String(item?.content || "").trim(),
             debug: Array.isArray(item?.debug) ? item.debug.map(line => String(line || "")) : [],
             debugMeta: normalizeClientDebugMeta(item?.debugMeta),
-            stateSnapshot: normalizeStoredStateSnapshot(item?.stateSnapshot),
-            comparisonResults: Array.isArray(item?.comparisonResults) ? item.comparisonResults : null
+            stateSnapshot: normalizeStoredStateSnapshot(item?.stateSnapshot)
           }))
           .filter(item => (item.role === "user" || item.role === "assistant") && item.content)
           .slice(-120);
@@ -3738,7 +3735,6 @@
           content: item.content,
           debug: Array.isArray(item.debug) ? item.debug : [],
           debugMeta: normalizeClientDebugMeta(item.debugMeta),
-          comparisonResults: Array.isArray(item.comparisonResults) ? item.comparisonResults : null,
           t: baseTs - Math.max((anchorHistory.length || 1) - index, 1) * 1000
         }));
 
@@ -3783,7 +3779,6 @@
         content: item.content,
         debug: Array.isArray(item.debug) ? item.debug : [],
         debugMeta: normalizeClientDebugMeta(item.debugMeta),
-        comparisonResults: Array.isArray(item.comparisonResults) ? item.comparisonResults : null,
         t: baseTs - Math.max(payload.recentHistory.length - index, 1) * 1000
       }));
 
@@ -7586,8 +7581,7 @@
               content: String(item.content || ""),
               debug: Array.isArray(item.debug) ? item.debug : [],
               debugMeta: normalizeClientDebugMeta(item.debugMeta),
-              stateSnapshot: normalizeStoredStateSnapshot(item.stateSnapshot),
-              comparisonResults: Array.isArray(item.comparisonResults) ? item.comparisonResults : null
+              stateSnapshot: normalizeStoredStateSnapshot(item.stateSnapshot)
             }));
 
           const _branchSendBtn = document.getElementById("sendBtn");
@@ -9086,7 +9080,6 @@
                   content: String(m.content || ""),
                   debug: Array.isArray(m.debug) ? m.debug : [],
                   debugMeta: normalizeClientDebugMeta(m.debugMeta),
-                  comparisonResults: Array.isArray(m.comparisonResults) ? m.comparisonResults : null,
                   t: baseTs - Math.max((seedMessages.length || 1) - index, 1) * 1000
                 }));
 
