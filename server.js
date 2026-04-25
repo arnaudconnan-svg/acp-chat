@@ -1484,11 +1484,19 @@ async function generateReply({
     interpretationRejection,
     contactSubmode,
   );
+
+  const safeHistory = Array.isArray(history) ? history : [];
+  const safeMessage = String(message || "");
+  const lastHistoryEntry = safeHistory.length > 0 ? safeHistory[safeHistory.length - 1] : null;
+  const historyAlreadyContainsCurrentUserMessage =
+    lastHistoryEntry &&
+    lastHistoryEntry.role === "user" &&
+    String(lastHistoryEntry.content || "").trim() === safeMessage.trim();
   
   const messages = [
     { role: "system", content: systemPrompt },
-    ...history.map(m => ({ role: m.role, content: m.content })),
-    { role: "user", content: message }
+    ...safeHistory.map(m => ({ role: m.role, content: m.content })),
+    ...(historyAlreadyContainsCurrentUserMessage ? [] : [{ role: "user", content: safeMessage }])
   ];
   
   // Send the assembled prompt and conversation history to the LLM.

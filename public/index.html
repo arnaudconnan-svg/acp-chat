@@ -2578,6 +2578,7 @@
     const SESSION_INFO_DISMISSED_KEY = "facilitatio_session_info_dismissed";
     const SESSION_TIMEOUT_MS = 12 * 60 * 60 * 1000;
     const MAX_RECENT_TURNS = 8;
+    const CHAT_REQUEST_TIMEOUT_MS = 45000;
     const ADMIN_UI_KEY = "facilitatio_admin_ui";
     const ADMIN_REPLAY_KEY = "facilitatio_admin_replay";
     const CHAT_BOTTOM_THRESHOLD_PX = 12;
@@ -2585,6 +2586,7 @@
       authenticated: false,
       user: null
     };
+    const conversationDataMemoryCache = new Map();
 
     // Module-level intersession memory for authenticated accounts.
     // Populated once on load; used as initial memory for new conversations.
@@ -3173,6 +3175,55 @@
       };
     }
 
+    function normalizeStoredMessages(messages) {
+      if (!Array.isArray(messages)) {
+        return [];
+      }
+
+      return messages;
+    }
+
+    function buildSafeConversationData(data = {}) {
+      return {
+        messages: normalizeStoredMessages(data?.messages),
+        memory: typeof data?.memory === "string" && data.memory.trim() ?
+          data.memory :
+          defaultMemory(),
+        flags: normalizeStoredFlags(data?.flags),
+        updatedAt: Number(data?.updatedAt || Date.now()),
+        isPrivate: data?.isPrivate === true
+      };
+    }
+
+    function countMeaningfulConversationMessages(messages = []) {
+      if (!Array.isArray(messages)) {
+        return 0;
+      }
+
+      return messages.filter(item => (
+        item &&
+        !isOpeningGreetingMessage(item.content)
+      )).length;
+    }
+
+    function selectPreferredConversationData(primaryData, fallbackData) {
+      const safePrimary = buildSafeConversationData(primaryData || {});
+      const safeFallback = buildSafeConversationData(fallbackData || {});
+
+      const primaryMeaningful = countMeaningfulConversationMessages(safePrimary.messages);
+      const fallbackMeaningful = countMeaningfulConversationMessages(safeFallback.messages);
+
+      if (fallbackMeaningful > primaryMeaningful) {
+        return safeFallback;
+      }
+
+      if (fallbackMeaningful === primaryMeaningful && safeFallback.updatedAt > safePrimary.updatedAt) {
+        return safeFallback;
+      }
+
+      return safePrimary;
+    }
+
 
     
     function createEmptyConversationData(options = {}) {
@@ -3362,7 +3413,14 @@
       }
 
       const existing = loadConversationData(conversationId);
-      if (Array.isArray(existing.messages) && existing.messages.length > 0) {
+      const existingMessages = Array.isArray(existing.messages) ? existing.messages : [];
+      const hasLocalAssistantReply = existingMessages.some(item => (
+        item &&
+        item.role === "assistant" &&
+        !isOpeningGreetingMessage(item.content)
+      ));
+
+      if (hasLocalAssistantReply) {
         return true;
       }
 
@@ -3398,8 +3456,21 @@
           SESSION_OPENING_GREETING
         );
 
+        const localMeaningfulCount = existingMessages.filter(item => (
+          item &&
+          !isOpeningGreetingMessage(item.content)
+        )).length;
+        const remoteMeaningfulCount = normalizedMessages.filter(item => (
+          item &&
+          !isOpeningGreetingMessage(item.content)
+        )).length;
+
+        const messagesToStore = remoteMeaningfulCount >= localMeaningfulCount ?
+          normalizedMessages :
+          ensureOpeningGreeting(existingMessages, SESSION_OPENING_GREETING);
+
         saveConversationData(conversationId, {
-          messages: normalizedMessages,
+          messages: messagesToStore,
           memory: typeof conversation.memory === "string" && conversation.memory.trim() ? conversation.memory : defaultMemory(),
           flags: normalizeStoredFlags(conversation.flags || {}),
           updatedAt: Number(new Date(conversation.updatedAt || conversation.createdAt || Date.now())) || Date.now()
@@ -3503,51 +3574,53 @@
     }
     
     function loadConversationData(conversationId = getConversationId()) {
+      const safeConversationId = String(conversationId || "").trim();
+      if (!safeConversationId) {
+        return createEmptyConversationData();
+      }
+
       try {
-        const raw = localStorage.getItem(getConversationStorageKey(conversationId));
-        if (!raw) return createEmptyConversationData();
+        const raw = localStorage.getItem(getConversationStorageKey(safeConversationId));
+
+        if (!raw) {
+          const cached = conversationDataMemoryCache.get(safeConversationId);
+          return cached ? buildSafeConversationData(cached) : createEmptyConversationData();
+        }
         
         const parsed = JSON.parse(raw);
         if (parsed?.isPrivate === true) {
-          markConversationPrivate(conversationId);
+          markConversationPrivate(safeConversationId);
         }
-        return {
-          messages: Array.isArray(parsed?.messages) ? parsed.messages : [],
-          memory: typeof parsed?.memory === "string" && parsed.memory.trim() ?
-            parsed.memory : defaultMemory(),
-          flags: normalizeStoredFlags(parsed?.flags),
-          updatedAt: Number(parsed?.updatedAt || Date.now()),
-          isPrivate: parsed?.isPrivate === true
-        };
+
+        const safeData = buildSafeConversationData(parsed || {});
+        const cached = conversationDataMemoryCache.get(safeConversationId);
+        const preferredData = cached ?
+          selectPreferredConversationData(safeData, cached) :
+          safeData;
+
+        conversationDataMemoryCache.set(safeConversationId, preferredData);
+        return preferredData;
       } catch {
-        return createEmptyConversationData();
+        const cached = conversationDataMemoryCache.get(safeConversationId);
+        return cached ? buildSafeConversationData(cached) : createEmptyConversationData();
       }
     }
     
     function saveConversationData(conversationId = getConversationId(), data = {}) {
-      if (!conversationId) return;
+      const safeConversationId = String(conversationId || "").trim();
+      if (!safeConversationId) return false;
       
-      const safeData = {
-        messages: Array.isArray(data?.messages) ? data.messages : [],
-        memory: typeof data?.memory === "string" && data.memory.trim() ?
-          data.memory : defaultMemory(),
-        flags: normalizeStoredFlags(data?.flags),
-        updatedAt: Number(data?.updatedAt || Date.now()),
-        isPrivate: data?.isPrivate === true
-      };
+      const safeData = buildSafeConversationData(data);
+      conversationDataMemoryCache.set(safeConversationId, safeData);
       
       const stored = safeSetLocalStorage(
-        getConversationStorageKey(conversationId),
+        getConversationStorageKey(safeConversationId),
         JSON.stringify(safeData),
         "saveConversationData"
       );
 
-      if (!stored) {
-        return;
-      }
-
       if (safeData.isPrivate === true) {
-        markConversationPrivate(conversationId);
+        markConversationPrivate(safeConversationId);
       }
       
       /* Ne crÃƒÂ©e (ou ne met ÃƒÂ  jour) lÃ¢â‚¬â„¢entrÃƒÂ©e dÃ¢â‚¬â„¢index
@@ -3555,11 +3628,13 @@
       const hasUserMsg = safeData.messages.some(m => m && m.role === "user");
       if (hasUserMsg) {
         upsertConversationIndexItem({
-          id: conversationId,
+          id: safeConversationId,
           updatedAt: safeData.updatedAt,
           isPrivate: safeData.isPrivate === true
         });
       }
+
+      return stored;
     }
 
     function normalizeClientInfoSubmode(value) {
@@ -3904,9 +3979,15 @@
     }
     
     function deleteConversationData(conversationId) {
-      localStorage.removeItem(getConversationStorageKey(conversationId));
+      const safeConversationId = String(conversationId || "").trim();
+      if (!safeConversationId) {
+        return;
+      }
+
+      conversationDataMemoryCache.delete(safeConversationId);
+      localStorage.removeItem(getConversationStorageKey(safeConversationId));
       
-      const nextIndex = loadConversationsIndex().filter(item => item && item.id !== conversationId);
+      const nextIndex = loadConversationsIndex().filter(item => item && item.id !== safeConversationId);
       saveConversationsIndex(nextIndex);
     }
 
@@ -6274,12 +6355,15 @@
         role === "bot" &&
         hasDebugContent &&
         showDebug &&
+        Array.isArray(debugMeta?.topChips) &&
         debugMeta.topChips.includes("Réajustement sobre");
+
+      const safeTopChips = Array.isArray(debugMeta?.topChips) ? debugMeta.topChips : [];
 
       const topChipsAboveBubble =
         hasSoberReadjustmentChip ?
-          debugMeta.topChips.filter(label => label !== "Réajustement sobre") :
-          debugMeta.topChips;
+          safeTopChips.filter(label => label !== "Réajustement sobre") :
+          safeTopChips;
 
       if (role === "bot" && hasDebugContent && showDebug && topChipsAboveBubble.length > 0) {
         const top = document.createElement("div");
@@ -7530,6 +7614,7 @@
       isSending = true;
       updateActivity();
       syncInputAvailability();
+      try {
       
       if (isEditing) {
         const history = loadHistory();
@@ -7667,15 +7752,21 @@
       } else {
         if (!shouldSkipUserHistoryInsert) {
           pushHistory("user", message, []);
-          addMessage("user", message, [], {
-            shouldAutoScroll: wasAtBottom,
-            pulseScrollButton: false,
-            progressive: false,
-            historyIndex: loadHistory().length - 1
-          });
+          input.value = "";
+
+          try {
+            addMessage("user", message, [], {
+              shouldAutoScroll: wasAtBottom,
+              pulseScrollButton: false,
+              progressive: false,
+              historyIndex: loadHistory().length - 1
+            });
+          } catch (renderErr) {
+            console.error("[SEND][USER_RENDER_FAILED]", renderErr);
+          }
+        } else {
+          input.value = "";
         }
-        
-        input.value = "";
       }
       
       const requestConversationId = getConversationId();
@@ -7698,6 +7789,11 @@
 
       const chatRequestId = buildChatRequestId();
       const chatAbortController = new AbortController();
+      let didTimeout = false;
+      const chatTimeoutId = setTimeout(() => {
+        didTimeout = true;
+        chatAbortController.abort();
+      }, CHAT_REQUEST_TIMEOUT_MS);
       activeChatRequestId = chatRequestId;
       activeChatAbortController = chatAbortController;
       syncSendButtonMode();
@@ -7850,6 +7946,9 @@
         removeWaitingIndicatorFromChat();
 
         if (err && err.name === "AbortError") {
+          if (didTimeout) {
+            showTemporaryNotice("Delai depasse: le serveur met trop de temps a repondre.");
+          }
           return;
         }
         
@@ -7864,6 +7963,8 @@
           });
         }
       } finally {
+        clearTimeout(chatTimeoutId);
+
         if (activeChatRequestId === chatRequestId) {
           activeChatRequestId = "";
           activeChatAbortController = null;
@@ -7876,6 +7977,35 @@
         syncWaitingIndicatorForCurrentConversation();
         processQueuedMessagesForCurrentConversation();
         updateScrollToBottomBtn();
+      }
+      } catch (sendErr) {
+        console.error("[SEND][UNCAUGHT]", sendErr);
+
+        removeWaitingIndicatorFromChat();
+
+        if (activeChatAbortController) {
+          try {
+            activeChatAbortController.abort();
+          } catch {}
+        }
+
+        activeChatRequestId = "";
+        activeChatAbortController = null;
+        syncSendButtonMode();
+
+        isSending = false;
+        sendingConversationId = "";
+        syncInputAvailability();
+        syncWaitingIndicatorForCurrentConversation();
+        processQueuedMessagesForCurrentConversation();
+        updateScrollToBottomBtn();
+
+        if (
+          getConversationId() === conversationIdBeforeSend &&
+          document.querySelector(".screen.active")?.id === "chatScreen"
+        ) {
+          showTemporaryNotice("Erreur inattendue pendant l'envoi.");
+        }
       }
     }
     
