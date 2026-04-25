@@ -5963,20 +5963,6 @@
       function buildNaturalDebugSummary(meta) {
         const lines = [];
 
-        const infoSubmodeLabel =
-          meta.infoSubmode === "pure" ? "information generale" :
-          meta.infoSubmode === "app_features" ? "information sur l'app" :
-          meta.infoSubmode === "psychoeducation" ? "psychoeducation" :
-          null;
-
-        if (infoSubmodeLabel) {
-          lines.push(`Le tour a ete interprete en mode ${infoSubmodeLabel}.`);
-        }
-
-        if (meta.conversationStateKey) {
-          lines.push(`Etat de conversation retenu: ${meta.conversationStateKey}.`);
-        }
-
         if (meta.interpretationRejection === true) {
           lines.push("Le systeme a detecte un rejet d'interpretation et a recentre la reponse.");
         }
@@ -5991,12 +5977,6 @@
 
         if (Number.isInteger(meta.explorationCalibrationLevel)) {
           lines.push(`Niveau de structuration retenu: ${meta.explorationCalibrationLevel}/4.`);
-        }
-
-        if (meta.allianceState || meta.engagementLevel || meta.processingWindow) {
-          lines.push(
-            `Lecture structurelle: alliance ${meta.allianceState || "good"}, engagement ${meta.engagementLevel || "active"}, fenetre de traitement ${meta.processingWindow || "open"}.`
-          );
         }
 
         if (meta.stagnationTurns > 0) {
@@ -6043,30 +6023,21 @@
 
       function buildDebugSections(meta) {
         const sections = [];
-        const signalLines = [];
-
-        if (meta.infoSubmode === "pure") {
-          signalLines.push("Sous-mode info : information generale");
-        } else if (meta.infoSubmode === "app_features") {
-          signalLines.push("Sous-mode info : information sur l'app");
-        } else if (meta.infoSubmode === "psychoeducation") {
-          signalLines.push("Sous-mode info : psychoeducation");
-        }
-
-        if (meta.interpretationRejection === true) {
-          signalLines.push("Rejet d'interpr\u00e9tation d\u00e9tect\u00e9 : oui");
-        }
-
-        if (meta.explorationSubmode) {
-          signalLines.push(`Sous-mode exploration : ${meta.explorationSubmode}`);
-        }
 
         if (meta.topChips.length) {
           sections.push({ title: "Chips", content: meta.topChips.join("\n") });
         }
 
-        if (signalLines.length) {
-          sections.push({ title: "Signaux", content: signalLines.join("\n") });
+        if (meta.writerMode) {
+          sections.push({
+            title: "Contrat de posture",
+            content: [
+              `Mode : ${meta.writerMode}`,
+              meta.intent ? `Intention : ${meta.intent}` : null,
+              (meta.forbidden && meta.forbidden.length) ? `Interdit : ${meta.forbidden.join(", ")}` : null,
+              meta.confidenceSignal ? `Signal confiance : ${meta.confidenceSignal}` : null,
+            ].filter(Boolean).join("\n")
+          });
         }
 
         const naturalSummaryLines = buildNaturalDebugSummary(meta);
@@ -6078,30 +6049,27 @@
           sections.push({ title: "M\u00e9moire", content: meta.memory });
         }
 
-        if (meta.directivityLabel) {
+        const shouldShowDirectivity =
+          !!meta.directivityLabel &&
+          (meta.conversationStateKey === "exploration" ||
+            (typeof meta.writerMode === "string" && meta.writerMode.indexOf("exploration") === 0));
+        if (shouldShowDirectivity) {
           sections.push({ title: "Directivit\u00e9", content: meta.directivityLabel });
         }
 
-        if (meta.memoryCompressed && meta.memoryBeforeCompression) {
-          sections.push({ title: "M\u00e9moire avant r\u00e9\u00e9criture", content: meta.memoryBeforeCompression });
-        } else {
-          sections.push({ title: "Pas de r\u00e9\u00e9criture", content: "\u2014" });
-        }
-
-        if (meta.writerMode) {
-          sections.push({
-            title: "Contrat de posture (V3)",
-            content: [
-              `Mode : ${meta.writerMode}`,
-              meta.intent ? `Intention : ${meta.intent}` : null,
-              (meta.forbidden && meta.forbidden.length) ? `Interdit : ${meta.forbidden.join(", ")}` : null,
-              meta.confidenceSignal ? `Signal confiance : ${meta.confidenceSignal}` : null,
-            ].filter(Boolean).join("\n")
-          });
-        }
-
-        if (meta.memoryRewriteSource) {
-          sections.push({ title: "R\u00e9\u00e9criture m\u00e9moire", content: meta.memoryRewriteSource });
+        if (meta.memoryCompressed === true) {
+          const memoryRewriteLines = [];
+          if (meta.memoryRewriteSource) {
+            memoryRewriteLines.push(`Source : ${meta.memoryRewriteSource}`);
+          }
+          if (meta.memoryBeforeCompression) {
+            memoryRewriteLines.push("M\u00e9moire avant r\u00e9\u00e9criture :");
+            memoryRewriteLines.push(meta.memoryBeforeCompression);
+          }
+          if (memoryRewriteLines.length === 0) {
+            memoryRewriteLines.push("R\u00e9\u00e9criture m\u00e9moire appliqu\u00e9e.");
+          }
+          sections.push({ title: "R\u00e9\u00e9criture m\u00e9moire", content: memoryRewriteLines.join("\n") });
         }
 
         if (meta.rewriteSource) {
@@ -6121,7 +6089,7 @@
         if (title === "Signaux") {
           return { titleColor: "#2d6a3c", blockBackground: "#edf9f1", blockBorder: "#6db380" };
         }
-        if (title === "Contrat de posture (V3)") {
+        if (title === "Contrat de posture" || title === "Contrat de posture (V3)") {
           return { titleColor: "#6b3a7d", blockBackground: "#f8f0ff", blockBorder: "#c9a3e0" };
         }
         return { titleColor: "#245e66", blockBackground: "#ffffff", blockBorder: "#d6e2e1" };
