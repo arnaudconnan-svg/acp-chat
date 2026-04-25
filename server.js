@@ -2501,31 +2501,6 @@ Regles importantes pour distinguer isInterpretationRejection et needsSoberReadju
 Reponds uniquement par le JSON.
 `,
 
-    REWRITE_INTERPRETATION_REJECTION_REPLY: `
-Tu reecris une reponse du bot lorsqu'un rejet d'interpretation a ete detecte dans le message utilisateur actuel.
-
-But :
-- ajuster l'axe sans se defendre
-- ne pas s'ecraser
-- ne pas nier trop vite le phenomene si seul l'angle interpretatif est rejete
-- rester sobre, ferme et proche du phenomene observable
-- si l'utilisateur exprime surtout un sentiment de ne pas etre aide, prends-le comme un signal de qualite relationnelle a reajuster, pas comme un simple nouveau contenu a explorer
-
-Regles :
-- pas de justification de la reponse precedente
-- pas d'excuse developpee
-- pas de meta-discours sur le fait de s'etre trompe
-- si le phenomene de fond n'est pas rejete, conserve une lecture proche du concret, plus situee et moins doctrinale
-- si le phenomene de fond est aussi rejete, retire la lecture precedente et repars du plus observable
-- si le probleme principal semble etre la mauvaise aide recue, reduis nettement l'abstraction, reviens au plus concret, et change vraiment d'axe au lieu de reconditionner la meme strategie avec d'autres mots
-- si le probleme principal semble etre la mauvaise aide recue, ne finis pas par une question automatique de relance
-- dans ce cas, privilegie une reprise courte, concrete, sans lyrisme, qui nomme ce qui rate dans l'echange ou revient au point precis qui accroche
-- dans ce cas, ne reformule pas simplement le flou ou la frustration; propose un autre point d'appui concret ou retire franchement l'axe precedent
-- garde une tension calme si possible
-
-Renvoie uniquement la reponse finale reecrite.
-`,
-
     REWRITE_INTERPRETATION_REJECTION_MEMORY: `
 Tu reecris une memoire candidate lorsqu'un rejet d'interpretation a ete detecte.
 
@@ -2692,9 +2667,9 @@ Contraintes :
     // ------------------------------------
 
     CRITIC_PASS: `
-Tu es un garde-barriere post-generation. Tu relis la reponse du bot et tu corriges uniquement les violations reelles.
+  Tu es un garde-barriere post-generation. Tu relis la reponse du bot et tu corriges uniquement les violations critiques reelles.
 
-Tu verifies exactement quatre types de violations, dans cet ordre de priorite :
+  Tu verifies les violations suivantes, dans cet ordre de priorite :
 
 1. AGENTIVITE IMPLICITE : le texte attribue a l'utilisateur une intention, un choix ou une strategie ("tu evites", "tu preferes ne pas", "tu refuses", "tu n'acceptes pas", "tu choisis de rester a distance"). Remplace par un mouvement automatique et situe ("quelque chose se referme", "ca se coupe", "ca se raidit").
 
@@ -2703,6 +2678,10 @@ Tu verifies exactement quatre types de violations, dans cet ordre de priorite :
 3. CLINICALISATION EXCESSIVE : le texte sur-diagnostique, sur-evalue ou sur-nomme. Un seul mouvement, sobre et concret, suffit. Retire les formulations qui accumulent les lectures ou empilent les interpretations.
 
 4. PRESENCE CREUSE : le texte utilise des formules pseudo-empathiques sans contenu reel ("je suis vraiment la pour toi", "je t'entends vraiment", "c'est un espace precieux", "laisser emerger", "sans precipitation"). Retire ou remplace par quelque chose de concret.
+
+5. HUMAN_FIELD_RISK : si le contrat actif impose d'eviter le procedural/instrumental, corrige tout glissement de type mode d'emploi, check-list, manipulation d'outil, sequence d'etapes.
+
+6. LONGUEUR_CONTRACTUELLE : si le contrat actif fournit une limite de phrases, corrige uniquement pour respecter cette limite.
 
 Si le contrat actif est fourni dans le message, verifie aussi que les termes marques "Interdit ce tour" ne sont pas presents dans la reponse.
 
@@ -2717,7 +2696,8 @@ Definitions operatoires des termes interdits :
 
 Regles :
 - ne corrige QUE ce qui viole reellement ces criteres
-- ne refais pas la reponse de zero
+- correction minimale et ciblee: preserve le mouvement central et le style general
+- ne refais pas la reponse de zero sauf cas critique majeur de securite/theorie
 - ne change pas le sens ou le mouvement central si ce n'est pas en violation
 - si aucune violation n'est detectee, renvoie la reponse originale sans modification et issues = []
 - si issues est vide, la reponse retournee doit etre identique a l'originale
@@ -3089,6 +3069,7 @@ function buildPostureDecision({
   contactAnalysis,
   relationalAdjustmentAnalysis,
   calibrationAnalysis,
+  interpretationRejection,
   effectiveExplorationDirectivityLevel,
   previousConversationStateKey,
   currentConsecutiveNonExplorationTurns,
@@ -3209,6 +3190,19 @@ function buildPostureDecision({
     "no_defense_mechanisms",
     "no_implicit_agency"
   ];
+  const interpretationRejectionDetected = interpretationRejection?.isInterpretationRejection === true;
+  const needsSoberReadjustment = interpretationRejection?.needsSoberReadjustment === true;
+  const rejectsUnderlyingPhenomenon = interpretationRejection?.rejectsUnderlyingPhenomenon === true;
+  const tensionHoldLevel = ["low", "medium", "high"].includes(interpretationRejection?.tensionHoldLevel)
+    ? interpretationRejection.tensionHoldLevel
+    : "medium";
+  const humanFieldGuardActive = shouldForceExplorationForSituatedImpasse(message)
+    && (detectedMode === "exploration" || detectedMode === "contact");
+
+  const criticalGuardrails = [...theoreticalConstraints];
+  if (humanFieldGuardActive) {
+    criticalGuardrails.push("no_procedural_instrumental_reply");
+  }
 
   // confidenceSignal: deterministic heuristic (was estimateReplyConfidence)
   const msgText = (message || "").toLowerCase();
@@ -3241,7 +3235,13 @@ function buildPostureDecision({
     maxSentences,
     toneConstraint,
     theoreticalConstraints,
+    criticalGuardrails,
     confidenceSignal,
+    interpretationRejectionDetected,
+    needsSoberReadjustment,
+    rejectsUnderlyingPhenomenon,
+    tensionHoldLevel,
+    humanFieldGuardActive,
   };
 }
 
@@ -3813,56 +3813,6 @@ ${originalContent}
   return (r.choices?.[0]?.message?.content || "").trim() || originalContent;
 }
 
-  async function rewriteReplyPostcheck({
-    message = "",
-    history = [],
-    memory = "",
-    mode = "exploration",
-    infoSubmode = null,
-    originalReply = "",
-    modelConflict = false,
-    humanFieldRisk = false,
-    promptRegistry = buildDefaultPromptRegistry()
-  }) {
-    const user = `
-  Message utilisateur :
-  ${message}
-
-  Contexte recent :
-  ${history.map(m => `${m.role === "user" ? "Utilisateur" : "Assistant"} : ${m.content}`).join("\n")}
-
-  Memoire :
-  ${normalizeMemory(memory, promptRegistry)}
-
-  Mode courant :
-  ${mode}
-
-  Sous-mode info :
-  ${infoSubmode || "none"}
-
-  Conflit theorique detecte :
-  ${modelConflict === true ? "true" : "false"}
-
-  Risque proceduralo-instrumental hors champ humain :
-  ${humanFieldRisk === true ? "true" : "false"}
-
-  Reponse initiale a corriger :
-  ${originalReply}
-  `;
-
-    const r = await client.chat.completions.create({
-      model: MODEL_IDS.generation,
-      temperature: 0.25,
-      max_tokens: 260,
-      messages: [
-        { role: "system", content: promptRegistry.REWRITE_REPLY_POSTCHECK },
-        { role: "user", content: user }
-      ]
-    });
-
-    return String(r.choices?.[0]?.message?.content || "").trim() || originalReply;
-  }
-
 // Phase 4: Selective critic - detects and corrects agency injunctions, over-clinicalization,
 // and hollow presence formulas when triggered by a strong signal.
 // Receives postureDecision to enforce the active contract (writerMode + forbidden).
@@ -3877,13 +3827,21 @@ async function applySelectiveCritic({
   const forbidden = Array.isArray(postureDecision.forbidden) && postureDecision.forbidden.length > 0
     ? postureDecision.forbidden
     : [];
+  const maxSentences = Number.isFinite(postureDecision.maxSentences) && postureDecision.maxSentences > 0
+    ? postureDecision.maxSentences
+    : null;
+  const humanFieldGuardActive = postureDecision.humanFieldGuardActive === true;
 
   const contractLine = writerMode
     ? `Contrat actif : mode ${writerMode}${forbidden.length ? `, interdit ce tour : ${forbidden.join(", ")}` : ""}`
     : null;
+  const contractLengthLine = maxSentences ? `Longueur contractuelle : max ${maxSentences} phrases` : null;
+  const contractHumanFieldLine = humanFieldGuardActive ? "Human field guard actif : eviter tout ton procedural/instrumental" : null;
 
   const userParts = [
     contractLine,
+    contractLengthLine,
+    contractHumanFieldLine,
     `Message utilisateur :\n${message}`,
     `Contexte recent :\n${(history || []).map(m => `${m.role === "user" ? "Utilisateur" : "Assistant"} : ${m.content}`).join("\n")}`,
     `Reponse a relire et corriger si necessaire :\n${reply}`
@@ -4087,82 +4045,6 @@ ${normalizeMemory(memory, promptRegistry)}
       tensionHoldLevel: "medium"
     };
   }
-}
-
-async function rewriteInterpretationRejectionReply({
-  message = "",
-  history = [],
-  memory = "",
-  originalReply = "",
-  interpretationRejection = {},
-  promptRegistry = buildDefaultPromptRegistry()
-}) {
-  const user = `
-Message utilisateur actuel :
-${message}
-
-Contexte recent :
-${history.map(m => `${m.role === "user" ? "Utilisateur" : "Assistant"} : ${m.content}`).join("\n")}
-
-Memoire :
-${normalizeMemory(memory, promptRegistry)}
-
-Analyse du rejet :
-${JSON.stringify(interpretationRejection)}
-
-Reponse initiale a reecrire :
-${originalReply}
-`;
-
-  const r = await client.chat.completions.create({
-    model: MODEL_IDS.generation,
-    temperature: 0.3,
-    max_tokens: 300,
-    messages: [
-      { role: "system", content: promptRegistry.REWRITE_INTERPRETATION_REJECTION_REPLY },
-      { role: "user", content: user }
-    ]
-  });
-
-  return String(r.choices?.[0]?.message?.content || "").trim() || originalReply;
-}
-
-async function rewriteInterpretationRejectionMemory({
-  message = "",
-  history = [],
-  previousMemory = "",
-  candidateMemory = "",
-  interpretationRejection = {},
-  promptRegistry = buildDefaultPromptRegistry()
-}) {
-  const user = `
-Message utilisateur actuel :
-${message}
-
-Contexte recent :
-${history.map(m => `${m.role === "user" ? "Utilisateur" : "Assistant"} : ${m.content}`).join("\n")}
-
-Memoire precedente :
-${normalizeMemory(previousMemory, promptRegistry)}
-
-Memoire candidate :
-${normalizeMemory(candidateMemory, promptRegistry)}
-
-Analyse du rejet :
-${JSON.stringify(interpretationRejection)}
-`;
-
-  const r = await client.chat.completions.create({
-    model: MODEL_IDS.analysis,
-    temperature: 0.2,
-    max_tokens: 220,
-    messages: [
-      { role: "system", content: promptRegistry.REWRITE_INTERPRETATION_REJECTION_MEMORY },
-      { role: "user", content: user }
-    ]
-  });
-
-  return String(r.choices?.[0]?.message?.content || "").trim() || candidateMemory;
 }
 
 // --------------------------------------------------
@@ -4613,16 +4495,26 @@ function buildPostureContractBlock(postureDecision = {}) {
   const confidenceSignal = postureDecision.confidenceSignal || "high";
   const maxSentences = postureDecision.maxSentences || null;
   const toneConstraint = postureDecision.toneConstraint || null;
+  const criticalGuardrails = Array.isArray(postureDecision.criticalGuardrails) && postureDecision.criticalGuardrails.length > 0
+    ? postureDecision.criticalGuardrails.join(", ")
+    : "no_unconscious, no_psychopathology, no_defense_mechanisms, no_implicit_agency";
 
   const lines = [
     `Etat : ${writerMode}`,
     `Intention : ${intent}`,
     `Interdit ce tour : ${forbidden}`,
     `Signalement d'incertitude : ${confidenceSignal === "low" ? "oui â€” signale explicitement que tu n'es pas certain de ta lecture" : "non"}`,
+    `Garde-fous critiques actifs : ${criticalGuardrails}`,
     "Contraintes theoriques actives : no_unconscious (ne jamais mobiliser inconscient/subconscient comme instance explicative), no_psychopathology (ne jamais cadrer via pathologie/sante mentale), no_defense_mechanisms (ne pas parler de mecanismes de defense), no_implicit_agency (ne pas attribuer d'agentivite implicite au sujet â€” 'tu evites', 'tu resistes')",
   ];
   if (maxSentences) lines.push(`Longueur : max ${maxSentences} phrases`);
   if (toneConstraint) lines.push(`Ton : ${toneConstraint}`);
+  if (postureDecision.interpretationRejectionDetected === true || postureDecision.needsSoberReadjustment === true) {
+    lines.push("Reajustement d'interpretation actif : n'ajoute pas de justification ni de meta-discours, repars du plus concret.");
+  }
+  if (postureDecision.humanFieldGuardActive === true) {
+    lines.push("Human field guard actif : interdit de basculer en mode procedural/instrumental (mode d'emploi, check-list, manipulation d'outil).");
+  }
 
   // Inject operational definitions only for terms that are actually forbidden this turn
   if (Array.isArray(postureDecision.forbidden) && postureDecision.forbidden.length > 0) {
@@ -4810,7 +4702,13 @@ function buildSystemPrompt(postureDecision, memory, promptRegistry = buildDefaul
   const contractWrapped = buildPostureContractBlock(postureDecision);
   const identityWrapped = getIdentityPrompt(promptRegistry);
   const relationalAdjustmentWrapped = buildRelationalAdjustmentPromptBlock(relationalAdjustmentTriggered, promptRegistry);
-  const interpretationRejectionWrapped = buildInterpretationRejectionPromptBlock(interpretationRejection);
+  const interpretationSignal = {
+    isInterpretationRejection: postureDecision.interpretationRejectionDetected === true || interpretationRejection?.isInterpretationRejection === true,
+    needsSoberReadjustment: postureDecision.needsSoberReadjustment === true || interpretationRejection?.needsSoberReadjustment === true,
+    rejectsUnderlyingPhenomenon: postureDecision.rejectsUnderlyingPhenomenon === true || interpretationRejection?.rejectsUnderlyingPhenomenon === true,
+    tensionHoldLevel: postureDecision.tensionHoldLevel || interpretationRejection?.tensionHoldLevel || "medium"
+  };
+  const interpretationRejectionWrapped = buildInterpretationRejectionPromptBlock(interpretationSignal);
 
   // Single style block selected by writerMode
   let styleBlock = "";
@@ -8326,41 +8224,32 @@ app.post("/chat", async (req, res) => {
       wasContact: contactAnalysis.isContact === true
     };
     
-    const detectedModeResult = contactAnalysis.isContact ?
-      {
-        mode: "contact",
-        infoSource: null,
-        infoSubmode: null,
-        infoSubmodeSource: null,
-        contactSubmode: normalizeContactSubmode(contactAnalysis.contactSubmode) || "regulated"
-      } :
-      await detectMode(message, recentHistory, activePromptRegistry);
-
-    const detectedMode = detectedModeResult.mode;
-    const detectedInfoSubmode = detectedMode === "info" ? normalizeInfoSubmode(detectedModeResult.infoSubmode) : null;
-    const detectedContactSubmode = detectedMode === "contact" ? normalizeContactSubmode(detectedModeResult.contactSubmode) : null;
-    
-    modeForCatch = detectedMode;
-    infoSubmodeForCatch = detectedInfoSubmode;
-    contactSubmodeForCatch = detectedContactSubmode;
-    
     const effectiveExplorationDirectivityLevel = newFlags.explorationDirectivityLevel;
     
     let finalDirectivityLevel = effectiveExplorationDirectivityLevel;
     let finalExplorationSubmode = "interpretation";
 
-    // Phase 2: Run independent post-mode analyzers in parallel.
-    // relationalAdjustment, calibration and interpretationRejection all depend only on
-    // message/history/memory/flags â€” none depends on another's result.
+    // Phase 2: run independent analyzers in parallel, including detectMode.
+    const shouldRunNonContactAnalyzers = contactAnalysis.isContact !== true;
     const [
+      detectedModeResult,
       relationalAdjustmentAnalysis,
       calibrationAnalysis,
       interpretationRejection
     ] = await Promise.all([
-      detectedMode === "exploration" && contactAnalysis.isContact !== true
+      contactAnalysis.isContact
+        ? Promise.resolve({
+            mode: "contact",
+            infoSource: null,
+            infoSubmode: null,
+            infoSubmodeSource: null,
+            contactSubmode: normalizeContactSubmode(contactAnalysis.contactSubmode) || "regulated"
+          })
+        : detectMode(message, recentHistory, activePromptRegistry),
+      shouldRunNonContactAnalyzers
         ? analyzeRelationalAdjustmentNeed(message, recentHistory, previousMemory, false, activePromptRegistry)
         : Promise.resolve(null),
-      detectedMode === "exploration"
+      shouldRunNonContactAnalyzers
         ? analyzeExplorationCalibration({
             message,
             history: recentHistory,
@@ -8370,7 +8259,7 @@ app.post("/chat", async (req, res) => {
             promptRegistry: activePromptRegistry
           })
         : Promise.resolve(null),
-      detectedMode !== "info" && detectedMode !== "contact"
+      shouldRunNonContactAnalyzers
         ? analyzeInterpretationRejection({
             message,
             history: recentHistory,
@@ -8381,6 +8270,17 @@ app.post("/chat", async (req, res) => {
     ]);
     throwIfCanceled();
 
+    const detectedMode = detectedModeResult.mode;
+    const detectedInfoSubmode = detectedMode === "info" ? normalizeInfoSubmode(detectedModeResult.infoSubmode) : null;
+    const detectedContactSubmode = detectedMode === "contact" ? normalizeContactSubmode(detectedModeResult.contactSubmode) : null;
+    const safeInterpretationRejection = detectedMode === "exploration"
+      ? (interpretationRejection || { isInterpretationRejection: false, needsSoberReadjustment: false })
+      : { isInterpretationRejection: false, needsSoberReadjustment: false };
+
+    modeForCatch = detectedMode;
+    infoSubmodeForCatch = detectedInfoSubmode;
+    contactSubmodeForCatch = detectedContactSubmode;
+
     // Phase 3: Deterministic arbitrator â€” consolidate all analyzer outputs into a
     // PostureDecision struct. No LLM calls, no side effects outside this block.
     const previousConversationStateKey = normalizeConversationStateKey(flags.conversationStateKey);
@@ -8390,6 +8290,7 @@ app.post("/chat", async (req, res) => {
       contactAnalysis,
       relationalAdjustmentAnalysis,
       calibrationAnalysis,
+      interpretationRejection: safeInterpretationRejection,
       effectiveExplorationDirectivityLevel,
       previousConversationStateKey,
       currentConsecutiveNonExplorationTurns: normalizeConsecutiveNonExplorationTurns(newFlags.consecutiveNonExplorationTurns),
@@ -8448,50 +8349,37 @@ app.post("/chat", async (req, res) => {
       postureDecision,
       infoSubmode: detectedInfoSubmode,
       contactSubmode: detectedContactSubmode,
-      interpretationRejection,
+      interpretationRejection: safeInterpretationRejection,
       promptRegistry: activePromptRegistry,
     });
     throwIfCanceled();
 
-    let replyRewriteSource = null;
-    let replyCandidate = generatedBase.reply;
+    let reply = generatedBase.reply;
     let soberReadjustmentOriginalReply = null;
 
-    if (
-      interpretationRejection.isInterpretationRejection === true ||
-      interpretationRejection.needsSoberReadjustment === true
-    ) {
-      if (interpretationRejection.needsSoberReadjustment === true) {
-        soberReadjustmentOriginalReply = replyCandidate;
-      }
-
-      replyCandidate = await rewriteInterpretationRejectionReply({
-        message,
-        history: recentHistory,
-        memory: previousMemory,
-        originalReply: replyCandidate,
-        interpretationRejection,
-        promptRegistry: activePromptRegistry
-      });
-
-      replyRewriteSource = interpretationRejection.isInterpretationRejection === true ?
-        "interpretation_rejection" :
-        "sober_readjustment";
-    }
-    
     let relanceAnalysis = null;
-    let reply = replyCandidate;
-    const finalReplyRewriteSources = [replyRewriteSource].filter(Boolean);
+    const finalReplyRewriteSources = [];
 
     // Phase 4: Selective critic - single guardrail for exploration, contact, and info.
     // CRITIC_PASS now covers theoretical violations. No separate conflict-model or uncertainty passes.
     let criticTriggered = false;
     let criticIssues = [];
+    let humanFieldRisk = false;
+    let contractLengthExceeded = false;
     const criticModes = ["exploration", "contact", "info"];
     const criticApplies = criticModes.includes(finalDetectedMode);
     if (criticApplies) {
+      const sentenceCount = String(reply || "")
+        .split(/[.!?]+/)
+        .map(chunk => chunk.trim())
+        .filter(Boolean).length;
+      contractLengthExceeded = Number.isFinite(postureDecision.maxSentences)
+        && postureDecision.maxSentences > 0
+        && sentenceCount > postureDecision.maxSentences;
+      humanFieldRisk = postureDecision.humanFieldGuardActive === true && isProceduralInstrumentalReply(reply);
       const criticShouldTrigger =
-        reply.length > 600 ||
+        contractLengthExceeded ||
+        humanFieldRisk ||
         hasAgencyInjectionInReply(reply) ||
         hasTheoreticalViolationHeuristic(reply);
       if (criticShouldTrigger) {
@@ -8540,8 +8428,8 @@ app.post("/chat", async (req, res) => {
       modelConflict,
       infoSubmode: detectedInfoSubmode,
       contactSubmode: detectedContactSubmode,
-      interpretationRejection: interpretationRejection.isInterpretationRejection,
-      needsSoberReadjustment: interpretationRejection.needsSoberReadjustment,
+      interpretationRejection: safeInterpretationRejection.isInterpretationRejection,
+      needsSoberReadjustment: safeInterpretationRejection.needsSoberReadjustment,
       relationalAdjustmentTriggered: relationalAdjustmentAnalysis?.needsRelationalAdjustment === true,
       explorationCalibrationLevel: newFlags.explorationCalibrationLevel,
       explorationDirectivityLevel: finalDirectivityLevel,
@@ -8562,7 +8450,7 @@ app.post("/chat", async (req, res) => {
           detectedMode: finalDetectedMode,
           relationalAdjustmentAnalysis,
           infoSubmode: detectedInfoSubmode,
-          interpretationRejection,
+          interpretationRejection: safeInterpretationRejection,
           explorationCalibrationLevel: newFlags.explorationCalibrationLevel,
           flagsBefore: flags,
           flagsAfter: newFlags,
@@ -8594,7 +8482,7 @@ app.post("/chat", async (req, res) => {
     const finalizedMemoryCandidate = await finalizeMemoryCandidate({
       previousMemory,
       candidateMemory: memoryCandidate,
-      interpretationRejection,
+      interpretationRejection: safeInterpretationRejection,
       needsCompression: memoryNeedsCompression,
       promptRegistry: activePromptRegistry
     });
@@ -8622,8 +8510,8 @@ app.post("/chat", async (req, res) => {
       consecutiveNonExplorationTurns: newFlags.consecutiveNonExplorationTurns,
       infoSubmode: detectedInfoSubmode,
       contactSubmode: detectedContactSubmode,
-      interpretationRejection: interpretationRejection.isInterpretationRejection,
-      needsSoberReadjustment: interpretationRejection.needsSoberReadjustment,
+      interpretationRejection: safeInterpretationRejection.isInterpretationRejection,
+      needsSoberReadjustment: safeInterpretationRejection.needsSoberReadjustment,
       relationalAdjustmentTriggered: relationalAdjustmentAnalysis?.needsRelationalAdjustment === true,
       isRecallRequest: recallRouting.isRecallAttempt === true,
       explorationCalibrationLevel: newFlags.explorationCalibrationLevel,
@@ -8638,6 +8526,8 @@ app.post("/chat", async (req, res) => {
       soberReadjustmentOriginalReply,
       criticTriggered,
       criticIssues,
+      humanFieldRisk,
+      contractLengthExceeded,
       // Posture contract fields (V3)
       writerMode: postureDecision.writerMode,
       intent: postureDecision.intent,
