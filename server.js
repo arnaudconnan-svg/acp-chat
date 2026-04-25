@@ -3896,6 +3896,8 @@ app.post("/chat", async (req, res) => {
   const requestData = parseChatRequest(req);
   console.log("CHAT INPUT conversationId:", requestData.conversationId);
   const requestId = String(requestData.requestId || "").trim();
+  // traceId: server-generated per-request, always present even without a client requestId.
+  const traceId = requestId || `tr_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 
   if (requestId) {
     registerActiveChatRequest(requestId, requestData.userId || "u_anon");
@@ -4589,7 +4591,8 @@ app.post("/chat", async (req, res) => {
         dependencyRiskScore: clampDependencyRiskScore(dependencyRiskScore),
         dependencyRiskLevel: normalizeDependencyRiskLevel(dependencyRiskLevel),
         externalSupportMode: normalizeExternalSupportMode(externalSupportMode),
-        closureIntent: closureIntent === true
+        closureIntent: closureIntent === true,
+        traceId
       };
     }
     
@@ -5145,7 +5148,6 @@ app.post("/chat", async (req, res) => {
     const debug = buildDebug(finalDetectedMode, {
       suicideLevel: suicide.suicideLevel,
       calledMemory: recallRouting.calledMemory,
-      modelConflict,
       infoSubmode: detectedInfoSubmode,
       contactSubmode: detectedContactSubmode,
       interpretationRejection: safeInterpretationRejection.isInterpretationRejection,
@@ -5268,6 +5270,7 @@ app.post("/chat", async (req, res) => {
     if (logsEnabled) {
       console.log("[PIPELINE]", {
         conversationId,
+        traceId,
         requestId: requestId || null,
         elapsedMs: Date.now() - chatStartTime,
         suicideLevel: suicide.suicideLevel,
