@@ -3344,7 +3344,9 @@ function normalizeChatMemoryAndFlags(req, activePromptRegistry) {
 // response generation, memory update, and persistence of both user and assistant messages.
 app.post("/chat", async (req, res) => {
   const requestData = parseChatRequest(req);
-  console.log("CHAT INPUT conversationId:", requestData.conversationId);
+  if (requestData.logsEnabled === true) {
+    console.log("CHAT INPUT conversationId:", requestData.conversationId);
+  }
   const requestId = String(requestData.requestId || "").trim();
   // traceId: server-generated per-request, always present even without a client requestId.
   const traceId = requestId || `tr_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
@@ -3666,7 +3668,9 @@ app.post("/chat", async (req, res) => {
           updatedAt: new Date().toISOString()
         });
         
-        console.log("AUTO TITLE UPDATED:", conversationId, "->", generatedTitle.trim());
+        if (logsEnabledForCatch) {
+          console.log("AUTO TITLE UPDATED:", conversationId, "->", generatedTitle.trim());
+        }
       } catch (titleErr) {
         console.error("Erreur auto-title /chat:", titleErr.message);
       }
