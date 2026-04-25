@@ -291,7 +291,6 @@ const MAX_RECENT_TURNS = 8;
 const MAX_INFO_ANALYSIS_TURNS = 6;
 const MAX_SUICIDE_ANALYSIS_TURNS = 10;
 const MAX_RECALL_ANALYSIS_TURNS = 6;
-const RELANCE_WINDOW_SIZE = 4;
 
 // --------------------------------------------------
 // 1) OUTILS MINIMAUX
@@ -4457,11 +4456,6 @@ app.post("/chat", async (req, res) => {
     if (logsEnabled) {
       debug.push(`trace.memoryCompressed: ${memoryWasCompressed ? "true" : "false"}`);
     }
-    
-    console.log("[COMPARE][MAIN]", {
-      activeUpdateMemoryPreview: String(activePromptRegistry?.UPDATE_MEMORY || "").slice(0, 160),
-      newMemory
-    });
     
     const responseDebugMeta = buildResponseDebugMeta({
       memory: newMemory,
