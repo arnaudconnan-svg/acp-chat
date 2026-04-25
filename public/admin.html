@@ -1789,10 +1789,6 @@
             lines.push("Un ajustement relationnel a ete declenche.");
           }
 
-          if (Number.isInteger(meta.explorationCalibrationLevel)) {
-            lines.push(`Niveau de structuration retenu: ${meta.explorationCalibrationLevel}/4.`);
-          }
-
           if (meta.stagnationTurns > 0) {
             lines.push(`Stagnation detectee depuis ${meta.stagnationTurns} tour(s).`);
           }
@@ -1827,31 +1823,34 @@
             lines.push(`Signal de confiance : faible (le bot a signale une incertitude).`);
           }
 
-          if (meta.pipelineStages.length > 0) {
-            const totalMs = meta.pipelineStages.reduce((acc, stage) => acc + (Number.isFinite(stage.deltaMs) ? stage.deltaMs : 0), 0);
-            lines.push(`Pipeline execute en ${totalMs} ms sur ${meta.pipelineStages.length} etape(s).`);
+          return lines;
+        }
+
+        function buildPipelineRuntimeText(meta) {
+          if (!meta || !Array.isArray(meta.pipelineStages) || meta.pipelineStages.length === 0) {
+            return "";
           }
 
-          return lines;
+          const totalMs = meta.pipelineStages.reduce((acc, stage) => acc + (Number.isFinite(stage.deltaMs) ? stage.deltaMs : 0), 0);
+          return `Temps de reponse global: ${totalMs} ms (${meta.pipelineStages.length} etape(s)).`;
         }
         
         function buildDebugSections(debug, debugMeta) {
           const safeDebug = Array.isArray(debug) ? debug : [];
           const meta = normalizeDebugMeta(debugMeta);
           const sections = [];
-          
-          if (meta.topChips.length) {
-            sections.push({
-              title: "Chips",
-              content: meta.topChips.join("\n")
-            });
-          }
+
+          const isExplorationMode =
+            meta.conversationStateKey === "exploration" ||
+            (typeof meta.writerMode === "string" && meta.writerMode.indexOf("exploration") === 0);
 
           if (meta.writerMode) {
             sections.push({
               title: "Contrat de posture",
               content: [
                 `Mode : ${meta.writerMode}`,
+                (isExplorationMode && Number.isInteger(meta.explorationCalibrationLevel)) ?
+                  `Niveau de structuration retenu : ${meta.explorationCalibrationLevel}/4` : null,
                 meta.intent ? `Intention : ${meta.intent}` : null,
                 (meta.forbidden && meta.forbidden.length) ? `Interdit : ${meta.forbidden.join(", ")}` : null,
                 meta.confidenceSignal ? `Signal confiance : ${meta.confidenceSignal}` : null,
@@ -1917,7 +1916,7 @@
           }];
         }
         
-        function createDebugDetails(debugSections) {
+        function createDebugDetails(debugSections, pipelineRuntimeText = "") {
           if (!Array.isArray(debugSections) || debugSections.length === 0) {
             return null;
           }
@@ -2023,6 +2022,19 @@
             sectionBlock.appendChild(sectionContent);
             debugBox.appendChild(sectionBlock);
           });
+
+          if (pipelineRuntimeText) {
+            const runtimeLine = document.createElement("div");
+            runtimeLine.style.marginTop = "2px";
+            runtimeLine.style.fontSize = "12px";
+            runtimeLine.style.lineHeight = "1.35";
+            runtimeLine.style.color = "#4b6470";
+            runtimeLine.style.textAlign = "right";
+            runtimeLine.style.userSelect = "text";
+            runtimeLine.style.webkitUserSelect = "text";
+            runtimeLine.textContent = pipelineRuntimeText;
+            debugBox.appendChild(runtimeLine);
+          }
           
           debugDetails.appendChild(debugSummary);
           debugDetails.appendChild(debugBox);
@@ -2068,7 +2080,11 @@
           main.textContent = parsed.content || "";
           box.appendChild(main);
           
-          const debugDetails = createDebugDetails(buildDebugSections(variant.debug, variant.debugMeta));
+          const normalizedDebugMeta = normalizeDebugMeta(variant.debugMeta);
+          const debugDetails = createDebugDetails(
+            buildDebugSections(variant.debug, normalizedDebugMeta),
+            buildPipelineRuntimeText(normalizedDebugMeta)
+          );
           if (debugDetails) {
             box.appendChild(debugDetails);
           }
@@ -2154,7 +2170,11 @@
                 main.textContent = variant.content || "";
                 card.appendChild(main);
                 
-                const debugDetails = createDebugDetails(buildDebugSections(variant.debug, variant.debugMeta));
+                const normalizedDebugMeta = normalizeDebugMeta(variant.debugMeta);
+                const debugDetails = createDebugDetails(
+                  buildDebugSections(variant.debug, normalizedDebugMeta),
+                  buildPipelineRuntimeText(normalizedDebugMeta)
+                );
                 if (debugDetails) {
                   card.appendChild(debugDetails);
                 }

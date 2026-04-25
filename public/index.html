@@ -5975,10 +5975,6 @@
           lines.push("Un ajustement relationnel a ete declenche pour proteger l'alliance.");
         }
 
-        if (Number.isInteger(meta.explorationCalibrationLevel)) {
-          lines.push(`Niveau de structuration retenu: ${meta.explorationCalibrationLevel}/4.`);
-        }
-
         if (meta.stagnationTurns > 0) {
           lines.push(`Stagnation detectee depuis ${meta.stagnationTurns} tour(s).`);
         }
@@ -6013,26 +6009,32 @@
           lines.push(`Signal de confiance : faible.`);
         }
 
-        if (meta.pipelineStages.length > 0) {
-          const totalMs = meta.pipelineStages.reduce((acc, stage) => acc + (Number.isFinite(stage.deltaMs) ? stage.deltaMs : 0), 0);
-          lines.push(`Pipeline execute en ${totalMs} ms sur ${meta.pipelineStages.length} etape(s).`);
+        return lines;
+      }
+
+      function buildPipelineRuntimeText(meta) {
+        if (!meta || !Array.isArray(meta.pipelineStages) || meta.pipelineStages.length === 0) {
+          return "";
         }
 
-        return lines;
+        const totalMs = meta.pipelineStages.reduce((acc, stage) => acc + (Number.isFinite(stage.deltaMs) ? stage.deltaMs : 0), 0);
+        return `Temps de reponse global: ${totalMs} ms (${meta.pipelineStages.length} etape(s)).`;
       }
 
       function buildDebugSections(meta) {
         const sections = [];
 
-        if (meta.topChips.length) {
-          sections.push({ title: "Chips", content: meta.topChips.join("\n") });
-        }
+        const isExplorationMode =
+          meta.conversationStateKey === "exploration" ||
+          (typeof meta.writerMode === "string" && meta.writerMode.indexOf("exploration") === 0);
 
         if (meta.writerMode) {
           sections.push({
             title: "Contrat de posture",
             content: [
               `Mode : ${meta.writerMode}`,
+              (isExplorationMode && Number.isInteger(meta.explorationCalibrationLevel)) ?
+                `Niveau de structuration retenu : ${meta.explorationCalibrationLevel}/4` : null,
               meta.intent ? `Intention : ${meta.intent}` : null,
               (meta.forbidden && meta.forbidden.length) ? `Interdit : ${meta.forbidden.join(", ")}` : null,
               meta.confidenceSignal ? `Signal confiance : ${meta.confidenceSignal}` : null,
@@ -6095,7 +6097,7 @@
         return { titleColor: "#245e66", blockBackground: "#ffffff", blockBorder: "#d6e2e1" };
       }
 
-      function createDebugDetails(debugSections) {
+      function createDebugDetails(debugSections, pipelineRuntimeText = "") {
         if (!Array.isArray(debugSections) || debugSections.length === 0) return null;
 
         const debugWrap = document.createElement("div");
@@ -6159,6 +6161,19 @@
           debugBox.appendChild(sectionBlock);
         });
 
+        if (pipelineRuntimeText) {
+          const runtimeLine = document.createElement("div");
+          runtimeLine.style.marginTop = "2px";
+          runtimeLine.style.fontSize = "12px";
+          runtimeLine.style.lineHeight = "1.35";
+          runtimeLine.style.color = "#4b6470";
+          runtimeLine.style.textAlign = "right";
+          runtimeLine.style.userSelect = "text";
+          runtimeLine.style.webkitUserSelect = "text";
+          runtimeLine.textContent = pipelineRuntimeText;
+          debugBox.appendChild(runtimeLine);
+        }
+
         debugDetails.appendChild(debugSummary);
         debugDetails.appendChild(debugBox);
         debugWrap.appendChild(debugDetails);
@@ -6182,7 +6197,6 @@
         !isFirstBotMessage &&
         !!debugMeta &&
         (
-          debugMeta.topChips.length > 0 ||
           !!debugMeta.memory ||
           !!debugMeta.directivityLabel ||
           hasStructuredSignals ||
@@ -6353,30 +6367,6 @@
         Array.isArray(debugMeta?.topChips) &&
         debugMeta.topChips.includes("Réajustement sobre");
 
-      const safeTopChips = Array.isArray(debugMeta?.topChips) ? debugMeta.topChips : [];
-
-      const topChipsAboveBubble =
-        hasSoberReadjustmentChip ?
-          safeTopChips.filter(label => label !== "Réajustement sobre") :
-          safeTopChips;
-
-      if (role === "bot" && hasDebugContent && showDebug && topChipsAboveBubble.length > 0) {
-        const top = document.createElement("div");
-        top.style.display = "flex";
-        top.style.flexWrap = "wrap";
-        top.style.gap = "6px";
-        top.style.marginBottom = "6px";
-        
-        topChipsAboveBubble.forEach(label => {
-          const chip = document.createElement("div");
-          chip.className = "debug-chip";
-          chip.textContent = label;
-          top.appendChild(chip);
-        });
-        
-        contentWrap.appendChild(top);
-      }
-      
       contentWrap.appendChild(bubble);
 
       if (hasSoberReadjustmentChip) {
@@ -6565,7 +6555,7 @@
       
       if (role === "bot" && hasDebugContent && showDebug) {
         const debugSections = buildDebugSections(debugMeta);
-        const debugEl = createDebugDetails(debugSections);
+        const debugEl = createDebugDetails(debugSections, buildPipelineRuntimeText(debugMeta));
         if (debugEl) contentWrap.appendChild(debugEl);
       }
 
