@@ -914,13 +914,13 @@
         memoryRewriteSource: typeof safe.memoryRewriteSource === "string" ? safe.memoryRewriteSource.trim() : null,
         memoryCompressed: safe.memoryCompressed === true,
         memoryBeforeCompression: typeof safe.memoryBeforeCompression === "string" ? safe.memoryBeforeCompression.trim() : null,
-        modelConflict: safe.modelConflict === true,
-        humanFieldRisk: safe.humanFieldRisk === true,
-        humanFieldOriginalReply: typeof safe.humanFieldOriginalReply === "string" ? safe.humanFieldOriginalReply.trim() : null,
         soberReadjustmentOriginalReply: typeof safe.soberReadjustmentOriginalReply === "string" ? safe.soberReadjustmentOriginalReply.trim() : null,
         criticTriggered: safe.criticTriggered === true,
         criticIssues: Array.isArray(safe.criticIssues) ? safe.criticIssues.map(v => String(v || "").trim()).filter(Boolean) : [],
-        confidenceLevel: typeof safe.confidenceLevel === "string" ? safe.confidenceLevel.trim() : null,
+        writerMode: typeof safe.writerMode === "string" ? safe.writerMode.trim() : null,
+        intent: typeof safe.intent === "string" ? safe.intent.trim() : null,
+        forbidden: Array.isArray(safe.forbidden) ? safe.forbidden.map(v => String(v || "").trim()).filter(Boolean) : [],
+        confidenceSignal: typeof safe.confidenceSignal === "string" ? safe.confidenceSignal.trim() : "high",
         allianceState: typeof safe.allianceState === "string" ? safe.allianceState.trim() : "good",
         engagementLevel: typeof safe.engagementLevel === "string" ? safe.engagementLevel.trim() : "active",
         stagnationTurns: Number.isInteger(safe.stagnationTurns) ? Math.max(0, safe.stagnationTurns) : 0,
@@ -1844,8 +1844,8 @@
               "Le critic pass a ete lance sans correction necessaire.");
           }
 
-          if (meta.confidenceLevel) {
-            lines.push(`Niveau de confiance estime: ${meta.confidenceLevel}.`);
+          if (meta.confidenceSignal && meta.confidenceSignal === "low") {
+            lines.push(`Signal de confiance : faible (le bot a signale une incertitude).`);
           }
 
           if (meta.pipelineStages.length > 0) {
@@ -1933,31 +1933,22 @@
             });
           }
           
-          if (meta.modelConflict && meta.rewriteSource) {
+          if (meta.writerMode) {
             sections.push({
-              title: "Conflit avec le modèle théorique",
-              content: meta.rewriteSource
+              title: "Contrat de posture (V3)",
+              content: [
+                `Mode : ${meta.writerMode}`,
+                meta.intent ? `Intention : ${meta.intent}` : null,
+                (meta.forbidden && meta.forbidden.length) ? `Interdit : ${meta.forbidden.join(", ")}` : null,
+                meta.confidenceSignal ? `Signal confiance : ${meta.confidenceSignal}` : null,
+              ].filter(Boolean).join("\n")
             });
           }
 
           if (meta.memoryRewriteSource) {
             sections.push({
-              title: "Conflit modèle - mémoire",
+              title: "R\u00e9écriture m\u00e9moire",
               content: meta.memoryRewriteSource
-            });
-          }
-
-          if (meta.humanFieldRisk === true && !meta.humanFieldOriginalReply) {
-            sections.push({
-              title: "Risque de d\u00e9rive proc\u00e9durale",
-              content: "D\u00e9tect\u00e9 (pr\u00e9-traitement)"
-            });
-          }
-
-          if (meta.humanFieldRisk === true && meta.humanFieldOriginalReply) {
-            sections.push({
-              title: "D\u00e9rive proc\u00e9durale",
-              content: meta.humanFieldOriginalReply
             });
           }
           

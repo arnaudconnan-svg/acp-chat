@@ -3617,13 +3617,13 @@
         memoryRewriteSource: typeof safe.memoryRewriteSource === "string" ? safe.memoryRewriteSource.trim() : "",
         memoryCompressed: safe.memoryCompressed === true,
         memoryBeforeCompression: typeof safe.memoryBeforeCompression === "string" ? safe.memoryBeforeCompression.trim() : "",
-        modelConflict: safe.modelConflict === true,
-        humanFieldRisk: safe.humanFieldRisk === true,
-        humanFieldOriginalReply: typeof safe.humanFieldOriginalReply === "string" ? safe.humanFieldOriginalReply.trim() : "",
         soberReadjustmentOriginalReply: typeof safe.soberReadjustmentOriginalReply === "string" ? safe.soberReadjustmentOriginalReply.trim() : "",
         criticTriggered: safe.criticTriggered === true,
         criticIssues: Array.isArray(safe.criticIssues) ? safe.criticIssues.map(v => String(v || "").trim()).filter(Boolean) : [],
-        confidenceLevel: typeof safe.confidenceLevel === "string" ? safe.confidenceLevel.trim() : "",
+        writerMode: typeof safe.writerMode === "string" ? safe.writerMode.trim() : "",
+        intent: typeof safe.intent === "string" ? safe.intent.trim() : "",
+        forbidden: Array.isArray(safe.forbidden) ? safe.forbidden.map(v => String(v || "").trim()).filter(Boolean) : [],
+        confidenceSignal: typeof safe.confidenceSignal === "string" ? safe.confidenceSignal.trim() : "high",
         allianceState: typeof safe.allianceState === "string" ? safe.allianceState.trim() : "good",
         engagementLevel: typeof safe.engagementLevel === "string" ? safe.engagementLevel.trim() : "active",
         stagnationTurns: Number.isInteger(safe.stagnationTurns) ? Math.max(0, safe.stagnationTurns) : 0,
@@ -6236,8 +6236,8 @@
             "Le critic pass a ete lance sans correction necessaire.");
         }
 
-        if (meta.confidenceLevel) {
-          lines.push(`Niveau de confiance estime: ${meta.confidenceLevel}.`);
+        if (meta.confidenceSignal && meta.confidenceSignal === "low") {
+          lines.push(`Signal de confiance : faible.`);
         }
 
         if (meta.pipelineStages.length > 0) {
@@ -6276,9 +6276,8 @@
           !!debugMeta.memoryRewriteSource ||
           !!debugMeta.conversationStateKey ||
           debugMeta.pipelineStages.length > 0 ||
-          !!debugMeta.confidenceLevel ||
-          !!debugMeta.dependencyRiskLevel ||
-          debugMeta.humanFieldRisk === true
+          !!debugMeta.confidenceSignal ||
+          !!debugMeta.writerMode
         );
       
       if (role === "bot" && compareLabel) {
@@ -6777,7 +6776,7 @@
           
           const confSum = document.createElement("summary");
           confSum.className = "debug-chip";
-          confSum.textContent = debugMeta.modelConflict ? "Conflit mod\u00e8le - r\u00e9ponse" : "R\u00e9ponse r\u00e9\u00e9crite";
+          confSum.textContent = "R\u00e9ponse r\u00e9\u00e9crite";
           
           const confContent = document.createElement("div");
           confContent.className = "debug-block";
@@ -6788,13 +6787,34 @@
           bottom.appendChild(conf);
         }
         
+        if (debugMeta.writerMode) {
+          const contractEl = document.createElement("details");
+          contractEl.className = "debug-detail";
+
+          const contractSum = document.createElement("summary");
+          contractSum.className = "debug-chip";
+          contractSum.textContent = `Posture: ${debugMeta.writerMode}`;
+
+          const contractContent = document.createElement("div");
+          contractContent.className = "debug-block";
+          const contractLines = [];
+          if (debugMeta.intent) contractLines.push(`Intention : ${debugMeta.intent}`);
+          if (debugMeta.forbidden && debugMeta.forbidden.length) contractLines.push(`Interdit : ${debugMeta.forbidden.join(", ")}`);
+          if (debugMeta.confidenceSignal) contractLines.push(`Signal confiance : ${debugMeta.confidenceSignal}`);
+          contractContent.textContent = contractLines.join("\n") || "—";
+
+          contractEl.appendChild(contractSum);
+          contractEl.appendChild(contractContent);
+          bottom.appendChild(contractEl);
+        }
+        
         if (debugMeta.memoryRewriteSource) {
           const memConf = document.createElement("details");
           memConf.className = "debug-detail";
           
           const memConfSum = document.createElement("summary");
           memConfSum.className = "debug-chip";
-          memConfSum.textContent = debugMeta.modelConflict ? "Conflit mod\u00e8le - m\u00e9moire" : "M\u00e9moire r\u00e9\u00e9crite";
+          memConfSum.textContent = "M\u00e9moire r\u00e9\u00e9crite";
           
           const memConfContent = document.createElement("div");
           memConfContent.className = "debug-block";
@@ -6803,30 +6823,6 @@
           memConf.appendChild(memConfSum);
           memConf.appendChild(memConfContent);
           bottom.appendChild(memConf);
-        }
-
-        if (debugMeta.humanFieldRisk === true && !debugMeta.humanFieldOriginalReply) {
-          const riskChip = document.createElement("div");
-          riskChip.className = "debug-chip";
-          riskChip.textContent = "Risque de d\u00e9rive proc\u00e9durale";
-          bottom.appendChild(riskChip);
-        }
-
-        if (debugMeta.humanFieldRisk === true && debugMeta.humanFieldOriginalReply) {
-          const driftEl = document.createElement("details");
-          driftEl.className = "debug-detail";
-
-          const driftSum = document.createElement("summary");
-          driftSum.className = "debug-chip";
-          driftSum.textContent = "D\u00e9rive proc\u00e9durale";
-
-          const driftContent = document.createElement("div");
-          driftContent.className = "debug-block";
-          driftContent.textContent = debugMeta.humanFieldOriginalReply;
-
-          driftEl.appendChild(driftSum);
-          driftEl.appendChild(driftContent);
-          bottom.appendChild(driftEl);
         }
         
         if (bottom.children.length > 0) {
