@@ -4214,6 +4214,22 @@ app.post("/chat", async (req, res) => {
     const detectedMode = detectedModeResult.mode;
     const detectedInfoSubmode = detectedMode === "info" ? normalizeInfoSubmode(detectedModeResult.infoSubmode) : null;
     const detectedContactSubmode = detectedMode === "contact" ? normalizeContactSubmode(detectedModeResult.contactSubmode) : null;
+
+    // Source de routage info pour observabilité admin
+    let infoRoutingSource = null;
+    if (detectedMode === "info") {
+      const src = detectedModeResult.infoSource;
+      const subSrc = detectedModeResult.infoSubmodeSource;
+      if (src === "deterministic_app_features") {
+        infoRoutingSource = "déterministe";
+      } else if (src === "llm_fallback") {
+        infoRoutingSource = "LLM (fallback)";
+      } else if (subSrc === "llm_fallback") {
+        infoRoutingSource = "LLM / sous-mode fallback";
+      } else {
+        infoRoutingSource = "LLM";
+      }
+    }
     const safeInterpretationRejection = detectedMode === "exploration"
       ? (interpretationRejection || { isInterpretationRejection: false, needsSoberReadjustment: false })
       : { isInterpretationRejection: false, needsSoberReadjustment: false };
@@ -4499,6 +4515,7 @@ app.post("/chat", async (req, res) => {
       dependencyRiskLevel: newFlags.dependencyRiskLevel,
       externalSupportMode: newFlags.externalSupportMode,
       closureIntent: newFlags.closureIntent,
+      infoRoutingSource,
       promptRegistry: activePromptRegistry
     });
 

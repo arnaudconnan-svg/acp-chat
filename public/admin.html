@@ -926,7 +926,8 @@
         dependencyRiskScore: Number.isFinite(safe.dependencyRiskScore) ? Math.max(0, Math.min(100, Math.round(Number(safe.dependencyRiskScore)))) : 0,
         dependencyRiskLevel: typeof safe.dependencyRiskLevel === "string" ? safe.dependencyRiskLevel.trim() : "low",
         externalSupportMode: typeof safe.externalSupportMode === "string" ? safe.externalSupportMode.trim() : "none",
-        closureIntent: safe.closureIntent === true
+        closureIntent: safe.closureIntent === true,
+        infoRoutingSource: typeof safe.infoRoutingSource === "string" ? safe.infoRoutingSource.trim() : null
       };
     }
 
@@ -1854,6 +1855,7 @@
                 meta.intent ? `Intention : ${meta.intent}` : null,
                 (meta.forbidden && meta.forbidden.length) ? `Interdit : ${meta.forbidden.join(", ")}` : null,
                 meta.confidenceSignal ? `Signal confiance : ${meta.confidenceSignal}` : null,
+                meta.infoRoutingSource ? `Routage info : ${meta.infoRoutingSource}` : null,
               ].filter(Boolean).join("\n")
             });
           }
