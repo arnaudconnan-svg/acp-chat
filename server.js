@@ -84,6 +84,11 @@ const {
   buildResponseDebugMeta: _buildResponseDebugMeta
 } = require("./lib/debugmeta");
 const { buildLLMUserTurns } = require("./lib/llm-messages");
+const {
+  CHAT_PRIORITY_RULES,
+  CHAT_PRIORITY_MATCHERS,
+  resolveChatPriorityRule
+} = require("./lib/chat-routing");
 
 // Local fallback storage for message data when needed.
 const MESSAGES_FILE = path.join(__dirname, "data/messages.json");
@@ -287,69 +292,9 @@ const MAX_SUICIDE_ANALYSIS_TURNS = 10;
 const MAX_RECALL_ANALYSIS_TURNS = 6;
 const RELANCE_WINDOW_SIZE = 4;
 
-// Single declarative priority table for early /chat decision rules.
-// Lower number = higher priority.
-// ─── Chaîne de priorité décisionnelle ─────────────────────────────────────────
-// L'ordre ci-dessous est l'ordre d'arbitrage complet, du plus prioritaire au moins :
-//
-//  1. suicide_n2            — risque N2 → réponse de crise immédiate (override total)
-//  2. acute_crisis_followup — crise aiguë en cours, non résolue → réponse de suivi de crise
-//  3. suicide_clarification — risque N1 ou ambiguïté → clarification avant tout
-//  4. recall_long_term      — rappel mémoire longue durée demandé → réponse de rappel
-//  5. recall_none           — tentative de rappel sans mémoire disponible → réponse d'absence
-//  6. (normal_flow)         — aucune règle prioritaire → pipeline complet (mode/posture/writer)
-//
-// Les règles 1-3 sont résolues après analyse suicide (phase "post_suicide").
-// Les règles 4-5 sont résolues après analyse recall  (phase "post_recall").
-// La règle 6 n'apparaît pas dans la table ; c'est le chemin par défaut.
-const CHAT_PRIORITY_RULES = Object.freeze([
-  { id: "suicide_n2",            phase: "post_suicide", priority: 10 },
-  { id: "acute_crisis_followup", phase: "post_suicide", priority: 20 },
-  { id: "suicide_clarification", phase: "post_suicide", priority: 30 },
-  { id: "recall_long_term",      phase: "post_recall",  priority: 10 },
-  { id: "recall_none",           phase: "post_recall",  priority: 20 }
-]);
-
-const CHAT_PRIORITY_MATCHERS = Object.freeze({
-  suicide_n2: ({ suicide }) => suicide?.suicideLevel === "N2",
-  acute_crisis_followup: ({ suicide, flags }) => flags?.acuteCrisis === true && suicide?.crisisResolved !== true,
-  suicide_clarification: ({ suicide }) => suicide?.suicideLevel === "N1" || suicide?.needsClarification === true,
-  recall_long_term: ({ recallRouting }) => recallRouting?.isLongTermMemoryRecall === true,
-  recall_none: ({ recallRouting }) => recallRouting?.isRecallAttempt === true && recallRouting?.calledMemory === "none"
-});
-
-function resolveChatPriorityRule({ phase, suicide = null, flags = null, recallRouting = null } = {}) {
-  for (const rule of CHAT_PRIORITY_RULES) {
-    if (rule.phase !== phase) {
-      continue;
-    }
-
-    const matcher = CHAT_PRIORITY_MATCHERS[rule.id];
-    if (typeof matcher !== "function") {
-      continue;
-    }
-
-    if (matcher({ suicide, flags, recallRouting }) === true) {
-      return rule;
-    }
-  }
-
-  return null;
-}
-
 // --------------------------------------------------
 // 1) OUTILS MINIMAUX
 // --------------------------------------------------
-
-function enableAdminUI() {
-  localStorage.setItem(ADMIN_UI_KEY, "1");
-  location.reload();
-}
-
-function disableAdminUI() {
-  localStorage.removeItem(ADMIN_UI_KEY);
-  location.reload();
-}
 
 function generateSessionId() {
   return crypto.randomBytes(24).toString("hex");
@@ -750,21 +695,6 @@ function isExplicitAppFeatureRequest(message = "") {
   return mentionsApp && asksUsage;
 }
 
-function estimateReplyConfidence(message = "", history = []) {
-  const text = (message || "").toLowerCase();
-  const hasExplicitAmbiguity = /je sais pas|c'est mÃ©langÃ©|c'est melange|je ne sais pas trop|je suis perdu|pas sur de|pas sÃ»r de/.test(text);
-  const hasRecentRejection = (history || []).slice(-4).some(m => {
-    if (m.role !== "user") return false;
-    const c = (m.content || "").toLowerCase();
-    return /c'est pas Ã§a|c'est pas ca|pas vraiment|pas du tout|t'as rate|t'as ratÃ©|c'est faux|pas ce que je veux dire|non,? pas /.test(c);
-  });
-  const contextLength = (history || []).filter(m => m.role === "user").length;
-  if (hasExplicitAmbiguity && (hasRecentRejection || contextLength <= 1)) return "low";
-  if (hasExplicitAmbiguity || (hasRecentRejection && contextLength <= 2)) return "low";
-  if (hasRecentRejection || contextLength <= 1) return "medium";
-  return "high";
-}
-
 // ----------------------------------------
 // 2) SUICIDE RISK
 // ----------------------------------------
@@ -1133,7 +1063,7 @@ ${String(content || "").trim()}
 }
 
 // Build the explicit posture contract block injected at the top of every writer system prompt.
-// This is the single source of policy for the current turn â€” the writer does not need to infer it.
+// This is the single source of policy for the current turn — the writer does not need to infer it.
 function buildPostureContractBlock(postureDecision = {}) {
   const writerMode = postureDecision.writerMode || "exploration_open";
   const intent = postureDecision.intent || "explorer librement";
@@ -1151,9 +1081,9 @@ function buildPostureContractBlock(postureDecision = {}) {
     `Etat : ${writerMode}`,
     `Intention : ${intent}`,
     `Interdit ce tour : ${forbidden}`,
-    `Signalement d'incertitude : ${confidenceSignal === "low" ? "oui â€” signale explicitement que tu n'es pas certain de ta lecture" : "non"}`,
+    `Signalement d'incertitude : ${confidenceSignal === "low" ? "oui — signale explicitement que tu n'es pas certain de ta lecture" : "non"}`,
     `Garde-fous critiques actifs : ${criticalGuardrails}`,
-    "Contraintes theoriques actives : no_unconscious (ne jamais mobiliser inconscient/subconscient comme instance explicative), no_psychopathology (ne jamais cadrer via pathologie/sante mentale), no_defense_mechanisms (ne pas parler de mecanismes de defense), no_implicit_agency (ne pas attribuer d'agentivite implicite au sujet â€” 'tu evites', 'tu resistes')",
+    "Contraintes theoriques actives : no_unconscious (ne jamais mobiliser inconscient/subconscient comme instance explicative), no_psychopathology (ne jamais cadrer via pathologie/sante mentale), no_defense_mechanisms (ne pas parler de mecanismes de defense), no_implicit_agency (ne pas attribuer d'agentivite implicite au sujet — 'tu evites', 'tu resistes')",
   ];
   if (maxSentences) lines.push(`Longueur : max ${maxSentences} phrases`);
   if (toneConstraint) lines.push(`Ton : ${toneConstraint}`);
@@ -1536,7 +1466,7 @@ async function generateConversationTitle(messages) {
     let title = completion.choices?.[0]?.message?.content?.trim() || "";
     
     title = title
-      .replace(/^["'Â«]+|["'Â»]+$/g, "")
+      .replace(/^["'«]+|["'»]+$/g, "")
       .replace(/\s+/g, " ")
       .trim();
     
@@ -1574,7 +1504,7 @@ async function generateConversationTitle(messages) {
       });
       
       title = String(title || "")
-        .replace(/^["'Â«]+|["'Â»]+$/g, "")
+        .replace(/^["'«]+|["'»]+$/g, "")
         .replace(/\s+/g, " ")
         .trim();
       
@@ -1618,7 +1548,7 @@ async function generateConversationTitle(messages) {
         });
         
         fallbackTitle = String(fallbackTitle || "")
-          .replace(/^["'Â«]+|["'Â»]+$/g, "")
+          .replace(/^["'«]+|["'»]+$/g, "")
           .replace(/\s+/g, " ")
           .trim();
         
@@ -2761,7 +2691,7 @@ app.post("/api/branches/create-and-activate", async (req, res) => {
 });
 
 // Store feedback (thumbUp/thumbDown + optional comment) on an existing message.
-// If devShare is false, the call should not reach this endpoint â€” frontend handles locally only.
+// If devShare is false, the call should not reach this endpoint — frontend handles locally only.
 app.post("/api/messages/:id/feedback", async (req, res) => {
   try {
     const messageId = String(req.params?.id || "").trim();
@@ -4701,7 +4631,7 @@ app.post("/chat", async (req, res) => {
     infoSubmodeForCatch = detectedInfoSubmode;
     contactSubmodeForCatch = detectedContactSubmode;
 
-    // Phase 3: Deterministic arbitrator â€” consolidate all analyzer outputs into a
+    // Phase 3: Deterministic arbitrator — consolidate all analyzer outputs into a
     // PostureDecision struct. No LLM calls, no side effects outside this block.
     const previousConversationStateKey = normalizeConversationStateKey(flags.conversationStateKey);
     const postureDecision = buildPostureDecision({
@@ -4819,6 +4749,7 @@ app.post("/chat", async (req, res) => {
           humanFieldRisk,
           sentenceCount
         });
+        const t_critic = Date.now();
         const criticResult = await applySelectiveCritic({
           reply,
           message,
@@ -4826,6 +4757,7 @@ app.post("/chat", async (req, res) => {
           postureDecision,
           promptRegistry: activePromptRegistry
         });
+        chatStageTimings.push({ stage: "critic", deltaMs: Date.now() - t_critic });
         throwIfCanceled();
         criticTriggered = true;
         criticIssues = criticResult.criticIssues;
