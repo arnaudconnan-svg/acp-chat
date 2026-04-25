@@ -919,6 +919,9 @@
         intent: typeof safe.intent === "string" ? safe.intent.trim() : null,
         forbidden: Array.isArray(safe.forbidden) ? safe.forbidden.map(v => String(v || "").trim()).filter(Boolean) : [],
         confidenceSignal: typeof safe.confidenceSignal === "string" ? safe.confidenceSignal.trim() : "high",
+        stateTransitionFrom: typeof safe.stateTransitionFrom === "string" ? safe.stateTransitionFrom.trim() : null,
+        stateTransitionValid: safe.stateTransitionValid !== false,
+        stateTransitionRequested: typeof safe.stateTransitionRequested === "string" ? safe.stateTransitionRequested.trim() : null,
         allianceState: typeof safe.allianceState === "string" ? safe.allianceState.trim() : "good",
         engagementLevel: typeof safe.engagementLevel === "string" ? safe.engagementLevel.trim() : "active",
         stagnationTurns: Number.isInteger(safe.stagnationTurns) ? Math.max(0, safe.stagnationTurns) : 0,
@@ -1856,6 +1859,12 @@
                 (meta.forbidden && meta.forbidden.length) ? `Interdit : ${meta.forbidden.join(", ")}` : null,
                 meta.confidenceSignal ? `Signal confiance : ${meta.confidenceSignal}` : null,
                 meta.infoRoutingSource ? `Routage info : ${meta.infoRoutingSource}` : null,
+                meta.stateTransitionValid === false && meta.stateTransitionRequested
+                  ? `Transition refusée : ${meta.stateTransitionFrom || "(inconnu)"} -> ${meta.stateTransitionRequested}`
+                  : null,
+                meta.stateTransitionValid === false
+                  ? `Transition retenue : ${meta.conversationStateKey || "(inconnu)"}`
+                  : null,
               ].filter(Boolean).join("\n")
             });
           }

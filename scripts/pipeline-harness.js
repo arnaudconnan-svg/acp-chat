@@ -253,6 +253,30 @@ const cases = [
       assert(meta.writerMode === "stabilization",
         `expected writerMode 'stabilization', got '${meta.writerMode}'`);
     }
+  },
+  {
+    name: "transition refusal is surfaced in debugMeta",
+    payload: buildChatPayload({
+      conversationId: cid("c_pipeline_transition_refused"),
+      message: "Je suis trop submerge, je n'arrive plus a traiter.",
+      flags: {
+        conversationStateKey: "closure",
+        allianceState: "good",
+        engagementLevel: "withdrawn",
+        stagnationTurns: 2,
+        processingWindow: "overloaded"
+      }
+    }),
+    assert: (result) => {
+      assertChatOk(result, "transition refusal is surfaced in debugMeta");
+      const meta = result.body.debugMeta;
+      assert(meta.stateTransitionValid === false,
+        `expected stateTransitionValid=false, got '${meta.stateTransitionValid}'`);
+      assert(meta.stateTransitionRequested === "stabilization",
+        `expected stateTransitionRequested='stabilization', got '${meta.stateTransitionRequested}'`);
+      assert(meta.conversationStateKey === "closure",
+        `expected enforced conversationStateKey='closure', got '${meta.conversationStateKey}'`);
+    }
   }
 ];
 
