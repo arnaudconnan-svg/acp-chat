@@ -283,12 +283,25 @@ const RELANCE_WINDOW_SIZE = 4;
 
 // Single declarative priority table for early /chat decision rules.
 // Lower number = higher priority.
+// ─── Chaîne de priorité décisionnelle ─────────────────────────────────────────
+// L'ordre ci-dessous est l'ordre d'arbitrage complet, du plus prioritaire au moins :
+//
+//  1. suicide_n2            — risque N2 → réponse de crise immédiate (override total)
+//  2. acute_crisis_followup — crise aiguë en cours, non résolue → réponse de suivi de crise
+//  3. suicide_clarification — risque N1 ou ambiguïté → clarification avant tout
+//  4. recall_long_term      — rappel mémoire longue durée demandé → réponse de rappel
+//  5. recall_none           — tentative de rappel sans mémoire disponible → réponse d'absence
+//  6. (normal_flow)         — aucune règle prioritaire → pipeline complet (mode/posture/writer)
+//
+// Les règles 1-3 sont résolues après analyse suicide (phase "post_suicide").
+// Les règles 4-5 sont résolues après analyse recall  (phase "post_recall").
+// La règle 6 n'apparaît pas dans la table ; c'est le chemin par défaut.
 const CHAT_PRIORITY_RULES = Object.freeze([
-  { id: "suicide_n2", phase: "post_suicide", priority: 10 },
+  { id: "suicide_n2",            phase: "post_suicide", priority: 10 },
   { id: "acute_crisis_followup", phase: "post_suicide", priority: 20 },
   { id: "suicide_clarification", phase: "post_suicide", priority: 30 },
-  { id: "recall_long_term", phase: "post_recall", priority: 10 },
-  { id: "recall_none", phase: "post_recall", priority: 20 }
+  { id: "recall_long_term",      phase: "post_recall",  priority: 10 },
+  { id: "recall_none",           phase: "post_recall",  priority: 20 }
 ]);
 
 const CHAT_PRIORITY_MATCHERS = Object.freeze({
@@ -4019,6 +4032,7 @@ app.post("/chat", async (req, res) => {
       confidenceSignal: typeof safe.confidenceSignal === "string" ? safe.confidenceSignal : "high",
       stateTransitionFrom: typeof safe.stateTransitionFrom === "string" ? safe.stateTransitionFrom : null,
       stateTransitionValid: safe.stateTransitionValid !== false,
+      stateTransitionRequested: typeof safe.stateTransitionRequested === "string" ? safe.stateTransitionRequested : null,
       allianceState: normalizeAllianceState(safe.allianceState),
       engagementLevel: normalizeEngagementLevel(safe.engagementLevel),
       stagnationTurns: normalizeStagnationTurns(safe.stagnationTurns),
@@ -4826,7 +4840,8 @@ app.post("/chat", async (req, res) => {
       console.warn("[CHAT][STATE_TRANSITION_OUT_OF_GRAPH]", {
         conversationId,
         previousConversationStateKey: postureDecision.previousConversationStateKey,
-        nextConversationStateKey: postureDecision.conversationStateKey
+        requestedConversationStateKey: postureDecision.requestedConversationStateKey,
+        enforcedConversationStateKey: postureDecision.conversationStateKey
       });
     }
     
@@ -5026,6 +5041,9 @@ app.post("/chat", async (req, res) => {
       confidenceSignal: postureDecision.confidenceSignal,
       stateTransitionFrom: postureDecision.previousConversationStateKey,
       stateTransitionValid: postureDecision.stateTransitionValid,
+      stateTransitionRequested: postureDecision.stateTransitionValid === false
+        ? postureDecision.requestedConversationStateKey
+        : null,
       // Phase B structural flags
       allianceState: newFlags.allianceState,
       engagementLevel: newFlags.engagementLevel,

@@ -245,8 +245,11 @@ check("state transition guard: closure -> stabilization marked invalid", () => {
     processingWindow: "overloaded",
     engagementLevel: "withdrawn"
   }));
-  assert(out.conversationStateKey === "stabilization",
-    `expected 'stabilization', got '${out.conversationStateKey}'`);
+  // Enforcement: invalid transition → effective state is the previous state (closure)
+  assert(out.conversationStateKey === "closure",
+    `expected enforced state 'closure', got '${out.conversationStateKey}'`);
+  assert(out.requestedConversationStateKey === "stabilization",
+    `expected requestedConversationStateKey 'stabilization', got '${out.requestedConversationStateKey}'`);
   assert(out.stateTransitionValid === false,
     `expected stateTransitionValid=false for closure -> stabilization, got '${out.stateTransitionValid}'`);
 });
@@ -256,8 +259,11 @@ check("state transition guard: closure -> alliance_rupture marked invalid", () =
     previousConversationStateKey: "closure",
     allianceState: "rupture"
   }));
-  assert(out.conversationStateKey === "alliance_rupture",
-    `expected 'alliance_rupture', got '${out.conversationStateKey}'`);
+  // Enforcement: invalid transition → effective state is the previous state (closure)
+  assert(out.conversationStateKey === "closure",
+    `expected enforced state 'closure', got '${out.conversationStateKey}'`);
+  assert(out.requestedConversationStateKey === "alliance_rupture",
+    `expected requestedConversationStateKey 'alliance_rupture', got '${out.requestedConversationStateKey}'`);
   assert(out.stateTransitionValid === false,
     `expected stateTransitionValid=false for closure -> alliance_rupture, got '${out.stateTransitionValid}'`);
 });
