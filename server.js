@@ -73,6 +73,12 @@ const {
 } = require("./lib/pipeline");
 const { buildDefaultPromptRegistry } = require("./lib/prompts");
 const {
+  createCritic,
+  hasAgencyInjectionInReply,
+  hasTheoreticalViolationHeuristic,
+  isProceduralInstrumentalReply
+} = require("./lib/critic");
+const {
   buildTopChips,
   buildDirectivityText,
   buildResponseDebugMeta: _buildResponseDebugMeta
@@ -744,44 +750,6 @@ function isExplicitAppFeatureRequest(message = "") {
   return mentionsApp && asksUsage;
 }
 
-function isProceduralInstrumentalReply(reply = "") {
-  const text = normalizeGuardText(reply);
-
-  const hasProceduralTone = /voici quelques pistes|pour avancer|si ce n'est pas possible|tu peux aussi|tu peux |on peut |il existe|commence par|essaie de|reviens en arriere|decris brievement|cibler ensemble|copier-coller|isoler|extraire|utilise|ouvre|voir comment|contourner|repartir de|sans passer par|sans repasser par/.test(text);
-  const hasInstrumentalObjects = /outil|interface|plateforme|systeme|procedure|manipulation|parametr|reglage|historique|version|fichier|document|section|portion|partie|support|editeur|application/.test(text);
-  const hasListStructure = /^\s*[-â€¢]\s/m.test(reply) || /^\s*\d+\.\s/m.test(reply);
-
-  return (hasProceduralTone && hasInstrumentalObjects) || (hasListStructure && hasInstrumentalObjects);
-}
-
-// Phase 4: Detect agency injunctions in a reply (sync check).
-function hasAgencyInjectionInReply(reply = "") {
-  const text = (reply || "").toLowerCase();
-  const patterns = [
-    "tu pourrais", "essaie de", "il faudrait", "tu devrais",
-    "pourquoi ne pas", "je t'encourage", "je te conseille",
-    "n'hesite pas a", "n'hÃ©site pas Ã ", "tu devrais peut-etre",
-    "tu devrais peut-Ãªtre"
-  ];
-  return patterns.some(p => text.includes(p));
-}
-
-
-// Heuristic pre-check for theoretical violations to decide if CRITIC_PASS should be triggered.
-// This avoids an unnecessary LLM call when the reply is clearly clean.
-function hasTheoreticalViolationHeuristic(reply = "") {
-  const text = (reply || "").toLowerCase();
-  const patterns = [
-    "inconscient", "subconscient", "non-conscient",
-    "mecanisme de defense", "m\u00e9canisme de d\u00e9fense",
-    "psychopathologie", "sant\u00e9 mentale", "sante mentale",
-    "tu \u00e9vites", "tu evites", "tu r\u00e9sistes", "tu resistes",
-    "il y a une r\u00e9sistance", "il y a une resistance",
-    "tu refuses de", "tu fais tout pour ne pas"
-  ];
-  return patterns.some(p => text.includes(p));
-}
-// Phase 5: Estimate confidence level for an exploration reply (rule-based, no LLM).
 function estimateReplyConfidence(message = "", history = []) {
   const text = (message || "").toLowerCase();
   const hasExplicitAmbiguity = /je sais pas|c'est mÃ©langÃ©|c'est melange|je ne sais pas trop|je suis perdu|pas sur de|pas sÃ»r de/.test(text);
@@ -1101,61 +1069,6 @@ ${originalContent}
   return (r.choices?.[0]?.message?.content || "").trim() || originalContent;
 }
 
-// Phase 4: Selective critic - detects and corrects agency injunctions, over-clinicalization,
-// and hollow presence formulas when triggered by a strong signal.
-// Receives postureDecision to enforce the active contract (writerMode + forbidden).
-async function applySelectiveCritic({
-  reply = "",
-  message = "",
-  history = [],
-  postureDecision = {},
-  promptRegistry = buildDefaultPromptRegistry()
-}) {
-  const writerMode = postureDecision.writerMode || null;
-  const forbidden = Array.isArray(postureDecision.forbidden) && postureDecision.forbidden.length > 0
-    ? postureDecision.forbidden
-    : [];
-  const maxSentences = Number.isFinite(postureDecision.maxSentences) && postureDecision.maxSentences > 0
-    ? postureDecision.maxSentences
-    : null;
-  const humanFieldGuardActive = postureDecision.humanFieldGuardActive === true;
-
-  const contractLine = writerMode
-    ? `Contrat actif : mode ${writerMode}${forbidden.length ? `, interdit ce tour : ${forbidden.join(", ")}` : ""}`
-    : null;
-  const contractLengthLine = maxSentences ? `Longueur contractuelle : max ${maxSentences} phrases` : null;
-  const contractHumanFieldLine = humanFieldGuardActive ? "Human field guard actif : eviter tout ton procedural/instrumental" : null;
-
-  const userParts = [
-    contractLine,
-    contractLengthLine,
-    contractHumanFieldLine,
-    `Message utilisateur :\n${message}`,
-    `Contexte recent :\n${(history || []).map(m => `${m.role === "user" ? "Utilisateur" : "Assistant"} : ${m.content}`).join("\n")}`,
-    `Reponse a relire et corriger si necessaire :\n${reply}`
-  ].filter(Boolean);
-  const user = userParts.join("\n\n");
-
-  const r = await client.chat.completions.create({
-    model: MODEL_IDS.analysis,
-    temperature: 0,
-    max_tokens: 600,
-    messages: [
-      { role: "system", content: promptRegistry.CRITIC_PASS },
-      { role: "user", content: user }
-    ]
-  });
-  try {
-    const raw = (r.choices?.[0]?.message?.content || "").replace(/```json|```/g, "").trim();
-    const parsed = JSON.parse(raw);
-    return {
-      reply: typeof parsed.reply === "string" && parsed.reply.trim() ? parsed.reply.trim() : reply,
-      criticIssues: Array.isArray(parsed.issues) ? parsed.issues.filter(i => typeof i === "string") : []
-    };
-  } catch {
-    return { reply, criticIssues: [] };
-  }
-}
 
 // Phase 5: Rewrite a reply to explicitly signal interpretive uncertainty.
 async function rewriteForUncertainty({
@@ -1205,6 +1118,8 @@ const {
   normalizeIntersessionMemory,
   normalizeMemory
 });
+
+const { applySelectiveCritic } = createCritic({ client, MODEL_IDS });
 
 // --------------------------------------------------
 // 6) PROMPT
@@ -4725,7 +4640,15 @@ app.post("/chat", async (req, res) => {
     let finalExplorationSubmode = "interpretation";
 
     // Phase 2: run independent analyzers in parallel, including detectMode.
+    // withAnalyzerTiming wraps each Promise to record individual analyzer durations in chatStageTimings.
     const shouldRunNonContactAnalyzers = contactAnalysis.isContact !== true;
+    function withAnalyzerTiming(name, promise) {
+      const t = Date.now();
+      return promise.then(result => {
+        chatStageTimings.push({ stage: `analyzer_${name}`, deltaMs: Date.now() - t });
+        return result;
+      });
+    }
     const [
       detectedModeResult,
       relationalAdjustmentAnalysis,
@@ -4733,7 +4656,7 @@ app.post("/chat", async (req, res) => {
       situatedImpasseAnalysis,
       interpretationRejection
     ] = await Promise.all([
-      contactAnalysis.isContact
+      withAnalyzerTiming("detect_mode", contactAnalysis.isContact
         ? Promise.resolve({
             mode: "contact",
             infoSource: null,
@@ -4741,11 +4664,11 @@ app.post("/chat", async (req, res) => {
             infoSubmodeSource: null,
             contactSubmode: normalizeContactSubmode(contactAnalysis.contactSubmode) || "regulated"
           })
-        : detectMode(message, recentHistory, activePromptRegistry),
-      shouldRunNonContactAnalyzers
+        : detectMode(message, recentHistory, activePromptRegistry)),
+      withAnalyzerTiming("relational_adjustment", shouldRunNonContactAnalyzers
         ? analyzeRelationalAdjustmentNeed(message, recentHistory, previousMemory, false, activePromptRegistry)
-        : Promise.resolve(null),
-      shouldRunNonContactAnalyzers
+        : Promise.resolve(null)),
+      withAnalyzerTiming("exploration_calibration", shouldRunNonContactAnalyzers
         ? analyzeExplorationCalibration({
             message,
             history: recentHistory,
@@ -4754,16 +4677,16 @@ app.post("/chat", async (req, res) => {
             explorationRelanceWindow: newFlags.explorationRelanceWindow,
             promptRegistry: activePromptRegistry
           })
-        : Promise.resolve(null),
-      analyzeSituatedImpasse(message),
-      shouldRunNonContactAnalyzers
+        : Promise.resolve(null)),
+      withAnalyzerTiming("situated_impasse", analyzeSituatedImpasse(message)),
+      withAnalyzerTiming("interpretation_rejection", shouldRunNonContactAnalyzers
         ? analyzeInterpretationRejection({
             message,
             history: recentHistory,
             memory: previousMemory,
             promptRegistry: activePromptRegistry
           })
-        : Promise.resolve({ isInterpretationRejection: false, needsSoberReadjustment: false })
+        : Promise.resolve({ isInterpretationRejection: false, needsSoberReadjustment: false }))
     ]);
     throwIfCanceled();
 

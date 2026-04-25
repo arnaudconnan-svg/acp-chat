@@ -158,6 +158,50 @@ const cases = [
       assert(meta.stateTransitionValid === true,
         `expected stateTransitionValid=true for exploration->exploration, got '${meta.stateTransitionValid}'`);
     }
+  },
+  {
+    name: "post_contact state after prior contact turn",
+    payload: buildChatPayload({
+      conversationId: cid("c_pipeline_post_contact"),
+      message: "Oui c'est ca, ca me pesait depuis un moment.",
+      flags: {
+        conversationStateKey: "contact",
+        contactState: { wasContact: true }
+      }
+    }),
+    assert: (result) => {
+      assertChatOk(result, "post_contact state after prior contact turn");
+      const meta = result.body.debugMeta;
+      // Non-contact follow-up after a contact turn should land in post_contact or exploration
+      assert(
+        meta.conversationStateKey === "post_contact" || meta.conversationStateKey === "exploration" || meta.conversationStateKey === "contact",
+        `expected post_contact / exploration / contact, got '${meta.conversationStateKey}'`
+      );
+      assert(meta.stateTransitionValid === true,
+        `expected stateTransitionValid=true, got '${meta.stateTransitionValid}'`);
+    }
+  },
+  {
+    name: "stabilization — forced by overloaded+withdrawn flags",
+    payload: buildChatPayload({
+      conversationId: cid("c_pipeline_stabilization"),
+      message: "Ca va, ca va.",
+      flags: {
+        conversationStateKey: "exploration",
+        allianceState: "good",
+        engagementLevel: "withdrawn",
+        stagnationTurns: 0,
+        processingWindow: "overloaded"
+      }
+    }),
+    assert: (result) => {
+      assertChatOk(result, "stabilization forced by overloaded+withdrawn");
+      const meta = result.body.debugMeta;
+      assert(meta.conversationStateKey === "stabilization",
+        `expected conversationStateKey 'stabilization', got '${meta.conversationStateKey}'`);
+      assert(meta.writerMode === "stabilization",
+        `expected writerMode 'stabilization', got '${meta.writerMode}'`);
+    }
   }
 ];
 
