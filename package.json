@@ -6,7 +6,6 @@
   "scripts": {
     "start": "node server.js",
     "smoke": "node scripts/smoke-test.js",
-    "eval:chat": "node scripts/chat-evals.js",
     "reset:data": "node scripts/reset-app-data.js --apply",
     "rtdb:index": "node scripts/ensure-rtdb-index.js",
     "rtdb:index:apply": "node scripts/ensure-rtdb-index.js --apply",
