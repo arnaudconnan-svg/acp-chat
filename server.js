@@ -4017,6 +4017,8 @@ app.post("/chat", async (req, res) => {
       intent: typeof safe.intent === "string" ? safe.intent : null,
       forbidden: Array.isArray(safe.forbidden) ? safe.forbidden : [],
       confidenceSignal: typeof safe.confidenceSignal === "string" ? safe.confidenceSignal : "high",
+      stateTransitionFrom: typeof safe.stateTransitionFrom === "string" ? safe.stateTransitionFrom : null,
+      stateTransitionValid: safe.stateTransitionValid !== false,
       allianceState: normalizeAllianceState(safe.allianceState),
       engagementLevel: normalizeEngagementLevel(safe.engagementLevel),
       stagnationTurns: normalizeStagnationTurns(safe.stagnationTurns),
@@ -4819,6 +4821,14 @@ app.post("/chat", async (req, res) => {
       finalDirectivityLevel,
       finalExplorationSubmode
     });
+
+    if (postureDecision.stateTransitionValid === false) {
+      console.warn("[CHAT][STATE_TRANSITION_OUT_OF_GRAPH]", {
+        conversationId,
+        previousConversationStateKey: postureDecision.previousConversationStateKey,
+        nextConversationStateKey: postureDecision.conversationStateKey
+      });
+    }
     
     // 4) GÃ©nÃ©ration principale de la rÃ©ponse selon le mode dÃ©tectÃ©,
     // puis application d'un pipeline de correction si le contenu est en conflit modÃ¨le.
@@ -5014,6 +5024,8 @@ app.post("/chat", async (req, res) => {
       intent: postureDecision.intent,
       forbidden: postureDecision.forbidden,
       confidenceSignal: postureDecision.confidenceSignal,
+      stateTransitionFrom: postureDecision.previousConversationStateKey,
+      stateTransitionValid: postureDecision.stateTransitionValid,
       // Phase B structural flags
       allianceState: newFlags.allianceState,
       engagementLevel: newFlags.engagementLevel,

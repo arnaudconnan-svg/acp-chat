@@ -94,10 +94,12 @@ check("output: all required fields present", () => {
     assert(typeof out[f] === "number", `field '${f}' must be a number, got ${typeof out[f]}`);
   }
   const requiredBooleans = ["relationalAdjustmentTriggered", "interpretationRejectionDetected",
-    "needsSoberReadjustment", "rejectsUnderlyingPhenomenon", "humanFieldGuardActive"];
+    "needsSoberReadjustment", "rejectsUnderlyingPhenomenon", "humanFieldGuardActive", "stateTransitionValid"];
   for (const f of requiredBooleans) {
     assert(typeof out[f] === "boolean", `field '${f}' must be boolean, got ${typeof out[f]}`);
   }
+  assert(out.previousConversationStateKey === null || typeof out.previousConversationStateKey === "string",
+    `field 'previousConversationStateKey' must be null or string, got ${typeof out.previousConversationStateKey}`);
   const requiredArrays = ["forbidden", "allowed", "theoreticalConstraints", "criticalGuardrails"];
   for (const f of requiredArrays) {
     assert(Array.isArray(out[f]), `field '${f}' must be an array`);
@@ -235,6 +237,18 @@ check("state: closureIntent cannot override alliance_rupture", () => {
   }));
   assert(out.conversationStateKey === "alliance_rupture",
     `expected 'alliance_rupture', got '${out.conversationStateKey}'`);
+});
+
+check("state transition guard: closure -> stabilization marked invalid", () => {
+  const out = buildPostureDecision(explorationInput({
+    previousConversationStateKey: "closure",
+    processingWindow: "overloaded",
+    engagementLevel: "withdrawn"
+  }));
+  assert(out.conversationStateKey === "stabilization",
+    `expected 'stabilization', got '${out.conversationStateKey}'`);
+  assert(out.stateTransitionValid === false,
+    `expected stateTransitionValid=false for closure -> stabilization, got '${out.stateTransitionValid}'`);
 });
 
 // ─── writerMode derivation ────────────────────────────────────────────────────
