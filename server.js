@@ -4368,9 +4368,10 @@ app.post("/chat", async (req, res) => {
     const finalReplyRewriteSource = finalReplyRewriteSources.join("+") || null;
 
     // Capture the reply before relational adjustment for debug observability.
-    // Only performed in debug mode (logsEnabled) to avoid an extra LLM call in production.
+    // When relational adjustment triggers, a second LLM call generates the reply without
+    // the adjustment block, so the debug panel can show both versions.
     let therapeuticAllianceSource = null;
-    if (logsEnabled && postureDecision.relationalAdjustmentTriggered === true) {
+    if (postureDecision.relationalAdjustmentTriggered === true) {
       const t_noAdj = Date.now();
       const generatedWithoutAdjustment = await generateReply({
         message,
