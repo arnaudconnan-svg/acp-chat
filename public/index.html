@@ -6385,32 +6385,7 @@
         });
       }
       
-      const hasSoberReadjustmentChip =
-        role === "bot" &&
-        hasDebugContent &&
-        showDebug &&
-        Array.isArray(debugMeta?.topChips) &&
-        debugMeta.topChips.includes("Réajustement sobre");
-
       contentWrap.appendChild(bubble);
-
-      if (hasSoberReadjustmentChip) {
-        const soberDetails = document.createElement("details");
-        soberDetails.className = "debug-detail";
-        soberDetails.style.marginTop = "6px";
-
-        const soberSummary = document.createElement("summary");
-        soberSummary.className = "debug-chip";
-        soberSummary.textContent = "Réajustement sobre";
-
-        const soberContent = document.createElement("div");
-        soberContent.className = "debug-block";
-        soberContent.textContent = debugMeta.soberReadjustmentOriginalReply || "Réponse avant réécriture indisponible.";
-
-        soberDetails.appendChild(soberSummary);
-        soberDetails.appendChild(soberContent);
-        contentWrap.appendChild(soberDetails);
-      }
 
       if (role === "bot") {
         const actionsRow = document.createElement("div");
