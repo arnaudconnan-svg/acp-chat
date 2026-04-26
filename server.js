@@ -729,7 +729,7 @@ async function llmInfoAnalysis(message = "", history = [], promptRegistry = buil
 }
 
 const {
-  analyzeContactState,
+  analyzeDischargeState,
   analyzeExplorationCalibration,
   analyzeExplorationRelance,
   analyzeInfoRequest,
@@ -4084,14 +4084,15 @@ app.post("/chat", async (req, res) => {
     ]);
     throwIfCanceled();
 
+    const dischargeAnalysis = detectedModeResult.dischargeAnalysis || { isContact: false, contactSubmode: null };
     const contactAnalysis = detectedModeResult.contactAnalysis || { isContact: false, contactSubmode: null };
     newFlags.contactState = {
-      wasContact: contactAnalysis.isContact === true
+      wasContact: dischargeAnalysis.isContact === true
     };
 
     const detectedMode = detectedModeResult.mode;
     const detectedInfoSubmode = detectedMode === "info" ? normalizeInfoSubmode(detectedModeResult.infoSubmode) : null;
-    const detectedContactSubmode = detectedMode === "contact" ? normalizeContactSubmode(detectedModeResult.contactSubmode) : null;
+    const detectedContactSubmode = (detectedMode === "discharge" || detectedMode === "contact") ? normalizeContactSubmode(detectedModeResult.contactSubmode) : null;
     const detectedPsychoeducationType = detectedMode === "info" && detectedInfoSubmode === "psychoeducation"
       ? (detectedModeResult.psychoeducationType || null)
       : null;
@@ -4135,6 +4136,7 @@ app.post("/chat", async (req, res) => {
     const postureDecision = buildPostureDecision({
       detectedMode,
       detectedInfoSubmode,
+      dischargeAnalysis,
       contactAnalysis,
       relationalAdjustmentAnalysis,
       calibrationAnalysis,
@@ -4184,7 +4186,7 @@ app.post("/chat", async (req, res) => {
       finalDetectedMode,
       infoSubmode: detectedInfoSubmode,
       contactSubmode: detectedContactSubmode,
-      isContact: contactAnalysis.isContact === true,
+      isContact: dischargeAnalysis.isContact === true || contactAnalysis.isContact === true,
       relationalAdjustmentTriggered: postureDecision.relationalAdjustmentTriggered,
       previousWasContact: flags.contactState?.wasContact === true,
       currentWasContact: newFlags.contactState?.wasContact === true,
@@ -4236,7 +4238,7 @@ app.post("/chat", async (req, res) => {
     let criticIssues = [];
     let humanFieldRisk = false;
     let contractLengthExceeded = false;
-    const criticModes = ["exploration", "contact", "info"];
+    const criticModes = ["exploration", "discharge", "contact", "info"];
     const n1CrisisForced = postureDecision.writerMode === "n1_crisis";
     const recallForced = postureDecision.writerMode === "recall_memory";
     const criticApplies = n1CrisisForced || recallForced || criticModes.includes(finalDetectedMode);
@@ -4521,7 +4523,7 @@ app.post("/chat", async (req, res) => {
       ? "Le service est temporairement indisponible car le quota API est epuise. Je ne peux pas traiter de nouveau message tant que ce quota n'est pas retabli."
       : suicideLevelForCatch === "N1"
         ? n1Fallback()
-        : modeForCatch === "contact"
+        : modeForCatch === "discharge" || modeForCatch === "contact"
           ? "Je suis la."
           : "Desole, reformule.";
     const fallbackDebugMeta = buildFallbackResponseDebugMeta({
