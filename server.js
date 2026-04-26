@@ -738,6 +738,7 @@ const {
   analyzeTechnicalContext,
   analyzeSomaticSignal,
   analyzeUserRegister,
+  analyzeTheoreticalOrientation,
   analyzeRecallRouting,
   analyzeRelationalAdjustmentNeed,
   analyzeSuicideRisk,
@@ -4052,7 +4053,8 @@ app.post("/chat", async (req, res) => {
       technicalContextAnalysis,
       interpretationRejection,
       somaticSignalAnalysis,
-      userRegisterAnalysis
+      userRegisterAnalysis,
+      theoreticalOrientationAnalysis
     ] = await Promise.all([
       withAnalyzerTiming("detect_mode", detectMode(message, recentHistory, newFlags.contactState, activePromptRegistry)),
       withAnalyzerTiming("relational_adjustment", analyzeRelationalAdjustmentNeed(message, recentHistory, previousMemory, false, activePromptRegistry)),
@@ -4072,7 +4074,13 @@ app.post("/chat", async (req, res) => {
           promptRegistry: activePromptRegistry
         })),
       withAnalyzerTiming("somatic_signal", analyzeSomaticSignal(message)),
-      withAnalyzerTiming("user_register", analyzeUserRegister(message))
+      withAnalyzerTiming("user_register", analyzeUserRegister(message)),
+      withAnalyzerTiming("theoretical_orientation", analyzeTheoreticalOrientation(
+        message,
+        recentHistory,
+        previousMemory,
+        activePromptRegistry
+      ))
     ]);
     throwIfCanceled();
 
@@ -4084,6 +4092,19 @@ app.post("/chat", async (req, res) => {
     const detectedMode = detectedModeResult.mode;
     const detectedInfoSubmode = detectedMode === "info" ? normalizeInfoSubmode(detectedModeResult.infoSubmode) : null;
     const detectedContactSubmode = detectedMode === "contact" ? normalizeContactSubmode(detectedModeResult.contactSubmode) : null;
+    const detectedPsychoeducationType = detectedMode === "info" && detectedInfoSubmode === "psychoeducation"
+      ? (detectedModeResult.psychoeducationType || null)
+      : null;
+    const detectedInfoContextFlags = detectedMode === "info" && detectedInfoSubmode === "app_features"
+      ? (Array.isArray(detectedModeResult.infoContextFlags) ? detectedModeResult.infoContextFlags : [])
+      : [];
+
+    const detectedTheoreticalOrientation = detectedMode === "exploration"
+      ? (theoreticalOrientationAnalysis?.theoreticalOrientation || "none")
+      : "none";
+    const detectedOrientationConfidence = detectedMode === "exploration"
+      ? (theoreticalOrientationAnalysis?.orientationConfidence ?? 0.0)
+      : 0.0;
 
     // Source de routage info pour observabilité admin
     let infoRoutingSource = null;
@@ -4101,8 +4122,8 @@ app.post("/chat", async (req, res) => {
       }
     }
     const safeInterpretationRejection = detectedMode === "exploration"
-      ? (interpretationRejection || { isInterpretationRejection: false, needsSoberReadjustment: false })
-      : { isInterpretationRejection: false, needsSoberReadjustment: false };
+      ? (interpretationRejection || { isInterpretationRejection: false, relationalFrictionSignal: "none" })
+      : { isInterpretationRejection: false, relationalFrictionSignal: "none" };
 
     modeForCatch = detectedMode;
     infoSubmodeForCatch = detectedInfoSubmode;
@@ -4136,6 +4157,10 @@ app.post("/chat", async (req, res) => {
       recentHistory,
       suicideLevel: suicide.suicideLevel,
       isRecallAttempt: recallRouting.isRecallAttempt === true,
+      psychoeducationType: detectedPsychoeducationType,
+      infoContextFlags: detectedInfoContextFlags,
+      theoreticalOrientation: detectedTheoreticalOrientation,
+      orientationConfidence: detectedOrientationConfidence,
     });
 
     const finalDetectedMode = postureDecision.finalDetectedMode;
@@ -4288,7 +4313,7 @@ app.post("/chat", async (req, res) => {
       infoSubmode: detectedInfoSubmode,
       contactSubmode: detectedContactSubmode,
       interpretationRejection: safeInterpretationRejection.isInterpretationRejection,
-      needsSoberReadjustment: safeInterpretationRejection.needsSoberReadjustment,
+      needsSoberReadjustment: postureDecision.needsSoberReadjustment,
       relationalAdjustmentTriggered: relationalAdjustmentAnalysis?.needsRelationalAdjustment === true,
       explorationCalibrationLevel: newFlags.explorationCalibrationLevel,
       explorationDirectivityLevel: finalDirectivityLevel,
@@ -4331,7 +4356,9 @@ app.post("/chat", async (req, res) => {
         { role: "user", content: message },
         { role: "assistant", content: reply }
       ],
-      activePromptRegistry
+      activePromptRegistry,
+      postureDecision.memoryPrioritySignal || "normal",
+      postureDecision.theoreticalOrientationSignal || "none"
     );
     throwIfCanceled();
 
@@ -4341,7 +4368,11 @@ app.post("/chat", async (req, res) => {
     const finalizedMemoryCandidate = await finalizeMemoryCandidate({
       previousMemory,
       candidateMemory: memoryCandidate,
-      interpretationRejection: safeInterpretationRejection,
+      interpretationRejection: {
+        ...safeInterpretationRejection,
+        needsSoberReadjustment: postureDecision.needsSoberReadjustment,
+        tensionHoldLevel: postureDecision.tensionHoldLevel
+      },
       needsCompression: memoryNeedsCompression,
       promptRegistry: activePromptRegistry
     });
@@ -4365,7 +4396,7 @@ app.post("/chat", async (req, res) => {
       infoSubmode: detectedInfoSubmode,
       contactSubmode: detectedContactSubmode,
       interpretationRejection: safeInterpretationRejection.isInterpretationRejection,
-      needsSoberReadjustment: safeInterpretationRejection.needsSoberReadjustment,
+      needsSoberReadjustment: postureDecision.needsSoberReadjustment,
       relationalAdjustmentTriggered: relationalAdjustmentAnalysis?.needsRelationalAdjustment === true,
       isRecallRequest: recallRouting.isRecallAttempt === true,
       explorationCalibrationLevel: newFlags.explorationCalibrationLevel,
