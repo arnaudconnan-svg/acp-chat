@@ -742,6 +742,7 @@ const {
   analyzeRelationalAdjustmentNeed,
   analyzeSuicideRisk,
   acuteCrisisFollowupResponse,
+  n1Fallback,
   n1ResponseLLM,
   n2Response,
   detectMode
@@ -3413,6 +3414,7 @@ app.post("/chat", async (req, res) => {
   let modeForCatch = "exploration";
   let infoSubmodeForCatch = null;
   let contactSubmodeForCatch = null;
+  let suicideLevelForCatch = "N0";
   let previousMemoryForCatch = normalizeMemory("", basePromptRegistryForCatch);
   let flagsForCatch = normalizeSessionFlags({});
   let promptRegistryForCatch = basePromptRegistryForCatch;
@@ -3844,6 +3846,7 @@ app.post("/chat", async (req, res) => {
       crisisResolved: suicide.crisisResolved === true,
       acuteCrisisBefore: flags.acuteCrisis === true
     });
+    suicideLevelForCatch = suicide.suicideLevel;
     
     let newFlags = normalizeSessionFlags(flags);
     newFlags.infoSubmode = null;
@@ -3956,60 +3959,12 @@ app.post("/chat", async (req, res) => {
       });
     }
     
-    // 3) Clarification path for less severe suicidal risk or ambiguous intent.
+    // 3) N1 signal flows into the main pipeline. writerMode is overridden to
+    // "n1_crisis" inside buildPostureDecision; critic runs systematically.
     if (crisisDecision.route === "n1_clarification") {
-      logChatDecision("override_clarification", {
+      logChatDecision("n1_entering_pipeline", {
         suicideLevel: suicide.suicideLevel,
         needsClarification: suicide.needsClarification === true
-      });
-
-      const rawReply = await n1ResponseLLM(message, activePromptRegistry);
-      
-      const replyPipeline = await applyModelConflictPipeline({
-        content: rawReply,
-        message,
-        history: recentHistory,
-        memory: previousMemory,
-        promptRegistry: activePromptRegistry
-      });
-      
-      newFlags.contactState = { wasContact: false };
-      flagsForCatch = normalizeSessionFlags(newFlags);
-      
-      const debug = buildDebug("clarification", {
-        suicideLevel: "N1",
-        modelConflict: replyPipeline.modelConflict
-      });
-      
-      if (logsEnabled && replyPipeline.rewriteSource) {
-        debug.push(`rewriteSource: ${replyPipeline.rewriteSource}`);
-      }
-      
-      const responseMemory = previousMemory;
-      const responseDebugMeta = buildResponseDebugMeta({
-        memory: responseMemory,
-        suicideLevel: "N1",
-        mode: null,
-        isRecallRequest: false,
-        explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
-        explorationRelanceWindow: newFlags.explorationRelanceWindow,
-        rewriteSource: replyPipeline.rewriteSource,
-        memoryRewriteSource: null,
-        modelConflict: replyPipeline.modelConflict,
-        promptRegistry: activePromptRegistry
-      });
-      
-      const botMessageId = await persistAssistantMessage(replyPipeline.content, debug, responseDebugMeta, { memory: responseMemory, flags: newFlags });
-      await maybeGenerateConversationTitle();
-      
-      return res.json({
-        conversationId,
-        reply: replyPipeline.content,
-        memory: responseMemory,
-        flags: newFlags,
-        debug,
-        debugMeta: responseDebugMeta,
-        botMessageId
       });
     }
     
@@ -4269,6 +4224,7 @@ app.post("/chat", async (req, res) => {
       // Contract inputs for confidenceSignal computation
       message,
       recentHistory,
+      suicideLevel: suicide.suicideLevel,
     });
 
     const finalDetectedMode = postureDecision.finalDetectedMode;
@@ -4339,12 +4295,14 @@ app.post("/chat", async (req, res) => {
 
     // Phase 4: Selective critic - single guardrail for exploration, contact, and info.
     // CRITIC_PASS now covers theoretical violations. No separate conflict-model or uncertainty passes.
+    // For n1_crisis, critic runs systematically regardless of heuristics.
     let criticTriggered = false;
     let criticIssues = [];
     let humanFieldRisk = false;
     let contractLengthExceeded = false;
     const criticModes = ["exploration", "contact", "info"];
-    const criticApplies = criticModes.includes(finalDetectedMode);
+    const n1CrisisForced = postureDecision.writerMode === "n1_crisis";
+    const criticApplies = n1CrisisForced || criticModes.includes(finalDetectedMode);
     if (criticApplies) {
       const sentenceCount = String(reply || "")
         .split(/[.!?]+/)
@@ -4355,6 +4313,7 @@ app.post("/chat", async (req, res) => {
         && sentenceCount > postureDecision.maxSentences;
       humanFieldRisk = postureDecision.humanFieldGuardActive === true && isProceduralInstrumentalReply(reply);
       const criticShouldTrigger =
+        n1CrisisForced ||
         contractLengthExceeded ||
         humanFieldRisk ||
         hasAgencyInjectionInReply(reply) ||
@@ -4616,9 +4575,11 @@ app.post("/chat", async (req, res) => {
     const isQuotaExhausted = err && (err.code === "insufficient_quota" || err.type === "insufficient_quota");
     const fallbackReply = isQuotaExhausted
       ? "Le service est temporairement indisponible car le quota API est epuise. Je ne peux pas traiter de nouveau message tant que ce quota n'est pas retabli."
-      : modeForCatch === "contact"
-        ? "Je suis la."
-        : "Desole, reformule.";
+      : suicideLevelForCatch === "N1"
+        ? n1Fallback()
+        : modeForCatch === "contact"
+          ? "Je suis la."
+          : "Desole, reformule.";
     const fallbackDebugMeta = buildFallbackResponseDebugMeta({
       memory: previousMemoryForCatch,
       suicideLevel: "N0",

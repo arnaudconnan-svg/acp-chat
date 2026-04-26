@@ -671,6 +671,23 @@ check("finalDetectedMode: matches detectedMode input", () => {
   assert(outContact.finalDetectedMode === "contact", `expected 'contact', got '${outContact.finalDetectedMode}'`);
 });
 
+// ─── N1 writerMode override ───────────────────────────────────────────────────
+
+check("writerMode: suicideLevel N1 → n1_crisis override (safety invariant)", () => {
+  const out = buildPostureDecision(explorationInput({ detectedMode: "exploration", suicideLevel: "N1" }));
+  assert(out.writerMode === "n1_crisis", `expected 'n1_crisis', got '${out.writerMode}'`);
+});
+
+check("writerMode: suicideLevel N0 → normal writerMode (no override)", () => {
+  const out = buildPostureDecision(explorationInput({ detectedMode: "exploration", suicideLevel: "N0" }));
+  assert(out.writerMode !== "n1_crisis", `expected normal mode, got 'n1_crisis'`);
+});
+
+check("writerMode: suicideLevel N1 in contact mode → n1_crisis override", () => {
+  const out = buildPostureDecision(explorationInput({ detectedMode: "contact", contactAnalysis: contact(), suicideLevel: "N1" }));
+  assert(out.writerMode === "n1_crisis", `expected 'n1_crisis', got '${out.writerMode}'`);
+});
+
 // ─── Summary ──────────────────────────────────────────────────────────────────
 
 const total = passed + failed;
