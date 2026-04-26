@@ -3971,20 +3971,12 @@ app.post("/chat", async (req, res) => {
     // 2) Analyse de rappel mémoire : identifier si l'utilisateur demande
     // explicitement un rappel de la mémoire à long terme.
     markChatStage("recall_analysis");
-    const [recallRouting, precomputedContactAnalysis] = await Promise.all([
-      analyzeRecallRouting(
-        message,
-        recentHistory,
-        previousMemory,
-        activePromptRegistry
-      ),
-      analyzeContactState(
-        message,
-        recentHistory,
-        newFlags.contactState,
-        activePromptRegistry
-      )
-    ]);
+    const recallRouting = await analyzeRecallRouting(
+      message,
+      recentHistory,
+      previousMemory,
+      activePromptRegistry
+    );
     throwIfCanceled();
 
     logChatDecision("recall_routing", {
@@ -4035,26 +4027,17 @@ app.post("/chat", async (req, res) => {
       });
     }
 
-    // Determine whether the current message should be handled as a contact-style interaction.
-    // This influences mode detection and the choice between contact, info, or exploration flows.
-    // 3) Passage par le mode contact / exploration / info.
-    // Cette étape détermine le style général de la réponse.
-    markChatStage("contact_mode_analysis");
-    let contactAnalysis = precomputedContactAnalysis;
+    // Phase 2: run all analyzers in parallel, including detectMode (which now
+    // integrates contact detection alongside info detection).
+    markChatStage("mode_analysis");
     throwIfCanceled();
-    
-    newFlags.contactState = {
-      wasContact: contactAnalysis.isContact === true
-    };
-    
+
     const effectiveExplorationDirectivityLevel = newFlags.explorationDirectivityLevel;
-    
+
     let finalDirectivityLevel = effectiveExplorationDirectivityLevel;
     let finalExplorationSubmode = "interpretation";
 
-    // Phase 2: run independent analyzers in parallel, including detectMode.
     // withAnalyzerTiming wraps each Promise to record individual analyzer durations in chatStageTimings.
-    const shouldRunNonContactAnalyzers = contactAnalysis.isContact !== true;
     function withAnalyzerTiming(name, promise) {
       const t = Date.now();
       return promise.then(result => {
@@ -4071,43 +4054,32 @@ app.post("/chat", async (req, res) => {
       somaticSignalAnalysis,
       userRegisterAnalysis
     ] = await Promise.all([
-      withAnalyzerTiming("detect_mode", contactAnalysis.isContact
-        ? Promise.resolve({
-            mode: "contact",
-            infoSource: null,
-            infoSubmode: null,
-            infoSubmodeSource: null,
-            contactSubmode: normalizeContactSubmode(contactAnalysis.contactSubmode) || "regulated"
-          })
-        : detectMode(message, recentHistory, activePromptRegistry)),
-      withAnalyzerTiming("relational_adjustment", shouldRunNonContactAnalyzers
-        ? analyzeRelationalAdjustmentNeed(message, recentHistory, previousMemory, false, activePromptRegistry)
-        : Promise.resolve(null)),
-      withAnalyzerTiming("exploration_calibration", shouldRunNonContactAnalyzers
-        ? analyzeExplorationCalibration({
-            message,
-            history: recentHistory,
-            memory: previousMemory,
-            explorationDirectivityLevel: effectiveExplorationDirectivityLevel,
-            explorationRelanceWindow: newFlags.explorationRelanceWindow,
-            promptRegistry: activePromptRegistry
-          })
-        : Promise.resolve(null)),
+      withAnalyzerTiming("detect_mode", detectMode(message, recentHistory, newFlags.contactState, activePromptRegistry)),
+      withAnalyzerTiming("relational_adjustment", analyzeRelationalAdjustmentNeed(message, recentHistory, previousMemory, false, activePromptRegistry)),
+      withAnalyzerTiming("exploration_calibration", analyzeExplorationCalibration({
+          message,
+          history: recentHistory,
+          memory: previousMemory,
+          explorationDirectivityLevel: effectiveExplorationDirectivityLevel,
+          explorationRelanceWindow: newFlags.explorationRelanceWindow,
+          promptRegistry: activePromptRegistry
+        })),
       withAnalyzerTiming("technical_context", analyzeTechnicalContext(message)),
-      withAnalyzerTiming("interpretation_rejection", shouldRunNonContactAnalyzers
-        ? analyzeInterpretationRejection({
-            message,
-            history: recentHistory,
-            memory: previousMemory,
-            promptRegistry: activePromptRegistry
-          })
-        : Promise.resolve({ isInterpretationRejection: false, needsSoberReadjustment: false })),
-      withAnalyzerTiming("somatic_signal", shouldRunNonContactAnalyzers
-        ? analyzeSomaticSignal(message)
-        : Promise.resolve({ somaticSignalActive: false, somaticLocalizationBlocked: false })),
+      withAnalyzerTiming("interpretation_rejection", analyzeInterpretationRejection({
+          message,
+          history: recentHistory,
+          memory: previousMemory,
+          promptRegistry: activePromptRegistry
+        })),
+      withAnalyzerTiming("somatic_signal", analyzeSomaticSignal(message)),
       withAnalyzerTiming("user_register", analyzeUserRegister(message))
     ]);
     throwIfCanceled();
+
+    const contactAnalysis = detectedModeResult.contactAnalysis || { isContact: false, contactSubmode: null };
+    newFlags.contactState = {
+      wasContact: contactAnalysis.isContact === true
+    };
 
     const detectedMode = detectedModeResult.mode;
     const detectedInfoSubmode = detectedMode === "info" ? normalizeInfoSubmode(detectedModeResult.infoSubmode) : null;
