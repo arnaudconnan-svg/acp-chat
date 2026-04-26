@@ -48,6 +48,7 @@ const {
   computeExplorationDirectivityLevel,
   getExplorationStructureInstruction,
   normalizeAllianceState,
+  normalizeContactScoreWindow,
   normalizeContactState,
   normalizeContactSubmode,
   normalizeConversationStateKey,
@@ -68,6 +69,8 @@ const {
   buildAdvancedDebugTrace,
   buildDebug,
   buildPostureDecision,
+  computeContactTurnScore,
+  computeContactEstablished,
   normalizeGuardText,
   shouldForceExplorationForSituatedImpasse
 } = require("./lib/pipeline");
@@ -732,6 +735,7 @@ const {
   analyzeDischargeState,
   analyzeExplorationCalibration,
   analyzeExplorationRelance,
+  analyzeEmotionalDecentering,
   analyzeInfoRequest,
   analyzeInfoSubmode,
   analyzeInterpretationRejection,
@@ -4054,7 +4058,8 @@ app.post("/chat", async (req, res) => {
       interpretationRejection,
       somaticSignalAnalysis,
       userRegisterAnalysis,
-      theoreticalOrientationAnalysis
+      theoreticalOrientationAnalysis,
+      emotionalDecenteringResult
     ] = await Promise.all([
       withAnalyzerTiming("detect_mode", detectMode(message, recentHistory, newFlags.contactState, activePromptRegistry)),
       withAnalyzerTiming("relational_adjustment", analyzeRelationalAdjustmentNeed(message, recentHistory, previousMemory, false, activePromptRegistry)),
@@ -4080,9 +4085,12 @@ app.post("/chat", async (req, res) => {
         recentHistory,
         previousMemory,
         activePromptRegistry
-      ))
+      )),
+      withAnalyzerTiming("emotional_decentering", analyzeEmotionalDecentering(message, recentHistory))
     ]);
     throwIfCanceled();
+
+    const emotionalDecenteringAnalysis = emotionalDecenteringResult || { emotionalDecentering: false };
 
     const dischargeAnalysis = detectedModeResult.dischargeAnalysis || { isContact: false, contactSubmode: null };
     const contactAnalysis = detectedModeResult.contactAnalysis || { isContact: false, contactSubmode: null };
@@ -4130,6 +4138,11 @@ app.post("/chat", async (req, res) => {
     infoSubmodeForCatch = detectedInfoSubmode;
     contactSubmodeForCatch = detectedContactSubmode;
 
+    // Patch C — contact score window
+    const turnScore = computeContactTurnScore(message);
+    const newContactScoreWindow = normalizeContactScoreWindow([...(newFlags.contactScoreWindow || [0, 0, 0, 0]), turnScore]);
+    const contactEstablished = computeContactEstablished(newContactScoreWindow);
+
     // Phase 3: Deterministic arbitrator — consolidate all analyzer outputs into a
     // PostureDecision struct. No LLM calls, no side effects outside this block.
     const previousConversationStateKey = normalizeConversationStateKey(flags.conversationStateKey);
@@ -4138,6 +4151,9 @@ app.post("/chat", async (req, res) => {
       detectedInfoSubmode,
       dischargeAnalysis,
       contactAnalysis,
+      emotionalDecenteringAnalysis,
+      contactScoreWindow: newContactScoreWindow,
+      contactEstablished,
       relationalAdjustmentAnalysis,
       calibrationAnalysis,
       technicalContextDetected: technicalContextAnalysis?.technicalContextDetected === true,
