@@ -65,9 +65,9 @@ function assertDebugMetaContract(debugMeta, label) {
   assert(VALID_STATES.includes(debugMeta.conversationStateKey),
     `${label}: conversationStateKey '${debugMeta.conversationStateKey}' is not a valid state`);
 
-  // confidenceSignal must be "high" or "low"
-  assert(["high", "low"].includes(debugMeta.confidenceSignal),
-    `${label}: confidenceSignal must be 'high' or 'low', got '${debugMeta.confidenceSignal}'`);
+  // confidenceSignal must be a number between 0 and 1
+  assert(typeof debugMeta.confidenceSignal === "number" && debugMeta.confidenceSignal >= 0 && debugMeta.confidenceSignal <= 1,
+    `${label}: confidenceSignal must be a number in [0, 1], got '${debugMeta.confidenceSignal}'`);
 
   // Required booleans
   assert(typeof debugMeta.interpretationRejection === "boolean", `${label}: interpretationRejection must be boolean`);

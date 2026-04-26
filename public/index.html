@@ -3606,7 +3606,7 @@
         writerMode: typeof safe.writerMode === "string" ? safe.writerMode.trim() : "",
         intent: typeof safe.intent === "string" ? safe.intent.trim() : "",
         forbidden: Array.isArray(safe.forbidden) ? safe.forbidden.map(v => String(v || "").trim()).filter(Boolean) : [],
-        confidenceSignal: typeof safe.confidenceSignal === "string" ? safe.confidenceSignal.trim() : "high",
+        confidenceSignal: typeof safe.confidenceSignal === "number" ? Math.max(0, Math.min(1, safe.confidenceSignal)) : 1.0,
         allianceState: typeof safe.allianceState === "string" ? safe.allianceState.trim() : "good",
         engagementLevel: typeof safe.engagementLevel === "string" ? safe.engagementLevel.trim() : "active",
         stagnationTurns: Number.isInteger(safe.stagnationTurns) ? Math.max(0, safe.stagnationTurns) : 0,
@@ -6005,7 +6005,7 @@
             "Le critic pass a ete lance sans correction necessaire.");
         }
 
-        if (meta.confidenceSignal && meta.confidenceSignal === "low") {
+        if (typeof meta.confidenceSignal === "number" && meta.confidenceSignal < 0.5) {
           lines.push(`Signal de confiance : faible.`);
         }
 
@@ -6037,7 +6037,7 @@
                 `Niveau de structuration retenu : ${meta.explorationCalibrationLevel}/4` : null,
               meta.intent ? `Intention : ${meta.intent}` : null,
               (meta.forbidden && meta.forbidden.length) ? `Interdit : ${meta.forbidden.join(", ")}` : null,
-              meta.confidenceSignal ? `Signal confiance : ${meta.confidenceSignal}` : null,
+              typeof meta.confidenceSignal === "number" ? `Signal confiance : ${meta.confidenceSignal.toFixed(2)}` : null,
             ].filter(Boolean).join("\n")
           });
         }

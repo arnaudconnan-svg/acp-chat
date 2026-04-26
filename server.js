@@ -3475,7 +3475,7 @@ app.post("/chat", async (req, res) => {
       writerMode: typeof safe.writerMode === "string" ? safe.writerMode : null,
       intent: typeof safe.intent === "string" ? safe.intent : null,
       forbidden: Array.isArray(safe.forbidden) ? safe.forbidden : [],
-      confidenceSignal: typeof safe.confidenceSignal === "string" ? safe.confidenceSignal : "high",
+      confidenceSignal: typeof safe.confidenceSignal === "number" ? Math.max(0, Math.min(1, safe.confidenceSignal)) : 1.0,
       stateTransitionFrom: typeof safe.stateTransitionFrom === "string" ? safe.stateTransitionFrom : null,
       stateTransitionValid: safe.stateTransitionValid !== false,
       stateTransitionRequested: typeof safe.stateTransitionRequested === "string" ? safe.stateTransitionRequested : null,
