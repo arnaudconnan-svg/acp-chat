@@ -1578,6 +1578,18 @@
       -webkit-backdrop-filter: blur(8px);
     }
 
+    .debug-chip-pink {
+      font-size: 12px;
+      line-height: 1.2;
+      color: #9d174d;
+      background: #fff0f6;
+      border: 1px solid #f9a8d4;
+      border-radius: 999px;
+      padding: 4px 8px;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+
     .debug-detail {
       display: block;
     }
@@ -5995,10 +6007,6 @@
           lines.push(`La reponse finale a ete re-ecrite via: ${meta.rewriteSource}.`);
         }
 
-        if (meta.memoryRewriteSource) {
-          lines.push(`La memoire a ete re-ecrite via: ${meta.memoryRewriteSource}.`);
-        }
-
         if (meta.criticTriggered === true) {
           lines.push(meta.criticIssues.length > 0 ?
             `Le critic pass a corrige ${meta.criticIssues.length} point(s).` :
@@ -6048,7 +6056,12 @@
         }
 
         if (meta.memory) {
-          sections.push({ title: "M\u00e9moire", content: meta.memory });
+          sections.push({
+            title: "M\u00e9moire",
+            content: meta.memory,
+            memoryRewritten: meta.memoryCompressed === true,
+            memoryBeforeRewrite: meta.memoryBeforeCompression || null
+          });
         }
 
         const shouldShowDirectivity =
@@ -6057,21 +6070,6 @@
             (typeof meta.writerMode === "string" && meta.writerMode.indexOf("exploration") === 0));
         if (shouldShowDirectivity) {
           sections.push({ title: "Directivit\u00e9", content: meta.directivityLabel });
-        }
-
-        if (meta.memoryCompressed === true) {
-          const memoryRewriteLines = [];
-          if (meta.memoryRewriteSource) {
-            memoryRewriteLines.push(`Source : ${meta.memoryRewriteSource}`);
-          }
-          if (meta.memoryBeforeCompression) {
-            memoryRewriteLines.push("M\u00e9moire avant r\u00e9\u00e9criture :");
-            memoryRewriteLines.push(meta.memoryBeforeCompression);
-          }
-          if (memoryRewriteLines.length === 0) {
-            memoryRewriteLines.push("R\u00e9\u00e9criture m\u00e9moire appliqu\u00e9e.");
-          }
-          sections.push({ title: "R\u00e9\u00e9criture m\u00e9moire", content: memoryRewriteLines.join("\n") });
         }
 
         if (meta.rewriteSource) {
@@ -6158,6 +6156,33 @@
 
           sectionBlock.appendChild(sectionTitle);
           sectionBlock.appendChild(sectionContent);
+
+          if (section.memoryRewritten) {
+            const memChip = document.createElement("details");
+            memChip.style.marginTop = "6px";
+            const memChipSummary = document.createElement("summary");
+            memChipSummary.className = "debug-chip-pink";
+            memChipSummary.style.listStyle = "none";
+            memChipSummary.style.display = "inline-block";
+            memChipSummary.textContent = "\u2728 M\u00e9moire r\u00e9\u00e9crite";
+            const memChipContent = document.createElement("div");
+            memChipContent.style.marginTop = "6px";
+            memChipContent.style.padding = "8px 10px";
+            memChipContent.style.borderRadius = "8px";
+            memChipContent.style.background = "#fff0f6";
+            memChipContent.style.border = "1px solid #f9a8d4";
+            memChipContent.style.fontSize = "12px";
+            memChipContent.style.lineHeight = "1.45";
+            memChipContent.style.color = "#831843";
+            memChipContent.style.whiteSpace = "pre-wrap";
+            memChipContent.style.wordBreak = "break-word";
+            memChipContent.style.userSelect = "text";
+            memChipContent.textContent = section.memoryBeforeRewrite || "M\u00e9moire avant r\u00e9\u00e9criture indisponible.";
+            memChip.appendChild(memChipSummary);
+            memChip.appendChild(memChipContent);
+            sectionBlock.appendChild(memChip);
+          }
+
           debugBox.appendChild(sectionBlock);
         });
 
