@@ -4005,98 +4005,36 @@ app.post("/chat", async (req, res) => {
         priority: postRecallPriorityRule.priority
       });
     }
-    
-    if (postRecallPriorityRule?.id === "recall_long_term") {
+
+    // Recall signals flow into the main pipeline. When isRecallAttempt, writerMode
+    // is overridden to "recall_memory" inside buildPostureDecision. For long-term
+    // recall, branch history is loaded eagerly and merged into the memory context.
+    let memoryForReply = previousMemory;
+    if (recallRouting.isLongTermMemoryRecall === true) {
       const recallConversationBranchHistory = await loadConversationBranchHistoryForRecall({
         conversationId,
         isPrivateConversation,
         conversationBranchHistory,
         recentHistory
       });
+      const normalizedBranchHistory = normalizeConversationBranchHistory(recallConversationBranchHistory);
+      const branchTranscript = normalizedBranchHistory.length > 0
+        ? normalizedBranchHistory.map(m => `${m.role === "user" ? "Utilisateur" : "Assistant"} : ${m.content}`).join("\n")
+        : "(indisponible)";
+      const baseMem = normalizeMemory(previousMemory, activePromptRegistry);
+      memoryForReply = [
+        baseMem ? `Memoire resumee :\n${baseMem}` : "",
+        `Transcript complet de la branche courante :\n${branchTranscript}`
+      ].filter(Boolean).join("\n\n");
+    }
 
-      const rawReply = await buildLongTermMemoryRecallResponse({
-        memory: previousMemory,
-        conversationBranchHistory: recallConversationBranchHistory,
-        promptRegistry: activePromptRegistry
-      });
-      
-      const replyPipeline = await applyModelConflictPipeline({
-        content: rawReply,
-        message,
-        history: recentHistory,
-        memory: previousMemory,
-        promptRegistry: activePromptRegistry
-      });
-      
-      const debug = buildDebug("memoryRecall", {
-        calledMemory: "longTermMemory",
-        modelConflict: replyPipeline.modelConflict
-      });
-      
-      if (logsEnabled && replyPipeline.rewriteSource) {
-        debug.push(`rewriteSource: ${replyPipeline.rewriteSource}`);
-      }
-      
-      const responseMemory = previousMemory;
-      const responseDebugMeta = buildResponseDebugMeta({
-        memory: responseMemory,
-        suicideLevel: "N0",
-        mode: null,
-        isRecallRequest: true,
-        explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
-        explorationRelanceWindow: newFlags.explorationRelanceWindow,
-        rewriteSource: replyPipeline.rewriteSource,
-        memoryRewriteSource: null,
-        modelConflict: replyPipeline.modelConflict,
-        promptRegistry: activePromptRegistry
-      });
-      
-      const botMessageId = await persistAssistantMessage(replyPipeline.content, debug, responseDebugMeta, { memory: responseMemory, flags: newFlags });
-      await maybeGenerateConversationTitle();
-      
-      return res.json({
-        conversationId,
-        reply: replyPipeline.content,
-        memory: responseMemory,
-        flags: newFlags,
-        debug,
-        debugMeta: responseDebugMeta,
-        botMessageId
+    if (recallRouting.isRecallAttempt === true) {
+      logChatDecision("recall_entering_pipeline", {
+        isLongTermMemoryRecall: recallRouting.isLongTermMemoryRecall === true,
+        calledMemory: recallRouting.calledMemory || "none"
       });
     }
-    
-    // 5) Memory recall attempted, but no recallable memory was found.
-    if (postRecallPriorityRule?.id === "recall_none") {
-      const reply = buildNoMemoryRecallResponse();
-      const debug = buildDebug("memoryRecall", {});
-      const responseMemory = previousMemory;
-      const responseDebugMeta = buildResponseDebugMeta({
-        memory: responseMemory,
-        suicideLevel: "N0",
-        mode: null,
-        isRecallRequest: true,
-        explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
-        explorationRelanceWindow: newFlags.explorationRelanceWindow,
-        rewriteSource: null,
-        memoryRewriteSource: null,
-        modelConflict: false,
-        promptRegistry: activePromptRegistry
-      });
-      
-      const botMessageId = await persistAssistantMessage(reply, debug, responseDebugMeta, { memory: responseMemory, flags: newFlags });
-      await maybeGenerateConversationTitle();
-      
-      return res.json({
-        conversationId,
-        reply,
-        memory: responseMemory,
-        flags: newFlags,
-        debug,
-        debugMeta: responseDebugMeta,
-        botMessageId
-      });
-    }
-    
+
     // Determine whether the current message should be handled as a contact-style interaction.
     // This influences mode detection and the choice between contact, info, or exploration flows.
     // 3) Passage par le mode contact / exploration / info.
@@ -4225,6 +4163,7 @@ app.post("/chat", async (req, res) => {
       message,
       recentHistory,
       suicideLevel: suicide.suicideLevel,
+      isRecallAttempt: recallRouting.isRecallAttempt === true,
     });
 
     const finalDetectedMode = postureDecision.finalDetectedMode;
@@ -4280,7 +4219,7 @@ app.post("/chat", async (req, res) => {
     const generatedBase = await generateReply({
       message,
       history: recentHistory,
-      memory: previousMemory,
+      memory: recallRouting.isRecallAttempt === true ? memoryForReply : previousMemory,
       postureDecision,
       infoSubmode: detectedInfoSubmode,
       contactSubmode: detectedContactSubmode,
@@ -4302,7 +4241,8 @@ app.post("/chat", async (req, res) => {
     let contractLengthExceeded = false;
     const criticModes = ["exploration", "contact", "info"];
     const n1CrisisForced = postureDecision.writerMode === "n1_crisis";
-    const criticApplies = n1CrisisForced || criticModes.includes(finalDetectedMode);
+    const recallForced = postureDecision.writerMode === "recall_memory";
+    const criticApplies = n1CrisisForced || recallForced || criticModes.includes(finalDetectedMode);
     if (criticApplies) {
       const sentenceCount = String(reply || "")
         .split(/[.!?]+/)
@@ -4314,6 +4254,7 @@ app.post("/chat", async (req, res) => {
       humanFieldRisk = postureDecision.humanFieldGuardActive === true && isProceduralInstrumentalReply(reply);
       const criticShouldTrigger =
         n1CrisisForced ||
+        recallForced ||
         contractLengthExceeded ||
         humanFieldRisk ||
         hasAgencyInjectionInReply(reply) ||
