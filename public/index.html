@@ -2948,110 +2948,6 @@
       updateMakePublicBtnVisibility();
     }
 
-    async function maybeBackfillFirebaseMessageIds(conversationId) {
-      if (!conversationId) return;
-      const data = loadConversationData(conversationId);
-      if (!data || data.isPrivate === true) return;
-
-      const localMessages = Array.isArray(data.messages) ? data.messages : [];
-      const validLocal = localMessages.filter(m => {
-        const role = String(m?.role || "").trim();
-        const content = typeof m?.content === "string" ? m.content.trim() : "";
-        return (role === "user" || role === "assistant") && content;
-      });
-      if (validLocal.length === 0) return;
-
-      try {
-        const res = await fetch(`/api/account/conversations/${encodeURIComponent(conversationId)}`, {
-          credentials: "include",
-          cache: "no-store"
-        });
-        if (!res.ok) return;
-        const body = await res.json().catch(() => null);
-        if (!body || !Array.isArray(body.messages) || body.messages.length === 0) return;
-
-        const serverMessages = body.messages.filter(m => {
-          const role = String(m?.role || "").trim();
-          const content = typeof m?.content === "string" ? m.content.trim() : "";
-          return (role === "user" || role === "assistant") && content;
-        });
-        if (serverMessages.length !== validLocal.length) return;
-
-        // Detect old incomplete Firebase data (pre-fix import: missing allianceState)
-        const serverHasOldDebugMeta = serverMessages.some(m =>
-          String(m?.role || "") === "assistant" &&
-          m.debugMeta && typeof m.debugMeta === "object" &&
-          !("allianceState" in m.debugMeta)
-        );
-        // Does localStorage have richer debugMeta?
-        const localHasFullDebugMeta = validLocal.some(m =>
-          String(m?.role || "") === "assistant" &&
-          m.debugMeta && typeof m.debugMeta === "object" &&
-          ("writerMode" in m.debugMeta || "allianceState" in m.debugMeta)
-        );
-
-        if (serverHasOldDebugMeta && localHasFullDebugMeta) {
-          // Re-push localStorage data to Firebase with forceOverwrite to repair debugMeta
-          const conversationPayload = {
-            id: conversationId,
-            title: typeof data.title === "string" ? data.title : "",
-            isCustomTitle: data.isCustomTitle === true,
-            isPrivate: false,
-            memory: typeof data.memory === "string" ? data.memory : "",
-            flags: data.flags || {},
-            updatedAt: Number(data.updatedAt || Date.now()),
-            messages: localMessages
-          };
-          const importRes = await fetch("/api/account/conversations/import-local", {
-            method: "POST",
-            credentials: "include",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ conversations: [conversationPayload], forceOverwrite: true })
-          });
-          if (!importRes.ok) return;
-          const importData = await importRes.json().catch(() => null);
-          const returnedIds = importData?.messageIdsByConversation?.[conversationId];
-          if (Array.isArray(returnedIds) && returnedIds.length > 0) {
-            const updatedMessages = localMessages.map(m => {
-              const role = String(m?.role || "").trim();
-              const content = typeof m?.content === "string" ? m.content.trim() : "";
-              if ((role === "user" || role === "assistant") && content) {
-                const idx = validLocal.indexOf(m);
-                if (idx >= 0 && idx < returnedIds.length) {
-                  return { ...m, id: returnedIds[idx] };
-                }
-              }
-              return m;
-            });
-            saveConversationData(conversationId, { ...data, messages: updatedMessages });
-            if (typeof renderHistory === "function") renderHistory();
-          }
-          return;
-        }
-
-        // Standard path: Firebase data is good, only backfill missing IDs
-        if (validLocal.every(m => m.id && typeof m.id === "string")) return;
-
-        const updatedMessages = localMessages.map(m => {
-          const role = String(m?.role || "").trim();
-          const content = typeof m?.content === "string" ? m.content.trim() : "";
-          if ((role === "user" || role === "assistant") && content) {
-            const idx = validLocal.indexOf(m);
-            const serverMsg = idx >= 0 ? serverMessages[idx] : null;
-            if (serverMsg && serverMsg.id && typeof serverMsg.id === "string") {
-              return { ...m, id: serverMsg.id };
-            }
-          }
-          return m;
-        });
-
-        saveConversationData(conversationId, { ...data, messages: updatedMessages });
-        if (typeof renderHistory === "function") renderHistory();
-      } catch (_) {
-        // Silent — best-effort background sync
-      }
-    }
-
     function openMakePublicModal() {
       closeMakePublicModal();
       const conversationId = getConversationId();
@@ -9112,7 +9008,6 @@
       startFreshOrResumeSession = function(...args) {
         originalStartFreshOrResumeSession.apply(this, args);
         requestAnimationFrame(updateMakePublicBtnVisibility);
-        maybeBackfillFirebaseMessageIds(getConversationId());
         requestAnimationFrame(() => syncComposerUiDeferred({ keepBottom: true }));
         setTimeout(() => syncComposerUiDeferred({ keepBottom: true }), 40);
         setTimeout(() => syncComposerUiDeferred({ keepBottom: true }), 160);
