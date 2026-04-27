@@ -42,6 +42,40 @@ const USER_SESSION_SIGNING_SECRET = process.env.USER_SESSION_SECRET || SESSION_S
 const fs = require("fs");
 const path = require("path");
 const nodemailer = require("nodemailer");
+
+// ─── Emergency numbers ────────────────────────────────────────────────────────
+const EMERGENCY_NUMBERS_FILE = path.join(__dirname, "data/emergency-numbers.json");
+let emergencyNumbers = {};
+try {
+  const raw = fs.readFileSync(EMERGENCY_NUMBERS_FILE, "utf-8");
+  const parsed = JSON.parse(raw);
+  // Strip internal _meta key
+  for (const [k, v] of Object.entries(parsed)) {
+    if (!k.startsWith("_")) emergencyNumbers[k] = v;
+  }
+} catch {
+  // Non-blocking: fallback text will be used if file is missing
+}
+
+function normalizeCountryCode(value) {
+  const code = String(value || "").trim().toUpperCase();
+  return /^[A-Z]{2}$/.test(code) ? code : null;
+}
+
+function lookupEmergencyNumbers(countryCode) {
+  const code = normalizeCountryCode(countryCode);
+  if (!code) return null;
+  return emergencyNumbers[code] || null;
+}
+
+function buildEmergencyNumbersText(emergencyInfo) {
+  if (!emergencyInfo) return null;
+  const parts = [];
+  if (emergencyInfo.emergency) parts.push(`urgences : ${emergencyInfo.emergency}`);
+  if (emergencyInfo.suicide) parts.push(`prévention suicide : ${emergencyInfo.suicide}`);
+  return parts.join(" — ") || null;
+}
+// ─────────────────────────────────────────────────────────────────────────────
 const {
   clampDependencyRiskScore,
   clampExplorationDirectivityLevel,
@@ -513,6 +547,8 @@ function toPublicUser(userId, userData, options = {}) {
   return {
     id: String(userId || ""),
     email: normalizeEmail(safeUser.email),
+    firstName: typeof safeUser.firstName === "string" && safeUser.firstName.trim() ? safeUser.firstName.trim() : null,
+    country: normalizeCountryCode(safeUser.country),
     createdAt: typeof safeUser.createdAt === "string" ? safeUser.createdAt : null,
     updatedAt: typeof safeUser.updatedAt === "string" ? safeUser.updatedAt : null,
     privateConversationsByDefault: safeUser.privateConversationsByDefault === true
@@ -1326,6 +1362,10 @@ app.post("/api/auth/register", async (req, res) => {
       return res.status(409).json({ error: "Email already registered" });
     }
 
+    // Optional profile fields
+    const firstName = typeof req.body.firstName === "string" ? req.body.firstName.trim().slice(0, 50) : null;
+    const country = normalizeCountryCode(req.body.country);
+
     const now = new Date().toISOString();
     const userId = `u_${crypto.randomBytes(12).toString("hex")}`;
     const userRecord = {
@@ -1335,6 +1375,8 @@ app.post("/api/auth/register", async (req, res) => {
       createdAt: now,
       updatedAt: now
     };
+    if (firstName) userRecord.firstName = firstName;
+    if (country) userRecord.country = country;
 
     await usersRef.child(userId).set(userRecord);
 
@@ -1493,6 +1535,63 @@ app.put("/api/account/preferences", requireUserAuth, async (req, res) => {
   } catch (err) {
     console.error("Erreur PUT /api/account/preferences:", err.message);
     return res.status(500).json({ error: "Preferences update failed" });
+  }
+});
+
+app.get("/api/account/profile", requireUserAuth, async (req, res) => {
+  try {
+    const session = req.userSession;
+    return res.json({
+      firstName: typeof session.user.firstName === "string" && session.user.firstName.trim() ? session.user.firstName.trim() : null,
+      country: normalizeCountryCode(session.user.country)
+    });
+  } catch (err) {
+    console.error("Erreur GET /api/account/profile:", err.message);
+    return res.status(500).json({ error: "Profile lookup failed" });
+  }
+});
+
+app.put("/api/account/profile", requireUserAuth, async (req, res) => {
+  try {
+    if (!req.body || typeof req.body !== "object" || Array.isArray(req.body)) {
+      return res.status(400).json({ error: "Invalid profile payload" });
+    }
+
+    const session = req.userSession;
+    const patch = {};
+
+    if ("firstName" in req.body) {
+      const raw = typeof req.body.firstName === "string" ? req.body.firstName.trim().slice(0, 50) : "";
+      patch.firstName = raw || null;
+    }
+
+    if ("country" in req.body) {
+      const code = normalizeCountryCode(req.body.country);
+      patch.country = code || null;
+    }
+
+    if (Object.keys(patch).length === 0) {
+      return res.status(400).json({ error: "No valid fields to update" });
+    }
+
+    const now = new Date().toISOString();
+    const update = { ...patch, updatedAt: now };
+    // Firebase doesn't store null fields — remove them so they're deleted
+    for (const [k, v] of Object.entries(update)) {
+      if (v === null) update[k] = null; // Firebase treats null as delete
+    }
+
+    await usersRef.child(session.userId).update(update);
+
+    return res.json({
+      success: true,
+      firstName: patch.firstName !== undefined ? patch.firstName : (typeof session.user.firstName === "string" ? session.user.firstName.trim() : null),
+      country: patch.country !== undefined ? patch.country : normalizeCountryCode(session.user.country),
+      updatedAt: now
+    });
+  } catch (err) {
+    console.error("Erreur PUT /api/account/profile:", err.message);
+    return res.status(500).json({ error: "Profile update failed" });
   }
 });
 
@@ -3931,6 +4030,30 @@ app.post("/chat", async (req, res) => {
       });
       
       // N2 : génération contextualisée via LLM avec fallback sur la réponse statique.
+      // Résolution des numéros d'urgence selon le pays de l'utilisateur.
+      let n2PromptRegistry = activePromptRegistry;
+      try {
+        let userCountryCode = null;
+        if (userId && userId !== "u_anon") {
+          const userSnap = await usersRef.child(String(userId)).once("value");
+          const userData = userSnap.val();
+          if (userData && typeof userData.country === "string") {
+            userCountryCode = normalizeCountryCode(userData.country);
+          }
+        }
+        // Fallback France si pays inconnu (cible principale du produit)
+        const emergencyInfo = lookupEmergencyNumbers(userCountryCode) || lookupEmergencyNumbers("FR");
+        const emergencyText = buildEmergencyNumbersText(emergencyInfo);
+        if (emergencyText) {
+          n2PromptRegistry = {
+            ...activePromptRegistry,
+            N2_RESPONSE_LLM: activePromptRegistry.N2_RESPONSE_LLM.replace("{{EMERGENCY_NUMBERS}}", emergencyText)
+          };
+        }
+      } catch {
+        // Non-bloquant : on continue avec les numéros FR par défaut si la résolution échoue
+      }
+
       let reply;
       try {
         const n2PostureDecision = {
@@ -3958,7 +4081,7 @@ app.post("/chat", async (req, res) => {
           history: recentHistory,
           memory: previousMemory,
           postureDecision: n2PostureDecision,
-          promptRegistry: activePromptRegistry
+          promptRegistry: n2PromptRegistry
         });
         reply = n2Result.reply;
       } catch (n2Err) {

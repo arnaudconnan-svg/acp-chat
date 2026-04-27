@@ -90,7 +90,8 @@
 
     input[type="email"],
     input[type="password"],
-    input[type="text"] {
+    input[type="text"],
+    select {
       width: 100%;
       padding: 11px 14px;
       border: 1.5px solid #ddd;
@@ -100,11 +101,13 @@
       background: #fafafa;
       outline: none;
       transition: border-color 0.15s;
+      appearance: none;
     }
 
     input[type="email"]:focus,
     input[type="password"]:focus,
-    input[type="text"]:focus {
+    input[type="text"]:focus,
+    select:focus {
       border-color: #1a1a1a;
       background: #fff;
     }
@@ -210,6 +213,62 @@
 
     <!-- REGISTER FORM -->
     <form id="registerForm" style="display:none" onsubmit="handleRegister(event)">
+      <div class="form-group">
+        <label for="regFirstName">Prénom <span style="color:#aaa;font-weight:400">(facultatif)</span></label>
+        <input type="text" id="regFirstName" name="firstName" autocomplete="given-name" placeholder="Comment tu t'appelles ?">
+      </div>
+      <div class="form-group">
+        <label for="regCountry">Pays <span style="color:#aaa;font-weight:400">(facultatif)</span></label>
+        <select id="regCountry" name="country">
+          <option value="">— Sélectionner —</option>
+          <option value="FR">France</option>
+          <option value="BE">Belgique</option>
+          <option value="CH">Suisse</option>
+          <option value="CA">Canada</option>
+          <option value="LU">Luxembourg</option>
+          <option value="MC">Monaco</option>
+          <option value="GP">Guadeloupe</option>
+          <option value="MQ">Martinique</option>
+          <option value="GF">Guyane française</option>
+          <option value="RE">La Réunion</option>
+          <option value="YT">Mayotte</option>
+          <option value="NC">Nouvelle-Calédonie</option>
+          <option value="PF">Polynésie française</option>
+          <option value="PM">Saint-Pierre-et-Miquelon</option>
+          <option value="DZ">Algérie</option>
+          <option value="MA">Maroc</option>
+          <option value="TN">Tunisie</option>
+          <option value="SN">Sénégal</option>
+          <option value="CI">Côte d'Ivoire</option>
+          <option value="CM">Cameroun</option>
+          <option value="MG">Madagascar</option>
+          <option value="ML">Mali</option>
+          <option value="BF">Burkina Faso</option>
+          <option value="NE">Niger</option>
+          <option value="TG">Togo</option>
+          <option value="BJ">Bénin</option>
+          <option value="CD">Congo (RDC)</option>
+          <option value="GA">Gabon</option>
+          <option value="HT">Haïti</option>
+          <option value="MU">Maurice</option>
+          <option value="LB">Liban</option>
+          <option value="DE">Allemagne</option>
+          <option value="AT">Autriche</option>
+          <option value="ES">Espagne</option>
+          <option value="IT">Italie</option>
+          <option value="NL">Pays-Bas</option>
+          <option value="PT">Portugal</option>
+          <option value="GB">Royaume-Uni</option>
+          <option value="SE">Suède</option>
+          <option value="RU">Russie</option>
+          <option value="US">États-Unis</option>
+          <option value="MX">Mexique</option>
+          <option value="BR">Brésil</option>
+          <option value="AU">Australie</option>
+          <option value="NZ">Nouvelle-Zélande</option>
+          <option value="JP">Japon</option>
+        </select>
+      </div>
       <div class="form-group">
         <label for="regEmail">Adresse e-mail</label>
         <input type="email" id="regEmail" name="email" required autocomplete="email" placeholder="exemple@mail.com">
@@ -388,12 +447,14 @@
         notice.textContent = "";
         notice.className = "notice";
 
+        const firstName = String(document.getElementById("regFirstName")?.value || "").trim();
+        const country = String(document.getElementById("regCountry")?.value || "").trim();
         const email = String(document.getElementById("regEmail").value || "").trim();
         const password = String(document.getElementById("regPassword").value || "");
         const password2 = String(document.getElementById("regPassword2").value || "");
 
         if (!email || !password || !password2) {
-          notice.textContent = "Veuillez remplir tous les champs.";
+          notice.textContent = "Veuillez remplir les champs obligatoires.";
           return;
         }
 
@@ -407,13 +468,17 @@
           return;
         }
 
+        const body = { email, password };
+        if (firstName) body.firstName = firstName;
+        if (country) body.country = country;
+
         btn.disabled = true;
         try {
           const res = await fetch("/api/auth/register", {
             method: "POST",
             credentials: "include",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email, password })
+            body: JSON.stringify(body)
           });
 
           const data = await res.json().catch(() => ({}));

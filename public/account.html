@@ -402,6 +402,7 @@
         emailEl.textContent = String(currentUser.email || "");
         main.appendChild(emailEl);
 
+        main.appendChild(buildProfileCard());
         main.appendChild(buildPrivateDefaultCard());
         main.appendChild(buildLocalImportCard());
         main.appendChild(buildPasswordCard());
@@ -737,6 +738,172 @@
         });
 
         renderItems();
+        return card;
+      }
+
+      const COUNTRIES_LIST = [
+        { code: "FR", label: "France" },
+        { code: "BE", label: "Belgique" },
+        { code: "CH", label: "Suisse" },
+        { code: "CA", label: "Canada" },
+        { code: "LU", label: "Luxembourg" },
+        { code: "MC", label: "Monaco" },
+        { code: "GP", label: "Guadeloupe" },
+        { code: "MQ", label: "Martinique" },
+        { code: "GF", label: "Guyane française" },
+        { code: "RE", label: "La Réunion" },
+        { code: "YT", label: "Mayotte" },
+        { code: "NC", label: "Nouvelle-Calédonie" },
+        { code: "PF", label: "Polynésie française" },
+        { code: "PM", label: "Saint-Pierre-et-Miquelon" },
+        { code: "DZ", label: "Algérie" },
+        { code: "MA", label: "Maroc" },
+        { code: "TN", label: "Tunisie" },
+        { code: "SN", label: "Sénégal" },
+        { code: "CI", label: "Côte d'Ivoire" },
+        { code: "CM", label: "Cameroun" },
+        { code: "MG", label: "Madagascar" },
+        { code: "ML", label: "Mali" },
+        { code: "BF", label: "Burkina Faso" },
+        { code: "NE", label: "Niger" },
+        { code: "TG", label: "Togo" },
+        { code: "BJ", label: "Bénin" },
+        { code: "CD", label: "Congo (RDC)" },
+        { code: "GA", label: "Gabon" },
+        { code: "HT", label: "Haïti" },
+        { code: "MU", label: "Maurice" },
+        { code: "LB", label: "Liban" },
+        { code: "DE", label: "Allemagne" },
+        { code: "AT", label: "Autriche" },
+        { code: "ES", label: "Espagne" },
+        { code: "IT", label: "Italie" },
+        { code: "NL", label: "Pays-Bas" },
+        { code: "PT", label: "Portugal" },
+        { code: "GB", label: "Royaume-Uni" },
+        { code: "SE", label: "Suède" },
+        { code: "RU", label: "Russie" },
+        { code: "US", label: "États-Unis" },
+        { code: "MX", label: "Mexique" },
+        { code: "BR", label: "Brésil" },
+        { code: "AU", label: "Australie" },
+        { code: "NZ", label: "Nouvelle-Zélande" },
+        { code: "JP", label: "Japon" }
+      ];
+
+      function buildProfileCard() {
+        const card = document.createElement("div");
+        card.className = "card";
+
+        const title = document.createElement("div");
+        title.className = "section-title";
+        title.textContent = "Prénom et pays";
+        card.appendChild(title);
+
+        // Prénom
+        const firstNameGroup = document.createElement("div");
+        firstNameGroup.style.cssText = "margin-bottom:12px";
+        const firstNameLabel = document.createElement("label");
+        firstNameLabel.htmlFor = "profileFirstName";
+        firstNameLabel.style.cssText = "display:block;font-size:14px;color:#333;margin-bottom:5px";
+        firstNameLabel.textContent = "Prénom";
+        const firstNameInput = document.createElement("input");
+        firstNameInput.type = "text";
+        firstNameInput.id = "profileFirstName";
+        firstNameInput.maxLength = 50;
+        firstNameInput.autocomplete = "given-name";
+        firstNameInput.placeholder = "Votre prénom (facultatif)";
+        firstNameInput.value = currentUser && typeof currentUser.firstName === "string" ? currentUser.firstName : "";
+        firstNameInput.style.cssText = "width:100%;padding:11px 14px;border:1.5px solid #ddd;border-radius:8px;font-size:15px;color:#1a1a1a;background:#fafafa;outline:none;box-sizing:border-box";
+        firstNameGroup.appendChild(firstNameLabel);
+        firstNameGroup.appendChild(firstNameInput);
+        card.appendChild(firstNameGroup);
+
+        // Pays
+        const countryGroup = document.createElement("div");
+        countryGroup.style.cssText = "margin-bottom:16px";
+        const countryLabel = document.createElement("label");
+        countryLabel.htmlFor = "profileCountry";
+        countryLabel.style.cssText = "display:block;font-size:14px;color:#333;margin-bottom:5px";
+        countryLabel.textContent = "Pays";
+        const countrySelect = document.createElement("select");
+        countrySelect.id = "profileCountry";
+        countrySelect.style.cssText = "width:100%;padding:11px 14px;border:1.5px solid #ddd;border-radius:8px;font-size:15px;color:#1a1a1a;background:#fafafa;outline:none;appearance:none;-webkit-appearance:none;box-sizing:border-box";
+        const defaultOpt = document.createElement("option");
+        defaultOpt.value = "";
+        defaultOpt.textContent = "— Sélectionner —";
+        countrySelect.appendChild(defaultOpt);
+        for (const { code, label } of COUNTRIES_LIST) {
+          const opt = document.createElement("option");
+          opt.value = code;
+          opt.textContent = label;
+          if (currentUser && currentUser.country === code) opt.selected = true;
+          countrySelect.appendChild(opt);
+        }
+        countryGroup.appendChild(countryLabel);
+        countryGroup.appendChild(countrySelect);
+        card.appendChild(countryGroup);
+
+        const saveBtn = document.createElement("button");
+        saveBtn.type = "button";
+        saveBtn.className = "action-btn";
+        saveBtn.id = "saveProfileBtn";
+        saveBtn.textContent = "Enregistrer";
+        card.appendChild(saveBtn);
+
+        const notice = document.createElement("div");
+        notice.className = "notice";
+        notice.id = "profileNotice";
+        card.appendChild(notice);
+
+        const refreshSaveState = () => {
+          const currentFirstName = currentUser && typeof currentUser.firstName === "string" ? currentUser.firstName : "";
+          const currentCountry = currentUser && typeof currentUser.country === "string" ? currentUser.country : "";
+          const changed = firstNameInput.value.trim() !== currentFirstName || countrySelect.value !== currentCountry;
+          saveBtn.disabled = !changed;
+          saveBtn.classList.toggle("is-ready", changed);
+        };
+
+        firstNameInput.addEventListener("input", refreshSaveState);
+        countrySelect.addEventListener("change", refreshSaveState);
+        refreshSaveState();
+
+        saveBtn.addEventListener("click", async () => {
+          notice.textContent = "";
+          notice.className = "notice";
+          saveBtn.disabled = true;
+
+          const body = {
+            firstName: firstNameInput.value.trim() || null,
+            country: countrySelect.value || null
+          };
+
+          try {
+            const res = await fetch("/api/account/profile", {
+              method: "PUT",
+              credentials: "include",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(body)
+            });
+
+            const data = await res.json().catch(() => ({}));
+
+            if (res.ok && data.success) {
+              if (currentUser) {
+                currentUser.firstName = data.firstName;
+                currentUser.country = data.country;
+              }
+              notice.textContent = "Enregistré.";
+              notice.className = "notice success";
+            } else {
+              notice.textContent = data.error || "Erreur lors de l'enregistrement.";
+              saveBtn.disabled = false;
+            }
+          } catch (_) {
+            notice.textContent = "Erreur réseau. Réessayez.";
+            saveBtn.disabled = false;
+          }
+        });
+
         return card;
       }
 

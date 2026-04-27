@@ -23,6 +23,7 @@
     "verify": "node --check server.js && npm run smoke && npm run state:harness && npm run posture:harness && npm run contract-validator:harness && npm run flags:harness && npm run debugmeta-unit:harness && npm run critic:harness && npm run chat-routing:harness && npm run crisis-routing:harness && npm run pipeline:harness && npm run debugmeta:harness && npm run llm-messages:harness && npm run conversation-data:harness",
     "verify:full": "npm run verify && npm run eval:chat",
     "reset:data": "node scripts/reset-app-data.js --apply",
+    "update:emergency-numbers": "node scripts/update-emergency-numbers.js",
     "rtdb:index": "node scripts/ensure-rtdb-index.js",
     "rtdb:index:apply": "node scripts/ensure-rtdb-index.js --apply",
     "test": "echo \"Error: no test specified\" && exit 1"
