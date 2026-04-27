@@ -376,13 +376,13 @@ check("writerMode: exploration + level 1 → exploration_open", () => {
     `expected 'exploration_open', got '${out.writerMode}'`);
 });
 
-check("writerMode: exploration + level 2 → exploration_guided", () => {
+check("writerMode: exploration + level 2 → exploration_restrained", () => {
   const out = buildPostureDecision(explorationInput({
     effectiveExplorationDirectivityLevel: 2,
     calibrationAnalysis: calibration(2)
   }));
-  assert(out.writerMode === "exploration_guided",
-    `expected 'exploration_guided', got '${out.writerMode}'`);
+  assert(out.writerMode === "exploration_restrained",
+    `expected 'exploration_restrained', got '${out.writerMode}'`);
 });
 
 check("writerMode: contact regulated → contact (merged)", () => {

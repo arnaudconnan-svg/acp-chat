@@ -178,7 +178,7 @@ assert(stateToWriterMode("info", { infoSubmode: "app_features" }) === "info_app_
   "stateToWriterMode: info app_features");
 assert(stateToWriterMode("info") === "info_app_features",
   "stateToWriterMode: info default is app_features");
-assert(stateToWriterMode("exploration", { directivityLevel: 3 }) === "exploration_guided",
+assert(stateToWriterMode("exploration", { directivityLevel: 3 }) === "exploration_restrained",
   "stateToWriterMode: exploration guided (level>=2)");
 assert(stateToWriterMode("exploration", { directivityLevel: 1 }) === "exploration_open",
   "stateToWriterMode: exploration open (level<2)");
@@ -187,7 +187,7 @@ assert(stateToWriterMode("exploration") === "exploration_open",
 
 // ─── 6. WRITER_MODE_* tables consistency ─────────────────────────────────────
 const allWriterModes = [
-  "exploration_open", "exploration_guided", "contact", "stabilization",
+  "exploration_open", "exploration_restrained", "contact", "stabilization",
   "alliance_rupture", "closure", "discharge_regulated", "discharge_dysregulated",
   "info_pure", "info_psychoeducation", "info_app_features", "n1_crisis", "recall_memory"
 ];
