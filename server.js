@@ -79,6 +79,7 @@ const { buildDefaultPromptRegistry } = require("./lib/prompts");
 const {
   createCritic,
   hasAgencyInjectionInReply,
+  hasTutoiementInReply,
   hasTheoreticalViolationHeuristic,
   isProceduralInstrumentalReply
 } = require("./lib/critic");
@@ -4319,11 +4320,13 @@ app.post("/chat", async (req, res) => {
         && postureDecision.maxSentences > 0
         && sentenceCount > postureDecision.maxSentences;
       humanFieldRisk = postureDecision.humanFieldGuardActive === true && isProceduralInstrumentalReply(reply);
+      const formalAddressRisk = postureDecision.formalAddress === true && hasTutoiementInReply(reply);
       const criticShouldTrigger =
         n1CrisisForced ||
         recallForced ||
         contractLengthExceeded ||
         humanFieldRisk ||
+        formalAddressRisk ||
         hasAgencyInjectionInReply(reply) ||
         hasTheoreticalViolationHeuristic(reply);
       if (criticShouldTrigger) {
@@ -4511,7 +4514,8 @@ app.post("/chat", async (req, res) => {
       contactScore: turnScore,
       contactEstablished,
       emotionalDecentering: emotionalDecenteringAnalysis?.emotionalDecentering === true,
-      emotionSequenceStage: postureDecision.emotionSequenceStage
+      emotionSequenceStage: postureDecision.emotionSequenceStage,
+      formalAddress: postureDecision.formalAddress === true
     });
 
     if (logsEnabled) {

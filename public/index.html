@@ -6349,6 +6349,9 @@
         if (meta.emotionSequenceStage !== undefined && meta.emotionSequenceStage !== null) {
           signauxLines.push(`\u00c9tape s\u00e9quence \u00e9motion : ${meta.emotionSequenceStage}`);
         }
+        if (meta.formalAddress === true) {
+          signauxLines.push("Vouvoiement actif");
+        }
         if (signauxLines.length > 0) {
           sections.push({ title: "Signaux", content: signauxLines.join("\n") });
         }
