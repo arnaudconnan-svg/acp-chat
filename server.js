@@ -58,6 +58,7 @@ const {
   normalizeExternalSupportMode,
   normalizeFlags,
   normalizeInfoSubmode,
+  detectClosureIntent,
   normalizeProcessingWindow,
   normalizeSessionFlags,
   normalizeStagnationTurns,
@@ -4187,6 +4188,11 @@ app.post("/chat", async (req, res) => {
     const turnScore = computeContactTurnScore(message);
     const newContactScoreWindow = normalizeContactScoreWindow([...(newFlags.contactScoreWindow || [0, 0, 0, 0]), turnScore]);
     const contactEstablished = computeContactEstablished(newContactScoreWindow);
+
+    // Closure detection — deterministic from message
+    if (detectClosureIntent(message)) {
+      newFlags.closureIntent = true;
+    }
 
     // Phase 3: Deterministic arbitrator — consolidate all analyzer outputs into a
     // PostureDecision struct. No LLM calls, no side effects outside this block.
