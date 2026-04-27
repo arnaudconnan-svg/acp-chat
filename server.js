@@ -4177,7 +4177,7 @@ app.post("/chat", async (req, res) => {
         infoRoutingSource = "LLM";
       }
     }
-    const safeInterpretationRejection = detectedMode === "exploration"
+    const safeInterpretationRejection = (detectedMode === "exploration" || detectedMode === "contact")
       ? (interpretationRejection || { isInterpretationRejection: false, relationalFrictionSignal: "none" })
       : { isInterpretationRejection: false, relationalFrictionSignal: "none" };
 
