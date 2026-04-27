@@ -161,6 +161,54 @@ check("state: prev=contact + exploration \u2192 exploration (post_contact retire
     `expected 'exploration', got '${out.conversationStateKey}'`);
 });
 
+// ─── discharge / post-discharge cooldown ──────────────────────────────────────
+// post_contact was replaced by contact state when previousConversationStateKey==='discharge'.
+// E5 guard (!contactEstablished) can redirect modeForStateResolution to 'contact' before
+// resolveConversationState; contactEstablished: true bypasses E5 so Priority 3 runs.
+
+check("state: discharge still active → discharge", () => {
+  const out = buildPostureDecision(explorationInput({
+    detectedMode: "discharge",
+    dischargeAnalysis: { isContact: true, contactSubmode: "regulated" },
+    previousConversationStateKey: "discharge",
+    contactEstablished: true
+  }));
+  assert(out.conversationStateKey === "discharge",
+    `expected 'discharge', got '${out.conversationStateKey}'`);
+});
+
+check("state: prev=discharge + exploration (contactEstablished) \u2192 contact (post-discharge cooldown)", () => {
+  // Priority 3 in resolveConversationState: prev=discharge + detectedMode=exploration → contact.
+  // contactEstablished: true is required so E5 does not redirect modeForStateResolution to 'contact'
+  // before resolveConversationState is called (which would skip Priority 3 check).
+  const out = buildPostureDecision(explorationInput({
+    previousConversationStateKey: "discharge",
+    contactEstablished: true
+  }));
+  assert(out.conversationStateKey === "contact",
+    `expected 'contact' (post-discharge cooldown), got '${out.conversationStateKey}'`);
+});
+
+check("forbidden: post-discharge contact forbids relance + interpretive_hypothesis (C3)", () => {
+  const out = buildPostureDecision(explorationInput({
+    previousConversationStateKey: "discharge",
+    contactEstablished: true
+  }));
+  assert(out.forbidden.includes("relance"),
+    `expected 'relance' in forbidden for post-discharge contact, got [${out.forbidden.join(", ")}]`);
+  assert(out.forbidden.includes("interpretive_hypothesis"),
+    `expected 'interpretive_hypothesis' in forbidden for post-discharge contact`);
+});
+
+check("C3: post-discharge contact includes auto_compassion_door_open hint", () => {
+  const out = buildPostureDecision(explorationInput({
+    previousConversationStateKey: "discharge",
+    contactEstablished: true
+  }));
+  assert(Array.isArray(out.writerIntentHints) && out.writerIntentHints.includes("auto_compassion_door_open"),
+    `expected 'auto_compassion_door_open' in writerIntentHints, got [${(out.writerIntentHints || []).join(", ")}]`);
+});
+
 check("state: alliance_rupture overrides exploration", () => {
   const out = buildPostureDecision(explorationInput({
     allianceState: "rupture"
@@ -344,7 +392,14 @@ check("writerMode: prev=contact + exploration → exploration_open (post_contact
   assert(out.writerMode === "exploration_open",
     `expected 'exploration_open', got '${out.writerMode}'`);
 });
-
+check("writerMode: prev=discharge + exploration (contactEstablished) \u2192 contact (post-discharge cooldown)", () => {
+  const out = buildPostureDecision(explorationInput({
+    previousConversationStateKey: "discharge",
+    contactEstablished: true
+  }));
+  assert(out.writerMode === "contact",
+    `expected 'contact' writerMode for post-discharge cooldown, got '${out.writerMode}'`);
+});
 check("writerMode: info app_features → info_app_features", () => {
   const out = buildPostureDecision(explorationInput({
     detectedMode: "info",
