@@ -4434,7 +4434,7 @@ app.post("/chat", async (req, res) => {
 
     let memoryCandidate = rawNewMemory;
     const memoryBeforeCompression = memoryCandidate;
-    const memoryNeedsCompression = shouldCompressMemoryCandidate(memoryCandidate);
+    const memoryNeedsCompression = shouldCompressMemoryCandidate(memoryCandidate, previousMemory);
     const finalizedMemoryCandidate = await finalizeMemoryCandidate({
       previousMemory,
       candidateMemory: memoryCandidate,
