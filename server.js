@@ -960,7 +960,7 @@ const {
   wrapPromptBlock,
   buildPostureContractBlock,
   getIdentityPrompt,
-  getContactPrompt,
+  getDischargePrompt,
   getRelationalAdjustmentPrompt,
   getInfoPrompt,
   getExplorationPrompt,
@@ -970,7 +970,8 @@ const {
   buildDependencyRiskGuardrailBlock,
   buildClosurePromptBlock,
   buildRelationalAdjustmentPromptBlock,
-  buildContactSubmodePromptBlock,
+  buildDischargeSubmodePromptBlock,
+  buildContactStatePromptBlock,
   buildInterpretationRejectionPromptBlock,
   buildSystemPrompt,
   generateReply
@@ -3929,7 +3930,40 @@ app.post("/chat", async (req, res) => {
         suicideLevel: "N2"
       });
       
-      const reply = n2Response();
+      // N2 : génération contextualisée via LLM avec fallback sur la réponse statique.
+      let reply;
+      try {
+        const n2PostureDecision = {
+          writerMode: "n2_crisis",
+          finalDetectedMode: null,
+          finalDirectivityLevel: 0,
+          finalExplorationSubmode: "interpretation",
+          intent: "orienter vers les ressources de crise",
+          forbidden: ["interpretive_hypothesis", "relance", "open_question", "exploration_hypothesis", "reflect"],
+          maxSentences: 3,
+          toneConstraint: "contained",
+          relancePolicy: "forbidden",
+          confidenceSignal: 1.0,
+          responseRegister: "courant",
+          phraseLengthPolicy: "courte",
+          somaticFocusPolicy: "none",
+          relationalAdjustmentActive: false,
+          interpretationRejectionModeActive: false,
+          needsSoberReadjustment: false,
+          humanFieldGuardActive: false,
+          formalAddress: false
+        };
+        const n2Result = await generateReply({
+          message,
+          history: recentHistory,
+          memory: previousMemory,
+          postureDecision: n2PostureDecision,
+          promptRegistry: activePromptRegistry
+        });
+        reply = n2Result.reply;
+      } catch (n2Err) {
+        reply = n2Response();
+      }
       const responseMemory = previousMemory;
       
       const responseDebugMeta = buildResponseDebugMeta({

@@ -499,14 +499,14 @@ check("intent: post_contact intent is non-empty string", () => {
     `expected non-empty intent, got '${out.intent}'`);
 });
 
-check("maxSentences: contact mode = null (no hard limit; contract-driven)", () => {
-  // contact writerMode has no maxSentences in WRITER_MODE_CONSTRAINTS.
+check("maxSentences: contact mode = 3", () => {
+  // contact writerMode has maxSentences: 3 in WRITER_MODE_CONSTRAINTS.
   const out = buildPostureDecision(explorationInput({
     detectedMode: "contact",
     contactAnalysis: contact(true, "dysregulated")
   }));
-  assert(out.maxSentences === null,
-    `expected maxSentences null for contact mode, got ${out.maxSentences}`);
+  assert(out.maxSentences === 3,
+    `expected maxSentences 3 for contact mode, got ${out.maxSentences}`);
 });
 
 check("maxSentences: exploration_open = 5", () => {
