@@ -146,7 +146,7 @@ check("confidenceSignal is float between 0 and 1", () => {
 
 check("relancePolicy follows contract constraints", () => {
   // contact mode base: relancePolicy is "selective" (no relance in base forbidden for contact).
-  // C3 may add relance for specific signals (e.g. discharge_in_progress orientation).
+  // C3 may add relance for specific signals (e.g. limit_expression orientation).
   const contactBase = buildPostureDecision(baseInput({
     detectedMode: "contact",
     contactAnalysis: { isContact: true, contactSubmode: "dysregulated" }
