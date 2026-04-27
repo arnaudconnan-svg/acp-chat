@@ -189,7 +189,7 @@ assert(stateToWriterMode("exploration") === "exploration_open",
 const allWriterModes = [
   "exploration_open", "exploration_restrained", "contact", "stabilization",
   "alliance_rupture", "closure", "discharge_regulated", "discharge_dysregulated",
-  "info_pure", "info_psychoeducation", "info_app_features", "n1_crisis", "recall_memory"
+  "info_pure", "info_psychoeducation", "info_app_features", "n1_crisis"
 ];
 for (const wm of allWriterModes) {
   assert(wm in WRITER_MODE_FORBIDDEN, `WRITER_MODE_FORBIDDEN has '${wm}'`);

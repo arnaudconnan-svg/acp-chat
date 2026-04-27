@@ -4050,8 +4050,8 @@ app.post("/chat", async (req, res) => {
       });
     }
 
-    // Recall signals flow into the main pipeline. When isRecallAttempt, writerMode
-    // is overridden to "recall_memory" inside buildPostureDecision. For long-term
+    // Recall signals flow into the main pipeline. When isRecallAttempt, a recall
+    // injection block is added to the writer prompt alongside the current state.
     // recall, branch history is loaded eagerly and merged into the memory context.
     let memoryForReply = previousMemory;
     if (recallRouting.isLongTermMemoryRecall === true) {
@@ -4309,7 +4309,7 @@ app.post("/chat", async (req, res) => {
     let contractLengthExceeded = false;
     const criticModes = ["exploration", "discharge", "contact", "info"];
     const n1CrisisForced = postureDecision.writerMode === "n1_crisis";
-    const recallForced = postureDecision.writerMode === "recall_memory";
+    const recallForced = postureDecision.isRecallAttempt === true;
     const criticApplies = n1CrisisForced || recallForced || criticModes.includes(finalDetectedMode);
     if (criticApplies) {
       const sentenceCount = String(reply || "")

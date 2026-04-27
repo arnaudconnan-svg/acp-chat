@@ -767,9 +767,10 @@ check("writerMode: suicideLevel N1 in contact mode → n1_crisis override", () =
   assert(out.writerMode === "n1_crisis", `expected 'n1_crisis', got '${out.writerMode}'`);
 });
 
-check("writerMode: isRecallAttempt → recall_memory override", () => {
+check("isRecallAttempt → flag passé dans postureDecision (pas d'override writerMode)", () => {
   const out = buildPostureDecision(explorationInput({ detectedMode: "exploration", isRecallAttempt: true }));
-  assert(out.writerMode === "recall_memory", `expected 'recall_memory', got '${out.writerMode}'`);
+  assert(out.isRecallAttempt === true, `expected isRecallAttempt true, got ${out.isRecallAttempt}`);
+  assert(out.writerMode !== "recall_memory", `writerMode ne doit plus être 'recall_memory', got '${out.writerMode}'`);
 });
 
 check("writerMode: N1 takes priority over recall", () => {
