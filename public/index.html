@@ -2884,6 +2884,7 @@
       const conversationId = getConversationId();
       if (!conversationId) return;
       const data = loadConversationData(conversationId);
+      const localMessages = Array.isArray(data.messages) ? data.messages : [];
       const conversationPayload = {
         id: conversationId,
         title: typeof data.title === "string" ? data.title : "",
@@ -2892,14 +2893,14 @@
         memory: typeof data.memory === "string" ? data.memory : "",
         flags: data.flags || {},
         updatedAt: Number(data.updatedAt || Date.now()),
-        messages: Array.isArray(data.messages) ? data.messages : []
+        messages: localMessages
       };
 
       const res = await fetch("/api/account/conversations/import-local", {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ conversations: [conversationPayload] })
+        body: JSON.stringify({ conversations: [conversationPayload], forceOverwrite: true })
       });
 
       if (!res.ok) {
@@ -2907,8 +2908,34 @@
         throw new Error(body.error || "Erreur réseau");
       }
 
-      const nextData = { ...data, isPrivate: false };
-      saveConversationData(conversationId, nextData);
+      const responseData = await res.json().catch(() => ({}));
+
+      // Write Firebase push keys back to localStorage so the branch button works
+      const returnedIds = responseData.messageIdsByConversation?.[conversationId];
+      if (Array.isArray(returnedIds) && returnedIds.length > 0) {
+        const validLocalMessages = localMessages.filter(m => {
+          const role = String(m?.role || "").trim();
+          const content = typeof m?.content === "string" ? m.content.trim() : "";
+          return (role === "user" || role === "assistant") && content;
+        });
+        const updatedMessages = localMessages.map(m => {
+          const role = String(m?.role || "").trim();
+          const content = typeof m?.content === "string" ? m.content.trim() : "";
+          if ((role === "user" || role === "assistant") && content) {
+            const idx = validLocalMessages.indexOf(m);
+            if (idx >= 0 && idx < returnedIds.length) {
+              return { ...m, id: returnedIds[idx] };
+            }
+          }
+          return m;
+        });
+        const nextData = { ...data, isPrivate: false, messages: updatedMessages };
+        saveConversationData(conversationId, nextData);
+      } else {
+        const nextData = { ...data, isPrivate: false };
+        saveConversationData(conversationId, nextData);
+      }
+
       upsertConversationIndexItem({ id: conversationId, isPrivate: false });
 
       const privateIds = loadPrivateConversationIds().filter(id => id !== conversationId);

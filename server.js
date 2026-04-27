@@ -1801,8 +1801,10 @@ app.post("/api/account/conversations/import-local", requireUserAuth, async (req,
       return res.status(400).json({ error: "Invalid local import request" });
     }
 
+    const forceOverwrite = req.body.forceOverwrite === true;
     const conversations = req.body.conversations.slice(0, 50);
     const importedConversationIds = [];
+    const messageIdsByConversation = {};
     let alreadyOwnedCount = 0;
     let skippedCount = 0;
 
@@ -1823,12 +1825,19 @@ app.post("/api/account/conversations/import-local", requireUserAuth, async (req,
         const ownerId = String(existingConversation.userId || "").trim();
 
         if (ownerId === session.userId) {
-          alreadyOwnedCount += 1;
+          if (!forceOverwrite) {
+            alreadyOwnedCount += 1;
+            continue;
+          }
+          // forceOverwrite: delete existing messages then re-import
+          const existingMsgsSnap = await messagesRef.orderByChild("conversationId").equalTo(conversationId).once("value");
+          const deleteOps = [];
+          existingMsgsSnap.forEach(child => { deleteOps.push(child.ref.remove()); });
+          await Promise.all(deleteOps);
+        } else {
+          skippedCount += 1;
           continue;
         }
-
-        skippedCount += 1;
-        continue;
       }
 
       const rawMessages = Array.isArray(safeConversation?.messages) ? safeConversation.messages : [];
@@ -1942,8 +1951,9 @@ app.post("/api/account/conversations/import-local", requireUserAuth, async (req,
         updatedAt: updatedAtIso
       });
 
+      const pushedMessageIds = [];
       for (const message of sanitizedMessages) {
-        await messagesRef.push({
+        const pushRef = await messagesRef.push({
           role: message.role,
           content: message.content,
           timestamp: message.timestamp,
@@ -1953,9 +1963,11 @@ app.post("/api/account/conversations/import-local", requireUserAuth, async (req,
           debugMeta: message.debugMeta,
           stateSnapshot: message.stateSnapshot
         });
+        pushedMessageIds.push(pushRef.key);
       }
 
       importedConversationIds.push(conversationId);
+      messageIdsByConversation[conversationId] = pushedMessageIds;
     }
 
     return res.json({
@@ -1963,7 +1975,8 @@ app.post("/api/account/conversations/import-local", requireUserAuth, async (req,
       importedConversationIds,
       importedCount: importedConversationIds.length,
       alreadyOwnedCount,
-      skippedCount
+      skippedCount,
+      messageIdsByConversation
     });
   } catch (err) {
     console.error("Erreur /api/account/conversations/import-local:", err.message);
