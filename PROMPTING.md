@@ -88,3 +88,29 @@ Il vaut mieux decrire :
 - ce qui ne doit pas bouger
 
 L'agent choisit ensuite le moyen technique le plus propre.
+
+## 7. Prompt d'audit architectural (a coller en debut de session d'audit)
+
+Audit strict 5 couches (contenu des prompts compris) + ecarts critiques + plan priorise + implementation immediate des quick wins techniques non visibles.
+Inclure explicitement une section conditions de travail agent : tests manquants, observabilite, protocoles anti-regression, discipline de commit.
+Changements visibles permis et souhaites si pertinents, mais sous regle stricte :
+
+- annoncer d'abord effet utilisateur + risque de regression + perimetre impacte
+- demander un GO explicite
+- ne rien coder de visible sans GO explicite
+
+Verifications supplementaires dans l'audit C1/C2 :
+Pour chaque etat de CONVERSATION_STATES, verifier qu'il existe au moins un analyseur C2 capable de le declencher en conditions normales (sans intervention manuelle, flag admin, ou override externe). Tout etat non atteignable par analyse per-tour est a signaler comme ecart.
+
+Verifications supplementaires dans l'audit C3 :
+Verifier que les champs du return de buildPostureDecision sont nommes comme des decisions (ce que le writer doit faire), pas comme des relais de signaux C2 bruts. Tout champ prefixe is* ou portant le nom d'un signal C2 est un ecart potentiel a justifier ou corriger.
+
+Sortie obligatoire (format fixe) :
+- statut par couche : OK / PARTIEL / NON
+- ecarts critiques (ordonnes par severite)
+- quick wins techniques executes maintenant
+- changements visibles proposes (non implementes sans GO)
+- actions restantes
+- batch suivant
+- etat de verification : commandes lancees + resultats
+- commit local sans push (ou raison de non-commit)
