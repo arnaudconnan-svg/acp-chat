@@ -738,6 +738,7 @@ const {
   analyzeExplorationCalibration,
   analyzeExplorationRelance,
   analyzeEmotionalDecentering,
+  analyzeEngagementAndAlliance,
   analyzeInfoRequest,
   analyzeInfoSubmode,
   analyzeInterpretationRejection,
@@ -4106,7 +4107,8 @@ app.post("/chat", async (req, res) => {
       somaticSignalAnalysis,
       userRegisterAnalysis,
       theoreticalOrientationAnalysis,
-      emotionalDecenteringResult
+      emotionalDecenteringResult,
+      engagementAllianceAnalysis
     ] = await Promise.all([
       withAnalyzerTiming("detect_mode", detectMode(message, recentHistory, newFlags.contactState, activePromptRegistry)),
       withAnalyzerTiming("relational_adjustment", analyzeRelationalAdjustmentNeed(message, recentHistory, previousMemory, false, activePromptRegistry)),
@@ -4133,7 +4135,8 @@ app.post("/chat", async (req, res) => {
         previousMemory,
         activePromptRegistry
       )),
-      withAnalyzerTiming("emotional_decentering", analyzeEmotionalDecentering(message, recentHistory))
+      withAnalyzerTiming("emotional_decentering", analyzeEmotionalDecentering(message, recentHistory)),
+      withAnalyzerTiming("engagement_alliance", analyzeEngagementAndAlliance(message, recentHistory, activePromptRegistry))
     ]);
     throwIfCanceled();
 
@@ -4216,12 +4219,14 @@ app.post("/chat", async (req, res) => {
       previousConversationStateKey,
       currentConsecutiveNonExplorationTurns: normalizeConsecutiveNonExplorationTurns(newFlags.consecutiveNonExplorationTurns),
       currentExplorationRelanceWindow: newFlags.explorationRelanceWindow,
-      // Phase B structural flags passed in for Phase C state transitions
+      // Phase B structural flags — persistent fallback values (overridden by C2 per-turn analysis)
       allianceState: newFlags.allianceState,
       engagementLevel: newFlags.engagementLevel,
       stagnationTurns: newFlags.stagnationTurns,
       processingWindow: newFlags.processingWindow,
       closureIntent: newFlags.closureIntent,
+      // C2 per-turn engagement/alliance analysis — overrides persistent flags in C3
+      engagementAllianceAnalysis,
       // Contract inputs for confidenceSignal computation
       message,
       recentHistory,
@@ -4309,7 +4314,7 @@ app.post("/chat", async (req, res) => {
     let contractLengthExceeded = false;
     const criticModes = ["exploration", "discharge", "contact", "info"];
     const n1CrisisForced = postureDecision.writerMode === "n1_crisis";
-    const recallForced = postureDecision.isRecallAttempt === true;
+    const recallForced = postureDecision.recallInjectionActive === true;
     const criticApplies = n1CrisisForced || recallForced || criticModes.includes(finalDetectedMode);
     if (criticApplies) {
       const sentenceCount = String(reply || "")
