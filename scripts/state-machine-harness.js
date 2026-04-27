@@ -47,7 +47,7 @@ function resolve(overrides = {}) {
 }
 
 // ─── 1. CONVERSATION_STATES completeness ─────────────────────────────────────
-const EXPECTED_STATES = ["exploration", "post_contact", "contact", "info", "stabilization", "alliance_rupture", "closure"];
+const EXPECTED_STATES = ["exploration", "discharge", "contact", "info", "stabilization", "alliance_rupture", "closure"];
 assert(Array.isArray(CONVERSATION_STATES), "CONVERSATION_STATES is an array");
 for (const s of EXPECTED_STATES) {
   assert(CONVERSATION_STATES.includes(s), `CONVERSATION_STATES includes '${s}'`);
@@ -62,7 +62,7 @@ for (const s of CONVERSATION_STATES) {
 // ─── 3. isValidTransition guard ──────────────────────────────────────────────
 // Known valid edges
 assert(isValidTransition("exploration", "contact"), "isValidTransition: exploration -> contact");
-assert(isValidTransition("contact", "post_contact"), "isValidTransition: contact -> post_contact");
+assert(isValidTransition("contact", "discharge"), "isValidTransition: contact -> discharge");
 assert(isValidTransition("stabilization", "closure"), "isValidTransition: stabilization -> closure");
 // Self-transitions
 assert(isValidTransition("exploration", "exploration"), "isValidTransition: exploration -> exploration (self)");
@@ -85,11 +85,14 @@ assert(resolve({ contactAnalysis: { isContact: true }, detectedMode: "info" }) =
 assert(resolve({ contactAnalysis: { isContact: true }, closureIntent: true }) === "contact",
   "resolve: contact wins over closureIntent");
 
-// Priority 2: post_contact when previous was contact and mode is now exploration
-assert(resolve({ previousConversationStateKey: "contact", detectedMode: "exploration" }) === "post_contact",
-  "resolve: post_contact after contact turn");
+// Priority 2: post-discharge cooldown — previous was discharge, now exploration → contact
+assert(resolve({ previousConversationStateKey: "discharge", detectedMode: "exploration" }) === "contact",
+  "resolve: contact (post-discharge cooldown) after discharge turn");
+// No special state after contact — falls back to exploration
+assert(resolve({ previousConversationStateKey: "contact", detectedMode: "exploration" }) === "exploration",
+  "resolve: exploration after contact turn (no post_contact state)");
 assert(resolve({ previousConversationStateKey: "contact", detectedMode: "info" }) === "info",
-  "resolve: info beats post_contact (prev contact but mode switched to info)");
+  "resolve: info beats exploration (prev contact but mode switched to info)");
 
 // Priority 3: info mode
 assert(resolve({ detectedMode: "info" }) === "info", "resolve: info mode -> info state");
@@ -104,7 +107,7 @@ assert(
 );
 assert(
   resolve({ previousConversationStateKey: "contact", detectedMode: "exploration", allianceState: "rupture" }) === "alliance_rupture",
-  "resolve: alliance_rupture overrides post_contact"
+  "resolve: alliance_rupture overrides exploration (prev contact)"
 );
 // alliance_rupture does NOT apply when in contact
 assert(
@@ -155,13 +158,18 @@ assert(
 assert(stateToWriterMode("alliance_rupture") === "alliance_rupture", "stateToWriterMode: alliance_rupture");
 assert(stateToWriterMode("stabilization") === "stabilization", "stateToWriterMode: stabilization");
 assert(stateToWriterMode("closure") === "closure", "stateToWriterMode: closure");
-assert(stateToWriterMode("post_contact") === "post_contact", "stateToWriterMode: post_contact");
-assert(stateToWriterMode("contact", { contactSubmode: "dysregulated" }) === "contact_dysregulated",
-  "stateToWriterMode: contact dysregulated");
-assert(stateToWriterMode("contact", { contactSubmode: "regulated" }) === "contact_regulated",
-  "stateToWriterMode: contact regulated");
-assert(stateToWriterMode("contact") === "contact_regulated",
-  "stateToWriterMode: contact default is regulated");
+// contact state always produces "contact" writerMode regardless of submode
+assert(stateToWriterMode("contact") === "contact",
+  "stateToWriterMode: contact default");
+assert(stateToWriterMode("contact", { contactSubmode: "regulated" }) === "contact",
+  "stateToWriterMode: contact with regulated submode");
+assert(stateToWriterMode("contact", { contactSubmode: "dysregulated" }) === "contact",
+  "stateToWriterMode: contact with dysregulated submode (dysregulation is discharge territory)");
+// discharge state dispatches on submode
+assert(stateToWriterMode("discharge") === "discharge_regulated",
+  "stateToWriterMode: discharge default is regulated");
+assert(stateToWriterMode("discharge", { contactSubmode: "dysregulated" }) === "discharge_dysregulated",
+  "stateToWriterMode: discharge dysregulated");
 assert(stateToWriterMode("info", { infoSubmode: "psychoeducation" }) === "info_psychoeducation",
   "stateToWriterMode: info psychoeducation");
 assert(stateToWriterMode("info", { infoSubmode: "pure" }) === "info_pure",
@@ -179,9 +187,9 @@ assert(stateToWriterMode("exploration") === "exploration_open",
 
 // ─── 6. WRITER_MODE_* tables consistency ─────────────────────────────────────
 const allWriterModes = [
-  "exploration_open", "exploration_guided", "post_contact", "stabilization",
-  "alliance_rupture", "closure", "contact_regulated", "contact_dysregulated",
-  "info_pure", "info_psychoeducation", "info_app_features", "n1_crisis"
+  "exploration_open", "exploration_guided", "contact", "stabilization",
+  "alliance_rupture", "closure", "discharge_regulated", "discharge_dysregulated",
+  "info_pure", "info_psychoeducation", "info_app_features", "n1_crisis", "recall_memory"
 ];
 for (const wm of allWriterModes) {
   assert(wm in WRITER_MODE_FORBIDDEN, `WRITER_MODE_FORBIDDEN has '${wm}'`);
@@ -192,7 +200,7 @@ for (const wm of allWriterModes) {
 for (const wm of Object.keys(WRITER_MODE_CONSTRAINTS)) {
   const c = WRITER_MODE_CONSTRAINTS[wm];
   assert(typeof c.maxSentences === "number", `WRITER_MODE_CONSTRAINTS['${wm}'].maxSentences is number`);
-  assert(typeof c.toneConstraint === "string", `WRITER_MODE_CONSTRAINTS['${wm}'].toneConstraint is string`);
+  assert(typeof c.toneConstraint === "string" || c.toneConstraint === null, `WRITER_MODE_CONSTRAINTS['${wm}'].toneConstraint is string or null`);
 }
 
 // ─── Report ───────────────────────────────────────────────────────────────────
