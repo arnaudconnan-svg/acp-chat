@@ -2110,6 +2110,7 @@
 
             if (section.memoryRewritten) {
               const memChip = document.createElement("details");
+              memChip.open = true;
               memChip.style.marginTop = "6px";
               const memChipSummary = document.createElement("summary");
               memChipSummary.style.listStyle = "none";
