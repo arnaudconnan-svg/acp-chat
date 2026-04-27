@@ -656,6 +656,44 @@
       }
     }
 
+    #chatMakePublicBtnWrap {
+      position: absolute;
+      left: 18px;
+      top: calc(14px + env(safe-area-inset-top, 0px));
+      pointer-events: auto;
+      visibility: hidden;
+    }
+
+    #chatMakePublicBtn {
+      width: 32px;
+      height: 32px;
+      border: none;
+      border-radius: 50%;
+      background: transparent;
+      color: #245e66;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      padding: 0;
+      outline: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    #chatMakePublicBtn:focus,
+    #chatMakePublicBtn:active,
+    #chatMakePublicBtn:focus-visible {
+      outline: none;
+      background: transparent;
+      box-shadow: none;
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+      #chatMakePublicBtn:hover {
+        background: rgba(36, 94, 102, 0.06);
+      }
+    }
+
     
     #conversationsBackBtn {
       display: none;
@@ -2029,6 +2067,14 @@
   
   <div id="chatScreen" class="screen" tabindex="-1">
     <div id="topBar">
+      <div id="chatMakePublicBtnWrap">
+        <button id="chatMakePublicBtn" type="button" aria-label="Rendre la conversation publique">
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+          </svg>
+        </button>
+      </div>
       <button id="menuBtn" type="button" aria-label="Menu">
         <span id="menuIcon" aria-hidden="true">
           <svg viewBox="0 0 24 24" width="16" height="16" role="presentation">
@@ -2813,6 +2859,192 @@
       return loadPrivateConversationIds().includes(id);
     }
 
+    function updateMakePublicBtnVisibility() {
+      const wrap = document.getElementById("chatMakePublicBtnWrap");
+      if (!wrap) return;
+      const conversationId = getConversationId();
+      if (!conversationId) {
+        wrap.style.visibility = "hidden";
+        return;
+      }
+      const data = loadConversationData(conversationId);
+      wrap.style.visibility = isConversationPrivateById(conversationId, data) ? "visible" : "hidden";
+    }
+
+    function closeMakePublicModal() {
+      const modal = document.getElementById("makePublicModal");
+      if (makePublicCountdownTimer) {
+        clearInterval(makePublicCountdownTimer);
+        makePublicCountdownTimer = null;
+      }
+      if (modal) modal.remove();
+    }
+
+    async function executeMakePublic() {
+      const conversationId = getConversationId();
+      if (!conversationId) return;
+      const data = loadConversationData(conversationId);
+      const conversationPayload = {
+        id: conversationId,
+        title: typeof data.title === "string" ? data.title : "",
+        isCustomTitle: data.isCustomTitle === true,
+        isPrivate: true,
+        memory: typeof data.memory === "string" ? data.memory : "",
+        flags: data.flags || {},
+        updatedAt: Number(data.updatedAt || Date.now()),
+        messages: Array.isArray(data.messages) ? data.messages : []
+      };
+
+      const res = await fetch("/api/account/conversations/import-local", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ conversations: [conversationPayload] })
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || "Erreur réseau");
+      }
+
+      const nextData = { ...data, isPrivate: false };
+      saveConversationData(conversationId, nextData);
+      upsertConversationIndexItem({ id: conversationId, isPrivate: false });
+
+      const privateIds = loadPrivateConversationIds().filter(id => id !== conversationId);
+      safeSetLocalStorage(
+        PRIVATE_CONVERSATION_IDS_KEY,
+        JSON.stringify(privateIds),
+        "executeMakePublic"
+      );
+
+      updateMakePublicBtnVisibility();
+    }
+
+    function openMakePublicModal() {
+      closeMakePublicModal();
+      const conversationId = getConversationId();
+      if (!conversationId) return;
+
+      const modal = document.createElement("div");
+      modal.id = "makePublicModal";
+      modal.style.position = "fixed";
+      modal.style.inset = "0";
+      modal.style.background = "rgba(20, 36, 40, 0.36)";
+      modal.style.display = "flex";
+      modal.style.alignItems = "center";
+      modal.style.justifyContent = "center";
+      modal.style.padding = "16px";
+      modal.style.zIndex = "1200";
+
+      const box = document.createElement("div");
+      box.style.width = "100%";
+      box.style.maxWidth = "420px";
+      box.style.background = "#ffffff";
+      box.style.borderRadius = "16px";
+      box.style.border = "1px solid #d6e2e1";
+      box.style.padding = "16px";
+      box.style.boxShadow = "0 18px 36px rgba(20, 36, 40, 0.18)";
+
+      const title = document.createElement("div");
+      title.style.fontSize = "18px";
+      title.style.fontWeight = "700";
+      title.style.color = "#1f3f44";
+      title.style.marginBottom = "10px";
+
+      const text = document.createElement("div");
+      text.style.fontSize = "14px";
+      text.style.lineHeight = "1.45";
+      text.style.color = "#4b6366";
+      text.style.marginBottom = "14px";
+
+      const actions = document.createElement("div");
+      actions.style.display = "flex";
+      actions.style.gap = "8px";
+      actions.style.justifyContent = "flex-end";
+
+      if (!userSessionState.authenticated) {
+        title.textContent = "Connexion requise";
+        text.textContent = "Connectez-vous pour rendre cette conversation publique et l'envoyer sur Firebase.";
+
+        const closeBtn = document.createElement("button");
+        closeBtn.type = "button";
+        closeBtn.textContent = "Fermer";
+        closeBtn.style.border = "1px solid #cfd8db";
+        closeBtn.style.background = "#ffffff";
+        closeBtn.style.color = "#245e66";
+        closeBtn.style.borderRadius = "10px";
+        closeBtn.style.padding = "10px 14px";
+        closeBtn.style.cursor = "pointer";
+        closeBtn.onclick = () => closeMakePublicModal();
+
+        actions.appendChild(closeBtn);
+      } else {
+        title.textContent = "Rendre la conversation publique";
+        text.textContent = "Cette action envoie l'intégralité de la conversation sur Firebase. Elle sera visible dans votre compte.";
+
+        const cancelBtn = document.createElement("button");
+        cancelBtn.type = "button";
+        cancelBtn.textContent = "Annuler";
+        cancelBtn.style.border = "1px solid #cfd8db";
+        cancelBtn.style.background = "#ffffff";
+        cancelBtn.style.color = "#245e66";
+        cancelBtn.style.borderRadius = "10px";
+        cancelBtn.style.padding = "10px 14px";
+        cancelBtn.style.cursor = "pointer";
+        cancelBtn.onclick = () => closeMakePublicModal();
+
+        const confirmBtn = document.createElement("button");
+        confirmBtn.type = "button";
+        confirmBtn.style.border = "none";
+        confirmBtn.style.background = "#c44c43";
+        confirmBtn.style.color = "#ffffff";
+        confirmBtn.style.borderRadius = "10px";
+        confirmBtn.style.padding = "10px 14px";
+        confirmBtn.style.cursor = "pointer";
+
+        let remaining = 5;
+        confirmBtn.disabled = true;
+        confirmBtn.textContent = `Confirmer (${remaining})`;
+
+        makePublicCountdownTimer = setInterval(() => {
+          remaining -= 1;
+          if (remaining > 0) {
+            confirmBtn.textContent = `Confirmer (${remaining})`;
+            return;
+          }
+          clearInterval(makePublicCountdownTimer);
+          makePublicCountdownTimer = null;
+          confirmBtn.disabled = false;
+          confirmBtn.textContent = "Confirmer";
+        }, 1000);
+
+        confirmBtn.onclick = async () => {
+          if (confirmBtn.disabled) return;
+          confirmBtn.disabled = true;
+          cancelBtn.disabled = true;
+          confirmBtn.textContent = "Envoi...";
+          try {
+            await executeMakePublic();
+            closeMakePublicModal();
+          } catch (err) {
+            alert("Erreur : " + (err?.message || "inconnue"));
+            closeMakePublicModal();
+          }
+        };
+
+        actions.appendChild(cancelBtn);
+        actions.appendChild(confirmBtn);
+      }
+
+      modal.onclick = e => { if (e.target === modal) closeMakePublicModal(); };
+      box.appendChild(title);
+      box.appendChild(text);
+      box.appendChild(actions);
+      modal.appendChild(box);
+      document.body.appendChild(modal);
+    }
+
     async function syncAdminUiFromSession() {
       const url = new URL(window.location.href);
       const wantsAdminUi = url.searchParams.get("adminUi") === "1";
@@ -2882,6 +3114,7 @@
     let scrollToBottomBtnVisible = false;
     let scrollToBottomBtnPulseAnim = null;
     let scrollToBottomBtnHideTimer = null;
+    let makePublicCountdownTimer = null;
     let pendingConversationMenuHistoryClose = false;
     let activeConversationSwipeElement = null;
     let activeConversationSwipeCloser = null;
@@ -8299,6 +8532,13 @@
         enterConversations();
       };
     }
+
+    const chatMakePublicBtn = document.getElementById("chatMakePublicBtn");
+    if (chatMakePublicBtn) {
+      chatMakePublicBtn.onclick = () => {
+        openMakePublicModal();
+      };
+    }
     
     const conversationsBackBtn = document.getElementById("conversationsBackBtn");
     if (conversationsBackBtn) {
@@ -8740,6 +8980,7 @@
       const originalStartFreshOrResumeSession = startFreshOrResumeSession;
       startFreshOrResumeSession = function(...args) {
         originalStartFreshOrResumeSession.apply(this, args);
+        requestAnimationFrame(updateMakePublicBtnVisibility);
         requestAnimationFrame(() => syncComposerUiDeferred({ keepBottom: true }));
         setTimeout(() => syncComposerUiDeferred({ keepBottom: true }), 40);
         setTimeout(() => syncComposerUiDeferred({ keepBottom: true }), 160);
