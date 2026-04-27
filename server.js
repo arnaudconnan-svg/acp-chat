@@ -4224,6 +4224,7 @@ app.post("/chat", async (req, res) => {
       infoContextFlags: detectedInfoContextFlags,
       theoreticalOrientation: detectedTheoreticalOrientation,
       orientationConfidence: detectedOrientationConfidence,
+      previousFormalAddress: newFlags.formalAddress === true,
     });
 
     const finalDetectedMode = postureDecision.finalDetectedMode;
@@ -4499,7 +4500,12 @@ app.post("/chat", async (req, res) => {
       externalSupportMode: newFlags.externalSupportMode,
       closureIntent: newFlags.closureIntent,
       infoRoutingSource,
-      promptRegistry: activePromptRegistry
+      promptRegistry: activePromptRegistry,
+      // Lot 8 fields
+      contactScore: turnScore,
+      contactEstablished,
+      emotionalDecentering: emotionalDecenteringAnalysis?.emotionalDecentering === true,
+      emotionSequenceStage: postureDecision.emotionSequenceStage
     });
 
     if (logsEnabled) {

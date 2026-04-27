@@ -6336,6 +6336,23 @@
           sections.push({ title: "R\u00e9ponse r\u00e9\u00e9crite", content: meta.rewriteSource });
         }
 
+        const signauxLines = [];
+        if (typeof meta.contactScore === "number") {
+          signauxLines.push(`Contact score : ${meta.contactScore}`);
+        }
+        if (typeof meta.contactEstablished === "boolean") {
+          signauxLines.push(`Contact \u00e9tabli : ${meta.contactEstablished ? "oui" : "non"}`);
+        }
+        if (typeof meta.emotionalDecentering === "boolean") {
+          signauxLines.push(`D\u00e9centrage \u00e9motionnel : ${meta.emotionalDecentering ? "oui" : "non"}`);
+        }
+        if (meta.emotionSequenceStage !== undefined && meta.emotionSequenceStage !== null) {
+          signauxLines.push(`\u00c9tape s\u00e9quence \u00e9motion : ${meta.emotionSequenceStage}`);
+        }
+        if (signauxLines.length > 0) {
+          sections.push({ title: "Signaux", content: signauxLines.join("\n") });
+        }
+
         return sections.filter(section => String(section.content || "").trim());
       }
 
