@@ -162,11 +162,12 @@ check("state: prev=contact + exploration \u2192 exploration (post_contact retire
 });
 
 // ─── discharge / post-discharge cooldown ──────────────────────────────────────
-// post_contact was replaced by contact state when previousConversationStateKey==='discharge'.
-// E5 guard (!contactEstablished) can redirect modeForStateResolution to 'contact' before
-// resolveConversationState; contactEstablished: true bypasses E5 so Priority 3 runs.
+// post_contact replaced by: resolveConversationState Priority 3 triggers contact state
+// when previousConversationStateKey === "discharge" and detectedMode !== "info".
+// Priority 3 now uses !== "info" instead of === "exploration" so the E5 override
+// (modeForStateResolution = "contact" when !contactEstablished) no longer bypasses it.
 
-check("state: discharge still active → discharge", () => {
+check("state: discharge still active \u2192 discharge", () => {
   const out = buildPostureDecision(explorationInput({
     detectedMode: "discharge",
     dischargeAnalysis: { isContact: true, contactSubmode: "regulated" },
@@ -177,10 +178,20 @@ check("state: discharge still active → discharge", () => {
     `expected 'discharge', got '${out.conversationStateKey}'`);
 });
 
-check("state: prev=discharge + exploration (contactEstablished) \u2192 contact (post-discharge cooldown)", () => {
-  // Priority 3 in resolveConversationState: prev=discharge + detectedMode=exploration → contact.
-  // contactEstablished: true is required so E5 does not redirect modeForStateResolution to 'contact'
-  // before resolveConversationState is called (which would skip Priority 3 check).
+check("state: prev=discharge + exploration (contactEstablished:false) \u2192 contact (cooldown fires via E5 path)", () => {
+  // Bug fix: when !contactEstablished, E5 sets modeForStateResolution="contact" before
+  // resolveConversationState. Priority 3 now checks detectedMode !== "info" so it fires
+  // regardless of the E5 override. contactEstablished: false is the real scenario.
+  const out = buildPostureDecision(explorationInput({
+    previousConversationStateKey: "discharge"
+    // contactEstablished defaults to false in explorationInput
+  }));
+  assert(out.conversationStateKey === "contact",
+    `expected 'contact' (post-discharge cooldown), got '${out.conversationStateKey}'`);
+});
+
+check("state: prev=discharge + exploration (contactEstablished:true) \u2192 contact (cooldown fires directly)", () => {
+  // When contactEstablished is true, E5 does not override; Priority 3 fires on detectedMode="exploration".
   const out = buildPostureDecision(explorationInput({
     previousConversationStateKey: "discharge",
     contactEstablished: true
@@ -189,10 +200,20 @@ check("state: prev=discharge + exploration (contactEstablished) \u2192 contact (
     `expected 'contact' (post-discharge cooldown), got '${out.conversationStateKey}'`);
 });
 
+check("state: prev=discharge + info \u2192 info (cooldown skipped for info mode)", () => {
+  // Priority 3 skips when detectedMode === "info" so the user can switch to info after discharge.
+  const out = buildPostureDecision(explorationInput({
+    detectedMode: "info",
+    detectedInfoSubmode: "app_features",
+    previousConversationStateKey: "discharge"
+  }));
+  assert(out.conversationStateKey === "info",
+    `expected 'info' (cooldown does not block info after discharge), got '${out.conversationStateKey}'`);
+});
+
 check("forbidden: post-discharge contact forbids relance + interpretive_hypothesis (C3)", () => {
   const out = buildPostureDecision(explorationInput({
-    previousConversationStateKey: "discharge",
-    contactEstablished: true
+    previousConversationStateKey: "discharge"
   }));
   assert(out.forbidden.includes("relance"),
     `expected 'relance' in forbidden for post-discharge contact, got [${out.forbidden.join(", ")}]`);
@@ -202,8 +223,7 @@ check("forbidden: post-discharge contact forbids relance + interpretive_hypothes
 
 check("C3: post-discharge contact includes auto_compassion_door_open hint", () => {
   const out = buildPostureDecision(explorationInput({
-    previousConversationStateKey: "discharge",
-    contactEstablished: true
+    previousConversationStateKey: "discharge"
   }));
   assert(Array.isArray(out.writerIntentHints) && out.writerIntentHints.includes("auto_compassion_door_open"),
     `expected 'auto_compassion_door_open' in writerIntentHints, got [${(out.writerIntentHints || []).join(", ")}]`);
