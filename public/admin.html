@@ -905,7 +905,7 @@
         contactSubmode: normalizeContactSubmode(safe.contactSubmode),
         interpretationRejection: safe.interpretationRejection === true,
         needsSoberReadjustment: safe.needsSoberReadjustment === true,
-        relationalAdjustmentTriggered: safe.relationalAdjustmentTriggered === true,
+        relationalAdjustmentActive: (safe.relationalAdjustmentActive ?? safe.relationalAdjustmentTriggered) === true,
         pipelineStages: normalizePipelineStages(safe.pipelineStages),
         explorationCalibrationLevel: Number.isInteger(safe.explorationCalibrationLevel) ? safe.explorationCalibrationLevel : null,
         explorationSubmode: typeof safe.explorationSubmode === "string" ? safe.explorationSubmode.trim() : null,
@@ -1866,7 +1866,7 @@
             lines.push("Un reajustement sobre a ete applique sur ce tour.");
           }
 
-          if (meta.relationalAdjustmentTriggered === true) {
+          if (meta.relationalAdjustmentActive === true) {
             lines.push("Un ajustement relationnel a ete declenche.");
           }
 

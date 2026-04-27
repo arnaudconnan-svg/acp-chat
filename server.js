@@ -965,7 +965,6 @@ const {
   getInfoPrompt,
   getExplorationPrompt,
   buildExplorationSubmodePromptBlock,
-  buildPostContactLandingPromptBlock,
   buildStabilizationPromptBlock,
   buildAllianceRupturePromptBlock,
   buildDependencyRiskGuardrailBlock,
@@ -1877,7 +1876,7 @@ app.post("/api/account/conversations/import-local", requireUserAuth, async (req,
               contactSubmode: normalizeContactSubmode(debugMeta.contactSubmode),
               interpretationRejection: debugMeta.interpretationRejection === true,
               needsSoberReadjustment: debugMeta.needsSoberReadjustment === true,
-              relationalAdjustmentTriggered: debugMeta.relationalAdjustmentTriggered === true,
+              relationalAdjustmentActive: (debugMeta.relationalAdjustmentActive ?? debugMeta.relationalAdjustmentTriggered) === true,
               pipelineStages: Array.isArray(debugMeta.pipelineStages) ? debugMeta.pipelineStages.map(e => ({
                 stage: typeof e?.stage === "string" ? e.stage : null,
                 deltaMs: Number.isFinite(e?.deltaMs) ? e.deltaMs : null
@@ -3510,7 +3509,7 @@ app.post("/chat", async (req, res) => {
       contactSubmode: normalizeContactSubmode(safe.contactSubmode),
       interpretationRejection: safe.interpretationRejection === true,
       needsSoberReadjustment: safe.needsSoberReadjustment === true,
-      relationalAdjustmentTriggered: safe.relationalAdjustmentTriggered === true,
+      relationalAdjustmentActive: (safe.relationalAdjustmentActive ?? safe.relationalAdjustmentTriggered) === true,
       pipelineStages: normalizePipelineStagesForStorage(safe.pipelineStages),
       explorationCalibrationLevel: Number.isInteger(safe.explorationCalibrationLevel) ? clampExplorationDirectivityLevel(safe.explorationCalibrationLevel) : null,
       explorationSubmode: typeof safe.explorationSubmode === "string" ? safe.explorationSubmode : null,
@@ -3576,7 +3575,7 @@ app.post("/chat", async (req, res) => {
     contactSubmode = null,
     interpretationRejection = false,
     needsSoberReadjustment = false,
-    relationalAdjustmentTriggered = false,
+    relationalAdjustmentActive = false,
     isRecallRequest = false,
     explorationCalibrationLevel = null,
     explorationDirectivityLevel = 0,
@@ -3597,7 +3596,7 @@ app.post("/chat", async (req, res) => {
         interpretationRejection,
         isRecallRequest,
         needsSoberReadjustment,
-        relationalAdjustmentTriggered
+        relationalAdjustmentActive
       }),
       memory: normalizeMemory(memory, promptRegistry),
       directivityText: buildDirectivityText({
@@ -3610,7 +3609,7 @@ app.post("/chat", async (req, res) => {
       contactSubmode: normalizeContactSubmode(contactSubmode),
       interpretationRejection: interpretationRejection === true,
       needsSoberReadjustment: needsSoberReadjustment === true,
-      relationalAdjustmentTriggered: relationalAdjustmentTriggered === true,
+      relationalAdjustmentActive: relationalAdjustmentActive === true,
       pipelineStages: chatStageTimings.map((entry) => ({
         stage: typeof entry?.stage === "string" ? entry.stage : null,
         deltaMs: Number.isFinite(entry?.deltaMs) ? entry.deltaMs : null
@@ -4237,6 +4236,7 @@ app.post("/chat", async (req, res) => {
       theoreticalOrientation: detectedTheoreticalOrientation,
       orientationConfidence: detectedOrientationConfidence,
       previousFormalAddress: newFlags.formalAddress === true,
+      dependencyRiskLevel: flags.dependencyRiskLevel,
     });
 
     const finalDetectedMode = postureDecision.finalDetectedMode;
@@ -4247,11 +4247,11 @@ app.post("/chat", async (req, res) => {
     Object.assign(newFlags, postureDecision.flagUpdates);
     flagsForCatch = normalizeSessionFlags(newFlags);
 
-    if (postureDecision.relationalAdjustmentTriggered) {
+    if (postureDecision.relationalAdjustmentActive) {
       logChatDecision("relational_adjustment_caps_directivity", {
         previousLevel: postureDecision.preAdjustmentDirectivityLevel,
         cappedLevel: postureDecision.finalDirectivityLevel,
-        relationalAdjustmentTriggered: true
+        relationalAdjustmentActive: true
       });
     }
 
@@ -4261,7 +4261,7 @@ app.post("/chat", async (req, res) => {
       infoSubmode: detectedInfoSubmode,
       contactSubmode: detectedContactSubmode,
       isContact: dischargeAnalysis.isContact === true || contactAnalysis.isContact === true,
-      relationalAdjustmentTriggered: postureDecision.relationalAdjustmentTriggered,
+      relationalAdjustmentActive: postureDecision.relationalAdjustmentActive,
       previousWasContact: flags.contactState?.wasContact === true,
       currentWasContact: newFlags.contactState?.wasContact === true,
       previousConversationStateKey,
@@ -4392,7 +4392,7 @@ app.post("/chat", async (req, res) => {
       contactSubmode: detectedContactSubmode,
       interpretationRejection: safeInterpretationRejection.isInterpretationRejection,
       needsSoberReadjustment: postureDecision.needsSoberReadjustment,
-      relationalAdjustmentTriggered: relationalAdjustmentAnalysis?.needsRelationalAdjustment === true,
+      relationalAdjustmentActive: relationalAdjustmentAnalysis?.needsRelationalAdjustment === true,
       explorationCalibrationLevel: newFlags.explorationCalibrationLevel,
       explorationDirectivityLevel: finalDirectivityLevel,
       explorationRelanceWindow: newFlags.explorationRelanceWindow,
@@ -4475,7 +4475,7 @@ app.post("/chat", async (req, res) => {
       contactSubmode: detectedContactSubmode,
       interpretationRejection: safeInterpretationRejection.isInterpretationRejection,
       needsSoberReadjustment: postureDecision.needsSoberReadjustment,
-      relationalAdjustmentTriggered: relationalAdjustmentAnalysis?.needsRelationalAdjustment === true,
+      relationalAdjustmentActive: relationalAdjustmentAnalysis?.needsRelationalAdjustment === true,
       isRecallRequest: recallRouting.isRecallAttempt === true,
       explorationCalibrationLevel: newFlags.explorationCalibrationLevel,
       explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
@@ -4535,7 +4535,7 @@ app.post("/chat", async (req, res) => {
         infoSubmode: responseDebugMeta.infoSubmode,
         interpretationRejection: responseDebugMeta.interpretationRejection === true,
         needsSoberReadjustment: responseDebugMeta.needsSoberReadjustment === true,
-        relationalAdjustmentTriggered: responseDebugMeta.relationalAdjustmentTriggered === true,
+        relationalAdjustmentActive: responseDebugMeta.relationalAdjustmentActive === true,
         criticTriggered: responseDebugMeta.criticTriggered === true,
         criticIssues: Array.isArray(responseDebugMeta.criticIssues) ? responseDebugMeta.criticIssues : [],
         writerMode: responseDebugMeta.writerMode,

@@ -93,8 +93,8 @@ check("output: all required fields present", () => {
   for (const f of requiredNumbers) {
     assert(typeof out[f] === "number", `field '${f}' must be a number, got ${typeof out[f]}`);
   }
-  const requiredBooleans = ["relationalAdjustmentTriggered", "interpretationRejectionDetected",
-    "needsSoberReadjustment", "rejectsUnderlyingPhenomenon", "humanFieldGuardActive", "stateTransitionValid"];
+  const requiredBooleans = ["relationalAdjustmentActive", "interpretationRejectionModeActive",
+    "needsSoberReadjustment", "underlyingPhenomenonRejected", "humanFieldGuardActive", "stateTransitionValid"];
   for (const f of requiredBooleans) {
     assert(typeof out[f] === "boolean", `field '${f}' must be boolean, got ${typeof out[f]}`);
   }
@@ -535,8 +535,8 @@ check("relational adjustment: caps directivity to 2 when level is 4", () => {
   }));
   assert(out.finalDirectivityLevel <= 2,
     `expected directivity <= 2 after relational adjustment, got ${out.finalDirectivityLevel}`);
-  assert(out.relationalAdjustmentTriggered === true,
-    "expected relationalAdjustmentTriggered true");
+  assert(out.relationalAdjustmentActive === true,
+    "expected relationalAdjustmentActive true");
   assert(out.preAdjustmentDirectivityLevel === 4,
     `expected preAdjustmentDirectivityLevel 4, got ${out.preAdjustmentDirectivityLevel}`);
 });
@@ -549,8 +549,8 @@ check("relational adjustment: no cap when level already ≤ 2", () => {
   }));
   assert(out.finalDirectivityLevel <= 2,
     `expected directivity <= 2, got ${out.finalDirectivityLevel}`);
-  assert(out.relationalAdjustmentTriggered === true,
-    "expected relationalAdjustmentTriggered true");
+  assert(out.relationalAdjustmentActive === true,
+    "expected relationalAdjustmentActive true");
 });
 
 check("no relational adjustment: directivity untouched", () => {
@@ -559,8 +559,8 @@ check("no relational adjustment: directivity untouched", () => {
     calibrationAnalysis: calibration(3),
     relationalAdjustmentAnalysis: relational(false)
   }));
-  assert(out.relationalAdjustmentTriggered === false,
-    "expected relationalAdjustmentTriggered false");
+  assert(out.relationalAdjustmentActive === false,
+    "expected relationalAdjustmentActive false");
   assert(out.preAdjustmentDirectivityLevel === null,
     `expected preAdjustmentDirectivityLevel null, got ${out.preAdjustmentDirectivityLevel}`);
 });

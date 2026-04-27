@@ -62,7 +62,7 @@ assert("N2 overrides mode", buildTopChips({ suicideLevel: "N2", mode: "explorati
 assert("interpretationRejection chip", buildTopChips({ interpretationRejection: true }), ["Rejet d'interprétation"]);
 assert("isRecallRequest chip", buildTopChips({ isRecallRequest: true }), ["Demande de rappel mémoire"]);
 assert("needsSoberReadjustment chip", buildTopChips({ needsSoberReadjustment: true }), ["Réajustement sobre"]);
-assert("relationalAdjustmentTriggered chip", buildTopChips({ relationalAdjustmentTriggered: true }), ["Ajustement relationnel"]);
+assert("relationalAdjustmentActive chip", buildTopChips({ relationalAdjustmentActive: true }), ["Ajustement relationnel"]);
 assert("exploration + recall + sober", buildTopChips({ mode: "exploration", isRecallRequest: true, needsSoberReadjustment: true }),
   ["EXPLORATION", "Demande de rappel mémoire", "Réajustement sobre"]);
 assert("default call (no args)", buildTopChips(), []);
@@ -100,7 +100,7 @@ const base = buildResponseDebugMeta();
 for (const field of [
   "topChips", "memory", "directivityText", "conversationStateKey",
   "consecutiveNonExplorationTurns", "infoSubmode", "contactSubmode",
-  "interpretationRejection", "needsSoberReadjustment", "relationalAdjustmentTriggered",
+  "interpretationRejection", "needsSoberReadjustment", "relationalAdjustmentActive",
   "pipelineStages", "explorationCalibrationLevel", "explorationSubmode",
   "rewriteSource", "memoryRewriteSource",
   "memoryCompressed", "memoryBeforeCompression",
@@ -126,7 +126,7 @@ assertDeepEqual("default values", base, {
   contactSubmode: null,
   interpretationRejection: false,
   needsSoberReadjustment: false,
-  relationalAdjustmentTriggered: false,
+  relationalAdjustmentActive: false,
   pipelineStages: [],
   explorationCalibrationLevel: null,
   explorationSubmode: null,

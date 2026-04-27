@@ -72,7 +72,7 @@ function assertDebugMetaContract(debugMeta, label) {
   // Required booleans
   assert(typeof debugMeta.interpretationRejection === "boolean", `${label}: interpretationRejection must be boolean`);
   assert(typeof debugMeta.needsSoberReadjustment === "boolean", `${label}: needsSoberReadjustment must be boolean`);
-  assert(typeof debugMeta.relationalAdjustmentTriggered === "boolean", `${label}: relationalAdjustmentTriggered must be boolean`);
+  assert(typeof debugMeta.relationalAdjustmentActive === "boolean", `${label}: relationalAdjustmentActive must be boolean`);
   assert(typeof debugMeta.criticTriggered === "boolean", `${label}: criticTriggered must be boolean`);
   assert(typeof debugMeta.memoryCompressed === "boolean", `${label}: memoryCompressed must be boolean`);
   assert(typeof debugMeta.closureIntent === "boolean", `${label}: closureIntent must be boolean`);
