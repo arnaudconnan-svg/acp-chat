@@ -9,6 +9,7 @@ const {
   clampDependencyRiskScore,
   clampExplorationDirectivityLevel,
   computeExplorationDirectivityLevel,
+  detectClosureIntent,
   normalizeAllianceState,
   normalizeContactState,
   normalizeContactSubmode,
@@ -136,12 +137,17 @@ check("contactSubmode: unknown → null", () => assert(normalizeContactSubmode("
 
 // ─── normalizeConversationStateKey ───────────────────────────────────────────
 
-const VALID_STATES = ["exploration", "post_contact", "contact", "info", "stabilization", "alliance_rupture", "closure"];
+// Valid active states (post_contact removed from state machine).
+const VALID_STATES = ["exploration", "discharge", "contact", "info", "stabilization", "alliance_rupture", "closure"];
 for (const s of VALID_STATES) {
-  check(`stateKey: '${s}' → '${s}'`, () => assert(normalizeConversationStateKey(s) === s));
+  check(`stateKey: '${s}' \u2192 '${s}'`, () => assert(normalizeConversationStateKey(s) === s));
 }
-check("stateKey: unknown → 'exploration' (safe default)", () => assert(normalizeConversationStateKey("bad") === "exploration"));
-check("stateKey: null → 'exploration'", () => assert(normalizeConversationStateKey(null) === "exploration"));
+check("stateKey: unknown \u2192 'exploration' (safe default)", () => assert(normalizeConversationStateKey("bad") === "exploration"));
+check("stateKey: null \u2192 'exploration'", () => assert(normalizeConversationStateKey(null) === "exploration"));
+check("stateKey: 'post_contact' (legacy) \u2192 'exploration' (retired state)", () => {
+  assert(normalizeConversationStateKey("post_contact") === "exploration",
+    "legacy post_contact must map to exploration after state machine retirement");
+});
 
 // ─── normalizeConsecutiveNonExplorationTurns ──────────────────────────────────
 
@@ -306,6 +312,42 @@ check("registerRelance: window slides (length stays 4)", () => {
   const out = registerExplorationRelance({ explorationRelanceWindow: [true, true, true, true] }, false);
   assert(out.explorationRelanceWindow.length === 4, "window must stay at 4");
   assert(out.explorationRelanceWindow[0] === true, "oldest entry should shift out");
+});
+
+// ─── detectClosureIntent ──────────────────────────────────────────────────────
+
+check("detectClosureIntent: 'au revoir' → true", () => {
+  assert(detectClosureIntent("Au revoir !") === true, "expected true for 'au revoir'");
+});
+check("detectClosureIntent: 'bonne nuit' → true", () => {
+  assert(detectClosureIntent("bonne nuit") === true, "expected true for 'bonne nuit'");
+});
+check("detectClosureIntent: 'bonsoir' → true", () => {
+  assert(detectClosureIntent("Bonsoir !") === true, "expected true for 'bonsoir'");
+});
+check("detectClosureIntent: 'c\\'est bon pour aujourd\\'hui' → true", () => {
+  assert(detectClosureIntent("c'est bon pour aujourd'hui") === true, "expected true");
+});
+check("detectClosureIntent: 'c\\'est tout pour aujourd\\'hui' → true", () => {
+  assert(detectClosureIntent("c'est tout pour aujourd'hui") === true, "expected true");
+});
+check("detectClosureIntent: 'on s\\'arrête là' → true (accent normalisé)", () => {
+  assert(detectClosureIntent("on s'arrête là") === true, "expected true with accent");
+});
+check("detectClosureIntent: 'je vais m\\'arrêter' → true (accent normalisé)", () => {
+  assert(detectClosureIntent("je vais m'arrêter") === true, "expected true with accent");
+});
+check("detectClosureIntent: 'c\\'est fini pour aujourd\\'hui' → true", () => {
+  assert(detectClosureIntent("c'est fini pour aujourd'hui") === true, "expected true");
+});
+check("detectClosureIntent: plain exploration message → false", () => {
+  assert(detectClosureIntent("je me sens fatigué ce soir") === false, "expected false for non-closure");
+});
+check("detectClosureIntent: empty string → false", () => {
+  assert(detectClosureIntent("") === false, "expected false for empty string");
+});
+check("detectClosureIntent: null → false (safe)", () => {
+  assert(detectClosureIntent(null) === false, "expected false for null");
 });
 
 // ─── Summary ──────────────────────────────────────────────────────────────────

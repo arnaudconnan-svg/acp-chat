@@ -145,11 +145,13 @@ check("confidenceSignal is float between 0 and 1", () => {
 });
 
 check("relancePolicy follows contract constraints", () => {
-  const forbiddenRelance = buildPostureDecision(baseInput({
+  // contact mode base: relancePolicy is "selective" (no relance in base forbidden for contact).
+  // C3 may add relance for specific signals (e.g. discharge_in_progress orientation).
+  const contactBase = buildPostureDecision(baseInput({
     detectedMode: "contact",
     contactAnalysis: { isContact: true, contactSubmode: "dysregulated" }
   }));
-  assert(forbiddenRelance.relancePolicy === "forbidden", "contact dysregulated should forbid relance");
+  assert(contactBase.relancePolicy === "selective", "contact dysregulated base should be selective (C3 adds relance on signal)");
 
   const openExploration = buildPostureDecision(baseInput({
     detectedMode: "exploration",
@@ -164,6 +166,14 @@ check("relancePolicy follows contract constraints", () => {
     calibrationAnalysis: { calibrationLevel: 4, explorationSubmode: "interpretation" }
   }));
   assert(discouragedExploration.relancePolicy === "discouraged", "exploration level 4 should discourage relance");
+
+  // stabilization always forbids relance (in base WRITER_MODE_FORBIDDEN)
+  const stabilizationForbidden = buildPostureDecision(baseInput({
+    detectedMode: "exploration",
+    processingWindow: "overloaded",
+    engagementLevel: "withdrawn"
+  }));
+  assert(stabilizationForbidden.relancePolicy === "forbidden", "stabilization should forbid relance");
 });
 
 check("situated impasse activates action collapse guard", () => {

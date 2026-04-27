@@ -152,12 +152,13 @@ check("state: info mode → info", () => {
     `expected 'info', got '${out.conversationStateKey}'`);
 });
 
-check("state: prev=contact + exploration → post_contact", () => {
+check("state: prev=contact + exploration \u2192 exploration (post_contact retired)", () => {
+  // post_contact removed from state machine; prev=contact + exploration resolves to exploration.
   const out = buildPostureDecision(explorationInput({
     previousConversationStateKey: "contact"
   }));
-  assert(out.conversationStateKey === "post_contact",
-    `expected 'post_contact', got '${out.conversationStateKey}'`);
+  assert(out.conversationStateKey === "exploration",
+    `expected 'exploration', got '${out.conversationStateKey}'`);
 });
 
 check("state: alliance_rupture overrides exploration", () => {
@@ -316,30 +317,32 @@ check("writerMode: exploration + level 2 → exploration_guided", () => {
     `expected 'exploration_guided', got '${out.writerMode}'`);
 });
 
-check("writerMode: contact regulated → contact_regulated", () => {
+check("writerMode: contact regulated → contact (merged)", () => {
+  // contact_regulated/contact_dysregulated merged into single 'contact' writerMode.
   const out = buildPostureDecision(explorationInput({
     detectedMode: "contact",
     contactAnalysis: contact(true, "regulated")
   }));
-  assert(out.writerMode === "contact_regulated",
-    `expected 'contact_regulated', got '${out.writerMode}'`);
+  assert(out.writerMode === "contact",
+    `expected 'contact', got '${out.writerMode}'`);
 });
 
-check("writerMode: contact dysregulated → contact_dysregulated", () => {
+check("writerMode: contact dysregulated → contact (merged)", () => {
   const out = buildPostureDecision(explorationInput({
     detectedMode: "contact",
     contactAnalysis: contact(true, "dysregulated")
   }));
-  assert(out.writerMode === "contact_dysregulated",
-    `expected 'contact_dysregulated', got '${out.writerMode}'`);
+  assert(out.writerMode === "contact",
+    `expected 'contact', got '${out.writerMode}'`);
 });
 
-check("writerMode: post_contact → post_contact", () => {
+check("writerMode: prev=contact + exploration → exploration_open (post_contact retired)", () => {
+  // post_contact was removed; prev=contact + detectedMode=exploration resolves to exploration_open.
   const out = buildPostureDecision(explorationInput({
     previousConversationStateKey: "contact"
   }));
-  assert(out.writerMode === "post_contact",
-    `expected 'post_contact', got '${out.writerMode}'`);
+  assert(out.writerMode === "exploration_open",
+    `expected 'exploration_open', got '${out.writerMode}'`);
 });
 
 check("writerMode: info app_features → info_app_features", () => {
@@ -392,15 +395,14 @@ check("writerMode: closure → closure", () => {
 
 // ─── forbidden / intent / constraints tables ──────────────────────────────────
 
-check("forbidden: contact_dysregulated has expected entries", () => {
+check("forbidden: contact mode forbids interpretive_hypothesis (base; C3 may add more)", () => {
+  // contact writerMode base: only interpretive_hypothesis. C3 adds relance for specific signals.
   const out = buildPostureDecision(explorationInput({
     detectedMode: "contact",
     contactAnalysis: contact(true, "dysregulated")
   }));
   assert(out.forbidden.includes("interpretive_hypothesis"),
     `expected 'interpretive_hypothesis' in forbidden, got [${out.forbidden.join(", ")}]`);
-  assert(out.forbidden.includes("open_question"),
-    `expected 'open_question' in forbidden`);
 });
 
 check("forbidden: stabilization includes open_question and relance", () => {
@@ -422,19 +424,21 @@ check("intent: post_contact intent is non-empty string", () => {
     `expected non-empty intent, got '${out.intent}'`);
 });
 
-check("maxSentences: contact_dysregulated = 3", () => {
+check("maxSentences: contact mode = null (no hard limit; contract-driven)", () => {
+  // contact writerMode has no maxSentences in WRITER_MODE_CONSTRAINTS.
   const out = buildPostureDecision(explorationInput({
     detectedMode: "contact",
     contactAnalysis: contact(true, "dysregulated")
   }));
-  assert(out.maxSentences === 3,
-    `expected maxSentences 3 for contact_dysregulated, got ${out.maxSentences}`);
+  assert(out.maxSentences === null,
+    `expected maxSentences null for contact mode, got ${out.maxSentences}`);
 });
 
-check("maxSentences: exploration_open = null (no limit)", () => {
+check("maxSentences: exploration_open = 5", () => {
+  // WRITER_MODE_CONSTRAINTS sets exploration_open.maxSentences = 5.
   const out = buildPostureDecision(explorationInput());
-  assert(out.maxSentences === null,
-    `expected maxSentences null for exploration_open, got ${out.maxSentences}`);
+  assert(out.maxSentences === 5,
+    `expected maxSentences 5 for exploration_open, got ${out.maxSentences}`);
 });
 
 check("toneConstraint: stabilization = 'minimal'", () => {
