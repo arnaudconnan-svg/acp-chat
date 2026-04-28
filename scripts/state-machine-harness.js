@@ -46,7 +46,7 @@ function resolve(overrides = {}) {
 }
 
 // â”€â”€â”€ 1. CONVERSATION_STATES completeness â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-const EXPECTED_STATES = ["exploration", "discharge", "contact", "info", "stabilization", "alliance_rupture", "closure"];
+const EXPECTED_STATES = ["exploration", "discharge", "contact", "info", "stabilization", "alliance_rupture", "closure", "n1_crisis", "n2_crisis"];
 assert(Array.isArray(CONVERSATION_STATES), "CONVERSATION_STATES is an array");
 for (const s of EXPECTED_STATES) {
   assert(CONVERSATION_STATES.includes(s), `CONVERSATION_STATES includes '${s}'`);

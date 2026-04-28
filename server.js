@@ -90,7 +90,6 @@ const {
   normalizeEngagementLevel,
   normalizeExternalSupportMode,
   normalizeFlags,
-  detectClosureIntent,
   normalizeProcessingWindow,
   normalizeSessionFlags,
   normalizeStagnationTurns,
@@ -783,6 +782,7 @@ const {
   analyzeRecallRouting,
   analyzeRelationalAdjustmentNeed,
   analyzeSuicideRisk,
+  analyzeClosureIntent,
   acuteCrisisFollowupResponse,
   n1Fallback,
   n1ResponseLLM,
@@ -4329,8 +4329,9 @@ app.post("/chat", async (req, res) => {
     const newContactScoreWindow = normalizeContactScoreWindow([...(newFlags.contactScoreWindow || [0, 0, 0, 0]), turnScore]);
     const contactEstablished = computeContactEstablished(newContactScoreWindow);
 
-    // Closure detection — deterministic from message
-    if (detectClosureIntent(message)) {
+    // Closure detection — C2 analyzer (deterministic pass + LLM fallback for ambiguous signals)
+    const closureAnalysis = await analyzeClosureIntent(message);
+    if (closureAnalysis.closureIntent) {
       newFlags.closureIntent = true;
     }
 
