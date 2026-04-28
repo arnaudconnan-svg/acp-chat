@@ -99,8 +99,10 @@ Si un objectif produit est formulé mais l'implémentation correcte est bloquée
 
 Après chaque modification significative :
 - `node --check server.js` pour valider la syntaxe
-- `npm run smoke` pour vérifier les routes de base (13/13 attendu)
+- `npm run verify` pour enchaîner tous les harnesses unitaires (syntaxe + smoke 13/13 + 13 harnesses déterministes, sans serveur ni LLM)
 - signaler tout écart
+
+`npm run verify` est le filet principal. Il couvre : smoke, state machine, flags, debugmeta, critic, chat-routing, crisis-routing, posture, contract-validator, llm-messages, conversation-data, pipeline, debugmeta-harness.
 
 Les tests de comportement fins (tests manuels, live test) restent de la responsabilité conjointe.
 
