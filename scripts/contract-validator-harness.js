@@ -10,11 +10,10 @@ const {
 
 const {
   CONVERSATION_STATES,
-  WRITER_MODE_FORBIDDEN,
-  WRITER_MODE_ALLOWED,
-  WRITER_MODE_INTENT,
-  WRITER_MODE_CONSTRAINTS,
-  stateToWriterMode
+  STATE_FORBIDDEN,
+  STATE_ALLOWED,
+  STATE_INTENT,
+  STATE_CONSTRAINTS
 } = require("../lib/conversation-state");
 
 let passed = 0;
@@ -37,9 +36,8 @@ function check(label, fn) {
 
 function baseInput(overrides = {}) {
   return {
-    detectedMode: "exploration",
-    detectedInfoSubmode: null,
-    contactAnalysis: { isContact: false, contactSubmode: null },
+    detectedState: "exploration",
+    contactAnalysis: { selfCriticismLevel: null, meaningProtest: false, insightMoment: false },
     relationalAdjustmentAnalysis: { needsRelationalAdjustment: false },
     calibrationAnalysis: { calibrationLevel: 0, explorationSubmode: "interpretation" },
     technicalContextDetected: false,
@@ -50,7 +48,8 @@ function baseInput(overrides = {}) {
       tensionHoldLevel: "medium"
     },
     effectiveExplorationDirectivityLevel: 0,
-    previousConversationStateKey: "exploration",
+    previousConversationState: "exploration",
+    contactEstablished: true,
     currentConsecutiveNonExplorationTurns: 0,
     currentExplorationRelanceWindow: [false, false, false, false],
     allianceState: "good",
@@ -64,70 +63,61 @@ function baseInput(overrides = {}) {
   };
 }
 
-function expectedWriterModeForState(state) {
-  if (state === "contact") {
-    return [
-      stateToWriterMode("contact", { contactSubmode: "regulated" }),
-      stateToWriterMode("contact", { contactSubmode: "dysregulated" })
-    ];
-  }
-
-  if (state === "info") {
-    return [
-      stateToWriterMode("info", { infoSubmode: "pure" }),
-      stateToWriterMode("info", { infoSubmode: "psychoeducation" }),
-      stateToWriterMode("info", { infoSubmode: "app_features" })
-    ];
-  }
-
-  return [stateToWriterMode(state, { directivityLevel: 0 })];
+// Maps each base CONVERSATION_STATE to its extended STATE_ALLOWED key candidates.
+// contact → "contact" ; discharge → ["discharge_regulated", "discharge_dysregulated"] ; etc.
+function expectedStatesForBaseState(state) {
+  if (state === "exploration") return ["exploration_open", "exploration_restrained"];
+  if (state === "discharge") return ["discharge_regulated", "discharge_dysregulated"];
+  if (state === "info") return ["info_pure", "info_psychoeducation", "info_features"];
+  return [state]; // contact, stabilization, alliance_rupture, closure
 }
 
-check("writer mode tables are aligned", () => {
-  const modeKeys = Object.keys(WRITER_MODE_ALLOWED).sort();
-  const forbiddenKeys = Object.keys(WRITER_MODE_FORBIDDEN).sort();
-  const intentKeys = Object.keys(WRITER_MODE_INTENT).sort();
+check("state tables are aligned", () => {
+  const allowedKeys = Object.keys(STATE_ALLOWED).sort();
+  const forbiddenKeys = Object.keys(STATE_FORBIDDEN).sort();
+  const intentKeys = Object.keys(STATE_INTENT).sort();
 
-  assert(JSON.stringify(modeKeys) === JSON.stringify(forbiddenKeys), "WRITER_MODE_FORBIDDEN keys mismatch WRITER_MODE_ALLOWED");
-  assert(JSON.stringify(modeKeys) === JSON.stringify(intentKeys), "WRITER_MODE_INTENT keys mismatch WRITER_MODE_ALLOWED");
+  assert(JSON.stringify(allowedKeys) === JSON.stringify(forbiddenKeys), "STATE_FORBIDDEN keys mismatch STATE_ALLOWED");
+  assert(JSON.stringify(allowedKeys) === JSON.stringify(intentKeys), "STATE_INTENT keys mismatch STATE_ALLOWED");
 });
 
-check("constraints keys are subset of writer mode keys", () => {
-  const modeSet = new Set(Object.keys(WRITER_MODE_ALLOWED));
-  for (const key of Object.keys(WRITER_MODE_CONSTRAINTS)) {
-    assert(modeSet.has(key), `constraint key '${key}' missing from WRITER_MODE_ALLOWED`);
+check("constraints keys are subset of state table keys", () => {
+  const stateSet = new Set(Object.keys(STATE_ALLOWED));
+  for (const key of Object.keys(STATE_CONSTRAINTS)) {
+    assert(stateSet.has(key), `constraint key '${key}' missing from STATE_ALLOWED`);
   }
 });
 
-check("every conversation state maps to a known writer mode", () => {
-  const modeSet = new Set(Object.keys(WRITER_MODE_ALLOWED));
+check("every conversation state maps to a known extended state", () => {
+  const stateSet = new Set(Object.keys(STATE_ALLOWED));
   for (const state of CONVERSATION_STATES) {
-    const candidates = expectedWriterModeForState(state);
-    for (const mode of candidates) {
-      assert(modeSet.has(mode), `state '${state}' maps to unknown writerMode '${mode}'`);
+    const candidates = expectedStatesForBaseState(state);
+    for (const extState of candidates) {
+      assert(stateSet.has(extState), `base state '${state}' maps to unknown extended state '${extState}'`);
     }
   }
 });
 
-check("posture decision always returns known writer mode", () => {
-  const modeSet = new Set(Object.keys(WRITER_MODE_ALLOWED));
+check("posture decision always returns known conversationState", () => {
+  const stateSet = new Set(Object.keys(STATE_ALLOWED));
 
   const cases = [
-    baseInput({ detectedMode: "exploration", calibrationAnalysis: { calibrationLevel: 0, explorationSubmode: "interpretation" } }),
-    baseInput({ detectedMode: "exploration", calibrationAnalysis: { calibrationLevel: 3, explorationSubmode: "interpretation" }, effectiveExplorationDirectivityLevel: 4 }),
-    baseInput({ detectedMode: "contact", contactAnalysis: { isContact: true, contactSubmode: "regulated" } }),
-    baseInput({ detectedMode: "contact", contactAnalysis: { isContact: true, contactSubmode: "dysregulated" } }),
-    baseInput({ detectedMode: "info", detectedInfoSubmode: "pure" }),
-    baseInput({ detectedMode: "info", detectedInfoSubmode: "psychoeducation" }),
-    baseInput({ detectedMode: "info", detectedInfoSubmode: "app_features" }),
-    baseInput({ allianceState: "rupture" }),
-    baseInput({ closureIntent: true }),
-    baseInput({ processingWindow: "overloaded", engagementLevel: "withdrawn" })
+    baseInput({ detectedState: "exploration", calibrationAnalysis: { calibrationLevel: 0, explorationSubmode: "interpretation" } }),
+    baseInput({ detectedState: "exploration", calibrationAnalysis: { calibrationLevel: 3, explorationSubmode: "interpretation" }, effectiveExplorationDirectivityLevel: 4 }),
+    baseInput({ detectedState: "contact" }),
+    baseInput({ detectedState: "discharge_regulated" }),
+    baseInput({ detectedState: "discharge_dysregulated" }),
+    baseInput({ detectedState: "info_pure" }),
+    baseInput({ detectedState: "info_psychoeducation" }),
+    baseInput({ detectedState: "info_features" }),
+    baseInput({ detectedState: "exploration", allianceState: "rupture" }),
+    baseInput({ detectedState: "exploration", closureIntent: true }),
+    baseInput({ detectedState: "exploration", processingWindow: "overloaded", engagementLevel: "withdrawn" })
   ];
 
   for (const input of cases) {
     const out = buildPostureDecision(input);
-    assert(modeSet.has(out.writerMode), `unknown writerMode '${out.writerMode}'`);
+    assert(stateSet.has(out.conversationState), `unknown conversationState '${out.conversationState}'`);
   }
 });
 
@@ -145,31 +135,28 @@ check("confidenceSignal is float between 0 and 1", () => {
 });
 
 check("relancePolicy follows contract constraints", () => {
-  // contact mode base: relancePolicy is "selective" (no relance in base forbidden for contact).
-  // C3 may add relance for specific signals (e.g. limit_expression orientation).
+  // contact mode base: relancePolicy is "selective"
   const contactBase = buildPostureDecision(baseInput({
-    detectedMode: "contact",
-    contactAnalysis: { isContact: true, contactSubmode: "dysregulated" }
+    detectedState: "contact"
   }));
-  assert(contactBase.relancePolicy === "selective", "contact dysregulated base should be selective (C3 adds relance on signal)");
+  assert(contactBase.relancePolicy === "selective", "contact base should be selective");
 
   const openExploration = buildPostureDecision(baseInput({
-    detectedMode: "exploration",
+    detectedState: "exploration",
     effectiveExplorationDirectivityLevel: 0,
     calibrationAnalysis: { calibrationLevel: 0, explorationSubmode: "interpretation" }
   }));
   assert(openExploration.relancePolicy === "open", "exploration level 0 should keep relance open");
 
   const discouragedExploration = buildPostureDecision(baseInput({
-    detectedMode: "exploration",
+    detectedState: "exploration",
     effectiveExplorationDirectivityLevel: 4,
     calibrationAnalysis: { calibrationLevel: 4, explorationSubmode: "interpretation" }
   }));
   assert(discouragedExploration.relancePolicy === "discouraged", "exploration level 4 should discourage relance");
 
-  // stabilization always forbids relance (in base WRITER_MODE_FORBIDDEN)
   const stabilizationForbidden = buildPostureDecision(baseInput({
-    detectedMode: "exploration",
+    detectedState: "exploration",
     processingWindow: "overloaded",
     engagementLevel: "withdrawn"
   }));
@@ -178,7 +165,7 @@ check("relancePolicy follows contract constraints", () => {
 
 check("situated impasse activates action collapse guard", () => {
   const out = buildPostureDecision(baseInput({
-    detectedMode: "exploration",
+    detectedState: "exploration",
     technicalContextDetected: true
   }));
   assert(out.actionCollapseGuardActive === true, "actionCollapseGuardActive should be true");
