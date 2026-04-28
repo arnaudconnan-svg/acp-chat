@@ -12,15 +12,13 @@ const {
   detectClosureIntent,
   normalizeAllianceState,
   normalizeContactState,
-  normalizeContactSubmode,
-  normalizeConversationStateKey,
+  normalizeConversationState,
   normalizeConsecutiveNonExplorationTurns,
   normalizeDependencyRiskLevel,
   normalizeEngagementLevel,
   normalizeExplorationRelanceWindow,
   normalizeExternalSupportMode,
   normalizeFlags,
-  normalizeInfoSubmode,
   normalizeProcessingWindow,
   normalizeSessionFlags,
   normalizeStagnationTurns,
@@ -117,36 +115,29 @@ check("contactState: {wasContact:'yes'} → {wasContact:false}", () => {
   assert(deepEqual(normalizeContactState({ wasContact: "yes" }), { wasContact: false }));
 });
 
-// ─── normalizeInfoSubmode ─────────────────────────────────────────────────────
+// ─── normalizeConversationState ───────────────────────────────────────────────
 
-check("infoSubmode: 'pure' → 'pure'", () => assert(normalizeInfoSubmode("pure") === "pure"));
-check("infoSubmode: 'psychoeducation' → 'psychoeducation'", () => assert(normalizeInfoSubmode("psychoeducation") === "psychoeducation"));
-check("infoSubmode: 'app_theoretical_model' → 'psychoeducation' (legacy alias)", () => assert(normalizeInfoSubmode("app_theoretical_model") === "psychoeducation"));
-check("infoSubmode: 'app_features' → 'app_features'", () => assert(normalizeInfoSubmode("app_features") === "app_features"));
-check("infoSubmode: 'app' → 'app_features' (legacy alias)", () => assert(normalizeInfoSubmode("app") === "app_features", "legacy 'app' must map to 'app_features'"));
-check("infoSubmode: null → null", () => assert(normalizeInfoSubmode(null) === null));
-check("infoSubmode: unknown string → null", () => assert(normalizeInfoSubmode("random") === null));
-check("infoSubmode: undefined → null", () => assert(normalizeInfoSubmode(undefined) === null));
-
-// ─── normalizeContactSubmode ──────────────────────────────────────────────────
-
-check("contactSubmode: 'regulated' → 'regulated'", () => assert(normalizeContactSubmode("regulated") === "regulated"));
-check("contactSubmode: 'dysregulated' → 'dysregulated'", () => assert(normalizeContactSubmode("dysregulated") === "dysregulated"));
-check("contactSubmode: null → null", () => assert(normalizeContactSubmode(null) === null));
-check("contactSubmode: unknown → null", () => assert(normalizeContactSubmode("bad") === null));
-
-// ─── normalizeConversationStateKey ───────────────────────────────────────────
-
-// Valid active states (post_contact removed from state machine).
-const VALID_STATES = ["exploration", "discharge", "contact", "info", "stabilization", "alliance_rupture", "closure"];
-for (const s of VALID_STATES) {
-  check(`stateKey: '${s}' \u2192 '${s}'`, () => assert(normalizeConversationStateKey(s) === s));
+const VALID_EXTENDED_STATES = [
+  "exploration_open", "exploration_restrained", "contact", "info_pure", "info_features",
+  "info_psychoeducation", "stabilization", "alliance_rupture", "closure",
+  "discharge_regulated", "discharge_dysregulated", "n1_crisis", "n2_crisis"
+];
+for (const s of VALID_EXTENDED_STATES) {
+  check(`conversationState: '${s}' → '${s}'`, () => assert(normalizeConversationState(s) === s));
 }
-check("stateKey: unknown \u2192 'exploration' (safe default)", () => assert(normalizeConversationStateKey("bad") === "exploration"));
-check("stateKey: null \u2192 'exploration'", () => assert(normalizeConversationStateKey(null) === "exploration"));
-check("stateKey: 'post_contact' (legacy) \u2192 'exploration' (retired state)", () => {
-  assert(normalizeConversationStateKey("post_contact") === "exploration",
-    "legacy post_contact must map to exploration after state machine retirement");
+check("conversationState: unknown → 'exploration_open' (safe default)", () => assert(normalizeConversationState("bad") === "exploration_open"));
+check("conversationState: null → 'exploration_open'", () => assert(normalizeConversationState(null) === "exploration_open"));
+check("conversationState: legacy 'exploration' → 'exploration_open'", () => {
+  assert(normalizeConversationState("exploration") === "exploration_open",
+    "legacy 'exploration' must upgrade to 'exploration_open'");
+});
+check("conversationState: legacy 'info' → 'info_features'", () => {
+  assert(normalizeConversationState("info") === "info_features",
+    "legacy 'info' must upgrade to 'info_features'");
+});
+check("conversationState: legacy 'discharge' → 'discharge_regulated'", () => {
+  assert(normalizeConversationState("discharge") === "discharge_regulated",
+    "legacy 'discharge' must upgrade to 'discharge_regulated'");
 });
 
 // ─── normalizeConsecutiveNonExplorationTurns ──────────────────────────────────
@@ -222,13 +213,19 @@ check("sessionFlags: null input → stable defaults", () => {
   assert(out.closureIntent === false, "closureIntent default false");
   assert(typeof out.explorationDirectivityLevel === "number", "explorationDirectivityLevel is number");
   assert(Array.isArray(out.explorationRelanceWindow), "explorationRelanceWindow is array");
-  assert(out.conversationStateKey === "exploration", "conversationStateKey default exploration");
+  assert(out.conversationState === "exploration_open", `conversationState default exploration_open, got ${out.conversationState}`);
 });
 
-check("sessionFlags: legacy infoSubmode 'app' → 'app_features'", () => {
-  const out = normalizeSessionFlags({ infoSubmode: "app" });
-  assert(out.infoSubmode === "app_features",
-    `expected 'app_features', got '${out.infoSubmode}'`);
+check("sessionFlags: legacy conversationStateKey 'exploration' → 'exploration_open'", () => {
+  const out = normalizeSessionFlags({ conversationStateKey: "exploration" });
+  assert(out.conversationState === "exploration_open",
+    `expected 'exploration_open', got '${out.conversationState}'`);
+});
+
+check("sessionFlags: conversationState 'contact' preserved", () => {
+  const out = normalizeSessionFlags({ conversationState: "contact" });
+  assert(out.conversationState === "contact",
+    `expected 'contact', got '${out.conversationState}'`);
 });
 
 check("sessionFlags: explicit directivity preserved", () => {
@@ -255,10 +252,10 @@ check("sessionFlags: acuteCrisis non-boolean → false", () => {
   assert(out.acuteCrisis === false, "expected false for non-boolean acuteCrisis");
 });
 
-check("sessionFlags: unknown conversationStateKey → 'exploration'", () => {
-  const out = normalizeSessionFlags({ conversationStateKey: "invalid" });
-  assert(out.conversationStateKey === "exploration",
-    `expected 'exploration', got '${out.conversationStateKey}'`);
+check("sessionFlags: unknown conversationState → 'exploration_open'", () => {
+  const out = normalizeSessionFlags({ conversationState: "invalid" });
+  assert(out.conversationState === "exploration_open",
+    `expected 'exploration_open', got '${out.conversationState}'`);
 });
 
 check("sessionFlags: allianceState preserved", () => {

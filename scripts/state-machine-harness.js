@@ -1,21 +1,20 @@
-"use strict";
+﻿"use strict";
 
-// ─── Pure deterministic harness — no server required ─────────────────────────
+// â”€â”€â”€ Pure deterministic harness â€” no server required â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Tests the explicit state machine defined in lib/conversation-state.js:
-// - CONVERSATION_STATES: completeness
 // - STATE_TRANSITIONS: coverage and known valid/invalid edges
 // - resolveConversationState: priority ordering
-// - stateToWriterMode: mapping correctness
+// - baseStateOf: mapping correctness
 // - isValidTransition: guard accuracy
 
 const {
   CONVERSATION_STATES,
   STATE_TRANSITIONS,
-  WRITER_MODE_FORBIDDEN,
-  WRITER_MODE_INTENT,
-  WRITER_MODE_CONSTRAINTS,
+  STATE_FORBIDDEN,
+  STATE_INTENT,
+  STATE_CONSTRAINTS,
   resolveConversationState,
-  stateToWriterMode,
+  baseStateOf,
   isValidTransition
 } = require("../lib/conversation-state");
 
@@ -34,9 +33,9 @@ function assert(condition, label, detail = "") {
 
 function resolve(overrides = {}) {
   return resolveConversationState({
-    detectedMode: "exploration",
-    contactAnalysis: { isContact: false, contactSubmode: null },
-    previousConversationStateKey: "exploration",
+    detectedState: "exploration",
+    previousConversationState: "exploration_open",
+    directivityLevel: 0,
     allianceState: "good",
     engagementLevel: "active",
     stagnationTurns: 0,
@@ -46,20 +45,20 @@ function resolve(overrides = {}) {
   });
 }
 
-// ─── 1. CONVERSATION_STATES completeness ─────────────────────────────────────
+// â”€â”€â”€ 1. CONVERSATION_STATES completeness â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const EXPECTED_STATES = ["exploration", "discharge", "contact", "info", "stabilization", "alliance_rupture", "closure"];
 assert(Array.isArray(CONVERSATION_STATES), "CONVERSATION_STATES is an array");
 for (const s of EXPECTED_STATES) {
   assert(CONVERSATION_STATES.includes(s), `CONVERSATION_STATES includes '${s}'`);
 }
 
-// ─── 2. STATE_TRANSITIONS coverage ───────────────────────────────────────────
+// â”€â”€â”€ 2. STATE_TRANSITIONS coverage â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 for (const s of CONVERSATION_STATES) {
   assert(Array.isArray(STATE_TRANSITIONS[s]), `STATE_TRANSITIONS has entry for '${s}'`);
   assert(STATE_TRANSITIONS[s].length > 0, `STATE_TRANSITIONS['${s}'] is non-empty`);
 }
 
-// ─── 3. isValidTransition guard ──────────────────────────────────────────────
+// â”€â”€â”€ 3. isValidTransition guard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Known valid edges
 assert(isValidTransition("exploration", "contact"), "isValidTransition: exploration -> contact");
 assert(isValidTransition("contact", "discharge"), "isValidTransition: contact -> discharge");
@@ -75,30 +74,35 @@ assert(!isValidTransition("closure", "stabilization"), "isValidTransition: closu
 // unknown state is permissive
 assert(isValidTransition("unknown_legacy_state", "exploration"), "isValidTransition: unknown legacy state is permissive");
 
-// ─── 4. resolveConversationState priority ────────────────────────────────────
+// â”€â”€â”€ 4. resolveConversationState priority â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 // Priority 1: active contact beats everything
-assert(resolve({ contactAnalysis: { isContact: true, contactSubmode: "regulated" } }) === "contact",
+assert(resolve({ detectedState: "contact" }) === "contact",
   "resolve: contact wins over exploration");
-assert(resolve({ contactAnalysis: { isContact: true }, detectedMode: "info" }) === "contact",
+assert(resolve({ detectedState: "contact", previousConversationState: "info_features" }) === "contact",
   "resolve: contact wins over info mode");
-assert(resolve({ contactAnalysis: { isContact: true }, closureIntent: true }) === "contact",
+assert(resolve({ detectedState: "contact", closureIntent: true }) === "contact",
   "resolve: contact wins over closureIntent");
 
-// Priority 2: post-discharge cooldown — previous was discharge, now exploration → contact
-assert(resolve({ previousConversationStateKey: "discharge", detectedMode: "exploration" }) === "contact",
+// Priority 2: post-discharge cooldown â€” previous was discharge, now exploration â†’ contact
+assert(resolve({ previousConversationState: "discharge_regulated", detectedState: "exploration" }) === "contact",
   "resolve: contact (post-discharge cooldown) after discharge turn");
-// No special state after contact — falls back to exploration
-assert(resolve({ previousConversationStateKey: "contact", detectedMode: "exploration" }) === "exploration",
-  "resolve: exploration after contact turn (no post_contact state)");
-assert(resolve({ previousConversationStateKey: "contact", detectedMode: "info" }) === "info",
-  "resolve: info beats exploration (prev contact but mode switched to info)");
+// No special state after contact â€” falls back to exploration
+assert(resolve({ previousConversationState: "contact", detectedState: "exploration" }) === "exploration_open",
+  "resolve: exploration_open after contact turn");
+assert(resolve({ previousConversationState: "contact", detectedState: "info_features" }) === "info_features",
+  "resolve: info_features beats exploration (prev contact but state switched to info)");
 
 // Priority 3: info mode
-assert(resolve({ detectedMode: "info" }) === "info", "resolve: info mode -> info state");
+assert(resolve({ detectedState: "info_features" }) === "info_features", "resolve: info_features -> info_features");
+assert(resolve({ detectedState: "info_pure" }) === "info_pure", "resolve: info_pure -> info_pure");
+assert(resolve({ detectedState: "info_psychoeducation" }) === "info_psychoeducation", "resolve: info_psychoeducation -> info_psychoeducation");
 
-// Default: exploration
-assert(resolve() === "exploration", "resolve: default is exploration");
+// Default: exploration_open
+assert(resolve() === "exploration_open", "resolve: default is exploration_open");
+
+// Default with restrained: exploration_restrained
+assert(resolve({ directivityLevel: 3 }) === "exploration_restrained", "resolve: directivityLevel>=2 gives exploration_restrained");
 
 // Phase B: alliance_rupture override
 assert(
@@ -106,12 +110,12 @@ assert(
   "resolve: alliance_rupture overrides exploration"
 );
 assert(
-  resolve({ previousConversationStateKey: "contact", detectedMode: "exploration", allianceState: "rupture" }) === "alliance_rupture",
+  resolve({ previousConversationState: "contact", detectedState: "exploration", allianceState: "rupture" }) === "alliance_rupture",
   "resolve: alliance_rupture overrides exploration (prev contact)"
 );
 // alliance_rupture does NOT apply when in contact
 assert(
-  resolve({ contactAnalysis: { isContact: true }, allianceState: "rupture" }) === "contact",
+  resolve({ detectedState: "contact", allianceState: "rupture" }) === "contact",
   "resolve: alliance_rupture does not override active contact"
 );
 
@@ -130,7 +134,7 @@ assert(
 );
 // stabilization does NOT apply when stagnation is only 1
 assert(
-  resolve({ processingWindow: "overloaded", stagnationTurns: 1, engagementLevel: "active" }) === "exploration",
+  resolve({ processingWindow: "overloaded", stagnationTurns: 1, engagementLevel: "active" }) === "exploration_open",
   "resolve: no stabilization with overloaded+stagnation=1 when not withdrawn"
 );
 
@@ -150,61 +154,45 @@ assert(
   "resolve: closureIntent cannot override alliance_rupture"
 );
 assert(
-  resolve({ closureIntent: true, contactAnalysis: { isContact: true } }) === "contact",
+  resolve({ detectedState: "contact", closureIntent: true }) === "contact",
   "resolve: closureIntent cannot override contact"
 );
 
-// ─── 5. stateToWriterMode mapping ────────────────────────────────────────────
-assert(stateToWriterMode("alliance_rupture") === "alliance_rupture", "stateToWriterMode: alliance_rupture");
-assert(stateToWriterMode("stabilization") === "stabilization", "stateToWriterMode: stabilization");
-assert(stateToWriterMode("closure") === "closure", "stateToWriterMode: closure");
-// contact state always produces "contact" writerMode regardless of submode
-assert(stateToWriterMode("contact") === "contact",
-  "stateToWriterMode: contact default");
-assert(stateToWriterMode("contact", { contactSubmode: "regulated" }) === "contact",
-  "stateToWriterMode: contact with regulated submode");
-assert(stateToWriterMode("contact", { contactSubmode: "dysregulated" }) === "contact",
-  "stateToWriterMode: contact with dysregulated submode (dysregulation is discharge territory)");
-// discharge state dispatches on submode
-assert(stateToWriterMode("discharge") === "discharge_regulated",
-  "stateToWriterMode: discharge default is regulated");
-assert(stateToWriterMode("discharge", { contactSubmode: "dysregulated" }) === "discharge_dysregulated",
-  "stateToWriterMode: discharge dysregulated");
-assert(stateToWriterMode("info", { infoSubmode: "psychoeducation" }) === "info_psychoeducation",
-  "stateToWriterMode: info psychoeducation");
-assert(stateToWriterMode("info", { infoSubmode: "pure" }) === "info_pure",
-  "stateToWriterMode: info pure");
-assert(stateToWriterMode("info", { infoSubmode: "app_features" }) === "info_app_features",
-  "stateToWriterMode: info app_features");
-assert(stateToWriterMode("info") === "info_app_features",
-  "stateToWriterMode: info default is app_features");
-assert(stateToWriterMode("exploration", { directivityLevel: 3 }) === "exploration_restrained",
-  "stateToWriterMode: exploration guided (level>=2)");
-assert(stateToWriterMode("exploration", { directivityLevel: 1 }) === "exploration_open",
-  "stateToWriterMode: exploration open (level<2)");
-assert(stateToWriterMode("exploration") === "exploration_open",
-  "stateToWriterMode: exploration default is open");
+// â”€â”€â”€ 5. baseStateOf mapping â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+assert(baseStateOf("exploration_open") === "exploration", "baseStateOf: exploration_open -> exploration");
+assert(baseStateOf("exploration_restrained") === "exploration", "baseStateOf: exploration_restrained -> exploration");
+assert(baseStateOf("discharge_regulated") === "discharge", "baseStateOf: discharge_regulated -> discharge");
+assert(baseStateOf("discharge_dysregulated") === "discharge", "baseStateOf: discharge_dysregulated -> discharge");
+assert(baseStateOf("info_pure") === "info", "baseStateOf: info_pure -> info");
+assert(baseStateOf("info_features") === "info", "baseStateOf: info_features -> info");
+assert(baseStateOf("info_psychoeducation") === "info", "baseStateOf: info_psychoeducation -> info");
+assert(baseStateOf("contact") === "contact", "baseStateOf: contact -> contact");
+assert(baseStateOf("stabilization") === "stabilization", "baseStateOf: stabilization -> stabilization");
+assert(baseStateOf("alliance_rupture") === "alliance_rupture", "baseStateOf: alliance_rupture -> alliance_rupture");
+assert(baseStateOf("closure") === "closure", "baseStateOf: closure -> closure");
+assert(baseStateOf("n1_crisis") === "n1_crisis", "baseStateOf: n1_crisis passthrough");
 
-// ─── 6. WRITER_MODE_* tables consistency ─────────────────────────────────────
-const allWriterModes = [
+// â”€â”€â”€ 6. STATE_* tables consistency â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const allStates = [
   "exploration_open", "exploration_restrained", "contact", "stabilization",
   "alliance_rupture", "closure", "discharge_regulated", "discharge_dysregulated",
-  "info_pure", "info_psychoeducation", "info_app_features", "n1_crisis", "n2_crisis"
+  "info_pure", "info_psychoeducation", "info_features", "n1_crisis", "n2_crisis"
 ];
-for (const wm of allWriterModes) {
-  assert(wm in WRITER_MODE_FORBIDDEN, `WRITER_MODE_FORBIDDEN has '${wm}'`);
-  assert(wm in WRITER_MODE_INTENT, `WRITER_MODE_INTENT has '${wm}'`);
-  assert(Array.isArray(WRITER_MODE_FORBIDDEN[wm]), `WRITER_MODE_FORBIDDEN['${wm}'] is array`);
-  assert(typeof WRITER_MODE_INTENT[wm] === "string", `WRITER_MODE_INTENT['${wm}'] is string`);
+for (const st of allStates) {
+  assert(st in STATE_FORBIDDEN, `STATE_FORBIDDEN has '${st}'`);
+  assert(st in STATE_INTENT, `STATE_INTENT has '${st}'`);
+  assert(Array.isArray(STATE_FORBIDDEN[st]), `STATE_FORBIDDEN['${st}'] is array`);
+  assert(typeof STATE_INTENT[st] === "string", `STATE_INTENT['${st}'] is string`);
 }
-for (const wm of Object.keys(WRITER_MODE_CONSTRAINTS)) {
-  const c = WRITER_MODE_CONSTRAINTS[wm];
-  assert(typeof c.maxSentences === "number", `WRITER_MODE_CONSTRAINTS['${wm}'].maxSentences is number`);
-  assert(typeof c.toneConstraint === "string" || c.toneConstraint === null, `WRITER_MODE_CONSTRAINTS['${wm}'].toneConstraint is string or null`);
+for (const st of Object.keys(STATE_CONSTRAINTS)) {
+  const c = STATE_CONSTRAINTS[st];
+  assert(typeof c.maxSentences === "number", `STATE_CONSTRAINTS['${st}'].maxSentences is number`);
+  assert(typeof c.toneConstraint === "string" || c.toneConstraint === null, `STATE_CONSTRAINTS['${st}'].toneConstraint is string or null`);
 }
 
-// ─── Report ───────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Report â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 console.log(`\n[STATE] ${passed}/${passed + failed} checks passed.`);
 if (failed > 0) {
   process.exitCode = 1;
 }
+

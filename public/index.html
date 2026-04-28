@@ -3821,19 +3821,6 @@
       return stored;
     }
 
-    function normalizeClientInfoSubmode(value) {
-      const safe = typeof value === "string" ? value.trim() : "";
-      if (safe === "app") return "app_features";
-      if (["pure", "psychoeducation", "app_features"].includes(safe)) return safe;
-      return null;
-    }
-
-    function normalizeClientContactSubmode(value) {
-      const safe = typeof value === "string" ? value.trim() : "";
-      if (["regulated", "dysregulated"].includes(safe)) return safe;
-      return null;
-    }
-
     function normalizeClientPipelineStages(pipelineStages) {
       if (!Array.isArray(pipelineStages)) {
         return [];
@@ -3859,10 +3846,8 @@
               safe.directivityLabel.trim() :
               ""
           ),
-        conversationStateKey: typeof safe.conversationStateKey === "string" ? safe.conversationStateKey.trim() : null,
+        conversationState: typeof safe.conversationState === "string" ? safe.conversationState.trim() : (typeof safe.conversationStateKey === "string" ? safe.conversationStateKey.trim() : null),
         consecutiveNonExplorationTurns: Number.isInteger(safe.consecutiveNonExplorationTurns) ? Math.max(0, safe.consecutiveNonExplorationTurns) : 0,
-        infoSubmode: normalizeClientInfoSubmode(safe.infoSubmode),
-        contactSubmode: normalizeClientContactSubmode(safe.contactSubmode),
         interpretationRejection: safe.interpretationRejection === true,
         needsSoberReadjustment: safe.needsSoberReadjustment === true,
         relationalAdjustmentTriggered: safe.relationalAdjustmentTriggered === true,
@@ -3875,7 +3860,6 @@
         memoryBeforeCompression: typeof safe.memoryBeforeCompression === "string" ? safe.memoryBeforeCompression.trim() : "",
         criticTriggered: safe.criticTriggered === true,
         criticIssues: Array.isArray(safe.criticIssues) ? safe.criticIssues.map(v => String(v || "").trim()).filter(Boolean) : [],
-        writerMode: typeof safe.writerMode === "string" ? safe.writerMode.trim() : "",
         intent: typeof safe.intent === "string" ? safe.intent.trim() : "",
         forbidden: Array.isArray(safe.forbidden) ? safe.forbidden.map(v => String(v || "").trim()).filter(Boolean) : [],
         confidenceSignal: typeof safe.confidenceSignal === "number" ? Math.max(0, Math.min(1, safe.confidenceSignal)) : 1.0,
@@ -6293,14 +6277,13 @@
         const sections = [];
 
         const isExplorationMode =
-          meta.conversationStateKey === "exploration" ||
-          (typeof meta.writerMode === "string" && meta.writerMode.indexOf("exploration") === 0);
+          typeof meta.conversationState === "string" && meta.conversationState.startsWith("exploration");
 
-        if (meta.writerMode) {
+        if (meta.conversationState) {
           sections.push({
             title: "Contrat de posture",
             content: [
-              `Mode : ${meta.writerMode}`,
+              `État : ${meta.conversationState}`,
               (isExplorationMode && Number.isInteger(meta.explorationCalibrationLevel)) ?
                 `Niveau de structuration retenu : ${meta.explorationCalibrationLevel}/4` : null,
               meta.intent ? `Intention : ${meta.intent}` : null,
@@ -6325,9 +6308,7 @@
         }
 
         const shouldShowDirectivity =
-          !!meta.directivityLabel &&
-          (meta.conversationStateKey === "exploration" ||
-            (typeof meta.writerMode === "string" && meta.writerMode.indexOf("exploration") === 0));
+          !!meta.directivityLabel && isExplorationMode;
         if (shouldShowDirectivity) {
           sections.push({ title: "Directivit\u00e9", content: meta.directivityLabel });
         }

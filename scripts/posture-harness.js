@@ -1,13 +1,12 @@
-"use strict";
+﻿"use strict";
 
-// ─── posture harness — pure deterministic, no server required ────────────────
+// â”€â”€â”€ posture harness â€” pure deterministic, no server required â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Exercises buildPostureDecision in isolation: all inputs are constructed
 // in-process, no LLM calls, no Firebase.
 //
 // Covers:
 //   - output field contract (all fields present, correct types)
-//   - writerMode derivation across every state variant
-//   - conversationStateKey resolution (contact > info > exploration, Phase B)
+//   - conversationState derivation across every state variant
 //   - relational adjustment caps directivity
 //   - confidenceSignal logic (ambiguity + rejection history)
 //   - humanFieldGuardActive (situated impasse + exploration/contact mode)
@@ -18,7 +17,7 @@
 
 const { buildPostureDecision } = require("../lib/pipeline");
 
-// ─── Assertion helpers ────────────────────────────────────────────────────────
+// â”€â”€â”€ Assertion helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 let passed = 0;
 let failed = 0;
@@ -38,14 +37,14 @@ function check(label, fn) {
   }
 }
 
-// ─── Input factories ──────────────────────────────────────────────────────────
+// â”€â”€â”€ Input factories â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-function contact(isContact = true, contactSubmode = "regulated") {
-  return { isContact, contactSubmode };
+function contact(isContact = true) {
+  return { isContact };
 }
 
 function noContact() {
-  return { isContact: false, contactSubmode: null };
+  return { isContact: false };
 }
 
 function calibration(calibrationLevel = 0, explorationSubmode = "interpretation") {
@@ -61,17 +60,17 @@ function rejection(isInterpretationRejection = false, needsSoberReadjustment = f
 }
 
 // Minimal valid input for exploration mode
+// contactEstablished: true avoids E5 guard (no-contact → contact routing)
 function explorationInput(overrides = {}) {
   return {
-    detectedMode: "exploration",
-    detectedInfoSubmode: null,
-    contactAnalysis: noContact(),
+    detectedState: "exploration",
+    contactEstablished: true,
     relationalAdjustmentAnalysis: relational(),
     calibrationAnalysis: calibration(0),
     technicalContextDetected: false,
     interpretationRejection: rejection(),
     effectiveExplorationDirectivityLevel: 0,
-    previousConversationStateKey: "exploration",
+    previousConversationState: "exploration_open",
     currentConsecutiveNonExplorationTurns: 0,
     currentExplorationRelanceWindow: [false, false, false, false],
     message: "",
@@ -80,12 +79,11 @@ function explorationInput(overrides = {}) {
   };
 }
 
-// ─── Output shape contract ────────────────────────────────────────────────────
+// â”€â”€â”€ Output shape contract â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 check("output: all required fields present", () => {
   const out = buildPostureDecision(explorationInput());
-  const requiredStrings = ["finalDetectedMode", "finalExplorationSubmode", "conversationStateKey",
-    "writerMode", "intent"];
+  const requiredStrings = ["detectedState", "finalExplorationSubmode", "conversationState", "intent"];
   for (const f of requiredStrings) {
     assert(typeof out[f] === "string", `field '${f}' must be a string, got ${typeof out[f]}`);
   }
@@ -98,8 +96,8 @@ check("output: all required fields present", () => {
   for (const f of requiredBooleans) {
     assert(typeof out[f] === "boolean", `field '${f}' must be boolean, got ${typeof out[f]}`);
   }
-  assert(out.previousConversationStateKey === null || typeof out.previousConversationStateKey === "string",
-    `field 'previousConversationStateKey' must be null or string, got ${typeof out.previousConversationStateKey}`);
+  assert(out.previousConversationState === null || typeof out.previousConversationState === "string",
+    `field 'previousConversationState' must be null or string, got ${typeof out.previousConversationState}`);
   const requiredArrays = ["forbidden", "allowed", "theoreticalConstraints", "criticalGuardrails"];
   for (const f of requiredArrays) {
     assert(Array.isArray(out[f]), `field '${f}' must be an array`);
@@ -107,10 +105,10 @@ check("output: all required fields present", () => {
   assert(typeof out.flagUpdates === "object" && out.flagUpdates !== null, "flagUpdates must be an object");
 });
 
-check("output: flagUpdates.conversationStateKey always set", () => {
+check("output: flagUpdates.conversationState always set", () => {
   const out = buildPostureDecision(explorationInput());
-  assert(typeof out.flagUpdates.conversationStateKey === "string",
-    `flagUpdates.conversationStateKey must be string, got ${typeof out.flagUpdates.conversationStateKey}`);
+  assert(typeof out.flagUpdates.conversationState === "string",
+    `flagUpdates.conversationState must be string, got ${typeof out.flagUpdates.conversationState}`);
 });
 
 check("output: maxSentences is null or number", () => {
@@ -125,95 +123,61 @@ check("output: toneConstraint is null or string", () => {
     `toneConstraint must be null or string, got ${out.toneConstraint}`);
 });
 
-// ─── conversationStateKey resolution ─────────────────────────────────────────
+// â”€â”€â”€ conversationState resolution â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-check("state: exploration mode → exploration", () => {
+check("state: exploration mode â†’ exploration_open", () => {
   const out = buildPostureDecision(explorationInput());
-  assert(out.conversationStateKey === "exploration",
-    `expected 'exploration', got '${out.conversationStateKey}'`);
+  assert(out.conversationState === "exploration_open",
+    `expected 'exploration_open', got '${out.conversationState}'`);
 });
 
-check("state: contact mode → contact", () => {
+check("state: contact detectedState â†’ contact", () => {
   const out = buildPostureDecision(explorationInput({
-    detectedMode: "contact",
-    contactAnalysis: contact(true, "regulated")
+    detectedState: "contact",
+    contactAnalysis: contact(true)
   }));
-  assert(out.conversationStateKey === "contact",
-    `expected 'contact', got '${out.conversationStateKey}'`);
+  assert(out.conversationState === "contact",
+    `expected 'contact', got '${out.conversationState}'`);
 });
 
-check("state: info mode → info", () => {
+check("state: info_features detectedState â†’ info_features", () => {
   const out = buildPostureDecision(explorationInput({
-    detectedMode: "info",
-    detectedInfoSubmode: "app_features",
-    calibrationAnalysis: calibration(0)
+    detectedState: "info_features",
   }));
-  assert(out.conversationStateKey === "info",
-    `expected 'info', got '${out.conversationStateKey}'`);
+  assert(out.conversationState === "info_features",
+    `expected 'info_features', got '${out.conversationState}'`);
 });
 
-check("state: prev=contact + exploration \u2192 exploration (post_contact retired)", () => {
-  // post_contact removed from state machine; prev=contact + exploration resolves to exploration.
+check("state: prev=contact + exploration â†’ exploration_open (no post_contact state)", () => {
   const out = buildPostureDecision(explorationInput({
-    previousConversationStateKey: "contact"
+    previousConversationState: "contact"
   }));
-  assert(out.conversationStateKey === "exploration",
-    `expected 'exploration', got '${out.conversationStateKey}'`);
+  assert(out.conversationState === "exploration_open",
+    `expected 'exploration_open', got '${out.conversationState}'`);
 });
 
-// ─── discharge / post-discharge cooldown ──────────────────────────────────────
-// post_contact replaced by: resolveConversationState Priority 3 triggers contact state
-// when previousConversationStateKey === "discharge" and detectedMode !== "info".
-// Priority 3 now uses !== "info" instead of === "exploration" so the E5 override
-// (modeForStateResolution = "contact" when !contactEstablished) no longer bypasses it.
+// â”€â”€â”€ discharge / post-discharge cooldown â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-check("state: discharge still active \u2192 discharge", () => {
+check("state: prev=discharge_regulated + exploration â†’ contact (post-discharge cooldown)", () => {
   const out = buildPostureDecision(explorationInput({
-    detectedMode: "discharge",
-    dischargeAnalysis: { isContact: true, contactSubmode: "regulated" },
-    previousConversationStateKey: "discharge",
-    contactEstablished: true
+    previousConversationState: "discharge_regulated"
   }));
-  assert(out.conversationStateKey === "discharge",
-    `expected 'discharge', got '${out.conversationStateKey}'`);
+  assert(out.conversationState === "contact",
+    `expected 'contact' (post-discharge cooldown), got '${out.conversationState}'`);
 });
 
-check("state: prev=discharge + exploration (contactEstablished:false) \u2192 contact (cooldown fires via E5 path)", () => {
-  // Bug fix: when !contactEstablished, E5 sets modeForStateResolution="contact" before
-  // resolveConversationState. Priority 3 now checks detectedMode !== "info" so it fires
-  // regardless of the E5 override. contactEstablished: false is the real scenario.
+check("state: prev=discharge_regulated + info_features â†’ info_features (cooldown skipped for info)", () => {
   const out = buildPostureDecision(explorationInput({
-    previousConversationStateKey: "discharge"
-    // contactEstablished defaults to false in explorationInput
+    detectedState: "info_features",
+    previousConversationState: "discharge_regulated"
   }));
-  assert(out.conversationStateKey === "contact",
-    `expected 'contact' (post-discharge cooldown), got '${out.conversationStateKey}'`);
-});
-
-check("state: prev=discharge + exploration (contactEstablished:true) \u2192 contact (cooldown fires directly)", () => {
-  // When contactEstablished is true, E5 does not override; Priority 3 fires on detectedMode="exploration".
-  const out = buildPostureDecision(explorationInput({
-    previousConversationStateKey: "discharge",
-    contactEstablished: true
-  }));
-  assert(out.conversationStateKey === "contact",
-    `expected 'contact' (post-discharge cooldown), got '${out.conversationStateKey}'`);
-});
-
-check("state: prev=discharge + info \u2192 info (cooldown skipped for info mode)", () => {
-  // Priority 3 skips when detectedMode === "info" so the user can switch to info after discharge.
-  const out = buildPostureDecision(explorationInput({
-    detectedMode: "info",
-    detectedInfoSubmode: "app_features",
-    previousConversationStateKey: "discharge"
-  }));
-  assert(out.conversationStateKey === "info",
-    `expected 'info' (cooldown does not block info after discharge), got '${out.conversationStateKey}'`);
+  assert(out.conversationState === "info_features",
+    `expected 'info_features', got '${out.conversationState}'`);
 });
 
 check("forbidden: post-discharge contact forbids relance + interpretive_hypothesis (C3)", () => {
   const out = buildPostureDecision(explorationInput({
-    previousConversationStateKey: "discharge"
+    previousConversationState: "discharge_regulated"
   }));
   assert(out.forbidden.includes("relance"),
     `expected 'relance' in forbidden for post-discharge contact, got [${out.forbidden.join(", ")}]`);
@@ -223,7 +187,7 @@ check("forbidden: post-discharge contact forbids relance + interpretive_hypothes
 
 check("C3: post-discharge contact includes auto_compassion_door_open hint", () => {
   const out = buildPostureDecision(explorationInput({
-    previousConversationStateKey: "discharge"
+    previousConversationState: "discharge_regulated"
   }));
   assert(Array.isArray(out.writerIntentHints) && out.writerIntentHints.includes("auto_compassion_door_open"),
     `expected 'auto_compassion_door_open' in writerIntentHints, got [${(out.writerIntentHints || []).join(", ")}]`);
@@ -233,27 +197,27 @@ check("state: alliance_rupture overrides exploration", () => {
   const out = buildPostureDecision(explorationInput({
     allianceState: "rupture"
   }));
-  assert(out.conversationStateKey === "alliance_rupture",
-    `expected 'alliance_rupture', got '${out.conversationStateKey}'`);
+  assert(out.conversationState === "alliance_rupture",
+    `expected 'alliance_rupture', got '${out.conversationState}'`);
 });
 
-check("state: alliance_rupture overrides post_contact", () => {
+check("state: alliance_rupture overrides exploration (prev contact)", () => {
   const out = buildPostureDecision(explorationInput({
-    previousConversationStateKey: "contact",
+    previousConversationState: "contact",
     allianceState: "rupture"
   }));
-  assert(out.conversationStateKey === "alliance_rupture",
-    `expected 'alliance_rupture', got '${out.conversationStateKey}'`);
+  assert(out.conversationState === "alliance_rupture",
+    `expected 'alliance_rupture', got '${out.conversationState}'`);
 });
 
 check("state: alliance_rupture does NOT override active contact", () => {
   const out = buildPostureDecision(explorationInput({
-    detectedMode: "contact",
-    contactAnalysis: contact(true, "regulated"),
+    detectedState: "contact",
+    contactAnalysis: contact(true),
     allianceState: "rupture"
   }));
-  assert(out.conversationStateKey === "contact",
-    `expected 'contact', got '${out.conversationStateKey}'`);
+  assert(out.conversationState === "contact",
+    `expected 'contact', got '${out.conversationState}'`);
 });
 
 check("state: stabilization (overloaded + withdrawn)", () => {
@@ -261,8 +225,8 @@ check("state: stabilization (overloaded + withdrawn)", () => {
     processingWindow: "overloaded",
     engagementLevel: "withdrawn"
   }));
-  assert(out.conversationStateKey === "stabilization",
-    `expected 'stabilization', got '${out.conversationStateKey}'`);
+  assert(out.conversationState === "stabilization",
+    `expected 'stabilization', got '${out.conversationState}'`);
 });
 
 check("state: stabilization (overloaded + stagnation>=2)", () => {
@@ -270,8 +234,8 @@ check("state: stabilization (overloaded + stagnation>=2)", () => {
     processingWindow: "overloaded",
     stagnationTurns: 2
   }));
-  assert(out.conversationStateKey === "stabilization",
-    `expected 'stabilization', got '${out.conversationStateKey}'`);
+  assert(out.conversationState === "stabilization",
+    `expected 'stabilization', got '${out.conversationState}'`);
 });
 
 check("state: no stabilization with stagnation=1 alone", () => {
@@ -279,24 +243,24 @@ check("state: no stabilization with stagnation=1 alone", () => {
     processingWindow: "overloaded",
     stagnationTurns: 1
   }));
-  assert(out.conversationStateKey === "exploration",
-    `expected 'exploration', got '${out.conversationStateKey}'`);
+  assert(out.conversationState === "exploration_open",
+    `expected 'exploration_open', got '${out.conversationState}'`);
 });
 
-check("state: closureIntent → closure", () => {
+check("state: closureIntent â†’ closure", () => {
   const out = buildPostureDecision(explorationInput({ closureIntent: true }));
-  assert(out.conversationStateKey === "closure",
-    `expected 'closure', got '${out.conversationStateKey}'`);
+  assert(out.conversationState === "closure",
+    `expected 'closure', got '${out.conversationState}'`);
 });
 
 check("state: closureIntent cannot override active contact", () => {
   const out = buildPostureDecision(explorationInput({
-    detectedMode: "contact",
-    contactAnalysis: contact(true, "regulated"),
+    detectedState: "contact",
+    contactAnalysis: contact(true),
     closureIntent: true
   }));
-  assert(out.conversationStateKey === "contact",
-    `expected 'contact', got '${out.conversationStateKey}'`);
+  assert(out.conversationState === "contact",
+    `expected 'contact', got '${out.conversationState}'`);
 });
 
 check("state: closureIntent cannot override alliance_rupture", () => {
@@ -304,177 +268,153 @@ check("state: closureIntent cannot override alliance_rupture", () => {
     allianceState: "rupture",
     closureIntent: true
   }));
-  assert(out.conversationStateKey === "alliance_rupture",
-    `expected 'alliance_rupture', got '${out.conversationStateKey}'`);
+  assert(out.conversationState === "alliance_rupture",
+    `expected 'alliance_rupture', got '${out.conversationState}'`);
 });
 
 check("state transition guard: closure -> stabilization marked invalid", () => {
   const out = buildPostureDecision(explorationInput({
-    previousConversationStateKey: "closure",
+    previousConversationState: "closure",
     processingWindow: "overloaded",
     engagementLevel: "withdrawn"
   }));
-  // Enforcement: invalid transition → effective state is the previous state (closure)
-  assert(out.conversationStateKey === "closure",
-    `expected enforced state 'closure', got '${out.conversationStateKey}'`);
-  assert(out.requestedConversationStateKey === "stabilization",
-    `expected requestedConversationStateKey 'stabilization', got '${out.requestedConversationStateKey}'`);
+  assert(out.conversationState === "closure",
+    `expected enforced state 'closure', got '${out.conversationState}'`);
+  assert(out.requestedConversationState === "stabilization",
+    `expected requestedConversationState 'stabilization', got '${out.requestedConversationState}'`);
   assert(out.stateTransitionValid === false,
-    `expected stateTransitionValid=false for closure -> stabilization, got '${out.stateTransitionValid}'`);
+    `expected stateTransitionValid=false for closure -> stabilization`);
 });
 
 check("state transition guard: closure -> alliance_rupture marked invalid", () => {
   const out = buildPostureDecision(explorationInput({
-    previousConversationStateKey: "closure",
+    previousConversationState: "closure",
     allianceState: "rupture"
   }));
-  // Enforcement: invalid transition → effective state is the previous state (closure)
-  assert(out.conversationStateKey === "closure",
-    `expected enforced state 'closure', got '${out.conversationStateKey}'`);
-  assert(out.requestedConversationStateKey === "alliance_rupture",
-    `expected requestedConversationStateKey 'alliance_rupture', got '${out.requestedConversationStateKey}'`);
+  assert(out.conversationState === "closure",
+    `expected enforced state 'closure', got '${out.conversationState}'`);
+  assert(out.requestedConversationState === "alliance_rupture",
+    `expected requestedConversationState 'alliance_rupture', got '${out.requestedConversationState}'`);
   assert(out.stateTransitionValid === false,
-    `expected stateTransitionValid=false for closure -> alliance_rupture, got '${out.stateTransitionValid}'`);
+    `expected stateTransitionValid=false for closure -> alliance_rupture`);
 });
 
-check("state transition guard: known valid exploration -> contact is valid", () => {
+check("state transition guard: exploration -> contact is valid", () => {
   const out = buildPostureDecision(explorationInput({
-    previousConversationStateKey: "exploration",
-    detectedMode: "contact",
-    contactAnalysis: { isContact: true, contactSubmode: "regulated" }
+    previousConversationState: "exploration_open",
+    detectedState: "contact",
+    contactAnalysis: { isContact: true }
   }));
-  assert(out.conversationStateKey === "contact",
-    `expected 'contact', got '${out.conversationStateKey}'`);
+  assert(out.conversationState === "contact",
+    `expected 'contact', got '${out.conversationState}'`);
   assert(out.stateTransitionValid === true,
-    `expected stateTransitionValid=true for exploration -> contact, got '${out.stateTransitionValid}'`);
+    `expected stateTransitionValid=true`);
 });
 
 check("state transition guard: first turn (no previous state) is always valid", () => {
   const out = buildPostureDecision(explorationInput({
-    previousConversationStateKey: null
+    previousConversationState: null
   }));
   assert(out.stateTransitionValid === true,
-    `expected stateTransitionValid=true for first turn (null prev), got '${out.stateTransitionValid}'`);
-  assert(out.previousConversationStateKey === null,
-    `expected previousConversationStateKey null, got '${out.previousConversationStateKey}'`);
+    `expected stateTransitionValid=true for first turn (null prev)`);
+  assert(out.previousConversationState === null,
+    `expected previousConversationState null, got '${out.previousConversationState}'`);
 });
 
-// ─── writerMode derivation ────────────────────────────────────────────────────
+// â”€â”€â”€ conversationState derivation (extended states) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-check("writerMode: exploration + level 0 → exploration_open", () => {
+check("conversationState: exploration + level 0 â†’ exploration_open", () => {
   const out = buildPostureDecision(explorationInput({ effectiveExplorationDirectivityLevel: 0 }));
-  assert(out.writerMode === "exploration_open",
-    `expected 'exploration_open', got '${out.writerMode}'`);
+  assert(out.conversationState === "exploration_open",
+    `expected 'exploration_open', got '${out.conversationState}'`);
 });
 
-check("writerMode: exploration + level 1 → exploration_open", () => {
-  const out = buildPostureDecision(explorationInput({
-    effectiveExplorationDirectivityLevel: 1,
-    calibrationAnalysis: calibration(1)
-  }));
-  assert(out.writerMode === "exploration_open",
-    `expected 'exploration_open', got '${out.writerMode}'`);
-});
-
-check("writerMode: exploration + level 2 → exploration_restrained", () => {
+check("conversationState: exploration + level 2 â†’ exploration_restrained", () => {
   const out = buildPostureDecision(explorationInput({
     effectiveExplorationDirectivityLevel: 2,
     calibrationAnalysis: calibration(2)
   }));
-  assert(out.writerMode === "exploration_restrained",
-    `expected 'exploration_restrained', got '${out.writerMode}'`);
+  assert(out.conversationState === "exploration_restrained",
+    `expected 'exploration_restrained', got '${out.conversationState}'`);
 });
 
-check("writerMode: contact regulated → contact (merged)", () => {
-  // contact_regulated/contact_dysregulated merged into single 'contact' writerMode.
+check("conversationState: contact detectedState â†’ contact", () => {
   const out = buildPostureDecision(explorationInput({
-    detectedMode: "contact",
-    contactAnalysis: contact(true, "regulated")
+    detectedState: "contact",
+    contactAnalysis: contact(true)
   }));
-  assert(out.writerMode === "contact",
-    `expected 'contact', got '${out.writerMode}'`);
+  assert(out.conversationState === "contact",
+    `expected 'contact', got '${out.conversationState}'`);
 });
 
-check("writerMode: contact dysregulated → contact (merged)", () => {
+check("conversationState: prev=contact + exploration â†’ exploration_open", () => {
   const out = buildPostureDecision(explorationInput({
-    detectedMode: "contact",
-    contactAnalysis: contact(true, "dysregulated")
+    previousConversationState: "contact"
   }));
-  assert(out.writerMode === "contact",
-    `expected 'contact', got '${out.writerMode}'`);
+  assert(out.conversationState === "exploration_open",
+    `expected 'exploration_open', got '${out.conversationState}'`);
 });
 
-check("writerMode: prev=contact + exploration → exploration_open (post_contact retired)", () => {
-  // post_contact was removed; prev=contact + detectedMode=exploration resolves to exploration_open.
+check("conversationState: prev=discharge_regulated + exploration â†’ contact (post-discharge cooldown)", () => {
   const out = buildPostureDecision(explorationInput({
-    previousConversationStateKey: "contact"
-  }));
-  assert(out.writerMode === "exploration_open",
-    `expected 'exploration_open', got '${out.writerMode}'`);
-});
-check("writerMode: prev=discharge + exploration (contactEstablished) \u2192 contact (post-discharge cooldown)", () => {
-  const out = buildPostureDecision(explorationInput({
-    previousConversationStateKey: "discharge",
+    previousConversationState: "discharge_regulated",
     contactEstablished: true
   }));
-  assert(out.writerMode === "contact",
-    `expected 'contact' writerMode for post-discharge cooldown, got '${out.writerMode}'`);
-});
-check("writerMode: info app_features → info_app_features", () => {
-  const out = buildPostureDecision(explorationInput({
-    detectedMode: "info",
-    detectedInfoSubmode: "app_features"
-  }));
-  assert(out.writerMode === "info_app_features",
-    `expected 'info_app_features', got '${out.writerMode}'`);
+  assert(out.conversationState === "contact",
+    `expected 'contact', got '${out.conversationState}'`);
 });
 
-check("writerMode: info psychoeducation → info_psychoeducation", () => {
+check("conversationState: info_features â†’ info_features", () => {
   const out = buildPostureDecision(explorationInput({
-    detectedMode: "info",
-    detectedInfoSubmode: "psychoeducation"
+    detectedState: "info_features"
   }));
-  assert(out.writerMode === "info_psychoeducation",
-    `expected 'info_psychoeducation', got '${out.writerMode}'`);
+  assert(out.conversationState === "info_features",
+    `expected 'info_features', got '${out.conversationState}'`);
 });
 
-check("writerMode: info pure → info_pure", () => {
+check("conversationState: info_psychoeducation â†’ info_psychoeducation", () => {
   const out = buildPostureDecision(explorationInput({
-    detectedMode: "info",
-    detectedInfoSubmode: "pure"
+    detectedState: "info_psychoeducation"
   }));
-  assert(out.writerMode === "info_pure",
-    `expected 'info_pure', got '${out.writerMode}'`);
+  assert(out.conversationState === "info_psychoeducation",
+    `expected 'info_psychoeducation', got '${out.conversationState}'`);
 });
 
-check("writerMode: alliance_rupture → alliance_rupture", () => {
+check("conversationState: info_pure â†’ info_pure", () => {
+  const out = buildPostureDecision(explorationInput({
+    detectedState: "info_pure"
+  }));
+  assert(out.conversationState === "info_pure",
+    `expected 'info_pure', got '${out.conversationState}'`);
+});
+
+check("conversationState: alliance_rupture â†’ alliance_rupture", () => {
   const out = buildPostureDecision(explorationInput({ allianceState: "rupture" }));
-  assert(out.writerMode === "alliance_rupture",
-    `expected 'alliance_rupture', got '${out.writerMode}'`);
+  assert(out.conversationState === "alliance_rupture",
+    `expected 'alliance_rupture', got '${out.conversationState}'`);
 });
 
-check("writerMode: stabilization → stabilization", () => {
+check("conversationState: stabilization â†’ stabilization", () => {
   const out = buildPostureDecision(explorationInput({
     processingWindow: "overloaded",
     engagementLevel: "withdrawn"
   }));
-  assert(out.writerMode === "stabilization",
-    `expected 'stabilization', got '${out.writerMode}'`);
+  assert(out.conversationState === "stabilization",
+    `expected 'stabilization', got '${out.conversationState}'`);
 });
 
-check("writerMode: closure → closure", () => {
+check("conversationState: closure â†’ closure", () => {
   const out = buildPostureDecision(explorationInput({ closureIntent: true }));
-  assert(out.writerMode === "closure",
-    `expected 'closure', got '${out.writerMode}'`);
+  assert(out.conversationState === "closure",
+    `expected 'closure', got '${out.conversationState}'`);
 });
 
-// ─── forbidden / intent / constraints tables ──────────────────────────────────
+// â”€â”€â”€ forbidden / intent / constraints tables â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-check("forbidden: contact mode forbids interpretive_hypothesis (base; C3 may add more)", () => {
-  // contact writerMode base: only interpretive_hypothesis. C3 adds relance for specific signals.
+check("forbidden: contact mode forbids interpretive_hypothesis", () => {
   const out = buildPostureDecision(explorationInput({
-    detectedMode: "contact",
-    contactAnalysis: contact(true, "dysregulated")
+    detectedState: "contact",
+    contactAnalysis: contact(true)
   }));
   assert(out.forbidden.includes("interpretive_hypothesis"),
     `expected 'interpretive_hypothesis' in forbidden, got [${out.forbidden.join(", ")}]`);
@@ -493,24 +433,22 @@ check("forbidden: stabilization includes open_question and relance", () => {
 
 check("intent: post_contact intent is non-empty string", () => {
   const out = buildPostureDecision(explorationInput({
-    previousConversationStateKey: "contact"
+    previousConversationState: "contact"
   }));
   assert(typeof out.intent === "string" && out.intent.length > 0,
     `expected non-empty intent, got '${out.intent}'`);
 });
 
 check("maxSentences: contact mode = 3", () => {
-  // contact writerMode has maxSentences: 3 in WRITER_MODE_CONSTRAINTS.
   const out = buildPostureDecision(explorationInput({
-    detectedMode: "contact",
-    contactAnalysis: contact(true, "dysregulated")
+    detectedState: "contact",
+    contactAnalysis: contact(true)
   }));
   assert(out.maxSentences === 3,
     `expected maxSentences 3 for contact mode, got ${out.maxSentences}`);
 });
 
 check("maxSentences: exploration_open = 5", () => {
-  // WRITER_MODE_CONSTRAINTS sets exploration_open.maxSentences = 5.
   const out = buildPostureDecision(explorationInput());
   assert(out.maxSentences === 5,
     `expected maxSentences 5 for exploration_open, got ${out.maxSentences}`);
@@ -525,7 +463,7 @@ check("toneConstraint: stabilization = 'minimal'", () => {
     `expected toneConstraint 'minimal', got '${out.toneConstraint}'`);
 });
 
-// ─── relational adjustment caps directivity ───────────────────────────────────
+// â”€â”€â”€ relational adjustment caps directivity â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 check("relational adjustment: caps directivity to 2 when level is 4", () => {
   const out = buildPostureDecision(explorationInput({
@@ -541,7 +479,7 @@ check("relational adjustment: caps directivity to 2 when level is 4", () => {
     `expected preAdjustmentDirectivityLevel 4, got ${out.preAdjustmentDirectivityLevel}`);
 });
 
-check("relational adjustment: no cap when level already ≤ 2", () => {
+check("relational adjustment: no cap when level already â‰¤ 2", () => {
   const out = buildPostureDecision(explorationInput({
     effectiveExplorationDirectivityLevel: 1,
     calibrationAnalysis: calibration(1),
@@ -565,7 +503,7 @@ check("no relational adjustment: directivity untouched", () => {
     `expected preAdjustmentDirectivityLevel null, got ${out.preAdjustmentDirectivityLevel}`);
 });
 
-// ─── exploration calibration selects min(effective, calibration) ──────────────
+// â”€â”€â”€ exploration calibration selects min(effective, calibration) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 check("directivity: min(effective=3, calibration=1) = 1", () => {
   const out = buildPostureDecision(explorationInput({
@@ -585,7 +523,7 @@ check("directivity: min(effective=1, calibration=3) = 1", () => {
     `expected finalDirectivityLevel 1, got ${out.finalDirectivityLevel}`);
 });
 
-// ─── exploration submode ──────────────────────────────────────────────────────
+// â”€â”€â”€ exploration submode â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 check("explorationSubmode: phenomenological_follow passed through", () => {
   const out = buildPostureDecision(explorationInput({
@@ -603,7 +541,7 @@ check("explorationSubmode: unknown falls back to 'interpretation'", () => {
     `expected 'interpretation', got '${out.finalExplorationSubmode}'`);
 });
 
-// ─── flagUpdates ──────────────────────────────────────────────────────────────
+// â”€â”€â”€ flagUpdates â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 check("flagUpdates: exploration sets explorationCalibrationLevel", () => {
   const out = buildPostureDecision(explorationInput({
@@ -614,16 +552,15 @@ check("flagUpdates: exploration sets explorationCalibrationLevel", () => {
     `expected explorationCalibrationLevel 2, got ${out.flagUpdates.explorationCalibrationLevel}`);
 });
 
-check("flagUpdates: info mode sets infoSubmode", () => {
+check("flagUpdates: conversationState is set for all modes", () => {
   const out = buildPostureDecision(explorationInput({
-    detectedMode: "info",
-    detectedInfoSubmode: "psychoeducation"
+    detectedState: "info_psychoeducation"
   }));
-  assert(out.flagUpdates.infoSubmode === "psychoeducation",
-    `expected infoSubmode 'psychoeducation', got '${out.flagUpdates.infoSubmode}'`);
+  assert(typeof out.flagUpdates.conversationState === "string",
+    `expected conversationState string in flagUpdates, got ${typeof out.flagUpdates.conversationState}`);
 });
 
-// ─── consecutiveNonExplorationTurns ──────────────────────────────────────────
+// â”€â”€â”€ consecutiveNonExplorationTurns â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 check("consecutiveTurns: exploration resets to 0", () => {
   const out = buildPostureDecision(explorationInput({
@@ -633,20 +570,18 @@ check("consecutiveTurns: exploration resets to 0", () => {
     `expected 0 after exploration, got ${out.consecutiveNonExplorationTurns}`);
 });
 
-check("consecutiveTurns: info mode from 0 → 1", () => {
+check("consecutiveTurns: info mode from 0 â†’ 1", () => {
   const out = buildPostureDecision(explorationInput({
-    detectedMode: "info",
-    detectedInfoSubmode: "app_features",
+    detectedState: "info_features",
     currentConsecutiveNonExplorationTurns: 0
   }));
   assert(out.consecutiveNonExplorationTurns === 1,
     `expected 1, got ${out.consecutiveNonExplorationTurns}`);
 });
 
-check("consecutiveTurns: info mode from 3 → 4, window decays", () => {
+check("consecutiveTurns: info mode from 3 â†’ 4, window decays", () => {
   const out = buildPostureDecision(explorationInput({
-    detectedMode: "info",
-    detectedInfoSubmode: "app_features",
+    detectedState: "info_features",
     currentConsecutiveNonExplorationTurns: 3,
     currentExplorationRelanceWindow: [true, true, false, false]
   }));
@@ -658,16 +593,16 @@ check("consecutiveTurns: info mode from 3 → 4, window decays", () => {
 
 check("consecutiveTurns: post_contact resets to 0", () => {
   const out = buildPostureDecision(explorationInput({
-    previousConversationStateKey: "contact",
+    previousConversationState: "contact",
     currentConsecutiveNonExplorationTurns: 3
   }));
   assert(out.consecutiveNonExplorationTurns === 0,
     `expected 0 after post_contact, got ${out.consecutiveNonExplorationTurns}`);
 });
 
-// ─── confidenceSignal ─────────────────────────────────────────────────────────
+// â”€â”€â”€ confidenceSignal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-check("confidenceSignal: default with no ambiguity → 0.8", () => {
+check("confidenceSignal: default with no ambiguity â†’ 0.8", () => {
   const out = buildPostureDecision(explorationInput({
     message: "Je veux avancer sur quelque chose.",
     recentHistory: []
@@ -676,29 +611,29 @@ check("confidenceSignal: default with no ambiguity → 0.8", () => {
     `expected 0.8, got ${out.confidenceSignal}`);
 });
 
-check("confidenceSignal: explicit ambiguity + no context → 0.4", () => {
+check("confidenceSignal: explicit ambiguity + no context â†’ 0.4", () => {
   const out = buildPostureDecision(explorationInput({
-    message: "je sais pas, c'est mélangé pour moi.",
+    message: "je sais pas, c'est mÃ©langÃ© pour moi.",
     recentHistory: []
   }));
   assert(out.confidenceSignal === 0.4,
     `expected 0.4, got ${out.confidenceSignal}`);
 });
 
-check("confidenceSignal: recent rejection signal → 0.1", () => {
+check("confidenceSignal: recent rejection signal â†’ 0.1", () => {
   const out = buildPostureDecision(explorationInput({
     message: "je sais pas",
     recentHistory: [
-      { role: "user", content: "c'est pas ça du tout" }
+      { role: "user", content: "c'est pas ca du tout" }
     ]
   }));
   assert(out.confidenceSignal === 0.1,
     `expected 0.1, got ${out.confidenceSignal}`);
 });
 
-// ─── humanFieldGuardActive ────────────────────────────────────────────────────
+// â”€â”€â”€ humanFieldGuardActive â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-check("humanFieldGuard: situated impasse + exploration → active", () => {
+check("humanFieldGuard: situated impasse + exploration â†’ active", () => {
   const out = buildPostureDecision(explorationInput({
     technicalContextDetected: true
   }));
@@ -708,7 +643,7 @@ check("humanFieldGuard: situated impasse + exploration → active", () => {
     "expected 'no_procedural_instrumental_reply' in criticalGuardrails");
 });
 
-check("humanFieldGuard: conceptual info question → NOT active", () => {
+check("humanFieldGuard: conceptual info question â†’ NOT active", () => {
   const out = buildPostureDecision(explorationInput({
     technicalContextDetected: false
   }));
@@ -716,17 +651,16 @@ check("humanFieldGuard: conceptual info question → NOT active", () => {
     `expected humanFieldGuardActive false for conceptual question, got ${out.humanFieldGuardActive}`);
 });
 
-check("humanFieldGuard: info mode → NOT active (guard only for exploration/contact)", () => {
+check("humanFieldGuard: info mode â†’ NOT active (guard only for exploration/discharge)", () => {
   const out = buildPostureDecision(explorationInput({
-    detectedMode: "info",
-    detectedInfoSubmode: "app_features",
+    detectedState: "info_features",
     technicalContextDetected: true
   }));
   assert(out.humanFieldGuardActive === false,
     `expected humanFieldGuardActive false in info mode, got ${out.humanFieldGuardActive}`);
 });
 
-// ─── theoreticalConstraints always present ────────────────────────────────────
+// â”€â”€â”€ theoreticalConstraints always present â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 check("theoreticalConstraints: always includes no_unconscious", () => {
   const out = buildPostureDecision(explorationInput());
@@ -740,46 +674,49 @@ check("theoreticalConstraints: always includes no_implicit_agency", () => {
     "expected 'no_implicit_agency' in theoreticalConstraints");
 });
 
-// ─── finalDetectedMode passthrough ───────────────────────────────────────────
+// â”€â”€â”€ detectedState passthrough â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-check("finalDetectedMode: matches detectedMode input", () => {
-  const outInfo = buildPostureDecision(explorationInput({ detectedMode: "info", detectedInfoSubmode: "pure" }));
-  assert(outInfo.finalDetectedMode === "info", `expected 'info', got '${outInfo.finalDetectedMode}'`);
+check("detectedState: matches input detectedState", () => {
+  const outInfo = buildPostureDecision(explorationInput({ detectedState: "info_pure" }));
+  assert(outInfo.detectedState === "info_pure", `expected 'info_pure', got '${outInfo.detectedState}'`);
 
-  const outContact = buildPostureDecision(explorationInput({ detectedMode: "contact", contactAnalysis: contact() }));
-  assert(outContact.finalDetectedMode === "contact", `expected 'contact', got '${outContact.finalDetectedMode}'`);
+  const outContact = buildPostureDecision(explorationInput({ detectedState: "contact", contactAnalysis: contact() }));
+  assert(outContact.detectedState === "contact", `expected 'contact', got '${outContact.detectedState}'`);
+});
+// N1 routing: buildPostureDecision does NOT set conversationState to n1_crisis.
+// N1 uses effectiveConversationState internally for forbidden/intent routing,
+// but conversationState output stays as the normally-resolved state.
+// The actual n1_crisis override is handled by server.js early-return logic.
+
+check("N1: forbidden includes n1_crisis restrictions", () => {
+  const out = buildPostureDecision(explorationInput({ suicideLevel: "N1" }));
+  assert(out.forbidden.includes("relance"), "expected relance in forbidden for N1, got [" + out.forbidden.join(", ") + "]");
+  assert(out.forbidden.includes("open_question"), "expected open_question in forbidden for N1");
 });
 
-// ─── N1 writerMode override ───────────────────────────────────────────────────
-
-check("writerMode: suicideLevel N1 → n1_crisis override (safety invariant)", () => {
-  const out = buildPostureDecision(explorationInput({ detectedMode: "exploration", suicideLevel: "N1" }));
-  assert(out.writerMode === "n1_crisis", `expected 'n1_crisis', got '${out.writerMode}'`);
+check("N0: normal conversationState (no override)", () => {
+  const out = buildPostureDecision(explorationInput({ suicideLevel: "N0" }));
+  assert(out.conversationState !== "n1_crisis", "expected normal state, got n1_crisis");
+  assert(out.conversationState === "exploration_open", "expected exploration_open, got " + out.conversationState);
 });
 
-check("writerMode: suicideLevel N0 → normal writerMode (no override)", () => {
-  const out = buildPostureDecision(explorationInput({ detectedMode: "exploration", suicideLevel: "N0" }));
-  assert(out.writerMode !== "n1_crisis", `expected normal mode, got 'n1_crisis'`);
+check("N1 in contact mode: forbidden includes n1_crisis restrictions", () => {
+  const out = buildPostureDecision(explorationInput({ detectedState: "contact", contactEstablished: true, suicideLevel: "N1" }));
+  assert(out.forbidden.includes("relance"), "expected relance in forbidden for N1+contact, got [" + out.forbidden.join(", ") + "]");
 });
 
-check("writerMode: suicideLevel N1 in contact mode → n1_crisis override", () => {
-  const out = buildPostureDecision(explorationInput({ detectedMode: "contact", contactAnalysis: contact(), suicideLevel: "N1" }));
-  assert(out.writerMode === "n1_crisis", `expected 'n1_crisis', got '${out.writerMode}'`);
+check("recallInjectionActive: flag passed (no conversationState override)", () => {
+  const out = buildPostureDecision(explorationInput({ isRecallAttempt: true }));
+  assert(out.recallInjectionActive === true, "expected recallInjectionActive true, got " + out.recallInjectionActive);
+  assert(out.conversationState !== "recall_memory", "conversationState must not be recall_memory");
 });
 
-check("recallInjectionActive → flag passé dans postureDecision (pas d'override writerMode)", () => {
-  const out = buildPostureDecision(explorationInput({ detectedMode: "exploration", isRecallAttempt: true }));
-  assert(out.recallInjectionActive === true, `expected recallInjectionActive true, got ${out.recallInjectionActive}`);
-  assert(out.writerMode !== "recall_memory", `writerMode ne doit plus être 'recall_memory', got '${out.writerMode}'`);
+check("N1 + recall: N1 routing applied (forbidden includes n1_crisis restrictions)", () => {
+  const out = buildPostureDecision(explorationInput({ suicideLevel: "N1", isRecallAttempt: true }));
+  assert(out.forbidden.includes("relance"), "expected relance in forbidden for N1+recall, got [" + out.forbidden.join(", ") + "]");
+  assert(out.recallInjectionActive === true, "expected recallInjectionActive true");
 });
-
-check("writerMode: N1 takes priority over recall", () => {
-  const out = buildPostureDecision(explorationInput({ detectedMode: "exploration", suicideLevel: "N1", isRecallAttempt: true }));
-  assert(out.writerMode === "n1_crisis", `expected 'n1_crisis' (N1 > recall), got '${out.writerMode}'`);
-});
-
-// ─── Summary ──────────────────────────────────────────────────────────────────
 
 const total = passed + failed;
-console.log(`\n[POSTURE] ${passed}/${total} checks passed.`);
+console.log("\n[POSTURE] " + passed + "/" + total + " checks passed.");
 if (failed > 0) process.exitCode = 1;

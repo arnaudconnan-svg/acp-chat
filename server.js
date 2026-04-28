@@ -84,14 +84,12 @@ const {
   normalizeAllianceState,
   normalizeContactScoreWindow,
   normalizeContactState,
-  normalizeContactSubmode,
-  normalizeConversationStateKey,
+  normalizeConversationState,
   normalizeConsecutiveNonExplorationTurns,
   normalizeDependencyRiskLevel,
   normalizeEngagementLevel,
   normalizeExternalSupportMode,
   normalizeFlags,
-  normalizeInfoSubmode,
   detectClosureIntent,
   normalizeProcessingWindow,
   normalizeSessionFlags,
@@ -776,7 +774,7 @@ const {
   analyzeEmotionalDecentering,
   analyzeEngagementAndAlliance,
   analyzeInfoRequest,
-  analyzeInfoSubmode,
+  analyzeInfoSignal,
   analyzeInterpretationRejection,
   analyzeTechnicalContext,
   analyzeSomaticSignal,
@@ -1970,10 +1968,8 @@ app.post("/api/account/conversations/import-local", requireUserAuth, async (req,
               topChips: Array.isArray(debugMeta.topChips) ? debugMeta.topChips : [],
               memory: typeof debugMeta.memory === "string" ? debugMeta.memory : "",
               directivityText: typeof debugMeta.directivityText === "string" ? debugMeta.directivityText : "",
-              conversationStateKey: typeof debugMeta.conversationStateKey === "string" ? debugMeta.conversationStateKey : null,
+              conversationState: typeof debugMeta.conversationState === "string" ? debugMeta.conversationState : (typeof debugMeta.conversationStateKey === "string" ? debugMeta.conversationStateKey : null),
               consecutiveNonExplorationTurns: Number.isInteger(debugMeta.consecutiveNonExplorationTurns) ? Math.max(0, debugMeta.consecutiveNonExplorationTurns) : 0,
-              infoSubmode: normalizeInfoSubmode(debugMeta.infoSubmode),
-              contactSubmode: normalizeContactSubmode(debugMeta.contactSubmode),
               interpretationRejection: debugMeta.interpretationRejection === true,
               needsSoberReadjustment: debugMeta.needsSoberReadjustment === true,
               relationalAdjustmentActive: (debugMeta.relationalAdjustmentActive ?? debugMeta.relationalAdjustmentTriggered) === true,
@@ -1989,7 +1985,7 @@ app.post("/api/account/conversations/import-local", requireUserAuth, async (req,
               memoryBeforeCompression: typeof debugMeta.memoryBeforeCompression === "string" ? debugMeta.memoryBeforeCompression : null,
               criticTriggered: debugMeta.criticTriggered === true,
               criticIssues: Array.isArray(debugMeta.criticIssues) ? debugMeta.criticIssues.map(v => String(v || "")).filter(Boolean) : [],
-              writerMode: typeof debugMeta.writerMode === "string" ? debugMeta.writerMode : null,
+              conversationState: typeof debugMeta.conversationState === "string" ? debugMeta.conversationState : null,
               intent: typeof debugMeta.intent === "string" ? debugMeta.intent : null,
               forbidden: Array.isArray(debugMeta.forbidden) ? debugMeta.forbidden.map(v => String(v || "")).filter(Boolean) : [],
               confidenceSignal: typeof debugMeta.confidenceSignal === "number" ? Math.max(0, Math.min(1, debugMeta.confidenceSignal)) : 1.0,
@@ -3563,9 +3559,7 @@ app.post("/chat", async (req, res) => {
   
   // Values preserved for the fallback error path.
   // If the main pipeline fails, we still return a minimally valid response.
-  let modeForCatch = "exploration";
-  let infoSubmodeForCatch = null;
-  let contactSubmodeForCatch = null;
+  let modeForCatch = "exploration_open";
   let suicideLevelForCatch = "N0";
   let previousMemoryForCatch = normalizeMemory("", basePromptRegistryForCatch);
   let flagsForCatch = normalizeSessionFlags({});
@@ -3603,10 +3597,8 @@ app.post("/chat", async (req, res) => {
       topChips: Array.isArray(safe.topChips) ? safe.topChips.map((chip) => String(chip || "").trim()).filter(Boolean) : [],
       memory: normalizeMemory(safe.memory, promptRegistry),
       directivityText: typeof safe.directivityText === "string" ? safe.directivityText : "",
-      conversationStateKey: normalizeConversationStateKey(safe.conversationStateKey),
+      conversationState: normalizeConversationState(safe.conversationState || safe.conversationStateKey),
       consecutiveNonExplorationTurns: normalizeConsecutiveNonExplorationTurns(safe.consecutiveNonExplorationTurns),
-      infoSubmode: normalizeInfoSubmode(safe.infoSubmode),
-      contactSubmode: normalizeContactSubmode(safe.contactSubmode),
       interpretationRejection: safe.interpretationRejection === true,
       needsSoberReadjustment: safe.needsSoberReadjustment === true,
       relationalAdjustmentActive: (safe.relationalAdjustmentActive ?? safe.relationalAdjustmentTriggered) === true,
@@ -3623,7 +3615,7 @@ app.post("/chat", async (req, res) => {
       criticTriggered: safe.criticTriggered === true,
       criticIssues: Array.isArray(safe.criticIssues) ? safe.criticIssues : [],
       // Posture contract (V3)
-      writerMode: typeof safe.writerMode === "string" ? safe.writerMode : null,
+      conversationState: typeof safe.conversationState === "string" ? safe.conversationState : null,
       intent: typeof safe.intent === "string" ? safe.intent : null,
       forbidden: Array.isArray(safe.forbidden) ? safe.forbidden : [],
       confidenceSignal: typeof safe.confidenceSignal === "number" ? Math.max(0, Math.min(1, safe.confidenceSignal)) : 1.0,
@@ -3670,9 +3662,7 @@ app.post("/chat", async (req, res) => {
   function buildFallbackResponseDebugMeta({
     memory = "",
     suicideLevel = "N0",
-    mode = null,
-    infoSubmode = null,
-    contactSubmode = null,
+    conversationState = "exploration_open",
     interpretationRejection = false,
     needsSoberReadjustment = false,
     relationalAdjustmentActive = false,
@@ -3689,9 +3679,7 @@ app.post("/chat", async (req, res) => {
     return {
       topChips: buildTopChips({
         suicideLevel,
-        mode,
-        infoSubmode,
-        contactSubmode,
+        conversationState,
         explorationSubmode,
         interpretationRejection,
         isRecallRequest,
@@ -3700,13 +3688,11 @@ app.post("/chat", async (req, res) => {
       }),
       memory: normalizeMemory(memory, promptRegistry),
       directivityText: buildDirectivityText({
-        mode,
+        conversationState,
         explorationCalibrationLevel,
         explorationDirectivityLevel,
         explorationRelanceWindow
       }),
-      infoSubmode: normalizeInfoSubmode(infoSubmode),
-      contactSubmode: normalizeContactSubmode(contactSubmode),
       interpretationRejection: interpretationRejection === true,
       needsSoberReadjustment: needsSoberReadjustment === true,
       relationalAdjustmentActive: relationalAdjustmentActive === true,
@@ -4001,7 +3987,6 @@ app.post("/chat", async (req, res) => {
     suicideLevelForCatch = suicide.suicideLevel;
     
     let newFlags = normalizeSessionFlags(flags);
-    newFlags.infoSubmode = null;
     newFlags.explorationCalibrationLevel = 0;
 
     const crisisDecision = buildCrisisRoutingDecision(suicide, flags);
@@ -4057,8 +4042,8 @@ app.post("/chat", async (req, res) => {
       let reply;
       try {
         const n2PostureDecision = {
-          writerMode: "n2_crisis",
-          finalDetectedMode: null,
+          conversationState: "n2_crisis",
+          detectedState: "n2_crisis",
           finalDirectivityLevel: 0,
           finalExplorationSubmode: "interpretation",
           intent: "orienter vers les ressources de crise",
@@ -4092,7 +4077,7 @@ app.post("/chat", async (req, res) => {
       const responseDebugMeta = buildResponseDebugMeta({
         memory: responseMemory,
         suicideLevel: "N2",
-        mode: null,
+        conversationState: "n2_crisis",
         isRecallRequest: false,
         explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
         explorationRelanceWindow: newFlags.explorationRelanceWindow,
@@ -4298,32 +4283,29 @@ app.post("/chat", async (req, res) => {
 
     const emotionalDecenteringAnalysis = emotionalDecenteringResult || { emotionalDecentering: false };
 
-    const dischargeAnalysis = detectedModeResult.dischargeAnalysis || { isContact: false, contactSubmode: null };
-    const contactAnalysis = detectedModeResult.contactAnalysis || { isContact: false, contactSubmode: null };
+    const contactAnalysis = detectedModeResult.contactAnalysis || { isContact: false };
+    const detectedState = detectedModeResult.detectedState;
     newFlags.contactState = {
-      wasContact: dischargeAnalysis.isContact === true
+      wasContact: typeof detectedState === "string" && detectedState.startsWith("discharge_")
     };
 
-    const detectedMode = detectedModeResult.mode;
-    const detectedInfoSubmode = detectedMode === "info" ? normalizeInfoSubmode(detectedModeResult.infoSubmode) : null;
-    const detectedContactSubmode = (detectedMode === "discharge" || detectedMode === "contact") ? normalizeContactSubmode(detectedModeResult.contactSubmode) : null;
-    const detectedPsychoeducationType = detectedMode === "info" && detectedInfoSubmode === "psychoeducation"
+    const detectedPsychoeducationType = detectedState === "info_psychoeducation"
       ? (detectedModeResult.psychoeducationType || null)
       : null;
-    const detectedInfoContextFlags = detectedMode === "info" && detectedInfoSubmode === "app_features"
+    const detectedInfoContextFlags = detectedState === "info_features"
       ? (Array.isArray(detectedModeResult.infoContextFlags) ? detectedModeResult.infoContextFlags : [])
       : [];
 
-    const detectedTheoreticalOrientation = detectedMode === "exploration"
+    const detectedTheoreticalOrientation = detectedState === "exploration"
       ? (theoreticalOrientationAnalysis?.theoreticalOrientation || "none")
       : "none";
-    const detectedOrientationConfidence = detectedMode === "exploration"
+    const detectedOrientationConfidence = detectedState === "exploration"
       ? (theoreticalOrientationAnalysis?.orientationConfidence ?? 0.0)
       : 0.0;
 
     // Source de routage info pour observabilité admin
     let infoRoutingSource = null;
-    if (detectedMode === "info") {
+    if (typeof detectedState === "string" && detectedState.startsWith("info_")) {
       const src = detectedModeResult.infoSource;
       const subSrc = detectedModeResult.infoSubmodeSource;
       if (src === "deterministic_app_features") {
@@ -4336,13 +4318,11 @@ app.post("/chat", async (req, res) => {
         infoRoutingSource = "LLM";
       }
     }
-    const safeInterpretationRejection = (detectedMode === "exploration" || detectedMode === "contact")
+    const safeInterpretationRejection = (detectedState === "exploration" || detectedState === "contact")
       ? (interpretationRejection || { isInterpretationRejection: false, relationalFrictionSignal: "none" })
       : { isInterpretationRejection: false, relationalFrictionSignal: "none" };
 
-    modeForCatch = detectedMode;
-    infoSubmodeForCatch = detectedInfoSubmode;
-    contactSubmodeForCatch = detectedContactSubmode;
+    modeForCatch = detectedState;
 
     // Patch C — contact score window
     const turnScore = computeContactTurnScore(message);
@@ -4356,11 +4336,9 @@ app.post("/chat", async (req, res) => {
 
     // Phase 3: Deterministic arbitrator — consolidate all analyzer outputs into a
     // PostureDecision struct. No LLM calls, no side effects outside this block.
-    const previousConversationStateKey = normalizeConversationStateKey(flags.conversationStateKey);
+    const previousConversationState = normalizeConversationState(flags.conversationState || flags.conversationStateKey);
     const postureDecision = buildPostureDecision({
-      detectedMode,
-      detectedInfoSubmode,
-      dischargeAnalysis,
+      detectedState,
       contactAnalysis,
       emotionalDecenteringAnalysis,
       contactScoreWindow: newContactScoreWindow,
@@ -4372,7 +4350,7 @@ app.post("/chat", async (req, res) => {
       userRegisterAnalysis,
       interpretationRejection: safeInterpretationRejection,
       effectiveExplorationDirectivityLevel,
-      previousConversationStateKey,
+      previousConversationState,
       currentConsecutiveNonExplorationTurns: normalizeConsecutiveNonExplorationTurns(newFlags.consecutiveNonExplorationTurns),
       currentExplorationRelanceWindow: newFlags.explorationRelanceWindow,
       // Phase B structural flags — persistent fallback values (overridden by C2 per-turn analysis)
@@ -4396,10 +4374,9 @@ app.post("/chat", async (req, res) => {
       dependencyRiskLevel: flags.dependencyRiskLevel,
     });
 
-    const finalDetectedMode = postureDecision.finalDetectedMode;
     finalDirectivityLevel = postureDecision.finalDirectivityLevel;
     finalExplorationSubmode = postureDecision.finalExplorationSubmode;
-    const { conversationStateKey, consecutiveNonExplorationTurns } = postureDecision;
+    const { conversationState, consecutiveNonExplorationTurns } = postureDecision;
 
     Object.assign(newFlags, postureDecision.flagUpdates);
     flagsForCatch = normalizeSessionFlags(newFlags);
@@ -4413,16 +4390,13 @@ app.post("/chat", async (req, res) => {
     }
 
     logChatDecision("mode_detected", {
-      detectedMode,
-      finalDetectedMode,
-      infoSubmode: detectedInfoSubmode,
-      contactSubmode: detectedContactSubmode,
-      isContact: dischargeAnalysis.isContact === true || contactAnalysis.isContact === true,
+      detectedState,
+      isContact: contactAnalysis.isContact === true,
       relationalAdjustmentActive: postureDecision.relationalAdjustmentActive,
       previousWasContact: flags.contactState?.wasContact === true,
       currentWasContact: newFlags.contactState?.wasContact === true,
-      previousConversationStateKey,
-      conversationStateKey,
+      previousConversationState,
+      conversationState,
       consecutiveNonExplorationTurns,
       finalDirectivityLevel,
       finalExplorationSubmode,
@@ -4436,9 +4410,9 @@ app.post("/chat", async (req, res) => {
     if (postureDecision.stateTransitionValid === false) {
       console.warn("[CHAT][STATE_TRANSITION_OUT_OF_GRAPH]", {
         conversationId,
-        previousConversationStateKey: postureDecision.previousConversationStateKey,
-        requestedConversationStateKey: postureDecision.requestedConversationStateKey,
-        enforcedConversationStateKey: postureDecision.conversationStateKey
+        previousConversationState: postureDecision.previousConversationState,
+        requestedConversationState: postureDecision.requestedConversationState,
+        enforcedConversationState: postureDecision.conversationState
       });
     }
     
@@ -4451,8 +4425,6 @@ app.post("/chat", async (req, res) => {
       history: recentHistory,
       memory: recallRouting.isRecallAttempt === true ? memoryForReply : previousMemory,
       postureDecision,
-      infoSubmode: detectedInfoSubmode,
-      contactSubmode: detectedContactSubmode,
       interpretationRejection: safeInterpretationRejection,
       promptRegistry: activePromptRegistry,
     });
@@ -4469,10 +4441,12 @@ app.post("/chat", async (req, res) => {
     let criticIssues = [];
     let humanFieldRisk = false;
     let contractLengthExceeded = false;
-    const criticModes = ["exploration", "discharge", "contact", "info"];
-    const n1CrisisForced = postureDecision.writerMode === "n1_crisis";
+    const criticStateApplies = (cs) => cs && (
+      cs.startsWith("exploration_") || cs.startsWith("discharge_") || cs === "contact" || cs.startsWith("info_")
+    );
+    const n1CrisisForced = postureDecision.conversationState === "n1_crisis";
     const recallForced = postureDecision.recallInjectionActive === true;
-    const criticApplies = n1CrisisForced || recallForced || criticModes.includes(finalDetectedMode);
+    const criticApplies = n1CrisisForced || recallForced || criticStateApplies(postureDecision.conversationState);
     if (criticApplies) {
       const sentenceCount = String(reply || "")
         .split(/[.!?]+/)
@@ -4493,7 +4467,7 @@ app.post("/chat", async (req, res) => {
         hasTheoreticalViolationHeuristic(reply);
       if (criticShouldTrigger) {
         logChatDecision("critic_triggered", {
-          writerMode: postureDecision.writerMode,
+          conversationState: postureDecision.conversationState,
           contractLengthExceeded,
           humanFieldRisk,
           sentenceCount
@@ -4523,7 +4497,7 @@ app.post("/chat", async (req, res) => {
 
     const finalReplyRewriteSource = finalReplyRewriteSources.join("+") || null;
 
-    if (finalDetectedMode === "exploration") {
+    if (detectedState === "exploration") {
       relanceAnalysis = await analyzeExplorationRelance({
         message,
         reply,
@@ -4542,11 +4516,9 @@ app.post("/chat", async (req, res) => {
       });
     }
     
-    const debug = buildDebug(finalDetectedMode, {
+    const debug = buildDebug(postureDecision.detectedState || detectedState, {
       suicideLevel: suicide.suicideLevel,
       calledMemory: recallRouting.calledMemory,
-      infoSubmode: detectedInfoSubmode,
-      contactSubmode: detectedContactSubmode,
       interpretationRejection: safeInterpretationRejection.isInterpretationRejection,
       needsSoberReadjustment: postureDecision.needsSoberReadjustment,
       relationalAdjustmentActive: relationalAdjustmentAnalysis?.needsRelationalAdjustment === true,
@@ -4565,10 +4537,8 @@ app.post("/chat", async (req, res) => {
           suicide,
           recallRouting,
           contactAnalysis,
-          contactSubmode: detectedContactSubmode,
-          detectedMode: finalDetectedMode,
+          detectedState: postureDecision.detectedState || detectedState,
           relationalAdjustmentAnalysis,
-          infoSubmode: detectedInfoSubmode,
           interpretationRejection: safeInterpretationRejection,
           explorationCalibrationLevel: newFlags.explorationCalibrationLevel,
           flagsBefore: flags,
@@ -4625,11 +4595,8 @@ app.post("/chat", async (req, res) => {
     const responseDebugMeta = buildResponseDebugMeta({
       memory: newMemory,
       suicideLevel: suicide.suicideLevel,
-      mode: finalDetectedMode,
-      conversationStateKey: newFlags.conversationStateKey,
+      conversationState: postureDecision.conversationState,
       consecutiveNonExplorationTurns: newFlags.consecutiveNonExplorationTurns,
-      infoSubmode: detectedInfoSubmode,
-      contactSubmode: detectedContactSubmode,
       interpretationRejection: safeInterpretationRejection.isInterpretationRejection,
       needsSoberReadjustment: postureDecision.needsSoberReadjustment,
       relationalAdjustmentActive: relationalAdjustmentAnalysis?.needsRelationalAdjustment === true,
@@ -4647,7 +4614,7 @@ app.post("/chat", async (req, res) => {
       humanFieldRisk,
       contractLengthExceeded,
       // Posture contract fields (V3)
-      writerMode: postureDecision.writerMode,
+      conversationState: postureDecision.conversationState,
       intent: postureDecision.intent,
       forbidden: postureDecision.forbidden,
       confidenceSignal: postureDecision.confidenceSignal,
@@ -4656,10 +4623,10 @@ app.post("/chat", async (req, res) => {
       relancePolicy: postureDecision.relancePolicy,
       somaticFocusPolicy: postureDecision.somaticFocusPolicy,
       actionCollapseGuardActive: postureDecision.actionCollapseGuardActive,
-      stateTransitionFrom: postureDecision.previousConversationStateKey,
+      stateTransitionFrom: postureDecision.previousConversationState,
       stateTransitionValid: postureDecision.stateTransitionValid,
       stateTransitionRequested: postureDecision.stateTransitionValid === false
-        ? postureDecision.requestedConversationStateKey
+        ? postureDecision.requestedConversationState
         : null,
       // Phase B structural flags
       allianceState: newFlags.allianceState,
@@ -4687,15 +4654,13 @@ app.post("/chat", async (req, res) => {
         requestId: requestId || null,
         elapsedMs: Date.now() - chatStartTime,
         suicideLevel: suicide.suicideLevel,
-        mode: finalDetectedMode,
-        conversationStateKey: responseDebugMeta.conversationStateKey,
-        infoSubmode: responseDebugMeta.infoSubmode,
+        detectedState: detectedState,
+        conversationState: responseDebugMeta.conversationState,
         interpretationRejection: responseDebugMeta.interpretationRejection === true,
         needsSoberReadjustment: responseDebugMeta.needsSoberReadjustment === true,
         relationalAdjustmentActive: responseDebugMeta.relationalAdjustmentActive === true,
         criticTriggered: responseDebugMeta.criticTriggered === true,
         criticIssues: Array.isArray(responseDebugMeta.criticIssues) ? responseDebugMeta.criticIssues : [],
-        writerMode: responseDebugMeta.writerMode,
         confidenceSignal: responseDebugMeta.confidenceSignal,
         explorationCalibrationLevel: responseDebugMeta.explorationCalibrationLevel,
         explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
@@ -4768,9 +4733,7 @@ app.post("/chat", async (req, res) => {
     const fallbackDebugMeta = buildFallbackResponseDebugMeta({
       memory: previousMemoryForCatch,
       suicideLevel: "N0",
-      mode: modeForCatch,
-      infoSubmode: infoSubmodeForCatch,
-      contactSubmode: contactSubmodeForCatch,
+      conversationState: modeForCatch,
       isRecallRequest: false,
       explorationCalibrationLevel: flagsForCatch.explorationCalibrationLevel,
       explorationDirectivityLevel: flagsForCatch.explorationDirectivityLevel || 0,
