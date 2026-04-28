@@ -3860,6 +3860,7 @@
         memoryBeforeCompression: typeof safe.memoryBeforeCompression === "string" ? safe.memoryBeforeCompression.trim() : "",
         criticTriggered: safe.criticTriggered === true,
         criticIssues: Array.isArray(safe.criticIssues) ? safe.criticIssues.map(v => String(v || "").trim()).filter(Boolean) : [],
+        criticOriginalReply: typeof safe.criticOriginalReply === "string" ? safe.criticOriginalReply.trim() : null,
         intent: typeof safe.intent === "string" ? safe.intent.trim() : "",
         forbidden: Array.isArray(safe.forbidden) ? safe.forbidden.map(v => String(v || "").trim()).filter(Boolean) : [],
         confidenceSignal: typeof safe.confidenceSignal === "number" ? Math.max(0, Math.min(1, safe.confidenceSignal)) : 1.0,
@@ -6315,6 +6316,10 @@
 
         if (meta.rewriteSource) {
           sections.push({ title: "R\u00e9ponse r\u00e9\u00e9crite", content: meta.rewriteSource });
+        }
+
+        if (meta.criticTriggered === true && meta.criticOriginalReply) {
+          sections.push({ title: "R\u00e9ponse avant critic", content: meta.criticOriginalReply });
         }
 
         const signauxLines = [];

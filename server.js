@@ -96,7 +96,8 @@ const {
   registerExplorationRelance
 } = require("./lib/flags");
 const { createAnalyzers } = require("./lib/analyzers");
-const { createMemoryHelpers } = require("./lib/memory");
+const { baseStateOf } = require("./lib/conversation-state");
+const { createMemoryHelpers, forceLectureBotReset } = require("./lib/memory");
 const {
   buildAdvancedDebugTrace,
   buildDebug,
@@ -111,6 +112,7 @@ const {
   createCritic,
   hasAgencyInjectionInReply,
   hasTutoiementInReply,
+  hasVouvoiementInReply,
   hasTheoreticalViolationHeuristic,
   isProceduralInstrumentalReply
 } = require("./lib/critic");
@@ -1985,6 +1987,7 @@ app.post("/api/account/conversations/import-local", requireUserAuth, async (req,
               memoryBeforeCompression: typeof debugMeta.memoryBeforeCompression === "string" ? debugMeta.memoryBeforeCompression : null,
               criticTriggered: debugMeta.criticTriggered === true,
               criticIssues: Array.isArray(debugMeta.criticIssues) ? debugMeta.criticIssues.map(v => String(v || "")).filter(Boolean) : [],
+              criticOriginalReply: typeof debugMeta.criticOriginalReply === "string" ? debugMeta.criticOriginalReply : null,
               conversationState: typeof debugMeta.conversationState === "string" ? debugMeta.conversationState : null,
               intent: typeof debugMeta.intent === "string" ? debugMeta.intent : null,
               forbidden: Array.isArray(debugMeta.forbidden) ? debugMeta.forbidden.map(v => String(v || "")).filter(Boolean) : [],
@@ -3614,6 +3617,7 @@ app.post("/chat", async (req, res) => {
           null,
       criticTriggered: safe.criticTriggered === true,
       criticIssues: Array.isArray(safe.criticIssues) ? safe.criticIssues : [],
+      criticOriginalReply: typeof safe.criticOriginalReply === "string" ? safe.criticOriginalReply : null,
       // Posture contract (V3)
       conversationState: typeof safe.conversationState === "string" ? safe.conversationState : null,
       intent: typeof safe.intent === "string" ? safe.intent : null,
@@ -4440,6 +4444,7 @@ app.post("/chat", async (req, res) => {
     // For n1_crisis, critic runs systematically regardless of heuristics.
     let criticTriggered = false;
     let criticIssues = [];
+    let criticOriginalReply = null;
     let humanFieldRisk = false;
     let contractLengthExceeded = false;
     const criticStateApplies = (cs) => cs && (
@@ -4458,12 +4463,14 @@ app.post("/chat", async (req, res) => {
         && sentenceCount > postureDecision.maxSentences;
       humanFieldRisk = postureDecision.humanFieldGuardActive === true && isProceduralInstrumentalReply(reply);
       const formalAddressRisk = postureDecision.formalAddress === true && hasTutoiementInReply(reply);
+      const vouvoiementRisk = postureDecision.formalAddress !== true && hasVouvoiementInReply(reply, message);
       const criticShouldTrigger =
         n1CrisisForced ||
         recallForced ||
         contractLengthExceeded ||
         humanFieldRisk ||
         formalAddressRisk ||
+        vouvoiementRisk ||
         hasAgencyInjectionInReply(reply) ||
         hasTheoreticalViolationHeuristic(reply);
       if (criticShouldTrigger) {
@@ -4486,6 +4493,7 @@ app.post("/chat", async (req, res) => {
         criticTriggered = true;
         criticIssues = criticResult.criticIssues;
         if (criticResult.criticIssues.length > 0) {
+          criticOriginalReply = reply;
           reply = criticResult.reply;
           finalReplyRewriteSources.push("critic_pass");
           logChatDecision("critic_rewrote", {
@@ -4569,6 +4577,13 @@ app.post("/chat", async (req, res) => {
     throwIfCanceled();
 
     let memoryCandidate = rawNewMemory;
+
+    // Points 1+4: règle déterministe — Lecture bot doit être "-" pour tout état non-exploration, non-info
+    const _memoryBaseState = baseStateOf(postureDecision.conversationState || "exploration_open");
+    if (_memoryBaseState !== "exploration" && _memoryBaseState !== "info") {
+      memoryCandidate = forceLectureBotReset(memoryCandidate);
+    }
+
     const memoryBeforeCompression = memoryCandidate;
     const memoryNeedsCompression = shouldCompressMemoryCandidate(memoryCandidate, previousMemory);
     const finalizedMemoryCandidate = await finalizeMemoryCandidate({
@@ -4612,6 +4627,7 @@ app.post("/chat", async (req, res) => {
       memoryBeforeCompression,
       criticTriggered,
       criticIssues,
+      criticOriginalReply,
       humanFieldRisk,
       contractLengthExceeded,
       // Posture contract fields (V3)

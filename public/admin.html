@@ -915,6 +915,7 @@
         memoryBeforeCompression: typeof safe.memoryBeforeCompression === "string" ? safe.memoryBeforeCompression.trim() : null,
         criticTriggered: safe.criticTriggered === true,
         criticIssues: Array.isArray(safe.criticIssues) ? safe.criticIssues.map(v => String(v || "").trim()).filter(Boolean) : [],
+        criticOriginalReply: typeof safe.criticOriginalReply === "string" ? safe.criticOriginalReply.trim() : null,
         writerMode: typeof safe.writerMode === "string" ? safe.writerMode.trim() : null,
         intent: typeof safe.intent === "string" ? safe.intent.trim() : null,
         forbidden: Array.isArray(safe.forbidden) ? safe.forbidden.map(v => String(v || "").trim()).filter(Boolean) : [],
@@ -1962,6 +1963,10 @@
               title: "Lecture interne",
               content: naturalSummaryLines.join("\n")
             });
+          }
+
+          if (meta.criticTriggered === true && meta.criticOriginalReply) {
+            sections.push({ title: "R\u00e9ponse avant critic", content: meta.criticOriginalReply });
           }
           
           if (meta.memory) {
