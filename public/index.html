@@ -1628,6 +1628,63 @@
       cursor: pointer;
     }
 
+    #intersessionDebugChip {
+      display: none;
+      position: absolute;
+      left: 14px;
+      bottom: calc(74px + env(safe-area-inset-bottom, 0px));
+      z-index: 45;
+      max-width: min(300px, calc(100vw - 80px));
+    }
+
+    body.show-debug #intersessionDebugChip {
+      display: block;
+    }
+
+    #intersessionDebugChip > summary {
+      list-style: none;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      color: #245e66;
+      background: rgba(255, 255, 255, 0.84);
+      border: 1px solid rgba(215, 222, 226, 0.92);
+      border-radius: 999px;
+      padding: 4px 10px;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      user-select: none;
+      -webkit-user-select: none;
+      white-space: nowrap;
+      display: inline-block;
+    }
+
+    #intersessionDebugChip[open] > summary {
+      border-radius: 10px 10px 0 0;
+    }
+
+    #intersessionDebugChip > .intersession-chip-content {
+      background: rgba(255, 255, 255, 0.96);
+      border: 1px solid rgba(215, 222, 226, 0.92);
+      border-top: none;
+      border-radius: 0 10px 10px 10px;
+      padding: 8px 10px;
+      font-size: 12px;
+      line-height: 1.45;
+      color: #334155;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 240px;
+      overflow-y: auto;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      user-select: text;
+      -webkit-user-select: text;
+      cursor: text;
+    }
+
     .debug-detail {
       display: block;
     }
@@ -2066,6 +2123,10 @@
   </div>
   
   <div id="chatScreen" class="screen" tabindex="-1">
+    <details id="intersessionDebugChip">
+      <summary>Mém. LT</summary>
+      <div class="intersession-chip-content">(aucune mémoire inter-sessions)</div>
+    </details>
     <div id="topBar">
       <div id="chatMakePublicBtnWrap">
         <button id="chatMakePublicBtn" type="button" aria-label="Rendre la conversation publique">
@@ -2651,6 +2712,7 @@
     // Module-level intersession memory for authenticated accounts.
     // Populated once on load; used as initial memory for new conversations.
     let _pendingIntersessionMemory = null;
+    let _intersessionCompressionDoneThisSession = false;
 
     async function syncUserSessionState() {
       try {
@@ -2717,6 +2779,21 @@
       }
     }
 
+    async function ensureIntersessionCompressed() {
+      if (!userSessionState.authenticated) return;
+      if (_intersessionCompressionDoneThisSession) return;
+      try {
+        const res = await fetch("/api/intersession-memory/compress", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" }
+        });
+        if (res.ok) {
+          _intersessionCompressionDoneThisSession = true;
+        }
+      } catch {}
+    }
+
     async function persistAdminMailsPreference(mailsEnabled) {
       try {
         await fetch("/api/admin/settings", {
@@ -2728,6 +2805,16 @@
           })
         });
       } catch {}
+    }
+
+    function updateIntersessionMemoryDebugChip(memory) {
+      const chip = document.getElementById("intersessionDebugChip");
+      if (!chip) return;
+      const content = chip.querySelector(".intersession-chip-content");
+      if (!content) return;
+      content.textContent = typeof memory === "string" && memory.trim()
+        ? memory.trim()
+        : "(aucune mémoire inter-sessions)";
     }
 
     async function syncIntersessionMemoryIfApplicable() {
@@ -2742,6 +2829,7 @@
         const data = await res.json().catch(() => ({}));
         if (typeof data.memory === "string" && data.memory.trim()) {
           _pendingIntersessionMemory = data.memory;
+          updateIntersessionMemoryDebugChip(_pendingIntersessionMemory);
 
           // Inject into current conversation immediately if it has no messages yet.
           const currentId = getConversationId();
@@ -2760,6 +2848,8 @@
           }
         }
       } catch (_) {}
+      // Fire-and-forget: compress the intersession memory for the next session injection.
+      ensureIntersessionCompressed().catch(() => {});
     }
 
     function updateAccountBtnVisibility() {
@@ -4437,6 +4527,25 @@
         screen.style.opacity = "";
         screen.style.transform = "";
       });
+    });
+
+    // Intersession beacon — pagehide + visibilitychange.
+    // pagehide covers desktop close / navigation; visibilitychange covers mobile
+    // (iOS Safari, Android Chrome where pagehide fires late or not at all).
+    // A debounce flag prevents double-fire when both events fire in the same cycle.
+    let _beaconFired = false;
+    window.addEventListener("pagehide", () => {
+      _beaconFired = true;
+      sendIntersessionBeacon();
+    });
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden" && !_beaconFired) {
+        sendIntersessionBeacon();
+      }
+      // Reset after a short delay so future visibility changes can trigger again.
+      if (document.visibilityState === "visible") {
+        _beaconFired = false;
+      }
     });
     
     function applyScreen(id) {
@@ -7101,7 +7210,32 @@
         }
       } catch {}
     }
-    
+
+    // sendIntersessionBeacon — fire-and-forget on pagehide / visibilitychange.
+    // Uses sendBeacon so the request survives tab close and back-navigation.
+    // Guards: authenticated user, non-private conversation, memory non-empty.
+    function sendIntersessionBeacon() {
+      try {
+        if (!userSessionState.authenticated) return;
+
+        const memory = loadMemory();
+        if (typeof memory !== "string" || !memory.trim()) return;
+
+        const currentConversationId = getConversationId();
+        if (currentConversationId) {
+          const data = loadConversationData(currentConversationId);
+          if (isConversationPrivateById(currentConversationId, data)) return;
+        }
+
+        const payload = JSON.stringify({
+          memory,
+          timestamp: new Date().toISOString()
+        });
+        const blob = new Blob([payload], { type: "application/json" });
+        navigator.sendBeacon("/api/session/beacon", blob);
+      } catch (_) {}
+    }
+
     async function closeSessionBackend() {
       const payload = buildSessionPayloadForClose();
       
@@ -7136,6 +7270,7 @@
       closeTerminatedSessionModal();
       
       await closeSessionBackend();
+      ensureIntersessionCompressed().catch(() => {});
       
       fadeChatThenReset(() => {
         clearSessionStorageExceptMemory();
@@ -7987,7 +8122,6 @@
         if (isSameConversation) {
           if (data.memory) {
             saveMemory(data.memory);
-            persistIntersessionMemoryIfApplicable(data.memory);
           }
           if (data.flags) saveFlags(data.flags);
 

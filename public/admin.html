@@ -1730,6 +1730,31 @@
           list.innerHTML = '<div class="empty">Aucun message</div>';
           return;
         }
+
+        // Fetch and display intersession memory chip for this user (fire-and-forget).
+        const firstUserId = data[0] && data[0].userId ? String(data[0].userId) : null;
+        if (firstUserId) {
+          fetchWithTimeout("/api/admin/intersession-memory/" + encodeURIComponent(firstUserId))
+            .then(r => r.json().catch(() => ({})))
+            .then(d => {
+              const memory = typeof d.memory === "string" && d.memory.trim() ? d.memory.trim() : null;
+              const chip = document.createElement("details");
+              chip.style.marginBottom = "10px";
+              chip.innerHTML =
+                '<summary style="list-style:none;display:inline-block;cursor:pointer;font-size:11px;font-weight:700;letter-spacing:0.03em;text-transform:uppercase;color:#245e66;background:rgba(255,255,255,0.84);border:1px solid rgba(215,222,226,0.92);border-radius:999px;padding:4px 10px;user-select:none;">' +
+                'Mém. LT' +
+                '</summary>' +
+                '<div style="background:rgba(255,255,255,0.96);border:1px solid rgba(215,222,226,0.92);border-top:none;border-radius:0 10px 10px 10px;padding:8px 10px;font-size:12px;line-height:1.45;color:#334155;white-space:pre-wrap;word-break:break-word;max-height:240px;overflow-y:auto;user-select:text;cursor:text;">' +
+                (memory ? memory.replace(/</g, "&lt;").replace(/>/g, "&gt;") : "(aucune mémoire inter-sessions)") +
+                '</div>';
+              if (list.firstChild) {
+                list.insertBefore(chip, list.firstChild);
+              } else {
+                list.appendChild(chip);
+              }
+            })
+            .catch(() => {});
+        }
         
         function extractCompareLabel(content) {
           const text = String(content || "");

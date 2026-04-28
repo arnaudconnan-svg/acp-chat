@@ -57,13 +57,18 @@ function assertDebugMetaContract(debugMeta, label) {
 
   // Required strings
   assert(typeof debugMeta.memory === "string", `${label}: memory must be a string`);
-  assert(typeof debugMeta.conversationStateKey === "string", `${label}: conversationStateKey must be a string`);
-  assert(typeof debugMeta.confidenceSignal === "string", `${label}: confidenceSignal must be a string`);
+  assert(typeof debugMeta.conversationState === "string", `${label}: conversationState must be a string`);
 
-  // conversationStateKey must be a known state
-  const VALID_STATES = ["exploration", "post_contact", "contact", "info", "stabilization", "alliance_rupture", "closure"];
-  assert(VALID_STATES.includes(debugMeta.conversationStateKey),
-    `${label}: conversationStateKey '${debugMeta.conversationStateKey}' is not a valid state`);
+  // conversationState must be a known extended state
+  const VALID_STATES = [
+    "exploration_open", "exploration_restrained",
+    "contact", "discharge_regulated", "discharge_dysregulated",
+    "info_pure", "info_features", "info_psychoeducation",
+    "stabilization", "alliance_rupture", "closure",
+    "n1_crisis", "n2_crisis"
+  ];
+  assert(VALID_STATES.includes(debugMeta.conversationState),
+    `${label}: conversationState '${debugMeta.conversationState}' is not a valid extended state`);
 
   // confidenceSignal must be a number between 0 and 1
   assert(typeof debugMeta.confidenceSignal === "number" && debugMeta.confidenceSignal >= 0 && debugMeta.confidenceSignal <= 1,
@@ -85,10 +90,10 @@ function assertDebugMetaContract(debugMeta, label) {
 
   // Nullable strings (must be string or null, not undefined)
   // writerMode and intent are null on deterministic override paths (N2, N1, recall) — non-null in normal generation paths
-  const nullableStrings = ["directivityText", "infoSubmode", "contactSubmode", "explorationSubmode",
+  const nullableStrings = ["directivityText", "explorationSubmode",
     "rewriteSource", "memoryRewriteSource",
     "dependencyRiskLevel", "externalSupportMode", "processingWindow", "allianceState", "engagementLevel",
-    "writerMode", "intent",
+    "intent",
     // State transition fields (null on first turn or valid transitions)
     "stateTransitionFrom", "stateTransitionRequested"];
   for (const field of nullableStrings) {
@@ -126,9 +131,8 @@ const cases = [
       assert(result.status === 200, `exploration: expected 200, got ${result.status}`);
       assertDebugMetaContract(result.body.debugMeta, "exploration");
       const dm = result.body.debugMeta;
-      assert(["exploration", "contact", "post_contact"].includes(dm.conversationStateKey),
-        `exploration: expected exploration-family state, got '${dm.conversationStateKey}'`);
-      assert(typeof dm.writerMode === "string", `exploration: writerMode must be a string in normal generation path`);
+      assert(dm.conversationState.startsWith("exploration_") || dm.conversationState === "contact",
+        `exploration: expected exploration or contact state, got '${dm.conversationState}'`);
       assert(typeof dm.intent === "string", `exploration: intent must be a string in normal generation path`);
     }
   },
@@ -142,9 +146,7 @@ const cases = [
       assert(result.status === 200, `info: expected 200, got ${result.status}`);
       assertDebugMetaContract(result.body.debugMeta, "info");
       const dm = result.body.debugMeta;
-      assert(dm.conversationStateKey === "info", `info: expected 'info', got '${dm.conversationStateKey}'`);
-      assert(dm.infoSubmode !== null, `info: infoSubmode should not be null in info mode`);
-      assert(typeof dm.writerMode === "string", `info: writerMode must be a string in normal generation path`);
+      assert(dm.conversationState.startsWith("info_"), `info: expected info_* state, got '${dm.conversationState}'`);
       assert(typeof dm.intent === "string", `info: intent must be a string in normal generation path`);
     }
   },

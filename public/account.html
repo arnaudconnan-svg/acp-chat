@@ -286,6 +286,59 @@
 
     .error-notice { color: #c0392b; }
 
+    .longterm-memory-warning {
+      font-size: 13px;
+      color: #888;
+      margin: 0 0 12px;
+    }
+
+    .longterm-memory-textarea {
+      width: 100%;
+      font-family: monospace;
+      font-size: 13px;
+      padding: 10px 12px;
+      border: 1.5px solid #d0d0d0;
+      border-radius: 8px;
+      resize: vertical;
+      box-sizing: border-box;
+      line-height: 1.5;
+    }
+
+    .longterm-memory-counter {
+      text-align: right;
+      font-size: 11px;
+      color: #999;
+      margin-top: 4px;
+    }
+
+    .history-toggle {
+      background: none;
+      border: none;
+      padding: 0;
+      font-size: 13px;
+      color: #888;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .history-item-btn {
+      background: none;
+      border: 1px solid #d0d0d0;
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-size: 13px;
+      cursor: pointer;
+      text-align: left;
+      width: 100%;
+      color: #245e66;
+    }
+
+    .history-item-btn:hover {
+      background: rgba(36,94,102,0.05);
+    }
+
     .upgrade-banner {
       border: 1.5px solid #245e66;
       border-radius: 12px;
@@ -405,6 +458,7 @@
         main.appendChild(buildProfileCard());
         main.appendChild(buildPrivateDefaultCard());
         main.appendChild(buildLocalImportCard());
+        main.appendChild(buildLongtermMemoryCard());
         main.appendChild(buildPasswordCard());
       }
 
@@ -533,6 +587,172 @@
           '  <path d="M8.4 11.2V8.9a3.6 3.6 0 1 1 7.2 0v2.3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>',
           '</svg>'
         ].join("");
+      }
+
+      function buildLongtermMemoryCard() {
+        const card = document.createElement("div");
+        card.className = "card";
+        const title = document.createElement("div");
+        title.className = "section-title";
+        title.textContent = "M\u00e9moire longue terme";
+        card.appendChild(title);
+        const content = document.createElement("div");
+        content.innerHTML = '<p class="loading-state">Chargement\u2026</p>';
+        card.appendChild(content);
+        loadLongtermMemoryCardContent(content);
+        return card;
+      }
+
+      async function loadLongtermMemoryCardContent(container) {
+        try {
+          const res = await fetch("/api/intersession-memory", {
+            cache: "no-store",
+            credentials: "include"
+          });
+          if (!res.ok) {
+            container.innerHTML = '<p class="error-notice">Impossible de charger la m\u00e9moire.</p>';
+            return;
+          }
+          const data = await res.json().catch(() => ({}));
+          const memoryValue = typeof data.memory === "string" ? data.memory : "";
+          const history = Array.isArray(data.intersessionMemoryHistory) ? data.intersessionMemoryHistory : [];
+
+          container.innerHTML = "";
+
+          const warning = document.createElement("p");
+          warning.className = "longterm-memory-warning";
+          warning.textContent = "Ce que vous modifiez ici remplace la m\u00e9moire existante.";
+          container.appendChild(warning);
+
+          const textarea = document.createElement("textarea");
+          textarea.className = "longterm-memory-textarea";
+          textarea.rows = 8;
+          textarea.maxLength = 2000;
+          textarea.value = memoryValue;
+          container.appendChild(textarea);
+
+          const counter = document.createElement("div");
+          counter.className = "longterm-memory-counter";
+          counter.textContent = `${memoryValue.length} / 2000`;
+          textarea.addEventListener("input", () => {
+            counter.textContent = `${textarea.value.length} / 2000`;
+          });
+          container.appendChild(counter);
+
+          const saveBtn = document.createElement("button");
+          saveBtn.className = "action-btn is-ready";
+          saveBtn.style.marginTop = "12px";
+          saveBtn.textContent = "Enregistrer";
+          container.appendChild(saveBtn);
+
+          const saveNotice = document.createElement("div");
+          saveNotice.className = "notice";
+          container.appendChild(saveNotice);
+
+          saveBtn.addEventListener("click", async () => {
+            saveBtn.disabled = true;
+            saveNotice.textContent = "";
+            saveNotice.className = "notice";
+            try {
+              const saveRes = await fetch("/api/intersession-memory/direct", {
+                method: "PATCH",
+                credentials: "include",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ memory: textarea.value })
+              });
+              if (saveRes.ok) {
+                saveNotice.className = "notice success";
+                saveNotice.textContent = "Vos modifications seront prises en compte d\u00e8s le prochain message envoy\u00e9.";
+              } else {
+                saveNotice.textContent = "Erreur lors de la sauvegarde. R\u00e9essayez.";
+              }
+            } catch {
+              saveNotice.textContent = "Erreur r\u00e9seau.";
+            } finally {
+              saveBtn.disabled = false;
+            }
+          });
+
+          if (history.length > 0) {
+            const historySection = document.createElement("div");
+            historySection.style.marginTop = "18px";
+
+            const historyToggle = document.createElement("button");
+            historyToggle.type = "button";
+            historyToggle.className = "history-toggle";
+            historyToggle.textContent = "\u25b6 Versions pr\u00e9c\u00e9dentes";
+            historySection.appendChild(historyToggle);
+
+            const historyContent = document.createElement("div");
+            historyContent.style.display = "none";
+            historyContent.style.marginTop = "10px";
+            let historyOpen = false;
+            historyToggle.addEventListener("click", () => {
+              historyOpen = !historyOpen;
+              historyContent.style.display = historyOpen ? "block" : "none";
+              historyToggle.textContent = (historyOpen ? "\u25bc" : "\u25b6") + " Versions pr\u00e9c\u00e9dentes";
+            });
+
+            const historyList = document.createElement("div");
+            historyList.style.cssText = "display:flex;flex-direction:column;gap:8px;";
+
+            let selectedPreviewIndex = -1;
+            const previewEl = document.createElement("div");
+            previewEl.style.display = "none";
+            previewEl.style.marginTop = "8px";
+
+            const previewTextarea = document.createElement("textarea");
+            previewTextarea.className = "longterm-memory-textarea";
+            previewTextarea.readOnly = true;
+            previewTextarea.rows = 6;
+            previewTextarea.style.color = "#555";
+            previewTextarea.style.background = "#fafafa";
+            previewEl.appendChild(previewTextarea);
+
+            const previewRestoreBtn = document.createElement("button");
+            previewRestoreBtn.type = "button";
+            previewRestoreBtn.className = "secondary-btn";
+            previewRestoreBtn.style.marginTop = "8px";
+            previewRestoreBtn.textContent = "Restaurer cette version";
+            previewRestoreBtn.addEventListener("click", () => {
+              if (selectedPreviewIndex < 0) return;
+              const confirmed = window.confirm("Restaurer cette version\u202f? Le contenu actuel sera archiv\u00e9.");
+              if (!confirmed) return;
+              textarea.value = previewTextarea.value;
+              counter.textContent = `${textarea.value.length} / 2000`;
+              saveNotice.textContent = "";
+              saveNotice.className = "notice";
+            });
+            previewEl.appendChild(previewRestoreBtn);
+
+            history.forEach((entry, index) => {
+              const dateStr = entry.savedAt
+                ? new Date(entry.savedAt).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })
+                : "Date inconnue";
+              const itemBtn = document.createElement("button");
+              itemBtn.type = "button";
+              itemBtn.className = "history-item-btn";
+              itemBtn.textContent = `Version du ${dateStr}`;
+              itemBtn.addEventListener("click", () => {
+                selectedPreviewIndex = index;
+                previewTextarea.value = entry.memory || "";
+                previewEl.style.display = "block";
+                historyList.querySelectorAll(".history-item-btn").forEach((b, i) => {
+                  b.style.fontWeight = i === index ? "700" : "";
+                });
+              });
+              historyList.appendChild(itemBtn);
+            });
+
+            historyContent.appendChild(historyList);
+            historyContent.appendChild(previewEl);
+            historySection.appendChild(historyContent);
+            container.appendChild(historySection);
+          }
+
+        } catch {
+          container.innerHTML = '<p class="error-notice">Impossible de charger la m\u00e9moire.</p>';
+        }
       }
 
       function buildLocalImportCard() {

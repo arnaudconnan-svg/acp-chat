@@ -129,7 +129,20 @@ Cette règle s'applique aussi aux refactorings incrémentaux : si une instructio
 
 ---
 
-## 9. Philosophie
+## 9. Exigence produit
+
+Facilitat.io ne distingue pas une version MVP et une version finale. L'exigence de qualité est uniforme dès le premier utilisateur réel.
+
+Cela implique concrètement :
+- toute fonctionnalité visible par l'utilisateur est livrée avec le niveau de soin attendu d'un produit en production
+- il n'existe pas de "on verra plus tard" pour la fiabilité, la confidentialité, ou la cohérence comportementale
+- les simplifications techniques acceptables sont celles qui n'impactent pas l'expérience perçue ; les autres sont des dettes explicites à documenter, pas à taire
+
+Ce principe s'applique aussi à la mémoire longue terme : si une information persiste entre sessions, elle doit être traitée avec le même soin qu'un dossier clinique — lisible, contrôlable, et jamais exposée sans consentement explicite.
+
+---
+
+## 10. Philosophie
 
 La stabilité du comportement prime sur la qualité du code.
 La qualité du code prime sur l'optimisation.

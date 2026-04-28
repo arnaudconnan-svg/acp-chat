@@ -979,6 +979,7 @@ ${reply}
 
 const {
   compressMemoryIfRedundant,
+  compressIntersessionMemory,
   finalizeMemoryCandidate,
   shouldCompressMemoryCandidate,
   updateIntersessionMemory,
@@ -2812,16 +2813,55 @@ app.get("/api/branches/:id", async (req, res) => {
 app.get("/api/intersession-memory", requireUserAuth, async (req, res) => {
   try {
     const session = req.userSession;
-    const snap = await usersRef.child(session.userId).child("intersessionMemory").once("value");
-    const memory = snap.val();
+    const snap = await usersRef.child(session.userId).once("value");
+    const userData = snap.val() || {};
+    const memory = userData.intersessionMemory;
+    const historyRaw = Array.isArray(userData.intersessionMemoryHistory) ? userData.intersessionMemoryHistory : [];
     return res.json({
-      memory: typeof memory === "string" && memory.trim() ? memory : null
+      memory: typeof memory === "string" && memory.trim() ? memory : null,
+      intersessionMemoryCompressed: typeof userData.intersessionMemoryCompressed === "string" && userData.intersessionMemoryCompressed.trim() ? userData.intersessionMemoryCompressed : null,
+      intersessionMemoryCompressedAt: typeof userData.intersessionMemoryCompressedAt === "string" ? userData.intersessionMemoryCompressedAt : null,
+      intersessionMemoryUpdatedAt: typeof userData.intersessionMemoryUpdatedAt === "string" ? userData.intersessionMemoryUpdatedAt : null,
+      intersessionMemoryHistory: historyRaw.slice(0, 3).map(entry => ({
+        memory: typeof entry?.memory === "string" ? entry.memory : "",
+        savedAt: typeof entry?.savedAt === "string" ? entry.savedAt : null
+      }))
     });
   } catch (err) {
     console.error("Erreur GET /api/intersession-memory:", err.message);
     return res.status(500).json({ error: "Intersession memory read failed" });
   }
 });
+
+// Deterministic strip of transient session memory blocks before intersession consolidation.
+// Removes "Mouvements en cours" content and the "Lecture bot" block entirely.
+function stripTransientMemoryBlocksForIntersession(memoryText) {
+  const lines = String(memoryText || "").split("\n");
+  const result = [];
+  let inTransientBlock = false;
+
+  for (const line of lines) {
+    const trimmed = line.trim().toLowerCase();
+    if (/^mouvements en cours\s*:/.test(trimmed)) {
+      inTransientBlock = true;
+      result.push(line); // Keep the header
+      result.push("-"); // Replace content with empty marker
+      continue;
+    }
+    if (/^lecture bot\s*:/.test(trimmed)) {
+      inTransientBlock = true; // Skip header and all content
+      continue;
+    }
+    // Any new section header exits the transient block
+    if (line.trim() && !line.trim().startsWith("-") && /^[A-Za-z\u00C0-\u017E].*:/.test(line.trim())) {
+      inTransientBlock = false;
+    }
+    if (!inTransientBlock) {
+      result.push(line);
+    }
+  }
+  return result.join("\n").trim();
+}
 
 // PUT saves the long-term memory for the authenticated user.
 app.put("/api/intersession-memory", requireUserAuth, async (req, res) => {
@@ -2837,11 +2877,12 @@ app.put("/api/intersession-memory", requireUserAuth, async (req, res) => {
     }
 
     const sessionMemory = String(req.body.memory || "").slice(0, 8000);
+    const strippedSessionMemory = stripTransientMemoryBlocksForIntersession(sessionMemory);
     const previousSnap = await usersRef.child(session.userId).child("intersessionMemory").once("value");
     const previousIntersessionMemory = typeof previousSnap.val() === "string" ? previousSnap.val() : "";
     const memory = await updateIntersessionMemory(
       previousIntersessionMemory,
-      sessionMemory,
+      strippedSessionMemory,
       buildDefaultPromptRegistry()
     );
 
@@ -2864,6 +2905,138 @@ app.put("/api/intersession-memory", requireUserAuth, async (req, res) => {
       });
     }
     return res.status(500).json({ error: "Intersession memory save failed" });
+  }
+});
+
+// POST compresses the intersession memory into a short excerpt (~500 chars).
+// Skips the LLM call when the compressed version is already up to date.
+app.post("/api/intersession-memory/compress", requireUserAuth, async (req, res) => {
+  try {
+    const session = req.userSession;
+    const snap = await usersRef.child(session.userId).once("value");
+    const userData = snap.val() || {};
+    const intersessionMemory = userData.intersessionMemory;
+    const compressedAt = userData.intersessionMemoryCompressedAt;
+    const updatedAt = userData.intersessionMemoryUpdatedAt;
+
+    // Skip if already compressed and up to date
+    if (
+      compressedAt && updatedAt &&
+      new Date(compressedAt) >= new Date(updatedAt)
+    ) {
+      return res.json({ success: true, skipped: true, compressed: userData.intersessionMemoryCompressed || null });
+    }
+
+    if (!intersessionMemory || !String(intersessionMemory).trim()) {
+      return res.json({ success: true, skipped: true, compressed: null });
+    }
+
+    const compressed = await compressIntersessionMemory(intersessionMemory, buildDefaultPromptRegistry());
+    const now = new Date().toISOString();
+
+    await usersRef.child(session.userId).update({
+      intersessionMemoryCompressed: compressed,
+      intersessionMemoryCompressedAt: now
+    });
+
+    return res.json({ success: true, compressed });
+  } catch (err) {
+    console.error("Erreur POST /api/intersession-memory/compress:", err.message);
+    return res.status(500).json({ error: "Intersession memory compression failed" });
+  }
+});
+
+// PATCH saves intersession memory directly (no LLM), archives current version, forces refresh.
+app.patch("/api/intersession-memory/direct", requireUserAuth, async (req, res) => {
+  try {
+    const session = req.userSession;
+    if (
+      !req.body ||
+      typeof req.body !== "object" ||
+      typeof req.body.memory !== "string"
+    ) {
+      return res.status(400).json({ error: "Invalid payload" });
+    }
+
+    const newMemory = String(req.body.memory || "").slice(0, 2000);
+    const now = new Date().toISOString();
+
+    // Archive current version before overwriting
+    const snap = await usersRef.child(session.userId).once("value");
+    const userData = snap.val() || {};
+    const currentMemory = userData.intersessionMemory;
+    const currentUpdatedAt = userData.intersessionMemoryUpdatedAt;
+    const currentHistory = Array.isArray(userData.intersessionMemoryHistory) ? userData.intersessionMemoryHistory : [];
+
+    if (typeof currentMemory === "string" && currentMemory.trim()) {
+      const newEntry = { memory: currentMemory, savedAt: currentUpdatedAt || now };
+      const updatedHistory = [newEntry, ...currentHistory].slice(0, 3);
+      await usersRef.child(session.userId).child("intersessionMemoryHistory").set(updatedHistory);
+    }
+
+    await usersRef.child(session.userId).update({
+      intersessionMemory: newMemory,
+      intersessionMemoryUpdatedAt: now,
+      intersessionRefreshForced: true
+    });
+
+    return res.json({ success: true });
+  } catch (err) {
+    console.error("Erreur PATCH /api/intersession-memory/direct:", err.message);
+    return res.status(500).json({ error: "Intersession memory direct save failed" });
+  }
+});
+
+// POST beacon — called by sendBeacon on pagehide / visibilitychange.
+// Responds 200 immediately; consolidation runs async in the background.
+// Race-condition guard: ignored if the beacon's timestamp is older than the
+// intersessionMemoryUpdatedAt already stored (e.g. explicit close arrived first).
+app.post("/api/session/beacon", async (req, res) => {
+  // Respond immediately — sendBeacon ignores the body anyway.
+  res.status(200).json({ ok: true });
+
+  try {
+    const session = await getUserSession(req);
+    if (!session) return; // unauthenticated — ignore silently
+
+    const memory = typeof req.body?.memory === "string" ? req.body.memory.slice(0, 8000) : "";
+    const beaconTimestamp = typeof req.body?.timestamp === "string" ? req.body.timestamp : null;
+
+    if (!memory.trim()) return;
+
+    const now = new Date().toISOString();
+
+    // Update lastActiveAt unconditionally — lightweight, no LLM.
+    await usersRef.child(session.userId).update({ lastActiveAt: now });
+
+    // Race-condition guard: skip consolidation if a more recent update already exists.
+    const snap = await usersRef.child(session.userId).once("value");
+    const userData = snap.val() || {};
+    const storedUpdatedAt = userData.intersessionMemoryUpdatedAt;
+
+    if (beaconTimestamp && storedUpdatedAt && new Date(storedUpdatedAt) > new Date(beaconTimestamp)) {
+      // A more recent consolidation (explicit close) already happened — skip.
+      return;
+    }
+
+    const strippedMemory = stripTransientMemoryBlocksForIntersession(memory);
+    const previousIntersessionMemory = typeof userData.intersessionMemory === "string"
+      ? userData.intersessionMemory
+      : "";
+
+    const consolidated = await updateIntersessionMemory(
+      previousIntersessionMemory,
+      strippedMemory,
+      buildDefaultPromptRegistry()
+    );
+
+    await usersRef.child(session.userId).update({
+      intersessionMemory: consolidated,
+      intersessionMemoryUpdatedAt: now
+    });
+  } catch (err) {
+    // Background processing — errors are non-critical, log and continue.
+    console.error("Erreur /api/session/beacon (background):", err.message);
   }
 });
 
@@ -2981,6 +3154,20 @@ app.get("/api/conversations/:id/title", async (req, res) => {
   } catch (err) {
     console.error("Erreur get conversation title:", err);
     return res.status(500).json({ error: "Erreur serveur" });
+  }
+});
+
+// Admin route to read the intersession memory (non-compressed) of a specific user.
+app.get("/api/admin/intersession-memory/:userId", requireAdminAuth, async (req, res) => {
+  try {
+    const userId = String(req.params.userId || "").trim();
+    if (!userId) return res.status(400).json({ error: "userId requis" });
+    const snap = await usersRef.child(userId).child("intersessionMemory").once("value");
+    const memory = typeof snap.val() === "string" ? snap.val() : "";
+    return res.json({ memory });
+  } catch (err) {
+    console.error("Erreur GET /api/admin/intersession-memory/:userId:", err.message);
+    return res.status(500).json({ error: "Lecture mémoire inter-sessions échouée" });
   }
 });
 
@@ -4425,12 +4612,46 @@ app.post("/chat", async (req, res) => {
     // puis application d'un pipeline de correction si le contenu est en conflit modèle.
     markChatStage("reply_generation");
 
+    // Blocs 3+4 : injection mémoire longue terme (intersession compressée).
+    // turnsUntilIntersessionRefresh === 0 → injection. Sinon, décrémenté chaque tour.
+    // intersessionRefreshForced (Firebase) permet un refresh immédiat après édition directe.
+    let intersessionMemoryForThisTurn = "";
+    if (userId && userId !== "u_anon") {
+      const currentTurnsUntil = Number.isInteger(newFlags.turnsUntilIntersessionRefresh)
+        ? newFlags.turnsUntilIntersessionRefresh
+        : 0;
+      let forceRefreshNow = false;
+      if (currentTurnsUntil > 0) {
+        try {
+          const refreshForcedSnap = await usersRef.child(userId).child("intersessionRefreshForced").once("value");
+          forceRefreshNow = refreshForcedSnap.val() === true;
+        } catch {}
+      }
+      const needsInjection = currentTurnsUntil === 0 || forceRefreshNow;
+      if (needsInjection) {
+        try {
+          const compressedSnap = await usersRef.child(userId).child("intersessionMemoryCompressed").once("value");
+          const compressedVal = compressedSnap.val();
+          if (typeof compressedVal === "string" && compressedVal.trim()) {
+            intersessionMemoryForThisTurn = compressedVal;
+          }
+          if (forceRefreshNow) {
+            await usersRef.child(userId).update({ intersessionRefreshForced: false });
+          }
+        } catch {}
+        newFlags.turnsUntilIntersessionRefresh = 8;
+      } else {
+        newFlags.turnsUntilIntersessionRefresh = Math.max(0, currentTurnsUntil - 1);
+      }
+    }
+
     const generatedBase = await generateReply({
       message,
       history: recentHistory,
       memory: recallRouting.isRecallAttempt === true ? memoryForReply : previousMemory,
       postureDecision,
       interpretationRejection: safeInterpretationRejection,
+      intersessionMemoryCompressed: intersessionMemoryForThisTurn,
       promptRegistry: activePromptRegistry,
     });
     throwIfCanceled();
@@ -4572,7 +4793,8 @@ app.post("/chat", async (req, res) => {
       ],
       activePromptRegistry,
       postureDecision.memoryPrioritySignal || "normal",
-      postureDecision.theoreticalOrientationSignal || "none"
+      postureDecision.theoreticalOrientationSignal || "none",
+      intersessionMemoryForThisTurn
     );
     throwIfCanceled();
 
