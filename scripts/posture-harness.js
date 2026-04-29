@@ -102,6 +102,10 @@ check("output: all required fields present", () => {
   for (const f of requiredArrays) {
     assert(Array.isArray(out[f]), `field '${f}' must be an array`);
   }
+  assert(
+    out.phenomenonAnchorInstruction === "from_observable" || out.phenomenonAnchorInstruction === "keep_if_concrete",
+    `phenomenonAnchorInstruction must be 'from_observable' or 'keep_if_concrete', got ${out.phenomenonAnchorInstruction}`
+  );
   assert(typeof out.flagUpdates === "object" && out.flagUpdates !== null, "flagUpdates must be an object");
 });
 
@@ -715,6 +719,22 @@ check("N1 + recall: N1 routing applied (forbidden includes n1_crisis restriction
   const out = buildPostureDecision(explorationInput({ suicideLevel: "N1", isRecallAttempt: true }));
   assert(out.forbidden.includes("relance"), "expected relance in forbidden for N1+recall, got [" + out.forbidden.join(", ") + "]");
   assert(out.recallInjectionActive === true, "expected recallInjectionActive true");
+});
+
+check("phenomenonAnchorInstruction: keep_if_concrete when rejectsUnderlyingPhenomenon=false (default)", () => {
+  const out = buildPostureDecision(explorationInput({
+    interpretationRejection: { isInterpretationRejection: true, needsSoberReadjustment: true, rejectsUnderlyingPhenomenon: false }
+  }));
+  assert(out.phenomenonAnchorInstruction === "keep_if_concrete",
+    "expected keep_if_concrete, got " + out.phenomenonAnchorInstruction);
+});
+
+check("phenomenonAnchorInstruction: from_observable when rejectsUnderlyingPhenomenon=true", () => {
+  const out = buildPostureDecision(explorationInput({
+    interpretationRejection: { isInterpretationRejection: true, needsSoberReadjustment: true, rejectsUnderlyingPhenomenon: true }
+  }));
+  assert(out.phenomenonAnchorInstruction === "from_observable",
+    "expected from_observable, got " + out.phenomenonAnchorInstruction);
 });
 
 const total = passed + failed;
