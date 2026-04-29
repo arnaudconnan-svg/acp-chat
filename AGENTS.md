@@ -114,6 +114,18 @@ Après chaque modification significative :
 
 Les tests de comportement fins (tests manuels, live test) restent de la responsabilité conjointe.
 
+### Règles de présentation du debug front
+
+Ces règles s'appliquent à toute section debug visible dans `index.html` et `admin.html`.
+
+**Langue** : tous les libellés et valeurs affichés sont en français naturel clair. Aucun identifiant technique anglais (ex : `interpretive_hypothesis`, `hold_emotional_thread`) ne peut être exposé tel quel.
+
+**Booléens** : un champ booléen n'apparaît que si sa valeur est `true`. Jamais de ligne "X : non" ou "X : false" dans le debug.
+
+**Non-redondance** : la même information ne peut pas apparaître dans deux sections du debug en même temps. Si une donnée a déjà sa propre section (ex : "Réponse réécrite"), elle n'est pas répétée dans une autre section (ex : "Lecture interne"). En cas de doute, la section la plus spécifique l'emporte.
+
+---
+
 ### Règle d'analyse post-conversation
 
 **Ne jamais inférer un signal à partir du contenu des messages quand ce signal devrait être lisible dans le debug.**

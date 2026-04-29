@@ -6331,6 +6331,56 @@
         };
       }
 
+      function translateForbiddenDebug(value) {
+        const MAP = {
+          prescriptive_language: "langage prescriptif",
+          relance: "relance",
+          interpretive_hypothesis: "hypoth\u00e8ses interpr\u00e9tatives",
+          open_question: "question ouverte",
+          list: "liste",
+          self_justification: "auto-justification",
+          recap: "r\u00e9capitulatif",
+          single_anchor_proposal: "proposition d'ancrage",
+          action_concrete_proposal: "proposition d'action concr\u00e8te"
+        };
+        return MAP[value] || value;
+      }
+
+      function translateRelancePolicyDebug(value) {
+        if (value === "forbidden") return "interdite";
+        if (value === "discouraged") return "d\u00e9conseill\u00e9e";
+        if (value === "open") return "ouverte";
+        if (value === "selective") return "s\u00e9lective";
+        return value;
+      }
+
+      function translateProcessingWindowDebug(value) {
+        if (value === "narrowed") return "restreinte";
+        if (value === "overloaded") return "satur\u00e9e";
+        return value;
+      }
+
+      function translateEngagementLevelDebug(value) {
+        if (value === "passive") return "passif";
+        if (value === "withdrawn") return "en retrait";
+        return value;
+      }
+
+      function translateWriterHintDebug(value) {
+        const MAP = {
+          hold_emotional_thread: "maintenir le fil \u00e9motionnel",
+          auto_compassion_door_open: "invitation \u00e0 l'auto-compassion",
+          signify_pain_without_blocking: "signifier la douleur sans bloquer",
+          amplify_insight: "amplifier l'insight"
+        };
+        return MAP[value] || value;
+      }
+
+      function translateOrientationHintDebug(value) {
+        if (value === "unfinished_business_subtle_opening") return "ouverture subtile sur l'inachev\u00e9";
+        return value;
+      }
+
       function buildNaturalDebugSummary(meta) {
         const lines = [];
 
@@ -6362,18 +6412,10 @@
           lines.push("Une intention de cloture de session a ete detectee.");
         }
 
-        if (meta.rewriteSource) {
-          lines.push(`La reponse finale a ete re-ecrite via: ${meta.rewriteSource}.`);
-        }
-
         if (meta.criticTriggered === true) {
           lines.push(meta.criticIssues.length > 0 ?
             `Le critic pass a corrige ${meta.criticIssues.length} point(s).` :
             "Le critic pass a ete lance sans correction necessaire.");
-        }
-
-        if (typeof meta.confidenceSignal === "number" && meta.confidenceSignal < 0.5) {
-          lines.push(`Signal de confiance : faible.`);
         }
 
         return lines;
@@ -6398,18 +6440,18 @@
           sections.push({
             title: "Contrat de posture",
             content: [
-              `État : ${meta.conversationState}`,
+              `\u00c9tat : ${meta.conversationState}`,
+              typeof meta.confidenceSignal === "number" ? `Confiance dans le choix de l'\u00e9tat : ${meta.confidenceSignal.toFixed(2)}` : null,
               (isExplorationMode && Number.isInteger(meta.explorationCalibrationLevel)) ?
                 `Niveau de structuration retenu : ${meta.explorationCalibrationLevel}/4` : null,
               meta.intent ? `Intention : ${meta.intent}` : null,
-              (meta.forbidden && meta.forbidden.length) ? `Interdit : ${meta.forbidden.join(", ")}` : null,
-              typeof meta.confidenceSignal === "number" ? `Signal confiance : ${meta.confidenceSignal.toFixed(2)}` : null,
-              typeof meta.relancePolicy === "string" && meta.relancePolicy ? `Relance : ${meta.relancePolicy}` : null,
+              (meta.forbidden && meta.forbidden.length) ? `Interdit : ${meta.forbidden.map(translateForbiddenDebug).join(", ")}` : null,
+              typeof meta.relancePolicy === "string" && meta.relancePolicy ? `Relance : ${translateRelancePolicyDebug(meta.relancePolicy)}` : null,
               typeof meta.allianceState === "string" && meta.allianceState !== "good" ? `Alliance : ${meta.allianceState}` : null,
-              typeof meta.engagementLevel === "string" && meta.engagementLevel !== "active" ? `Engagement : ${meta.engagementLevel}` : null,
-              typeof meta.processingWindow === "string" && meta.processingWindow !== "open" ? `Fenêtre : ${meta.processingWindow}` : null,
-              (meta.writerIntentHints && meta.writerIntentHints.length) ? `Hints writer : ${meta.writerIntentHints.join(", ")}` : null,
-              meta.writerOrientationHint ? `Orientation writer : ${meta.writerOrientationHint}` : null,
+              typeof meta.engagementLevel === "string" && meta.engagementLevel !== "active" ? `Engagement : ${translateEngagementLevelDebug(meta.engagementLevel)}` : null,
+              typeof meta.processingWindow === "string" && meta.processingWindow !== "open" ? `Fen\u00eatre de traitement : ${translateProcessingWindowDebug(meta.processingWindow)}` : null,
+              (meta.writerIntentHints && meta.writerIntentHints.length) ? `Indications : ${meta.writerIntentHints.map(translateWriterHintDebug).join(", ")}` : null,
+              meta.writerOrientationHint ? `Orientation : ${translateOrientationHintDebug(meta.writerOrientationHint)}` : null,
             ].filter(Boolean).join("\n")
           });
         }
@@ -6446,8 +6488,8 @@
         if (typeof meta.contactScore === "number") {
           signauxLines.push(`Contact score : ${meta.contactScore}`);
         }
-        if (typeof meta.contactEstablished === "boolean") {
-          signauxLines.push(`Contact établi : ${meta.contactEstablished ? "oui" : "non"}`);
+        if (meta.contactEstablished === true) {
+          signauxLines.push("Contact repéré sur la fenêtre récente");
         }
         if (meta.contactInsightMoment === true) {
           signauxLines.push("Insight moment (contact)");
@@ -6458,8 +6500,8 @@
         if (meta.contactMeaningProtest === true) {
           signauxLines.push("Effondrement de sens (contact)");
         }
-        if (typeof meta.emotionalDecentering === "boolean") {
-          signauxLines.push(`Décentrage émotionnel : ${meta.emotionalDecentering ? "oui" : "non"}`);
+        if (meta.emotionalDecentering === true) {
+          signauxLines.push("Décentrage émotionnel actif");
         }
         if (meta.emotionSequenceStage !== undefined && meta.emotionSequenceStage !== null) {
           signauxLines.push(`Étape séquence émotion : ${meta.emotionSequenceStage}`);

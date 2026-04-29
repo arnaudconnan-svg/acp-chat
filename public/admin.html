@@ -1844,13 +1844,13 @@
           const MAP = {
             prescriptive_language:   "langage prescriptif",
             relance:                 "relance",
-            interpretive_hypothesis: "hypoth\u00e8se interpr\u00e9tative",
+            interpretive_hypothesis: "hypoth\u00e8ses interpr\u00e9tatives",
             open_question:           "question ouverte",
             list:                    "liste",
             self_justification:      "auto-justification",
             recap:                   "r\u00e9capitulatif",
             single_anchor_proposal:  "proposition d'ancrage",
-            action_concrete_proposal:"proposition d'action concrete"
+            action_concrete_proposal:"proposition d'action concr\u00e8te"
           };
           return MAP[value] || value;
         }
@@ -1868,9 +1868,37 @@
 
         function translateRelancePolicy(value) {
           if (value === "forbidden") return "interdite";
-          if (value === "discouraged") return "deconseillee";
+          if (value === "discouraged") return "d\u00e9conseill\u00e9e";
           if (value === "open") return "ouverte";
-          return "selective";
+          if (value === "selective") return "s\u00e9lective";
+          return value;
+        }
+
+        function translateProcessingWindow(value) {
+          if (value === "narrowed") return "restreinte";
+          if (value === "overloaded") return "satur\u00e9e";
+          return value;
+        }
+
+        function translateEngagementLevel(value) {
+          if (value === "passive") return "passif";
+          if (value === "withdrawn") return "en retrait";
+          return value;
+        }
+
+        function translateWriterHint(value) {
+          const MAP = {
+            hold_emotional_thread: "maintenir le fil \u00e9motionnel",
+            auto_compassion_door_open: "invitation \u00e0 l'auto-compassion",
+            signify_pain_without_blocking: "signifier la douleur sans bloquer",
+            amplify_insight: "amplifier l'insight"
+          };
+          return MAP[value] || value;
+        }
+
+        function translateOrientationHint(value) {
+          if (value === "unfinished_business_subtle_opening") return "ouverture subtile sur l'inachev\u00e9";
+          return value;
         }
 
         function translateSomaticFocusPolicy(value) {
@@ -1925,17 +1953,13 @@
           }
 
           if (meta.rewriteSource) {
-            lines.push(`La reponse finale a ete re-ecrite via: ${meta.rewriteSource}.`);
+            lines.push(`La r\u00e9ponse finale a \u00e9t\u00e9 r\u00e9\u00e9crite via: ${meta.rewriteSource}.`);
           }
 
           if (meta.criticTriggered === true) {
             lines.push(meta.criticIssues.length > 0 ?
               `Le critic pass a corrige ${meta.criticIssues.length} point(s).` :
               "Le critic pass a ete lance sans correction necessaire.");
-          }
-
-          if (typeof meta.confidenceSignal === "number" && meta.confidenceSignal < 0.5) {
-            lines.push(`Signal de confiance : faible (le bot a signale une incertitude).`);
           }
 
           return lines;
@@ -1963,18 +1987,18 @@
             sections.push({
               title: "Contrat de posture",
               content: [
-                `État : ${resolvedState}`,
+                `\u00c9tat : ${resolvedState}`,
+                typeof meta.confidenceSignal === "number" ? `Confiance dans le choix de l'\u00e9tat : ${meta.confidenceSignal.toFixed(2)}` : null,
                 (isExplorationMode && Number.isInteger(meta.explorationCalibrationLevel)) ?
                   `Niveau de structuration retenu : ${meta.explorationCalibrationLevel}/4` : null,
                 meta.intent ? `Intention : ${meta.intent}` : null,
                 (meta.forbidden && meta.forbidden.length) ? `Interdit : ${meta.forbidden.map(translateForbidden).join(", ")}` : null,
-                typeof meta.confidenceSignal === "number" ? `Signal confiance : ${meta.confidenceSignal.toFixed(2)}` : null,
                 meta.relancePolicy && meta.relancePolicy !== "selective" ? `Relance : ${translateRelancePolicy(meta.relancePolicy)}` : null,
                 meta.allianceState && meta.allianceState !== "good" ? `Alliance : ${meta.allianceState}` : null,
-                meta.engagementLevel && meta.engagementLevel !== "active" ? `Engagement : ${meta.engagementLevel}` : null,
-                meta.processingWindow && meta.processingWindow !== "open" ? `Fenêtre : ${meta.processingWindow}` : null,
-                (meta.writerIntentHints && meta.writerIntentHints.length) ? `Hints writer : ${meta.writerIntentHints.join(", ")}` : null,
-                meta.writerOrientationHint ? `Orientation writer : ${meta.writerOrientationHint}` : null,
+                meta.engagementLevel && meta.engagementLevel !== "active" ? `Engagement : ${translateEngagementLevel(meta.engagementLevel)}` : null,
+                meta.processingWindow && meta.processingWindow !== "open" ? `Fen\u00eatre de traitement : ${translateProcessingWindow(meta.processingWindow)}` : null,
+                (meta.writerIntentHints && meta.writerIntentHints.length) ? `Indications : ${meta.writerIntentHints.map(translateWriterHint).join(", ")}` : null,
+                meta.writerOrientationHint ? `Orientation : ${translateOrientationHint(meta.writerOrientationHint)}` : null,
                 meta.responseRegister && meta.responseRegister !== "courant" ? `Registre cible : ${translateRegister(meta.responseRegister)}` : null,
                 meta.phraseLengthPolicy ? `Longueur phrase : ${translatePhraseLengthPolicy(meta.phraseLengthPolicy)}` : null,
                 meta.somaticFocusPolicy && meta.somaticFocusPolicy !== "none" ? `Politique somatique : ${translateSomaticFocusPolicy(meta.somaticFocusPolicy)}` : null,
@@ -2014,8 +2038,8 @@
           if (typeof meta.contactScore === "number") {
             signauxLines.push(`Contact score : ${meta.contactScore}`);
           }
-          if (typeof meta.contactEstablished === "boolean") {
-            signauxLines.push(`Contact \u00e9tabli : ${meta.contactEstablished ? "oui" : "non"}`);
+          if (meta.contactEstablished === true) {
+            signauxLines.push("Contact rep\u00e9r\u00e9 sur la fen\u00eatre r\u00e9cente");
           }
           if (meta.contactInsightMoment === true) {
             signauxLines.push("Insight moment (contact)");
@@ -2026,8 +2050,8 @@
           if (meta.contactMeaningProtest === true) {
             signauxLines.push("Effondrement de sens (contact)");
           }
-          if (typeof meta.emotionalDecentering === "boolean") {
-            signauxLines.push(`D\u00e9centrage \u00e9motionnel : ${meta.emotionalDecentering ? "oui" : "non"}`);
+          if (meta.emotionalDecentering === true) {
+            signauxLines.push("D\u00e9centrage \u00e9motionnel actif");
           }
           if (meta.emotionSequenceStage !== undefined && meta.emotionSequenceStage !== null) {
             signauxLines.push(`\u00c9tape s\u00e9quence \u00e9motion : ${meta.emotionSequenceStage}`);
