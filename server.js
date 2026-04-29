@@ -4475,6 +4475,7 @@ app.post("/chat", async (req, res) => {
     const emotionalDecenteringAnalysis = emotionalDecenteringResult || { emotionalDecentering: false };
 
     const contactAnalysis = detectedModeResult.contactAnalysis || { isContact: false };
+    const dischargeAnalysis = detectedModeResult.dischargeAnalysis || { aggressiveDischargeDirectedToBot: false };
     const detectedState = detectedModeResult.detectedState;
     newFlags.contactState = {
       wasContact: typeof detectedState === "string" && detectedState.startsWith("discharge_")
@@ -4558,6 +4559,7 @@ app.post("/chat", async (req, res) => {
       infoContextFlags: detectedInfoContextFlags,
       theoreticalOrientation: detectedTheoreticalOrientation,
       orientationConfidence: detectedOrientationConfidence,
+      dischargeAnalysis,
       previousFormalAddress: newFlags.formalAddress === true,
       dependencyRiskLevel: flags.dependencyRiskLevel,
     });
@@ -4890,7 +4892,8 @@ app.post("/chat", async (req, res) => {
       contactSelfCriticismLevel: typeof contactAnalysis?.selfCriticismLevel === "string" ? contactAnalysis.selfCriticismLevel : "low",
       contactMeaningProtest: contactAnalysis?.meaningProtest === true,
       // C3 limiting_belief gate
-      limitingBeliefValidated: postureDecision.limitingBeliefValidated === true
+      limitingBeliefValidated: postureDecision.limitingBeliefValidated === true,
+      aggressiveDischargeDetected: postureDecision.aggressiveDischargeDetected === true,
     });
 
     if (logsEnabled) {
