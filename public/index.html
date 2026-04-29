@@ -3968,6 +3968,13 @@
         contactSelfCriticismLevel: typeof safe.contactSelfCriticismLevel === "string" ? safe.contactSelfCriticismLevel.trim() : "low",
         contactMeaningProtest: safe.contactMeaningProtest === true,
         limitingBeliefValidated: safe.limitingBeliefValidated === true,
+        responseRegister: typeof safe.responseRegister === "string" ? safe.responseRegister.trim() : "courant",
+        phraseLengthPolicy: typeof safe.phraseLengthPolicy === "string" ? safe.phraseLengthPolicy.trim() : "moyenne",
+        somaticFocusPolicy: typeof safe.somaticFocusPolicy === "string" ? safe.somaticFocusPolicy.trim() : "none",
+        infoRoutingSource: typeof safe.infoRoutingSource === "string" ? safe.infoRoutingSource.trim() : null,
+        stateTransitionFrom: typeof safe.stateTransitionFrom === "string" ? safe.stateTransitionFrom.trim() : null,
+        stateTransitionValid: safe.stateTransitionValid !== false,
+        stateTransitionRequested: typeof safe.stateTransitionRequested === "string" ? safe.stateTransitionRequested.trim() : null,
         affiliationScore: typeof safe.affiliationScore === "number" ? safe.affiliationScore : null,
         affiliationWindow: Array.isArray(safe.affiliationWindow) ? safe.affiliationWindow.map(v => typeof v === "number" ? Math.round(v * 100) / 100 : 0) : [],
         affiliationEstablished: safe.affiliationEstablished === true,
@@ -6389,6 +6396,31 @@
         return value;
       }
 
+      function translateRegisterDebug(value) {
+        if (value === "familier") return "familier";
+        if (value === "soutenu") return "soutenu";
+        return "courant";
+      }
+
+      function translatePhraseLengthPolicyDebug(value) {
+        if (value === "courte") return "phrases courtes";
+        return "phrases moyennes";
+      }
+
+      function translateSomaticFocusPolicyDebug(value) {
+        if (value === "prioritize_somatic_proximity") return "priorit\u00e9 proximit\u00e9 somatique";
+        if (value === "address_frustration_before_somatic_relocalization") return "frustration d'abord, pas de relocalisation impos\u00e9e";
+        return "aucune";
+      }
+
+      function translateInfoRoutingSourceDebug(value) {
+        if (!value) return null;
+        if (value === "deterministic_app_features" || value === "deterministic_human_field") return "d\u00e9terministe";
+        if (value === "llm") return "LLM";
+        if (value === "llm_fallback") return "LLM (fallback)";
+        return value;
+      }
+
       function buildNaturalDebugSummary(meta) {
         const lines = [];
 
@@ -6460,6 +6492,16 @@
               typeof meta.processingWindow === "string" && meta.processingWindow !== "open" ? `Fen\u00eatre de traitement : ${translateProcessingWindowDebug(meta.processingWindow)}` : null,
               (meta.writerIntentHints && meta.writerIntentHints.length) ? `Indications : ${meta.writerIntentHints.map(translateWriterHintDebug).join(", ")}` : null,
               meta.writerOrientationHint ? `Orientation : ${translateOrientationHintDebug(meta.writerOrientationHint)}` : null,
+              meta.responseRegister && meta.responseRegister !== "courant" ? `Registre cible : ${translateRegisterDebug(meta.responseRegister)}` : null,
+              meta.phraseLengthPolicy ? `Longueur phrase : ${translatePhraseLengthPolicyDebug(meta.phraseLengthPolicy)}` : null,
+              meta.somaticFocusPolicy && meta.somaticFocusPolicy !== "none" ? `Politique somatique : ${translateSomaticFocusPolicyDebug(meta.somaticFocusPolicy)}` : null,
+              meta.infoRoutingSource ? `Routage info : ${translateInfoRoutingSourceDebug(meta.infoRoutingSource)}` : null,
+              meta.stateTransitionValid === false && meta.stateTransitionRequested
+                ? `Transition refus\u00e9e : ${meta.stateTransitionFrom || "(inconnu)"} -> ${meta.stateTransitionRequested}`
+                : null,
+              meta.stateTransitionValid === false
+                ? `Transition retenue : ${meta.conversationState}`
+                : null,
             ].filter(Boolean).join("\n")
           });
         }
