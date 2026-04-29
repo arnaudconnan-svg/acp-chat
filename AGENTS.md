@@ -73,6 +73,14 @@ L'agent **n'a pas besoin de demande explicite** pour ces décisions s'il peut le
 
 ## 5. Protocole de communication
 
+### Restriction de mode agent
+
+**L'agent ne peut pas basculer du mode Ask vers le mode Plan ou Agent sans validation explicite de l'utilisateur.** Si une tâche semble nécessiter un autre mode, signaler et attendre confirmation avant tout changement de mode.
+
+### Règle de synchronisation debugMeta
+
+Toute modification de `lib/debugmeta.js` (ajout, suppression ou renommage de champ) doit être accompagnée, dans le même patch, des modifications nécessaires dans **`public/index.html` et `public/admin.html`**. Ces deux fichiers doivent toujours exposer les mêmes données de debug — un champ présent dans l'un doit être présent dans l'autre.
+
 Avant toute modification qui change un comportement visible :
 
 1. **Annoncer en langage produit** : ce qui va changer pour l'utilisateur final
@@ -105,6 +113,21 @@ Après chaque modification significative :
 `npm run verify` est le filet principal. Il couvre : smoke, state machine, flags, debugmeta, critic, chat-routing, crisis-routing, posture, contract-validator, llm-messages, conversation-data, pipeline, debugmeta-harness.
 
 Les tests de comportement fins (tests manuels, live test) restent de la responsabilité conjointe.
+
+### Règle d'analyse post-conversation
+
+**Ne jamais inférer un signal à partir du contenu des messages quand ce signal devrait être lisible dans le debug.**
+
+Si un champ n'est pas visible dans le debug (index.html ou admin.html), c'est un trou à corriger — pas une raison de spéculer. Toute analyse formulée sans base dans le debug doit être explicitement signalée comme inférence non vérifiée, avec la mention du champ manquant.
+
+Les champs actuellement disponibles dans le CONTRAT DE POSTURE (index.html, section "Debug") :
+- état conversation, intention, interdits, signal confiance
+- `allianceState`, `engagementLevel`, `processingWindow`, `relancePolicy`
+- `writerIntentHints`, `writerOrientationHint`
+- sous-champs de l'analyse contact : `insightMoment`, `selfCriticismLevel`, `meaningProtest`
+- `contactEstablished`, `emotionSequenceStage`, `emotionalDecentering`, `formalAddress`
+
+Si un de ces champs est absent du debug visible, ne pas présumer de sa valeur — signaler l'absence.
 
 ---
 

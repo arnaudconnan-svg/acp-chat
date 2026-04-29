@@ -936,7 +936,19 @@
         dependencyRiskLevel: typeof safe.dependencyRiskLevel === "string" ? safe.dependencyRiskLevel.trim() : "low",
         externalSupportMode: typeof safe.externalSupportMode === "string" ? safe.externalSupportMode.trim() : "none",
         closureIntent: safe.closureIntent === true,
-        infoRoutingSource: typeof safe.infoRoutingSource === "string" ? safe.infoRoutingSource.trim() : null
+        infoRoutingSource: typeof safe.infoRoutingSource === "string" ? safe.infoRoutingSource.trim() : null,
+        // V3 contract fields
+        conversationState: typeof safe.conversationState === "string" ? safe.conversationState.trim() : (typeof safe.conversationStateKey === "string" ? safe.conversationStateKey.trim() : null),
+        contactScore: typeof safe.contactScore === "number" ? safe.contactScore : null,
+        contactEstablished: safe.contactEstablished === true,
+        emotionalDecentering: safe.emotionalDecentering === true,
+        emotionSequenceStage: typeof safe.emotionSequenceStage === "string" ? safe.emotionSequenceStage.trim() : null,
+        formalAddress: safe.formalAddress === true,
+        writerIntentHints: Array.isArray(safe.writerIntentHints) ? safe.writerIntentHints.map(v => String(v || "").trim()).filter(Boolean) : [],
+        writerOrientationHint: typeof safe.writerOrientationHint === "string" ? safe.writerOrientationHint.trim() : null,
+        contactInsightMoment: safe.contactInsightMoment === true,
+        contactSelfCriticismLevel: typeof safe.contactSelfCriticismLevel === "string" ? safe.contactSelfCriticismLevel.trim() : "low",
+        contactMeaningProtest: safe.contactMeaningProtest === true
       };
     }
 
@@ -1943,38 +1955,42 @@
           const meta = normalizeDebugMeta(debugMeta);
           const sections = [];
 
+          const resolvedState = meta.conversationState || meta.conversationStateKey || meta.writerMode || null;
           const isExplorationMode =
-            meta.conversationStateKey === "exploration" ||
-            (typeof meta.writerMode === "string" && meta.writerMode.indexOf("exploration") === 0);
+            typeof resolvedState === "string" && resolvedState.startsWith("exploration");
 
-          if (meta.writerMode) {
+          if (resolvedState) {
             sections.push({
               title: "Contrat de posture",
               content: [
-                `Mode : ${translateWriterMode(meta.writerMode)}`,
+                `État : ${resolvedState}`,
+                (isExplorationMode && Number.isInteger(meta.explorationCalibrationLevel)) ?
+                  `Niveau de structuration retenu : ${meta.explorationCalibrationLevel}/4` : null,
                 meta.intent ? `Intention : ${meta.intent}` : null,
                 (meta.forbidden && meta.forbidden.length) ? `Interdit : ${meta.forbidden.map(translateForbidden).join(", ")}` : null,
                 typeof meta.confidenceSignal === "number" ? `Signal confiance : ${meta.confidenceSignal.toFixed(2)}` : null,
-                meta.responseRegister ? `Registre cible : ${translateRegister(meta.responseRegister)}` : null,
+                meta.relancePolicy && meta.relancePolicy !== "selective" ? `Relance : ${translateRelancePolicy(meta.relancePolicy)}` : null,
+                meta.allianceState && meta.allianceState !== "good" ? `Alliance : ${meta.allianceState}` : null,
+                meta.engagementLevel && meta.engagementLevel !== "active" ? `Engagement : ${meta.engagementLevel}` : null,
+                meta.processingWindow && meta.processingWindow !== "open" ? `Fenêtre : ${meta.processingWindow}` : null,
+                (meta.writerIntentHints && meta.writerIntentHints.length) ? `Hints writer : ${meta.writerIntentHints.join(", ")}` : null,
+                meta.writerOrientationHint ? `Orientation writer : ${meta.writerOrientationHint}` : null,
+                meta.responseRegister && meta.responseRegister !== "courant" ? `Registre cible : ${translateRegister(meta.responseRegister)}` : null,
                 meta.phraseLengthPolicy ? `Longueur phrase : ${translatePhraseLengthPolicy(meta.phraseLengthPolicy)}` : null,
-                meta.relancePolicy ? `Politique relance : ${translateRelancePolicy(meta.relancePolicy)}` : null,
-                meta.somaticFocusPolicy ? `Politique somatique : ${translateSomaticFocusPolicy(meta.somaticFocusPolicy)}` : null,
+                meta.somaticFocusPolicy && meta.somaticFocusPolicy !== "none" ? `Politique somatique : ${translateSomaticFocusPolicy(meta.somaticFocusPolicy)}` : null,
                 meta.actionCollapseGuardActive === true ? "Garde anti-rabattement action: active" : null,
                 meta.infoRoutingSource ? `Routage info : ${translateInfoRoutingSource(meta.infoRoutingSource)}` : null,
                 meta.stateTransitionValid === false && meta.stateTransitionRequested
                   ? `Transition refus\u00e9e : ${meta.stateTransitionFrom || "(inconnu)"} -> ${meta.stateTransitionRequested}`
                   : null,
                 meta.stateTransitionValid === false
-                  ? `Transition retenue : ${meta.conversationStateKey || "(inconnu)"}`
+                  ? `Transition retenue : ${resolvedState}`
                   : null,
               ].filter(Boolean).join("\n")
             });
           }
 
-          const shouldShowDirectivity =
-            !!meta.directivityText &&
-            (meta.conversationStateKey === "exploration" ||
-              (typeof meta.writerMode === "string" && meta.writerMode.indexOf("exploration") === 0));
+          const shouldShowDirectivity = !!meta.directivityText && isExplorationMode;
           if (shouldShowDirectivity) {
             sections.push({
               title: "Directivit\u00e9",
@@ -1993,7 +2009,36 @@
           if (meta.criticTriggered === true && meta.criticOriginalReply) {
             sections.push({ title: "R\u00e9ponse avant critic", content: meta.criticOriginalReply });
           }
-          
+
+          const signauxLines = [];
+          if (typeof meta.contactScore === "number") {
+            signauxLines.push(`Contact score : ${meta.contactScore}`);
+          }
+          if (typeof meta.contactEstablished === "boolean") {
+            signauxLines.push(`Contact \u00e9tabli : ${meta.contactEstablished ? "oui" : "non"}`);
+          }
+          if (meta.contactInsightMoment === true) {
+            signauxLines.push("Insight moment (contact)");
+          }
+          if (typeof meta.contactSelfCriticismLevel === "string" && meta.contactSelfCriticismLevel !== "low") {
+            signauxLines.push(`Auto-critique : ${meta.contactSelfCriticismLevel}`);
+          }
+          if (meta.contactMeaningProtest === true) {
+            signauxLines.push("Effondrement de sens (contact)");
+          }
+          if (typeof meta.emotionalDecentering === "boolean") {
+            signauxLines.push(`D\u00e9centrage \u00e9motionnel : ${meta.emotionalDecentering ? "oui" : "non"}`);
+          }
+          if (meta.emotionSequenceStage !== undefined && meta.emotionSequenceStage !== null) {
+            signauxLines.push(`\u00c9tape s\u00e9quence \u00e9motion : ${meta.emotionSequenceStage}`);
+          }
+          if (meta.formalAddress === true) {
+            signauxLines.push("Vouvoiement actif");
+          }
+          if (signauxLines.length > 0) {
+            sections.push({ title: "Signaux", content: signauxLines.join("\n") });
+          }
+
           if (meta.memory) {
             sections.push({
               title: "M\u00e9moire",

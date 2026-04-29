@@ -4883,7 +4883,14 @@ app.post("/chat", async (req, res) => {
       contactEstablished,
       emotionalDecentering: emotionalDecenteringAnalysis?.emotionalDecentering === true,
       emotionSequenceStage: postureDecision.emotionSequenceStage,
-      formalAddress: postureDecision.formalAddress === true
+      formalAddress: postureDecision.formalAddress === true,
+      // Writer hints from posture decision
+      writerIntentHints: postureDecision.writerIntentHints,
+      writerOrientationHint: postureDecision.writerOrientationHint,
+      // Contact analyzer sub-fields
+      contactInsightMoment: contactAnalysis?.insightMoment === true,
+      contactSelfCriticismLevel: typeof contactAnalysis?.selfCriticismLevel === "string" ? contactAnalysis.selfCriticismLevel : "low",
+      contactMeaningProtest: contactAnalysis?.meaningProtest === true
     });
 
     if (logsEnabled) {

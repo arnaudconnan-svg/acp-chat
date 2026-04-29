@@ -3961,7 +3961,12 @@
         dependencyRiskScore: Number.isFinite(safe.dependencyRiskScore) ? Math.max(0, Math.min(100, Math.round(Number(safe.dependencyRiskScore)))) : 0,
         dependencyRiskLevel: typeof safe.dependencyRiskLevel === "string" ? safe.dependencyRiskLevel.trim() : "low",
         externalSupportMode: typeof safe.externalSupportMode === "string" ? safe.externalSupportMode.trim() : "none",
-        closureIntent: safe.closureIntent === true
+        closureIntent: safe.closureIntent === true,
+        writerIntentHints: Array.isArray(safe.writerIntentHints) ? safe.writerIntentHints.map(v => String(v || "").trim()).filter(Boolean) : [],
+        writerOrientationHint: typeof safe.writerOrientationHint === "string" ? safe.writerOrientationHint.trim() : null,
+        contactInsightMoment: safe.contactInsightMoment === true,
+        contactSelfCriticismLevel: typeof safe.contactSelfCriticismLevel === "string" ? safe.contactSelfCriticismLevel.trim() : "low",
+        contactMeaningProtest: safe.contactMeaningProtest === true
       };
     }
 
@@ -6399,6 +6404,12 @@
               meta.intent ? `Intention : ${meta.intent}` : null,
               (meta.forbidden && meta.forbidden.length) ? `Interdit : ${meta.forbidden.join(", ")}` : null,
               typeof meta.confidenceSignal === "number" ? `Signal confiance : ${meta.confidenceSignal.toFixed(2)}` : null,
+              typeof meta.relancePolicy === "string" && meta.relancePolicy ? `Relance : ${meta.relancePolicy}` : null,
+              typeof meta.allianceState === "string" && meta.allianceState !== "good" ? `Alliance : ${meta.allianceState}` : null,
+              typeof meta.engagementLevel === "string" && meta.engagementLevel !== "active" ? `Engagement : ${meta.engagementLevel}` : null,
+              typeof meta.processingWindow === "string" && meta.processingWindow !== "open" ? `Fenêtre : ${meta.processingWindow}` : null,
+              (meta.writerIntentHints && meta.writerIntentHints.length) ? `Hints writer : ${meta.writerIntentHints.join(", ")}` : null,
+              meta.writerOrientationHint ? `Orientation writer : ${meta.writerOrientationHint}` : null,
             ].filter(Boolean).join("\n")
           });
         }
@@ -6436,13 +6447,22 @@
           signauxLines.push(`Contact score : ${meta.contactScore}`);
         }
         if (typeof meta.contactEstablished === "boolean") {
-          signauxLines.push(`Contact \u00e9tabli : ${meta.contactEstablished ? "oui" : "non"}`);
+          signauxLines.push(`Contact établi : ${meta.contactEstablished ? "oui" : "non"}`);
+        }
+        if (meta.contactInsightMoment === true) {
+          signauxLines.push("Insight moment (contact)");
+        }
+        if (typeof meta.contactSelfCriticismLevel === "string" && meta.contactSelfCriticismLevel !== "low") {
+          signauxLines.push(`Auto-critique : ${meta.contactSelfCriticismLevel}`);
+        }
+        if (meta.contactMeaningProtest === true) {
+          signauxLines.push("Effondrement de sens (contact)");
         }
         if (typeof meta.emotionalDecentering === "boolean") {
-          signauxLines.push(`D\u00e9centrage \u00e9motionnel : ${meta.emotionalDecentering ? "oui" : "non"}`);
+          signauxLines.push(`Décentrage émotionnel : ${meta.emotionalDecentering ? "oui" : "non"}`);
         }
         if (meta.emotionSequenceStage !== undefined && meta.emotionSequenceStage !== null) {
-          signauxLines.push(`\u00c9tape s\u00e9quence \u00e9motion : ${meta.emotionSequenceStage}`);
+          signauxLines.push(`Étape séquence émotion : ${meta.emotionSequenceStage}`);
         }
         if (meta.formalAddress === true) {
           signauxLines.push("Vouvoiement actif");
