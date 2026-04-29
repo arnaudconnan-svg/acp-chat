@@ -940,6 +940,7 @@
         // V3 contract fields
         conversationState: typeof safe.conversationState === "string" ? safe.conversationState.trim() : (typeof safe.conversationStateKey === "string" ? safe.conversationStateKey.trim() : null),
         contactScore: typeof safe.contactScore === "number" ? safe.contactScore : null,
+        contactScoreWindow: Array.isArray(safe.contactScoreWindow) ? safe.contactScoreWindow.map(v => typeof v === "number" ? Math.round(v * 100) / 100 : 0) : [],
         contactEstablished: safe.contactEstablished === true,
         emotionalDecentering: safe.emotionalDecentering === true,
         emotionSequenceStage: typeof safe.emotionSequenceStage === "string" ? safe.emotionSequenceStage.trim() : null,
@@ -1952,10 +1953,6 @@
             lines.push("Une intention de cloture de session a ete detectee.");
           }
 
-          if (meta.rewriteSource) {
-            lines.push(`La r\u00e9ponse finale a \u00e9t\u00e9 r\u00e9\u00e9crite via: ${meta.rewriteSource}.`);
-          }
-
           if (meta.criticTriggered === true) {
             lines.push(meta.criticIssues.length > 0 ?
               `Le critic pass a corrige ${meta.criticIssues.length} point(s).` :
@@ -2014,6 +2011,17 @@
             });
           }
 
+          const affiliationLines = [];
+          if (Array.isArray(meta.contactScoreWindow) && meta.contactScoreWindow.length > 0) {
+            affiliationLines.push(`Fen\u00eatre d'affiliation : [${meta.contactScoreWindow.map(v => v.toFixed(2)).join(", ")}]`);
+          }
+          if (typeof meta.contactScore === "number") {
+            affiliationLines.push(`Degr\u00e9 d'affiliation du tour : ${meta.contactScore.toFixed(2)}`);
+          }
+          if (affiliationLines.length > 0) {
+            sections.push({ title: "Affiliation", content: affiliationLines.join("\n") });
+          }
+
           const shouldShowDirectivity = !!meta.directivityText && isExplorationMode;
           if (shouldShowDirectivity) {
             sections.push({
@@ -2030,19 +2038,9 @@
             });
           }
 
-          if (meta.criticTriggered === true && meta.criticOriginalReply) {
-            sections.push({ title: "R\u00e9ponse avant critic", content: meta.criticOriginalReply });
-          }
-
           const signauxLines = [];
-          if (typeof meta.contactScore === "number") {
-            signauxLines.push(`Contact score : ${meta.contactScore}`);
-          }
-          if (meta.contactEstablished === true) {
-            signauxLines.push("Contact rep\u00e9r\u00e9 sur la fen\u00eatre r\u00e9cente");
-          }
           if (meta.contactInsightMoment === true) {
-            signauxLines.push("Insight moment (contact)");
+            signauxLines.push("Moment d'insight (contact)");
           }
           if (typeof meta.contactSelfCriticismLevel === "string" && meta.contactSelfCriticismLevel !== "low") {
             signauxLines.push(`Auto-critique : ${meta.contactSelfCriticismLevel}`);
@@ -2070,6 +2068,10 @@
               memoryRewritten: meta.memoryCompressed === true,
               memoryBeforeRewrite: meta.memoryBeforeCompression || null
             });
+          }
+
+          if (meta.criticTriggered === true && meta.criticOriginalReply) {
+            sections.push({ title: "R\u00e9ponse initiale (avant correction)", content: meta.criticOriginalReply, criticRewrite: true });
           }
           
           return sections.filter(section => String(section.content || "").trim());
@@ -2132,6 +2134,14 @@
               };
             }
 
+            if (title === "Affiliation") {
+              return {
+                titleColor: "#1a6b8a",
+                blockBackground: "#eaf5fa",
+                blockBorder: "#7ac4e0"
+              };
+            }
+
             if (title === "R\u00e9\u00e9criture m\u00e9moire") {
               return {
                 titleColor: "#9c2d6c",
@@ -2176,6 +2186,41 @@
           debugBox.style.gap = "8px";
           
           debugSections.forEach(section => {
+            if (section.criticRewrite === true) {
+              const criticBlock = document.createElement("details");
+              criticBlock.open = true;
+              const criticSummary = document.createElement("summary");
+              criticSummary.textContent = section.title;
+              criticSummary.style.listStyle = "none";
+              criticSummary.style.cursor = "pointer";
+              criticSummary.style.fontSize = "12px";
+              criticSummary.style.fontWeight = "700";
+              criticSummary.style.textTransform = "uppercase";
+              criticSummary.style.letterSpacing = "0.04em";
+              criticSummary.style.color = "#9c3b2c";
+              criticSummary.style.userSelect = "none";
+              criticSummary.style.padding = "4px 0";
+              const criticContent = document.createElement("div");
+              criticContent.style.marginTop = "6px";
+              criticContent.style.padding = "10px";
+              criticContent.style.borderRadius = "10px";
+              criticContent.style.background = "#fff0ee";
+              criticContent.style.border = "1px solid #e07e6a";
+              criticContent.style.fontSize = "13px";
+              criticContent.style.lineHeight = "1.45";
+              criticContent.style.color = "#334155";
+              criticContent.style.whiteSpace = "pre-wrap";
+              criticContent.style.wordBreak = "break-word";
+              criticContent.style.overflowWrap = "break-word";
+              criticContent.style.userSelect = "text";
+              criticContent.style.cursor = "text";
+              criticContent.textContent = section.content;
+              criticBlock.appendChild(criticSummary);
+              criticBlock.appendChild(criticContent);
+              debugBox.appendChild(criticBlock);
+              return;
+            }
+
             const palette = getSectionPalette(section.title);
             const sectionBlock = document.createElement("div");
             

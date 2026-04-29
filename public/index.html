@@ -3966,7 +3966,13 @@
         writerOrientationHint: typeof safe.writerOrientationHint === "string" ? safe.writerOrientationHint.trim() : null,
         contactInsightMoment: safe.contactInsightMoment === true,
         contactSelfCriticismLevel: typeof safe.contactSelfCriticismLevel === "string" ? safe.contactSelfCriticismLevel.trim() : "low",
-        contactMeaningProtest: safe.contactMeaningProtest === true
+        contactMeaningProtest: safe.contactMeaningProtest === true,
+        contactScore: typeof safe.contactScore === "number" ? safe.contactScore : null,
+        contactScoreWindow: Array.isArray(safe.contactScoreWindow) ? safe.contactScoreWindow.map(v => typeof v === "number" ? Math.round(v * 100) / 100 : 0) : [],
+        contactEstablished: safe.contactEstablished === true,
+        emotionalDecentering: safe.emotionalDecentering === true,
+        emotionSequenceStage: typeof safe.emotionSequenceStage === "string" ? safe.emotionSequenceStage.trim() : null,
+        formalAddress: safe.formalAddress === true
       };
     }
 
@@ -6456,6 +6462,17 @@
           });
         }
 
+        const affiliationLines = [];
+        if (Array.isArray(meta.contactScoreWindow) && meta.contactScoreWindow.length > 0) {
+          affiliationLines.push(`Fenêtre d'affiliation : [${meta.contactScoreWindow.map(v => v.toFixed(2)).join(", ")}]`);
+        }
+        if (typeof meta.contactScore === "number") {
+          affiliationLines.push(`Degré d'affiliation du tour : ${meta.contactScore.toFixed(2)}`);
+        }
+        if (affiliationLines.length > 0) {
+          sections.push({ title: "Affiliation", content: affiliationLines.join("\n") });
+        }
+
         const naturalSummaryLines = buildNaturalDebugSummary(meta);
         if (naturalSummaryLines.length > 0) {
           sections.push({ title: "Lecture interne", content: naturalSummaryLines.join("\n") });
@@ -6476,23 +6493,9 @@
           sections.push({ title: "Directivit\u00e9", content: meta.directivityLabel });
         }
 
-        if (meta.rewriteSource) {
-          sections.push({ title: "R\u00e9ponse r\u00e9\u00e9crite", content: meta.rewriteSource });
-        }
-
-        if (meta.criticTriggered === true && meta.criticOriginalReply) {
-          sections.push({ title: "R\u00e9ponse avant critic", content: meta.criticOriginalReply });
-        }
-
         const signauxLines = [];
-        if (typeof meta.contactScore === "number") {
-          signauxLines.push(`Contact score : ${meta.contactScore}`);
-        }
-        if (meta.contactEstablished === true) {
-          signauxLines.push("Contact repéré sur la fenêtre récente");
-        }
         if (meta.contactInsightMoment === true) {
-          signauxLines.push("Insight moment (contact)");
+          signauxLines.push("Moment d'insight (contact)");
         }
         if (typeof meta.contactSelfCriticismLevel === "string" && meta.contactSelfCriticismLevel !== "low") {
           signauxLines.push(`Auto-critique : ${meta.contactSelfCriticismLevel}`);
@@ -6513,6 +6516,10 @@
           sections.push({ title: "Signaux", content: signauxLines.join("\n") });
         }
 
+        if (meta.criticTriggered === true && meta.criticOriginalReply) {
+          sections.push({ title: "R\u00e9ponse initiale (avant correction)", content: meta.criticOriginalReply, criticRewrite: true });
+        }
+
         return sections.filter(section => String(section.content || "").trim());
       }
 
@@ -6528,6 +6535,9 @@
         }
         if (title === "Contrat de posture" || title === "Contrat de posture (V3)") {
           return { titleColor: "#6b3a7d", blockBackground: "#f8f0ff", blockBorder: "#c9a3e0" };
+        }
+        if (title === "Affiliation") {
+          return { titleColor: "#1a6b8a", blockBackground: "#eaf5fa", blockBorder: "#7ac4e0" };
         }
         return { titleColor: "#245e66", blockBackground: "#ffffff", blockBorder: "#d6e2e1" };
       }
@@ -6563,6 +6573,40 @@
         debugBox.style.gap = "8px";
 
         debugSections.forEach(section => {
+          if (section.criticRewrite === true) {
+            const criticBlock = document.createElement("details");
+            const criticSummary = document.createElement("summary");
+            criticSummary.textContent = section.title;
+            criticSummary.style.listStyle = "none";
+            criticSummary.style.cursor = "pointer";
+            criticSummary.style.fontSize = "12px";
+            criticSummary.style.fontWeight = "700";
+            criticSummary.style.textTransform = "uppercase";
+            criticSummary.style.letterSpacing = "0.04em";
+            criticSummary.style.color = "#9c3b2c";
+            criticSummary.style.userSelect = "none";
+            criticSummary.style.padding = "4px 0";
+            const criticContent = document.createElement("div");
+            criticContent.style.marginTop = "6px";
+            criticContent.style.padding = "10px";
+            criticContent.style.borderRadius = "10px";
+            criticContent.style.background = "#fff0ee";
+            criticContent.style.border = "1px solid #e07e6a";
+            criticContent.style.fontSize = "13px";
+            criticContent.style.lineHeight = "1.45";
+            criticContent.style.color = "#334155";
+            criticContent.style.whiteSpace = "pre-wrap";
+            criticContent.style.wordBreak = "break-word";
+            criticContent.style.overflowWrap = "break-word";
+            criticContent.style.userSelect = "text";
+            criticContent.style.cursor = "text";
+            criticContent.textContent = section.content;
+            criticBlock.appendChild(criticSummary);
+            criticBlock.appendChild(criticContent);
+            debugBox.appendChild(criticBlock);
+            return;
+          }
+
           const palette = getSectionPalette(section.title);
           const sectionBlock = document.createElement("div");
 

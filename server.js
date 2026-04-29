@@ -4880,6 +4880,7 @@ app.post("/chat", async (req, res) => {
       promptRegistry: activePromptRegistry,
       // Lot 8 fields
       contactScore: turnScore,
+      contactScoreWindow: newContactScoreWindow,
       contactEstablished,
       emotionalDecentering: emotionalDecenteringAnalysis?.emotionalDecentering === true,
       emotionSequenceStage: postureDecision.emotionSequenceStage,

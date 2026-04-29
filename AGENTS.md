@@ -124,6 +124,8 @@ Ces règles s'appliquent à toute section debug visible dans `index.html` et `ad
 
 **Non-redondance** : la même information ne peut pas apparaître dans deux sections du debug en même temps. Si une donnée a déjà sa propre section (ex : "Réponse réécrite"), elle n'est pas répétée dans une autre section (ex : "Lecture interne"). En cas de doute, la section la plus spécifique l'emporte.
 
+**Différence admissible entre admin et index** : la seule différence acceptable entre les deux interfaces est l'état déplié/replié des encarts et chips — `admin.html` affiche tous les encarts dépliés par défaut, `index.html` les rend dépliables (replié par défaut). Le contenu, les libellés et les champs affichés doivent être strictement identiques.
+
 ---
 
 ### Règle d'analyse post-conversation
@@ -132,12 +134,11 @@ Ces règles s'appliquent à toute section debug visible dans `index.html` et `ad
 
 Si un champ n'est pas visible dans le debug (index.html ou admin.html), c'est un trou à corriger — pas une raison de spéculer. Toute analyse formulée sans base dans le debug doit être explicitement signalée comme inférence non vérifiée, avec la mention du champ manquant.
 
-Les champs actuellement disponibles dans le CONTRAT DE POSTURE (index.html, section "Debug") :
-- état conversation, intention, interdits, signal confiance
-- `allianceState`, `engagementLevel`, `processingWindow`, `relancePolicy`
-- `writerIntentHints`, `writerOrientationHint`
-- sous-champs de l'analyse contact : `insightMoment`, `selfCriticismLevel`, `meaningProtest`
-- `contactEstablished`, `emotionSequenceStage`, `emotionalDecentering`, `formalAddress`
+Les champs actuellement disponibles dans le debug (index.html, admin.html) :
+- **Contrat de posture** : état conversation, intention, interdits, signal confiance, relance, alliance, engagement, fenêtre de traitement, indications writer, orientation writer
+- **Affiliation** : `contactScoreWindow` (fenêtre des 4 derniers tours), `contactScore` (degré d'affiliation du tour)
+- **Signaux** : `contactEstablished`, `emotionSequenceStage`, `emotionalDecentering`, `formalAddress`, sous-champs contact (`insightMoment`, `selfCriticismLevel`, `meaningProtest`)
+- **Réponse initiale (avant correction)** : affiché uniquement si le Critic a réécrit la réponse
 
 Si un de ces champs est absent du debug visible, ne pas présumer de sa valeur — signaler l'absence.
 
