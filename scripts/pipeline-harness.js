@@ -271,6 +271,59 @@ const cases = [
       assert(typeof meta.stateTransitionValid === "boolean",
         `expected stateTransitionValid to be boolean, got '${typeof meta.stateTransitionValid}'`);
     }
+  },
+
+  // ── Persona Léa regressions ──────────────────────────────────────────────
+
+  {
+    name: "persona lea — surcharge situationnelle ne déclenche pas limiting_belief",
+    payload: buildChatPayload({
+      conversationId: cid("c_pipeline_lea_overload"),
+      message: "Je me sens complètement dépassée, je n'en peux plus.",
+      flags: { conversationStateKey: "exploration" }
+    }),
+    assert: (result) => {
+      assertChatOk(result, "persona lea — surcharge situationnelle ne déclenche pas limiting_belief");
+      const meta = result.body.debugMeta;
+      assert(
+        meta.limitingBeliefValidated !== true,
+        `expected limitingBeliefValidated !== true for overload message, got ${meta.limitingBeliefValidated}`
+      );
+    }
+  },
+
+  {
+    name: "persona lea — 'je tourne en rond' est un état user, pas une friction bot",
+    payload: buildChatPayload({
+      conversationId: cid("c_pipeline_lea_tourneen_rond"),
+      message: "Je tourne en rond là, j'arrive pas à avancer.",
+      flags: { conversationStateKey: "exploration" }
+    }),
+    assert: (result) => {
+      assertChatOk(result, "persona lea — 'je tourne en rond' est un état user, pas une friction bot");
+      const meta = result.body.debugMeta;
+      assert(
+        meta.interpretationRejection !== true,
+        `expected interpretationRejection !== true for first-person 'je tourne en rond', got ${meta.interpretationRejection}`
+      );
+    }
+  },
+
+  {
+    name: "persona lea — plafond explicite valide limiting_belief",
+    payload: buildChatPayload({
+      conversationId: cid("c_pipeline_lea_plafond"),
+      message: "De toute façon je suis comme ça, ça changera jamais. J'ai toujours été comme ça et je ne pourrai jamais faire autrement.",
+      flags: { conversationStateKey: "exploration" }
+    }),
+    assert: (result) => {
+      assertChatOk(result, "persona lea — plafond explicite valide limiting_belief");
+      const meta = result.body.debugMeta;
+      assert(
+        meta.limitingBeliefValidated === true,
+        `expected limitingBeliefValidated === true for explicit plafond message, got ${meta.limitingBeliefValidated}`
+      );
+    }
   }
 ];
 

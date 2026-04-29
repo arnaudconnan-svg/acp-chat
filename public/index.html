@@ -3967,6 +3967,7 @@
         contactInsightMoment: safe.contactInsightMoment === true,
         contactSelfCriticismLevel: typeof safe.contactSelfCriticismLevel === "string" ? safe.contactSelfCriticismLevel.trim() : "low",
         contactMeaningProtest: safe.contactMeaningProtest === true,
+        limitingBeliefValidated: safe.limitingBeliefValidated === true,
         affiliationScore: typeof safe.affiliationScore === "number" ? safe.affiliationScore : null,
         affiliationWindow: Array.isArray(safe.affiliationWindow) ? safe.affiliationWindow.map(v => typeof v === "number" ? Math.round(v * 100) / 100 : 0) : [],
         affiliationEstablished: safe.affiliationEstablished === true,
@@ -6374,6 +6375,7 @@
 
       function translateWriterHintDebug(value) {
         const MAP = {
+          affiliation_first_join: "prioriser le sentiment d'etre compris et rejoint",
           hold_emotional_thread: "maintenir le fil \u00e9motionnel",
           auto_compassion_door_open: "invitation \u00e0 l'auto-compassion",
           signify_pain_without_blocking: "signifier la douleur sans bloquer",
@@ -6511,6 +6513,9 @@
         }
         if (meta.formalAddress === true) {
           signauxLines.push("Vouvoiement actif");
+        }
+        if (meta.limitingBeliefValidated === true) {
+          signauxLines.push("Croyance-frein validée (C3)");
         }
         if (signauxLines.length > 0) {
           sections.push({ title: "Signaux", content: signauxLines.join("\n") });

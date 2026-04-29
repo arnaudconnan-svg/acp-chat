@@ -60,7 +60,6 @@ function rejection(isInterpretationRejection = false, needsSoberReadjustment = f
 }
 
 // Minimal valid input for exploration mode
-// affiliationEstablished: true avoids E5 guard (no-contact → contact routing)
 function explorationInput(overrides = {}) {
   return {
     detectedState: "exploration",
@@ -92,7 +91,7 @@ check("output: all required fields present", () => {
     assert(typeof out[f] === "number", `field '${f}' must be a number, got ${typeof out[f]}`);
   }
   const requiredBooleans = ["relationalAdjustmentActive", "interpretationRejectionModeActive",
-    "needsSoberReadjustment", "underlyingPhenomenonRejected", "humanFieldGuardActive", "stateTransitionValid"];
+    "needsSoberReadjustment", "underlyingPhenomenonRejected", "humanFieldGuardActive", "stateTransitionValid", "affiliationBuildingActive"];
   for (const f of requiredBooleans) {
     assert(typeof out[f] === "boolean", `field '${f}' must be boolean, got ${typeof out[f]}`);
   }
@@ -133,6 +132,24 @@ check("state: exploration mode â†’ exploration_open", () => {
   const out = buildPostureDecision(explorationInput());
   assert(out.conversationState === "exploration_open",
     `expected 'exploration_open', got '${out.conversationState}'`);
+});
+
+check("state: affiliation non etablie ne force plus contact", () => {
+  const out = buildPostureDecision(explorationInput({
+    affiliationEstablished: false
+  }));
+  assert(out.conversationState === "exploration_open",
+    `expected 'exploration_open', got '${out.conversationState}'`);
+});
+
+check("contract: affiliation non etablie active affiliationBuildingActive + hint writer", () => {
+  const out = buildPostureDecision(explorationInput({
+    affiliationEstablished: false
+  }));
+  assert(out.affiliationBuildingActive === true,
+    `expected affiliationBuildingActive=true, got ${out.affiliationBuildingActive}`);
+  assert(Array.isArray(out.writerIntentHints) && out.writerIntentHints.includes("affiliation_first_join"),
+    `expected writerIntentHints to include 'affiliation_first_join', got [${(out.writerIntentHints || []).join(", ")}]`);
 });
 
 check("state: contact detectedState â†’ contact", () => {
@@ -735,6 +752,39 @@ check("phenomenonAnchorInstruction: from_observable when rejectsUnderlyingPhenom
   }));
   assert(out.phenomenonAnchorInstruction === "from_observable",
     "expected from_observable, got " + out.phenomenonAnchorInstruction);
+});
+
+// limitingBeliefValidated gate
+check("limitingBeliefValidated: false when confidence < 0.7", () => {
+  const out = buildPostureDecision(explorationInput({
+    theoreticalOrientation: "limiting_belief", orientationConfidence: 0.65
+  }));
+  assert(out.limitingBeliefValidated === false,
+    "expected limitingBeliefValidated=false at confidence 0.65, got " + out.limitingBeliefValidated);
+});
+
+check("limitingBeliefValidated: false when confidence < 0.5 (theoreticalOrientationSignal is 'none')", () => {
+  const out = buildPostureDecision(explorationInput({
+    theoreticalOrientation: "limiting_belief", orientationConfidence: 0.4
+  }));
+  assert(out.limitingBeliefValidated === false,
+    "expected limitingBeliefValidated=false at confidence 0.4, got " + out.limitingBeliefValidated);
+});
+
+check("limitingBeliefValidated: true when limiting_belief + confidence >= 0.7", () => {
+  const out = buildPostureDecision(explorationInput({
+    theoreticalOrientation: "limiting_belief", orientationConfidence: 0.85
+  }));
+  assert(out.limitingBeliefValidated === true,
+    "expected limitingBeliefValidated=true at confidence 0.85, got " + out.limitingBeliefValidated);
+});
+
+check("limitingBeliefValidated: false for other orientation types even at high confidence", () => {
+  const out = buildPostureDecision(explorationInput({
+    theoreticalOrientation: "disconnection", orientationConfidence: 0.9
+  }));
+  assert(out.limitingBeliefValidated === false,
+    "expected limitingBeliefValidated=false for 'disconnection', got " + out.limitingBeliefValidated);
 });
 
 const total = passed + failed;

@@ -4794,7 +4794,8 @@ app.post("/chat", async (req, res) => {
       activePromptRegistry,
       postureDecision.memoryPrioritySignal || "normal",
       postureDecision.theoreticalOrientationSignal || "none",
-      intersessionMemoryForThisTurn
+      intersessionMemoryForThisTurn,
+      postureDecision.limitingBeliefValidated === true
     );
     throwIfCanceled();
 
@@ -4891,7 +4892,9 @@ app.post("/chat", async (req, res) => {
       // Contact analyzer sub-fields
       contactInsightMoment: contactAnalysis?.insightMoment === true,
       contactSelfCriticismLevel: typeof contactAnalysis?.selfCriticismLevel === "string" ? contactAnalysis.selfCriticismLevel : "low",
-      contactMeaningProtest: contactAnalysis?.meaningProtest === true
+      contactMeaningProtest: contactAnalysis?.meaningProtest === true,
+      // C3 limiting_belief gate
+      limitingBeliefValidated: postureDecision.limitingBeliefValidated === true
     });
 
     if (logsEnabled) {
