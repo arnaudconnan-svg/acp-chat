@@ -77,6 +77,23 @@ L'agent **n'a pas besoin de demande explicite** pour ces décisions s'il peut le
 
 **L'agent ne peut pas basculer du mode Ask vers le mode Plan ou Agent sans validation explicite de l'utilisateur.** Si une tâche semble nécessiter un autre mode, signaler et attendre confirmation avant tout changement de mode.
 
+### Règle d'observabilité — checklist à chaque implémentation
+
+**Toute nouvelle implémentation doit répondre à cette question avant d'être considérée complète :**
+
+> Cette implémentation produit-elle un signal, un état, ou une décision qui devrait être visible dans le debug ?
+
+Si oui, les éléments suivants doivent être ajoutés dans le même patch :
+
+- Le champ dans `lib/debugmeta.js` (ou propagé via le contrat existant)
+- L'affichage en français dans `public/index.html`
+- L'affichage en français dans `public/admin.html`
+- La traduction dans toute map de tokens (ex : `translateWriterHintDebug`, `translateWriterHint`) si le signal est un token nommé
+
+Cette règle s'applique en particulier à : nouveaux signaux C2 (analyseurs), nouveaux champs de contrat C3 (pipeline), nouveaux tokens `writerIntentHints` (writer), nouveaux flags de session, nouveaux états de mémoire.
+
+Un signal implémenté mais non visible dans le debug est une dette observable — pas une optimisation future acceptable.
+
 ### Règle de synchronisation debugMeta
 
 Toute modification de `lib/debugmeta.js` (ajout, suppression ou renommage de champ) doit être accompagnée, dans le même patch, des modifications nécessaires dans **`public/index.html` et `public/admin.html`**. Ces deux fichiers doivent toujours exposer les mêmes données de debug — un champ présent dans l'un doit être présent dans l'autre.
