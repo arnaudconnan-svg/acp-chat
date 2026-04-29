@@ -4487,12 +4487,8 @@ app.post("/chat", async (req, res) => {
       ? (Array.isArray(detectedModeResult.infoContextFlags) ? detectedModeResult.infoContextFlags : [])
       : [];
 
-    const detectedTheoreticalOrientation = detectedState === "exploration"
-      ? (theoreticalOrientationAnalysis?.theoreticalOrientation || "none")
-      : "none";
-    const detectedOrientationConfidence = detectedState === "exploration"
-      ? (theoreticalOrientationAnalysis?.orientationConfidence ?? 0.0)
-      : 0.0;
+    const detectedTheoreticalOrientation = theoreticalOrientationAnalysis?.theoreticalOrientation || "none";
+    const detectedOrientationConfidence = theoreticalOrientationAnalysis?.orientationConfidence ?? 0.0;
 
     // Source de routage info pour observabilité admin
     let infoRoutingSource = null;
