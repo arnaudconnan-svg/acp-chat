@@ -83,7 +83,7 @@ function explorationInput(overrides = {}) {
 
 check("output: all required fields present", () => {
   const out = buildPostureDecision(explorationInput());
-  const requiredStrings = ["detectedState", "finalExplorationSubmode", "conversationState", "intent"];
+  const requiredStrings = ["requestedBaseState", "finalExplorationSubmode", "conversationState", "intent"];
   for (const f of requiredStrings) {
     assert(typeof out[f] === "string", `field '${f}' must be a string, got ${typeof out[f]}`);
   }
@@ -676,12 +676,12 @@ check("theoreticalConstraints: always includes no_implicit_agency", () => {
 
 // â”€â”€â”€ detectedState passthrough â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-check("detectedState: matches input detectedState", () => {
+check("requestedBaseState: matches input detectedState", () => {
   const outInfo = buildPostureDecision(explorationInput({ detectedState: "info_pure" }));
-  assert(outInfo.detectedState === "info_pure", `expected 'info_pure', got '${outInfo.detectedState}'`);
+  assert(outInfo.requestedBaseState === "info_pure", `expected 'info_pure', got '${outInfo.requestedBaseState}'`);
 
   const outContact = buildPostureDecision(explorationInput({ detectedState: "contact", contactAnalysis: contact() }));
-  assert(outContact.detectedState === "contact", `expected 'contact', got '${outContact.detectedState}'`);
+  assert(outContact.requestedBaseState === "contact", `expected 'contact', got '${outContact.requestedBaseState}'`);
 });
 // N1 routing: buildPostureDecision does NOT set conversationState to n1_crisis.
 // N1 uses effectiveConversationState internally for forbidden/intent routing,

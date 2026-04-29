@@ -4746,7 +4746,7 @@ app.post("/chat", async (req, res) => {
       });
     }
     
-    const debug = buildDebug(postureDecision.detectedState || detectedState, {
+    const debug = buildDebug(postureDecision.requestedBaseState || detectedState, {
       suicideLevel: suicide.suicideLevel,
       calledMemory: recallRouting.calledMemory,
       interpretationRejection: safeInterpretationRejection.isInterpretationRejection,
@@ -4767,7 +4767,7 @@ app.post("/chat", async (req, res) => {
           suicide,
           recallRouting,
           contactAnalysis,
-          detectedState: postureDecision.detectedState || detectedState,
+          detectedState: postureDecision.requestedBaseState || detectedState,
           relationalAdjustmentAnalysis,
           interpretationRejection: safeInterpretationRejection,
           explorationCalibrationLevel: newFlags.explorationCalibrationLevel,
