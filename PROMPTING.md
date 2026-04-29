@@ -105,6 +105,9 @@ Pour chaque etat de CONVERSATION_STATES, verifier qu'il existe au moins un analy
 Verifications supplementaires dans l'audit C3 :
 Verifier que les champs du return de buildPostureDecision sont nommes comme des decisions (ce que le writer doit faire), pas comme des relais de signaux C2 bruts. Tout champ prefixe is* ou portant le nom d'un signal C2 est un ecart potentiel a justifier ou corriger.
 
+Verifications supplementaires debug front :
+Appliquer les regles de presentation du debug definies dans AGENTS.md §7 ("Regles de presentation du debug front"). Pour chaque champ rendu visible dans le debug de index.html et admin.html, verifier langue, masquage des booleens false, non-redondance, parite admin/index et coherence des noms avec debugmeta.js.
+
 Sortie obligatoire (format fixe) :
 - statut par couche : OK / PARTIEL / NON
 - ecarts critiques (ordonnes par severite)

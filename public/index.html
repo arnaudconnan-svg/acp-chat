@@ -3967,9 +3967,9 @@
         contactInsightMoment: safe.contactInsightMoment === true,
         contactSelfCriticismLevel: typeof safe.contactSelfCriticismLevel === "string" ? safe.contactSelfCriticismLevel.trim() : "low",
         contactMeaningProtest: safe.contactMeaningProtest === true,
-        contactScore: typeof safe.contactScore === "number" ? safe.contactScore : null,
-        contactScoreWindow: Array.isArray(safe.contactScoreWindow) ? safe.contactScoreWindow.map(v => typeof v === "number" ? Math.round(v * 100) / 100 : 0) : [],
-        contactEstablished: safe.contactEstablished === true,
+        affiliationScore: typeof safe.affiliationScore === "number" ? safe.affiliationScore : null,
+        affiliationWindow: Array.isArray(safe.affiliationWindow) ? safe.affiliationWindow.map(v => typeof v === "number" ? Math.round(v * 100) / 100 : 0) : [],
+        affiliationEstablished: safe.affiliationEstablished === true,
         emotionalDecentering: safe.emotionalDecentering === true,
         emotionSequenceStage: typeof safe.emotionSequenceStage === "string" ? safe.emotionSequenceStage.trim() : null,
         formalAddress: safe.formalAddress === true
@@ -6463,11 +6463,11 @@
         }
 
         const affiliationLines = [];
-        if (Array.isArray(meta.contactScoreWindow) && meta.contactScoreWindow.length > 0) {
-          affiliationLines.push(`Fenêtre d'affiliation : [${meta.contactScoreWindow.map(v => v.toFixed(2)).join(", ")}]`);
+        if (Array.isArray(meta.affiliationWindow) && meta.affiliationWindow.length > 0) {
+          affiliationLines.push(`Fenêtre d'affiliation : [${meta.affiliationWindow.map(v => v.toFixed(2)).join(", ")}]`);
         }
-        if (typeof meta.contactScore === "number") {
-          affiliationLines.push(`Degré d'affiliation du tour : ${meta.contactScore.toFixed(2)}`);
+        if (typeof meta.affiliationScore === "number") {
+          affiliationLines.push(`Degré d'affiliation du tour : ${meta.affiliationScore.toFixed(2)}`);
         }
         if (affiliationLines.length > 0) {
           sections.push({ title: "Affiliation", content: affiliationLines.join("\n") });

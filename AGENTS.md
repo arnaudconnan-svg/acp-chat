@@ -136,8 +136,8 @@ Si un champ n'est pas visible dans le debug (index.html ou admin.html), c'est un
 
 Les champs actuellement disponibles dans le debug (index.html, admin.html) :
 - **Contrat de posture** : état conversation, intention, interdits, signal confiance, relance, alliance, engagement, fenêtre de traitement, indications writer, orientation writer
-- **Affiliation** : `contactScoreWindow` (fenêtre des 4 derniers tours), `contactScore` (degré d'affiliation du tour)
-- **Signaux** : `contactEstablished`, `emotionSequenceStage`, `emotionalDecentering`, `formalAddress`, sous-champs contact (`insightMoment`, `selfCriticismLevel`, `meaningProtest`)
+- **Affiliation** : `affiliationWindow` (fenêtre des 4 derniers tours), `affiliationScore` (degré d'affiliation du tour)
+- **Signaux** : `affiliationEstablished`, `emotionSequenceStage`, `emotionalDecentering`, `formalAddress`, sous-champs contact (`insightMoment`, `selfCriticismLevel`, `meaningProtest`)
 - **Réponse initiale (avant correction)** : affiché uniquement si le Critic a réécrit la réponse
 
 Si un de ces champs est absent du debug visible, ne pas présumer de sa valeur — signaler l'absence.

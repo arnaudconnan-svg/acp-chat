@@ -60,11 +60,11 @@ function rejection(isInterpretationRejection = false, needsSoberReadjustment = f
 }
 
 // Minimal valid input for exploration mode
-// contactEstablished: true avoids E5 guard (no-contact → contact routing)
+// affiliationEstablished: true avoids E5 guard (no-contact → contact routing)
 function explorationInput(overrides = {}) {
   return {
     detectedState: "exploration",
-    contactEstablished: true,
+    affiliationEstablished: true,
     relationalAdjustmentAnalysis: relational(),
     calibrationAnalysis: calibration(0),
     technicalContextDetected: false,
@@ -358,7 +358,7 @@ check("conversationState: prev=contact + exploration â†’ exploration_open",
 check("conversationState: prev=discharge_regulated + exploration â†’ contact (post-discharge cooldown)", () => {
   const out = buildPostureDecision(explorationInput({
     previousConversationState: "discharge_regulated",
-    contactEstablished: true
+    affiliationEstablished: true
   }));
   assert(out.conversationState === "contact",
     `expected 'contact', got '${out.conversationState}'`);
@@ -701,7 +701,7 @@ check("N0: normal conversationState (no override)", () => {
 });
 
 check("N1 in contact mode: forbidden includes n1_crisis restrictions", () => {
-  const out = buildPostureDecision(explorationInput({ detectedState: "contact", contactEstablished: true, suicideLevel: "N1" }));
+  const out = buildPostureDecision(explorationInput({ detectedState: "contact", affiliationEstablished: true, suicideLevel: "N1" }));
   assert(out.forbidden.includes("relance"), "expected relance in forbidden for N1+contact, got [" + out.forbidden.join(", ") + "]");
 });
 

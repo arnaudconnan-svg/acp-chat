@@ -22,8 +22,14 @@ const {
   normalizeProcessingWindow,
   normalizeSessionFlags,
   normalizeStagnationTurns,
+  normalizeAffiliationWindow,
   registerExplorationRelance
 } = require("../lib/flags");
+
+const {
+  computeAffiliationTurnScore,
+  computeAffiliationEstablished
+} = require("../lib/pipeline");
 
 let passed = 0;
 let failed = 0;
@@ -345,6 +351,56 @@ check("detectClosureIntent: empty string → false", () => {
 });
 check("detectClosureIntent: null → false (safe)", () => {
   assert(detectClosureIntent(null) === false, "expected false for null");
+});
+
+// ─── normalizeAffiliationWindow ───────────────────────────────────────────────
+
+check("affiliationWindow: non-array → [0,0,0,0]", () => {
+  assert(deepEqual(normalizeAffiliationWindow(null), [0, 0, 0, 0]), "expected [0,0,0,0] for null");
+});
+check("affiliationWindow: filters non-numbers, pads to 4", () => {
+  const result = normalizeAffiliationWindow(["a", 0.5, null]);
+  assert(result.length === 4, "expected length 4");
+  assert(typeof result[3] === "number", "expected numbers only");
+});
+check("affiliationWindow: slices to last 4", () => {
+  const w = [0.1, 0.2, 0.3, 0.4, 0.5];
+  const result = normalizeAffiliationWindow(w);
+  assert(result.length === 4, "expected max 4 entries");
+  assert(result[3] === 0.5, "expected last entry to be 0.5");
+});
+
+// ─── computeAffiliationTurnScore ──────────────────────────────────────────────
+
+check("affiliationTurnScore: empty string → 0", () => {
+  assert(computeAffiliationTurnScore("") === 0, "expected 0 for empty string");
+});
+check("affiliationTurnScore: 'exactement' → >= 0.5", () => {
+  assert(computeAffiliationTurnScore("exactement") >= 0.5, "expected validation match");
+});
+check("affiliationTurnScore: long message → > 0", () => {
+  const msg = "a".repeat(300);
+  assert(computeAffiliationTurnScore(msg) > 0, "expected length score > 0");
+});
+
+// ─── computeAffiliationEstablished ───────────────────────────────────────────
+
+check("affiliationEstablished: [] → false", () => {
+  assert(computeAffiliationEstablished([]) === false, "expected false for empty window");
+});
+check("affiliationEstablished: [0.3, 0.3, 0.3, 0.3] → false (max < 0.5)", () => {
+  assert(computeAffiliationEstablished([0.3, 0.3, 0.3, 0.3]) === false, "expected false");
+});
+check("affiliationEstablished: [0, 0, 0, 0.5] → true (max >= 0.5)", () => {
+  assert(computeAffiliationEstablished([0, 0, 0, 0.5]) === true, "expected true");
+});
+
+// ─── backward-compat: contactScoreWindow migrated to affiliationWindow ────────
+
+check("sessionFlags: legacy contactScoreWindow migrated to affiliationWindow", () => {
+  const result = normalizeSessionFlags({ contactScoreWindow: [0.5, 0.5, 0.5, 0.5] });
+  assert(Array.isArray(result.affiliationWindow), "expected affiliationWindow to be array");
+  assert(result.affiliationWindow.length > 0, "expected non-empty affiliationWindow from legacy key");
 });
 
 // ─── Summary ──────────────────────────────────────────────────────────────────

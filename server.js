@@ -82,7 +82,7 @@ const {
   computeExplorationDirectivityLevel,
   getExplorationStructureInstruction,
   normalizeAllianceState,
-  normalizeContactScoreWindow,
+  normalizeAffiliationWindow,
   normalizeContactState,
   normalizeConversationState,
   normalizeConsecutiveNonExplorationTurns,
@@ -102,8 +102,8 @@ const {
   buildAdvancedDebugTrace,
   buildDebug,
   buildPostureDecision,
-  computeContactTurnScore,
-  computeContactEstablished,
+  computeAffiliationTurnScore,
+  computeAffiliationEstablished,
   normalizeGuardText,
   shouldForceExplorationForSituatedImpasse
 } = require("./lib/pipeline");
@@ -4516,9 +4516,9 @@ app.post("/chat", async (req, res) => {
     modeForCatch = detectedState;
 
     // Patch C — contact score window
-    const turnScore = computeContactTurnScore(message);
-    const newContactScoreWindow = normalizeContactScoreWindow([...(newFlags.contactScoreWindow || [0, 0, 0, 0]), turnScore]);
-    const contactEstablished = computeContactEstablished(newContactScoreWindow);
+    const affiliationScore = computeAffiliationTurnScore(message);
+    const newAffiliationWindow = normalizeAffiliationWindow([...(newFlags.affiliationWindow || [0, 0, 0, 0]), affiliationScore]);
+    const affiliationEstablished = computeAffiliationEstablished(newAffiliationWindow);
 
     // Closure detection — C2 analyzer (deterministic pass + LLM fallback for ambiguous signals)
     const closureAnalysis = await analyzeClosureIntent(message);
@@ -4533,8 +4533,8 @@ app.post("/chat", async (req, res) => {
       detectedState,
       contactAnalysis,
       emotionalDecenteringAnalysis,
-      contactScoreWindow: newContactScoreWindow,
-      contactEstablished,
+      affiliationWindow: newAffiliationWindow,
+      affiliationEstablished,
       relationalAdjustmentAnalysis,
       calibrationAnalysis,
       technicalContextDetected: technicalContextAnalysis?.technicalContextDetected === true,
@@ -4879,9 +4879,9 @@ app.post("/chat", async (req, res) => {
       infoRoutingSource,
       promptRegistry: activePromptRegistry,
       // Lot 8 fields
-      contactScore: turnScore,
-      contactScoreWindow: newContactScoreWindow,
-      contactEstablished,
+      affiliationScore: affiliationScore,
+      affiliationWindow: newAffiliationWindow,
+      affiliationEstablished,
       emotionalDecentering: emotionalDecenteringAnalysis?.emotionalDecentering === true,
       emotionSequenceStage: postureDecision.emotionSequenceStage,
       formalAddress: postureDecision.formalAddress === true,

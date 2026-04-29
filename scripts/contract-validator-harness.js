@@ -49,7 +49,7 @@ function baseInput(overrides = {}) {
     },
     effectiveExplorationDirectivityLevel: 0,
     previousConversationState: "exploration",
-    contactEstablished: true,
+    affiliationEstablished: true,
     currentConsecutiveNonExplorationTurns: 0,
     currentExplorationRelanceWindow: [false, false, false, false],
     allianceState: "good",
