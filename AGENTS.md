@@ -108,6 +108,25 @@ Pour les modifications purement techniques sans effet comportemental visible (re
 
 Si une demande produit est ambiguë techniquement : proposer deux interprétations et demander laquelle est juste, plutôt que de choisir la plus restrictive par défaut.
 
+### Règle de tests LLM (coût / latence) — validation obligatoire
+
+**Interdiction absolue : l'agent ne lance jamais un test qui dépend d'un appel LLM sans validation explicite de l'utilisateur (GO).**
+
+Avant tout lancement d'un test LLM, l'agent doit :
+
+1. **Annoncer le test exact** (commande et périmètre)
+2. **Expliquer pourquoi il est nécessaire ici** (risque concret couvert)
+3. **Signaler le coût/latence attendus** (temps et consommation potentielle)
+4. **Attendre un GO explicite** avant exécution
+
+Cette règle s'applique notamment à :
+- `npm run pipeline:harness`
+- `npm run debugmeta:harness`
+- tout eval live sur `/chat`
+- tout script de test qui appelle effectivement le backend LLM
+
+Sans GO explicite, l'agent doit privilégier des vérifications locales non-LLM (lint, syntaxe, tests déterministes, reproduction UI manuelle ciblée).
+
 ---
 
 ## 6. Gestion des blocages
