@@ -6738,34 +6738,46 @@
         return debugWrap;
       }
 
-      const debugMeta = role === "bot" ? buildDebugMeta(debugMetaRaw) : null;
-      const hasStructuredSignals =
-        !!debugMeta &&
-        (
-          debugMeta.infoSubmode === "app_features" ||
-          debugMeta.infoSubmode === "psychoeducation" ||
-          debugMeta.infoSubmode === "pure" ||
-          debugMeta.interpretationRejection === true ||
-          Number.isInteger(debugMeta.explorationCalibrationLevel) ||
-          !!debugMeta.explorationSubmode
-        );
-      
-      const hasDebugContent =
-        role === "bot" &&
-        !isFirstBotMessage &&
-        !!debugMeta &&
-        (
-          !!debugMeta.memory ||
-          !!debugMeta.directivityLabel ||
-          hasStructuredSignals ||
-          !!debugMeta.explorationSubmode ||
-          !!debugMeta.rewriteSource ||
-          !!debugMeta.memoryRewriteSource ||
-          !!debugMeta.conversationStateKey ||
-          debugMeta.pipelineStages.length > 0 ||
-          !!debugMeta.confidenceSignal ||
-          !!debugMeta.writerMode
-        );
+      let debugMeta = null;
+      let hasStructuredSignals = false;
+      let hasDebugContent = false;
+
+      if (role === "bot") {
+        try {
+          debugMeta = buildDebugMeta(debugMetaRaw);
+          hasStructuredSignals =
+            !!debugMeta &&
+            (
+              debugMeta.infoSubmode === "app_features" ||
+              debugMeta.infoSubmode === "psychoeducation" ||
+              debugMeta.infoSubmode === "pure" ||
+              debugMeta.interpretationRejection === true ||
+              Number.isInteger(debugMeta.explorationCalibrationLevel) ||
+              !!debugMeta.explorationSubmode
+            );
+
+          hasDebugContent =
+            !isFirstBotMessage &&
+            !!debugMeta &&
+            (
+              !!debugMeta.memory ||
+              !!debugMeta.directivityLabel ||
+              hasStructuredSignals ||
+              !!debugMeta.explorationSubmode ||
+              !!debugMeta.rewriteSource ||
+              !!debugMeta.memoryRewriteSource ||
+              !!debugMeta.conversationStateKey ||
+              debugMeta.pipelineStages.length > 0 ||
+              !!debugMeta.confidenceSignal ||
+              !!debugMeta.writerMode
+            );
+        } catch (err) {
+          console.error("[DEBUG_META_BUILD_FAILED]", err);
+          debugMeta = normalizeClientDebugMeta(null);
+          hasStructuredSignals = false;
+          hasDebugContent = false;
+        }
+      }
       
       const bubble = document.createElement("div");
       bubble.className = "bubble";
@@ -7087,9 +7099,13 @@
       }
       
       if (role === "bot" && hasDebugContent && showDebug) {
-        const debugSections = buildDebugSections(debugMeta);
-        const debugEl = createDebugDetails(debugSections, buildPipelineRuntimeText(debugMeta));
-        if (debugEl) contentWrap.appendChild(debugEl);
+        try {
+          const debugSections = buildDebugSections(debugMeta);
+          const debugEl = createDebugDetails(debugSections, buildPipelineRuntimeText(debugMeta));
+          if (debugEl) contentWrap.appendChild(debugEl);
+        } catch (err) {
+          console.error("[DEBUG_RENDER_FAILED]", err);
+        }
       }
 
       msg.appendChild(contentWrap);
