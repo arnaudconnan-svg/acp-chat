@@ -6480,9 +6480,12 @@
             recallForced: "Déclenchement forcé en rappel mémoire",
           };
           const reasons = (meta.criticTriggerReasons || []).map(r => CRITIC_REASON_LABELS[r] || r).filter(Boolean);
-          lines.push(meta.criticIssues.length > 0 ?
-            `Le critic pass a corrige ${meta.criticIssues.length} point(s).` :
-            "Le critic pass a ete lance sans correction necessaire.");
+          if (meta.criticIssues.length > 0) {
+            lines.push(`Le critic pass a corrigé ${meta.criticIssues.length} point(s) :`);
+            meta.criticIssues.forEach(issue => lines.push(`· ${issue}`));
+          } else {
+            lines.push("Le critic pass a été lancé sans correction nécessaire.");
+          }
           if (reasons.length > 0) {
             lines.push(`Raisons : ${reasons.join(" · ")}`);
           }
@@ -6560,6 +6563,9 @@
                 : null,
               meta.stateTransitionValid === false
                 ? `Transition retenue : ${meta.conversationState}`
+                : null,
+              meta.consecutiveNonExplorationTurns > 0
+                ? `Tours cons\u00e9cutifs hors exploration : ${meta.consecutiveNonExplorationTurns}`
                 : null,
             ].filter(Boolean).join("\n")
           });
