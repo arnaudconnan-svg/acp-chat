@@ -37,7 +37,7 @@ function check(label, fn) {
 function baseInput(overrides = {}) {
   return {
     detectedState: "exploration",
-    contactAnalysis: { selfCriticismLevel: null, meaningProtest: false, insightMoment: false },
+    contactAnalysis: { selfCriticismLevel: null, meaningCrisis: false, insightMoment: false },
     relationalAdjustmentAnalysis: { needsRelationalAdjustment: false },
     calibrationAnalysis: { calibrationLevel: 0, explorationSubmode: "interpretation" },
     technicalContextDetected: false,
@@ -104,7 +104,6 @@ check("posture decision always returns known conversationState", () => {
   const cases = [
     baseInput({ detectedState: "exploration", calibrationAnalysis: { calibrationLevel: 0, explorationSubmode: "interpretation" } }),
     baseInput({ detectedState: "exploration", calibrationAnalysis: { calibrationLevel: 3, explorationSubmode: "interpretation" }, effectiveExplorationDirectivityLevel: 4 }),
-    baseInput({ detectedState: "contact" }),
     baseInput({ detectedState: "discharge_regulated" }),
     baseInput({ detectedState: "discharge_dysregulated" }),
     baseInput({ detectedState: "info_pure" }),
@@ -135,12 +134,6 @@ check("confidenceSignal is float between 0 and 1", () => {
 });
 
 check("relancePolicy follows contract constraints", () => {
-  // contact mode base: relancePolicy is "selective"
-  const contactBase = buildPostureDecision(baseInput({
-    detectedState: "contact"
-  }));
-  assert(contactBase.relancePolicy === "selective", "contact base should be selective");
-
   const openExploration = buildPostureDecision(baseInput({
     detectedState: "exploration",
     effectiveExplorationDirectivityLevel: 0,

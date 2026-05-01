@@ -207,7 +207,7 @@ const cases = [
     }
   },
   {
-    name: "post_contact state after prior contact turn",
+    name: "exploration state after prior legacy contact turn",
     payload: buildChatPayload({
       conversationId: cid("c_pipeline_post_contact"),
       message: "Oui c'est ca, ca me pesait depuis un moment.",
@@ -217,12 +217,12 @@ const cases = [
       }
     }),
     assert: (result) => {
-      assertChatOk(result, "post_contact state after prior contact turn");
+      assertChatOk(result, "exploration state after prior legacy contact turn");
       const meta = result.body.debugMeta;
-      // Non-contact follow-up after a contact turn should land in post_contact or exploration
+      // Follow-up after a legacy contact state should land in exploration.
       assert(
-        meta.conversationState === "contact" || meta.conversationState && meta.conversationState.startsWith("exploration_"),
-        `expected contact or exploration_*, got '${meta.conversationState}'`
+        meta.conversationState && meta.conversationState.startsWith("exploration_"),
+        `expected exploration_*, got '${meta.conversationState}'`
       );
       assert(meta.stateTransitionValid === true,
         `expected stateTransitionValid=true, got '${meta.stateTransitionValid}'`);

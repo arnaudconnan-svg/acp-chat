@@ -62,7 +62,7 @@ function assertDebugMetaContract(debugMeta, label) {
   // conversationState must be a known extended state
   const VALID_STATES = [
     "exploration_open", "exploration_restrained",
-    "contact", "discharge_regulated", "discharge_dysregulated",
+    "discharge_regulated", "discharge_dysregulated",
     "info_pure", "info_features", "info_psychoeducation",
     "stabilization", "alliance_rupture", "closure",
     "n1_crisis", "n2_crisis"
@@ -131,8 +131,8 @@ const cases = [
       assert(result.status === 200, `exploration: expected 200, got ${result.status}`);
       assertDebugMetaContract(result.body.debugMeta, "exploration");
       const dm = result.body.debugMeta;
-      assert(dm.conversationState.startsWith("exploration_") || dm.conversationState === "contact",
-        `exploration: expected exploration or contact state, got '${dm.conversationState}'`);
+      assert(dm.conversationState.startsWith("exploration_"),
+        `exploration: expected exploration_* state, got '${dm.conversationState}'`);
       assert(typeof dm.intent === "string", `exploration: intent must be a string in normal generation path`);
     }
   },

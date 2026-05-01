@@ -4506,7 +4506,7 @@ app.post("/chat", async (req, res) => {
         infoRoutingSource = "LLM";
       }
     }
-    const safeInterpretationRejection = (detectedState === "exploration" || detectedState === "contact")
+    const safeInterpretationRejection = (detectedState === "exploration")
       ? (interpretationRejection || { isInterpretationRejection: false, relationalFrictionSignal: "none" })
       : { isInterpretationRejection: false, relationalFrictionSignal: "none" };
 
@@ -4658,7 +4658,7 @@ app.post("/chat", async (req, res) => {
     let relanceAnalysis = null;
     const finalReplyRewriteSources = [];
 
-    // Phase 4: Selective critic - single guardrail for exploration, contact, and info.
+    // Phase 4: Selective critic - single guardrail for exploration, discharge, and info.
     // CRITIC_PASS now covers theoretical violations. No separate conflict-model or uncertainty passes.
     // For n1_crisis, critic runs systematically regardless of heuristics.
     let criticTriggered = false;
@@ -4667,7 +4667,7 @@ app.post("/chat", async (req, res) => {
     let humanFieldRisk = false;
     let contractLengthExceeded = false;
     const criticStateApplies = (cs) => cs && (
-      cs.startsWith("exploration_") || cs.startsWith("discharge_") || cs === "contact" || cs.startsWith("info_")
+      cs.startsWith("exploration_") || cs.startsWith("discharge_") || cs.startsWith("info_")
     );
     const n1CrisisForced = postureDecision.conversationState === "n1_crisis";
     const recallForced = postureDecision.recallInjectionActive === true;
@@ -4882,7 +4882,6 @@ app.post("/chat", async (req, res) => {
       affiliationWindow: newAffiliationWindow,
       affiliationEstablished,
       emotionalDecentering: emotionalDecenteringAnalysis?.emotionalDecentering === true,
-      emotionSequenceStage: postureDecision.emotionSequenceStage,
       formalAddress: postureDecision.formalAddress === true,
       // Writer hints from posture decision
       writerIntentHints: postureDecision.writerIntentHints,
@@ -4890,7 +4889,7 @@ app.post("/chat", async (req, res) => {
       // Contact analyzer sub-fields
       contactInsightMoment: contactAnalysis?.insightMoment === true,
       contactSelfCriticismLevel: typeof contactAnalysis?.selfCriticismLevel === "string" ? contactAnalysis.selfCriticismLevel : "low",
-      contactMeaningProtest: contactAnalysis?.meaningProtest === true,
+      contactMeaningCrisis: contactAnalysis?.meaningCrisis === true,
       // C3 limiting_belief gate
       limitingBeliefValidated: postureDecision.limitingBeliefValidated === true,
       aggressiveDischargeDetected: postureDecision.aggressiveDischargeDetected === true,
@@ -4976,7 +4975,7 @@ app.post("/chat", async (req, res) => {
       ? "Le service est temporairement indisponible car le quota API est epuise. Je ne peux pas traiter de nouveau message tant que ce quota n'est pas retabli."
       : suicideLevelForCatch === "N1"
         ? n1Fallback()
-        : modeForCatch === "discharge" || modeForCatch === "contact"
+        : modeForCatch === "discharge"
           ? "Je suis la."
           : "Desole, reformule.";
     const fallbackDebugMeta = buildFallbackResponseDebugMeta({

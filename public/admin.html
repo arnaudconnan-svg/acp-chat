@@ -943,13 +943,12 @@
         affiliationWindow: Array.isArray(safe.affiliationWindow) ? safe.affiliationWindow.map(v => typeof v === "number" ? Math.round(v * 100) / 100 : 0) : [],
         affiliationEstablished: safe.affiliationEstablished === true,
         emotionalDecentering: safe.emotionalDecentering === true,
-        emotionSequenceStage: typeof safe.emotionSequenceStage === "string" ? safe.emotionSequenceStage.trim() : null,
         formalAddress: safe.formalAddress === true,
         writerIntentHints: Array.isArray(safe.writerIntentHints) ? safe.writerIntentHints.map(v => String(v || "").trim()).filter(Boolean) : [],
         writerOrientationHint: typeof safe.writerOrientationHint === "string" ? safe.writerOrientationHint.trim() : null,
         contactInsightMoment: safe.contactInsightMoment === true,
         contactSelfCriticismLevel: typeof safe.contactSelfCriticismLevel === "string" ? safe.contactSelfCriticismLevel.trim() : "low",
-        contactMeaningProtest: safe.contactMeaningProtest === true,
+        contactMeaningCrisis: safe.contactMeaningCrisis === true,
         limitingBeliefValidated: safe.limitingBeliefValidated === true,
         aggressiveDischargeDetected: safe.aggressiveDischargeDetected === true
       };
@@ -2049,14 +2048,11 @@
           if (typeof meta.contactSelfCriticismLevel === "string" && meta.contactSelfCriticismLevel !== "low") {
             signauxLines.push(`Auto-critique : ${meta.contactSelfCriticismLevel}`);
           }
-          if (meta.contactMeaningProtest === true) {
+          if (meta.contactMeaningCrisis === true) {
             signauxLines.push("Effondrement de sens (contact)");
           }
           if (meta.emotionalDecentering === true) {
             signauxLines.push("D\u00e9centrage \u00e9motionnel actif");
-          }
-          if (meta.emotionSequenceStage !== undefined && meta.emotionSequenceStage !== null) {
-            signauxLines.push(`\u00c9tape s\u00e9quence \u00e9motion : ${meta.emotionSequenceStage}`);
           }
           if (meta.formalAddress === true) {
             signauxLines.push("Vouvoiement actif");

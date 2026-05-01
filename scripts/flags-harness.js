@@ -124,7 +124,7 @@ check("contactState: {wasContact:'yes'} → {wasContact:false}", () => {
 // ─── normalizeConversationState ───────────────────────────────────────────────
 
 const VALID_EXTENDED_STATES = [
-  "exploration_open", "exploration_restrained", "contact", "info_pure", "info_features",
+  "exploration_open", "exploration_restrained", "info_pure", "info_features",
   "info_psychoeducation", "stabilization", "alliance_rupture", "closure",
   "discharge_regulated", "discharge_dysregulated", "n1_crisis", "n2_crisis"
 ];
@@ -228,10 +228,10 @@ check("sessionFlags: legacy conversationStateKey 'exploration' → 'exploration_
     `expected 'exploration_open', got '${out.conversationState}'`);
 });
 
-check("sessionFlags: conversationState 'contact' preserved", () => {
+check("sessionFlags: legacy conversationState 'contact' -> exploration_open", () => {
   const out = normalizeSessionFlags({ conversationState: "contact" });
-  assert(out.conversationState === "contact",
-    `expected 'contact', got '${out.conversationState}'`);
+  assert(out.conversationState === "exploration_open",
+    `expected 'exploration_open', got '${out.conversationState}'`);
 });
 
 check("sessionFlags: explicit directivity preserved", () => {

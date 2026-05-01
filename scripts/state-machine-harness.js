@@ -46,7 +46,7 @@ function resolve(overrides = {}) {
 }
 
 // â”€â”€â”€ 1. CONVERSATION_STATES completeness â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-const EXPECTED_STATES = ["exploration", "discharge", "contact", "info", "stabilization", "alliance_rupture", "closure", "n1_crisis", "n2_crisis"];
+const EXPECTED_STATES = ["exploration", "discharge", "info", "stabilization", "alliance_rupture", "closure", "n1_crisis", "n2_crisis"];
 assert(Array.isArray(CONVERSATION_STATES), "CONVERSATION_STATES is an array");
 for (const s of EXPECTED_STATES) {
   assert(CONVERSATION_STATES.includes(s), `CONVERSATION_STATES includes '${s}'`);
@@ -60,12 +60,12 @@ for (const s of CONVERSATION_STATES) {
 
 // â”€â”€â”€ 3. isValidTransition guard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Known valid edges
-assert(isValidTransition("exploration", "contact"), "isValidTransition: exploration -> contact");
-assert(isValidTransition("contact", "discharge"), "isValidTransition: contact -> discharge");
+assert(isValidTransition("exploration", "discharge"), "isValidTransition: exploration -> discharge");
+assert(isValidTransition("discharge", "exploration"), "isValidTransition: discharge -> exploration");
 assert(isValidTransition("stabilization", "closure"), "isValidTransition: stabilization -> closure");
 // Self-transitions
 assert(isValidTransition("exploration", "exploration"), "isValidTransition: exploration -> exploration (self)");
-assert(isValidTransition("contact", "contact"), "isValidTransition: contact -> contact (self)");
+assert(isValidTransition("discharge", "discharge"), "isValidTransition: discharge -> discharge (self)");
 assert(isValidTransition("stabilization", "stabilization"), "isValidTransition: stabilization -> stabilization (self)");
 assert(isValidTransition("info", "info"), "isValidTransition: info -> info (self)");
 // closure has restricted successors
@@ -76,24 +76,15 @@ assert(isValidTransition("unknown_legacy_state", "exploration"), "isValidTransit
 
 // â”€â”€â”€ 4. resolveConversationState priority â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-// Priority 1: active contact beats everything
-assert(resolve({ detectedState: "contact" }) === "contact",
-  "resolve: contact wins over exploration");
-assert(resolve({ detectedState: "contact", previousConversationState: "info_features" }) === "contact",
-  "resolve: contact wins over info mode");
-assert(resolve({ detectedState: "contact", closureIntent: true }) === "contact",
-  "resolve: contact wins over closureIntent");
+// Priority 1: post-discharge cooldown
+assert(resolve({ previousConversationState: "discharge_regulated", detectedState: "exploration" }) === "exploration_open",
+  "resolve: exploration_open after discharge turn");
+assert(resolve({ previousConversationState: "discharge_dysregulated", detectedState: "exploration" }) === "exploration_open",
+  "resolve: exploration_open after dysregulated discharge turn");
+assert(resolve({ previousConversationState: "discharge_regulated", detectedState: "info_features" }) === "info_features",
+  "resolve: info_features beats cooldown after discharge");
 
-// Priority 2: post-discharge cooldown â€” previous was discharge, now exploration â†’ contact
-assert(resolve({ previousConversationState: "discharge_regulated", detectedState: "exploration" }) === "contact",
-  "resolve: contact (post-discharge cooldown) after discharge turn");
-// No special state after contact â€” falls back to exploration
-assert(resolve({ previousConversationState: "contact", detectedState: "exploration" }) === "exploration_open",
-  "resolve: exploration_open after contact turn");
-assert(resolve({ previousConversationState: "contact", detectedState: "info_features" }) === "info_features",
-  "resolve: info_features beats exploration (prev contact but state switched to info)");
-
-// Priority 3: info mode
+// Priority 2: info mode
 assert(resolve({ detectedState: "info_features" }) === "info_features", "resolve: info_features -> info_features");
 assert(resolve({ detectedState: "info_pure" }) === "info_pure", "resolve: info_pure -> info_pure");
 assert(resolve({ detectedState: "info_psychoeducation" }) === "info_psychoeducation", "resolve: info_psychoeducation -> info_psychoeducation");
@@ -110,13 +101,8 @@ assert(
   "resolve: alliance_rupture overrides exploration"
 );
 assert(
-  resolve({ previousConversationState: "contact", detectedState: "exploration", allianceState: "rupture" }) === "alliance_rupture",
-  "resolve: alliance_rupture overrides exploration (prev contact)"
-);
-// alliance_rupture does NOT apply when in contact
-assert(
-  resolve({ detectedState: "contact", allianceState: "rupture" }) === "contact",
-  "resolve: alliance_rupture does not override active contact"
+  resolve({ previousConversationState: "discharge_regulated", detectedState: "exploration", allianceState: "rupture" }) === "alliance_rupture",
+  "resolve: alliance_rupture overrides exploration (post-discharge)"
 );
 
 // Phase B: stabilization
@@ -153,10 +139,6 @@ assert(
   resolve({ closureIntent: true, allianceState: "rupture" }) === "alliance_rupture",
   "resolve: closureIntent cannot override alliance_rupture"
 );
-assert(
-  resolve({ detectedState: "contact", closureIntent: true }) === "contact",
-  "resolve: closureIntent cannot override contact"
-);
 
 // â”€â”€â”€ 5. baseStateOf mapping â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 assert(baseStateOf("exploration_open") === "exploration", "baseStateOf: exploration_open -> exploration");
@@ -166,7 +148,6 @@ assert(baseStateOf("discharge_dysregulated") === "discharge", "baseStateOf: disc
 assert(baseStateOf("info_pure") === "info", "baseStateOf: info_pure -> info");
 assert(baseStateOf("info_features") === "info", "baseStateOf: info_features -> info");
 assert(baseStateOf("info_psychoeducation") === "info", "baseStateOf: info_psychoeducation -> info");
-assert(baseStateOf("contact") === "contact", "baseStateOf: contact -> contact");
 assert(baseStateOf("stabilization") === "stabilization", "baseStateOf: stabilization -> stabilization");
 assert(baseStateOf("alliance_rupture") === "alliance_rupture", "baseStateOf: alliance_rupture -> alliance_rupture");
 assert(baseStateOf("closure") === "closure", "baseStateOf: closure -> closure");
@@ -174,7 +155,7 @@ assert(baseStateOf("n1_crisis") === "n1_crisis", "baseStateOf: n1_crisis passthr
 
 // â”€â”€â”€ 6. STATE_* tables consistency â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const allStates = [
-  "exploration_open", "exploration_restrained", "contact", "stabilization",
+  "exploration_open", "exploration_restrained", "stabilization",
   "alliance_rupture", "closure", "discharge_regulated", "discharge_dysregulated",
   "info_pure", "info_psychoeducation", "info_features", "n1_crisis", "n2_crisis"
 ];

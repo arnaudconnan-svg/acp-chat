@@ -75,7 +75,7 @@ L'agent **n'a pas besoin de demande explicite** pour ces décisions s'il peut le
 
 ### Restriction de mode agent
 
-**L'agent ne peut pas basculer du mode Ask vers le mode Plan ou Agent sans validation explicite de l'utilisateur.** Si une tâche semble nécessiter un autre mode, signaler et attendre confirmation avant tout changement de mode.
+**L'agent ne peut pas basculer du mode Ask ou Interactive vers le mode Plan, Agent ou Autopilot sans validation explicite de l'utilisateur.** Si une tâche semble nécessiter un autre mode, signaler et attendre confirmation avant tout changement de mode.
 
 ### Règle d'observabilité — checklist à chaque implémentation
 
@@ -173,7 +173,7 @@ Si un champ n'est pas visible dans le debug (index.html ou admin.html), c'est un
 Les champs actuellement disponibles dans le debug (index.html, admin.html) :
 - **Contrat de posture** : état conversation, intention, interdits, signal confiance, relance, alliance, engagement, fenêtre de traitement, indications writer, orientation writer
 - **Affiliation** : `affiliationWindow` (fenêtre des 4 derniers tours), `affiliationScore` (degré d'affiliation du tour)
-- **Signaux** : `affiliationEstablished`, `emotionSequenceStage`, `emotionalDecentering`, `formalAddress`, sous-champs contact (`insightMoment`, `selfCriticismLevel`, `meaningProtest`)
+- **Signaux** : `affiliationEstablished`, `emotionalDecentering`, `formalAddress`, sous-champs contact (`insightMoment`, `selfCriticismLevel`, `meaningCrisis`)
 - **Réponse initiale (avant correction)** : affiché uniquement si le Critic a réécrit la réponse
 
 Si un de ces champs est absent du debug visible, ne pas présumer de sa valeur — signaler l'absence.
