@@ -4666,6 +4666,7 @@ app.post("/chat", async (req, res) => {
     let criticOriginalReply = null;
     let humanFieldRisk = false;
     let contractLengthExceeded = false;
+    let criticTriggerReasons = [];
     const criticStateApplies = (cs) => cs && (
       cs.startsWith("exploration_") || cs.startsWith("discharge_") || cs.startsWith("info_")
     );
@@ -4683,6 +4684,8 @@ app.post("/chat", async (req, res) => {
       humanFieldRisk = postureDecision.humanFieldGuardActive === true && isProceduralInstrumentalReply(reply);
       const formalAddressRisk = postureDecision.formalAddress === true && hasTutoiementInReply(reply);
       const vouvoiementRisk = postureDecision.formalAddress !== true && hasVouvoiementInReply(reply, message);
+      const agencyInjectionRisk = hasAgencyInjectionInReply(reply);
+      const theoreticalViolationRisk = hasTheoreticalViolationHeuristic(reply);
       const criticShouldTrigger =
         n1CrisisForced ||
         recallForced ||
@@ -4690,8 +4693,18 @@ app.post("/chat", async (req, res) => {
         humanFieldRisk ||
         formalAddressRisk ||
         vouvoiementRisk ||
-        hasAgencyInjectionInReply(reply) ||
-        hasTheoreticalViolationHeuristic(reply);
+        agencyInjectionRisk ||
+        theoreticalViolationRisk;
+      criticTriggerReasons = criticShouldTrigger ? [
+        ...(contractLengthExceeded ? ["contractLengthExceeded"] : []),
+        ...(humanFieldRisk ? ["humanFieldRisk"] : []),
+        ...(formalAddressRisk ? ["formalAddressRisk"] : []),
+        ...(vouvoiementRisk ? ["vouvoiementRisk"] : []),
+        ...(agencyInjectionRisk ? ["agencyInjectionRisk"] : []),
+        ...(theoreticalViolationRisk ? ["theoreticalViolationRisk"] : []),
+        ...(n1CrisisForced ? ["n1CrisisForced"] : []),
+        ...(recallForced ? ["recallForced"] : []),
+      ] : [];
       if (criticShouldTrigger) {
         logChatDecision("critic_triggered", {
           conversationState: postureDecision.conversationState,
@@ -4849,6 +4862,7 @@ app.post("/chat", async (req, res) => {
       criticTriggered,
       criticIssues,
       criticOriginalReply,
+      criticTriggerReasons,
       humanFieldRisk,
       contractLengthExceeded,
       // Posture contract fields (V3)

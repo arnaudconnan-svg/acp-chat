@@ -916,6 +916,7 @@
         criticTriggered: safe.criticTriggered === true,
         criticIssues: Array.isArray(safe.criticIssues) ? safe.criticIssues.map(v => String(v || "").trim()).filter(Boolean) : [],
         criticOriginalReply: typeof safe.criticOriginalReply === "string" ? safe.criticOriginalReply.trim() : null,
+        criticTriggerReasons: Array.isArray(safe.criticTriggerReasons) ? safe.criticTriggerReasons.map(v => String(v || "").trim()).filter(Boolean) : [],
         writerMode: typeof safe.writerMode === "string" ? safe.writerMode.trim() : null,
         intent: typeof safe.intent === "string" ? safe.intent.trim() : null,
         forbidden: Array.isArray(safe.forbidden) ? safe.forbidden.map(v => String(v || "").trim()).filter(Boolean) : [],
@@ -1957,9 +1958,23 @@
           }
 
           if (meta.criticTriggered === true) {
+            const CRITIC_REASON_LABELS = {
+              contractLengthExceeded: "Longueur contractuelle dépassée",
+              humanFieldRisk: "Risque de ton procédural/instrumental",
+              formalAddressRisk: "Risque de tutoiement non conforme",
+              vouvoiementRisk: "Risque de vouvoiement non conforme",
+              agencyInjectionRisk: "Risque d'injonction d'agency",
+              theoreticalViolationRisk: "Risque de formulation théorique/interprétative",
+              n1CrisisForced: "Déclenchement forcé en crise N1",
+              recallForced: "Déclenchement forcé en rappel mémoire",
+            };
+            const reasons = (meta.criticTriggerReasons || []).map(r => CRITIC_REASON_LABELS[r] || r).filter(Boolean);
             lines.push(meta.criticIssues.length > 0 ?
               `Le critic pass a corrige ${meta.criticIssues.length} point(s).` :
               "Le critic pass a ete lance sans correction necessaire.");
+            if (reasons.length > 0) {
+              lines.push(`Raisons : ${reasons.join(" · ")}`);
+            }
           }
 
           return lines;
