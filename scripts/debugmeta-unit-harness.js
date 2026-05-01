@@ -71,7 +71,7 @@ for (const field of [
   "topChips","memory","directivityText","conversationState",
   "consecutiveNonExplorationTurns","interpretationRejection","needsSoberReadjustment","relationalAdjustmentActive",
   "pipelineStages","explorationCalibrationLevel","explorationSubmode",
-  "rewriteSource","memoryRewriteSource","memoryCompressed","memoryBeforeCompression",
+  "rewriteSource","memoryRewriteSource","memoryRewriteIntent","memoryCompressed","memoryBeforeCompression",
   "criticTriggered","criticIssues","intent","forbidden","confidenceSignal",
   "responseRegister","phraseLengthPolicy","relancePolicy","somaticFocusPolicy","actionCollapseGuardActive",
   "stateTransitionFrom","stateTransitionValid","stateTransitionRequested",
@@ -94,6 +94,7 @@ assertDeepEqual("default values", base, {
   explorationSubmode: null,
   rewriteSource: null,
   memoryRewriteSource: null,
+  memoryRewriteIntent: null,
   memoryCompressed: false,
   memoryBeforeCompression: null,
   criticTriggered: false,
@@ -216,7 +217,34 @@ assert("memoryBeforeCompression present", compressed.memoryBeforeCompression, "O
 const notCompressed = buildResponseDebugMeta({ memoryCompressed: false, memoryBeforeCompression: "irrelevant" });
 assert("memoryBeforeCompression null when not compressed", notCompressed.memoryBeforeCompression, null);
 
-// 12. Phase B flags
+// 12. memoryRewriteIntent
+console.log("\n-- buildResponseDebugMeta memoryRewriteIntent");
+const rewriteIntentDefaults = buildResponseDebugMeta({ memoryRewriteIntent: { compressionRequested: false } });
+assert("memoryRewriteIntent normalized defaults", rewriteIntentDefaults.memoryRewriteIntent, {
+  compressionRequested: false,
+  interpretationRejectionActive: false,
+  rejectsUnderlyingPhenomenon: false,
+  soberReadjustmentActive: false,
+  lectureBotForcedReset: false
+});
+const rewriteIntentTrue = buildResponseDebugMeta({
+  memoryRewriteIntent: {
+    compressionRequested: true,
+    interpretationRejectionActive: true,
+    rejectsUnderlyingPhenomenon: true,
+    soberReadjustmentActive: true,
+    lectureBotForcedReset: true
+  }
+});
+assert("memoryRewriteIntent all true", rewriteIntentTrue.memoryRewriteIntent, {
+  compressionRequested: true,
+  interpretationRejectionActive: true,
+  rejectsUnderlyingPhenomenon: true,
+  soberReadjustmentActive: true,
+  lectureBotForcedReset: true
+});
+
+// 13. Phase B flags
 console.log("\n-- buildResponseDebugMeta Phase B flags");
 const phaseB = buildResponseDebugMeta({
   allianceState: "fragile", engagementLevel: "withdrawn", stagnationTurns: 5,
@@ -231,13 +259,13 @@ assert("dependencyRiskLevel", phaseB.dependencyRiskLevel, "medium");
 assert("externalSupportMode", phaseB.externalSupportMode, "discovery_validation");
 assert("closureIntent", phaseB.closureIntent, true);
 
-// 13. conversationState normalization
+// 14. conversationState normalization
 console.log("\n-- buildResponseDebugMeta conversationState normalization");
 assert("exploration_open state", buildResponseDebugMeta({ conversationState: "exploration_open" }).conversationState, "exploration_open");
 assert("unknown state defaults to exploration_open", buildResponseDebugMeta({ conversationState: "unknown_state" }).conversationState, "exploration_open");
 assert("null state defaults to exploration_open", buildResponseDebugMeta({ conversationState: null }).conversationState, "exploration_open");
 
-// 14. stateTransition fields
+// 15. stateTransition fields
 console.log("\n-- buildResponseDebugMeta stateTransition fields");
 const stDefault = buildResponseDebugMeta();
 assert("stateTransitionFrom default null", stDefault.stateTransitionFrom, null);

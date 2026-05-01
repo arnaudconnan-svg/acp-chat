@@ -1984,6 +1984,13 @@ app.post("/api/account/conversations/import-local", requireUserAuth, async (req,
               explorationSubmode: typeof debugMeta.explorationSubmode === "string" ? debugMeta.explorationSubmode : null,
               rewriteSource: typeof debugMeta.rewriteSource === "string" ? debugMeta.rewriteSource : null,
               memoryRewriteSource: typeof debugMeta.memoryRewriteSource === "string" ? debugMeta.memoryRewriteSource : null,
+              memoryRewriteIntent: debugMeta.memoryRewriteIntent && typeof debugMeta.memoryRewriteIntent === "object" ? {
+                compressionRequested: debugMeta.memoryRewriteIntent.compressionRequested === true,
+                interpretationRejectionActive: debugMeta.memoryRewriteIntent.interpretationRejectionActive === true,
+                rejectsUnderlyingPhenomenon: debugMeta.memoryRewriteIntent.rejectsUnderlyingPhenomenon === true,
+                soberReadjustmentActive: debugMeta.memoryRewriteIntent.soberReadjustmentActive === true,
+                lectureBotForcedReset: debugMeta.memoryRewriteIntent.lectureBotForcedReset === true
+              } : null,
               memoryCompressed: debugMeta.memoryCompressed === true,
               memoryBeforeCompression: typeof debugMeta.memoryBeforeCompression === "string" ? debugMeta.memoryBeforeCompression : null,
               criticTriggered: debugMeta.criticTriggered === true,
@@ -3797,6 +3804,13 @@ app.post("/chat", async (req, res) => {
       explorationSubmode: typeof safe.explorationSubmode === "string" ? safe.explorationSubmode : null,
       rewriteSource: typeof safe.rewriteSource === "string" ? safe.rewriteSource : null,
       memoryRewriteSource: typeof safe.memoryRewriteSource === "string" ? safe.memoryRewriteSource : null,
+      memoryRewriteIntent: safe.memoryRewriteIntent && typeof safe.memoryRewriteIntent === "object" ? {
+        compressionRequested: safe.memoryRewriteIntent.compressionRequested === true,
+        interpretationRejectionActive: safe.memoryRewriteIntent.interpretationRejectionActive === true,
+        rejectsUnderlyingPhenomenon: safe.memoryRewriteIntent.rejectsUnderlyingPhenomenon === true,
+        soberReadjustmentActive: safe.memoryRewriteIntent.soberReadjustmentActive === true,
+        lectureBotForcedReset: safe.memoryRewriteIntent.lectureBotForcedReset === true
+      } : null,
       memoryCompressed: safe.memoryCompressed === true,
       memoryBeforeCompression:
         safe.memoryCompressed === true && typeof safe.memoryBeforeCompression === "string" ?
@@ -4814,12 +4828,20 @@ app.post("/chat", async (req, res) => {
 
     // Points 1+4: règle déterministe — Lecture bot doit être "-" pour tout état non-exploration, non-info
     const _memoryBaseState = baseStateOf(postureDecision.conversationState || "exploration_open");
-    if (_memoryBaseState !== "exploration" && _memoryBaseState !== "info") {
+    const lectureBotForcedReset = _memoryBaseState !== "exploration" && _memoryBaseState !== "info";
+    if (lectureBotForcedReset) {
       memoryCandidate = forceLectureBotReset(memoryCandidate);
     }
 
     const memoryBeforeCompression = memoryCandidate;
     const memoryNeedsCompression = shouldCompressMemoryCandidate(memoryCandidate, previousMemory);
+    const memoryRewriteIntent = {
+      compressionRequested: memoryNeedsCompression === true,
+      interpretationRejectionActive: safeInterpretationRejection.isInterpretationRejection === true,
+      rejectsUnderlyingPhenomenon: safeInterpretationRejection.rejectsUnderlyingPhenomenon === true,
+      soberReadjustmentActive: postureDecision.needsSoberReadjustment === true,
+      lectureBotForcedReset: lectureBotForcedReset === true
+    };
     const finalizedMemoryCandidate = await finalizeMemoryCandidate({
       previousMemory,
       candidateMemory: memoryCandidate,
@@ -4857,6 +4879,7 @@ app.post("/chat", async (req, res) => {
       explorationSubmode: finalExplorationSubmode,
       rewriteSource: finalReplyRewriteSource,
       memoryRewriteSource,
+      memoryRewriteIntent,
       memoryCompressed: memoryWasCompressed,
       memoryBeforeCompression,
       criticTriggered,

@@ -3946,6 +3946,13 @@
         explorationSubmode: typeof safe.explorationSubmode === "string" ? safe.explorationSubmode.trim() : "",
         rewriteSource: typeof safe.rewriteSource === "string" ? safe.rewriteSource.trim() : "",
         memoryRewriteSource: typeof safe.memoryRewriteSource === "string" ? safe.memoryRewriteSource.trim() : "",
+        memoryRewriteIntent: safe.memoryRewriteIntent && typeof safe.memoryRewriteIntent === "object" ? {
+          compressionRequested: safe.memoryRewriteIntent.compressionRequested === true,
+          interpretationRejectionActive: safe.memoryRewriteIntent.interpretationRejectionActive === true,
+          rejectsUnderlyingPhenomenon: safe.memoryRewriteIntent.rejectsUnderlyingPhenomenon === true,
+          soberReadjustmentActive: safe.memoryRewriteIntent.soberReadjustmentActive === true,
+          lectureBotForcedReset: safe.memoryRewriteIntent.lectureBotForcedReset === true
+        } : null,
         memoryCompressed: safe.memoryCompressed === true,
         memoryBeforeCompression: typeof safe.memoryBeforeCompression === "string" ? safe.memoryBeforeCompression.trim() : "",
         criticTriggered: safe.criticTriggered === true,
@@ -6486,6 +6493,33 @@
         return `Temps de reponse global: ${totalMs} ms (${meta.pipelineStages.length} etape(s)).`;
       }
 
+      function buildMemoryRewriteIntentLines(meta) {
+        const intent = meta && meta.memoryRewriteIntent && typeof meta.memoryRewriteIntent === "object"
+          ? meta.memoryRewriteIntent
+          : null;
+
+        if (!intent) return [];
+
+        const lines = [];
+        if (intent.compressionRequested === true) {
+          lines.push("Compression mémoire demandée");
+        }
+        if (intent.interpretationRejectionActive === true) {
+          lines.push("Réécriture motivée par un rejet d'interprétation");
+        }
+        if (intent.rejectsUnderlyingPhenomenon === true) {
+          lines.push("Le phénomène sous-jacent a été rejeté");
+        }
+        if (intent.soberReadjustmentActive === true) {
+          lines.push("Réécriture motivée par un réajustement sobre");
+        }
+        if (intent.lectureBotForcedReset === true) {
+          lines.push("Lecture bot forcée à '-' par règle d'état");
+        }
+
+        return lines;
+      }
+
       function buildDebugSections(meta) {
         const sections = [];
 
@@ -6536,6 +6570,11 @@
         const naturalSummaryLines = buildNaturalDebugSummary(meta);
         if (naturalSummaryLines.length > 0) {
           sections.push({ title: "Lecture interne", content: naturalSummaryLines.join("\n") });
+        }
+
+        const memoryRewriteIntentLines = buildMemoryRewriteIntentLines(meta);
+        if (memoryRewriteIntentLines.length > 0) {
+          sections.push({ title: "Intention réécriture mémoire", content: memoryRewriteIntentLines.join("\n") });
         }
 
         if (meta.memory) {
@@ -6777,6 +6816,16 @@
               !!debugMeta.explorationSubmode ||
               !!debugMeta.rewriteSource ||
               !!debugMeta.memoryRewriteSource ||
+              (
+                !!debugMeta.memoryRewriteIntent &&
+                (
+                  debugMeta.memoryRewriteIntent.compressionRequested === true ||
+                  debugMeta.memoryRewriteIntent.interpretationRejectionActive === true ||
+                  debugMeta.memoryRewriteIntent.rejectsUnderlyingPhenomenon === true ||
+                  debugMeta.memoryRewriteIntent.soberReadjustmentActive === true ||
+                  debugMeta.memoryRewriteIntent.lectureBotForcedReset === true
+                )
+              ) ||
               !!debugMeta.conversationStateKey ||
               debugMeta.pipelineStages.length > 0 ||
               !!debugMeta.confidenceSignal ||
