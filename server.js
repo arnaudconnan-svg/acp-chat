@@ -45,6 +45,7 @@ const nodemailer = require("nodemailer");
 
 // ─── Emergency numbers ────────────────────────────────────────────────────────
 const EMERGENCY_NUMBERS_FILE = path.join(__dirname, "data/emergency-numbers.json");
+const { updateEmergencyNumbers: runEmergencyNumbersUpdate } = require("./lib/emergency-updater");
 let emergencyNumbers = {};
 try {
   const raw = fs.readFileSync(EMERGENCY_NUMBERS_FILE, "utf-8");
@@ -5087,4 +5088,25 @@ app.post("/chat", async (req, res) => {
 // Start the HTTP server after all routes and middleware are configured.
 app.listen(port, () => {
   console.log(`Serveur lance sur http://localhost:${port}`);
+
+  // Refresh automatique mensuel des numéros d'urgence via Wikidata.
+  // Premier refresh décalé de 5 minutes après le démarrage pour ne pas ralentir
+  // la mise en ligne. Ensuite toutes les 30 jours.
+  const EMERGENCY_REFRESH_INTERVAL_MS = 30 * 24 * 60 * 60 * 1000; // 30 jours
+  const EMERGENCY_REFRESH_INITIAL_DELAY_MS = 5 * 60 * 1000; // 5 minutes
+
+  async function refreshEmergencyNumbers() {
+    try {
+      const updated = await runEmergencyNumbersUpdate(EMERGENCY_NUMBERS_FILE, "[server][emergency-refresh]");
+      emergencyNumbers = updated;
+      console.log("[server][emergency-refresh] Données en mémoire mises à jour.");
+    } catch (err) {
+      console.error("[server][emergency-refresh] Échec du refresh:", err.message);
+    }
+  }
+
+  setTimeout(() => {
+    refreshEmergencyNumbers();
+    setInterval(refreshEmergencyNumbers, EMERGENCY_REFRESH_INTERVAL_MS);
+  }, EMERGENCY_REFRESH_INITIAL_DELAY_MS);
 });
