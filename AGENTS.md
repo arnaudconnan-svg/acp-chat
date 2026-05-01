@@ -38,7 +38,7 @@ Ces invariants protègent le comportement visible, pas la structure du code.
 - Ces chemins ne peuvent pas être conditionnés, court-circuités, ou dégradés
 
 ### Ordre de priorité décisionnel
-Sécurité > Crise > Rupture relationnelle > Contact > Exploration > Information
+Sécurité > Crise > Rupture relationnelle > Décharge > Exploration > Information
 
 Cet ordre s'applique à l'arbitrage, pas à la structure du code. L'implémentation peut évoluer tant que la priorité est respectée.
 
@@ -108,24 +108,29 @@ Pour les modifications purement techniques sans effet comportemental visible (re
 
 Si une demande produit est ambiguë techniquement : proposer deux interprétations et demander laquelle est juste, plutôt que de choisir la plus restrictive par défaut.
 
-### Règle de tests LLM (coût / latence) — validation obligatoire
+### Règle de continuité inter-sessions — plan.md
 
-**Interdiction absolue : l'agent ne lance jamais un test qui dépend d'un appel LLM sans validation explicite de l'utilisateur (GO).**
+`plan.md` est le témoin de l'état conversationnel entre sessions (PC, mobile, tunneling). Il sert de pont de reprise quand l'historique de conversation n'est pas disponible.
 
-Avant tout lancement d'un test LLM, l'agent doit :
+**À l'ouverture de chaque nouvelle session**, si `plan.md` existe dans le repo, l'agent doit :
+1. le lire avant toute autre action
+2. le signaler explicitement en début d'échange
+3. si le fichier est vide, obsolète ou incohérent : le signaler et demander si on repart de zéro
+4. si une incohérence est détectée entre `plan.md` et l'état réel du repo : la signaler
 
-1. **Annoncer le test exact** (commande et périmètre)
-2. **Expliquer pourquoi il est nécessaire ici** (risque concret couvert)
-3. **Signaler le coût/latence attendus** (temps et consommation potentielle)
-4. **Attendre un GO explicite** avant exécution
+Sauf exception ci-dessous, **le repo prime sur `plan.md`** en cas de conflit.
 
-Cette règle s'applique notamment à :
-- `npm run pipeline:harness`
-- `npm run debugmeta:harness`
-- tout eval live sur `/chat`
-- tout script de test qui appelle effectivement le backend LLM
+**Exception** : si `plan.md` contient un bloc *Implémentation en cours dans une session tierce* décrivant ce qui est en transit et dans quel contexte, l'agent ne traite pas le décalage repo / plan comme une incohérence sur ce sujet.
 
-Sans GO explicite, l'agent doit privilégier des vérifications locales non-LLM (lint, syntaxe, tests déterministes, reproduction UI manuelle ciblée).
+**Mise à jour** : `plan.md` est mis à jour uniquement sur demande explicite. Les formulations naturelles du type `MAJ plan.md = ...` déclenchent une mise à jour en delta intelligent. L'agent n'avance pas spontanément après lecture — il attend la direction de l'utilisateur.
+
+**Contenu obligatoire** de `plan.md` quand un chantier est actif :
+- objectif produit courant
+- décisions déjà prises
+- validation attendue
+- questions ouvertes
+
+`plan.md` est libre dans sa forme mais ces rubriques sont minimales. Il ne contient pas d'historique de modifications ni de backlog.
 
 ---
 
@@ -143,10 +148,12 @@ Si un objectif produit est formulé mais l'implémentation correcte est bloquée
 
 Après chaque modification significative :
 - `node --check server.js` pour valider la syntaxe
-- `npm run verify` pour enchaîner tous les harnesses unitaires (syntaxe + smoke 13/13 + 13 harnesses déterministes, sans serveur ni LLM)
+- `npm run verify` pour enchaîner tous les harnesses déterministes locaux (sans serveur ni LLM)
 - signaler tout écart
 
-`npm run verify` est le filet principal. Il couvre : smoke, state machine, flags, debugmeta, critic, chat-routing, crisis-routing, posture, contract-validator, llm-messages, conversation-data, pipeline, debugmeta-harness.
+`npm run verify` est le filet principal. Il couvre : state machine, posture, contract-validator, flags, conversation-state, debugmeta-unit, critic, chat-routing, crisis-routing, llm-messages, conversation-data.
+
+Les commandes `pipeline:harness`, `debugmeta:harness` et `eval:chat` dépendent d'un LLM en direct — elles requièrent un GO explicite avant lancement.
 
 Les tests de comportement fins (tests manuels, live test) restent de la responsabilité conjointe.
 
@@ -164,25 +171,17 @@ Ces règles s'appliquent à toute section debug visible dans `index.html` et `ad
 
 ---
 
-### Règle d'analyse post-conversation
+### Règle d'analyse post-conversations test
 
 **Ne jamais inférer un signal à partir du contenu des messages quand ce signal devrait être lisible dans le debug.**
 
 Si un champ n'est pas visible dans le debug (index.html ou admin.html), c'est un trou à corriger — pas une raison de spéculer. Toute analyse formulée sans base dans le debug doit être explicitement signalée comme inférence non vérifiée, avec la mention du champ manquant.
 
-Les champs actuellement disponibles dans le debug (index.html, admin.html) :
-- **Contrat de posture** : état conversation, intention, interdits, signal confiance, relance, alliance, engagement, fenêtre de traitement, indications writer, orientation writer
-- **Affiliation** : `affiliationWindow` (fenêtre des 4 derniers tours), `affiliationScore` (degré d'affiliation du tour)
-- **Signaux** : `affiliationEstablished`, `emotionalDecentering`, `formalAddress`, sous-champs contact (`insightMoment`, `selfCriticismLevel`, `meaningCrisis`)
-- **Réponse initiale (avant correction)** : affiché uniquement si le Critic a réécrit la réponse
-
-Si un de ces champs est absent du debug visible, ne pas présumer de sa valeur — signaler l'absence.
-
 ---
 
 ## 8. Prompt engineering — séparation stricte des couches
 
-Avant d'ajouter ou modifier une instruction dans un prompt de writer (mode, niveau, tone) :
+Avant d'ajouter ou modifier une instruction dans un prompt de writer (état, niveau, tone) :
 
 **Question de contrôle :** cette instruction *décide* quelque chose, ou elle *formule* une décision déjà prise ?
 
@@ -210,7 +209,7 @@ Cela implique concrètement :
 - il n'existe pas de "on verra plus tard" pour la fiabilité, la confidentialité, ou la cohérence comportementale
 - les simplifications techniques acceptables sont celles qui n'impactent pas l'expérience perçue ; les autres sont des dettes explicites à documenter, pas à taire
 
-Ce principe s'applique aussi à la mémoire longue terme : si une information persiste entre sessions, elle doit être traitée avec le même soin qu'un dossier clinique — lisible, contrôlable, et jamais exposée sans consentement explicite.
+Ce principe s'applique aussi à la mémoire long terme : si une information persiste entre sessions, elle doit être traitée avec le même soin qu'un dossier clinique — lisible, contrôlable, et jamais exposée sans consentement explicite.
 
 ---
 

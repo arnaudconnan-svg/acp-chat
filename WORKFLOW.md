@@ -4,8 +4,8 @@
 
 Ce fichier decrit le mode de travail reel du projet.
 
-- l'utilisateur formule un objectif produit, un probleme visible, ou une contrainte metier
-- l'agent choisit l'implementation technique, structure le chantier, modifie le code, puis verifie
+- l'utilisateur formule un objectif produit, un probleme visible, une contrainte metier ou soumet une conversation test avec des commentaires dev écrits par lui
+- l'agent propose des axes d'amélioration, choisit l'implementation technique, structure le chantier, modifie le code, puis verifie
 - GitHub reste la source de verite
 - la branche `beta` reste la base de travail principale sauf besoin explicite contraire
 
@@ -59,13 +59,14 @@ Dans ces cas :
 Verification minimale apres changement backend significatif :
 
 1. `node --check server.js`
-2. `npm run smoke`
+2. `npm run verify`
 
 Verification complementaire selon le chantier :
 
 - lecture des logs `[PIPELINE]` pour un diagnostic fin de `/chat`
 - harness comportemental centre sur `debugMeta`
 - test manuel cible quand le changement est visible
+- `pipeline:harness`, `debugmeta:harness` ou `eval:chat` sur GO explicite seulement (LLM en direct)
 
 ## 5. Strategie de chantier
 
@@ -81,23 +82,17 @@ Pour les gros chantiers techniques, privilegier :
 - validation apres chaque extraction
 - un seul type de risque a la fois
 
-Exemple recommande pour `server.js` :
-
-1. `prompts`
-2. `flags`
-3. `analyzers`
-4. `memory`
-5. `pipeline`
-
 ## 6. Zones sensibles
 
 Les zones qui demandent le plus de rigueur sont :
 
-- `server.js` et la route `/chat`
-- les fonctions de memoire
-- les transitions d'etat conversationnel
-- le contrat frontend/backend entre `public/index.html` et `/chat`
-- `public/sw.js`
+- `server.js` et la route `/chat` (pipeline d'execution, early-returns, ordre des etapes)
+- `lib/pipeline.js` et `lib/analyzers.js` (arbitrage posture, signaux)
+- les fonctions de memoire (`lib/memory.js`)
+- les transitions d'etat conversationnel (`lib/conversation-state.js`)
+- le contrat frontend/backend entre `public/index.html`, `public/admin.html` et `/chat`
+- `public/sw.js` (service worker, cache, offline)
+- `lib/debugmeta.js` (toute modification doit etre synchronisee dans les deux interfaces)
 
 La sensibilite d'une zone ne signifie pas qu'elle est intouchable.
 Elle signifie qu'elle doit etre modifiee avec verification adaptee.
@@ -122,43 +117,34 @@ Sur ce projet :
 
 ---
 
-## 12. Routine test conversationnel en direct (assistée)
+## 9. Continuite PC <-> Mobile avec plan.md
 
 Objectif :
 
-- tester le comportement du bot en boucle courte avec pilotage humain
+- maintenir une continuite de travail entre sessions sur des terminaux differents (PC local, mobile en tunneling) sans devoir tout re-expliquer a chaque ouverture
 
-Protocole :
+### Role de plan.md
 
-1. Codex propose 3 messages utilisateur fictifs, style casual
-2. l'utilisateur choisit un message via son numero, ou envoie `send: ...`
-3. Codex envoie ce message au serveur local (`/chat`)
-4. Codex renvoie :
-	- la reponse brute du bot
-	- 3 nouvelles propositions de message utilisateur
-5. on repete jusqu'a demande explicite d'arret
+`plan.md` est le pont de reprise entre sessions. Il contient le contexte minimal pour qu'une nouvelle session puisse reprendre le chantier sans reconstitution.
 
-Contraintes de generation des 3 propositions :
+Contenu obligatoire quand un chantier est actif :
+- objectif produit courant
+- decisions deja prises
+- validation attendue
+- questions ouvertes
 
-- profils humains plausibles, parfois peu a l'aise emotionnellement
-- longueurs variees (court, moyen, long)
-- ajout possible de bruit naturel (hesitations, auto-corrections, ellipses)
-- ton casual, non force
+Contenu exclu :
+- historique de modifications deja consommees
+- backlog ou todo-list
 
-Usage de la balise `<notes>` :
+### Mise a jour
 
-- l'utilisateur peut fournir des informations hors flux via `<notes>...</notes>`
-- ces notes servent a orienter les essais et l'analyse
-- elles ne sont pas envoyees telles quelles au serveur sauf demande explicite
+`plan.md` est mis a jour uniquement sur demande. Formulation naturelle du type `MAJ plan.md = ...` declenche une mise a jour en delta intelligent par Copilot. Le contenu apres `=` est interprete comme un delta a integrer, sauf indication contraire.
 
-Commandes operatoires :
+### Implémentation en cours dans une session tierce
 
-- `send: <texte>` : envoyer exactement le texte indique
-- `stop` : arreter la boucle de test
-- apres `stop` : lancer un debrief synthese (patterns observes, points de risque, idees d'ajustement)
+Si un chantier est en cours d'implementation sur un autre terminal et que le repo n'est pas encore aligne avec `plan.md`, ajouter dans `plan.md` un bloc explicite :
 
-Verification minimale a chaque tour :
+> *Implmentation en cours dans une session tierce* : [description de ce qui est en transit] — [contexte ou terminal concerne]
 
-- confirmer le message effectivement envoye
-- afficher la reponse du bot recue
-- proposer immediatement 3 nouvelles options
+Copilot ne traitera pas l'ecart repo / plan comme une incoherence sur ce sujet tant que ce bloc est present.
