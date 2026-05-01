@@ -1983,8 +1983,6 @@ app.post("/api/account/conversations/import-local", requireUserAuth, async (req,
               })).filter(e => e.stage) : [],
               explorationCalibrationLevel: Number.isInteger(debugMeta.explorationCalibrationLevel) ? debugMeta.explorationCalibrationLevel : null,
               explorationSubmode: typeof debugMeta.explorationSubmode === "string" ? debugMeta.explorationSubmode : null,
-              rewriteSource: typeof debugMeta.rewriteSource === "string" ? debugMeta.rewriteSource : null,
-              memoryRewriteSource: typeof debugMeta.memoryRewriteSource === "string" ? debugMeta.memoryRewriteSource : null,
               memoryRewriteIntent: debugMeta.memoryRewriteIntent && typeof debugMeta.memoryRewriteIntent === "object" ? {
                 compressionRequested: debugMeta.memoryRewriteIntent.compressionRequested === true,
                 interpretationRejectionActive: debugMeta.memoryRewriteIntent.interpretationRejectionActive === true,
@@ -3803,8 +3801,6 @@ app.post("/chat", async (req, res) => {
       pipelineStages: normalizePipelineStagesForStorage(safe.pipelineStages),
       explorationCalibrationLevel: Number.isInteger(safe.explorationCalibrationLevel) ? clampExplorationDirectivityLevel(safe.explorationCalibrationLevel) : null,
       explorationSubmode: typeof safe.explorationSubmode === "string" ? safe.explorationSubmode : null,
-      rewriteSource: typeof safe.rewriteSource === "string" ? safe.rewriteSource : null,
-      memoryRewriteSource: typeof safe.memoryRewriteSource === "string" ? safe.memoryRewriteSource : null,
       memoryRewriteIntent: safe.memoryRewriteIntent && typeof safe.memoryRewriteIntent === "object" ? {
         compressionRequested: safe.memoryRewriteIntent.compressionRequested === true,
         interpretationRejectionActive: safe.memoryRewriteIntent.interpretationRejectionActive === true,
@@ -3877,8 +3873,6 @@ app.post("/chat", async (req, res) => {
     explorationDirectivityLevel = 0,
     explorationRelanceWindow = [],
     explorationSubmode = null,
-    rewriteSource = null,
-    memoryRewriteSource = null,
     modelConflict = false,
     promptRegistry = buildDefaultPromptRegistry()
   } = {}) {
@@ -3909,8 +3903,6 @@ app.post("/chat", async (req, res) => {
       explorationCalibrationLevel: explorationCalibrationLevel !== null && explorationCalibrationLevel !== undefined ?
         clampExplorationDirectivityLevel(explorationCalibrationLevel) :
         null,
-      rewriteSource: typeof rewriteSource === "string" ? rewriteSource : null,
-      memoryRewriteSource: typeof memoryRewriteSource === "string" ? memoryRewriteSource : null,
       modelConflict: modelConflict === true
     };
   }
@@ -4671,7 +4663,6 @@ app.post("/chat", async (req, res) => {
 
     let reply = generatedBase.reply;
     let relanceAnalysis = null;
-    const finalReplyRewriteSources = [];
 
     // Phase 4: Selective critic - single guardrail for exploration, discharge, and info.
     // CRITIC_PASS now covers theoretical violations. No separate conflict-model or uncertainty passes.
@@ -4742,7 +4733,6 @@ app.post("/chat", async (req, res) => {
         if (criticResult.criticIssues.length > 0) {
           criticOriginalReply = reply;
           reply = criticResult.reply;
-          finalReplyRewriteSources.push("critic_pass");
           logChatDecision("critic_rewrote", {
             issueCount: criticResult.criticIssues.length,
             issues: criticResult.criticIssues
@@ -4750,8 +4740,6 @@ app.post("/chat", async (req, res) => {
         }
       }
     }
-
-    const finalReplyRewriteSource = finalReplyRewriteSources.join("+") || null;
 
     if (detectedState === "exploration") {
       relanceAnalysis = await analyzeExplorationRelance({
@@ -4783,10 +4771,6 @@ app.post("/chat", async (req, res) => {
       explorationRelanceWindow: newFlags.explorationRelanceWindow,
     });
     
-    if (logsEnabled && finalReplyRewriteSource) {
-      debug.push(`rewriteSource: ${finalReplyRewriteSource}`);
-    }
-
     if (logsEnabled) {
       debug.push(
         ...buildAdvancedDebugTrace({
@@ -4855,12 +4839,8 @@ app.post("/chat", async (req, res) => {
       promptRegistry: activePromptRegistry
     });
     const memoryWasCompressed = memoryNeedsCompression && finalizedMemoryCandidate !== memoryCandidate;
-    const memoryRewriteSource = finalizedMemoryCandidate !== memoryCandidate ? memoryCandidate : null;
     const newMemory = finalizedMemoryCandidate;
     
-    if (logsEnabled && memoryRewriteSource) {
-      debug.push(`memoryRewriteSource: ${memoryRewriteSource}`);
-    }
     if (logsEnabled) {
       debug.push(`trace.memoryCompressed: ${memoryWasCompressed ? "true" : "false"}`);
     }
@@ -4878,8 +4858,6 @@ app.post("/chat", async (req, res) => {
       explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
       explorationRelanceWindow: newFlags.explorationRelanceWindow,
       explorationSubmode: finalExplorationSubmode,
-      rewriteSource: finalReplyRewriteSource,
-      memoryRewriteSource,
       memoryRewriteIntent,
       memoryCompressed: memoryWasCompressed,
       memoryBeforeCompression,

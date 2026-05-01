@@ -909,8 +909,6 @@
         pipelineStages: normalizePipelineStages(safe.pipelineStages),
         explorationCalibrationLevel: Number.isInteger(safe.explorationCalibrationLevel) ? safe.explorationCalibrationLevel : null,
         explorationSubmode: typeof safe.explorationSubmode === "string" ? safe.explorationSubmode.trim() : null,
-        rewriteSource: typeof safe.rewriteSource === "string" ? safe.rewriteSource.trim() : null,
-        memoryRewriteSource: typeof safe.memoryRewriteSource === "string" ? safe.memoryRewriteSource.trim() : null,
         memoryRewriteIntent: safe.memoryRewriteIntent && typeof safe.memoryRewriteIntent === "object" ? {
           compressionRequested: safe.memoryRewriteIntent.compressionRequested === true,
           interpretationRejectionActive: safe.memoryRewriteIntent.interpretationRejectionActive === true,

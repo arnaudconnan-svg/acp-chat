@@ -3945,8 +3945,6 @@
         pipelineStages: normalizeClientPipelineStages(safe.pipelineStages),
         explorationCalibrationLevel: Number.isInteger(safe.explorationCalibrationLevel) ? safe.explorationCalibrationLevel : null,
         explorationSubmode: typeof safe.explorationSubmode === "string" ? safe.explorationSubmode.trim() : "",
-        rewriteSource: typeof safe.rewriteSource === "string" ? safe.rewriteSource.trim() : "",
-        memoryRewriteSource: typeof safe.memoryRewriteSource === "string" ? safe.memoryRewriteSource.trim() : "",
         memoryRewriteIntent: safe.memoryRewriteIntent && typeof safe.memoryRewriteIntent === "object" ? {
           compressionRequested: safe.memoryRewriteIntent.compressionRequested === true,
           interpretationRejectionActive: safe.memoryRewriteIntent.interpretationRejectionActive === true,
@@ -6829,8 +6827,6 @@
               !!debugMeta.directivityLabel ||
               hasStructuredSignals ||
               !!debugMeta.explorationSubmode ||
-              !!debugMeta.rewriteSource ||
-              !!debugMeta.memoryRewriteSource ||
               (
                 !!debugMeta.memoryRewriteIntent &&
                 (
