@@ -1876,6 +1876,12 @@
           return "phrases moyennes";
         }
 
+        function translateExplorationSubmode(value) {
+          if (value === "interpretation") return "interpretation";
+          if (value === "phenomenological_follow") return "accompagnement phenomenologique";
+          return value;
+        }
+
         function translateRelancePolicy(value) {
           if (value === "forbidden") return "interdite";
           if (value === "discouraged") return "d\u00e9conseill\u00e9e";
@@ -2040,6 +2046,8 @@
                 typeof meta.confidenceSignal === "number" ? `Confiance dans le choix de l'\u00e9tat : ${meta.confidenceSignal.toFixed(2)}` : null,
                 (isExplorationMode && Number.isInteger(meta.explorationCalibrationLevel)) ?
                   `Niveau de structuration retenu : ${meta.explorationCalibrationLevel}/4` : null,
+                (isExplorationMode && typeof meta.explorationSubmode === "string" && meta.explorationSubmode) ?
+                  `Sous-mode d'exploration : ${translateExplorationSubmode(meta.explorationSubmode)}` : null,
                 meta.intent ? `Intention : ${meta.intent}` : null,
                 (meta.forbidden && meta.forbidden.length) ? `Interdit : ${meta.forbidden.map(translateForbidden).join(", ")}` : null,
                 meta.relancePolicy && meta.relancePolicy !== "selective" ? `Relance : ${translateRelancePolicy(meta.relancePolicy)}` : null,

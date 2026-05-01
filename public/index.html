@@ -3940,6 +3940,7 @@
         consecutiveNonExplorationTurns: Number.isInteger(safe.consecutiveNonExplorationTurns) ? Math.max(0, safe.consecutiveNonExplorationTurns) : 0,
         interpretationRejection: safe.interpretationRejection === true,
         needsSoberReadjustment: safe.needsSoberReadjustment === true,
+        relationalAdjustmentActive: (safe.relationalAdjustmentActive ?? safe.relationalAdjustmentTriggered) === true,
         relationalAdjustmentTriggered: safe.relationalAdjustmentTriggered === true,
         pipelineStages: normalizeClientPipelineStages(safe.pipelineStages),
         explorationCalibrationLevel: Number.isInteger(safe.explorationCalibrationLevel) ? safe.explorationCalibrationLevel : null,
@@ -6416,6 +6417,12 @@
         return "phrases moyennes";
       }
 
+      function translateExplorationSubmodeDebug(value) {
+        if (value === "interpretation") return "interpretation";
+        if (value === "phenomenological_follow") return "accompagnement phenomenologique";
+        return value;
+      }
+
       function translateSomaticFocusPolicyDebug(value) {
         if (value === "prioritize_somatic_proximity") return "priorit\u00e9 proximit\u00e9 somatique";
         if (value === "address_frustration_before_somatic_relocalization") return "frustration d'abord, pas de relocalisation impos\u00e9e";
@@ -6441,7 +6448,7 @@
           lines.push("Un reajustement sobre a ete applique pour reduire la pression de la reponse.");
         }
 
-        if (meta.relationalAdjustmentTriggered === true) {
+        if (meta.relationalAdjustmentActive === true || meta.relationalAdjustmentTriggered === true) {
           lines.push("Un ajustement relationnel a ete declenche pour proteger l'alliance.");
         }
 
@@ -6534,6 +6541,8 @@
               typeof meta.confidenceSignal === "number" ? `Confiance dans le choix de l'\u00e9tat : ${meta.confidenceSignal.toFixed(2)}` : null,
               (isExplorationMode && Number.isInteger(meta.explorationCalibrationLevel)) ?
                 `Niveau de structuration retenu : ${meta.explorationCalibrationLevel}/4` : null,
+                (isExplorationMode && typeof meta.explorationSubmode === "string" && meta.explorationSubmode) ?
+                  `Sous-mode d'exploration : ${translateExplorationSubmodeDebug(meta.explorationSubmode)}` : null,
               meta.intent ? `Intention : ${meta.intent}` : null,
               (meta.forbidden && meta.forbidden.length) ? `Interdit : ${meta.forbidden.map(translateForbiddenDebug).join(", ")}` : null,
               typeof meta.relancePolicy === "string" && meta.relancePolicy ? `Relance : ${translateRelancePolicyDebug(meta.relancePolicy)}` : null,
