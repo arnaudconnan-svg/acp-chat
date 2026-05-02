@@ -795,7 +795,7 @@
     }
 
     .conversationItemEmptyState .conversationItemPlaceholder {
-      padding-left: 6px;
+      padding-left: 20px;
     }
     
     .conversationItemRow {
@@ -9352,11 +9352,38 @@
         setTimeout(() => syncComposerUiDeferred({ keepBottom: true }), 320);
       };
       
-      inputEl.addEventListener("keydown", e => {
-        if (e.key === "Enter" && e.ctrlKey) {
-          e.preventDefault();
-          send();
+      function isLikelyMobileSoftKeyboardContext() {
+        const hasCoarsePointer = typeof window.matchMedia === "function" && window.matchMedia("(pointer: coarse)").matches;
+        const hasTouch = typeof navigator !== "undefined" && Number(navigator.maxTouchPoints || 0) > 0;
+        if (!hasCoarsePointer && !hasTouch) {
+          return false;
         }
+
+        // On touch devices, keep Enter for newline when the virtual keyboard is open.
+        const vv = visualViewportRef;
+        if (!vv) {
+          return true;
+        }
+
+        const keyboardDelta = Math.max(0, window.innerHeight - (vv.height + vv.offsetTop));
+        return keyboardDelta > 80;
+      }
+
+      inputEl.addEventListener("keydown", e => {
+        if (e.key !== "Enter" || e.isComposing) return;
+
+        // Ctrl/Cmd + Enter inserts a newline.
+        if (e.ctrlKey || e.metaKey) {
+          return;
+        }
+
+        // On mobile virtual keyboard, Enter keeps its native newline behavior.
+        if (isLikelyMobileSoftKeyboardContext()) {
+          return;
+        }
+
+        e.preventDefault();
+        send();
       });
       
       inputEl.addEventListener("input", () => {
