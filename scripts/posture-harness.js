@@ -41,7 +41,7 @@ function baseInput(overrides = {}) {
     previousConversationState: "exploration_open",
     currentConsecutiveNonExplorationTurns: 0,
     currentExplorationRelanceWindow: [false, false, false, false],
-    allianceState: "good",
+    allianceSignal: "good",
     engagementLevel: "active",
     stagnationTurns: 0,
     processingWindow: "open",

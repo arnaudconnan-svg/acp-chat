@@ -1,6 +1,6 @@
-﻿"use strict";
+"use strict";
 
-// â”€â”€â”€ Pure deterministic harness â€” no server required â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Pure deterministic harness — no server required ─────────────────────────
 // Tests the explicit state machine defined in lib/conversation-state.js:
 // - STATE_TRANSITIONS: coverage and known valid/invalid edges
 // - resolveConversationState: priority ordering
@@ -36,7 +36,7 @@ function resolve(overrides = {}) {
     detectedState: "exploration",
     previousConversationState: "exploration_open",
     directivityLevel: 0,
-    allianceState: "good",
+    allianceSignal: "good",
     engagementLevel: "active",
     stagnationTurns: 0,
     processingWindow: "open",
@@ -45,20 +45,20 @@ function resolve(overrides = {}) {
   });
 }
 
-// â”€â”€â”€ 1. CONVERSATION_STATES completeness â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── 1. CONVERSATION_STATES completeness ─────────────────────────────────────
 const EXPECTED_STATES = ["exploration", "discharge", "info", "stabilization", "alliance_rupture", "closure", "n1_crisis", "n2_crisis"];
 assert(Array.isArray(CONVERSATION_STATES), "CONVERSATION_STATES is an array");
 for (const s of EXPECTED_STATES) {
   assert(CONVERSATION_STATES.includes(s), `CONVERSATION_STATES includes '${s}'`);
 }
 
-// â”€â”€â”€ 2. STATE_TRANSITIONS coverage â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── 2. STATE_TRANSITIONS coverage ───────────────────────────────────────────
 for (const s of CONVERSATION_STATES) {
   assert(Array.isArray(STATE_TRANSITIONS[s]), `STATE_TRANSITIONS has entry for '${s}'`);
   assert(STATE_TRANSITIONS[s].length > 0, `STATE_TRANSITIONS['${s}'] is non-empty`);
 }
 
-// â”€â”€â”€ 3. isValidTransition guard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── 3. isValidTransition guard ──────────────────────────────────────────────
 // Known valid edges
 assert(isValidTransition("exploration", "discharge"), "isValidTransition: exploration -> discharge");
 assert(isValidTransition("discharge", "exploration"), "isValidTransition: discharge -> exploration");
@@ -74,7 +74,7 @@ assert(!isValidTransition("closure", "stabilization"), "isValidTransition: closu
 // unknown state is permissive
 assert(isValidTransition("unknown_legacy_state", "exploration"), "isValidTransition: unknown legacy state is permissive");
 
-// â”€â”€â”€ 4. resolveConversationState priority â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── 4. resolveConversationState priority ────────────────────────────────────
 
 // Priority 1: post-discharge cooldown
 assert(resolve({ previousConversationState: "discharge_regulated", detectedState: "exploration" }) === "exploration_open",
@@ -97,11 +97,11 @@ assert(resolve({ directivityLevel: 3 }) === "exploration_restrained", "resolve: 
 
 // Phase B: alliance_rupture override
 assert(
-  resolve({ allianceState: "rupture" }) === "alliance_rupture",
+  resolve({ allianceSignal: "rupture" }) === "alliance_rupture",
   "resolve: alliance_rupture overrides exploration"
 );
 assert(
-  resolve({ previousConversationState: "discharge_regulated", detectedState: "exploration", allianceState: "rupture" }) === "alliance_rupture",
+  resolve({ previousConversationState: "discharge_regulated", detectedState: "exploration", allianceSignal: "rupture" }) === "alliance_rupture",
   "resolve: alliance_rupture overrides exploration (post-discharge)"
 );
 
@@ -126,7 +126,7 @@ assert(
 
 // alliance_rupture takes precedence over stabilization
 assert(
-  resolve({ allianceState: "rupture", processingWindow: "overloaded", engagementLevel: "withdrawn" }) === "alliance_rupture",
+  resolve({ allianceSignal: "rupture", processingWindow: "overloaded", engagementLevel: "withdrawn" }) === "alliance_rupture",
   "resolve: alliance_rupture takes precedence over stabilization"
 );
 
@@ -136,11 +136,11 @@ assert(
   "resolve: closureIntent -> closure"
 );
 assert(
-  resolve({ closureIntent: true, allianceState: "rupture" }) === "alliance_rupture",
+  resolve({ closureIntent: true, allianceSignal: "rupture" }) === "alliance_rupture",
   "resolve: closureIntent cannot override alliance_rupture"
 );
 
-// â”€â”€â”€ 5. baseStateOf mapping â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── 5. baseStateOf mapping ───────────────────────────────────────────────────
 assert(baseStateOf("exploration_open") === "exploration", "baseStateOf: exploration_open -> exploration");
 assert(baseStateOf("exploration_restrained") === "exploration", "baseStateOf: exploration_restrained -> exploration");
 assert(baseStateOf("discharge_regulated") === "discharge", "baseStateOf: discharge_regulated -> discharge");
@@ -153,7 +153,7 @@ assert(baseStateOf("alliance_rupture") === "alliance_rupture", "baseStateOf: all
 assert(baseStateOf("closure") === "closure", "baseStateOf: closure -> closure");
 assert(baseStateOf("n1_crisis") === "n1_crisis", "baseStateOf: n1_crisis passthrough");
 
-// â”€â”€â”€ 6. STATE_* tables consistency â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── 6. STATE_* tables consistency ───────────────────────────────────────────
 const allStates = [
   "exploration_open", "exploration_restrained", "stabilization",
   "alliance_rupture", "closure", "discharge_regulated", "discharge_dysregulated",
@@ -171,7 +171,7 @@ for (const st of Object.keys(STATE_CONSTRAINTS)) {
   assert(typeof c.toneConstraint === "string" || c.toneConstraint === null, `STATE_CONSTRAINTS['${st}'].toneConstraint is string or null`);
 }
 
-// â”€â”€â”€ Report â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Report ───────────────────────────────────────────────────────────────────
 console.log(`\n[STATE] ${passed}/${passed + failed} checks passed.`);
 if (failed > 0) {
   process.exitCode = 1;

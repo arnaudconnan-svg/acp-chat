@@ -156,11 +156,11 @@ check("consecutiveTurns: 'bad' → 0", () => assert(normalizeConsecutiveNonExplo
 
 // ─── normalizeAllianceState ───────────────────────────────────────────────────
 
-check("allianceState: 'good' → 'good'", () => assert(normalizeAllianceState("good") === "good"));
-check("allianceState: 'fragile' → 'fragile'", () => assert(normalizeAllianceState("fragile") === "fragile"));
-check("allianceState: 'rupture' → 'rupture'", () => assert(normalizeAllianceState("rupture") === "rupture"));
-check("allianceState: null → 'good'", () => assert(normalizeAllianceState(null) === "good"));
-check("allianceState: unknown → 'good'", () => assert(normalizeAllianceState("broken") === "good"));
+check("allianceSignal: 'good' → 'good'", () => assert(normalizeAllianceState("good") === "good"));
+check("allianceSignal: 'fragile' → 'fragile'", () => assert(normalizeAllianceState("fragile") === "fragile"));
+check("allianceSignal: 'rupture' → 'rupture'", () => assert(normalizeAllianceState("rupture") === "rupture"));
+check("allianceSignal: null → 'good'", () => assert(normalizeAllianceState(null) === "good"));
+check("allianceSignal: unknown → 'good'", () => assert(normalizeAllianceState("broken") === "good"));
 
 // ─── normalizeEngagementLevel ─────────────────────────────────────────────────
 
@@ -258,9 +258,9 @@ check("sessionFlags: unknown conversationState → 'exploration_open'", () => {
     `expected 'exploration_open', got '${out.conversationState}'`);
 });
 
-check("sessionFlags: allianceState preserved", () => {
-  const out = normalizeSessionFlags({ allianceState: "rupture" });
-  assert(out.allianceState === "rupture");
+check("sessionFlags: allianceSignal preserved", () => {
+  const out = normalizeSessionFlags({ allianceSignal: "rupture" });
+  assert(out.allianceSignal === "rupture");
 });
 
 check("sessionFlags: engagementLevel preserved", () => {

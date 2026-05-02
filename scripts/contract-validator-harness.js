@@ -52,7 +52,7 @@ function baseInput(overrides = {}) {
     affiliationEstablished: true,
     currentConsecutiveNonExplorationTurns: 0,
     currentExplorationRelanceWindow: [false, false, false, false],
-    allianceState: "good",
+    allianceSignal: "good",
     engagementLevel: "active",
     stagnationTurns: 0,
     processingWindow: "open",
@@ -109,7 +109,7 @@ check("posture decision always returns known conversationState", () => {
     baseInput({ detectedState: "info_pure" }),
     baseInput({ detectedState: "info_psychoeducation" }),
     baseInput({ detectedState: "info_features" }),
-    baseInput({ detectedState: "exploration", allianceState: "rupture" }),
+    baseInput({ detectedState: "exploration", allianceSignal: "rupture" }),
     baseInput({ detectedState: "exploration", closureIntent: true }),
     baseInput({ detectedState: "exploration", processingWindow: "overloaded", engagementLevel: "withdrawn" })
   ];
