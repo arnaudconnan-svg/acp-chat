@@ -5488,7 +5488,10 @@ app.listen(port, () => {
     }, EMERGENCY_REFRESH_INITIAL_DELAY_MS);
   }
 
+  // Node.js setInterval overflows for values > 2^31-1 ms (~24.8 days), firing immediately in a loop.
+  // Cap at 24h; the guard inside safeRefreshEmergencyNumbers (EMERGENCY_REFRESH_MIN_INTERVAL_MS)
+  // prevents actual refresh from running more than once per 24h anyway.
   setInterval(() => {
     safeRefreshEmergencyNumbers("interval");
-  }, EMERGENCY_REFRESH_INTERVAL_MS);
+  }, EMERGENCY_REFRESH_MIN_INTERVAL_MS);
 });
