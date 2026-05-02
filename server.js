@@ -58,6 +58,41 @@ try {
   // Non-blocking: fallback text will be used if file is missing
 }
 
+let emergencyRefreshInProgress = false;
+let lastEmergencyRefreshAt = 0;
+
+const EMERGENCY_REFRESH_INTERVAL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+const EMERGENCY_REFRESH_INITIAL_DELAY_MS = 5 * 60 * 1000; // 5 minutes
+const EMERGENCY_REFRESH_MIN_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const REFRESH_EMERGENCY_ON_BOOT = String(process.env.REFRESH_EMERGENCY_ON_BOOT || "false").toLowerCase() === "true";
+
+async function safeRefreshEmergencyNumbers(reason = "interval") {
+  const now = Date.now();
+
+  if (emergencyRefreshInProgress) {
+    console.log(`[server][emergency-refresh] skipped (${reason}): already in progress.`);
+    return;
+  }
+
+  if (lastEmergencyRefreshAt > 0 && now - lastEmergencyRefreshAt < EMERGENCY_REFRESH_MIN_INTERVAL_MS) {
+    console.log(`[server][emergency-refresh] skipped (${reason}): too recent.`);
+    return;
+  }
+
+  emergencyRefreshInProgress = true;
+  lastEmergencyRefreshAt = now;
+
+  try {
+    const updated = await runEmergencyNumbersUpdate(EMERGENCY_NUMBERS_FILE, "[server][emergency-refresh]");
+    emergencyNumbers = updated;
+    console.log("[server][emergency-refresh] in-memory data updated.");
+  } catch (err) {
+    console.error("[server][emergency-refresh] refresh failed:", err.message);
+  } finally {
+    emergencyRefreshInProgress = false;
+  }
+}
+
 function normalizeCountryCode(value) {
   const code = String(value || "").trim().toUpperCase();
   return /^[A-Z]{2}$/.test(code) ? code : null;
@@ -5134,24 +5169,15 @@ app.post("/chat", async (req, res) => {
 app.listen(port, () => {
   console.log(`Serveur lance sur http://localhost:${port}`);
 
-  // Refresh automatique mensuel des num�ros d'urgence via Wikidata.
-  // Premier refresh d�cal� de 5 minutes apr�s le d�marrage pour ne pas ralentir
-  // la mise en ligne. Ensuite toutes les 30 jours.
-  const EMERGENCY_REFRESH_INTERVAL_MS = 30 * 24 * 60 * 60 * 1000; // 30 jours
-  const EMERGENCY_REFRESH_INITIAL_DELAY_MS = 5 * 60 * 1000; // 5 minutes
-
-  async function refreshEmergencyNumbers() {
-    try {
-      const updated = await runEmergencyNumbersUpdate(EMERGENCY_NUMBERS_FILE, "[server][emergency-refresh]");
-      emergencyNumbers = updated;
-      console.log("[server][emergency-refresh] Donn�es en m�moire mises � jour.");
-    } catch (err) {
-      console.error("[server][emergency-refresh] �chec du refresh:", err.message);
-    }
+  // Auto-refresh for emergency numbers via Wikidata.
+  // Boot refresh is opt-in via REFRESH_EMERGENCY_ON_BOOT=true.
+  if (REFRESH_EMERGENCY_ON_BOOT) {
+    setTimeout(() => {
+      safeRefreshEmergencyNumbers("boot");
+    }, EMERGENCY_REFRESH_INITIAL_DELAY_MS);
   }
 
-  setTimeout(() => {
-    refreshEmergencyNumbers();
-    setInterval(refreshEmergencyNumbers, EMERGENCY_REFRESH_INTERVAL_MS);
-  }, EMERGENCY_REFRESH_INITIAL_DELAY_MS);
+  setInterval(() => {
+    safeRefreshEmergencyNumbers("interval");
+  }, EMERGENCY_REFRESH_INTERVAL_MS);
 });
