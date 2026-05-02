@@ -11,7 +11,7 @@ const {
   computeExplorationDirectivityLevel,
   detectClosureIntent,
   normalizeAllianceState,
-  normalizeContactState,
+  normalizeDischargeState,
   normalizeConversationState,
   normalizeConsecutiveNonExplorationTurns,
   normalizeDependencyRiskLevel,
@@ -106,19 +106,19 @@ check("window: [true,true] → [true,true]", () => {
   assert(deepEqual(normalizeExplorationRelanceWindow([true, true]), [true, true]));
 });
 
-// ─── normalizeContactState ────────────────────────────────────────────────────
+// ─── normalizeDischargeState ────────────────────────────────────────────────────
 
-check("contactState: null → {wasContact:false}", () => {
-  assert(deepEqual(normalizeContactState(null), { wasContact: false }));
+check("dischargeState: null → {wasDischarge:false}", () => {
+  assert(deepEqual(normalizeDischargeState(null), { wasDischarge: false }));
 });
-check("contactState: array → {wasContact:false}", () => {
-  assert(deepEqual(normalizeContactState([]), { wasContact: false }));
+check("dischargeState: array → {wasDischarge:false}", () => {
+  assert(deepEqual(normalizeDischargeState([]), { wasDischarge: false }));
 });
-check("contactState: {wasContact:true} → {wasContact:true}", () => {
-  assert(deepEqual(normalizeContactState({ wasContact: true }), { wasContact: true }));
+check("dischargeState: {wasDischarge:true} → {wasDischarge:true}", () => {
+  assert(deepEqual(normalizeDischargeState({ wasDischarge: true }), { wasDischarge: true }));
 });
-check("contactState: {wasContact:'yes'} → {wasContact:false}", () => {
-  assert(deepEqual(normalizeContactState({ wasContact: "yes" }), { wasContact: false }));
+check("dischargeState: {wasDischarge:'yes'} → {wasDischarge:false}", () => {
+  assert(deepEqual(normalizeDischargeState({ wasDischarge: "yes" }), { wasDischarge: false }));
 });
 
 // ─── normalizeConversationState ───────────────────────────────────────────────

@@ -103,19 +103,19 @@ function makeAnalyzers() {
 async function run() {
   const analyzers = makeAnalyzers();
 
-  const discharge = await analyzers.detectMode("Je suis en train d'exploser", [], { wasContact: false });
+  const discharge = await analyzers.detectMode("Je suis en train d'exploser", [], { wasDischarge: false });
   check("detectMode: discharge priority is preserved", () => {
     assert(discharge.detectedState === "discharge_dysregulated", `expected discharge_dysregulated, got ${discharge.detectedState}`);
     assert(discharge.contactAnalysis?.isContact === false, "expected contactAnalysis to be reset on discharge path");
   });
 
-  const explorationWithContact = await analyzers.detectMode("Je m'en veux tellement", [], { wasContact: false });
+  const explorationWithContact = await analyzers.detectMode("Je m'en veux tellement", [], { wasDischarge: false });
   check("detectMode: non-discharge contact keeps exploration when no info request", () => {
     assert(explorationWithContact.detectedState === "exploration", `expected exploration, got ${explorationWithContact.detectedState}`);
     assert(explorationWithContact.contactAnalysis?.isContact === true, "expected contactAnalysis.isContact=true");
   });
 
-  const infoWithContact = await analyzers.detectMode("Je m'en veux tellement, ton app fait quoi dans ce cas ?", [], { wasContact: false });
+  const infoWithContact = await analyzers.detectMode("Je m'en veux tellement, ton app fait quoi dans ce cas ?", [], { wasDischarge: false });
   check("detectMode: non-discharge contact signal survives in info mode", () => {
     assert(infoWithContact.detectedState === "info_features", `expected info_features, got ${infoWithContact.detectedState}`);
     assert(infoWithContact.contactAnalysis?.isContact === true, "expected contactAnalysis.isContact=true in info mode");

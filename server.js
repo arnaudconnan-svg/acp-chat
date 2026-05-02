@@ -84,7 +84,7 @@ const {
   getExplorationStructureInstruction,
   normalizeAllianceState,
   normalizeAffiliationWindow,
-  normalizeContactState,
+  normalizeDischargeState,
   normalizeConversationState,
   normalizeConsecutiveNonExplorationTurns,
   normalizeDependencyRiskLevel,
@@ -1009,7 +1009,7 @@ const {
   buildClosurePromptBlock,
   buildRelationalAdjustmentPromptBlock,
   buildDischargeSubmodePromptBlock,
-  buildContactStatePromptBlock,
+  buildDischargeStatePromptBlock,
   buildInterpretationRejectionPromptBlock,
   buildSystemPrompt,
   generateReply
@@ -1064,7 +1064,7 @@ app.post("/session/close", async (req, res) => {
       flags: normalizeSessionFlags({
         ...flags,
         acuteCrisis: false,
-        contactState: { wasContact: false },
+        dischargeState: { wasDischarge: false },
         explorationRelanceWindow: [],
         explorationDirectivityLevel: 0
       })
@@ -4201,7 +4201,7 @@ app.post("/chat", async (req, res) => {
     // If the analysis returns N2, we bypass normal generation and reply with a crisis response.
     if (crisisDecision.route === "n2") {
       newFlags.acuteCrisis = true;
-      newFlags.contactState = { wasContact: false };
+      newFlags.dischargeState = { wasDischarge: false };
       flagsForCatch = normalizeSessionFlags(newFlags);
 
       logChatDecision("override_n2", {
@@ -4304,7 +4304,7 @@ app.post("/chat", async (req, res) => {
     if (flags.acuteCrisis === true) {
       if (crisisDecision.route === "acute_followup") {
         newFlags.acuteCrisis = true;
-        newFlags.contactState = { wasContact: false };
+        newFlags.dischargeState = { wasDischarge: false };
         flagsForCatch = normalizeSessionFlags(newFlags);
 
         logChatDecision("override_acute_crisis_followup", {
@@ -4449,7 +4449,7 @@ app.post("/chat", async (req, res) => {
       emotionalDecenteringResult,
       engagementAllianceAnalysis
     ] = await Promise.all([
-      withAnalyzerTiming("detect_mode", detectMode(message, recentHistory, newFlags.contactState, activePromptRegistry)),
+      withAnalyzerTiming("detect_mode", detectMode(message, recentHistory, newFlags.dischargeState, activePromptRegistry)),
       withAnalyzerTiming("relational_adjustment", analyzeRelationalAdjustmentNeed(message, recentHistory, previousMemory, false, activePromptRegistry)),
       withAnalyzerTiming("exploration_calibration", analyzeExplorationCalibration({
           message,
@@ -4484,8 +4484,8 @@ app.post("/chat", async (req, res) => {
     const contactAnalysis = detectedModeResult.contactAnalysis || { isContact: false };
     const dischargeAnalysis = detectedModeResult.dischargeAnalysis || { aggressiveDischargeDirectedToBot: false };
     const detectedState = detectedModeResult.detectedState;
-    newFlags.contactState = {
-      wasContact: typeof detectedState === "string" && detectedState.startsWith("discharge_")
+    newFlags.dischargeState = {
+      wasDischarge: typeof detectedState === "string" && detectedState.startsWith("discharge_")
     };
 
     const detectedPsychoeducationType = detectedState === "info_psychoeducation"
@@ -4590,8 +4590,8 @@ app.post("/chat", async (req, res) => {
       detectedState,
       isContact: contactAnalysis.isContact === true,
       relationalAdjustmentActive: postureDecision.relationalAdjustmentActive,
-      previousWasContact: flags.contactState?.wasContact === true,
-      currentWasContact: newFlags.contactState?.wasContact === true,
+      previousWasDischarge: flags.dischargeState?.wasDischarge === true,
+      currentWasDischarge: newFlags.dischargeState?.wasDischarge === true,
       previousConversationState,
       conversationState,
       consecutiveNonExplorationTurns,
