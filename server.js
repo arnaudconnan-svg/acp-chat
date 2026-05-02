@@ -908,6 +908,8 @@ const {
   analyzeSuicideRisk,
   analyzeClosureIntent,
   acuteCrisisFollowupResponse,
+  acuteCrisisFollowupResponseLLM,
+  classifyN2TurnType,
   n1Fallback,
   n1ResponseLLM,
   n2Response,
@@ -4588,6 +4590,7 @@ app.post("/chat", async (req, res) => {
     // If the analysis returns N2, we bypass normal generation and reply with a crisis response.
     if (crisisDecision.route === "n2") {
       newFlags.acuteCrisis = true;
+      newFlags.crisisFollowupTurnCount = 0;
       newFlags.dischargeState = { wasDischarge: false };
       flagsForCatch = normalizeSessionFlags(newFlags);
 
@@ -4656,6 +4659,22 @@ app.post("/chat", async (req, res) => {
       }
       const responseMemory = previousMemory;
       
+      // Mise à jour asynchrone de la mémoire (non-bloquante) — branche N2
+      (async () => {
+        try {
+          const crisisMem = await updateMemory(
+            previousMemory,
+            [...recentHistory, { role: "user", content: message }, { role: "assistant", content: reply }],
+            activePromptRegistry,
+            "crisis",
+            ""
+          );
+          if (!isPrivateConversation && convRef) {
+            await convRef.update({ memory: crisisMem });
+          }
+        } catch { /* non-bloquant */ }
+      })();
+
       const responseDebugMeta = buildResponseDebugMeta({
         memory: responseMemory,
         suicideLevel: "N2",
@@ -4666,7 +4685,9 @@ app.post("/chat", async (req, res) => {
         rewriteSource: null,
         memoryRewriteSource: null,
         modelConflict: false,
-        promptRegistry: activePromptRegistry
+        promptRegistry: activePromptRegistry,
+        n2TurnType: null,
+        emergencyNumbersIncluded: true
       });
       
       const botMessageId = persistAssistantMessageAsync(reply, debug, responseDebugMeta, { memory: responseMemory, flags: newFlags });
@@ -4700,19 +4721,72 @@ app.post("/chat", async (req, res) => {
         const debug = buildDebug("override", {
           suicideLevel: suicide.suicideLevel
         });
-        const reply = acuteCrisisFollowupResponse();
+
+        // Classifier déterministe du type de tour (refus, hostilité, isolement, débordement, neutre)
+        const n2TurnType = classifyN2TurnType(message);
+
+        // Numéros d'urgence inclus 1 tour sur 3 pour éviter la répétition mécanique
+        const crisisFollowupTurnCount = Number.isInteger(flags.crisisFollowupTurnCount) ? flags.crisisFollowupTurnCount : 0;
+        const includeNumbers = crisisFollowupTurnCount % 3 === 0;
+        newFlags.crisisFollowupTurnCount = crisisFollowupTurnCount + 1;
+
+        // Résolution des numéros d'urgence selon le pays (réutilise la même logique que N2 entry)
+        let followupEmergencyText = null;
+        try {
+          let userCountryCode = null;
+          const userData = await userProfilePromise;
+          if (userData && typeof userData.country === "string") {
+            userCountryCode = normalizeCountryCode(userData.country);
+          }
+          const emergencyInfo = lookupEmergencyNumbers(userCountryCode) || lookupEmergencyNumbers("FR");
+          followupEmergencyText = buildEmergencyNumbersText(emergencyInfo) || null;
+        } catch { /* non-bloquant */ }
+
+        let reply;
+        try {
+          reply = await acuteCrisisFollowupResponseLLM({
+            message,
+            history: recentHistory,
+            turnType: n2TurnType,
+            includeNumbers,
+            emergencyText: followupEmergencyText,
+            promptRegistry: activePromptRegistry
+          });
+        } catch {
+          reply = acuteCrisisFollowupResponse();
+        }
+
         const responseMemory = previousMemory;
+
+        // Mise à jour asynchrone de la mémoire (non-bloquante) — branche acute_followup
+        (async () => {
+          try {
+            const crisisMem = await updateMemory(
+              previousMemory,
+              [...recentHistory, { role: "user", content: message }, { role: "assistant", content: reply }],
+              activePromptRegistry,
+              "crisis",
+              ""
+            );
+            if (!isPrivateConversation && convRef) {
+              await convRef.update({ memory: crisisMem });
+            }
+          } catch { /* non-bloquant */ }
+        })();
+
         const responseDebugMeta = buildResponseDebugMeta({
           memory: responseMemory,
           suicideLevel: suicide.suicideLevel,
-          mode: null,
+          conversationState: "n2_crisis",
           isRecallRequest: false,
           explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
           explorationRelanceWindow: newFlags.explorationRelanceWindow,
           rewriteSource: null,
           memoryRewriteSource: null,
           modelConflict: false,
-          promptRegistry: activePromptRegistry
+          promptRegistry: activePromptRegistry,
+          n2TurnType,
+          emergencyNumbersIncluded: includeNumbers
         });
         
         const botMessageId = persistAssistantMessageAsync(reply, debug, responseDebugMeta, { memory: responseMemory, flags: newFlags });

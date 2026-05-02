@@ -4160,7 +4160,9 @@
         affiliationWindow: Array.isArray(safe.affiliationWindow) ? safe.affiliationWindow.map(v => typeof v === "number" ? Math.round(v * 100) / 100 : 0) : [],
         affiliationEstablished: safe.affiliationEstablished === true,
         emotionalDecentering: safe.emotionalDecentering === true,
-        formalAddress: safe.formalAddress === true
+        formalAddress: safe.formalAddress === true,
+        n2TurnType: typeof safe.n2TurnType === "string" ? safe.n2TurnType.trim() : null,
+        emergencyNumbersIncluded: safe.emergencyNumbersIncluded === true
       };
     }
 
@@ -6745,6 +6747,27 @@
                 : null,
             ].filter(Boolean).join("\n")
           });
+        }
+
+        // Section crise N2 — visible uniquement en état n2_crisis
+        if (meta.conversationState === "n2_crisis") {
+          const crisisLines = [];
+          const turnTypeLabels = {
+            n2_refusal:   "Refus d'appeler",
+            n2_hostile:   "Col\u00e8re / rejet du bot",
+            n2_isolation: "Isolement / d\u00e9sespoir",
+            n2_overflow:  "D\u00e9bordement \u00e9motionnel",
+            n2_neutral:   "Neutre"
+          };
+          if (meta.n2TurnType && turnTypeLabels[meta.n2TurnType]) {
+            crisisLines.push(`R\u00e9action d\u00e9tect\u00e9e : ${turnTypeLabels[meta.n2TurnType]}`);
+          }
+          if (meta.emergencyNumbersIncluded === true) {
+            crisisLines.push("Num\u00e9ros d'urgence inclus ce tour");
+          }
+          if (crisisLines.length > 0) {
+            sections.push({ title: "S\u00e9quence de crise", content: crisisLines.join("\n") });
+          }
         }
 
         const affiliationLines = [];
