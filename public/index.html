@@ -2095,7 +2095,7 @@
           <path d="M6.5 11.2h11a1.5 1.5 0 0 1 1.5 1.5v5.8a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-5.8a1.5 1.5 0 0 1 1.5-1.5z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"></path>
           <path d="M8.4 11.2V8.9a3.6 3.6 0 1 1 7.2 0v2.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>
         </svg>
-        <span id="conversationsPrivateFabBtnLabel">Priv�</span>
+        <span id="conversationsPrivateFabBtnLabel">Privé</span>
       </button>
       <button id="conversationsFabBtn" type="button" aria-label="Nouvelle session">
         <svg viewBox="0 0 24 24" width="22" height="22" role="presentation" aria-hidden="true">
@@ -2124,8 +2124,8 @@
   
   <div id="chatScreen" class="screen" tabindex="-1">
     <details id="intersessionDebugChip">
-      <summary>M�m. LT</summary>
-      <div class="intersession-chip-content">(aucune m�moire inter-sessions)</div>
+      <summary>Mém. LT</summary>
+      <div class="intersession-chip-content">(aucune mémoire inter-sessions)</div>
     </details>
     <div id="topBar">
       <div id="chatMakePublicBtnWrap">
@@ -2346,7 +2346,7 @@
       ></textarea>
       <div class="modalCheckboxRow" style="margin-top:14px;">
         <input type="checkbox" id="feedbackDevShareToggle" checked />
-        <label for="feedbackDevShareToggle">Transmettre au d�veloppeur de Facilitat.io</label>
+        <label for="feedbackDevShareToggle">Transmettre au développeur de Facilitat.io</label>
       </div>
       <div class="modalActions">
         <button class="modalBtnSecondary" id="cancelFeedbackBtn" type="button">Annuler</button>
@@ -2360,10 +2360,10 @@
     <div class="modalBox">
       <h3 class="modalTitle">Partager ce feedback</h3>
       <p class="modalText">
-        Cette conversation est priv�e. Pour transmettre votre avis au d�veloppeur, une copie non-priv�e de cet �change (uniquement ce message et la r�ponse associ�e) sera cr��e sur le serveur.
+        Cette conversation est privée. Pour transmettre votre avis au développeur, une copie non-privée de cet échange (uniquement ce message et la réponse associée) sera créée sur le serveur.
       </p>
       <p class="modalText" style="font-size:13px;color:#666;">
-        Aucune autre partie de votre conversation ne sera partag�e.
+        Aucune autre partie de votre conversation ne sera partagée.
       </p>
       <div class="modalActions">
         <button class="modalBtnSecondary" id="cancelFeedbackPrivateConfirmBtn" type="button">Annuler</button>
@@ -2490,7 +2490,7 @@
 
       const isAdminAuthenticated = await hasValidAdminSession();
       btn.dataset.mode = isAdminAuthenticated ? "disable-admin" : "enable-admin";
-      btn.textContent = isAdminAuthenticated ? "Revenir � l'UX normale" : "Passer admin";
+      btn.textContent = isAdminAuthenticated ? "Revenir à l'UX normale" : "Passer admin";
     }
 
     async function handleDevAccessPrimaryAction() {
@@ -2814,7 +2814,7 @@
       if (!content) return;
       content.textContent = typeof memory === "string" && memory.trim()
         ? memory.trim()
-        : "(aucune m�moire inter-sessions)";
+        : "(aucune mémoire inter-sessions)";
     }
 
     async function syncIntersessionMemoryIfApplicable() {
@@ -2995,7 +2995,7 @@
 
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || "Erreur r�seau");
+        throw new Error(body.error || "Erreur réseau");
       }
 
       const responseData = await res.json().catch(() => ({}));
@@ -3098,7 +3098,7 @@
         actions.appendChild(closeBtn);
       } else {
         title.textContent = "Rendre la conversation publique";
-        text.textContent = "Cette action envoie l'int�gralit� de la conversation sur Firebase. Elle sera visible dans votre compte.";
+        text.textContent = "Cette action envoie l'intégralité de la conversation sur Firebase. Elle sera visible dans votre compte.";
 
         const cancelBtn = document.createElement("button");
         cancelBtn.type = "button";
@@ -4119,7 +4119,7 @@
         showScreen("chatScreen", { replaceHistory: true, pushHistory: false, noAnimation: true });
         renderHistory();
         scrollChatToBottom();
-        showTemporaryNotice("Branche activee � conversation repartie depuis ce point");
+        showTemporaryNotice("Branche activée à conversation repartie depuis ce point");
       } catch (err) {
         console.error("[BRANCH_ERROR]", err.message);
         showTemporaryNotice("Erreur inattendue lors du branchement");
@@ -5862,10 +5862,10 @@
       const existing = resolvedHistoryIndex >= 0 && history[resolvedHistoryIndex] && history[resolvedHistoryIndex].feedback ? history[resolvedHistoryIndex].feedback : null;
       const isDevShareLocked = existing && existing.devShareLocked === true;
 
-      titleEl.textContent = feedbackType === "thumbUp" ? "Bonne r�ponse ?" : "R�ponse � am�liorer ?";
+      titleEl.textContent = feedbackType === "thumbUp" ? "Bonne réponse ?" : "Réponse à améliorer ?";
       textEl.textContent = feedbackType === "thumbUp"
         ? "Merci pour votre retour positif."
-        : "Dites-nous ce qui pourrait �tre am�lior�.";
+        : "Dites-nous ce qui pourrait être amélioré.";
       commentInput.value = existing ? (existing.comment || "") : "";
       devShareToggle.checked = existing ? existing.devShare : true;
       applyFeedbackToggleUiState(devShareToggle, devShareLabel, isDevShareLocked);
@@ -6471,23 +6471,23 @@
 
         if (meta.criticTriggered === true) {
           const CRITIC_REASON_LABELS = {
-            contractLengthExceeded: "Longueur contractuelle d�pass�e",
-            humanFieldRisk: "Risque de ton proc�dural/instrumental",
+            contractLengthExceeded: "Longueur contractuelle dépassée",
+            humanFieldRisk: "Risque de ton procédural/instrumental",
             formalAddressRisk: "Risque de tutoiement non conforme",
             vouvoiementRisk: "Risque de vouvoiement non conforme",
-            theoreticalViolationRisk: "Risque de formulation th�orique/interpr�tative",
-            n1CrisisForced: "D�clenchement forc� en crise N1",
-            recallForced: "D�clenchement forc� en rappel m�moire",
+            theoreticalViolationRisk: "Risque de formulation théorique/interprétative",
+            n1CrisisForced: "Déclenchement forcé en crise N1",
+            recallForced: "Déclenchement forcé en rappel mémoire",
           };
           const reasons = (meta.criticTriggerReasons || []).map(r => CRITIC_REASON_LABELS[r] || r).filter(Boolean);
           if (meta.criticIssues.length > 0) {
-            lines.push(`Le critic pass a corrig� ${meta.criticIssues.length} point(s) :`);
-            meta.criticIssues.forEach(issue => lines.push(`� ${issue}`));
+            lines.push(`Le critic pass a corrigé ${meta.criticIssues.length} point(s) :`);
+            meta.criticIssues.forEach(issue => lines.push(`· ${issue}`));
           } else {
-            lines.push("Le critic pass a �t� lanc� sans correction n�cessaire.");
+            lines.push("Le critic pass a été lancé sans correction nécessaire.");
           }
           if (reasons.length > 0) {
-            lines.push(`Raisons : ${reasons.join(" � ")}`);
+            lines.push(`Raisons : ${reasons.join(" · ")}`);
           }
         }
 
@@ -6512,19 +6512,19 @@
 
         const lines = [];
         if (intent.compressionRequested === true) {
-          lines.push("Compression m�moire demand�e");
+          lines.push("Compression mémoire demandée");
         }
         if (intent.interpretationRejectionActive === true) {
-          lines.push("R��criture motiv�e par un rejet d'interpr�tation");
+          lines.push("Réécriture motivée par un rejet d'interprétation");
         }
         if (intent.rejectsUnderlyingPhenomenon === true) {
-          lines.push("Le ph�nom�ne sous-jacent a �t� rejet�");
+          lines.push("Le phénomène sous-jacent a été rejeté");
         }
         if (intent.soberReadjustmentActive === true) {
-          lines.push("R��criture motiv�e par un r�ajustement sobre");
+          lines.push("Réécriture motivée par un réajustement sobre");
         }
         if (intent.lectureBotForcedReset === true) {
-          lines.push("Lecture bot forc�e � '-' par r�gle d'�tat");
+          lines.push("Lecture bot forcée à '-' par règle d'état");
         }
 
         return lines;
@@ -6573,10 +6573,10 @@
 
         const affiliationLines = [];
         if (Array.isArray(meta.affiliationWindow) && meta.affiliationWindow.length > 0) {
-          affiliationLines.push(`Fen�tre d'affiliation : [${meta.affiliationWindow.map(v => v.toFixed(2)).join(", ")}]`);
+          affiliationLines.push(`Fenêtre d'affiliation : [${meta.affiliationWindow.map(v => v.toFixed(2)).join(", ")}]`);
         }
         if (typeof meta.affiliationScore === "number") {
-          affiliationLines.push(`Degr� d'affiliation du tour : ${meta.affiliationScore.toFixed(2)}`);
+          affiliationLines.push(`Degré d'affiliation du tour : ${meta.affiliationScore.toFixed(2)}`);
         }
         if (affiliationLines.length > 0) {
           sections.push({ title: "Affiliation", content: affiliationLines.join("\n") });
@@ -6589,7 +6589,7 @@
 
         const memoryRewriteIntentLines = buildMemoryRewriteIntentLines(meta);
         if (memoryRewriteIntentLines.length > 0) {
-          sections.push({ title: "Intention r��criture m�moire", content: memoryRewriteIntentLines.join("\n") });
+          sections.push({ title: "Intention réécriture mémoire", content: memoryRewriteIntentLines.join("\n") });
         }
 
         if (meta.memory) {
@@ -6618,19 +6618,19 @@
           signauxLines.push("Effondrement de sens (contact)");
         }
         if (meta.emotionalDecentering === true) {
-          signauxLines.push("D�centrage �motionnel actif");
+          signauxLines.push("Décentrage émotionnel actif");
         }
         if (meta.formalAddress === true) {
           signauxLines.push("Vouvoiement actif");
         }
         if (meta.limitingBeliefValidated === true) {
-          signauxLines.push("Croyance-frein valid�e (C3)");
+          signauxLines.push("Croyance-frein validée (C3)");
         }
         if (meta.aggressiveDischargeDetected === true) {
-          signauxLines.push("D�charge agressive d�tect�e (C2?C3)");
+          signauxLines.push("Décharge agressive détectée (C2?C3)");
         }
         if (meta.postDischargeTransitionActive === true) {
-          signauxLines.push("Transition post-d�charge active (C3)");
+          signauxLines.push("Transition post-décharge active (C3)");
         }
         if (signauxLines.length > 0) {
           sections.push({ title: "Signaux", content: signauxLines.join("\n") });
@@ -6926,7 +6926,7 @@
             onCopy: async () => {
               const copied = await copyTextToClipboard(displayText);
               if (copied) {
-                showTemporaryNotice("Message copi�");
+                showTemporaryNotice("Message copié");
               }
             },
             onEdit: () => {
