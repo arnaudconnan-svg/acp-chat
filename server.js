@@ -1,4 +1,4 @@
-require("dotenv").config();
+﻿require("dotenv").config();
 
 // Main server entry point.
 // - initialize Firebase admin with credentials
@@ -4678,7 +4678,8 @@ app.post("/chat", async (req, res) => {
       somaticSignalAnalysis,
       userRegisterAnalysis,
       emotionalDecenteringResult,
-      attentionAnalysis
+      attentionAnalysis,
+      closureAnalysis
     ] = await Promise.all([
       withAnalyzerTiming("propose_state", proposeState(message, recentHistory, newFlags.dischargeState, activePromptRegistry)),
       withAnalyzerTiming("alliance_rupture", analyzeAllianceRupture(message, recentHistory, activePromptRegistry)),
@@ -4689,7 +4690,8 @@ app.post("/chat", async (req, res) => {
       withAnalyzerTiming("emotional_decentering", analyzeEmotionalDecentering(message, recentHistory)),
       shouldRunAttentionQuality
         ? withAnalyzerTiming("attention_quality", analyzeAttentionQuality(message, recentHistory, activePromptRegistry))
-        : Promise.resolve(null)
+        : Promise.resolve(null),
+      withAnalyzerTiming("closure_intent", analyzeClosureIntent(message))
     ]);
     throwIfCanceled();
 
@@ -4766,11 +4768,7 @@ app.post("/chat", async (req, res) => {
     const newAffiliationWindow = normalizeAffiliationWindow([...(newFlags.affiliationWindow || [0, 0, 0, 0]), affiliationScore]);
     const affiliationEstablished = computeAffiliationEstablished(newAffiliationWindow);
 
-    // Closure detection � C2 analyzer (deterministic pass + LLM fallback for ambiguous signals)
-    const closureAnalysis = await analyzeClosureIntent(message);
-    if (closureAnalysis.closureIntent) {
-      newFlags.closureIntent = true;
-    }
+
 
     const recallRouting = await recallRoutingPromise;
     throwIfCanceled();
