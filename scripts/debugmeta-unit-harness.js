@@ -75,7 +75,7 @@ for (const field of [
   "responseRegister","phraseLengthPolicy","relancePolicy","somaticFocusPolicy","actionCollapseGuardActive",
   "stateTransitionFrom","stateTransitionValid","stateTransitionRequested",
   "allianceState","engagementLevel","stagnationTurns","processingWindow",
-  "dependencyRiskScore","dependencyRiskLevel","externalSupportMode","closureIntent","traceId"
+  "dependencyRiskScore","dependencyRiskLevel","externalSupportMode","closureIntent","postDischargeTransitionActive","traceId"
 ]) {
   assert("default has field: " + field, Object.prototype.hasOwnProperty.call(base, field), true);
 }
@@ -115,6 +115,7 @@ assertDeepEqual("default values", base, {
   dependencyRiskLevel: "low",
   externalSupportMode: "none",
   closureIntent: false,
+  postDischargeTransitionActive: false,
   traceId: null
 });
 

@@ -956,7 +956,8 @@
         contactSelfCriticismLevel: typeof safe.contactSelfCriticismLevel === "string" ? safe.contactSelfCriticismLevel.trim() : "low",
         contactMeaningCrisis: safe.contactMeaningCrisis === true,
         limitingBeliefValidated: safe.limitingBeliefValidated === true,
-        aggressiveDischargeDetected: safe.aggressiveDischargeDetected === true
+        aggressiveDischargeDetected: safe.aggressiveDischargeDetected === true,
+        postDischargeTransitionActive: safe.postDischargeTransitionActive === true
       };
     }
 
@@ -1904,6 +1905,7 @@
           const MAP = {
             affiliation_first_join: "prioriser le sentiment d'etre compris et rejoint",
             aggressive_discharge_minimal_presence: "decharge agressive: presence minimale",
+            post_discharge_soft_landing: "atterrissage doux post-decharge",
             hold_emotional_thread: "maintenir le fil \u00e9motionnel",
             auto_compassion_door_open: "invitation \u00e0 l'auto-compassion",
             signify_pain_without_blocking: "signifier la douleur sans bloquer",
@@ -2128,6 +2130,9 @@
           }
           if (meta.aggressiveDischargeDetected === true) {
             signauxLines.push("Décharge agressive détectée (C2→C3)");
+          }
+          if (meta.postDischargeTransitionActive === true) {
+            signauxLines.push("Transition post-décharge active (C3)");
           }
           if (signauxLines.length > 0) {
             sections.push({ title: "Signaux", content: signauxLines.join("\n") });

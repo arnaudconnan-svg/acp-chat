@@ -4909,6 +4909,7 @@ app.post("/chat", async (req, res) => {
       // C3 limiting_belief gate
       limitingBeliefValidated: postureDecision.limitingBeliefValidated === true,
       aggressiveDischargeDetected: postureDecision.aggressiveDischargeDetected === true,
+      postDischargeTransitionActive: postureDecision.postDischargeTransitionActive === true,
     });
 
     if (logsEnabled) {

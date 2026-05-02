@@ -85,6 +85,30 @@ check("post-discharge cooldown returns exploration (no contact state)", () => {
   assert(out.conversationState === "exploration_open", `expected exploration_open, got ${out.conversationState}`);
 });
 
+check("post-discharge transition enforces restrained phenomenological exploration", () => {
+  const out = buildPostureDecision(baseInput({
+    detectedState: "exploration",
+    previousConversationState: "discharge_dysregulated",
+    effectiveExplorationDirectivityLevel: 4,
+    calibrationAnalysis: { calibrationLevel: 4, explorationSubmode: "interpretation" }
+  }));
+  assert(out.postDischargeTransitionActive === true, "expected postDischargeTransitionActive=true");
+  assert(out.finalDirectivityLevel === 2, `expected finalDirectivityLevel=2, got ${out.finalDirectivityLevel}`);
+  assert(out.finalExplorationSubmode === "phenomenological_follow", `expected phenomenological_follow, got ${out.finalExplorationSubmode}`);
+  assert(out.forbidden.includes("relance"), "expected relance forbidden on post-discharge transition");
+  assert(out.writerIntentHints.includes("post_discharge_soft_landing"), "expected post_discharge_soft_landing hint");
+});
+
+check("post-discharge transition applies in non-exploration states without forcing exploration shape", () => {
+  const out = buildPostureDecision(baseInput({
+    detectedState: "info_features",
+    previousConversationState: "discharge_regulated"
+  }));
+  assert(out.postDischargeTransitionActive === true, "expected postDischargeTransitionActive=true");
+  assert(out.writerIntentHints.includes("post_discharge_soft_landing"), "expected post_discharge_soft_landing hint");
+  assert(out.forbidden.includes("relance"), "expected relance forbidden in info post-discharge transition");
+});
+
 check("contact self-criticism signal enriches forbidden + hints", () => {
   const out = buildPostureDecision(baseInput({
     detectedState: "exploration",
