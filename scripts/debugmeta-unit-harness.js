@@ -29,8 +29,8 @@ console.log("\n-- buildTopChips");
 assert("N2 urgence chip", buildTopChips({ suicideLevel: "N2" }), ["URGENCE : risque suicidaire"]);
 assert("N1 clarification chip", buildTopChips({ suicideLevel: "N1" }), ["Risque suicidaire à clarifier"]);
 assert("exploration_open EXPLORATION", buildTopChips({ conversationState: "exploration_open" }), ["EXPLORATION"]);
-assert("exploration_open interpretation submode", buildTopChips({ conversationState: "exploration_open", explorationSubmode: "interpretation" }), ["EXPLORATION : interprétation"]);
-assert("exploration_open phenomenological_follow", buildTopChips({ conversationState: "exploration_open", explorationSubmode: "phenomenological_follow" }), ["EXPLORATION : accompagnement"]);
+assert("exploration_open interpretation submode", buildTopChips({ conversationState: "exploration_open", explorationSignal: "interpretation" }), ["EXPLORATION : interprétation"]);
+assert("exploration_open phenomenological_follow", buildTopChips({ conversationState: "exploration_open", explorationSignal: "phenomenological_follow" }), ["EXPLORATION : accompagnement"]);
 assert("info_pure", buildTopChips({ conversationState: "info_pure" }), ["INFO PURE"]);
 assert("info_features", buildTopChips({ conversationState: "info_features" }), ["INFO APP : fonctionnalités"]);
 assert("info_psychoeducation", buildTopChips({ conversationState: "info_psychoeducation" }), ["PSYCHOEDUCATION"]);
@@ -69,7 +69,7 @@ const base = buildResponseDebugMeta();
 for (const field of [
   "topChips","memory","directivityText","conversationState",
   "consecutiveNonExplorationTurns","interpretationRejection","needsSoberReadjustment","relationalAdjustmentActive",
-  "pipelineStages","explorationCalibrationLevel","explorationSubmode",
+  "pipelineStages","explorationCalibrationLevel","explorationSignal",
   "memoryRewriteIntent","memoryCompressed","memoryBeforeCompression",
   "criticTriggered","criticIssues","intent","forbidden","confidenceSignal",
   "responseRegister","phraseLengthPolicy","relancePolicy","somaticFocusPolicy","actionCollapseGuardActive",
@@ -90,7 +90,7 @@ assertDeepEqual("default values", base, {
   relationalAdjustmentActive: false,
   pipelineStages: [],
   explorationCalibrationLevel: null,
-  explorationSubmode: null,
+  explorationSignal: null,
   memoryRewriteIntent: null,
   memoryCompressed: false,
   memoryBeforeCompression: null,
@@ -142,7 +142,7 @@ const explo = buildResponseDebugMeta({
   explorationDirectivityLevel: 2,
   explorationCalibrationLevel: 3,
   explorationRelanceWindow: [true, false, true],
-  explorationSubmode: "phenomenological_follow",
+  explorationSignal: "phenomenological_follow",
   pipelineStages: [{ stage: "suicide_analysis", deltaMs: 42 }],
   traceId: "trace-abc-123"
 });
@@ -155,7 +155,7 @@ assert("exploration phraseLengthPolicy", explo.phraseLengthPolicy, "courte");
 assert("exploration relancePolicy", explo.relancePolicy, "discouraged");
 assert("exploration somaticFocusPolicy", explo.somaticFocusPolicy, "prioritize_somatic_proximity");
 assert("exploration actionCollapseGuardActive", explo.actionCollapseGuardActive, true);
-assert("exploration explorationSubmode", explo.explorationSubmode, "phenomenological_follow");
+assert("exploration explorationSignal", explo.explorationSignal, "phenomenological_follow");
 assert("exploration directivityText includes calibration",
   explo.directivityText.includes("Niveau de structuration retenu : 3/4"), true);
 assert("exploration pipelineStages length", explo.pipelineStages.length, 1);
@@ -170,7 +170,7 @@ const info = buildResponseDebugMeta({ conversationState: "info_features", intent
 assert("info topChips (info_features)", info.topChips, ["INFO APP : fonctionnalités"]);
 assert("info conversationState", info.conversationState, "info_features");
 assert("info directivityText empty", info.directivityText, "");
-assert("info explorationSubmode null", info.explorationSubmode, null);
+assert("info explorationSignal null", info.explorationSignal, null);
 
 // 7. discharge path
 console.log("\n-- buildResponseDebugMeta discharge path");

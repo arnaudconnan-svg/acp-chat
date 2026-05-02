@@ -28,7 +28,7 @@ function makeFakeClient() {
           const system = String(messages?.[0]?.content || "");
           const user = String(messages?.[messages.length - 1]?.content || "");
 
-          if (system.includes("ANALYZE_DISCHARGE") || system.includes("dischargeSubmode\": \"regulated|dysregulated|null\"")) {
+          if (system.includes("ANALYZE_DISCHARGE") || system.includes("dischargeSignal\": \"regulated|dysregulated|null\"")) {
             const isDischarge = /craque|explose|pleure|ta gueule|ferme-la|ferme la/i.test(user);
             const isDysregulated = /explose|panique|perte de controle|etouffe/i.test(user);
             const aggressive = /ta gueule|ferme-la|ferme la/i.test(user);
@@ -38,7 +38,7 @@ function makeFakeClient() {
                   message: {
                     content: JSON.stringify({
                       isDischarge,
-                      dischargeSubmode: isDischarge ? (isDysregulated ? "dysregulated" : "regulated") : null,
+                      dischargeSignal: isDischarge ? (isDysregulated ? "dysregulated" : "regulated") : null,
                       aggressiveDischargeDirectedToBot: aggressive
                     })
                   }
@@ -54,7 +54,7 @@ function makeFakeClient() {
                   message: {
                     content: JSON.stringify({
                       isContact: false,
-                      contactSubmode: null,
+                      contactSignal: null,
                       selfCriticismLevel: "low",
                       meaningCrisis: false,
                       insightMoment: false

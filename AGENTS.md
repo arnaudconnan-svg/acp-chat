@@ -106,6 +106,8 @@ Avant toute modification qui change un comportement visible :
 
 Pour les modifications purement techniques sans effet comportemental visible (refactoring, renommage interne, restructuration, logs) : exécuter directement, expliquer après si utile.
 
+**"Comportement visible" = ce que l'utilisateur final perçoit.** Renommer des clés de contrat LLM (ex : `contactSubmode` → `contactSignal`) est un renommage interne — il ne requiert pas d'annonce, même si le LLM doit adapter sa sortie JSON, dès lors que le parser est robuste aux variantes. Ne pas confondre "change le prompt" avec "change le comportement visible".
+
 Si une demande produit est ambiguë techniquement : proposer deux interprétations et demander laquelle est juste, plutôt que de choisir la plus restrictive par défaut.
 
 ### Règle de continuité inter-sessions — plan.md

@@ -1,4 +1,4 @@
-﻿require("dotenv").config();
+require("dotenv").config();
 
 // Main server entry point.
 // - initialize Firebase admin with credentials
@@ -43,7 +43,7 @@ const fs = require("fs");
 const path = require("path");
 const nodemailer = require("nodemailer");
 
-// ─── Emergency numbers ────────────────────────────────────────────────────────
+// --- Emergency numbers --------------------------------------------------------
 const EMERGENCY_NUMBERS_FILE = path.join(__dirname, "data/emergency-numbers.json");
 const { updateEmergencyNumbers: runEmergencyNumbersUpdate } = require("./lib/emergency-updater");
 let emergencyNumbers = {};
@@ -73,10 +73,10 @@ function buildEmergencyNumbersText(emergencyInfo) {
   if (!emergencyInfo) return null;
   const parts = [];
   if (emergencyInfo.emergency) parts.push(`urgences : ${emergencyInfo.emergency}`);
-  if (emergencyInfo.suicide) parts.push(`prévention suicide : ${emergencyInfo.suicide}`);
-  return parts.join(" — ") || null;
+  if (emergencyInfo.suicide) parts.push(`pr�vention suicide : ${emergencyInfo.suicide}`);
+  return parts.join(" � ") || null;
 }
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 const {
   clampDependencyRiskScore,
   clampExplorationDirectivityLevel,
@@ -933,7 +933,7 @@ ${originalContent}
     temperature: 0.3,
     max_tokens: 500,
     messages: [
-      { role: "system", content: promptRegistry.REWRITE_CONFLICT_MODEL },
+      { role: "system", content: promptRegistry.REWRITE_TITLE_CONFLICT_MODEL },
       { role: "user", content: user }
     ]
   });
@@ -1002,13 +1002,12 @@ const {
   getRelationalAdjustmentPrompt,
   getInfoPrompt,
   getExplorationPrompt,
-  buildExplorationSubmodePromptBlock,
+  buildExplorationSignalPromptBlock,
   buildStabilizationPromptBlock,
   buildAllianceRupturePromptBlock,
   buildDependencyRiskGuardrailBlock,
   buildClosurePromptBlock,
   buildRelationalAdjustmentPromptBlock,
-  buildDischargeSubmodePromptBlock,
   buildDischargeStatePromptBlock,
   buildInterpretationRejectionPromptBlock,
   buildSystemPrompt,
@@ -1123,7 +1122,7 @@ async function generateConversationTitle(messages) {
     let title = completion.choices?.[0]?.message?.content?.trim() || "";
     
     title = title
-      .replace(/^["'«]+|["'»]+$/g, "")
+      .replace(/^["'�]+|["'�]+$/g, "")
       .replace(/\s+/g, " ")
       .trim();
     
@@ -1161,7 +1160,7 @@ async function generateConversationTitle(messages) {
       });
       
       title = String(title || "")
-        .replace(/^["'«]+|["'»]+$/g, "")
+        .replace(/^["'�]+|["'�]+$/g, "")
         .replace(/\s+/g, " ")
         .trim();
       
@@ -1205,7 +1204,7 @@ async function generateConversationTitle(messages) {
         });
         
         fallbackTitle = String(fallbackTitle || "")
-          .replace(/^["'«]+|["'»]+$/g, "")
+          .replace(/^["'�]+|["'�]+$/g, "")
           .replace(/\s+/g, " ")
           .trim();
         
@@ -1578,7 +1577,7 @@ app.put("/api/account/profile", requireUserAuth, async (req, res) => {
 
     const now = new Date().toISOString();
     const update = { ...patch, updatedAt: now };
-    // Firebase doesn't store null fields — remove them so they're deleted
+    // Firebase doesn't store null fields � remove them so they're deleted
     for (const [k, v] of Object.entries(update)) {
       if (v === null) update[k] = null; // Firebase treats null as delete
     }
@@ -1982,7 +1981,7 @@ app.post("/api/account/conversations/import-local", requireUserAuth, async (req,
                 deltaMs: Number.isFinite(e?.deltaMs) ? e.deltaMs : null
               })).filter(e => e.stage) : [],
               explorationCalibrationLevel: Number.isInteger(debugMeta.explorationCalibrationLevel) ? debugMeta.explorationCalibrationLevel : null,
-              explorationSubmode: typeof debugMeta.explorationSubmode === "string" ? debugMeta.explorationSubmode : null,
+              explorationSignal: typeof debugMeta.explorationSignal === "string" ? debugMeta.explorationSignal : null,
               memoryRewriteIntent: debugMeta.memoryRewriteIntent && typeof debugMeta.memoryRewriteIntent === "object" ? {
                 compressionRequested: debugMeta.memoryRewriteIntent.compressionRequested === true,
                 interpretationRejectionActive: debugMeta.memoryRewriteIntent.interpretationRejectionActive === true,
@@ -2458,7 +2457,7 @@ app.post("/api/branches/create-and-activate", async (req, res) => {
 });
 
 // Store feedback (thumbUp/thumbDown + optional comment) on an existing message.
-// If devShare is false, the call should not reach this endpoint — frontend handles locally only.
+// If devShare is false, the call should not reach this endpoint � frontend handles locally only.
 app.post("/api/messages/:id/feedback", async (req, res) => {
   try {
     const messageId = String(req.params?.id || "").trim();
@@ -2993,17 +2992,17 @@ app.patch("/api/intersession-memory/direct", requireUserAuth, async (req, res) =
   }
 });
 
-// POST beacon — called by sendBeacon on pagehide / visibilitychange.
+// POST beacon � called by sendBeacon on pagehide / visibilitychange.
 // Responds 200 immediately; consolidation runs async in the background.
 // Race-condition guard: ignored if the beacon's timestamp is older than the
 // intersessionMemoryUpdatedAt already stored (e.g. explicit close arrived first).
 app.post("/api/session/beacon", async (req, res) => {
-  // Respond immediately — sendBeacon ignores the body anyway.
+  // Respond immediately � sendBeacon ignores the body anyway.
   res.status(200).json({ ok: true });
 
   try {
     const session = await getUserSession(req);
-    if (!session) return; // unauthenticated — ignore silently
+    if (!session) return; // unauthenticated � ignore silently
 
     const memory = typeof req.body?.memory === "string" ? req.body.memory.slice(0, 8000) : "";
     const beaconTimestamp = typeof req.body?.timestamp === "string" ? req.body.timestamp : null;
@@ -3012,7 +3011,7 @@ app.post("/api/session/beacon", async (req, res) => {
 
     const now = new Date().toISOString();
 
-    // Update lastActiveAt unconditionally — lightweight, no LLM.
+    // Update lastActiveAt unconditionally � lightweight, no LLM.
     await usersRef.child(session.userId).update({ lastActiveAt: now });
 
     // Race-condition guard: skip consolidation if a more recent update already exists.
@@ -3021,7 +3020,7 @@ app.post("/api/session/beacon", async (req, res) => {
     const storedUpdatedAt = userData.intersessionMemoryUpdatedAt;
 
     if (beaconTimestamp && storedUpdatedAt && new Date(storedUpdatedAt) > new Date(beaconTimestamp)) {
-      // A more recent consolidation (explicit close) already happened — skip.
+      // A more recent consolidation (explicit close) already happened � skip.
       return;
     }
 
@@ -3041,7 +3040,7 @@ app.post("/api/session/beacon", async (req, res) => {
       intersessionMemoryUpdatedAt: now
     });
   } catch (err) {
-    // Background processing — errors are non-critical, log and continue.
+    // Background processing � errors are non-critical, log and continue.
     console.error("Erreur /api/session/beacon (background):", err.message);
   }
 });
@@ -3173,7 +3172,7 @@ app.get("/api/admin/intersession-memory/:userId", requireAdminAuth, async (req, 
     return res.json({ memory });
   } catch (err) {
     console.error("Erreur GET /api/admin/intersession-memory/:userId:", err.message);
-    return res.status(500).json({ error: "Lecture mémoire inter-sessions échouée" });
+    return res.status(500).json({ error: "Lecture m�moire inter-sessions �chou�e" });
   }
 });
 
@@ -3800,7 +3799,7 @@ app.post("/chat", async (req, res) => {
       relationalAdjustmentActive: (safe.relationalAdjustmentActive ?? safe.relationalAdjustmentTriggered) === true,
       pipelineStages: normalizePipelineStagesForStorage(safe.pipelineStages),
       explorationCalibrationLevel: Number.isInteger(safe.explorationCalibrationLevel) ? clampExplorationDirectivityLevel(safe.explorationCalibrationLevel) : null,
-      explorationSubmode: typeof safe.explorationSubmode === "string" ? safe.explorationSubmode : null,
+      explorationSignal: typeof safe.explorationSignal === "string" ? safe.explorationSignal : null,
       memoryRewriteIntent: safe.memoryRewriteIntent && typeof safe.memoryRewriteIntent === "object" ? {
         compressionRequested: safe.memoryRewriteIntent.compressionRequested === true,
         interpretationRejectionActive: safe.memoryRewriteIntent.interpretationRejectionActive === true,
@@ -3842,7 +3841,7 @@ app.post("/chat", async (req, res) => {
 
     await messagesRef.push({
       role: "assistant",
-      content: isEditedForCatch ? reply + "\n[MODIFIÉ]" : reply,
+      content: isEditedForCatch ? reply + "\n[MODIFI�]" : reply,
       timestamp: Date.now(),
       userId: userIdForCatch,
       conversationId: conversationIdForCatch,
@@ -3872,7 +3871,7 @@ app.post("/chat", async (req, res) => {
     explorationCalibrationLevel = null,
     explorationDirectivityLevel = 0,
     explorationRelanceWindow = [],
-    explorationSubmode = null,
+    explorationSignal = null,
     modelConflict = false,
     promptRegistry = buildDefaultPromptRegistry()
   } = {}) {
@@ -3880,7 +3879,7 @@ app.post("/chat", async (req, res) => {
       topChips: buildTopChips({
         suicideLevel,
         conversationState,
-        explorationSubmode,
+        explorationSignal,
         interpretationRejection,
         isRecallRequest,
         needsSoberReadjustment,
@@ -4018,7 +4017,7 @@ app.post("/chat", async (req, res) => {
     if (!isPrivateConversation) {
       const pushedRef = await messagesRef.push({
         role: "user",
-        content: isEdited ? message + "\n[MODIFIÉ]" : message,
+        content: isEdited ? message + "\n[MODIFI�]" : message,
         timestamp: Date.now(),
         userId,
         conversationId
@@ -4078,7 +4077,7 @@ app.post("/chat", async (req, res) => {
 
       const pushedRef = await messagesRef.push({
         role: "assistant",
-        content: isEdited ? reply + "\n[MODIFIÉ]" : reply,
+        content: isEdited ? reply + "\n[MODIFI�]" : reply,
         timestamp: Date.now(),
         userId,
         conversationId,
@@ -4165,8 +4164,8 @@ app.post("/chat", async (req, res) => {
       };
     }
     
-    // 1) Analyse suicide : risque immédiat et clarification possible.
-    // Cette étape peut déclencher des réponses priorisées sans aller plus loin.
+    // 1) Analyse suicide : risque imm�diat et clarification possible.
+    // Cette �tape peut d�clencher des r�ponses prioris�es sans aller plus loin.
     markChatStage("suicide_analysis");
     const suicide = await analyzeSuicideRisk(
       message,
@@ -4212,8 +4211,8 @@ app.post("/chat", async (req, res) => {
         suicideLevel: "N2"
       });
       
-      // N2 : génération contextualisée via LLM avec fallback sur la réponse statique.
-      // Résolution des numéros d'urgence selon le pays de l'utilisateur.
+      // N2 : g�n�ration contextualis�e via LLM avec fallback sur la r�ponse statique.
+      // R�solution des num�ros d'urgence selon le pays de l'utilisateur.
       let n2PromptRegistry = activePromptRegistry;
       try {
         let userCountryCode = null;
@@ -4234,7 +4233,7 @@ app.post("/chat", async (req, res) => {
           };
         }
       } catch {
-        // Non-bloquant : on continue avec les numéros FR par défaut si la résolution échoue
+        // Non-bloquant : on continue avec les num�ros FR par d�faut si la r�solution �choue
       }
 
       let reply;
@@ -4243,7 +4242,7 @@ app.post("/chat", async (req, res) => {
           conversationState: "n2_crisis",
           detectedState: "n2_crisis",
           finalDirectivityLevel: 0,
-          finalExplorationSubmode: "interpretation",
+          finalExplorationSignal: "interpretation",
           intent: "orienter vers les ressources de crise",
           forbidden: ["interpretive_hypothesis", "relance", "open_question", "exploration_hypothesis", "reflect"],
           maxSentences: 3,
@@ -4360,8 +4359,8 @@ app.post("/chat", async (req, res) => {
       });
     }
     
-    // 2) Analyse de rappel mémoire : identifier si l'utilisateur demande
-    // explicitement un rappel de la mémoire à long terme.
+    // 2) Analyse de rappel m�moire : identifier si l'utilisateur demande
+    // explicitement un rappel de la m�moire � long terme.
     markChatStage("recall_analysis");
     const recallRouting = await analyzeRecallRouting(
       message,
@@ -4427,7 +4426,7 @@ app.post("/chat", async (req, res) => {
     const effectiveExplorationDirectivityLevel = newFlags.explorationDirectivityLevel;
 
     let finalDirectivityLevel = effectiveExplorationDirectivityLevel;
-    let finalExplorationSubmode = "interpretation";
+    let finalExplorationSignal = "interpretation";
 
     // withAnalyzerTiming wraps each Promise to record individual analyzer durations in chatStageTimings.
     function withAnalyzerTiming(name, promise) {
@@ -4498,17 +4497,17 @@ app.post("/chat", async (req, res) => {
     const detectedTheoreticalOrientation = theoreticalOrientationAnalysis?.theoreticalOrientation || "none";
     const detectedOrientationConfidence = theoreticalOrientationAnalysis?.orientationConfidence ?? 0.0;
 
-    // Source de routage info pour observabilité admin
+    // Source de routage info pour observabilit� admin
     let infoRoutingSource = null;
     if (typeof detectedState === "string" && detectedState.startsWith("info_")) {
       const src = detectedModeResult.infoSource;
-      const subSrc = detectedModeResult.infoSubmodeSource;
+      const subSrc = detectedModeResult.infoSignalSource;
       if (src === "deterministic_app_features") {
-        infoRoutingSource = "déterministe";
+        infoRoutingSource = "d�terministe";
       } else if (src === "llm_fallback") {
         infoRoutingSource = "LLM (fallback)";
       } else if (subSrc === "llm_fallback") {
-        infoRoutingSource = "LLM / sous-mode fallback";
+        infoRoutingSource = "LLM / signal fallback";
       } else {
         infoRoutingSource = "LLM";
       }
@@ -4519,18 +4518,18 @@ app.post("/chat", async (req, res) => {
 
     modeForCatch = detectedState;
 
-    // Patch C — affiliation score window
+    // Patch C � affiliation score window
     const affiliationScore = computeAffiliationTurnScore(message);
     const newAffiliationWindow = normalizeAffiliationWindow([...(newFlags.affiliationWindow || [0, 0, 0, 0]), affiliationScore]);
     const affiliationEstablished = computeAffiliationEstablished(newAffiliationWindow);
 
-    // Closure detection — C2 analyzer (deterministic pass + LLM fallback for ambiguous signals)
+    // Closure detection � C2 analyzer (deterministic pass + LLM fallback for ambiguous signals)
     const closureAnalysis = await analyzeClosureIntent(message);
     if (closureAnalysis.closureIntent) {
       newFlags.closureIntent = true;
     }
 
-    // Phase 3: Deterministic arbitrator — consolidate all analyzer outputs into a
+    // Phase 3: Deterministic arbitrator � consolidate all analyzer outputs into a
     // PostureDecision struct. No LLM calls, no side effects outside this block.
     const previousConversationState = normalizeConversationState(flags.conversationState || flags.conversationStateKey);
     const postureDecision = buildPostureDecision({
@@ -4549,13 +4548,13 @@ app.post("/chat", async (req, res) => {
       previousConversationState,
       currentConsecutiveNonExplorationTurns: normalizeConsecutiveNonExplorationTurns(newFlags.consecutiveNonExplorationTurns),
       currentExplorationRelanceWindow: newFlags.explorationRelanceWindow,
-      // Phase B structural flags — persistent fallback values (overridden by C2 per-turn analysis)
+      // Phase B structural flags � persistent fallback values (overridden by C2 per-turn analysis)
       allianceState: newFlags.allianceState,
       engagementLevel: newFlags.engagementLevel,
       stagnationTurns: newFlags.stagnationTurns,
       processingWindow: newFlags.processingWindow,
       closureIntent: newFlags.closureIntent,
-      // C2 per-turn engagement/alliance analysis — overrides persistent flags in C3
+      // C2 per-turn engagement/alliance analysis � overrides persistent flags in C3
       engagementAllianceAnalysis,
       // Contract inputs for confidenceSignal computation
       message,
@@ -4572,7 +4571,7 @@ app.post("/chat", async (req, res) => {
     });
 
     finalDirectivityLevel = postureDecision.finalDirectivityLevel;
-    finalExplorationSubmode = postureDecision.finalExplorationSubmode;
+    finalExplorationSignal = postureDecision.finalExplorationSignal;
     const { conversationState, consecutiveNonExplorationTurns } = postureDecision;
 
     Object.assign(newFlags, postureDecision.flagUpdates);
@@ -4596,7 +4595,7 @@ app.post("/chat", async (req, res) => {
       conversationState,
       consecutiveNonExplorationTurns,
       finalDirectivityLevel,
-      finalExplorationSubmode,
+      finalExplorationSignal,
       responseRegister: postureDecision.responseRegister,
       phraseLengthPolicy: postureDecision.phraseLengthPolicy,
       relancePolicy: postureDecision.relancePolicy,
@@ -4613,13 +4612,13 @@ app.post("/chat", async (req, res) => {
       });
     }
     
-    // 4) Génération principale de la réponse selon le mode détecté,
-    // puis application d'un pipeline de correction si le contenu est en conflit modèle.
+    // 4) G�n�ration principale de la r�ponse selon le mode d�tect�,
+    // puis application d'un pipeline de correction si le contenu est en conflit mod�le.
     markChatStage("reply_generation");
 
-    // Blocs 3+4 : injection mémoire longue terme (intersession compressée).
-    // turnsUntilIntersessionRefresh === 0 → injection. Sinon, décrémenté chaque tour.
-    // intersessionRefreshForced (Firebase) permet un refresh immédiat après édition directe.
+    // Blocs 3+4 : injection m�moire longue terme (intersession compress�e).
+    // turnsUntilIntersessionRefresh === 0 ? injection. Sinon, d�cr�ment� chaque tour.
+    // intersessionRefreshForced (Firebase) permet un refresh imm�diat apr�s �dition directe.
     let intersessionMemoryForThisTurn = "";
     if (userId && userId !== "u_anon") {
       const currentTurnsUntil = Number.isInteger(newFlags.turnsUntilIntersessionRefresh)
@@ -4788,11 +4787,11 @@ app.post("/chat", async (req, res) => {
         })
       );
 
-      debug.push(`trace.explorationSubmode: ${finalExplorationSubmode}`);
+      debug.push(`trace.explorationSignal: ${finalExplorationSignal}`);
     }
     
 
-    // 5) Mise à jour de la mémoire interne après la réponse finale.
+    // 5) Mise � jour de la m�moire interne apr�s la r�ponse finale.
     markChatStage("memory_update");
     const rawNewMemory = await updateMemory(
       previousMemory,
@@ -4811,7 +4810,7 @@ app.post("/chat", async (req, res) => {
 
     let memoryCandidate = rawNewMemory;
 
-    // Points 1+4: règle déterministe — Lecture bot doit être "-" pour tout état non-exploration, non-info
+    // Points 1+4: r�gle d�terministe � Lecture bot doit �tre "-" pour tout �tat non-exploration, non-info
     const _memoryBaseState = baseStateOf(postureDecision.conversationState || "exploration_open");
     const lectureBotForcedReset = _memoryBaseState !== "exploration" && _memoryBaseState !== "info";
     if (lectureBotForcedReset) {
@@ -4857,7 +4856,7 @@ app.post("/chat", async (req, res) => {
       explorationCalibrationLevel: newFlags.explorationCalibrationLevel,
       explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
       explorationRelanceWindow: newFlags.explorationRelanceWindow,
-      explorationSubmode: finalExplorationSubmode,
+      explorationSignal: finalExplorationSignal,
       memoryRewriteIntent,
       memoryCompressed: memoryWasCompressed,
       memoryBeforeCompression,
@@ -4959,9 +4958,9 @@ app.post("/chat", async (req, res) => {
           const messageData = snapshot.val();
           if (messageData && typeof messageData.content === "string") {
             let newContent = messageData.content;
-            // Replace [MODIFIÉ] with [ENVOI STOPPE] if present, otherwise append it
-            if (newContent.includes("[MODIFIÉ]")) {
-              newContent = newContent.replace(/\n?\[MODIFIÉ\]$/, "\n[ENVOI STOPPE]");
+            // Replace [MODIFI�] with [ENVOI STOPPE] if present, otherwise append it
+            if (newContent.includes("[MODIFI�]")) {
+              newContent = newContent.replace(/\n?\[MODIFI�\]$/, "\n[ENVOI STOPPE]");
             } else {
               newContent = newContent.trim() + "\n[ENVOI STOPPE]";
             }
@@ -5068,8 +5067,8 @@ app.post("/chat", async (req, res) => {
 app.listen(port, () => {
   console.log(`Serveur lance sur http://localhost:${port}`);
 
-  // Refresh automatique mensuel des numéros d'urgence via Wikidata.
-  // Premier refresh décalé de 5 minutes après le démarrage pour ne pas ralentir
+  // Refresh automatique mensuel des num�ros d'urgence via Wikidata.
+  // Premier refresh d�cal� de 5 minutes apr�s le d�marrage pour ne pas ralentir
   // la mise en ligne. Ensuite toutes les 30 jours.
   const EMERGENCY_REFRESH_INTERVAL_MS = 30 * 24 * 60 * 60 * 1000; // 30 jours
   const EMERGENCY_REFRESH_INITIAL_DELAY_MS = 5 * 60 * 1000; // 5 minutes
@@ -5078,9 +5077,9 @@ app.listen(port, () => {
     try {
       const updated = await runEmergencyNumbersUpdate(EMERGENCY_NUMBERS_FILE, "[server][emergency-refresh]");
       emergencyNumbers = updated;
-      console.log("[server][emergency-refresh] Données en mémoire mises à jour.");
+      console.log("[server][emergency-refresh] Donn�es en m�moire mises � jour.");
     } catch (err) {
-      console.error("[server][emergency-refresh] Échec du refresh:", err.message);
+      console.error("[server][emergency-refresh] �chec du refresh:", err.message);
     }
   }
 

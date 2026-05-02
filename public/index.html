@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="fr">
 
 <head>
@@ -1506,8 +1506,8 @@
       text-decoration: underline;
     }
     
-    /* Annule les marges par dÃƒÂ©faut des ÃƒÂ©lÃƒÂ©ments HTML gÃƒÂ©nÃƒÂ©rÃƒÂ©s par Markdown
-   uniquement ÃƒÂ  lÃ¢â‚¬â„¢intÃƒÂ©rieur des bulles du bot */
+    /* Annule les marges par dÃ©faut des Ã©lÃ©ments HTML gÃ©nÃ©rÃ©s par Markdown
+   uniquement Ã  lâ€™intÃ©rieur des bulles du bot */
     .bot .bubble p,
     .bot .bubble h1,
     .bot .bubble h2,
@@ -1532,7 +1532,7 @@
     .bot .bubble ul ul,
     .bot .bubble ol ol
 
-    /* petit ÃƒÂ©cart entre deux ÃƒÂ©lÃƒÂ©ments, si besoin */
+    /* petit Ã©cart entre deux Ã©lÃ©ments, si besoin */
       {
       margin-top: 18px;
     }
@@ -1541,7 +1541,7 @@
       margin-top: 6px;
     }
     
-    /* Dans tes rÃƒÂ¨gles spÃƒÂ©cifiques bot */
+    /* Dans tes rÃ¨gles spÃ©cifiques bot */
     .bot .bubble br:last-child {
       display: none;
     }
@@ -2095,7 +2095,7 @@
           <path d="M6.5 11.2h11a1.5 1.5 0 0 1 1.5 1.5v5.8a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-5.8a1.5 1.5 0 0 1 1.5-1.5z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"></path>
           <path d="M8.4 11.2V8.9a3.6 3.6 0 1 1 7.2 0v2.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>
         </svg>
-        <span id="conversationsPrivateFabBtnLabel">Privé</span>
+        <span id="conversationsPrivateFabBtnLabel">Priv�</span>
       </button>
       <button id="conversationsFabBtn" type="button" aria-label="Nouvelle session">
         <svg viewBox="0 0 24 24" width="22" height="22" role="presentation" aria-hidden="true">
@@ -2124,8 +2124,8 @@
   
   <div id="chatScreen" class="screen" tabindex="-1">
     <details id="intersessionDebugChip">
-      <summary>Mém. LT</summary>
-      <div class="intersession-chip-content">(aucune mémoire inter-sessions)</div>
+      <summary>M�m. LT</summary>
+      <div class="intersession-chip-content">(aucune m�moire inter-sessions)</div>
     </details>
     <div id="topBar">
       <div id="chatMakePublicBtnWrap">
@@ -2346,7 +2346,7 @@
       ></textarea>
       <div class="modalCheckboxRow" style="margin-top:14px;">
         <input type="checkbox" id="feedbackDevShareToggle" checked />
-        <label for="feedbackDevShareToggle">Transmettre au développeur de Facilitat.io</label>
+        <label for="feedbackDevShareToggle">Transmettre au d�veloppeur de Facilitat.io</label>
       </div>
       <div class="modalActions">
         <button class="modalBtnSecondary" id="cancelFeedbackBtn" type="button">Annuler</button>
@@ -2360,10 +2360,10 @@
     <div class="modalBox">
       <h3 class="modalTitle">Partager ce feedback</h3>
       <p class="modalText">
-        Cette conversation est privée. Pour transmettre votre avis au développeur, une copie non-privée de cet échange (uniquement ce message et la réponse associée) sera créée sur le serveur.
+        Cette conversation est priv�e. Pour transmettre votre avis au d�veloppeur, une copie non-priv�e de cet �change (uniquement ce message et la r�ponse associ�e) sera cr��e sur le serveur.
       </p>
       <p class="modalText" style="font-size:13px;color:#666;">
-        Aucune autre partie de votre conversation ne sera partagée.
+        Aucune autre partie de votre conversation ne sera partag�e.
       </p>
       <div class="modalActions">
         <button class="modalBtnSecondary" id="cancelFeedbackPrivateConfirmBtn" type="button">Annuler</button>
@@ -2490,7 +2490,7 @@
 
       const isAdminAuthenticated = await hasValidAdminSession();
       btn.dataset.mode = isAdminAuthenticated ? "disable-admin" : "enable-admin";
-      btn.textContent = isAdminAuthenticated ? "Revenir à l'UX normale" : "Passer admin";
+      btn.textContent = isAdminAuthenticated ? "Revenir � l'UX normale" : "Passer admin";
     }
 
     async function handleDevAccessPrimaryAction() {
@@ -2814,7 +2814,7 @@
       if (!content) return;
       content.textContent = typeof memory === "string" && memory.trim()
         ? memory.trim()
-        : "(aucune mémoire inter-sessions)";
+        : "(aucune m�moire inter-sessions)";
     }
 
     async function syncIntersessionMemoryIfApplicable() {
@@ -2995,7 +2995,7 @@
 
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || "Erreur réseau");
+        throw new Error(body.error || "Erreur r�seau");
       }
 
       const responseData = await res.json().catch(() => ({}));
@@ -3098,7 +3098,7 @@
         actions.appendChild(closeBtn);
       } else {
         title.textContent = "Rendre la conversation publique";
-        text.textContent = "Cette action envoie l'intégralité de la conversation sur Firebase. Elle sera visible dans votre compte.";
+        text.textContent = "Cette action envoie l'int�gralit� de la conversation sur Firebase. Elle sera visible dans votre compte.";
 
         const cancelBtn = document.createElement("button");
         cancelBtn.type = "button";
@@ -3176,7 +3176,7 @@
           }
         } catch {}
       } else {
-        // Active l'UI admin dès qu'une session valide existe,
+        // Active l'UI admin d�s qu'une session valide existe,
         // que ce soit via ?adminUi=1 ou un retour depuis admin.html
         safeSetLocalStorage(ADMIN_UI_KEY, "1", "syncAdminUiFromSession");
       }
@@ -3897,7 +3897,7 @@
         markConversationPrivate(safeConversationId);
       }
       
-      /* Ne crÃƒÂ©e (ou ne met ÃƒÂ  jour) lÃ¢â‚¬â„¢entrÃƒÂ©e dÃ¢â‚¬â„¢index
+      /* Ne crÃ©e (ou ne met Ã  jour) lâ€™entrÃ©e dâ€™index
    que si AU MOINS un message utilisateur existe. */
       const hasUserMsg = safeData.messages.some(m => m && m.role === "user");
       if (hasUserMsg) {
@@ -3944,7 +3944,7 @@
         relationalAdjustmentTriggered: safe.relationalAdjustmentTriggered === true,
         pipelineStages: normalizeClientPipelineStages(safe.pipelineStages),
         explorationCalibrationLevel: Number.isInteger(safe.explorationCalibrationLevel) ? safe.explorationCalibrationLevel : null,
-        explorationSubmode: typeof safe.explorationSubmode === "string" ? safe.explorationSubmode.trim() : "",
+        explorationSignal: typeof safe.explorationSignal === "string" ? safe.explorationSignal.trim() : "",
         memoryRewriteIntent: safe.memoryRewriteIntent && typeof safe.memoryRewriteIntent === "object" ? {
           compressionRequested: safe.memoryRewriteIntent.compressionRequested === true,
           interpretationRejectionActive: safe.memoryRewriteIntent.interpretationRejectionActive === true,
@@ -4119,7 +4119,7 @@
         showScreen("chatScreen", { replaceHistory: true, pushHistory: false, noAnimation: true });
         renderHistory();
         scrollChatToBottom();
-        showTemporaryNotice("Branche activee — conversation repartie depuis ce point");
+        showTemporaryNotice("Branche activee � conversation repartie depuis ce point");
       } catch (err) {
         console.error("[BRANCH_ERROR]", err.message);
         showTemporaryNotice("Erreur inattendue lors du branchement");
@@ -4556,7 +4556,7 @@
       });
     });
 
-    // Intersession beacon — pagehide + visibilitychange.
+    // Intersession beacon � pagehide + visibilitychange.
     // pagehide covers desktop close / navigation; visibilitychange covers mobile
     // (iOS Safari, Android Chrome where pagehide fires late or not at all).
     // A debounce flag prevents double-fire when both events fire in the same cycle.
@@ -5520,10 +5520,10 @@
     }
     
     /**
-     * Rendu progressif + Markdown sÃƒÂ©curisÃƒÂ© pour les bulles bot.
-     * Ã¢â‚¬â€œ On conserve toute la logique dÃ¢â‚¬â„¢origine (scroll-lock, stop-line,
+     * Rendu progressif + Markdown sÃ©curisÃ© pour les bulles bot.
+     * â€“ On conserve toute la logique dâ€™origine (scroll-lock, stop-line,
      *   interruption utilisateur, reveal instant, etc.)
-     * Ã¢â‚¬â€œ Ãƒâ‚¬ la fin (ou en cas dÃ¢â‚¬â„¢interruption) on remplace silencieusement
+     * â€“ Ã€ la fin (ou en cas dâ€™interruption) on remplace silencieusement
      *   le texte brut par la version HTML issue de `safeMarkdownToHtml`.
      */
     function renderBotMessageContent(bubble, text, options = {}) {
@@ -5568,12 +5568,12 @@
       
       const wheelListenerOpts = { passive: true };
       
-      const EXTRA_MARGIN = 12; // px de marge souhaitÃƒÂ©e
+      const EXTRA_MARGIN = 12; // px de marge souhaitÃ©e
       
       function getStopLineY() {
         if (!topBar) return null;
         const { bottom } = topBar.getBoundingClientRect();
-        return bottom + EXTRA_MARGIN; // dÃƒÂ©cale la ligne dÃ¢â‚¬â„¢arrÃƒÂªt
+        return bottom + EXTRA_MARGIN; // dÃ©cale la ligne dâ€™arrÃªt
       }
       
       function hasBubbleReachedReadingPosition() {
@@ -5699,7 +5699,7 @@
       }, 1700);
     }
 
-    // ── Feedback (pouces) ──────────────────────────────────────────────────────
+    // -- Feedback (pouces) ------------------------------------------------------
     // State tracking for the currently-open feedback modal
     let _feedbackModalPending = null;
 
@@ -5862,10 +5862,10 @@
       const existing = resolvedHistoryIndex >= 0 && history[resolvedHistoryIndex] && history[resolvedHistoryIndex].feedback ? history[resolvedHistoryIndex].feedback : null;
       const isDevShareLocked = existing && existing.devShareLocked === true;
 
-      titleEl.textContent = feedbackType === "thumbUp" ? "Bonne réponse ?" : "Réponse à améliorer ?";
+      titleEl.textContent = feedbackType === "thumbUp" ? "Bonne r�ponse ?" : "R�ponse � am�liorer ?";
       textEl.textContent = feedbackType === "thumbUp"
         ? "Merci pour votre retour positif."
-        : "Dites-nous ce qui pourrait être amélioré.";
+        : "Dites-nous ce qui pourrait �tre am�lior�.";
       commentInput.value = existing ? (existing.comment || "") : "";
       devShareToggle.checked = existing ? existing.devShare : true;
       applyFeedbackToggleUiState(devShareToggle, devShareLabel, isDevShareLocked);
@@ -5944,7 +5944,7 @@
     function cancelFeedbackPrivateSnapshot() {
       closeModal("feedbackPrivateConfirmModal");
       _feedbackPendingAfterPrivateConfirm = null;
-      // Feedback is already saved locally — no need to undo
+      // Feedback is already saved locally � no need to undo
     }
 
     async function _doSubmitFeedback(feedbackType, botContent, historyIndex, comment, devShare, confirmBtnEl) {
@@ -5957,7 +5957,7 @@
         showTemporaryNotice("Envoi au developpeur impossible. Retour conserve localement.");
       }
     }
-    // ── /Feedback ─────────────────────────────────────────────────────────────
+    // -- /Feedback -------------------------------------------------------------
 
     function ensureEditModeBar() {
       let bar = document.getElementById("editModeBar");
@@ -6123,8 +6123,8 @@
     /* ---------- MARKDOWN SAFE RENDER ---------- */
     
     /**
-     * Retourne lÃ¢â‚¬â„¢instance (singleton) du parser markdown-it
-     * avec les rÃƒÂ¨gles non autorisÃƒÂ©es dÃƒÂ©sactivÃƒÂ©es.
+     * Retourne lâ€™instance (singleton) du parser markdown-it
+     * avec les rÃ¨gles non autorisÃ©es dÃ©sactivÃ©es.
      */
     function getMd() {
       if (window.__md) return window.__md;
@@ -6135,7 +6135,7 @@
           breaks: true, // \n => <br>
           linkify: true // auto-link
         })
-        // dÃƒÂ©sactive code & html
+        // dÃ©sactive code & html
         .disable(['code', 'fence', 'html_inline', 'html_block']);
       
       window.__md = md;
@@ -6143,10 +6143,10 @@
     }
     
     /**
-     * Convertit du Markdown Ã‚Â« intermÃƒÂ©diaire Ã‚Â» en HTML puis
-     * passe le rÃƒÂ©sultat dans DOMPurify :
-     *   Ã¢â‚¬â€œ seules les balises whitelisteÃŒÂes subsistent
-     *   Ã¢â‚¬â€œ tous les attributs sont filtrÃƒÂ©s sauf href des <a>
+     * Convertit du Markdown Â« intermÃ©diaire Â» en HTML puis
+     * passe le rÃ©sultat dans DOMPurify :
+     *   â€“ seules les balises whitelisteÌes subsistent
+     *   â€“ tous les attributs sont filtrÃ©s sauf href des <a>
      */
     function safeMarkdownToHtml(rawText = '') {
       const dirty = getMd().render(String(rawText));
@@ -6162,7 +6162,7 @@
     }
     
     /**
-     * Transforme les liens pour quÃ¢â‚¬â„¢ils sÃ¢â‚¬â„¢ouvrent
+     * Transforme les liens pour quâ€™ils sâ€™ouvrent
      * dans le navigateur externe.
      */
     function fixLinks(containerEl) {
@@ -6417,7 +6417,7 @@
         return "phrases moyennes";
       }
 
-      function translateExplorationSubmodeDebug(value) {
+      function translateExplorationSignalDebug(value) {
         if (value === "interpretation") return "interpretation";
         if (value === "phenomenological_follow") return "accompagnement phenomenologique";
         return value;
@@ -6470,24 +6470,24 @@
 
         if (meta.criticTriggered === true) {
           const CRITIC_REASON_LABELS = {
-            contractLengthExceeded: "Longueur contractuelle dépassée",
-            humanFieldRisk: "Risque de ton procédural/instrumental",
+            contractLengthExceeded: "Longueur contractuelle d�pass�e",
+            humanFieldRisk: "Risque de ton proc�dural/instrumental",
             formalAddressRisk: "Risque de tutoiement non conforme",
             vouvoiementRisk: "Risque de vouvoiement non conforme",
             agencyInjectionRisk: "Risque d'injonction d'agency",
-            theoreticalViolationRisk: "Risque de formulation théorique/interprétative",
-            n1CrisisForced: "Déclenchement forcé en crise N1",
-            recallForced: "Déclenchement forcé en rappel mémoire",
+            theoreticalViolationRisk: "Risque de formulation th�orique/interpr�tative",
+            n1CrisisForced: "D�clenchement forc� en crise N1",
+            recallForced: "D�clenchement forc� en rappel m�moire",
           };
           const reasons = (meta.criticTriggerReasons || []).map(r => CRITIC_REASON_LABELS[r] || r).filter(Boolean);
           if (meta.criticIssues.length > 0) {
-            lines.push(`Le critic pass a corrigé ${meta.criticIssues.length} point(s) :`);
-            meta.criticIssues.forEach(issue => lines.push(`· ${issue}`));
+            lines.push(`Le critic pass a corrig� ${meta.criticIssues.length} point(s) :`);
+            meta.criticIssues.forEach(issue => lines.push(`� ${issue}`));
           } else {
-            lines.push("Le critic pass a été lancé sans correction nécessaire.");
+            lines.push("Le critic pass a �t� lanc� sans correction n�cessaire.");
           }
           if (reasons.length > 0) {
-            lines.push(`Raisons : ${reasons.join(" · ")}`);
+            lines.push(`Raisons : ${reasons.join(" � ")}`);
           }
         }
 
@@ -6512,19 +6512,19 @@
 
         const lines = [];
         if (intent.compressionRequested === true) {
-          lines.push("Compression mémoire demandée");
+          lines.push("Compression m�moire demand�e");
         }
         if (intent.interpretationRejectionActive === true) {
-          lines.push("Réécriture motivée par un rejet d'interprétation");
+          lines.push("R��criture motiv�e par un rejet d'interpr�tation");
         }
         if (intent.rejectsUnderlyingPhenomenon === true) {
-          lines.push("Le phénomène sous-jacent a été rejeté");
+          lines.push("Le ph�nom�ne sous-jacent a �t� rejet�");
         }
         if (intent.soberReadjustmentActive === true) {
-          lines.push("Réécriture motivée par un réajustement sobre");
+          lines.push("R��criture motiv�e par un r�ajustement sobre");
         }
         if (intent.lectureBotForcedReset === true) {
-          lines.push("Lecture bot forcée à '-' par règle d'état");
+          lines.push("Lecture bot forc�e � '-' par r�gle d'�tat");
         }
 
         return lines;
@@ -6544,8 +6544,8 @@
               typeof meta.confidenceSignal === "number" ? `Confiance dans le choix de l'\u00e9tat : ${meta.confidenceSignal.toFixed(2)}` : null,
               (isExplorationMode && Number.isInteger(meta.explorationCalibrationLevel)) ?
                 `Niveau de structuration retenu : ${meta.explorationCalibrationLevel}/4` : null,
-                (isExplorationMode && typeof meta.explorationSubmode === "string" && meta.explorationSubmode) ?
-                  `Sous-mode d'exploration : ${translateExplorationSubmodeDebug(meta.explorationSubmode)}` : null,
+                (isExplorationMode && typeof meta.explorationSignal === "string" && meta.explorationSignal) ?
+                  `Signal d'exploration : ${translateExplorationSignalDebug(meta.explorationSignal)}` : null,
               meta.intent ? `Intention : ${meta.intent}` : null,
               (meta.forbidden && meta.forbidden.length) ? `Interdit : ${meta.forbidden.map(translateForbiddenDebug).join(", ")}` : null,
               typeof meta.relancePolicy === "string" && meta.relancePolicy ? `Relance : ${translateRelancePolicyDebug(meta.relancePolicy)}` : null,
@@ -6573,10 +6573,10 @@
 
         const affiliationLines = [];
         if (Array.isArray(meta.affiliationWindow) && meta.affiliationWindow.length > 0) {
-          affiliationLines.push(`Fenêtre d'affiliation : [${meta.affiliationWindow.map(v => v.toFixed(2)).join(", ")}]`);
+          affiliationLines.push(`Fen�tre d'affiliation : [${meta.affiliationWindow.map(v => v.toFixed(2)).join(", ")}]`);
         }
         if (typeof meta.affiliationScore === "number") {
-          affiliationLines.push(`Degré d'affiliation du tour : ${meta.affiliationScore.toFixed(2)}`);
+          affiliationLines.push(`Degr� d'affiliation du tour : ${meta.affiliationScore.toFixed(2)}`);
         }
         if (affiliationLines.length > 0) {
           sections.push({ title: "Affiliation", content: affiliationLines.join("\n") });
@@ -6589,7 +6589,7 @@
 
         const memoryRewriteIntentLines = buildMemoryRewriteIntentLines(meta);
         if (memoryRewriteIntentLines.length > 0) {
-          sections.push({ title: "Intention réécriture mémoire", content: memoryRewriteIntentLines.join("\n") });
+          sections.push({ title: "Intention r��criture m�moire", content: memoryRewriteIntentLines.join("\n") });
         }
 
         if (meta.memory) {
@@ -6618,19 +6618,19 @@
           signauxLines.push("Effondrement de sens (contact)");
         }
         if (meta.emotionalDecentering === true) {
-          signauxLines.push("Décentrage émotionnel actif");
+          signauxLines.push("D�centrage �motionnel actif");
         }
         if (meta.formalAddress === true) {
           signauxLines.push("Vouvoiement actif");
         }
         if (meta.limitingBeliefValidated === true) {
-          signauxLines.push("Croyance-frein validée (C3)");
+          signauxLines.push("Croyance-frein valid�e (C3)");
         }
         if (meta.aggressiveDischargeDetected === true) {
-          signauxLines.push("Décharge agressive détectée (C2→C3)");
+          signauxLines.push("D�charge agressive d�tect�e (C2?C3)");
         }
         if (meta.postDischargeTransitionActive === true) {
-          signauxLines.push("Transition post-décharge active (C3)");
+          signauxLines.push("Transition post-d�charge active (C3)");
         }
         if (signauxLines.length > 0) {
           sections.push({ title: "Signaux", content: signauxLines.join("\n") });
@@ -6816,12 +6816,12 @@
           hasStructuredSignals =
             !!debugMeta &&
             (
-              debugMeta.infoSubmode === "app_features" ||
-              debugMeta.infoSubmode === "psychoeducation" ||
-              debugMeta.infoSubmode === "pure" ||
+              debugMeta.infoSignal === "app_features" ||
+              debugMeta.infoSignal === "psychoeducation" ||
+              debugMeta.infoSignal === "pure" ||
               debugMeta.interpretationRejection === true ||
               Number.isInteger(debugMeta.explorationCalibrationLevel) ||
-              !!debugMeta.explorationSubmode
+              !!debugMeta.explorationSignal
             );
 
           hasDebugContent =
@@ -6831,7 +6831,7 @@
               !!debugMeta.memory ||
               !!debugMeta.directivityLabel ||
               hasStructuredSignals ||
-              !!debugMeta.explorationSubmode ||
+              !!debugMeta.explorationSignal ||
               (
                 !!debugMeta.memoryRewriteIntent &&
                 (
@@ -6926,7 +6926,7 @@
             onCopy: async () => {
               const copied = await copyTextToClipboard(displayText);
               if (copied) {
-                showTemporaryNotice("Message copié");
+                showTemporaryNotice("Message copi�");
               }
             },
             onEdit: () => {
@@ -7154,7 +7154,7 @@
 
             // We need the Firebase message id. The message may have an id field
             // if it was persisted through admin or branch path. For fresh chat
-            // messages the id is not stored locally — we use a fallback local id.
+            // messages the id is not stored locally � we use a fallback local id.
             const anchorMessageId = (botEntry.id && typeof botEntry.id === "string")
               ? botEntry.id
               : null;
@@ -7461,7 +7461,7 @@
       } catch {}
     }
 
-    // sendIntersessionBeacon — fire-and-forget on pagehide / visibilitychange.
+    // sendIntersessionBeacon � fire-and-forget on pagehide / visibilitychange.
     // Uses sendBeacon so the request survives tab close and back-navigation.
     // Guards: authenticated user, non-private conversation, memory non-empty.
     function sendIntersessionBeacon() {

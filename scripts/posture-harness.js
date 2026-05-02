@@ -28,7 +28,7 @@ function baseInput(overrides = {}) {
     affiliationWindow: [0, 0, 0, 0],
     affiliationEstablished: true,
     relationalAdjustmentAnalysis: { needsRelationalAdjustment: false },
-    calibrationAnalysis: { calibrationLevel: 0, explorationSubmode: "interpretation" },
+    calibrationAnalysis: { calibrationLevel: 0, explorationSignal: "interpretation" },
     technicalContextDetected: false,
     somaticSignalAnalysis: { somaticSignalActive: false, somaticLocalizationBlocked: false },
     userRegisterAnalysis: { userRegister: "courant", formalAddress: false },
@@ -90,11 +90,11 @@ check("post-discharge transition enforces restrained phenomenological exploratio
     detectedState: "exploration",
     previousConversationState: "discharge_dysregulated",
     effectiveExplorationDirectivityLevel: 4,
-    calibrationAnalysis: { calibrationLevel: 4, explorationSubmode: "interpretation" }
+    calibrationAnalysis: { calibrationLevel: 4, explorationSignal: "interpretation" }
   }));
   assert(out.postDischargeTransitionActive === true, "expected postDischargeTransitionActive=true");
   assert(out.finalDirectivityLevel === 2, `expected finalDirectivityLevel=2, got ${out.finalDirectivityLevel}`);
-  assert(out.finalExplorationSubmode === "phenomenological_follow", `expected phenomenological_follow, got ${out.finalExplorationSubmode}`);
+  assert(out.finalExplorationSignal === "phenomenological_follow", `expected phenomenological_follow, got ${out.finalExplorationSignal}`);
   assert(out.forbidden.includes("relance"), "expected relance forbidden on post-discharge transition");
   assert(out.writerIntentHints.includes("post_discharge_soft_landing"), "expected post_discharge_soft_landing hint");
 });

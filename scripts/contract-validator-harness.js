@@ -39,7 +39,7 @@ function baseInput(overrides = {}) {
     detectedState: "exploration",
     contactAnalysis: { selfCriticismLevel: null, meaningCrisis: false, insightMoment: false },
     relationalAdjustmentAnalysis: { needsRelationalAdjustment: false },
-    calibrationAnalysis: { calibrationLevel: 0, explorationSubmode: "interpretation" },
+    calibrationAnalysis: { calibrationLevel: 0, explorationSignal: "interpretation" },
     technicalContextDetected: false,
     interpretationRejection: {
       isInterpretationRejection: false,
@@ -102,8 +102,8 @@ check("posture decision always returns known conversationState", () => {
   const stateSet = new Set(Object.keys(STATE_ALLOWED));
 
   const cases = [
-    baseInput({ detectedState: "exploration", calibrationAnalysis: { calibrationLevel: 0, explorationSubmode: "interpretation" } }),
-    baseInput({ detectedState: "exploration", calibrationAnalysis: { calibrationLevel: 3, explorationSubmode: "interpretation" }, effectiveExplorationDirectivityLevel: 4 }),
+    baseInput({ detectedState: "exploration", calibrationAnalysis: { calibrationLevel: 0, explorationSignal: "interpretation" } }),
+    baseInput({ detectedState: "exploration", calibrationAnalysis: { calibrationLevel: 3, explorationSignal: "interpretation" }, effectiveExplorationDirectivityLevel: 4 }),
     baseInput({ detectedState: "discharge_regulated" }),
     baseInput({ detectedState: "discharge_dysregulated" }),
     baseInput({ detectedState: "info_pure" }),
@@ -137,14 +137,14 @@ check("relancePolicy follows contract constraints", () => {
   const openExploration = buildPostureDecision(baseInput({
     detectedState: "exploration",
     effectiveExplorationDirectivityLevel: 0,
-    calibrationAnalysis: { calibrationLevel: 0, explorationSubmode: "interpretation" }
+    calibrationAnalysis: { calibrationLevel: 0, explorationSignal: "interpretation" }
   }));
   assert(openExploration.relancePolicy === "open", "exploration level 0 should keep relance open");
 
   const discouragedExploration = buildPostureDecision(baseInput({
     detectedState: "exploration",
     effectiveExplorationDirectivityLevel: 4,
-    calibrationAnalysis: { calibrationLevel: 4, explorationSubmode: "interpretation" }
+    calibrationAnalysis: { calibrationLevel: 4, explorationSignal: "interpretation" }
   }));
   assert(discouragedExploration.relancePolicy === "discouraged", "exploration level 4 should discourage relance");
 

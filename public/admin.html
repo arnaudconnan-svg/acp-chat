@@ -867,14 +867,14 @@
     function normalizeReplayDebugMeta(debugMeta) {
       const safe = debugMeta && typeof debugMeta === "object" ? debugMeta : {};
 
-      function normalizeInfoSubmode(value) {
+      function normalizeInfoSignal(value) {
         const raw = typeof value === "string" ? value.trim() : "";
         if (raw === "app") return "app_features";
         if (["pure", "psychoeducation", "app_features"].includes(raw)) return raw;
         return null;
       }
 
-      function normalizeContactSubmode(value) {
+      function normalizeContactSignal(value) {
         const raw = typeof value === "string" ? value.trim() : "";
         if (["regulated", "dysregulated"].includes(raw)) return raw;
         return null;
@@ -901,14 +901,14 @@
           safe.directivityText.trim() : (typeof safe.directivityLabel === "string" ? safe.directivityLabel.trim() : ""),
         conversationStateKey: typeof safe.conversationStateKey === "string" ? safe.conversationStateKey.trim() : null,
         consecutiveNonExplorationTurns: Number.isInteger(safe.consecutiveNonExplorationTurns) ? Math.max(0, safe.consecutiveNonExplorationTurns) : 0,
-        infoSubmode: normalizeInfoSubmode(safe.infoSubmode),
-        contactSubmode: normalizeContactSubmode(safe.contactSubmode),
+        infoSignal: normalizeInfoSignal(safe.infoSignal),
+        contactSignal: normalizeContactSignal(safe.contactSignal),
         interpretationRejection: safe.interpretationRejection === true,
         needsSoberReadjustment: safe.needsSoberReadjustment === true,
         relationalAdjustmentActive: (safe.relationalAdjustmentActive ?? safe.relationalAdjustmentTriggered) === true,
         pipelineStages: normalizePipelineStages(safe.pipelineStages),
         explorationCalibrationLevel: Number.isInteger(safe.explorationCalibrationLevel) ? safe.explorationCalibrationLevel : null,
-        explorationSubmode: typeof safe.explorationSubmode === "string" ? safe.explorationSubmode.trim() : null,
+        explorationSignal: typeof safe.explorationSignal === "string" ? safe.explorationSignal.trim() : null,
         memoryRewriteIntent: safe.memoryRewriteIntent && typeof safe.memoryRewriteIntent === "object" ? {
           compressionRequested: safe.memoryRewriteIntent.compressionRequested === true,
           interpretationRejectionActive: safe.memoryRewriteIntent.interpretationRejectionActive === true,
@@ -1875,7 +1875,7 @@
           return "phrases moyennes";
         }
 
-        function translateExplorationSubmode(value) {
+        function translateExplorationSignal(value) {
           if (value === "interpretation") return "interpretation";
           if (value === "phenomenological_follow") return "accompagnement phenomenologique";
           return value;
@@ -2049,8 +2049,8 @@
                 typeof meta.confidenceSignal === "number" ? `Confiance dans le choix de l'\u00e9tat : ${meta.confidenceSignal.toFixed(2)}` : null,
                 (isExplorationMode && Number.isInteger(meta.explorationCalibrationLevel)) ?
                   `Niveau de structuration retenu : ${meta.explorationCalibrationLevel}/4` : null,
-                (isExplorationMode && typeof meta.explorationSubmode === "string" && meta.explorationSubmode) ?
-                  `Sous-mode d'exploration : ${translateExplorationSubmode(meta.explorationSubmode)}` : null,
+                (isExplorationMode && typeof meta.explorationSignal === "string" && meta.explorationSignal) ?
+                  `Signal d'exploration : ${translateExplorationSignal(meta.explorationSignal)}` : null,
                 meta.intent ? `Intention : ${meta.intent}` : null,
                 (meta.forbidden && meta.forbidden.length) ? `Interdit : ${meta.forbidden.map(translateForbidden).join(", ")}` : null,
                 meta.relancePolicy && meta.relancePolicy !== "selective" ? `Relance : ${translateRelancePolicy(meta.relancePolicy)}` : null,
