@@ -4391,6 +4391,17 @@ app.post("/chat", async (req, res) => {
 
       return pushedRef.key || null;
     }
+
+    // Fire-and-forget wrapper: generates a deterministic messageId synchronously,
+    // then persists in background without blocking the response path.
+    function persistAssistantMessageAsync(reply, debug, debugMeta = {}, conversationState = null) {
+      if (isPrivateConversation) return null;
+      const messageId = "msg_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8);
+      persistAssistantMessage(reply, debug, debugMeta, conversationState).catch(err => {
+        console.error("[PERSIST_ASYNC][FAILED]", err && err.message ? err.message : String(err));
+      });
+      return messageId;
+    }
     
     function buildResponseDebugMeta(params) {
       return _buildResponseDebugMeta({
