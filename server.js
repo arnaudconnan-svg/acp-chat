@@ -111,7 +111,6 @@ const {
 const { buildDefaultPromptRegistry } = require("./lib/prompts");
 const {
   createCritic,
-  hasAgencyInjectionInReply,
   hasTutoiementInReply,
   hasVouvoiementInReply,
   hasTheoreticalViolationHeuristic,
@@ -4707,7 +4706,6 @@ app.post("/chat", async (req, res) => {
       humanFieldRisk = postureDecision.humanFieldGuardActive === true && isProceduralInstrumentalReply(reply);
       const formalAddressRisk = postureDecision.formalAddress === true && hasTutoiementInReply(reply);
       const vouvoiementRisk = postureDecision.formalAddress !== true && hasVouvoiementInReply(reply, message);
-      const agencyInjectionRisk = hasAgencyInjectionInReply(reply);
       const theoreticalViolationRisk = hasTheoreticalViolationHeuristic(reply);
       const criticShouldTrigger =
         n1CrisisForced ||
@@ -4716,14 +4714,12 @@ app.post("/chat", async (req, res) => {
         humanFieldRisk ||
         formalAddressRisk ||
         vouvoiementRisk ||
-        agencyInjectionRisk ||
         theoreticalViolationRisk;
       criticTriggerReasons = criticShouldTrigger ? [
         ...(contractLengthExceeded ? ["contractLengthExceeded"] : []),
         ...(humanFieldRisk ? ["humanFieldRisk"] : []),
         ...(formalAddressRisk ? ["formalAddressRisk"] : []),
         ...(vouvoiementRisk ? ["vouvoiementRisk"] : []),
-        ...(agencyInjectionRisk ? ["agencyInjectionRisk"] : []),
         ...(theoreticalViolationRisk ? ["theoreticalViolationRisk"] : []),
         ...(n1CrisisForced ? ["n1CrisisForced"] : []),
         ...(recallForced ? ["recallForced"] : []),
@@ -4746,13 +4742,22 @@ app.post("/chat", async (req, res) => {
         chatStageTimings.push({ stage: "critic", deltaMs: Date.now() - t_critic });
         throwIfCanceled();
         criticTriggered = true;
-        criticIssues = criticResult.criticIssues;
-        if (criticResult.criticIssues.length > 0) {
+        const contractForbidden = new Set(Array.isArray(postureDecision.forbidden) ? postureDecision.forbidden : []);
+        const filteredCriticIssues = Array.isArray(criticResult.criticIssues)
+          ? criticResult.criticIssues.filter(issue => {
+            if (typeof issue !== "string") return false;
+            if (!issue.startsWith("forbidden_")) return true;
+            const forbiddenTerm = issue.slice("forbidden_".length);
+            return contractForbidden.has(forbiddenTerm);
+          })
+          : [];
+        criticIssues = filteredCriticIssues;
+        if (filteredCriticIssues.length > 0) {
           criticOriginalReply = reply;
           reply = criticResult.reply;
           logChatDecision("critic_rewrote", {
-            issueCount: criticResult.criticIssues.length,
-            issues: criticResult.criticIssues
+            issueCount: filteredCriticIssues.length,
+            issues: filteredCriticIssues
           });
         }
       }

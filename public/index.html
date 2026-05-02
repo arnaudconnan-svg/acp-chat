@@ -6378,7 +6378,7 @@
 
       function translateProcessingWindowDebug(value) {
         if (value === "narrowed") return "restreinte";
-        if (value === "overloaded") return "satur\u00e9e";
+        if (value === "overloaded") return "surcharg\u00e9e";
         return value;
       }
 
@@ -6396,7 +6396,8 @@
           hold_emotional_thread: "maintenir le fil \u00e9motionnel",
           auto_compassion_door_open: "invitation \u00e0 l'auto-compassion",
           signify_pain_without_blocking: "signifier la douleur sans bloquer",
-          amplify_insight: "amplifier l'insight"
+          amplify_insight: "amplifier l'insight",
+          attention_narrow_single_axis: "attention restreinte: rester sur un seul axe"
         };
         return MAP[value] || value;
       }
@@ -6474,7 +6475,6 @@
             humanFieldRisk: "Risque de ton proc�dural/instrumental",
             formalAddressRisk: "Risque de tutoiement non conforme",
             vouvoiementRisk: "Risque de vouvoiement non conforme",
-            agencyInjectionRisk: "Risque d'injonction d'agency",
             theoreticalViolationRisk: "Risque de formulation th�orique/interpr�tative",
             n1CrisisForced: "D�clenchement forc� en crise N1",
             recallForced: "D�clenchement forc� en rappel m�moire",
@@ -6551,7 +6551,7 @@
               typeof meta.relancePolicy === "string" && meta.relancePolicy ? `Relance : ${translateRelancePolicyDebug(meta.relancePolicy)}` : null,
               typeof meta.allianceSignal === "string" && meta.allianceSignal !== "good" ? `Alliance : ${meta.allianceSignal}` : null,
               typeof meta.engagementLevel === "string" && meta.engagementLevel !== "active" ? `Engagement : ${translateEngagementLevelDebug(meta.engagementLevel)}` : null,
-              typeof meta.processingWindow === "string" && meta.processingWindow !== "open" ? `Fen\u00eatre de traitement : ${translateProcessingWindowDebug(meta.processingWindow)}` : null,
+              typeof meta.processingWindow === "string" && meta.processingWindow !== "open" ? `Qualit\u00e9 de l'attention : ${translateProcessingWindowDebug(meta.processingWindow)}` : null,
               (meta.writerIntentHints && meta.writerIntentHints.length) ? `Indications : ${meta.writerIntentHints.map(translateWriterHintDebug).join(", ")}` : null,
               meta.writerOrientationHint ? `Orientation : ${translateOrientationHintDebug(meta.writerOrientationHint)}` : null,
               meta.responseRegister && meta.responseRegister !== "courant" ? `Registre cible : ${translateRegisterDebug(meta.responseRegister)}` : null,

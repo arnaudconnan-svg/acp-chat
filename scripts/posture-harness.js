@@ -145,6 +145,21 @@ check("emotionalDecentering hints apply in info states", () => {
   assert(out.writerIntentHints.includes("auto_compassion_door_open"), "expected auto_compassion_door_open hint");
 });
 
+check("narrowed processing window enforces single-axis exploration contract", () => {
+  const out = buildPostureDecision(baseInput({
+    detectedState: "exploration",
+    processingWindow: "open",
+    engagementAllianceAnalysis: {
+      allianceSignal: "good",
+      engagementLevel: "active",
+      processingWindow: "narrowed"
+    }
+  }));
+  assert(out.forbidden.includes("open_question"), "expected open_question forbidden when attention is narrowed");
+  assert(out.writerIntentHints.includes("attention_narrow_single_axis"), "expected attention_narrow_single_axis hint");
+  assert(out.intent === "suivre un seul axe sans ouvrir de nouveau chantier", `unexpected intent: ${out.intent}`);
+});
+
 check("emotionSequenceStage removed from posture decision output", () => {
   const out = buildPostureDecision(baseInput({ detectedState: "exploration" }));
   assert(!("emotionSequenceStage" in out), "emotionSequenceStage should not exist in output");

@@ -165,6 +165,20 @@ check("situated impasse activates action collapse guard", () => {
   assert(out.forbidden.includes("action_concrete_proposal"), "forbidden should include action_concrete_proposal");
 });
 
+check("narrowed processing enforces single-axis contract", () => {
+  const out = buildPostureDecision(baseInput({
+    detectedState: "exploration",
+    engagementAllianceAnalysis: {
+      allianceSignal: "good",
+      engagementLevel: "active",
+      processingWindow: "narrowed"
+    }
+  }));
+  assert(out.forbidden.includes("open_question"), "narrowed processing must forbid open_question");
+  assert(out.writerIntentHints.includes("attention_narrow_single_axis"), "narrowed processing must add single-axis hint");
+  assert(out.intent === "suivre un seul axe sans ouvrir de nouveau chantier", "narrowed processing must adjust intent");
+});
+
 if (failed > 0) {
   console.error(`\n[CONTRACT-VALIDATOR] ${passed} passed, ${failed} failed.`);
   process.exit(1);
