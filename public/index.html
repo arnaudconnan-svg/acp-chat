@@ -1628,62 +1628,7 @@
       cursor: pointer;
     }
 
-    #intersessionDebugChip {
-      display: none;
-      position: absolute;
-      left: 14px;
-      bottom: calc(74px + env(safe-area-inset-bottom, 0px));
-      z-index: 45;
-      max-width: min(300px, calc(100vw - 80px));
-    }
 
-    body.show-debug #intersessionDebugChip {
-      display: block;
-    }
-
-    #intersessionDebugChip > summary {
-      list-style: none;
-      cursor: pointer;
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.03em;
-      text-transform: uppercase;
-      color: #245e66;
-      background: rgba(255, 255, 255, 0.84);
-      border: 1px solid rgba(215, 222, 226, 0.92);
-      border-radius: 999px;
-      padding: 4px 10px;
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      user-select: none;
-      -webkit-user-select: none;
-      white-space: nowrap;
-      display: inline-block;
-    }
-
-    #intersessionDebugChip[open] > summary {
-      border-radius: 10px 10px 0 0;
-    }
-
-    #intersessionDebugChip > .intersession-chip-content {
-      background: rgba(255, 255, 255, 0.96);
-      border: 1px solid rgba(215, 222, 226, 0.92);
-      border-top: none;
-      border-radius: 0 10px 10px 10px;
-      padding: 8px 10px;
-      font-size: 12px;
-      line-height: 1.45;
-      color: #334155;
-      white-space: pre-wrap;
-      word-break: break-word;
-      max-height: 240px;
-      overflow-y: auto;
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      user-select: text;
-      -webkit-user-select: text;
-      cursor: text;
-    }
 
     .debug-detail {
       display: block;
@@ -2123,10 +2068,6 @@
   </div>
   
   <div id="chatScreen" class="screen" tabindex="-1">
-    <details id="intersessionDebugChip">
-      <summary>Mém. LT</summary>
-      <div class="intersession-chip-content">(aucune mémoire inter-sessions)</div>
-    </details>
     <div id="topBar">
       <div id="chatMakePublicBtnWrap">
         <button id="chatMakePublicBtn" type="button" aria-label="Rendre la conversation publique">
@@ -2808,13 +2749,16 @@
     }
 
     function updateIntersessionMemoryDebugChip(memory) {
-      const chip = document.getElementById("intersessionDebugChip");
-      if (!chip) return;
-      const content = chip.querySelector(".intersession-chip-content");
-      if (!content) return;
-      content.textContent = typeof memory === "string" && memory.trim()
-        ? memory.trim()
-        : "(aucune mémoire inter-sessions)";
+      const block = document.getElementById("adminLtMemoryBlock");
+      const content = document.getElementById("adminLtMemoryContent");
+      if (!block || !content) return;
+      const text = typeof memory === "string" && memory.trim() ? memory.trim() : null;
+      if (text) {
+        content.textContent = text;
+        block.style.display = "flex";
+      } else {
+        block.style.display = "none";
+      }
     }
 
     async function syncIntersessionMemoryIfApplicable() {
@@ -4985,6 +4929,10 @@
       
       popover.innerHTML = `
     <div style="display:flex;flex-direction:column;gap:10px;">
+      <div id="adminLtMemoryBlock" style="display:none;flex-direction:column;gap:4px;">
+        <div style="font-size:11px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#245e66;">M\u00e9m. long terme</div>
+        <div id="adminLtMemoryContent" style="font-size:12px;line-height:1.45;color:#334155;white-space:pre-wrap;word-break:break-word;max-height:180px;overflow-y:auto;background:rgba(36,94,102,0.05);border:1px solid rgba(36,94,102,0.14);border-radius:10px;padding:8px 10px;"></div>
+      </div>
       <label style="display:flex;justify-content:space-between;font-size:13px;color:#245e66;font-weight:600;">
         <span>Notifications mail</span>
         <input id="adminMailsToggle" type="checkbox">
