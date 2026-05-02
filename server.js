@@ -5201,6 +5201,13 @@ app.post("/chat", async (req, res) => {
       const _isFirstTurn = recentHistory.length === 0;
       const _updateForced = _isFirstTurn || _prioritySignal !== "normal";
       const _shouldRun = currentMemoryUpdateTurnsUntilRefresh === 0 || _updateForced;
+      // Update the periodicity counter synchronously so next turns get the right shouldRun value.
+      if (_shouldRun) {
+        newFlags.memoryUpdateTurnsUntilRefresh = 3; // will be refined to 0 if compression detected in bg
+      } else {
+        newFlags.memoryUpdateTurnsUntilRefresh = Math.max(0, currentMemoryUpdateTurnsUntilRefresh - 1);
+      }
+      memoryAge = 3 - newFlags.memoryUpdateTurnsUntilRefresh;
       const _interSession = intersessionMemoryForThisTurn;
       const _postureSnap = { conversationState: postureDecision.conversationState, needsSoberReadjustment: postureDecision.needsSoberReadjustment, tensionHoldLevel: postureDecision.tensionHoldLevel };
       const _rejectionSnap = { ...safeInterpretationRejection };
