@@ -4541,7 +4541,7 @@ app.post("/chat", async (req, res) => {
         promptRegistry: activePromptRegistry
       });
       
-      const botMessageId = await persistAssistantMessage(reply, debug, responseDebugMeta, { memory: responseMemory, flags: newFlags });
+      const botMessageId = persistAssistantMessageAsync(reply, debug, responseDebugMeta, { memory: responseMemory, flags: newFlags });
       maybeGenerateConversationTitle();
       publishChatProgressTerminal(requestId, "done");
       
@@ -4587,7 +4587,7 @@ app.post("/chat", async (req, res) => {
           promptRegistry: activePromptRegistry
         });
         
-        const botMessageId = await persistAssistantMessage(reply, debug, responseDebugMeta, { memory: responseMemory, flags: newFlags });
+        const botMessageId = persistAssistantMessageAsync(reply, debug, responseDebugMeta, { memory: responseMemory, flags: newFlags });
         maybeGenerateConversationTitle();
         publishChatProgressTerminal(requestId, "done");
         
@@ -5248,7 +5248,7 @@ app.post("/chat", async (req, res) => {
     markChatStage("persist_response");
     throwIfCanceled();
 
-    const botMessageId = await persistAssistantMessage(reply, debug, responseDebugMeta, { memory: newMemory, flags: newFlags });
+    const botMessageId = persistAssistantMessageAsync(reply, debug, responseDebugMeta, { memory: newMemory, flags: newFlags });
     maybeGenerateConversationTitle();
     publishChatProgressTerminal(requestId, "done");
     
