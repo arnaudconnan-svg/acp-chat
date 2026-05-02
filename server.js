@@ -4359,13 +4359,31 @@ app.post("/chat", async (req, res) => {
       });
     }
     
-    // 2) Analyse de rappel m�moire : identifier si l'utilisateur demande
-    // explicitement un rappel de la m�moire � long terme.
+    // 2) Analyse de rappel memoire : identifier si l'utilisateur demande
+    // explicitement un rappel conversationnel et quelle memoire mobiliser.
     markChatStage("recall_analysis");
+    let recallIntersessionMemory = "";
+    if (!isPrivateConversation && userId && userId !== "u_anon") {
+      try {
+        const userSnap = await usersRef.child(String(userId)).once("value");
+        const userData = userSnap.val() || {};
+        const compressed = typeof userData.intersessionMemoryCompressed === "string"
+          ? userData.intersessionMemoryCompressed.trim()
+          : "";
+        const raw = typeof userData.intersessionMemory === "string"
+          ? userData.intersessionMemory.trim()
+          : "";
+        recallIntersessionMemory = compressed || raw || "";
+      } catch {
+        recallIntersessionMemory = "";
+      }
+    }
+
     const recallRouting = await analyzeRecallRouting(
       message,
       recentHistory,
       previousMemory,
+      recallIntersessionMemory,
       activePromptRegistry
     );
     throwIfCanceled();
