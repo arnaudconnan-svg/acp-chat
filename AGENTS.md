@@ -173,6 +173,16 @@ Ces règles s'appliquent à toute section debug visible dans `index.html` et `ad
 
 ---
 
+### Règle d'encodage des fichiers front
+
+**Ne jamais écrire de caractères accentués français directement dans les littéraux de chaînes JavaScript de `index.html` ou `admin.html`.** Utiliser systématiquement les séquences d'échappement Unicode (`\uXXXX`).
+
+Cette règle s'applique à : tous les labels de debug, toutes les maps de traduction, tous les messages visibles générés par du JS inline. Elle ne s'applique pas au contenu HTML statique (balises, attributs), qui peut utiliser l'UTF-8 natif.
+
+Raison : les outils d'édition peuvent corrompre les caractères non-ASCII en U+FFFD lors d'une écriture dans un fichier UTF-8, sans signal d'erreur visible. Les séquences `\uXXXX` sont insensibles à ce type de corruption.
+
+---
+
 ### Règle d'analyse post-conversations test
 
 **Ne jamais inférer un signal à partir du contenu des messages quand ce signal devrait être lisible dans le debug.**

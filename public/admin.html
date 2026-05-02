@@ -2503,6 +2503,23 @@
             main.className = "main";
             main.textContent = msg.content || "";
             card.appendChild(main);
+
+            if (msg.isEdited === true) {
+              const editedBadge = document.createElement("span");
+              editedBadge.textContent = "Modifi\u00e9";
+              editedBadge.style.display = "inline-block";
+              editedBadge.style.marginTop = "4px";
+              editedBadge.style.fontSize = "10px";
+              editedBadge.style.fontWeight = "600";
+              editedBadge.style.letterSpacing = "0.04em";
+              editedBadge.style.textTransform = "uppercase";
+              editedBadge.style.background = "rgba(122,63,209,0.10)";
+              editedBadge.style.color = "#7a3fd1";
+              editedBadge.style.border = "1px solid rgba(122,63,209,0.22)";
+              editedBadge.style.borderRadius = "999px";
+              editedBadge.style.padding = "1px 7px";
+              card.appendChild(editedBadge);
+            }
           } else {
             const variants = buildAssistantVariants(msg);
             
