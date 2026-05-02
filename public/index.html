@@ -3242,6 +3242,7 @@
     let activeChatAbortController = null;
     let activeChatProgressSource = null;
     let chatFormalAddressPreference = null; // null = inconnu, false = tutoiement, true = vouvoiement
+    let _lastSendTs = 0;
 
     const CHAT_PROGRESS_TEXT_NEUTRAL = {
       reading: "Je prends connaissance du message",
@@ -3414,6 +3415,8 @@
       const { alreadyInserted = false } = options;
 
       const queue = getQueuedMessagesForConversation(id);
+      const last = queue.length > 0 ? queue[queue.length - 1] : null;
+      if (last && (typeof last === "string" ? last : last.text) === text) return queue.length;
       queue.push({
         text,
         alreadyInserted: alreadyInserted === true
@@ -5688,7 +5691,7 @@
         return;
       }
       
-      if (!progressive || !wasAtBottomBeforeInsert || text.length < 500) {
+      if (!progressive || !wasAtBottomBeforeInsert || text.length < 100) {
         renderFinalHtml();
         return;
       }
@@ -8192,6 +8195,10 @@
     async function send(options = {}) {
       if (sessionStatus === "terminated" || sessionStatus === "closing") return;
       if (sessionStatus === "expired") return;
+
+      const now = Date.now();
+      if (now - _lastSendTs < 400) return;
+      _lastSendTs = now;
 
       const { skipUserHistoryInsert = false } = options;
       let shouldSkipUserHistoryInsert = skipUserHistoryInsert === true;
