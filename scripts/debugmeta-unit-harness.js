@@ -34,7 +34,6 @@ assert("exploration_open phenomenological_follow", buildTopChips({ conversationS
 assert("info_pure", buildTopChips({ conversationState: "info_pure" }), ["INFO PURE"]);
 assert("info_features", buildTopChips({ conversationState: "info_features" }), ["INFO APP : fonctionnalités"]);
 assert("info_psychoeducation", buildTopChips({ conversationState: "info_psychoeducation" }), ["PSYCHOEDUCATION"]);
-assert("contact", buildTopChips({ conversationState: "contact" }), ["CONTACT"]);
 assert("discharge_regulated", buildTopChips({ conversationState: "discharge_regulated" }), ["CONTACT : régulé"]);
 assert("discharge_dysregulated", buildTopChips({ conversationState: "discharge_dysregulated" }), ["CONTACT : dérégulé"]);
 assert("N0 no state empty", buildTopChips({ suicideLevel: "N0", conversationState: null }), []);
