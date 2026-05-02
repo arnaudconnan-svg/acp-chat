@@ -4150,6 +4150,7 @@
         postDischargeTransitionActive: safe.postDischargeTransitionActive === true,
         responseRegister: typeof safe.responseRegister === "string" ? safe.responseRegister.trim() : "courant",
         phraseLengthPolicy: typeof safe.phraseLengthPolicy === "string" ? safe.phraseLengthPolicy.trim() : "moyenne",
+        useDirectAddress: safe.useDirectAddress === true,
         somaticFocusPolicy: typeof safe.somaticFocusPolicy === "string" ? safe.somaticFocusPolicy.trim() : "none",
         infoRoutingSource: typeof safe.infoRoutingSource === "string" ? safe.infoRoutingSource.trim() : null,
         stateTransitionFrom: typeof safe.stateTransitionFrom === "string" ? safe.stateTransitionFrom.trim() : null,
@@ -6730,6 +6731,7 @@
               (meta.writerIntentHints && meta.writerIntentHints.length) ? `Indications : ${meta.writerIntentHints.map(translateWriterHintDebug).join(", ")}` : null,
               meta.responseRegister && meta.responseRegister !== "courant" ? `Registre cible : ${translateRegisterDebug(meta.responseRegister)}` : null,
               meta.phraseLengthPolicy ? `Longueur phrase : ${translatePhraseLengthPolicyDebug(meta.phraseLengthPolicy)}` : null,
+              meta.useDirectAddress === true ? "Adressage direct : actif" : null,
               meta.somaticFocusPolicy && meta.somaticFocusPolicy !== "none" ? `Politique somatique : ${translateSomaticFocusPolicyDebug(meta.somaticFocusPolicy)}` : null,
               meta.infoRoutingSource ? `Routage info : ${translateInfoRoutingSourceDebug(meta.infoRoutingSource)}` : null,
               meta.stateTransitionValid === false && meta.stateTransitionRequested

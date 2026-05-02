@@ -5388,6 +5388,7 @@ app.post("/chat", async (req, res) => {
       phraseLengthPolicy: postureDecision.phraseLengthPolicy,
       relancePolicy: postureDecision.relancePolicy,
       somaticFocusPolicy: postureDecision.somaticFocusPolicy,
+      useDirectAddress: postureDecision.useDirectAddress === true,
       actionCollapseGuardActive: postureDecision.actionCollapseGuardActive,
       stateTransitionFrom: postureDecision.previousConversationState,
       stateTransitionValid: postureDecision.stateTransitionValid,
