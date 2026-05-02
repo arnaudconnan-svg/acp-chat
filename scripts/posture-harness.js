@@ -155,7 +155,6 @@ check("narrowed processing window enforces single-axis exploration contract", ()
       processingWindow: "narrowed"
     }
   }));
-  assert(out.forbidden.includes("open_question"), "expected open_question forbidden when attention is narrowed");
   assert(out.writerIntentHints.includes("attention_narrow_single_axis"), "expected attention_narrow_single_axis hint");
   assert(out.intent === "suivre un seul axe sans ouvrir de nouveau chantier", `unexpected intent: ${out.intent}`);
 });

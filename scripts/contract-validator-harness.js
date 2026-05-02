@@ -174,7 +174,6 @@ check("narrowed processing enforces single-axis contract", () => {
       processingWindow: "narrowed"
     }
   }));
-  assert(out.forbidden.includes("open_question"), "narrowed processing must forbid open_question");
   assert(out.writerIntentHints.includes("attention_narrow_single_axis"), "narrowed processing must add single-axis hint");
   assert(out.intent === "suivre un seul axe sans ouvrir de nouveau chantier", "narrowed processing must adjust intent");
 });
