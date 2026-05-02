@@ -3840,7 +3840,7 @@ app.post("/chat", async (req, res) => {
 
     await messagesRef.push({
       role: "assistant",
-      content: isEditedForCatch ? reply + "\n[MODIFI�]" : reply,
+      content: isEditedForCatch ? reply + "\n[MODIFIÉ]" : reply,
       timestamp: Date.now(),
       userId: userIdForCatch,
       conversationId: conversationIdForCatch,
@@ -4016,7 +4016,7 @@ app.post("/chat", async (req, res) => {
     if (!isPrivateConversation) {
       const pushedRef = await messagesRef.push({
         role: "user",
-        content: isEdited ? message + "\n[MODIFI�]" : message,
+        content: isEdited ? message + "\n[MODIFIÉ]" : message,
         timestamp: Date.now(),
         userId,
         conversationId
@@ -4076,7 +4076,7 @@ app.post("/chat", async (req, res) => {
 
       const pushedRef = await messagesRef.push({
         role: "assistant",
-        content: isEdited ? reply + "\n[MODIFI�]" : reply,
+        content: isEdited ? reply + "\n[MODIFIÉ]" : reply,
         timestamp: Date.now(),
         userId,
         conversationId,
@@ -4981,9 +4981,9 @@ app.post("/chat", async (req, res) => {
           const messageData = snapshot.val();
           if (messageData && typeof messageData.content === "string") {
             let newContent = messageData.content;
-            // Replace [MODIFI�] with [ENVOI STOPPE] if present, otherwise append it
-            if (newContent.includes("[MODIFI�]")) {
-              newContent = newContent.replace(/\n?\[MODIFI�\]$/, "\n[ENVOI STOPPE]");
+            // Replace [MODIFIÉ] with [ENVOI STOPPE] if present, otherwise append it
+            if (newContent.includes("[MODIFIÉ]") || newContent.includes("[MODIFI�]")) {
+              newContent = newContent.replace(/\n?\[MODIFI[É�]\]$/, "\n[ENVOI STOPPE]");
             } else {
               newContent = newContent.trim() + "\n[ENVOI STOPPE]";
             }
