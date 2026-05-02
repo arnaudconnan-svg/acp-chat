@@ -65,6 +65,19 @@ function makeFakeClient() {
             };
           }
 
+          if (system.includes("reajustement relationnel")) {
+            const hasFriction = /tu ne m'aides? pas|tu ne comprends? pas|c'est nul|laisse tomber/i.test(user);
+            return {
+              choices: [
+                {
+                  message: {
+                    content: JSON.stringify({ needsRelationalAdjustment: hasFriction })
+                  }
+                }
+              ]
+            };
+          }
+
           return {
             choices: [
               {
@@ -119,6 +132,26 @@ async function run() {
   check("detectMode: non-discharge contact signal survives in info mode", () => {
     assert(infoWithContact.detectedState === "info_features", `expected info_features, got ${infoWithContact.detectedState}`);
     assert(infoWithContact.contactAnalysis?.isContact === true, "expected contactAnalysis.isContact=true in info mode");
+  });
+
+  const relationalNeutral = await analyzers.analyzeRelationalAdjustmentNeed("Je me sens fatigué", [], "", false);
+  check("analyzeRelationalAdjustmentNeed: neutral message -> deterministic skip, no LLM", () => {
+    assert(relationalNeutral.needsRelationalAdjustment === false, "expected false");
+    assert(relationalNeutral.llmTriggered === false, "expected llmTriggered=false");
+    assert(relationalNeutral.source === "deterministic_no_trigger", `expected deterministic_no_trigger, got ${relationalNeutral.source}`);
+  });
+
+  const relationalFriction = await analyzers.analyzeRelationalAdjustmentNeed("Tu ne m'aides pas du tout", [], "", false);
+  check("analyzeRelationalAdjustmentNeed: explicit friction -> LLM triggered", () => {
+    assert(relationalFriction.llmTriggered === true, "expected llmTriggered=true");
+    assert(relationalFriction.source === "llm", `expected llm, got ${relationalFriction.source}`);
+  });
+
+  const relationalContact = await analyzers.analyzeRelationalAdjustmentNeed("Tu ne m'aides pas", [], "", true);
+  check("analyzeRelationalAdjustmentNeed: isContact=true -> guard short-circuit", () => {
+    assert(relationalContact.needsRelationalAdjustment === false, "expected false");
+    assert(relationalContact.llmTriggered === false, "expected llmTriggered=false");
+    assert(relationalContact.source === "isContact_guard", `expected isContact_guard, got ${relationalContact.source}`);
   });
 
   console.log(`\n[ANALYZERS] ${passed} passed, ${failed} failed.`);

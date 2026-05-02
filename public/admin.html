@@ -917,6 +917,7 @@
           lectureBotForcedReset: safe.memoryRewriteIntent.lectureBotForcedReset === true
         } : null,
         memoryCompressed: safe.memoryCompressed === true,
+        memoryAge: Number.isInteger(safe.memoryAge) && safe.memoryAge > 0 ? safe.memoryAge : 0,
         memoryBeforeCompression: typeof safe.memoryBeforeCompression === "string" ? safe.memoryBeforeCompression.trim() : null,
         criticTriggered: safe.criticTriggered === true,
         criticIssues: Array.isArray(safe.criticIssues) ? safe.criticIssues.map(v => String(v || "").trim()).filter(Boolean) : [],
@@ -951,11 +952,9 @@
         emotionalDecentering: safe.emotionalDecentering === true,
         formalAddress: safe.formalAddress === true,
         writerIntentHints: Array.isArray(safe.writerIntentHints) ? safe.writerIntentHints.map(v => String(v || "").trim()).filter(Boolean) : [],
-        writerOrientationHint: typeof safe.writerOrientationHint === "string" ? safe.writerOrientationHint.trim() : null,
         contactInsightMoment: safe.contactInsightMoment === true,
         contactSelfCriticismLevel: typeof safe.contactSelfCriticismLevel === "string" ? safe.contactSelfCriticismLevel.trim() : "low",
         contactMeaningCrisis: safe.contactMeaningCrisis === true,
-        limitingBeliefValidated: safe.limitingBeliefValidated === true,
         aggressiveDischargeDetected: safe.aggressiveDischargeDetected === true,
         postDischargeTransitionActive: safe.postDischargeTransitionActive === true
       };
@@ -1889,13 +1888,13 @@
           return value;
         }
 
-        function translateProcessingWindow(value) {
+        function translateAttentionQuality(value) {
           if (value === "narrowed") return "restreinte";
           if (value === "overloaded") return "surcharg\u00e9e";
           return value;
         }
 
-        function translateEngagementLevel(value) {
+        function translateAttentionEngagement(value) {
           if (value === "passive") return "passif";
           if (value === "withdrawn") return "en retrait";
           return value;
@@ -2054,11 +2053,10 @@
                 meta.intent ? `Intention : ${meta.intent}` : null,
                 (meta.forbidden && meta.forbidden.length) ? `Interdit : ${meta.forbidden.map(translateForbidden).join(", ")}` : null,
                 meta.relancePolicy && meta.relancePolicy !== "selective" ? `Relance : ${translateRelancePolicy(meta.relancePolicy)}` : null,
-                meta.allianceSignal && meta.allianceSignal !== "good" ? `Alliance : ${meta.allianceSignal}` : null,
-                meta.engagementLevel && meta.engagementLevel !== "active" ? `Engagement : ${translateEngagementLevel(meta.engagementLevel)}` : null,
-                meta.processingWindow && meta.processingWindow !== "open" ? `Qualit\u00e9 de l'attention : ${translateProcessingWindow(meta.processingWindow)}` : null,
+                meta.allianceSignal && meta.allianceSignal !== "good" ? `Rupture relationnelle : ${meta.allianceSignal}` : null,
+                meta.engagementLevel && meta.engagementLevel !== "active" ? `Disponibilit\u00e9 attentionnelle : ${translateAttentionEngagement(meta.engagementLevel)}` : null,
+                meta.processingWindow && meta.processingWindow !== "open" ? `Qualit\u00e9 de l'attention : ${translateAttentionQuality(meta.processingWindow)}` : null,
                 (meta.writerIntentHints && meta.writerIntentHints.length) ? `Indications : ${meta.writerIntentHints.map(translateWriterHint).join(", ")}` : null,
-                meta.writerOrientationHint ? `Orientation : ${translateOrientationHint(meta.writerOrientationHint)}` : null,
                 meta.responseRegister && meta.responseRegister !== "courant" ? `Registre cible : ${translateRegister(meta.responseRegister)}` : null,
                 meta.phraseLengthPolicy ? `Longueur phrase : ${translatePhraseLengthPolicy(meta.phraseLengthPolicy)}` : null,
                 meta.somaticFocusPolicy && meta.somaticFocusPolicy !== "none" ? `Politique somatique : ${translateSomaticFocusPolicy(meta.somaticFocusPolicy)}` : null,
@@ -2125,9 +2123,6 @@
           if (meta.formalAddress === true) {
             signauxLines.push("Vouvoiement actif");
           }
-          if (meta.limitingBeliefValidated === true) {
-            signauxLines.push("Croyance-frein validée (C3)");
-          }
           if (meta.aggressiveDischargeDetected === true) {
             signauxLines.push("Décharge agressive détectée (C2→C3)");
           }
@@ -2140,7 +2135,7 @@
 
           if (meta.memory) {
             sections.push({
-              title: "M\u00e9moire",
+              title: meta.memoryAge > 0 ? ("M\u00e9moire (il y a " + meta.memoryAge + " tour" + (meta.memoryAge > 1 ? "s" : "") + ")") : "M\u00e9moire",
               content: meta.memory,
               memoryRewritten: meta.memoryCompressed === true,
               memoryBeforeRewrite: meta.memoryBeforeCompression || null

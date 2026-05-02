@@ -848,14 +848,14 @@ const {
   analyzeExplorationCalibration,
   analyzeExplorationRelance,
   analyzeEmotionalDecentering,
-  analyzeEngagementAndAlliance,
+  analyzeAttentionQuality,
+  analyzeAllianceRupture,
   analyzeInfoRequest,
   analyzeInfoSignal,
   analyzeInterpretationRejection,
   analyzeTechnicalContext,
   analyzeSomaticSignal,
   analyzeUserRegister,
-  analyzeTheoreticalOrientation,
   analyzeRecallRouting,
   analyzeRelationalAdjustmentNeed,
   analyzeSuicideRisk,
@@ -4523,6 +4523,14 @@ app.post("/chat", async (req, res) => {
 
     let finalDirectivityLevel = effectiveExplorationDirectivityLevel;
     let finalExplorationSignal = "interpretation";
+    const currentAttentionQualityTurnsUntilRefresh = Number.isInteger(newFlags.attentionQualityTurnsUntilRefresh)
+      ? Math.max(0, newFlags.attentionQualityTurnsUntilRefresh)
+      : 0;
+    const shouldRunAttentionQuality = currentAttentionQualityTurnsUntilRefresh === 0;
+
+    const currentMemoryUpdateTurnsUntilRefresh = Number.isInteger(newFlags.memoryUpdateTurnsUntilRefresh)
+      ? Math.max(0, newFlags.memoryUpdateTurnsUntilRefresh)
+      : 0;
 
     // withAnalyzerTiming wraps each Promise to record individual analyzer durations in chatStageTimings.
     function withAnalyzerTiming(name, promise) {
@@ -4534,44 +4542,56 @@ app.post("/chat", async (req, res) => {
     }
     const [
       detectedModeResult,
+      allianceRuptureAnalysis,
       relationalAdjustmentAnalysis,
-      calibrationAnalysis,
       technicalContextAnalysis,
-      interpretationRejection,
       somaticSignalAnalysis,
       userRegisterAnalysis,
-      theoreticalOrientationAnalysis,
       emotionalDecenteringResult,
-      engagementAllianceAnalysis
+      attentionAnalysis
     ] = await Promise.all([
       withAnalyzerTiming("detect_mode", detectMode(message, recentHistory, newFlags.dischargeState, activePromptRegistry)),
+      withAnalyzerTiming("alliance_rupture", analyzeAllianceRupture(message, recentHistory, activePromptRegistry)),
       withAnalyzerTiming("relational_adjustment", analyzeRelationalAdjustmentNeed(message, recentHistory, previousMemory, false, activePromptRegistry)),
-      withAnalyzerTiming("exploration_calibration", analyzeExplorationCalibration({
-          message,
-          history: recentHistory,
-          memory: previousMemory,
-          explorationDirectivityLevel: effectiveExplorationDirectivityLevel,
-          explorationRelanceWindow: newFlags.explorationRelanceWindow,
-          promptRegistry: activePromptRegistry
-        })),
       withAnalyzerTiming("technical_context", analyzeTechnicalContext(message)),
-      withAnalyzerTiming("interpretation_rejection", analyzeInterpretationRejection({
-          message,
-          history: recentHistory,
-          memory: previousMemory,
-          promptRegistry: activePromptRegistry
-        })),
       withAnalyzerTiming("somatic_signal", analyzeSomaticSignal(message)),
       withAnalyzerTiming("user_register", analyzeUserRegister(message)),
-      withAnalyzerTiming("theoretical_orientation", analyzeTheoreticalOrientation(
-        message,
-        recentHistory,
-        previousMemory,
-        activePromptRegistry
-      )),
       withAnalyzerTiming("emotional_decentering", analyzeEmotionalDecentering(message, recentHistory)),
-      withAnalyzerTiming("engagement_alliance", analyzeEngagementAndAlliance(message, recentHistory, activePromptRegistry))
+      shouldRunAttentionQuality
+        ? withAnalyzerTiming("attention_quality", analyzeAttentionQuality(message, recentHistory, activePromptRegistry))
+        : Promise.resolve(null)
     ]);
+    throwIfCanceled();
+
+    newFlags.attentionQualityTurnsUntilRefresh = shouldRunAttentionQuality
+      ? 3
+      : Math.max(0, currentAttentionQualityTurnsUntilRefresh - 1);
+
+    // Phase 2b: exploration-specific analysers — only fired when detectedState is exploration.
+    // Skipped for discharge, info, and crisis states to avoid unused LLM calls.
+    let calibrationAnalysis;
+    let interpretationRejection;
+    if (detectedModeResult.detectedState === "exploration") {
+      [calibrationAnalysis, interpretationRejection] = await Promise.all([
+        withAnalyzerTiming("exploration_calibration", analyzeExplorationCalibration({
+            message,
+            history: recentHistory,
+            memory: previousMemory,
+            explorationDirectivityLevel: effectiveExplorationDirectivityLevel,
+            explorationRelanceWindow: newFlags.explorationRelanceWindow,
+            promptRegistry: activePromptRegistry
+          })),
+        withAnalyzerTiming("interpretation_rejection", analyzeInterpretationRejection({
+            message,
+            history: recentHistory,
+            memory: previousMemory,
+            promptRegistry: activePromptRegistry
+          }))
+      ]);
+    } else {
+      calibrationAnalysis = { calibrationLevel: effectiveExplorationDirectivityLevel, explorationSignal: "interpretation" };
+      interpretationRejection = { isInterpretationRejection: false, relationalFrictionSignal: "none", rejectsUnderlyingPhenomenon: false };
+    }
     throwIfCanceled();
 
     const emotionalDecenteringAnalysis = emotionalDecenteringResult || { emotionalDecentering: false };
@@ -4650,8 +4670,9 @@ app.post("/chat", async (req, res) => {
       stagnationTurns: newFlags.stagnationTurns,
       processingWindow: newFlags.processingWindow,
       closureIntent: newFlags.closureIntent,
-      // C2 per-turn engagement/alliance analysis � overrides persistent flags in C3
-      engagementAllianceAnalysis,
+      // C2 per-turn attention analysis (periodic) + rupture analysis (event-driven)
+      attentionAnalysis,
+      allianceRuptureAnalysis,
       // Contract inputs for confidenceSignal computation
       message,
       recentHistory,
@@ -4659,8 +4680,6 @@ app.post("/chat", async (req, res) => {
       isRecallAttempt: recallRouting.isRecallAttempt === true,
       psychoeducationType: detectedPsychoeducationType,
       infoContextFlags: detectedInfoContextFlags,
-      theoreticalOrientation: detectedTheoreticalOrientation,
-      orientationConfidence: detectedOrientationConfidence,
       dischargeAnalysis,
       previousFormalAddress: newFlags.formalAddress === true,
       dependencyRiskLevel: flags.dependencyRiskLevel,
@@ -4895,19 +4914,27 @@ app.post("/chat", async (req, res) => {
 
     // 5) Mise � jour de la m�moire interne apr�s la r�ponse finale.
     markChatStage("memory_update");
-    const rawNewMemory = await updateMemory(
-      previousMemory,
-      [
-        ...recentHistory,
-        { role: "user", content: message },
-        { role: "assistant", content: reply }
-      ],
-      activePromptRegistry,
-      postureDecision.memoryPrioritySignal || "normal",
-      postureDecision.theoreticalOrientationSignal || "none",
-      intersessionMemoryForThisTurn,
-      postureDecision.limitingBeliefValidated === true
-    );
+    const memoryPrioritySignal = postureDecision.memoryPrioritySignal || "normal";
+    const isFirstTurn = recentHistory.length === 0;
+    const memoryUpdateForced = isFirstTurn || memoryPrioritySignal !== "normal";
+    const shouldRunMemoryUpdate = currentMemoryUpdateTurnsUntilRefresh === 0 || memoryUpdateForced;
+
+    let rawNewMemory;
+    if (shouldRunMemoryUpdate) {
+      rawNewMemory = await updateMemory(
+        previousMemory,
+        [
+          ...recentHistory,
+          { role: "user", content: message },
+          { role: "assistant", content: reply }
+        ],
+        activePromptRegistry,
+        memoryPrioritySignal,
+        intersessionMemoryForThisTurn,
+      );
+    } else {
+      rawNewMemory = previousMemory;
+    }
     throwIfCanceled();
 
     let memoryCandidate = rawNewMemory;
@@ -4941,6 +4968,15 @@ app.post("/chat", async (req, res) => {
     });
     const memoryWasCompressed = memoryNeedsCompression && finalizedMemoryCandidate !== memoryCandidate;
     const newMemory = finalizedMemoryCandidate;
+
+    // Mise à jour du compteur de périodicité mémoire.
+    // Si compression ce tour : forcer recalcul au tour suivant (compteur = 0).
+    if (shouldRunMemoryUpdate) {
+      newFlags.memoryUpdateTurnsUntilRefresh = memoryWasCompressed ? 0 : 3;
+    } else {
+      newFlags.memoryUpdateTurnsUntilRefresh = Math.max(0, currentMemoryUpdateTurnsUntilRefresh - 1);
+    }
+    const memoryAge = 3 - newFlags.memoryUpdateTurnsUntilRefresh;
     
     if (logsEnabled) {
       debug.push(`trace.memoryCompressed: ${memoryWasCompressed ? "true" : "false"}`);
@@ -4962,6 +4998,7 @@ app.post("/chat", async (req, res) => {
       memoryRewriteIntent,
       memoryCompressed: memoryWasCompressed,
       memoryBeforeCompression,
+      memoryAge,
       criticTriggered,
       criticIssues,
       criticOriginalReply,
@@ -5002,13 +5039,11 @@ app.post("/chat", async (req, res) => {
       formalAddress: postureDecision.formalAddress === true,
       // Writer hints from posture decision
       writerIntentHints: postureDecision.writerIntentHints,
-      writerOrientationHint: postureDecision.writerOrientationHint,
       // Contact analyzer sub-fields
       contactInsightMoment: contactAnalysis?.insightMoment === true,
       contactSelfCriticismLevel: typeof contactAnalysis?.selfCriticismLevel === "string" ? contactAnalysis.selfCriticismLevel : "low",
       contactMeaningCrisis: contactAnalysis?.meaningCrisis === true,
       // C3 limiting_belief gate
-      limitingBeliefValidated: postureDecision.limitingBeliefValidated === true,
       aggressiveDischargeDetected: postureDecision.aggressiveDischargeDetected === true,
       postDischargeTransitionActive: postureDecision.postDischargeTransitionActive === true,
     });

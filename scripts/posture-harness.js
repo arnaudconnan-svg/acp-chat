@@ -53,8 +53,6 @@ function baseInput(overrides = {}) {
     isRecallAttempt: false,
     psychoeducationType: null,
     infoContextFlags: [],
-    theoreticalOrientation: "none",
-    orientationConfidence: 0,
     dischargeAnalysis: { aggressiveDischargeDirectedToBot: false },
     previousFormalAddress: false,
     dependencyRiskLevel: "low",

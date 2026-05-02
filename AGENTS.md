@@ -77,6 +77,14 @@ L'agent **n'a pas besoin de demande explicite** pour ces décisions s'il peut le
 
 **L'agent ne peut pas basculer du mode Ask ou Interactive vers le mode Plan, Agent ou Autopilot sans validation explicite de l'utilisateur.** Si une tâche semble nécessiter un autre mode, signaler et attendre confirmation avant tout changement de mode.
 
+### Règles de nomenclature (obligatoires)
+
+- Le terme **"State"** est réservé exclusivement aux états de la machine d'état.
+- Les termes **"mode"**, **"sous-mode"** et **"sub-mode"** sont prohibés dans le naming technique.
+- Pour le chantier sur la disponibilité attentionnelle, utiliser explicitement :
+	- `analyzeAttentionQuality`
+	- `ANALYZE_ATTENTION_QUALITY`
+
 ### Règle d'observabilité — checklist à chaque implémentation
 
 **Toute nouvelle implémentation doit répondre à cette question avant d'être considérée complète :**
