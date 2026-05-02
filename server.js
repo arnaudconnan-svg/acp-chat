@@ -900,7 +900,7 @@ const {
   n1Fallback,
   n1ResponseLLM,
   n2Response,
-  detectMode
+  proposeState
 } = createAnalyzers({
   client,
   MODEL_IDS,
@@ -4644,7 +4644,7 @@ app.post("/chat", async (req, res) => {
       );
     })();
 
-    // Phase 2: run all analyzers in parallel, including detectMode (which now
+    // Phase 2: run all analyzers in parallel, including proposeState (which now
     // integrates contact detection alongside info detection).
     markChatStage("mode_analysis");
     throwIfCanceled();
@@ -4671,7 +4671,7 @@ app.post("/chat", async (req, res) => {
       });
     }
     const [
-      detectedModeResult,
+      stateProposal,
       allianceRuptureAnalysis,
       relationalAdjustmentAnalysis,
       technicalContextAnalysis,
@@ -4680,7 +4680,7 @@ app.post("/chat", async (req, res) => {
       emotionalDecenteringResult,
       attentionAnalysis
     ] = await Promise.all([
-      withAnalyzerTiming("detect_mode", detectMode(message, recentHistory, newFlags.dischargeState, activePromptRegistry)),
+      withAnalyzerTiming("propose_state", proposeState(message, recentHistory, newFlags.dischargeState, activePromptRegistry)),
       withAnalyzerTiming("alliance_rupture", analyzeAllianceRupture(message, recentHistory, activePromptRegistry)),
       withAnalyzerTiming("relational_adjustment", analyzeRelationalAdjustmentNeed(message, recentHistory, previousMemory, false, activePromptRegistry)),
       withAnalyzerTiming("technical_context", analyzeTechnicalContext(message)),
@@ -4701,7 +4701,7 @@ app.post("/chat", async (req, res) => {
     // Skipped for discharge, info, and crisis states to avoid unused LLM calls.
     let calibrationAnalysis;
     let interpretationRejection;
-    if (detectedModeResult.detectedState === "exploration") {
+    if (stateProposal.detectedState === "exploration") {
       [calibrationAnalysis, interpretationRejection] = await Promise.all([
         withAnalyzerTiming("exploration_calibration", analyzeExplorationCalibration({
             message,
@@ -4726,25 +4726,25 @@ app.post("/chat", async (req, res) => {
 
     const emotionalDecenteringAnalysis = emotionalDecenteringResult || { emotionalDecentering: false };
 
-    const contactAnalysis = detectedModeResult.contactAnalysis || { isContact: false };
-    const dischargeAnalysis = detectedModeResult.dischargeAnalysis || { aggressiveDischargeDirectedToBot: false };
-    const detectedState = detectedModeResult.detectedState;
+    const contactAnalysis = stateProposal.contactAnalysis || { isContact: false };
+    const dischargeAnalysis = stateProposal.dischargeAnalysis || { aggressiveDischargeDirectedToBot: false };
+    const detectedState = stateProposal.detectedState;
     newFlags.dischargeState = {
       wasDischarge: typeof detectedState === "string" && detectedState.startsWith("discharge_")
     };
 
     const detectedPsychoeducationType = detectedState === "info_psychoeducation"
-      ? (detectedModeResult.psychoeducationType || null)
+      ? (stateProposal.psychoeducationType || null)
       : null;
     const detectedInfoContextFlags = detectedState === "info_features"
-      ? (Array.isArray(detectedModeResult.infoContextFlags) ? detectedModeResult.infoContextFlags : [])
+      ? (Array.isArray(stateProposal.infoContextFlags) ? stateProposal.infoContextFlags : [])
       : [];
 
     // Source de routage info pour observabilit� admin
     let infoRoutingSource = null;
     if (typeof detectedState === "string" && detectedState.startsWith("info_")) {
-      const src = detectedModeResult.infoSource;
-      const subSrc = detectedModeResult.infoSignalSource;
+      const src = stateProposal.infoSource;
+      const subSrc = stateProposal.infoSignalSource;
       if (src === "deterministic_app_features") {
         infoRoutingSource = "d�terministe";
       } else if (src === "llm_fallback") {
