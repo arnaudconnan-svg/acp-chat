@@ -228,12 +228,6 @@ check("sessionFlags: legacy conversationStateKey 'exploration' → 'exploration_
     `expected 'exploration_open', got '${out.conversationState}'`);
 });
 
-check("sessionFlags: legacy conversationState 'contact' -> exploration_open", () => {
-  const out = normalizeSessionFlags({ conversationState: "contact" });
-  assert(out.conversationState === "exploration_open",
-    `expected 'exploration_open', got '${out.conversationState}'`);
-});
-
 check("sessionFlags: explicit directivity preserved", () => {
   const out = normalizeSessionFlags({ explorationDirectivityLevel: 3 });
   assert(out.explorationDirectivityLevel === 3,
@@ -393,14 +387,6 @@ check("affiliationEstablished: [0.3, 0.3, 0.3, 0.3] → false (max < 0.5)", () =
 });
 check("affiliationEstablished: [0, 0, 0, 0.5] → true (max >= 0.5)", () => {
   assert(computeAffiliationEstablished([0, 0, 0, 0.5]) === true, "expected true");
-});
-
-// ─── backward-compat: contactScoreWindow migrated to affiliationWindow ────────
-
-check("sessionFlags: legacy contactScoreWindow migrated to affiliationWindow", () => {
-  const result = normalizeSessionFlags({ contactScoreWindow: [0.5, 0.5, 0.5, 0.5] });
-  assert(Array.isArray(result.affiliationWindow), "expected affiliationWindow to be array");
-  assert(result.affiliationWindow.length > 0, "expected non-empty affiliationWindow from legacy key");
 });
 
 // ─── Summary ──────────────────────────────────────────────────────────────────

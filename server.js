@@ -4519,7 +4519,7 @@ app.post("/chat", async (req, res) => {
 
     modeForCatch = detectedState;
 
-    // Patch C — contact score window
+    // Patch C — affiliation score window
     const affiliationScore = computeAffiliationTurnScore(message);
     const newAffiliationWindow = normalizeAffiliationWindow([...(newFlags.affiliationWindow || [0, 0, 0, 0]), affiliationScore]);
     const affiliationEstablished = computeAffiliationEstablished(newAffiliationWindow);

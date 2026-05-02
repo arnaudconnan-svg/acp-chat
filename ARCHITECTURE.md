@@ -41,7 +41,7 @@ Le coeur du backend reste dans `server.js`, avec une route `/chat` qui orchestre
 Les invariants protegent le comportement, pas la forme du code.
 
 - securite et crise passent avant tout
-- l'ordre de priorite reste : securite > crise > rupture relationnelle > contact > exploration > information
+- l'ordre de priorite reste : securite > crise > rupture relationnelle > decharge > exploration > information
 - la memoire reste un resume recalcule a chaque tour
 - le contrat frontend/backend doit rester coherent dans le meme patch
 - `applySelectiveCritic(...)` est l'unique passe post-generation qui peut modifier la reponse

@@ -34,8 +34,8 @@ assert("exploration_open phenomenological_follow", buildTopChips({ conversationS
 assert("info_pure", buildTopChips({ conversationState: "info_pure" }), ["INFO PURE"]);
 assert("info_features", buildTopChips({ conversationState: "info_features" }), ["INFO APP : fonctionnalités"]);
 assert("info_psychoeducation", buildTopChips({ conversationState: "info_psychoeducation" }), ["PSYCHOEDUCATION"]);
-assert("discharge_regulated", buildTopChips({ conversationState: "discharge_regulated" }), ["CONTACT : régulé"]);
-assert("discharge_dysregulated", buildTopChips({ conversationState: "discharge_dysregulated" }), ["CONTACT : dérégulé"]);
+assert("discharge_regulated", buildTopChips({ conversationState: "discharge_regulated" }), ["DECHARGE : régulée"]);
+assert("discharge_dysregulated", buildTopChips({ conversationState: "discharge_dysregulated" }), ["DECHARGE : dérégulée"]);
 assert("N0 no state empty", buildTopChips({ suicideLevel: "N0", conversationState: null }), []);
 assert("N2 overrides state", buildTopChips({ suicideLevel: "N2", conversationState: "exploration_open" }), ["URGENCE : risque suicidaire"]);
 assert("interpretationRejection chip", buildTopChips({ interpretationRejection: true }), ["Rejet d'interprétation"]);
@@ -175,7 +175,7 @@ assert("info explorationSubmode null", info.explorationSubmode, null);
 // 7. discharge path
 console.log("\n-- buildResponseDebugMeta discharge path");
 const discharge = buildResponseDebugMeta({ conversationState: "discharge_dysregulated", intent: "reguler_affect" });
-assert("discharge topChips", discharge.topChips, ["CONTACT : dérégulé"]);
+assert("discharge topChips", discharge.topChips, ["DECHARGE : dérégulée"]);
 assert("discharge conversationState", discharge.conversationState, "discharge_dysregulated");
 
 // 8. recall path

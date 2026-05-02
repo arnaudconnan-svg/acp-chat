@@ -64,12 +64,12 @@ function baseInput(overrides = {}) {
 }
 
 // Maps each base CONVERSATION_STATE to its extended STATE_ALLOWED key candidates.
-// contact → "contact" ; discharge → ["discharge_regulated", "discharge_dysregulated"] ; etc.
+// discharge → ["discharge_regulated", "discharge_dysregulated"] ; etc.
 function expectedStatesForBaseState(state) {
   if (state === "exploration") return ["exploration_open", "exploration_restrained"];
   if (state === "discharge") return ["discharge_regulated", "discharge_dysregulated"];
   if (state === "info") return ["info_pure", "info_psychoeducation", "info_features"];
-  return [state]; // contact, stabilization, alliance_rupture, closure
+  return [state]; // stabilization, alliance_rupture, closure
 }
 
 check("state tables are aligned", () => {

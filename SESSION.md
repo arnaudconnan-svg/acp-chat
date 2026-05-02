@@ -35,7 +35,7 @@
 ## Points de vigilance
 
 - ne pas changer le comportement visible sans annonce et validation produit
-- conserver la priorite : securite > crise > rupture relationnelle > contact > exploration > information
+- conserver la priorite : securite > crise > rupture relationnelle > decharge > exploration > information
 - garder le contrat frontend/backend coherent dans le meme patch
 - garder la memoire comme resume recalcule a chaque tour
 
