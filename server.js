@@ -1203,20 +1203,56 @@ app.post("/session/close", async (req, res) => {
 // GENERATION TITRE AUTO
 // ------------------------------
 
+function normalizeTitleDenyKey(value = "") {
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[’']/g, "'")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function sanitizeGeneratedTitleCandidate(value = "") {
+  let title = String(value || "")
+    .replace(/^\s+|\s+$/g, "")
+    .replace(/^['"`]+|['"`]+$/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (title.length > 40) {
+    title = title.slice(0, 40).trim();
+  }
+
+  return title;
+}
+
 // Generate a short, clean title for a conversation from the first user messages.
 // Uses the LLM when possible, with fallback rules to keep titles safe and concise.
-async function generateConversationTitle(messages) {
-  try {
-    const userMessages = messages
-      .filter(m => m && m.role === "user" && typeof m.content === "string")
-      .slice(0, 3)
-      .map(m => m.content.trim())
-      .filter(Boolean);
-    
-    if (userMessages.length === 0) return null;
-    
-    const sourceText = userMessages.join("\n\n");
-    
+async function generateConversationTitle(messages, options = {}) {
+  const forbiddenTitles = Array.isArray(options?.forbiddenTitles)
+    ? options.forbiddenTitles.map(value => String(value || "").trim()).filter(Boolean)
+    : [];
+  const forbiddenTitleKeys = new Set(forbiddenTitles.map(normalizeTitleDenyKey).filter(Boolean));
+
+  function isForbiddenTitle(title = "") {
+    const key = normalizeTitleDenyKey(title);
+    return !!key && forbiddenTitleKeys.has(key);
+  }
+
+  async function requestTitleFromLlm(sourceText = "", extraForbiddenTitles = []) {
+    const effectiveForbidden = Array.from(new Set([
+      ...forbiddenTitles,
+      ...extraForbiddenTitles.map(value => String(value || "").trim()).filter(Boolean)
+    ])).slice(0, 80);
+
+    const avoidBlock = effectiveForbidden.length > 0
+      ? [
+          "Titres interdits (ne pas proposer ces formulations exactes, meme avec ponctuation/casse differente) :",
+          ...effectiveForbidden.map(title => `- ${title}`)
+        ].join("\n")
+      : "Aucun titre interdit fourni.";
+
     const completion = await client.chat.completions.create({
       model: MODEL_IDS.title,
       temperature: 0.2,
@@ -1232,20 +1268,30 @@ async function generateConversationTitle(messages) {
           "- pas de point final",
           "- formulation naturelle et specifique",
           "- ne recopie pas simplement le premier message",
-          "- ne commence pas par Verbatim de type Je, J, Tu, Mon, Ma sauf si c'est indispensable"
+          "- ne commence pas par Verbatim de type Je, J, Tu, Mon, Ma sauf si c'est indispensable",
+          "- respecte strictement la liste des titres interdits"
         ].join("\n")
       }, {
         role: "user",
-        content: sourceText
+        content: `${sourceText}\n\n${avoidBlock}`
       }]
     });
+
+    return sanitizeGeneratedTitleCandidate(completion.choices?.[0]?.message?.content || "");
+  }
+
+  try {
+    const userMessages = messages
+      .filter(m => m && m.role === "user" && typeof m.content === "string")
+      .slice(0, 3)
+      .map(m => m.content.trim())
+      .filter(Boolean);
     
-    let title = completion.choices?.[0]?.message?.content?.trim() || "";
+    if (userMessages.length === 0) return null;
     
-    title = title
-      .replace(/^["'�]+|["'�]+$/g, "")
-      .replace(/\s+/g, " ")
-      .trim();
+    const sourceText = userMessages.join("\n\n");
+
+    let title = await requestTitleFromLlm(sourceText);
     
     if (!title) {
       const merged = userMessages.join(" ");
@@ -1257,13 +1303,18 @@ async function generateConversationTitle(messages) {
       
       title = words.length ? words.join(" ") : "Conversation";
     }
-    
-    if (title.length > 40) {
-      title = title.slice(0, 40).trim();
-    }
+
+        title = sanitizeGeneratedTitleCandidate(title);
     
     if (!title) {
       title = "Conversation";
+    }
+
+    if (isForbiddenTitle(title)) {
+      const retriedTitle = await requestTitleFromLlm(sourceText, [title]);
+      if (retriedTitle && !isForbiddenTitle(retriedTitle)) {
+        title = retriedTitle;
+      }
     }
     
     const titleConflict = await analyzeModelConflict(title, buildDefaultPromptRegistry());
@@ -1280,14 +1331,17 @@ async function generateConversationTitle(messages) {
         promptRegistry: buildDefaultPromptRegistry()
       });
       
-      title = String(title || "")
-        .replace(/^["'�]+|["'�]+$/g, "")
-        .replace(/\s+/g, " ")
-        .trim();
-      
-      if (title.length > 40) {
-        title = title.slice(0, 40).trim();
+      title = sanitizeGeneratedTitleCandidate(title);
+      if (!title || isForbiddenTitle(title)) {
+        const retriedAfterRewrite = await requestTitleFromLlm(sourceText, [title]);
+        if (retriedAfterRewrite && !isForbiddenTitle(retriedAfterRewrite)) {
+          title = retriedAfterRewrite;
+        }
       }
+    }
+
+    if (isForbiddenTitle(title)) {
+      return null;
     }
     
     return title || "Conversation";
@@ -1325,16 +1379,17 @@ async function generateConversationTitle(messages) {
         });
         
         fallbackTitle = String(fallbackTitle || "")
-          .replace(/^["'�]+|["'�]+$/g, "")
           .replace(/\s+/g, " ")
           .trim();
-        
-        if (fallbackTitle.length > 40) {
-          fallbackTitle = fallbackTitle.slice(0, 40).trim();
-        }
+
+        fallbackTitle = sanitizeGeneratedTitleCandidate(fallbackTitle);
       }
     } catch (rewriteErr) {
       console.error("Erreur rewrite titre:", rewriteErr.message);
+    }
+
+    if (isForbiddenTitle(fallbackTitle)) {
+      return null;
     }
     
     return fallbackTitle || "Conversation";
@@ -3650,6 +3705,12 @@ function parseChatRequest(req) {
   const mailsEnabled = req.body?.mailsEnabled !== false;
   const logsEnabled = req.body?.logsEnabled === true;
   const adminUiActive = req.body?.adminUiActive === true;
+  const titleDenyList = Array.isArray(req.body?.titleDenyList)
+    ? req.body.titleDenyList
+        .map(value => String(value || "").trim())
+        .filter(Boolean)
+        .slice(0, 200)
+    : [];
 
   return {
     message,
@@ -3661,6 +3722,7 @@ function parseChatRequest(req) {
     convRef,
     recentHistory,
     conversationBranchHistory,
+    titleDenyList,
     mailsEnabled,
     logsEnabled,
     adminUiActive
@@ -3705,6 +3767,14 @@ function validateChatRequestShape(body = {}) {
 
   if (body.conversationBranchHistory !== undefined && !Array.isArray(body.conversationBranchHistory)) {
     issues.push("conversationBranchHistory_not_array");
+  }
+
+  if (body.titleDenyList !== undefined) {
+    if (!Array.isArray(body.titleDenyList)) {
+      issues.push("titleDenyList_not_array");
+    } else if (body.titleDenyList.some(value => typeof value !== "string")) {
+      issues.push("titleDenyList_entry_not_string");
+    }
   }
 
   if (body.memory !== undefined && typeof body.memory !== "string") {
@@ -4188,6 +4258,7 @@ app.post("/chat", async (req, res) => {
       convRef,
       recentHistory,
       conversationBranchHistory,
+      titleDenyList,
       mailsEnabled,
       logsEnabled,
       adminUiActive
@@ -4288,8 +4359,30 @@ app.post("/chat", async (req, res) => {
         if (!shouldGenerateTitle) {
           return;
         }
-        
-        const generatedTitle = await generateConversationTitle(conversationMessages);
+
+        let forbiddenTitles = Array.isArray(titleDenyList) ? titleDenyList.slice(0, 200) : [];
+
+        try {
+          const allConversationsSnap = await conversationsRef.once("value");
+          const allConversations = allConversationsSnap.val() || {};
+          const titlesFromDb = Object.entries(allConversations)
+            .filter(([id, value]) => {
+              if (id === conversationId) return false;
+              if (!value || typeof value !== "object") return false;
+              if (typeof value.deletedAt === "string" && value.deletedAt.trim()) return false;
+              return String(value.userId || "") === String(userId || "");
+            })
+            .map(([, value]) => String(value.title || "").trim())
+            .filter(Boolean);
+
+          forbiddenTitles = [...forbiddenTitles, ...titlesFromDb];
+        } catch (denyErr) {
+          console.warn("Erreur chargement deny-list titres:", denyErr.message);
+        }
+
+        const generatedTitle = await generateConversationTitle(conversationMessages, {
+          forbiddenTitles
+        });
         
         if (!generatedTitle || !generatedTitle.trim()) {
           return;
