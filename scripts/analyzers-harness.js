@@ -154,6 +154,36 @@ async function run() {
     assert(relationalContact.source === "isContact_guard", `expected isContact_guard, got ${relationalContact.source}`);
   });
 
+  // --- analyzeDischargeState guard deterministe ---
+
+  const dischargeCalm = await analyzers.analyzeDischargeState("Je me sens triste aujourd'hui", [], { wasDischarge: false });
+  check("analyzeDischargeState: message calme -> guard deterministe, pas de LLM", () => {
+    assert(dischargeCalm.isDischarge === false, "expected false");
+    assert(dischargeCalm.source === "deterministic_no_signal", `expected deterministic_no_signal, got ${dischargeCalm.source}`);
+  });
+
+  const dischargeMontee = await analyzers.analyzeDischargeState("Je suis au bord de craquer", [], { wasDischarge: false });
+  check("analyzeDischargeState: message avec signal positif (craqu) -> LLM declenche", () => {
+    assert(dischargeMontee.source !== "deterministic_no_signal", `expected LLM path, got ${dischargeMontee.source}`);
+  });
+
+  const dischargeExplose = await analyzers.analyzeDischargeState("Je suis en train d'exploser", [], { wasDischarge: false });
+  check("analyzeDischargeState: explos -> LLM declenche, detectedState discharge_dysregulated", () => {
+    assert(dischargeExplose.isDischarge === true, "expected isDischarge=true");
+    assert(dischargeExplose.detectedState === "discharge_dysregulated", `expected discharge_dysregulated, got ${dischargeExplose.detectedState}`);
+  });
+
+  const dischargeAgressif = await analyzers.analyzeDischargeState("Ta gueule !!!", [], { wasDischarge: false });
+  check("analyzeDischargeState: insulte + !! -> LLM declenche, aggressiveDischargeDirectedToBot", () => {
+    assert(dischargeAgressif.isDischarge === true, "expected isDischarge=true");
+    assert(dischargeAgressif.aggressiveDischargeDirectedToBot === true, "expected aggressiveDischargeDirectedToBot=true");
+  });
+
+  const dischargeContinuite = await analyzers.analyzeDischargeState("Je me sens mieux maintenant", [], { wasDischarge: true });
+  check("analyzeDischargeState: wasDischarge=true -> passe toujours au LLM meme sans signal", () => {
+    assert(dischargeContinuite.source !== "deterministic_no_signal", `expected LLM path on continuation, got ${dischargeContinuite.source}`);
+  });
+
   console.log(`\n[ANALYZERS] ${passed} passed, ${failed} failed.`);
   if (failed > 0) process.exit(1);
 }
