@@ -689,6 +689,46 @@ function normalizeIntersessionMemory(memory, promptRegistry = buildDefaultPrompt
     buildDefaultPromptRegistry().NORMALIZE_INTERSESSION_MEMORY_TEMPLATE;
 }
 
+function extractStableContextOnlyFromIntersessionMemory(memory, promptRegistry = buildDefaultPromptRegistry()) {
+  const normalized = normalizeIntersessionMemory(memory, promptRegistry);
+  const match = normalized.match(/Contexte stable\s*:\s*([\s\S]*?)(?:\n\s*[A-Za-z\u00C0-\u017E][^:\n]*\s*:|$)/i);
+  if (!match) return "";
+
+  return match[1]
+    .split("\n")
+    .map(line => line.trim())
+    .filter(line => line && line !== "-")
+    .map(line => line.startsWith("-") ? line.slice(1).trim() : line)
+    .filter(Boolean)
+    .join("\n");
+}
+
+function mergeStableContextOnlyIntoIntersessionMemory(stableContextText, previousMemory, promptRegistry = buildDefaultPromptRegistry()) {
+  const normalized = normalizeIntersessionMemory(previousMemory, promptRegistry);
+  const stableLines = String(stableContextText || "")
+    .split("\n")
+    .map(line => line.trim())
+    .filter(Boolean);
+
+  const renderedStableBlock = stableLines.length > 0
+    ? stableLines.map(line => `- ${line.replace(/^[-\s]+/, "").trim()}`).join("\n")
+    : "-";
+
+  if (/Contexte stable\s*:/i.test(normalized)) {
+    return normalized.replace(
+      /(Contexte stable\s*:\s*)([\s\S]*?)(?=\n\s*[A-Za-z\u00C0-\u017E][^:\n]*\s*:|$)/i,
+      `$1\n${renderedStableBlock}\n`
+    ).trim();
+  }
+
+  return [
+    "Contexte stable:",
+    renderedStableBlock,
+    "",
+    normalized
+  ].join("\n").trim();
+}
+
 // Keep only the last valid user/assistant turns from history.
 function trimHistoryWithLimit(history, maxTurns) {
   if (!Array.isArray(history)) return [];
@@ -2823,11 +2863,13 @@ app.get("/api/intersession-memory", requireUserAuth, async (req, res) => {
     const historyRaw = Array.isArray(userData.intersessionMemoryHistory) ? userData.intersessionMemoryHistory : [];
     return res.json({
       memory: typeof memory === "string" && memory.trim() ? memory : null,
+      stableContextOnly: extractStableContextOnlyFromIntersessionMemory(memory),
       intersessionMemoryCompressed: typeof userData.intersessionMemoryCompressed === "string" && userData.intersessionMemoryCompressed.trim() ? userData.intersessionMemoryCompressed : null,
       intersessionMemoryCompressedAt: typeof userData.intersessionMemoryCompressedAt === "string" ? userData.intersessionMemoryCompressedAt : null,
       intersessionMemoryUpdatedAt: typeof userData.intersessionMemoryUpdatedAt === "string" ? userData.intersessionMemoryUpdatedAt : null,
       intersessionMemoryHistory: historyRaw.slice(0, 3).map(entry => ({
         memory: typeof entry?.memory === "string" ? entry.memory : "",
+        stableContextOnly: extractStableContextOnlyFromIntersessionMemory(entry?.memory || ""),
         savedAt: typeof entry?.savedAt === "string" ? entry.savedAt : null
       }))
     });
@@ -2962,7 +3004,7 @@ app.patch("/api/intersession-memory/direct", requireUserAuth, async (req, res) =
       return res.status(400).json({ error: "Invalid payload" });
     }
 
-    const newMemory = String(req.body.memory || "").slice(0, 2000);
+    const newStableContextOnly = String(req.body.memory || "").slice(0, 2000);
     const now = new Date().toISOString();
 
     // Archive current version before overwriting
@@ -2978,8 +3020,10 @@ app.patch("/api/intersession-memory/direct", requireUserAuth, async (req, res) =
       await usersRef.child(session.userId).child("intersessionMemoryHistory").set(updatedHistory);
     }
 
+    const nextMemory = mergeStableContextOnlyIntoIntersessionMemory(newStableContextOnly, currentMemory);
+
     await usersRef.child(session.userId).update({
-      intersessionMemory: newMemory,
+      intersessionMemory: nextMemory,
       intersessionMemoryUpdatedAt: now,
       intersessionRefreshForced: true
     });

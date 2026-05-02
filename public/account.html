@@ -614,7 +614,7 @@
             return;
           }
           const data = await res.json().catch(() => ({}));
-          const memoryValue = typeof data.memory === "string" ? data.memory : "";
+          const memoryValue = typeof data.stableContextOnly === "string" ? data.stableContextOnly : "";
           const history = Array.isArray(data.intersessionMemoryHistory) ? data.intersessionMemoryHistory : [];
 
           container.innerHTML = "";
@@ -735,7 +735,7 @@
               itemBtn.textContent = `Version du ${dateStr}`;
               itemBtn.addEventListener("click", () => {
                 selectedPreviewIndex = index;
-                previewTextarea.value = entry.memory || "";
+                previewTextarea.value = typeof entry.stableContextOnly === "string" ? entry.stableContextOnly : "";
                 previewEl.style.display = "block";
                 historyList.querySelectorAll(".history-item-btn").forEach((b, i) => {
                   b.style.fontWeight = i === index ? "700" : "";
