@@ -1577,7 +1577,8 @@
       min-height: 44px;
       display: inline-flex;
       align-items: center;
-      justify-content: center;
+      justify-content: flex-start;
+      gap: 12px;
       box-shadow: none !important;
       backdrop-filter: none !important;
       -webkit-backdrop-filter: none !important;
@@ -1589,6 +1590,64 @@
       height: 12px;
       border-radius: 999px;
       background: #415f63;
+      flex: 0 0 auto;
+    }
+
+    .waiting-stage-text {
+      display: inline-block;
+      font-size: 14px;
+      font-weight: 500;
+      line-height: 1.35;
+      letter-spacing: 0.01em;
+      color: rgba(37, 90, 97, 0.9);
+      white-space: nowrap;
+      background-image: linear-gradient(
+        90deg,
+        rgba(37, 90, 97, 0.84) 0%,
+        rgba(79, 136, 143, 0.95) 50%,
+        rgba(37, 90, 97, 0.84) 100%
+      );
+      background-size: 220% 100%;
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation:
+        waitingStageShimmer 3.8s ease-in-out infinite,
+        waitingStageBreath 4.2s ease-in-out infinite;
+    }
+
+    @keyframes waitingStageShimmer {
+      0% {
+        background-position: 0% 50%;
+      }
+
+      50% {
+        background-position: 100% 50%;
+      }
+
+      100% {
+        background-position: 0% 50%;
+      }
+    }
+
+    @keyframes waitingStageBreath {
+      0% {
+        opacity: 0.82;
+      }
+
+      50% {
+        opacity: 0.97;
+      }
+
+      100% {
+        opacity: 0.82;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .waiting-stage-text {
+        animation: none;
+      }
     }
     
     .debug-block {
@@ -3181,6 +3240,130 @@
     let activeConversationSwipeCloser = null;
     let activeChatRequestId = "";
     let activeChatAbortController = null;
+    let activeChatProgressSource = null;
+    let chatFormalAddressPreference = null; // null = inconnu, false = tutoiement, true = vouvoiement
+
+    const CHAT_PROGRESS_TEXT_NEUTRAL = {
+      reading: "Je prends connaissance du message",
+      understanding: "Je m\u2019assure de bien comprendre le message",
+      drafting: "Je pr\u00e9pare la r\u00e9ponse",
+      finalizing: "Je finalise et j\u2019envoie la r\u00e9ponse",
+      done: "R\u00e9ponse pr\u00eate",
+      canceled: "Envoi interrompu",
+      error: "Probl\u00e8me technique, nouvel essai possible"
+    };
+
+    const CHAT_PROGRESS_TEXT_TUTOIEMENT = {
+      reading: "Je prends connaissance de ton message",
+      understanding: "Je m\u2019assure de bien comprendre ton message",
+      drafting: "Je pr\u00e9pare ta r\u00e9ponse",
+      finalizing: "Je finalise et j\u2019envoie ta r\u00e9ponse",
+      done: "R\u00e9ponse pr\u00eate",
+      canceled: "Envoi interrompu",
+      error: "Probl\u00e8me technique, nouvel essai possible"
+    };
+
+    const CHAT_PROGRESS_TEXT_VOUVOIEMENT = {
+      reading: "Je prends connaissance de votre message",
+      understanding: "Je m\u2019assure de bien comprendre votre message",
+      drafting: "Je pr\u00e9pare votre r\u00e9ponse",
+      finalizing: "Je finalise et j\u2019envoie votre r\u00e9ponse",
+      done: "R\u00e9ponse pr\u00eate",
+      canceled: "Envoi interrompu",
+      error: "Probl\u00e8me technique, nouvel essai possible"
+    };
+
+    function getChatProgressText(progressStep) {
+      const key = String(progressStep || "").trim();
+      const map = chatFormalAddressPreference === true
+        ? CHAT_PROGRESS_TEXT_VOUVOIEMENT
+        : chatFormalAddressPreference === false
+          ? CHAT_PROGRESS_TEXT_TUTOIEMENT
+          : CHAT_PROGRESS_TEXT_NEUTRAL;
+      return map[key] || map.reading;
+    }
+
+    function restoreFormalAddressPreferenceForConversation() {
+      const data = loadConversationData(getConversationId());
+      const flags = data && data.flags ? data.flags : null;
+      chatFormalAddressPreference = (flags && typeof flags.formalAddress === "boolean")
+        ? flags.formalAddress
+        : null;
+    }
+
+    function closeActiveChatProgressSource() {
+      if (!activeChatProgressSource) return;
+      try {
+        activeChatProgressSource.close();
+      } catch {}
+      activeChatProgressSource = null;
+    }
+
+    function updateWaitingIndicatorProgress(progressStep) {
+      const waitingMsg = document.getElementById("chatWaitingMsg");
+      if (!waitingMsg) return;
+
+      const waitingStageText = waitingMsg.querySelector(".waiting-stage-text");
+      if (!waitingStageText) return;
+
+      const nextText = getChatProgressText(progressStep);
+      if (waitingStageText.textContent !== nextText) {
+        waitingStageText.textContent = nextText;
+        if (waitingStageText.animate) {
+          waitingStageText.animate(
+            [
+              { opacity: 0.72, transform: "translateY(2px)" },
+              { opacity: 1, transform: "translateY(0)" }
+            ],
+            {
+              duration: 280,
+              easing: "ease"
+            }
+          );
+        }
+      }
+    }
+
+    function startChatProgressSource(requestId) {
+      closeActiveChatProgressSource();
+
+      if (typeof EventSource !== "function") {
+        return;
+      }
+
+      const safeRequestId = String(requestId || "").trim();
+      if (!safeRequestId) {
+        return;
+      }
+
+      const source = new EventSource(`/chat/progress?requestId=${encodeURIComponent(safeRequestId)}`);
+      activeChatProgressSource = source;
+
+      source.addEventListener("progress", (event) => {
+        let payload = null;
+        try {
+          payload = JSON.parse(event.data || "{}");
+        } catch {
+          payload = null;
+        }
+
+        if (!payload || activeChatRequestId !== safeRequestId) {
+          return;
+        }
+
+        if (typeof payload.progressStep === "string") {
+          updateWaitingIndicatorProgress(payload.progressStep);
+        }
+
+        if (["done", "canceled", "error"].includes(payload.status)) {
+          closeActiveChatProgressSource();
+        }
+      });
+
+      source.onerror = () => {
+        // Keep UI resilient: fetch /chat remains the source of truth.
+      };
+    }
 
     function buildChatRequestId() {
       return "chat_" + Date.now() + "_" + Math.random().toString(36).slice(2, 10);
@@ -3195,6 +3378,8 @@
     async function stopCurrentChatRequest() {
       const requestId = String(activeChatRequestId || "").trim();
       if (!requestId) return false;
+
+      closeActiveChatProgressSource();
 
       if (activeChatAbortController) {
         activeChatAbortController.abort();
@@ -3296,7 +3481,12 @@
         waitingDot.id = "waitingDot";
         waitingDot.className = "waiting-dot";
 
+        const waitingStageText = document.createElement("span");
+        waitingStageText.className = "waiting-stage-text";
+        waitingStageText.textContent = getChatProgressText("reading");
+
         waitingBubble.appendChild(waitingDot);
+        waitingBubble.appendChild(waitingStageText);
         waitingContent.appendChild(waitingBubble);
         waitingMsg.appendChild(waitingContent);
         chat.appendChild(waitingMsg);
@@ -7899,6 +8089,7 @@
     function startFreshOrResumeSession() {
       closeSessionInfoModal();
       showScreen("chatScreen", { pushHistory: true });
+      restoreFormalAddressPreferenceForConversation();
       updateActivity();
       
       const history = ensureCurrentConversationOpeningGreeting(SESSION_OPENING_GREETING);
@@ -8223,6 +8414,7 @@
       }, CHAT_REQUEST_TIMEOUT_MS);
       activeChatRequestId = chatRequestId;
       activeChatAbortController = chatAbortController;
+      startChatProgressSource(chatRequestId);
       syncSendButtonMode();
       
       try {
@@ -8316,7 +8508,12 @@
           if (data.memory) {
             saveMemory(data.memory);
           }
-          if (data.flags) saveFlags(data.flags);
+          if (data.flags) {
+            saveFlags(data.flags);
+            if (typeof data.flags.formalAddress === "boolean") {
+              chatFormalAddressPreference = data.flags.formalAddress;
+            }
+          }
 
           pushHistory("assistant", data.reply, data.debug || [], data.debugMeta || null, data.botMessageId || null, {
             memory: data.memory,
@@ -8390,6 +8587,7 @@
         }
       } finally {
         clearTimeout(chatTimeoutId);
+        closeActiveChatProgressSource();
 
         if (activeChatRequestId === chatRequestId) {
           activeChatRequestId = "";
@@ -8414,6 +8612,7 @@
             activeChatAbortController.abort();
           } catch {}
         }
+        closeActiveChatProgressSource();
 
         activeChatRequestId = "";
         activeChatAbortController = null;

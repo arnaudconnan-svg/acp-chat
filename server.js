@@ -303,6 +303,42 @@ function createEmailNotifier() {
 
 const emailNotifier = createEmailNotifier();
 let adminVisitedSinceLastAlert = true;
+let cachedAdminMailsEnabled = false;
+let adminMailsCacheReady = false;
+
+function normalizeMailsEnabledSetting(value) {
+  return value !== false;
+}
+
+function getCachedAdminMailsEnabled() {
+  return cachedAdminMailsEnabled === true;
+}
+
+async function bootstrapAdminSettingsCache() {
+  try {
+    const snap = await adminSettingsRef.child("mailsEnabled").once("value");
+    cachedAdminMailsEnabled = normalizeMailsEnabledSetting(snap.val());
+    adminMailsCacheReady = true;
+    console.log("[server][admin-settings] mailsEnabled cache initialized:", cachedAdminMailsEnabled);
+  } catch (err) {
+    cachedAdminMailsEnabled = false;
+    adminMailsCacheReady = false;
+    console.error("[server][admin-settings] boot cache init failed:", err.message);
+  }
+}
+
+function startAdminSettingsListener() {
+  adminSettingsRef.child("mailsEnabled").on(
+    "value",
+    (snap) => {
+      cachedAdminMailsEnabled = normalizeMailsEnabledSetting(snap.val());
+      adminMailsCacheReady = true;
+    },
+    (err) => {
+      console.error("[server][admin-settings] listener error:", err.message);
+    }
+  );
+}
 
 app.get("/health", (req, res) => {
   res.status(200).json({ status: "ok" });
@@ -1306,13 +1342,10 @@ app.get("/api/admin/session", async (req, res) => {
       return res.json({ authenticated: false });
     }
 
-    const settingsSnap = await adminSettingsRef.once("value");
-    const settings = settingsSnap.val() || {};
-
     return res.json({
       authenticated: true,
       settings: {
-        mailsEnabled: settings.mailsEnabled !== false
+        mailsEnabled: getCachedAdminMailsEnabled()
       }
     });
   } catch (err) {
@@ -1334,6 +1367,8 @@ app.put("/api/admin/settings", requireAdminAuth, async (req, res) => {
 
     const mailsEnabled = req.body.mailsEnabled === true;
     await adminSettingsRef.update({ mailsEnabled });
+    cachedAdminMailsEnabled = mailsEnabled;
+    adminMailsCacheReady = true;
 
     return res.json({
       success: true,
@@ -3674,6 +3709,112 @@ function validateChatRequestShape(body = {}) {
 
 const activeChatRequests = new Map();
 const CHAT_REQUEST_STALE_TTL_MS = 15 * 60 * 1000;
+const activeChatProgressStreams = new Map(); // requestId -> Set(response)
+
+function mapChatStageToProgressStep(stage = "") {
+  const key = String(stage || "").trim();
+
+  if (!key) {
+    return "reading";
+  }
+
+  if (["request_destructured", "request_normalized", "suicide_analysis"].includes(key)) {
+    return "reading";
+  }
+
+  if (["recall_analysis", "mode_analysis"].includes(key) || key.startsWith("analyzer_")) {
+    return "understanding";
+  }
+
+  if (["reply_generation", "critic"].includes(key)) {
+    return "drafting";
+  }
+
+  if (["memory_update", "persist_response"].includes(key)) {
+    return "finalizing";
+  }
+
+  return "reading";
+}
+
+function writeSSEEvent(res, eventName, payload) {
+  try {
+    res.write(`event: ${eventName}\n`);
+    res.write(`data: ${JSON.stringify(payload)}\n\n`);
+  } catch {}
+}
+
+function pushChatProgressEvent(requestId, eventName, payload) {
+  const safeId = String(requestId || "").trim();
+  if (!safeId) return;
+
+  const streams = activeChatProgressStreams.get(safeId);
+  if (!streams || streams.size === 0) return;
+
+  for (const res of streams) {
+    writeSSEEvent(res, eventName, payload);
+  }
+}
+
+function publishChatProgressStage(requestId, stage, status = "in_progress") {
+  const safeId = String(requestId || "").trim();
+  if (!safeId) return;
+
+  const entry = activeChatRequests.get(safeId);
+  const progressStep = mapChatStageToProgressStep(stage);
+
+  if (entry && entry.lastProgressStep === progressStep) {
+    return;
+  }
+
+  if (entry) {
+    activeChatRequests.set(safeId, {
+      ...entry,
+      updatedAt: Date.now(),
+      lastProgressStep: progressStep
+    });
+  }
+
+  pushChatProgressEvent(safeId, "progress", {
+    requestId: safeId,
+    status,
+    stage,
+    progressStep,
+    ts: Date.now()
+  });
+}
+
+function publishChatProgressTerminal(requestId, status) {
+  const safeId = String(requestId || "").trim();
+  if (!safeId) return;
+
+  pushChatProgressEvent(safeId, "progress", {
+    requestId: safeId,
+    status,
+    stage: status,
+    progressStep: status,
+    ts: Date.now()
+  });
+}
+
+function closeChatProgressStreams(requestId) {
+  const safeId = String(requestId || "").trim();
+  if (!safeId) return;
+
+  const streams = activeChatProgressStreams.get(safeId);
+  if (!streams || streams.size === 0) {
+    activeChatProgressStreams.delete(safeId);
+    return;
+  }
+
+  for (const res of streams) {
+    try {
+      res.end();
+    } catch {}
+  }
+
+  activeChatProgressStreams.delete(safeId);
+}
 
 function registerActiveChatRequest(requestId, userId) {
   const safeId = String(requestId || "").trim();
@@ -3682,7 +3823,8 @@ function registerActiveChatRequest(requestId, userId) {
   activeChatRequests.set(safeId, {
     userId: String(userId || "").trim(),
     canceled: false,
-    updatedAt: Date.now()
+    updatedAt: Date.now(),
+    lastProgressStep: null
   });
 }
 
@@ -3720,6 +3862,7 @@ function finalizeActiveChatRequest(requestId) {
   const safeId = String(requestId || "").trim();
   if (!safeId) return;
   activeChatRequests.delete(safeId);
+  closeChatProgressStreams(safeId);
 }
 
 function throwIfChatRequestCanceled(requestId) {
@@ -3734,7 +3877,7 @@ setInterval(() => {
   const cutoff = Date.now() - CHAT_REQUEST_STALE_TTL_MS;
   for (const [requestId, entry] of activeChatRequests.entries()) {
     if (!entry || Number(entry.updatedAt || 0) < cutoff) {
-      activeChatRequests.delete(requestId);
+      finalizeActiveChatRequest(requestId);
     }
   }
 }, CHAT_REQUEST_STALE_TTL_MS);
@@ -3748,7 +3891,45 @@ app.post("/chat/cancel", (req, res) => {
   }
 
   const canceled = cancelActiveChatRequest(requestId, userId);
+  if (canceled) {
+    publishChatProgressTerminal(requestId, "canceled");
+  }
   return res.json({ success: true, requestId, canceled });
+});
+
+app.get("/chat/progress", (req, res) => {
+  const requestId = typeof req.query?.requestId === "string" ? req.query.requestId.trim() : "";
+
+  if (!requestId) {
+    return res.status(400).json({ error: "Missing requestId" });
+  }
+
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache, no-transform");
+  res.setHeader("Connection", "keep-alive");
+  res.flushHeaders?.();
+
+  let streams = activeChatProgressStreams.get(requestId);
+  if (!streams) {
+    streams = new Set();
+    activeChatProgressStreams.set(requestId, streams);
+  }
+  streams.add(res);
+
+  writeSSEEvent(res, "ready", {
+    requestId,
+    status: "connected",
+    ts: Date.now()
+  });
+
+  req.on("close", () => {
+    const activeStreams = activeChatProgressStreams.get(requestId);
+    if (!activeStreams) return;
+    activeStreams.delete(res);
+    if (activeStreams.size === 0) {
+      activeChatProgressStreams.delete(requestId);
+    }
+  });
 });
 
 // Normalize memory and session flags before executing the chat pipeline.
@@ -3799,6 +3980,7 @@ app.post("/chat", async (req, res) => {
     });
     chatStageMarkTime = now;
     chatLastStage = stage;
+    publishChatProgressStage(requestId, stage, "in_progress");
   }
 
   function logChatDecision(event, payload = {}) {
@@ -3815,6 +3997,7 @@ app.post("/chat", async (req, res) => {
   
   const requestIssues = validateChatRequestShape(req.body);
   if (requestIssues.length > 0) {
+    publishChatProgressTerminal(requestId, "error");
     console.warn("[CHAT][REQUEST_SHAPE]", {
       conversationId: requestData.conversationId,
       issues: requestIssues
@@ -4021,6 +4204,15 @@ app.post("/chat", async (req, res) => {
       rawFlags,
       flags
     } = normalizeChatMemoryAndFlags(req, activePromptRegistry);
+    const shouldLoadUserProfile = !isPrivateConversation && userId && userId !== "u_anon";
+    const userProfilePromise = shouldLoadUserProfile
+      ? usersRef.child(String(userId)).once("value")
+        .then((snap) => {
+          const data = snap.val();
+          return data && typeof data === "object" ? data : {};
+        })
+        .catch(() => null)
+      : Promise.resolve(null);
     markChatStage("request_normalized");
     throwIfCanceled();
     
@@ -4129,18 +4321,8 @@ app.post("/chat", async (req, res) => {
       });
     }
 
-    let effectiveMailsEnabled = mailsEnabled !== false;
-
-    try {
-      const adminMailsSnap = await adminSettingsRef.child("mailsEnabled").once("value");
-      if (adminMailsSnap.exists()) {
-        effectiveMailsEnabled = adminMailsSnap.val() !== false;
-      }
-    } catch (err) {
-      console.error("Erreur lecture adminSettings.mailsEnabled:", err.message);
-      // Fail-safe: if settings are temporarily unavailable (e.g. during deploy), avoid sending alerts.
-      effectiveMailsEnabled = false;
-    }
+    const effectiveMailsEnabled = (mailsEnabled !== false)
+      && (adminMailsCacheReady ? getCachedAdminMailsEnabled() : false);
 
     if (!isPrivateConversation && emailNotifier.enabled && effectiveMailsEnabled && adminVisitedSinceLastAlert && adminUiActive !== true) {
       adminVisitedSinceLastAlert = false;
@@ -4294,12 +4476,9 @@ app.post("/chat", async (req, res) => {
       let n2PromptRegistry = activePromptRegistry;
       try {
         let userCountryCode = null;
-        if (userId && userId !== "u_anon") {
-          const userSnap = await usersRef.child(String(userId)).once("value");
-          const userData = userSnap.val();
-          if (userData && typeof userData.country === "string") {
-            userCountryCode = normalizeCountryCode(userData.country);
-          }
+        const userData = await userProfilePromise;
+        if (userData && typeof userData.country === "string") {
+          userCountryCode = normalizeCountryCode(userData.country);
         }
         // Fallback France si pays inconnu (cible principale du produit)
         const emergencyInfo = lookupEmergencyNumbers(userCountryCode) || lookupEmergencyNumbers("FR");
@@ -4363,7 +4542,8 @@ app.post("/chat", async (req, res) => {
       });
       
       const botMessageId = await persistAssistantMessage(reply, debug, responseDebugMeta, { memory: responseMemory, flags: newFlags });
-      await maybeGenerateConversationTitle();
+      maybeGenerateConversationTitle();
+      publishChatProgressTerminal(requestId, "done");
       
       return res.json({
         conversationId,
@@ -4408,7 +4588,8 @@ app.post("/chat", async (req, res) => {
         });
         
         const botMessageId = await persistAssistantMessage(reply, debug, responseDebugMeta, { memory: responseMemory, flags: newFlags });
-        await maybeGenerateConversationTitle();
+        maybeGenerateConversationTitle();
+        publishChatProgressTerminal(requestId, "done");
         
         return res.json({
           conversationId,
@@ -4440,11 +4621,11 @@ app.post("/chat", async (req, res) => {
     // 2) Analyse de rappel memoire : identifier si l'utilisateur demande
     // explicitement un rappel conversationnel et quelle memoire mobiliser.
     markChatStage("recall_analysis");
-    let recallIntersessionMemory = "";
-    if (!isPrivateConversation && userId && userId !== "u_anon") {
-      try {
-        const userSnap = await usersRef.child(String(userId)).once("value");
-        const userData = userSnap.val() || {};
+    const recallRoutingPromise = (async () => {
+      let recallIntersessionMemory = "";
+      const userData = await userProfilePromise;
+
+      if (userData && typeof userData === "object") {
         const compressed = typeof userData.intersessionMemoryCompressed === "string"
           ? userData.intersessionMemoryCompressed.trim()
           : "";
@@ -4452,67 +4633,16 @@ app.post("/chat", async (req, res) => {
           ? userData.intersessionMemory.trim()
           : "";
         recallIntersessionMemory = compressed || raw || "";
-      } catch {
-        recallIntersessionMemory = "";
       }
-    }
 
-    const recallRouting = await analyzeRecallRouting(
-      message,
-      recentHistory,
-      previousMemory,
-      recallIntersessionMemory,
-      activePromptRegistry
-    );
-    throwIfCanceled();
-
-    logChatDecision("recall_routing", {
-      isRecallAttempt: recallRouting.isRecallAttempt === true,
-      isLongTermMemoryRecall: recallRouting.isLongTermMemoryRecall === true,
-      calledMemory: recallRouting.calledMemory || "none"
-    });
-
-    const postRecallPriorityRule = resolveChatPriorityRule({
-      phase: "post_recall",
-      recallRouting
-    });
-
-    if (postRecallPriorityRule) {
-      logChatDecision("priority_rule_selected", {
-        phase: "post_recall",
-        ruleId: postRecallPriorityRule.id,
-        priority: postRecallPriorityRule.priority
-      });
-    }
-
-    // Recall signals flow into the main pipeline. When isRecallAttempt, a recall
-    // injection block is added to the writer prompt alongside the current state.
-    // recall, branch history is loaded eagerly and merged into the memory context.
-    let memoryForReply = previousMemory;
-    if (recallRouting.isLongTermMemoryRecall === true) {
-      const recallConversationBranchHistory = await loadConversationBranchHistoryForRecall({
-        conversationId,
-        isPrivateConversation,
-        conversationBranchHistory,
-        recentHistory
-      });
-      const normalizedBranchHistory = normalizeConversationBranchHistory(recallConversationBranchHistory);
-      const branchTranscript = normalizedBranchHistory.length > 0
-        ? normalizedBranchHistory.map(m => `${m.role === "user" ? "Utilisateur" : "Assistant"} : ${m.content}`).join("\n")
-        : "(indisponible)";
-      const baseMem = normalizeMemory(previousMemory, activePromptRegistry);
-      memoryForReply = [
-        baseMem ? `Memoire resumee :\n${baseMem}` : "",
-        `Transcript complet de la branche courante :\n${branchTranscript}`
-      ].filter(Boolean).join("\n\n");
-    }
-
-    if (recallRouting.isRecallAttempt === true) {
-      logChatDecision("recall_entering_pipeline", {
-        isLongTermMemoryRecall: recallRouting.isLongTermMemoryRecall === true,
-        calledMemory: recallRouting.calledMemory || "none"
-      });
-    }
+      return analyzeRecallRouting(
+        message,
+        recentHistory,
+        previousMemory,
+        recallIntersessionMemory,
+        activePromptRegistry
+      );
+    })();
 
     // Phase 2: run all analyzers in parallel, including detectMode (which now
     // integrates contact detection alongside info detection).
@@ -4610,9 +4740,6 @@ app.post("/chat", async (req, res) => {
       ? (Array.isArray(detectedModeResult.infoContextFlags) ? detectedModeResult.infoContextFlags : [])
       : [];
 
-    const detectedTheoreticalOrientation = theoreticalOrientationAnalysis?.theoreticalOrientation || "none";
-    const detectedOrientationConfidence = theoreticalOrientationAnalysis?.orientationConfidence ?? 0.0;
-
     // Source de routage info pour observabilit� admin
     let infoRoutingSource = null;
     if (typeof detectedState === "string" && detectedState.startsWith("info_")) {
@@ -4643,6 +4770,57 @@ app.post("/chat", async (req, res) => {
     const closureAnalysis = await analyzeClosureIntent(message);
     if (closureAnalysis.closureIntent) {
       newFlags.closureIntent = true;
+    }
+
+    const recallRouting = await recallRoutingPromise;
+    throwIfCanceled();
+
+    logChatDecision("recall_routing", {
+      isRecallAttempt: recallRouting.isRecallAttempt === true,
+      isLongTermMemoryRecall: recallRouting.isLongTermMemoryRecall === true,
+      calledMemory: recallRouting.calledMemory || "none"
+    });
+
+    const postRecallPriorityRule = resolveChatPriorityRule({
+      phase: "post_recall",
+      recallRouting
+    });
+
+    if (postRecallPriorityRule) {
+      logChatDecision("priority_rule_selected", {
+        phase: "post_recall",
+        ruleId: postRecallPriorityRule.id,
+        priority: postRecallPriorityRule.priority
+      });
+    }
+
+    // Recall signals flow into the main pipeline. When isRecallAttempt, a recall
+    // injection block is added to the writer prompt alongside the current state.
+    // recall, branch history is loaded eagerly and merged into the memory context.
+    let memoryForReply = previousMemory;
+    if (recallRouting.isLongTermMemoryRecall === true) {
+      const recallConversationBranchHistory = await loadConversationBranchHistoryForRecall({
+        conversationId,
+        isPrivateConversation,
+        conversationBranchHistory,
+        recentHistory
+      });
+      const normalizedBranchHistory = normalizeConversationBranchHistory(recallConversationBranchHistory);
+      const branchTranscript = normalizedBranchHistory.length > 0
+        ? normalizedBranchHistory.map(m => `${m.role === "user" ? "Utilisateur" : "Assistant"} : ${m.content}`).join("\n")
+        : "(indisponible)";
+      const baseMem = normalizeMemory(previousMemory, activePromptRegistry);
+      memoryForReply = [
+        baseMem ? `Memoire resumee :\n${baseMem}` : "",
+        `Transcript complet de la branche courante :\n${branchTranscript}`
+      ].filter(Boolean).join("\n\n");
+    }
+
+    if (recallRouting.isRecallAttempt === true) {
+      logChatDecision("recall_entering_pipeline", {
+        isLongTermMemoryRecall: recallRouting.isLongTermMemoryRecall === true,
+        calledMemory: recallRouting.calledMemory || "none"
+      });
     }
 
     // Phase 3: Deterministic arbitrator � consolidate all analyzer outputs into a
@@ -4739,25 +4917,23 @@ app.post("/chat", async (req, res) => {
       const currentTurnsUntil = Number.isInteger(newFlags.turnsUntilIntersessionRefresh)
         ? newFlags.turnsUntilIntersessionRefresh
         : 0;
-      let forceRefreshNow = false;
-      if (currentTurnsUntil > 0) {
-        try {
-          const refreshForcedSnap = await usersRef.child(userId).child("intersessionRefreshForced").once("value");
-          forceRefreshNow = refreshForcedSnap.val() === true;
-        } catch {}
-      }
+      const userData = await userProfilePromise;
+      const forceRefreshNow = currentTurnsUntil > 0
+        && userData
+        && userData.intersessionRefreshForced === true;
       const needsInjection = currentTurnsUntil === 0 || forceRefreshNow;
       if (needsInjection) {
-        try {
-          const compressedSnap = await usersRef.child(userId).child("intersessionMemoryCompressed").once("value");
-          const compressedVal = compressedSnap.val();
-          if (typeof compressedVal === "string" && compressedVal.trim()) {
-            intersessionMemoryForThisTurn = compressedVal;
-          }
-          if (forceRefreshNow) {
+        const compressedVal = userData && typeof userData.intersessionMemoryCompressed === "string"
+          ? userData.intersessionMemoryCompressed
+          : "";
+        if (compressedVal.trim()) {
+          intersessionMemoryForThisTurn = compressedVal;
+        }
+        if (forceRefreshNow) {
+          try {
             await usersRef.child(userId).update({ intersessionRefreshForced: false });
-          }
-        } catch {}
+          } catch {}
+        }
         newFlags.turnsUntilIntersessionRefresh = 8;
       } else {
         newFlags.turnsUntilIntersessionRefresh = Math.max(0, currentTurnsUntil - 1);
@@ -5075,7 +5251,8 @@ app.post("/chat", async (req, res) => {
     throwIfCanceled();
 
     const botMessageId = await persistAssistantMessage(reply, debug, responseDebugMeta, { memory: newMemory, flags: newFlags });
-    await maybeGenerateConversationTitle();
+    maybeGenerateConversationTitle();
+    publishChatProgressTerminal(requestId, "done");
     
     return res.json({
       conversationId,
@@ -5088,6 +5265,7 @@ app.post("/chat", async (req, res) => {
     });
   } catch (err) {
     if (err && err.code === "chat_request_canceled") {
+      publishChatProgressTerminal(requestId, "canceled");
       // Mark the user message with [ENVOI STOPPE] if it was persisted
       if (userMessageRefForCatch && userMessagePersistedForCatch) {
         try {
@@ -5116,6 +5294,7 @@ app.post("/chat", async (req, res) => {
     }
 
     console.error("Erreur /chat:", err);
+    publishChatProgressTerminal(requestId, "error");
     console.error("[CHAT][ERROR_CONTEXT]", {
       conversationId: requestData.conversationId,
       lastStage: chatLastStage,
@@ -5203,6 +5382,9 @@ app.post("/chat", async (req, res) => {
 // Start the HTTP server after all routes and middleware are configured.
 app.listen(port, () => {
   console.log(`Serveur lance sur http://localhost:${port}`);
+
+  bootstrapAdminSettingsCache();
+  startAdminSettingsListener();
 
   // Auto-refresh for emergency numbers via Wikidata.
   // Boot refresh is opt-in via REFRESH_EMERGENCY_ON_BOOT=true.
