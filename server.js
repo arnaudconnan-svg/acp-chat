@@ -183,10 +183,21 @@ function writeMessages(messages) {
 
 const express = require("express");
 const OpenAI = require("openai");
+const http = require("http");
+const https = require("https");
 
 const app = express();
 const port = process.env.PORT || 3000;
-const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+const _httpAgent = new http.Agent({ keepAlive: true, maxSockets: 20 });
+const _httpsAgent = new https.Agent({ keepAlive: true, maxSockets: 20 });
+const client = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+  maxRetries: 0,
+  timeout: 55000,
+  httpAgent: _httpsAgent,
+  fetchOptions: { agent: (url) => url.startsWith("https") ? _httpsAgent : _httpAgent }
+});
 
 function wait(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
