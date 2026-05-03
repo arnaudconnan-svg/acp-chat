@@ -140,6 +140,7 @@ const {
   buildPostureDecision,
   computeAffiliationTurnScore,
   computeAffiliationEstablished,
+  electActiveStateFromCandidates,
   normalizeGuardText,
   shouldForceExplorationForSituatedImpasse
 } = require("./lib/pipeline");
@@ -4921,11 +4922,15 @@ app.post("/chat", async (req, res) => {
       ? 3
       : Math.max(0, currentAttentionQualityTurnsUntilRefresh - 1);
 
-    // Phase 2b: exploration-specific analysers — only fired when detectedState is exploration.
+    // C3 arbitrage : élit l'état actif depuis les candidats C2 (discharge > info > exploration).
+    const electedState = electActiveStateFromCandidates(stateProposal.stateCandidates, stateProposal.contactAnalysis);
+    const secondaryTension = electedState.secondaryTension || null;
+
+    // Phase 2b: exploration-specific analysers — only fired when electedState is exploration.
     // Skipped for discharge, info, and crisis states to avoid unused LLM calls.
     let calibrationAnalysis;
     let interpretationRejection;
-    if (stateProposal.detectedState === "exploration") {
+    if (electedState.detectedState === "exploration") {
       [calibrationAnalysis, interpretationRejection] = await Promise.all([
         withAnalyzerTiming("exploration_calibration", analyzeExplorationCalibration({
             message,
@@ -4950,25 +4955,25 @@ app.post("/chat", async (req, res) => {
 
     const emotionalDecenteringAnalysis = emotionalDecenteringResult || { emotionalDecentering: false };
 
-    const contactAnalysis = stateProposal.contactAnalysis || { isContact: false };
-    const dischargeAnalysis = stateProposal.dischargeAnalysis || { aggressiveDischargeDirectedToBot: false };
-    const detectedState = stateProposal.detectedState;
+    const contactAnalysis = electedState.contactAnalysis;
+    const dischargeAnalysis = electedState.dischargeAnalysis;
+    const detectedState = electedState.detectedState;
     newFlags.dischargeState = {
       wasDischarge: typeof detectedState === "string" && detectedState.startsWith("discharge_")
     };
 
     const detectedPsychoeducationType = detectedState === "info_psychoeducation"
-      ? (stateProposal.psychoeducationType || null)
+      ? (electedState.psychoeducationType || null)
       : null;
     const detectedInfoContextFlags = detectedState === "info_features"
-      ? (Array.isArray(stateProposal.infoContextFlags) ? stateProposal.infoContextFlags : [])
+      ? (Array.isArray(electedState.infoContextFlags) ? electedState.infoContextFlags : [])
       : [];
 
     // Source de routage info pour observabilit� admin
     let infoRoutingSource = null;
     if (typeof detectedState === "string" && detectedState.startsWith("info_")) {
-      const src = stateProposal.infoSource;
-      const subSrc = stateProposal.infoSignalSource;
+      const src = electedState.infoSource;
+      const subSrc = electedState.infoSignalSource;
       if (src === "deterministic_app_features") {
         infoRoutingSource = "d�terministe";
       } else if (src === "llm_fallback") {
@@ -5081,6 +5086,7 @@ app.post("/chat", async (req, res) => {
       dischargeAnalysis,
       previousFormalAddress: newFlags.formalAddress === true,
       dependencyRiskLevel: flags.dependencyRiskLevel,
+      secondaryTension,
     });
 
     finalDirectivityLevel = postureDecision.finalDirectivityLevel;
@@ -5519,6 +5525,8 @@ app.post("/chat", async (req, res) => {
       // C3 limiting_belief gate
       aggressiveDischargeDetected: postureDecision.aggressiveDischargeDetected === true,
       postDischargeTransitionActive: postureDecision.postDischargeTransitionActive === true,
+      // Tension secondaire
+      secondaryTension: postureDecision.secondaryTension || null,
       postCrisisSupportActive: postCrisisSupportCarryTurnActive,
       postCrisisSupportCarryTurn: postCrisisSupportCarryTurnActive,
       emergencySupportText,

@@ -162,5 +162,49 @@ check("emotionSequenceStage removed from posture decision output", () => {
   assert(!("emotionSequenceStage" in out), "emotionSequenceStage should not exist in output");
 });
 
+check("secondary tension arbitration prefers higher confidence over semantic priority", () => {
+  const out = buildPostureDecision(baseInput({
+    detectedState: "exploration",
+    allianceSignal: "fragile",
+    secondaryTension: { family: "info", confidence: "high" }
+  }));
+  assert(!!out.secondaryTension, "expected secondaryTension to be set");
+  assert(out.secondaryTension.family === "info", `expected family=info, got ${out.secondaryTension.family}`);
+  assert(out.secondaryTension.confidence === "high", `expected confidence=high, got ${out.secondaryTension.confidence}`);
+});
+
+check("secondary tension tie-break uses semantic priority on equal confidence", () => {
+  const out = buildPostureDecision(baseInput({
+    detectedState: "exploration",
+    allianceSignal: "fragile",
+    secondaryTension: { family: "info", confidence: "medium" }
+  }));
+  assert(!!out.secondaryTension, "expected secondaryTension to be set");
+  assert(out.secondaryTension.family === "alliance_rupture", `expected family=alliance_rupture, got ${out.secondaryTension.family}`);
+  assert(out.secondaryTension.confidence === "medium", `expected confidence=medium, got ${out.secondaryTension.confidence}`);
+});
+
+check("secondary tension suppresses redundancy with active base family", () => {
+  const out = buildPostureDecision(baseInput({
+    detectedState: "info_features",
+    allianceSignal: "good",
+    engagementLevel: "active",
+    processingWindow: "open",
+    stagnationTurns: 0,
+    secondaryTension: { family: "info", confidence: "high" }
+  }));
+  assert(out.secondaryTension === null, "expected secondaryTension=null when candidate duplicates active base family");
+});
+
+check("secondary tension is disabled during aggressive discharge", () => {
+  const out = buildPostureDecision(baseInput({
+    detectedState: "discharge_dysregulated",
+    allianceSignal: "rupture",
+    secondaryTension: { family: "discharge", confidence: "high" },
+    dischargeAnalysis: { aggressiveDischargeDirectedToBot: true }
+  }));
+  assert(out.secondaryTension === null, "expected secondaryTension=null when aggressive discharge is detected");
+});
+
 console.log(`\n[POSTURE] ${passed} passed, ${failed} failed.`);
 if (failed > 0) process.exit(1);

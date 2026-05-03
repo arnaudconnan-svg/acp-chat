@@ -78,6 +78,20 @@ function makeFakeClient() {
             };
           }
 
+          if (system.includes("isExploration")) {
+            const isExploration = /je me demande|j'essaie de comprendre|je cherche a comprendre|je cherche a voir ce que/i.test(user);
+            const confidence = isExploration ? "high" : "low";
+            return {
+              choices: [
+                {
+                  message: {
+                    content: JSON.stringify({ isExploration, confidence })
+                  }
+                }
+              ]
+            };
+          }
+
           return {
             choices: [
               {
@@ -117,21 +131,29 @@ async function run() {
   const analyzers = makeAnalyzers();
 
   const discharge = await analyzers.proposeState("Je suis en train d'exploser", [], { wasDischarge: false });
-  check("proposeState: discharge priority is preserved", () => {
-    assert(discharge.detectedState === "discharge_dysregulated", `expected discharge_dysregulated, got ${discharge.detectedState}`);
-    assert(discharge.contactAnalysis?.isContact === false, "expected contactAnalysis to be reset on discharge path");
+  check("proposeState: candidat discharge produit (C2 n'arbitre plus)", () => {
+    const candidate = (discharge.stateCandidates || []).find(c => c.family === "discharge");
+    assert(candidate !== undefined, "expected discharge candidate in stateCandidates");
+    assert(candidate.detectedState === "discharge_dysregulated", `expected discharge_dysregulated, got ${candidate.detectedState}`);
+    assert(candidate.confidence === "high", "expected high confidence for discharge");
+    // contactAnalysis est toujours présent — suppression déléguée à C3
+    assert(discharge.contactAnalysis !== undefined, "expected contactAnalysis to be present");
   });
 
   const explorationWithContact = await analyzers.proposeState("Je m'en veux tellement", [], { wasDischarge: false });
-  check("proposeState: non-discharge contact keeps exploration when no info request", () => {
-    assert(explorationWithContact.detectedState === "exploration", `expected exploration, got ${explorationWithContact.detectedState}`);
+  check("proposeState: pas de décharge ni info → candidat exploration high confidence", () => {
+    const candidate = (explorationWithContact.stateCandidates || []).find(c => c.family === "exploration");
+    assert(candidate !== undefined, "expected exploration candidate");
+    assert(candidate.confidence === "high", `expected high confidence, got ${candidate.confidence}`);
     assert(explorationWithContact.contactAnalysis?.isContact === true, "expected contactAnalysis.isContact=true");
   });
 
   const infoWithContact = await analyzers.proposeState("Je m'en veux tellement, ton app fait quoi dans ce cas ?", [], { wasDischarge: false });
-  check("proposeState: non-discharge contact signal survives in info mode", () => {
-    assert(infoWithContact.detectedState === "info_features", `expected info_features, got ${infoWithContact.detectedState}`);
-    assert(infoWithContact.contactAnalysis?.isContact === true, "expected contactAnalysis.isContact=true in info mode");
+  check("proposeState: info détectée → candidat info présent, contactAnalysis passé tel quel", () => {
+    const candidate = (infoWithContact.stateCandidates || []).find(c => c.family === "info");
+    assert(candidate !== undefined, "expected info candidate in stateCandidates");
+    assert(candidate.detectedState === "info_features", `expected info_features, got ${candidate.detectedState}`);
+    assert(infoWithContact.contactAnalysis?.isContact === true, "expected contactAnalysis.isContact=true");
   });
 
   const relationalNeutral = await analyzers.analyzeRelationalAdjustmentNeed("Je me sens fatigué", [], "", false);
@@ -182,6 +204,28 @@ async function run() {
   const dischargeContinuite = await analyzers.analyzeDischargeState("Je me sens mieux maintenant", [], { wasDischarge: true });
   check("analyzeDischargeState: wasDischarge=true -> passe toujours au LLM meme sans signal", () => {
     assert(dischargeContinuite.source !== "deterministic_no_signal", `expected LLM path on continuation, got ${dischargeContinuite.source}`);
+  });
+
+  // --- analyzeExplorationSignal ---
+
+  const explorationSelfQuery = await analyzers.analyzeExplorationSignal("Je me demande pourquoi je reagis comme ca", []);
+  check("analyzeExplorationSignal: questionnement explicite sur soi -> isExploration=true, high", () => {
+    assert(explorationSelfQuery.isExploration === true, "expected isExploration=true");
+    assert(explorationSelfQuery.confidence === "high", `expected high, got ${explorationSelfQuery.confidence}`);
+    assert(["llm", "llm_error"].includes(explorationSelfQuery.source), `expected llm source, got ${explorationSelfQuery.source}`);
+  });
+
+  const explorationNeutral = await analyzers.analyzeExplorationSignal("Je suis fatigue", []);
+  check("analyzeExplorationSignal: description neutre -> isExploration=false", () => {
+    assert(explorationNeutral.isExploration === false, "expected isExploration=false");
+  });
+
+  const stateWithExploration = await analyzers.proposeState("Je me demande pourquoi je reagis comme ca", [], { wasDischarge: false });
+  check("proposeState: message exploratoire -> exploration candidate avec confiance LLM", () => {
+    const candidate = (stateWithExploration.stateCandidates || []).find(c => c.family === "exploration");
+    assert(candidate !== undefined, "expected exploration candidate");
+    // Si LLM detecle l'exploration, confidence reflète ce que le LLM renvoie ("high" ici avec le fake)
+    assert(["high", "medium", "low"].includes(candidate.confidence), `confidence inattendue: ${candidate.confidence}`);
   });
 
   console.log(`\n[ANALYZERS] ${passed} passed, ${failed} failed.`);

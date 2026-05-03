@@ -298,6 +298,25 @@ assert("stateTransitionFrom non-string null", stBadFrom.stateTransitionFrom, nul
 const stFalseCoerce = buildResponseDebugMeta({ stateTransitionValid: false });
 assert("stateTransitionValid false coercion", stFalseCoerce.stateTransitionValid, false);
 
+// 17. secondaryTension alias normalization
+console.log("\n-- buildResponseDebugMeta secondaryTension normalization");
+const stAlias = buildResponseDebugMeta({
+  secondaryTension: { family: "relationalRupture", confidence: "strong" }
+});
+assert("secondaryTension family alias relationalRupture", stAlias.secondaryTension?.family, "alliance_rupture");
+assert("secondaryTension confidence alias strong", stAlias.secondaryTension?.confidence, "high");
+
+const stAliasFr = buildResponseDebugMeta({
+  secondaryTension: { family: "stabilisation", confidence: "moyenne" }
+});
+assert("secondaryTension family alias stabilisation", stAliasFr.secondaryTension?.family, "stabilization");
+assert("secondaryTension confidence alias moyenne", stAliasFr.secondaryTension?.confidence, "medium");
+
+const stUnknown = buildResponseDebugMeta({
+  secondaryTension: { family: "unknown_family", confidence: "high" }
+});
+assert("secondaryTension unknown family -> null", stUnknown.secondaryTension, null);
+
 // Summary
 console.log("\n" + "=".repeat(60));
 console.log("debugmeta-unit-harness: " + passed + " passed, " + failed + " failed");
