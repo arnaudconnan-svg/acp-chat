@@ -4923,8 +4923,10 @@ app.post("/chat", async (req, res) => {
       : Math.max(0, currentAttentionQualityTurnsUntilRefresh - 1);
 
     // C3 arbitrage : élit l'état actif depuis les candidats C2 (discharge > info > exploration).
+    // nonElectedCandidates[0] est le candidat C2 non-élu le plus fort (confiance >= medium) ;
+    // il sera passé à buildPostureDecision comme tension secondaire candidate.
     const electedState = electActiveStateFromCandidates(stateProposal.stateCandidates, stateProposal.contactAnalysis);
-    const secondaryTension = electedState.secondaryTension || null;
+    const secondaryTension = (electedState.nonElectedCandidates && electedState.nonElectedCandidates[0]) || null;
 
     // Phase 2b: exploration-specific analysers — only fired when electedState is exploration.
     // Skipped for discharge, info, and crisis states to avoid unused LLM calls.
@@ -5488,6 +5490,8 @@ app.post("/chat", async (req, res) => {
       intent: postureDecision.intent,
       forbidden: postureDecision.forbidden,
       confidenceSignal: postureDecision.confidenceSignal,
+      uncertaintyExpressionPolicy: postureDecision.uncertaintyExpressionPolicy,
+      uncertaintyDrivers: postureDecision.uncertaintyDrivers,
       responseRegister: postureDecision.responseRegister,
       phraseLengthPolicy: postureDecision.phraseLengthPolicy,
       relancePolicy: postureDecision.relancePolicy,

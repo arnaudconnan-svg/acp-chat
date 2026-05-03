@@ -6653,6 +6653,21 @@
             content: [
               `\u00c9tat : ${meta.conversationState}`,
               typeof meta.confidenceSignal === "number" ? `Confiance dans le choix de l'\u00e9tat : ${meta.confidenceSignal.toFixed(2)}` : null,
+              meta.uncertaintyExpressionPolicy === "explicit"
+                ? (() => {
+                    var labels = {
+                      explicit_ambiguity: "ambigu\u00eft\u00e9 explicite",
+                      recent_rejection: "rejet r\u00e9cent",
+                      short_context: "contexte court"
+                    };
+                    var drivers = Array.isArray(meta.uncertaintyDrivers)
+                      ? meta.uncertaintyDrivers.map(function(d) { return labels[d] || null; }).filter(Boolean)
+                      : [];
+                    return drivers.length
+                      ? "Expression du doute : explicite (drivers : " + drivers.join(", ") + ")"
+                      : "Expression du doute : explicite";
+                  })()
+                : null,
               (isExplorationMode && Number.isInteger(meta.explorationCalibrationLevel)) ?
                 `Niveau de structuration retenu : ${meta.explorationCalibrationLevel}/4` : null,
                 (isExplorationMode && typeof meta.explorationSignal === "string" && meta.explorationSignal) ?
