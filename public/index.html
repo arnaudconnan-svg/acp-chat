@@ -1156,6 +1156,10 @@
       background: transparent;
       pointer-events: none;
     }
+
+    body.has-crisis-support-card #chat {
+      padding-bottom: calc(206px + env(safe-area-inset-bottom, 0px));
+    }
     
     #inputAreaInner {
       width: calc(100% - 28px);
@@ -1184,6 +1188,50 @@
 
     #serviceStatusBanner.is-visible {
       display: block;
+    }
+
+    #crisisSupportCard {
+      display: none;
+      width: calc(100% - 28px);
+      max-width: 700px;
+      margin: 0 auto 10px;
+      padding: 12px 14px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.82);
+      border: 1px solid rgba(36, 94, 102, 0.16);
+      box-shadow:
+        0 14px 28px rgba(36, 94, 102, 0.12),
+        0 1px 0 rgba(255, 255, 255, 0.55) inset;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      pointer-events: auto;
+      box-sizing: border-box;
+      color: #245e66;
+    }
+
+    #crisisSupportCard.is-visible {
+      display: block;
+    }
+
+    .crisisSupportCardTitle {
+      font-size: 13px;
+      line-height: 1.25;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      margin: 0 0 6px;
+      color: #245e66;
+    }
+
+    .crisisSupportCardBody {
+      font-size: 13px;
+      line-height: 1.5;
+      color: rgba(36, 94, 102, 0.92);
+      margin: 0;
+    }
+
+    .crisisSupportCardBody strong {
+      font-weight: 700;
+      color: #163f45;
     }
     
     #inputShell {
@@ -2160,6 +2208,10 @@
     <div id="chat"></div>
     
     <div id="inputArea">
+      <div id="crisisSupportCard" role="status" aria-live="polite" aria-hidden="true">
+        <p class="crisisSupportCardTitle"></p>
+        <p class="crisisSupportCardBody"></p>
+      </div>
       <div id="serviceStatusBanner" role="status" aria-live="polite"></div>
       <div id="inputAreaInner">
         <div id="inputShell">
@@ -3284,12 +3336,84 @@
       return map[key] || map.reading;
     }
 
+    const CRISIS_SUPPORT_CARD_TEXT_NEUTRAL = {
+      title: "Rappel de securite",
+      body: "Si le danger redevient immediat, utilise sans attendre ces ressources : ",
+      carry: "Ce rappel reste visible encore un tour pour eviter une disparition trop brusque."
+    };
+
+    const CRISIS_SUPPORT_CARD_TEXT_TUTOIEMENT = {
+      title: "Rappel de securite",
+      body: "Si le danger redevient immediat, utilise sans attendre ces ressources : ",
+      carry: "Je laisse ce rappel visible encore un tour pour eviter une disparition trop brusque."
+    };
+
+    const CRISIS_SUPPORT_CARD_TEXT_VOUVOIEMENT = {
+      title: "Rappel de securite",
+      body: "Si le danger redevient immediat, utilisez sans attendre ces ressources : ",
+      carry: "Je laisse ce rappel visible encore un tour pour eviter une disparition trop brusque."
+    };
+
+    function getCrisisSupportCardCopy() {
+      return chatFormalAddressPreference === true
+        ? CRISIS_SUPPORT_CARD_TEXT_VOUVOIEMENT
+        : chatFormalAddressPreference === false
+          ? CRISIS_SUPPORT_CARD_TEXT_TUTOIEMENT
+          : CRISIS_SUPPORT_CARD_TEXT_NEUTRAL;
+    }
+
     function restoreFormalAddressPreferenceForConversation() {
       const data = loadConversationData(getConversationId());
       const flags = data && data.flags ? data.flags : null;
       chatFormalAddressPreference = (flags && typeof flags.formalAddress === "boolean")
         ? flags.formalAddress
         : null;
+    }
+
+    function getLatestAssistantDebugMeta(history = loadHistory()) {
+      const entries = Array.isArray(history) ? history : [];
+      for (let index = entries.length - 1; index >= 0; index--) {
+        const item = entries[index];
+        if (item && item.role === "assistant" && item.debugMeta) {
+          return item.debugMeta;
+        }
+      }
+      return null;
+    }
+
+    function updateCrisisSupportCard(debugMetaValue = null) {
+      const card = document.getElementById("crisisSupportCard");
+      if (!card) return;
+
+      const titleEl = card.querySelector(".crisisSupportCardTitle");
+      const bodyEl = card.querySelector(".crisisSupportCardBody");
+      const meta = normalizeClientDebugMeta(debugMetaValue || getLatestAssistantDebugMeta());
+      const shouldShow = meta.postCrisisSupportActive === true && typeof meta.emergencySupportText === "string" && meta.emergencySupportText.trim();
+
+      if (!shouldShow) {
+        card.classList.remove("is-visible");
+        card.setAttribute("aria-hidden", "true");
+        if (titleEl) titleEl.textContent = "";
+        if (bodyEl) bodyEl.textContent = "";
+        document.body.classList.remove("has-crisis-support-card");
+        return;
+      }
+
+      const copy = getCrisisSupportCardCopy();
+      if (titleEl) {
+        titleEl.textContent = copy.title;
+      }
+      if (bodyEl) {
+        const bodyParts = [copy.body + meta.emergencySupportText + "."];
+        if (meta.postCrisisSupportCarryTurn === true) {
+          bodyParts.push(copy.carry);
+        }
+        bodyEl.textContent = bodyParts.join(" ");
+      }
+
+      card.classList.add("is-visible");
+      card.setAttribute("aria-hidden", "false");
+      document.body.classList.add("has-crisis-support-card");
     }
 
     function closeActiveChatProgressSource() {
@@ -4162,7 +4286,10 @@
         emotionalDecentering: safe.emotionalDecentering === true,
         formalAddress: safe.formalAddress === true,
         n2TurnType: typeof safe.n2TurnType === "string" ? safe.n2TurnType.trim() : null,
-        emergencyNumbersIncluded: safe.emergencyNumbersIncluded === true
+        emergencyNumbersIncluded: safe.emergencyNumbersIncluded === true,
+        postCrisisSupportActive: safe.postCrisisSupportActive === true,
+        postCrisisSupportCarryTurn: safe.postCrisisSupportCarryTurn === true,
+        emergencySupportText: typeof safe.emergencySupportText === "string" ? safe.emergencySupportText.trim() : null
       };
     }
 
@@ -6770,6 +6897,18 @@
           }
         }
 
+        if (meta.postCrisisSupportActive === true) {
+          const supportLines = [
+            meta.postCrisisSupportCarryTurn === true
+              ? "Encart post-N2 maintenu sur le tour tampon"
+              : "Encart post-N2 affich\u00e9"
+          ];
+          if (meta.emergencySupportText) {
+            supportLines.push(`Ressources affich\u00e9es : ${meta.emergencySupportText}`);
+          }
+          sections.push({ title: "Filet post-crise", content: supportLines.join("\n") });
+        }
+
         const affiliationLines = [];
         if (Array.isArray(meta.affiliationWindow) && meta.affiliationWindow.length > 0) {
           affiliationLines.push(`Fenêtre d'affiliation : [${meta.affiliationWindow.map(v => v.toFixed(2)).join(", ")}]`);
@@ -7424,6 +7563,8 @@
           }
         );
       });
+
+      updateCrisisSupportCard();
       
       syncInputAvailability();
       syncWaitingIndicatorForCurrentConversation();
@@ -8625,6 +8766,7 @@
             pulseScrollButton: !shouldAutoScrollReply,
             debugMeta: data.debugMeta || null
           });
+          updateCrisisSupportCard(data.debugMeta || null);
         }
         
         if (data.conversationId) {

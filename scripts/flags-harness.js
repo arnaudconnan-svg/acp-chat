@@ -252,6 +252,16 @@ check("sessionFlags: acuteCrisis non-boolean → false", () => {
   assert(out.acuteCrisis === false, "expected false for non-boolean acuteCrisis");
 });
 
+check("sessionFlags: postCrisisSupportCarryTurn non-boolean → false", () => {
+  const out = normalizeSessionFlags({ postCrisisSupportCarryTurn: "yes" });
+  assert(out.postCrisisSupportCarryTurn === false, "expected false for non-boolean postCrisisSupportCarryTurn");
+});
+
+check("sessionFlags: postCrisisSupportCarryTurn true preserved", () => {
+  const out = normalizeSessionFlags({ postCrisisSupportCarryTurn: true });
+  assert(out.postCrisisSupportCarryTurn === true, "expected true for explicit postCrisisSupportCarryTurn");
+});
+
 check("sessionFlags: unknown conversationState → 'exploration_open'", () => {
   const out = normalizeSessionFlags({ conversationState: "invalid" });
   assert(out.conversationState === "exploration_open",

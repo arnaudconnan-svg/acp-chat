@@ -4506,6 +4506,29 @@ app.post("/chat", async (req, res) => {
         normalizeMemory: (m) => normalizeMemory(m, params.promptRegistry || activePromptRegistry)
       });
     }
+
+    let emergencySupportTextPromise = null;
+    async function resolveEmergencySupportText() {
+      if (emergencySupportTextPromise) {
+        return emergencySupportTextPromise;
+      }
+
+      emergencySupportTextPromise = (async () => {
+        try {
+          let userCountryCode = null;
+          const userData = await userProfilePromise;
+          if (userData && typeof userData.country === "string") {
+            userCountryCode = normalizeCountryCode(userData.country);
+          }
+          const emergencyInfo = lookupEmergencyNumbers(userCountryCode) || lookupEmergencyNumbers("FR");
+          return buildEmergencyNumbersText(emergencyInfo) || null;
+        } catch {
+          return null;
+        }
+      })();
+
+      return emergencySupportTextPromise;
+    }
     
     async function applyModelConflictPipeline({
       content = "",
@@ -4591,6 +4614,7 @@ app.post("/chat", async (req, res) => {
     if (crisisDecision.route === "n2") {
       newFlags.acuteCrisis = true;
       newFlags.crisisFollowupTurnCount = 0;
+      newFlags.postCrisisSupportCarryTurn = false;
       newFlags.dischargeState = { wasDischarge: false };
       flagsForCatch = normalizeSessionFlags(newFlags);
 
@@ -4606,14 +4630,7 @@ app.post("/chat", async (req, res) => {
       // R�solution des num�ros d'urgence selon le pays de l'utilisateur.
       let n2PromptRegistry = activePromptRegistry;
       try {
-        let userCountryCode = null;
-        const userData = await userProfilePromise;
-        if (userData && typeof userData.country === "string") {
-          userCountryCode = normalizeCountryCode(userData.country);
-        }
-        // Fallback France si pays inconnu (cible principale du produit)
-        const emergencyInfo = lookupEmergencyNumbers(userCountryCode) || lookupEmergencyNumbers("FR");
-        const emergencyText = buildEmergencyNumbersText(emergencyInfo);
+        const emergencyText = await resolveEmergencySupportText();
         if (emergencyText) {
           n2PromptRegistry = {
             ...activePromptRegistry,
@@ -4687,7 +4704,10 @@ app.post("/chat", async (req, res) => {
         modelConflict: false,
         promptRegistry: activePromptRegistry,
         n2TurnType: null,
-        emergencyNumbersIncluded: true
+        emergencyNumbersIncluded: true,
+        postCrisisSupportActive: false,
+        postCrisisSupportCarryTurn: false,
+        emergencySupportText: null
       });
       
       const botMessageId = persistAssistantMessageAsync(reply, debug, responseDebugMeta, { memory: responseMemory, flags: newFlags });
@@ -4710,6 +4730,7 @@ app.post("/chat", async (req, res) => {
     if (flags.acuteCrisis === true) {
       if (crisisDecision.route === "acute_followup") {
         newFlags.acuteCrisis = true;
+        newFlags.postCrisisSupportCarryTurn = true;
         newFlags.dischargeState = { wasDischarge: false };
         flagsForCatch = normalizeSessionFlags(newFlags);
 
@@ -4725,22 +4746,13 @@ app.post("/chat", async (req, res) => {
         // Classifier déterministe du type de tour (refus, hostilité, isolement, débordement, neutre)
         const n2TurnType = classifyN2TurnType(message);
 
-        // Numéros d'urgence inclus 1 tour sur 3 pour éviter la répétition mécanique
+        // Les numéros restent dans l'encart post-N2, pas dans la bulle du bot.
         const crisisFollowupTurnCount = Number.isInteger(flags.crisisFollowupTurnCount) ? flags.crisisFollowupTurnCount : 0;
-        const includeNumbers = crisisFollowupTurnCount % 3 === 0;
+        const includeNumbers = false;
         newFlags.crisisFollowupTurnCount = crisisFollowupTurnCount + 1;
 
         // Résolution des numéros d'urgence selon le pays (réutilise la même logique que N2 entry)
-        let followupEmergencyText = null;
-        try {
-          let userCountryCode = null;
-          const userData = await userProfilePromise;
-          if (userData && typeof userData.country === "string") {
-            userCountryCode = normalizeCountryCode(userData.country);
-          }
-          const emergencyInfo = lookupEmergencyNumbers(userCountryCode) || lookupEmergencyNumbers("FR");
-          followupEmergencyText = buildEmergencyNumbersText(emergencyInfo) || null;
-        } catch { /* non-bloquant */ }
+        const followupEmergencyText = await resolveEmergencySupportText();
 
         let reply;
         try {
@@ -4786,7 +4798,10 @@ app.post("/chat", async (req, res) => {
           modelConflict: false,
           promptRegistry: activePromptRegistry,
           n2TurnType,
-          emergencyNumbersIncluded: includeNumbers
+          emergencyNumbersIncluded: includeNumbers,
+          postCrisisSupportActive: true,
+          postCrisisSupportCarryTurn: false,
+          emergencySupportText: followupEmergencyText
         });
         
         const botMessageId = persistAssistantMessageAsync(reply, debug, responseDebugMeta, { memory: responseMemory, flags: newFlags });
@@ -4804,11 +4819,16 @@ app.post("/chat", async (req, res) => {
         });
       }
       
+      const postCrisisSupportCarryTurnActive = flags.postCrisisSupportCarryTurn === true && crisisDecision.route !== "n1_clarification";
       newFlags.acuteCrisis = false;
+      newFlags.postCrisisSupportCarryTurn = false;
       flagsForCatch = normalizeSessionFlags(newFlags);
       logChatDecision("acute_crisis_resolved", {
-        suicideLevel: suicide.suicideLevel
+        suicideLevel: suicide.suicideLevel,
+        postCrisisSupportCarryTurnActive
       });
+
+      req.__postCrisisSupportCarryTurnActive = postCrisisSupportCarryTurnActive;
     }
     
     // 3) N1 signal flows into the main pipeline. writerMode is overridden to
@@ -5429,6 +5449,11 @@ app.post("/chat", async (req, res) => {
         }
       })();
     }
+    const postCrisisSupportCarryTurnActive = req.__postCrisisSupportCarryTurnActive === true;
+    const emergencySupportText = postCrisisSupportCarryTurnActive
+      ? await resolveEmergencySupportText()
+      : null;
+
     const responseDebugMeta = buildResponseDebugMeta({
       memory: newMemory,
       suicideLevel: suicide.suicideLevel,
@@ -5494,6 +5519,9 @@ app.post("/chat", async (req, res) => {
       // C3 limiting_belief gate
       aggressiveDischargeDetected: postureDecision.aggressiveDischargeDetected === true,
       postDischargeTransitionActive: postureDecision.postDischargeTransitionActive === true,
+      postCrisisSupportActive: postCrisisSupportCarryTurnActive,
+      postCrisisSupportCarryTurn: postCrisisSupportCarryTurnActive,
+      emergencySupportText,
     });
 
     if (logsEnabled) {

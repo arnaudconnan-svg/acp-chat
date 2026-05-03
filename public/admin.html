@@ -959,7 +959,10 @@
         aggressiveDischargeDetected: safe.aggressiveDischargeDetected === true,
         postDischargeTransitionActive: safe.postDischargeTransitionActive === true,
         n2TurnType: typeof safe.n2TurnType === "string" ? safe.n2TurnType.trim() : null,
-        emergencyNumbersIncluded: safe.emergencyNumbersIncluded === true
+        emergencyNumbersIncluded: safe.emergencyNumbersIncluded === true,
+        postCrisisSupportActive: safe.postCrisisSupportActive === true,
+        postCrisisSupportCarryTurn: safe.postCrisisSupportCarryTurn === true,
+        emergencySupportText: typeof safe.emergencySupportText === "string" ? safe.emergencySupportText.trim() : null
       };
     }
 
@@ -2099,6 +2102,18 @@
               sections.push({ title: "S\u00e9quence de crise", content: crisisLines.join("\n") });
             }
           }
+
+            if (meta.postCrisisSupportActive === true) {
+              const supportLines = [
+                meta.postCrisisSupportCarryTurn === true
+                  ? "Encart post-N2 maintenu sur le tour tampon"
+                  : "Encart post-N2 affich\u00e9"
+              ];
+              if (meta.emergencySupportText) {
+                supportLines.push(`Ressources affich\u00e9es : ${meta.emergencySupportText}`);
+              }
+              sections.push({ title: "Filet post-crise", content: supportLines.join("\n") });
+            }
 
           const affiliationLines = [];
           if (Array.isArray(meta.affiliationWindow) && meta.affiliationWindow.length > 0) {

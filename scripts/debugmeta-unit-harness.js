@@ -75,7 +75,8 @@ for (const field of [
   "responseRegister","phraseLengthPolicy","relancePolicy","somaticFocusPolicy","actionCollapseGuardActive",
   "stateTransitionFrom","stateTransitionValid","stateTransitionRequested",
   "allianceSignal","engagementLevel","stagnationTurns","processingWindow",
-  "dependencyRiskScore","dependencyRiskLevel","externalSupportMode","closureIntent","postDischargeTransitionActive","traceId"
+  "dependencyRiskScore","dependencyRiskLevel","externalSupportMode","closureIntent","postDischargeTransitionActive",
+  "postCrisisSupportActive","postCrisisSupportCarryTurn","emergencySupportText","traceId"
 ]) {
   assert("default has field: " + field, Object.prototype.hasOwnProperty.call(base, field), true);
 }
@@ -116,6 +117,9 @@ assertDeepEqual("default values", base, {
   externalSupportMode: "none",
   closureIntent: false,
   postDischargeTransitionActive: false,
+  postCrisisSupportActive: false,
+  postCrisisSupportCarryTurn: false,
+  emergencySupportText: null,
   traceId: null
 });
 
@@ -126,6 +130,7 @@ assert("N2 topChips", n2.topChips, ["URGENCE : risque suicidaire"]);
 assert("N2 conversationState", n2.conversationState, "n2_crisis");
 assert("N2 intent null", n2.intent, null);
 assert("N2 directivityText empty", n2.directivityText, "");
+assert("N2 post crisis support inactive", n2.postCrisisSupportActive, false);
 
 // 5. exploration path
 console.log("\n-- buildResponseDebugMeta exploration path");
@@ -257,13 +262,24 @@ assert("dependencyRiskLevel", phaseB.dependencyRiskLevel, "medium");
 assert("externalSupportMode", phaseB.externalSupportMode, "discovery_validation");
 assert("closureIntent", phaseB.closureIntent, true);
 
-// 14. conversationState normalization
+// 14. post-crisis support fields
+console.log("\n-- buildResponseDebugMeta post-crisis support");
+const postCrisis = buildResponseDebugMeta({
+  postCrisisSupportActive: true,
+  postCrisisSupportCarryTurn: true,
+  emergencySupportText: "urgences : 15 (SAMU) ou 112 | prevention suicide : 3114"
+});
+assert("postCrisisSupportActive", postCrisis.postCrisisSupportActive, true);
+assert("postCrisisSupportCarryTurn", postCrisis.postCrisisSupportCarryTurn, true);
+assert("emergencySupportText", postCrisis.emergencySupportText, "urgences : 15 (SAMU) ou 112 | prevention suicide : 3114");
+
+// 15. conversationState normalization
 console.log("\n-- buildResponseDebugMeta conversationState normalization");
 assert("exploration_open state", buildResponseDebugMeta({ conversationState: "exploration_open" }).conversationState, "exploration_open");
 assert("unknown state defaults to exploration_open", buildResponseDebugMeta({ conversationState: "unknown_state" }).conversationState, "exploration_open");
 assert("null state defaults to exploration_open", buildResponseDebugMeta({ conversationState: null }).conversationState, "exploration_open");
 
-// 15. stateTransition fields
+// 16. stateTransition fields
 console.log("\n-- buildResponseDebugMeta stateTransition fields");
 const stDefault = buildResponseDebugMeta();
 assert("stateTransitionFrom default null", stDefault.stateTransitionFrom, null);
