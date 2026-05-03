@@ -5342,9 +5342,9 @@ app.post("/chat", async (req, res) => {
             memoryCandidate = forceLectureBotReset(memoryCandidate);
           }
       
-          const memoryBeforeCompression = memoryCandidate;
+          memoryBeforeCompression = memoryCandidate;
           const memoryNeedsCompression = shouldCompressMemoryCandidate(memoryCandidate, previousMemory);
-          const memoryRewriteIntent = {
+          memoryRewriteIntent = {
             compressionRequested: memoryNeedsCompression === true,
             interpretationRejectionActive: safeInterpretationRejection.isInterpretationRejection === true,
             rejectsUnderlyingPhenomenon: safeInterpretationRejection.rejectsUnderlyingPhenomenon === true,
@@ -5362,8 +5362,8 @@ app.post("/chat", async (req, res) => {
             needsCompression: memoryNeedsCompression,
             promptRegistry: activePromptRegistry
           });
-          const memoryWasCompressed = memoryNeedsCompression && finalizedMemoryCandidate !== memoryCandidate;
-          const newMemory = finalizedMemoryCandidate;
+          memoryWasCompressed = memoryNeedsCompression && finalizedMemoryCandidate !== memoryCandidate;
+          newMemory = finalizedMemoryCandidate;
       
           // Mise à jour du compteur de périodicité mémoire.
           // Si compression ce tour : forcer recalcul au tour suivant (compteur = 0).
@@ -5372,12 +5372,11 @@ app.post("/chat", async (req, res) => {
           } else {
             newFlags.memoryUpdateTurnsUntilRefresh = Math.max(0, currentMemoryUpdateTurnsUntilRefresh - 1);
           }
-          const memoryAge = 3 - newFlags.memoryUpdateTurnsUntilRefresh;
+          memoryAge = 3 - newFlags.memoryUpdateTurnsUntilRefresh;
           
           if (logsEnabled) {
             debug.push(`trace.memoryCompressed: ${memoryWasCompressed ? "true" : "false"}`);
           }
-      newMemory = finalizedMemoryCandidate;
     } else {
       // Async fire-and-forget for non-private: compute and write to Firebase.
       // We capture needed variables in a closure.
