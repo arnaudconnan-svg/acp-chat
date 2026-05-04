@@ -37,10 +37,9 @@ J'ai inventorie les signaux internes effectivement calcules a chaque tour. Je le
 
 **Etats sur l'utilisateur (empathie rationnelle au sens ou tu l'entends)**
 ✅ `emotionalDecentering` — l'utilisateur se decentre de son emotion
-- `contactAnalysis.insightMoment` — moment d'insight detecte
-- `contactAnalysis.selfCriticismLevel`
-- `contactAnalysis.meaningCrisis`
-- `somaticSignalActive` / `somaticLocalizationBlocked`
+✅ `contactAnalysis.insightMoment` — moment d'insight detecte
+✅ `contactAnalysis.selfCriticismLevel`
+✅ `contactAnalysis.meaningCrisis`
 - `userRegister`, `formalAddress`
 - `aggressiveDischargeDetected`
 
@@ -50,8 +49,6 @@ J'ai inventorie les signaux internes effectivement calcules a chaque tour. Je le
 - `dependencyRiskLevel` — perception du risque de dependance (etat tres particulier : le bot "se soucie" du fait que l'utilisateur ne s'attache pas trop a lui)
 - `closureIntent` detecte
 - `criticalGuardrails` actifs (no_unconscious, no_psychopathology, etc.)
-
-**Ce que cet inventaire permet de dire :** le bot a deja une base materielle assez riche pour de la congruence. Le probleme aujourd'hui, c'est que cette richesse ne remonte presque jamais en surface a part via le `confidenceSignal`. Tout le reste est utilise pour piloter en silence.
 
 ---
 

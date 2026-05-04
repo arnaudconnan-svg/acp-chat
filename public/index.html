@@ -4590,7 +4590,7 @@
       });
     }
     
-    function pushHistory(role, content, debug, debugMeta = null, id = null, stateSnapshot = null) {
+    function pushHistory(role, content, debug, debugMeta = null, id = null, stateSnapshot = null, signals = null) {
       let conversationId = getConversationId();
       
       if (!conversationId && role === "user") {
@@ -4600,6 +4600,7 @@
       if (!conversationId) return;
       
       const history = loadHistory();
+      const safeSignals = typeof signals === "string" && signals.trim() ? signals.trim() : undefined;
       
       history.push({
         role,
@@ -4608,7 +4609,8 @@
         debugMeta: normalizeClientDebugMeta(debugMeta),
         stateSnapshot: normalizeStoredStateSnapshot(stateSnapshot),
         id: id && typeof id === "string" ? id : undefined,
-        t: Date.now()
+        t: Date.now(),
+        ...(safeSignals !== undefined ? { signals: safeSignals } : {})
       });
       
       saveHistory(history);
@@ -8165,7 +8167,7 @@
     }
     
     function buildPayload(message) {
-      const full = loadHistory().map(({ role, content }) => ({ role, content }));
+      const full = loadHistory().map(({ role, content, signals }) => ({ role, content, ...(signals ? { signals } : {}) }));
       
       return {
         message,
@@ -8499,7 +8501,7 @@
             conversationId: requestConversationId,
             isPrivateConversation: isConversationPrivateById(requestConversationId, loadConversationData(requestConversationId)),
             adminUiActive: document.body.classList.contains("admin-ui"),
-            recentHistory: loadHistory().map(({ role, content }) => ({ role, content })).slice(-MAX_RECENT_TURNS),
+            recentHistory: loadHistory().map(({ role, content, signals }) => ({ role, content, ...(signals ? { signals } : {}) })).slice(-MAX_RECENT_TURNS),
             conversationBranchHistory: loadHistory().map(({ role, content }) => ({ role, content })),
             titleDenyList: buildTitleDenyListForConversation(requestConversationId),
             memory: loadConversationData(requestConversationId).memory,
@@ -8557,7 +8559,7 @@
           pushHistory("assistant", data.reply, data.debug || [], data.debugMeta || null, data.botMessageId || null, {
             memory: data.memory,
             flags: data.flags
-          });
+          }, typeof data.signals === "string" ? data.signals : null);
         } else {
           const storedData = loadConversationData(requestConversationId);
           const existingMessages = Array.isArray(storedData.messages) ? storedData.messages : [];

@@ -4031,6 +4031,54 @@ function normalizeChatMemoryAndFlags(req, activePromptRegistry) {
   };
 }
 
+// Builds a compact one-line signal annotation for the turn, to be stored in the
+// assistant history entry and later injected into the LLM context as self-knowledge.
+// Only non-default values are included to keep the annotation minimal.
+function buildTurnSignals(postureDecision, {
+  allianceSignal = "good",
+  relationalAdjustmentActive = false,
+  interpretationRejectionActive = false,
+  insightMoment = false,
+  selfCriticismLevel = "low",
+  meaningCrisis = false,
+  emotionalDecentering = false
+} = {}) {
+  const parts = [];
+  const state = typeof postureDecision.conversationState === "string"
+    ? postureDecision.conversationState
+    : "exploration_open";
+  parts.push(`état:${state}`);
+
+  if (state.startsWith("exploration_")) {
+    const lvl = postureDecision.finalDirectivityLevel;
+    if (typeof lvl === "number" && lvl > 0) {
+      parts.push(`niveau:${lvl}`);
+    }
+  }
+
+  const sec = postureDecision.secondaryTension;
+  if (sec && typeof sec.family === "string") {
+    parts.push(`tension:${sec.family}`);
+  }
+
+  if (allianceSignal && allianceSignal !== "good") {
+    parts.push(`alliance:${allianceSignal}`);
+  }
+
+  if (relationalAdjustmentActive) parts.push("ajust_rel");
+  if (interpretationRejectionActive) parts.push("rejet_interp");
+  if (insightMoment) parts.push("insight");
+  if (selfCriticismLevel && selfCriticismLevel !== "low") parts.push(`autocrit:${selfCriticismLevel}`);
+  if (meaningCrisis) parts.push("crise_sens");
+
+  const reg = postureDecision.responseRegister;
+  if (reg && reg !== "courant") parts.push(`registre:${reg}`);
+
+  if (emotionalDecentering) parts.push("decentrage_emo");
+
+  return parts.join(", ");
+}
+
 // Main chat endpoint.
 // This route orchestrates the request parsing, safety analysis, mode detection,
 // response generation, memory update, and persistence of both user and assistant messages.
@@ -4723,7 +4771,8 @@ app.post("/chat", async (req, res) => {
         flags: newFlags,
         debug,
         debugMeta: responseDebugMeta,
-        botMessageId
+        botMessageId,
+        signals: "état:n2_crisis"
       });
     }
     
@@ -4817,7 +4866,8 @@ app.post("/chat", async (req, res) => {
           flags: newFlags,
           debug,
           debugMeta: responseDebugMeta,
-          botMessageId
+          botMessageId,
+          signals: "état:n2_crisis"
         });
       }
       
@@ -5098,6 +5148,16 @@ app.post("/chat", async (req, res) => {
 
     Object.assign(newFlags, postureDecision.flagUpdates);
     flagsForCatch = normalizeSessionFlags(newFlags);
+
+    const turnSignals = buildTurnSignals(postureDecision, {
+      allianceSignal: newFlags.allianceSignal,
+      relationalAdjustmentActive: relationalAdjustmentAnalysis?.needsRelationalAdjustment === true,
+      interpretationRejectionActive: safeInterpretationRejection.isInterpretationRejection === true,
+      insightMoment: contactAnalysis?.insightMoment === true,
+      selfCriticismLevel: contactAnalysis?.selfCriticismLevel || "low",
+      meaningCrisis: contactAnalysis?.meaningCrisis === true,
+      emotionalDecentering: emotionalDecenteringAnalysis?.emotionalDecentering === true
+    });
 
     if (postureDecision.relationalAdjustmentActive) {
       logChatDecision("relational_adjustment_caps_directivity", {
@@ -5574,7 +5634,8 @@ app.post("/chat", async (req, res) => {
       flags: newFlags,
       debug,
       debugMeta: responseDebugMeta,
-      botMessageId
+      botMessageId,
+      signals: turnSignals
     });
   } catch (err) {
     if (err && err.code === "chat_request_canceled") {
