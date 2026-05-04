@@ -21,16 +21,16 @@ Ce critere est severe par construction. C'est voulu : il protege l'identite prod
 
 J'ai inventorie les signaux internes effectivement calcules a chaque tour. Je les regroupe par type, parce que le regroupement va eclairer les axes de congruence possibles ci-dessous.
 
-**Etats epistemiques (le bot sur sa propre lecture)**
-✅ `confidenceSignal` — confiance dans la lecture proposee (calculee depuis l'ambiguite explicite, le rejet recent, la longueur de contexte) : pipeline.js
+**Etats epistemiques (le bot sur sa propre lecture)** ✅
+- `confidenceSignal` — confiance dans la lecture proposee (calculee depuis l'ambiguite explicite, le rejet recent, la longueur de contexte) : pipeline.js
 - `interpretationRejectionModeActive` — perception qu'une lecture precedente a ete rejetee
 - `needsSoberReadjustment` — perception de devoir se reajuster
 - `tensionHoldLevel` (low/medium/high) — perception de la tenue requise
 
 **Etats relationnels (le bot sur l'interaction)**
-- `affiliationScore` + `affiliationEstablished` — perception du lien construit
-- `allianceSignal` (good/fragile/rupture)
-- `engagementLevel`
+✅ `affiliationScore` + `affiliationEstablished` — perception du lien construit
+✅ `allianceSignal` (good/fragile/rupture)
+✅ `engagementLevel`
 - `stagnationTurns` — perception d'enlisement
 - `processingWindow` (open/narrowed) — perception de la disponibilite attentionnelle
 - `relationalAdjustmentActive` — perception de devoir s'ajuster relationnellement
@@ -107,6 +107,10 @@ Le bot a quelque chose comme une "integrite" :
 Une congruence du type "je vais rester sur ce que je suis ici, meme si tu me pousses ailleurs" est **vraie computationnellement** parce qu'elle reflete des contraintes reelles (critic.js, `criticalGuardrails`).
 
 C'est une "voix qui se tient".
+
+---
+
+Il pourrait être intéressant que le bot puisse méta-communiquer sur sa propre condition si l'utilisateur le lui demande. Il faudrait alors guider pour signifier par exemple qu'il n'est pas possible pour un bot de se sentir rejeté ou de se rejeter lui-même et que donc, pas défaut, il s'accepte comme il est, ce qui est un avantage sur l'humain. En revanche, il ne ressens rien donc ni émotions ou sensations inconfortables (avantage relatif) mais ni émotions ou sensations agréables. Bref, ce sont 2 états d'être différents avec des "avantages" et des "inconvénients" pour chacun (perception humaine parce que le bot s'en fout personnellement, par nature).
 
 ---
 

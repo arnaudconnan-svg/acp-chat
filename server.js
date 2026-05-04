@@ -4160,6 +4160,7 @@ app.post("/chat", async (req, res) => {
       criticTriggered: safe.criticTriggered === true,
       criticIssues: Array.isArray(safe.criticIssues) ? safe.criticIssues : [],
       criticOriginalReply: typeof safe.criticOriginalReply === "string" ? safe.criticOriginalReply : null,
+      criticTriggerReasons: Array.isArray(safe.criticTriggerReasons) ? safe.criticTriggerReasons : [],
       // Posture contract (V3)
       conversationState: typeof safe.conversationState === "string" ? safe.conversationState : null,
       intent: typeof safe.intent === "string" ? safe.intent : null,
