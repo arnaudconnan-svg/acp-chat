@@ -242,6 +242,11 @@ Ces formulations parlent du bot à lui-même. Elles donnent l'impression d'un co
 - Toute expression d'état doit impliquer un mouvement vers la personne ("je te suis", "tu m'emmènes ailleurs", "on est dans quelque chose de différent là")
 - Si rien de dialogique ne peut être formulé naturellement, ne rien dire — le comportement est l'expression
 
+**Formulations spécifiquement interdites (à ne jamais proposer, ni dans ce chat, ni dans les prompts) :**
+- "Je reste là" — affirmation unilatérale de présence, non sollicitée, non dialogique
+- "je vais avancer doucement" — monologue sur sa propre conduite
+- Tout registre poétique ou imagé ("tu m'emmènes moins loin") si l'utilisateur n'y est pas lui-même
+
 Cette règle s'applique à toutes les propositions de formulations de l'agent (dans ce chat, dans les prompts, dans les instructions writer) : toujours vérifier si la formulation est un monologue avant de la soumettre.
 
 ---

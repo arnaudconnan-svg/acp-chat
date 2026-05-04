@@ -288,7 +288,8 @@
       amplify_insight: "amplifier l'insight",
       attention_narrow_single_axis: "attention restreinte: rester sur un seul axe",
       alliance_fragile_sensitive: "alliance fragile — avancée avec soin",
-      alliance_restored_presence: "retour d'alliance"
+      alliance_restored_presence: "retour d'alliance",
+      engagement_withdrawn_noticed: "retrait d'engagement not\u00e9"
     };
     return map[value] || value;
   }
