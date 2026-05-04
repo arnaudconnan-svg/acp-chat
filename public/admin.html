@@ -1903,6 +1903,9 @@
           if (typeof meta.affiliationScore === "number") {
             affiliationLines.push(`Degr\u00e9 d'affiliation du tour : ${meta.affiliationScore.toFixed(2)}`);
           }
+          if (meta.affiliationEstablished === true) {
+            affiliationLines.push("Lien \u00e9tabli");
+          }
           if (affiliationLines.length > 0) {
             sections.push({ title: "Affiliation", content: affiliationLines.join("\n") });
           }

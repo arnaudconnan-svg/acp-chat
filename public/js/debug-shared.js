@@ -233,7 +233,9 @@
       self_justification: "auto-justification",
       recap: "r\u00e9capitulatif",
       single_anchor_proposal: "proposition d'ancrage",
-      action_concrete_proposal: "proposition d'action concr\u00e8te"
+      action_concrete_proposal: "proposition d'action concr\u00e8te",
+      value_affirmation: "affirmation de valeur",
+      casual_register: "registre vivant suspendu"
     };
     return map[value] || value;
   }
