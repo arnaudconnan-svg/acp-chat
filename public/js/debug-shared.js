@@ -291,6 +291,7 @@
       alliance_restored_presence: "retour d'alliance",
       engagement_withdrawn_noticed: "retrait d'engagement not\u00e9",
       stagnation_noticed: "enlisement not\u00e9",
+      relational_adjustment_noticed: "friction relationnelle reconnue",
       attention_overloaded_noticed: "surcharge attentionnelle not\u00e9e"
     };
     return map[value] || value;
