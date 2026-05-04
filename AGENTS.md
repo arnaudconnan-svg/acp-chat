@@ -227,6 +227,23 @@ Si une instruction dans un prompt de writer contient un `si` conditionnel sur un
 
 Cette règle s'applique aussi aux refactorings incrémentaux : si une instruction ne peut pas encore migrer (le champ du contrat n'existe pas), signaler explicitement la dette plutôt que la laisser silencieuse dans le prompt.
 
+### Règle de dialogisme — formulations congruentes
+
+Toute expression de l'état interne du bot (congruence, fragilité, doute, ajustement) doit être **adressée à la personne**, jamais formulée comme monologue ou narration interne.
+
+**INTERDIT** — formulations monologiques :
+- "quelque chose se tend un peu ici — je vais avancer doucement"
+- "je perçois que la direction change"
+- "je vais rester sur un seul fil"
+
+Ces formulations parlent du bot à lui-même. Elles donnent l'impression d'un commentaire interne capté par accident, pas d'une présence dialogique.
+
+**REQUIS** — formulations adressées :
+- Toute expression d'état doit impliquer un mouvement vers la personne ("je te suis", "tu m'emmènes ailleurs", "on est dans quelque chose de différent là")
+- Si rien de dialogique ne peut être formulé naturellement, ne rien dire — le comportement est l'expression
+
+Cette règle s'applique à toutes les propositions de formulations de l'agent (dans ce chat, dans les prompts, dans les instructions writer) : toujours vérifier si la formulation est un monologue avant de la soumettre.
+
 ---
 
 ## 9. Exigence produit

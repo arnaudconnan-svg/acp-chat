@@ -286,7 +286,9 @@
       auto_compassion_door_open: "invitation \u00e0 l'auto-compassion",
       signify_pain_without_blocking: "signifier la douleur sans bloquer",
       amplify_insight: "amplifier l'insight",
-      attention_narrow_single_axis: "attention restreinte: rester sur un seul axe"
+      attention_narrow_single_axis: "attention restreinte: rester sur un seul axe",
+      alliance_fragile_sensitive: "alliance fragile — avancée avec soin",
+      alliance_restored_presence: "retour d'alliance"
     };
     return map[value] || value;
   }
