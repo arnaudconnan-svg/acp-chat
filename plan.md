@@ -31,7 +31,7 @@ J'ai inventorie les signaux internes effectivement calcules a chaque tour. Je le
 ✅ `affiliationScore` + `affiliationEstablished` — perception du lien construit
 ✅ `allianceSignal` (good/fragile/rupture)
 ✅ `engagementLevel`
-- `stagnationTurns` — perception d'enlisement
+✅ `stagnationTurns` — perception d'enlisement
 - `processingWindow` (open/narrowed) — perception de la disponibilite attentionnelle
 - `relationalAdjustmentActive` — perception de devoir s'ajuster relationnellement
 
