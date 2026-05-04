@@ -295,6 +295,8 @@
       formal_address_adopted: "passage au vouvoiement adopt\u00e9",
       formal_address_transition_query: "retour au tutoiement — question pos\u00e9e",
       relational_adjustment_noticed: "friction relationnelle reconnue",
+      procedural_temptation_light: "tentation proc\u00e9durale \u2014 auto-d\u00e9rision",
+      procedural_temptation_neutral: "tentation proc\u00e9durale \u2014 sobre",
       attention_overloaded_noticed: "surcharge attentionnelle not\u00e9e"
     };
     return map[value] || value;
