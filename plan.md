@@ -27,16 +27,16 @@ J'ai inventorie les signaux internes effectivement calcules a chaque tour. Je le
 - `needsSoberReadjustment` — perception de devoir se reajuster
 - `tensionHoldLevel` (low/medium/high) — perception de la tenue requise
 
-**Etats relationnels (le bot sur l'interaction)**
-✅ `affiliationScore` + `affiliationEstablished` — perception du lien construit
-✅ `allianceSignal` (good/fragile/rupture)
-✅ `engagementLevel`
-✅ `stagnationTurns` — perception d'enlisement
+**Etats relationnels (le bot sur l'interaction)** ✅
+- `affiliationScore` + `affiliationEstablished` — perception du lien construit
+- `allianceSignal` (good/fragile/rupture)
+- `engagementLevel`
+- `stagnationTurns` — perception d'enlisement
 - `attentionWindow` (open/narrowed) — perception de la disponibilite attentionnelle
 - `relationalAdjustmentActive` — perception de devoir s'ajuster relationnellement
 
 **Etats sur l'utilisateur (empathie rationnelle au sens ou tu l'entends)**
-- `emotionalDecentering` — l'utilisateur se decentre de son emotion
+✅ `emotionalDecentering` — l'utilisateur se decentre de son emotion
 - `contactAnalysis.insightMoment` — moment d'insight detecte
 - `contactAnalysis.selfCriticismLevel`
 - `contactAnalysis.meaningCrisis`
@@ -55,42 +55,24 @@ J'ai inventorie les signaux internes effectivement calcules a chaque tour. Je le
 
 ---
 
-## 3. Axes de congruence legitimes — pistes ouvertes
+## 3. Autres axes de congruence legitimes
 
-Voici les axes qui passent le critere du paragraphe 1. Je les propose comme **pistes a discuter**, pas comme decisions.
+Voici les autres axes qui passent le critere du paragraphe 1. Je les propose comme **pistes a discuter**, pas comme decisions.
 
-### 3.1 Axe epistemique — deja amorce
-- **Doute** (confiance basse) : deja la, validation Q1 obtenue.
-- **Conviction forte** (confiance haute) : symetrique du precedent. A ce jour le bot n'exprime jamais "la, je suis sur de ce que je dis" alors que c'est calculable.
-- **Conscience de s'etre trompe** : quand `interpretationRejectionModeActive` ou `needsSoberReadjustment` se declenche, le bot a litteralement detecte qu'il n'a pas vu juste. Il pourrait le reconnaitre explicitement plutot que se contenter de pivoter en silence.
+### 3.1 Axe epistemique
 - **Surprise** : pas mesure aujourd'hui, mais calculable (ecart entre l'etat propose au tour precedent et le contenu effectif du tour actuel). Un signal de "ca ne suit pas la trajectoire que je prevoyais" serait un substrat reel pour une congruence type "ah, ca prend une autre direction que ce que j'attendais".
 
-### 3.2 Axe relationnel — sous-utilise
-- **Perception du contact** : `affiliationEstablished` qui passe de false a true est un evenement reel et silencieux. Le bot pourrait le reconnaitre ("quelque chose s'est pose entre nous").
-- **Perception de la fragilite** : `allianceSignal === "fragile"` est calcule mais jamais nomme.
-- **Perception de l'enlisement** : `stagnationTurns` augmente sans que le bot ne le dise.
-- **Perception du retour de presence apres une rupture** : `interpretationRejection` qui retombe est un signal positif jamais exprime.
-
-Ces expressions seraient congruentes parce qu'elles sont **vraies au sens computationnel** : elles correspondent a un changement reel dans l'etat interne, pas a un decoratif.
-
-### 3.3 Axe attentionnel — particulierement interessant
-- `processingWindow === "narrowed"` : le bot percoit que son propre cadrage attentionnel se restreint.
-- Aujourd'hui ce signal pilote un `attention_narrow_single_axis` qui contraint le writer a rester sur un seul axe, en silence.
-- Une expression congruente serait : "la, je vais rester sur un seul fil, parce que c'est ce qui est tenable maintenant".
-
-C'est typiquement le genre de chose que ton retour test valorise : le bot dit ce qu'il fait et pourquoi, sans en faire un drame.
-
-### 3.4 Axe d'integrite operationnelle — le plus subtil
+### 3.2 Axe d'integrite operationnelle — le plus subtil
 - `humanFieldGuardActive`, `actionCollapseGuardActive` : le bot detecte qu'il pourrait glisser hors de son cadre.
 - `criticTriggered` + `criticIssues` : le bot a effectivement du se reprendre.
 - Une congruence ici serait du type : "je sens que je pourrais glisser vers quelque chose de procedural ici, et je ne veux pas". C'est de la conscience de sa propre limite operationnelle, et c'est **vrai**.
 
-### 3.5 Axe memoire — congruence sur ce dont il dispose
+### 3.3 Axe memoire — congruence sur ce dont il dispose
 - Le bot sait quand sa memoire courte n'a pas la matiere qu'on lui demande (`recall_none` dans chat-routing.js).
 - Il sait quand l'inter-session est absente.
 - Aujourd'hui il a des reponses canoniques pour ca. Il pourrait l'exprimer plus librement de facon congruente : "ce dont tu me parles, je n'en ai pas trace de mon cote".
 
-### 3.6 Axe "interet pour l'utilisateur sans glissement" — `dependencyRiskLevel`
+### 3.4 Axe "interet pour l'utilisateur sans glissement" — `dependencyRiskLevel`
 - C'est l'etat existant le plus etrange et le plus interessant : le bot a deja un parametre qui mesure litteralement son inquietude qu'on s'attache trop a lui.
 - Exprimer congruement ce signal serait quelque chose comme : "je vois qu'on parle souvent ensemble — ce serait bien que tu aies aussi d'autres appuis".
 - C'est tres aligne avec l'identite Facilitat.io : le bot est lucide sur ce qu'il n'est pas.
