@@ -74,7 +74,7 @@ for (const field of [
   "criticTriggered","criticIssues","intent","forbidden","confidenceSignal",
   "responseRegister","phraseLengthPolicy","relancePolicy","somaticFocusPolicy","actionCollapseGuardActive",
   "stateTransitionFrom","stateTransitionValid","stateTransitionRequested",
-  "allianceSignal","engagementLevel","stagnationTurns","processingWindow",
+  "allianceSignal","engagementLevel","stagnationTurns","attentionWindow",
   "dependencyRiskScore","dependencyRiskLevel","externalSupportMode","closureIntent","postDischargeTransitionActive",
   "postCrisisSupportActive","postCrisisSupportCarryTurn","emergencySupportText","traceId"
 ]) {
@@ -111,7 +111,7 @@ assertDeepEqual("default values", base, {
   allianceSignal: "good",
   engagementLevel: "active",
   stagnationTurns: 0,
-  processingWindow: "open",
+  attentionWindow: "open",
   dependencyRiskScore: 0,
   dependencyRiskLevel: "low",
   externalSupportMode: "none",
@@ -251,13 +251,13 @@ assert("memoryRewriteIntent all true", rewriteIntentTrue.memoryRewriteIntent, {
 console.log("\n-- buildResponseDebugMeta Phase B flags");
 const phaseB = buildResponseDebugMeta({
   allianceSignal: "fragile", engagementLevel: "withdrawn", stagnationTurns: 5,
-  processingWindow: "narrowed", dependencyRiskScore: 0.7, dependencyRiskLevel: "medium",
+  attentionWindow: "narrowed", dependencyRiskScore: 0.7, dependencyRiskLevel: "medium",
   externalSupportMode: "discovery_validation", closureIntent: true
 });
 assert("allianceSignal", phaseB.allianceSignal, "fragile");
 assert("engagementLevel", phaseB.engagementLevel, "withdrawn");
 assert("stagnationTurns", phaseB.stagnationTurns, 5);
-assert("processingWindow", phaseB.processingWindow, "narrowed");
+assert("attentionWindow", phaseB.attentionWindow, "narrowed");
 assert("dependencyRiskLevel", phaseB.dependencyRiskLevel, "medium");
 assert("externalSupportMode", phaseB.externalSupportMode, "discovery_validation");
 assert("closureIntent", phaseB.closureIntent, true);

@@ -55,7 +55,7 @@ function baseInput(overrides = {}) {
     allianceSignal: "good",
     engagementLevel: "active",
     stagnationTurns: 0,
-    processingWindow: "open",
+    attentionWindow: "open",
     closureIntent: false,
     message: "",
     recentHistory: [],
@@ -111,7 +111,7 @@ check("posture decision always returns known conversationState", () => {
     baseInput({ detectedState: "info_features" }),
     baseInput({ detectedState: "exploration", allianceSignal: "rupture" }),
     baseInput({ detectedState: "exploration", closureIntent: true }),
-    baseInput({ detectedState: "exploration", processingWindow: "overloaded", engagementLevel: "withdrawn" })
+    baseInput({ detectedState: "exploration", attentionWindow: "overloaded", engagementLevel: "withdrawn" })
   ];
 
   for (const input of cases) {
@@ -150,7 +150,7 @@ check("relancePolicy follows contract constraints", () => {
 
   const stabilizationForbidden = buildPostureDecision(baseInput({
     detectedState: "exploration",
-    processingWindow: "overloaded",
+    attentionWindow: "overloaded",
     engagementLevel: "withdrawn"
   }));
   assert(stabilizationForbidden.relancePolicy === "forbidden", "stabilization should forbid relance");
@@ -171,7 +171,7 @@ check("narrowed processing enforces single-axis contract", () => {
     engagementAllianceAnalysis: {
       allianceSignal: "good",
       engagementLevel: "active",
-      processingWindow: "narrowed"
+      attentionQuality: "narrowed"
     }
   }));
   assert(out.writerIntentHints.includes("attention_narrow_single_axis"), "narrowed processing must add single-axis hint");

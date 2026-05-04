@@ -63,7 +63,7 @@ check("exploration expands by directivity", () => {
 
 check("Phase B overrides exploration", () => {
   assert(resolveConversationState({ detectedState: "exploration", allianceSignal: "rupture" }) === "alliance_rupture");
-  assert(resolveConversationState({ detectedState: "exploration", processingWindow: "overloaded", engagementLevel: "withdrawn" }) === "stabilization");
+  assert(resolveConversationState({ detectedState: "exploration", attentionWindow: "overloaded", engagementLevel: "withdrawn" }) === "stabilization");
   assert(resolveConversationState({ detectedState: "exploration", closureIntent: true }) === "closure");
 });
 

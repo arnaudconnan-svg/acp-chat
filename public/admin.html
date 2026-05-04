@@ -1842,7 +1842,7 @@
                 meta.relancePolicy && meta.relancePolicy !== "selective" ? `Relance : ${translateRelancePolicy(meta.relancePolicy)}` : null,
                 meta.allianceSignal && meta.allianceSignal !== "good" ? `Rupture relationnelle : ${meta.allianceSignal}` : null,
                 meta.engagementLevel && meta.engagementLevel !== "active" ? `Disponibilit\u00e9 attentionnelle : ${translateAttentionEngagement(meta.engagementLevel)}` : null,
-                meta.processingWindow && meta.processingWindow !== "open" ? `Qualit\u00e9 de l'attention : ${translateAttentionQuality(meta.processingWindow)}` : null,
+                meta.attentionWindow && meta.attentionWindow !== "open" ? `Qualit\u00e9 de l'attention : ${translateAttentionQuality(meta.attentionWindow)}` : null,
                 (meta.writerIntentHints && meta.writerIntentHints.length) ? `Indications : ${meta.writerIntentHints.map(translateWriterHint).join(", ")}` : null,
                 meta.responseRegister && meta.responseRegister !== "courant" ? `Registre cible : ${translateRegister(meta.responseRegister)}` : null,
                 meta.phraseLengthPolicy ? `Longueur phrase : ${translatePhraseLengthPolicy(meta.phraseLengthPolicy)}` : null,

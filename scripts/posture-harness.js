@@ -44,7 +44,7 @@ function baseInput(overrides = {}) {
     allianceSignal: "good",
     engagementLevel: "active",
     stagnationTurns: 0,
-    processingWindow: "open",
+    attentionWindow: "open",
     closureIntent: false,
     engagementAllianceAnalysis: null,
     message: "",
@@ -146,11 +146,11 @@ check("emotionalDecentering hints apply in info states", () => {
 check("narrowed processing window enforces single-axis exploration contract", () => {
   const out = buildPostureDecision(baseInput({
     detectedState: "exploration",
-    processingWindow: "open",
+    attentionWindow: "open",
     engagementAllianceAnalysis: {
       allianceSignal: "good",
       engagementLevel: "active",
-      processingWindow: "narrowed"
+      attentionQuality: "narrowed"
     }
   }));
   assert(out.writerIntentHints.includes("attention_narrow_single_axis"), "expected attention_narrow_single_axis hint");
@@ -189,7 +189,7 @@ check("secondary tension suppresses redundancy with active base family", () => {
     detectedState: "info_features",
     allianceSignal: "good",
     engagementLevel: "active",
-    processingWindow: "open",
+    attentionWindow: "open",
     stagnationTurns: 0,
     secondaryTension: { family: "info", confidence: "high" }
   }));

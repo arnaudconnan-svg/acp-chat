@@ -6677,7 +6677,7 @@
               typeof meta.relancePolicy === "string" && meta.relancePolicy ? `Relance : ${translateRelancePolicyDebug(meta.relancePolicy)}` : null,
               typeof meta.allianceSignal === "string" && meta.allianceSignal !== "good" ? `Rupture relationnelle : ${meta.allianceSignal}` : null,
               typeof meta.engagementLevel === "string" && meta.engagementLevel !== "active" ? `Disponibilit\u00e9 attentionnelle : ${translateAttentionEngagementDebug(meta.engagementLevel)}` : null,
-              typeof meta.processingWindow === "string" && meta.processingWindow !== "open" ? `Qualit\u00e9 de l'attention : ${translateAttentionQualityDebug(meta.processingWindow)}` : null,
+              typeof meta.attentionWindow === "string" && meta.attentionWindow !== "open" ? `Qualit\u00e9 de l'attention : ${translateAttentionQualityDebug(meta.attentionWindow)}` : null,
               (meta.writerIntentHints && meta.writerIntentHints.length) ? `Indications : ${meta.writerIntentHints.map(translateWriterHintDebug).join(", ")}` : null,
               meta.responseRegister && meta.responseRegister !== "courant" ? `Registre cible : ${translateRegisterDebug(meta.responseRegister)}` : null,
               meta.phraseLengthPolicy ? `Longueur phrase : ${translatePhraseLengthPolicyDebug(meta.phraseLengthPolicy)}` : null,

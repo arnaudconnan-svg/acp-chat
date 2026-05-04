@@ -19,7 +19,7 @@ const {
   normalizeExplorationRelanceWindow,
   normalizeExternalSupportMode,
   normalizeFlags,
-  normalizeProcessingWindow,
+  normalizeAttentionWindow,
   normalizeSessionFlags,
   normalizeStagnationTurns,
   normalizeAffiliationWindow,
@@ -177,13 +177,13 @@ check("stagnationTurns: 3 → 3", () => assert(normalizeStagnationTurns(3) === 3
 check("stagnationTurns: -1 → 0", () => assert(normalizeStagnationTurns(-1) === 0));
 check("stagnationTurns: 'bad' → 0", () => assert(normalizeStagnationTurns("bad") === 0));
 
-// ─── normalizeProcessingWindow ────────────────────────────────────────────────
+// ─── normalizeAttentionWindow ─────────────────────────────────────────────────
 
-check("processingWindow: 'open' → 'open'", () => assert(normalizeProcessingWindow("open") === "open"));
-check("processingWindow: 'narrowed' → 'narrowed'", () => assert(normalizeProcessingWindow("narrowed") === "narrowed"));
-check("processingWindow: 'overloaded' → 'overloaded'", () => assert(normalizeProcessingWindow("overloaded") === "overloaded"));
-check("processingWindow: null → 'open'", () => assert(normalizeProcessingWindow(null) === "open"));
-check("processingWindow: unknown → 'open'", () => assert(normalizeProcessingWindow("bad") === "open"));
+check("attentionWindow: 'open' → 'open'", () => assert(normalizeAttentionWindow("open") === "open"));
+check("attentionWindow: 'narrowed' → 'narrowed'", () => assert(normalizeAttentionWindow("narrowed") === "narrowed"));
+check("attentionWindow: 'overloaded' → 'overloaded'", () => assert(normalizeAttentionWindow("overloaded") === "overloaded"));
+check("attentionWindow: null → 'open'", () => assert(normalizeAttentionWindow(null) === "open"));
+check("attentionWindow: unknown → 'open'", () => assert(normalizeAttentionWindow("bad") === "open"));
 
 // ─── clampDependencyRiskScore ─────────────────────────────────────────────────
 

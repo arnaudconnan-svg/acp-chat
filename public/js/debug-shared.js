@@ -172,7 +172,7 @@
       allianceSignal: toTrimmedString(safe.allianceSignal, "") || "good",
       engagementLevel: toTrimmedString(safe.engagementLevel, "") || "active",
       stagnationTurns: Number.isInteger(safe.stagnationTurns) ? Math.max(0, safe.stagnationTurns) : 0,
-      processingWindow: toTrimmedString(safe.processingWindow, "") || "open",
+      attentionWindow: toTrimmedString(safe.attentionWindow, "") || "open",
       dependencyRiskScore: clamp100(safe.dependencyRiskScore, 0),
       dependencyRiskLevel: toTrimmedString(safe.dependencyRiskLevel, "") || "low",
       externalSupportMode: toTrimmedString(safe.externalSupportMode, "") || "none",
@@ -290,7 +290,8 @@
       alliance_fragile_sensitive: "alliance fragile — avancée avec soin",
       alliance_restored_presence: "retour d'alliance",
       engagement_withdrawn_noticed: "retrait d'engagement not\u00e9",
-      stagnation_noticed: "enlisement not\u00e9"
+      stagnation_noticed: "enlisement not\u00e9",
+      attention_overloaded_noticed: "surcharge attentionnelle not\u00e9e"
     };
     return map[value] || value;
   }

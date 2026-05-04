@@ -39,7 +39,7 @@ function resolve(overrides = {}) {
     allianceSignal: "good",
     engagementLevel: "active",
     stagnationTurns: 0,
-    processingWindow: "open",
+    attentionWindow: "open",
     closureIntent: false,
     ...overrides
   });
@@ -107,11 +107,11 @@ assert(
 
 // Phase B: stabilization
 assert(
-  resolve({ processingWindow: "overloaded", engagementLevel: "withdrawn" }) === "stabilization",
+  resolve({ attentionWindow: "overloaded", engagementLevel: "withdrawn" }) === "stabilization",
   "resolve: stabilization when overloaded+withdrawn"
 );
 assert(
-  resolve({ processingWindow: "overloaded", stagnationTurns: 2 }) === "stabilization",
+  resolve({ attentionWindow: "overloaded", stagnationTurns: 2 }) === "stabilization",
   "resolve: stabilization when overloaded+stagnation>=2"
 );
 assert(
@@ -120,13 +120,13 @@ assert(
 );
 // stabilization does NOT apply when stagnation is only 1
 assert(
-  resolve({ processingWindow: "overloaded", stagnationTurns: 1, engagementLevel: "active" }) === "exploration_open",
+  resolve({ attentionWindow: "overloaded", stagnationTurns: 1, engagementLevel: "active" }) === "exploration_open",
   "resolve: no stabilization with overloaded+stagnation=1 when not withdrawn"
 );
 
 // alliance_rupture takes precedence over stabilization
 assert(
-  resolve({ allianceSignal: "rupture", processingWindow: "overloaded", engagementLevel: "withdrawn" }) === "alliance_rupture",
+  resolve({ allianceSignal: "rupture", attentionWindow: "overloaded", engagementLevel: "withdrawn" }) === "alliance_rupture",
   "resolve: alliance_rupture takes precedence over stabilization"
 );
 
