@@ -4370,6 +4370,19 @@ app.post("/chat", async (req, res) => {
         previousMemoryForCatch = previousMemory;
       }
     }
+    let intersessionSessionSyncForced = false;
+    if (!isPrivateConversation && shouldLoadUserProfile) {
+      const userData = await userProfilePromise;
+      if (userData && userData.intersessionRefreshForced === true) {
+        const stableContextOnly = extractStableContextOnlyFromIntersessionMemory(
+          typeof userData.intersessionMemory === "string" ? userData.intersessionMemory : "",
+          activePromptRegistry
+        );
+        previousMemory = mergeStableContextOnlyIntoIntersessionMemory(stableContextOnly, previousMemory, activePromptRegistry);
+        previousMemoryForCatch = previousMemory;
+        intersessionSessionSyncForced = true;
+      }
+    }
         flagsForCatch = flags;
     promptRegistryForCatch = activePromptRegistry;
     
@@ -4943,7 +4956,9 @@ app.post("/chat", async (req, res) => {
       : 0;
     const shouldRunDependencyAnalysis = currentDependencyAnalysisTurnsUntilRefresh === 0;
 
-    const currentMemoryUpdateTurnsUntilRefresh = Number.isInteger(newFlags.memoryUpdateTurnsUntilRefresh)
+    const currentMemoryUpdateTurnsUntilRefresh = intersessionSessionSyncForced
+      ? 0
+      : Number.isInteger(newFlags.memoryUpdateTurnsUntilRefresh)
       ? Math.max(0, newFlags.memoryUpdateTurnsUntilRefresh)
       : 0;
 
