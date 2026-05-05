@@ -4042,7 +4042,8 @@ function buildTurnSignals(postureDecision, {
   insightMoment = false,
   selfCriticismLevel = "low",
   meaningCrisis = false,
-  emotionalDecentering = false
+  emotionalDecentering = false,
+  dependencyRiskLevel = "low"
 } = {}) {
   const parts = [];
   const state = typeof postureDecision.conversationState === "string"
@@ -4076,6 +4077,8 @@ function buildTurnSignals(postureDecision, {
   if (reg && reg !== "courant") parts.push(`registre:${reg}`);
 
   if (emotionalDecentering) parts.push("decentrage_emo");
+
+  if (dependencyRiskLevel && dependencyRiskLevel !== "low") parts.push(`dependance:${dependencyRiskLevel}`);
 
   return parts.join(", ");
 }
@@ -5239,7 +5242,8 @@ app.post("/chat", async (req, res) => {
       insightMoment: contactAnalysis?.insightMoment === true,
       selfCriticismLevel: contactAnalysis?.selfCriticismLevel || "low",
       meaningCrisis: contactAnalysis?.meaningCrisis === true,
-      emotionalDecentering: emotionalDecenteringAnalysis?.emotionalDecentering === true
+      emotionalDecentering: emotionalDecenteringAnalysis?.emotionalDecentering === true,
+      dependencyRiskLevel: newFlags.dependencyRiskLevel || "low"
     });
 
     if (postureDecision.relationalAdjustmentActive) {
@@ -5660,6 +5664,9 @@ app.post("/chat", async (req, res) => {
       attentionWindow: newFlags.attentionWindow,
       dependencyRiskScore: newFlags.dependencyRiskScore,
       dependencyRiskLevel: newFlags.dependencyRiskLevel,
+      isolationScore: newFlags.isolationScore,
+      attachmentScore: newFlags.attachmentScore,
+      dependencyCareMessagePending: newFlags.dependencyCareMessagePending || false,
       externalSupportMode: newFlags.externalSupportMode,
       closureIntent: newFlags.closureIntent,
       infoRoutingSource,

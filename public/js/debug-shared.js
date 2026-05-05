@@ -175,6 +175,9 @@
       attentionWindow: toTrimmedString(safe.attentionWindow, "") || "open",
       dependencyRiskScore: clamp100(safe.dependencyRiskScore, 0),
       dependencyRiskLevel: toTrimmedString(safe.dependencyRiskLevel, "") || "low",
+      isolationScore: clamp100(safe.isolationScore, 0),
+      attachmentScore: clamp100(safe.attachmentScore, 0),
+      dependencyCareMessagePending: ['medium', 'high'].indexOf(safe.dependencyCareMessagePending) !== -1 ? safe.dependencyCareMessagePending : false,
       externalSupportMode: toTrimmedString(safe.externalSupportMode, "") || "none",
       closureIntent: toBooleanTrue(safe.closureIntent),
       infoRoutingSource: toTrimmedString(safe.infoRoutingSource, "") || null,
@@ -361,7 +364,12 @@
     }
 
     if (meta.dependencyRiskLevel && meta.dependencyRiskLevel !== "low") {
-      lines.push("Risque de dependance estime: " + meta.dependencyRiskLevel + " (" + meta.dependencyRiskScore + "/100).");
+      var _careLabel = meta.dependencyRiskLevel === "high" ? "\u00e9lev\u00e9" : "mod\u00e9r\u00e9";
+      var _depLine = "Risque de d\u00e9pendance : " + _careLabel + " (score global " + meta.dependencyRiskScore + "/100, isolement " + meta.isolationScore + ", attachement " + meta.attachmentScore + ")";
+      if (meta.dependencyCareMessagePending) {
+        _depLine += " \u2014 message de lucidit\u00e9 relationnelle en attente (" + meta.dependencyCareMessagePending + ")";
+      }
+      lines.push(_depLine + ".");
     }
 
     if (meta.externalSupportMode && meta.externalSupportMode !== "none") {
