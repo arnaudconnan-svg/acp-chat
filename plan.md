@@ -44,8 +44,8 @@ J'ai inventorie les signaux internes effectivement calcules a chaque tour. Je le
 - `aggressiveDischargeDetected`
 
 **Etats de cadre (le bot sur son propre cadre operationnel)**
- ✅`humanFieldGuardActive` — perception qu'un glissement procedural menace & `actionCollapseGuardActive` — perception qu'un glissement vers la solution menace
-- `dependencyRiskLevel` — perception du risque de dependance (etat tres particulier : le bot "se soucie" du fait que l'utilisateur ne s'attache pas trop a lui)
+✅ `humanFieldGuardActive` — perception qu'un glissement procedural menace & `actionCollapseGuardActive` — perception qu'un glissement vers la solution menace
+✅ `dependencyRiskLevel` — perception du risque de dependance (etat tres particulier : le bot "se soucie" du fait que l'utilisateur ne s'attache pas trop a lui)
 - `closureIntent` detecte
 - `criticalGuardrails` actifs (no_unconscious, no_psychopathology, etc.)
 

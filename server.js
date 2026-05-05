@@ -5534,6 +5534,8 @@ app.post("/chat", async (req, res) => {
         newFlags.memoryUpdateTurnsUntilRefresh = 3; // will be refined to 0 if compression detected in bg
         // Forcer l'analyzer de dependance au tour suivant apres MAJ memoire (mémoire fraiche).
         newFlags.dependencyAnalysisTurnsUntilRefresh = 1;
+        // Forcer l'analyzer de dependance au tour suivant apres MAJ memoire (mémoire fraiche).
+        newFlags.dependencyAnalysisTurnsUntilRefresh = 1;
       } else {
         newFlags.memoryUpdateTurnsUntilRefresh = Math.max(0, currentMemoryUpdateTurnsUntilRefresh - 1);
       }

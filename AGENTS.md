@@ -102,6 +102,14 @@ Cette règle s'applique en particulier à : nouveaux signaux C2 (analyseurs), no
 
 Un signal implémenté mais non visible dans le debug est une dette observable — pas une optimisation future acceptable.
 
+### Règle de cohérence IDENTITY_BLOCK
+
+**Corollaire de la règle d'observabilité.** Quand un signal est ajouté au debug ET qu'il est susceptible d'être persisté dans `recentHistory` (mémoire active relue par le bot au tour suivant), l'`IDENTITY_BLOCK` doit être mis à jour dans le même patch pour permettre au bot d'interpréter correctement ce signal quand il le lit depuis sa propre mémoire.
+
+Cette règle s'applique en particulier aux scores cumulatifs (`isolationScore`, `attachmentScore`, `dependencyRiskScore`), aux niveaux dérivés (`dependencyRiskLevel`), et à tout flag de session qui influence le cadre opérationnel ou l'identité du bot.
+
+Sans cette mise à jour, le bot peut lire un signal en mémoire sans avoir les clés pour l'interpréter — ce qui produit soit une ignorance silencieuse, soit une interprétation incorrecte du signal.
+
 ### Règle de synchronisation debugMeta
 
 La logique de debug front est centralisée dans **`public/js/debug-shared.js`** (chargé avant `conversation-data.js` dans les deux interfaces). Ce fichier contient :
