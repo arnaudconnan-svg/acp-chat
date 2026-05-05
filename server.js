@@ -756,8 +756,18 @@ function requireAdminAuth(req, res, next) {
 
 // Normalize the stored memory value.
 // If there is no explicit memory text, fall back to the registry's default template.
+function canonicalizeMemorySectionSpacing(text = "") {
+  return String(text || "")
+    .replace(/\r\n/g, "\n")
+    .replace(/(Contexte stable\s*:)[ \t]*\n+(?:[ \t]*\n+)*/i, "$1\n")
+    .replace(/(Mouvements en cours\s*:)[ \t]*\n+(?:[ \t]*\n+)*/i, "$1\n")
+    .replace(/(Lecture bot\s*:)[ \t]*\n+(?:[ \t]*\n+)*/i, "$1\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 function normalizeMemory(memory, promptRegistry = buildDefaultPromptRegistry()) {
-  const text = String(memory || "").trim();
+  const text = canonicalizeMemorySectionSpacing(String(memory || "").trim());
   if (text) return text;
   
   return String(promptRegistry.NORMALIZE_MEMORY_TEMPLATE || "").trim() ||

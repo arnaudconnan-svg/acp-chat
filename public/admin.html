@@ -1839,7 +1839,7 @@
                   `Signal d'exploration : ${translateExplorationSignal(meta.explorationSignal)}` : null,
                 meta.intent ? `Intention : ${meta.intent}` : null,
                 (meta.forbidden && meta.forbidden.length) ? `Interdit : ${meta.forbidden.map(translateForbidden).join(", ")}` : null,
-                meta.relancePolicy && meta.relancePolicy !== "selective" ? `Relance : ${translateRelancePolicy(meta.relancePolicy)}` : null,
+                meta.relancePolicy ? `Relance : ${translateRelancePolicy(meta.relancePolicy)}` : null,
                 meta.allianceSignal && meta.allianceSignal !== "good" ? `Rupture relationnelle : ${meta.allianceSignal}` : null,
                 meta.engagementLevel && meta.engagementLevel !== "active" ? `Disponibilit\u00e9 attentionnelle : ${translateAttentionEngagement(meta.engagementLevel)}` : null,
                 meta.attentionWindow && meta.attentionWindow !== "open" ? `Qualit\u00e9 de l'attention : ${translateAttentionQuality(meta.attentionWindow)}` : null,
