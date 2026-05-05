@@ -897,6 +897,7 @@ const {
   analyzeExplorationRelance,
   analyzeEmotionalDecentering,
   analyzeAttentionQuality,
+  analyzeDependencyRisk,
   analyzeAllianceRupture,
   analyzeInfoRequest,
   analyzeInfoSignal,
@@ -4932,6 +4933,11 @@ app.post("/chat", async (req, res) => {
       : 0;
     const shouldRunAttentionQuality = currentAttentionQualityTurnsUntilRefresh === 0;
 
+    const currentDependencyAnalysisTurnsUntilRefresh = Number.isInteger(newFlags.dependencyAnalysisTurnsUntilRefresh)
+      ? Math.max(0, newFlags.dependencyAnalysisTurnsUntilRefresh)
+      : 0;
+    const shouldRunDependencyAnalysis = currentDependencyAnalysisTurnsUntilRefresh === 0;
+
     const currentMemoryUpdateTurnsUntilRefresh = Number.isInteger(newFlags.memoryUpdateTurnsUntilRefresh)
       ? Math.max(0, newFlags.memoryUpdateTurnsUntilRefresh)
       : 0;
@@ -4953,6 +4959,7 @@ app.post("/chat", async (req, res) => {
       userRegisterAnalysis,
       emotionalDecenteringResult,
       attentionAnalysis,
+      dependencyRiskAnalysis,
       closureAnalysis
     ] = await Promise.all([
       withAnalyzerTiming("propose_state", proposeState(message, recentHistory, newFlags.dischargeState, activePromptRegistry)),
@@ -4965,6 +4972,18 @@ app.post("/chat", async (req, res) => {
       shouldRunAttentionQuality
         ? withAnalyzerTiming("attention_quality", analyzeAttentionQuality(message, recentHistory, activePromptRegistry))
         : Promise.resolve(null),
+      shouldRunDependencyAnalysis
+        ? withAnalyzerTiming("dependency_risk", (async () => {
+            let depIntersessionMemory = "";
+            const userData = await userProfilePromise;
+            if (userData && typeof userData === "object") {
+              const compressed = typeof userData.intersessionMemoryCompressed === "string" ? userData.intersessionMemoryCompressed.trim() : "";
+              const raw = typeof userData.intersessionMemory === "string" ? userData.intersessionMemory.trim() : "";
+              depIntersessionMemory = compressed || raw || "";
+            }
+            return analyzeDependencyRisk(message, recentHistory, depIntersessionMemory, activePromptRegistry);
+          })())
+        : Promise.resolve(null),
       withAnalyzerTiming("closure_intent", analyzeClosureIntent(message))
     ]);
     throwIfCanceled();
@@ -4972,6 +4991,36 @@ app.post("/chat", async (req, res) => {
     newFlags.attentionQualityTurnsUntilRefresh = shouldRunAttentionQuality
       ? 3
       : Math.max(0, currentAttentionQualityTurnsUntilRefresh - 1);
+
+    // C2 — mise a jour du score de dependance si l'analyzer a tourne ce tour.
+    // Gate discharge : on n'incremente jamais en etat de decharge, decrements autorises.
+    if (shouldRunDependencyAnalysis && dependencyRiskAnalysis) {
+      const isInDischarge = (newFlags.dischargeState?.wasDischarge === true)
+        || String(newFlags.conversationState || "").startsWith("discharge_");
+      const blockIncrements = isInDischarge || dependencyRiskAnalysis.contextIsHyperbolicDischarge === true;
+
+      const DELTA = { strong: { up: 10, down: -12 }, present: { up: 4, down: -6 }, absent: { up: 0, down: 0 } };
+
+      let isoScore = newFlags.isolationScore;
+      let attScore = newFlags.attachmentScore;
+
+      if (!blockIncrements) {
+        isoScore += DELTA[dependencyRiskAnalysis.isolationSignal]?.up || 0;
+        attScore += DELTA[dependencyRiskAnalysis.attachmentSignal]?.up || 0;
+      }
+      isoScore += DELTA[dependencyRiskAnalysis.isolationCounterSignal]?.down || 0;
+      attScore += DELTA[dependencyRiskAnalysis.attachmentCounterSignal]?.down || 0;
+
+      newFlags.isolationScore = Math.max(0, Math.min(100, Math.round(isoScore)));
+      newFlags.attachmentScore = Math.max(0, Math.min(100, Math.round(attScore)));
+      newFlags.dependencyRiskScore = Math.round((newFlags.isolationScore + newFlags.attachmentScore) / 2);
+      newFlags.dependencyRiskLevel = newFlags.dependencyRiskScore <= 30 ? "low"
+        : newFlags.dependencyRiskScore <= 65 ? "medium"
+        : "high";
+    }
+    newFlags.dependencyAnalysisTurnsUntilRefresh = shouldRunDependencyAnalysis
+      ? 4
+      : Math.max(0, currentDependencyAnalysisTurnsUntilRefresh - 1);
 
     // C3 arbitrage : élit l'état actif depuis les candidats C2 (discharge > info > exploration).
     // nonElectedCandidates[0] est le candidat C2 non-élu le plus fort (confiance >= medium) ;
@@ -5458,6 +5507,8 @@ app.post("/chat", async (req, res) => {
           // Si compression ce tour : forcer recalcul au tour suivant (compteur = 0).
           if (shouldRunMemoryUpdate) {
             newFlags.memoryUpdateTurnsUntilRefresh = memoryWasCompressed ? 0 : 3;
+            // Forcer l'analyzer de dependance au tour suivant apres MAJ memoire (mémoire fraiche).
+            newFlags.dependencyAnalysisTurnsUntilRefresh = 1;
           } else {
             newFlags.memoryUpdateTurnsUntilRefresh = Math.max(0, currentMemoryUpdateTurnsUntilRefresh - 1);
           }
@@ -5481,6 +5532,8 @@ app.post("/chat", async (req, res) => {
       // Update the periodicity counter synchronously so next turns get the right shouldRun value.
       if (_shouldRun) {
         newFlags.memoryUpdateTurnsUntilRefresh = 3; // will be refined to 0 if compression detected in bg
+        // Forcer l'analyzer de dependance au tour suivant apres MAJ memoire (mémoire fraiche).
+        newFlags.dependencyAnalysisTurnsUntilRefresh = 1;
       } else {
         newFlags.memoryUpdateTurnsUntilRefresh = Math.max(0, currentMemoryUpdateTurnsUntilRefresh - 1);
       }
