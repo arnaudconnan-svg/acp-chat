@@ -5670,6 +5670,7 @@ app.post("/chat", async (req, res) => {
       externalSupportMode: newFlags.externalSupportMode,
       closureIntent: newFlags.closureIntent,
       infoRoutingSource,
+      infoContextFlags: Array.isArray(postureDecision.infoContextFlags) ? postureDecision.infoContextFlags : [],
       promptRegistry: activePromptRegistry,
       // Lot 8 fields
       affiliationScore: affiliationScore,
