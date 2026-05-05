@@ -4209,6 +4209,7 @@ app.post("/chat", async (req, res) => {
       pipelineStages: normalizePipelineStagesForStorage(safe.pipelineStages),
       explorationCalibrationLevel: Number.isInteger(safe.explorationCalibrationLevel) ? clampExplorationDirectivityLevel(safe.explorationCalibrationLevel) : null,
       explorationSignal: typeof safe.explorationSignal === "string" ? safe.explorationSignal : null,
+      memoryAge: Number.isInteger(safe.memoryAge) && safe.memoryAge > 0 ? safe.memoryAge : 0,
       memoryRewriteIntent: safe.memoryRewriteIntent && typeof safe.memoryRewriteIntent === "object" ? {
         compressionRequested: safe.memoryRewriteIntent.compressionRequested === true,
         interpretationRejectionActive: safe.memoryRewriteIntent.interpretationRejectionActive === true,
@@ -4226,10 +4227,16 @@ app.post("/chat", async (req, res) => {
       criticOriginalReply: typeof safe.criticOriginalReply === "string" ? safe.criticOriginalReply : null,
       criticTriggerReasons: Array.isArray(safe.criticTriggerReasons) ? safe.criticTriggerReasons : [],
       // Posture contract (V3)
-      conversationState: typeof safe.conversationState === "string" ? safe.conversationState : null,
       intent: typeof safe.intent === "string" ? safe.intent : null,
       forbidden: Array.isArray(safe.forbidden) ? safe.forbidden : [],
       confidenceSignal: typeof safe.confidenceSignal === "number" ? Math.max(0, Math.min(1, safe.confidenceSignal)) : 1.0,
+      responseRegister: typeof safe.responseRegister === "string" ? safe.responseRegister : "courant",
+      phraseLengthPolicy: typeof safe.phraseLengthPolicy === "string" ? safe.phraseLengthPolicy : "moyenne",
+      relancePolicy: typeof safe.relancePolicy === "string" ? safe.relancePolicy : "selective",
+      useDirectAddress: safe.useDirectAddress === true,
+      somaticFocusPolicy: typeof safe.somaticFocusPolicy === "string" ? safe.somaticFocusPolicy : "none",
+      actionCollapseGuardActive: safe.actionCollapseGuardActive === true,
+      writerIntentHints: Array.isArray(safe.writerIntentHints) ? safe.writerIntentHints.map((hint) => String(hint || "").trim()).filter(Boolean) : [],
       stateTransitionFrom: typeof safe.stateTransitionFrom === "string" ? safe.stateTransitionFrom : null,
       stateTransitionValid: safe.stateTransitionValid !== false,
       stateTransitionRequested: typeof safe.stateTransitionRequested === "string" ? safe.stateTransitionRequested : null,
@@ -4240,7 +4247,10 @@ app.post("/chat", async (req, res) => {
       dependencyRiskScore: clampDependencyRiskScore(safe.dependencyRiskScore),
       dependencyRiskLevel: normalizeDependencyRiskLevel(safe.dependencyRiskLevel),
       externalSupportMode: normalizeExternalSupportMode(safe.externalSupportMode),
-      closureIntent: safe.closureIntent === true
+      closureIntent: safe.closureIntent === true,
+      affiliationScore: typeof safe.affiliationScore === "number" ? safe.affiliationScore : null,
+      affiliationWindow: normalizeAffiliationWindow(safe.affiliationWindow),
+      affiliationEstablished: safe.affiliationEstablished === true
     };
   }
 
