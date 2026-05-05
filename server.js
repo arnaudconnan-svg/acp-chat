@@ -3164,6 +3164,8 @@ app.patch("/api/intersession-memory/direct", requireUserAuth, async (req, res) =
 
     await usersRef.child(session.userId).update({
       intersessionMemory: nextMemory,
+      intersessionMemoryCompressed: "",
+      intersessionMemoryCompressedAt: null,
       intersessionMemoryUpdatedAt: now,
       intersessionRefreshForced: true
     });
@@ -4419,7 +4421,7 @@ app.post("/chat", async (req, res) => {
         let forbiddenTitles = Array.isArray(titleDenyList) ? titleDenyList.slice(0, 200) : [];
 
         try {
-          const allConversationsSnap = await conversationsRef.once("value");
+          const allConversationsSnap = await db.ref("conversations").once("value");
           const allConversations = allConversationsSnap.val() || {};
           const titlesFromDb = Object.entries(allConversations)
             .filter(([id, value]) => {
@@ -5302,9 +5304,10 @@ app.post("/chat", async (req, res) => {
         const compressedVal = userData && typeof userData.intersessionMemoryCompressed === "string"
           ? userData.intersessionMemoryCompressed
           : "";
-        if (compressedVal.trim()) {
-          intersessionMemoryForThisTurn = compressedVal;
-        }
+        const rawVal = userData && typeof userData.intersessionMemory === "string"
+          ? userData.intersessionMemory
+          : "";
+        intersessionMemoryForThisTurn = compressedVal.trim() || rawVal.trim() || "";
         if (forceRefreshNow) {
           try {
             await usersRef.child(userId).update({ intersessionRefreshForced: false });

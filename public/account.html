@@ -663,6 +663,7 @@
               if (saveRes.ok) {
                 saveNotice.className = "notice success";
                 saveNotice.textContent = "Vos modifications seront prises en compte d\u00e8s le prochain message envoy\u00e9.";
+                await loadLongtermMemoryCardContent(container);
               } else {
                 saveNotice.textContent = "Erreur lors de la sauvegarde. R\u00e9essayez.";
               }
