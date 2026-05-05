@@ -297,7 +297,9 @@
       relational_adjustment_noticed: "friction relationnelle reconnue",
       procedural_temptation_light: "tentation proc\u00e9durale \u2014 auto-d\u00e9rision",
       procedural_temptation_neutral: "tentation proc\u00e9durale \u2014 sobre",
-      attention_overloaded_noticed: "surcharge attentionnelle not\u00e9e"
+      attention_overloaded_noticed: "surcharge attentionnelle not\u00e9e",
+      dependency_care_expressed_medium: "lucidit\u00e9 relationnelle (medium)",
+      dependency_care_expressed_high: "lucidit\u00e9 relationnelle (high)"
     };
     return map[value] || value;
   }

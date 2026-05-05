@@ -5017,6 +5017,19 @@ app.post("/chat", async (req, res) => {
       newFlags.dependencyRiskLevel = newFlags.dependencyRiskScore <= 30 ? "low"
         : newFlags.dependencyRiskScore <= 65 ? "medium"
         : "high";
+
+      // Dependency care message trigger (x1/convo, 66+ absorbe 31+ si saut direct).
+      // On utilise currentFlags pour lire l'état AVANT ce tour — les newFlags viennent d'être calculés.
+      const _careTriggered = flags.dependencyCareTriggered || "none";
+      if (newFlags.dependencyRiskLevel === "high" && _careTriggered !== "high") {
+        newFlags.dependencyCareTriggered = "high";
+        newFlags.dependencyCareMessagePending = "high";
+        newFlags.dependencyCareMessagePendingTurns = 0;
+      } else if (newFlags.dependencyRiskLevel === "medium" && _careTriggered === "none") {
+        newFlags.dependencyCareTriggered = "medium";
+        newFlags.dependencyCareMessagePending = "medium";
+        newFlags.dependencyCareMessagePendingTurns = 0;
+      }
     }
     newFlags.dependencyAnalysisTurnsUntilRefresh = shouldRunDependencyAnalysis
       ? 4
@@ -5197,6 +5210,27 @@ app.post("/chat", async (req, res) => {
 
     Object.assign(newFlags, postureDecision.flagUpdates);
     flagsForCatch = normalizeSessionFlags(newFlags);
+
+    // Injection du hint de lucidité relationnelle (dependencyCare).
+    // On lit currentFlags (valeur Firebase de ce tour) pour éviter l'injection au tour même
+    // où le seuil est franchi ("pas de but en blanc").
+    const _carePending = flags.dependencyCareMessagePending || false;
+    if (_carePending) {
+      const _careBlockingStates = ["n1_crisis", "n2_crisis", "discharge_regulated", "discharge_dysregulated", "alliance_rupture"];
+      const _careEligible = !_careBlockingStates.includes(postureDecision.conversationState);
+      if (_careEligible) {
+        if (!Array.isArray(postureDecision.writerIntentHints)) postureDecision.writerIntentHints = [];
+        const _careHintToken = _carePending === "high" ? "dependency_care_expressed_high" : "dependency_care_expressed_medium";
+        postureDecision.writerIntentHints.push(_careHintToken);
+        const _carePendingTurns = (flags.dependencyCareMessagePendingTurns || 0) + 1;
+        newFlags.dependencyCareMessagePendingTurns = _carePendingTurns;
+        if (_carePendingTurns >= 2) {
+          // Après 2 tours éligibles, on considère le message livré ou définitivement différé.
+          newFlags.dependencyCareMessagePending = false;
+          newFlags.dependencyCareMessagePendingTurns = 0;
+        }
+      }
+    }
 
     const turnSignals = buildTurnSignals(postureDecision, {
       allianceSignal: newFlags.allianceSignal,
