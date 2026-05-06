@@ -4987,6 +4987,64 @@ app.post("/chat", async (req, res) => {
       return sendChatJsonResponse(reply, responseMemory, newFlags, debug, responseDebugMeta, botMessageId, "état:n2_crisis");
     }
 
+    async function analyzeSuicideAndBuildCrisisPrelude() {
+      markChatStage("suicide_analysis");
+      const suicide = await analyzeSuicideRisk(
+        message,
+        recentHistory,
+        flags,
+        activePromptRegistry
+      );
+      throwIfCanceled();
+
+      logChatDecision("suicide_analysis_result", {
+        suicideLevel: suicide.suicideLevel,
+        needsClarification: suicide.needsClarification === true,
+        crisisResolved: suicide.crisisResolved === true,
+        acuteCrisisBefore: flags.acuteCrisis === true
+      });
+      suicideLevelForCatch = suicide.suicideLevel;
+
+      const nextFlags = normalizeSessionFlags(flags);
+      nextFlags.explorationCalibrationLevel = 0;
+
+      const crisisDecision = buildCrisisRoutingDecision(suicide, flags);
+
+      if (crisisDecision.route) {
+        logChatDecision("priority_rule_selected", {
+          phase: "post_suicide",
+          ruleId: crisisDecision.ruleId,
+          priority: crisisDecision.priority
+        });
+      }
+
+      return {
+        suicide,
+        crisisDecision,
+        newFlags: nextFlags
+      };
+    }
+
+    function handleResolvedAcuteCrisisState() {
+      const postCrisisSupportCarryTurnActive = flags.postCrisisSupportCarryTurn === true && crisisDecision.route !== "n1_clarification";
+      newFlags.acuteCrisis = false;
+      newFlags.postCrisisSupportCarryTurn = false;
+      flagsForCatch = normalizeSessionFlags(newFlags);
+      logChatDecision("acute_crisis_resolved", {
+        suicideLevel: suicide.suicideLevel,
+        postCrisisSupportCarryTurnActive
+      });
+
+      req.__postCrisisSupportCarryTurnActive = postCrisisSupportCarryTurnActive;
+    }
+
+    function logN1PipelineEntry() {
+      logChatDecision("n1_entering_pipeline", {
+        suicideLevel: suicide.suicideLevel,
+        needsClarification: suicide.needsClarification === true
+      });
+    }
+
     let emergencySupportTextPromise = null;
     async function resolveEmergencySupportText() {
       if (emergencySupportTextPromise) {
@@ -5012,35 +5070,10 @@ app.post("/chat", async (req, res) => {
     
     // 1) Analyse suicide : risque imm�diat et clarification possible.
     // Cette �tape peut d�clencher des r�ponses prioris�es sans aller plus loin.
-    markChatStage("suicide_analysis");
-    const suicide = await analyzeSuicideRisk(
-      message,
-      recentHistory,
-      flags,
-      activePromptRegistry
-    );
-    throwIfCanceled();
-
-    logChatDecision("suicide_analysis_result", {
-      suicideLevel: suicide.suicideLevel,
-      needsClarification: suicide.needsClarification === true,
-      crisisResolved: suicide.crisisResolved === true,
-      acuteCrisisBefore: flags.acuteCrisis === true
-    });
-    suicideLevelForCatch = suicide.suicideLevel;
-    
-    let newFlags = normalizeSessionFlags(flags);
-    newFlags.explorationCalibrationLevel = 0;
-
-    const crisisDecision = buildCrisisRoutingDecision(suicide, flags);
-
-    if (crisisDecision.route) {
-      logChatDecision("priority_rule_selected", {
-        phase: "post_suicide",
-        ruleId: crisisDecision.ruleId,
-        priority: crisisDecision.priority
-      });
-    }
+    const crisisPrelude = await analyzeSuicideAndBuildCrisisPrelude();
+    const suicide = crisisPrelude.suicide;
+    const crisisDecision = crisisPrelude.crisisDecision;
+    let newFlags = crisisPrelude.newFlags;
     
     // Severe suicide risk override path.
     // If the analysis returns N2, we bypass normal generation and reply with a crisis response.
@@ -5054,26 +5087,14 @@ app.post("/chat", async (req, res) => {
       if (crisisDecision.route === "acute_followup") {
         return handleAcuteCrisisFollowupRoute();
       }
-      
-      const postCrisisSupportCarryTurnActive = flags.postCrisisSupportCarryTurn === true && crisisDecision.route !== "n1_clarification";
-      newFlags.acuteCrisis = false;
-      newFlags.postCrisisSupportCarryTurn = false;
-      flagsForCatch = normalizeSessionFlags(newFlags);
-      logChatDecision("acute_crisis_resolved", {
-        suicideLevel: suicide.suicideLevel,
-        postCrisisSupportCarryTurnActive
-      });
 
-      req.__postCrisisSupportCarryTurnActive = postCrisisSupportCarryTurnActive;
+      handleResolvedAcuteCrisisState();
     }
     
     // 3) N1 signal flows into the main pipeline. writerMode is overridden to
     // "n1_crisis" inside buildPostureDecision; critic runs systematically.
     if (crisisDecision.route === "n1_clarification") {
-      logChatDecision("n1_entering_pipeline", {
-        suicideLevel: suicide.suicideLevel,
-        needsClarification: suicide.needsClarification === true
-      });
+      logN1PipelineEntry();
     }
     
     // 2) Analyse de rappel memoire : identifier si l'utilisateur demande
