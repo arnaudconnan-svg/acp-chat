@@ -129,6 +129,7 @@ const {
   normalizeAttentionWindow,
   normalizeSessionFlags,
   normalizeStagnationTurns,
+  normalizeStagnationWindow,
   registerExplorationRelance
 } = require("./lib/flags");
 const { createAnalyzers } = require("./lib/analyzers");
@@ -4270,6 +4271,7 @@ app.post("/chat", async (req, res) => {
       allianceSignal: normalizeAllianceState(safe.allianceSignal),
       engagementLevel: normalizeEngagementLevel(safe.engagementLevel),
       stagnationTurns: normalizeStagnationTurns(safe.stagnationTurns),
+      stagnationWindow: normalizeStagnationWindow(safe.stagnationWindow),
       attentionWindow: normalizeAttentionWindow(safe.attentionWindow ?? safe.processingWindow),
       dependencyRiskScore: clampDependencyRiskScore(safe.dependencyRiskScore),
       dependencyRiskLevel: normalizeDependencyRiskLevel(safe.dependencyRiskLevel),
@@ -5253,6 +5255,7 @@ app.post("/chat", async (req, res) => {
       allianceSignal: newFlags.allianceSignal,
       engagementLevel: newFlags.engagementLevel,
       stagnationTurns: newFlags.stagnationTurns,
+      currentStagnationWindow: newFlags.stagnationWindow,
       attentionWindow: newFlags.attentionWindow,
       closureIntent: newFlags.closureIntent,
       // C2 per-turn attention analysis (periodic) + rupture analysis (event-driven)
@@ -5732,6 +5735,7 @@ app.post("/chat", async (req, res) => {
       allianceSignal: newFlags.allianceSignal,
       engagementLevel: newFlags.engagementLevel,
       stagnationTurns: newFlags.stagnationTurns,
+      stagnationWindow: newFlags.stagnationWindow,
       attentionWindow: newFlags.attentionWindow,
       dependencyRiskScore: newFlags.dependencyRiskScore,
       dependencyRiskLevel: newFlags.dependencyRiskLevel,

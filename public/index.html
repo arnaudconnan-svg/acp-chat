@@ -6732,43 +6732,9 @@
           sections.push({ title: "Filet post-crise", content: supportLines.join("\n") });
         }
 
-        const affiliationLines = [];
-        if (Array.isArray(meta.affiliationWindow) && meta.affiliationWindow.length > 0) {
-          affiliationLines.push(`Fenêtre d'affiliation : [${meta.affiliationWindow.map(v => v.toFixed(2)).join(", ")}]`);
-        }
-        if (typeof meta.affiliationScore === "number") {
-          affiliationLines.push(`Degr\u00e9 d'affiliation du tour : ${meta.affiliationScore.toFixed(2)}`);
-        }
-        if (meta.affiliationEstablished === true) {
-          affiliationLines.push("Lien \u00e9tabli");
-        }
-        if (affiliationLines.length > 0) {
-          sections.push({ title: "Affiliation", content: affiliationLines.join("\n") });
-        }
-
         const naturalSummaryLines = buildNaturalDebugSummary(meta);
         if (naturalSummaryLines.length > 0) {
           sections.push({ title: "Lecture interne", content: naturalSummaryLines.join("\n") });
-        }
-
-        const memoryRewriteIntentLines = buildMemoryRewriteIntentLines(meta);
-        if (memoryRewriteIntentLines.length > 0) {
-          sections.push({ title: "Intention réécriture mémoire", content: memoryRewriteIntentLines.join("\n") });
-        }
-
-        if (meta.memory) {
-          sections.push({
-            title: meta.memoryAge > 0 ? ("M\u00e9moire (il y a " + meta.memoryAge + " tour" + (meta.memoryAge > 1 ? "s" : "") + ")") : "M\u00e9moire",
-            content: meta.memory,
-            memoryRewritten: meta.memoryCompressed === true,
-            memoryBeforeRewrite: meta.memoryBeforeCompression || null
-          });
-        }
-
-        const shouldShowDirectivity =
-          !!meta.directivityLabel && isExplorationMode;
-        if (shouldShowDirectivity) {
-          sections.push({ title: "Directivit\u00e9", content: meta.directivityLabel });
         }
 
         const signauxLines = [];
@@ -6803,8 +6769,53 @@
           sections.push({ title: "Signaux", content: signauxLines.join("\n") });
         }
 
+        const shouldShowDirectivity =
+          !!meta.directivityLabel && isExplorationMode;
+        if (shouldShowDirectivity) {
+          sections.push({ title: "Directivit\u00e9", content: meta.directivityLabel });
+        }
+
+        const affiliationLines = [];
+        if (Array.isArray(meta.affiliationWindow) && meta.affiliationWindow.length > 0) {
+          affiliationLines.push(`Fenêtre d'affiliation : [${meta.affiliationWindow.map(v => v.toFixed(2)).join(", ")}]`);
+        }
+        if (typeof meta.affiliationScore === "number") {
+          affiliationLines.push(`Degr\u00e9 d'affiliation du tour : ${meta.affiliationScore.toFixed(2)}`);
+        }
+        if (meta.affiliationEstablished === true) {
+          affiliationLines.push("Lien \u00e9tabli");
+        }
+        if (affiliationLines.length > 0) {
+          sections.push({ title: "Affiliation", content: affiliationLines.join("\n") });
+        }
+
+        const stagnationLines = [];
+        if (Array.isArray(meta.stagnationWindow) && meta.stagnationWindow.length > 0) {
+          stagnationLines.push(`Fenêtre de stagnation : [${meta.stagnationWindow.map(v => v ? "1" : "0").join("-")}]`);
+        }
+        if (typeof meta.stagnationTurns === "number") {
+          stagnationLines.push(`Stagnation cumulée : ${meta.stagnationTurns} tour(s)`);
+        }
+        if (stagnationLines.length > 0) {
+          sections.push({ title: "Stagnation", content: stagnationLines.join("\n") });
+        }
+
         if (meta.criticTriggered === true && meta.criticOriginalReply) {
           sections.push({ title: "R\u00e9ponse initiale (avant correction)", content: meta.criticOriginalReply, criticRewrite: true });
+        }
+
+        const memoryRewriteIntentLines = buildMemoryRewriteIntentLines(meta);
+        if (memoryRewriteIntentLines.length > 0) {
+          sections.push({ title: "Intention réécriture mémoire", content: memoryRewriteIntentLines.join("\n") });
+        }
+
+        if (meta.memory) {
+          sections.push({
+            title: meta.memoryAge > 0 ? ("M\u00e9moire (il y a " + meta.memoryAge + " tour" + (meta.memoryAge > 1 ? "s" : "") + ")") : "M\u00e9moire",
+            content: meta.memory,
+            memoryRewritten: meta.memoryCompressed === true,
+            memoryBeforeRewrite: meta.memoryBeforeCompression || null
+          });
         }
 
         return sections.filter(section => String(section.content || "").trim());
