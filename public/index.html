@@ -6772,8 +6772,6 @@
         if (meta.somaticFocusPolicy && meta.somaticFocusPolicy !== "none") {
           signauxLines.push(`Politique somatique : ${translateSomaticFocusPolicyDebug(meta.somaticFocusPolicy)}`);
         }
-          signauxLines.push("Transition post-d\u00e9charge active (C3)");
-        }
         if (meta.secondaryTension) {
           var secondaryLabel = window.FacilitatDebug.formatSecondaryTension(meta.secondaryTension);
           if (secondaryLabel) {
