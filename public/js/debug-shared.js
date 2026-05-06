@@ -213,8 +213,10 @@
 
   function translateWriterMode(mode) {
     var map = {
+      exploration: "exploration",
       exploration_open: "exploration ouverte",
-      exploration_restrained: "exploration restrainte",
+      exploration_restrained: "exploration restreinte",
+      discharge: "decharge",
       post_contact: "exploration ouverte (legacy)",
       stabilization: "stabilisation",
       alliance_rupture: "rupture d'alliance",
@@ -222,10 +224,13 @@
       contact: "exploration ouverte (legacy)",
       discharge_regulated: "d\u00e9charge r\u00e9gul\u00e9e",
       discharge_dysregulated: "d\u00e9charge d\u00e9r\u00e9gul\u00e9e",
+      info: "info",
       info_pure: "info pure",
       info_psychoeducation: "info psycho\u00e9ducation",
-      info_app_features: "info app",
-      n1_crisis: "crise N1"
+      info_features: "info fonctionnalites de l'app",
+      info_app_features: "info fonctionnalites de l'app (legacy)",
+      n1_crisis: "crise N1",
+      n2_crisis: "crise N2"
     };
     return map[mode] || mode;
   }
