@@ -2016,67 +2016,22 @@
           }
 
           function getSectionPalette(title) {
-            if (title === "Mémoire") {
-              return {
-                titleColor: "#8a5a18",
-                blockBackground: "#fff8eb",
-                blockBorder: "#e8c06e"
-              };
+            if (title === "M\u00e9moire" || title === "M\u00e9moire avant r\u00e9\u00e9criture" || title === "R\u00e9\u00e9criture m\u00e9moire") {
+              return { titleColor: "#8a5a18", blockBackground: "#fff8eb", blockBorder: "#e8c06e" };
             }
-
-            if (title === "Directivité") {
-              return {
-                titleColor: "#2d5d96",
-                blockBackground: "#ecf5ff",
-                blockBorder: "#75a3db"
-              };
+            if (title === "Directivit\u00e9") {
+              return { titleColor: "#2d5d96", blockBackground: "#ecf5ff", blockBorder: "#75a3db" };
             }
-
             if (title === "Signaux") {
-              return {
-                titleColor: "#2d6a3c",
-                blockBackground: "#edf9f1",
-                blockBorder: "#6db380"
-              };
+              return { titleColor: "#2d6a3c", blockBackground: "#edf9f1", blockBorder: "#6db380" };
             }
-
-            if (title.indexOf("Conflit") === 0) {
-              return {
-                titleColor: "#9c3b2c",
-                blockBackground: "#fff0ee",
-                blockBorder: "#e07e6a"
-              };
+            if (title === "Contrat de posture" || title === "Contrat de posture (V3)") {
+              return { titleColor: "#6b3a7d", blockBackground: "#f8f0ff", blockBorder: "#c9a3e0" };
             }
-
-            if (title === "Contrat de posture") {
-              return {
-                titleColor: "#888888",
-                blockBackground: "#ffffff",
-                blockBorder: "#e0e0e0"
-              };
-            }
-
             if (title === "Affiliation") {
-              return {
-                titleColor: "#1a6b8a",
-                blockBackground: "#eaf5fa",
-                blockBorder: "#7ac4e0"
-              };
+              return { titleColor: "#1a6b8a", blockBackground: "#eaf5fa", blockBorder: "#7ac4e0" };
             }
-
-            if (title === "R\u00e9\u00e9criture m\u00e9moire") {
-              return {
-                titleColor: "#9c2d6c",
-                blockBackground: "#fff0f7",
-                blockBorder: "#f0a0c8"
-              };
-            }
-
-            return {
-              titleColor: "#245e66",
-              blockBackground: "#ffffff",
-              blockBorder: "#d6e2e1"
-            };
+            return { titleColor: "#245e66", blockBackground: "#ffffff", blockBorder: "#d6e2e1" };
           }
           
           const debugWrap = document.createElement("div");
