@@ -766,6 +766,33 @@ function canonicalizeMemorySectionSpacing(text = "") {
     .trim();
 }
 
+function rewriteLectureBotBlockFromReply(memoryText = "", replyText = "") {
+  const normalizedMemory = canonicalizeMemorySectionSpacing(String(memoryText || ""));
+  if (!normalizedMemory) return normalizedMemory;
+
+  const firstSentence = String(replyText || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .split(/[.!?]+/)
+    .map((segment) => segment.trim())
+    .filter(Boolean)[0] || "";
+
+  const summary = firstSentence
+    ? firstSentence.replace(/^[\-\u2022\s]+/, "").slice(0, 220)
+    : "";
+
+  const lectureBotContent = summary ? `- ${summary}.` : "-";
+  const replacement = `Lecture bot:\n${lectureBotContent}`;
+
+  if (/Lecture bot\s*:/i.test(normalizedMemory)) {
+    return canonicalizeMemorySectionSpacing(
+      normalizedMemory.replace(/Lecture bot\s*:[\s\S]*/i, replacement)
+    );
+  }
+
+  return canonicalizeMemorySectionSpacing(`${normalizedMemory}\n\n${replacement}`);
+}
+
 function normalizeMemory(memory, promptRegistry = buildDefaultPromptRegistry()) {
   const text = canonicalizeMemorySectionSpacing(String(memory || "").trim());
   if (text) return text;
@@ -5576,8 +5603,11 @@ app.post("/chat", async (req, res) => {
             needsCompression: memoryNeedsCompression,
             promptRegistry: activePromptRegistry
           });
-          memoryWasCompressed = memoryNeedsCompression && finalizedMemoryCandidate !== memoryCandidate;
-          newMemory = finalizedMemoryCandidate;
+          const lectureBotAlignedMemory = safeInterpretationRejection.isInterpretationRejection === true
+            ? forceLectureBotReset(finalizedMemoryCandidate)
+            : rewriteLectureBotBlockFromReply(finalizedMemoryCandidate, reply);
+          memoryWasCompressed = memoryNeedsCompression && lectureBotAlignedMemory !== memoryCandidate;
+          newMemory = lectureBotAlignedMemory;
       
           // Mise à jour du compteur de périodicité mémoire.
           // Si compression ce tour : forcer recalcul au tour suivant (compteur = 0).
@@ -5639,10 +5669,13 @@ app.post("/chat", async (req, res) => {
             needsCompression: _needsCompression,
             promptRegistry: _registry
           });
+          const _lectureBotAligned = _rejectionSnap.isInterpretationRejection === true
+            ? forceLectureBotReset(_finalized)
+            : rewriteLectureBotBlockFromReply(_finalized, _reply);
           // convRef.update is already handled by persistAssistantMessageAsync which runs in bg too.
           // We just need to overwrite the memory field in the conversation document.
           if (convRef) {
-            await convRef.update({ memory: normalizeMemory(_finalized, _registry), updatedAt: new Date().toISOString() });
+            await convRef.update({ memory: normalizeMemory(_lectureBotAligned, _registry), updatedAt: new Date().toISOString() });
           }
         } catch (e) {
           console.warn("[CHAT][MEMORY_BG_FAILED]", e && e.message);
