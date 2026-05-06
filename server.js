@@ -167,6 +167,7 @@ const {
   resolveChatPriorityRule,
   buildCrisisRoutingDecision
 } = require("./lib/chat-routing");
+const { resolveBranchSeedPayload } = require("./lib/branching");
 const { createWriter } = require("./lib/writer");
 
 // Local fallback storage for message data when needed.
@@ -192,6 +193,21 @@ const https = require("https");
 
 const app = express();
 const port = process.env.PORT || 3000;
+
+function buildRequestId(prefix = "req") {
+  return `${prefix}_${Date.now().toString(36)}_${crypto.randomBytes(3).toString("hex")}`;
+}
+
+app.use((req, res, next) => {
+  const headerRequestId = typeof req.headers["x-request-id"] === "string"
+    ? String(req.headers["x-request-id"]).trim()
+    : "";
+  const requestId = headerRequestId || buildRequestId("req");
+
+  req.requestId = requestId;
+  res.setHeader("x-request-id", requestId);
+  next();
+});
 
 const _httpAgent = new http.Agent({ keepAlive: true, maxSockets: 20 });
 const _httpsAgent = new https.Agent({ keepAlive: true, maxSockets: 20 });
@@ -743,6 +759,131 @@ async function resolveBranchActorUserId(req) {
 
   const queryUserId = typeof req.query?.userId === "string" ? req.query.userId.trim() : "";
   return queryUserId;
+}
+
+const BRANCH_ROUTE_DEBUG = String(process.env.BRANCH_ROUTE_DEBUG || "").toLowerCase() === "true";
+const DEV_RUNTIME_GUARDS = process.env.NODE_ENV !== "production"
+  || String(process.env.DEV_RUNTIME_GUARDS || "").toLowerCase() === "true";
+const CRITIC_OBSERVABILITY_DEBUG = String(process.env.CRITIC_OBSERVABILITY_DEBUG || "").toLowerCase() === "true";
+
+function logBranchRouteEvent(level = "info", event = "", payload = {}) {
+  if (!event) return;
+  if (level === "info" && !BRANCH_ROUTE_DEBUG) return;
+
+  const line = {
+    event,
+    ...payload
+  };
+
+  if (level === "error") {
+    console.error("[branch-route]", JSON.stringify(line));
+    return;
+  }
+
+  if (level === "warn") {
+    console.warn("[branch-route]", JSON.stringify(line));
+    return;
+  }
+
+  console.info("[branch-route]", JSON.stringify(line));
+}
+
+function collectStateProposalIssues(stateProposal) {
+  const issues = [];
+  const safe = stateProposal && typeof stateProposal === "object" ? stateProposal : null;
+
+  if (!safe) {
+    issues.push("stateProposal_not_object");
+    return issues;
+  }
+
+  if (!Array.isArray(safe.stateCandidates) || safe.stateCandidates.length === 0) {
+    issues.push("stateCandidates_missing_or_empty");
+  }
+
+  return issues;
+}
+
+function collectPostureDecisionIssues(postureDecision) {
+  const issues = [];
+  const safe = postureDecision && typeof postureDecision === "object" ? postureDecision : null;
+
+  if (!safe) {
+    issues.push("postureDecision_not_object");
+    return issues;
+  }
+
+  if (typeof safe.conversationState !== "string" || !safe.conversationState.trim()) {
+    issues.push("conversationState_missing");
+  }
+  if (!Array.isArray(safe.forbidden)) {
+    issues.push("forbidden_not_array");
+  }
+  if (!safe.flagUpdates || typeof safe.flagUpdates !== "object") {
+    issues.push("flagUpdates_missing");
+  }
+
+  return issues;
+}
+
+function collectDebugMetaIssues(debugMeta) {
+  const issues = [];
+  const safe = debugMeta && typeof debugMeta === "object" ? debugMeta : null;
+
+  if (!safe) {
+    issues.push("debugMeta_not_object");
+    return issues;
+  }
+
+  if (typeof safe.conversationState !== "string" || !safe.conversationState.trim()) {
+    issues.push("debugMeta_missing_conversationState");
+  }
+  if (!Array.isArray(safe.pipelineStages)) {
+    issues.push("debugMeta_pipelineStages_not_array");
+  }
+
+  return issues;
+}
+
+function warnRuntimeContract(label, issues, context = {}) {
+  if (!DEV_RUNTIME_GUARDS) return;
+  if (!Array.isArray(issues) || issues.length === 0) return;
+
+  console.warn("[runtime-guard]", JSON.stringify({
+    label,
+    issues,
+    ...context
+  }));
+}
+
+function buildCriticDeltaMetrics(before = "", after = "") {
+  const from = String(before || "");
+  const to = String(after || "");
+
+  let prefix = 0;
+  const minLen = Math.min(from.length, to.length);
+  while (prefix < minLen && from[prefix] === to[prefix]) {
+    prefix += 1;
+  }
+
+  let suffix = 0;
+  while (
+    suffix < (minLen - prefix)
+    && from[from.length - 1 - suffix] === to[to.length - 1 - suffix]
+  ) {
+    suffix += 1;
+  }
+
+  const changedFrom = Math.max(0, from.length - prefix - suffix);
+  const changedTo = Math.max(0, to.length - prefix - suffix);
+
+  return {
+    fromLength: from.length,
+    toLength: to.length,
+    deltaLength: to.length - from.length,
+    changedSpanFrom: changedFrom,
+    changedSpanTo: changedTo
+  };
 }
 
 // Middleware protecting admin routes by redirecting unauthenticated users.
@@ -2259,6 +2400,8 @@ app.post("/api/account/conversations/import-local", requireUserAuth, async (req,
               postCrisisSupportActive: debugMeta.postCrisisSupportActive === true,
               postCrisisSupportCarryTurn: debugMeta.postCrisisSupportCarryTurn === true,
               emergencySupportText: typeof debugMeta.emergencySupportText === "string" ? debugMeta.emergencySupportText : null,
+              requestId: typeof debugMeta.requestId === "string" ? debugMeta.requestId : null,
+              traceId: typeof debugMeta.traceId === "string" ? debugMeta.traceId : null,
               uncertaintyExpressionPolicy: typeof debugMeta.uncertaintyExpressionPolicy === "string" ? debugMeta.uncertaintyExpressionPolicy : null,
               uncertaintyDrivers: Array.isArray(debugMeta.uncertaintyDrivers) ? debugMeta.uncertaintyDrivers.map(v => String(v || "")).filter(Boolean) : [],
               isolationScore: Number.isFinite(debugMeta.isolationScore) ? Math.max(0, Math.min(100, Math.round(Number(debugMeta.isolationScore)))) : 0,
@@ -2427,69 +2570,35 @@ app.post("/api/branches/from-message", async (req, res) => {
         return String(a.id).localeCompare(String(b.id));
       });
 
-    let seededMessages = [];
-    let resolvedAnchorMessageId = anchorMessageId;
+    const seedResolution = resolveBranchSeedPayload({
+      messageEntries,
+      anchorMessageId,
+      requestedSeedMessages
+    });
 
-    if (anchorMessageId) {
-      const anchorIndex = messageEntries.findIndex(entry => entry.id === anchorMessageId);
+    if (seedResolution.error === "anchor_not_found") {
+      logBranchRouteEvent("warn", "anchor_not_found", {
+        route: "/api/branches/from-message",
+        sourceConversationId,
+        anchorMessageId,
+        dbMessageCount: messageEntries.length,
+        requestedSeedCount: Array.isArray(requestedSeedMessages) ? requestedSeedMessages.length : 0
+      });
+      return res.status(404).json({ error: "Anchor message not found" });
+    }
 
-      if (anchorIndex < 0) {
-        if (!requestedSeedMessages || requestedSeedMessages.length === 0) {
-          return res.status(404).json({ error: "Anchor message not found" });
-        }
+    const seededMessages = seedResolution.seededMessages;
+    const resolvedAnchorMessageId = seedResolution.resolvedAnchorMessageId;
 
-        seededMessages = requestedSeedMessages
-          .map(item => ({
-            id: typeof item?.id === "string" && item.id.trim() ? item.id.trim() : null,
-            role: String(item?.role || ""),
-            content: String(item?.content || ""),
-            debug: Array.isArray(item?.debug) ? item.debug : [],
-            debugMeta: item?.debugMeta && typeof item.debugMeta === "object" ? item.debugMeta : null,
-            stateSnapshot: item?.stateSnapshot && typeof item.stateSnapshot === "object" ? {
-              memory: typeof item.stateSnapshot.memory === "string" ? item.stateSnapshot.memory : "",
-              flags: normalizeSessionFlags(item.stateSnapshot.flags || {})
-            } : null,
-            createdAt: typeof item?.createdAt === "string" ? item.createdAt : null
-          }))
-          .filter(item => item.role && item.content);
-
-        resolvedAnchorMessageId = String(
-          [...seededMessages].reverse().find(item => typeof item?.id === "string" && item.id.trim())?.id || anchorMessageId
-        ).trim();
-      } else {
-        const seededEntries = messageEntries.slice(0, anchorIndex + 1);
-        seededMessages = seededEntries.map(entry => ({
-          id: entry.id,
-          role: String(entry.item.role || ""),
-          content: String(entry.item.content || ""),
-          debug: Array.isArray(entry.item.debug) ? entry.item.debug : [],
-          debugMeta: entry.item.debugMeta && typeof entry.item.debugMeta === "object" ? entry.item.debugMeta : null,
-          stateSnapshot: entry.item.stateSnapshot && typeof entry.item.stateSnapshot === "object" ? {
-            memory: typeof entry.item.stateSnapshot.memory === "string" ? entry.item.stateSnapshot.memory : "",
-            flags: normalizeSessionFlags(entry.item.stateSnapshot.flags || {})
-          } : null,
-          createdAt: typeof entry.item.createdAt === "string" ? entry.item.createdAt : null
-        }));
-      }
-    } else {
-      seededMessages = (requestedSeedMessages || [])
-        .map(item => ({
-          id: typeof item?.id === "string" && item.id.trim() ? item.id.trim() : null,
-          role: String(item?.role || ""),
-          content: String(item?.content || ""),
-          debug: Array.isArray(item?.debug) ? item.debug : [],
-          debugMeta: item?.debugMeta && typeof item.debugMeta === "object" ? item.debugMeta : null,
-          stateSnapshot: item?.stateSnapshot && typeof item.stateSnapshot === "object" ? {
-            memory: typeof item.stateSnapshot.memory === "string" ? item.stateSnapshot.memory : "",
-            flags: normalizeSessionFlags(item.stateSnapshot.flags || {})
-          } : null,
-          createdAt: typeof item?.createdAt === "string" ? item.createdAt : null
-        }))
-        .filter(item => item.role && item.content);
-
-      resolvedAnchorMessageId = String(
-        [...seededMessages].reverse().find(item => typeof item?.id === "string" && item.id.trim())?.id || ""
-      ).trim();
+    if (seedResolution.usedSeedFallback) {
+      logBranchRouteEvent("info", "anchor_fallback_used", {
+        route: "/api/branches/from-message",
+        sourceConversationId,
+        anchorMessageId,
+        resolvedAnchorMessageId,
+        dbMessageCount: messageEntries.length,
+        seededMessageCount: seededMessages.length
+      });
     }
 
     const now = new Date().toISOString();
@@ -2596,67 +2705,35 @@ app.post("/api/branches/create-and-activate", async (req, res) => {
         return String(a.id).localeCompare(String(b.id));
       });
 
-    let seededMessages = [];
-    let resolvedAnchorMessageId = anchorMessageId;
+    const seedResolution = resolveBranchSeedPayload({
+      messageEntries,
+      anchorMessageId,
+      requestedSeedMessages
+    });
 
-    if (anchorMessageId) {
-      const anchorIndex = messageEntries.findIndex(entry => entry.id === anchorMessageId);
-      if (anchorIndex < 0) {
-        if (!requestedSeedMessages || requestedSeedMessages.length === 0) {
-          return res.status(404).json({ error: "Anchor message not found" });
-        }
+    if (seedResolution.error === "anchor_not_found") {
+      logBranchRouteEvent("warn", "anchor_not_found", {
+        route: "/api/branches/create-and-activate",
+        sourceConversationId,
+        anchorMessageId,
+        dbMessageCount: messageEntries.length,
+        requestedSeedCount: Array.isArray(requestedSeedMessages) ? requestedSeedMessages.length : 0
+      });
+      return res.status(404).json({ error: "Anchor message not found" });
+    }
 
-        seededMessages = requestedSeedMessages
-          .map(item => ({
-            id: typeof item?.id === "string" && item.id.trim() ? item.id.trim() : null,
-            role: String(item?.role || ""),
-            content: String(item?.content || ""),
-            debug: Array.isArray(item?.debug) ? item.debug : [],
-            debugMeta: item?.debugMeta && typeof item.debugMeta === "object" ? item.debugMeta : null,
-            stateSnapshot: item?.stateSnapshot && typeof item.stateSnapshot === "object" ? {
-              memory: typeof item.stateSnapshot.memory === "string" ? item.stateSnapshot.memory : "",
-              flags: normalizeSessionFlags(item.stateSnapshot.flags || {})
-            } : null,
-            createdAt: typeof item?.createdAt === "string" ? item.createdAt : null
-          }))
-          .filter(item => item.role && item.content);
+    const seededMessages = seedResolution.seededMessages;
+    const resolvedAnchorMessageId = seedResolution.resolvedAnchorMessageId;
 
-        resolvedAnchorMessageId = String(
-          [...seededMessages].reverse().find(item => typeof item?.id === "string" && item.id.trim())?.id || anchorMessageId
-        ).trim();
-      } else {
-        seededMessages = messageEntries.slice(0, anchorIndex + 1).map(entry => ({
-          id: entry.id,
-          role: String(entry.item.role || ""),
-          content: String(entry.item.content || ""),
-          debug: Array.isArray(entry.item.debug) ? entry.item.debug : [],
-          debugMeta: entry.item.debugMeta && typeof entry.item.debugMeta === "object" ? entry.item.debugMeta : null,
-          stateSnapshot: entry.item.stateSnapshot && typeof entry.item.stateSnapshot === "object" ? {
-            memory: typeof entry.item.stateSnapshot.memory === "string" ? entry.item.stateSnapshot.memory : "",
-            flags: normalizeSessionFlags(entry.item.stateSnapshot.flags || {})
-          } : null,
-          createdAt: typeof entry.item.createdAt === "string" ? entry.item.createdAt : null
-        }));
-      }
-    } else {
-      seededMessages = (requestedSeedMessages || [])
-        .map(item => ({
-          id: typeof item?.id === "string" && item.id.trim() ? item.id.trim() : null,
-          role: String(item?.role || ""),
-          content: String(item?.content || ""),
-          debug: Array.isArray(item?.debug) ? item.debug : [],
-          debugMeta: item?.debugMeta && typeof item.debugMeta === "object" ? item.debugMeta : null,
-          stateSnapshot: item?.stateSnapshot && typeof item.stateSnapshot === "object" ? {
-            memory: typeof item.stateSnapshot.memory === "string" ? item.stateSnapshot.memory : "",
-            flags: normalizeSessionFlags(item.stateSnapshot.flags || {})
-          } : null,
-          createdAt: typeof item?.createdAt === "string" ? item.createdAt : null
-        }))
-        .filter(item => item.role && item.content);
-
-      resolvedAnchorMessageId = String(
-        [...seededMessages].reverse().find(item => typeof item?.id === "string" && item.id.trim())?.id || ""
-      ).trim();
+    if (seedResolution.usedSeedFallback) {
+      logBranchRouteEvent("info", "anchor_fallback_used", {
+        route: "/api/branches/create-and-activate",
+        sourceConversationId,
+        anchorMessageId,
+        resolvedAnchorMessageId,
+        dbMessageCount: messageEntries.length,
+        seededMessageCount: seededMessages.length
+      });
     }
 
     const now = new Date().toISOString();
@@ -3811,7 +3888,11 @@ app.get("/api/admin/conversations/:id/branches", requireAdminAuth, async (req, r
 function parseChatRequest(req) {
   const message = String(req.body?.message || "");
   const isEdited = req.body?.isEdited === true;
-  const requestId = typeof req.body?.requestId === "string" ? req.body.requestId.trim() : "";
+  const bodyRequestId = typeof req.body?.requestId === "string" ? req.body.requestId.trim() : "";
+  const headerRequestId = typeof req.headers?.["x-request-id"] === "string"
+    ? String(req.headers["x-request-id"]).trim()
+    : "";
+  const requestId = bodyRequestId || headerRequestId || String(req.requestId || "").trim();
   const conversationId = typeof req.body?.conversationId === "string" ? req.body.conversationId.trim() : "";
   const isPrivateConversation = req.body?.isPrivateConversation === true;
   const userId = req.body?.userId || "u_anon";
@@ -4367,6 +4448,7 @@ app.post("/chat", async (req, res) => {
   const requestId = String(requestData.requestId || "").trim();
   // traceId: server-generated per-request, always present even without a client requestId.
   const traceId = requestId || `tr_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  res.setHeader("x-trace-id", traceId);
 
   if (requestId) {
     registerActiveChatRequest(requestId, requestData.userId || "u_anon");
@@ -4527,6 +4609,8 @@ app.post("/chat", async (req, res) => {
       postCrisisSupportActive: safe.postCrisisSupportActive === true,
       postCrisisSupportCarryTurn: safe.postCrisisSupportCarryTurn === true,
       emergencySupportText: typeof safe.emergencySupportText === "string" ? safe.emergencySupportText : null,
+      requestId: typeof safe.requestId === "string" ? safe.requestId : null,
+      traceId: typeof safe.traceId === "string" ? safe.traceId : null,
       uncertaintyExpressionPolicy: typeof safe.uncertaintyExpressionPolicy === "string" ? safe.uncertaintyExpressionPolicy : null,
       uncertaintyDrivers: Array.isArray(safe.uncertaintyDrivers) ? safe.uncertaintyDrivers.map(v => String(v || "")).filter(Boolean) : [],
       isolationScore: typeof safe.isolationScore === "number" ? Math.max(0, Math.min(100, Math.round(safe.isolationScore))) : 0,
@@ -4869,12 +4953,20 @@ app.post("/chat", async (req, res) => {
     }
     
     function buildResponseDebugMeta(params) {
-      return _buildResponseDebugMeta({
+      const debugMeta = _buildResponseDebugMeta({
         ...params,
         pipelineStages: chatStageTimings,
+        requestId,
         traceId,
         normalizeMemory: (m) => normalizeMemory(m, params.promptRegistry || activePromptRegistry)
       });
+
+      warnRuntimeContract("debugMeta", collectDebugMetaIssues(debugMeta), {
+        traceId,
+        requestId
+      });
+
+      return debugMeta;
     }
 
     let emergencySupportTextPromise = null;
@@ -5309,6 +5401,11 @@ app.post("/chat", async (req, res) => {
     ]);
     throwIfCanceled();
 
+    warnRuntimeContract("stateProposal", collectStateProposalIssues(stateProposal), {
+      traceId,
+      requestId
+    });
+
     newFlags.attentionQualityTurnsUntilRefresh = shouldRunAttentionQuality
       ? 3
       : Math.max(0, currentAttentionQualityTurnsUntilRefresh - 1);
@@ -5551,6 +5648,12 @@ app.post("/chat", async (req, res) => {
       secondaryTension,
     });
 
+    warnRuntimeContract("postureDecision", collectPostureDecisionIssues(postureDecision), {
+      traceId,
+      requestId,
+      detectedState
+    });
+
     finalDirectivityLevel = postureDecision.finalDirectivityLevel;
     finalExplorationSignal = postureDecision.finalExplorationSignal;
     const { conversationState, consecutiveNonExplorationTurns } = postureDecision;
@@ -5725,6 +5828,7 @@ app.post("/chat", async (req, res) => {
         ...(recallForced ? ["recallForced"] : []),
       ] : [];
       if (criticShouldTrigger) {
+        const replyBeforeCritic = reply;
         logChatDecision("critic_triggered", {
           conversationState: postureDecision.conversationState,
           contractLengthExceeded,
@@ -5806,6 +5910,16 @@ app.post("/chat", async (req, res) => {
               mode: shouldUseLocalCandidate ? "local_rewrite" : "local_rewrite_strict_fallback"
             });
           }
+        }
+
+        if (CRITIC_OBSERVABILITY_DEBUG) {
+          logChatDecision("critic_observability", {
+            conversationState: postureDecision.conversationState,
+            triggerReasons: criticTriggerReasons,
+            issues: criticIssues,
+            rewrote: reply !== replyBeforeCritic,
+            delta: buildCriticDeltaMetrics(replyBeforeCritic, reply)
+          });
         }
       }
     }

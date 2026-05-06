@@ -207,6 +207,8 @@
       postCrisisSupportActive: toBooleanTrue(safe.postCrisisSupportActive),
       postCrisisSupportCarryTurn: toBooleanTrue(safe.postCrisisSupportCarryTurn),
       emergencySupportText: toTrimmedString(safe.emergencySupportText, "") || null,
+      requestId: toTrimmedString(safe.requestId, "") || null,
+      traceId: toTrimmedString(safe.traceId, "") || null,
       secondaryTension: normalizeSecondaryTension(safe.secondaryTension)
     };
   }
@@ -472,7 +474,14 @@
       return acc + (Number.isFinite(stage.deltaMs) ? stage.deltaMs : 0);
     }, 0);
 
-    return "Temps de reponse global: " + totalMs + " ms (" + meta.pipelineStages.length + " etape(s)).";
+    var runtimeText = "Temps de reponse global: " + totalMs + " ms (" + meta.pipelineStages.length + " etape(s)).";
+    var requestId = meta && typeof meta.requestId === "string" ? meta.requestId.trim() : "";
+    var traceId = meta && typeof meta.traceId === "string" ? meta.traceId.trim() : "";
+    var correlation = [requestId ? "requestId: " + requestId : "", traceId ? "traceId: " + traceId : ""]
+      .filter(Boolean)
+      .join(" | ");
+
+    return correlation ? runtimeText + " " + correlation : runtimeText;
   }
 
   function formatSecondaryTension(secondaryTension) {

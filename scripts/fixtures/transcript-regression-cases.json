@@ -1,0 +1,46 @@
+[
+  {
+    "label": "history already ends with pending user message",
+    "message": "Message repete",
+    "history": [
+      { "role": "assistant", "content": "Reponse" },
+      { "role": "user", "content": "Message repete" }
+    ],
+    "expectedLength": 2,
+    "expectedLastRole": "user",
+    "expectNoConsecutiveUser": true
+  },
+  {
+    "label": "same content from assistant must not block user append",
+    "message": "Je veux continuer",
+    "history": [
+      { "role": "assistant", "content": "Je veux continuer" }
+    ],
+    "expectedLength": 2,
+    "expectedLastRole": "user",
+    "expectNoConsecutiveUser": true
+  },
+  {
+    "label": "whitespace normalization avoids duplicate user turn",
+    "message": "Avec espaces",
+    "history": [
+      { "role": "user", "content": "  Avec espaces  " }
+    ],
+    "expectedLength": 1,
+    "expectedLastRole": "user",
+    "expectNoConsecutiveUser": true
+  },
+  {
+    "label": "older duplicate does not prevent append",
+    "message": "Question A",
+    "history": [
+      { "role": "user", "content": "Question A" },
+      { "role": "assistant", "content": "Reponse A" },
+      { "role": "user", "content": "Question B" },
+      { "role": "assistant", "content": "Reponse B" }
+    ],
+    "expectedLength": 5,
+    "expectedLastRole": "user",
+    "expectNoConsecutiveUser": true
+  }
+]

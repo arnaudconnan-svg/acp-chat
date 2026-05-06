@@ -4220,6 +4220,25 @@
       return window.FacilitatDebug.normalizeDebugMeta(debugMetaValue);
     }
 
+    function isBranchClientDebugEnabled() {
+      try {
+        const qs = new URLSearchParams(window.location.search || "");
+        if (qs.get("branchDebug") === "1") return true;
+        return localStorage.getItem("facilitat:branch-debug") === "1";
+      } catch {
+        return false;
+      }
+    }
+
+    function logBranchClientEvent(eventName, payload = {}) {
+      if (!isBranchClientDebugEnabled()) return;
+      try {
+        console.info("[branch-client]", JSON.stringify({ event: String(eventName || ""), ...payload }));
+      } catch {
+        console.info("[branch-client]", eventName, payload);
+      }
+    }
+
     function readAndConsumeAdminReplayPayload(maxAgeMs = 5 * 60 * 1000) {
       try {
         const raw = localStorage.getItem(ADMIN_REPLAY_KEY);
@@ -4288,6 +4307,12 @@
           }))
           .filter(item => item.role && item.content);
 
+        logBranchClientEvent("from_message_request", {
+          sourceConversationId,
+          anchorMessageId,
+          seedMessageCount: seedMessages.length
+        });
+
         const createRes = await fetch("/api/branches/from-message", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -4296,6 +4321,12 @@
 
         if (!createRes.ok) {
           const data = await createRes.json().catch(() => ({}));
+          logBranchClientEvent("from_message_create_failed", {
+            sourceConversationId,
+            anchorMessageId,
+            status: createRes.status,
+            error: String(data.error || "")
+          });
           showTemporaryNotice("Erreur branche : " + (data.error || createRes.status));
           return;
         }
@@ -4305,6 +4336,10 @@
         const branchConversationId = createData?.branch?.branchConversationId;
 
         if (!branchId || !branchConversationId) {
+          logBranchClientEvent("from_message_invalid_payload", {
+            sourceConversationId,
+            anchorMessageId
+          });
           showTemporaryNotice("Erreur branche : reponse invalide");
           return;
         }
@@ -4322,6 +4357,13 @@
 
         if (!activateRes.ok) {
           const data = await activateRes.json().catch(() => ({}));
+          logBranchClientEvent("from_message_activate_failed", {
+            sourceConversationId,
+            anchorMessageId,
+            branchId,
+            status: activateRes.status,
+            error: String(data.error || "")
+          });
           showTemporaryNotice("Erreur activation branche : " + (data.error || activateRes.status));
           return;
         }
@@ -8372,6 +8414,13 @@
 
           try {
             const branchState = deriveBranchConversationState(conversationIdBeforeSend, truncatedHistory);
+            logBranchClientEvent("edit_branch_request", {
+              sourceConversationId: conversationIdBeforeSend,
+              anchorMessageId,
+              seedMessageCount: branchSeedMessages.length,
+              targetIndex,
+              lastUserIndex
+            });
             const branchRes = await fetch("/api/branches/create-and-activate", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -8412,13 +8461,28 @@
                 branchActivated = true;
               } else {
                 branchFailureMessage = "Branche invalide : identifiant conversation manquant";
+                logBranchClientEvent("edit_branch_invalid_payload", {
+                  sourceConversationId: conversationIdBeforeSend,
+                  anchorMessageId
+                });
               }
             } else {
               const branchData = await branchRes.json().catch(() => ({}));
               branchFailureMessage = "Branchement impossible : " + (branchData.error || branchRes.status);
+              logBranchClientEvent("edit_branch_create_failed", {
+                sourceConversationId: conversationIdBeforeSend,
+                anchorMessageId,
+                status: branchRes.status,
+                error: String(branchData.error || "")
+              });
             }
           } catch (err) {
             branchFailureMessage = "Erreur branche : " + (err && err.message ? err.message : "inconnue");
+            logBranchClientEvent("edit_branch_exception", {
+              sourceConversationId: conversationIdBeforeSend,
+              anchorMessageId,
+              error: String(err && err.message ? err.message : "")
+            });
           } finally {
             if (_branchSendBtn) _branchSendBtn.classList.remove("is-branching");
           }
@@ -8531,7 +8595,10 @@
 
         const res = await fetch("/chat", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "x-request-id": chatRequestId
+          },
           signal: chatAbortController.signal,
           body: JSON.stringify({
             message,
@@ -8552,6 +8619,17 @@
         });
 
         const data = await parseJsonResponseSafely(res, "send:/chat");
+        const responseRequestId = String(res.headers.get("x-request-id") || "").trim();
+        const responseTraceId = String(res.headers.get("x-trace-id") || "").trim();
+
+        if (data && data.debugMeta && typeof data.debugMeta === "object") {
+          if (!data.debugMeta.requestId && responseRequestId) {
+            data.debugMeta.requestId = responseRequestId;
+          }
+          if (!data.debugMeta.traceId && responseTraceId) {
+            data.debugMeta.traceId = responseTraceId;
+          }
+        }
         
         if (dotAnimation) dotAnimation.cancel();
         removeWaitingIndicatorFromChat();

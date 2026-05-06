@@ -76,7 +76,7 @@ for (const field of [
   "stateTransitionFrom","stateTransitionValid","stateTransitionRequested",
   "allianceSignal","engagementLevel","stagnationTurns","attentionWindow",
   "dependencyRiskScore","dependencyRiskLevel","externalSupportMode","closureIntent","postDischargeTransitionActive",
-  "postCrisisSupportActive","postCrisisSupportCarryTurn","emergencySupportText","traceId"
+  "postCrisisSupportActive","postCrisisSupportCarryTurn","emergencySupportText","requestId","traceId"
 ]) {
   assert("default has field: " + field, Object.prototype.hasOwnProperty.call(base, field), true);
 }
@@ -120,6 +120,7 @@ assertDeepEqual("default values", base, {
   postCrisisSupportActive: false,
   postCrisisSupportCarryTurn: false,
   emergencySupportText: null,
+  requestId: null,
   traceId: null
 });
 
@@ -149,6 +150,7 @@ const explo = buildResponseDebugMeta({
   explorationRelanceWindow: [true, false, true],
   explorationSignal: "phenomenological_follow",
   pipelineStages: [{ stage: "suicide_analysis", deltaMs: 42 }],
+  requestId: "req-abc-123",
   traceId: "trace-abc-123"
 });
 assert("exploration topChips", explo.topChips, ["EXPLORATION : accompagnement"]);
@@ -166,6 +168,7 @@ assert("exploration directivityText includes calibration",
 assert("exploration pipelineStages length", explo.pipelineStages.length, 1);
 assert("exploration pipelineStages[0].stage", explo.pipelineStages[0].stage, "suicide_analysis");
 assert("exploration pipelineStages[0].deltaMs", explo.pipelineStages[0].deltaMs, 42);
+assert("exploration requestId", explo.requestId, "req-abc-123");
 assert("exploration traceId", explo.traceId, "trace-abc-123");
 assert("exploration explorationCalibrationLevel", explo.explorationCalibrationLevel, 3);
 
