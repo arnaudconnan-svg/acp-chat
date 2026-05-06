@@ -6662,8 +6662,7 @@
           const intentIsDefault =
             (meta.conversationState === "exploration_open" && meta.intent === "explorer librement") ||
             (meta.conversationState === "exploration_restrained" && meta.intent === "structurer doucement");
-          // Hints : masquer affiliation_first_join (présent à chaque tour avant établissement du lien)
-          const visibleHints = (meta.writerIntentHints || []).filter(function(h) { return h !== "affiliation_first_join"; });
+          const visibleHints = (meta.writerIntentHints || []);
 
           sections.push({
             title: "Contrat de posture",

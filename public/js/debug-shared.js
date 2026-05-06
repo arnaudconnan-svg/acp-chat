@@ -285,7 +285,7 @@
 
   function translateWriterHint(value) {
     var map = {
-      affiliation_first_join: "prioriser le sentiment d'etre compris et rejoint",
+      affiliation_first_join: "prioriser le sentiment d'etre compris et rejoint (affiliation toujours en cours)",
       aggressive_discharge_minimal_presence: "decharge agressive: presence minimale",
       post_discharge_soft_landing: "atterrissage doux post-decharge",
       hold_emotional_thread: "maintenir le fil \u00e9motionnel",
