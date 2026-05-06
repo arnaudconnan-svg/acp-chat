@@ -5,22 +5,23 @@
 // - configure Express, static asset headers, and chat pipeline
 // - preserve existing behavior while making the code easier to follow
 const admin = require("firebase-admin");
-let serviceAccount;
-try {
-  if (process.env.FIREBASE_SERVICE_ACCOUNT_PATH) {
-    const serviceAccountPath = require("path").join(__dirname, process.env.FIREBASE_SERVICE_ACCOUNT_PATH);
-    serviceAccount = require(serviceAccountPath);
-  } else if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-    serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-  } else {
-    throw new Error("Missing FIREBASE_SERVICE_ACCOUNT or FIREBASE_SERVICE_ACCOUNT_PATH");
-  }
-} catch (err) {
-  throw new Error(`Invalid FIREBASE_SERVICE_ACCOUNT JSON: ${err.message}`);
-}
+const { parseAppConfig, resolveServiceAccount } = require("./lib/config");
+const { childLogger } = require("./lib/logger");
+const {
+  chatRequestSchema,
+  stateProposalSchema,
+  postureDecisionSchema,
+  debugMetaSchema,
+  validateShape
+} = require("./lib/runtime-schemas");
+
+const appConfig = parseAppConfig(process.env);
+const serviceAccount = resolveServiceAccount(appConfig);
+const logger = childLogger({ scope: "server" });
+
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
-  databaseURL: process.env.FIREBASE_DATABASE_URL
+  databaseURL: appConfig.firebaseDatabaseUrl
 });
 const db = admin.database();
 const messagesRef = db.ref("messages");
@@ -30,14 +31,14 @@ const adminSettingsRef = db.ref("adminSettings");
 const branchRecordsRef = db.ref("branches");
 const branchSeedSnapshotsRef = db.ref("branchSeeds");
 const crypto = require("crypto");
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
-const SESSION_SECRET = process.env.SESSION_SECRET;
+const ADMIN_PASSWORD = appConfig.adminPassword;
+const SESSION_SECRET = appConfig.sessionSecret;
 const adminSessions = new Map(); // sessionId -> { isAdmin: true, createdAt }
 const ADMIN_SESSION_DURATION = 24 * 60 * 60 * 1000; // 24h
-const ADMIN_SESSION_SIGNING_SECRET = process.env.ADMIN_SESSION_SECRET || SESSION_SECRET || ADMIN_PASSWORD || "dev-admin-session-secret";
+const ADMIN_SESSION_SIGNING_SECRET = appConfig.adminSessionSecret || SESSION_SECRET || ADMIN_PASSWORD || "dev-admin-session-secret";
 const userSessions = new Map(); // sessionToken -> { userId, createdAt }
 const USER_SESSION_DURATION = 30 * 24 * 60 * 60 * 1000; // 30d
-const USER_SESSION_SIGNING_SECRET = process.env.USER_SESSION_SECRET || SESSION_SECRET || ADMIN_PASSWORD || "dev-user-session-secret";
+const USER_SESSION_SIGNING_SECRET = appConfig.userSessionSecret || SESSION_SECRET || ADMIN_PASSWORD || "dev-user-session-secret";
 
 const fs = require("fs");
 const path = require("path");
@@ -64,18 +65,18 @@ let lastEmergencyRefreshAt = 0;
 const EMERGENCY_REFRESH_INTERVAL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 const EMERGENCY_REFRESH_INITIAL_DELAY_MS = 5 * 60 * 1000; // 5 minutes
 const EMERGENCY_REFRESH_MIN_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
-const REFRESH_EMERGENCY_ON_BOOT = String(process.env.REFRESH_EMERGENCY_ON_BOOT || "false").toLowerCase() === "true";
+const REFRESH_EMERGENCY_ON_BOOT = appConfig.refreshEmergencyOnBoot;
 
 async function safeRefreshEmergencyNumbers(reason = "interval") {
   const now = Date.now();
 
   if (emergencyRefreshInProgress) {
-    console.log(`[server][emergency-refresh] skipped (${reason}): already in progress.`);
+    logger.info({ event: "emergency_refresh_skipped", reason, detail: "already_in_progress" });
     return;
   }
 
   if (lastEmergencyRefreshAt > 0 && now - lastEmergencyRefreshAt < EMERGENCY_REFRESH_MIN_INTERVAL_MS) {
-    console.log(`[server][emergency-refresh] skipped (${reason}): too recent.`);
+    logger.info({ event: "emergency_refresh_skipped", reason, detail: "too_recent" });
     return;
   }
 
@@ -85,9 +86,9 @@ async function safeRefreshEmergencyNumbers(reason = "interval") {
   try {
     const updated = await runEmergencyNumbersUpdate(EMERGENCY_NUMBERS_FILE, "[server][emergency-refresh]");
     emergencyNumbers = updated;
-    console.log("[server][emergency-refresh] in-memory data updated.");
+    logger.info({ event: "emergency_refresh_updated" });
   } catch (err) {
-    console.error("[server][emergency-refresh] refresh failed:", err.message);
+    logger.error({ event: "emergency_refresh_failed", error: err.message });
   } finally {
     emergencyRefreshInProgress = false;
   }
@@ -192,7 +193,7 @@ const http = require("http");
 const https = require("https");
 
 const app = express();
-const port = process.env.PORT || 3000;
+const port = appConfig.port;
 
 function buildRequestId(prefix = "req") {
   return `${prefix}_${Date.now().toString(36)}_${crypto.randomBytes(3).toString("hex")}`;
@@ -314,7 +315,7 @@ function createEmailNotifier() {
         text
       });
     } catch (err) {
-      console.error("[NOTIFY][EMAIL_ERROR]", err.message);
+      logger.error({ event: "notify_email_error", error: err.message });
     }
   }
 
@@ -350,11 +351,11 @@ async function bootstrapAdminSettingsCache() {
     const snap = await adminSettingsRef.child("mailsEnabled").once("value");
     cachedAdminMailsEnabled = normalizeMailsEnabledSetting(snap.val());
     adminMailsCacheReady = true;
-    console.log("[server][admin-settings] mailsEnabled cache initialized:", cachedAdminMailsEnabled);
+    logger.info({ event: "admin_settings_cache_initialized", mailsEnabled: cachedAdminMailsEnabled });
   } catch (err) {
     cachedAdminMailsEnabled = false;
     adminMailsCacheReady = false;
-    console.error("[server][admin-settings] boot cache init failed:", err.message);
+    logger.error({ event: "admin_settings_cache_init_failed", error: err.message });
   }
 }
 
@@ -366,7 +367,7 @@ function startAdminSettingsListener() {
       adminMailsCacheReady = true;
     },
     (err) => {
-      console.error("[server][admin-settings] listener error:", err.message);
+      logger.error({ event: "admin_settings_listener_error", error: err.message });
     }
   );
 }
@@ -761,10 +762,9 @@ async function resolveBranchActorUserId(req) {
   return queryUserId;
 }
 
-const BRANCH_ROUTE_DEBUG = String(process.env.BRANCH_ROUTE_DEBUG || "").toLowerCase() === "true";
-const DEV_RUNTIME_GUARDS = process.env.NODE_ENV !== "production"
-  || String(process.env.DEV_RUNTIME_GUARDS || "").toLowerCase() === "true";
-const CRITIC_OBSERVABILITY_DEBUG = String(process.env.CRITIC_OBSERVABILITY_DEBUG || "").toLowerCase() === "true";
+const BRANCH_ROUTE_DEBUG = appConfig.branchRouteDebug;
+const DEV_RUNTIME_GUARDS = appConfig.devRuntimeGuards;
+const CRITIC_OBSERVABILITY_DEBUG = appConfig.criticObservabilityDebug;
 
 function logBranchRouteEvent(level = "info", event = "", payload = {}) {
   if (!event) return;
@@ -776,84 +776,39 @@ function logBranchRouteEvent(level = "info", event = "", payload = {}) {
   };
 
   if (level === "error") {
-    console.error("[branch-route]", JSON.stringify(line));
+    logger.error(line, "branch-route");
     return;
   }
 
   if (level === "warn") {
-    console.warn("[branch-route]", JSON.stringify(line));
+    logger.warn(line, "branch-route");
     return;
   }
 
-  console.info("[branch-route]", JSON.stringify(line));
+  logger.info(line, "branch-route");
 }
 
 function collectStateProposalIssues(stateProposal) {
-  const issues = [];
-  const safe = stateProposal && typeof stateProposal === "object" ? stateProposal : null;
-
-  if (!safe) {
-    issues.push("stateProposal_not_object");
-    return issues;
-  }
-
-  if (!Array.isArray(safe.stateCandidates) || safe.stateCandidates.length === 0) {
-    issues.push("stateCandidates_missing_or_empty");
-  }
-
-  return issues;
+  return validateShape(stateProposalSchema, stateProposal);
 }
 
 function collectPostureDecisionIssues(postureDecision) {
-  const issues = [];
-  const safe = postureDecision && typeof postureDecision === "object" ? postureDecision : null;
-
-  if (!safe) {
-    issues.push("postureDecision_not_object");
-    return issues;
-  }
-
-  if (typeof safe.conversationState !== "string" || !safe.conversationState.trim()) {
-    issues.push("conversationState_missing");
-  }
-  if (!Array.isArray(safe.forbidden)) {
-    issues.push("forbidden_not_array");
-  }
-  if (!safe.flagUpdates || typeof safe.flagUpdates !== "object") {
-    issues.push("flagUpdates_missing");
-  }
-
-  return issues;
+  return validateShape(postureDecisionSchema, postureDecision);
 }
 
 function collectDebugMetaIssues(debugMeta) {
-  const issues = [];
-  const safe = debugMeta && typeof debugMeta === "object" ? debugMeta : null;
-
-  if (!safe) {
-    issues.push("debugMeta_not_object");
-    return issues;
-  }
-
-  if (typeof safe.conversationState !== "string" || !safe.conversationState.trim()) {
-    issues.push("debugMeta_missing_conversationState");
-  }
-  if (!Array.isArray(safe.pipelineStages)) {
-    issues.push("debugMeta_pipelineStages_not_array");
-  }
-
-  return issues;
+  return validateShape(debugMetaSchema, debugMeta);
 }
 
 function warnRuntimeContract(label, issues, context = {}) {
   if (!DEV_RUNTIME_GUARDS) return;
   if (!Array.isArray(issues) || issues.length === 0) return;
 
-  console.warn("[runtime-guard]", JSON.stringify({
+  logger.warn({
     label,
     issues,
     ...context
-  }));
+  }, "runtime-guard");
 }
 
 function buildCriticDeltaMetrics(before = "", after = "") {
@@ -3927,62 +3882,41 @@ function parseChatRequest(req) {
 }
 
 function validateChatRequestShape(body = {}) {
-  const issues = [];
-
   if (!body || typeof body !== "object") {
-    issues.push("body_not_object");
-    return issues;
+    return ["body: body_not_object"];
   }
 
-  if (typeof body.message !== "string") {
-    issues.push("message_not_string");
-  } else if (!body.message.trim()) {
-    issues.push("message_empty");
-  } else if (body.message.length > 12000) {
-    issues.push("message_too_long");
+  const schemaIssues = validateShape(chatRequestSchema, body);
+  if (schemaIssues.length > 0) {
+    return schemaIssues;
+  }
+
+  if (typeof body.message === "string" && body.message.length > 12000) {
+    return ["message: message_too_long"];
   }
 
   if (typeof body.userId !== "string" && body.userId !== undefined && body.userId !== null) {
-    issues.push("userId_invalid_type");
-  }
-
-  if (body.requestId !== undefined && typeof body.requestId !== "string") {
-    issues.push("requestId_invalid_type");
-  }
-
-  if (typeof body.conversationId !== "string" || !body.conversationId.trim()) {
-    issues.push("conversationId_missing_or_invalid");
-  }
-
-  if (body.isPrivateConversation !== undefined && typeof body.isPrivateConversation !== "boolean") {
-    issues.push("isPrivateConversation_not_boolean");
-  }
-
-  if (body.recentHistory !== undefined && !Array.isArray(body.recentHistory)) {
-    issues.push("recentHistory_not_array");
-  }
-
-  if (body.conversationBranchHistory !== undefined && !Array.isArray(body.conversationBranchHistory)) {
-    issues.push("conversationBranchHistory_not_array");
+    return ["userId: invalid_type"];
   }
 
   if (body.titleDenyList !== undefined) {
     if (!Array.isArray(body.titleDenyList)) {
-      issues.push("titleDenyList_not_array");
-    } else if (body.titleDenyList.some(value => typeof value !== "string")) {
-      issues.push("titleDenyList_entry_not_string");
+      return ["titleDenyList: not_array"];
+    }
+    if (body.titleDenyList.some(value => typeof value !== "string")) {
+      return ["titleDenyList: invalid_entry_type"];
     }
   }
 
   if (body.memory !== undefined && typeof body.memory !== "string") {
-    issues.push("memory_not_string");
+    return ["memory: not_string"];
   }
 
   if (body.flags !== undefined && (typeof body.flags !== "object" || body.flags === null || Array.isArray(body.flags))) {
-    issues.push("flags_not_object");
+    return ["flags: not_object"];
   }
 
-  return issues;
+  return [];
 }
 
 const activeChatRequests = new Map();
@@ -4442,12 +4376,19 @@ ${baseReply}`;
 // response generation, memory update, and persistence of both user and assistant messages.
 app.post("/chat", async (req, res) => {
   const requestData = parseChatRequest(req);
-  if (requestData.logsEnabled === true) {
-    console.log("CHAT INPUT conversationId:", requestData.conversationId);
-  }
   const requestId = String(requestData.requestId || "").trim();
   // traceId: server-generated per-request, always present even without a client requestId.
   const traceId = requestId || `tr_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const chatLogger = childLogger({
+    scope: "chat",
+    conversationId: requestData.conversationId || null,
+    requestId: requestId || null,
+    traceId
+  });
+
+  if (requestData.logsEnabled === true) {
+    chatLogger.info({ event: "chat_input_received" });
+  }
   res.setHeader("x-trace-id", traceId);
 
   if (requestId) {
@@ -4479,20 +4420,18 @@ app.post("/chat", async (req, res) => {
       return;
     }
 
-    console.log("[CHAT][DECISION]", {
-      conversationId: conversationIdForCatch,
+    chatLogger.info({
       event,
       ...payload
-    });
+    }, "chat-decision");
   }
   
   const requestIssues = validateChatRequestShape(req.body);
   if (requestIssues.length > 0) {
     publishChatProgressTerminal(requestId, "error");
-    console.warn("[CHAT][REQUEST_SHAPE]", {
-      conversationId: requestData.conversationId,
+    chatLogger.warn({
       issues: requestIssues
-    });
+    }, "chat-request-shape");
     
     return res.status(400).json({
       error: "Invalid chat request",
@@ -6214,10 +6153,8 @@ app.post("/chat", async (req, res) => {
     });
 
     if (logsEnabled) {
-      console.log("[PIPELINE]", {
-        conversationId,
-        traceId,
-        requestId: requestId || null,
+      chatLogger.info({
+        event: "pipeline_summary",
         elapsedMs: Date.now() - chatStartTime,
         suicideLevel: suicide.suicideLevel,
         detectedState: detectedState,
@@ -6232,7 +6169,7 @@ app.post("/chat", async (req, res) => {
         explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
         rewriteSource: responseDebugMeta.rewriteSource,
         stageTimings: chatStageTimings
-      });
+      }, "pipeline");
     }
     
 
@@ -6272,7 +6209,7 @@ app.post("/chat", async (req, res) => {
             await userMessageRefForCatch.update({ content: newContent });
           }
         } catch (markErr) {
-          console.warn("[CHAT][STOP_MARKING_FAILED]", markErr && markErr.message);
+          chatLogger.warn({ event: "stop_marking_failed", error: markErr && markErr.message ? markErr.message : String(markErr) });
         }
       }
 
@@ -6283,10 +6220,10 @@ app.post("/chat", async (req, res) => {
       });
     }
 
-    console.error("Erreur /chat:", err);
+    chatLogger.error({ event: "chat_error", error: err && err.message ? err.message : String(err) });
     publishChatProgressTerminal(requestId, "error");
-    console.error("[CHAT][ERROR_CONTEXT]", {
-      conversationId: requestData.conversationId,
+    chatLogger.error({
+      event: "chat_error_context",
       lastStage: chatLastStage,
       elapsedMs: Date.now() - chatStartTime,
       stageTimings: chatStageTimings
@@ -6317,13 +6254,13 @@ app.post("/chat", async (req, res) => {
     if (!isQuotaExhausted && userMessagePersistedForCatch && !assistantMessagePersistedForCatch) {
       try {
         await persistFallbackAssistantMessage(fallbackReply, ["error"], fallbackDebugMeta);
-        console.warn("[CHAT][FALLBACK_PERSISTED]", {
-          conversationId: conversationIdForCatch,
+        chatLogger.warn({
+          event: "fallback_persisted",
           lastStage: chatLastStage
         });
       } catch (persistErr) {
-        console.error("[CHAT][FALLBACK_PERSIST_FAILED]", {
-          conversationId: conversationIdForCatch,
+        chatLogger.error({
+          event: "fallback_persist_failed",
           lastStage: chatLastStage,
           error: persistErr && persistErr.message ? persistErr.message : String(persistErr)
         });
@@ -6359,8 +6296,8 @@ app.post("/chat", async (req, res) => {
     }
 
     if (logsEnabledForCatch) {
-      console.log("[CHAT][TRACE]", {
-        conversationId: requestData.conversationId,
+      chatLogger.info({
+        event: "chat_trace",
         totalMs: Date.now() - chatStartTime,
         lastStage: chatLastStage,
         stageTimings: chatStageTimings
@@ -6371,7 +6308,7 @@ app.post("/chat", async (req, res) => {
 
 // Start the HTTP server after all routes and middleware are configured.
 app.listen(port, () => {
-  console.log(`Serveur lance sur http://localhost:${port}`);
+  logger.info({ event: "server_started", port, nodeEnv: appConfig.nodeEnv });
 
   bootstrapAdminSettingsCache();
   startAdminSettingsListener();

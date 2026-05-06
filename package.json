@@ -5,12 +5,14 @@
   "main": "index.js",
   "scripts": {
     "start": "node server.js",
+    "config:check": "node scripts/check-config.js",
     "state:harness": "node scripts/state-machine-harness.js",
     "posture:harness": "node scripts/posture-harness.js",
     "analyzers:harness": "node scripts/analyzers-harness.js",
     "contract-validator:harness": "node scripts/contract-validator-harness.js",
     "flags:harness": "node scripts/flags-harness.js",
     "conversation-state:harness": "node scripts/conversation-state-harness.js",
+    "runtime-schemas:harness": "node scripts/runtime-schemas-harness.js",
     "debugmeta-unit:harness": "node scripts/debugmeta-unit-harness.js",
     "llm-messages:harness": "node scripts/llm-messages-harness.js",
     "conversation-data:harness": "node scripts/conversation-data-harness.js",
@@ -20,8 +22,14 @@
     "transcript:harness": "node scripts/transcript-regression-harness.js",
     "crisis-routing:harness": "node scripts/crisis-routing-harness.js",
     "doctor": "node scripts/doctor.js",
+    "doctor:deep": "node scripts/doctor.js --deep",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "format:check:tooling": "prettier --check eslint.config.js .prettierrc.json lib/config.js lib/logger.js lib/runtime-schemas.js scripts/check-config.js scripts/doctor.js scripts/runtime-schemas-harness.js",
     "smoke:ui": "node scripts/ui-smoke.js",
-    "verify": "node --check server.js && npm run state:harness && npm run posture:harness && npm run analyzers:harness && npm run contract-validator:harness && npm run flags:harness && npm run conversation-state:harness && npm run debugmeta-unit:harness && npm run critic:harness && npm run chat-routing:harness && npm run branching:harness && npm run transcript:harness && npm run crisis-routing:harness && npm run llm-messages:harness && npm run conversation-data:harness",
+    "verify": "node --check server.js && npm run state:harness && npm run posture:harness && npm run analyzers:harness && npm run contract-validator:harness && npm run flags:harness && npm run conversation-state:harness && npm run runtime-schemas:harness && npm run debugmeta-unit:harness && npm run critic:harness && npm run chat-routing:harness && npm run branching:harness && npm run transcript:harness && npm run crisis-routing:harness && npm run llm-messages:harness && npm run conversation-data:harness",
     "verify:full": "npm run verify",
     "reset:data": "node scripts/reset-app-data.js --apply",
     "update:emergency-numbers": "node scripts/update-emergency-numbers.js",
@@ -38,9 +46,16 @@
     "express": "^5.2.1",
     "firebase-admin": "^12.0.0",
     "nodemailer": "^8.0.5",
-    "openai": "^6.25.0"
+    "openai": "^6.25.0",
+    "pino": "^9.7.0",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
-    "playwright": "^1.59.1"
+    "@eslint/js": "^9.26.0",
+    "eslint": "^9.26.0",
+    "globals": "^16.0.0",
+    "playwright": "^1.59.1",
+    "pino-pretty": "^13.0.0",
+    "prettier": "^3.5.3"
   }
 }
