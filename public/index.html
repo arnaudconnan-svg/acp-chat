@@ -6639,6 +6639,10 @@
         return window.FacilitatDebug.buildPipelineRuntimeText(meta);
       }
 
+      function translateWriterModeDebug(value) {
+        return window.FacilitatDebug.translateWriterMode(value);
+      }
+
       function buildMemoryRewriteIntentLines(meta) {
         return window.FacilitatDebug.buildMemoryRewriteIntentLines(meta);
       }
@@ -6650,10 +6654,21 @@
           typeof meta.conversationState === "string" && meta.conversationState.startsWith("exploration");
 
         if (meta.conversationState) {
+          // Relance : cacher si prédictible (open ↔ exploration_open, selective ↔ exploration_restrained)
+          const relanceIsPredictable =
+            (meta.conversationState === "exploration_open" && meta.relancePolicy === "open") ||
+            (meta.conversationState === "exploration_restrained" && meta.relancePolicy === "selective");
+          // Intention : cacher si identique au défaut de l'état
+          const intentIsDefault =
+            (meta.conversationState === "exploration_open" && meta.intent === "explorer librement") ||
+            (meta.conversationState === "exploration_restrained" && meta.intent === "structurer doucement");
+          // Hints : masquer affiliation_first_join (présent à chaque tour avant établissement du lien)
+          const visibleHints = (meta.writerIntentHints || []).filter(function(h) { return h !== "affiliation_first_join"; });
+
           sections.push({
             title: "Contrat de posture",
             content: [
-              `\u00c9tat : ${meta.conversationState}`,
+              `\u00c9tat : ${translateWriterModeDebug(meta.conversationState)}`,
               typeof meta.confidenceSignal === "number" ? `Confiance dans le choix de l'\u00e9tat : ${meta.confidenceSignal.toFixed(2)}` : null,
               meta.uncertaintyExpressionPolicy === "explicit"
                 ? (() => {
@@ -6670,27 +6685,23 @@
                       : "Expression du doute : explicite";
                   })()
                 : null,
-              (isExplorationMode && Number.isInteger(meta.explorationCalibrationLevel)) ?
-                `Niveau de structuration retenu : ${meta.explorationCalibrationLevel}/4` : null,
-                (isExplorationMode && typeof meta.explorationSignal === "string" && meta.explorationSignal) ?
-                  `Signal d'exploration : ${translateExplorationSignalDebug(meta.explorationSignal)}` : null,
-              meta.intent ? `Intention : ${meta.intent}` : null,
+              (isExplorationMode && typeof meta.explorationSignal === "string" && meta.explorationSignal) ?
+                `Signal d'exploration : ${translateExplorationSignalDebug(meta.explorationSignal)}` : null,
+              !intentIsDefault && meta.intent ? `Intention : ${meta.intent}` : null,
               (meta.forbidden && meta.forbidden.length) ? `Interdit : ${meta.forbidden.map(translateForbiddenDebug).join(", ")}` : null,
-              typeof meta.relancePolicy === "string" && meta.relancePolicy ? `Relance : ${translateRelancePolicyDebug(meta.relancePolicy)}` : null,
+              !relanceIsPredictable && typeof meta.relancePolicy === "string" && meta.relancePolicy ? `Relance : ${translateRelancePolicyDebug(meta.relancePolicy)}` : null,
               typeof meta.allianceSignal === "string" && meta.allianceSignal !== "good" ? `Rupture relationnelle : ${meta.allianceSignal}` : null,
               typeof meta.engagementLevel === "string" && meta.engagementLevel !== "active" ? `Disponibilit\u00e9 attentionnelle : ${translateAttentionEngagementDebug(meta.engagementLevel)}` : null,
               typeof meta.attentionWindow === "string" && meta.attentionWindow !== "open" ? `Qualit\u00e9 de l'attention : ${translateAttentionQualityDebug(meta.attentionWindow)}` : null,
-              (meta.writerIntentHints && meta.writerIntentHints.length) ? `Indications : ${meta.writerIntentHints.map(translateWriterHintDebug).join(", ")}` : null,
+              visibleHints.length ? `Indications : ${visibleHints.map(translateWriterHintDebug).join(", ")}` : null,
               meta.responseRegister && meta.responseRegister !== "courant" ? `Registre cible : ${translateRegisterDebug(meta.responseRegister)}` : null,
               meta.phraseLengthPolicy ? `Longueur phrase : ${translatePhraseLengthPolicyDebug(meta.phraseLengthPolicy)}` : null,
-              meta.useDirectAddress === true ? "Adressage direct : actif" : null,
-              meta.somaticFocusPolicy && meta.somaticFocusPolicy !== "none" ? `Politique somatique : ${translateSomaticFocusPolicyDebug(meta.somaticFocusPolicy)}` : null,
               meta.infoRoutingSource ? `Routage info : ${translateInfoRoutingSourceDebug(meta.infoRoutingSource)}` : null,
               meta.stateTransitionValid === false && meta.stateTransitionRequested
                 ? `Transition refus\u00e9e : ${meta.stateTransitionFrom || "(inconnu)"} -> ${meta.stateTransitionRequested}`
                 : null,
               meta.stateTransitionValid === false
-                ? `Transition retenue : ${meta.conversationState}`
+                ? `Transition retenue : ${translateWriterModeDebug(meta.conversationState)}`
                 : null,
               meta.consecutiveNonExplorationTurns > 0
                 ? `Tours cons\u00e9cutifs hors exploration : ${meta.consecutiveNonExplorationTurns}`
@@ -6754,9 +6765,14 @@
           signauxLines.push("Vouvoiement actif");
         }
         if (meta.aggressiveDischargeDetected === true) {
-          signauxLines.push("Décharge agressive détectée (C2?C3)");
+          signauxLines.push("D\u00e9charge agressive d\u00e9tect\u00e9e (C2?C3)");
         }
         if (meta.postDischargeTransitionActive === true) {
+          signauxLines.push("Transition post-d\u00e9charge active (C3)");
+        }
+        if (meta.somaticFocusPolicy && meta.somaticFocusPolicy !== "none") {
+          signauxLines.push(`Politique somatique : ${translateSomaticFocusPolicyDebug(meta.somaticFocusPolicy)}`);
+        }
           signauxLines.push("Transition post-d\u00e9charge active (C3)");
         }
         if (meta.secondaryTension) {

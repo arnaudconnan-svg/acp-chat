@@ -213,7 +213,7 @@
   function translateWriterMode(mode) {
     var map = {
       exploration_open: "exploration ouverte",
-      exploration_restrained: "exploration guid\u00e9e",
+      exploration_restrained: "exploration restrainte",
       post_contact: "exploration ouverte (legacy)",
       stabilization: "stabilisation",
       alliance_rupture: "rupture d'alliance",

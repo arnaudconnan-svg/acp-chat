@@ -1813,10 +1813,21 @@
             typeof resolvedState === "string" && resolvedState.startsWith("exploration");
 
           if (resolvedState) {
+            // Relance : cacher si pr\u00e9dictible
+            const relanceIsPredictable =
+              (resolvedState === "exploration_open" && meta.relancePolicy === "open") ||
+              (resolvedState === "exploration_restrained" && meta.relancePolicy === "selective");
+            // Intention : cacher si identique au d\u00e9faut de l'\u00e9tat
+            const intentIsDefault =
+              (resolvedState === "exploration_open" && meta.intent === "explorer librement") ||
+              (resolvedState === "exploration_restrained" && meta.intent === "structurer doucement");
+            // Hints : masquer affiliation_first_join
+            const visibleHints = (meta.writerIntentHints || []).filter(function(h) { return h !== "affiliation_first_join"; });
+
             sections.push({
               title: "Contrat de posture",
               content: [
-                `\u00c9tat : ${resolvedState}`,
+                `\u00c9tat : ${translateWriterMode(resolvedState)}`,
                 typeof meta.confidenceSignal === "number" ? `Confiance dans le choix de l'\u00e9tat : ${meta.confidenceSignal.toFixed(2)}` : null,
                 meta.uncertaintyExpressionPolicy === "explicit"
                   ? (() => {
@@ -1833,28 +1844,24 @@
                         : "Expression du doute : explicite";
                     })()
                   : null,
-                (isExplorationMode && Number.isInteger(meta.explorationCalibrationLevel)) ?
-                  `Niveau de structuration retenu : ${meta.explorationCalibrationLevel}/4` : null,
                 (isExplorationMode && typeof meta.explorationSignal === "string" && meta.explorationSignal) ?
                   `Signal d'exploration : ${translateExplorationSignal(meta.explorationSignal)}` : null,
-                meta.intent ? `Intention : ${meta.intent}` : null,
+                !intentIsDefault && meta.intent ? `Intention : ${meta.intent}` : null,
                 (meta.forbidden && meta.forbidden.length) ? `Interdit : ${meta.forbidden.map(translateForbidden).join(", ")}` : null,
-                meta.relancePolicy ? `Relance : ${translateRelancePolicy(meta.relancePolicy)}` : null,
+                !relanceIsPredictable && meta.relancePolicy ? `Relance : ${translateRelancePolicy(meta.relancePolicy)}` : null,
                 meta.allianceSignal && meta.allianceSignal !== "good" ? `Rupture relationnelle : ${meta.allianceSignal}` : null,
                 meta.engagementLevel && meta.engagementLevel !== "active" ? `Disponibilit\u00e9 attentionnelle : ${translateAttentionEngagement(meta.engagementLevel)}` : null,
                 meta.attentionWindow && meta.attentionWindow !== "open" ? `Qualit\u00e9 de l'attention : ${translateAttentionQuality(meta.attentionWindow)}` : null,
-                (meta.writerIntentHints && meta.writerIntentHints.length) ? `Indications : ${meta.writerIntentHints.map(translateWriterHint).join(", ")}` : null,
+                visibleHints.length ? `Indications : ${visibleHints.map(translateWriterHint).join(", ")}` : null,
                 meta.responseRegister && meta.responseRegister !== "courant" ? `Registre cible : ${translateRegister(meta.responseRegister)}` : null,
                 meta.phraseLengthPolicy ? `Longueur phrase : ${translatePhraseLengthPolicy(meta.phraseLengthPolicy)}` : null,
-                meta.useDirectAddress === true ? "Adressage direct : actif" : null,
-                meta.somaticFocusPolicy && meta.somaticFocusPolicy !== "none" ? `Politique somatique : ${translateSomaticFocusPolicy(meta.somaticFocusPolicy)}` : null,
                 (meta.actionCollapseGuardActive === true && !(Array.isArray(meta.writerIntentHints) && meta.writerIntentHints.some(h => String(h || "").indexOf("procedural_temptation_") === 0))) ? "Garde anti-rabattement action: active" : null,
                 meta.infoRoutingSource ? `Routage info : ${translateInfoRoutingSource(meta.infoRoutingSource)}` : null,
                 meta.stateTransitionValid === false && meta.stateTransitionRequested
                   ? `Transition refus\u00e9e : ${meta.stateTransitionFrom || "(inconnu)"} -> ${meta.stateTransitionRequested}`
                   : null,
                 meta.stateTransitionValid === false
-                  ? `Transition retenue : ${resolvedState}`
+                  ? `Transition retenue : ${translateWriterMode(resolvedState)}`
                   : null,
                 meta.consecutiveNonExplorationTurns > 0
                   ? `Tours cons\u00e9cutifs hors exploration : ${meta.consecutiveNonExplorationTurns}`
@@ -1921,10 +1928,13 @@
             signauxLines.push("Vouvoiement actif");
           }
           if (meta.aggressiveDischargeDetected === true) {
-            signauxLines.push("Décharge agressive détectée (C2→C3)");
+            signauxLines.push("D\u00e9charge agressive d\u00e9tect\u00e9e (C2\u2192C3)");
           }
           if (meta.postDischargeTransitionActive === true) {
             signauxLines.push("Transition post-d\u00e9charge active (C3)");
+          }
+          if (meta.somaticFocusPolicy && meta.somaticFocusPolicy !== "none") {
+            signauxLines.push(`Politique somatique : ${translateSomaticFocusPolicy(meta.somaticFocusPolicy)}`);
           }
           if (meta.secondaryTension) {
             var secondaryLabel = window.FacilitatDebug.formatSecondaryTension(meta.secondaryTension);
