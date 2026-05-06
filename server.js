@@ -4880,6 +4880,113 @@ app.post("/chat", async (req, res) => {
       });
     }
 
+    async function handleN2CrisisRoute() {
+      newFlags.acuteCrisis = true;
+      newFlags.crisisFollowupTurnCount = 0;
+      newFlags.postCrisisSupportCarryTurn = false;
+      newFlags.dischargeState = { wasDischarge: false };
+      flagsForCatch = normalizeSessionFlags(newFlags);
+
+      logChatDecision("override_n2", {
+        acuteCrisisAfter: true
+      });
+
+      const debug = buildOverrideDebug("N2");
+
+      let n2PromptRegistry = activePromptRegistry;
+      try {
+        const emergencyText = await resolveEmergencySupportText();
+        if (emergencyText) {
+          n2PromptRegistry = {
+            ...activePromptRegistry,
+            N2_RESPONSE_LLM: activePromptRegistry.N2_RESPONSE_LLM.replace("{{EMERGENCY_NUMBERS}}", emergencyText)
+          };
+        }
+      } catch {
+        // Non-bloquant : on continue avec les num�ros FR par d�faut si la r�solution �choue
+      }
+
+      let reply;
+      try {
+        const n2Result = await generateReply({
+          message,
+          history: recentHistory,
+          memory: previousMemory,
+          postureDecision: buildN2CrisisPostureDecision(),
+          promptRegistry: n2PromptRegistry
+        });
+        reply = n2Result.reply;
+      } catch {
+        reply = n2Response();
+      }
+
+      const responseMemory = previousMemory;
+      scheduleBackgroundMemoryUpdate(previousMemory, reply, "crisis", "");
+
+      const responseDebugMeta = buildCrisisResponseDebugMeta({
+        memory: responseMemory,
+        suicideLevel: "N2",
+        n2TurnType: null,
+        emergencyNumbersIncluded: true,
+        postCrisisSupportActive: false,
+        postCrisisSupportCarryTurn: false,
+        emergencySupportText: null
+      });
+
+      const botMessageId = persistAssistantMessageAsync(reply, debug, responseDebugMeta, { memory: responseMemory, flags: newFlags });
+      return sendChatJsonResponse(reply, responseMemory, newFlags, debug, responseDebugMeta, botMessageId, "état:n2_crisis");
+    }
+
+    async function handleAcuteCrisisFollowupRoute() {
+      newFlags.acuteCrisis = true;
+      newFlags.postCrisisSupportCarryTurn = true;
+      newFlags.dischargeState = { wasDischarge: false };
+      flagsForCatch = normalizeSessionFlags(newFlags);
+
+      logChatDecision("override_acute_crisis_followup", {
+        suicideLevel: suicide.suicideLevel,
+        crisisResolved: false
+      });
+
+      const debug = buildOverrideDebug(suicide.suicideLevel);
+      const n2TurnType = classifyN2TurnType(message);
+      const crisisFollowupTurnCount = Number.isInteger(flags.crisisFollowupTurnCount) ? flags.crisisFollowupTurnCount : 0;
+      const includeNumbers = false;
+      newFlags.crisisFollowupTurnCount = crisisFollowupTurnCount + 1;
+
+      const followupEmergencyText = await resolveEmergencySupportText();
+
+      let reply;
+      try {
+        reply = await acuteCrisisFollowupResponseLLM({
+          message,
+          history: recentHistory,
+          turnType: n2TurnType,
+          includeNumbers,
+          emergencyText: followupEmergencyText,
+          promptRegistry: activePromptRegistry
+        });
+      } catch {
+        reply = acuteCrisisFollowupResponse();
+      }
+
+      const responseMemory = previousMemory;
+      scheduleBackgroundMemoryUpdate(previousMemory, reply, "crisis", "");
+
+      const responseDebugMeta = buildCrisisResponseDebugMeta({
+        memory: responseMemory,
+        suicideLevel: suicide.suicideLevel,
+        n2TurnType,
+        emergencyNumbersIncluded: includeNumbers,
+        postCrisisSupportActive: true,
+        postCrisisSupportCarryTurn: false,
+        emergencySupportText: followupEmergencyText
+      });
+
+      const botMessageId = persistAssistantMessageAsync(reply, debug, responseDebugMeta, { memory: responseMemory, flags: newFlags });
+      return sendChatJsonResponse(reply, responseMemory, newFlags, debug, responseDebugMeta, botMessageId, "état:n2_crisis");
+    }
+
     let emergencySupportTextPromise = null;
     async function resolveEmergencySupportText() {
       if (emergencySupportTextPromise) {
@@ -4938,123 +5045,14 @@ app.post("/chat", async (req, res) => {
     // Severe suicide risk override path.
     // If the analysis returns N2, we bypass normal generation and reply with a crisis response.
     if (crisisDecision.route === "n2") {
-      newFlags.acuteCrisis = true;
-      newFlags.crisisFollowupTurnCount = 0;
-      newFlags.postCrisisSupportCarryTurn = false;
-      newFlags.dischargeState = { wasDischarge: false };
-      flagsForCatch = normalizeSessionFlags(newFlags);
-
-      logChatDecision("override_n2", {
-        acuteCrisisAfter: true
-      });
-
-      const debug = buildOverrideDebug("N2");
-      
-      // N2 : g�n�ration contextualis�e via LLM avec fallback sur la r�ponse statique.
-      // R�solution des num�ros d'urgence selon le pays de l'utilisateur.
-      let n2PromptRegistry = activePromptRegistry;
-      try {
-        const emergencyText = await resolveEmergencySupportText();
-        if (emergencyText) {
-          n2PromptRegistry = {
-            ...activePromptRegistry,
-            N2_RESPONSE_LLM: activePromptRegistry.N2_RESPONSE_LLM.replace("{{EMERGENCY_NUMBERS}}", emergencyText)
-          };
-        }
-      } catch {
-        // Non-bloquant : on continue avec les num�ros FR par d�faut si la r�solution �choue
-      }
-
-      let reply;
-      try {
-        const n2Result = await generateReply({
-          message,
-          history: recentHistory,
-          memory: previousMemory,
-          postureDecision: buildN2CrisisPostureDecision(),
-          promptRegistry: n2PromptRegistry
-        });
-        reply = n2Result.reply;
-      } catch {
-        reply = n2Response();
-      }
-      const responseMemory = previousMemory;
-
-      scheduleBackgroundMemoryUpdate(previousMemory, reply, "crisis", "");
-
-      const responseDebugMeta = buildCrisisResponseDebugMeta({
-        memory: responseMemory,
-        suicideLevel: "N2",
-        n2TurnType: null,
-        emergencyNumbersIncluded: true,
-        postCrisisSupportActive: false,
-        postCrisisSupportCarryTurn: false,
-        emergencySupportText: null
-      });
-      
-      const botMessageId = persistAssistantMessageAsync(reply, debug, responseDebugMeta, { memory: responseMemory, flags: newFlags });
-
-      return sendChatJsonResponse(reply, responseMemory, newFlags, debug, responseDebugMeta, botMessageId, "état:n2_crisis");
+      return handleN2CrisisRoute();
     }
     
     // 2) Crisis follow-up path for an already active acute crisis.
     // If the crisis is not resolved, keep the bot in crisis-handling mode.
     if (flags.acuteCrisis === true) {
       if (crisisDecision.route === "acute_followup") {
-        newFlags.acuteCrisis = true;
-        newFlags.postCrisisSupportCarryTurn = true;
-        newFlags.dischargeState = { wasDischarge: false };
-        flagsForCatch = normalizeSessionFlags(newFlags);
-
-        logChatDecision("override_acute_crisis_followup", {
-          suicideLevel: suicide.suicideLevel,
-          crisisResolved: false
-        });
-
-        const debug = buildOverrideDebug(suicide.suicideLevel);
-
-        // Classifier déterministe du type de tour (refus, hostilité, isolement, débordement, neutre)
-        const n2TurnType = classifyN2TurnType(message);
-
-        // Les numéros restent dans l'encart post-N2, pas dans la bulle du bot.
-        const crisisFollowupTurnCount = Number.isInteger(flags.crisisFollowupTurnCount) ? flags.crisisFollowupTurnCount : 0;
-        const includeNumbers = false;
-        newFlags.crisisFollowupTurnCount = crisisFollowupTurnCount + 1;
-
-        // Résolution des numéros d'urgence selon le pays (réutilise la même logique que N2 entry)
-        const followupEmergencyText = await resolveEmergencySupportText();
-
-        let reply;
-        try {
-          reply = await acuteCrisisFollowupResponseLLM({
-            message,
-            history: recentHistory,
-            turnType: n2TurnType,
-            includeNumbers,
-            emergencyText: followupEmergencyText,
-            promptRegistry: activePromptRegistry
-          });
-        } catch {
-          reply = acuteCrisisFollowupResponse();
-        }
-
-        const responseMemory = previousMemory;
-
-        scheduleBackgroundMemoryUpdate(previousMemory, reply, "crisis", "");
-
-        const responseDebugMeta = buildCrisisResponseDebugMeta({
-          memory: responseMemory,
-          suicideLevel: suicide.suicideLevel,
-          n2TurnType,
-          emergencyNumbersIncluded: includeNumbers,
-          postCrisisSupportActive: true,
-          postCrisisSupportCarryTurn: false,
-          emergencySupportText: followupEmergencyText
-        });
-        
-        const botMessageId = persistAssistantMessageAsync(reply, debug, responseDebugMeta, { memory: responseMemory, flags: newFlags });
-
-        return sendChatJsonResponse(reply, responseMemory, newFlags, debug, responseDebugMeta, botMessageId, "état:n2_crisis");
+        return handleAcuteCrisisFollowupRoute();
       }
       
       const postCrisisSupportCarryTurnActive = flags.postCrisisSupportCarryTurn === true && crisisDecision.route !== "n1_clarification";
