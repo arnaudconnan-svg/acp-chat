@@ -4277,10 +4277,21 @@
       showTemporaryNotice("Creation de la branche...");
 
       try {
+        const seedMessages = (Array.isArray(anchorHistory) ? anchorHistory : [])
+          .map(item => ({
+            id: typeof item?.id === "string" ? item.id : undefined,
+            role: String(item?.role || ""),
+            content: String(item?.content || ""),
+            debug: Array.isArray(item?.debug) ? item.debug : [],
+            debugMeta: normalizeClientDebugMeta(item?.debugMeta),
+            stateSnapshot: normalizeStoredStateSnapshot(item?.stateSnapshot)
+          }))
+          .filter(item => item.role && item.content);
+
         const createRes = await fetch("/api/branches/from-message", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sourceConversationId, anchorMessageId, userId: branchUserId })
+          body: JSON.stringify({ sourceConversationId, anchorMessageId, seedMessages, userId: branchUserId })
         });
 
         if (!createRes.ok) {
@@ -8367,7 +8378,7 @@
               body: JSON.stringify({
                 sourceConversationId: conversationIdBeforeSend,
                 anchorMessageId,
-                seedMessages: anchorMessageId ? undefined : branchSeedMessages,
+                seedMessages: branchSeedMessages,
                 userId: branchUserId,
                 memory: branchState.memory,
                 flags: branchState.flags

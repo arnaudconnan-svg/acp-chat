@@ -2434,22 +2434,43 @@ app.post("/api/branches/from-message", async (req, res) => {
       const anchorIndex = messageEntries.findIndex(entry => entry.id === anchorMessageId);
 
       if (anchorIndex < 0) {
-        return res.status(404).json({ error: "Anchor message not found" });
-      }
+        if (!requestedSeedMessages || requestedSeedMessages.length === 0) {
+          return res.status(404).json({ error: "Anchor message not found" });
+        }
 
-      const seededEntries = messageEntries.slice(0, anchorIndex + 1);
-      seededMessages = seededEntries.map(entry => ({
-        id: entry.id,
-        role: String(entry.item.role || ""),
-        content: String(entry.item.content || ""),
-        debug: Array.isArray(entry.item.debug) ? entry.item.debug : [],
-        debugMeta: entry.item.debugMeta && typeof entry.item.debugMeta === "object" ? entry.item.debugMeta : null,
-        stateSnapshot: entry.item.stateSnapshot && typeof entry.item.stateSnapshot === "object" ? {
-          memory: typeof entry.item.stateSnapshot.memory === "string" ? entry.item.stateSnapshot.memory : "",
-          flags: normalizeSessionFlags(entry.item.stateSnapshot.flags || {})
-        } : null,
-        createdAt: typeof entry.item.createdAt === "string" ? entry.item.createdAt : null
-      }));
+        seededMessages = requestedSeedMessages
+          .map(item => ({
+            id: typeof item?.id === "string" && item.id.trim() ? item.id.trim() : null,
+            role: String(item?.role || ""),
+            content: String(item?.content || ""),
+            debug: Array.isArray(item?.debug) ? item.debug : [],
+            debugMeta: item?.debugMeta && typeof item.debugMeta === "object" ? item.debugMeta : null,
+            stateSnapshot: item?.stateSnapshot && typeof item.stateSnapshot === "object" ? {
+              memory: typeof item.stateSnapshot.memory === "string" ? item.stateSnapshot.memory : "",
+              flags: normalizeSessionFlags(item.stateSnapshot.flags || {})
+            } : null,
+            createdAt: typeof item?.createdAt === "string" ? item.createdAt : null
+          }))
+          .filter(item => item.role && item.content);
+
+        resolvedAnchorMessageId = String(
+          [...seededMessages].reverse().find(item => typeof item?.id === "string" && item.id.trim())?.id || anchorMessageId
+        ).trim();
+      } else {
+        const seededEntries = messageEntries.slice(0, anchorIndex + 1);
+        seededMessages = seededEntries.map(entry => ({
+          id: entry.id,
+          role: String(entry.item.role || ""),
+          content: String(entry.item.content || ""),
+          debug: Array.isArray(entry.item.debug) ? entry.item.debug : [],
+          debugMeta: entry.item.debugMeta && typeof entry.item.debugMeta === "object" ? entry.item.debugMeta : null,
+          stateSnapshot: entry.item.stateSnapshot && typeof entry.item.stateSnapshot === "object" ? {
+            memory: typeof entry.item.stateSnapshot.memory === "string" ? entry.item.stateSnapshot.memory : "",
+            flags: normalizeSessionFlags(entry.item.stateSnapshot.flags || {})
+          } : null,
+          createdAt: typeof entry.item.createdAt === "string" ? entry.item.createdAt : null
+        }));
+      }
     } else {
       seededMessages = (requestedSeedMessages || [])
         .map(item => ({
@@ -2581,20 +2602,42 @@ app.post("/api/branches/create-and-activate", async (req, res) => {
     if (anchorMessageId) {
       const anchorIndex = messageEntries.findIndex(entry => entry.id === anchorMessageId);
       if (anchorIndex < 0) {
-        return res.status(404).json({ error: "Anchor message not found" });
+        if (!requestedSeedMessages || requestedSeedMessages.length === 0) {
+          return res.status(404).json({ error: "Anchor message not found" });
+        }
+
+        seededMessages = requestedSeedMessages
+          .map(item => ({
+            id: typeof item?.id === "string" && item.id.trim() ? item.id.trim() : null,
+            role: String(item?.role || ""),
+            content: String(item?.content || ""),
+            debug: Array.isArray(item?.debug) ? item.debug : [],
+            debugMeta: item?.debugMeta && typeof item.debugMeta === "object" ? item.debugMeta : null,
+            stateSnapshot: item?.stateSnapshot && typeof item.stateSnapshot === "object" ? {
+              memory: typeof item.stateSnapshot.memory === "string" ? item.stateSnapshot.memory : "",
+              flags: normalizeSessionFlags(item.stateSnapshot.flags || {})
+            } : null,
+            createdAt: typeof item?.createdAt === "string" ? item.createdAt : null
+          }))
+          .filter(item => item.role && item.content);
+
+        resolvedAnchorMessageId = String(
+          [...seededMessages].reverse().find(item => typeof item?.id === "string" && item.id.trim())?.id || anchorMessageId
+        ).trim();
+      } else {
+        seededMessages = messageEntries.slice(0, anchorIndex + 1).map(entry => ({
+          id: entry.id,
+          role: String(entry.item.role || ""),
+          content: String(entry.item.content || ""),
+          debug: Array.isArray(entry.item.debug) ? entry.item.debug : [],
+          debugMeta: entry.item.debugMeta && typeof entry.item.debugMeta === "object" ? entry.item.debugMeta : null,
+          stateSnapshot: entry.item.stateSnapshot && typeof entry.item.stateSnapshot === "object" ? {
+            memory: typeof entry.item.stateSnapshot.memory === "string" ? entry.item.stateSnapshot.memory : "",
+            flags: normalizeSessionFlags(entry.item.stateSnapshot.flags || {})
+          } : null,
+          createdAt: typeof entry.item.createdAt === "string" ? entry.item.createdAt : null
+        }));
       }
-      seededMessages = messageEntries.slice(0, anchorIndex + 1).map(entry => ({
-        id: entry.id,
-        role: String(entry.item.role || ""),
-        content: String(entry.item.content || ""),
-        debug: Array.isArray(entry.item.debug) ? entry.item.debug : [],
-        debugMeta: entry.item.debugMeta && typeof entry.item.debugMeta === "object" ? entry.item.debugMeta : null,
-        stateSnapshot: entry.item.stateSnapshot && typeof entry.item.stateSnapshot === "object" ? {
-          memory: typeof entry.item.stateSnapshot.memory === "string" ? entry.item.stateSnapshot.memory : "",
-          flags: normalizeSessionFlags(entry.item.stateSnapshot.flags || {})
-        } : null,
-        createdAt: typeof entry.item.createdAt === "string" ? entry.item.createdAt : null
-      }));
     } else {
       seededMessages = (requestedSeedMessages || [])
         .map(item => ({
