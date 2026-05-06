@@ -184,6 +184,7 @@
       externalSupportMode: toTrimmedString(safe.externalSupportMode, "") || "none",
       closureIntent: toBooleanTrue(safe.closureIntent),
       infoRoutingSource: toTrimmedString(safe.infoRoutingSource, "") || null,
+      tieBreakReason: toTrimmedString(safe.tieBreakReason, "") || null,
       affiliationScore: typeof safe.affiliationScore === "number" ? safe.affiliationScore : null,
       affiliationWindow: Array.isArray(safe.affiliationWindow)
         ? safe.affiliationWindow.map(function mapAffiliation(v) {
@@ -335,6 +336,21 @@
     return value;
   }
 
+  function translateTieBreakReason(value) {
+    var map = {
+      discharge_priority: "decharge prioritaire",
+      override_app_features: "demande app explicite prioritaire",
+      info_gt_exploration: "info prioritaire (confiance plus forte)",
+      exploration_gt_info: "exploration prioritaire (confiance plus forte)",
+      tie_break_equal_high_info_primary: "egalite confiance haute: info prioritaire",
+      tie_break_equal_medium_info_primary: "egalite confiance moyenne: info prioritaire",
+      tie_break_equal_low_exploration_primary: "egalite confiance basse: exploration prioritaire",
+      info_only_candidate: "seul candidat: info",
+      exploration_only_candidate: "seul candidat: exploration"
+    };
+    return map[value] || value;
+  }
+
   function buildNaturalDebugSummary(meta, variant) {
     var lines = [];
 
@@ -391,7 +407,8 @@
         vouvoiementRisk: "Risque de vouvoiement non conforme",
         theoreticalViolationRisk: "Risque de formulation th\u00e9orique/interpr\u00e9tative",
         n1CrisisForced: "D\u00e9clenchement forc\u00e9 en crise N1",
-        recallForced: "D\u00e9clenchement forc\u00e9 en rappel m\u00e9moire"
+        recallForced: "D\u00e9clenchement forc\u00e9 en rappel m\u00e9moire",
+        signalLeakRisk: "Risque de fuite de signal interne"
       };
       var reasons = (meta.criticTriggerReasons || []).map(function mapReason(r) {
         return criticReasonLabels[r] || r;
@@ -495,6 +512,7 @@
     translateSomaticFocusPolicy: translateSomaticFocusPolicy,
     translateConfidenceSignal: translateConfidenceSignal,
     translateInfoRoutingSource: translateInfoRoutingSource,
+    translateTieBreakReason: translateTieBreakReason,
     buildNaturalDebugSummary: buildNaturalDebugSummary,
     buildMemoryRewriteIntentLines: buildMemoryRewriteIntentLines,
     buildPipelineRuntimeText: buildPipelineRuntimeText,

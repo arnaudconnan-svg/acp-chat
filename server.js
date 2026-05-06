@@ -139,9 +139,11 @@ const {
   buildAdvancedDebugTrace,
   buildDebug,
   buildPostureDecision,
+  computeAffiliationTurnDetails,
   computeAffiliationTurnScore,
   computeAffiliationEstablished,
   electActiveStateFromCandidates,
+  hasShortAffiliationMarker,
   normalizeGuardText,
   shouldForceExplorationForSituatedImpasse
 } = require("./lib/pipeline");
@@ -2232,6 +2234,7 @@ app.post("/api/account/conversations/import-local", requireUserAuth, async (req,
               externalSupportMode: typeof debugMeta.externalSupportMode === "string" ? debugMeta.externalSupportMode : null,
               closureIntent: debugMeta.closureIntent === true,
               infoRoutingSource: typeof debugMeta.infoRoutingSource === "string" ? debugMeta.infoRoutingSource : null,
+              tieBreakReason: typeof debugMeta.tieBreakReason === "string" ? debugMeta.tieBreakReason : null,
               modelConflict: debugMeta.modelConflict === true,
               humanFieldRisk: debugMeta.humanFieldRisk === true,
               humanFieldOriginalReply: typeof debugMeta.humanFieldOriginalReply === "string" ? debugMeta.humanFieldOriginalReply : null,
@@ -4149,6 +4152,167 @@ function buildTurnSignals(postureDecision, {
   return parts.join(", ");
 }
 
+const INTERNAL_SIGNAL_LEAK_TOKENS = [
+  "exploration_open",
+  "exploration_restrained",
+  "discharge_regulated",
+  "discharge_dysregulated",
+  "info_pure",
+  "info_features",
+  "info_psychoeducation",
+  "stabilization",
+  "alliance_rupture",
+  "closure",
+  "n1_crisis",
+  "n2_crisis",
+  "etat",
+  "state",
+  "niveau",
+  "alliance",
+  "tension",
+  "autocrit",
+  "decentrage_emo",
+  "dependance",
+  "dependency"
+];
+
+function hasSignalLeakRisk(replyText = "") {
+  const text = String(replyText || "");
+  if (!text) return false;
+
+  const bracketSignalPattern = /\[[^\]]*(signaux?|signals?|etat|state|niveau|alliance|tension|autocrit|decentrage_emo|dependance|dependency)\s*:[^\]]*\]/i;
+  if (bracketSignalPattern.test(text)) return true;
+
+  const lower = text.toLowerCase();
+  if (!(lower.includes("[") && lower.includes("]") && (lower.includes("signal") || lower.includes("signaux")))) {
+    return false;
+  }
+
+  return INTERNAL_SIGNAL_LEAK_TOKENS.some((token) => lower.includes(String(token).toLowerCase()));
+}
+
+function stripSignalLeakFragments(replyText = "") {
+  const text = String(replyText || "");
+  if (!text) return text;
+
+  const linePattern = /^\s*\[[^\]]*(signaux?|signals?|etat|state|niveau|alliance|tension|autocrit|decentrage_emo|dependance|dependency)[^\]]*\]\s*$/gim;
+  const inlinePattern = /\s*\[[^\]]*(signaux?|signals?|etat|state|niveau|alliance|tension|autocrit|decentrage_emo|dependance|dependency)[^\]]*\]/gim;
+
+  return text
+    .replace(linePattern, "")
+    .replace(inlinePattern, "")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function canStrictlyStripSignalLeakWithoutAmputating(originalText = "", strippedText = "") {
+  const original = String(originalText || "").replace(/\s+/g, " ").trim();
+  const stripped = String(strippedText || "").replace(/\s+/g, " ").trim();
+  if (!stripped) return false;
+  if (stripped.length >= 120) return true;
+  const ratio = stripped.length / Math.max(1, original.length);
+  return ratio >= 0.55;
+}
+
+function deriveAttachmentLevelFromScore(attachmentScore = 0) {
+  const score = Number.isFinite(attachmentScore) ? attachmentScore : 0;
+  if (score <= 30) return "low";
+  if (score <= 65) return "medium";
+  return "high";
+}
+
+async function analyzeAffiliationShortValidationCoherence(message = "", history = [], promptRegistry = buildDefaultPromptRegistry()) {
+  if (!hasShortAffiliationMarker(message)) {
+    return {
+      shortValidationConfirmed: true,
+      source: "deterministic_no_short_marker"
+    };
+  }
+
+  const context = trimInfoAnalysisHistory(history);
+  const user = `
+Message utilisateur actuel :
+${message}
+
+Contexte recent :
+${context.map(m => `${m.role === "user" ? "Utilisateur" : "Assistant"} : ${m.content}`).join("\n")}
+`;
+
+  try {
+    const r = await client.chat.completions.create({
+      model: MODEL_IDS.analysis,
+      temperature: 0,
+      max_tokens: 60,
+      messages: [
+        {
+          role: "system",
+          content: "Tu determines si un marqueur lexical court de validation (ex: 'exactement', 'c'est ca') confirme reellement le message assistant precedent. Reponds STRICTEMENT en JSON: {\"shortValidationConfirmed\": true|false}. true uniquement si la validation est contextuellement coherente et non ironique/non contestataire."
+        },
+        { role: "user", content: user }
+      ]
+    });
+
+    const raw = (r.choices?.[0]?.message?.content || "").replace(/```json|```/g, "").trim();
+    const parsed = JSON.parse(raw);
+    return {
+      shortValidationConfirmed: parsed.shortValidationConfirmed === true,
+      source: "llm"
+    };
+  } catch {
+    return {
+      shortValidationConfirmed: false,
+      source: "llm_fallback"
+    };
+  }
+}
+
+async function rewriteSignalLeakLocally({
+  reply = "",
+  message = "",
+  history = [],
+  promptRegistry = buildDefaultPromptRegistry()
+} = {}) {
+  const baseReply = String(reply || "").trim();
+  if (!baseReply) return "";
+
+  const strippedFallback = stripSignalLeakFragments(baseReply);
+  if (!strippedFallback) return "";
+
+  const context = trimInfoAnalysisHistory(history);
+  const user = `Message utilisateur :
+${message}
+
+Contexte recent :
+${context.map(m => `${m.role === "user" ? "Utilisateur" : "Assistant"} : ${m.content}`).join("\n")}
+
+Reponse a corriger :
+${baseReply}`;
+
+  try {
+    const r = await client.chat.completions.create({
+      model: MODEL_IDS.analysis,
+      temperature: 0,
+      max_tokens: 220,
+      messages: [
+        {
+          role: "system",
+          content: "Tu corriges uniquement une fuite de signal interne visible (ex: annotations [signaux: ...]). Regle: conserve le sens clinique et le ton du texte, retire seulement les fragments techniques internes, et ne rajoute aucune explication meta. Reponds STRICTEMENT en JSON: {\"reply\": \"...\"}."
+        },
+        { role: "user", content: user }
+      ]
+    });
+
+    const raw = (r.choices?.[0]?.message?.content || "").replace(/```json|```/g, "").trim();
+    const parsed = JSON.parse(raw);
+    const candidate = typeof parsed.reply === "string" ? parsed.reply.trim() : "";
+    const cleanedCandidate = stripSignalLeakFragments(candidate);
+    return cleanedCandidate || strippedFallback;
+  } catch {
+    return strippedFallback;
+  }
+}
+
 // Main chat endpoint.
 // This route orchestrates the request parsing, safety analysis, mode detection,
 // response generation, memory update, and persistence of both user and assistant messages.
@@ -4303,6 +4467,7 @@ app.post("/chat", async (req, res) => {
       dependencyRiskLevel: normalizeDependencyRiskLevel(safe.dependencyRiskLevel),
       externalSupportMode: normalizeExternalSupportMode(safe.externalSupportMode),
       closureIntent: safe.closureIntent === true,
+      tieBreakReason: typeof safe.tieBreakReason === "string" ? safe.tieBreakReason : null,
       affiliationScore: typeof safe.affiliationScore === "number" ? safe.affiliationScore : null,
       affiliationWindow: normalizeAffiliationWindow(safe.affiliationWindow),
       affiliationEstablished: safe.affiliationEstablished === true,
@@ -5154,8 +5319,8 @@ app.post("/chat", async (req, res) => {
     const electedState = electActiveStateFromCandidates(stateProposal.stateCandidates, stateProposal.contactAnalysis);
     const secondaryTension = (electedState.nonElectedCandidates && electedState.nonElectedCandidates[0]) || null;
 
-    // Phase 2b: exploration-specific analysers — only fired when electedState is exploration.
-    // Skipped for discharge, info, and crisis states to avoid unused LLM calls.
+    // Phase 2b: exploration calibration stays exploration-only.
+    // Interpretation rejection/readjustment is also available in info states.
     let calibrationAnalysis;
     let interpretationRejection;
     if (electedState.detectedState === "exploration") {
@@ -5175,6 +5340,14 @@ app.post("/chat", async (req, res) => {
             promptRegistry: activePromptRegistry
           }))
       ]);
+    } else if (typeof electedState.detectedState === "string" && electedState.detectedState.startsWith("info_")) {
+      calibrationAnalysis = { calibrationLevel: effectiveExplorationDirectivityLevel, explorationSignal: "interpretation" };
+      interpretationRejection = await withAnalyzerTiming("interpretation_rejection", analyzeInterpretationRejection({
+        message,
+        history: recentHistory,
+        memory: previousMemory,
+        promptRegistry: activePromptRegistry
+      }));
     } else {
       calibrationAnalysis = { calibrationLevel: effectiveExplorationDirectivityLevel, explorationSignal: "interpretation" };
       interpretationRejection = { isInterpretationRejection: false, relationalFrictionSignal: "none", rejectsUnderlyingPhenomenon: false };
@@ -5199,6 +5372,7 @@ app.post("/chat", async (req, res) => {
 
     // Source de routage info pour observabilit� admin
     let infoRoutingSource = null;
+    const tieBreakReason = typeof electedState.tieBreakReason === "string" ? electedState.tieBreakReason : null;
     if (typeof detectedState === "string" && detectedState.startsWith("info_")) {
       const src = electedState.infoSource;
       const subSrc = electedState.infoSignalSource;
@@ -5212,14 +5386,30 @@ app.post("/chat", async (req, res) => {
         infoRoutingSource = "LLM";
       }
     }
-    const safeInterpretationRejection = (detectedState === "exploration")
+    const interpretationAvailableInState = detectedState === "exploration" || (typeof detectedState === "string" && detectedState.startsWith("info_"));
+    const safeInterpretationRejection = interpretationAvailableInState
       ? (interpretationRejection || { isInterpretationRejection: false, relationalFrictionSignal: "none" })
       : { isInterpretationRejection: false, relationalFrictionSignal: "none" };
 
     modeForCatch = detectedState;
 
-    // Patch C � affiliation score window
-    const affiliationScore = computeAffiliationTurnScore(message);
+    // Affiliation scoring: short lexical markers need contextual confirmation (LLM).
+    let shortValidationConfirmed = true;
+    if (hasShortAffiliationMarker(message)) {
+      const shortValidationAnalysis = await withAnalyzerTiming(
+        "affiliation_short_validation",
+        analyzeAffiliationShortValidationCoherence(message, recentHistory, activePromptRegistry)
+      );
+      shortValidationConfirmed = shortValidationAnalysis.shortValidationConfirmed === true;
+    }
+
+    const affiliationDetails = computeAffiliationTurnDetails(message, {
+      shortValidationConfirmed,
+      attachmentLevel: deriveAttachmentLevelFromScore(newFlags.attachmentScore),
+      attachmentBoostStreak: newFlags.affiliationAttachmentBoostStreak
+    });
+    const affiliationScore = affiliationDetails.score;
+    newFlags.affiliationAttachmentBoostStreak = affiliationDetails.nextAttachmentBoostStreak;
     const newAffiliationWindow = normalizeAffiliationWindow([...(newFlags.affiliationWindow || [0, 0, 0, 0]), affiliationScore]);
     const affiliationEstablished = computeAffiliationEstablished(newAffiliationWindow);
 
@@ -5367,6 +5557,7 @@ app.post("/chat", async (req, res) => {
 
     logChatDecision("mode_detected", {
       detectedState,
+      tieBreakReason,
       isContact: contactAnalysis.isContact === true,
       relationalAdjustmentActive: postureDecision.relationalAdjustmentActive,
       previousWasDischarge: flags.dischargeState?.wasDischarge === true,
@@ -5449,6 +5640,7 @@ app.post("/chat", async (req, res) => {
     let criticIssues = [];
     let criticOriginalReply = null;
     let humanFieldRisk = false;
+    let signalLeakRisk = false;
     let contractLengthExceeded = false;
     let criticTriggerReasons = [];
     const criticStateApplies = (cs) => cs && (
@@ -5469,6 +5661,7 @@ app.post("/chat", async (req, res) => {
       const formalAddressRisk = postureDecision.formalAddress === true && hasTutoiementInReply(reply);
       const vouvoiementRisk = postureDecision.formalAddress !== true && hasVouvoiementInReply(reply, message);
       const theoreticalViolationRisk = hasTheoreticalViolationHeuristic(reply);
+      signalLeakRisk = hasSignalLeakRisk(reply);
       const criticShouldTrigger =
         n1CrisisForced ||
         recallForced ||
@@ -5476,13 +5669,15 @@ app.post("/chat", async (req, res) => {
         humanFieldRisk ||
         formalAddressRisk ||
         vouvoiementRisk ||
-        theoreticalViolationRisk;
+        theoreticalViolationRisk ||
+        signalLeakRisk;
       criticTriggerReasons = criticShouldTrigger ? [
         ...(contractLengthExceeded ? ["contractLengthExceeded"] : []),
         ...(humanFieldRisk ? ["humanFieldRisk"] : []),
         ...(formalAddressRisk ? ["formalAddressRisk"] : []),
         ...(vouvoiementRisk ? ["vouvoiementRisk"] : []),
         ...(theoreticalViolationRisk ? ["theoreticalViolationRisk"] : []),
+        ...(signalLeakRisk ? ["signalLeakRisk"] : []),
         ...(n1CrisisForced ? ["n1CrisisForced"] : []),
         ...(recallForced ? ["recallForced"] : []),
       ] : [];
@@ -5521,6 +5716,53 @@ app.post("/chat", async (req, res) => {
             issueCount: filteredCriticIssues.length,
             issues: filteredCriticIssues
           });
+        }
+
+        if (signalLeakRisk) {
+          const strictStrippedReply = stripSignalLeakFragments(reply);
+          if (
+            strictStrippedReply !== reply
+            && canStrictlyStripSignalLeakWithoutAmputating(reply, strictStrippedReply)
+          ) {
+            if (!criticOriginalReply) criticOriginalReply = reply;
+            reply = strictStrippedReply;
+            if (!criticIssues.includes("signal_leak_strict_removed")) {
+              criticIssues = [...criticIssues, "signal_leak_strict_removed"];
+            }
+            logChatDecision("critic_signal_leak_strict_removed", {
+              mode: "strict_strip"
+            });
+          } else if (strictStrippedReply !== reply) {
+            const localRewrittenReply = await withAnalyzerTiming(
+              "signal_leak_local_rewrite",
+              rewriteSignalLeakLocally({
+                reply,
+                message,
+                history: recentHistory,
+                promptRegistry: activePromptRegistry
+              })
+            );
+            const localCandidate = typeof localRewrittenReply === "string" ? localRewrittenReply.trim() : "";
+            const localCandidateHasLeak = hasSignalLeakRisk(localCandidate);
+            const shouldUseLocalCandidate = localCandidate && !localCandidateHasLeak;
+
+            if (!criticOriginalReply) criticOriginalReply = reply;
+            if (shouldUseLocalCandidate) {
+              reply = localCandidate;
+              if (!criticIssues.includes("signal_leak_local_rewritten")) {
+                criticIssues = [...criticIssues, "signal_leak_local_rewritten"];
+              }
+            } else {
+              // Last-resort safety fallback: remove leaked fragment even if the output is shorter.
+              reply = strictStrippedReply;
+              if (!criticIssues.includes("signal_leak_strict_removed")) {
+                criticIssues = [...criticIssues, "signal_leak_strict_removed"];
+              }
+            }
+            logChatDecision("critic_signal_leak_local_rewrite", {
+              mode: shouldUseLocalCandidate ? "local_rewrite" : "local_rewrite_strict_fallback"
+            });
+          }
         }
       }
     }
@@ -5789,6 +6031,7 @@ app.post("/chat", async (req, res) => {
       externalSupportMode: newFlags.externalSupportMode,
       closureIntent: newFlags.closureIntent,
       infoRoutingSource,
+      tieBreakReason,
       infoContextFlags: Array.isArray(postureDecision.infoContextFlags) ? postureDecision.infoContextFlags : [],
       promptRegistry: activePromptRegistry,
       // Lot 8 fields

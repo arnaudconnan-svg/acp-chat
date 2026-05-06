@@ -1,6 +1,6 @@
 "use strict";
 
-const { buildPostureDecision } = require("../lib/pipeline");
+const { buildPostureDecision, electActiveStateFromCandidates } = require("../lib/pipeline");
 
 let passed = 0;
 let failed = 0;
@@ -204,6 +204,76 @@ check("secondary tension is disabled during aggressive discharge", () => {
     dischargeAnalysis: { aggressiveDischargeDirectedToBot: true }
   }));
   assert(out.secondaryTension === null, "expected secondaryTension=null when aggressive discharge is detected");
+});
+
+check("election tie-break reason: discharge priority", () => {
+  const out = electActiveStateFromCandidates([
+    { family: "discharge", detectedState: "discharge_regulated", confidence: "medium" },
+    { family: "info", detectedState: "info_features", confidence: "high", infoSource: "llm", infoSignalSource: "llm" }
+  ], { isContact: true });
+  assert(out.tieBreakReason === "discharge_priority", `expected discharge_priority, got ${out.tieBreakReason}`);
+});
+
+check("election tie-break reason: app_features override", () => {
+  const out = electActiveStateFromCandidates([
+    { family: "info", detectedState: "info_features", confidence: "low", infoSource: "deterministic_app_features", infoSignalSource: "deterministic_app_features" },
+    { family: "exploration", detectedState: "exploration", confidence: "high" }
+  ], { isContact: false });
+  assert(out.tieBreakReason === "override_app_features", `expected override_app_features, got ${out.tieBreakReason}`);
+});
+
+check("election tie-break reason: info stronger confidence", () => {
+  const out = electActiveStateFromCandidates([
+    { family: "info", detectedState: "info_pure", confidence: "high", infoSource: "llm", infoSignalSource: "llm" },
+    { family: "exploration", detectedState: "exploration", confidence: "low" }
+  ], { isContact: false });
+  assert(out.tieBreakReason === "info_gt_exploration", `expected info_gt_exploration, got ${out.tieBreakReason}`);
+});
+
+check("election tie-break reason: exploration stronger confidence", () => {
+  const out = electActiveStateFromCandidates([
+    { family: "info", detectedState: "info_pure", confidence: "low", infoSource: "llm", infoSignalSource: "llm" },
+    { family: "exploration", detectedState: "exploration", confidence: "high" }
+  ], { isContact: false });
+  assert(out.tieBreakReason === "exploration_gt_info", `expected exploration_gt_info, got ${out.tieBreakReason}`);
+});
+
+check("election tie-break reason: equal high favors info", () => {
+  const out = electActiveStateFromCandidates([
+    { family: "info", detectedState: "info_pure", confidence: "high", infoSource: "llm", infoSignalSource: "llm" },
+    { family: "exploration", detectedState: "exploration", confidence: "high" }
+  ], { isContact: false });
+  assert(out.tieBreakReason === "tie_break_equal_high_info_primary", `expected tie_break_equal_high_info_primary, got ${out.tieBreakReason}`);
+});
+
+check("election tie-break reason: equal medium favors info", () => {
+  const out = electActiveStateFromCandidates([
+    { family: "info", detectedState: "info_pure", confidence: "medium", infoSource: "llm", infoSignalSource: "llm" },
+    { family: "exploration", detectedState: "exploration", confidence: "medium" }
+  ], { isContact: false });
+  assert(out.tieBreakReason === "tie_break_equal_medium_info_primary", `expected tie_break_equal_medium_info_primary, got ${out.tieBreakReason}`);
+});
+
+check("election tie-break reason: equal low favors exploration", () => {
+  const out = electActiveStateFromCandidates([
+    { family: "info", detectedState: "info_pure", confidence: "low", infoSource: "llm", infoSignalSource: "llm" },
+    { family: "exploration", detectedState: "exploration", confidence: "low" }
+  ], { isContact: false });
+  assert(out.tieBreakReason === "tie_break_equal_low_exploration_primary", `expected tie_break_equal_low_exploration_primary, got ${out.tieBreakReason}`);
+});
+
+check("election tie-break reason: info only candidate", () => {
+  const out = electActiveStateFromCandidates([
+    { family: "info", detectedState: "info_features", confidence: "medium", infoSource: "llm", infoSignalSource: "llm" }
+  ], { isContact: false });
+  assert(out.tieBreakReason === "info_only_candidate", `expected info_only_candidate, got ${out.tieBreakReason}`);
+});
+
+check("election tie-break reason: exploration only candidate", () => {
+  const out = electActiveStateFromCandidates([
+    { family: "exploration", detectedState: "exploration", confidence: "medium" }
+  ], { isContact: false });
+  assert(out.tieBreakReason === "exploration_only_candidate", `expected exploration_only_candidate, got ${out.tieBreakReason}`);
 });
 
 console.log(`\n[POSTURE] ${passed} passed, ${failed} failed.`);

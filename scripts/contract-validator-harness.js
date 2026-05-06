@@ -9,6 +9,10 @@ const {
 } = require("../lib/pipeline");
 
 const {
+  buildDefaultPromptRegistry
+} = require("../lib/prompts");
+
+const {
   CONVERSATION_STATES,
   STATE_FORBIDDEN,
   STATE_ALLOWED,
@@ -176,6 +180,14 @@ check("narrowed processing enforces single-axis contract", () => {
   }));
   assert(out.writerIntentHints.includes("attention_narrow_single_axis"), "narrowed processing must add single-axis hint");
   assert(out.intent === "suivre un seul axe sans ouvrir de nouveau chantier", "narrowed processing must adjust intent");
+});
+
+check("info features prompt enforces Option B for bot nature and capacity doubts", () => {
+  const prompt = String(buildDefaultPromptRegistry().STATE_INFO_FEATURES || "");
+  const optionBCount = (prompt.match(/Option B \(obligatoire\)/g) || []).length;
+  assert(optionBCount >= 2, "expected Option B policy in both bot_nature_question and bot_capacity_doubt sections");
+  assert(prompt.includes("mouvement 1 : transparence minimale"), "missing movement 1 transparency rule");
+  assert(prompt.includes("mouvement 2 : retour immediat"), "missing movement 2 return-to-user rule");
 });
 
 if (failed > 0) {
