@@ -5045,6 +5045,26 @@ app.post("/chat", async (req, res) => {
       });
     }
 
+    function getUserIntersessionMemory(userData) {
+      if (!userData || typeof userData !== "object") {
+        return "";
+      }
+
+      const compressed = typeof userData.intersessionMemoryCompressed === "string"
+        ? userData.intersessionMemoryCompressed.trim()
+        : "";
+      const raw = typeof userData.intersessionMemory === "string"
+        ? userData.intersessionMemory.trim()
+        : "";
+
+      return compressed || raw || "";
+    }
+
+    async function loadCurrentUserIntersessionMemory() {
+      const userData = await userProfilePromise;
+      return getUserIntersessionMemory(userData);
+    }
+
     let emergencySupportTextPromise = null;
     async function resolveEmergencySupportText() {
       if (emergencySupportTextPromise) {
@@ -5101,19 +5121,7 @@ app.post("/chat", async (req, res) => {
     // explicitement un rappel conversationnel et quelle memoire mobiliser.
     markChatStage("recall_analysis");
     const recallRoutingPromise = (async () => {
-      let recallIntersessionMemory = "";
-      const userData = await userProfilePromise;
-
-      if (userData && typeof userData === "object") {
-        const compressed = typeof userData.intersessionMemoryCompressed === "string"
-          ? userData.intersessionMemoryCompressed.trim()
-          : "";
-        const raw = typeof userData.intersessionMemory === "string"
-          ? userData.intersessionMemory.trim()
-          : "";
-        recallIntersessionMemory = compressed || raw || "";
-      }
-
+      const recallIntersessionMemory = await loadCurrentUserIntersessionMemory();
       return analyzeRecallRouting(
         message,
         recentHistory,
@@ -5156,7 +5164,50 @@ app.post("/chat", async (req, res) => {
         return result;
       });
     }
-    const [
+    async function runPrimaryAnalyzers() {
+      const [
+        stateProposal,
+        allianceRuptureAnalysis,
+        relationalAdjustmentAnalysis,
+        technicalContextAnalysis,
+        somaticSignalAnalysis,
+        userRegisterAnalysis,
+        emotionalDecenteringResult,
+        attentionAnalysis,
+        dependencyRiskAnalysis
+      ] = await Promise.all([
+        withAnalyzerTiming("propose_state", proposeState(message, recentHistory, newFlags.dischargeState, activePromptRegistry)),
+        withAnalyzerTiming("alliance_rupture", analyzeAllianceRupture(message, recentHistory, activePromptRegistry)),
+        withAnalyzerTiming("relational_adjustment", analyzeRelationalAdjustmentNeed(message, recentHistory, previousMemory, false, activePromptRegistry)),
+        withAnalyzerTiming("technical_context", analyzeTechnicalContext(message)),
+        withAnalyzerTiming("somatic_signal", analyzeSomaticSignal(message)),
+        withAnalyzerTiming("user_register", analyzeUserRegister(message)),
+        withAnalyzerTiming("emotional_decentering", analyzeEmotionalDecentering(message, recentHistory)),
+        shouldRunAttentionQuality
+          ? withAnalyzerTiming("attention_quality", analyzeAttentionQuality(message, recentHistory, activePromptRegistry))
+          : Promise.resolve(null),
+        shouldRunDependencyAnalysis
+          ? withAnalyzerTiming("dependency_risk", (async () => {
+              const depIntersessionMemory = await loadCurrentUserIntersessionMemory();
+              return analyzeDependencyRisk(message, recentHistory, depIntersessionMemory, activePromptRegistry);
+            })())
+          : Promise.resolve(null)
+      ]);
+
+      return {
+        stateProposal,
+        allianceRuptureAnalysis,
+        relationalAdjustmentAnalysis,
+        technicalContextAnalysis,
+        somaticSignalAnalysis,
+        userRegisterAnalysis,
+        emotionalDecenteringResult,
+        attentionAnalysis,
+        dependencyRiskAnalysis
+      };
+    }
+
+    const {
       stateProposal,
       allianceRuptureAnalysis,
       relationalAdjustmentAnalysis,
@@ -5166,30 +5217,7 @@ app.post("/chat", async (req, res) => {
       emotionalDecenteringResult,
       attentionAnalysis,
       dependencyRiskAnalysis
-    ] = await Promise.all([
-      withAnalyzerTiming("propose_state", proposeState(message, recentHistory, newFlags.dischargeState, activePromptRegistry)),
-      withAnalyzerTiming("alliance_rupture", analyzeAllianceRupture(message, recentHistory, activePromptRegistry)),
-      withAnalyzerTiming("relational_adjustment", analyzeRelationalAdjustmentNeed(message, recentHistory, previousMemory, false, activePromptRegistry)),
-      withAnalyzerTiming("technical_context", analyzeTechnicalContext(message)),
-      withAnalyzerTiming("somatic_signal", analyzeSomaticSignal(message)),
-      withAnalyzerTiming("user_register", analyzeUserRegister(message)),
-      withAnalyzerTiming("emotional_decentering", analyzeEmotionalDecentering(message, recentHistory)),
-      shouldRunAttentionQuality
-        ? withAnalyzerTiming("attention_quality", analyzeAttentionQuality(message, recentHistory, activePromptRegistry))
-        : Promise.resolve(null),
-      shouldRunDependencyAnalysis
-        ? withAnalyzerTiming("dependency_risk", (async () => {
-            let depIntersessionMemory = "";
-            const userData = await userProfilePromise;
-            if (userData && typeof userData === "object") {
-              const compressed = typeof userData.intersessionMemoryCompressed === "string" ? userData.intersessionMemoryCompressed.trim() : "";
-              const raw = typeof userData.intersessionMemory === "string" ? userData.intersessionMemory.trim() : "";
-              depIntersessionMemory = compressed || raw || "";
-            }
-            return analyzeDependencyRisk(message, recentHistory, depIntersessionMemory, activePromptRegistry);
-          })())
-        : Promise.resolve(null)
-    ]);
+    } = await runPrimaryAnalyzers();
     throwIfCanceled();
 
     warnRuntimeContract("stateProposal", collectStateProposalIssues(stateProposal), {
