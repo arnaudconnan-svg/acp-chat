@@ -62,7 +62,6 @@ try {
 let emergencyRefreshInProgress = false;
 let lastEmergencyRefreshAt = 0;
 
-const EMERGENCY_REFRESH_INTERVAL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 const EMERGENCY_REFRESH_INITIAL_DELAY_MS = 5 * 60 * 1000; // 5 minutes
 const EMERGENCY_REFRESH_MIN_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const REFRESH_EMERGENCY_ON_BOOT = appConfig.refreshEmergencyOnBoot;
@@ -116,11 +115,8 @@ function buildEmergencyNumbersText(emergencyInfo) {
 const {
   clampDependencyRiskScore,
   clampExplorationDirectivityLevel,
-  computeExplorationDirectivityLevel,
-  getExplorationStructureInstruction,
   normalizeAllianceState,
   normalizeAffiliationWindow,
-  normalizeDischargeState,
   normalizeConversationState,
   normalizeConsecutiveNonExplorationTurns,
   normalizeDependencyRiskLevel,
@@ -141,7 +137,6 @@ const {
   buildDebug,
   buildPostureDecision,
   computeAffiliationTurnDetails,
-  computeAffiliationTurnScore,
   computeAffiliationEstablished,
   electActiveStateFromCandidates,
   hasShortAffiliationMarker,
@@ -161,31 +156,12 @@ const {
   buildDirectivityText,
   buildResponseDebugMeta: _buildResponseDebugMeta
 } = require("./lib/debugmeta");
-const { buildLLMUserTurns } = require("./lib/llm-messages");
 const {
-  CHAT_PRIORITY_RULES,
-  CHAT_PRIORITY_MATCHERS,
   resolveChatPriorityRule,
   buildCrisisRoutingDecision
 } = require("./lib/chat-routing");
 const { resolveBranchSeedPayload } = require("./lib/branching");
 const { createWriter } = require("./lib/writer");
-
-// Local fallback storage for message data when needed.
-const MESSAGES_FILE = path.join(__dirname, "data/messages.json");
-
-function readMessages() {
-  try {
-    const data = fs.readFileSync(MESSAGES_FILE, "utf-8");
-    return JSON.parse(data);
-  } catch {
-    return [];
-  }
-}
-
-function writeMessages(messages) {
-  fs.writeFileSync(MESSAGES_FILE, JSON.stringify(messages, null, 2));
-}
 
 const express = require("express");
 const OpenAI = require("openai");
@@ -434,14 +410,6 @@ const MAX_INFO_ANALYSIS_TURNS = 6;
 const MAX_SUICIDE_ANALYSIS_TURNS = 10;
 const MAX_RECALL_ANALYSIS_TURNS = 6;
 
-// --------------------------------------------------
-// 1) OUTILS MINIMAUX
-// --------------------------------------------------
-
-function generateSessionId() {
-  return crypto.randomBytes(24).toString("hex");
-}
-
 function signAdminSessionPayload(payload) {
   return crypto
     .createHmac("sha256", ADMIN_SESSION_SIGNING_SECRET)
@@ -643,7 +611,7 @@ async function findUserByEmail(email) {
   };
 }
 
-function toPublicUser(userId, userData, options = {}) {
+function toPublicUser(userId, userData, _options = {}) {
   const safeUser = userData && typeof userData === "object" ? userData : {};
 
   return {
@@ -877,7 +845,7 @@ function rewriteLectureBotBlockFromReply(memoryText = "", replyText = "") {
     .filter(Boolean)[0] || "";
 
   const summary = firstSentence
-    ? firstSentence.replace(/^[\-\u2022\s]+/, "").slice(0, 220)
+    ? firstSentence.replace(/^[-\u2022\s]+/, "").slice(0, 220)
     : "";
 
   const lectureBotContent = summary ? `- ${summary}.` : "-";
@@ -1028,15 +996,12 @@ async function llmInfoAnalysis(message = "", history = [], promptRegistry = buil
 }
 
 const {
-  analyzeDischargeState,
   analyzeExplorationCalibration,
   analyzeExplorationRelance,
   analyzeEmotionalDecentering,
   analyzeAttentionQuality,
   analyzeDependencyRisk,
   analyzeAllianceRupture,
-  analyzeInfoRequest,
-  analyzeInfoSignal,
   analyzeInterpretationRejection,
   analyzeTechnicalContext,
   analyzeSomaticSignal,
@@ -1044,12 +1009,10 @@ const {
   analyzeRecallRouting,
   analyzeRelationalAdjustmentNeed,
   analyzeSuicideRisk,
-  analyzeClosureIntent,
   acuteCrisisFollowupResponse,
   acuteCrisisFollowupResponseLLM,
   classifyN2TurnType,
   n1Fallback,
-  n1ResponseLLM,
   n2Response,
   proposeState
 } = createAnalyzers({
@@ -1065,38 +1028,6 @@ const {
   trimRecallAnalysisHistory,
   trimSuicideAnalysisHistory
 });
-
-async function buildLongTermMemoryRecallResponse({
-  memory = "",
-  conversationBranchHistory = [],
-  promptRegistry = buildDefaultPromptRegistry()
-} = {}) {
-  const normalizedBranchHistory = normalizeConversationBranchHistory(conversationBranchHistory);
-  const user = `
-Memoire resumee :
-${normalizeMemory(memory, promptRegistry)}
-
-Transcript complet de la branche courante :
-${normalizedBranchHistory.length > 0 ? normalizedBranchHistory.map(m => `${m.role === "user" ? "Utilisateur" : "Assistant"} : ${m.content}`).join("\n") : "(indisponible)"}
-
-Formule une reponse de rappel honnete a partir de ces reperes.
-`;
-  
-  const r = await client.chat.completions.create({
-    model: MODEL_IDS.analysis,
-    temperature: 0.7,
-    max_tokens: 150,
-    messages: [
-      { role: "system", content: promptRegistry.MEMORY_RECALL_RESPONSE },
-      { role: "user", content: user }
-    ]
-  });
-  
-  return (r.choices?.[0]?.message?.content || "").trim() ||
-    (normalizedBranchHistory.length > 0 ?
-      "Je peux reprendre quelques elements de ce fil, mais pas garantir chaque detail mot pour mot." :
-      "Je garde quelques reperes generaux d'une session a l'autre, mais pas le fil detaille exact.");
-}
 
 async function loadConversationBranchHistoryForRecall({
   conversationId = "",
@@ -1136,10 +1067,6 @@ async function loadConversationBranchHistoryForRecall({
   }
 
   return normalizeConversationBranchHistory(recentHistory);
-}
-
-function buildNoMemoryRecallResponse() {
-  return "Je n'ai pas assez de reperes pour retrouver cela clairement. Tu peux me redonner un peu de contexte ?";
 }
 
 // Ask the LLM whether the generated content appears to violate the model conflict policy.
@@ -1203,34 +1130,6 @@ ${originalContent}
 }
 
 
-// Phase 5: Rewrite a reply to explicitly signal interpretive uncertainty.
-async function rewriteForUncertainty({
-  reply = "",
-  message = "",
-  history = [],
-  promptRegistry = buildDefaultPromptRegistry()
-}) {
-  const user = `Message utilisateur :
-${message}
-
-Contexte recent :
-${(history || []).map(m => `${m.role === "user" ? "Utilisateur" : "Assistant"} : ${m.content}`).join("\n")}
-
-Reponse a reformuler avec incertitude explicite :
-${reply}
-`;
-  const r = await client.chat.completions.create({
-    model: MODEL_IDS.generation,
-    temperature: 0.3,
-    max_tokens: 350,
-    messages: [
-      { role: "system", content: promptRegistry.UNCERTAINTY_REWRITE },
-      { role: "user", content: user }
-    ]
-  });
-  return String(r.choices?.[0]?.message?.content || "").trim() || reply;
-}
-
 // --------------------------------------------------
 // 4) MODE + DEBUG
 // --------------------------------------------------
@@ -1240,7 +1139,6 @@ ${reply}
 // --------------------------------------------------
 
 const {
-  compressMemoryIfRedundant,
   compressIntersessionMemory,
   finalizeMemoryCandidate,
   shouldCompressMemoryCandidate,
@@ -1256,22 +1154,6 @@ const {
 const { applySelectiveCritic } = createCritic({ client, MODEL_IDS });
 
 const {
-  wrapPromptBlock,
-  buildPostureContractBlock,
-  getIdentityPrompt,
-  getDischargePrompt,
-  getRelationalAdjustmentPrompt,
-  getInfoPrompt,
-  getExplorationPrompt,
-  buildExplorationSignalPromptBlock,
-  buildStabilizationPromptBlock,
-  buildAllianceRupturePromptBlock,
-  buildDependencyRiskGuardrailBlock,
-  buildClosurePromptBlock,
-  buildRelationalAdjustmentPromptBlock,
-  buildDischargeStatePromptBlock,
-  buildInterpretationRejectionPromptBlock,
-  buildSystemPrompt,
   generateReply
 } = createWriter({ client, MODEL_IDS, normalizeMemory });
 
@@ -1374,10 +1256,18 @@ async function generateConversationTitle(messages, options = {}) {
     ? options.forbiddenTitles.map(value => String(value || "").trim()).filter(Boolean)
     : [];
   const forbiddenTitleKeys = new Set(forbiddenTitles.map(normalizeTitleDenyKey).filter(Boolean));
+  const promptRegistry = buildDefaultPromptRegistry();
 
   function isForbiddenTitle(title = "") {
     const key = normalizeTitleDenyKey(title);
     return !!key && forbiddenTitleKeys.has(key);
+  }
+
+  function buildRecentTitleHistory() {
+    return messages
+      .filter(m => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
+      .slice(-MAX_RECENT_TURNS)
+      .map(m => ({ role: m.role, content: m.content }));
   }
 
   async function requestTitleFromLlm(sourceText = "", extraForbiddenTitles = []) {
@@ -1420,6 +1310,33 @@ async function generateConversationTitle(messages, options = {}) {
     return sanitizeGeneratedTitleCandidate(completion.choices?.[0]?.message?.content || "");
   }
 
+  async function applyTitleConflictGuard(title, sourceText, { allowRetry = true } = {}) {
+    const titleConflict = await analyzeModelConflict(title, promptRegistry);
+
+    if (titleConflict.modelConflict !== true) {
+      return sanitizeGeneratedTitleCandidate(title);
+    }
+
+    let nextTitle = await rewriteConflictModelContent({
+      message: sourceText,
+      history: buildRecentTitleHistory(),
+      memory: "",
+      originalContent: title,
+      promptRegistry
+    });
+
+    nextTitle = sanitizeGeneratedTitleCandidate(nextTitle);
+
+    if (allowRetry && (!nextTitle || isForbiddenTitle(nextTitle))) {
+      const retriedTitle = await requestTitleFromLlm(sourceText, [nextTitle]);
+      if (retriedTitle && !isForbiddenTitle(retriedTitle)) {
+        nextTitle = retriedTitle;
+      }
+    }
+
+    return sanitizeGeneratedTitleCandidate(nextTitle);
+  }
+
   try {
     const userMessages = messages
       .filter(m => m && m.role === "user" && typeof m.content === "string")
@@ -1444,7 +1361,7 @@ async function generateConversationTitle(messages, options = {}) {
       title = words.length ? words.join(" ") : "Conversation";
     }
 
-        title = sanitizeGeneratedTitleCandidate(title);
+      title = sanitizeGeneratedTitleCandidate(title);
     
     if (!title) {
       title = "Conversation";
@@ -1457,28 +1374,7 @@ async function generateConversationTitle(messages, options = {}) {
       }
     }
     
-    const titleConflict = await analyzeModelConflict(title, buildDefaultPromptRegistry());
-    
-    if (titleConflict.modelConflict === true) {
-      title = await rewriteConflictModelContent({
-        message: sourceText,
-        history: messages
-          .filter(m => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
-          .slice(-MAX_RECENT_TURNS)
-          .map(m => ({ role: m.role, content: m.content })),
-        memory: "",
-        originalContent: title,
-        promptRegistry: buildDefaultPromptRegistry()
-      });
-      
-      title = sanitizeGeneratedTitleCandidate(title);
-      if (!title || isForbiddenTitle(title)) {
-        const retriedAfterRewrite = await requestTitleFromLlm(sourceText, [title]);
-        if (retriedAfterRewrite && !isForbiddenTitle(retriedAfterRewrite)) {
-          title = retriedAfterRewrite;
-        }
-      }
-    }
+    title = await applyTitleConflictGuard(title, sourceText);
 
     if (isForbiddenTitle(title)) {
       return null;
@@ -1504,26 +1400,7 @@ async function generateConversationTitle(messages, options = {}) {
     let fallbackTitle = words.length ? words.join(" ") : "Conversation";
     
     try {
-      const titleConflict = await analyzeModelConflict(fallbackTitle, buildDefaultPromptRegistry());
-      
-      if (titleConflict.modelConflict === true) {
-        fallbackTitle = await rewriteConflictModelContent({
-          message: merged,
-          history: messages
-            .filter(m => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
-            .slice(-MAX_RECENT_TURNS)
-            .map(m => ({ role: m.role, content: m.content })),
-          memory: "",
-          originalContent: fallbackTitle,
-          promptRegistry: buildDefaultPromptRegistry()
-        });
-        
-        fallbackTitle = String(fallbackTitle || "")
-          .replace(/\s+/g, " ")
-          .trim();
-
-        fallbackTitle = sanitizeGeneratedTitleCandidate(fallbackTitle);
-      }
+      fallbackTitle = await applyTitleConflictGuard(fallbackTitle, merged, { allowRetry: false });
     } catch (rewriteErr) {
       console.error("Erreur rewrite titre:", rewriteErr.message);
     }
@@ -2309,7 +2186,6 @@ app.post("/api/account/conversations/import-local", requireUserAuth, async (req,
               criticTriggered: debugMeta.criticTriggered === true,
               criticIssues: Array.isArray(debugMeta.criticIssues) ? debugMeta.criticIssues.map(v => String(v || "")).filter(Boolean) : [],
               criticOriginalReply: typeof debugMeta.criticOriginalReply === "string" ? debugMeta.criticOriginalReply : null,
-              conversationState: typeof debugMeta.conversationState === "string" ? debugMeta.conversationState : null,
               intent: typeof debugMeta.intent === "string" ? debugMeta.intent : null,
               forbidden: Array.isArray(debugMeta.forbidden) ? debugMeta.forbidden.map(v => String(v || "")).filter(Boolean) : [],
               confidenceSignal: typeof debugMeta.confidenceSignal === "number" ? Math.max(0, Math.min(1, debugMeta.confidenceSignal)) : 1.0,
@@ -3953,7 +3829,9 @@ function writeSSEEvent(res, eventName, payload) {
   try {
     res.write(`event: ${eventName}\n`);
     res.write(`data: ${JSON.stringify(payload)}\n\n`);
-  } catch {}
+  } catch {
+    // Ignore stream write failures on closed SSE connections.
+  }
 }
 
 function pushChatProgressEvent(requestId, eventName, payload) {
@@ -4022,7 +3900,9 @@ function closeChatProgressStreams(requestId) {
   for (const res of streams) {
     try {
       res.end();
-    } catch {}
+    } catch {
+      // Ignore close failures on already-closed SSE connections.
+    }
   }
 
   activeChatProgressStreams.delete(safeId);
@@ -4280,7 +4160,7 @@ function deriveAttachmentLevelFromScore(attachmentScore = 0) {
   return "high";
 }
 
-async function analyzeAffiliationShortValidationCoherence(message = "", history = [], promptRegistry = buildDefaultPromptRegistry()) {
+async function analyzeAffiliationShortValidationCoherence(message = "", history = [], _promptRegistry = buildDefaultPromptRegistry()) {
   if (!hasShortAffiliationMarker(message)) {
     return {
       shortValidationConfirmed: true,
@@ -4329,7 +4209,7 @@ async function rewriteSignalLeakLocally({
   reply = "",
   message = "",
   history = [],
-  promptRegistry = buildDefaultPromptRegistry()
+  promptRegistry: _promptRegistry = buildDefaultPromptRegistry()
 } = {}) {
   const baseReply = String(reply || "").trim();
   if (!baseReply) return "";
@@ -4663,7 +4543,7 @@ app.post("/chat", async (req, res) => {
     
     // Normalize memory and flags with the active registry so all later steps use the same rules.
     const activePromptRegistry = buildDefaultPromptRegistry();
-    const { rawFlags, flags } = normalizeChatMemoryAndFlags(req, activePromptRegistry);
+    const { flags } = normalizeChatMemoryAndFlags(req, activePromptRegistry);
     let previousMemory = normalizeMemory(req.body?.memory, activePromptRegistry);
     const convMemoryPromise = (!isPrivateConversation && convRef)
           ? convRef.once("value").then(s => {
@@ -4908,6 +4788,98 @@ app.post("/chat", async (req, res) => {
       return debugMeta;
     }
 
+    function scheduleBackgroundMemoryUpdate(memorySnapshot, replyText, memoryPrioritySignal = "normal", intersessionMemoryCompressed = "") {
+      (async () => {
+        try {
+          const updatedMemory = await updateMemory(
+            memorySnapshot,
+            [...recentHistory, { role: "user", content: message }, { role: "assistant", content: replyText }],
+            activePromptRegistry,
+            memoryPrioritySignal,
+            intersessionMemoryCompressed
+          );
+          if (!isPrivateConversation && convRef) {
+            await convRef.update({ memory: updatedMemory });
+          }
+        } catch {
+          // Non-bloquant : la reponse utilisateur ne depend pas de cette mise a jour memoire.
+        }
+      })();
+    }
+
+    function sendChatJsonResponse(reply, memory, flags, debug, debugMeta, botMessageId, signals) {
+      maybeGenerateConversationTitle();
+      publishChatProgressTerminal(requestId, "done");
+
+      return res.json({
+        conversationId,
+        reply,
+        memory,
+        flags,
+        debug,
+        debugMeta,
+        botMessageId,
+        signals
+      });
+    }
+
+    function buildCrisisResponseDebugMeta({
+      memory,
+      suicideLevel,
+      n2TurnType = null,
+      emergencyNumbersIncluded = false,
+      postCrisisSupportActive = false,
+      postCrisisSupportCarryTurn = false,
+      emergencySupportText = null
+    }) {
+      return buildResponseDebugMeta({
+        memory,
+        suicideLevel,
+        conversationState: "n2_crisis",
+        isRecallRequest: false,
+        explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
+        explorationRelanceWindow: newFlags.explorationRelanceWindow,
+        rewriteSource: null,
+        memoryRewriteSource: null,
+        modelConflict: false,
+        promptRegistry: activePromptRegistry,
+        n2TurnType,
+        emergencyNumbersIncluded,
+        postCrisisSupportActive,
+        postCrisisSupportCarryTurn,
+        emergencySupportText
+      });
+    }
+
+    function buildN2CrisisPostureDecision() {
+      return {
+        conversationState: "n2_crisis",
+        detectedState: "n2_crisis",
+        finalDirectivityLevel: 0,
+        finalExplorationSignal: "interpretation",
+        intent: "orienter vers les ressources de crise",
+        forbidden: ["interpretive_hypothesis", "relance", "open_question", "exploration_hypothesis", "reflect"],
+        maxSentences: 3,
+        toneConstraint: "contained",
+        relancePolicy: "forbidden",
+        confidenceSignal: 1.0,
+        responseRegister: "courant",
+        phraseLengthPolicy: "courte",
+        somaticFocusPolicy: "none",
+        relationalAdjustmentActive: false,
+        interpretationRejectionModeActive: false,
+        needsSoberReadjustment: false,
+        humanFieldGuardActive: false,
+        formalAddress: false
+      };
+    }
+
+    function buildOverrideDebug(suicideLevel) {
+      return buildDebug("override", {
+        suicideLevel
+      });
+    }
+
     let emergencySupportTextPromise = null;
     async function resolveEmergencySupportText() {
       if (emergencySupportTextPromise) {
@@ -4929,53 +4901,6 @@ app.post("/chat", async (req, res) => {
       })();
 
       return emergencySupportTextPromise;
-    }
-    
-    async function applyModelConflictPipeline({
-      content = "",
-      message = "",
-      history = [],
-      memory = "",
-      promptRegistry = activePromptRegistry
-    } = {}) {
-      const originalContent = String(content || "").trim();
-      
-      if (!originalContent) {
-        return {
-          content: originalContent,
-          modelConflict: false,
-          rewriteSource: null
-        };
-      }
-      
-      const conflictAnalysis = await analyzeModelConflict(
-        originalContent,
-        promptRegistry
-      );
-      
-      const modelConflict = conflictAnalysis.modelConflict === true;
-      
-      if (!modelConflict) {
-        return {
-          content: originalContent,
-          modelConflict: false,
-          rewriteSource: null
-        };
-      }
-      
-      const rewrittenContent = await rewriteConflictModelContent({
-        message,
-        history,
-        memory,
-        originalContent,
-        promptRegistry
-      });
-      
-      return {
-        content: String(rewrittenContent || "").trim() || originalContent,
-        modelConflict: true,
-        rewriteSource: originalContent
-      };
     }
     
     // 1) Analyse suicide : risque imm�diat et clarification possible.
@@ -5022,10 +4947,8 @@ app.post("/chat", async (req, res) => {
       logChatDecision("override_n2", {
         acuteCrisisAfter: true
       });
-      
-      const debug = buildDebug("override", {
-        suicideLevel: "N2"
-      });
+
+      const debug = buildOverrideDebug("N2");
       
       // N2 : g�n�ration contextualis�e via LLM avec fallback sur la r�ponse statique.
       // R�solution des num�ros d'urgence selon le pays de l'utilisateur.
@@ -5044,66 +4967,24 @@ app.post("/chat", async (req, res) => {
 
       let reply;
       try {
-        const n2PostureDecision = {
-          conversationState: "n2_crisis",
-          detectedState: "n2_crisis",
-          finalDirectivityLevel: 0,
-          finalExplorationSignal: "interpretation",
-          intent: "orienter vers les ressources de crise",
-          forbidden: ["interpretive_hypothesis", "relance", "open_question", "exploration_hypothesis", "reflect"],
-          maxSentences: 3,
-          toneConstraint: "contained",
-          relancePolicy: "forbidden",
-          confidenceSignal: 1.0,
-          responseRegister: "courant",
-          phraseLengthPolicy: "courte",
-          somaticFocusPolicy: "none",
-          relationalAdjustmentActive: false,
-          interpretationRejectionModeActive: false,
-          needsSoberReadjustment: false,
-          humanFieldGuardActive: false,
-          formalAddress: false
-        };
         const n2Result = await generateReply({
           message,
           history: recentHistory,
           memory: previousMemory,
-          postureDecision: n2PostureDecision,
+          postureDecision: buildN2CrisisPostureDecision(),
           promptRegistry: n2PromptRegistry
         });
         reply = n2Result.reply;
-      } catch (n2Err) {
+      } catch {
         reply = n2Response();
       }
       const responseMemory = previousMemory;
-      
-      // Mise à jour asynchrone de la mémoire (non-bloquante) — branche N2
-      (async () => {
-        try {
-          const crisisMem = await updateMemory(
-            previousMemory,
-            [...recentHistory, { role: "user", content: message }, { role: "assistant", content: reply }],
-            activePromptRegistry,
-            "crisis",
-            ""
-          );
-          if (!isPrivateConversation && convRef) {
-            await convRef.update({ memory: crisisMem });
-          }
-        } catch { /* non-bloquant */ }
-      })();
 
-      const responseDebugMeta = buildResponseDebugMeta({
+      scheduleBackgroundMemoryUpdate(previousMemory, reply, "crisis", "");
+
+      const responseDebugMeta = buildCrisisResponseDebugMeta({
         memory: responseMemory,
         suicideLevel: "N2",
-        conversationState: "n2_crisis",
-        isRecallRequest: false,
-        explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
-        explorationRelanceWindow: newFlags.explorationRelanceWindow,
-        rewriteSource: null,
-        memoryRewriteSource: null,
-        modelConflict: false,
-        promptRegistry: activePromptRegistry,
         n2TurnType: null,
         emergencyNumbersIncluded: true,
         postCrisisSupportActive: false,
@@ -5112,19 +4993,8 @@ app.post("/chat", async (req, res) => {
       });
       
       const botMessageId = persistAssistantMessageAsync(reply, debug, responseDebugMeta, { memory: responseMemory, flags: newFlags });
-      maybeGenerateConversationTitle();
-      publishChatProgressTerminal(requestId, "done");
-      
-      return res.json({
-        conversationId,
-        reply,
-        memory: responseMemory,
-        flags: newFlags,
-        debug,
-        debugMeta: responseDebugMeta,
-        botMessageId,
-        signals: "état:n2_crisis"
-      });
+
+      return sendChatJsonResponse(reply, responseMemory, newFlags, debug, responseDebugMeta, botMessageId, "état:n2_crisis");
     }
     
     // 2) Crisis follow-up path for an already active acute crisis.
@@ -5140,10 +5010,8 @@ app.post("/chat", async (req, res) => {
           suicideLevel: suicide.suicideLevel,
           crisisResolved: false
         });
-        
-        const debug = buildDebug("override", {
-          suicideLevel: suicide.suicideLevel
-        });
+
+        const debug = buildOverrideDebug(suicide.suicideLevel);
 
         // Classifier déterministe du type de tour (refus, hostilité, isolement, débordement, neutre)
         const n2TurnType = classifyN2TurnType(message);
@@ -5172,33 +5040,11 @@ app.post("/chat", async (req, res) => {
 
         const responseMemory = previousMemory;
 
-        // Mise à jour asynchrone de la mémoire (non-bloquante) — branche acute_followup
-        (async () => {
-          try {
-            const crisisMem = await updateMemory(
-              previousMemory,
-              [...recentHistory, { role: "user", content: message }, { role: "assistant", content: reply }],
-              activePromptRegistry,
-              "crisis",
-              ""
-            );
-            if (!isPrivateConversation && convRef) {
-              await convRef.update({ memory: crisisMem });
-            }
-          } catch { /* non-bloquant */ }
-        })();
+        scheduleBackgroundMemoryUpdate(previousMemory, reply, "crisis", "");
 
-        const responseDebugMeta = buildResponseDebugMeta({
+        const responseDebugMeta = buildCrisisResponseDebugMeta({
           memory: responseMemory,
           suicideLevel: suicide.suicideLevel,
-          conversationState: "n2_crisis",
-          isRecallRequest: false,
-          explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
-          explorationRelanceWindow: newFlags.explorationRelanceWindow,
-          rewriteSource: null,
-          memoryRewriteSource: null,
-          modelConflict: false,
-          promptRegistry: activePromptRegistry,
           n2TurnType,
           emergencyNumbersIncluded: includeNumbers,
           postCrisisSupportActive: true,
@@ -5207,19 +5053,8 @@ app.post("/chat", async (req, res) => {
         });
         
         const botMessageId = persistAssistantMessageAsync(reply, debug, responseDebugMeta, { memory: responseMemory, flags: newFlags });
-        maybeGenerateConversationTitle();
-        publishChatProgressTerminal(requestId, "done");
-        
-        return res.json({
-          conversationId,
-          reply,
-          memory: responseMemory,
-          flags: newFlags,
-          debug,
-          debugMeta: responseDebugMeta,
-          botMessageId,
-          signals: "état:n2_crisis"
-        });
+
+        return sendChatJsonResponse(reply, responseMemory, newFlags, debug, responseDebugMeta, botMessageId, "état:n2_crisis");
       }
       
       const postCrisisSupportCarryTurnActive = flags.postCrisisSupportCarryTurn === true && crisisDecision.route !== "n1_clarification";
@@ -5311,8 +5146,7 @@ app.post("/chat", async (req, res) => {
       userRegisterAnalysis,
       emotionalDecenteringResult,
       attentionAnalysis,
-      dependencyRiskAnalysis,
-      closureAnalysis
+      dependencyRiskAnalysis
     ] = await Promise.all([
       withAnalyzerTiming("propose_state", proposeState(message, recentHistory, newFlags.dischargeState, activePromptRegistry)),
       withAnalyzerTiming("alliance_rupture", analyzeAllianceRupture(message, recentHistory, activePromptRegistry)),
@@ -5335,8 +5169,7 @@ app.post("/chat", async (req, res) => {
             }
             return analyzeDependencyRisk(message, recentHistory, depIntersessionMemory, activePromptRegistry);
           })())
-        : Promise.resolve(null),
-      withAnalyzerTiming("closure_intent", analyzeClosureIntent(message))
+        : Promise.resolve(null)
     ]);
     throwIfCanceled();
 
@@ -5696,7 +5529,9 @@ app.post("/chat", async (req, res) => {
         if (forceRefreshNow) {
           try {
             await usersRef.child(userId).update({ intersessionRefreshForced: false });
-          } catch {}
+          } catch {
+            // Ignore a best-effort refresh-flag reset failure.
+          }
         }
         newFlags.turnsUntilIntersessionRefresh = 8;
       } else {
@@ -6096,7 +5931,6 @@ app.post("/chat", async (req, res) => {
       humanFieldRisk,
       contractLengthExceeded,
       // Posture contract fields (V3)
-      conversationState: postureDecision.conversationState,
       intent: postureDecision.intent,
       forbidden: postureDecision.forbidden,
       confidenceSignal: postureDecision.confidenceSignal,
@@ -6177,19 +6011,8 @@ app.post("/chat", async (req, res) => {
     throwIfCanceled();
 
     const botMessageId = persistAssistantMessageAsync(reply, debug, responseDebugMeta, { memory: newMemory, flags: newFlags });
-    maybeGenerateConversationTitle();
-    publishChatProgressTerminal(requestId, "done");
-    
-    return res.json({
-      conversationId,
-      reply,
-      memory: newMemory,
-      flags: newFlags,
-      debug,
-      debugMeta: responseDebugMeta,
-      botMessageId,
-      signals: turnSignals
-    });
+
+    return sendChatJsonResponse(reply, newMemory, newFlags, debug, responseDebugMeta, botMessageId, turnSignals);
   } catch (err) {
     if (err && err.code === "chat_request_canceled") {
       publishChatProgressTerminal(requestId, "canceled");

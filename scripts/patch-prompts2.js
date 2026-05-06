@@ -4,7 +4,7 @@ let c = fs.readFileSync("lib/prompts.js", "utf8");
 
 // Patch forme2: ajouter contrainte phrases courtes après la ligne "toute phrase doit apporter"
 // Cherche la ligne contenant "reformulation de l" + "idee deja exprimee" puis \r\n`,
-const old2 = /( {2}- toute phrase doit apporter une information nouvelle, sans repetition ni reformulation de l.idee deja exprimee\r?\n)(`\,)/;
+const old2 = /( {2}- toute phrase doit apporter une information nouvelle, sans repetition ni reformulation de l.idee deja exprimee\r?\n)(`,)/;
 if (old2.test(c)) {
   c = c.replace(old2, (_, line, closing) => {
     const eol = line.endsWith("\r\n") ? "\r\n" : "\n";

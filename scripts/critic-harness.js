@@ -10,10 +10,8 @@ const {
 
 let passed = 0;
 let failed = 0;
-let currentSection = "";
 
 function section(name) {
-  currentSection = name;
   console.log(`\n── ${name} ${"─".repeat(Math.max(0, 58 - name.length))}`);
 }
 
