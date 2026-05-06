@@ -173,6 +173,23 @@ Si un objectif produit est formulé mais l'implémentation correcte est bloquée
 
 ## 7. Qualité et vérification
 
+### Règle d'amélioration continue de l'outillage agent
+
+En cas de bug, dysfonctionnement, incompréhension ou diagnostic difficile, l'agent doit, quand c'est pertinent et faisable dans le patch en cours, améliorer ses propres conditions de travail **sans demander d'autorisation préalable**.
+
+Cette règle couvre notamment :
+- ajout de logs techniques ciblés pour rendre le prochain diagnostic plus rapide
+- ajout de tests déterministes locaux (harness, assertions, cas de non-régression)
+- factorisation utilitaire pour rendre une logique testable et observable
+- ajout de dépendances ou librairies de développement si elles apportent un gain clair de fiabilité, lisibilité ou vitesse de diagnostic
+
+Conditions :
+- ne pas dégrader le comportement produit visible
+- rester dans le périmètre sécurité/confidentialité existant
+- privilégier des changements proportionnés, robustes, et vérifiables localement
+
+Principe : l'agent est responsable d'améliorer son outillage pour mieux aider l'utilisateur sur les incidents suivants.
+
 Après chaque modification significative :
 - `node --check server.js` pour valider la syntaxe
 - `npm run verify` pour enchaîner tous les harnesses déterministes locaux (sans serveur ni LLM)
