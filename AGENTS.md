@@ -182,6 +182,8 @@ Après chaque modification significative :
 
 Les commandes `pipeline:harness`, `debugmeta:harness` et `eval:chat` dépendent d'un LLM en direct — elles requièrent un GO explicite avant lancement.
 
+Règle agent (obligatoire) : ne jamais proposer spontanément des tests online (LLM en direct). Ces commandes ne sont mentionnées ou lancées que si l'utilisateur les demande explicitement.
+
 Les tests de comportement fins (tests manuels, live test) restent de la responsabilité conjointe.
 
 ### Règles de présentation du debug front

@@ -29,8 +29,8 @@ function makeFakeClient() {
           const user = String(messages?.[messages.length - 1]?.content || "");
 
           if (system.includes("ANALYZE_DISCHARGE") || system.includes("dischargeSignal\": \"regulated|dysregulated|null\"")) {
-            const isDischarge = /craque|explose|pleure|ta gueule|ferme-la|ferme la/i.test(user);
-            const isDysregulated = /explose|panique|perte de controle|etouffe/i.test(user);
+            const isDischarge = /craque|explose|pleure|ta gueule|ferme-la|ferme la|crise d'angoisse|attaque de panique|du mal a respirer|tete qui tourne|c'est horrible|ca va pas/i.test(user);
+            const isDysregulated = /explose|panique|perte de controle|etouffe|crise d'angoisse|attaque de panique|du mal a respirer|tete qui tourne|c'est horrible|ca va pas/i.test(user);
             const aggressive = /ta gueule|ferme-la|ferme la/i.test(user);
             return {
               choices: [
@@ -204,6 +204,18 @@ async function run() {
   const dischargeContinuite = await analyzers.analyzeDischargeState("Je me sens mieux maintenant", [], { wasDischarge: true });
   check("analyzeDischargeState: wasDischarge=true -> passe toujours au LLM meme sans signal", () => {
     assert(dischargeContinuite.source !== "deterministic_no_signal", `expected LLM path on continuation, got ${dischargeContinuite.source}`);
+  });
+
+  const dischargePanicSomatic = await analyzers.analyzeDischargeState("Je crois que je fais une crise d'angoisse, j'ai du mal a respirer", [], { wasDischarge: false });
+  check("analyzeDischargeState: crise d'angoisse + respiration difficile -> candidate dysregulated", () => {
+    assert(dischargePanicSomatic.isDischarge === true, "expected isDischarge=true");
+    assert(dischargePanicSomatic.detectedState === "discharge_dysregulated", `expected discharge_dysregulated, got ${dischargePanicSomatic.detectedState}`);
+  });
+
+  const dischargePanicUrgency = await analyzers.analyzeDischargeState("J'ai la tete qui tourne, ca va pas, qu'est-ce que je fais ?", [], { wasDischarge: false });
+  check("analyzeDischargeState: vertige + urgence explicite -> candidate dysregulated", () => {
+    assert(dischargePanicUrgency.isDischarge === true, "expected isDischarge=true");
+    assert(dischargePanicUrgency.detectedState === "discharge_dysregulated", `expected discharge_dysregulated, got ${dischargePanicUrgency.detectedState}`);
   });
 
   // --- analyzeExplorationSignal ---
