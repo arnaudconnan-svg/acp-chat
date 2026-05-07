@@ -149,7 +149,7 @@ const {
   hasTutoiementInReply,
   hasVouvoiementInReply,
   hasTheoreticalViolationHeuristic,
-  isProceduralInstrumentalReply
+  getProceduralInstrumentalEvidence
 } = require("./lib/critic");
 const {
   buildTopChips,
@@ -2173,6 +2173,7 @@ app.post("/api/account/conversations/import-local", requireUserAuth, async (req,
               criticTriggered: debugMeta.criticTriggered === true,
               criticIssues: Array.isArray(debugMeta.criticIssues) ? debugMeta.criticIssues.map(v => String(v || "")).filter(Boolean) : [],
               criticOriginalReply: typeof debugMeta.criticOriginalReply === "string" ? debugMeta.criticOriginalReply : null,
+              criticDeterministicEvidence: Array.isArray(debugMeta.criticDeterministicEvidence) ? debugMeta.criticDeterministicEvidence.map(v => String(v || "")).filter(Boolean) : [],
               intent: typeof debugMeta.intent === "string" ? debugMeta.intent : null,
               forbidden: Array.isArray(debugMeta.forbidden) ? debugMeta.forbidden.map(v => String(v || "")).filter(Boolean) : [],
               confidenceSignal: typeof debugMeta.confidenceSignal === "number" ? Math.max(0, Math.min(1, debugMeta.confidenceSignal)) : 1.0,
@@ -4480,6 +4481,9 @@ app.post("/chat", async (req, res) => {
       criticIssues: Array.isArray(safe.criticIssues) ? safe.criticIssues : [],
       criticOriginalReply: typeof safe.criticOriginalReply === "string" ? safe.criticOriginalReply : null,
       criticTriggerReasons: Array.isArray(safe.criticTriggerReasons) ? safe.criticTriggerReasons : [],
+      criticDeterministicEvidence: Array.isArray(safe.criticDeterministicEvidence)
+        ? safe.criticDeterministicEvidence.map((v) => String(v || "").trim()).filter(Boolean)
+        : [],
       // Posture contract (V3)
       intent: typeof safe.intent === "string" ? safe.intent : null,
       forbidden: Array.isArray(safe.forbidden) ? safe.forbidden : [],
@@ -5698,6 +5702,7 @@ app.post("/chat", async (req, res) => {
     let signalLeakRisk = false;
     let contractLengthExceeded = false;
     let criticTriggerReasons = [];
+    let criticDeterministicEvidence = [];
     const criticStateApplies = (cs) => cs && (
       cs.startsWith("exploration_") || cs.startsWith("discharge_") || cs.startsWith("info_")
     );
@@ -5712,11 +5717,25 @@ app.post("/chat", async (req, res) => {
       contractLengthExceeded = Number.isFinite(postureDecision.maxSentences)
         && postureDecision.maxSentences > 0
         && sentenceCount > postureDecision.maxSentences;
-      humanFieldRisk = postureDecision.humanFieldGuardActive === true && isProceduralInstrumentalReply(reply);
+      const proceduralEvidence = postureDecision.humanFieldGuardActive === true
+        ? getProceduralInstrumentalEvidence(reply)
+        : null;
+      humanFieldRisk = proceduralEvidence !== null;
       const formalAddressRisk = postureDecision.formalAddress === true && hasTutoiementInReply(reply);
       const vouvoiementRisk = postureDecision.formalAddress !== true && hasVouvoiementInReply(reply, message);
       const theoreticalViolationRisk = hasTheoreticalViolationHeuristic(reply);
       signalLeakRisk = hasSignalLeakRisk(reply);
+      criticDeterministicEvidence = [];
+      if (proceduralEvidence) {
+        const matchedParts = [
+          proceduralEvidence.proceduralToneMatch,
+          proceduralEvidence.listStructureMatch,
+          proceduralEvidence.instrumentalObjectMatch
+        ].filter(Boolean).map(part => `"${part}"`);
+        criticDeterministicEvidence.push(
+          `humanFieldRisk -> ${proceduralEvidence.pathway} | expression: ${proceduralEvidence.expression} | match: ${matchedParts.join(" + ")}`
+        );
+      }
       const criticShouldTrigger =
         n1CrisisForced ||
         recallForced ||
@@ -6079,6 +6098,7 @@ app.post("/chat", async (req, res) => {
       criticIssues,
       criticOriginalReply,
       criticTriggerReasons,
+      criticDeterministicEvidence,
       humanFieldRisk,
       contractLengthExceeded,
       // Posture contract fields (V3)

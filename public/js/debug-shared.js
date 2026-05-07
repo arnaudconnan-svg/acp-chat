@@ -153,6 +153,9 @@
       criticTriggerReasons: Array.isArray(safe.criticTriggerReasons)
         ? safe.criticTriggerReasons.map(function mapReason(v) { return String(v || "").trim(); }).filter(Boolean)
         : [],
+      criticDeterministicEvidence: Array.isArray(safe.criticDeterministicEvidence)
+        ? safe.criticDeterministicEvidence.map(function mapEvidence(v) { return String(v || "").trim(); }).filter(Boolean)
+        : [],
       writerMode: toTrimmedString(safe.writerMode, "") || null,
       intent: toTrimmedString(safe.intent, "") || null,
       forbidden: Array.isArray(safe.forbidden)
@@ -430,6 +433,13 @@
 
       if (reasons.length > 0) {
         lines.push("Raisons : " + reasons.join(" \u00b7 "));
+      }
+
+      if (Array.isArray(meta.criticDeterministicEvidence) && meta.criticDeterministicEvidence.length > 0) {
+        lines.push("Expressions deterministes :");
+        meta.criticDeterministicEvidence.forEach(function eachEvidence(entry) {
+          lines.push("\u00b7 " + entry);
+        });
       }
     }
 
