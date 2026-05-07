@@ -2174,6 +2174,7 @@ app.post("/api/account/conversations/import-local", requireUserAuth, async (req,
               criticIssues: Array.isArray(debugMeta.criticIssues) ? debugMeta.criticIssues.map(v => String(v || "")).filter(Boolean) : [],
               criticOriginalReply: typeof debugMeta.criticOriginalReply === "string" ? debugMeta.criticOriginalReply : null,
               criticDeterministicEvidence: Array.isArray(debugMeta.criticDeterministicEvidence) ? debugMeta.criticDeterministicEvidence.map(v => String(v || "")).filter(Boolean) : [],
+              analyzerDeterministicEvidence: Array.isArray(debugMeta.analyzerDeterministicEvidence) ? debugMeta.analyzerDeterministicEvidence.map(v => String(v || "")).filter(Boolean) : [],
               intent: typeof debugMeta.intent === "string" ? debugMeta.intent : null,
               forbidden: Array.isArray(debugMeta.forbidden) ? debugMeta.forbidden.map(v => String(v || "")).filter(Boolean) : [],
               confidenceSignal: typeof debugMeta.confidenceSignal === "number" ? Math.max(0, Math.min(1, debugMeta.confidenceSignal)) : 1.0,
@@ -4484,6 +4485,9 @@ app.post("/chat", async (req, res) => {
       criticDeterministicEvidence: Array.isArray(safe.criticDeterministicEvidence)
         ? safe.criticDeterministicEvidence.map((v) => String(v || "").trim()).filter(Boolean)
         : [],
+      analyzerDeterministicEvidence: Array.isArray(safe.analyzerDeterministicEvidence)
+        ? safe.analyzerDeterministicEvidence.map((v) => String(v || "").trim()).filter(Boolean)
+        : [],
       // Posture contract (V3)
       intent: typeof safe.intent === "string" ? safe.intent : null,
       forbidden: Array.isArray(safe.forbidden) ? safe.forbidden : [],
@@ -5870,6 +5874,16 @@ app.post("/chat", async (req, res) => {
         explorationDirectivityLevel: newFlags.explorationDirectivityLevel
       });
     }
+
+    const analyzerDeterministicEvidence = [
+      ...(Array.isArray(stateProposal?.dischargeAnalysis?.deterministicEvidence) ? stateProposal.dischargeAnalysis.deterministicEvidence : []),
+      ...(Array.isArray(stateProposal?.contactAnalysis?.deterministicEvidence) ? stateProposal.contactAnalysis.deterministicEvidence : []),
+      ...(Array.isArray(relationalAdjustmentAnalysis?.deterministicEvidence) ? relationalAdjustmentAnalysis.deterministicEvidence : []),
+      ...(Array.isArray(allianceRuptureAnalysis?.deterministicEvidence) ? allianceRuptureAnalysis.deterministicEvidence : []),
+      ...(Array.isArray(safeInterpretationRejection?.deterministicEvidence) ? safeInterpretationRejection.deterministicEvidence : []),
+      ...(Array.isArray(recallRouting?.deterministicEvidence) ? recallRouting.deterministicEvidence : []),
+      ...(Array.isArray(relanceAnalysis?.deterministicEvidence) ? relanceAnalysis.deterministicEvidence : [])
+    ].filter((entry) => typeof entry === "string" && entry.trim());
     
     const debug = buildDebug(postureDecision.requestedBaseState || detectedState, {
       suicideLevel: suicide.suicideLevel,
@@ -6099,6 +6113,7 @@ app.post("/chat", async (req, res) => {
       criticOriginalReply,
       criticTriggerReasons,
       criticDeterministicEvidence,
+      analyzerDeterministicEvidence,
       humanFieldRisk,
       contractLengthExceeded,
       // Posture contract fields (V3)

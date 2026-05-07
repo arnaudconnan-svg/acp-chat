@@ -156,6 +156,9 @@
       criticDeterministicEvidence: Array.isArray(safe.criticDeterministicEvidence)
         ? safe.criticDeterministicEvidence.map(function mapEvidence(v) { return String(v || "").trim(); }).filter(Boolean)
         : [],
+      analyzerDeterministicEvidence: Array.isArray(safe.analyzerDeterministicEvidence)
+        ? safe.analyzerDeterministicEvidence.map(function mapAnalyzerEvidence(v) { return String(v || "").trim(); }).filter(Boolean)
+        : [],
       writerMode: toTrimmedString(safe.writerMode, "") || null,
       intent: toTrimmedString(safe.intent, "") || null,
       forbidden: Array.isArray(safe.forbidden)
@@ -441,6 +444,13 @@
           lines.push("\u00b7 " + entry);
         });
       }
+    }
+
+    if (Array.isArray(meta.analyzerDeterministicEvidence) && meta.analyzerDeterministicEvidence.length > 0) {
+      lines.push("Gardes deterministes (analyseurs) :");
+      meta.analyzerDeterministicEvidence.forEach(function eachAnalyzerEvidence(entry) {
+        lines.push("· " + entry);
+      });
     }
 
     return lines;
