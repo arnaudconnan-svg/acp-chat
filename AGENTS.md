@@ -203,6 +203,14 @@ Règle agent (obligatoire) : ne jamais proposer spontanément des tests online (
 
 Les tests de comportement fins (tests manuels, live test) restent de la responsabilité conjointe.
 
+### Règle de diagnostic production Render
+
+Quand un diagnostic production est demandé et que les credentials Render sont disponibles dans l'environnement local (`RENDER_API_KEY`, `RENDER_SERVICE_ID`), l'agent lit directement les logs Render depuis VS Code via l'API (`/v1/logs`, avec filtre `ownerId` + `resource`).
+
+Objectif : éviter les copier-coller manuels de logs et réduire le temps de diagnostic.
+
+Si les credentials manquent ou sont invalides, l'agent le signale explicitement et demande seulement les éléments manquants.
+
 ### Règles de présentation du debug front
 
 Ces règles s'appliquent à toute section debug visible dans `index.html` et `admin.html`.

@@ -4622,6 +4622,50 @@
     function loadHistory() {
       return loadConversationData().messages;
     }
+
+    function normalizeSignalsForRequest(signalsValue) {
+      if (!signalsValue) {
+        return null;
+      }
+
+      if (typeof signalsValue === "object" && !Array.isArray(signalsValue)) {
+        return signalsValue;
+      }
+
+      if (typeof signalsValue === "string") {
+        const trimmed = signalsValue.trim();
+        if (!trimmed) {
+          return null;
+        }
+
+        try {
+          const parsed = JSON.parse(trimmed);
+          if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+            return parsed;
+          }
+        } catch {}
+
+        return {
+          legacy: trimmed.slice(0, 1200)
+        };
+      }
+
+      return null;
+    }
+
+    function buildRecentHistoryForChatRequest(history = loadHistory()) {
+      const safeHistory = Array.isArray(history) ? history : [];
+      return safeHistory
+        .map(({ role, content, signals }) => {
+          const normalizedSignals = normalizeSignalsForRequest(signals);
+          return {
+            role,
+            content,
+            ...(normalizedSignals ? { signals: normalizedSignals } : {})
+          };
+        })
+        .slice(-MAX_RECENT_TURNS);
+    }
     
     function saveHistory(history) {
       const conversationId = getConversationId();
@@ -4646,7 +4690,7 @@
       if (!conversationId) return;
       
       const history = loadHistory();
-      const safeSignals = typeof signals === "string" && signals.trim() ? signals.trim() : undefined;
+      const safeSignals = normalizeSignalsForRequest(signals) || undefined;
       
       history.push({
         role,
@@ -7608,7 +7652,7 @@
     }
 
     function getDefaultServiceUnavailableMessage() {
-      return "Le service est temporairement indisponible car le quota API est epuise. Aucun nouveau message ne peut etre traite tant que ce quota n'est pas retabli. Recharge la page apres retablissement du quota.";
+      return "Le service Facilitat.io est temporairement indisponible. Je ne peux pas traiter de nouveau message pour le moment. Tu peux reessayer dans quelques instants.";
     }
 
     function renderServiceStatusBanner() {
@@ -7637,6 +7681,49 @@
       if (!data || data.serviceUnavailable !== true) return "";
       const userMessage = String(data.userMessage || "").trim();
       return userMessage || getDefaultServiceUnavailableMessage();
+    }
+
+    function readChatServerFailureMessage(res, data) {
+      const explicitUserMessage = String(data?.userMessage || "").trim();
+      if (explicitUserMessage) {
+        return explicitUserMessage;
+      }
+
+      const status = Number(res?.status || 0);
+      if (!Number.isFinite(status) || status <= 0) {
+        return "";
+      }
+
+      if (status >= 500) {
+        return "Je traverse un incident technique cote Facilitat.io. Tu peux reessayer dans quelques instants.";
+      }
+
+      if (status >= 400) {
+        return "Je n'ai pas pu traiter ce message a cause d'une incoherence technique cote Facilitat.io. Tu peux reessayer.";
+      }
+
+      return "";
+    }
+
+    function readChatNetworkFailureMessage(err) {
+      const message = String(err?.message || "").toLowerCase();
+      const isOffline = typeof navigator !== "undefined" && navigator.onLine === false;
+      const looksLikeNetworkError =
+        isOffline ||
+        err?.name === "TypeError" ||
+        message.includes("failed to fetch") ||
+        message.includes("networkerror") ||
+        message.includes("load failed");
+
+      if (!looksLikeNetworkError) {
+        return "";
+      }
+
+      if (isOffline) {
+        return "Je ne peux pas envoyer ce message car la connexion internet semble indisponible. Verifie la connexion puis reessaie.";
+      }
+
+      return "Je n'ai pas pu joindre le service pour le moment. Verifie la connexion internet puis reessaie.";
     }
     
     function syncInputAvailability() {
@@ -8237,13 +8324,13 @@
     }
     
     function buildPayload(message) {
-      const full = loadHistory().map(({ role, content, signals }) => ({ role, content, ...(signals ? { signals } : {}) }));
+      const full = buildRecentHistoryForChatRequest(loadHistory());
       
       return {
         message,
         userId: getOrCreateUserId(),
         conversationId: getConversationId(),
-        recentHistory: full.slice(-MAX_RECENT_TURNS),
+        recentHistory: full,
         memory: loadMemory(),
         flags: loadFlags()
       };
@@ -8596,7 +8683,7 @@
             conversationId: requestConversationId,
             isPrivateConversation: isConversationPrivateById(requestConversationId, loadConversationData(requestConversationId)),
             adminUiActive: document.body.classList.contains("admin-ui"),
-            recentHistory: loadHistory().map(({ role, content, signals }) => ({ role, content, ...(signals ? { signals } : {}) })).slice(-MAX_RECENT_TURNS),
+            recentHistory: buildRecentHistoryForChatRequest(loadHistory()),
             conversationBranchHistory: loadHistory().map(({ role, content }) => ({ role, content })),
             titleDenyList: buildTitleDenyListForConversation(requestConversationId),
             memory: loadConversationData(requestConversationId).memory,
@@ -8622,23 +8709,23 @@
         if (dotAnimation) dotAnimation.cancel();
         removeWaitingIndicatorFromChat();
         
-        if (
-          !res.ok ||
-          !data ||
-          !data.reply
-        ) {
+        if (!res.ok || !data || !data.reply) {
           const serviceUnavailableMessage = readServiceUnavailableMessage(data);
           if (serviceUnavailableMessage) {
             setServiceAvailabilityBlocked(true, serviceUnavailableMessage);
             return;
           }
 
+          const chatServerFailureMessage = readChatServerFailureMessage(res, data);
+          const fallbackErrorMessage = chatServerFailureMessage ||
+            "Je n'ai pas pu te repondre pour le moment. Tu peux reessayer dans quelques instants.";
+
           if (
             getConversationId() === requestConversationId &&
             document.querySelector(".screen.active")?.id === requestScreenId &&
             requestScreenId === "chatScreen"
           ) {
-            addMessage("bot", "Je n'ai pas pu te r\u00e9pondre. V\u00e9rifie ta connexion r\u00e9seau.", [], {
+            addMessage("bot", fallbackErrorMessage, [], {
               shouldAutoScroll: wasAtBottom || isEditing,
               pulseScrollButton: !wasAtBottom && !isEditing
             });
@@ -8665,7 +8752,7 @@
           pushHistory("assistant", data.reply, data.debug || [], data.debugMeta || null, data.botMessageId || null, {
             memory: data.memory,
             flags: data.flags
-          }, typeof data.signals === "string" ? data.signals : null);
+          }, data && data.signals ? data.signals : null);
         } else {
           const storedData = loadConversationData(requestConversationId);
           const existingMessages = Array.isArray(storedData.messages) ? storedData.messages : [];
@@ -8722,13 +8809,17 @@
           }
           return;
         }
+
+        const networkFailureMessage = readChatNetworkFailureMessage(err);
+        const fallbackErrorMessage = networkFailureMessage ||
+          "Je traverse un incident technique cote Facilitat.io. Tu peux reessayer dans quelques instants.";
         
         if (
           getConversationId() === requestConversationId &&
           document.querySelector(".screen.active")?.id === requestScreenId &&
           requestScreenId === "chatScreen"
         ) {
-          addMessage("bot", "Je n'ai pas pu te r\u00e9pondre. V\u00e9rifie ta connexion r\u00e9seau.", [], {
+          addMessage("bot", fallbackErrorMessage, [], {
             shouldAutoScroll: shouldAutoScrollReply,
             pulseScrollButton: !shouldAutoScrollReply
           });
