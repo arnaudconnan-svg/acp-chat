@@ -3626,7 +3626,7 @@ app.post("/api/admin/conversations/import-replay", requireAdminAuth, async (req,
           content,
           timestamp,
           debug: Array.isArray(safeEntry?.debug) ? safeEntry.debug : [],
-          debugMeta: normalizeDebugMetaForStorage(debugMeta || {}, buildDefaultPromptRegistry()),
+          debugMeta,
           stateSnapshot
         };
       })
