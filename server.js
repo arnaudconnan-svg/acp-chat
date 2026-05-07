@@ -1251,6 +1251,24 @@ async function generateConversationTitle(messages, options = {}) {
     return !!key && forbiddenTitleKeys.has(key);
   }
 
+  function buildIncrementedDuplicateTitle(baseTitle = "") {
+    const sanitizedBase = sanitizeGeneratedTitleCandidate(baseTitle);
+    if (!sanitizedBase) return null;
+
+    if (!isForbiddenTitle(sanitizedBase)) {
+      return sanitizedBase;
+    }
+
+    for (let i = 2; i <= 99; i += 1) {
+      const candidate = sanitizeGeneratedTitleCandidate(`${sanitizedBase} (${i})`);
+      if (candidate && !isForbiddenTitle(candidate)) {
+        return candidate;
+      }
+    }
+
+    return null;
+  }
+
   function buildRecentTitleHistory() {
     return messages
       .filter(m => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
@@ -1365,6 +1383,10 @@ async function generateConversationTitle(messages, options = {}) {
     title = await applyTitleConflictGuard(title, sourceText);
 
     if (isForbiddenTitle(title)) {
+      const incrementedDuplicate = buildIncrementedDuplicateTitle(title);
+      if (incrementedDuplicate) {
+        return incrementedDuplicate;
+      }
       return null;
     }
     
@@ -1394,6 +1416,10 @@ async function generateConversationTitle(messages, options = {}) {
     }
 
     if (isForbiddenTitle(fallbackTitle)) {
+      const incrementedDuplicate = buildIncrementedDuplicateTitle(fallbackTitle);
+      if (incrementedDuplicate) {
+        return incrementedDuplicate;
+      }
       return null;
     }
     
