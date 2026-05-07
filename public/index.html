@@ -2883,24 +2883,23 @@
         });
         if (!res.ok) return;
         const data = await res.json().catch(() => ({}));
-        if (typeof data.memory === "string" && data.memory.trim()) {
-          _pendingIntersessionMemory = data.memory;
-          updateIntersessionMemoryDebugChip(_pendingIntersessionMemory);
+        const serverMemory = typeof data.memory === "string" && data.memory.trim() ? data.memory : null;
+        _pendingIntersessionMemory = serverMemory;
+        updateIntersessionMemoryDebugChip(_pendingIntersessionMemory);
 
-          // Inject into current conversation immediately if it has no messages yet.
-          const currentId = getConversationId();
-          if (currentId) {
-            const existing = loadConversationData(currentId);
-            if (isConversationPrivateById(currentId, existing)) {
-              return;
-            }
-            const hasMessages = Array.isArray(existing.messages) && existing.messages.length > 0;
-            if (!hasMessages) {
-              saveConversationData(currentId, {
-                ...existing,
-                memory: _pendingIntersessionMemory
-              });
-            }
+        // Inject (or clear) in current conversation immediately if it has no messages yet.
+        const currentId = getConversationId();
+        if (currentId) {
+          const existing = loadConversationData(currentId);
+          if (isConversationPrivateById(currentId, existing)) {
+            return;
+          }
+          const hasMessages = Array.isArray(existing.messages) && existing.messages.length > 0;
+          if (!hasMessages) {
+            saveConversationData(currentId, {
+              ...existing,
+              memory: serverMemory !== null ? serverMemory : defaultMemory()
+            });
           }
         }
       } catch (_) {}

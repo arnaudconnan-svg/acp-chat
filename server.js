@@ -3161,7 +3161,9 @@ app.patch("/api/intersession-memory/direct", requireUserAuth, async (req, res) =
       await usersRef.child(session.userId).child("intersessionMemoryHistory").set(updatedHistory);
     }
 
-    const nextMemory = mergeStableContextOnlyIntoIntersessionMemory(newStableContextOnly, currentMemory);
+    const nextMemory = newStableContextOnly.trim()
+      ? mergeStableContextOnlyIntoIntersessionMemory(newStableContextOnly, currentMemory)
+      : "";
 
     await usersRef.child(session.userId).update({
       intersessionMemory: nextMemory,
