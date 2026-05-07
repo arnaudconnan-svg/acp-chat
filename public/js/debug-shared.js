@@ -205,7 +205,6 @@
       n2TurnType: toTrimmedString(safe.n2TurnType, "") || null,
       emergencyNumbersIncluded: toBooleanTrue(safe.emergencyNumbersIncluded),
       postCrisisSupportActive: toBooleanTrue(safe.postCrisisSupportActive),
-      postCrisisSupportCarryTurn: toBooleanTrue(safe.postCrisisSupportCarryTurn),
       emergencySupportText: toTrimmedString(safe.emergencySupportText, "") || null,
       requestId: toTrimmedString(safe.requestId, "") || null,
       traceId: toTrimmedString(safe.traceId, "") || null,

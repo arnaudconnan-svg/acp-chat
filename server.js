@@ -4829,7 +4829,6 @@ app.post("/chat", async (req, res) => {
       n2TurnType = null,
       emergencyNumbersIncluded = false,
       postCrisisSupportActive = false,
-      postCrisisSupportCarryTurn = false,
       emergencySupportText = null
     }) {
       return buildResponseDebugMeta({
@@ -4846,7 +4845,6 @@ app.post("/chat", async (req, res) => {
         n2TurnType,
         emergencyNumbersIncluded,
         postCrisisSupportActive,
-        postCrisisSupportCarryTurn,
         emergencySupportText
       });
     }
@@ -4929,7 +4927,6 @@ app.post("/chat", async (req, res) => {
         n2TurnType: null,
         emergencyNumbersIncluded: true,
         postCrisisSupportActive: false,
-        postCrisisSupportCarryTurn: false,
         emergencySupportText: null
       });
 
@@ -4979,7 +4976,6 @@ app.post("/chat", async (req, res) => {
         n2TurnType,
         emergencyNumbersIncluded: includeNumbers,
         postCrisisSupportActive: true,
-        postCrisisSupportCarryTurn: false,
         emergencySupportText: followupEmergencyText
       });
 
@@ -6029,7 +6025,6 @@ app.post("/chat", async (req, res) => {
       // Tension secondaire
       secondaryTension: postureDecision.secondaryTension || null,
       postCrisisSupportActive: postCrisisSupportCarryTurnActive,
-      postCrisisSupportCarryTurn: postCrisisSupportCarryTurnActive,
       emergencySupportText,
     });
 

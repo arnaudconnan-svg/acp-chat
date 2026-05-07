@@ -38,7 +38,7 @@ Ces invariants protègent le comportement visible, pas la structure du code.
 - Ces chemins ne peuvent pas être conditionnés, court-circuités, ou dégradés
 
 ### Ordre de priorité décisionnel
-Sécurité > Crise > Rupture relationnelle > Décharge > Exploration > Information
+Sécurité > Crise > Décharge > Rupture relationnelle > Exploration > Information
 
 Cet ordre s'applique à l'arbitrage, pas à la structure du code. L'implémentation peut évoluer tant que la priorité est respectée.
 

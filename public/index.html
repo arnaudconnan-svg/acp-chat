@@ -3339,20 +3339,17 @@
 
     const CRISIS_SUPPORT_CARD_TEXT_NEUTRAL = {
       title: "Rappel de securite",
-      body: "Si le danger redevient immediat, utilise sans attendre ces ressources : ",
-      carry: "Ce rappel reste visible encore un tour pour eviter une disparition trop brusque."
+      body: "Si le danger redevient immediat, utilise sans attendre ces ressources : "
     };
 
     const CRISIS_SUPPORT_CARD_TEXT_TUTOIEMENT = {
       title: "Rappel de securite",
-      body: "Si le danger redevient immediat, utilise sans attendre ces ressources : ",
-      carry: "Je laisse ce rappel visible encore un tour pour eviter une disparition trop brusque."
+      body: "Si le danger redevient immediat, utilise sans attendre ces ressources : "
     };
 
     const CRISIS_SUPPORT_CARD_TEXT_VOUVOIEMENT = {
       title: "Rappel de securite",
-      body: "Si le danger redevient immediat, utilisez sans attendre ces ressources : ",
-      carry: "Je laisse ce rappel visible encore un tour pour eviter une disparition trop brusque."
+      body: "Si le danger redevient immediat, utilisez sans attendre ces ressources : "
     };
 
     function getCrisisSupportCardCopy() {
@@ -3405,11 +3402,7 @@
         titleEl.textContent = copy.title;
       }
       if (bodyEl) {
-        const bodyParts = [copy.body + meta.emergencySupportText + "."];
-        if (meta.postCrisisSupportCarryTurn === true) {
-          bodyParts.push(copy.carry);
-        }
-        bodyEl.textContent = bodyParts.join(" ");
+        bodyEl.textContent = copy.body + meta.emergencySupportText + ".";
       }
 
       card.classList.add("is-visible");
@@ -6789,11 +6782,7 @@
         }
 
         if (meta.postCrisisSupportActive === true) {
-          const supportLines = [
-            meta.postCrisisSupportCarryTurn === true
-              ? "Encart post-N2 maintenu sur le tour tampon"
-              : "Encart post-N2 affich\u00e9"
-          ];
+          const supportLines = ["Encart post-N2 actif"];
           if (meta.emergencySupportText) {
             supportLines.push(`Ressources affich\u00e9es : ${meta.emergencySupportText}`);
           }
@@ -6882,7 +6871,7 @@
 
         if (meta.memory) {
           sections.push({
-            title: meta.memoryAge > 0 ? ("M\u00e9moire (il y a " + meta.memoryAge + " tour" + (meta.memoryAge > 1 ? "s" : "") + ")") : "M\u00e9moire",
+            title: "M\u00e9moire",
             content: meta.memory,
             memoryRewritten: meta.memoryCompressed === true,
             memoryBeforeRewrite: meta.memoryBeforeCompression || null

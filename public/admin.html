@@ -1896,11 +1896,7 @@
           }
 
             if (meta.postCrisisSupportActive === true) {
-              const supportLines = [
-                meta.postCrisisSupportCarryTurn === true
-                  ? "Encart post-N2 maintenu sur le tour tampon"
-                  : "Encart post-N2 affich\u00e9"
-              ];
+              const supportLines = ["Encart post-N2 actif"];
               if (meta.emergencySupportText) {
                 supportLines.push(`Ressources affich\u00e9es : ${meta.emergencySupportText}`);
               }
@@ -1994,7 +1990,7 @@
 
           if (meta.memory) {
             sections.push({
-              title: meta.memoryAge > 0 ? ("M\u00e9moire (il y a " + meta.memoryAge + " tour" + (meta.memoryAge > 1 ? "s" : "") + ")") : "M\u00e9moire",
+              title: "M\u00e9moire",
               content: meta.memory,
               memoryRewritten: meta.memoryCompressed === true,
               memoryBeforeRewrite: meta.memoryBeforeCompression || null
