@@ -3067,8 +3067,16 @@ app.put("/api/intersession-memory", requireUserAuth, async (req, res) => {
 
     const sessionMemory = String(req.body.memory || "").slice(0, 8000);
     const strippedSessionMemory = stripTransientMemoryBlocksForIntersession(sessionMemory);
-    const previousSnap = await usersRef.child(session.userId).child("intersessionMemory").once("value");
-    const previousIntersessionMemory = typeof previousSnap.val() === "string" ? previousSnap.val() : "";
+    const userSnap = await usersRef.child(session.userId).once("value");
+    const userData = userSnap.val() || {};
+
+    // Direct manual edit from account is authoritative until /chat consumes it.
+    // Ignore background/session consolidation attempts while this lock is active.
+    if (userData.intersessionRefreshForced === true) {
+      return res.json({ success: true, skipped: true, reason: "manual_edit_lock" });
+    }
+
+    const previousIntersessionMemory = typeof userData.intersessionMemory === "string" ? userData.intersessionMemory : "";
     const memory = await updateIntersessionMemory(
       previousIntersessionMemory,
       strippedSessionMemory,
@@ -3208,6 +3216,11 @@ app.post("/api/session/beacon", async (req, res) => {
     const snap = await usersRef.child(session.userId).once("value");
     const userData = snap.val() || {};
     const storedUpdatedAt = userData.intersessionMemoryUpdatedAt;
+
+    // Direct manual edit from account is authoritative until /chat consumes it.
+    if (userData.intersessionRefreshForced === true) {
+      return;
+    }
 
     if (beaconTimestamp && storedUpdatedAt && new Date(storedUpdatedAt) > new Date(beaconTimestamp)) {
       // A more recent consolidation (explicit close) already happened � skip.
@@ -5657,9 +5670,8 @@ app.post("/chat", async (req, res) => {
         ? newFlags.turnsUntilIntersessionRefresh
         : 0;
       const userData = await userProfilePromise;
-      const forceRefreshNow = currentTurnsUntil > 0
-        && userData
-        && userData.intersessionRefreshForced === true;
+      const hasForcedRefreshLock = userData && userData.intersessionRefreshForced === true;
+      const forceRefreshNow = currentTurnsUntil > 0 && hasForcedRefreshLock;
       const needsInjection = currentTurnsUntil === 0 || forceRefreshNow;
       if (needsInjection) {
         const compressedVal = userData && typeof userData.intersessionMemoryCompressed === "string"
@@ -5669,7 +5681,7 @@ app.post("/chat", async (req, res) => {
           ? userData.intersessionMemory
           : "";
         intersessionMemoryForThisTurn = compressedVal.trim() || rawVal.trim() || "";
-        if (forceRefreshNow) {
+        if (hasForcedRefreshLock) {
           try {
             await usersRef.child(userId).update({ intersessionRefreshForced: false });
           } catch {
