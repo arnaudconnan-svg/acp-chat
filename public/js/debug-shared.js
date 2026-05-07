@@ -362,8 +362,38 @@
     return map[value] || value;
   }
 
+  function parseDeterministicEvidence(evidenceEntries) {
+    if (!Array.isArray(evidenceEntries)) return {};
+    var result = {};
+    for (var i = 0; i < evidenceEntries.length; i += 1) {
+      var text = String(evidenceEntries[i] || "").trim();
+      if (!text) continue;
+      var keyMatch = text.match(/^([a-z0-9_]+)/i);
+      var key = keyMatch && keyMatch[1] ? keyMatch[1].toLowerCase() : null;
+      if (!key) continue;
+      var quotedMatch = text.match(/\|\s*match:\s*"([^"]+)"/i);
+      var rawMatch = quotedMatch && quotedMatch[1] ? quotedMatch[1] : null;
+      if (rawMatch && !/^none$/i.test(rawMatch)) {
+        result[key] = rawMatch;
+      }
+    }
+    return result;
+  }
+
+  function enrichLineWithMatch(text, matchMap, guardKeys) {
+    if (!matchMap || !Array.isArray(guardKeys) || guardKeys.length === 0) return text;
+    for (var i = 0; i < guardKeys.length; i += 1) {
+      var key = String(guardKeys[i] || "").toLowerCase();
+      if (matchMap[key]) {
+        return String(text || "") + ' (regex match: "' + matchMap[key] + '")';
+      }
+    }
+    return text;
+  }
+
   function buildNaturalDebugSummary(meta, variant) {
     var lines = [];
+    var analyzerMatchMap = parseDeterministicEvidence(meta.analyzerDeterministicEvidence);
 
     function extractRegexMatchFromEvidence(evidenceEntries) {
       if (!Array.isArray(evidenceEntries)) return null;
@@ -375,45 +405,11 @@
       return null;
     }
 
-    function extractAnalyzerEvidenceReasons(evidenceEntries) {
-      if (!Array.isArray(evidenceEntries)) return [];
-
-      var reasonLabels = {
-        discharge_guard_no_signal: "Garde décharge: signal non détecté",
-        contact_guard_positive: "Signal contact détecté",
-        contact_self_criticism_level: "Auto-critique élevée détectée",
-        relational_adjustment_guard_no_trigger: "Ajustement relationnel: garde non déclenchée",
-        alliance_rupture_guard_no_trigger: "Rupture d'alliance: garde non déclenchée",
-        interpretation_rejection_guard_no_signal: "Rejet d'interprétation: signal non détecté",
-        recall_guard_no_signal: "Rappel mémoire: signal non détecté",
-        exploration_relance_guard_question_mark: "Relance exploration détectée",
-        exploration_relance_guard_soft_pattern: "Relance exploration implicite détectée",
-        exploration_relance_guard_no_signal: "Relance exploration: signal non détecté"
-      };
-
-      return evidenceEntries.map(function mapAnalyzerEvidence(entry) {
-        var text = String(entry || "").trim();
-        if (!text) return null;
-
-        var keyMatch = text.match(/^([a-z0-9_]+)/i);
-        var reasonKey = keyMatch && keyMatch[1] ? keyMatch[1] : null;
-        var reasonLabel = reasonKey && reasonLabels[reasonKey] ? reasonLabels[reasonKey] : "Garde déterministe analyseur";
-
-        var regexMatch = text.match(/\|\s*match:\s*"([^"]+)"/i);
-        if (regexMatch && regexMatch[1]) {
-          return reasonLabel + ' (regex match: "' + regexMatch[1] + '")';
-        }
-
-        return reasonLabel;
-      }).filter(Boolean);
-    }
-
     if (meta.interpretationRejection === true) {
-      if (variant === "admin") {
-        lines.push("Un rejet d'interpretation a ete detecte et pris en compte.");
-      } else {
-        lines.push("Le systeme a detecte un rejet d'interpretation et a recentre la reponse.");
-      }
+      var interpretationLine = variant === "admin"
+        ? "Un rejet d'interpretation a ete detecte et pris en compte."
+        : "Le systeme a detecte un rejet d'interpretation et a recentre la reponse.";
+      lines.push(enrichLineWithMatch(interpretationLine, analyzerMatchMap, ["interpretation_rejection_guard_no_signal"]));
     }
 
     if (meta.needsSoberReadjustment === true) {
@@ -425,11 +421,10 @@
     }
 
     if (meta.relationalAdjustmentActive === true || meta.relationalAdjustmentTriggered === true) {
-      if (variant === "admin") {
-        lines.push("Un ajustement relationnel a ete declenche.");
-      } else {
-        lines.push("Un ajustement relationnel a ete declenche pour proteger l'alliance.");
-      }
+      var relationalLine = variant === "admin"
+        ? "Un ajustement relationnel a ete declenche."
+        : "Un ajustement relationnel a ete declenche pour proteger l'alliance.";
+      lines.push(enrichLineWithMatch(relationalLine, analyzerMatchMap, ["relational_adjustment_guard_no_trigger"]));
     }
 
     if (meta.stagnationTurns > 0) {
@@ -495,18 +490,6 @@
       if (reasons.length > 0) {
         lines.push("Raisons : " + reasons.join(" \u00b7 "));
       }
-
-      if (Array.isArray(meta.criticDeterministicEvidence) && meta.criticDeterministicEvidence.length > 0) {
-        lines.push("Expressions deterministes :");
-        meta.criticDeterministicEvidence.forEach(function eachEvidence(entry) {
-          lines.push("\u00b7 " + entry);
-        });
-      }
-    }
-
-    var analyzerReasons = extractAnalyzerEvidenceReasons(meta.analyzerDeterministicEvidence);
-    if (analyzerReasons.length > 0) {
-      lines.push("Raisons (analyseurs) : " + analyzerReasons.join(" \u00b7 "));
     }
 
     return lines;
