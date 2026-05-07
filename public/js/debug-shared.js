@@ -365,6 +365,16 @@
   function buildNaturalDebugSummary(meta, variant) {
     var lines = [];
 
+    function extractRegexMatchFromEvidence(evidenceEntries) {
+      if (!Array.isArray(evidenceEntries)) return null;
+      for (var i = 0; i < evidenceEntries.length; i += 1) {
+        var entry = String(evidenceEntries[i] || "");
+        var match = entry.match(/\|\s*match:\s*"([^"]+)"/i);
+        if (match && match[1]) return match[1];
+      }
+      return null;
+    }
+
     if (meta.interpretationRejection === true) {
       if (variant === "admin") {
         lines.push("Un rejet d'interpretation a ete detecte et pris en compte.");
@@ -425,6 +435,21 @@
         return criticReasonLabels[r] || r;
       }).filter(Boolean);
 
+      var humanFieldRegexMatch = extractRegexMatchFromEvidence(meta.criticDeterministicEvidence);
+      if (!humanFieldRegexMatch) {
+        humanFieldRegexMatch = extractRegexMatchFromEvidence(meta.analyzerDeterministicEvidence);
+      }
+
+      if (humanFieldRegexMatch) {
+        reasons = reasons.map(function enrichReason(reasonLabel, reasonIndex) {
+          var reasonKey = (meta.criticTriggerReasons || [])[reasonIndex];
+          if (reasonKey === "humanFieldRisk") {
+            return reasonLabel + ' (regex match: "' + humanFieldRegexMatch + '")';
+          }
+          return reasonLabel;
+        });
+      }
+
       if (meta.criticIssues.length > 0) {
         lines.push("Le critic pass a corrig\u00e9 " + meta.criticIssues.length + " point(s) :");
         meta.criticIssues.forEach(function eachIssue(issue) {
@@ -444,13 +469,6 @@
           lines.push("\u00b7 " + entry);
         });
       }
-    }
-
-    if (Array.isArray(meta.analyzerDeterministicEvidence) && meta.analyzerDeterministicEvidence.length > 0) {
-      lines.push("Gardes deterministes (analyseurs) :");
-      meta.analyzerDeterministicEvidence.forEach(function eachAnalyzerEvidence(entry) {
-        lines.push("· " + entry);
-      });
     }
 
     return lines;
