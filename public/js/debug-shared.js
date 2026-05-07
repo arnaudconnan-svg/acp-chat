@@ -375,6 +375,39 @@
       return null;
     }
 
+    function extractAnalyzerEvidenceReasons(evidenceEntries) {
+      if (!Array.isArray(evidenceEntries)) return [];
+
+      var reasonLabels = {
+        discharge_guard_no_signal: "Garde décharge: signal non détecté",
+        contact_guard_positive: "Signal contact détecté",
+        contact_self_criticism_level: "Auto-critique élevée détectée",
+        relational_adjustment_guard_no_trigger: "Ajustement relationnel: garde non déclenchée",
+        alliance_rupture_guard_no_trigger: "Rupture d'alliance: garde non déclenchée",
+        interpretation_rejection_guard_no_signal: "Rejet d'interprétation: signal non détecté",
+        recall_guard_no_signal: "Rappel mémoire: signal non détecté",
+        exploration_relance_guard_question_mark: "Relance exploration détectée",
+        exploration_relance_guard_soft_pattern: "Relance exploration implicite détectée",
+        exploration_relance_guard_no_signal: "Relance exploration: signal non détecté"
+      };
+
+      return evidenceEntries.map(function mapAnalyzerEvidence(entry) {
+        var text = String(entry || "").trim();
+        if (!text) return null;
+
+        var keyMatch = text.match(/^([a-z0-9_]+)/i);
+        var reasonKey = keyMatch && keyMatch[1] ? keyMatch[1] : null;
+        var reasonLabel = reasonKey && reasonLabels[reasonKey] ? reasonLabels[reasonKey] : "Garde déterministe analyseur";
+
+        var regexMatch = text.match(/\|\s*match:\s*"([^"]+)"/i);
+        if (regexMatch && regexMatch[1]) {
+          return reasonLabel + ' (regex match: "' + regexMatch[1] + '")';
+        }
+
+        return reasonLabel;
+      }).filter(Boolean);
+    }
+
     if (meta.interpretationRejection === true) {
       if (variant === "admin") {
         lines.push("Un rejet d'interpretation a ete detecte et pris en compte.");
@@ -469,6 +502,11 @@
           lines.push("\u00b7 " + entry);
         });
       }
+    }
+
+    var analyzerReasons = extractAnalyzerEvidenceReasons(meta.analyzerDeterministicEvidence);
+    if (analyzerReasons.length > 0) {
+      lines.push("Raisons (analyseurs) : " + analyzerReasons.join(" \u00b7 "));
     }
 
     return lines;
