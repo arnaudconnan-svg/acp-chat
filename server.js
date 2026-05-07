@@ -5895,7 +5895,9 @@ app.post("/chat", async (req, res) => {
       ...(Array.isArray(safeInterpretationRejection?.deterministicEvidence) ? safeInterpretationRejection.deterministicEvidence : []),
       ...(Array.isArray(recallRouting?.deterministicEvidence) ? recallRouting.deterministicEvidence : []),
       ...(Array.isArray(relanceAnalysis?.deterministicEvidence) ? relanceAnalysis.deterministicEvidence : [])
-    ].filter((entry) => typeof entry === "string" && entry.trim());
+    ]
+      .filter((entry) => typeof entry === "string" && entry.trim())
+      .filter((entry) => !/\|\s*match:\s*none\s*$/i.test(entry));
     
     const debug = buildDebug(postureDecision.requestedBaseState || detectedState, {
       suicideLevel: suicide.suicideLevel,
