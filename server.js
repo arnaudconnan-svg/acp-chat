@@ -4715,8 +4715,16 @@ app.post("/chat", async (req, res) => {
     }
     let intersessionSessionSyncForced = false;
     if (!isPrivateConversation && shouldLoadUserProfile) {
-      const userData = await userProfilePromise;
+      let userData = await userProfilePromise;
       if (userData && userData.intersessionRefreshForced === true) {
+        // Race condition guard: if intersessionRefreshForced, reload fresh from Firebase
+        // to avoid using stale cached data from the initial userProfilePromise snapshot
+        try {
+          const freshSnap = await usersRef.child(String(userId)).once("value");
+          userData = freshSnap.val() && typeof freshSnap.val() === "object" ? freshSnap.val() : userData;
+        } catch {
+          // Fall back to cached userData if fresh fetch fails
+        }
         const stableContextOnly = extractStableContextOnlyFromIntersessionMemory(
           typeof userData.intersessionMemory === "string" ? userData.intersessionMemory : "",
           activePromptRegistry
@@ -5695,7 +5703,17 @@ app.post("/chat", async (req, res) => {
       const currentTurnsUntil = Number.isInteger(newFlags.turnsUntilIntersessionRefresh)
         ? newFlags.turnsUntilIntersessionRefresh
         : 0;
-      const userData = await userProfilePromise;
+      let userData = await userProfilePromise;
+      // Race condition guard: if intersessionRefreshForced, reload fresh from Firebase
+      // to use the latest edited memory instead of stale cache
+      if (userData && userData.intersessionRefreshForced === true) {
+        try {
+          const freshSnap = await usersRef.child(String(userId)).once("value");
+          userData = freshSnap.val() && typeof freshSnap.val() === "object" ? freshSnap.val() : userData;
+        } catch {
+          // Fall back to cached userData if fresh fetch fails
+        }
+      }
       const hasForcedRefreshLock = userData && userData.intersessionRefreshForced === true;
       const forceRefreshNow = currentTurnsUntil > 0 && hasForcedRefreshLock;
       const needsInjection = currentTurnsUntil === 0 || forceRefreshNow;
