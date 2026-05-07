@@ -877,10 +877,14 @@
 
       return messages
         .map(item => ({
+          id: typeof item?.id === "string" ? item.id : undefined,
           role: String(item?.role || "").trim(),
           content: String(item?.content || "").trim(),
           debug: Array.isArray(item?.debug) ? item.debug.map(line => String(line || "")) : [],
-          debugMeta: normalizeReplayDebugMeta(item?.debugMeta)
+          debugMeta: normalizeReplayDebugMeta(item?.debugMeta),
+          stateSnapshot: item?.stateSnapshot && typeof item.stateSnapshot === "object" && !Array.isArray(item.stateSnapshot)
+            ? item.stateSnapshot
+            : null
         }))
         .filter(item => (item.role === "user" || item.role === "assistant") && item.content)
         .slice(-120);

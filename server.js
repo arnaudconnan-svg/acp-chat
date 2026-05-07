@@ -3585,6 +3585,114 @@ app.get("/api/admin/conversations/:id/messages", requireAdminAuth, async (req, r
   }
 });
 
+app.post("/api/admin/conversations/import-replay", requireAdminAuth, async (req, res) => {
+  try {
+    const safeConversation = req.body?.conversation && typeof req.body.conversation === "object" && !Array.isArray(req.body.conversation)
+      ? req.body.conversation
+      : null;
+
+    const conversationId = String(safeConversation?.id || "").trim();
+    const userId = String(safeConversation?.userId || "").trim() || "u_admin_replay";
+
+    if (!conversationId) {
+      return res.status(400).json({ error: "Conversation invalide" });
+    }
+
+    const rawMessages = Array.isArray(safeConversation?.messages) ? safeConversation.messages : [];
+    const sanitizedMessages = rawMessages
+      .map((entry, index) => {
+        const safeEntry = entry && typeof entry === "object" && !Array.isArray(entry) ? entry : null;
+        const role = String(safeEntry?.role || "").trim();
+        const content = typeof safeEntry?.content === "string" ? safeEntry.content : "";
+
+        if ((role !== "user" && role !== "assistant") || !content.trim()) {
+          return null;
+        }
+
+        const timestampCandidate = Number(safeEntry?.t || safeEntry?.timestamp || 0);
+        const timestamp = Number.isFinite(timestampCandidate) && timestampCandidate > 0 ? timestampCandidate : Date.now() + index;
+        const debugMeta = safeEntry?.debugMeta && typeof safeEntry.debugMeta === "object" && !Array.isArray(safeEntry.debugMeta)
+          ? safeEntry.debugMeta
+          : null;
+        const stateSnapshot = safeEntry?.stateSnapshot && typeof safeEntry.stateSnapshot === "object" && !Array.isArray(safeEntry.stateSnapshot)
+          ? {
+              memory: typeof safeEntry.stateSnapshot.memory === "string" ? normalizeMemory(safeEntry.stateSnapshot.memory, buildDefaultPromptRegistry()) : "",
+              flags: normalizeSessionFlags(safeEntry.stateSnapshot.flags || {})
+            }
+          : null;
+
+        return {
+          role,
+          content,
+          timestamp,
+          debug: Array.isArray(safeEntry?.debug) ? safeEntry.debug : [],
+          debugMeta: normalizeDebugMetaForStorage(debugMeta || {}, buildDefaultPromptRegistry()),
+          stateSnapshot
+        };
+      })
+      .filter(Boolean);
+
+    if (sanitizedMessages.length === 0) {
+      return res.status(400).json({ error: "Aucun message valide a importer" });
+    }
+
+    const convRef = db.ref("conversations").child(conversationId);
+    const existingMsgsSnap = await messagesRef.orderByChild("conversationId").equalTo(conversationId).once("value");
+    const deleteOps = [];
+    existingMsgsSnap.forEach(child => {
+      deleteOps.push(child.ref.remove());
+    });
+    await Promise.all(deleteOps);
+
+    const normalizedMemory = normalizeMemory(typeof safeConversation?.memory === "string" ? safeConversation.memory : "", buildDefaultPromptRegistry());
+    const normalizedFlags = normalizeSessionFlags(safeConversation?.flags || {});
+    const rawTitle = typeof safeConversation?.title === "string" ? safeConversation.title.trim() : "";
+    const firstUserMessage = sanitizedMessages.find(item => item.role === "user");
+    const lastUserMessage = [...sanitizedMessages].reverse().find(item => item.role === "user");
+    const fallbackTitle = lastUserMessage?.content?.slice(0, 60) || firstUserMessage?.content?.slice(0, 60) || "Conversation sans titre";
+    const updatedAtCandidate = Number(safeConversation?.updatedAt || 0);
+    const updatedAtIso = Number.isFinite(updatedAtCandidate) && updatedAtCandidate > 0 ? new Date(updatedAtCandidate).toISOString() : new Date().toISOString();
+
+    await convRef.set({
+      userId,
+      title: rawTitle || fallbackTitle,
+      titleLocked: false,
+      messageCount: sanitizedMessages.filter(item => item.role === "user").length,
+      lastUserMessage: lastUserMessage?.content || "",
+      memory: normalizedMemory,
+      flags: normalizedFlags,
+      adminReplaySourceConversationId: String(safeConversation?.sourceConversationId || "").trim() || null,
+      adminReplayAnchorMessageId: String(safeConversation?.anchorMessageId || "").trim() || null,
+      createdAt: updatedAtIso,
+      updatedAt: updatedAtIso
+    });
+
+    const pushedMessageIds = [];
+    for (const message of sanitizedMessages) {
+      const pushRef = await messagesRef.push({
+        role: message.role,
+        content: message.content,
+        timestamp: message.timestamp,
+        userId,
+        conversationId,
+        debug: message.debug,
+        debugMeta: message.debugMeta,
+        stateSnapshot: message.stateSnapshot
+      });
+      pushedMessageIds.push(pushRef.key);
+    }
+
+    return res.json({
+      success: true,
+      conversationId,
+      messageIds: pushedMessageIds
+    });
+  } catch (err) {
+    console.error("Erreur /api/admin/conversations/import-replay:", err.message);
+    return res.status(500).json({ error: "Admin replay import failed" });
+  }
+});
+
 app.get("/api/admin/conversations/:id/branches", requireAdminAuth, async (req, res) => {
   try {
     if (!req.params || typeof req.params.id !== "string" || !req.params.id.trim()) {

@@ -4408,10 +4408,12 @@
       const nextConversationId = createConversationId();
       const baseTs = Date.now();
       const replayMessages = payload.recentHistory.map((item, index) => ({
+        id: typeof item?.id === "string" ? item.id : undefined,
         role: item.role,
         content: item.content,
         debug: Array.isArray(item.debug) ? item.debug : [],
         debugMeta: normalizeClientDebugMeta(item.debugMeta),
+        stateSnapshot: normalizeStoredStateSnapshot(item?.stateSnapshot),
         t: baseTs - Math.max(payload.recentHistory.length - index, 1) * 1000
       }));
 
@@ -4423,6 +4425,79 @@
       });
 
       return nextConversationId;
+    }
+
+    async function persistAdminReplayConversation(conversationId, payload) {
+      const safeConversationId = String(conversationId || "").trim();
+      if (!safeConversationId || !payload || typeof payload !== "object") {
+        return false;
+      }
+
+      try {
+        const localData = loadConversationData(safeConversationId);
+        const sourceConversationId = String(payload.sourceConversationId || "").trim();
+        const titlePrefix = sourceConversationId ? `Replay de ${sourceConversationId}` : "Replay admin";
+        const firstUserMessage = (Array.isArray(localData.messages) ? localData.messages : []).find(message => message?.role === "user");
+        const fallbackTitle = String(firstUserMessage?.content || "").trim().slice(0, 60);
+
+        const conversationPayload = {
+          id: safeConversationId,
+          userId: getOrCreateUserId(),
+          title: fallbackTitle || titlePrefix,
+          isCustomTitle: false,
+          memory: typeof localData.memory === "string" ? localData.memory : "",
+          flags: normalizeStoredFlags(localData.flags),
+          updatedAt: Number(localData.updatedAt || Date.now()),
+          sourceConversationId,
+          anchorMessageId: String(payload.anchorMessageId || "").trim(),
+          messages: Array.isArray(localData.messages) ? localData.messages : []
+        };
+
+        const res = await fetch("/api/admin/conversations/import-replay", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ conversation: conversationPayload })
+        });
+
+        const body = await parseAppJsonResponseSafely(res);
+        if (!res.ok || !body || body.success !== true) {
+          return false;
+        }
+
+        const returnedIds = Array.isArray(body.messageIds) ? body.messageIds : [];
+        if (returnedIds.length > 0) {
+          const currentData = loadConversationData(safeConversationId);
+          const currentMessages = Array.isArray(currentData.messages) ? currentData.messages : [];
+          const validMessages = currentMessages.filter(m => {
+            const role = String(m?.role || "").trim();
+            const content = typeof m?.content === "string" ? m.content.trim() : "";
+            return (role === "user" || role === "assistant") && content;
+          });
+
+          const updatedMessages = currentMessages.map(message => {
+            const role = String(message?.role || "").trim();
+            const content = typeof message?.content === "string" ? message.content.trim() : "";
+            if ((role === "user" || role === "assistant") && content) {
+              const index = validMessages.indexOf(message);
+              if (index >= 0 && index < returnedIds.length) {
+                return { ...message, id: returnedIds[index] };
+              }
+            }
+            return message;
+          });
+
+          saveConversationData(safeConversationId, {
+            ...currentData,
+            messages: updatedMessages,
+            updatedAt: Date.now()
+          });
+        }
+
+        return true;
+      } catch {
+        return false;
+      }
     }
 
     function parseBranchDirectivityText(directivityText = "") {
@@ -10029,7 +10104,11 @@
       }
 
       if (isAdminUI && replayPayload) {
-        applyAdminReplayPayload(replayPayload);
+        const replayConversationId = applyAdminReplayPayload(replayPayload);
+        if (replayConversationId) {
+          localStorage.setItem(CONVERSATION_ID_KEY, replayConversationId);
+          await persistAdminReplayConversation(replayConversationId, replayPayload);
+        }
         setSessionStatus("active");
         showScreen("chatScreen", { replaceHistory: true, pushHistory: false, noAnimation: true });
         closeEditMode({ restoreDraft: false });
