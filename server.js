@@ -131,7 +131,7 @@ const {
 } = require("./lib/flags");
 const { createAnalyzers } = require("./lib/analyzers");
 const { baseStateOf } = require("./lib/conversation-state");
-const { createMemoryHelpers, forceLectureBotReset } = require("./lib/memory");
+const { createMemoryHelpers } = require("./lib/memory");
 const {
   buildAdvancedDebugTrace,
   buildDebug,
@@ -828,36 +828,24 @@ function canonicalizeMemorySectionSpacing(text = "") {
     .replace(/\r\n/g, "\n")
     .replace(/(Contexte stable\s*:)[ \t]*\n+(?:[ \t]*\n+)*/i, "$1\n")
     .replace(/(Mouvements en cours\s*:)[ \t]*\n+(?:[ \t]*\n+)*/i, "$1\n")
-    .replace(/(Lecture bot\s*:)[ \t]*\n+(?:[ \t]*\n+)*/i, "$1\n")
+    .replace(/(Anciens mouvements\s*:)[ \t]*\n+(?:[ \t]*\n+)*/i, "$1\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
 
-function rewriteLectureBotBlockFromReply(memoryText = "", replyText = "") {
-  const normalizedMemory = canonicalizeMemorySectionSpacing(String(memoryText || ""));
-  if (!normalizedMemory) return normalizedMemory;
+function extractMemorySectionBullets(memoryText = "", sectionLabel = "") {
+  const label = String(sectionLabel || "").trim();
+  if (!label) return [];
+  const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const text = String(memoryText || "");
+  const match = text.match(new RegExp(`${escaped}\\s*:\\s*([\\s\\S]*?)(?:\\n[A-ZÀ-Ü][^:\\n]*:|$)`, "i"));
+  if (!match) return [];
 
-  const firstSentence = String(replyText || "")
-    .replace(/\s+/g, " ")
-    .trim()
-    .split(/[.!?]+/)
-    .map((segment) => segment.trim())
-    .filter(Boolean)[0] || "";
-
-  const summary = firstSentence
-    ? firstSentence.replace(/^[-\u2022\s]+/, "").slice(0, 220)
-    : "";
-
-  const lectureBotContent = summary ? `- ${summary}.` : "-";
-  const replacement = `Lecture bot:\n${lectureBotContent}`;
-
-  if (/Lecture bot\s*:/i.test(normalizedMemory)) {
-    return canonicalizeMemorySectionSpacing(
-      normalizedMemory.replace(/Lecture bot\s*:[\s\S]*/i, replacement)
-    );
-  }
-
-  return canonicalizeMemorySectionSpacing(`${normalizedMemory}\n\n${replacement}`);
+  return String(match[1] || "")
+    .split("\n")
+    .map(line => line.trim())
+    .filter(line => line.startsWith("-") && line.replace(/^[-\s]+/, "").trim())
+    .map(line => line.replace(/^[-\s]+/, "").trim());
 }
 
 function normalizeMemory(memory, promptRegistry = buildDefaultPromptRegistry()) {
@@ -2178,8 +2166,7 @@ app.post("/api/account/conversations/import-local", requireUserAuth, async (req,
                 compressionRequested: debugMeta.memoryRewriteIntent.compressionRequested === true,
                 interpretationRejectionActive: debugMeta.memoryRewriteIntent.interpretationRejectionActive === true,
                 rejectsUnderlyingPhenomenon: debugMeta.memoryRewriteIntent.rejectsUnderlyingPhenomenon === true,
-                soberReadjustmentActive: debugMeta.memoryRewriteIntent.soberReadjustmentActive === true,
-                lectureBotForcedReset: debugMeta.memoryRewriteIntent.lectureBotForcedReset === true
+                soberReadjustmentActive: debugMeta.memoryRewriteIntent.soberReadjustmentActive === true
               } : null,
               memoryCompressed: debugMeta.memoryCompressed === true,
               memoryBeforeCompression: typeof debugMeta.memoryBeforeCompression === "string" ? debugMeta.memoryBeforeCompression : null,
@@ -3038,7 +3025,7 @@ app.get("/api/intersession-memory", requireUserAuth, async (req, res) => {
 });
 
 // Deterministic strip of transient session memory blocks before intersession consolidation.
-// Removes "Mouvements en cours" content and the "Lecture bot" block entirely.
+// Removes transient movement sections while preserving stable context.
 function stripTransientMemoryBlocksForIntersession(memoryText) {
   const lines = String(memoryText || "").split("\n");
   const result = [];
@@ -3046,14 +3033,10 @@ function stripTransientMemoryBlocksForIntersession(memoryText) {
 
   for (const line of lines) {
     const trimmed = line.trim().toLowerCase();
-    if (/^mouvements en cours\s*:/.test(trimmed)) {
+    if (/^mouvements en cours\s*:/.test(trimmed) || /^anciens mouvements\s*:/.test(trimmed)) {
       inTransientBlock = true;
       result.push(line); // Keep the header
       result.push("-"); // Replace content with empty marker
-      continue;
-    }
-    if (/^lecture bot\s*:/.test(trimmed)) {
-      inTransientBlock = true; // Skip header and all content
       continue;
     }
     // Any new section header exits the transient block
@@ -4376,8 +4359,7 @@ app.post("/chat", async (req, res) => {
         compressionRequested: safe.memoryRewriteIntent.compressionRequested === true,
         interpretationRejectionActive: safe.memoryRewriteIntent.interpretationRejectionActive === true,
         rejectsUnderlyingPhenomenon: safe.memoryRewriteIntent.rejectsUnderlyingPhenomenon === true,
-        soberReadjustmentActive: safe.memoryRewriteIntent.soberReadjustmentActive === true,
-        lectureBotForcedReset: safe.memoryRewriteIntent.lectureBotForcedReset === true
+        soberReadjustmentActive: safe.memoryRewriteIntent.soberReadjustmentActive === true
       } : null,
       memoryCompressed: safe.memoryCompressed === true,
       memoryBeforeCompression:
@@ -5804,8 +5786,7 @@ app.post("/chat", async (req, res) => {
       compressionRequested: false,
       interpretationRejectionActive: safeInterpretationRejection.isInterpretationRejection === true,
       rejectsUnderlyingPhenomenon: safeInterpretationRejection.rejectsUnderlyingPhenomenon === true,
-      soberReadjustmentActive: postureDecision.needsSoberReadjustment === true,
-      lectureBotForcedReset: false
+      soberReadjustmentActive: postureDecision.needsSoberReadjustment === true
     };
     let memoryAge = 0;
 
@@ -5818,6 +5799,20 @@ app.post("/chat", async (req, res) => {
           const isFirstTurn = recentHistory.length === 0;
           const memoryUpdateForced = isFirstTurn || memoryPrioritySignal !== "normal";
           const shouldRunMemoryUpdate = currentMemoryUpdateTurnsUntilRefresh === 0 || memoryUpdateForced;
+          const periodicRefreshActive = shouldRunMemoryUpdate
+            && currentMemoryUpdateTurnsUntilRefresh === 0
+            && !isFirstTurn
+            && memoryPrioritySignal === "normal";
+          const effectiveMemoryPrioritySignal = periodicRefreshActive ? "periodic_refresh" : memoryPrioritySignal;
+          const memoryClinicalSignals = {
+            risque_dependance: newFlags.dependencyRiskLevel || "low",
+            stagnation: Number.isInteger(newFlags.stagnationTurns) ? Math.max(0, newFlags.stagnationTurns) : 0,
+            decentrage_emotionnel: emotionalDecenteringAnalysis?.emotionalDecentering === true,
+            agressivite_vers_bot: dischargeAnalysis?.aggressiveDischargeDirectedToBot === true
+          };
+          if (periodicRefreshActive) {
+            memoryClinicalSignals.anciens_mouvements_source = extractMemorySectionBullets(previousMemory, "Mouvements en cours");
+          }
       
           let rawNewMemory;
           if (shouldRunMemoryUpdate) {
@@ -5829,8 +5824,9 @@ app.post("/chat", async (req, res) => {
                 { role: "assistant", content: reply }
               ],
               activePromptRegistry,
-              memoryPrioritySignal,
+              effectiveMemoryPrioritySignal,
               intersessionMemoryForThisTurn,
+              memoryClinicalSignals,
             );
           } else {
             rawNewMemory = previousMemory;
@@ -5839,21 +5835,13 @@ app.post("/chat", async (req, res) => {
       
           let memoryCandidate = rawNewMemory;
       
-          // Points 1+4: r�gle d�terministe � Lecture bot doit �tre "-" pour tout �tat non-exploration, non-info
-          const _memoryBaseState = baseStateOf(postureDecision.conversationState || "exploration_open");
-          const lectureBotForcedReset = _memoryBaseState !== "exploration" && _memoryBaseState !== "info";
-          if (lectureBotForcedReset) {
-            memoryCandidate = forceLectureBotReset(memoryCandidate);
-          }
-      
           memoryBeforeCompression = memoryCandidate;
           const memoryNeedsCompression = shouldCompressMemoryCandidate(memoryCandidate, previousMemory);
           memoryRewriteIntent = {
             compressionRequested: memoryNeedsCompression === true,
             interpretationRejectionActive: safeInterpretationRejection.isInterpretationRejection === true,
             rejectsUnderlyingPhenomenon: safeInterpretationRejection.rejectsUnderlyingPhenomenon === true,
-            soberReadjustmentActive: postureDecision.needsSoberReadjustment === true,
-            lectureBotForcedReset: lectureBotForcedReset === true
+            soberReadjustmentActive: postureDecision.needsSoberReadjustment === true
           };
           const finalizedMemoryCandidate = await finalizeMemoryCandidate({
             previousMemory,
@@ -5866,11 +5854,8 @@ app.post("/chat", async (req, res) => {
             needsCompression: memoryNeedsCompression,
             promptRegistry: activePromptRegistry
           });
-          const lectureBotAlignedMemory = safeInterpretationRejection.isInterpretationRejection === true
-            ? forceLectureBotReset(finalizedMemoryCandidate)
-            : rewriteLectureBotBlockFromReply(finalizedMemoryCandidate, reply);
-          memoryWasCompressed = memoryNeedsCompression && lectureBotAlignedMemory !== memoryCandidate;
-          newMemory = lectureBotAlignedMemory;
+          memoryWasCompressed = memoryNeedsCompression;
+          newMemory = finalizedMemoryCandidate;
       
           // Mise à jour du compteur de périodicité mémoire.
           // Si compression ce tour : forcer recalcul au tour suivant (compteur = 0).
@@ -5890,7 +5875,6 @@ app.post("/chat", async (req, res) => {
       // Async fire-and-forget for non-private: compute and write to Firebase.
       // We capture needed variables in a closure.
       const _prevMem = previousMemory;
-      const _reply = reply;
       const _message = message;
       const _history = recentHistory;
       const _registry = activePromptRegistry;
@@ -5898,6 +5882,20 @@ app.post("/chat", async (req, res) => {
       const _isFirstTurn = recentHistory.length === 0;
       const _updateForced = _isFirstTurn || _prioritySignal !== "normal";
       const _shouldRun = currentMemoryUpdateTurnsUntilRefresh === 0 || _updateForced;
+      const _periodicRefreshActive = _shouldRun
+        && currentMemoryUpdateTurnsUntilRefresh === 0
+        && !_isFirstTurn
+        && _prioritySignal === "normal";
+      const _effectivePrioritySignal = _periodicRefreshActive ? "periodic_refresh" : _prioritySignal;
+      const _clinicalSignals = {
+        risque_dependance: newFlags.dependencyRiskLevel || "low",
+        stagnation: Number.isInteger(newFlags.stagnationTurns) ? Math.max(0, newFlags.stagnationTurns) : 0,
+        decentrage_emotionnel: emotionalDecenteringAnalysis?.emotionalDecentering === true,
+        agressivite_vers_bot: dischargeAnalysis?.aggressiveDischargeDirectedToBot === true
+      };
+      if (_periodicRefreshActive) {
+        _clinicalSignals.anciens_mouvements_source = extractMemorySectionBullets(_prevMem, "Mouvements en cours");
+      }
       // Update the periodicity counter synchronously so next turns get the right shouldRun value.
       if (_shouldRun) {
         newFlags.memoryUpdateTurnsUntilRefresh = 3; // will be refined to 0 if compression detected in bg
@@ -5916,13 +5914,16 @@ app.post("/chat", async (req, res) => {
         try {
           let rawMem;
           if (_shouldRun) {
-            rawMem = await updateMemory(_prevMem, [..._history, { role: "user", content: _message }, { role: "assistant", content: _reply }], _registry, _prioritySignal, _interSession);
+            rawMem = await updateMemory(
+              _prevMem,
+              [..._history, { role: "user", content: _message }, { role: "assistant", content: reply }],
+              _registry,
+              _effectivePrioritySignal,
+              _interSession,
+              _clinicalSignals
+            );
           } else {
             rawMem = _prevMem;
-          }
-          const _memBaseState = baseStateOf(_postureSnap.conversationState || "exploration_open");
-          if (_memBaseState !== "exploration" && _memBaseState !== "info") {
-            rawMem = forceLectureBotReset(rawMem);
           }
           const _needsCompression = shouldCompressMemoryCandidate(rawMem, _prevMem);
           const _finalized = await finalizeMemoryCandidate({
@@ -5932,13 +5933,10 @@ app.post("/chat", async (req, res) => {
             needsCompression: _needsCompression,
             promptRegistry: _registry
           });
-          const _lectureBotAligned = _rejectionSnap.isInterpretationRejection === true
-            ? forceLectureBotReset(_finalized)
-            : rewriteLectureBotBlockFromReply(_finalized, _reply);
           // convRef.update is already handled by persistAssistantMessageAsync which runs in bg too.
           // We just need to overwrite the memory field in the conversation document.
           if (convRef) {
-            await convRef.update({ memory: normalizeMemory(_lectureBotAligned, _registry), updatedAt: new Date().toISOString() });
+            await convRef.update({ memory: normalizeMemory(_finalized, _registry), updatedAt: new Date().toISOString() });
           }
         } catch (e) {
           console.warn("[CHAT][MEMORY_BG_FAILED]", e && e.message);
@@ -6025,6 +6023,7 @@ app.post("/chat", async (req, res) => {
       // Tension secondaire
       secondaryTension: postureDecision.secondaryTension || null,
       postCrisisSupportActive: postCrisisSupportCarryTurnActive,
+      postCrisisSupportCarryTurn: postCrisisSupportCarryTurnActive,
       emergencySupportText,
     });
 

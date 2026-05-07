@@ -230,24 +230,21 @@ assert("memoryRewriteIntent normalized defaults", rewriteIntentDefaults.memoryRe
   compressionRequested: false,
   interpretationRejectionActive: false,
   rejectsUnderlyingPhenomenon: false,
-  soberReadjustmentActive: false,
-  lectureBotForcedReset: false
+  soberReadjustmentActive: false
 });
 const rewriteIntentTrue = buildResponseDebugMeta({
   memoryRewriteIntent: {
     compressionRequested: true,
     interpretationRejectionActive: true,
     rejectsUnderlyingPhenomenon: true,
-    soberReadjustmentActive: true,
-    lectureBotForcedReset: true
+    soberReadjustmentActive: true
   }
 });
 assert("memoryRewriteIntent all true", rewriteIntentTrue.memoryRewriteIntent, {
   compressionRequested: true,
   interpretationRejectionActive: true,
   rejectsUnderlyingPhenomenon: true,
-  soberReadjustmentActive: true,
-  lectureBotForcedReset: true
+  soberReadjustmentActive: true
 });
 
 // 13. Phase B flags

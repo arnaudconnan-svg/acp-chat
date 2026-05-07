@@ -139,8 +139,7 @@
             compressionRequested: toBooleanTrue(safe.memoryRewriteIntent.compressionRequested),
             interpretationRejectionActive: toBooleanTrue(safe.memoryRewriteIntent.interpretationRejectionActive),
             rejectsUnderlyingPhenomenon: toBooleanTrue(safe.memoryRewriteIntent.rejectsUnderlyingPhenomenon),
-            soberReadjustmentActive: toBooleanTrue(safe.memoryRewriteIntent.soberReadjustmentActive),
-            lectureBotForcedReset: toBooleanTrue(safe.memoryRewriteIntent.lectureBotForcedReset)
+            soberReadjustmentActive: toBooleanTrue(safe.memoryRewriteIntent.soberReadjustmentActive)
           }
         : null,
       memoryCompressed: toBooleanTrue(safe.memoryCompressed),
@@ -456,9 +455,6 @@
     }
     if (intent.soberReadjustmentActive === true) {
       lines.push("R\u00e9\u00e9criture motiv\u00e9e par un r\u00e9ajustement sobre");
-    }
-    if (intent.lectureBotForcedReset === true) {
-      lines.push("Lecture bot forc\u00e9e \u00e0 '-' par r\u00e8gle d'\u00e9tat");
     }
 
     return lines;
