@@ -3,6 +3,7 @@
 const {
   hasAgencyInjectionInReply,
   hasTheoreticalViolationHeuristic,
+  getTheoreticalViolationEvidence,
   isProceduralInstrumentalReply
 } = require("../lib/critic");
 
@@ -164,6 +165,13 @@ check("'tu fais tout pour ne pas' → true", () => {
 
 check("phenomenological question → false", () => {
   assert(hasTheoreticalViolationHeuristic("Qu'est-ce que tu remarques là dans ton corps ?") === false);
+});
+
+check("theoretical evidence exposes first matched keyword", () => {
+  const evidence = getTheoreticalViolationEvidence("Je sens une résistance et tu évites de regarder ça.");
+  assert(evidence !== null, "expected non-null evidence");
+  assert(evidence.reason === "theoreticalViolationRisk", `unexpected reason: ${evidence && evidence.reason}`);
+  assert(typeof evidence.match === "string" && evidence.match.length > 0, "expected non-empty match");
 });
 
 // ─── isProceduralInstrumentalReply ───────────────────────────────────────────

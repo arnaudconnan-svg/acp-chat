@@ -148,7 +148,7 @@ const {
   createCritic,
   hasTutoiementInReply,
   hasVouvoiementInReply,
-  hasTheoreticalViolationHeuristic,
+  getTheoreticalViolationEvidence,
   getAgencyAttributionEvidence,
   getProceduralInstrumentalEvidence
 } = require("./lib/critic");
@@ -5910,7 +5910,8 @@ app.post("/chat", async (req, res) => {
       humanFieldRisk = proceduralEvidence !== null;
       const formalAddressRisk = postureDecision.formalAddress === true && hasTutoiementInReply(reply);
       const vouvoiementRisk = postureDecision.formalAddress !== true && hasVouvoiementInReply(reply, message);
-      const theoreticalViolationRisk = hasTheoreticalViolationHeuristic(reply);
+      const theoreticalViolationEvidence = getTheoreticalViolationEvidence(reply);
+      const theoreticalViolationRisk = theoreticalViolationEvidence !== null;
       const agencyAttributionEvidence = getAgencyAttributionEvidence(reply);
       agencyAttributionRisk = agencyAttributionEvidence !== null;
       signalLeakRisk = hasSignalLeakRisk(reply);
@@ -5928,6 +5929,11 @@ app.post("/chat", async (req, res) => {
       if (agencyAttributionEvidence) {
         criticDeterministicEvidence.push(
           `agencyAttributionRisk -> ${agencyAttributionEvidence.pathway} | expression: ${agencyAttributionEvidence.expression} | match: "${agencyAttributionEvidence.match}"`
+        );
+      }
+      if (theoreticalViolationEvidence) {
+        criticDeterministicEvidence.push(
+          `theoreticalViolationRisk -> ${theoreticalViolationEvidence.pathway} | expression: ${theoreticalViolationEvidence.expression} | match: "${theoreticalViolationEvidence.match}"`
         );
       }
       const criticShouldTrigger =
@@ -6071,6 +6077,7 @@ app.post("/chat", async (req, res) => {
     const analyzerDeterministicEvidence = [
       ...(Array.isArray(stateProposal?.dischargeAnalysis?.deterministicEvidence) ? stateProposal.dischargeAnalysis.deterministicEvidence : []),
       ...(Array.isArray(stateProposal?.contactAnalysis?.deterministicEvidence) ? stateProposal.contactAnalysis.deterministicEvidence : []),
+      ...(Array.isArray(emotionalDecenteringAnalysis?.deterministicEvidence) ? emotionalDecenteringAnalysis.deterministicEvidence : []),
       ...(Array.isArray(somaticSignalAnalysis?.deterministicEvidence) ? somaticSignalAnalysis.deterministicEvidence : []),
       ...(Array.isArray(relationalAdjustmentAnalysis?.deterministicEvidence) ? relationalAdjustmentAnalysis.deterministicEvidence : []),
       ...(Array.isArray(allianceRuptureAnalysis?.deterministicEvidence) ? allianceRuptureAnalysis.deterministicEvidence : []),

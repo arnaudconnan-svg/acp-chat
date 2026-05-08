@@ -426,6 +426,18 @@
       return null;
     }
 
+    function extractRegexMatchForReason(evidenceEntries, reasonKey) {
+      if (!Array.isArray(evidenceEntries) || !reasonKey) return null;
+      var reasonPrefix = String(reasonKey || "") + " ->";
+      for (var i = 0; i < evidenceEntries.length; i += 1) {
+        var entry = String(evidenceEntries[i] || "").trim();
+        if (!entry || entry.indexOf(reasonPrefix) !== 0) continue;
+        var match = entry.match(/\|\s*match:\s*"([^"]+)"/i);
+        if (match && match[1]) return match[1];
+      }
+      return null;
+    }
+
     if (meta.interpretationRejection === true) {
       var interpretationLine = variant === "admin"
         ? "Un rejet d'interpretation a ete detecte et pris en compte."
@@ -446,6 +458,13 @@
         ? "Un ajustement relationnel a ete declenche."
         : "Un ajustement relationnel a ete declenche pour proteger l'alliance.";
       lines.push(enrichLineWithMatch(relationalLine, analyzerMatchMap, ["relational_adjustment_guard_no_trigger"]));
+    }
+
+    if (meta.emotionalDecentering === true) {
+      var decenteringLine = variant === "admin"
+        ? "Un decentrage emotionnel a ete detecte."
+        : "Le systeme a detecte un decentrage emotionnel.";
+      lines.push(enrichLineWithMatch(decenteringLine, analyzerMatchMap, ["emotional_decentering_guard_active", "emotional_decentering_guard_llm_review"]));
     }
 
     if (meta.stagnationTurns > 0) {
@@ -485,16 +504,20 @@
         return criticReasonLabels[r] || r;
       }).filter(Boolean);
 
-      var humanFieldRegexMatch = extractRegexMatchFromEvidence(meta.criticDeterministicEvidence);
+      var humanFieldRegexMatch = extractRegexMatchForReason(meta.criticDeterministicEvidence, "humanFieldRisk");
       if (!humanFieldRegexMatch) {
         humanFieldRegexMatch = extractRegexMatchFromEvidence(meta.analyzerDeterministicEvidence);
       }
+      var theoreticalRegexMatch = extractRegexMatchForReason(meta.criticDeterministicEvidence, "theoreticalViolationRisk");
 
-      if (humanFieldRegexMatch) {
+      if (humanFieldRegexMatch || theoreticalRegexMatch) {
         reasons = reasons.map(function enrichReason(reasonLabel, reasonIndex) {
           var reasonKey = (meta.criticTriggerReasons || [])[reasonIndex];
-          if (reasonKey === "humanFieldRisk") {
+          if (reasonKey === "humanFieldRisk" && humanFieldRegexMatch) {
             return reasonLabel + ' (regex match: "' + humanFieldRegexMatch + '")';
+          }
+          if (reasonKey === "theoreticalViolationRisk" && theoreticalRegexMatch) {
+            return reasonLabel + ' (regex match: "' + theoreticalRegexMatch + '")';
           }
           return reasonLabel;
         });
