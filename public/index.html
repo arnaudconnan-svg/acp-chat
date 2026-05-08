@@ -90,7 +90,7 @@
       min-height: 100%;
       box-sizing: border-box;
       padding-top: clamp(20px, 9vh, 72px);
-      padding-bottom: clamp(16px, 5vh, 44px);
+      padding-bottom: clamp(86px, 16vh, 164px);
     }
     
     #welcomeLogoWrap {
@@ -115,7 +115,7 @@
       align-items: center;
       justify-content: center;
       text-align: center;
-      margin-top: clamp(8px, 10vh, 88px);
+      margin-top: auto;
       font-size: clamp(30px, 7vw, 42px);
       font-weight: 500;
       line-height: 1.35;
@@ -153,11 +153,11 @@
     #welcomeActions {
       width: 100%;
       max-width: 380px;
-      margin-top: clamp(22px, 5vh, 58px);
+      margin-top: clamp(18px, 4.2vh, 42px);
       padding-top: 0;
       display: flex;
       flex-direction: column;
-      align-items: stretch;
+      align-items: center;
       gap: 0;
       opacity: 0;
       pointer-events: none;
@@ -166,8 +166,10 @@
 
     #welcomeSecondaryActions {
       display: flex;
-      flex-direction: column;
-      gap: 50px;
+      flex-direction: row;
+      justify-content: center;
+      align-items: center;
+      gap: 18px;
       margin-top: 50px;
       opacity: 0;
       pointer-events: none;
@@ -186,13 +188,13 @@
     .welcomeBtnPrimary,
     .welcomeBtnSecondary,
     .welcomeBtnTertiary {
-      width: 100%;
       box-sizing: border-box;
       line-height: 1.25;
       cursor: pointer;
     }
     
     .welcomeBtnPrimary {
+      width: 100%;
       border: none;
       border-radius: 18px;
       background: #245e66;
@@ -206,23 +208,37 @@
     }
     
     .welcomeBtnSecondary {
-      border: none;
-      background: transparent;
+      width: 34px;
+      height: 34px;
+      border: 1px solid rgba(36, 94, 102, 0.28);
+      border-radius: 999px;
+      background: rgba(248, 251, 251, 0.88);
       color: #245e66;
-      font-size: 14px;
+      font-size: 18px;
       font-weight: 600;
-      padding: 2px 12px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      box-shadow: 0 5px 14px rgba(36, 94, 102, 0.12);
       -webkit-tap-highlight-color: transparent;
       outline: none;
     }
     
     .welcomeBtnTertiary {
-      border: 1px dashed #bfd0d3;
-      border-radius: 14px;
-      background: rgba(248, 251, 251, 0.8);
+      width: 34px;
+      height: 34px;
+      border: 1px solid rgba(36, 94, 102, 0.28);
+      border-radius: 999px;
+      background: rgba(248, 251, 251, 0.88);
       color: #245e66;
-      font-size: 13px;
-      padding: 9px 12px;
+      font-size: 17px;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      box-shadow: 0 5px 14px rgba(36, 94, 102, 0.12);
     }
     
     #welcomeEnterBtn {
@@ -263,7 +279,7 @@
     }
     
     #welcomeDevAccessWrap {
-      min-height: 36px;
+      min-height: 0;
       opacity: 1;
       transform: none;
       transition: none;
@@ -401,7 +417,7 @@
     @media (max-height: 760px) {
       #welcomeInner {
         padding-top: 24px;
-        padding-bottom: 18px;
+        padding-bottom: 74px;
       }
 
       #welcomeLogo {
@@ -413,19 +429,19 @@
       }
 
       #welcomeRitualText {
-        margin-top: clamp(4px, 4vh, 24px);
+        margin-top: auto;
         min-height: 56px;
         font-size: clamp(23px, 6.6vw, 34px);
       }
 
       #welcomeActions {
         max-width: 360px;
-        margin-top: clamp(14px, 3vh, 30px);
+        margin-top: clamp(14px, 3vh, 26px);
         padding-top: 0;
       }
 
       #welcomeSecondaryActions {
-        gap: 39px;
+        gap: 14px;
         margin-top: 39px;
       }
 
@@ -442,7 +458,7 @@
     @media (max-height: 640px) {
       #welcomeInner {
         padding-top: 14px;
-        padding-bottom: 12px;
+        padding-bottom: 52px;
       }
 
       #welcomeLogo {
@@ -454,7 +470,7 @@
       }
 
       #welcomeRitualText {
-        margin-top: 4px;
+        margin-top: auto;
         min-height: 42px;
         font-size: clamp(20px, 6vw, 28px);
         line-height: 1.25;
@@ -466,7 +482,7 @@
       }
 
       #welcomeSecondaryActions {
-        gap: 33px;
+        gap: 12px;
         margin-top: 33px;
       }
 
@@ -476,12 +492,28 @@
       }
 
       .welcomeBtnSecondary {
-        font-size: 13px;
+        width: 30px;
+        height: 30px;
+        font-size: 16px;
       }
 
       .welcomeBtnTertiary {
-        font-size: 12px;
-        padding: 8px 10px;
+        width: 30px;
+        height: 30px;
+        font-size: 15px;
+      }
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+      .welcomeBtnSecondary:hover,
+      .welcomeBtnTertiary:hover {
+        background: rgba(233, 243, 243, 0.96);
+        transform: translateY(-1px);
+      }
+
+      .welcomeBtnSecondary:active,
+      .welcomeBtnTertiary:active {
+        transform: translateY(0);
       }
     }
     
@@ -2077,15 +2109,15 @@
         </button>
 
         <div id="welcomeSecondaryActions">
+          <button id="welcomeAboutBtn" class="welcomeBtnSecondary" type="button" aria-label="Plus d'informations" title="Plus d'informations">
+            ?
+          </button>
+
           <div id="welcomeDevAccessWrap">
-            <button id="welcomeDevAccessBtn" class="welcomeBtnTertiary" type="button">
-              Acc&egrave;s d&eacute;veloppeur
+            <button id="welcomeDevAccessBtn" class="welcomeBtnTertiary" type="button" aria-label="Acc&egrave;s admin" title="Acc&egrave;s admin">
+              &#9881;
             </button>
           </div>
-
-          <button id="welcomeAboutBtn" class="welcomeBtnSecondary" type="button">
-            Plus d'informations
-          </button>
         </div>
       </div>
     </div>
@@ -2233,13 +2265,13 @@
       <div id="aboutContent">
         <p class="about-eyebrow">Facilitat.io</p>
         <p class="about-lead">
-          Une interaction avec une IA qui facilite le d&eacute;veloppement de la personne, sans orienter ni conseiller.
+          Facilitat.io ne donne pas de conseils et ne d&eacute;cide pas du sens de ce que vous vivez.
         </p>
         <p class="about-body">
-          Elle soutient plut&ocirc;t un mouvement de compr&eacute;hension et d&rsquo;acceptation de soi, dans une forme sobre, lente et exploratoire.
+          Il peut toutefois proposer des lectures sur la qualit&eacute; de l&rsquo;exp&eacute;rience exprim&eacute;e &mdash; ressentis, tensions, &eacute;motions, mouvements int&eacute;rieurs &mdash; pour soutenir l&rsquo;exploration.
         </p>
         <p class="about-note">
-          Cet outil ne remplace pas une relation d&rsquo;accompagnement humaine.
+          Vous pouvez le corriger ou le contredire &agrave; tout moment.
         </p>
       </div>
     </div>
