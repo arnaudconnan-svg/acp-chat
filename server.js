@@ -3112,18 +3112,27 @@ app.put("/api/intersession-memory", requireUserAuth, async (req, res) => {
 
     if (
       !req.body ||
-      typeof req.body !== "object" ||
-      typeof req.body.memory !== "string"
+      typeof req.body !== "object"
     ) {
       return res.status(400).json({ error: "Invalid memory payload" });
     }
 
     const requestedConversationId = typeof req.body.conversationId === "string" ? req.body.conversationId.trim() : "";
+    const hasMemoryFallback = typeof req.body.memory === "string" && req.body.memory.trim();
+    if (!requestedConversationId && !hasMemoryFallback) {
+      return res.status(400).json({ error: "Missing conversationId or memory" });
+    }
+
     const sessionMemory = await resolveAuthoritativeSessionMemoryForIntersession({
       userId: session.userId,
       conversationId: requestedConversationId,
       fallbackMemory: String(req.body.memory || "")
     });
+
+    if (!sessionMemory.trim()) {
+      return res.json({ success: true, skipped: true, reason: "empty_session_memory" });
+    }
+
     const strippedSessionMemory = stripTransientMemoryBlocksForIntersession(sessionMemory);
     const userSnap = await usersRef.child(session.userId).once("value");
     const userData = userSnap.val() || {};

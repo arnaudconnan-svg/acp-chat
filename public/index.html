@@ -7832,12 +7832,15 @@
       }
     }
 
-    async function persistIntersessionMemoryIfApplicable(memory) {
-      if (!userSessionState.authenticated || typeof memory !== "string" || !memory.trim()) {
+    async function persistIntersessionMemoryIfApplicable() {
+      if (!userSessionState.authenticated) {
         return;
       }
 
       const currentConversationId = getConversationId();
+      if (!currentConversationId) {
+        return;
+      }
       if (currentConversationId) {
         const currentConversationData = loadConversationData(currentConversationId);
         if (isConversationPrivateById(currentConversationId, currentConversationData)) {
@@ -7851,7 +7854,6 @@
           credentials: "include",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            memory,
             conversationId: currentConversationId || null
           })
         });
@@ -7866,22 +7868,19 @@
 
     // sendIntersessionBeacon � fire-and-forget on pagehide / visibilitychange.
     // Uses sendBeacon so the request survives tab close and back-navigation.
-    // Guards: authenticated user, non-private conversation, memory non-empty.
+    // Guards: authenticated user + active non-private conversation.
     function sendIntersessionBeacon() {
       try {
         if (!userSessionState.authenticated) return;
 
-        const memory = loadMemory();
-        if (typeof memory !== "string" || !memory.trim()) return;
-
         const currentConversationId = getConversationId();
+        if (!currentConversationId) return;
         if (currentConversationId) {
           const data = loadConversationData(currentConversationId);
           if (isConversationPrivateById(currentConversationId, data)) return;
         }
 
         const payload = JSON.stringify({
-          memory,
           conversationId: currentConversationId || null,
           timestamp: new Date().toISOString()
         });
@@ -7908,7 +7907,7 @@
 
         if (data && data.memory) {
           saveMemory(data.memory);
-          await persistIntersessionMemoryIfApplicable(data.memory);
+          await persistIntersessionMemoryIfApplicable();
         }
       } catch {}
     }
