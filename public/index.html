@@ -978,11 +978,15 @@
       position: absolute;
       right: 16px;
       bottom: calc(16px + env(safe-area-inset-bottom, 0px));
-      z-index: 20;
+      z-index: 32;
       display: flex;
       align-items: center;
       justify-content: flex-end;
       background: none;
+    }
+
+    #conversationsScreen.is-private-hint-active #conversationsFabWrap {
+      pointer-events: none;
     }
 
     #conversationsPrivateFabBtn {
@@ -1004,12 +1008,16 @@
       justify-content: center;
       gap: 1px;
       cursor: pointer;
-      z-index: 22;
+      z-index: 34;
       -webkit-tap-highlight-color: transparent;
     }
 
     #conversationsPrivateFabBtn.is-visible {
       display: inline-flex;
+    }
+
+    #conversationsPrivateFabBtn.is-onboarding-highlight {
+      animation: conversationsPrivateFabHintPulse 2.4s ease-in-out infinite;
     }
 
     #conversationsPrivateFabBtn svg {
@@ -1081,6 +1089,198 @@
       transform: scale(0.72);
       transition: opacity 0.22s ease, transform 0.26s ease;
       pointer-events: none;
+    }
+
+    #conversationsFabBtn::after {
+      content: "";
+      position: absolute;
+      inset: -16px;
+      border-radius: 999px;
+      border: 2px solid rgba(36, 94, 102, 0.18);
+      opacity: 0;
+      transform: scale(0.78);
+      pointer-events: none;
+    }
+
+    #conversationsFabBtn.is-onboarding-press {
+      transform: scale(0.95);
+      box-shadow:
+        0 10px 24px rgba(36, 94, 102, 0.26),
+        0 0 0 10px rgba(36, 94, 102, 0.08);
+      background: #1f535a;
+      animation: conversationsFabHintHalo 1.75s ease-in-out infinite;
+    }
+
+    #conversationsFabBtn.is-onboarding-press::before {
+      opacity: 1;
+      transform: scale(1.16);
+    }
+
+    #conversationsFabBtn.is-onboarding-press::after {
+      opacity: 1;
+      animation: conversationsFabHintRing 1.75s ease-out infinite;
+    }
+
+    @keyframes conversationsFabHintHalo {
+      0% {
+        transform: scale(0.95);
+        box-shadow:
+          0 10px 24px rgba(36, 94, 102, 0.26),
+          0 0 0 0 rgba(36, 94, 102, 0.16);
+      }
+      50% {
+        transform: scale(0.9);
+        box-shadow:
+          0 14px 30px rgba(36, 94, 102, 0.34),
+          0 0 0 14px rgba(36, 94, 102, 0.06);
+      }
+      100% {
+        transform: scale(0.95);
+        box-shadow:
+          0 10px 24px rgba(36, 94, 102, 0.26),
+          0 0 0 0 rgba(36, 94, 102, 0.16);
+      }
+    }
+
+    @keyframes conversationsFabHintRing {
+      0% {
+        opacity: 0;
+        transform: scale(0.82);
+      }
+      20% {
+        opacity: 0.6;
+      }
+      100% {
+        opacity: 0;
+        transform: scale(1.34);
+      }
+    }
+
+    @keyframes conversationsPrivateFabHintPulse {
+      0% {
+        transform: translateY(0) scale(1);
+        box-shadow: 0 10px 24px rgba(36, 94, 102, 0.28);
+      }
+      50% {
+        transform: translateY(-2px) scale(1.08);
+        box-shadow: 0 16px 30px rgba(36, 94, 102, 0.36);
+      }
+      100% {
+        transform: translateY(0) scale(1);
+        box-shadow: 0 10px 24px rgba(36, 94, 102, 0.28);
+      }
+    }
+
+    #conversationsPrivacyHintOverlay {
+      position: absolute;
+      inset: 0;
+      z-index: 24;
+      display: none;
+      align-items: stretch;
+      justify-content: stretch;
+      background: transparent;
+    }
+
+    #conversationsPrivacyHintOverlay.is-active {
+      display: flex;
+    }
+
+    #conversationsPrivacyHintBackdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(99, 113, 118, 0.32);
+    }
+
+    #conversationsPrivacyHintCard {
+      position: absolute;
+      right: 86px;
+      bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+      width: min(300px, calc(100% - 122px));
+      padding: 18px 18px 16px 18px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.96);
+      border: 1px solid rgba(36, 94, 102, 0.12);
+      box-shadow: 0 20px 42px rgba(36, 94, 102, 0.18);
+      opacity: 0;
+      transform: translateY(10px);
+      transition: opacity 0.24s ease, transform 0.24s ease;
+    }
+
+    #conversationsPrivacyHintOverlay.is-copy-visible #conversationsPrivacyHintCard {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    #conversationsPrivacyHintCard::after {
+      content: "";
+      position: absolute;
+      right: 18px;
+      bottom: 20px;
+      width: 18px;
+      height: 18px;
+      background: rgba(255, 255, 255, 0.96);
+      border-right: 1px solid rgba(36, 94, 102, 0.12);
+      border-bottom: 1px solid rgba(36, 94, 102, 0.12);
+      transform: translateX(100%) rotate(-45deg);
+    }
+
+    #conversationsPrivacyHintTitle {
+      margin: 0 0 8px 0;
+      font-size: 17px;
+      line-height: 1.3;
+      color: #173b40;
+    }
+
+    #conversationsPrivacyHintText {
+      margin: 0;
+      font-size: 14px;
+      line-height: 1.55;
+      color: #365e63;
+    }
+
+    #conversationsPrivacyHintToggleRow {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 16px;
+      font-size: 13px;
+      line-height: 1.45;
+      color: #365e63;
+    }
+
+    #conversationsPrivacyHintToggleRow input {
+      margin: 0;
+      accent-color: #245e66;
+    }
+
+    #conversationsPrivacyHintActions {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 14px;
+    }
+
+    #conversationsPrivacyHintContinueBtn {
+      border: none;
+      border-radius: 12px;
+      background: #245e66;
+      color: #ffffff;
+      font-size: 14px;
+      font-weight: 600;
+      padding: 10px 14px;
+      cursor: pointer;
+    }
+
+    @media (max-width: 560px) {
+      #conversationsPrivacyHintCard {
+        right: 82px;
+        left: 16px;
+        width: auto;
+        bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+      }
+
+      #conversationsPrivacyHintCard::after {
+        right: 18px;
+      }
     }
 
     @keyframes conversationsFabTapAcknowledge {
@@ -2258,6 +2458,23 @@
         </svg>
       </button>
     </div>
+
+    <div id="conversationsPrivacyHintOverlay" aria-live="polite">
+      <div id="conversationsPrivacyHintBackdrop"></div>
+      <div id="conversationsPrivacyHintCard">
+        <h3 id="conversationsPrivacyHintTitle">Conversation priv&eacute;e</h3>
+        <p id="conversationsPrivacyHintText">
+          Maintenez le bouton + pour faire appara&icirc;tre l'option conversation priv&eacute;e. Elle permet de garder cette nouvelle session uniquement sur votre appareil.
+        </p>
+        <label id="conversationsPrivacyHintToggleRow">
+          <input id="conversationsPrivacyHintDontShow" type="checkbox">
+          <span>Ne pas montrer au prochain d&eacute;marrage</span>
+        </label>
+        <div id="conversationsPrivacyHintActions">
+          <button id="conversationsPrivacyHintContinueBtn" type="button">Continuer</button>
+        </div>
+      </div>
+    </div>
     
     <template id="conversationItemTemplate">
       <div class="conversationItem conversationItemRow">
@@ -2852,6 +3069,7 @@
     const CONVERSATION_OPENING_GREETING = "Bienvenue dans cette nouvelle conversation. Que veux-tu explorer aujourd'hui ?";
     const ACTIVITY_KEY = "facilitatio_last_activity";
     const SESSION_INFO_DISMISSED_KEY = "facilitatio_session_info_dismissed";
+    const CONVERSATIONS_PRIVATE_HINT_DISMISSED_KEY = "facilitatio_conversations_private_hint_dismissed";
     const SESSION_TIMEOUT_MS = 12 * 60 * 60 * 1000;
     const MAX_RECENT_TURNS = 8;
     const CHAT_REQUEST_TIMEOUT_MS = 45000;
@@ -2868,6 +3086,10 @@
     // Populated once on load; used as initial memory for new conversations.
     let _pendingIntersessionMemory = null;
     let _intersessionCompressionDoneThisSession = false;
+    let conversationsPrivateHintShownThisLoad = false;
+    let conversationsPrivateHintActive = false;
+    let conversationsPrivateHintRevealTimer = null;
+    let conversationsPrivateHintCopyTimer = null;
 
     async function syncUserSessionState() {
       try {
@@ -4979,6 +5201,104 @@
         localStorage.removeItem(SESSION_INFO_DISMISSED_KEY);
       }
     }
+
+    function loadConversationsPrivateHintDismissed() {
+      return localStorage.getItem(CONVERSATIONS_PRIVATE_HINT_DISMISSED_KEY) === "1";
+    }
+
+    function saveConversationsPrivateHintDismissed(value) {
+      if (value) {
+        localStorage.setItem(CONVERSATIONS_PRIVATE_HINT_DISMISSED_KEY, "1");
+      } else {
+        localStorage.removeItem(CONVERSATIONS_PRIVATE_HINT_DISMISSED_KEY);
+      }
+    }
+
+    function clearConversationsPrivateHintTimers() {
+      if (conversationsPrivateHintRevealTimer) {
+        clearTimeout(conversationsPrivateHintRevealTimer);
+        conversationsPrivateHintRevealTimer = null;
+      }
+
+      if (conversationsPrivateHintCopyTimer) {
+        clearTimeout(conversationsPrivateHintCopyTimer);
+        conversationsPrivateHintCopyTimer = null;
+      }
+    }
+
+    function dismissConversationsPrivateHint(options = {}) {
+      const overlay = document.getElementById("conversationsPrivacyHintOverlay");
+      const checkbox = document.getElementById("conversationsPrivacyHintDontShow");
+      const fabBtn = document.getElementById("conversationsFabBtn");
+      const privateBtn = document.getElementById("conversationsPrivateFabBtn");
+      const conversationsScreen = document.getElementById("conversationsScreen");
+
+      if (options.persistPreference === true && checkbox) {
+        saveConversationsPrivateHintDismissed(checkbox.checked === true);
+      }
+
+      clearConversationsPrivateHintTimers();
+      conversationsPrivateHintActive = false;
+
+      if (overlay) {
+        overlay.classList.remove("is-active", "is-copy-visible");
+      }
+
+      if (conversationsScreen) {
+        conversationsScreen.classList.remove("is-private-hint-active");
+      }
+
+      if (fabBtn) {
+        fabBtn.classList.remove("is-onboarding-press");
+        if (typeof fabBtn._hidePrivateQuickButton === "function") {
+          fabBtn._hidePrivateQuickButton();
+        }
+      }
+
+      if (privateBtn) {
+        privateBtn.classList.remove("is-onboarding-highlight");
+      }
+    }
+
+    function maybeStartConversationsPrivateHint() {
+      if (conversationsPrivateHintShownThisLoad || conversationsPrivateHintActive || loadConversationsPrivateHintDismissed()) {
+        return;
+      }
+
+      if (document.body.classList.contains("admin-ui")) {
+        return;
+      }
+
+      const overlay = document.getElementById("conversationsPrivacyHintOverlay");
+      const checkbox = document.getElementById("conversationsPrivacyHintDontShow");
+      const fabBtn = document.getElementById("conversationsFabBtn");
+      const privateBtn = document.getElementById("conversationsPrivateFabBtn");
+      const conversationsScreen = document.getElementById("conversationsScreen");
+
+      if (!overlay || !fabBtn || !privateBtn || !conversationsScreen) {
+        return;
+      }
+
+      conversationsPrivateHintShownThisLoad = true;
+      conversationsPrivateHintActive = true;
+      checkbox.checked = false;
+      overlay.classList.add("is-active");
+      conversationsScreen.classList.add("is-private-hint-active");
+
+      conversationsPrivateHintRevealTimer = setTimeout(() => {
+        if (!conversationsPrivateHintActive) return;
+        fabBtn.classList.add("is-onboarding-press");
+      }, 700);
+
+      conversationsPrivateHintCopyTimer = setTimeout(() => {
+        if (!conversationsPrivateHintActive) return;
+        if (typeof fabBtn._showPrivateQuickButton === "function") {
+          fabBtn._showPrivateQuickButton();
+        }
+        privateBtn.classList.add("is-onboarding-highlight");
+        overlay.classList.add("is-copy-visible");
+      }, 1320);
+    }
     
     async function openConversation(conversationId) {
       closeEditMode({ restoreDraft: false });
@@ -5106,6 +5426,10 @@
       document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
       document.getElementById(id).classList.add("active");
       syncDebugVisibility();
+
+      if (id !== "conversationsScreen") {
+        dismissConversationsPrivateHint();
+      }
       
       if (id === "conversationsScreen") {
         renderConversationsList();
@@ -5124,6 +5448,7 @@
           }
           
           updateScrollToBottomBtn();
+          maybeStartConversationsPrivateHint();
         });
         
         return;
@@ -9514,6 +9839,13 @@
       };
     }
 
+    const conversationsPrivacyHintContinueBtn = document.getElementById("conversationsPrivacyHintContinueBtn");
+    if (conversationsPrivacyHintContinueBtn) {
+      conversationsPrivacyHintContinueBtn.onclick = () => {
+        dismissConversationsPrivateHint({ persistPreference: true });
+      };
+    }
+
     const confirmPrivateConversationBtn = document.getElementById("confirmPrivateConversationBtn");
     if (confirmPrivateConversationBtn) {
       confirmPrivateConversationBtn.onclick = () => {
@@ -9612,6 +9944,9 @@
         if (!privateQuickBtn || sessionStatus === "closing") return;
         privateQuickBtn.classList.add("is-visible");
       };
+
+      conversationsFabBtn._showPrivateQuickButton = showPrivateQuickButton;
+      conversationsFabBtn._hidePrivateQuickButton = hidePrivateQuickButton;
 
       const clearFabLongPress = () => {
         if (fabLongPressTimer) {
