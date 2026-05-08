@@ -25,7 +25,13 @@ const COMPOSER_TIMEOUT_MS = 15000;
 
 async function run() {
   const browser = await chromium.launch({ headless: true });
-  const context = await browser.newContext();
+  const context = await browser.newContext({
+    userAgent:
+      "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
+    viewport: { width: 390, height: 844 },
+    isMobile: true,
+    hasTouch: true
+  });
   const page = await context.newPage();
 
   const consoleErrors = [];
