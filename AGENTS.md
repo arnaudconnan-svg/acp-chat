@@ -286,7 +286,27 @@ Cette règle s'applique à toutes les propositions de formulations de l'agent (d
 
 ---
 
-## 9. Exigence produit
+## 9. Phase actuelle — stabilisation comportementale
+
+Le produit est entré en phase de stabilisation comportementale. Cette phase a une priorité opérationnelle sur la section 4 (autonomie technique de l'agent).
+
+**Ce que cela signifie concrètement :**
+
+- Corriger et stabiliser le comportement existant est prioritaire sur ajouter de nouveaux signaux, états, politiques ou champs de mémoire.
+- Par défaut, l'agent ne propose pas de nouveaux analyseurs, flags de session, tokens writer, champs debugMeta ou états machine d'état. Si une telle addition semble nécessaire, la signaler comme besoin avec justification comportementale et attendre un go explicite.
+- Les bugs comportementaux visibles restent traités immédiatement, sans attendre.
+- Les améliorations de l'outillage (harness, logs, tests déterministes) restent autorisées sans validation préalable.
+
+**Ce que cela ne signifie pas :**
+
+- Pas de gel de l'architecture. Les refactorings qui améliorent la fiabilité sans ajouter de comportement nouveau sont autorisés.
+- Pas d'interdiction de corriger une politique writer ou un contrat de posture si elle produit un comportement incorrect démontré.
+
+Cette phase prend fin sur décision explicite de l'utilisateur.
+
+---
+
+## 10. Exigence produit
 
 Facilitat.io ne distingue pas une version MVP et une version finale. L'exigence de qualité est uniforme dès le premier utilisateur réel.
 

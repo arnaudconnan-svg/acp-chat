@@ -74,14 +74,12 @@ Le frontend :
 Le frontend ne doit pas redecider la politique conversationnelle.
 Il doit seulement transmettre un etat coherent et afficher le resultat.
 
-## Direction technique court / moyen terme
+## Direction technique — priorite court terme
 
-Les prochains gains structurels attendus sont :
+Le produit est en phase de stabilisation comportementale.
 
-1. extraction des prompts dans un module dedie
-2. extraction des normalisateurs de flags et etats
-3. extraction des analyzers LLM
-4. extraction de la logique memoire
-5. extraction de l'arbitrage et du pipeline writer/critic
+La priorite immédiate est de consolider le comportement sur l'architecture existante — pas d'ajouter de couches, de signaux ou de politiques nouvelles.
 
-Apres ce decoupage, la prochaine etape cible est une machine d'etat explicite comme structure de donnees testable, plutot qu'une accumulation de conditions dans `buildPostureDecision(...)`.
+Les extractions modulaires et refactorings qui ameliorent la fiabilite et la testabilite restent bienvenus, a condition de ne pas introduire de nouveau comportement visible.
+
+La liste des extractions structurelles prevues (prompts, normalisateurs, analyzers, memoire, arbitrage/writer/critic) reste l'objectif moyen terme. Elle sera reprise apres la phase de stabilisation.

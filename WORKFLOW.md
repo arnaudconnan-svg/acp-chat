@@ -98,6 +98,20 @@ Les zones qui demandent le plus de rigueur sont :
 La sensibilite d'une zone ne signifie pas qu'elle est intouchable.
 Elle signifie qu'elle doit etre modifiee avec verification adaptee.
 
+## 7. Phase actuelle — priorites operationnelles
+
+Le produit est en phase de stabilisation comportementale.
+
+Cela signifie :
+
+- la priorite est de corriger, stabiliser et tester les comportements existants — pas d'en ajouter de nouveaux
+- tout nouveau signal, analyseur, etat machine, token writer, champ debug ou champ memoire est traite comme exceptionnel : le signaler comme besoin avec justification comportementale et attendre un go explicite
+- les bugs comportementaux visibles restent traites immediatement, sans attendre
+- les ameliorations de l'outillage (harness, logs, tests deterministes) restent autorisees sans validation prealable
+- les refactorings qui ameliorent la fiabilite sans ajouter de comportement nouveau sont autorises
+
+Cette phase prend fin sur decision explicite de l'utilisateur.
+
 ## 7. Git
 
 Regles pratiques :
