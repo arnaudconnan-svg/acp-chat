@@ -5980,6 +5980,7 @@ app.post("/chat", async (req, res) => {
     const analyzerDeterministicEvidence = [
       ...(Array.isArray(stateProposal?.dischargeAnalysis?.deterministicEvidence) ? stateProposal.dischargeAnalysis.deterministicEvidence : []),
       ...(Array.isArray(stateProposal?.contactAnalysis?.deterministicEvidence) ? stateProposal.contactAnalysis.deterministicEvidence : []),
+      ...(Array.isArray(somaticSignalAnalysis?.deterministicEvidence) ? somaticSignalAnalysis.deterministicEvidence : []),
       ...(Array.isArray(relationalAdjustmentAnalysis?.deterministicEvidence) ? relationalAdjustmentAnalysis.deterministicEvidence : []),
       ...(Array.isArray(allianceRuptureAnalysis?.deterministicEvidence) ? allianceRuptureAnalysis.deterministicEvidence : []),
       ...(Array.isArray(safeInterpretationRejection?.deterministicEvidence) ? safeInterpretationRejection.deterministicEvidence : []),

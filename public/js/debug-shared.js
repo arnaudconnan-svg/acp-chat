@@ -391,6 +391,26 @@
     return text;
   }
 
+  function buildSomaticFocusPolicyDebugLine(meta) {
+    if (!meta || !meta.somaticFocusPolicy || meta.somaticFocusPolicy === "none") {
+      return null;
+    }
+
+    var policyLabel = translateSomaticFocusPolicy(meta.somaticFocusPolicy);
+    var baseLine = "Politique somatique : " + policyLabel;
+    var analyzerMatchMap = parseDeterministicEvidence(meta.analyzerDeterministicEvidence);
+
+    if (meta.somaticFocusPolicy === "address_frustration_before_somatic_relocalization") {
+      return enrichLineWithMatch(baseLine, analyzerMatchMap, ["somatic_localization_guard_active", "somatic_signal_guard_active"]);
+    }
+
+    if (meta.somaticFocusPolicy === "prioritize_somatic_proximity") {
+      return enrichLineWithMatch(baseLine, analyzerMatchMap, ["somatic_signal_guard_active"]);
+    }
+
+    return baseLine;
+  }
+
   function buildNaturalDebugSummary(meta, variant) {
     var lines = [];
     var analyzerMatchMap = parseDeterministicEvidence(meta.analyzerDeterministicEvidence);
@@ -581,6 +601,7 @@
     translateConfidenceSignal: translateConfidenceSignal,
     translateInfoRoutingSource: translateInfoRoutingSource,
     translateTieBreakReason: translateTieBreakReason,
+    buildSomaticFocusPolicyDebugLine: buildSomaticFocusPolicyDebugLine,
     buildNaturalDebugSummary: buildNaturalDebugSummary,
     buildMemoryRewriteIntentLines: buildMemoryRewriteIntentLines,
     buildPipelineRuntimeText: buildPipelineRuntimeText,

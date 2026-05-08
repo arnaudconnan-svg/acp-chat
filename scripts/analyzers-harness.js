@@ -247,6 +247,27 @@ async function run() {
     assert(explorationNeutral.isExploration === false, "expected isExploration=false");
   });
 
+  const somaticActive = await analyzers.analyzeSomaticSignal("J'ai une boule dans la gorge");
+  check("analyzeSomaticSignal: signal corporel -> evidence match expose", () => {
+    assert(somaticActive.somaticSignalActive === true, "expected somaticSignalActive=true");
+    assert(Array.isArray(somaticActive.deterministicEvidence), "expected deterministicEvidence array");
+    const hasMatch = somaticActive.deterministicEvidence.some(function hasEntry(entry) {
+      return /somatic_signal_guard_active/.test(String(entry || ""))
+        && /\|\s*match:\s*"[^"]+"/i.test(String(entry || ""))
+        && !/\|\s*match:\s*"none"/i.test(String(entry || ""));
+    });
+    assert(hasMatch, "expected somatic signal deterministic evidence with match");
+  });
+
+  const somaticBlocked = await analyzers.analyzeSomaticSignal("Je n'arrive pas a dire ou");
+  check("analyzeSomaticSignal: blocage de localisation -> evidence match expose", () => {
+    assert(somaticBlocked.somaticLocalizationBlocked === true, "expected somaticLocalizationBlocked=true");
+    const hasMatch = Array.isArray(somaticBlocked.deterministicEvidence) && somaticBlocked.deterministicEvidence.some(function hasEntry(entry) {
+      return /somatic_localization_guard_active/.test(String(entry || "")) && /\|\s*match:\s*"je n'arrive pas a dire ou"/i.test(String(entry || ""));
+    });
+    assert(hasMatch, "expected somatic localization deterministic evidence with match");
+  });
+
   const stateWithExploration = await analyzers.proposeState("Je me demande pourquoi je reagis comme ca", [], { wasDischarge: false });
   check("proposeState: message exploratoire -> exploration candidate avec confiance LLM", () => {
     const candidate = (stateWithExploration.stateCandidates || []).find(c => c.family === "exploration");

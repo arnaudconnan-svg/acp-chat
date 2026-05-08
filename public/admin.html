@@ -1803,6 +1803,10 @@
           return window.FacilitatDebug.buildNaturalDebugSummary(meta, "admin");
         }
 
+        function buildSomaticFocusPolicyDebugLine(meta) {
+          return window.FacilitatDebug.buildSomaticFocusPolicyDebugLine(meta);
+        }
+
         function buildPipelineRuntimeText(meta) {
           return window.FacilitatDebug.buildPipelineRuntimeText(meta);
         }
@@ -1937,8 +1941,9 @@
           if (meta.postDischargeTransitionActive === true) {
             signauxLines.push("Transition post-d\u00e9charge active (C3)");
           }
-          if (meta.somaticFocusPolicy && meta.somaticFocusPolicy !== "none") {
-            signauxLines.push(`Politique somatique : ${translateSomaticFocusPolicy(meta.somaticFocusPolicy)}`);
+          var somaticPolicyLine = buildSomaticFocusPolicyDebugLine(meta);
+          if (somaticPolicyLine) {
+            signauxLines.push(somaticPolicyLine);
           }
           if (meta.secondaryTension) {
             var secondaryLabel = window.FacilitatDebug.formatSecondaryTension(meta.secondaryTension);
