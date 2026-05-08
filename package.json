@@ -36,6 +36,8 @@
     "update:emergency-numbers": "node scripts/update-emergency-numbers.js",
     "rtdb:index": "node scripts/ensure-rtdb-index.js",
     "rtdb:index:apply": "node scripts/ensure-rtdb-index.js --apply",
+    "twa:check": "node scripts/twa-readiness-check.js",
+    "twa:assetlinks": "node scripts/generate-assetlinks.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

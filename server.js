@@ -361,6 +361,16 @@ app.get("/admin.html", requireAdminAuth, (req, res) => {
   res.sendFile(__dirname + "/public/admin.html");
 });
 
+// Android TWA verification endpoint.
+// Keep this explicit route because express.static ignores dotfiles by default.
+app.get("/.well-known/assetlinks.json", (req, res) => {
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Expires", "0");
+  res.type("application/json");
+  res.sendFile(path.join(__dirname, "public", ".well-known", "assetlinks.json"));
+});
+
 // Serve the public folder with cache headers tuned for SPA/PWA behavior.
 // HTML and manifest files are always revalidated, while static assets are cached.
 app.use(express.static("public", {
