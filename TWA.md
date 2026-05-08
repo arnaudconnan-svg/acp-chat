@@ -39,22 +39,46 @@ npm run twa:manifest
 
 Only `TWA_WEB_HOST` changes when switching domain.
 
-## 4) Verify endpoint
+## 4) Generate Android project (Bubblewrap)
 
-With server running, open:
+Initialize the Android project structure:
 
-- `/.well-known/assetlinks.json`
+```bash
+npm run twa:build
+```
 
-The file must be reachable over HTTPS on your production domain.
+This:
+- Installs bubblewrap globally (if needed)
+- Generates `android-project/` with all build files
+- Creates build configuration from `twa-manifest.json`
 
-## 5) Bubblewrap (outside repo scope)
+## 5) Build Android App Bundle
 
-Typical flow:
+```bash
+cd android-project
+bubblewrap build
+```
 
-1. Install bubblewrap globally.
-2. Init project from `twa-manifest.json`.
-3. Build Android App Bundle (`.aab`).
-4. Publish internal test track.
+Output: `dist/*.aab` (ready for Play Store internal test track)
+
+## 6) Verify endpoint (before deployment)
+
+With server running, verify:
+
+```
+https://acp-chat-beta.onrender.com/.well-known/assetlinks.json
+```
+
+Must be reachable over HTTPS on your production domain.
+
+## 7) Upload to Play Store
+
+1. Create/sign in to Google Play Console
+2. Create new app (package: `io.facilitat.app`)
+3. Upload `.aab` to internal test track
+4. Test on device
+5. Promote to production when ready
+
 
 
 The repo-side prerequisites are now in place:
