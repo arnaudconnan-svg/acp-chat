@@ -144,6 +144,7 @@
         : null,
       memoryCompressed: toBooleanTrue(safe.memoryCompressed),
       memoryAge: Number.isInteger(safe.memoryAge) && safe.memoryAge > 0 ? safe.memoryAge : 0,
+      memoryPrioritySignal: typeof safe.memoryPrioritySignal === "string" && safe.memoryPrioritySignal ? safe.memoryPrioritySignal : "normal",
       memoryBeforeCompression: toTrimmedString(safe.memoryBeforeCompression, "") || null,
       criticTriggered: toBooleanTrue(safe.criticTriggered),
       criticIssues: Array.isArray(safe.criticIssues)
@@ -520,9 +521,27 @@
       ? meta.memoryRewriteIntent
       : null;
 
-    if (!intent) return [];
+    var signalMap = {
+      "normal": null,
+      "periodic_refresh": "Recalcul p\u00e9riodique (Anciens mouvements archiv\u00e9s)",
+      "relational_friction": "Friction relationnelle d\u00e9tect\u00e9e",
+      "interpretation_rejected": "Rejet d'interpr\u00e9tation d\u00e9tect\u00e9"
+    };
+    var prioritySignal = meta && typeof meta.memoryPrioritySignal === "string" ? meta.memoryPrioritySignal : "normal";
+    var signalLabel = Object.prototype.hasOwnProperty.call(signalMap, prioritySignal) ? signalMap[prioritySignal] : prioritySignal;
 
     var lines = [];
+    if (meta && meta.memoryAge === 0) {
+      lines.push("Mise \u00e0 jour ce tour");
+    } else if (meta && Number.isInteger(meta.memoryAge) && meta.memoryAge > 0) {
+      lines.push("Inchang\u00e9e depuis " + meta.memoryAge + " tour(s)");
+    }
+    if (signalLabel) {
+      lines.push(signalLabel);
+    }
+
+    if (!intent) return lines;
+
     if (intent.compressionRequested === true) {
       lines.push("Compression m\u00e9moire demand\u00e9e");
     }

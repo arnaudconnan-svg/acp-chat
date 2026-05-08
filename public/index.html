@@ -6989,8 +6989,7 @@
 
         const memoryRewriteIntentLines = buildMemoryRewriteIntentLines(meta);
         if (memoryRewriteIntentLines.length > 0) {
-          sections.push({ title: "Intention réécriture mémoire", content: memoryRewriteIntentLines.join("\n") });
-        }
+            sections.push({ title: "État mémoire", content: memoryRewriteIntentLines.join("\n") });
 
         if (meta.memory) {
           sections.push({

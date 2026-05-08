@@ -6037,6 +6037,7 @@ app.post("/chat", async (req, res) => {
       soberReadjustmentActive: postureDecision.needsSoberReadjustment === true
     };
     let memoryAge = 0;
+    let effectiveMemoryPrioritySignalForDebug = "normal";
 
     // Fire-and-forget memory update for non-private conversations.
     // For private conversations, compute synchronously (no Firebase storage).
@@ -6052,6 +6053,7 @@ app.post("/chat", async (req, res) => {
             && !isFirstTurn
             && memoryPrioritySignal === "normal";
           const effectiveMemoryPrioritySignal = periodicRefreshActive ? "periodic_refresh" : memoryPrioritySignal;
+          effectiveMemoryPrioritySignalForDebug = effectiveMemoryPrioritySignal;
           const memoryClinicalSignals = {
             risque_dependance: newFlags.dependencyRiskLevel || "low",
             stagnation: Number.isInteger(newFlags.stagnationTurns) ? Math.max(0, newFlags.stagnationTurns) : 0,
@@ -6135,6 +6137,7 @@ app.post("/chat", async (req, res) => {
         && !_isFirstTurn
         && _prioritySignal === "normal";
       const _effectivePrioritySignal = _periodicRefreshActive ? "periodic_refresh" : _prioritySignal;
+      effectiveMemoryPrioritySignalForDebug = _effectivePrioritySignal;
       const _clinicalSignals = {
         risque_dependance: newFlags.dependencyRiskLevel || "low",
         stagnation: Number.isInteger(newFlags.stagnationTurns) ? Math.max(0, newFlags.stagnationTurns) : 0,
@@ -6213,6 +6216,7 @@ app.post("/chat", async (req, res) => {
       memoryCompressed: memoryWasCompressed,
       memoryBeforeCompression,
       memoryAge,
+      memoryPrioritySignal: effectiveMemoryPrioritySignalForDebug,
       criticTriggered,
       criticIssues,
       criticOriginalReply,
