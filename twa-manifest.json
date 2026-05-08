@@ -1,0 +1,20 @@
+{
+  "packageId": "io.facilitat.app",
+  "host": "acp-chat-beta.onrender.com",
+  "name": "Facilitat.io",
+  "launcherName": "Facilitat",
+  "display": "standalone",
+  "themeColor": "#ffffff",
+  "navigationColor": "#ffffff",
+  "backgroundColor": "#ffffff",
+  "startUrl": "https://acp-chat-beta.onrender.com/",
+  "iconUrl": "https://acp-chat-beta.onrender.com/images/icon-512.png",
+  "maskableIconUrl": "https://acp-chat-beta.onrender.com/images/icon-512.png",
+  "appVersionName": "1.0.0",
+  "appVersionCode": 1,
+  "enableNotifications": false,
+  "shortcuts": [],
+  "generatorApp": "bubblewrap",
+  "webManifestUrl": "https://acp-chat-beta.onrender.com/manifest.json",
+  "fallbackType": "customtabs"
+}
