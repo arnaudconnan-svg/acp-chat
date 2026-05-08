@@ -7804,6 +7804,22 @@
 
       return "Je n'ai pas pu joindre le service pour le moment. Verifie la connexion internet puis reessaie.";
     }
+
+    const BACKEND_WARMUP_MIN_INTERVAL_MS = 45000;
+    let lastBackendWarmupAt = 0;
+
+    function warmBackendConnectionIfNeeded(force = false) {
+      const now = Date.now();
+      if (!force && now - lastBackendWarmupAt < BACKEND_WARMUP_MIN_INTERVAL_MS) {
+        return;
+      }
+
+      lastBackendWarmupAt = now;
+      fetch("/health", {
+        cache: "no-store",
+        credentials: "same-origin"
+      }).catch(() => {});
+    }
     
     function syncInputAvailability() {
       const blocked = sessionStatus === "terminated" || sessionStatus === "closing" || serviceAvailabilityState.blocked;
@@ -7949,6 +7965,8 @@
       const useDefault = options.useDefault !== false;
       const isPrivate = requestedPrivate || (useDefault && shouldCreatePrivateConversationByDefault());
 
+      warmBackendConnectionIfNeeded();
+
       setSessionStatus("active");
       saveFlags({});
       updateActivity();
@@ -7992,6 +8010,7 @@
     function enterChat() {
       showScreen("chatScreen", { pushHistory: true });
       updateActivity();
+      warmBackendConnectionIfNeeded();
       
       if (isSessionExpired() && loadHistory().length > 0) {
         handleExpiredSessionOnEntry();
@@ -9903,12 +9922,14 @@
       
       inputEl.addEventListener("input", () => {
         updateActivity();
+        warmBackendConnectionIfNeeded();
         syncComposerUiDeferred({ keepBottom: false });
         ensureChatVisibleAboveKeyboard();
       });
       
       inputEl.addEventListener("focus", () => {
         updateActivity();
+        warmBackendConnectionIfNeeded(true);
         syncComposerUiDeferred({ keepBottom: true });
         setTimeout(handleViewportChange, 40);
         setTimeout(handleViewportChange, 140);
