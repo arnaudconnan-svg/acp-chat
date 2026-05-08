@@ -7927,7 +7927,7 @@
       closeExpiredSessionModal();
       closeTerminatedSessionModal();
       
-      await closeSessionBackend();
+      closeSessionBackend().catch(() => {});
       ensureIntersessionCompressed().catch(() => {});
       
       fadeChatThenReset(() => {
