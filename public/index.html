@@ -1933,52 +1933,12 @@
     .waiting-stage-text {
       display: inline-block;
       font-size: 14px;
-      font-weight: 500;
+      font-weight: 600;
       line-height: 1.35;
       letter-spacing: 0.01em;
-      color: rgba(37, 90, 97, 0.9);
+      color: rgba(37, 90, 97, 0.94);
       white-space: nowrap;
-      background-image: linear-gradient(
-        90deg,
-        rgba(37, 90, 97, 0.84) 0%,
-        rgba(79, 136, 143, 0.95) 50%,
-        rgba(37, 90, 97, 0.84) 100%
-      );
-      background-size: 220% 100%;
-      -webkit-background-clip: text;
-      background-clip: text;
-      -webkit-text-fill-color: transparent;
-      animation:
-        waitingStageShimmer 3.8s ease-in-out infinite,
-        waitingStageBreath 4.2s ease-in-out infinite;
-    }
-
-    @keyframes waitingStageShimmer {
-      0% {
-        background-position: 0% 50%;
-      }
-
-      50% {
-        background-position: 100% 50%;
-      }
-
-      100% {
-        background-position: 0% 50%;
-      }
-    }
-
-    @keyframes waitingStageBreath {
-      0% {
-        opacity: 0.82;
-      }
-
-      50% {
-        opacity: 0.97;
-      }
-
-      100% {
-        opacity: 0.82;
-      }
+      padding: 0;
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -3654,7 +3614,7 @@
     const CHAT_PROGRESS_TEXT_NEUTRAL = {
       reading: "Je prends connaissance du message",
       understanding: "Je m\u2019assure de bien comprendre le message",
-      drafting: "Je pr\u00e9pare la r\u00e9ponse",
+      drafting: "Je pr\u00e9pare ma r\u00e9ponse",
       finalizing: "Je finalise et j\u2019envoie la r\u00e9ponse",
       done: "R\u00e9ponse pr\u00eate",
       canceled: "Envoi interrompu",
@@ -3674,7 +3634,7 @@
     const CHAT_PROGRESS_TEXT_VOUVOIEMENT = {
       reading: "Je prends connaissance de votre message",
       understanding: "Je m\u2019assure de bien comprendre votre message",
-      drafting: "Je pr\u00e9pare votre r\u00e9ponse",
+      drafting: "Je pr\u00e9pare ma r\u00e9ponse",
       finalizing: "Je finalise et j\u2019envoie votre r\u00e9ponse",
       done: "R\u00e9ponse pr\u00eate",
       canceled: "Envoi interrompu",
@@ -3782,6 +3742,7 @@
       const nextText = getChatProgressText(progressStep);
       if (waitingStageText.textContent !== nextText) {
         waitingStageText.textContent = nextText;
+        waitingStageText.setAttribute("data-text", nextText);
         if (waitingStageText.animate) {
           waitingStageText.animate(
             [
@@ -3959,6 +3920,7 @@
         const waitingStageText = document.createElement("span");
         waitingStageText.className = "waiting-stage-text";
         waitingStageText.textContent = getChatProgressText("reading");
+        waitingStageText.setAttribute("data-text", waitingStageText.textContent);
 
         waitingBubble.appendChild(waitingDot);
         waitingBubble.appendChild(waitingStageText);
@@ -7826,7 +7788,7 @@
       
       contentWrap.appendChild(bubble);
 
-      if (role === "bot") {
+      if (role === "bot" && !isOpeningGreetingMessage(rawText)) {
         const actionsRow = document.createElement("div");
         actionsRow.style.display = "flex";
         actionsRow.style.alignItems = "center";
