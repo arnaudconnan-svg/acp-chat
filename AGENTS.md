@@ -194,6 +194,8 @@ Conditions :
 
 Principe : l'agent est responsable d'améliorer son outillage pour mieux aider l'utilisateur sur les incidents suivants.
 
+Pour tout diagnostic de lenteur sur `/chat`, la premiere lecture utile est le log `pipeline_summary` avec les timings de stage, puis l'outil local `npm run perf:chat:summary` sur un log reel. Ne pas attendre d'arbitrage utilisateur pour faire cette lecture.
+
 Après chaque modification significative :
 - `node --check server.js` pour valider la syntaxe
 - `npm run verify` pour enchaîner tous les harnesses déterministes locaux (sans serveur ni LLM)

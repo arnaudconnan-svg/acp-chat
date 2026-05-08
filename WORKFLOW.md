@@ -64,6 +64,7 @@ Verification minimale apres changement backend significatif :
 Verification complementaire selon le chantier :
 
 - lecture des logs `[PIPELINE]` pour un diagnostic fin de `/chat`
+- pour toute lenteur percue sur `/chat`, commencer par les `pipeline_summary` et lancer `npm run perf:chat:summary` sur un log reel avant de modifier le code
 - des qu'un diagnostic production Render est necessaire, l'agent lit les logs live directement depuis VS Code via commande API Render quand `RENDER_API_KEY` et `RENDER_SERVICE_ID` sont disponibles (pas de copier-coller manuel requis)
 - harness comportemental centre sur `debugMeta`
 - test manuel cible quand le changement est visible
