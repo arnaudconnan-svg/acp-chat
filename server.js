@@ -5262,6 +5262,65 @@ app.post("/chat", async (req, res) => {
       return getUserIntersessionMemory(userData);
     }
 
+    async function prepareIntersessionMemoryForTurn(flagsSnapshot) {
+      if (!userId || userId === "u_anon") {
+        return {
+          intersessionMemoryForThisTurn: "",
+          nextTurnsUntilIntersessionRefresh: Number.isInteger(flagsSnapshot?.turnsUntilIntersessionRefresh)
+            ? Math.max(0, flagsSnapshot.turnsUntilIntersessionRefresh)
+            : 0
+        };
+      }
+
+      const currentTurnsUntil = Number.isInteger(flagsSnapshot?.turnsUntilIntersessionRefresh)
+        ? flagsSnapshot.turnsUntilIntersessionRefresh
+        : 0;
+      let userData = await userProfilePromise;
+
+      // Race condition guard: if intersessionRefreshForced, reload fresh from Firebase
+      // to use the latest edited memory instead of stale cache
+      if (userData && userData.intersessionRefreshForced === true) {
+        try {
+          const freshSnap = await usersRef.child(String(userId)).once("value");
+          userData = freshSnap.val() && typeof freshSnap.val() === "object" ? freshSnap.val() : userData;
+        } catch {
+          // Fall back to cached userData if fresh fetch fails
+        }
+      }
+
+      const hasForcedRefreshLock = userData && userData.intersessionRefreshForced === true;
+      const forceRefreshNow = currentTurnsUntil > 0 && hasForcedRefreshLock;
+      const needsInjection = currentTurnsUntil === 0 || forceRefreshNow;
+      let intersessionMemoryForThisTurn = "";
+
+      if (needsInjection) {
+        const compressedVal = userData && typeof userData.intersessionMemoryCompressed === "string"
+          ? userData.intersessionMemoryCompressed
+          : "";
+        const rawVal = userData && typeof userData.intersessionMemory === "string"
+          ? userData.intersessionMemory
+          : "";
+        intersessionMemoryForThisTurn = compressedVal.trim() || rawVal.trim() || "";
+        if (hasForcedRefreshLock) {
+          try {
+            await usersRef.child(userId).update({ intersessionRefreshForced: false });
+          } catch {
+            // Ignore a best-effort refresh-flag reset failure.
+          }
+        }
+
+        return {
+          intersessionMemoryForThisTurn,
+          nextTurnsUntilIntersessionRefresh: 8
+        };
+      }
+
+      return {
+        intersessionMemoryForThisTurn: "",
+        nextTurnsUntilIntersessionRefresh: Math.max(0, currentTurnsUntil - 1)
+      };
+    }
+
     let emergencySupportTextPromise = null;
     async function resolveEmergencySupportText() {
       if (emergencySupportTextPromise) {
@@ -5313,6 +5372,8 @@ app.post("/chat", async (req, res) => {
     if (crisisDecision.route === "n1_clarification") {
       logN1PipelineEntry();
     }
+
+    const intersessionMemoryPreparationPromise = prepareIntersessionMemoryForTurn(newFlags);
     
     // 2) Analyse de rappel memoire : identifier si l'utilisateur demande
     // explicitement un rappel conversationnel et quelle memoire mobiliser.
@@ -5752,45 +5813,11 @@ app.post("/chat", async (req, res) => {
     // Blocs 3+4 : injection m�moire longue terme (intersession compress�e).
     // turnsUntilIntersessionRefresh === 0 ? injection. Sinon, d�cr�ment� chaque tour.
     // intersessionRefreshForced (Firebase) permet un refresh imm�diat apr�s �dition directe.
-    let intersessionMemoryForThisTurn = "";
-    if (userId && userId !== "u_anon") {
-      const currentTurnsUntil = Number.isInteger(newFlags.turnsUntilIntersessionRefresh)
-        ? newFlags.turnsUntilIntersessionRefresh
-        : 0;
-      let userData = await userProfilePromise;
-      // Race condition guard: if intersessionRefreshForced, reload fresh from Firebase
-      // to use the latest edited memory instead of stale cache
-      if (userData && userData.intersessionRefreshForced === true) {
-        try {
-          const freshSnap = await usersRef.child(String(userId)).once("value");
-          userData = freshSnap.val() && typeof freshSnap.val() === "object" ? freshSnap.val() : userData;
-        } catch {
-          // Fall back to cached userData if fresh fetch fails
-        }
-      }
-      const hasForcedRefreshLock = userData && userData.intersessionRefreshForced === true;
-      const forceRefreshNow = currentTurnsUntil > 0 && hasForcedRefreshLock;
-      const needsInjection = currentTurnsUntil === 0 || forceRefreshNow;
-      if (needsInjection) {
-        const compressedVal = userData && typeof userData.intersessionMemoryCompressed === "string"
-          ? userData.intersessionMemoryCompressed
-          : "";
-        const rawVal = userData && typeof userData.intersessionMemory === "string"
-          ? userData.intersessionMemory
-          : "";
-        intersessionMemoryForThisTurn = compressedVal.trim() || rawVal.trim() || "";
-        if (hasForcedRefreshLock) {
-          try {
-            await usersRef.child(userId).update({ intersessionRefreshForced: false });
-          } catch {
-            // Ignore a best-effort refresh-flag reset failure.
-          }
-        }
-        newFlags.turnsUntilIntersessionRefresh = 8;
-      } else {
-        newFlags.turnsUntilIntersessionRefresh = Math.max(0, currentTurnsUntil - 1);
-      }
-    }
+    const {
+      intersessionMemoryForThisTurn,
+      nextTurnsUntilIntersessionRefresh
+    } = await intersessionMemoryPreparationPromise;
+    newFlags.turnsUntilIntersessionRefresh = nextTurnsUntilIntersessionRefresh;
 
     const generatedBase = await generateReply({
       message,
