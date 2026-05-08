@@ -5854,17 +5854,17 @@ app.post("/chat", async (req, res) => {
       const criticShouldTrigger =
         n1CrisisForced ||
         recallForced ||
+        agencyAttributionRisk ||
         contractLengthExceeded ||
         humanFieldRisk ||
-        agencyAttributionRisk ||
         formalAddressRisk ||
         vouvoiementRisk ||
         theoreticalViolationRisk ||
         signalLeakRisk;
       criticTriggerReasons = criticShouldTrigger ? [
+        ...(agencyAttributionRisk ? ["agencyAttributionRisk"] : []),
         ...(contractLengthExceeded ? ["contractLengthExceeded"] : []),
         ...(humanFieldRisk ? ["humanFieldRisk"] : []),
-        ...(agencyAttributionRisk ? ["agencyAttributionRisk"] : []),
         ...(formalAddressRisk ? ["formalAddressRisk"] : []),
         ...(vouvoiementRisk ? ["vouvoiementRisk"] : []),
         ...(theoreticalViolationRisk ? ["theoreticalViolationRisk"] : []),
