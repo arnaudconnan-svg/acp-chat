@@ -4465,6 +4465,7 @@ app.post("/chat", async (req, res) => {
   let chatStageMarkTime = chatStartTime;
   let logsEnabledForCatch = requestData.logsEnabled === true;
   const chatStageTimings = [];
+  const CHAT_SLOW_LOG_THRESHOLD_MS = 4000;
   
   function markChatStage(stage) {
     const now = Date.now();
@@ -4475,6 +4476,30 @@ app.post("/chat", async (req, res) => {
     chatStageMarkTime = now;
     chatLastStage = stage;
     publishChatProgressStage(requestId, stage, "in_progress");
+  }
+
+  function summarizeChatStageTimings(stageTimings = []) {
+    const safeStages = Array.isArray(stageTimings)
+      ? stageTimings
+        .map((entry) => ({
+          stage: typeof entry?.stage === "string" ? entry.stage : null,
+          deltaMs: Number.isFinite(entry?.deltaMs) ? Math.max(0, Math.round(entry.deltaMs)) : null
+        }))
+        .filter((entry) => entry.stage && entry.deltaMs !== null)
+      : [];
+
+    const sortedByDelta = safeStages
+      .slice()
+      .sort((a, b) => b.deltaMs - a.deltaMs);
+
+    const totalMs = safeStages.reduce((sum, entry) => sum + entry.deltaMs, 0);
+
+    return {
+      stageCount: safeStages.length,
+      totalMs,
+      maxStage: sortedByDelta[0] || null,
+      topStages: sortedByDelta.slice(0, 6)
+    };
   }
 
   function logChatDecision(event, payload = {}) {
@@ -4989,6 +5014,9 @@ app.post("/chat", async (req, res) => {
 
       return debugMeta;
     }
+
+    const recentHistoryCount = Array.isArray(recentHistory) ? recentHistory.length : 0;
+    const isFirstTurn = recentHistoryCount === 0;
 
     function scheduleBackgroundMemoryUpdate(memorySnapshot, replyText, memoryPrioritySignal = "normal", intersessionMemoryCompressed = "") {
       (async () => {
@@ -6344,10 +6372,15 @@ app.post("/chat", async (req, res) => {
       emergencySupportText,
     });
 
-    if (logsEnabled) {
+    const elapsedMs = Date.now() - chatStartTime;
+    if (logsEnabled || elapsedMs >= CHAT_SLOW_LOG_THRESHOLD_MS) {
+      const stageSummary = summarizeChatStageTimings(chatStageTimings);
       chatLogger.info({
         event: "pipeline_summary",
-        elapsedMs: Date.now() - chatStartTime,
+        elapsedMs,
+        slowRequest: elapsedMs >= CHAT_SLOW_LOG_THRESHOLD_MS,
+        recentHistoryCount,
+        isFirstTurn,
         suicideLevel: suicide.suicideLevel,
         detectedState: detectedState,
         conversationState: responseDebugMeta.conversationState,
@@ -6360,7 +6393,8 @@ app.post("/chat", async (req, res) => {
         explorationCalibrationLevel: responseDebugMeta.explorationCalibrationLevel,
         explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
         rewriteSource: responseDebugMeta.rewriteSource,
-        stageTimings: chatStageTimings
+        stageTimings: chatStageTimings,
+        stageSummary
       }, "pipeline");
     }
     

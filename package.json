@@ -23,6 +23,7 @@
     "crisis-routing:harness": "node scripts/crisis-routing-harness.js",
     "doctor": "node scripts/doctor.js",
     "doctor:deep": "node scripts/doctor.js --deep",
+    "perf:chat:summary": "node scripts/chat-perf-summary.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
