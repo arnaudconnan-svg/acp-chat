@@ -268,6 +268,20 @@ async function run() {
     assert(hasMatch, "expected somatic localization deterministic evidence with match");
   });
 
+  const emotionalDecenteringActive = await analyzers.analyzeEmotionalDecentering(
+    "J'ai un truc qui monte quand j'y pense, bref on passe.",
+    []
+  );
+  check("analyzeEmotionalDecentering: guard actif -> evidence match expose", () => {
+    assert(emotionalDecenteringActive.emotionalDecentering === true, "expected emotionalDecentering=true");
+    const hasMatch = Array.isArray(emotionalDecenteringActive.deterministicEvidence) && emotionalDecenteringActive.deterministicEvidence.some(function hasEntry(entry) {
+      return /emotional_decentering_guard_active/.test(String(entry || ""))
+        && /\|\s*match:\s*"[^"]+"/i.test(String(entry || ""))
+        && !/\|\s*match:\s*"none"/i.test(String(entry || ""));
+    });
+    assert(hasMatch, "expected emotional decentering deterministic evidence with match");
+  });
+
   const stateWithExploration = await analyzers.proposeState("Je me demande pourquoi je reagis comme ca", [], { wasDischarge: false });
   check("proposeState: message exploratoire -> exploration candidate avec confiance LLM", () => {
     const candidate = (stateWithExploration.stateCandidates || []).find(c => c.family === "exploration");
