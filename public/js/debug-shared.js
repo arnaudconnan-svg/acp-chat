@@ -473,6 +473,7 @@
       var criticReasonLabels = {
         contractLengthExceeded: "Longueur contractuelle d\u00e9pass\u00e9e",
         humanFieldRisk: "Risque de ton proc\u00e9dural/instrumental",
+        agencyAttributionRisk: "Risque d'agentivit\u00e9 attribu\u00e9e",
         formalAddressRisk: "Risque de tutoiement non conforme",
         vouvoiementRisk: "Risque de vouvoiement non conforme",
         theoreticalViolationRisk: "Risque de formulation th\u00e9orique/interpr\u00e9tative",

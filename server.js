@@ -149,6 +149,7 @@ const {
   hasTutoiementInReply,
   hasVouvoiementInReply,
   hasTheoreticalViolationHeuristic,
+  getAgencyAttributionEvidence,
   getProceduralInstrumentalEvidence
 } = require("./lib/critic");
 const {
@@ -5805,6 +5806,7 @@ app.post("/chat", async (req, res) => {
     let criticIssues = [];
     let criticOriginalReply = null;
     let humanFieldRisk = false;
+    let agencyAttributionRisk = false;
     let signalLeakRisk = false;
     let contractLengthExceeded = false;
     let criticTriggerReasons = [];
@@ -5830,6 +5832,8 @@ app.post("/chat", async (req, res) => {
       const formalAddressRisk = postureDecision.formalAddress === true && hasTutoiementInReply(reply);
       const vouvoiementRisk = postureDecision.formalAddress !== true && hasVouvoiementInReply(reply, message);
       const theoreticalViolationRisk = hasTheoreticalViolationHeuristic(reply);
+      const agencyAttributionEvidence = getAgencyAttributionEvidence(reply);
+      agencyAttributionRisk = agencyAttributionEvidence !== null;
       signalLeakRisk = hasSignalLeakRisk(reply);
       criticDeterministicEvidence = [];
       if (proceduralEvidence) {
@@ -5842,11 +5846,17 @@ app.post("/chat", async (req, res) => {
           `humanFieldRisk -> ${proceduralEvidence.pathway} | expression: ${proceduralEvidence.expression} | match: ${matchedParts.join(" + ")}`
         );
       }
+      if (agencyAttributionEvidence) {
+        criticDeterministicEvidence.push(
+          `agencyAttributionRisk -> ${agencyAttributionEvidence.pathway} | expression: ${agencyAttributionEvidence.expression} | match: "${agencyAttributionEvidence.match}"`
+        );
+      }
       const criticShouldTrigger =
         n1CrisisForced ||
         recallForced ||
         contractLengthExceeded ||
         humanFieldRisk ||
+        agencyAttributionRisk ||
         formalAddressRisk ||
         vouvoiementRisk ||
         theoreticalViolationRisk ||
@@ -5854,6 +5864,7 @@ app.post("/chat", async (req, res) => {
       criticTriggerReasons = criticShouldTrigger ? [
         ...(contractLengthExceeded ? ["contractLengthExceeded"] : []),
         ...(humanFieldRisk ? ["humanFieldRisk"] : []),
+        ...(agencyAttributionRisk ? ["agencyAttributionRisk"] : []),
         ...(formalAddressRisk ? ["formalAddressRisk"] : []),
         ...(vouvoiementRisk ? ["vouvoiementRisk"] : []),
         ...(theoreticalViolationRisk ? ["theoreticalViolationRisk"] : []),
