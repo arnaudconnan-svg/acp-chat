@@ -12,6 +12,8 @@ const {
   buildDefaultPromptRegistry
 } = require("../lib/prompts");
 
+const { createWriter } = require("../lib/writer");
+
 const {
   CONVERSATION_STATES,
   STATE_FORBIDDEN,
@@ -65,6 +67,14 @@ function baseInput(overrides = {}) {
     recentHistory: [],
     ...overrides
   };
+}
+
+function createWriterForHarness() {
+  return createWriter({
+    client: { chat: { completions: { create: async () => ({ choices: [{ message: { content: "" } }] }) } } },
+    MODEL_IDS: { generation: "test-model" },
+    normalizeMemory: value => String(value || "")
+  });
 }
 
 // Maps each base CONVERSATION_STATE to its extended STATE_ALLOWED key candidates.
@@ -188,6 +198,32 @@ check("info features prompt enforces Option B for bot nature and capacity doubts
   assert(optionBCount >= 2, "expected Option B policy in both bot_nature_question and bot_capacity_doubt sections");
   assert(prompt.includes("mouvement 1 : transparence minimale"), "missing movement 1 transparency rule");
   assert(prompt.includes("mouvement 2 : retour immediat"), "missing movement 2 return-to-user rule");
+});
+
+check("writer contract forces formalAddress over hint examples", () => {
+  const writer = createWriterForHarness();
+  const contract = writer.buildPostureContractBlock({
+    conversationState: "exploration_open",
+    formalAddress: true,
+    useDirectAddress: true,
+    writerIntentHints: ["hold_emotional_thread"]
+  });
+
+  assert(contract.includes("convertis-le mentalement en vouvoiement"), "formalAddress should override tutoiement examples in hints");
+  assert(contract.includes("Chaque phrase qui s'adresse a la personne doit utiliser vous/votre/vos"), "formalAddress hard constraint missing");
+});
+
+check("procedural temptation hint avoids golden canned formula", () => {
+  const writer = createWriterForHarness();
+  const contract = writer.buildPostureContractBlock({
+    conversationState: "exploration_open",
+    writerIntentHints: ["procedural_temptation_light", "procedural_temptation_neutral"]
+  });
+
+  assert(!contract.includes("Je pourrais facilement vous repondre de facon tres technique"), "golden procedural formula should be removed");
+  assert(!contract.includes("Je sens la tentation de vous faire une reponse bien rangee"), "second canned procedural formula should be removed");
+  assert(contract.includes("sans formule figee"), "procedural_temptation_light should forbid canned phrasing");
+  assert(contract.includes("sans phrase signature"), "procedural_temptation_neutral should forbid signature phrasing");
 });
 
 if (failed > 0) {
