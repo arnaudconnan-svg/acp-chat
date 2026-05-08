@@ -39,6 +39,7 @@
     "twa:check": "node scripts/twa-readiness-check.js",
     "twa:assetlinks": "node scripts/generate-assetlinks.js",
     "twa:manifest": "node scripts/generate-twa-manifest.js",
+    "twa:signing-key": "node scripts/signing-key-setup.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

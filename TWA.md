@@ -10,17 +10,15 @@ Run:
 npm run twa:check
 ```
 
-## 2) Generate assetlinks.json
+## 2) Signing key setup (auto)
 
-Set env vars then generate:
+Generates a local development keystore, extracts SHA256, and creates `assetlinks.json`:
 
 ```bash
-$env:TWA_ANDROID_PACKAGE="io.facilitat.app"
-$env:TWA_SHA256_FINGERPRINTS="AA:BB:CC:...:ZZ"
-npm run twa:assetlinks
+npm run twa:signing-key
 ```
 
-This writes `public/.well-known/assetlinks.json`.
+This is fully automated and outputs the fingerprint for your records.
 
 ## 3) Generate TWA manifest (domain switch ready)
 
@@ -29,15 +27,12 @@ Generate a `twa-manifest.json` that can target either current or future domain.
 Current host (`acp-chat-beta.onrender.com`):
 
 ```bash
-$env:TWA_ANDROID_PACKAGE="io.facilitat.app"
-$env:TWA_WEB_HOST="acp-chat-beta.onrender.com"
 npm run twa:manifest
 ```
 
 Future host (`facilitat.io`):
 
 ```bash
-$env:TWA_ANDROID_PACKAGE="io.facilitat.app"
 $env:TWA_WEB_HOST="facilitat.io"
 npm run twa:manifest
 ```
@@ -60,6 +55,7 @@ Typical flow:
 2. Init project from `twa-manifest.json`.
 3. Build Android App Bundle (`.aab`).
 4. Publish internal test track.
+
 
 The repo-side prerequisites are now in place:
 
