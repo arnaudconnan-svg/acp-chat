@@ -153,6 +153,16 @@ check("emotionalDecentering hints are blocked in discharge states", () => {
   assert(!out.writerIntentHints.includes("auto_compassion_door_open"), "did not expect auto_compassion_door_open hint in discharge");
 });
 
+check("explicit incomprehension forces clarification-friendly exploration contract", () => {
+  const out = buildPostureDecision(baseInput({
+    detectedState: "exploration",
+    calibrationAnalysis: { calibrationLevel: 0, explorationSignal: "interpretation" },
+    message: "Je n'ai pas compris ta question"
+  }));
+  assert(out.finalExplorationSignal === "phenomenological_follow", `expected phenomenological_follow, got ${out.finalExplorationSignal}`);
+  assert(out.forbidden.includes("interpretive_hypothesis"), "expected interpretive_hypothesis forbidden on explicit incomprehension");
+});
+
 check("narrowed processing window enforces single-axis exploration contract", () => {
   const out = buildPostureDecision(baseInput({
     detectedState: "exploration",

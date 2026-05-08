@@ -169,6 +169,12 @@ async function run() {
     assert(relationalFriction.source === "llm", `expected llm, got ${relationalFriction.source}`);
   });
 
+  const relationalIncomprehension = await analyzers.analyzeRelationalAdjustmentNeed("Je n'ai pas compris ta question", [], "", false);
+  check("analyzeRelationalAdjustmentNeed: explicit incomprehension -> LLM triggered", () => {
+    assert(relationalIncomprehension.llmTriggered === true, "expected llmTriggered=true");
+    assert(relationalIncomprehension.source === "llm", `expected llm, got ${relationalIncomprehension.source}`);
+  });
+
   const allianceHardRupture = await analyzers.analyzeAllianceRupture("Tu racontes n'importe quoi, t'es completement a cote de la plaque", []);
   check("analyzeAllianceRupture: hard rupture wording -> rupture", () => {
     assert(allianceHardRupture.explicitRelationalFriction === true, "expected explicitRelationalFriction=true");
