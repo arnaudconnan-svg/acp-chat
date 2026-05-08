@@ -162,6 +162,7 @@ const {
   buildCrisisRoutingDecision
 } = require("./lib/chat-routing");
 const { resolveBranchSeedPayload } = require("./lib/branching");
+const { formatHistoryForTextPrompt } = require("./lib/llm-messages");
 const { createWriter } = require("./lib/writer");
 
 const express = require("express");
@@ -5262,6 +5263,15 @@ app.post("/chat", async (req, res) => {
       return getUserIntersessionMemory(userData);
     }
 
+    let recentHistoryTextCache = null;
+    function getRecentHistoryText() {
+      if (recentHistoryTextCache === null) {
+        recentHistoryTextCache = formatHistoryForTextPrompt(recentHistory);
+      }
+
+      return recentHistoryTextCache;
+    }
+
     async function prepareIntersessionMemoryForTurn(flagsSnapshot) {
       if (!userId || userId === "u_anon") {
         return {
@@ -5374,6 +5384,12 @@ app.post("/chat", async (req, res) => {
     }
 
     const intersessionMemoryPreparationPromise = prepareIntersessionMemoryForTurn(newFlags);
+    const shortAffiliationValidationPromise = hasShortAffiliationMarker(message)
+      ? withAnalyzerTiming(
+          "affiliation_short_validation",
+          analyzeAffiliationShortValidationCoherence(message, recentHistory, activePromptRegistry)
+        )
+      : Promise.resolve({ shortValidationConfirmed: true });
     
     // 2) Analyse de rappel memoire : identifier si l'utilisateur demande
     // explicitement un rappel conversationnel et quelle memoire mobiliser.
@@ -5388,6 +5404,18 @@ app.post("/chat", async (req, res) => {
         activePromptRegistry
       );
     })();
+    const recallBranchHistoryPromise = recallRoutingPromise.then(async (resolvedRecallRouting) => {
+      if (resolvedRecallRouting?.isLongTermMemoryRecall !== true) {
+        return [];
+      }
+
+      return loadConversationBranchHistoryForRecall({
+        conversationId,
+        isPrivateConversation,
+        conversationBranchHistory,
+        recentHistory
+      });
+    });
 
     // Phase 2: run all analyzers in parallel, including proposeState (which now
     // integrates contact detection alongside info detection).
@@ -5611,14 +5639,8 @@ app.post("/chat", async (req, res) => {
     modeForCatch = detectedState;
 
     // Affiliation scoring: short lexical markers need contextual confirmation (LLM).
-    let shortValidationConfirmed = true;
-    if (hasShortAffiliationMarker(message)) {
-      const shortValidationAnalysis = await withAnalyzerTiming(
-        "affiliation_short_validation",
-        analyzeAffiliationShortValidationCoherence(message, recentHistory, activePromptRegistry)
-      );
-      shortValidationConfirmed = shortValidationAnalysis.shortValidationConfirmed === true;
-    }
+    const shortValidationAnalysis = await shortAffiliationValidationPromise;
+    const shortValidationConfirmed = shortValidationAnalysis.shortValidationConfirmed === true;
 
     const affiliationDetails = computeAffiliationTurnDetails(message, {
       shortValidationConfirmed,
@@ -5659,12 +5681,7 @@ app.post("/chat", async (req, res) => {
     // recall, branch history is loaded eagerly and merged into the memory context.
     let memoryForReply = previousMemory;
     if (recallRouting.isLongTermMemoryRecall === true) {
-      const recallConversationBranchHistory = await loadConversationBranchHistoryForRecall({
-        conversationId,
-        isPrivateConversation,
-        conversationBranchHistory,
-        recentHistory
-      });
+      const recallConversationBranchHistory = await recallBranchHistoryPromise;
       const normalizedBranchHistory = normalizeConversationBranchHistory(recallConversationBranchHistory);
       const branchTranscript = normalizedBranchHistory.length > 0
         ? normalizedBranchHistory.map(m => `${m.role === "user" ? "Utilisateur" : "Assistant"} : ${m.content}`).join("\n")
@@ -5919,6 +5936,7 @@ app.post("/chat", async (req, res) => {
           reply,
           message,
           history: recentHistory,
+          historyText: getRecentHistoryText(),
           postureDecision,
           promptRegistry: activePromptRegistry
         });
