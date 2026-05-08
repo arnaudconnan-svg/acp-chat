@@ -151,7 +151,9 @@ Sauf exception ci-dessous, **le repo prime sur `plan.md`** en cas de conflit.
 
 **Mise à jour** : `plan.md` est mis à jour uniquement sur demande explicite. Les formulations naturelles du type `MAJ plan.md = ...` déclenchent une mise à jour en delta intelligent. L'agent n'avance pas spontanément après lecture — il attend la direction de l'utilisateur.
 
-**Hygiène Git (obligatoire)** : si `plan.md` est vide et apparaît modifié uniquement par vidage/nettoyage, l'agent doit le commit/push sans attendre une autre modification, pour éviter une notification persistante dans la zone Source Control.
+**Hygiène Git (obligatoire)** : si `plan.md` est vide et apparaît modifié uniquement par vidage/nettoyage, l'agent doit le commit sans attendre une autre modification, pour éviter une notification persistante dans la zone Source Control.
+
+Règle de publication : si `plan.md` est le seul fichier modifié, ne pas pousser sur le remote. Le push n'est autorisé que si d'autres changements sont déjà en cours de publication, ou sur demande explicite de l'utilisateur.
 
 **Contenu obligatoire** de `plan.md` quand un chantier est actif :
 - objectif produit courant
