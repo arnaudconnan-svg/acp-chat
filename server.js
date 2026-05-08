@@ -4871,7 +4871,7 @@ app.post("/chat", async (req, res) => {
     }
     
     if (!isPrivateConversation) {
-      const pushedRef = await messagesRef.push({
+      const userMessagePushPromise = messagesRef.push({
         role: "user",
         content: isEdited ? message + "\n[MODIFIÉ]" : message,
         timestamp: Date.now(),
@@ -4879,32 +4879,39 @@ app.post("/chat", async (req, res) => {
         conversationId
       });
 
-      userMessagePersistedForCatch = true;
-      userMessageRefForCatch = pushedRef;
-      
-      await convRef.transaction(current => {
-        const now = new Date().toISOString();
-        
-        if (!current) {
+      const conversationMetaUpdatePromise = convRef
+        ? convRef.transaction(current => {
+          const now = new Date().toISOString();
+
+          if (!current) {
+            return {
+              userId,
+              createdAt: now,
+              updatedAt: now,
+              title: null,
+              titleLocked: false,
+              messageCount: 1,
+              lastUserMessage: message
+            };
+          }
+
           return {
+            ...current,
             userId,
-            createdAt: now,
             updatedAt: now,
-            title: null,
-            titleLocked: false,
-            messageCount: 1,
+            messageCount: (Number(current.messageCount) || 0) + 1,
             lastUserMessage: message
           };
-        }
-        
-        return {
-          ...current,
-          userId,
-          updatedAt: now,
-          messageCount: (Number(current.messageCount) || 0) + 1,
-          lastUserMessage: message
-        };
-      });
+        })
+        : Promise.resolve(null);
+
+      const [pushedRef] = await Promise.all([
+        userMessagePushPromise,
+        conversationMetaUpdatePromise
+      ]);
+
+      userMessagePersistedForCatch = true;
+      userMessageRefForCatch = pushedRef;
     }
 
     const effectiveMailsEnabled = (mailsEnabled !== false)
