@@ -169,6 +169,21 @@ async function run() {
     assert(relationalFriction.source === "llm", `expected llm, got ${relationalFriction.source}`);
   });
 
+  const allianceHardRupture = await analyzers.analyzeAllianceRupture("Tu racontes n'importe quoi, t'es completement a cote de la plaque", []);
+  check("analyzeAllianceRupture: hard rupture wording -> rupture", () => {
+    assert(allianceHardRupture.explicitRelationalFriction === true, "expected explicitRelationalFriction=true");
+    assert(allianceHardRupture.allianceSignal === "rupture", `expected rupture, got ${allianceHardRupture.allianceSignal}`);
+  });
+
+  const interpretationRejected = await analyzers.analyzeInterpretationRejection({
+    message: "Pourquoi tu me dis ca ? Tu racontes n'importe quoi.",
+    history: [],
+    memory: ""
+  });
+  check("analyzeInterpretationRejection: challenge wording triggers analyzer path", () => {
+    assert(interpretationRejected.source !== "deterministic_no_signal", `expected analyzer path, got ${interpretationRejected.source}`);
+  });
+
   const relationalContact = await analyzers.analyzeRelationalAdjustmentNeed("Tu ne m'aides pas", [], "", true);
   check("analyzeRelationalAdjustmentNeed: isContact=true -> guard short-circuit", () => {
     assert(relationalContact.needsRelationalAdjustment === false, "expected false");

@@ -143,6 +143,16 @@ check("emotionalDecentering hints apply in info states", () => {
   assert(out.writerIntentHints.includes("auto_compassion_door_open"), "expected auto_compassion_door_open hint");
 });
 
+check("emotionalDecentering hints are blocked in discharge states", () => {
+  const out = buildPostureDecision(baseInput({
+    detectedState: "discharge_regulated",
+    previousConversationState: "exploration_open",
+    emotionalDecenteringAnalysis: { emotionalDecentering: true }
+  }));
+  assert(!out.writerIntentHints.includes("hold_emotional_thread"), "did not expect hold_emotional_thread hint in discharge");
+  assert(!out.writerIntentHints.includes("auto_compassion_door_open"), "did not expect auto_compassion_door_open hint in discharge");
+});
+
 check("narrowed processing window enforces single-axis exploration contract", () => {
   const out = buildPostureDecision(baseInput({
     detectedState: "exploration",
