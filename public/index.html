@@ -7850,7 +7850,10 @@
           method: "PUT",
           credentials: "include",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ memory })
+          body: JSON.stringify({
+            memory,
+            conversationId: currentConversationId || null
+          })
         });
 
         const data = await parseAppJsonResponseSafely(res);
@@ -7879,6 +7882,7 @@
 
         const payload = JSON.stringify({
           memory,
+          conversationId: currentConversationId || null,
           timestamp: new Date().toISOString()
         });
         const blob = new Blob([payload], { type: "application/json" });

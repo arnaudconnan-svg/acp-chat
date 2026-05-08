@@ -3078,6 +3078,33 @@ function stripTransientMemoryBlocksForIntersession(memoryText) {
   return result.join("\n").trim();
 }
 
+// For intersession consolidation, prefer the server-side conversation memory when available.
+// This avoids re-feeding long-term memory from stale localStorage snapshots.
+async function resolveAuthoritativeSessionMemoryForIntersession({ userId, conversationId, fallbackMemory }) {
+  const fallback = String(fallbackMemory || "").slice(0, 8000);
+  const safeConversationId = typeof conversationId === "string" ? conversationId.trim() : "";
+
+  if (!safeConversationId || !userId) {
+    return fallback;
+  }
+
+  try {
+    const convSnap = await db.ref("conversations").child(safeConversationId).once("value");
+    const convData = convSnap.val() || {};
+    const ownerUserId = String(convData.userId || "");
+    const isPrivate = convData.isPrivate === true;
+    const conversationMemory = typeof convData.memory === "string" ? convData.memory.trim() : "";
+
+    if (ownerUserId === String(userId) && !isPrivate && conversationMemory) {
+      return conversationMemory.slice(0, 8000);
+    }
+  } catch {
+    // Best-effort fallback: keep request payload memory when conversation lookup fails.
+  }
+
+  return fallback;
+}
+
 // PUT saves the long-term memory for the authenticated user.
 app.put("/api/intersession-memory", requireUserAuth, async (req, res) => {
   try {
@@ -3091,7 +3118,12 @@ app.put("/api/intersession-memory", requireUserAuth, async (req, res) => {
       return res.status(400).json({ error: "Invalid memory payload" });
     }
 
-    const sessionMemory = String(req.body.memory || "").slice(0, 8000);
+    const requestedConversationId = typeof req.body.conversationId === "string" ? req.body.conversationId.trim() : "";
+    const sessionMemory = await resolveAuthoritativeSessionMemoryForIntersession({
+      userId: session.userId,
+      conversationId: requestedConversationId,
+      fallbackMemory: String(req.body.memory || "")
+    });
     const strippedSessionMemory = stripTransientMemoryBlocksForIntersession(sessionMemory);
     const userSnap = await usersRef.child(session.userId).once("value");
     const userData = userSnap.val() || {};
@@ -3228,7 +3260,12 @@ app.post("/api/session/beacon", async (req, res) => {
     const session = await getUserSession(req);
     if (!session) return; // unauthenticated � ignore silently
 
-    const memory = typeof req.body?.memory === "string" ? req.body.memory.slice(0, 8000) : "";
+    const requestedConversationId = typeof req.body?.conversationId === "string" ? req.body.conversationId.trim() : "";
+    const memory = await resolveAuthoritativeSessionMemoryForIntersession({
+      userId: session.userId,
+      conversationId: requestedConversationId,
+      fallbackMemory: typeof req.body?.memory === "string" ? req.body.memory : ""
+    });
     const beaconTimestamp = typeof req.body?.timestamp === "string" ? req.body.timestamp : null;
 
     if (!memory.trim()) return;
