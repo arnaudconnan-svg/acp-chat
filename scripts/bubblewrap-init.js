@@ -13,7 +13,13 @@ function readTwaManifest() {
     process.exit(1);
   }
 
-  return JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+  if (!manifest || typeof manifest.webManifestUrl !== "string" || !manifest.webManifestUrl.trim()) {
+    console.error("[bubblewrap] Invalid twa-manifest.json: missing webManifestUrl.");
+    process.exit(1);
+  }
+
+  return manifest;
 }
 
 function checkBubblewrap() {
@@ -49,8 +55,8 @@ function initBubblewrap(manifest) {
   console.log("[bubblewrap] Initializing Android project...");
 
   const args = [
-    `--manifest="${getTwaManifestPath()}"`,
-    `--output="${projectDir}"`,
+    `--manifest="${manifest.webManifestUrl}"`,
+    `--directory="${projectDir}"`,
     "--skipKeystoreGeneration"
   ];
 

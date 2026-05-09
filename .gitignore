@@ -7,3 +7,4 @@ serviceAccount.json
 data/chat-evals-report.latest.json
 server-out.log
 server-err.log
+android-project/
