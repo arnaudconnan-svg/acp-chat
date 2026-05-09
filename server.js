@@ -362,8 +362,13 @@ app.get("/admin.html", requireAdminAuth, (req, res) => {
 });
 
 // Android TWA verification endpoint.
-// Keep this explicit route because express.static ignores dotfiles by default.
-app.get("/.well-known/assetlinks.json", (req, res) => {
+// Use explicit path interception because dot-prefixed routes can be fragile across hosts.
+app.use((req, res, next) => {
+  if (req.path !== "/.well-known/assetlinks.json") {
+    next();
+    return;
+  }
+
   const fallbackAssetLinks = [
     {
       relation: ["delegate_permission/common.handle_all_urls"],
