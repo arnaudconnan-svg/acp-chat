@@ -1,2 +1,1 @@
-Compression mémoire ?
-lien avec mémoire inter-session ?
+Mémoire inter-session ?
