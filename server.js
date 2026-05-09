@@ -1021,6 +1021,7 @@ const {
   analyzeAttentionQuality,
   analyzeDependencyRisk,
   analyzeAllianceRupture,
+  analyzeMemoryUpdateNeeds,
   analyzeInterpretationRejection,
   analyzeTechnicalContext,
   analyzeSomaticSignal,
@@ -1158,6 +1159,9 @@ ${originalContent}
 // --------------------------------------------------
 
 const {
+  MEMORY_INACTIVITY_TTL_MS,
+  mergeMemoryStateWithFinalizedText,
+  normalizeMemoryStateShape,
   compressIntersessionMemory,
   finalizeMemoryCandidate,
   shouldCompressMemoryCandidate,
@@ -4009,6 +4013,7 @@ function validateChatRequestShape(body = {}) {
 const activeChatRequests = new Map();
 const CHAT_REQUEST_STALE_TTL_MS = 15 * 60 * 1000;
 const activeChatProgressStreams = new Map(); // requestId -> Set(response)
+const privateConversationMemoryCache = new Map(); // conversationId -> { memory, memoryState, updatedAt }
 
 function mapChatStageToProgressStep(stage = "") {
   const key = String(stage || "").trim();
@@ -4598,6 +4603,7 @@ app.post("/chat", async (req, res) => {
     return {
       topChips: Array.isArray(safe.topChips) ? safe.topChips.map((chip) => String(chip || "").trim()).filter(Boolean) : [],
       memory: normalizeMemory(safe.memory, promptRegistry),
+      memoryState: normalizeMemoryStateShape(safe.memoryState, "", Date.now()),
       directivityText: typeof safe.directivityText === "string" ? safe.directivityText : "",
       conversationState: normalizeConversationState(safe.conversationState || safe.conversationStateKey),
       consecutiveNonExplorationTurns: normalizeConsecutiveNonExplorationTurns(safe.consecutiveNonExplorationTurns),
@@ -4786,10 +4792,17 @@ app.post("/chat", async (req, res) => {
     const activePromptRegistry = buildDefaultPromptRegistry();
     const { flags } = normalizeChatMemoryAndFlags(req, activePromptRegistry);
     let previousMemory = normalizeMemory(req.body?.memory, activePromptRegistry);
+    let previousMemoryState = normalizeMemoryStateShape(req.body?.memoryState, "", Date.now());
+    let previousConversationActivityMs = Date.now();
     const convMemoryPromise = (!isPrivateConversation && convRef)
           ? convRef.once("value").then(s => {
               const d = s.val();
-              return (d && typeof d.memory === "string" && d.memory.trim()) ? d.memory : null;
+              if (!d || typeof d !== "object") return null;
+              return {
+                memory: (typeof d.memory === "string" && d.memory.trim()) ? d.memory : null,
+                memoryState: d.memoryState && typeof d.memoryState === "object" ? d.memoryState : null,
+                updatedAtMs: Number.isFinite(Date.parse(String(d.updatedAt || ""))) ? Date.parse(String(d.updatedAt || "")) : null
+              };
             }).catch(() => null)
           : Promise.resolve(null);
         const shouldLoadUserProfile = !isPrivateConversation && userId && userId !== "u_anon";
@@ -4810,12 +4823,28 @@ app.post("/chat", async (req, res) => {
     // Falls back to req.body.memory if Firebase has no memory yet (first turn).
     if (!isPrivateConversation && convMemoryPromise) {
       const convMemoryFromDb = await convMemoryPromise;
-      if (convMemoryFromDb) {
-        previousMemory = normalizeMemory(convMemoryFromDb, activePromptRegistry);
+      if (convMemoryFromDb && typeof convMemoryFromDb === "object") {
+        if (typeof convMemoryFromDb.memory === "string" && convMemoryFromDb.memory.trim()) {
+          previousMemory = normalizeMemory(convMemoryFromDb.memory, activePromptRegistry);
+          previousMemoryForCatch = previousMemory;
+        }
+        previousMemoryState = normalizeMemoryStateShape(convMemoryFromDb.memoryState, "", Date.now());
+        if (Number.isFinite(convMemoryFromDb.updatedAtMs) && convMemoryFromDb.updatedAtMs > 0) {
+          previousConversationActivityMs = convMemoryFromDb.updatedAtMs;
+        }
+      }
+    }
+    if (isPrivateConversation && conversationId) {
+      const cachedPrivateMemory = privateConversationMemoryCache.get(String(conversationId));
+      if (cachedPrivateMemory && typeof cachedPrivateMemory.memory === "string" && cachedPrivateMemory.memory.trim()) {
+        previousMemory = normalizeMemory(cachedPrivateMemory.memory, activePromptRegistry);
+        previousMemoryState = normalizeMemoryStateShape(cachedPrivateMemory.memoryState, "", Date.now());
+        if (Number.isFinite(cachedPrivateMemory.updatedAt) && cachedPrivateMemory.updatedAt > 0) {
+          previousConversationActivityMs = cachedPrivateMemory.updatedAt;
+        }
         previousMemoryForCatch = previousMemory;
       }
     }
-    let intersessionSessionSyncForced = false;
     if (!isPrivateConversation && shouldLoadUserProfile) {
       let userData = await userProfilePromise;
       if (userData && userData.intersessionRefreshForced === true) {
@@ -4832,8 +4861,18 @@ app.post("/chat", async (req, res) => {
           activePromptRegistry
         );
         previousMemory = mergeStableContextOnlyIntoIntersessionMemory(stableContextOnly, previousMemory, activePromptRegistry);
+        const stableOnlyFromMerged = {
+          sessionStableContext: String(stableContextOnly || "")
+            .split("\n")
+            .map(line => line.trim())
+            .filter(Boolean)
+            .slice(0, 4)
+        };
+        previousMemoryState = {
+          ...previousMemoryState,
+          sessionStableContext: stableOnlyFromMerged.sessionStableContext
+        };
         previousMemoryForCatch = previousMemory;
-        intersessionSessionSyncForced = true;
       }
     }
         flagsForCatch = flags;
@@ -4993,6 +5032,7 @@ app.post("/chat", async (req, res) => {
         debugMeta: normalizeDebugMetaForStorage(debugMeta, activePromptRegistry),
         stateSnapshot: conversationState && typeof conversationState === "object" ? {
           memory: typeof conversationState.memory === "string" ? normalizeMemory(conversationState.memory, activePromptRegistry) : "",
+          memoryState: conversationState.memoryState && typeof conversationState.memoryState === "object" ? conversationState.memoryState : null,
           flags: normalizeSessionFlags(conversationState.flags || {})
         } : null
       });
@@ -5005,6 +5045,10 @@ app.post("/chat", async (req, res) => {
 
       if (typeof conversationState?.memory === "string") {
         conversationPatch.memory = normalizeMemory(conversationState.memory, activePromptRegistry);
+      }
+
+      if (conversationState?.memoryState && typeof conversationState.memoryState === "object") {
+        conversationPatch.memoryState = conversationState.memoryState;
       }
 
       if (conversationState?.flags && typeof conversationState.flags === "object") {
@@ -5047,6 +5091,35 @@ app.post("/chat", async (req, res) => {
     const recentHistoryCount = Array.isArray(recentHistory) ? recentHistory.length : 0;
     const isFirstTurn = recentHistoryCount === 0;
 
+    function waitMs(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    async function persistConversationMemoryWithRetry(memoryValue, promptRegistry, maxRetries = 2, memoryState = null) {
+      if (!convRef || isPrivateConversation) return;
+
+      const normalizedMemory = normalizeMemory(memoryValue, promptRegistry);
+      let lastError = null;
+
+      for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
+        try {
+          await convRef.update({
+            memory: normalizedMemory,
+            memoryState: memoryState && typeof memoryState === "object" ? memoryState : null,
+            updatedAt: new Date().toISOString()
+          });
+          return;
+        } catch (err) {
+          lastError = err;
+          if (attempt < maxRetries) {
+            await waitMs(120 * (attempt + 1));
+          }
+        }
+      }
+
+      throw lastError || new Error("memory_persist_retry_failed");
+    }
+
     function scheduleBackgroundMemoryUpdate(memorySnapshot, replyText, memoryPrioritySignal = "normal", intersessionMemoryCompressed = "") {
       (async () => {
         try {
@@ -5055,11 +5128,21 @@ app.post("/chat", async (req, res) => {
             [...recentHistory, { role: "user", content: message }, { role: "assistant", content: replyText }],
             activePromptRegistry,
             memoryPrioritySignal,
-            intersessionMemoryCompressed
+            intersessionMemoryCompressed,
+            null,
+            previousMemoryState
           );
-          if (!isPrivateConversation && convRef) {
-            await convRef.update({ memory: updatedMemory });
+          const updatedMemoryText = typeof updatedMemory?.memoryText === "string" ? updatedMemory.memoryText : memorySnapshot;
+          if (isPrivateConversation && conversationId) {
+            privateConversationMemoryCache.set(String(conversationId), {
+              memory: normalizeMemory(updatedMemoryText, activePromptRegistry),
+              memoryState: normalizeMemoryStateShape(previousMemoryState, "", Date.now()),
+              updatedAt: Date.now()
+            });
+            return;
           }
+
+          await persistConversationMemoryWithRetry(updatedMemoryText, activePromptRegistry, 2, normalizeMemoryStateShape(previousMemoryState, "", Date.now()));
         } catch {
           // Non-bloquant : la reponse utilisateur ne depend pas de cette mise a jour memoire.
         }
@@ -5493,12 +5576,6 @@ app.post("/chat", async (req, res) => {
       : 0;
     const shouldRunDependencyAnalysis = currentDependencyAnalysisTurnsUntilRefresh === 0;
 
-    const currentMemoryUpdateTurnsUntilRefresh = intersessionSessionSyncForced
-      ? 0
-      : Number.isInteger(newFlags.memoryUpdateTurnsUntilRefresh)
-      ? Math.max(0, newFlags.memoryUpdateTurnsUntilRefresh)
-      : 0;
-
     // withAnalyzerTiming wraps each Promise to record individual analyzer durations in chatStageTimings.
     function withAnalyzerTiming(name, promise) {
       const t = Date.now();
@@ -5809,7 +5886,32 @@ app.post("/chat", async (req, res) => {
     finalExplorationSignal = postureDecision.finalExplorationSignal;
     const { conversationState, consecutiveNonExplorationTurns } = postureDecision;
 
+    const memoryUpdateAnalysis = await withAnalyzerTiming("memory_update_needs", analyzeMemoryUpdateNeeds({
+      message,
+      memory: previousMemory,
+      conversationState: postureDecision.conversationState,
+      previousConversationState,
+      interpretationRejection: safeInterpretationRejection.isInterpretationRejection === true,
+      promptRegistry: activePromptRegistry
+    }));
+    postureDecision.memoryUpdateDecision = memoryUpdateAnalysis?.shouldUpdate === true ? "update" : "hold";
+    postureDecision.memoryUpdateReason = typeof memoryUpdateAnalysis?.reason === "string" && memoryUpdateAnalysis.reason.trim()
+      ? memoryUpdateAnalysis.reason.trim()
+      : "unspecified";
+    postureDecision.memoryUpdateSource = typeof memoryUpdateAnalysis?.source === "string" && memoryUpdateAnalysis.source.trim()
+      ? memoryUpdateAnalysis.source.trim()
+      : "deterministic";
+
     Object.assign(newFlags, postureDecision.flagUpdates);
+
+    // Règle produit: si onGoingMovements est vide ce tour, forcer la case courante
+    // de la fenêtre de stagnation à 1.
+    if (!Array.isArray(previousMemoryState?.onGoingMovements) || previousMemoryState.onGoingMovements.length === 0) {
+      const forcedWindow = [...normalizeStagnationWindow(newFlags.stagnationWindow), true].slice(-4);
+      newFlags.stagnationWindow = forcedWindow;
+      newFlags.stagnationTurns = Math.max(1, normalizeStagnationTurns(newFlags.stagnationTurns));
+    }
+
     flagsForCatch = normalizeSessionFlags(newFlags);
 
     // Injection du hint de lucidité relationnelle (dependencyCare).
@@ -6149,12 +6251,10 @@ app.post("/chat", async (req, res) => {
     }
     
 
-    // 5) Mise � jour de la m�moire interne apr�s la r�ponse finale.
-    // Memory update runs asynchronously after the response is sent.
-    // Non-private conversations: server reads memory from Firebase next turn (convMemoryPromise).
-    // Private conversations: client continues to use req.body.memory (no Firebase), so we still
-    //   need to compute and return newMemory synchronously for them.
-    let newMemory = previousMemory; // default: returned as-is in JSON for non-private
+    // 5) Mise a jour memoire (fire-and-forget unifie).
+    // The response always exposes the memory used for this turn (N-1), while
+    // update/finalization/persistence runs in background for the next turn.
+    let newMemory = previousMemory;
     let memoryWasCompressed = false;
     let memoryBeforeCompression = previousMemory;
     let memoryRewriteIntent = {
@@ -6163,161 +6263,100 @@ app.post("/chat", async (req, res) => {
       rejectsUnderlyingPhenomenon: safeInterpretationRejection.rejectsUnderlyingPhenomenon === true,
       soberReadjustmentActive: postureDecision.needsSoberReadjustment === true
     };
-    let memoryAge = 0;
-    let effectiveMemoryPrioritySignalForDebug = "normal";
+    const memoryAge = newMemory ? 1 : 0;
+    let effectiveMemoryPrioritySignalForDebug = postureDecision.memoryPrioritySignal || "normal";
+    const shouldRunMemoryUpdate = postureDecision.memoryUpdateDecision === "update";
 
-    // Fire-and-forget memory update for non-private conversations.
-    // For private conversations, compute synchronously (no Firebase storage).
-    if (isPrivateConversation) {
-      // Synchronous path for private conversations (no Firebase, client-authoritative).
-      markChatStage("memory_update");
-          const memoryPrioritySignal = postureDecision.memoryPrioritySignal || "normal";
-          const isFirstTurn = recentHistory.length === 0;
-          const memoryUpdateForced = isFirstTurn || memoryPrioritySignal !== "normal";
-          const shouldRunMemoryUpdate = currentMemoryUpdateTurnsUntilRefresh === 0 || memoryUpdateForced;
-          const periodicRefreshActive = shouldRunMemoryUpdate
-            && currentMemoryUpdateTurnsUntilRefresh === 0
-            && !isFirstTurn
-            && memoryPrioritySignal === "normal";
-          const effectiveMemoryPrioritySignal = periodicRefreshActive ? "periodic_refresh" : memoryPrioritySignal;
-          effectiveMemoryPrioritySignalForDebug = effectiveMemoryPrioritySignal;
-          const memoryClinicalSignals = {
-            risque_dependance: newFlags.dependencyRiskLevel || "low",
-            stagnation: Number.isInteger(newFlags.stagnationTurns) ? Math.max(0, newFlags.stagnationTurns) : 0,
-            decentrage_emotionnel: emotionalDecenteringAnalysis?.emotionalDecentering === true,
-            agressivite_vers_bot: dischargeAnalysis?.aggressiveDischargeDirectedToBot === true
-          };
-          if (periodicRefreshActive) {
-            memoryClinicalSignals.anciens_mouvements_source = extractMemorySectionBullets(previousMemory, "Mouvements en cours");
-          }
-      
-          let rawNewMemory;
-          if (shouldRunMemoryUpdate) {
-            rawNewMemory = await updateMemory(
-              previousMemory,
-              [
-                ...recentHistory,
-                { role: "user", content: message },
-                { role: "assistant", content: reply }
-              ],
-              activePromptRegistry,
-              effectiveMemoryPrioritySignal,
-              intersessionMemoryForThisTurn,
-              memoryClinicalSignals,
-            );
-          } else {
-            rawNewMemory = previousMemory;
-          }
-          throwIfCanceled();
-      
-          let memoryCandidate = rawNewMemory;
-      
-          memoryBeforeCompression = memoryCandidate;
-          const memoryNeedsCompression = shouldCompressMemoryCandidate(memoryCandidate, previousMemory);
-          memoryRewriteIntent = {
-            compressionRequested: memoryNeedsCompression === true,
-            interpretationRejectionActive: safeInterpretationRejection.isInterpretationRejection === true,
-            rejectsUnderlyingPhenomenon: safeInterpretationRejection.rejectsUnderlyingPhenomenon === true,
-            soberReadjustmentActive: postureDecision.needsSoberReadjustment === true
-          };
-          const finalizedMemoryCandidate = await finalizeMemoryCandidate({
-            previousMemory,
-            candidateMemory: memoryCandidate,
-            interpretationRejection: {
-              ...safeInterpretationRejection,
-              needsSoberReadjustment: postureDecision.needsSoberReadjustment,
-              tensionHoldLevel: postureDecision.tensionHoldLevel
-            },
-            needsCompression: memoryNeedsCompression,
-            promptRegistry: activePromptRegistry
-          });
-          memoryWasCompressed = memoryNeedsCompression;
-          newMemory = finalizedMemoryCandidate;
-      
-          // Mise à jour du compteur de périodicité mémoire.
-          // Si compression ce tour : forcer recalcul au tour suivant (compteur = 0).
-          if (shouldRunMemoryUpdate) {
-            newFlags.memoryUpdateTurnsUntilRefresh = memoryWasCompressed ? 0 : 3;
-            // Forcer l'analyzer de dependance au tour suivant apres MAJ memoire (mémoire fraiche).
-            newFlags.dependencyAnalysisTurnsUntilRefresh = 1;
-          } else {
-            newFlags.memoryUpdateTurnsUntilRefresh = Math.max(0, currentMemoryUpdateTurnsUntilRefresh - 1);
-          }
-          memoryAge = 3 - newFlags.memoryUpdateTurnsUntilRefresh;
-          
-          if (logsEnabled) {
-            debug.push(`trace.memoryCompressed: ${memoryWasCompressed ? "true" : "false"}`);
-          }
+    // Cadence disabled: explicit decision from arbiter/analyzer drives each turn.
+    newFlags.memoryUpdateTurnsUntilRefresh = 0;
+
+    if (!shouldRunMemoryUpdate) {
+      effectiveMemoryPrioritySignalForDebug = "normal";
+      memoryRewriteIntent = {
+        compressionRequested: false,
+        interpretationRejectionActive: false,
+        rejectsUnderlyingPhenomenon: false,
+        soberReadjustmentActive: false
+      };
     } else {
-      // Async fire-and-forget for non-private: compute and write to Firebase.
-      // We capture needed variables in a closure.
-      const _prevMem = previousMemory;
-      const _message = message;
-      const _history = recentHistory;
-      const _registry = activePromptRegistry;
-      const _prioritySignal = postureDecision.memoryPrioritySignal || "normal";
-      const _isFirstTurn = recentHistory.length === 0;
-      const _updateForced = _isFirstTurn || _prioritySignal !== "normal";
-      const _shouldRun = currentMemoryUpdateTurnsUntilRefresh === 0 || _updateForced;
-      const _periodicRefreshActive = _shouldRun
-        && currentMemoryUpdateTurnsUntilRefresh === 0
-        && !_isFirstTurn
-        && _prioritySignal === "normal";
-      const _effectivePrioritySignal = _periodicRefreshActive ? "periodic_refresh" : _prioritySignal;
-      effectiveMemoryPrioritySignalForDebug = _effectivePrioritySignal;
-      const _clinicalSignals = {
+      newFlags.dependencyAnalysisTurnsUntilRefresh = 1;
+      markChatStage("memory_update");
+
+      const memoryClinicalSignals = {
         risque_dependance: newFlags.dependencyRiskLevel || "low",
         stagnation: Number.isInteger(newFlags.stagnationTurns) ? Math.max(0, newFlags.stagnationTurns) : 0,
         decentrage_emotionnel: emotionalDecenteringAnalysis?.emotionalDecentering === true,
         agressivite_vers_bot: dischargeAnalysis?.aggressiveDischargeDirectedToBot === true
       };
-      if (_periodicRefreshActive) {
-        _clinicalSignals.anciens_mouvements_source = extractMemorySectionBullets(_prevMem, "Mouvements en cours");
-      }
-      // Update the periodicity counter synchronously so next turns get the right shouldRun value.
-      if (_shouldRun) {
-        newFlags.memoryUpdateTurnsUntilRefresh = 3; // will be refined to 0 if compression detected in bg
-        // Forcer l'analyzer de dependance au tour suivant apres MAJ memoire (mémoire fraiche).
-        newFlags.dependencyAnalysisTurnsUntilRefresh = 1;
-        // Forcer l'analyzer de dependance au tour suivant apres MAJ memoire (mémoire fraiche).
-        newFlags.dependencyAnalysisTurnsUntilRefresh = 1;
-      } else {
-        newFlags.memoryUpdateTurnsUntilRefresh = Math.max(0, currentMemoryUpdateTurnsUntilRefresh - 1);
-      }
-      memoryAge = 3 - newFlags.memoryUpdateTurnsUntilRefresh;
+
+      const _prevMem = previousMemory;
+      const _history = recentHistory;
+      const _message = message;
+      const _reply = reply;
+      const _registry = activePromptRegistry;
       const _interSession = intersessionMemoryForThisTurn;
-      const _postureSnap = { conversationState: postureDecision.conversationState, needsSoberReadjustment: postureDecision.needsSoberReadjustment, tensionHoldLevel: postureDecision.tensionHoldLevel };
+      const _prevMemState = previousMemoryState;
+      const _lastActivityMs = previousConversationActivityMs;
+      const _prioritySignal = effectiveMemoryPrioritySignalForDebug;
       const _rejectionSnap = { ...safeInterpretationRejection };
+      const _postureSnap = {
+        needsSoberReadjustment: postureDecision.needsSoberReadjustment,
+        tensionHoldLevel: postureDecision.tensionHoldLevel
+      };
+
       (async () => {
         try {
-          let rawMem;
-          if (_shouldRun) {
-            rawMem = await updateMemory(
-              _prevMem,
-              [..._history, { role: "user", content: _message }, { role: "assistant", content: reply }],
-              _registry,
-              _effectivePrioritySignal,
-              _interSession,
-              _clinicalSignals
-            );
-          } else {
-            rawMem = _prevMem;
-          }
-          const _needsCompression = shouldCompressMemoryCandidate(rawMem, _prevMem);
-          const _finalized = await finalizeMemoryCandidate({
+          const memoryUpdateContract = await updateMemory(
+            _prevMem,
+            [..._history, { role: "user", content: _message }, { role: "assistant", content: _reply }],
+            _registry,
+            _prioritySignal,
+            _interSession,
+            memoryClinicalSignals,
+            _prevMemState
+          );
+          const rawMem = typeof memoryUpdateContract?.memoryText === "string"
+            ? memoryUpdateContract.memoryText
+            : _prevMem;
+
+          const needsCompression = shouldCompressMemoryCandidate(rawMem, _prevMem);
+          const finalized = await finalizeMemoryCandidate({
             previousMemory: _prevMem,
             candidateMemory: rawMem,
-            interpretationRejection: { ..._rejectionSnap, needsSoberReadjustment: _postureSnap.needsSoberReadjustment, tensionHoldLevel: _postureSnap.tensionHoldLevel },
-            needsCompression: _needsCompression,
+            interpretationRejection: {
+              ..._rejectionSnap,
+              needsSoberReadjustment: _postureSnap.needsSoberReadjustment,
+              tensionHoldLevel: _postureSnap.tensionHoldLevel
+            },
+            needsCompression,
             promptRegistry: _registry
           });
-          // convRef.update is already handled by persistAssistantMessageAsync which runs in bg too.
-          // We just need to overwrite the memory field in the conversation document.
-          if (convRef) {
-            await convRef.update({ memory: normalizeMemory(_finalized, _registry), updatedAt: new Date().toISOString() });
+
+          const mergedStateResult = mergeMemoryStateWithFinalizedText({
+            previousMemoryState: _prevMemState,
+            finalizedMemoryText: finalized,
+            deleteAncientMovementsById: Array.isArray(memoryUpdateContract?.deleteAncientMovementsById)
+              ? memoryUpdateContract.deleteAncientMovementsById
+              : [],
+            pastSignals: memoryClinicalSignals,
+            nowMs: Date.now(),
+            lastActivityMs: _lastActivityMs,
+            ttlMs: MEMORY_INACTIVITY_TTL_MS
+          });
+          const persistedMemoryText = normalizeMemory(mergedStateResult.memoryText, _registry);
+
+          if (isPrivateConversation && conversationId) {
+            privateConversationMemoryCache.set(String(conversationId), {
+              memory: persistedMemoryText,
+              memoryState: mergedStateResult.memoryState,
+              updatedAt: Date.now()
+            });
+            return;
           }
+
+          await persistConversationMemoryWithRetry(persistedMemoryText, _registry, 2, mergedStateResult.memoryState);
         } catch (e) {
-          console.warn("[CHAT][MEMORY_BG_FAILED]", e && e.message);
+          console.warn("[CHAT][MEMORY_BG_FAILED]", e && e.message ? e.message : e);
         }
       })();
     }
@@ -6344,6 +6383,10 @@ app.post("/chat", async (req, res) => {
       memoryBeforeCompression,
       memoryAge,
       memoryPrioritySignal: effectiveMemoryPrioritySignalForDebug,
+      memoryState: previousMemoryState,
+      memoryUpdateDecision: postureDecision.memoryUpdateDecision || "hold",
+      memoryUpdateReason: postureDecision.memoryUpdateReason || "unspecified",
+      memoryUpdateSource: postureDecision.memoryUpdateSource || "deterministic",
       criticTriggered,
       criticIssues,
       criticOriginalReply,

@@ -155,13 +155,24 @@ Sauf exception ci-dessous, **le repo prime sur `plan.md`** en cas de conflit.
 
 Règle de publication : si `plan.md` est le seul fichier modifié, ne pas pousser sur le remote. Le push n'est autorisé que si d'autres changements sont déjà en cours de publication, ou sur demande explicite de l'utilisateur.
 
-**Contenu obligatoire** de `plan.md` quand un chantier est actif :
+**Contenu attendu** de `plan.md` quand un chantier est actif :
 - objectif produit courant
 - décisions déjà prises
 - validation attendue
 - questions ouvertes
 
-`plan.md` est libre dans sa forme mais ces rubriques sont minimales. Il ne contient pas d'historique de modifications ni de backlog.
+Ces informations sont obligatoires, mais **la structure n'est pas rigide** :
+- elles peuvent être regroupées par sujet (ex : "Déclenchement mémoire", "Observabilité", "Sync/Async")
+- l'ordre des sections est libre
+- les redondances doivent être évitées (une information donnée ne doit pas être répétée dans plusieurs sections)
+
+**Intention de forme (obligatoire) : clarté + synthèse + non-éparpillement**
+- `plan.md` doit privilégier une lecture rapide : blocs courts, intitulés explicites, et densité d'information utile
+- éviter les sections parallèles qui disent presque la même chose ; regrouper par axe/sujet quand cela améliore la lisibilité
+- garder un niveau de synthèse orienté décision/action (pas de narration longue ni d'historique)
+- cette intention est contraignante, mais **sans imposer un template unique** : l'agent adapte la forme au chantier tant que la lecture reste claire et compacte
+
+`plan.md` ne contient pas d'historique de modifications ni de backlog.
 
 ---
 

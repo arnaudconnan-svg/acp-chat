@@ -1814,6 +1814,24 @@
         function buildMemoryRewriteIntentLines(meta) {
           return window.FacilitatDebug.buildMemoryRewriteIntentLines(meta);
         }
+
+        function buildStructuredMemorySection(meta) {
+          if (!meta || !meta.memoryState || typeof meta.memoryState !== "object") {
+            return null;
+          }
+          var state = meta.memoryState;
+          return {
+            title: "M\u00e9moire structur\u00e9e (4 blocs)",
+            memoryStructured: true,
+            memoryStructuredData: {
+              sessionStableContext: Array.isArray(state.sessionStableContext) ? state.sessionStableContext : [],
+              onGoingMovements: Array.isArray(state.onGoingMovements) ? state.onGoingMovements : [],
+              ancientMovements: Array.isArray(state.ancientMovements) ? state.ancientMovements : [],
+              pastSignals: state.pastSignals && typeof state.pastSignals === "object" ? state.pastSignals : {}
+            },
+            content: "ok"
+          };
+        }
         
         function buildDebugSections(debug, debugMeta) {
           const safeDebug = Array.isArray(debug) ? debug : [];
@@ -1997,9 +2015,14 @@
             sections.push({ title: "État mémoire", content: memoryRewriteIntentLines.join("\n") });
           }
 
-          if (meta.memory) {
+          const structuredMemorySection = buildStructuredMemorySection(meta);
+          if (structuredMemorySection) {
+            sections.push(structuredMemorySection);
+          }
+
+          if (!structuredMemorySection && meta.memory) {
             sections.push({
-              title: "M\u00e9moire",
+              title: "M\u00e9moire utilis\u00e9e pour ce tour",
               content: meta.memory,
               memoryRewritten: meta.memoryCompressed === true,
               memoryBeforeRewrite: meta.memoryBeforeCompression || null
@@ -2026,7 +2049,7 @@
           }
 
           function getSectionPalette(title) {
-            if (title === "M\u00e9moire" || title === "M\u00e9moire avant r\u00e9\u00e9criture" || title === "R\u00e9\u00e9criture m\u00e9moire") {
+            if (title === "M\u00e9moire utilis\u00e9e pour ce tour" || title === "M\u00e9moire avant r\u00e9\u00e9criture" || title === "R\u00e9\u00e9criture m\u00e9moire") {
               return { titleColor: "#8a5a18", blockBackground: "#fff8eb", blockBorder: "#e8c06e" };
             }
             if (title === "Directivit\u00e9") {
@@ -2134,7 +2157,127 @@
             sectionContent.style.userSelect = "text";
             sectionContent.style.webkitUserSelect = "text";
             sectionContent.style.cursor = "text";
-            sectionContent.textContent = section.content;
+            if (section.memoryStructured === true && section.memoryStructuredData) {
+              sectionContent.textContent = "";
+
+              function createSubBlock(title, lines) {
+                const subWrap = document.createElement("div");
+                subWrap.style.marginBottom = "10px";
+
+                const subTitle = document.createElement("div");
+                subTitle.textContent = title;
+                subTitle.style.fontSize = "12px";
+                subTitle.style.fontWeight = "700";
+                subTitle.style.color = "#245e66";
+                subTitle.style.marginBottom = "4px";
+                subWrap.appendChild(subTitle);
+
+                const subContent = document.createElement("div");
+                subContent.style.whiteSpace = "pre-wrap";
+                subContent.style.wordBreak = "break-word";
+                subContent.textContent = lines.length > 0 ? lines.join("\n") : "(vide)";
+                subWrap.appendChild(subContent);
+                return subWrap;
+              }
+
+              const data = section.memoryStructuredData;
+              const stableLines = (Array.isArray(data.sessionStableContext) ? data.sessionStableContext : []).map(function(item) {
+                return "- " + String(item || "");
+              });
+              const ongoingLines = (Array.isArray(data.onGoingMovements) ? data.onGoingMovements : []).map(function(item) {
+                const id = item && item.id ? " [" + item.id + "]" : "";
+                const text = String((item && item.text) || "").trim();
+                return "-" + id + " " + (text || "(vide)");
+              });
+
+              sectionContent.appendChild(createSubBlock("Contexte stable (session)", stableLines));
+              sectionContent.appendChild(createSubBlock("Mouvements en cours", ongoingLines));
+
+              const ancientWrap = document.createElement("div");
+              ancientWrap.style.marginBottom = "10px";
+              const ancientTitle = document.createElement("div");
+              ancientTitle.textContent = "Mouvements anciens";
+              ancientTitle.style.fontSize = "12px";
+              ancientTitle.style.fontWeight = "700";
+              ancientTitle.style.color = "#245e66";
+              ancientTitle.style.marginBottom = "4px";
+              ancientWrap.appendChild(ancientTitle);
+
+              const ancientList = document.createElement("div");
+              ancientList.style.whiteSpace = "pre-wrap";
+              ancientList.style.wordBreak = "break-word";
+              ancientWrap.appendChild(ancientList);
+
+              const ancientButtons = document.createElement("div");
+              ancientButtons.style.display = "flex";
+              ancientButtons.style.gap = "8px";
+              ancientButtons.style.marginTop = "6px";
+
+              const showMoreBtn = document.createElement("button");
+              showMoreBtn.type = "button";
+              showMoreBtn.textContent = "Afficher 10 de plus";
+              showMoreBtn.style.fontSize = "12px";
+              showMoreBtn.style.padding = "4px 8px";
+              showMoreBtn.style.borderRadius = "999px";
+              showMoreBtn.style.border = "1px solid #7aa8b0";
+              showMoreBtn.style.background = "#ffffff";
+              showMoreBtn.style.color = "#245e66";
+              showMoreBtn.style.cursor = "pointer";
+
+              const collapseBtn = document.createElement("button");
+              collapseBtn.type = "button";
+              collapseBtn.textContent = "Replier 10";
+              collapseBtn.style.fontSize = "12px";
+              collapseBtn.style.padding = "4px 8px";
+              collapseBtn.style.borderRadius = "999px";
+              collapseBtn.style.border = "1px solid #7aa8b0";
+              collapseBtn.style.background = "#ffffff";
+              collapseBtn.style.color = "#245e66";
+              collapseBtn.style.cursor = "pointer";
+
+              ancientButtons.appendChild(showMoreBtn);
+              ancientButtons.appendChild(collapseBtn);
+              ancientWrap.appendChild(ancientButtons);
+
+              let ancientVisibleCount = 10;
+              const ancientEntries = Array.isArray(data.ancientMovements) ? data.ancientMovements : [];
+
+              function renderAncient() {
+                const shown = ancientEntries.slice(0, ancientVisibleCount);
+                if (shown.length === 0) {
+                  ancientList.textContent = "(vide)";
+                } else {
+                  ancientList.textContent = shown.map(function(item) {
+                    const id = item && item.id ? " [" + item.id + "]" : "";
+                    const text = String((item && item.text) || "").trim();
+                    return "-" + id + " " + (text || "(vide)");
+                  }).join("\n");
+                }
+
+                showMoreBtn.style.display = ancientVisibleCount < ancientEntries.length ? "inline-flex" : "none";
+                collapseBtn.style.display = ancientVisibleCount > 10 ? "inline-flex" : "none";
+              }
+
+              showMoreBtn.addEventListener("click", function() {
+                ancientVisibleCount = Math.min(ancientEntries.length, ancientVisibleCount + 10);
+                renderAncient();
+              });
+              collapseBtn.addEventListener("click", function() {
+                ancientVisibleCount = Math.max(10, ancientVisibleCount - 10);
+                renderAncient();
+              });
+              renderAncient();
+
+              sectionContent.appendChild(ancientWrap);
+
+              const pastSignalsObj = data.pastSignals && typeof data.pastSignals === "object" ? data.pastSignals : {};
+              const pastSignalsText = Object.keys(pastSignalsObj).length > 0
+                ? JSON.stringify(pastSignalsObj, null, 2)
+                : "(vide)";
+              sectionContent.appendChild(createSubBlock("Signaux du tour pr\u00e9c\u00e9dent (d\u00e9terministes)", [pastSignalsText]));
+            } else {
+              sectionContent.textContent = section.content;
+            }
             
             sectionBlock.appendChild(sectionTitle);
             sectionBlock.appendChild(sectionContent);

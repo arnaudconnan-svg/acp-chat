@@ -113,11 +113,49 @@
   function normalizeDebugMeta(debugMetaValue) {
     var safe = debugMetaValue && typeof debugMetaValue === "object" ? debugMetaValue : {};
 
+    function normalizeMovementList(items, maxItems) {
+      if (!Array.isArray(items)) return [];
+      var normalized = items
+        .map(function(item) {
+          if (!item || typeof item !== "object") return null;
+          var id = toTrimmedString(item.id, "");
+          var text = typeof item.text === "string" ? item.text.trim() : "";
+          if (!id && !text) return null;
+          return {
+            id: id,
+            text: text,
+            createdAt: toTrimmedString(item.createdAt, "") || null,
+            archivedAt: toTrimmedString(item.archivedAt, "") || null
+          };
+        })
+        .filter(Boolean);
+
+      if (Number.isInteger(maxItems) && maxItems > 0) {
+        return normalized.slice(0, maxItems);
+      }
+      return normalized;
+    }
+
+    var safeMemoryState = safe.memoryState && typeof safe.memoryState === "object" ? safe.memoryState : null;
+    var normalizedMemoryState = safeMemoryState
+      ? {
+          sessionStableContext: Array.isArray(safeMemoryState.sessionStableContext)
+            ? safeMemoryState.sessionStableContext.map(function(item) { return toTrimmedString(item, ""); }).filter(Boolean).slice(0, 4)
+            : [],
+          onGoingMovements: normalizeMovementList(safeMemoryState.onGoingMovements, 2),
+          ancientMovements: normalizeMovementList(safeMemoryState.ancientMovements),
+          pastSignals: safeMemoryState.pastSignals && typeof safeMemoryState.pastSignals === "object" && !Array.isArray(safeMemoryState.pastSignals)
+            ? safeMemoryState.pastSignals
+            : {}
+        }
+      : null;
+
     return {
       topChips: Array.isArray(safe.topChips)
         ? safe.topChips.map(function mapChip(v) { return String(v || "").trim(); }).filter(Boolean)
         : [],
       memory: toTrimmedString(safe.memory, ""),
+      memoryState: normalizedMemoryState,
       directivityText: toTrimmedString(safe.directivityText, "") || toTrimmedString(safe.directivityLabel, ""),
       directivityLabel: toTrimmedString(safe.directivityLabel, ""),
       conversationState: toTrimmedString(safe.conversationState, "") || toTrimmedString(safe.conversationStateKey, "") || null,
@@ -145,6 +183,9 @@
       memoryCompressed: toBooleanTrue(safe.memoryCompressed),
       memoryAge: Number.isInteger(safe.memoryAge) && safe.memoryAge > 0 ? safe.memoryAge : 0,
       memoryPrioritySignal: typeof safe.memoryPrioritySignal === "string" && safe.memoryPrioritySignal ? safe.memoryPrioritySignal : "normal",
+      memoryUpdateDecision: safe.memoryUpdateDecision === "update" ? "update" : "hold",
+      memoryUpdateReason: toTrimmedString(safe.memoryUpdateReason, "") || "unspecified",
+      memoryUpdateSource: toTrimmedString(safe.memoryUpdateSource, "") || "deterministic",
       memoryBeforeCompression: toTrimmedString(safe.memoryBeforeCompression, "") || null,
       criticTriggered: toBooleanTrue(safe.criticTriggered),
       criticIssues: Array.isArray(safe.criticIssues)
@@ -554,12 +595,35 @@
     var prioritySignal = meta && typeof meta.memoryPrioritySignal === "string" ? meta.memoryPrioritySignal : "normal";
     var signalLabel = Object.prototype.hasOwnProperty.call(signalMap, prioritySignal) ? signalMap[prioritySignal] : prioritySignal;
 
+    var reasonMap = {
+      default: "mise \u00e0 jour standard",
+      escalation: "escalade d'un mouvement important",
+      significant_shift: "changement significatif du mouvement",
+      interpretation_rejected: "rejet d'interpr\u00e9tation",
+      state_transition: "transition d'\u00e9tat",
+      state_freeze: "\u00e9tat gel\u00e9",
+      default_periodic: "fallback de s\u00e9curit\u00e9"
+    };
+
     var lines = [];
-    if (meta && meta.memoryAge === 0) {
-      lines.push("Mise \u00e0 jour ce tour");
-    } else if (meta && Number.isInteger(meta.memoryAge) && meta.memoryAge > 0) {
-      lines.push("Inchang\u00e9e depuis " + meta.memoryAge + " tour(s)");
+    if (meta && meta.memoryUpdateDecision === "update") {
+      lines.push("D\u00e9cision m\u00e9moire : update");
+    } else {
+      lines.push("D\u00e9cision m\u00e9moire : hold");
     }
+
+    var reasonKey = meta && typeof meta.memoryUpdateReason === "string" ? meta.memoryUpdateReason : "unspecified";
+    var reasonLabel = Object.prototype.hasOwnProperty.call(reasonMap, reasonKey) ? reasonMap[reasonKey] : reasonKey;
+    if (reasonLabel) {
+      lines.push("Raison : " + reasonLabel);
+    }
+
+    if (meta && meta.memoryAge === 0) {
+      lines.push("M\u00e9moire initiale");
+    } else if (meta && Number.isInteger(meta.memoryAge) && meta.memoryAge > 0) {
+      lines.push("M\u00e9moire utilis\u00e9e : tour N-1");
+    }
+
     if (signalLabel) {
       lines.push(signalLabel);
     }
