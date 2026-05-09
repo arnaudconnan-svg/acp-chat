@@ -17,13 +17,14 @@ Ce modèle implique :
 
 Facilitat.io est une application conversationnelle d'accompagnement psychologique.
 
-L'architecture cible est à cinq couches :
+L'architecture cible est à quatre couches strictes (V4) :
 
 1. **Noyau déterministe** — machine d'état explicite, transitions, sécurité, contraintes absolues
 2. **Analyseurs parallèles** — chaque analyseur remonte un signal structuré sur un aspect du tour (sécurité, intention, mode, rappel, friction, rejet d'interprétation, etc.)
 3. **Arbitrage explicite** — `buildPostureDecision` résout les conflits entre signaux et produit une décision de posture unique : état cible, permissions, interdits, style
 4. **Writer piloté** — `generateReply` reçoit un contrat déjà arbitré et ne découvre plus la politique, il la formule
-5. **Critic garde-barrière** — `applySelectiveCritic` vérifie uniquement les violations de contrat graves ; il ne réécrit pas, il corrige au minimum
+
+**Garde de sortie V4** : la conformité finale est assurée par un validateur déterministe (C1) et, si nécessaire, une régénération Writer bornée puis un fallback déterministe par état. Aucun Critic post-génération LLM.
 
 La règle centrale : **la politique conversationnelle est décidée avant la génération, jamais pendant ou après.**
 
@@ -64,7 +65,7 @@ L'agent décide seul de tout ce qui relève de l'implémentation :
 - ordre des étapes dans le pipeline (tant que les invariants de priorité sont respectés)
 - ajout, suppression ou fusion d'analyseurs
 - évolution des flags (nommage, logique, ajout) si le contrat frontend/backend est maintenu
-- migrations architecturales incrémentales vers la cible à cinq couches
+- migrations architecturales incrémentales vers la cible à quatre couches strictes (V4)
 - choix de structure pour les prompts, les contrats, les outputs d'analyseurs
 
 L'agent **n'a pas besoin de demande explicite** pour ces décisions s'il peut les justifier en termes comportementaux.
@@ -212,7 +213,7 @@ Après chaque modification significative :
 - `npm run verify` pour enchaîner tous les harnesses déterministes locaux (sans serveur ni LLM)
 - signaler tout écart
 
-`npm run verify` est le filet principal. Il couvre : state machine, posture, contract-validator, flags, conversation-state, debugmeta-unit, critic, chat-routing, crisis-routing, llm-messages, conversation-data.
+`npm run verify` est le filet principal. Il couvre : state machine, posture, analyzers, prompts:consistency, contract-validator, flags, conversation-state, runtime-schemas, debugmeta-unit, output-guard, chat-routing, branching, transcript, crisis-routing, llm-messages, conversation-data.
 
 ### Règle de cohérence prompting inter-sessions
 
@@ -282,9 +283,11 @@ Avant d'ajouter ou modifier une instruction dans un prompt de writer (état, niv
 | Détecter un signal dans le message utilisateur | Couche 2 — analyseur | registre de langue, signal somatique, friction, impasse |
 | Décider d'une politique (longueur, relance, registre cible) | Couche 3 — arbitrage → champ dans le contrat de posture | `phraseLength`, `relancePolicy`, `responseRegister` |
 | Formuler une décision déjà contenue dans le contrat reçu | Couche 4 — writer prompt | interdictions de formulations, structure de paragraphe, voix |
-| Vérifier une violation grave du contrat | Couche 5 — critic | non-respect d'une interdiction explicite |
+| Vérifier la conformité de sortie au contrat | Couche 1 + Couche 4 (validateur + régénération bornée) | interdits, longueur, tu/vous, fuite de signaux |
 
 **Mnémonique : le writer ne découvre pas la politique, il la formule.**
+
+En V4 strict, il n'existe plus de couche post-génération LLM de correction : la conformité est traitée dans le cadre déterministe + Writer.
 
 Si une instruction dans un prompt de writer contient un `si` conditionnel sur un signal runtime (registre de l'utilisateur, présence d'un affect, niveau d'un paramètre détecté), c'est un signal fort qu'elle appartient en couche 2 ou 3, pas 4.
 
@@ -353,4 +356,4 @@ Ce principe s'applique aussi à la mémoire long terme : si une information pers
 La stabilité du comportement prime sur la qualité du code.
 La qualité du code prime sur l'optimisation.
 
-Mais "stabilité du comportement" ne signifie pas "stabilité du code". Le code peut et doit évoluer pour rendre le comportement plus fiable, plus prévisible, plus testable — c'est la définition de la migration architecturale vers la cible à cinq couches.
+Mais "stabilité du comportement" ne signifie pas "stabilité du code". Le code peut et doit évoluer pour rendre le comportement plus fiable, plus prévisible, plus testable — c'est la définition de la migration architecturale vers la cible V4 à quatre couches strictes.

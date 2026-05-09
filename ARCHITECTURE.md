@@ -10,13 +10,14 @@ Application conversationnelle avec :
 
 ## Cible architecturale
 
-Le systeme converge vers cinq couches distinctes :
+Le systeme converge vers quatre couches strictes (V4) :
 
 1. noyau deterministe
 2. analyseurs paralleles
 3. arbitrage explicite
 4. writer pilote par contrat
-5. critic garde-barriere
+
+La conformite de sortie est assuree par un garde deterministe (validation contractuelle, regeneration bornee, fallback minimal par etat) sans couche Critic LLM.
 
 La regle centrale est : la politique conversationnelle doit etre decidee avant la generation, pas pendant ni apres.
 
@@ -32,7 +33,7 @@ Le coeur du backend reste dans `server.js`, avec une route `/chat` qui orchestre
 - vague d'analyse parallele pour les autres signaux
 - arbitrage via `buildPostureDecision(...)`
 - generation via `generateReply(...)`
-- controle post-generation via `applySelectiveCritic(...)`
+- validation contractuelle deterministe post-generation (output guard)
 - mise a jour de la memoire
 - persistence et reponse HTTP
 
@@ -44,7 +45,8 @@ Les invariants protegent le comportement, pas la forme du code.
 - l'ordre de priorite reste : securite > crise > rupture relationnelle > decharge > exploration > information
 - la memoire reste un resume recalcule a chaque tour
 - le contrat frontend/backend doit rester coherent dans le meme patch
-- `applySelectiveCritic(...)` est l'unique passe post-generation qui peut modifier la reponse
+- aucune passe LLM post-generation ne modifie la reponse
+- seul le flux deterministic guard + regeneration writer bornee + fallback deterministe peut ajuster la sortie
 
 ## Contrat prompting/memoire (source de verite)
 
@@ -72,7 +74,7 @@ Le pipeline produit plusieurs traces utiles :
 - le mode retenu
 - l'etat conversationnel
 - les signaux d'ajustement relationnel
-- les decisions du critic
+- les decisions du validateur de sortie deterministe
 - les niveaux de calibration et de directivite
 
 ## Frontend
@@ -94,4 +96,4 @@ La priorite immédiate est de consolider le comportement sur l'architecture exis
 
 Les extractions modulaires et refactorings qui ameliorent la fiabilite et la testabilite restent bienvenus, a condition de ne pas introduire de nouveau comportement visible.
 
-La liste des extractions structurelles prevues (prompts, normalisateurs, analyzers, memoire, arbitrage/writer/critic) reste l'objectif moyen terme. Elle sera reprise apres la phase de stabilisation.
+La liste des extractions structurelles prevues (prompts, normalisateurs, analyzers, memoire, arbitrage/writer) reste l'objectif moyen terme. Elle sera reprise apres la phase de stabilisation.

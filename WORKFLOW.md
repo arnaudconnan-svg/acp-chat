@@ -133,7 +133,8 @@ Sur ce projet :
 - stabilite du comportement > qualite du code > optimisation
 - mais stabilite du comportement ne signifie pas immobilite du code
 - si une structure interne freine la fiabilite, l'agent doit la faire evoluer
-- l'architecture doit progressivement converger vers : noyau deterministe, analyseurs paralleles, arbitrage explicite, writer pilote, critic garde-barriere
+- l'architecture doit progressivement converger vers V4 strict : noyau deterministe, analyseurs paralleles, arbitrage explicite, writer pilote par contrat
+- la conformite de sortie est assuree par garde deterministe + regeneration bornee + fallback minimal, sans couche Critic LLM
 
 ---
 
