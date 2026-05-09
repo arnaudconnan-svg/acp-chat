@@ -364,11 +364,32 @@ app.get("/admin.html", requireAdminAuth, (req, res) => {
 // Android TWA verification endpoint.
 // Keep this explicit route because express.static ignores dotfiles by default.
 app.get("/.well-known/assetlinks.json", (req, res) => {
+  const fallbackAssetLinks = [
+    {
+      relation: ["delegate_permission/common.handle_all_urls"],
+      target: {
+        namespace: "android_app",
+        package_name: "io.facilitat.app",
+        sha256_cert_fingerprints: [
+          "FF:DA:29:D4:D5:70:D4:6B:52:39:54:69:69:D5:80:F5:AF:95:BC:1E:29:31:A4:2F:A8:0D:25:51:98:9D:97:7E"
+        ]
+      }
+    }
+  ];
+  const assetlinksPath = path.join(__dirname, "public", ".well-known", "assetlinks.json");
+
   res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
   res.setHeader("Pragma", "no-cache");
   res.setHeader("Expires", "0");
   res.type("application/json");
-  res.sendFile(path.join(__dirname, "public", ".well-known", "assetlinks.json"));
+
+  if (fs.existsSync(assetlinksPath)) {
+    res.sendFile(assetlinksPath);
+    return;
+  }
+
+  logger.warn({ event: "assetlinks_missing_runtime_file", assetlinksPath });
+  res.status(200).json(fallbackAssetLinks);
 });
 
 // Serve the public folder with cache headers tuned for SPA/PWA behavior.
