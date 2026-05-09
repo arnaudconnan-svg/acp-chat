@@ -381,19 +381,12 @@ app.use((req, res, next) => {
       }
     }
   ];
-  const assetlinksPath = path.join(__dirname, "public", ".well-known", "assetlinks.json");
-
   res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
   res.setHeader("Pragma", "no-cache");
   res.setHeader("Expires", "0");
   res.type("application/json");
 
-  if (fs.existsSync(assetlinksPath)) {
-    res.sendFile(assetlinksPath);
-    return;
-  }
-
-  logger.warn({ event: "assetlinks_missing_runtime_file", assetlinksPath });
+  // Serve deterministic payload directly to avoid runtime filesystem edge cases on Render.
   res.status(200).json(fallbackAssetLinks);
 });
 
