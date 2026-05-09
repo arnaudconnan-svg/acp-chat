@@ -7387,10 +7387,6 @@
           sections.push({ title: "Stagnation", content: stagnationLines.join("\n") });
         }
 
-        if (meta.criticTriggered === true && meta.criticOriginalReply) {
-          sections.push({ title: "R\u00e9ponse initiale (avant correction)", content: meta.criticOriginalReply, criticRewrite: true });
-        }
-
         const memoryRewriteIntentLines = buildMemoryRewriteIntentLines(meta);
         if (memoryRewriteIntentLines.length > 0) {
             sections.push({ title: "\u00c9tat m\u00e9moire", content: memoryRewriteIntentLines.join("\n") });
@@ -7463,40 +7459,6 @@
         debugBox.style.gap = "8px";
 
         debugSections.forEach(section => {
-          if (section.criticRewrite === true) {
-            const criticBlock = document.createElement("details");
-            const criticSummary = document.createElement("summary");
-            criticSummary.textContent = section.title;
-            criticSummary.style.listStyle = "none";
-            criticSummary.style.cursor = "pointer";
-            criticSummary.style.fontSize = "12px";
-            criticSummary.style.fontWeight = "700";
-            criticSummary.style.textTransform = "uppercase";
-            criticSummary.style.letterSpacing = "0.04em";
-            criticSummary.style.color = "#9c3b2c";
-            criticSummary.style.userSelect = "none";
-            criticSummary.style.padding = "4px 0";
-            const criticContent = document.createElement("div");
-            criticContent.style.marginTop = "6px";
-            criticContent.style.padding = "10px";
-            criticContent.style.borderRadius = "10px";
-            criticContent.style.background = "#fff0ee";
-            criticContent.style.border = "1px solid #e07e6a";
-            criticContent.style.fontSize = "13px";
-            criticContent.style.lineHeight = "1.45";
-            criticContent.style.color = "#334155";
-            criticContent.style.whiteSpace = "pre-wrap";
-            criticContent.style.wordBreak = "break-word";
-            criticContent.style.overflowWrap = "break-word";
-            criticContent.style.userSelect = "text";
-            criticContent.style.cursor = "text";
-            criticContent.textContent = section.content;
-            criticBlock.appendChild(criticSummary);
-            criticBlock.appendChild(criticContent);
-            debugBox.appendChild(criticBlock);
-            return;
-          }
-
           const palette = getSectionPalette(section.title);
           const sectionBlock = document.createElement("div");
 

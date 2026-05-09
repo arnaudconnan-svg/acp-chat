@@ -185,17 +185,6 @@
       memoryUpdateReason: toTrimmedString(safe.memoryUpdateReason, "") || "unspecified",
       memoryUpdateSource: toTrimmedString(safe.memoryUpdateSource, "") || "deterministic",
       memoryBeforeSanitization: toTrimmedString(safe.memoryBeforeSanitization, "") || null,
-      criticTriggered: toBooleanTrue(safe.criticTriggered),
-      criticIssues: Array.isArray(safe.criticIssues)
-        ? safe.criticIssues.map(function mapIssue(v) { return String(v || "").trim(); }).filter(Boolean)
-        : [],
-      criticOriginalReply: toTrimmedString(safe.criticOriginalReply, "") || null,
-      criticTriggerReasons: Array.isArray(safe.criticTriggerReasons)
-        ? safe.criticTriggerReasons.map(function mapReason(v) { return String(v || "").trim(); }).filter(Boolean)
-        : [],
-      criticDeterministicEvidence: Array.isArray(safe.criticDeterministicEvidence)
-        ? safe.criticDeterministicEvidence.map(function mapEvidence(v) { return String(v || "").trim(); }).filter(Boolean)
-        : [],
       outputGuardTriggered: toBooleanTrue(safe.outputGuardTriggered),
       outputGuardRegenerationUsed: toBooleanTrue(safe.outputGuardRegenerationUsed),
       outputGuardFallbackUsed: toBooleanTrue(safe.outputGuardFallbackUsed),
@@ -464,28 +453,6 @@
     var lines = [];
     var analyzerMatchMap = parseDeterministicEvidence(meta.analyzerDeterministicEvidence);
 
-    function extractRegexMatchFromEvidence(evidenceEntries) {
-      if (!Array.isArray(evidenceEntries)) return null;
-      for (var i = 0; i < evidenceEntries.length; i += 1) {
-        var entry = String(evidenceEntries[i] || "");
-        var match = entry.match(/\|\s*match:\s*"([^"]+)"/i);
-        if (match && match[1]) return match[1];
-      }
-      return null;
-    }
-
-    function extractRegexMatchForReason(evidenceEntries, reasonKey) {
-      if (!Array.isArray(evidenceEntries) || !reasonKey) return null;
-      var reasonPrefix = String(reasonKey || "") + " ->";
-      for (var i = 0; i < evidenceEntries.length; i += 1) {
-        var entry = String(evidenceEntries[i] || "").trim();
-        if (!entry || entry.indexOf(reasonPrefix) !== 0) continue;
-        var match = entry.match(/\|\s*match:\s*"([^"]+)"/i);
-        if (match && match[1]) return match[1];
-      }
-      return null;
-    }
-
     if (meta.interpretationRejection === true) {
       var interpretationLine = variant === "admin"
         ? "Un rejet d'interpretation a ete detecte et pris en compte."
@@ -547,55 +514,6 @@
 
       if (Array.isArray(meta.outputGuardViolations) && meta.outputGuardViolations.length > 0) {
         lines.push("Violations detectees : " + meta.outputGuardViolations.join(" · "));
-      }
-    }
-
-    if (meta.criticTriggered === true) {
-      var criticReasonLabels = {
-        contractLengthExceeded: "Longueur contractuelle d\u00e9pass\u00e9e",
-        humanFieldRisk: "Risque de ton proc\u00e9dural/instrumental",
-        agencyAttributionRisk: "Risque d'agentivit\u00e9 attribu\u00e9e",
-        formalAddressRisk: "Risque de tutoiement non conforme",
-        vouvoiementRisk: "Risque de vouvoiement non conforme",
-        theoreticalViolationRisk: "Risque de formulation th\u00e9orique/interpr\u00e9tative",
-        n1CrisisForced: "D\u00e9clenchement forc\u00e9 en crise N1",
-        recallForced: "D\u00e9clenchement forc\u00e9 en rappel m\u00e9moire",
-        signalLeakRisk: "Risque de fuite de signal interne"
-      };
-      var reasons = (meta.criticTriggerReasons || []).map(function mapReason(r) {
-        return criticReasonLabels[r] || r;
-      }).filter(Boolean);
-
-      var humanFieldRegexMatch = extractRegexMatchForReason(meta.criticDeterministicEvidence, "humanFieldRisk");
-      if (!humanFieldRegexMatch) {
-        humanFieldRegexMatch = extractRegexMatchFromEvidence(meta.analyzerDeterministicEvidence);
-      }
-      var theoreticalRegexMatch = extractRegexMatchForReason(meta.criticDeterministicEvidence, "theoreticalViolationRisk");
-
-      if (humanFieldRegexMatch || theoreticalRegexMatch) {
-        reasons = reasons.map(function enrichReason(reasonLabel, reasonIndex) {
-          var reasonKey = (meta.criticTriggerReasons || [])[reasonIndex];
-          if (reasonKey === "humanFieldRisk" && humanFieldRegexMatch) {
-            return reasonLabel + ' (regex match: "' + humanFieldRegexMatch + '")';
-          }
-          if (reasonKey === "theoreticalViolationRisk" && theoreticalRegexMatch) {
-            return reasonLabel + ' (regex match: "' + theoreticalRegexMatch + '")';
-          }
-          return reasonLabel;
-        });
-      }
-
-      if (meta.criticIssues.length > 0) {
-        lines.push("Le critic pass a corrig\u00e9 " + meta.criticIssues.length + " point(s) :");
-        meta.criticIssues.forEach(function eachIssue(issue) {
-          lines.push("\u00b7 " + issue);
-        });
-      } else {
-        lines.push("Le critic pass a \u00e9t\u00e9 lanc\u00e9 sans correction n\u00e9cessaire.");
-      }
-
-      if (reasons.length > 0) {
-        lines.push("Raisons : " + reasons.join(" \u00b7 "));
       }
     }
 

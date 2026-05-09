@@ -7,13 +7,11 @@ function parseArgs(argv) {
   const fileArg = argv.find(arg => !arg.startsWith("--"));
   const slowThresholdArg = argv.find(arg => arg.startsWith("--slow-threshold-ms="));
   const stateArg = argv.find(arg => arg.startsWith("--state="));
-  const criticArg = argv.find(arg => arg.startsWith("--critic="));
 
   return {
     filePath: fileArg || path.join(__dirname, "..", "data", "render-live.log"),
     slowThresholdMs: slowThresholdArg ? Math.max(0, Number(slowThresholdArg.split("=")[1]) || 0) : 4000,
-    stateFilter: stateArg ? String(stateArg.split("=")[1] || "").trim() : "",
-    criticFilter: criticArg ? String(criticArg.split("=")[1] || "").trim() : ""
+    stateFilter: stateArg ? String(stateArg.split("=")[1] || "").trim() : ""
   };
 }
 
@@ -88,11 +86,6 @@ function main() {
   const entries = readLogLines(filePath).filter((entry) => entry && entry.event === "pipeline_summary");
   const filtered = entries.filter((entry) => {
     if (args.stateFilter && String(entry.conversationState || "") !== args.stateFilter) return false;
-    if (args.criticFilter) {
-      const criticTriggered = entry.criticTriggered === true;
-      if (args.criticFilter === "on" && !criticTriggered) return false;
-      if (args.criticFilter === "off" && criticTriggered) return false;
-    }
     return true;
   });
 
@@ -107,8 +100,6 @@ function main() {
     .sort((a, b) => a - b);
 
   const slowCount = filtered.filter(entry => Number(entry.elapsedMs) >= args.slowThresholdMs).length;
-  const criticOn = filtered.filter(entry => entry.criticTriggered === true);
-  const criticOff = filtered.filter(entry => entry.criticTriggered !== true);
 
   const stageSummary = collectStageDurations(filtered);
 
@@ -124,12 +115,6 @@ function main() {
       maxMs: elapsedValues[elapsedValues.length - 1] || 0
     },
     firstTurnCount: filtered.filter(entry => entry.isFirstTurn === true).length,
-    critic: {
-      onCount: criticOn.length,
-      onMeanMs: Number(mean(criticOn.map(entry => Number(entry.elapsedMs) || 0)).toFixed(1)),
-      offCount: criticOff.length,
-      offMeanMs: Number(mean(criticOff.map(entry => Number(entry.elapsedMs) || 0)).toFixed(1))
-    },
     topStagesByMeanMs: stageSummary.slice(0, 10)
   }, null, 2));
 }

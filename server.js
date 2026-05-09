@@ -145,14 +145,6 @@ const {
 } = require("./lib/pipeline");
 const { buildDefaultPromptRegistry } = require("./lib/prompts");
 const {
-  createCritic,
-  hasTutoiementInReply,
-  hasVouvoiementInReply,
-  getTheoreticalViolationEvidence,
-  getAgencyAttributionEvidence,
-  getProceduralInstrumentalEvidence
-} = require("./lib/critic");
-const {
   hasSignalLeakRisk,
   stripSignalLeakFragments,
   canStrictlyStripSignalLeakWithoutAmputating,
@@ -170,7 +162,6 @@ const {
   buildCrisisRoutingDecision
 } = require("./lib/chat-routing");
 const { resolveBranchSeedPayload } = require("./lib/branching");
-const { formatHistoryForTextPrompt } = require("./lib/llm-messages");
 const { createWriter } = require("./lib/writer");
 
 const express = require("express");
@@ -771,7 +762,6 @@ async function resolveBranchActorUserId(req) {
 
 const BRANCH_ROUTE_DEBUG = appConfig.branchRouteDebug;
 const DEV_RUNTIME_GUARDS = appConfig.devRuntimeGuards;
-const CRITIC_OBSERVABILITY_DEBUG = appConfig.criticObservabilityDebug;
 
 function logBranchRouteEvent(level = "info", event = "", payload = {}) {
   if (!event) return;
@@ -816,36 +806,6 @@ function warnRuntimeContract(label, issues, context = {}) {
     issues,
     ...context
   }, "runtime-guard");
-}
-
-function buildCriticDeltaMetrics(before = "", after = "") {
-  const from = String(before || "");
-  const to = String(after || "");
-
-  let prefix = 0;
-  const minLen = Math.min(from.length, to.length);
-  while (prefix < minLen && from[prefix] === to[prefix]) {
-    prefix += 1;
-  }
-
-  let suffix = 0;
-  while (
-    suffix < (minLen - prefix)
-    && from[from.length - 1 - suffix] === to[to.length - 1 - suffix]
-  ) {
-    suffix += 1;
-  }
-
-  const changedFrom = Math.max(0, from.length - prefix - suffix);
-  const changedTo = Math.max(0, to.length - prefix - suffix);
-
-  return {
-    fromLength: from.length,
-    toLength: to.length,
-    deltaLength: to.length - from.length,
-    changedSpanFrom: changedFrom,
-    changedSpanTo: changedTo
-  };
 }
 
 // Middleware protecting admin routes by redirecting unauthenticated users.
@@ -1179,8 +1139,6 @@ const {
   normalizeIntersessionMemory,
   normalizeMemory
 });
-
-const { applySelectiveCritic } = createCritic({ client, MODEL_IDS });
 
 const {
   generateReply
@@ -2234,10 +2192,6 @@ app.post("/api/account/conversations/import-local", requireUserAuth, async (req,
                 rejectsUnderlyingPhenomenon: debugMeta.memoryRewriteIntent.rejectsUnderlyingPhenomenon === true,
                 soberReadjustmentActive: debugMeta.memoryRewriteIntent.soberReadjustmentActive === true
               } : null,
-              criticTriggered: debugMeta.criticTriggered === true,
-              criticIssues: Array.isArray(debugMeta.criticIssues) ? debugMeta.criticIssues.map(v => String(v || "")).filter(Boolean) : [],
-              criticOriginalReply: typeof debugMeta.criticOriginalReply === "string" ? debugMeta.criticOriginalReply : null,
-              criticDeterministicEvidence: Array.isArray(debugMeta.criticDeterministicEvidence) ? debugMeta.criticDeterministicEvidence.map(v => String(v || "")).filter(Boolean) : [],
               outputGuardTriggered: debugMeta.outputGuardTriggered === true,
               outputGuardRegenerationUsed: debugMeta.outputGuardRegenerationUsed === true,
               outputGuardFallbackUsed: debugMeta.outputGuardFallbackUsed === true,
@@ -2266,12 +2220,9 @@ app.post("/api/account/conversations/import-local", requireUserAuth, async (req,
               infoRoutingSource: typeof debugMeta.infoRoutingSource === "string" ? debugMeta.infoRoutingSource : null,
               tieBreakReason: typeof debugMeta.tieBreakReason === "string" ? debugMeta.tieBreakReason : null,
               modelConflict: debugMeta.modelConflict === true,
-              humanFieldRisk: debugMeta.humanFieldRisk === true,
-              humanFieldOriginalReply: typeof debugMeta.humanFieldOriginalReply === "string" ? debugMeta.humanFieldOriginalReply : null,
               // Fields stored in Firebase but previously missing from admin API
               writerIntentHints: Array.isArray(debugMeta.writerIntentHints) ? debugMeta.writerIntentHints.map(v => String(v || "")).filter(Boolean) : [],
               stagnationWindow: Array.isArray(debugMeta.stagnationWindow) ? debugMeta.stagnationWindow.map(v => v === true) : [],
-              criticTriggerReasons: Array.isArray(debugMeta.criticTriggerReasons) ? debugMeta.criticTriggerReasons.map(v => String(v || "")).filter(Boolean) : [],
               memoryAge: Number.isInteger(debugMeta.memoryAge) ? Math.max(0, debugMeta.memoryAge) : 0,
               affiliationScore: typeof debugMeta.affiliationScore === "number" ? debugMeta.affiliationScore : null,
               affiliationWindow: Array.isArray(debugMeta.affiliationWindow) ? debugMeta.affiliationWindow.map(v => typeof v === "number" ? v : 0) : [],
@@ -3996,7 +3947,7 @@ function mapChatStageToProgressStep(stage = "") {
     return "understanding";
   }
 
-  if (["reply_generation", "critic"].includes(key)) {
+  if (["reply_generation"].includes(key)) {
     return "drafting";
   }
 
@@ -4324,52 +4275,6 @@ ${context.map(m => `${m.role === "user" ? "Utilisateur" : "Assistant"} : ${m.con
   }
 }
 
-async function rewriteSignalLeakLocally({
-  reply = "",
-  message = "",
-  history = [],
-  promptRegistry: _promptRegistry = buildDefaultPromptRegistry()
-} = {}) {
-  const baseReply = String(reply || "").trim();
-  if (!baseReply) return "";
-
-  const strippedFallback = stripSignalLeakFragments(baseReply);
-  if (!strippedFallback) return "";
-
-  const context = trimInfoAnalysisHistory(history);
-  const user = `Message utilisateur :
-${message}
-
-Contexte recent :
-${context.map(m => `${m.role === "user" ? "Utilisateur" : "Assistant"} : ${m.content}`).join("\n")}
-
-Reponse a corriger :
-${baseReply}`;
-
-  try {
-    const r = await client.chat.completions.create({
-      model: MODEL_IDS.analysis,
-      temperature: 0,
-      max_tokens: 220,
-      messages: [
-        {
-          role: "system",
-          content: "Tu corriges uniquement une fuite de signal interne visible (ex: annotations [signaux: ...]). Regle: conserve le sens clinique et le ton du texte, retire seulement les fragments techniques internes, et ne rajoute aucune explication meta. Reponds STRICTEMENT en JSON: {\"reply\": \"...\"}."
-        },
-        { role: "user", content: user }
-      ]
-    });
-
-    const raw = (r.choices?.[0]?.message?.content || "").replace(/```json|```/g, "").trim();
-    const parsed = JSON.parse(raw);
-    const candidate = typeof parsed.reply === "string" ? parsed.reply.trim() : "";
-    const cleanedCandidate = stripSignalLeakFragments(candidate);
-    return cleanedCandidate || strippedFallback;
-  } catch {
-    return strippedFallback;
-  }
-}
-
 // Main chat endpoint.
 // This route orchestrates the request parsing, safety analysis, mode detection,
 // response generation, memory update, and persistence of both user and assistant messages.
@@ -4524,13 +4429,6 @@ app.post("/chat", async (req, res) => {
         rejectsUnderlyingPhenomenon: safe.memoryRewriteIntent.rejectsUnderlyingPhenomenon === true,
         soberReadjustmentActive: safe.memoryRewriteIntent.soberReadjustmentActive === true
       } : null,
-      criticTriggered: safe.criticTriggered === true,
-      criticIssues: Array.isArray(safe.criticIssues) ? safe.criticIssues : [],
-      criticOriginalReply: typeof safe.criticOriginalReply === "string" ? safe.criticOriginalReply : null,
-      criticTriggerReasons: Array.isArray(safe.criticTriggerReasons) ? safe.criticTriggerReasons : [],
-      criticDeterministicEvidence: Array.isArray(safe.criticDeterministicEvidence)
-        ? safe.criticDeterministicEvidence.map((v) => String(v || "").trim()).filter(Boolean)
-        : [],
       outputGuardTriggered: safe.outputGuardTriggered === true,
       outputGuardRegenerationUsed: safe.outputGuardRegenerationUsed === true,
       outputGuardFallbackUsed: safe.outputGuardFallbackUsed === true,
@@ -5339,15 +5237,6 @@ app.post("/chat", async (req, res) => {
       return getUserIntersessionMemory(userData);
     }
 
-    let recentHistoryTextCache = null;
-    function getRecentHistoryText() {
-      if (recentHistoryTextCache === null) {
-        recentHistoryTextCache = formatHistoryForTextPrompt(recentHistory);
-      }
-
-      return recentHistoryTextCache;
-    }
-
     async function prepareIntersessionMemoryForTurn(flagsSnapshot) {
       if (!userId || userId === "u_anon") {
         return {
@@ -5451,7 +5340,7 @@ app.post("/chat", async (req, res) => {
     }
     
     // 3) N1 signal flows into the main pipeline. writerMode is overridden to
-    // "n1_crisis" inside buildPostureDecision; critic runs systematically.
+    // "n1_crisis" inside buildPostureDecision.
     if (crisisDecision.route === "n1_clarification") {
       logN1PipelineEntry();
     }
@@ -6009,183 +5898,6 @@ app.post("/chat", async (req, res) => {
       }
     }
 
-    // Phase 4: Selective critic - single guardrail for exploration, discharge, and info.
-    // CRITIC_PASS now covers theoretical violations. No separate conflict-model or uncertainty passes.
-    // For n1_crisis, critic runs systematically regardless of heuristics.
-    let criticTriggered = false;
-    let criticIssues = [];
-    let criticOriginalReply = null;
-    let humanFieldRisk = false;
-    let agencyAttributionRisk = false;
-    let signalLeakRisk = false;
-    let contractLengthExceeded = false;
-    let criticTriggerReasons = [];
-    let criticDeterministicEvidence = [];
-    const criticStateApplies = (cs) => cs && (
-      cs.startsWith("exploration_") || cs.startsWith("discharge_") || cs.startsWith("info_")
-    );
-    const n1CrisisForced = postureDecision.conversationState === "n1_crisis";
-    const recallForced = postureDecision.recallInjectionActive === true;
-    const criticApplies = n1CrisisForced || recallForced || criticStateApplies(postureDecision.conversationState);
-    if (criticApplies) {
-      const sentenceCount = String(reply || "")
-        .split(/[.!?]+/)
-        .map(chunk => chunk.trim())
-        .filter(Boolean).length;
-      contractLengthExceeded = Number.isFinite(postureDecision.maxSentences)
-        && postureDecision.maxSentences > 0
-        && sentenceCount > postureDecision.maxSentences;
-      const proceduralEvidence = postureDecision.humanFieldGuardActive === true
-        ? getProceduralInstrumentalEvidence(reply)
-        : null;
-      humanFieldRisk = proceduralEvidence !== null;
-      const formalAddressRisk = postureDecision.formalAddress === true && hasTutoiementInReply(reply);
-      const vouvoiementRisk = postureDecision.formalAddress !== true && hasVouvoiementInReply(reply, message);
-      const theoreticalViolationEvidence = getTheoreticalViolationEvidence(reply);
-      const theoreticalViolationRisk = theoreticalViolationEvidence !== null;
-      const agencyAttributionEvidence = getAgencyAttributionEvidence(reply);
-      agencyAttributionRisk = agencyAttributionEvidence !== null;
-      signalLeakRisk = hasSignalLeakRisk(reply);
-      criticDeterministicEvidence = [];
-      if (proceduralEvidence) {
-        const matchedParts = [
-          proceduralEvidence.proceduralToneMatch,
-          proceduralEvidence.listStructureMatch,
-          proceduralEvidence.instrumentalObjectMatch
-        ].filter(Boolean).map(part => `"${part}"`);
-        criticDeterministicEvidence.push(
-          `humanFieldRisk -> ${proceduralEvidence.pathway} | expression: ${proceduralEvidence.expression} | match: ${matchedParts.join(" + ")}`
-        );
-      }
-      if (agencyAttributionEvidence) {
-        criticDeterministicEvidence.push(
-          `agencyAttributionRisk -> ${agencyAttributionEvidence.pathway} | expression: ${agencyAttributionEvidence.expression} | match: "${agencyAttributionEvidence.match}"`
-        );
-      }
-      if (theoreticalViolationEvidence) {
-        criticDeterministicEvidence.push(
-          `theoreticalViolationRisk -> ${theoreticalViolationEvidence.pathway} | expression: ${theoreticalViolationEvidence.expression} | match: "${theoreticalViolationEvidence.match}"`
-        );
-      }
-      const criticShouldTrigger =
-        n1CrisisForced ||
-        recallForced ||
-        agencyAttributionRisk ||
-        contractLengthExceeded ||
-        humanFieldRisk ||
-        formalAddressRisk ||
-        vouvoiementRisk ||
-        theoreticalViolationRisk ||
-        signalLeakRisk;
-      criticTriggerReasons = criticShouldTrigger ? [
-        ...(agencyAttributionRisk ? ["agencyAttributionRisk"] : []),
-        ...(contractLengthExceeded ? ["contractLengthExceeded"] : []),
-        ...(humanFieldRisk ? ["humanFieldRisk"] : []),
-        ...(formalAddressRisk ? ["formalAddressRisk"] : []),
-        ...(vouvoiementRisk ? ["vouvoiementRisk"] : []),
-        ...(theoreticalViolationRisk ? ["theoreticalViolationRisk"] : []),
-        ...(signalLeakRisk ? ["signalLeakRisk"] : []),
-        ...(n1CrisisForced ? ["n1CrisisForced"] : []),
-        ...(recallForced ? ["recallForced"] : []),
-      ] : [];
-      if (criticShouldTrigger) {
-        const replyBeforeCritic = reply;
-        logChatDecision("critic_triggered", {
-          conversationState: postureDecision.conversationState,
-          contractLengthExceeded,
-          humanFieldRisk,
-          sentenceCount
-        });
-        const t_critic = Date.now();
-        const criticResult = await applySelectiveCritic({
-          reply,
-          message,
-          history: recentHistory,
-          historyText: getRecentHistoryText(),
-          postureDecision,
-          promptRegistry: activePromptRegistry
-        });
-        chatStageTimings.push({ stage: "critic", deltaMs: Date.now() - t_critic });
-        throwIfCanceled();
-        criticTriggered = true;
-        const contractForbidden = new Set(Array.isArray(postureDecision.forbidden) ? postureDecision.forbidden : []);
-        const filteredCriticIssues = Array.isArray(criticResult.criticIssues)
-          ? criticResult.criticIssues.filter(issue => {
-            if (typeof issue !== "string") return false;
-            if (!issue.startsWith("forbidden_")) return true;
-            const forbiddenTerm = issue.slice("forbidden_".length);
-            return contractForbidden.has(forbiddenTerm);
-          })
-          : [];
-        criticIssues = filteredCriticIssues;
-        if (filteredCriticIssues.length > 0) {
-          criticOriginalReply = reply;
-          reply = criticResult.reply;
-          logChatDecision("critic_rewrote", {
-            issueCount: filteredCriticIssues.length,
-            issues: filteredCriticIssues
-          });
-        }
-
-        if (signalLeakRisk) {
-          const strictStrippedReply = stripSignalLeakFragments(reply);
-          if (
-            strictStrippedReply !== reply
-            && canStrictlyStripSignalLeakWithoutAmputating(reply, strictStrippedReply)
-          ) {
-            if (!criticOriginalReply) criticOriginalReply = reply;
-            reply = strictStrippedReply;
-            if (!criticIssues.includes("signal_leak_strict_removed")) {
-              criticIssues = [...criticIssues, "signal_leak_strict_removed"];
-            }
-            logChatDecision("critic_signal_leak_strict_removed", {
-              mode: "strict_strip"
-            });
-          } else if (strictStrippedReply !== reply) {
-            const localRewrittenReply = await withAnalyzerTiming(
-              "signal_leak_local_rewrite",
-              rewriteSignalLeakLocally({
-                reply,
-                message,
-                history: recentHistory,
-                promptRegistry: activePromptRegistry
-              })
-            );
-            const localCandidate = typeof localRewrittenReply === "string" ? localRewrittenReply.trim() : "";
-            const localCandidateHasLeak = hasSignalLeakRisk(localCandidate);
-            const shouldUseLocalCandidate = localCandidate && !localCandidateHasLeak;
-
-            if (!criticOriginalReply) criticOriginalReply = reply;
-            if (shouldUseLocalCandidate) {
-              reply = localCandidate;
-              if (!criticIssues.includes("signal_leak_local_rewritten")) {
-                criticIssues = [...criticIssues, "signal_leak_local_rewritten"];
-              }
-            } else {
-              // Last-resort safety fallback: remove leaked fragment even if the output is shorter.
-              reply = strictStrippedReply;
-              if (!criticIssues.includes("signal_leak_strict_removed")) {
-                criticIssues = [...criticIssues, "signal_leak_strict_removed"];
-              }
-            }
-            logChatDecision("critic_signal_leak_local_rewrite", {
-              mode: shouldUseLocalCandidate ? "local_rewrite" : "local_rewrite_strict_fallback"
-            });
-          }
-        }
-
-        if (CRITIC_OBSERVABILITY_DEBUG) {
-          logChatDecision("critic_observability", {
-            conversationState: postureDecision.conversationState,
-            triggerReasons: criticTriggerReasons,
-            issues: criticIssues,
-            rewrote: reply !== replyBeforeCritic,
-            delta: buildCriticDeltaMetrics(replyBeforeCritic, reply)
-          });
-        }
-      }
-    }
-
     if (detectedState === "exploration") {
       relanceAnalysis = await analyzeExplorationRelance({
         message,
@@ -6385,19 +6097,12 @@ app.post("/chat", async (req, res) => {
       memoryUpdateDecision: postureDecision.memoryUpdateDecision || "hold",
       memoryUpdateReason: postureDecision.memoryUpdateReason || "unspecified",
       memoryUpdateSource: postureDecision.memoryUpdateSource || "deterministic",
-      criticTriggered,
-      criticIssues,
-      criticOriginalReply,
-      criticTriggerReasons,
-      criticDeterministicEvidence,
       outputGuardTriggered,
       outputGuardRegenerationUsed,
       outputGuardFallbackUsed,
       outputGuardViolations,
       outputGuardEvidence,
       analyzerDeterministicEvidence,
-      humanFieldRisk,
-      contractLengthExceeded,
       // Posture contract fields (V3)
       intent: postureDecision.intent,
       forbidden: postureDecision.forbidden,
@@ -6469,8 +6174,6 @@ app.post("/chat", async (req, res) => {
         interpretationRejection: responseDebugMeta.interpretationRejection === true,
         needsSoberReadjustment: responseDebugMeta.needsSoberReadjustment === true,
         relationalAdjustmentActive: responseDebugMeta.relationalAdjustmentActive === true,
-        criticTriggered: responseDebugMeta.criticTriggered === true,
-        criticIssues: Array.isArray(responseDebugMeta.criticIssues) ? responseDebugMeta.criticIssues : [],
         confidenceSignal: responseDebugMeta.confidenceSignal,
         explorationCalibrationLevel: responseDebugMeta.explorationCalibrationLevel,
         explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
