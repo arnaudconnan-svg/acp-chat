@@ -5089,17 +5089,39 @@ app.post("/chat", async (req, res) => {
             null,
             previousMemoryState
           );
-          const updatedMemoryText = typeof updatedMemory?.memoryText === "string" ? updatedMemory.memoryText : memorySnapshot;
+          const rawMem = typeof updatedMemory?.memoryText === "string" ? updatedMemory.memoryText : memorySnapshot;
+
+          const mergedStateResult = mergeMemoryStateWithFinalizedText({
+            previousMemoryState,
+            finalizedMemoryText: rawMem,
+            deleteAncientMovementsById: Array.isArray(updatedMemory?.deleteAncientMovementsById)
+              ? updatedMemory.deleteAncientMovementsById
+              : [],
+            pastSignals: null,
+            nowMs: Date.now(),
+            lastActivityMs: previousConversationActivityMs,
+            ttlMs: MEMORY_INACTIVITY_TTL_MS
+          });
+          const persistedMemoryText = normalizeMemory(mergedStateResult.memoryText, activePromptRegistry);
+          const crisisMemoryRewriteDebug = {
+            beforeSanitization: typeof updatedMemory?.memoryBeforeSanitization === "string"
+              ? normalizeMemory(updatedMemory.memoryBeforeSanitization, activePromptRegistry)
+              : null,
+            source: typeof updatedMemory?.source === "string" ? updatedMemory.source : null,
+            capturedAt: new Date().toISOString()
+          };
+
           if (isPrivateConversation && conversationId) {
             privateConversationMemoryCache.set(String(conversationId), {
-              memory: normalizeMemory(updatedMemoryText, activePromptRegistry),
-              memoryState: normalizeMemoryStateShape(previousMemoryState, "", Date.now()),
+              memory: persistedMemoryText,
+              memoryState: mergedStateResult.memoryState,
+              memoryRewriteDebug: crisisMemoryRewriteDebug,
               updatedAt: Date.now()
             });
             return;
           }
 
-          await persistConversationMemoryWithRetry(updatedMemoryText, activePromptRegistry, 2, normalizeMemoryStateShape(previousMemoryState, "", Date.now()));
+          await persistConversationMemoryWithRetry(persistedMemoryText, activePromptRegistry, 2, mergedStateResult.memoryState, crisisMemoryRewriteDebug);
         } catch {
           // Non-bloquant : la reponse utilisateur ne depend pas de cette mise a jour memoire.
         }
