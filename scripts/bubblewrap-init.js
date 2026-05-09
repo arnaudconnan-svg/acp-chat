@@ -55,14 +55,14 @@ function initBubblewrap(manifest) {
   console.log("[bubblewrap] Initializing Android project...");
 
   const args = [
-    `--manifest="${manifest.webManifestUrl}"`,
-    `--directory="${projectDir}"`,
+    "init",
+    `--manifest=${manifest.webManifestUrl}`,
+    `--directory=${projectDir}`,
     "--skipKeystoreGeneration"
   ];
 
   try {
-    const cmd = `bubblewrap init ${args.join(" ")}`;
-    execSync(cmd, { stdio: "inherit", shell: true });
+    execSync("bubblewrap " + args.join(" "), { stdio: "inherit", shell: true });
     console.log("[bubblewrap] Project initialized at", projectDir);
     return projectDir;
   } catch (err) {
