@@ -1,1 +1,14 @@
-[]
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "io.facilitat.app",
+      "sha256_cert_fingerprints": [
+        "FF:DA:29:D4:D5:70:D4:6B:52:39:54:69:69:D5:80:F5:AF:95:BC:1E:29:31:A4:2F:A8:0D:25:51:98:9D:97:7E"
+      ]
+    }
+  }
+]
