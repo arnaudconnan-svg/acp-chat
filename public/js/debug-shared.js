@@ -196,6 +196,15 @@
       criticDeterministicEvidence: Array.isArray(safe.criticDeterministicEvidence)
         ? safe.criticDeterministicEvidence.map(function mapEvidence(v) { return String(v || "").trim(); }).filter(Boolean)
         : [],
+      outputGuardTriggered: toBooleanTrue(safe.outputGuardTriggered),
+      outputGuardRegenerationUsed: toBooleanTrue(safe.outputGuardRegenerationUsed),
+      outputGuardFallbackUsed: toBooleanTrue(safe.outputGuardFallbackUsed),
+      outputGuardViolations: Array.isArray(safe.outputGuardViolations)
+        ? safe.outputGuardViolations.map(function mapViolation(v) { return String(v || "").trim(); }).filter(Boolean)
+        : [],
+      outputGuardEvidence: Array.isArray(safe.outputGuardEvidence)
+        ? safe.outputGuardEvidence.map(function mapEvidence(v) { return String(v || "").trim(); }).filter(Boolean)
+        : [],
       analyzerDeterministicEvidence: Array.isArray(safe.analyzerDeterministicEvidence)
         ? safe.analyzerDeterministicEvidence.map(function mapAnalyzerEvidence(v) { return String(v || "").trim(); }).filter(Boolean)
         : [],
@@ -525,6 +534,20 @@
 
     if (meta.closureIntent === true) {
       lines.push("Une intention de cloture de session a ete detectee.");
+    }
+
+    if (meta.outputGuardTriggered === true) {
+      if (meta.outputGuardFallbackUsed === true) {
+        lines.push("Le garde de sortie deterministe a applique un fallback minimal apres echec de regeneration.");
+      } else if (meta.outputGuardRegenerationUsed === true) {
+        lines.push("Le garde de sortie deterministe a impose une regeneration ciblee du writer.");
+      } else {
+        lines.push("Le garde de sortie deterministe a ete declenche.");
+      }
+
+      if (Array.isArray(meta.outputGuardViolations) && meta.outputGuardViolations.length > 0) {
+        lines.push("Violations detectees : " + meta.outputGuardViolations.join(" · "));
+      }
     }
 
     if (meta.criticTriggered === true) {

@@ -153,6 +153,14 @@ const {
   getProceduralInstrumentalEvidence
 } = require("./lib/critic");
 const {
+  hasSignalLeakRisk,
+  stripSignalLeakFragments,
+  canStrictlyStripSignalLeakWithoutAmputating,
+  validateReplyContract,
+  buildRepairDirectives,
+  buildDeterministicFallbackReply
+} = require("./lib/output-guard");
+const {
   buildTopChips,
   buildDirectivityText,
   buildResponseDebugMeta: _buildResponseDebugMeta
@@ -2230,6 +2238,11 @@ app.post("/api/account/conversations/import-local", requireUserAuth, async (req,
               criticIssues: Array.isArray(debugMeta.criticIssues) ? debugMeta.criticIssues.map(v => String(v || "")).filter(Boolean) : [],
               criticOriginalReply: typeof debugMeta.criticOriginalReply === "string" ? debugMeta.criticOriginalReply : null,
               criticDeterministicEvidence: Array.isArray(debugMeta.criticDeterministicEvidence) ? debugMeta.criticDeterministicEvidence.map(v => String(v || "")).filter(Boolean) : [],
+              outputGuardTriggered: debugMeta.outputGuardTriggered === true,
+              outputGuardRegenerationUsed: debugMeta.outputGuardRegenerationUsed === true,
+              outputGuardFallbackUsed: debugMeta.outputGuardFallbackUsed === true,
+              outputGuardViolations: Array.isArray(debugMeta.outputGuardViolations) ? debugMeta.outputGuardViolations.map(v => String(v || "")).filter(Boolean) : [],
+              outputGuardEvidence: Array.isArray(debugMeta.outputGuardEvidence) ? debugMeta.outputGuardEvidence.map(v => String(v || "")).filter(Boolean) : [],
               analyzerDeterministicEvidence: Array.isArray(debugMeta.analyzerDeterministicEvidence) ? debugMeta.analyzerDeterministicEvidence.map(v => String(v || "")).filter(Boolean) : [],
               intent: typeof debugMeta.intent === "string" ? debugMeta.intent : null,
               forbidden: Array.isArray(debugMeta.forbidden) ? debugMeta.forbidden.map(v => String(v || "")).filter(Boolean) : [],
@@ -4259,69 +4272,6 @@ function buildTurnSignals(postureDecision, {
   return parts.join(", ");
 }
 
-const INTERNAL_SIGNAL_LEAK_TOKENS = [
-  "exploration_open",
-  "exploration_restrained",
-  "discharge_regulated",
-  "discharge_dysregulated",
-  "info_pure",
-  "info_features",
-  "info_psychoeducation",
-  "stabilization",
-  "alliance_rupture",
-  "closure",
-  "n1_crisis",
-  "n2_crisis",
-  "etat",
-  "state",
-  "niveau",
-  "alliance",
-  "tension",
-  "autocrit",
-  "decentrage_emo",
-  "dependance",
-  "dependency"
-];
-
-function hasSignalLeakRisk(replyText = "") {
-  const text = String(replyText || "");
-  if (!text) return false;
-
-  const bracketSignalPattern = /\[[^\]]*(signaux?|signals?|etat|state|niveau|alliance|tension|autocrit|decentrage_emo|dependance|dependency)\s*:[^\]]*\]/i;
-  if (bracketSignalPattern.test(text)) return true;
-
-  const lower = text.toLowerCase();
-  if (!(lower.includes("[") && lower.includes("]") && (lower.includes("signal") || lower.includes("signaux")))) {
-    return false;
-  }
-
-  return INTERNAL_SIGNAL_LEAK_TOKENS.some((token) => lower.includes(String(token).toLowerCase()));
-}
-
-function stripSignalLeakFragments(replyText = "") {
-  const text = String(replyText || "");
-  if (!text) return text;
-
-  const linePattern = /^\s*\[[^\]]*(signaux?|signals?|etat|state|niveau|alliance|tension|autocrit|decentrage_emo|dependance|dependency)[^\]]*\]\s*$/gim;
-  const inlinePattern = /\s*\[[^\]]*(signaux?|signals?|etat|state|niveau|alliance|tension|autocrit|decentrage_emo|dependance|dependency)[^\]]*\]/gim;
-
-  return text
-    .replace(linePattern, "")
-    .replace(inlinePattern, "")
-    .replace(/[ \t]+\n/g, "\n")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
-}
-
-function canStrictlyStripSignalLeakWithoutAmputating(originalText = "", strippedText = "") {
-  const original = String(originalText || "").replace(/\s+/g, " ").trim();
-  const stripped = String(strippedText || "").replace(/\s+/g, " ").trim();
-  if (!stripped) return false;
-  if (stripped.length >= 120) return true;
-  const ratio = stripped.length / Math.max(1, original.length);
-  return ratio >= 0.55;
-}
-
 function deriveAttachmentLevelFromScore(attachmentScore = 0) {
   const score = Number.isFinite(attachmentScore) ? attachmentScore : 0;
   if (score <= 30) return "low";
@@ -4580,6 +4530,15 @@ app.post("/chat", async (req, res) => {
       criticTriggerReasons: Array.isArray(safe.criticTriggerReasons) ? safe.criticTriggerReasons : [],
       criticDeterministicEvidence: Array.isArray(safe.criticDeterministicEvidence)
         ? safe.criticDeterministicEvidence.map((v) => String(v || "").trim()).filter(Boolean)
+        : [],
+      outputGuardTriggered: safe.outputGuardTriggered === true,
+      outputGuardRegenerationUsed: safe.outputGuardRegenerationUsed === true,
+      outputGuardFallbackUsed: safe.outputGuardFallbackUsed === true,
+      outputGuardViolations: Array.isArray(safe.outputGuardViolations)
+        ? safe.outputGuardViolations.map((v) => String(v || "").trim()).filter(Boolean)
+        : [],
+      outputGuardEvidence: Array.isArray(safe.outputGuardEvidence)
+        ? safe.outputGuardEvidence.map((v) => String(v || "").trim()).filter(Boolean)
         : [],
       analyzerDeterministicEvidence: Array.isArray(safe.analyzerDeterministicEvidence)
         ? safe.analyzerDeterministicEvidence.map((v) => String(v || "").trim()).filter(Boolean)
@@ -5988,6 +5947,67 @@ app.post("/chat", async (req, res) => {
 
     let reply = generatedBase.reply;
     let relanceAnalysis = null;
+    let outputGuardTriggered = false;
+    let outputGuardRegenerationUsed = false;
+    let outputGuardFallbackUsed = false;
+    let outputGuardViolations = [];
+    let outputGuardEvidence = [];
+
+    const initialGuardResult = validateReplyContract({
+      reply,
+      postureDecision,
+      message
+    });
+
+    if (!initialGuardResult.isValid) {
+      outputGuardTriggered = true;
+      outputGuardViolations = initialGuardResult.violations;
+      outputGuardEvidence = initialGuardResult.evidence;
+
+      const repairDirectives = buildRepairDirectives(initialGuardResult.violations);
+      const retryPostureDecision = {
+        ...postureDecision,
+        outputGuardRepairDirectives: repairDirectives
+      };
+
+      const retryGenerated = await generateReply({
+        message,
+        history: recentHistory,
+        memory: recallRouting.isRecallAttempt === true ? memoryForReply : previousMemory,
+        postureDecision: retryPostureDecision,
+        interpretationRejection: safeInterpretationRejection,
+        intersessionMemoryForTurn: intersessionMemoryForThisTurn,
+        promptRegistry: activePromptRegistry,
+      });
+      throwIfCanceled();
+
+      outputGuardRegenerationUsed = true;
+      reply = retryGenerated.reply;
+
+      const retryGuardResult = validateReplyContract({
+        reply,
+        postureDecision,
+        message
+      });
+
+      if (!retryGuardResult.isValid) {
+        outputGuardFallbackUsed = true;
+        outputGuardViolations = retryGuardResult.violations;
+        outputGuardEvidence = retryGuardResult.evidence;
+
+        reply = buildDeterministicFallbackReply({
+          conversationState: postureDecision.conversationState,
+          formalAddress: postureDecision.formalAddress === true
+        });
+      }
+
+      if (hasSignalLeakRisk(reply)) {
+        const stripped = stripSignalLeakFragments(reply);
+        if (canStrictlyStripSignalLeakWithoutAmputating(reply, stripped)) {
+          reply = stripped;
+        }
+      }
+    }
 
     // Phase 4: Selective critic - single guardrail for exploration, discharge, and info.
     // CRITIC_PASS now covers theoretical violations. No separate conflict-model or uncertainty passes.
@@ -6370,6 +6390,11 @@ app.post("/chat", async (req, res) => {
       criticOriginalReply,
       criticTriggerReasons,
       criticDeterministicEvidence,
+      outputGuardTriggered,
+      outputGuardRegenerationUsed,
+      outputGuardFallbackUsed,
+      outputGuardViolations,
+      outputGuardEvidence,
       analyzerDeterministicEvidence,
       humanFieldRisk,
       contractLengthExceeded,
