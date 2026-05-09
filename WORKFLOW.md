@@ -61,6 +61,10 @@ Verification minimale apres changement backend significatif :
 1. `node --check server.js`
 2. `npm run verify`
 
+Note prompting :
+- `npm run verify` inclut `npm run prompts:consistency`, garde-fou deterministe des incoherences de prompting (notamment `UPDATE_MEMORY`)
+- tout echec de ce harnais est bloquant, meme si le reste des harnesses passe
+
 Verification complementaire selon le chantier :
 
 - lecture des logs `[PIPELINE]` pour un diagnostic fin de `/chat`

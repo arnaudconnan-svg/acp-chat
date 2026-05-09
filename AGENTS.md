@@ -214,6 +214,17 @@ Après chaque modification significative :
 
 `npm run verify` est le filet principal. Il couvre : state machine, posture, contract-validator, flags, conversation-state, debugmeta-unit, critic, chat-routing, crisis-routing, llm-messages, conversation-data.
 
+### Règle de cohérence prompting inter-sessions
+
+Pour éviter les incohérences introduites par patchs incrémentaux dans `lib/prompts.js`, le repo impose un harnais déterministe dédié : `npm run prompts:consistency` (inclus dans `npm run verify`).
+
+Portée :
+- vérifie les contradictions connues de `UPDATE_MEMORY` (instructions legacy vs contrat déterministe actuel)
+- bloque le patch si une formulation obsolète réapparaît
+
+Obligation :
+- après toute modification de prompt ou de contrat mémoire (`lib/prompts.js`, parse/merge mémoire), considérer un échec de `prompts:consistency` comme bloquant au même titre qu'un harness rouge
+
 Les commandes `pipeline:harness`, `debugmeta:harness` et `eval:chat` dépendent d'un LLM en direct — elles requièrent un GO explicite avant lancement.
 
 Règle agent (obligatoire) : ne jamais proposer spontanément des tests online (LLM en direct). Ces commandes ne sont mentionnées ou lancées que si l'utilisateur les demande explicitement.

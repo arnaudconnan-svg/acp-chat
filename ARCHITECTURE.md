@@ -46,6 +46,17 @@ Les invariants protegent le comportement, pas la forme du code.
 - le contrat frontend/backend doit rester coherent dans le meme patch
 - `applySelectiveCritic(...)` est l'unique passe post-generation qui peut modifier la reponse
 
+## Contrat prompting/memoire (source de verite)
+
+Pour la memoire de session :
+
+- `UPDATE_MEMORY` produit uniquement le texte des sections ecrites par le LLM (contexte stable + mouvements en cours)
+- le transfert vers `Anciens mouvements`, les identifiants, l'archivage et les timestamps sont calcules de facon deterministe cote code (`mergeMemoryStateWithFinalizedText`)
+
+Consequence d'architecture :
+- aucune instruction prompt ne doit reintroduire une logique d'archivage LLM-driven
+- un harnais `prompts:consistency` enforce cette contrainte dans la verification standard
+
 ## Observabilite
 
 Le pipeline produit plusieurs traces utiles :
