@@ -50,8 +50,9 @@ Les invariants protegent le comportement, pas la forme du code.
 
 Pour la memoire de session :
 
-- `UPDATE_MEMORY` produit uniquement le texte des sections ecrites par le LLM (contexte stable + mouvements en cours)
+- `UPDATE_MEMORY` produit un texte au format 3 sections (`Contexte stable`, `Mouvements en cours`, `Anciens mouvements`), avec `Anciens mouvements` force a `-`
 - le transfert vers `Anciens mouvements`, les identifiants, l'archivage et les timestamps sont calcules de facon deterministe cote code (`mergeMemoryStateWithFinalizedText`)
+- les anciens prompts memoire non relies au runtime (finalize/rewrite/compress legacy) ne font pas partie de l'architecture active
 
 Consequence d'architecture :
 - aucune instruction prompt ne doit reintroduire une logique d'archivage LLM-driven

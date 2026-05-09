@@ -62,9 +62,21 @@ function run() {
   );
 
   check(
-    "UPDATE_MEMORY structure stays 2 writable sections",
-    updateMemory.includes("Les deux blocs doivent toujours être présents") && updateMemory.includes('ne l\'écris pas'),
-    "Missing explicit 2-block writable structure guard"
+    "UPDATE_MEMORY structure keeps 3 sections with locked Anciens mouvements",
+    updateMemory.includes("Contexte stable:") &&
+      updateMemory.includes("Mouvements en cours:") &&
+      updateMemory.includes("Anciens mouvements:") &&
+      updateMemory.includes("Les trois blocs doivent toujours être présents") &&
+      updateMemory.includes('laisse toujours "Anciens mouvements" à "-"'),
+    "Missing strict 3-block runtime-compatible structure guard"
+  );
+
+  check(
+    "removed dead memory prompts stay absent",
+    !Object.prototype.hasOwnProperty.call(registry, "REWRITE_INTERPRETATION_REJECTION_MEMORY") &&
+      !Object.prototype.hasOwnProperty.call(registry, "FINALIZE_MEMORY_CANDIDATE") &&
+      !Object.prototype.hasOwnProperty.call(registry, "COMPRESS_INTERSESSION_MEMORY"),
+    "Dead memory prompt keys were reintroduced"
   );
 
   if (failed > 0) {
