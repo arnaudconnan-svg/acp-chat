@@ -70,7 +70,7 @@ for (const field of [
   "topChips","memory","directivityText","conversationState",
   "consecutiveNonExplorationTurns","interpretationRejection","needsSoberReadjustment","relationalAdjustmentActive",
   "pipelineStages","explorationCalibrationLevel","explorationSignal",
-  "memoryRewriteIntent","memoryCompressed","memoryBeforeCompression",
+  "memoryRewriteIntent","memoryBeforeSanitization",
   "criticTriggered","criticIssues","intent","forbidden","confidenceSignal",
   "responseRegister","phraseLengthPolicy","relancePolicy","somaticFocusPolicy","actionCollapseGuardActive",
   "stateTransitionFrom","stateTransitionValid","stateTransitionRequested",
@@ -93,8 +93,7 @@ assertDeepEqual("default values", base, {
   explorationCalibrationLevel: null,
   explorationSignal: null,
   memoryRewriteIntent: null,
-  memoryCompressed: false,
-  memoryBeforeCompression: null,
+  memoryBeforeSanitization: null,
   criticTriggered: false,
   criticIssues: [],
   intent: null,
@@ -215,33 +214,29 @@ assert("normalizeMemory trims whitespace", withMem.memory, "text.");
 const withFallback = buildResponseDebugMeta({ memory: "", normalizeMemory: (m) => String(m || "").trim() || "NONE" });
 assert("normalizeMemory fallback", withFallback.memory, "NONE");
 
-// 11. memoryCompressed
-console.log("\n-- buildResponseDebugMeta memoryCompressed");
-const compressed = buildResponseDebugMeta({ memoryCompressed: true, memoryBeforeCompression: "  Old text.  ", normalizeMemory: (m) => String(m || "").trim() });
-assert("memoryCompressed true", compressed.memoryCompressed, true);
-assert("memoryBeforeCompression present", compressed.memoryBeforeCompression, "Old text.");
-const notCompressed = buildResponseDebugMeta({ memoryCompressed: false, memoryBeforeCompression: "irrelevant" });
-assert("memoryBeforeCompression null when not compressed", notCompressed.memoryBeforeCompression, null);
+// 11. memoryBeforeSanitization
+console.log("\n-- buildResponseDebugMeta memoryBeforeSanitization");
+const withBeforeSanitization = buildResponseDebugMeta({ memoryBeforeSanitization: "  Old text.  ", normalizeMemory: (m) => String(m || "").trim() });
+assert("memoryBeforeSanitization present", withBeforeSanitization.memoryBeforeSanitization, "Old text.");
+const withoutBeforeSanitization = buildResponseDebugMeta({ memoryBeforeSanitization: "" });
+assert("memoryBeforeSanitization null when empty", withoutBeforeSanitization.memoryBeforeSanitization, null);
 
 // 12. memoryRewriteIntent
 console.log("\n-- buildResponseDebugMeta memoryRewriteIntent");
-const rewriteIntentDefaults = buildResponseDebugMeta({ memoryRewriteIntent: { compressionRequested: false } });
+const rewriteIntentDefaults = buildResponseDebugMeta({ memoryRewriteIntent: {} });
 assert("memoryRewriteIntent normalized defaults", rewriteIntentDefaults.memoryRewriteIntent, {
-  compressionRequested: false,
   interpretationRejectionActive: false,
   rejectsUnderlyingPhenomenon: false,
   soberReadjustmentActive: false
 });
 const rewriteIntentTrue = buildResponseDebugMeta({
   memoryRewriteIntent: {
-    compressionRequested: true,
     interpretationRejectionActive: true,
     rejectsUnderlyingPhenomenon: true,
     soberReadjustmentActive: true
   }
 });
 assert("memoryRewriteIntent all true", rewriteIntentTrue.memoryRewriteIntent, {
-  compressionRequested: true,
   interpretationRejectionActive: true,
   rejectsUnderlyingPhenomenon: true,
   soberReadjustmentActive: true

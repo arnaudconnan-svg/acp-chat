@@ -3045,7 +3045,6 @@
     // Module-level intersession memory for authenticated accounts.
     // Populated once on load; used as initial memory for new conversations.
     let _pendingIntersessionMemory = null;
-    let _intersessionCompressionDoneThisSession = false;
     let conversationsPrivateHintShownThisLoad = false;
     let conversationsPrivateHintActive = false;
     let conversationsPrivateHintRevealTimer = null;
@@ -3147,21 +3146,6 @@
       return false;
     }
 
-    async function ensureIntersessionCompressed() {
-      if (!userSessionState.authenticated) return;
-      if (_intersessionCompressionDoneThisSession) return;
-      try {
-        const res = await fetch("/api/intersession-memory/compress", {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" }
-        });
-        if (res.ok) {
-          _intersessionCompressionDoneThisSession = true;
-        }
-      } catch {}
-    }
-
     async function persistAdminMailsPreference(mailsEnabled) {
       try {
         await fetch("/api/admin/settings", {
@@ -3218,8 +3202,6 @@
           }
         }
       } catch (_) {}
-      // Fire-and-forget: compress the intersession memory for the next session injection.
-      ensureIntersessionCompressed().catch(() => {});
     }
 
     function updateAccountBtnVisibility() {
@@ -7439,8 +7421,8 @@
           sections.push({
             title: "M\u00e9moire utilis\u00e9e pour ce tour",
             content: meta.memory,
-            memoryRewritten: meta.memoryCompressed === true,
-            memoryBeforeRewrite: meta.memoryBeforeCompression || null
+            memoryRewritten: !!meta.memoryBeforeSanitization,
+            memoryBeforeRewrite: meta.memoryBeforeSanitization || null
           });
         }
 
@@ -7760,7 +7742,6 @@
               (
                 !!debugMeta.memoryRewriteIntent &&
                 (
-                  debugMeta.memoryRewriteIntent.compressionRequested === true ||
                   debugMeta.memoryRewriteIntent.interpretationRejectionActive === true ||
                   debugMeta.memoryRewriteIntent.rejectsUnderlyingPhenomenon === true ||
                   debugMeta.memoryRewriteIntent.soberReadjustmentActive === true
@@ -8508,7 +8489,6 @@
       closeTerminatedSessionModal();
       
       closeSessionBackend().catch(() => {});
-      ensureIntersessionCompressed().catch(() => {});
       
       fadeChatThenReset(() => {
         clearSessionStorageExceptMemory();

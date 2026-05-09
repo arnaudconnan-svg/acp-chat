@@ -2024,8 +2024,8 @@
             sections.push({
               title: "M\u00e9moire utilis\u00e9e pour ce tour",
               content: meta.memory,
-              memoryRewritten: meta.memoryCompressed === true,
-              memoryBeforeRewrite: meta.memoryBeforeCompression || null
+              memoryRewritten: !!meta.memoryBeforeSanitization,
+              memoryBeforeRewrite: meta.memoryBeforeSanitization || null
             });
           }
           

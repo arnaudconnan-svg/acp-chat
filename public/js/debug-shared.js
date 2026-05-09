@@ -174,19 +174,17 @@
       explorationSignal: toTrimmedString(safe.explorationSignal, "") || null,
       memoryRewriteIntent: safe.memoryRewriteIntent && typeof safe.memoryRewriteIntent === "object"
         ? {
-            compressionRequested: toBooleanTrue(safe.memoryRewriteIntent.compressionRequested),
             interpretationRejectionActive: toBooleanTrue(safe.memoryRewriteIntent.interpretationRejectionActive),
             rejectsUnderlyingPhenomenon: toBooleanTrue(safe.memoryRewriteIntent.rejectsUnderlyingPhenomenon),
             soberReadjustmentActive: toBooleanTrue(safe.memoryRewriteIntent.soberReadjustmentActive)
           }
         : null,
-      memoryCompressed: toBooleanTrue(safe.memoryCompressed),
       memoryAge: Number.isInteger(safe.memoryAge) && safe.memoryAge > 0 ? safe.memoryAge : 0,
       memoryPrioritySignal: typeof safe.memoryPrioritySignal === "string" && safe.memoryPrioritySignal ? safe.memoryPrioritySignal : "normal",
       memoryUpdateDecision: safe.memoryUpdateDecision === "update" ? "update" : "hold",
       memoryUpdateReason: toTrimmedString(safe.memoryUpdateReason, "") || "unspecified",
       memoryUpdateSource: toTrimmedString(safe.memoryUpdateSource, "") || "deterministic",
-      memoryBeforeCompression: toTrimmedString(safe.memoryBeforeCompression, "") || null,
+      memoryBeforeSanitization: toTrimmedString(safe.memoryBeforeSanitization, "") || null,
       criticTriggered: toBooleanTrue(safe.criticTriggered),
       criticIssues: Array.isArray(safe.criticIssues)
         ? safe.criticIssues.map(function mapIssue(v) { return String(v || "").trim(); }).filter(Boolean)
@@ -630,9 +628,6 @@
 
     if (!intent) return lines;
 
-    if (intent.compressionRequested === true) {
-      lines.push("Compression m\u00e9moire demand\u00e9e");
-    }
     if (intent.interpretationRejectionActive === true) {
       lines.push("R\u00e9\u00e9criture motiv\u00e9e par un rejet d'interpr\u00e9tation");
     }

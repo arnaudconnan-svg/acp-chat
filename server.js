@@ -1162,9 +1162,6 @@ const {
   MEMORY_INACTIVITY_TTL_MS,
   mergeMemoryStateWithFinalizedText,
   normalizeMemoryStateShape,
-  compressIntersessionMemory,
-  finalizeMemoryCandidate,
-  shouldCompressMemoryCandidate,
   updateIntersessionMemory,
   updateMemory
 } = createMemoryHelpers({
@@ -2224,13 +2221,10 @@ app.post("/api/account/conversations/import-local", requireUserAuth, async (req,
               explorationCalibrationLevel: Number.isInteger(debugMeta.explorationCalibrationLevel) ? debugMeta.explorationCalibrationLevel : null,
               explorationSignal: typeof debugMeta.explorationSignal === "string" ? debugMeta.explorationSignal : null,
               memoryRewriteIntent: debugMeta.memoryRewriteIntent && typeof debugMeta.memoryRewriteIntent === "object" ? {
-                compressionRequested: debugMeta.memoryRewriteIntent.compressionRequested === true,
                 interpretationRejectionActive: debugMeta.memoryRewriteIntent.interpretationRejectionActive === true,
                 rejectsUnderlyingPhenomenon: debugMeta.memoryRewriteIntent.rejectsUnderlyingPhenomenon === true,
                 soberReadjustmentActive: debugMeta.memoryRewriteIntent.soberReadjustmentActive === true
               } : null,
-              memoryCompressed: debugMeta.memoryCompressed === true,
-              memoryBeforeCompression: typeof debugMeta.memoryBeforeCompression === "string" ? debugMeta.memoryBeforeCompression : null,
               criticTriggered: debugMeta.criticTriggered === true,
               criticIssues: Array.isArray(debugMeta.criticIssues) ? debugMeta.criticIssues.map(v => String(v || "")).filter(Boolean) : [],
               criticOriginalReply: typeof debugMeta.criticOriginalReply === "string" ? debugMeta.criticOriginalReply : null,
@@ -3072,8 +3066,6 @@ app.get("/api/intersession-memory", requireUserAuth, async (req, res) => {
     return res.json({
       memory: typeof memory === "string" && memory.trim() ? memory : null,
       stableContextOnly: extractStableContextOnlyFromIntersessionMemory(memory),
-      intersessionMemoryCompressed: typeof userData.intersessionMemoryCompressed === "string" && userData.intersessionMemoryCompressed.trim() ? userData.intersessionMemoryCompressed : null,
-      intersessionMemoryCompressedAt: typeof userData.intersessionMemoryCompressedAt === "string" ? userData.intersessionMemoryCompressedAt : null,
       intersessionMemoryUpdatedAt: typeof userData.intersessionMemoryUpdatedAt === "string" ? userData.intersessionMemoryUpdatedAt : null,
       intersessionMemoryHistory: historyRaw.slice(0, 3).map(entry => ({
         memory: typeof entry?.memory === "string" ? entry.memory : "",
@@ -3207,44 +3199,6 @@ app.put("/api/intersession-memory", requireUserAuth, async (req, res) => {
   }
 });
 
-// POST compresses the intersession memory into a short excerpt (~500 chars).
-// Skips the LLM call when the compressed version is already up to date.
-app.post("/api/intersession-memory/compress", requireUserAuth, async (req, res) => {
-  try {
-    const session = req.userSession;
-    const snap = await usersRef.child(session.userId).once("value");
-    const userData = snap.val() || {};
-    const intersessionMemory = userData.intersessionMemory;
-    const compressedAt = userData.intersessionMemoryCompressedAt;
-    const updatedAt = userData.intersessionMemoryUpdatedAt;
-
-    // Skip if already compressed and up to date
-    if (
-      compressedAt && updatedAt &&
-      new Date(compressedAt) >= new Date(updatedAt)
-    ) {
-      return res.json({ success: true, skipped: true, compressed: userData.intersessionMemoryCompressed || null });
-    }
-
-    if (!intersessionMemory || !String(intersessionMemory).trim()) {
-      return res.json({ success: true, skipped: true, compressed: null });
-    }
-
-    const compressed = await compressIntersessionMemory(intersessionMemory, buildDefaultPromptRegistry());
-    const now = new Date().toISOString();
-
-    await usersRef.child(session.userId).update({
-      intersessionMemoryCompressed: compressed,
-      intersessionMemoryCompressedAt: now
-    });
-
-    return res.json({ success: true, compressed });
-  } catch (err) {
-    console.error("Erreur POST /api/intersession-memory/compress:", err.message);
-    return res.status(500).json({ error: "Intersession memory compression failed" });
-  }
-});
-
 // PATCH saves intersession memory directly (no LLM), archives current version, forces refresh.
 app.patch("/api/intersession-memory/direct", requireUserAuth, async (req, res) => {
   try {
@@ -3279,8 +3233,6 @@ app.patch("/api/intersession-memory/direct", requireUserAuth, async (req, res) =
 
     await usersRef.child(session.userId).update({
       intersessionMemory: nextMemory,
-      intersessionMemoryCompressed: "",
-      intersessionMemoryCompressedAt: null,
       intersessionMemoryUpdatedAt: now,
       intersessionRefreshForced: true
     });
@@ -4569,6 +4521,7 @@ app.post("/chat", async (req, res) => {
   let modeForCatch = "exploration_open";
   let suicideLevelForCatch = "N0";
   let previousMemoryForCatch = normalizeMemory("", basePromptRegistryForCatch);
+  let previousMemoryRewriteDebugForCatch = null;
   let flagsForCatch = normalizeSessionFlags({});
   let promptRegistryForCatch = basePromptRegistryForCatch;
   let conversationIdForCatch = requestData.conversationId;
@@ -4603,6 +4556,7 @@ app.post("/chat", async (req, res) => {
     return {
       topChips: Array.isArray(safe.topChips) ? safe.topChips.map((chip) => String(chip || "").trim()).filter(Boolean) : [],
       memory: normalizeMemory(safe.memory, promptRegistry),
+      memoryBeforeSanitization: typeof safe.memoryBeforeSanitization === "string" ? normalizeMemory(safe.memoryBeforeSanitization, promptRegistry) : null,
       memoryState: normalizeMemoryStateShape(safe.memoryState, "", Date.now()),
       directivityText: typeof safe.directivityText === "string" ? safe.directivityText : "",
       conversationState: normalizeConversationState(safe.conversationState || safe.conversationStateKey),
@@ -4615,16 +4569,10 @@ app.post("/chat", async (req, res) => {
       explorationSignal: typeof safe.explorationSignal === "string" ? safe.explorationSignal : null,
       memoryAge: Number.isInteger(safe.memoryAge) && safe.memoryAge > 0 ? safe.memoryAge : 0,
       memoryRewriteIntent: safe.memoryRewriteIntent && typeof safe.memoryRewriteIntent === "object" ? {
-        compressionRequested: safe.memoryRewriteIntent.compressionRequested === true,
         interpretationRejectionActive: safe.memoryRewriteIntent.interpretationRejectionActive === true,
         rejectsUnderlyingPhenomenon: safe.memoryRewriteIntent.rejectsUnderlyingPhenomenon === true,
         soberReadjustmentActive: safe.memoryRewriteIntent.soberReadjustmentActive === true
       } : null,
-      memoryCompressed: safe.memoryCompressed === true,
-      memoryBeforeCompression:
-        safe.memoryCompressed === true && typeof safe.memoryBeforeCompression === "string" ?
-          normalizeMemory(safe.memoryBeforeCompression, promptRegistry) :
-          null,
       criticTriggered: safe.criticTriggered === true,
       criticIssues: Array.isArray(safe.criticIssues) ? safe.criticIssues : [],
       criticOriginalReply: typeof safe.criticOriginalReply === "string" ? safe.criticOriginalReply : null,
@@ -4713,6 +4661,7 @@ app.post("/chat", async (req, res) => {
   // This keeps the safe error path consistent with the normal debug output format.
   function buildFallbackResponseDebugMeta({
     memory = "",
+    memoryBeforeSanitization = null,
     suicideLevel = "N0",
     conversationState = "exploration_open",
     interpretationRejection = false,
@@ -4737,6 +4686,7 @@ app.post("/chat", async (req, res) => {
         relationalAdjustmentActive
       }),
       memory: normalizeMemory(memory, promptRegistry),
+      memoryBeforeSanitization: typeof memoryBeforeSanitization === "string" ? normalizeMemory(memoryBeforeSanitization, promptRegistry) : null,
       directivityText: buildDirectivityText({
         conversationState,
         explorationCalibrationLevel,
@@ -4793,6 +4743,7 @@ app.post("/chat", async (req, res) => {
     const { flags } = normalizeChatMemoryAndFlags(req, activePromptRegistry);
     let previousMemory = normalizeMemory(req.body?.memory, activePromptRegistry);
     let previousMemoryState = normalizeMemoryStateShape(req.body?.memoryState, "", Date.now());
+    let previousMemoryRewriteDebug = null;
     let previousConversationActivityMs = Date.now();
     const convMemoryPromise = (!isPrivateConversation && convRef)
           ? convRef.once("value").then(s => {
@@ -4801,6 +4752,7 @@ app.post("/chat", async (req, res) => {
               return {
                 memory: (typeof d.memory === "string" && d.memory.trim()) ? d.memory : null,
                 memoryState: d.memoryState && typeof d.memoryState === "object" ? d.memoryState : null,
+                memoryRewriteDebug: d.memoryRewriteDebug && typeof d.memoryRewriteDebug === "object" ? d.memoryRewriteDebug : null,
                 updatedAtMs: Number.isFinite(Date.parse(String(d.updatedAt || ""))) ? Date.parse(String(d.updatedAt || "")) : null
               };
             }).catch(() => null)
@@ -4829,6 +4781,7 @@ app.post("/chat", async (req, res) => {
           previousMemoryForCatch = previousMemory;
         }
         previousMemoryState = normalizeMemoryStateShape(convMemoryFromDb.memoryState, "", Date.now());
+        previousMemoryRewriteDebug = convMemoryFromDb.memoryRewriteDebug;
         if (Number.isFinite(convMemoryFromDb.updatedAtMs) && convMemoryFromDb.updatedAtMs > 0) {
           previousConversationActivityMs = convMemoryFromDb.updatedAtMs;
         }
@@ -4839,12 +4792,15 @@ app.post("/chat", async (req, res) => {
       if (cachedPrivateMemory && typeof cachedPrivateMemory.memory === "string" && cachedPrivateMemory.memory.trim()) {
         previousMemory = normalizeMemory(cachedPrivateMemory.memory, activePromptRegistry);
         previousMemoryState = normalizeMemoryStateShape(cachedPrivateMemory.memoryState, "", Date.now());
+        previousMemoryRewriteDebug = cachedPrivateMemory.memoryRewriteDebug || null;
         if (Number.isFinite(cachedPrivateMemory.updatedAt) && cachedPrivateMemory.updatedAt > 0) {
           previousConversationActivityMs = cachedPrivateMemory.updatedAt;
         }
         previousMemoryForCatch = previousMemory;
+        previousMemoryRewriteDebugForCatch = previousMemoryRewriteDebug;
       }
     }
+    previousMemoryRewriteDebugForCatch = previousMemoryRewriteDebug;
     if (!isPrivateConversation && shouldLoadUserProfile) {
       let userData = await userProfilePromise;
       if (userData && userData.intersessionRefreshForced === true) {
@@ -5095,7 +5051,7 @@ app.post("/chat", async (req, res) => {
       return new Promise(resolve => setTimeout(resolve, ms));
     }
 
-    async function persistConversationMemoryWithRetry(memoryValue, promptRegistry, maxRetries = 2, memoryState = null) {
+    async function persistConversationMemoryWithRetry(memoryValue, promptRegistry, maxRetries = 2, memoryState = null, memoryRewriteDebug = null) {
       if (!convRef || isPrivateConversation) return;
 
       const normalizedMemory = normalizeMemory(memoryValue, promptRegistry);
@@ -5106,6 +5062,7 @@ app.post("/chat", async (req, res) => {
           await convRef.update({
             memory: normalizedMemory,
             memoryState: memoryState && typeof memoryState === "object" ? memoryState : null,
+            memoryRewriteDebug: memoryRewriteDebug && typeof memoryRewriteDebug === "object" ? memoryRewriteDebug : null,
             updatedAt: new Date().toISOString()
           });
           return;
@@ -5120,7 +5077,7 @@ app.post("/chat", async (req, res) => {
       throw lastError || new Error("memory_persist_retry_failed");
     }
 
-    function scheduleBackgroundMemoryUpdate(memorySnapshot, replyText, memoryPrioritySignal = "normal", intersessionMemoryCompressed = "") {
+    function scheduleBackgroundMemoryUpdate(memorySnapshot, replyText, memoryPrioritySignal = "normal", intersessionMemoryForTurn = "") {
       (async () => {
         try {
           const updatedMemory = await updateMemory(
@@ -5128,7 +5085,7 @@ app.post("/chat", async (req, res) => {
             [...recentHistory, { role: "user", content: message }, { role: "assistant", content: replyText }],
             activePromptRegistry,
             memoryPrioritySignal,
-            intersessionMemoryCompressed,
+            intersessionMemoryForTurn,
             null,
             previousMemoryState
           );
@@ -5388,14 +5345,11 @@ app.post("/chat", async (req, res) => {
         return "";
       }
 
-      const compressed = typeof userData.intersessionMemoryCompressed === "string"
-        ? userData.intersessionMemoryCompressed.trim()
-        : "";
       const raw = typeof userData.intersessionMemory === "string"
         ? userData.intersessionMemory.trim()
         : "";
 
-      return compressed || raw || "";
+      return raw || "";
     }
 
     async function loadCurrentUserIntersessionMemory() {
@@ -5444,13 +5398,10 @@ app.post("/chat", async (req, res) => {
       let intersessionMemoryForThisTurn = "";
 
       if (needsInjection) {
-        const compressedVal = userData && typeof userData.intersessionMemoryCompressed === "string"
-          ? userData.intersessionMemoryCompressed
-          : "";
         const rawVal = userData && typeof userData.intersessionMemory === "string"
           ? userData.intersessionMemory
           : "";
-        intersessionMemoryForThisTurn = compressedVal.trim() || rawVal.trim() || "";
+        intersessionMemoryForThisTurn = rawVal.trim() || "";
         if (hasForcedRefreshLock) {
           try {
             await usersRef.child(userId).update({ intersessionRefreshForced: false });
@@ -6001,7 +5952,7 @@ app.post("/chat", async (req, res) => {
       memory: recallRouting.isRecallAttempt === true ? memoryForReply : previousMemory,
       postureDecision,
       interpretationRejection: safeInterpretationRejection,
-      intersessionMemoryCompressed: intersessionMemoryForThisTurn,
+      intersessionMemoryForTurn: intersessionMemoryForThisTurn,
       promptRegistry: activePromptRegistry,
     });
     throwIfCanceled();
@@ -6255,10 +6206,7 @@ app.post("/chat", async (req, res) => {
     // The response always exposes the memory used for this turn (N-1), while
     // update/finalization/persistence runs in background for the next turn.
     let newMemory = previousMemory;
-    let memoryWasCompressed = false;
-    let memoryBeforeCompression = previousMemory;
     let memoryRewriteIntent = {
-      compressionRequested: false,
       interpretationRejectionActive: safeInterpretationRejection.isInterpretationRejection === true,
       rejectsUnderlyingPhenomenon: safeInterpretationRejection.rejectsUnderlyingPhenomenon === true,
       soberReadjustmentActive: postureDecision.needsSoberReadjustment === true
@@ -6273,7 +6221,6 @@ app.post("/chat", async (req, res) => {
     if (!shouldRunMemoryUpdate) {
       effectiveMemoryPrioritySignalForDebug = "normal";
       memoryRewriteIntent = {
-        compressionRequested: false,
         interpretationRejectionActive: false,
         rejectsUnderlyingPhenomenon: false,
         soberReadjustmentActive: false
@@ -6298,11 +6245,6 @@ app.post("/chat", async (req, res) => {
       const _prevMemState = previousMemoryState;
       const _lastActivityMs = previousConversationActivityMs;
       const _prioritySignal = effectiveMemoryPrioritySignalForDebug;
-      const _rejectionSnap = { ...safeInterpretationRejection };
-      const _postureSnap = {
-        needsSoberReadjustment: postureDecision.needsSoberReadjustment,
-        tensionHoldLevel: postureDecision.tensionHoldLevel
-      };
 
       (async () => {
         try {
@@ -6319,22 +6261,9 @@ app.post("/chat", async (req, res) => {
             ? memoryUpdateContract.memoryText
             : _prevMem;
 
-          const needsCompression = shouldCompressMemoryCandidate(rawMem, _prevMem);
-          const finalized = await finalizeMemoryCandidate({
-            previousMemory: _prevMem,
-            candidateMemory: rawMem,
-            interpretationRejection: {
-              ..._rejectionSnap,
-              needsSoberReadjustment: _postureSnap.needsSoberReadjustment,
-              tensionHoldLevel: _postureSnap.tensionHoldLevel
-            },
-            needsCompression,
-            promptRegistry: _registry
-          });
-
           const mergedStateResult = mergeMemoryStateWithFinalizedText({
             previousMemoryState: _prevMemState,
-            finalizedMemoryText: finalized,
+            finalizedMemoryText: rawMem,
             deleteAncientMovementsById: Array.isArray(memoryUpdateContract?.deleteAncientMovementsById)
               ? memoryUpdateContract.deleteAncientMovementsById
               : [],
@@ -6349,12 +6278,31 @@ app.post("/chat", async (req, res) => {
             privateConversationMemoryCache.set(String(conversationId), {
               memory: persistedMemoryText,
               memoryState: mergedStateResult.memoryState,
+              memoryRewriteDebug: {
+                beforeSanitization: typeof memoryUpdateContract?.memoryBeforeSanitization === "string"
+                  ? normalizeMemory(memoryUpdateContract.memoryBeforeSanitization, _registry)
+                  : null,
+                source: typeof memoryUpdateContract?.source === "string" ? memoryUpdateContract.source : null,
+                capturedAt: new Date().toISOString()
+              },
               updatedAt: Date.now()
             });
             return;
           }
 
-          await persistConversationMemoryWithRetry(persistedMemoryText, _registry, 2, mergedStateResult.memoryState);
+          await persistConversationMemoryWithRetry(
+            persistedMemoryText,
+            _registry,
+            2,
+            mergedStateResult.memoryState,
+            {
+              beforeSanitization: typeof memoryUpdateContract?.memoryBeforeSanitization === "string"
+                ? normalizeMemory(memoryUpdateContract.memoryBeforeSanitization, _registry)
+                : null,
+              source: typeof memoryUpdateContract?.source === "string" ? memoryUpdateContract.source : null,
+              capturedAt: new Date().toISOString()
+            }
+          );
         } catch (e) {
           console.warn("[CHAT][MEMORY_BG_FAILED]", e && e.message ? e.message : e);
         }
@@ -6379,10 +6327,11 @@ app.post("/chat", async (req, res) => {
       explorationRelanceWindow: newFlags.explorationRelanceWindow,
       explorationSignal: finalExplorationSignal,
       memoryRewriteIntent,
-      memoryCompressed: memoryWasCompressed,
-      memoryBeforeCompression,
       memoryAge,
       memoryPrioritySignal: effectiveMemoryPrioritySignalForDebug,
+      memoryBeforeSanitization: typeof previousMemoryRewriteDebug?.beforeSanitization === "string"
+        ? previousMemoryRewriteDebug.beforeSanitization
+        : null,
       memoryState: previousMemoryState,
       memoryUpdateDecision: postureDecision.memoryUpdateDecision || "hold",
       memoryUpdateReason: postureDecision.memoryUpdateReason || "unspecified",
@@ -6533,6 +6482,9 @@ app.post("/chat", async (req, res) => {
           : "Desole, reformule.";
     const fallbackDebugMeta = buildFallbackResponseDebugMeta({
       memory: previousMemoryForCatch,
+      memoryBeforeSanitization: typeof previousMemoryRewriteDebugForCatch?.beforeSanitization === "string"
+        ? previousMemoryRewriteDebugForCatch.beforeSanitization
+        : null,
       suicideLevel: "N0",
       conversationState: modeForCatch,
       isRecallRequest: false,
