@@ -133,18 +133,6 @@ for (const s of VALID_EXTENDED_STATES) {
 }
 check("conversationState: unknown → 'exploration_open' (safe default)", () => assert(normalizeConversationState("bad") === "exploration_open"));
 check("conversationState: null → 'exploration_open'", () => assert(normalizeConversationState(null) === "exploration_open"));
-check("conversationState: legacy 'exploration' → 'exploration_open'", () => {
-  assert(normalizeConversationState("exploration") === "exploration_open",
-    "legacy 'exploration' must upgrade to 'exploration_open'");
-});
-check("conversationState: legacy 'info' → 'info_features'", () => {
-  assert(normalizeConversationState("info") === "info_features",
-    "legacy 'info' must upgrade to 'info_features'");
-});
-check("conversationState: legacy 'discharge' → 'discharge_regulated'", () => {
-  assert(normalizeConversationState("discharge") === "discharge_regulated",
-    "legacy 'discharge' must upgrade to 'discharge_regulated'");
-});
 
 // ─── normalizeConsecutiveNonExplorationTurns ──────────────────────────────────
 
@@ -220,12 +208,6 @@ check("sessionFlags: null input → stable defaults", () => {
   assert(typeof out.explorationDirectivityLevel === "number", "explorationDirectivityLevel is number");
   assert(Array.isArray(out.explorationRelanceWindow), "explorationRelanceWindow is array");
   assert(out.conversationState === "exploration_open", `conversationState default exploration_open, got ${out.conversationState}`);
-});
-
-check("sessionFlags: legacy conversationStateKey 'exploration' → 'exploration_open'", () => {
-  const out = normalizeSessionFlags({ conversationStateKey: "exploration" });
-  assert(out.conversationState === "exploration_open",
-    `expected 'exploration_open', got '${out.conversationState}'`);
 });
 
 check("sessionFlags: explicit directivity preserved", () => {

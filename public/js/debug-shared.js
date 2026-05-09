@@ -38,7 +38,6 @@
 
   function normalizeInfoSignal(value) {
     var raw = toTrimmedString(value, "");
-    if (raw === "app") return "app_features";
     if (["pure", "psychoeducation", "app_features"].indexOf(raw) >= 0) return raw;
     return null;
   }
@@ -158,8 +157,7 @@
       memoryState: normalizedMemoryState,
       directivityText: toTrimmedString(safe.directivityText, "") || toTrimmedString(safe.directivityLabel, ""),
       directivityLabel: toTrimmedString(safe.directivityLabel, ""),
-      conversationState: toTrimmedString(safe.conversationState, "") || toTrimmedString(safe.conversationStateKey, "") || null,
-      conversationStateKey: toTrimmedString(safe.conversationStateKey, "") || toTrimmedString(safe.conversationState, "") || null,
+      conversationState: toTrimmedString(safe.conversationState, "") || null,
       consecutiveNonExplorationTurns: Number.isInteger(safe.consecutiveNonExplorationTurns)
         ? Math.max(0, safe.consecutiveNonExplorationTurns)
         : 0,
@@ -167,8 +165,7 @@
       contactSignal: normalizeContactSignal(safe.contactSignal),
       interpretationRejection: toBooleanTrue(safe.interpretationRejection),
       needsSoberReadjustment: toBooleanTrue(safe.needsSoberReadjustment),
-      relationalAdjustmentActive: (safe.relationalAdjustmentActive ?? safe.relationalAdjustmentTriggered) === true,
-      relationalAdjustmentTriggered: toBooleanTrue(safe.relationalAdjustmentTriggered),
+      relationalAdjustmentActive: toBooleanTrue(safe.relationalAdjustmentActive),
       pipelineStages: normalizePipelineStages(safe.pipelineStages),
       explorationCalibrationLevel: Number.isInteger(safe.explorationCalibrationLevel) ? safe.explorationCalibrationLevel : null,
       explorationSignal: toTrimmedString(safe.explorationSignal, "") || null,
@@ -197,7 +194,6 @@
       analyzerDeterministicEvidence: Array.isArray(safe.analyzerDeterministicEvidence)
         ? safe.analyzerDeterministicEvidence.map(function mapAnalyzerEvidence(v) { return String(v || "").trim(); }).filter(Boolean)
         : [],
-      writerMode: toTrimmedString(safe.writerMode, "") || null,
       intent: toTrimmedString(safe.intent, "") || null,
       forbidden: Array.isArray(safe.forbidden)
         ? safe.forbidden.map(function mapForbidden(v) { return String(v || "").trim(); }).filter(Boolean)
@@ -257,22 +253,16 @@
 
   function translateWriterMode(mode) {
     var map = {
-      exploration: "exploration",
       exploration_open: "exploration ouverte",
       exploration_restrained: "exploration restreinte",
-      discharge: "decharge",
-      post_contact: "exploration ouverte (legacy)",
       stabilization: "stabilisation",
       alliance_rupture: "rupture d'alliance",
       closure: "cl\u00f4ture",
-      contact: "exploration ouverte (legacy)",
       discharge_regulated: "d\u00e9charge r\u00e9gul\u00e9e",
       discharge_dysregulated: "d\u00e9charge d\u00e9r\u00e9gul\u00e9e",
-      info: "info",
       info_pure: "info pure",
       info_psychoeducation: "info psycho\u00e9ducation",
       info_features: "info fonctionnalites de l'app",
-      info_app_features: "info fonctionnalites de l'app (legacy)",
       n1_crisis: "crise N1",
       n2_crisis: "crise N2"
     };
@@ -468,7 +458,7 @@
       }
     }
 
-    if (meta.relationalAdjustmentActive === true || meta.relationalAdjustmentTriggered === true) {
+    if (meta.relationalAdjustmentActive === true) {
       var relationalLine = variant === "admin"
         ? "Un ajustement relationnel a ete declenche."
         : "Un ajustement relationnel a ete declenche pour proteger l'alliance.";

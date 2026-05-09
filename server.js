@@ -2176,11 +2176,11 @@ app.post("/api/account/conversations/import-local", requireUserAuth, async (req,
               topChips: Array.isArray(debugMeta.topChips) ? debugMeta.topChips : [],
               memory: typeof debugMeta.memory === "string" ? debugMeta.memory : "",
               directivityText: typeof debugMeta.directivityText === "string" ? debugMeta.directivityText : "",
-              conversationState: typeof debugMeta.conversationState === "string" ? debugMeta.conversationState : (typeof debugMeta.conversationStateKey === "string" ? debugMeta.conversationStateKey : null),
+              conversationState: typeof debugMeta.conversationState === "string" ? debugMeta.conversationState : null,
               consecutiveNonExplorationTurns: Number.isInteger(debugMeta.consecutiveNonExplorationTurns) ? Math.max(0, debugMeta.consecutiveNonExplorationTurns) : 0,
               interpretationRejection: debugMeta.interpretationRejection === true,
               needsSoberReadjustment: debugMeta.needsSoberReadjustment === true,
-              relationalAdjustmentActive: (debugMeta.relationalAdjustmentActive ?? debugMeta.relationalAdjustmentTriggered) === true,
+              relationalAdjustmentActive: debugMeta.relationalAdjustmentActive === true,
               pipelineStages: Array.isArray(debugMeta.pipelineStages) ? debugMeta.pipelineStages.map(e => ({
                 stage: typeof e?.stage === "string" ? e.stage : null,
                 deltaMs: Number.isFinite(e?.deltaMs) ? e.deltaMs : null
@@ -4415,11 +4415,11 @@ app.post("/chat", async (req, res) => {
       memoryBeforeSanitization: typeof safe.memoryBeforeSanitization === "string" ? normalizeMemory(safe.memoryBeforeSanitization, promptRegistry) : null,
       memoryState: normalizeMemoryStateShape(safe.memoryState, "", Date.now()),
       directivityText: typeof safe.directivityText === "string" ? safe.directivityText : "",
-      conversationState: normalizeConversationState(safe.conversationState || safe.conversationStateKey),
+      conversationState: normalizeConversationState(safe.conversationState),
       consecutiveNonExplorationTurns: normalizeConsecutiveNonExplorationTurns(safe.consecutiveNonExplorationTurns),
       interpretationRejection: safe.interpretationRejection === true,
       needsSoberReadjustment: safe.needsSoberReadjustment === true,
-      relationalAdjustmentActive: (safe.relationalAdjustmentActive ?? safe.relationalAdjustmentTriggered) === true,
+      relationalAdjustmentActive: safe.relationalAdjustmentActive === true,
       pipelineStages: normalizePipelineStagesForStorage(safe.pipelineStages),
       explorationCalibrationLevel: Number.isInteger(safe.explorationCalibrationLevel) ? clampExplorationDirectivityLevel(safe.explorationCalibrationLevel) : null,
       explorationSignal: typeof safe.explorationSignal === "string" ? safe.explorationSignal : null,
@@ -4459,7 +4459,7 @@ app.post("/chat", async (req, res) => {
       engagementLevel: normalizeEngagementLevel(safe.engagementLevel),
       stagnationTurns: normalizeStagnationTurns(safe.stagnationTurns),
       stagnationWindow: normalizeStagnationWindow(safe.stagnationWindow),
-      attentionWindow: normalizeAttentionWindow(safe.attentionWindow ?? safe.processingWindow),
+      attentionWindow: normalizeAttentionWindow(safe.attentionWindow),
       dependencyRiskScore: clampDependencyRiskScore(safe.dependencyRiskScore),
       dependencyRiskLevel: normalizeDependencyRiskLevel(safe.dependencyRiskLevel),
       externalSupportMode: normalizeExternalSupportMode(safe.externalSupportMode),
@@ -5339,8 +5339,8 @@ app.post("/chat", async (req, res) => {
       handleResolvedAcuteCrisisState();
     }
     
-    // 3) N1 signal flows into the main pipeline. writerMode is overridden to
-    // "n1_crisis" inside buildPostureDecision.
+    // 3) N1 signal flows into the main pipeline.
+    // "n1_crisis" is enforced inside buildPostureDecision.
     if (crisisDecision.route === "n1_clarification") {
       logN1PipelineEntry();
     }
@@ -5664,7 +5664,7 @@ app.post("/chat", async (req, res) => {
 
     // Phase 3: Deterministic arbitrator � consolidate all analyzer outputs into a
     // PostureDecision struct. No LLM calls, no side effects outside this block.
-    const previousConversationState = normalizeConversationState(flags.conversationState || flags.conversationStateKey);
+    const previousConversationState = normalizeConversationState(flags.conversationState);
     const postureDecision = buildPostureDecision({
       detectedState,
       contactAnalysis,

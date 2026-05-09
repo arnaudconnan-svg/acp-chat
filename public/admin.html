@@ -1838,7 +1838,7 @@
           const meta = normalizeDebugMeta(debugMeta);
           const sections = [];
 
-          const resolvedState = meta.conversationState || meta.conversationStateKey || meta.writerMode || null;
+          const resolvedState = meta.conversationState || null;
           const isExplorationMode =
             typeof resolvedState === "string" && resolvedState.startsWith("exploration");
 

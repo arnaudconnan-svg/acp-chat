@@ -7693,10 +7693,9 @@
                   debugMeta.memoryRewriteIntent.soberReadjustmentActive === true
                 )
               ) ||
-              !!debugMeta.conversationStateKey ||
+              !!debugMeta.conversationState ||
               debugMeta.pipelineStages.length > 0 ||
-              !!debugMeta.confidenceSignal ||
-              !!debugMeta.writerMode
+              !!debugMeta.confidenceSignal
             );
         } catch (err) {
           console.error("[DEBUG_META_BUILD_FAILED]", err);
