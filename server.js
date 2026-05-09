@@ -1020,6 +1020,7 @@ const {
   analyzeEmotionalDecentering,
   analyzeAttentionQuality,
   analyzeDependencyRisk,
+  analyzeClosureIntent,
   analyzeAllianceRupture,
   analyzeMemoryUpdateNeeds,
   analyzeInterpretationRejection,
@@ -5560,6 +5561,7 @@ app.post("/chat", async (req, res) => {
     async function runPrimaryAnalyzers() {
       const [
         stateProposal,
+        closureIntentAnalysis,
         allianceRuptureAnalysis,
         relationalAdjustmentAnalysis,
         technicalContextAnalysis,
@@ -5570,6 +5572,7 @@ app.post("/chat", async (req, res) => {
         dependencyRiskAnalysis
       ] = await Promise.all([
         withAnalyzerTiming("propose_state", proposeState(message, recentHistory, newFlags.dischargeState, activePromptRegistry)),
+        withAnalyzerTiming("closure_intent", analyzeClosureIntent(message)),
         withAnalyzerTiming("alliance_rupture", analyzeAllianceRupture(message, recentHistory, activePromptRegistry)),
         withAnalyzerTiming("relational_adjustment", analyzeRelationalAdjustmentNeed(message, recentHistory, previousMemory, false, activePromptRegistry)),
         withAnalyzerTiming("technical_context", analyzeTechnicalContext(message)),
@@ -5589,6 +5592,7 @@ app.post("/chat", async (req, res) => {
 
       return {
         stateProposal,
+        closureIntentAnalysis,
         allianceRuptureAnalysis,
         relationalAdjustmentAnalysis,
         technicalContextAnalysis,
@@ -5602,6 +5606,7 @@ app.post("/chat", async (req, res) => {
 
     const {
       stateProposal,
+      closureIntentAnalysis,
       allianceRuptureAnalysis,
       relationalAdjustmentAnalysis,
       technicalContextAnalysis,
@@ -5612,6 +5617,8 @@ app.post("/chat", async (req, res) => {
       dependencyRiskAnalysis
     } = await runPrimaryAnalyzers();
     throwIfCanceled();
+
+    newFlags.closureIntent = closureIntentAnalysis?.closureIntent === true;
 
     warnRuntimeContract("stateProposal", collectStateProposalIssues(stateProposal), {
       traceId,
