@@ -365,6 +365,60 @@
     }
 
     .upgrade-banner button:hover { opacity: 0.85; }
+
+    .subscreen-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 0 0 16px;
+    }
+
+    .subscreen-back-btn {
+      border: 1px solid #d3d3d3;
+      border-radius: 10px;
+      background: #fff;
+      color: #444;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 8px 12px;
+      cursor: pointer;
+    }
+
+    .subscreen-back-btn:hover {
+      background: #f5f5f5;
+    }
+
+    .section-link-btn {
+      border: 1px solid #d3d3d3;
+      border-radius: 8px;
+      background: #fff;
+      color: #245e66;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 8px 12px;
+      cursor: pointer;
+    }
+
+    .section-link-btn:hover {
+      background: rgba(36, 94, 102, 0.06);
+    }
+
+    .setting-inline-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .setting-inline-controls select {
+      flex: 1;
+      min-width: 0;
+      border: 1.5px solid #ddd;
+      border-radius: 8px;
+      padding: 9px 10px;
+      font-size: 14px;
+      background: #fafafa;
+    }
   </style>
 </head>
 <body>
@@ -387,8 +441,10 @@
       const CONVERSATIONS_INDEX_KEY = "facilitatio_conversations_index";
       const CONVERSATION_STORAGE_KEY_PREFIX = "facilitatio_conversation_data_";
       const PRIVATE_CONVERSATION_IDS_KEY = "facilitatio_private_conversation_ids";
+      const BIOMETRIC_CREDENTIAL_KEY_PREFIX = "facilitatio_bio_cred_v1_";
 
       let currentUser = null;
+      let accountSubscreen = "main";
 
       function getCountryName(code) {
         if (!code) return "";
@@ -484,6 +540,11 @@
 
         main.innerHTML = "";
 
+        if (accountSubscreen === "privacy") {
+          main.appendChild(buildPrivacySubscreen());
+          return;
+        }
+
         const h1 = document.createElement("h1");
         h1.textContent = "Mon compte";
         main.appendChild(h1);
@@ -494,7 +555,7 @@
         main.appendChild(emailEl);
 
         main.appendChild(buildProfileCard());
-        main.appendChild(buildPrivateDefaultCard());
+        main.appendChild(buildPrivacyEntryCard());
         main.appendChild(buildLocalImportCard());
         main.appendChild(buildLongtermMemoryCard());
         main.appendChild(buildPasswordCard());
@@ -1118,6 +1179,368 @@
           }
         });
 
+        return card;
+      }
+
+      function buildPrivacyEntryCard() {
+        const card = document.createElement("div");
+        card.className = "card";
+
+        const title = document.createElement("div");
+        title.className = "section-title";
+        title.textContent = "Confidentialite";
+        card.appendChild(title);
+
+        const help = document.createElement("p");
+        help.className = "setting-help";
+        help.textContent = "Reglez ici vos options de confidentialite, dont le verrouillage biometrie optionnel pour proteger l'acces a votre session sur cet appareil.";
+        card.appendChild(help);
+
+        const openBtn = document.createElement("button");
+        openBtn.type = "button";
+        openBtn.className = "section-link-btn";
+        openBtn.textContent = "Ouvrir";
+        openBtn.addEventListener("click", () => {
+          accountSubscreen = "privacy";
+          renderPage();
+        });
+        card.appendChild(openBtn);
+
+        return card;
+      }
+
+      function buildPrivacySubscreen() {
+        const wrap = document.createElement("div");
+
+        const header = document.createElement("div");
+        header.className = "subscreen-header";
+
+        const backBtn = document.createElement("button");
+        backBtn.type = "button";
+        backBtn.className = "subscreen-back-btn";
+        backBtn.textContent = "Retour";
+        backBtn.addEventListener("click", () => {
+          accountSubscreen = "main";
+          renderPage();
+        });
+
+        const title = document.createElement("h1");
+        title.textContent = "Confidentialite";
+        title.style.margin = "0";
+
+        header.appendChild(backBtn);
+        header.appendChild(title);
+        wrap.appendChild(header);
+
+        const intro = document.createElement("p");
+        intro.className = "user-email";
+        intro.textContent = "Parametres de protection de session pour cet appareil.";
+        intro.style.marginBottom = "16px";
+        wrap.appendChild(intro);
+
+        wrap.appendChild(buildPrivateDefaultCard());
+        wrap.appendChild(buildBiometricLockCard());
+
+        return wrap;
+      }
+
+      function normalizeBiometricRelockSeconds(value) {
+        const n = Number(value);
+        if (!Number.isFinite(n)) return 120;
+        if (n === 0 || n === 30 || n === 120 || n === 300) return n;
+        return 120;
+      }
+
+      function getBiometricCredentialStorageKey() {
+        const userId = currentUser && typeof currentUser.id === "string" ? currentUser.id.trim() : "";
+        if (!userId) return null;
+        return `${BIOMETRIC_CREDENTIAL_KEY_PREFIX}${userId}`;
+      }
+
+      function toBase64Url(buffer) {
+        const bytes = new Uint8Array(buffer);
+        let binary = "";
+        for (let i = 0; i < bytes.length; i += 1) {
+          binary += String.fromCharCode(bytes[i]);
+        }
+        return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+      }
+
+      function fromBase64Url(value) {
+        if (typeof value !== "string" || !value.trim()) return null;
+        const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
+        const padded = normalized + "=".repeat((4 - (normalized.length % 4 || 4)) % 4);
+        const binary = atob(padded);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i += 1) {
+          bytes[i] = binary.charCodeAt(i);
+        }
+        return bytes.buffer;
+      }
+
+      function getRandomChallenge(size = 32) {
+        const bytes = new Uint8Array(size);
+        crypto.getRandomValues(bytes);
+        return bytes;
+      }
+
+      async function isBiometricAvailable() {
+        if (typeof window.PublicKeyCredential !== "function") {
+          return false;
+        }
+
+        if (typeof window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable !== "function") {
+          return false;
+        }
+
+        try {
+          return await window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+        } catch {
+          return false;
+        }
+      }
+
+      function loadStoredBiometricCredentialId() {
+        const key = getBiometricCredentialStorageKey();
+        if (!key) return "";
+        return String(localStorage.getItem(key) || "").trim();
+      }
+
+      function saveStoredBiometricCredentialId(credentialId) {
+        const key = getBiometricCredentialStorageKey();
+        if (!key) return;
+        if (typeof credentialId === "string" && credentialId.trim()) {
+          localStorage.setItem(key, credentialId.trim());
+        }
+      }
+
+      function clearStoredBiometricCredentialId() {
+        const key = getBiometricCredentialStorageKey();
+        if (!key) return;
+        localStorage.removeItem(key);
+      }
+
+      async function registerBiometricCredential() {
+        if (!(await isBiometricAvailable())) {
+          throw new Error("Biometrie indisponible sur cet appareil.");
+        }
+
+        if (!window.isSecureContext || !navigator.credentials || typeof navigator.credentials.create !== "function") {
+          throw new Error("Contexte securise requis pour activer la biometrie.");
+        }
+
+        const userId = currentUser && typeof currentUser.id === "string" ? currentUser.id.trim() : "";
+        const email = currentUser && typeof currentUser.email === "string" ? currentUser.email.trim() : "Utilisateur";
+        if (!userId) {
+          throw new Error("Session utilisateur introuvable.");
+        }
+
+        const credential = await navigator.credentials.create({
+          publicKey: {
+            challenge: getRandomChallenge(32),
+            rp: {
+              name: "Facilitat.io",
+              id: window.location.hostname
+            },
+            user: {
+              id: new TextEncoder().encode(userId),
+              name: email || userId,
+              displayName: email || userId
+            },
+            pubKeyCredParams: [
+              { type: "public-key", alg: -7 },
+              { type: "public-key", alg: -257 }
+            ],
+            timeout: 60000,
+            authenticatorSelection: {
+              authenticatorAttachment: "platform",
+              userVerification: "required",
+              residentKey: "preferred"
+            },
+            attestation: "none"
+          }
+        });
+
+        if (!credential || !credential.rawId) {
+          throw new Error("Impossible de creer une cle biometrie.");
+        }
+
+        const id = toBase64Url(credential.rawId);
+        saveStoredBiometricCredentialId(id);
+        return id;
+      }
+
+      function buildBiometricLockCard() {
+        const card = document.createElement("div");
+        card.className = "card";
+
+        const title = document.createElement("div");
+        title.className = "section-title";
+        title.textContent = "Verrouillage biometrie";
+        card.appendChild(title);
+
+        const row = document.createElement("label");
+        row.className = "setting-row";
+        row.setAttribute("for", "biometricLockToggle");
+
+        const rowText = document.createElement("span");
+        rowText.textContent = "Demander la biometrie pour acceder a la session";
+        rowText.style.fontSize = "14px";
+        rowText.style.color = "#333";
+
+        const toggle = document.createElement("input");
+        toggle.id = "biometricLockToggle";
+        toggle.type = "checkbox";
+        toggle.checked = currentUser && currentUser.biometricLockEnabled === true;
+
+        row.appendChild(rowText);
+        row.appendChild(toggle);
+        card.appendChild(row);
+
+        const controls = document.createElement("div");
+        controls.className = "setting-inline-controls";
+
+        const selectLabel = document.createElement("span");
+        selectLabel.textContent = "Re-verrouiller apres";
+        selectLabel.style.fontSize = "13px";
+        selectLabel.style.color = "#555";
+
+        const relockSelect = document.createElement("select");
+        relockSelect.id = "biometricRelockSelect";
+        relockSelect.innerHTML = [
+          '<option value="0">retour en premier plan (immediat)</option>',
+          '<option value="30">30 secondes</option>',
+          '<option value="120">2 minutes</option>',
+          '<option value="300">5 minutes</option>'
+        ].join("");
+        const currentRelock = normalizeBiometricRelockSeconds(currentUser && currentUser.biometricRelockSeconds);
+        relockSelect.value = String(currentRelock);
+
+        controls.appendChild(selectLabel);
+        controls.appendChild(relockSelect);
+        card.appendChild(controls);
+
+        const help = document.createElement("p");
+        help.className = "setting-help";
+        help.textContent = "Ce verrou est optionnel. Si active, l'application demandera votre biometrie (ou le code ecran du telephone selon Android) pour reprendre une session ouverte.";
+        card.appendChild(help);
+
+        const saveBtn = document.createElement("button");
+        saveBtn.type = "button";
+        saveBtn.className = "action-btn";
+        saveBtn.id = "saveBiometricLockBtn";
+        saveBtn.textContent = "Enregistrer";
+        card.appendChild(saveBtn);
+
+        const notice = document.createElement("div");
+        notice.className = "notice";
+        notice.id = "biometricLockNotice";
+        card.appendChild(notice);
+
+        // Screenshot prevention toggle
+        const screenshotRow = document.createElement("label");
+        screenshotRow.className = "setting-row";
+        screenshotRow.setAttribute("for", "screenCaptureToggle");
+        screenshotRow.style.marginTop = "20px";
+        screenshotRow.style.borderTop = "1px solid #ddd";
+        screenshotRow.style.paddingTop = "16px";
+
+        const screenshotText = document.createElement("span");
+        screenshotText.textContent = "Autoriser les captures d'ecran";
+        screenshotText.style.fontSize = "14px";
+        screenshotText.style.color = "#333";
+
+        const screenshotToggle = document.createElement("input");
+        screenshotToggle.id = "screenCaptureToggle";
+        screenshotToggle.type = "checkbox";
+        screenshotToggle.checked = currentUser && currentUser.screenCaptureEnabled === true;
+
+        screenshotRow.appendChild(screenshotText);
+        screenshotRow.appendChild(screenshotToggle);
+        card.appendChild(screenshotRow);
+
+        const screenshotHelp = document.createElement("p");
+        screenshotHelp.className = "setting-help";
+        screenshotHelp.textContent = "Par defaut, les captures d'ecran et l'apercu multitache sont desactives. Cochez cette case pour les autoriser. (Necessite un redemarrage de l'application)";
+        card.appendChild(screenshotHelp);
+
+        const refreshSaveState = () => {
+          const initialEnabled = currentUser && currentUser.biometricLockEnabled === true;
+          const initialRelock = normalizeBiometricRelockSeconds(currentUser && currentUser.biometricRelockSeconds);
+          const initialScreenCapture = currentUser && currentUser.screenCaptureEnabled === true;
+          const changed = toggle.checked !== initialEnabled || Number(relockSelect.value) !== initialRelock || screenshotToggle.checked !== initialScreenCapture;
+          saveBtn.disabled = !changed;
+          saveBtn.classList.toggle("is-ready", changed);
+        };
+
+        toggle.addEventListener("change", refreshSaveState);
+        relockSelect.addEventListener("change", refreshSaveState);
+        screenshotToggle.addEventListener("change", refreshSaveState);
+
+        saveBtn.addEventListener("click", async () => {
+          notice.textContent = "";
+          notice.className = "notice";
+          saveBtn.disabled = true;
+
+          try {
+            const desiredEnabled = toggle.checked === true;
+            const desiredRelock = normalizeBiometricRelockSeconds(relockSelect.value);
+            const desiredScreenCapture = screenshotToggle.checked === true;
+
+            if (desiredEnabled) {
+              const available = await isBiometricAvailable();
+              if (!available) {
+                notice.textContent = "Biometrie indisponible ou non configuree sur cet appareil.";
+                toggle.checked = false;
+                refreshSaveState();
+                return;
+              }
+
+              if (!loadStoredBiometricCredentialId()) {
+                await registerBiometricCredential();
+              }
+            }
+
+            const res = await fetch("/api/account/preferences", {
+              method: "PUT",
+              credentials: "include",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                biometricLockEnabled: desiredEnabled,
+                biometricRelockSeconds: desiredRelock,
+                screenCaptureEnabled: desiredScreenCapture
+              })
+            });
+
+            const data = await res.json().catch(() => ({}));
+
+            if (!res.ok) {
+              notice.textContent = data.error || "Impossible d'enregistrer les preferences biometrie.";
+              refreshSaveState();
+              return;
+            }
+
+            currentUser.biometricLockEnabled = data.biometricLockEnabled === true;
+            currentUser.biometricRelockSeconds = normalizeBiometricRelockSeconds(data.biometricRelockSeconds);
+            currentUser.screenCaptureEnabled = data.screenCaptureEnabled === true;
+            toggle.checked = currentUser.biometricLockEnabled === true;
+            relockSelect.value = String(currentUser.biometricRelockSeconds);
+            screenshotToggle.checked = currentUser.screenCaptureEnabled === true;
+
+            if (!currentUser.biometricLockEnabled) {
+              clearStoredBiometricCredentialId();
+            }
+
+            notice.textContent = "Preference enregistree.";
+            notice.className = "notice success";
+            refreshSaveState();
+          } catch (_) {
+            notice.textContent = "Erreur reseau ou biometrie. Reessayez.";
+            refreshSaveState();
+          }
+        });
+
+        refreshSaveState();
         return card;
       }
 

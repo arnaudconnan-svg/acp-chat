@@ -131,6 +131,76 @@
       padding: 10px 14px;
       cursor: pointer;
     }
+
+    #privacyLockScreen {
+      position: fixed;
+      inset: 0;
+      z-index: 3000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(244, 249, 249, 0.96);
+      padding: 24px;
+      box-sizing: border-box;
+    }
+
+    #privacyLockBox {
+      width: 100%;
+      max-width: 420px;
+      background: #fff;
+      border: 1.5px solid #d9e5e6;
+      border-radius: 16px;
+      padding: 22px 20px;
+      box-shadow: 0 20px 50px rgba(25, 33, 36, 0.12);
+    }
+
+    #privacyLockTitle {
+      margin: 0 0 10px;
+      font-size: 20px;
+      color: #18373c;
+    }
+
+    #privacyLockText {
+      margin: 0;
+      font-size: 14px;
+      line-height: 1.45;
+      color: #495f63;
+    }
+
+    #privacyLockNotice {
+      min-height: 18px;
+      margin-top: 12px;
+      font-size: 13px;
+      color: #b5483f;
+    }
+
+    #privacyLockActions {
+      margin-top: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .privacyLockBtnPrimary,
+    .privacyLockBtnSecondary {
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      padding: 10px 12px;
+      cursor: pointer;
+    }
+
+    .privacyLockBtnPrimary {
+      border: none;
+      background: #245e66;
+      color: #fff;
+    }
+
+    .privacyLockBtnSecondary {
+      border: 1px solid #cfd8d9;
+      background: #fff;
+      color: #33565b;
+    }
     
     #welcomeInner {
       position: relative;
@@ -2320,6 +2390,19 @@
     </div>
   </div>
 
+  <div id="privacyLockScreen" aria-live="polite">
+    <div id="privacyLockBox">
+      <h2 id="privacyLockTitle">Session verrouillee</h2>
+      <p id="privacyLockText">Pour proteger cette session, l'application demande une verification biometrie.</p>
+      <div id="privacyLockNotice"></div>
+      <div id="privacyLockActions">
+        <button id="privacyUnlockBtn" class="privacyLockBtnPrimary" type="button">Deverrouiller</button>
+        <button id="privacyLockAccountBtn" class="privacyLockBtnSecondary" type="button">Ouvrir mon compte</button>
+        <button id="privacyLockLogoutBtn" class="privacyLockBtnSecondary" type="button">Se deconnecter</button>
+      </div>
+    </div>
+  </div>
+
   <div id="welcomeScreen" class="screen">
     <div id="welcomeInner">
       
@@ -3032,6 +3115,9 @@
     const ADMIN_UI_KEY = "facilitatio_admin_ui";
     const ADMIN_REPLAY_KEY = "facilitatio_admin_replay";
     const CHAT_BOTTOM_THRESHOLD_PX = 12;
+    const BIOMETRIC_CREDENTIAL_KEY_PREFIX = "facilitatio_bio_cred_v1_";
+    const BIOMETRIC_UNLOCK_TS_KEY_PREFIX = "facilitatio_bio_unlock_ts_v1_";
+    const BIOMETRIC_HIDDEN_AT_KEY_PREFIX = "facilitatio_bio_hidden_at_v1_";
     let userSessionState = {
       authenticated: false,
       user: null
@@ -3139,6 +3225,223 @@
       }
 
       setDeviceGateVisibility(true);
+      return false;
+    }
+
+    function normalizeBiometricRelockSeconds(value) {
+      const n = Number(value);
+      if (!Number.isFinite(n)) return 120;
+      if (n === 0 || n === 30 || n === 120 || n === 300) return n;
+      return 120;
+    }
+
+    function getBiometricUserId() {
+      if (!userSessionState || userSessionState.authenticated !== true) return "";
+      const id = userSessionState.user && typeof userSessionState.user.id === "string" ? userSessionState.user.id.trim() : "";
+      return id;
+    }
+
+    function getBiometricCredentialStorageKey() {
+      const userId = getBiometricUserId();
+      return userId ? `${BIOMETRIC_CREDENTIAL_KEY_PREFIX}${userId}` : "";
+    }
+
+    function getBiometricUnlockTsStorageKey() {
+      const userId = getBiometricUserId();
+      return userId ? `${BIOMETRIC_UNLOCK_TS_KEY_PREFIX}${userId}` : "";
+    }
+
+    function getBiometricHiddenAtStorageKey() {
+      const userId = getBiometricUserId();
+      return userId ? `${BIOMETRIC_HIDDEN_AT_KEY_PREFIX}${userId}` : "";
+    }
+
+    function decodeBase64UrlToArrayBuffer(value) {
+      if (typeof value !== "string" || !value.trim()) return null;
+      const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
+      const padded = normalized + "=".repeat((4 - (normalized.length % 4 || 4)) % 4);
+      const binary = atob(padded);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i += 1) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+      return bytes.buffer;
+    }
+
+    function createRandomChallenge(size = 32) {
+      const bytes = new Uint8Array(size);
+      crypto.getRandomValues(bytes);
+      return bytes;
+    }
+
+    function isBiometricLockEnabledForSession() {
+      return (
+        userSessionState &&
+        userSessionState.authenticated === true &&
+        userSessionState.user &&
+        userSessionState.user.biometricLockEnabled === true
+      );
+    }
+
+    function getBiometricRelockDelayMs() {
+      const relockSeconds = normalizeBiometricRelockSeconds(
+        userSessionState && userSessionState.user ? userSessionState.user.biometricRelockSeconds : 120
+      );
+      return relockSeconds * 1000;
+    }
+
+    function loadBiometricCredentialId() {
+      const key = getBiometricCredentialStorageKey();
+      if (!key) return "";
+      return String(localStorage.getItem(key) || "").trim();
+    }
+
+    function setBiometricUnlockTimestamp(ts) {
+      const key = getBiometricUnlockTsStorageKey();
+      if (!key) return;
+      sessionStorage.setItem(key, String(Number(ts) || Date.now()));
+    }
+
+    function loadBiometricUnlockTimestamp() {
+      const key = getBiometricUnlockTsStorageKey();
+      if (!key) return 0;
+      const n = Number(sessionStorage.getItem(key) || 0);
+      return Number.isFinite(n) ? n : 0;
+    }
+
+    function getBiometricUnlockTokenValue() {
+      const token = sessionStorage.getItem("biometricUnlockToken") || "";
+      const expiresAtStr = sessionStorage.getItem("biometricUnlockTokenExpiresAt") || "0";
+      const expiresAt = Number(expiresAtStr);
+
+      if (!token || !Number.isFinite(expiresAt) || Date.now() > expiresAt) {
+        return null;
+      }
+
+      return token;
+    }
+
+    function clearBiometricUnlockToken() {
+      sessionStorage.removeItem("biometricUnlockToken");
+      sessionStorage.removeItem("biometricUnlockTokenExpiresAt");
+    }
+
+    async function invalidateBiometricTokenOnServerLock() {
+      const token = sessionStorage.getItem("biometricUnlockToken");
+      if (!token) return;
+
+      try {
+        await fetch("/api/biometric/lock", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token })
+        });
+      } catch (err) {
+        console.debug("Token invalidation failed:", err.message);
+      }
+
+      clearBiometricUnlockToken();
+    }
+
+    function showPrivacyLockScreen(visible, notice = "") {
+      const screen = document.getElementById("privacyLockScreen");
+      const noticeEl = document.getElementById("privacyLockNotice");
+      if (!screen) return;
+      screen.style.display = visible ? "flex" : "none";
+      if (noticeEl) noticeEl.textContent = visible ? String(notice || "") : "";
+    }
+
+    async function isBiometricUnlockAvailable() {
+      if (!window.isSecureContext) return false;
+      if (typeof window.PublicKeyCredential !== "function") return false;
+      if (typeof window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable !== "function") return false;
+      try {
+        return await window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+      } catch {
+        return false;
+      }
+    }
+
+    async function requestBiometricUnlock() {
+      if (!navigator.credentials || typeof navigator.credentials.get !== "function") {
+        throw new Error("Biometrie non supportee sur cet appareil.");
+      }
+
+      const credentialId = loadBiometricCredentialId();
+      const rawId = decodeBase64UrlToArrayBuffer(credentialId);
+      if (!rawId) {
+        throw new Error("Aucune cle biometrie configuree sur cet appareil. Ouvrez Mon compte > Confidentialite.");
+      }
+
+      const available = await isBiometricUnlockAvailable();
+      if (!available) {
+        throw new Error("Biometrie indisponible ou non configuree sur cet appareil.");
+      }
+
+      const assertion = await navigator.credentials.get({
+        publicKey: {
+          challenge: createRandomChallenge(32),
+          timeout: 60000,
+          userVerification: "required",
+          allowCredentials: [{
+            type: "public-key",
+            id: rawId
+          }]
+        }
+      });
+
+      if (!assertion) {
+        throw new Error("Verification biometrie annulee.");
+      }
+
+      // Request a short-lived unlock token from the server
+      try {
+        const tokenRes = await fetch("/api/biometric/unlock-token", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({})
+        });
+
+        if (tokenRes.ok) {
+          const tokenData = await tokenRes.json();
+          if (tokenData.token) {
+            sessionStorage.setItem("biometricUnlockToken", tokenData.token);
+            sessionStorage.setItem("biometricUnlockTokenExpiresAt", String(Date.now() + tokenData.expiresIn * 1000));
+          }
+        }
+      } catch (err) {
+        // Non-blocking: Token fetch failed, but unlock still succeeds
+        console.debug("Token issuance failed:", err.message);
+      }
+
+      setBiometricUnlockTimestamp(Date.now());
+      showPrivacyLockScreen(false);
+      return true;
+    }
+
+    function shouldRequestBiometricUnlock(reason = "") {
+      if (!isBiometricLockEnabledForSession()) return false;
+      if (!loadBiometricCredentialId()) return false;
+
+      const lastUnlockTs = loadBiometricUnlockTimestamp();
+      if (!lastUnlockTs) return true;
+
+      const relockDelayMs = getBiometricRelockDelayMs();
+      if (relockDelayMs <= 0) {
+        return reason === "resume" || reason === "foreground" || reason === "launch";
+      }
+
+      return Date.now() - lastUnlockTs >= relockDelayMs;
+    }
+
+    async function ensureBiometricAccess(reason = "navigation") {
+      if (!shouldRequestBiometricUnlock(reason)) {
+        return true;
+      }
+
+      showPrivacyLockScreen(true);
       return false;
     }
 
@@ -5229,6 +5532,11 @@
     }
     
     async function openConversation(conversationId) {
+      const hasBiometricAccess = await ensureBiometricAccess("navigation");
+      if (!hasBiometricAccess) {
+        return;
+      }
+
       closeEditMode({ restoreDraft: false });
       resetComposerDraftState();
 
@@ -5341,12 +5649,22 @@
       sendIntersessionBeacon();
     });
     document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "hidden" && !_beaconFired) {
-        sendIntersessionBeacon();
+      if (document.visibilityState === "hidden") {
+        if (!_beaconFired) {
+          sendIntersessionBeacon();
+        }
+        const hiddenKey = getBiometricHiddenAtStorageKey();
+        if (hiddenKey) {
+          sessionStorage.setItem(hiddenKey, String(Date.now()));
+        }
+        // Invalidate biometric unlock token when app enters background
+        invalidateBiometricTokenOnServerLock().catch(() => {});
       }
+
       // Reset after a short delay so future visibility changes can trigger again.
       if (document.visibilityState === "visible") {
         _beaconFired = false;
+        ensureBiometricAccess("resume").catch(() => {});
       }
     });
     
@@ -8997,6 +9315,11 @@
       if (sessionStatus === "terminated" || sessionStatus === "closing") return;
       if (sessionStatus === "expired") return;
 
+      const hasBiometricAccess = await ensureBiometricAccess("chat");
+      if (!hasBiometricAccess) {
+        return;
+      }
+
       const now = Date.now();
       if (now - _lastSendTs < 400) return;
       _lastSendTs = now;
@@ -9300,7 +9623,8 @@
             memory: loadConversationData(requestConversationId).memory,
             flags: normalizeStoredFlags(loadConversationData(requestConversationId).flags),
             mailsEnabled: adminPayload.mailsEnabled !== false,
-            logsEnabled: adminPayload.logsEnabled === true
+            logsEnabled: adminPayload.logsEnabled === true,
+            biometricUnlockToken: getBiometricUnlockTokenValue() || undefined
           })
         });
 
@@ -9888,6 +10212,43 @@
     if (deviceGateAdminBtn) {
       deviceGateAdminBtn.onclick = () => {
         navigateAway("/admin-login.html?next=%2Findex.html%3FadminUi%3D1");
+      };
+    }
+
+    const privacyUnlockBtn = document.getElementById("privacyUnlockBtn");
+    if (privacyUnlockBtn) {
+      privacyUnlockBtn.onclick = async () => {
+        const noticeEl = document.getElementById("privacyLockNotice");
+        if (noticeEl) noticeEl.textContent = "";
+        try {
+          await requestBiometricUnlock();
+        } catch (err) {
+          if (noticeEl) {
+            noticeEl.textContent = err && err.message ? err.message : "Verification biometrie impossible.";
+          }
+        }
+      };
+    }
+
+    const privacyLockAccountBtn = document.getElementById("privacyLockAccountBtn");
+    if (privacyLockAccountBtn) {
+      privacyLockAccountBtn.onclick = () => {
+        navigateAway("/account.html");
+      };
+    }
+
+    const privacyLockLogoutBtn = document.getElementById("privacyLockLogoutBtn");
+    if (privacyLockLogoutBtn) {
+      privacyLockLogoutBtn.onclick = async () => {
+        try {
+          await fetch("/api/auth/logout", {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: "{}"
+          });
+        } catch {}
+        navigateAway("/auth.html");
       };
     }
 
@@ -10647,6 +11008,8 @@
       if (!canAccessCurrentDevice) {
         return;
       }
+
+      await ensureBiometricAccess("launch");
 
       const shouldSkipWelcomeAnimation = isAdminUI;
 

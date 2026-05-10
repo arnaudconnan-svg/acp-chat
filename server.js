@@ -39,6 +39,9 @@ const ADMIN_SESSION_SIGNING_SECRET = appConfig.adminSessionSecret || SESSION_SEC
 const userSessions = new Map(); // sessionToken -> { userId, createdAt }
 const USER_SESSION_DURATION = 30 * 24 * 60 * 60 * 1000; // 30d
 const USER_SESSION_SIGNING_SECRET = appConfig.userSessionSecret || SESSION_SECRET || ADMIN_PASSWORD || "dev-user-session-secret";
+// Biometric unlock tokens: sessionToken -> { userId, expiresAt }
+const biometricUnlockTokens = new Map();
+const BIOMETRIC_UNLOCK_TOKEN_DURATION = 10 * 60 * 1000; // 10 minutes
 
 const fs = require("fs");
 const path = require("path");
@@ -652,8 +655,16 @@ async function findUserByEmail(email) {
   };
 }
 
+function normalizeBiometricRelockSeconds(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return null;
+  const allowed = new Set([0, 30, 120, 300]);
+  return allowed.has(n) ? n : null;
+}
+
 function toPublicUser(userId, userData, _options = {}) {
   const safeUser = userData && typeof userData === "object" ? userData : {};
+  const normalizedRelock = normalizeBiometricRelockSeconds(safeUser.biometricRelockSeconds);
 
   return {
     id: String(userId || ""),
@@ -662,7 +673,10 @@ function toPublicUser(userId, userData, _options = {}) {
     country: normalizeCountryCode(safeUser.country),
     createdAt: typeof safeUser.createdAt === "string" ? safeUser.createdAt : null,
     updatedAt: typeof safeUser.updatedAt === "string" ? safeUser.updatedAt : null,
-    privateConversationsByDefault: safeUser.privateConversationsByDefault === true
+    privateConversationsByDefault: safeUser.privateConversationsByDefault === true,
+    biometricLockEnabled: safeUser.biometricLockEnabled === true,
+    biometricRelockSeconds: normalizedRelock === null ? 120 : normalizedRelock,
+    screenCaptureEnabled: safeUser.screenCaptureEnabled === true
   };
 }
 
@@ -749,6 +763,38 @@ async function requireUserAuth(req, res, next) {
     console.error("Erreur requireUserAuth:", err.message);
     return res.status(500).json({ error: "Auth check failed" });
   }
+}
+
+// Validate biometric unlock token if biometric lock is enabled for the user
+function validateBiometricTokenIfNeeded(req) {
+  const session = req.userSession;
+  
+  if (!session?.user?.biometricLockEnabled) {
+    return { valid: true, reason: "biometric_not_enabled" };
+  }
+
+  const biometricToken = req.body?.biometricUnlockToken || req.headers["x-biometric-token"];
+
+  if (!biometricToken || typeof biometricToken !== "string") {
+    return { valid: false, reason: "missing_token" };
+  }
+
+  const tokenData = biometricUnlockTokens.get(biometricToken);
+
+  if (!tokenData) {
+    return { valid: false, reason: "invalid_token" };
+  }
+
+  if (Date.now() > tokenData.expiresAt) {
+    biometricUnlockTokens.delete(biometricToken);
+    return { valid: false, reason: "token_expired" };
+  }
+
+  if (tokenData.userId !== session.userId) {
+    return { valid: false, reason: "token_user_mismatch" };
+  }
+
+  return { valid: true, reason: "token_valid" };
 }
 
 async function resolveBranchActorUserId(req) {
@@ -1651,6 +1697,9 @@ app.post("/api/auth/register", async (req, res) => {
       email,
       passwordHash: hashPassword(password),
       privateConversationsByDefault: false,
+      biometricLockEnabled: false,
+      biometricRelockSeconds: 120,
+      screenCaptureEnabled: false,
       createdAt: now,
       updatedAt: now
     };
@@ -1777,8 +1826,11 @@ app.post("/api/auth/change-password", requireUserAuth, async (req, res) => {
 app.get("/api/account/preferences", requireUserAuth, async (req, res) => {
   try {
     const session = req.userSession;
+    const relock = normalizeBiometricRelockSeconds(session?.user?.biometricRelockSeconds);
     return res.json({
-      privateConversationsByDefault: session?.user?.privateConversationsByDefault === true
+      privateConversationsByDefault: session?.user?.privateConversationsByDefault === true,
+      biometricLockEnabled: session?.user?.biometricLockEnabled === true,
+      biometricRelockSeconds: relock === null ? 120 : relock
     });
   } catch (err) {
     console.error("Erreur GET /api/account/preferences:", err.message);
@@ -1788,32 +1840,129 @@ app.get("/api/account/preferences", requireUserAuth, async (req, res) => {
 
 app.put("/api/account/preferences", requireUserAuth, async (req, res) => {
   try {
-    if (
-      !req.body ||
-      typeof req.body !== "object" ||
-      Array.isArray(req.body) ||
-      typeof req.body.privateConversationsByDefault !== "boolean"
-    ) {
+    if (!req.body || typeof req.body !== "object" || Array.isArray(req.body)) {
       return res.status(400).json({ error: "Invalid preferences payload" });
     }
 
     const session = req.userSession;
-    const value = req.body.privateConversationsByDefault === true;
     const now = new Date().toISOString();
+    const patch = { updatedAt: now };
 
-    await usersRef.child(session.userId).update({
-      privateConversationsByDefault: value,
-      updatedAt: now
-    });
+    const hasPrivateDefault = typeof req.body.privateConversationsByDefault === "boolean";
+    const hasBiometricLockEnabled = typeof req.body.biometricLockEnabled === "boolean";
+    const hasBiometricRelockSeconds = Object.prototype.hasOwnProperty.call(req.body, "biometricRelockSeconds");
+    const hasScreenCaptureEnabled = typeof req.body.screenCaptureEnabled === "boolean";
+
+    if (!hasPrivateDefault && !hasBiometricLockEnabled && !hasBiometricRelockSeconds && !hasScreenCaptureEnabled) {
+      return res.status(400).json({ error: "Invalid preferences payload" });
+    }
+
+    if (hasPrivateDefault) {
+      patch.privateConversationsByDefault = req.body.privateConversationsByDefault === true;
+    }
+
+    if (hasBiometricLockEnabled) {
+      patch.biometricLockEnabled = req.body.biometricLockEnabled === true;
+    }
+
+    if (hasBiometricRelockSeconds) {
+      const normalizedRelock = normalizeBiometricRelockSeconds(req.body.biometricRelockSeconds);
+      if (normalizedRelock === null) {
+        return res.status(400).json({ error: "Invalid biometric relock timeout" });
+      }
+      patch.biometricRelockSeconds = normalizedRelock;
+    }
+
+    if (hasScreenCaptureEnabled) {
+      patch.screenCaptureEnabled = req.body.screenCaptureEnabled === true;
+    }
+
+    await usersRef.child(session.userId).update(patch);
+
+    const safePrivateDefault = Object.prototype.hasOwnProperty.call(patch, "privateConversationsByDefault")
+      ? patch.privateConversationsByDefault === true
+      : session?.user?.privateConversationsByDefault === true;
+    const safeBiometricEnabled = Object.prototype.hasOwnProperty.call(patch, "biometricLockEnabled")
+      ? patch.biometricLockEnabled === true
+      : session?.user?.biometricLockEnabled === true;
+    const safeRelock = Object.prototype.hasOwnProperty.call(patch, "biometricRelockSeconds")
+      ? patch.biometricRelockSeconds
+      : normalizeBiometricRelockSeconds(session?.user?.biometricRelockSeconds);
+    const safeScreenCapture = Object.prototype.hasOwnProperty.call(patch, "screenCaptureEnabled")
+      ? patch.screenCaptureEnabled === true
+      : session?.user?.screenCaptureEnabled === true;
 
     return res.json({
       success: true,
-      privateConversationsByDefault: value,
+      privateConversationsByDefault: safePrivateDefault,
+      biometricLockEnabled: safeBiometricEnabled,
+      biometricRelockSeconds: safeRelock === null ? 120 : safeRelock,
+      screenCaptureEnabled: safeScreenCapture,
       updatedAt: now
     });
   } catch (err) {
     console.error("Erreur PUT /api/account/preferences:", err.message);
     return res.status(500).json({ error: "Preferences update failed" });
+  }
+});
+
+// Issue a short-lived biometric unlock token (valid for 10 minutes)
+app.post("/api/biometric/unlock-token", requireUserAuth, async (req, res) => {
+  try {
+    const session = req.userSession;
+    const userId = session.userId;
+
+    if (session?.user?.biometricLockEnabled !== true) {
+      return res.status(403).json({ error: "Biometric lock not enabled" });
+    }
+
+    const now = Date.now();
+    const expiresAt = now + BIOMETRIC_UNLOCK_TOKEN_DURATION;
+    const tokenValue = crypto.randomBytes(32).toString("hex");
+
+    biometricUnlockTokens.set(tokenValue, {
+      userId,
+      expiresAt,
+      issuedAt: now
+    });
+
+    // Clean up old tokens periodically
+    if (biometricUnlockTokens.size > 1000) {
+      for (const [key, val] of biometricUnlockTokens.entries()) {
+        if (val.expiresAt < now) {
+          biometricUnlockTokens.delete(key);
+        }
+      }
+    }
+
+    return res.json({
+      success: true,
+      token: tokenValue,
+      expiresIn: BIOMETRIC_UNLOCK_TOKEN_DURATION / 1000
+    });
+  } catch (err) {
+    console.error("Erreur POST /api/biometric/unlock-token:", err.message);
+    return res.status(500).json({ error: "Token issuance failed" });
+  }
+});
+
+// Invalidate biometric unlock token (called when app enters background)
+app.post("/api/biometric/lock", requireUserAuth, async (req, res) => {
+  try {
+    const biometricToken = req.body?.token;
+
+    if (!biometricToken || typeof biometricToken !== "string") {
+      return res.status(400).json({ error: "Invalid token" });
+    }
+
+    biometricUnlockTokens.delete(biometricToken);
+
+    return res.json({
+      success: true
+    });
+  } catch (err) {
+    console.error("Erreur POST /api/biometric/lock:", err.message);
+    return res.status(500).json({ error: "Lock failed" });
   }
 });
 
@@ -4404,6 +4553,21 @@ app.post("/chat", async (req, res) => {
     req.on("aborted", () => {
       cancelActiveChatRequest(requestId, requestData.userId || "u_anon");
     });
+  }
+
+  // Check biometric unlock token if user has biometric lock enabled
+  try {
+    const userSession = await getUserSession(req);
+    if (userSession?.user?.biometricLockEnabled === true) {
+      req.userSession = userSession;
+      const tokenValidation = validateBiometricTokenIfNeeded(req);
+      if (!tokenValidation.valid) {
+        return res.status(403).json({ error: "Biometric unlock required", reason: tokenValidation.reason });
+      }
+    }
+  } catch (err) {
+    // Non-blocking: If session check fails, continue (user may be anonymous)
+    chatLogger.debug({ event: "biometric_check_skipped", error: err.message });
   }
   
   const chatStartTime = Date.now();

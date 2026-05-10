@@ -103,6 +103,35 @@ function main() {
     }
   }
 
+  // Ensure LauncherActivity.java has FLAG_SECURE applied
+  if (fs.existsSync(LAUNCHER_ACTIVITY_PATH)) {
+    try {
+      let launcherSource = fs.readFileSync(LAUNCHER_ACTIVITY_PATH, "utf8");
+      
+      // Check if FLAG_SECURE is already present
+      if (!launcherSource.includes("FLAG_SECURE")) {
+        // Add WindowManager import if not present
+        if (!launcherSource.includes("import android.view.WindowManager;")) {
+          launcherSource = launcherSource.replace(
+            /import android\.util\.Log;/,
+            "import android.util.Log;\nimport android.view.WindowManager;"
+          );
+        }
+        
+        // Add FLAG_SECURE call at the end of onCreate, before closing brace
+        launcherSource = launcherSource.replace(
+          /setRequestedOrientation\(ActivityInfo\.SCREEN_ORIENTATION_PORTRAIT\);\s*\}/,
+          "setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);\n        // Apply FLAG_SECURE to prevent screenshots and app preview by default\n        getWindow().setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE);\n    }"
+        );
+        
+        fs.writeFileSync(LAUNCHER_ACTIVITY_PATH, launcherSource, "utf8");
+        console.log("[android-customize] Applied FLAG_SECURE to LauncherActivity.java.");
+      }
+    } catch (err) {
+      console.warn(`[android-customize] Warning: Could not update ${LAUNCHER_ACTIVITY_PATH}: ${err.message}`);
+    }
+  }
+
   const template = fs.readFileSync(TEMPLATE_PATH, "utf8");
   const current = fs.readFileSync(TARGET_PATH, "utf8");
 
