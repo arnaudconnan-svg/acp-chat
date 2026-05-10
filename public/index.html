@@ -3246,56 +3246,18 @@
       clearBiometricUnlockToken();
     }
 
-    let biometricUnlockRedirectPending = false;
-
-    async function isBiometricUnlockAvailable() {
-      return true; // Native Android BiometricPrompt — always considered available when enabled.
+    function isBiometricUnlockAvailable() {
+      return false;
     }
 
-    function requestBiometricUnlock() {
-      if (biometricUnlockRedirectPending) return;
-
-      // Store a short-lived nonce to verify the result when the app returns from BiometricActivity.
-      const nonceKey = getBiometricPendingNonceKey();
-      const nonce = Array.from(crypto.getRandomValues(new Uint8Array(16)))
-        .map(b => b.toString(16).padStart(2, "0")).join("");
-      try {
-        localStorage.setItem(nonceKey, JSON.stringify({ nonce, expiresAt: Date.now() + 90000 }));
-      } catch (_) {}
-
-      // Navigate to native BiometricActivity via custom scheme.
-      const callbackPath = encodeURIComponent("/");
-      biometricUnlockRedirectPending = true;
-      window.location.href = `facilitat://biometric-verify?callback_path=/&_bio_nonce=${nonce}`;
-    }
+    function requestBiometricUnlock() {}
 
     function shouldRequestBiometricUnlock(reason = "") {
-      try {
-        if (sessionStorage.getItem("nativeBiometricGateActive") === "1") {
-          return false;
-        }
-      } catch (_) {}
-
-      if (!isBiometricLockEnabledForSession()) return false;
-
-      const lastUnlockTs = loadBiometricUnlockTimestamp();
-      if (!lastUnlockTs) return true;
-
-      const relockDelayMs = getBiometricRelockDelayMs();
-      if (relockDelayMs <= 0) {
-        return reason === "resume" || reason === "foreground" || reason === "launch";
-      }
-
-      return Date.now() - lastUnlockTs >= relockDelayMs;
+      return false;
     }
 
     async function ensureBiometricAccess(reason = "navigation") {
-      if (!shouldRequestBiometricUnlock(reason)) {
-        return true;
-      }
-
-      requestBiometricUnlock();
-      return false;
+      return true;
     }
 
     async function persistAdminMailsPreference(mailsEnabled) {
@@ -5385,11 +5347,6 @@
     }
     
     async function openConversation(conversationId) {
-      const hasBiometricAccess = await ensureBiometricAccess("navigation");
-      if (!hasBiometricAccess) {
-        return;
-      }
-
       closeEditMode({ restoreDraft: false });
       resetComposerDraftState();
 
@@ -5517,7 +5474,6 @@
       // Reset after a short delay so future visibility changes can trigger again.
       if (document.visibilityState === "visible") {
         _beaconFired = false;
-        ensureBiometricAccess("resume").catch(() => {});
       }
     });
     
@@ -9168,11 +9124,6 @@
       if (sessionStatus === "terminated" || sessionStatus === "closing") return;
       if (sessionStatus === "expired") return;
 
-      const hasBiometricAccess = await ensureBiometricAccess("chat");
-      if (!hasBiometricAccess) {
-        return;
-      }
-
       const now = Date.now();
       if (now - _lastSendTs < 400) return;
       _lastSendTs = now;
@@ -10810,37 +10761,6 @@
       await syncUserSessionState();
       updateAccountBtnVisibility();
 
-      // --- Biometric result from native Android BiometricActivity ---
-      try {
-        const _bioUrl = new URL(window.location.href);
-        const _nativeGate = _bioUrl.searchParams.get("_android_native_bio_gate");
-        const _bioResult = _bioUrl.searchParams.get("_biometric_result");
-        const _bioNonce = _bioUrl.searchParams.get("_bio_nonce");
-
-        if (_nativeGate === "1") {
-          try { sessionStorage.setItem("nativeBiometricGateActive", "1"); } catch (_) {}
-          _bioUrl.searchParams.delete("_android_native_bio_gate");
-        }
-
-        if (_bioResult || _bioNonce) {
-          _bioUrl.searchParams.delete("_biometric_result");
-          _bioUrl.searchParams.delete("_bio_nonce");
-          const _bioClean = _bioUrl.pathname + (_bioUrl.searchParams.toString() ? "?" + _bioUrl.searchParams.toString() : "") + (_bioUrl.hash || "");
-          history.replaceState(history.state || {}, "", _bioClean);
-
-          if (_bioResult === "success" && _bioNonce) {
-            const _nonceKey = getBiometricPendingNonceKey();
-            try {
-              const _stored = JSON.parse(localStorage.getItem(_nonceKey) || "null");
-              if (_stored && _stored.nonce === _bioNonce && Date.now() < (_stored.expiresAt || 0)) {
-                setBiometricUnlockTimestamp(Date.now());
-              }
-            } catch (_) {}
-            try { localStorage.removeItem(getBiometricPendingNonceKey()); } catch (_) {}
-          }
-        }
-      } catch (_) {}
-
       // Auto-save native Android country if user is authenticated and has no country set yet.
       try {
         const _launchUrl = new URL(window.location.href);
@@ -10883,8 +10803,7 @@
         return;
       }
 
-      const launchBiometricRequired = shouldRequestBiometricUnlock("launch");
-      const shouldSkipWelcomeAnimation = isAdminUI && !launchBiometricRequired;
+      const shouldSkipWelcomeAnimation = isAdminUI;
 
       const loadUrl = new URL(window.location.href);
       const replayRequested = loadUrl.searchParams.get("adminReplay") === "1";
@@ -10900,7 +10819,7 @@
         history.replaceState(history.state || {}, "", `${loadUrl.pathname}${nextSearch ? `?${nextSearch}` : ""}${loadUrl.hash || ""}`);
       }
 
-      if (!launchBiometricRequired && isAdminUI && replayPayload) {
+      if (isAdminUI && replayPayload) {
         const replayConversationId = applyAdminReplayPayload(replayPayload);
         if (replayConversationId) {
           localStorage.setItem(CONVERSATION_ID_KEY, replayConversationId);
@@ -10920,7 +10839,7 @@
       }
 
       const requestedScreen = loadUrl.searchParams.get("screen");
-      if (!launchBiometricRequired && requestedScreen === "conversationsScreen") {
+      if (requestedScreen === "conversationsScreen") {
         loadUrl.searchParams.delete("screen");
         const cleanSearch = loadUrl.searchParams.toString();
         const cleanUrl = `${loadUrl.pathname}${cleanSearch ? `?${cleanSearch}` : ""}${loadUrl.hash || ""}`;
@@ -10937,7 +10856,7 @@
 
       // Branch resume: ?branch=<branchConversationId> from account.html
       const branchParam = loadUrl.searchParams.get("branch");
-      if (!launchBiometricRequired && branchParam && typeof branchParam === "string" && branchParam.trim()) {
+      if (branchParam && typeof branchParam === "string" && branchParam.trim()) {
         const branchConversationId = branchParam.trim();
         loadUrl.searchParams.delete("branch");
         const cleanSearch = loadUrl.searchParams.toString();
@@ -11417,20 +11336,6 @@
       }
       
       function showWelcome() {
-        if (launchBiometricRequired) {
-          clearWelcomeRitualTimers();
-          prepareWelcomeScreenStatic();
-          setWelcomeLockedState(true);
-          showScreen("welcomeScreen", {
-            replaceHistory: true,
-            pushHistory: false,
-            noAnimation: true,
-            noWelcomeIntro: true
-          });
-          requestBiometricUnlock();
-          return;
-        }
-
         setWelcomeLockedState(false);
 
         if (shouldSkipWelcomeAnimation) {
