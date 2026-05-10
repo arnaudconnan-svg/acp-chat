@@ -70,7 +70,7 @@ for (const field of [
   "topChips","memory","directivityText","conversationState",
   "consecutiveNonExplorationTurns","interpretationRejection","needsSoberReadjustment","relationalAdjustmentActive",
   "pipelineStages","explorationCalibrationLevel","explorationSignal",
-  "memoryRewriteIntent","memoryBeforeSanitization",
+  "memoryBeforeSanitization",
   "intent","forbidden","confidenceSignal",
   "responseRegister","phraseLengthPolicy","relancePolicy","somaticFocusPolicy","actionCollapseGuardActive",
   "stateTransitionFrom","stateTransitionValid","stateTransitionRequested",
@@ -92,7 +92,6 @@ assertDeepEqual("default values", base, {
   pipelineStages: [],
   explorationCalibrationLevel: null,
   explorationSignal: null,
-  memoryRewriteIntent: null,
   memoryBeforeSanitization: null,
   intent: null,
   forbidden: [],
@@ -219,28 +218,7 @@ assert("memoryBeforeSanitization present", withBeforeSanitization.memoryBeforeSa
 const withoutBeforeSanitization = buildResponseDebugMeta({ memoryBeforeSanitization: "" });
 assert("memoryBeforeSanitization null when empty", withoutBeforeSanitization.memoryBeforeSanitization, null);
 
-// 12. memoryRewriteIntent
-console.log("\n-- buildResponseDebugMeta memoryRewriteIntent");
-const rewriteIntentDefaults = buildResponseDebugMeta({ memoryRewriteIntent: {} });
-assert("memoryRewriteIntent normalized defaults", rewriteIntentDefaults.memoryRewriteIntent, {
-  interpretationRejectionActive: false,
-  rejectsUnderlyingPhenomenon: false,
-  soberReadjustmentActive: false
-});
-const rewriteIntentTrue = buildResponseDebugMeta({
-  memoryRewriteIntent: {
-    interpretationRejectionActive: true,
-    rejectsUnderlyingPhenomenon: true,
-    soberReadjustmentActive: true
-  }
-});
-assert("memoryRewriteIntent all true", rewriteIntentTrue.memoryRewriteIntent, {
-  interpretationRejectionActive: true,
-  rejectsUnderlyingPhenomenon: true,
-  soberReadjustmentActive: true
-});
-
-// 13. Phase B flags
+// 12. Phase B flags
 console.log("\n-- buildResponseDebugMeta Phase B flags");
 const phaseB = buildResponseDebugMeta({
   allianceSignal: "fragile", engagementLevel: "withdrawn", stagnationTurns: 5,

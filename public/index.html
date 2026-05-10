@@ -7201,10 +7201,6 @@
         return window.FacilitatDebug.translateWriterMode(value);
       }
 
-      function buildMemoryRewriteIntentLines(meta) {
-        return window.FacilitatDebug.buildMemoryRewriteIntentLines(meta);
-      }
-
       function buildStructuredMemorySection(meta) {
         if (!meta || !meta.memoryState || typeof meta.memoryState !== "object") {
           return null;
@@ -7387,11 +7383,6 @@
           sections.push({ title: "Stagnation", content: stagnationLines.join("\n") });
         }
 
-        const memoryRewriteIntentLines = buildMemoryRewriteIntentLines(meta);
-        if (memoryRewriteIntentLines.length > 0) {
-            sections.push({ title: "\u00c9tat m\u00e9moire", content: memoryRewriteIntentLines.join("\n") });
-        }
-
         const structuredMemorySection = buildStructuredMemorySection(meta);
         if (structuredMemorySection) {
           sections.push(structuredMemorySection);
@@ -7399,7 +7390,7 @@
 
         if (!structuredMemorySection && meta.memory) {
           sections.push({
-            title: "M\u00e9moire utilis\u00e9e pour ce tour",
+            title: "M\u00e9moire session utilis\u00e9e pour ce tour",
             content: meta.memory,
             memoryRewritten: !!meta.memoryBeforeSanitization,
             memoryBeforeRewrite: meta.memoryBeforeSanitization || null
@@ -7410,7 +7401,7 @@
       }
 
       function getSectionPalette(title) {
-        if (title === "M\u00e9moire utilis\u00e9e pour ce tour" || title === "M\u00e9moire avant r\u00e9\u00e9criture" || title === "R\u00e9\u00e9criture m\u00e9moire") {
+        if (title === "M\u00e9moire session utilis\u00e9e pour ce tour" || title === "M\u00e9moire avant r\u00e9\u00e9criture" || title === "R\u00e9\u00e9criture m\u00e9moire") {
           return { titleColor: "#8a5a18", blockBackground: "#fff8eb", blockBorder: "#e8c06e" };
         }
         if (title === "Directivit\u00e9") {
@@ -7508,6 +7499,36 @@
               return subWrap;
             }
 
+            function buildPastSignalsLines(pastSignals) {
+              const safePastSignals = pastSignals && typeof pastSignals === "object" ? pastSignals : {};
+              const lines = [];
+
+              if (safePastSignals.decentrage_emotionnel === true) {
+                lines.push("D\u00e9centrage \u00e9motionnel actif");
+              }
+              if (safePastSignals.agressivite_vers_bot === true) {
+                lines.push("D\u00e9charge agressive sur le bot");
+              }
+
+              const stagnation = Number.isInteger(safePastSignals.stagnation)
+                ? safePastSignals.stagnation
+                : Number(safePastSignals.stagnation);
+              if (Number.isFinite(stagnation) && stagnation > 0) {
+                lines.push("Stagnation d\u00e9tect\u00e9e (" + Math.round(stagnation) + " tour(s))");
+              }
+
+              const risk = typeof safePastSignals.risque_dependance === "string"
+                ? safePastSignals.risque_dependance
+                : "";
+              if (risk === "medium") {
+                lines.push("Risque de d\u00e9pendance (mod\u00e9r\u00e9)");
+              } else if (risk === "high") {
+                lines.push("Risque de d\u00e9pendance (\u00e9lev\u00e9)");
+              }
+
+              return lines.length > 0 ? lines : ["(vide)"];
+            }
+
             const data = section.memoryStructuredData;
             const stableLines = (Array.isArray(data.sessionStableContext) ? data.sessionStableContext : []).map(function(item) {
               return "- " + String(item || "");
@@ -7599,10 +7620,7 @@
             sectionContent.appendChild(ancientWrap);
 
             const pastSignalsObj = data.pastSignals && typeof data.pastSignals === "object" ? data.pastSignals : {};
-            const pastSignalsText = Object.keys(pastSignalsObj).length > 0
-              ? JSON.stringify(pastSignalsObj, null, 2)
-              : "(vide)";
-            sectionContent.appendChild(createSubBlock("Signaux du tour pr\u00e9c\u00e9dent (d\u00e9terministes)", [pastSignalsText]));
+            sectionContent.appendChild(createSubBlock("Signaux du tour pr\u00e9c\u00e9dent", buildPastSignalsLines(pastSignalsObj)));
           } else {
             sectionContent.textContent = section.content;
           }
@@ -7685,14 +7703,6 @@
               !!debugMeta.directivityLabel ||
               hasStructuredSignals ||
               !!debugMeta.explorationSignal ||
-              (
-                !!debugMeta.memoryRewriteIntent &&
-                (
-                  debugMeta.memoryRewriteIntent.interpretationRejectionActive === true ||
-                  debugMeta.memoryRewriteIntent.rejectsUnderlyingPhenomenon === true ||
-                  debugMeta.memoryRewriteIntent.soberReadjustmentActive === true
-                )
-              ) ||
               !!debugMeta.conversationState ||
               debugMeta.pipelineStages.length > 0 ||
               !!debugMeta.confidenceSignal

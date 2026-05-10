@@ -2187,11 +2187,6 @@ app.post("/api/account/conversations/import-local", requireUserAuth, async (req,
               })).filter(e => e.stage) : [],
               explorationCalibrationLevel: Number.isInteger(debugMeta.explorationCalibrationLevel) ? debugMeta.explorationCalibrationLevel : null,
               explorationSignal: typeof debugMeta.explorationSignal === "string" ? debugMeta.explorationSignal : null,
-              memoryRewriteIntent: debugMeta.memoryRewriteIntent && typeof debugMeta.memoryRewriteIntent === "object" ? {
-                interpretationRejectionActive: debugMeta.memoryRewriteIntent.interpretationRejectionActive === true,
-                rejectsUnderlyingPhenomenon: debugMeta.memoryRewriteIntent.rejectsUnderlyingPhenomenon === true,
-                soberReadjustmentActive: debugMeta.memoryRewriteIntent.soberReadjustmentActive === true
-              } : null,
               outputGuardTriggered: debugMeta.outputGuardTriggered === true,
               outputGuardRegenerationUsed: debugMeta.outputGuardRegenerationUsed === true,
               outputGuardFallbackUsed: debugMeta.outputGuardFallbackUsed === true,
@@ -2223,7 +2218,6 @@ app.post("/api/account/conversations/import-local", requireUserAuth, async (req,
               // Fields stored in Firebase but previously missing from admin API
               writerIntentHints: Array.isArray(debugMeta.writerIntentHints) ? debugMeta.writerIntentHints.map(v => String(v || "")).filter(Boolean) : [],
               stagnationWindow: Array.isArray(debugMeta.stagnationWindow) ? debugMeta.stagnationWindow.map(v => v === true) : [],
-              memoryAge: Number.isInteger(debugMeta.memoryAge) ? Math.max(0, debugMeta.memoryAge) : 0,
               affiliationScore: typeof debugMeta.affiliationScore === "number" ? debugMeta.affiliationScore : null,
               affiliationWindow: Array.isArray(debugMeta.affiliationWindow) ? debugMeta.affiliationWindow.map(v => typeof v === "number" ? v : 0) : [],
               affiliationEstablished: debugMeta.affiliationEstablished === true,
@@ -4423,12 +4417,6 @@ app.post("/chat", async (req, res) => {
       pipelineStages: normalizePipelineStagesForStorage(safe.pipelineStages),
       explorationCalibrationLevel: Number.isInteger(safe.explorationCalibrationLevel) ? clampExplorationDirectivityLevel(safe.explorationCalibrationLevel) : null,
       explorationSignal: typeof safe.explorationSignal === "string" ? safe.explorationSignal : null,
-      memoryAge: Number.isInteger(safe.memoryAge) && safe.memoryAge > 0 ? safe.memoryAge : 0,
-      memoryRewriteIntent: safe.memoryRewriteIntent && typeof safe.memoryRewriteIntent === "object" ? {
-        interpretationRejectionActive: safe.memoryRewriteIntent.interpretationRejectionActive === true,
-        rejectsUnderlyingPhenomenon: safe.memoryRewriteIntent.rejectsUnderlyingPhenomenon === true,
-        soberReadjustmentActive: safe.memoryRewriteIntent.soberReadjustmentActive === true
-      } : null,
       outputGuardTriggered: safe.outputGuardTriggered === true,
       outputGuardRegenerationUsed: safe.outputGuardRegenerationUsed === true,
       outputGuardFallbackUsed: safe.outputGuardFallbackUsed === true,
@@ -5967,26 +5955,13 @@ app.post("/chat", async (req, res) => {
     // The response always exposes the memory used for this turn (N-1), while
     // update/finalization/persistence runs in background for the next turn.
     let newMemory = previousMemory;
-    let memoryRewriteIntent = {
-      interpretationRejectionActive: safeInterpretationRejection.isInterpretationRejection === true,
-      rejectsUnderlyingPhenomenon: safeInterpretationRejection.rejectsUnderlyingPhenomenon === true,
-      soberReadjustmentActive: postureDecision.needsSoberReadjustment === true
-    };
-    const memoryAge = newMemory ? 1 : 0;
-    let effectiveMemoryPrioritySignalForDebug = postureDecision.memoryPrioritySignal || "normal";
     const shouldRunMemoryUpdate = postureDecision.memoryUpdateDecision === "update";
 
     // Cadence disabled: explicit decision from arbiter/analyzer drives each turn.
     newFlags.memoryUpdateTurnsUntilRefresh = 0;
 
-    if (!shouldRunMemoryUpdate) {
-      effectiveMemoryPrioritySignalForDebug = "normal";
-      memoryRewriteIntent = {
-        interpretationRejectionActive: false,
-        rejectsUnderlyingPhenomenon: false,
-        soberReadjustmentActive: false
-      };
-    } else {
+    if (shouldRunMemoryUpdate) {
+      const effectiveMemoryPrioritySignalForDebug = postureDecision.memoryPrioritySignal || "normal";
       newFlags.dependencyAnalysisTurnsUntilRefresh = 1;
       markChatStage("memory_update");
 
@@ -6087,16 +6062,10 @@ app.post("/chat", async (req, res) => {
       explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
       explorationRelanceWindow: newFlags.explorationRelanceWindow,
       explorationSignal: finalExplorationSignal,
-      memoryRewriteIntent,
-      memoryAge,
-      memoryPrioritySignal: effectiveMemoryPrioritySignalForDebug,
       memoryBeforeSanitization: typeof previousMemoryRewriteDebug?.beforeSanitization === "string"
         ? previousMemoryRewriteDebug.beforeSanitization
         : null,
       memoryState: previousMemoryState,
-      memoryUpdateDecision: postureDecision.memoryUpdateDecision || "hold",
-      memoryUpdateReason: postureDecision.memoryUpdateReason || "unspecified",
-      memoryUpdateSource: postureDecision.memoryUpdateSource || "deterministic",
       outputGuardTriggered,
       outputGuardRegenerationUsed,
       outputGuardFallbackUsed,

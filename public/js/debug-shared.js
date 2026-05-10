@@ -169,18 +169,6 @@
       pipelineStages: normalizePipelineStages(safe.pipelineStages),
       explorationCalibrationLevel: Number.isInteger(safe.explorationCalibrationLevel) ? safe.explorationCalibrationLevel : null,
       explorationSignal: toTrimmedString(safe.explorationSignal, "") || null,
-      memoryRewriteIntent: safe.memoryRewriteIntent && typeof safe.memoryRewriteIntent === "object"
-        ? {
-            interpretationRejectionActive: toBooleanTrue(safe.memoryRewriteIntent.interpretationRejectionActive),
-            rejectsUnderlyingPhenomenon: toBooleanTrue(safe.memoryRewriteIntent.rejectsUnderlyingPhenomenon),
-            soberReadjustmentActive: toBooleanTrue(safe.memoryRewriteIntent.soberReadjustmentActive)
-          }
-        : null,
-      memoryAge: Number.isInteger(safe.memoryAge) && safe.memoryAge > 0 ? safe.memoryAge : 0,
-      memoryPrioritySignal: typeof safe.memoryPrioritySignal === "string" && safe.memoryPrioritySignal ? safe.memoryPrioritySignal : "normal",
-      memoryUpdateDecision: safe.memoryUpdateDecision === "update" ? "update" : "hold",
-      memoryUpdateReason: toTrimmedString(safe.memoryUpdateReason, "") || "unspecified",
-      memoryUpdateSource: toTrimmedString(safe.memoryUpdateSource, "") || "deterministic",
       memoryBeforeSanitization: toTrimmedString(safe.memoryBeforeSanitization, "") || null,
       outputGuardTriggered: toBooleanTrue(safe.outputGuardTriggered),
       outputGuardRegenerationUsed: toBooleanTrue(safe.outputGuardRegenerationUsed),
@@ -510,68 +498,6 @@
     return lines;
   }
 
-  function buildMemoryRewriteIntentLines(meta) {
-    var intent = meta && meta.memoryRewriteIntent && typeof meta.memoryRewriteIntent === "object"
-      ? meta.memoryRewriteIntent
-      : null;
-
-    var signalMap = {
-      "normal": null,
-      "periodic_refresh": "Recalcul p\u00e9riodique (Anciens mouvements archiv\u00e9s)",
-      "relational_friction": "Friction relationnelle d\u00e9tect\u00e9e",
-      "interpretation_rejected": "Rejet d'interpr\u00e9tation d\u00e9tect\u00e9"
-    };
-    var prioritySignal = meta && typeof meta.memoryPrioritySignal === "string" ? meta.memoryPrioritySignal : "normal";
-    var signalLabel = Object.prototype.hasOwnProperty.call(signalMap, prioritySignal) ? signalMap[prioritySignal] : prioritySignal;
-
-    var reasonMap = {
-      default: "mise \u00e0 jour standard",
-      escalation: "escalade d'un mouvement important",
-      significant_shift: "changement significatif du mouvement",
-      interpretation_rejected: "rejet d'interpr\u00e9tation",
-      state_transition: "transition d'\u00e9tat",
-      state_freeze: "\u00e9tat gel\u00e9",
-      default_periodic: "fallback de s\u00e9curit\u00e9"
-    };
-
-    var lines = [];
-    if (meta && meta.memoryUpdateDecision === "update") {
-      lines.push("D\u00e9cision m\u00e9moire : update");
-    } else {
-      lines.push("D\u00e9cision m\u00e9moire : hold");
-    }
-
-    var reasonKey = meta && typeof meta.memoryUpdateReason === "string" ? meta.memoryUpdateReason : "unspecified";
-    var reasonLabel = Object.prototype.hasOwnProperty.call(reasonMap, reasonKey) ? reasonMap[reasonKey] : reasonKey;
-    if (reasonLabel) {
-      lines.push("Raison : " + reasonLabel);
-    }
-
-    if (meta && meta.memoryAge === 0) {
-      lines.push("M\u00e9moire initiale");
-    } else if (meta && Number.isInteger(meta.memoryAge) && meta.memoryAge > 0) {
-      lines.push("M\u00e9moire utilis\u00e9e : tour N-1");
-    }
-
-    if (signalLabel) {
-      lines.push(signalLabel);
-    }
-
-    if (!intent) return lines;
-
-    if (intent.interpretationRejectionActive === true) {
-      lines.push("R\u00e9\u00e9criture motiv\u00e9e par un rejet d'interpr\u00e9tation");
-    }
-    if (intent.rejectsUnderlyingPhenomenon === true) {
-      lines.push("Le ph\u00e9nom\u00e8ne sous-jacent a \u00e9t\u00e9 rejet\u00e9");
-    }
-    if (intent.soberReadjustmentActive === true) {
-      lines.push("R\u00e9\u00e9criture motiv\u00e9e par un r\u00e9ajustement sobre");
-    }
-
-    return lines;
-  }
-
   function buildPipelineRuntimeText(meta) {
     if (!meta || !Array.isArray(meta.pipelineStages) || meta.pipelineStages.length === 0) {
       return "";
@@ -636,7 +562,6 @@
     translateTieBreakReason: translateTieBreakReason,
     buildSomaticFocusPolicyDebugLine: buildSomaticFocusPolicyDebugLine,
     buildNaturalDebugSummary: buildNaturalDebugSummary,
-    buildMemoryRewriteIntentLines: buildMemoryRewriteIntentLines,
     buildPipelineRuntimeText: buildPipelineRuntimeText,
     formatSecondaryTension: formatSecondaryTension
   };

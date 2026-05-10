@@ -20,14 +20,17 @@ function isOpeningGreetingMessage(content) {
 
 function defaultMemory() {
   return [
-    "Themes deja evoques :",
+    "Contexte stable (session)",
     "- ",
     "",
-    "Points de vigilance relationnels :",
+    "Mouvements en cours",
     "- ",
     "",
-    "Questions encore ouvertes :",
-    "- "
+    "Mouvements anciens",
+    "- ",
+    "",
+    "Signaux du tour précédent",
+    "(vide)"
   ].join("\n");
 }
 

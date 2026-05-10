@@ -58,9 +58,9 @@ assert("isOpeningGreetingMessage: greeting with extra whitespace → true (conte
 
 const mem = defaultMemory();
 assert("defaultMemory: returns string", typeof mem === "string");
-assert("defaultMemory: contains 'Themes'", mem.includes("Themes deja evoques"));
-assert("defaultMemory: contains 'vigilance'", mem.includes("vigilance relationnels"));
-assert("defaultMemory: contains 'ouvertes'", mem.includes("Questions encore ouvertes"));
+assert("defaultMemory: contains 'Contexte stable'", mem.includes("Contexte stable (session)"));
+assert("defaultMemory: contains 'Mouvements en cours'", mem.includes("Mouvements en cours"));
+assert("defaultMemory: contains 'Signaux du tour precedent'", mem.includes("Signaux du tour precedent") || mem.includes("Signaux du tour pr\u00e9c\u00e9dent"));
 
 // ── normalizeStoredFlags ─────────────────────────────────────────────────────
 
