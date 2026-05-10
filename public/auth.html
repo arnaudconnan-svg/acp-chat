@@ -218,56 +218,10 @@
         <input type="text" id="regFirstName" name="firstName" autocomplete="given-name" placeholder="Comment tu t'appelles ?">
       </div>
       <div class="form-group">
-        <label for="regCountry">Pays <span style="color:#aaa;font-weight:400">(facultatif)</span></label>
-        <select id="regCountry" name="country">
-          <option value="">— Sélectionner —</option>
-          <option value="FR">France</option>
-          <option value="BE">Belgique</option>
-          <option value="CH">Suisse</option>
-          <option value="CA">Canada</option>
-          <option value="LU">Luxembourg</option>
-          <option value="MC">Monaco</option>
-          <option value="GP">Guadeloupe</option>
-          <option value="MQ">Martinique</option>
-          <option value="GF">Guyane française</option>
-          <option value="RE">La Réunion</option>
-          <option value="YT">Mayotte</option>
-          <option value="NC">Nouvelle-Calédonie</option>
-          <option value="PF">Polynésie française</option>
-          <option value="PM">Saint-Pierre-et-Miquelon</option>
-          <option value="DZ">Algérie</option>
-          <option value="MA">Maroc</option>
-          <option value="TN">Tunisie</option>
-          <option value="SN">Sénégal</option>
-          <option value="CI">Côte d'Ivoire</option>
-          <option value="CM">Cameroun</option>
-          <option value="MG">Madagascar</option>
-          <option value="ML">Mali</option>
-          <option value="BF">Burkina Faso</option>
-          <option value="NE">Niger</option>
-          <option value="TG">Togo</option>
-          <option value="BJ">Bénin</option>
-          <option value="CD">Congo (RDC)</option>
-          <option value="GA">Gabon</option>
-          <option value="HT">Haïti</option>
-          <option value="MU">Maurice</option>
-          <option value="LB">Liban</option>
-          <option value="DE">Allemagne</option>
-          <option value="AT">Autriche</option>
-          <option value="ES">Espagne</option>
-          <option value="IT">Italie</option>
-          <option value="NL">Pays-Bas</option>
-          <option value="PT">Portugal</option>
-          <option value="GB">Royaume-Uni</option>
-          <option value="SE">Suède</option>
-          <option value="RU">Russie</option>
-          <option value="US">États-Unis</option>
-          <option value="MX">Mexique</option>
-          <option value="BR">Brésil</option>
-          <option value="AU">Australie</option>
-          <option value="NZ">Nouvelle-Zélande</option>
-          <option value="JP">Japon</option>
-        </select>
+        <label>Pays <span style="color:#aaa;font-weight:400">(obligatoire)</span></label>
+        <input type="hidden" id="regCountry" name="country">
+        <div id="regCountryDisplay" style="padding:11px 14px;border:1.5px solid #ddd;border-radius:8px;font-size:15px;color:#aaa;background:#fafafa;min-height:44px;box-sizing:border-box;line-height:22px">— Non défini —</div>
+        <button type="button" id="regCountryBtn" style="margin-top:8px;width:100%;padding:10px 14px;border:1.5px solid #245e66;border-radius:8px;font-size:14px;font-weight:600;background:#fff;color:#245e66;cursor:pointer">Choisir mon pays</button>
       </div>
       <div class="form-group">
         <label for="regEmail">Adresse e-mail</label>
@@ -387,8 +341,49 @@
         regPassword2.addEventListener("blur", refreshMismatchState);
       }
 
+      function getCountryName(code) {
+        if (!code) return "";
+        try {
+          return new Intl.DisplayNames(["fr"], { type: "region" }).of(code.toUpperCase()) || code;
+        } catch (_) { return code; }
+      }
+
+      function setRegCountry(code) {
+        if (!code) return;
+        code = code.toUpperCase();
+        document.getElementById("regCountry").value = code;
+        var name = getCountryName(code);
+        var display = document.getElementById("regCountryDisplay");
+        display.textContent = name || code;
+        display.style.color = "#1a1a1a";
+      }
+
+      function initCountryField() {
+        var params = new URLSearchParams(window.location.search);
+        var selected = params.get("_android_country_selected");
+        var detected = params.get("_android_country");
+        if (selected) setRegCountry(selected);
+        else if (detected) setRegCountry(detected);
+        if (selected || detected) {
+          try {
+            var url = new URL(window.location.href);
+            url.searchParams.delete("_android_country_selected");
+            url.searchParams.delete("_android_country");
+            history.replaceState(history.state, "", url.toString());
+          } catch (_) {}
+        }
+        var btn = document.getElementById("regCountryBtn");
+        if (btn) {
+          btn.addEventListener("click", function () {
+            var current = document.getElementById("regCountry").value || "";
+            window.location.href = "facilitat://country-picker?current=" + encodeURIComponent(current) + "&callback_path=" + encodeURIComponent("/auth.html");
+          });
+        }
+      }
+
       initPasswordToggles();
       initConfirmPasswordValidation();
+      initCountryField();
 
       window.showTab = function showTab(tab) {
         const isLogin = tab === "login";
@@ -468,9 +463,13 @@
           return;
         }
 
-        const body = { email, password };
+        if (!country) {
+          notice.textContent = "Veuillez choisir votre pays.";
+          return;
+        }
+
+        const body = { email, password, country };
         if (firstName) body.firstName = firstName;
-        if (country) body.country = country;
 
         btn.disabled = true;
         try {

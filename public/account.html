@@ -390,6 +390,28 @@
 
       let currentUser = null;
 
+      function getCountryName(code) {
+        if (!code) return "";
+        try {
+          return new Intl.DisplayNames(["fr"], { type: "region" }).of(code.toUpperCase()) || code;
+        } catch (_) { return code; }
+      }
+
+      async function autoSaveCountry(code) {
+        try {
+          const res = await fetch("/api/account/profile", {
+            method: "PUT",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ country: code })
+          });
+          const d = await res.json().catch(() => ({}));
+          if (res.ok && d.success && currentUser) {
+            currentUser.country = typeof d.country === "string" ? d.country : code;
+          }
+        } catch (_) {}
+      }
+
       function navigateAway(url, options = {}) {
         document.body.style.animation = "none";
         document.body.style.transition = "opacity 0.32s ease, transform 0.32s ease";
@@ -425,6 +447,17 @@
       });
 
       async function init() {
+        const _initParams = new URLSearchParams(window.location.search);
+        const _pendingCountry = _initParams.get("_android_country_selected");
+        if (_pendingCountry) {
+          try {
+            const _cleanUrl = new URL(window.location.href);
+            _cleanUrl.searchParams.delete("_android_country_selected");
+            _cleanUrl.searchParams.delete("_android_country");
+            history.replaceState(history.state, "", _cleanUrl.toString());
+          } catch (_) {}
+        }
+
         try {
           const res = await fetch("/api/auth/session", { credentials: "include" });
           const data = await res.json().catch(() => ({}));
@@ -435,6 +468,11 @@
           }
 
           currentUser = data.user || {};
+
+          if (_pendingCountry) {
+            await autoSaveCountry(_pendingCountry.toUpperCase());
+          }
+
           renderPage();
         } catch (_) {
           showError("Impossible de charger la session. Réessayez.");
@@ -970,55 +1008,6 @@
         return card;
       }
 
-      const COUNTRIES_LIST = [
-        { code: "FR", label: "France" },
-        { code: "BE", label: "Belgique" },
-        { code: "CH", label: "Suisse" },
-        { code: "CA", label: "Canada" },
-        { code: "LU", label: "Luxembourg" },
-        { code: "MC", label: "Monaco" },
-        { code: "GP", label: "Guadeloupe" },
-        { code: "MQ", label: "Martinique" },
-        { code: "GF", label: "Guyane française" },
-        { code: "RE", label: "La Réunion" },
-        { code: "YT", label: "Mayotte" },
-        { code: "NC", label: "Nouvelle-Calédonie" },
-        { code: "PF", label: "Polynésie française" },
-        { code: "PM", label: "Saint-Pierre-et-Miquelon" },
-        { code: "DZ", label: "Algérie" },
-        { code: "MA", label: "Maroc" },
-        { code: "TN", label: "Tunisie" },
-        { code: "SN", label: "Sénégal" },
-        { code: "CI", label: "Côte d'Ivoire" },
-        { code: "CM", label: "Cameroun" },
-        { code: "MG", label: "Madagascar" },
-        { code: "ML", label: "Mali" },
-        { code: "BF", label: "Burkina Faso" },
-        { code: "NE", label: "Niger" },
-        { code: "TG", label: "Togo" },
-        { code: "BJ", label: "Bénin" },
-        { code: "CD", label: "Congo (RDC)" },
-        { code: "GA", label: "Gabon" },
-        { code: "HT", label: "Haïti" },
-        { code: "MU", label: "Maurice" },
-        { code: "LB", label: "Liban" },
-        { code: "DE", label: "Allemagne" },
-        { code: "AT", label: "Autriche" },
-        { code: "ES", label: "Espagne" },
-        { code: "IT", label: "Italie" },
-        { code: "NL", label: "Pays-Bas" },
-        { code: "PT", label: "Portugal" },
-        { code: "GB", label: "Royaume-Uni" },
-        { code: "SE", label: "Suède" },
-        { code: "RU", label: "Russie" },
-        { code: "US", label: "États-Unis" },
-        { code: "MX", label: "Mexique" },
-        { code: "BR", label: "Brésil" },
-        { code: "AU", label: "Australie" },
-        { code: "NZ", label: "Nouvelle-Zélande" },
-        { code: "JP", label: "Japon" }
-      ];
-
       function buildProfileCard() {
         const card = document.createElement("div");
         card.className = "card";
@@ -1051,25 +1040,25 @@
         const countryGroup = document.createElement("div");
         countryGroup.style.cssText = "margin-bottom:16px";
         const countryLabel = document.createElement("label");
-        countryLabel.htmlFor = "profileCountry";
         countryLabel.style.cssText = "display:block;font-size:14px;color:#333;margin-bottom:5px";
         countryLabel.textContent = "Pays";
-        const countrySelect = document.createElement("select");
-        countrySelect.id = "profileCountry";
-        countrySelect.style.cssText = "width:100%;padding:11px 14px;border:1.5px solid #ddd;border-radius:8px;font-size:15px;color:#1a1a1a;background:#fafafa;outline:none;appearance:none;-webkit-appearance:none;box-sizing:border-box";
-        const defaultOpt = document.createElement("option");
-        defaultOpt.value = "";
-        defaultOpt.textContent = "— Sélectionner —";
-        countrySelect.appendChild(defaultOpt);
-        for (const { code, label } of COUNTRIES_LIST) {
-          const opt = document.createElement("option");
-          opt.value = code;
-          opt.textContent = label;
-          if (currentUser && currentUser.country === code) opt.selected = true;
-          countrySelect.appendChild(opt);
-        }
+        const _currentCode = currentUser && typeof currentUser.country === "string" ? currentUser.country : "";
+        const countryDisplayEl = document.createElement("div");
+        countryDisplayEl.id = "profileCountryDisplay";
+        countryDisplayEl.style.cssText = "padding:11px 14px;border:1.5px solid #ddd;border-radius:8px;font-size:15px;background:#fafafa;min-height:44px;box-sizing:border-box;line-height:22px";
+        countryDisplayEl.style.color = _currentCode ? "#1a1a1a" : "#aaa";
+        countryDisplayEl.textContent = _currentCode ? getCountryName(_currentCode) : "\u2014 Non d\u00e9fini \u2014";
+        const countryPickerBtn = document.createElement("button");
+        countryPickerBtn.type = "button";
+        countryPickerBtn.style.cssText = "margin-top:8px;width:100%;padding:10px 14px;border:1.5px solid #245e66;border-radius:8px;font-size:14px;font-weight:600;background:#fff;color:#245e66;cursor:pointer";
+        countryPickerBtn.textContent = "Changer mon pays";
+        countryPickerBtn.addEventListener("click", function () {
+          var cur = currentUser && typeof currentUser.country === "string" ? currentUser.country : "";
+          window.location.href = "facilitat://country-picker?current=" + encodeURIComponent(cur) + "&callback_path=" + encodeURIComponent("/account.html");
+        });
         countryGroup.appendChild(countryLabel);
-        countryGroup.appendChild(countrySelect);
+        countryGroup.appendChild(countryDisplayEl);
+        countryGroup.appendChild(countryPickerBtn);
         card.appendChild(countryGroup);
 
         const saveBtn = document.createElement("button");
@@ -1086,14 +1075,12 @@
 
         const refreshSaveState = () => {
           const currentFirstName = currentUser && typeof currentUser.firstName === "string" ? currentUser.firstName : "";
-          const currentCountry = currentUser && typeof currentUser.country === "string" ? currentUser.country : "";
-          const changed = firstNameInput.value.trim() !== currentFirstName || countrySelect.value !== currentCountry;
+          const changed = firstNameInput.value.trim() !== currentFirstName;
           saveBtn.disabled = !changed;
           saveBtn.classList.toggle("is-ready", changed);
         };
 
         firstNameInput.addEventListener("input", refreshSaveState);
-        countrySelect.addEventListener("change", refreshSaveState);
         refreshSaveState();
 
         saveBtn.addEventListener("click", async () => {
@@ -1102,8 +1089,7 @@
           saveBtn.disabled = true;
 
           const body = {
-            firstName: firstNameInput.value.trim() || null,
-            country: countrySelect.value || null
+            firstName: firstNameInput.value.trim() || null
           };
 
           try {
@@ -1119,7 +1105,6 @@
             if (res.ok && data.success) {
               if (currentUser) {
                 currentUser.firstName = data.firstName;
-                currentUser.country = data.country;
               }
               notice.textContent = "Enregistré.";
               notice.className = "notice success";
