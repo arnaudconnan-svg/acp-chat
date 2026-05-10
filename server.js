@@ -3038,10 +3038,7 @@ app.get("/api/intersession-memory", requireUserAuth, async (req, res) => {
     const snap = await usersRef.child(session.userId).once("value");
     const userData = snap.val() || {};
     const memorySource = normalizeIntersessionSourceFromUserData(userData, buildDefaultPromptRegistry());
-    const storedCompact = typeof userData.intersessionMemoryCompact === "string"
-      ? userData.intersessionMemoryCompact.trim()
-      : "";
-    const memoryCompact = storedCompact || buildIntersessionCompactRuntime(memorySource);
+    const memoryCompact = buildIntersessionCompactRuntime(memorySource).trim();
     const historyRaw = Array.isArray(userData.intersessionMemoryHistory) ? userData.intersessionMemoryHistory : [];
     return res.json({
       memory: memorySource || null,
@@ -3174,9 +3171,11 @@ app.put("/api/intersession-memory", requireUserAuth, async (req, res) => {
       strippedSessionMemory,
       buildDefaultPromptRegistry()
     );
+    const memoryCompact = buildIntersessionCompactRuntime(memorySource).trim();
 
     await usersRef.child(session.userId).update({
       intersessionMemorySource: memorySource,
+      intersessionMemoryCompact: memoryCompact,
       intersessionMemoryUpdatedAt: new Date().toISOString()
     });
 
@@ -3238,6 +3237,7 @@ app.patch("/api/intersession-memory/direct", requireUserAuth, async (req, res) =
 
     await usersRef.child(session.userId).update({
       intersessionMemorySource: nextMemorySource,
+      intersessionMemoryCompact: "",
       intersessionMemoryUpdatedAt: now,
       intersessionRefreshForced: true
     });
@@ -5241,21 +5241,35 @@ app.post("/chat", async (req, res) => {
         return "";
       }
 
+      const source = normalizeIntersessionSourceFromUserData(userData, buildDefaultPromptRegistry());
+      const compactFromSource = buildIntersessionCompactRuntime(source).trim();
+      if (source || compactFromSource) {
+        return compactFromSource;
+      }
+
       const compactStored = typeof userData.intersessionMemoryCompact === "string"
         ? userData.intersessionMemoryCompact.trim()
         : "";
-      if (compactStored) {
-        return compactStored;
+      return compactStored || "";
+    }
+
+    async function getFreshUserDataIfRefreshForced(userData) {
+      if (!userData || userData.intersessionRefreshForced !== true) {
+        return userData;
       }
 
-      const source = normalizeIntersessionSourceFromUserData(userData, buildDefaultPromptRegistry());
-      const raw = buildIntersessionCompactRuntime(source).trim();
-
-      return raw || "";
+      try {
+        const freshSnap = await usersRef.child(String(userId)).once("value");
+        return freshSnap.val() && typeof freshSnap.val() === "object" ? freshSnap.val() : userData;
+      } catch {
+        // Fall back to cached userData if fresh fetch fails.
+        return userData;
+      }
     }
 
     async function loadCurrentUserIntersessionMemory() {
-      const userData = await userProfilePromise;
+      const cachedUserData = await userProfilePromise;
+      const userData = await getFreshUserDataIfRefreshForced(cachedUserData);
       return getUserIntersessionMemory(userData);
     }
 
@@ -5273,18 +5287,8 @@ app.post("/chat", async (req, res) => {
       const currentTurnsUntil = Number.isInteger(flagsSnapshot?.turnsUntilIntersessionRefresh)
         ? flagsSnapshot.turnsUntilIntersessionRefresh
         : 0;
-      let userData = await userProfilePromise;
-
-      // Race condition guard: if intersessionRefreshForced, reload fresh from Firebase
-      // to use the latest edited memory instead of stale cache
-      if (userData && userData.intersessionRefreshForced === true) {
-        try {
-          const freshSnap = await usersRef.child(String(userId)).once("value");
-          userData = freshSnap.val() && typeof freshSnap.val() === "object" ? freshSnap.val() : userData;
-        } catch {
-          // Fall back to cached userData if fresh fetch fails
-        }
-      }
+      const cachedUserData = await userProfilePromise;
+      let userData = await getFreshUserDataIfRefreshForced(cachedUserData);
 
       const hasForcedRefreshLock = userData && userData.intersessionRefreshForced === true;
       const forceRefreshNow = currentTurnsUntil > 0 && hasForcedRefreshLock;
@@ -5301,7 +5305,7 @@ app.post("/chat", async (req, res) => {
         const storedCompact = userData && typeof userData.intersessionMemoryCompact === "string"
           ? userData.intersessionMemoryCompact.trim()
           : "";
-        const shouldPersistCompact = compact && compact !== storedCompact;
+        const shouldPersistCompact = compact !== storedCompact;
 
         if (hasForcedRefreshLock) {
           try {
@@ -5314,7 +5318,7 @@ app.post("/chat", async (req, res) => {
           }
         } else if (shouldPersistCompact) {
           try {
-            await usersRef.child(userId).update({ intersessionMemoryCompact: compact });
+            await usersRef.child(userId).update({ intersessionMemoryCompact: compact || "" });
           } catch {
             // Ignore a best-effort compact-memory cache failure.
           }
