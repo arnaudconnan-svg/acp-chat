@@ -848,6 +848,43 @@ function extractMemorySectionBullets(memoryText = "", sectionLabel = "") {
     .map(line => line.replace(/^[-\s]+/, "").trim());
 }
 
+function extractIntersessionSection(memoryText = "") {
+  const text = String(memoryText || "").replace(/\r\n/g, "\n").trim();
+  if (!text) {
+    return { hasHeader: false, items: [] };
+  }
+
+  const match = text.match(/m[ée]moire\s+inter-?session\s*:\s*([\s\S]*?)(?:\n[A-ZÀ-Ü][^:\n]*:|$)/i);
+  if (!match) {
+    return { hasHeader: false, items: [] };
+  }
+
+  const rawItems = String(match[1] || "")
+    .split("\n")
+    .map(line => line.trim())
+    .filter(line => line.startsWith("-"))
+    .map(line => line.replace(/^[-\s]+/, "").trim())
+    .filter(Boolean)
+    .filter(item => item !== "-");
+
+  const seen = new Set();
+  const items = [];
+  for (const item of rawItems) {
+    const key = item
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    items.push(item.replace(/\s+/g, " "));
+    if (items.length >= 10) break;
+  }
+
+  return { hasHeader: true, items };
+}
+
 function normalizeMemory(memory, promptRegistry = buildDefaultPromptRegistry()) {
   const text = canonicalizeMemorySectionSpacing(String(memory || "").trim());
   if (text) return text;
@@ -858,7 +895,15 @@ function normalizeMemory(memory, promptRegistry = buildDefaultPromptRegistry()) 
 
 function normalizeIntersessionMemory(memory, promptRegistry = buildDefaultPromptRegistry()) {
   const text = String(memory || "").trim();
-  if (text) return text;
+  if (text) {
+    const section = extractIntersessionSection(text);
+    if (section.hasHeader) {
+      return [
+        "Memoire inter-session:",
+        ...(section.items.length > 0 ? section.items.map(item => `- ${item}`) : ["-"])
+      ].join("\n");
+    }
+  }
 
   return String(promptRegistry.NORMALIZE_INTERSESSION_MEMORY_TEMPLATE || "").trim() ||
     buildDefaultPromptRegistry().NORMALIZE_INTERSESSION_MEMORY_TEMPLATE;

@@ -29,6 +29,8 @@ function check(label, condition, details = "") {
 function run() {
   const registry = buildDefaultPromptRegistry();
   const updateMemory = String(registry.UPDATE_MEMORY || "");
+  const updateIntersessionMemory = String(registry.UPDATE_INTERSESSION_MEMORY || "");
+  const intersessionTemplate = String(registry.NORMALIZE_INTERSESSION_MEMORY_TEMPLATE || "");
 
   check(
     "UPDATE_MEMORY exists",
@@ -77,6 +79,34 @@ function run() {
       !Object.prototype.hasOwnProperty.call(registry, "FINALIZE_MEMORY_CANDIDATE") &&
       !Object.prototype.hasOwnProperty.call(registry, "COMPRESS_INTERSESSION_MEMORY"),
     "Dead memory prompt keys were reintroduced"
+  );
+
+  check(
+    "UPDATE_INTERSESSION_MEMORY exists",
+    updateIntersessionMemory.length > 0,
+    "Missing UPDATE_INTERSESSION_MEMORY prompt"
+  );
+
+  check(
+    "UPDATE_INTERSESSION_MEMORY enforces single-block format",
+    updateIntersessionMemory.includes("FORMAT OBLIGATOIRE") &&
+      updateIntersessionMemory.includes("Memoire inter-session:") &&
+      updateIntersessionMemory.includes("Le bloc doit toujours etre present"),
+    "Missing strict single-block format guard"
+  );
+
+  check(
+    "UPDATE_INTERSESSION_MEMORY keeps compact factual constraints",
+    updateIntersessionMemory.includes("style factuel, concret, sans theorie ni interpretation") &&
+      updateIntersessionMemory.includes("4 a 10 items max") &&
+      updateIntersessionMemory.includes("chaque item doit rester compact"),
+    "Missing compact factual constraints"
+  );
+
+  check(
+    "NORMALIZE_INTERSESSION_MEMORY_TEMPLATE is canonical",
+    /^Memoire inter-session:\s*\n-\s*$/.test(intersessionTemplate.trim()),
+    "Unexpected intersession memory template"
   );
 
   if (failed > 0) {
