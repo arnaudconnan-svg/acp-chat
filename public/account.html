@@ -1449,39 +1449,7 @@
         controls.appendChild(relockSelect);
         card.appendChild(controls);
 
-        const help = document.createElement("p");
-        help.className = "setting-help";
-        help.textContent = "Ce verrou est optionnel. Si active, l'application demandera votre biometrie (ou le code ecran du telephone selon Android) pour reprendre une session ouverte.";
-        card.appendChild(help);
-
-        const saveBtn = document.createElement("button");
-        saveBtn.type = "button";
-        saveBtn.className = "action-btn";
-        saveBtn.id = "saveBiometricLockBtn";
-        saveBtn.textContent = "Enregistrer";
-        card.appendChild(saveBtn);
-
-        const notice = document.createElement("div");
-        notice.className = "notice";
-        notice.id = "biometricLockNotice";
-        card.appendChild(notice);
-
-        const refreshSaveState = () => {
-          const initialEnabled = currentUser && currentUser.biometricLockEnabled === true;
-          const initialRelock = normalizeBiometricRelockSeconds(currentUser && currentUser.biometricRelockSeconds);
-          const changed = toggle.checked !== initialEnabled || Number(relockSelect.value) !== initialRelock;
-          saveBtn.disabled = !changed;
-          saveBtn.classList.toggle("is-ready", changed);
-        };
-
-        toggle.addEventListener("change", refreshSaveState);
-        relockSelect.addEventListener("change", refreshSaveState);
-
-        saveBtn.addEventListener("click", async () => {
-          notice.textContent = "";
-          notice.className = "notice";
-          saveBtn.disabled = true;
-
+        const autoSaveBiometric = async () => {
           try {
             const desiredEnabled = toggle.checked === true;
             const desiredRelock = normalizeBiometricRelockSeconds(relockSelect.value);
@@ -1489,9 +1457,7 @@
             if (desiredEnabled) {
               const available = await isBiometricAvailable();
               if (!available) {
-                notice.textContent = "Biometrie indisponible ou non configuree sur cet appareil.";
                 toggle.checked = false;
-                refreshSaveState();
                 return;
               }
 
@@ -1512,11 +1478,7 @@
 
             const data = await res.json().catch(() => ({}));
 
-            if (!res.ok) {
-              notice.textContent = data.error || "Impossible d'enregistrer les preferences biometrie.";
-              refreshSaveState();
-              return;
-            }
+            if (!res.ok) return;
 
             currentUser.biometricLockEnabled = data.biometricLockEnabled === true;
             currentUser.biometricRelockSeconds = normalizeBiometricRelockSeconds(data.biometricRelockSeconds);
@@ -1526,17 +1488,12 @@
             if (!currentUser.biometricLockEnabled) {
               clearStoredBiometricCredentialId();
             }
+          } catch (_) {}
+        };
 
-            notice.textContent = "Preference enregistree.";
-            notice.className = "notice success";
-            refreshSaveState();
-          } catch (_) {
-            notice.textContent = "Erreur reseau ou biometrie. Reessayez.";
-            refreshSaveState();
-          }
-        });
+        toggle.addEventListener("change", autoSaveBiometric);
+        relockSelect.addEventListener("change", autoSaveBiometric);
 
-        refreshSaveState();
         return card;
       }
 
@@ -1567,37 +1524,7 @@
         row.appendChild(toggle);
         card.appendChild(row);
 
-        const help = document.createElement("p");
-        help.className = "setting-help";
-        help.textContent = "Si active, les nouvelles conversations seront locales par defaut (non stockees dans Firebase), tout en transitant par ChatGPT/OpenAI pour generer les reponses.";
-        card.appendChild(help);
-
-        const saveBtn = document.createElement("button");
-        saveBtn.type = "button";
-        saveBtn.className = "action-btn";
-        saveBtn.id = "savePrivateDefaultBtn";
-        saveBtn.textContent = "Enregistrer";
-        card.appendChild(saveBtn);
-
-        const notice = document.createElement("div");
-        notice.className = "notice";
-        notice.id = "privateDefaultNotice";
-        card.appendChild(notice);
-
-        const refreshSaveButtonState = () => {
-          const current = currentUser && currentUser.privateConversationsByDefault === true;
-          const changed = toggle.checked !== current;
-          saveBtn.disabled = !changed;
-          saveBtn.classList.toggle("is-ready", changed);
-        };
-
-        toggle.addEventListener("change", refreshSaveButtonState);
-
-        saveBtn.addEventListener("click", async () => {
-          notice.textContent = "";
-          notice.className = "notice";
-          saveBtn.disabled = true;
-
+        toggle.addEventListener("change", async () => {
           try {
             const res = await fetch("/api/account/preferences", {
               method: "PUT",
@@ -1611,23 +1538,17 @@
             const data = await res.json().catch(() => ({}));
 
             if (!res.ok) {
-              notice.textContent = data.error || "Impossible d'enregistrer la preference.";
-              refreshSaveButtonState();
+              toggle.checked = currentUser && currentUser.privateConversationsByDefault === true;
               return;
             }
 
             currentUser.privateConversationsByDefault = data.privateConversationsByDefault === true;
             toggle.checked = currentUser.privateConversationsByDefault === true;
-            notice.textContent = "Preference enregistree.";
-            notice.className = "notice success";
-            refreshSaveButtonState();
           } catch (_) {
-            notice.textContent = "Erreur reseau. Reessayez.";
-            refreshSaveButtonState();
+            toggle.checked = currentUser && currentUser.privateConversationsByDefault === true;
           }
         });
 
-        refreshSaveButtonState();
         return card;
       }
 
