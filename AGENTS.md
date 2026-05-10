@@ -218,6 +218,12 @@ Pour toute reinstallation ou validation sur un telephone Android connecte :
 
 Objectif : eviter les cycles d'installation manuels, les erreurs de signature, et les faux diagnostics de bandeau navigateur.
 
+### Règles produit Android TWA a conserver
+
+- l'orientation portrait doit rester la valeur par defaut du chantier Android TWA, dans le manifeste genere comme dans le projet Android applique
+- le splash screen doit etre traite comme un cout de transition a minimiser, pas comme une surface a re-designer a chaque iteration
+- toute modification du splash doit d'abord chercher a reduire sa perception (couleurs alignees, transition courte, pas de flash visuel), sans ajouter de comportement visible nouveau
+
 Pour tout diagnostic de lenteur sur `/chat`, la premiere lecture utile est le log `pipeline_summary` avec les timings de stage, puis l'outil local `npm run perf:chat:summary` sur un log reel. Ne pas attendre d'arbitrage utilisateur pour faire cette lecture.
 
 ### Règle `max_tokens` (obligatoire)

@@ -83,6 +83,11 @@ Pour le chantier Android TWA, le chemin de validation et de deploiement doit etr
 
 Si `adb devices` ne voit pas le telephone, utiliser d'abord l'ADB du SDK (`ANDROID_SDK_ROOT` ou `ANDROID_HOME`), puis seulement diagnostiquer le branchement physique ou l'autorisation USB. Ne pas multiplier les installs manuelles ni les essais de signature a l'aveugle.
 
+Deux regles produit doivent rester stables sur Android TWA :
+
+- l'orientation portrait est la regle par defaut et doit etre preservee dans les manifests generes et dans le projet Android applique
+- le splash doit rester minimal et coherent visuellement avec l'accueil web ; on peut le raccourcir ou l'aligner, mais pas le reconcevoir a chaque install
+
 ## 5. Strategie de chantier
 
 L'ordre prefere est :
