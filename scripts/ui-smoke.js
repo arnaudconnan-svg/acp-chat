@@ -70,6 +70,18 @@ async function run() {
 
     if (enterVisible) {
       pass("welcome screen visible");
+      
+      // Check that welcome screen is not scrollable
+      const isScrollable = await page.evaluate(() => {
+        const screen = document.getElementById("welcomeScreen");
+        if (!screen) return false;
+        return screen.scrollHeight > screen.clientHeight;
+      });
+      if (isScrollable) {
+        fail("welcome screen scrollable check", "welcome screen has unwanted scroll");
+      } else {
+        pass("welcome screen not scrollable");
+      }
     } else if (composerVisible) {
       pass("chat already open");
     } else {
