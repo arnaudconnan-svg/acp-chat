@@ -42,6 +42,7 @@
     "twa:assetlinks": "node scripts/generate-assetlinks.js",
     "twa:manifest": "node scripts/generate-twa-manifest.js",
     "android:icon:verify": "node scripts/android-icon-verify.js",
+    "android:orientation:verify": "node scripts/android-orientation-verify.js",
     "android:icon:generate": "node scripts/android-icon-generate.js",
     "android:apply-customizations": "node scripts/apply-android-customizations.js",
     "android:build:release": "node scripts/android-build-release.js",

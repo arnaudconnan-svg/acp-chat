@@ -4,7 +4,9 @@ const path = require("path");
 const ROOT = path.join(__dirname, "..");
 const TEMPLATE_PATH = path.join(__dirname, "templates", "CountryPickerActivity.java");
 const TWA_MANIFEST_PATH = path.join(ROOT, "android-project", "twa-manifest.json");
+const APP_BUILD_GRADLE_PATH = path.join(ROOT, "android-project", "app", "build.gradle");
 const LAUNCHER_ACTIVITY_PATH = path.join(ROOT, "android-project", "app", "src", "main", "java", "io", "facilitat", "app", "LauncherActivity.java");
+const ANDROID_MANIFEST_PATH = path.join(ROOT, "android-project", "app", "src", "main", "AndroidManifest.xml");
 const TARGET_PATH = path.join(
   ROOT,
   "android-project",
@@ -49,6 +51,22 @@ function main() {
     }
   }
 
+  if (fs.existsSync(APP_BUILD_GRADLE_PATH)) {
+    try {
+      const buildGradle = fs.readFileSync(APP_BUILD_GRADLE_PATH, "utf8");
+      const updatedBuildGradle = buildGradle.replace(
+        /orientation:\s*'default'/,
+        "orientation: 'portrait'"
+      );
+      if (updatedBuildGradle !== buildGradle) {
+        fs.writeFileSync(APP_BUILD_GRADLE_PATH, updatedBuildGradle, "utf8");
+        console.log("[android-customize] Applied portrait orientation to android-project/app/build.gradle.");
+      }
+    } catch (err) {
+      fail(`Failed to update ${APP_BUILD_GRADLE_PATH}: ${err.message}`);
+    }
+  }
+
   if (fs.existsSync(LAUNCHER_ACTIVITY_PATH)) {
     const launcherSource = fs.readFileSync(LAUNCHER_ACTIVITY_PATH, "utf8");
     const updatedLauncherSource = launcherSource.replace(
@@ -58,6 +76,30 @@ function main() {
     if (updatedLauncherSource !== launcherSource) {
       fs.writeFileSync(LAUNCHER_ACTIVITY_PATH, updatedLauncherSource, "utf8");
       console.log("[android-customize] Applied portrait orientation to LauncherActivity.");
+    }
+  }
+
+  // Ensure AndroidManifest.xml has screenOrientation="portrait" on LauncherActivity
+  if (fs.existsSync(ANDROID_MANIFEST_PATH)) {
+    try {
+      let manifest = fs.readFileSync(ANDROID_MANIFEST_PATH, "utf8");
+      
+      // Pattern to match LauncherActivity opening tag without screenOrientation
+      const launcherActivityPattern = /<activity android:name="LauncherActivity"\s+android:alwaysRetainTaskState="true"\s+android:label="@string\/launcherName"\s+android:exported="true">/;
+      const launcherActivityPatternWithOrientation = /<activity android:name="LauncherActivity"\s+android:alwaysRetainTaskState="true"\s+android:label="@string\/launcherName"\s+android:exported="true"\s+android:screenOrientation="portrait">/;
+      
+      if (!launcherActivityPatternWithOrientation.test(manifest) && launcherActivityPattern.test(manifest)) {
+        manifest = manifest.replace(
+          launcherActivityPattern,
+          '<activity android:name="LauncherActivity"\n            android:alwaysRetainTaskState="true"\n            android:label="@string/launcherName"\n            android:exported="true"\n            android:screenOrientation="portrait">'
+        );
+        fs.writeFileSync(ANDROID_MANIFEST_PATH, manifest, "utf8");
+        console.log("[android-customize] Applied portrait screenOrientation to AndroidManifest.xml LauncherActivity.");
+      } else if (launcherActivityPatternWithOrientation.test(manifest)) {
+        console.log("[android-customize] AndroidManifest.xml LauncherActivity already has portrait orientation.");
+      }
+    } catch (err) {
+      console.warn(`[android-customize] Warning: Could not update ${ANDROID_MANIFEST_PATH}: ${err.message}`);
     }
   }
 

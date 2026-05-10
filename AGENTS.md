@@ -211,10 +211,15 @@ Principe : l'agent est responsable d'améliorer son outillage pour mieux aider l
 Pour toute reinstallation ou validation sur un telephone Android connecte :
 
 - utiliser en priorite `npm run android:deploy:release`
+- la chaine release doit inclure un controle orientation deterministe via `npm run android:orientation:verify` (controle source + valeur Android generee)
 - cette commande doit compiler, aligner, signer, verifier et installer l'APK via l'ADB du SDK Android
 - ne jamais utiliser l'ADB de `C:\Windows` ou un `adb` non resolu depuis le SDK pour un deploiement de release
 - verifier la signature de l'APK avant installation contre `public/.well-known/assetlinks.json`
 - si le package deja installe a une signature incompatible, desinstaller automatiquement avant reinstall plutot que tenter plusieurs installs successives
+
+Critere bloquant orientation :
+- la ressource Android generee `string/orientation` doit rester `portrait` (jamais `default`)
+- si ce controle echoue, stopper le build/deploiement et corriger avant installation
 
 Objectif : eviter les cycles d'installation manuels, les erreurs de signature, et les faux diagnostics de bandeau navigateur.
 

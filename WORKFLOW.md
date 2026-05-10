@@ -77,9 +77,14 @@ Verification complementaire selon le chantier :
 Pour le chantier Android TWA, le chemin de validation et de deploiement doit etre le suivant :
 
 1. `npm run android:deploy:release`
+2. verification automatique orientation via `npm run android:orientation:verify` (incluse dans `android:build:release`)
 2. verification de la signature de l'APK contre `public/.well-known/assetlinks.json`
 3. installation via l'ADB du SDK Android, jamais via un binaire `adb` pris au hasard dans `PATH`
 4. en cas de signature incompatible sur le package deja installe, desinstallation automatique avant reinstall
+
+Point de controle obligatoire orientation:
+- la valeur Android generee `string/orientation` doit rester `portrait` (pas `default`)
+- si ce point echoue, le build release doit etre considere bloque
 
 Si `adb devices` ne voit pas le telephone, utiliser d'abord l'ADB du SDK (`ANDROID_SDK_ROOT` ou `ANDROID_HOME`), puis seulement diagnostiquer le branchement physique ou l'autorisation USB. Ne pas multiplier les installs manuelles ni les essais de signature a l'aveugle.
 
