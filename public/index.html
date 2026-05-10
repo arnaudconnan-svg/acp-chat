@@ -132,76 +132,6 @@
       cursor: pointer;
     }
 
-    #privacyLockScreen {
-      position: fixed;
-      inset: 0;
-      z-index: 3000;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      background: rgba(244, 249, 249, 0.96);
-      padding: 24px;
-      box-sizing: border-box;
-    }
-
-    #privacyLockBox {
-      width: 100%;
-      max-width: 420px;
-      background: #fff;
-      border: 1.5px solid #d9e5e6;
-      border-radius: 16px;
-      padding: 22px 20px;
-      box-shadow: 0 20px 50px rgba(25, 33, 36, 0.12);
-    }
-
-    #privacyLockTitle {
-      margin: 0 0 10px;
-      font-size: 20px;
-      color: #18373c;
-    }
-
-    #privacyLockText {
-      margin: 0;
-      font-size: 14px;
-      line-height: 1.45;
-      color: #495f63;
-    }
-
-    #privacyLockNotice {
-      min-height: 18px;
-      margin-top: 12px;
-      font-size: 13px;
-      color: #b5483f;
-    }
-
-    #privacyLockActions {
-      margin-top: 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .privacyLockBtnPrimary,
-    .privacyLockBtnSecondary {
-      border-radius: 10px;
-      font-size: 14px;
-      font-weight: 600;
-      padding: 10px 12px;
-      cursor: pointer;
-    }
-
-    .privacyLockBtnPrimary {
-      border: none;
-      background: #245e66;
-      color: #fff;
-    }
-
-    .privacyLockBtnSecondary {
-      border: 1px solid #cfd8d9;
-      background: #fff;
-      color: #33565b;
-    }
-    
     #welcomeInner {
       position: relative;
       z-index: 1;
@@ -2390,19 +2320,6 @@
     </div>
   </div>
 
-  <div id="privacyLockScreen" aria-live="polite">
-    <div id="privacyLockBox">
-      <h2 id="privacyLockTitle">Session verrouillee</h2>
-      <p id="privacyLockText">Pour proteger cette session, l'application demande une verification biometrie.</p>
-      <div id="privacyLockNotice"></div>
-      <div id="privacyLockActions">
-        <button id="privacyUnlockBtn" class="privacyLockBtnPrimary" type="button">Deverrouiller</button>
-        <button id="privacyLockAccountBtn" class="privacyLockBtnSecondary" type="button">Ouvrir mon compte</button>
-        <button id="privacyLockLogoutBtn" class="privacyLockBtnSecondary" type="button">Se deconnecter</button>
-      </div>
-    </div>
-  </div>
-
   <div id="welcomeScreen" class="screen">
     <div id="welcomeInner">
       
@@ -3329,19 +3246,15 @@
       clearBiometricUnlockToken();
     }
 
-    function showPrivacyLockScreen(visible, notice = "") {
-      const screen = document.getElementById("privacyLockScreen");
-      const noticeEl = document.getElementById("privacyLockNotice");
-      if (!screen) return;
-      screen.style.display = visible ? "flex" : "none";
-      if (noticeEl) noticeEl.textContent = visible ? String(notice || "") : "";
-    }
+    let biometricUnlockRedirectPending = false;
 
     async function isBiometricUnlockAvailable() {
       return true; // Native Android BiometricPrompt — always considered available when enabled.
     }
 
     function requestBiometricUnlock() {
+      if (biometricUnlockRedirectPending) return;
+
       // Store a short-lived nonce to verify the result when the app returns from BiometricActivity.
       const nonceKey = getBiometricPendingNonceKey();
       const nonce = Array.from(crypto.getRandomValues(new Uint8Array(16)))
@@ -3352,6 +3265,7 @@
 
       // Navigate to native BiometricActivity via custom scheme.
       const callbackPath = encodeURIComponent("/");
+      biometricUnlockRedirectPending = true;
       window.location.href = `facilitat://biometric-verify?callback_path=/&_bio_nonce=${nonce}`;
     }
 
@@ -3374,7 +3288,7 @@
         return true;
       }
 
-      showPrivacyLockScreen(true);
+      requestBiometricUnlock();
       return false;
     }
 
@@ -10148,35 +10062,6 @@
       };
     }
 
-    const privacyUnlockBtn = document.getElementById("privacyUnlockBtn");
-    if (privacyUnlockBtn) {
-      privacyUnlockBtn.onclick = () => {
-        requestBiometricUnlock();
-      };
-    }
-
-    const privacyLockAccountBtn = document.getElementById("privacyLockAccountBtn");
-    if (privacyLockAccountBtn) {
-      privacyLockAccountBtn.onclick = () => {
-        navigateAway("/account.html");
-      };
-    }
-
-    const privacyLockLogoutBtn = document.getElementById("privacyLockLogoutBtn");
-    if (privacyLockLogoutBtn) {
-      privacyLockLogoutBtn.onclick = async () => {
-        try {
-          await fetch("/api/auth/logout", {
-            method: "POST",
-            credentials: "include",
-            headers: { "Content-Type": "application/json" },
-            body: "{}"
-          });
-        } catch {}
-        navigateAway("/auth.html");
-      };
-    }
-
     const conversationsPrivacyHintContinueBtn = document.getElementById("conversationsPrivacyHintContinueBtn");
     if (conversationsPrivacyHintContinueBtn) {
       conversationsPrivacyHintContinueBtn.onclick = () => {
@@ -10985,7 +10870,10 @@
         return;
       }
 
-      await ensureBiometricAccess("launch");
+      const hasBiometricAccessOnLaunch = await ensureBiometricAccess("launch");
+      if (!hasBiometricAccessOnLaunch) {
+        return;
+      }
 
       const shouldSkipWelcomeAnimation = isAdminUI;
 
