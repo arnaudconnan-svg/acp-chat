@@ -4,6 +4,7 @@
   "name": "Facilitat.io",
   "launcherName": "Facilitat",
   "display": "standalone",
+  "orientation": "portrait",
   "themeColor": "#f4f9f9",
   "navigationColor": "#f4f9f9",
   "backgroundColor": "#f4f9f9",

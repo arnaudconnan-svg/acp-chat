@@ -45,6 +45,7 @@ function main() {
     name: appName,
     launcherName,
     display: "standalone",
+    orientation: "portrait",
     themeColor,
     navigationColor: themeColor,
     backgroundColor,
