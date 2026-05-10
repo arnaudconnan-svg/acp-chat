@@ -1296,6 +1296,20 @@
         } catch (_) {}
       }
 
+      function syncNativeBiometricConfigIfNeeded(enabled, relockSeconds) {
+        try {
+          if (!/Android/i.test(navigator.userAgent || "")) return;
+          const normalizedEnabled = enabled === true;
+          const normalizedRelock = normalizeBiometricRelockSeconds(relockSeconds);
+          const hash = (normalizedEnabled ? "1" : "0") + ":" + String(normalizedRelock);
+          const key = "facilitat_native_bio_policy_hash_v1";
+          const previous = localStorage.getItem(key);
+          if (previous === hash) return;
+          localStorage.setItem(key, hash);
+          syncNativeBiometricConfig(normalizedEnabled, normalizedRelock);
+        } catch (_) {}
+      }
+
       function buildBiometricLockCard() {
         const card = document.createElement("div");
         card.className = "card";
@@ -1369,12 +1383,15 @@
             currentUser.biometricRelockSeconds = normalizeBiometricRelockSeconds(data.biometricRelockSeconds);
             toggle.checked = currentUser.biometricLockEnabled === true;
             relockSelect.value = String(currentUser.biometricRelockSeconds);
-            syncNativeBiometricConfig(currentUser.biometricLockEnabled === true, currentUser.biometricRelockSeconds);
+            syncNativeBiometricConfigIfNeeded(currentUser.biometricLockEnabled === true, currentUser.biometricRelockSeconds);
           } catch (_) {}
         };
 
         toggle.addEventListener("change", autoSaveBiometric);
         relockSelect.addEventListener("change", autoSaveBiometric);
+
+        // Ensure native gate gets current policy even if user does not change toggle this time.
+        syncNativeBiometricConfigIfNeeded(toggle.checked === true, relockSelect.value);
 
         return card;
       }
