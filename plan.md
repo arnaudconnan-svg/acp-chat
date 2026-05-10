@@ -4,7 +4,6 @@
 Stabiliser et enrichir l'experience Android TWA pour un usage mobile fluide, fiable et discret, avec priorite a l'acces rapide au chat et a la securite d'usage.
 
 ## Decisions deja prises
-- Forcer l'orientation portrait sur Android.
 - Mettre en place un verrouillage biométrique optionnel.
 - Ajouter un raccourci Android base sur deep link pour demarrer une nouvelle session directement dans le chat, en evitant les ecrans d'accueil et conversations.
 - Verifier les messages actuels "verifie ta connexion" avec une gestion reseau native legere, pour n'afficher ce message que si la cause est bien reseau.
