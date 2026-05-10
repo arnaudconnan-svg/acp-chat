@@ -81,7 +81,7 @@ Pour le chantier Android TWA, le chemin de validation et de deploiement doit etr
 2. verification de la signature de l'APK contre `public/.well-known/assetlinks.json`
 3. installation via l'ADB du SDK Android, jamais via un binaire `adb` pris au hasard dans `PATH`
 4. en cas de signature incompatible sur le package deja installe, desinstallation automatique avant reinstall
-5. apres install reussie, redemarrage force de l'app (force-stop + relance launcher) pour eviter de garder une instance deja ouverte avec un runtime stale
+5. apres install reussie, redemarrage force TWA: arret best-effort de l'hote navigateur puis `adb shell am start -S ...` (kill + start deterministes) pour eviter de garder une Custom Tab stale au premier plan
 
 Point de controle obligatoire orientation:
 - la valeur Android generee `string/orientation` doit rester `portrait` (pas `default`)

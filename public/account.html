@@ -522,16 +522,12 @@
             const _cleanUrl = new URL(window.location.href);
             _cleanUrl.searchParams.delete("_android_country_selected");
             _cleanUrl.searchParams.delete("_android_country");
-            _cleanUrl.searchParams.delete("_android_snapshot_pref_saved");
-            _cleanUrl.searchParams.delete("_android_snapshot_enabled");
             _cleanUrl.searchParams.delete("_account_subscreen");
             history.replaceState(history.state, "", _cleanUrl.toString());
           } catch (_) {}
         } else if (_openPrivacySubscreen) {
           try {
             const _cleanUrl = new URL(window.location.href);
-            _cleanUrl.searchParams.delete("_android_snapshot_pref_saved");
-            _cleanUrl.searchParams.delete("_android_snapshot_enabled");
             _cleanUrl.searchParams.delete("_account_subscreen");
             history.replaceState(history.state, "", _cleanUrl.toString());
           } catch (_) {}
@@ -1228,7 +1224,7 @@
 
         const help = document.createElement("p");
         help.className = "setting-help";
-        help.textContent = "Reglez ici vos options de confidentialite, dont le verrouillage biometrie, les captures d'ecran et le mot de passe.";
+        help.textContent = "Reglez ici vos options de confidentialite, dont le verrouillage biometrie et le mot de passe.";
         textWrap.appendChild(help);
 
         const arrow = document.createElement("div");
@@ -1272,16 +1268,9 @@
 
         wrap.appendChild(buildPrivateDefaultCard());
         wrap.appendChild(buildBiometricLockCard());
-        wrap.appendChild(buildScreenCaptureCard());
         wrap.appendChild(buildPasswordCard());
 
         return wrap;
-      }
-
-      async function syncNativeScreenCapturePreference(enabled) {
-        const callbackPath = "/account.html";
-        const desired = enabled === true ? "1" : "0";
-        window.location.href = "facilitat://snapshot-preference?enabled=" + desired + "&callback_path=" + encodeURIComponent(callbackPath) + "&return_subscreen=privacy";
       }
 
       function normalizeBiometricRelockSeconds(value) {
@@ -1543,102 +1532,6 @@
             refreshSaveState();
           } catch (_) {
             notice.textContent = "Erreur reseau ou biometrie. Reessayez.";
-            refreshSaveState();
-          }
-        });
-
-        refreshSaveState();
-        return card;
-      }
-
-      function buildScreenCaptureCard() {
-        const card = document.createElement("div");
-        card.className = "card";
-
-        const title = document.createElement("div");
-        title.className = "section-title";
-        title.textContent = "Captures d'ecran et apercu multitache";
-        card.appendChild(title);
-
-        const row = document.createElement("label");
-        row.className = "setting-row";
-        row.setAttribute("for", "screenCaptureToggle");
-
-        const rowText = document.createElement("span");
-        rowText.textContent = "Autoriser les captures d'ecran";
-        rowText.style.fontSize = "14px";
-        rowText.style.color = "#333";
-
-        const toggle = document.createElement("input");
-        toggle.id = "screenCaptureToggle";
-        toggle.type = "checkbox";
-        toggle.checked = currentUser && currentUser.screenCaptureEnabled === true;
-
-        row.appendChild(rowText);
-        row.appendChild(toggle);
-        card.appendChild(row);
-
-        const help = document.createElement("p");
-        help.className = "setting-help";
-        help.textContent = "Si cette option reste desactivee, Android masque aussi l'application dans l'apercu multitache. Le changement est applique par le natif au retour sur l'appareil.";
-        card.appendChild(help);
-
-        const saveBtn = document.createElement("button");
-        saveBtn.type = "button";
-        saveBtn.className = "action-btn";
-        saveBtn.textContent = "Enregistrer";
-        card.appendChild(saveBtn);
-
-        const notice = document.createElement("div");
-        notice.className = "notice";
-        card.appendChild(notice);
-
-        const refreshSaveState = () => {
-          const initial = currentUser && currentUser.screenCaptureEnabled === true;
-          const changed = toggle.checked !== initial;
-          saveBtn.disabled = !changed;
-          saveBtn.classList.toggle("is-ready", changed);
-        };
-
-        toggle.addEventListener("change", refreshSaveState);
-
-        saveBtn.addEventListener("click", async () => {
-          notice.textContent = "";
-          notice.className = "notice";
-          saveBtn.disabled = true;
-
-          try {
-            const desired = toggle.checked === true;
-            const res = await fetch("/api/account/preferences", {
-              method: "PUT",
-              credentials: "include",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                screenCaptureEnabled: desired
-              })
-            });
-
-            const data = await res.json().catch(() => ({}));
-
-            if (!res.ok) {
-              notice.textContent = data.error || "Impossible d'enregistrer la preference.";
-              refreshSaveState();
-              return;
-            }
-
-            currentUser.screenCaptureEnabled = data.screenCaptureEnabled === true;
-            toggle.checked = currentUser.screenCaptureEnabled === true;
-
-            if (/Android/i.test(navigator.userAgent || "")) {
-              await syncNativeScreenCapturePreference(currentUser.screenCaptureEnabled === true);
-              return;
-            }
-
-            notice.textContent = "Preference enregistree.";
-            notice.className = "notice success";
-            refreshSaveState();
-          } catch (_) {
-            notice.textContent = "Erreur reseau. Reessayez.";
             refreshSaveState();
           }
         });

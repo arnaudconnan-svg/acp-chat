@@ -6,6 +6,7 @@ const ROOT = path.join(__dirname, "..");
 const ANDROID_DIR = path.join(ROOT, "android-project");
 const RELEASE_DIR = path.join(ANDROID_DIR, "app", "build", "outputs", "apk", "release");
 const PACKAGE_NAME = String(process.env.TWA_ANDROID_PACKAGE || "io.facilitat.app").trim() || "io.facilitat.app";
+const BROWSER_HOST_PACKAGE = String(process.env.TWA_BROWSER_HOST_PACKAGE || "com.android.chrome").trim() || "com.android.chrome";
 const argv = new Set(process.argv.slice(2));
 
 function fail(message) {
@@ -54,6 +55,33 @@ function runNpm(args, options = {}) {
 
   const npmCmd = process.platform === "win32" ? "npm.cmd" : "npm";
   return run(npmCmd, args, options);
+}
+
+function runBestEffort(command, args, options = {}) {
+  let resolvedCommand = command;
+  let resolvedArgs = args;
+
+  if (process.platform === "win32" && /\.(bat|cmd)$/i.test(command)) {
+    resolvedCommand = process.env.ComSpec || "cmd.exe";
+    resolvedArgs = ["/d", "/s", "/c", command, ...args];
+  }
+
+  const result = spawnSync(resolvedCommand, resolvedArgs, {
+    cwd: options.cwd || ROOT,
+    encoding: "utf8",
+    stdio: options.stdio || "pipe",
+    shell: false
+  });
+
+  if (result.stdout) process.stdout.write(result.stdout);
+  if (result.stderr) process.stderr.write(result.stderr);
+
+  if (result.status !== 0) {
+    const details = String(result.stderr || result.stdout || "").trim();
+    console.warn(`[android-deploy] Non-blocking command failed: ${command} ${args.join(" ")}${details ? ` (${details})` : ""}`);
+  }
+
+  return result;
 }
 
 function getSdkRoot() {
@@ -223,8 +251,20 @@ function main() {
   }
 
   console.log(`[android-deploy] Restarting ${PACKAGE_NAME} to ensure fresh runtime...`);
-  run(adb, ["shell", "am", "force-stop", PACKAGE_NAME], { stdio: "inherit" });
-  run(adb, ["shell", "monkey", "-p", PACKAGE_NAME, "-c", "android.intent.category.LAUNCHER", "1"], { stdio: "inherit" });
+  runBestEffort(adb, ["shell", "am", "force-stop", BROWSER_HOST_PACKAGE], { stdio: "inherit" });
+  run(adb, [
+    "shell",
+    "am",
+    "start",
+    "-S",
+    "-W",
+    "-n",
+    `${PACKAGE_NAME}/.LauncherActivity`,
+    "-a",
+    "android.intent.action.MAIN",
+    "-c",
+    "android.intent.category.LAUNCHER"
+  ], { stdio: "inherit" });
 
   console.log("[android-deploy] Deployment complete.");
 }

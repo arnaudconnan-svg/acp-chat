@@ -15,35 +15,17 @@
  */
 package io.facilitat.app;
 
-import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.WindowManager;
 
 import java.util.Locale;
 
 public class LauncherActivity
         extends com.google.androidbrowserhelper.trusted.LauncherActivity {
-    private static final String PRIVACY_PREFS = "facilitat_privacy";
-    private static final String SCREEN_CAPTURE_ENABLED_KEY = "screen_capture_enabled";
-
-    private boolean isScreenCaptureEnabled() {
-        SharedPreferences prefs = getSharedPreferences(PRIVACY_PREFS, MODE_PRIVATE);
-        return prefs.getBoolean(SCREEN_CAPTURE_ENABLED_KEY, false);
-    }
-
-    private void applyScreenCapturePreference() {
-        if (isScreenCaptureEnabled()) {
-            getWindow().clearFlags(WindowManager.LayoutParams.FLAG_SECURE);
-        } else {
-            getWindow().setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE);
-        }
-    }
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         if (Build.VERSION.SDK_INT > Build.VERSION_CODES.O) {
@@ -53,13 +35,6 @@ public class LauncherActivity
         }
         super.onCreate(savedInstanceState);
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
-        applyScreenCapturePreference();
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        applyScreenCapturePreference();
     }
 
     @Override

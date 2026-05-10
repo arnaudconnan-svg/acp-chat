@@ -675,8 +675,7 @@ function toPublicUser(userId, userData, _options = {}) {
     updatedAt: typeof safeUser.updatedAt === "string" ? safeUser.updatedAt : null,
     privateConversationsByDefault: safeUser.privateConversationsByDefault === true,
     biometricLockEnabled: safeUser.biometricLockEnabled === true,
-    biometricRelockSeconds: normalizedRelock === null ? 120 : normalizedRelock,
-    screenCaptureEnabled: safeUser.screenCaptureEnabled === true
+    biometricRelockSeconds: normalizedRelock === null ? 120 : normalizedRelock
   };
 }
 
@@ -1699,7 +1698,6 @@ app.post("/api/auth/register", async (req, res) => {
       privateConversationsByDefault: false,
       biometricLockEnabled: false,
       biometricRelockSeconds: 120,
-      screenCaptureEnabled: false,
       createdAt: now,
       updatedAt: now
     };
@@ -1851,9 +1849,8 @@ app.put("/api/account/preferences", requireUserAuth, async (req, res) => {
     const hasPrivateDefault = typeof req.body.privateConversationsByDefault === "boolean";
     const hasBiometricLockEnabled = typeof req.body.biometricLockEnabled === "boolean";
     const hasBiometricRelockSeconds = Object.prototype.hasOwnProperty.call(req.body, "biometricRelockSeconds");
-    const hasScreenCaptureEnabled = typeof req.body.screenCaptureEnabled === "boolean";
 
-    if (!hasPrivateDefault && !hasBiometricLockEnabled && !hasBiometricRelockSeconds && !hasScreenCaptureEnabled) {
+    if (!hasPrivateDefault && !hasBiometricLockEnabled && !hasBiometricRelockSeconds) {
       return res.status(400).json({ error: "Invalid preferences payload" });
     }
 
@@ -1873,10 +1870,6 @@ app.put("/api/account/preferences", requireUserAuth, async (req, res) => {
       patch.biometricRelockSeconds = normalizedRelock;
     }
 
-    if (hasScreenCaptureEnabled) {
-      patch.screenCaptureEnabled = req.body.screenCaptureEnabled === true;
-    }
-
     await usersRef.child(session.userId).update(patch);
 
     const safePrivateDefault = Object.prototype.hasOwnProperty.call(patch, "privateConversationsByDefault")
@@ -1888,16 +1881,12 @@ app.put("/api/account/preferences", requireUserAuth, async (req, res) => {
     const safeRelock = Object.prototype.hasOwnProperty.call(patch, "biometricRelockSeconds")
       ? patch.biometricRelockSeconds
       : normalizeBiometricRelockSeconds(session?.user?.biometricRelockSeconds);
-    const safeScreenCapture = Object.prototype.hasOwnProperty.call(patch, "screenCaptureEnabled")
-      ? patch.screenCaptureEnabled === true
-      : session?.user?.screenCaptureEnabled === true;
 
     return res.json({
       success: true,
       privateConversationsByDefault: safePrivateDefault,
       biometricLockEnabled: safeBiometricEnabled,
       biometricRelockSeconds: safeRelock === null ? 120 : safeRelock,
-      screenCaptureEnabled: safeScreenCapture,
       updatedAt: now
     });
   } catch (err) {
