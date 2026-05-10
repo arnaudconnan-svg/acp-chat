@@ -80,6 +80,33 @@ function run(command, args) {
   return spawnSync(command, args, { encoding: "utf8" });
 }
 
+function getSdkRoot() {
+  const candidates = [
+    String(process.env.ANDROID_SDK_ROOT || "").trim(),
+    String(process.env.ANDROID_HOME || "").trim(),
+    path.join(String(process.env.LOCALAPPDATA || "").trim(), "Android", "Sdk")
+  ].filter(Boolean);
+
+  for (const candidate of candidates) {
+    if (candidate && fs.existsSync(candidate)) return candidate;
+  }
+
+  fail("Unable to locate Android SDK. Set ANDROID_SDK_ROOT or ANDROID_HOME.");
+}
+
+function resolveAdbPath() {
+  const sdkRoot = getSdkRoot();
+  const candidate = process.platform === "win32"
+    ? path.join(sdkRoot, "platform-tools", "adb.exe")
+    : path.join(sdkRoot, "platform-tools", "adb");
+
+  if (!fs.existsSync(candidate)) {
+    fail(`Missing adb in Android SDK: ${candidate}`);
+  }
+
+  return candidate;
+}
+
 function getApkFingerprint(apkPath) {
   const result = run("keytool", ["-printcert", "-jarfile", apkPath]);
   if (result.status !== 0) {
@@ -93,22 +120,6 @@ function getApkFingerprint(apkPath) {
   }
 
   return match[1].trim().toUpperCase();
-}
-
-function resolveAdbPath() {
-  const fromEnv = String(process.env.ADB_PATH || "").trim();
-  if (fromEnv) return fromEnv;
-
-  if (process.platform === "win32") {
-    const localAppData = String(process.env.LOCALAPPDATA || "").trim();
-    if (localAppData) {
-      const candidate = path.join(localAppData, "Android", "Sdk", "platform-tools", "adb.exe");
-      if (fs.existsSync(candidate)) return candidate;
-    }
-    return "adb.exe";
-  }
-
-  return "adb";
 }
 
 function ensureDevice(adbPath) {
@@ -127,6 +138,17 @@ function ensureDevice(adbPath) {
   if (!online) {
     fail("No Android device detected by adb.");
   }
+}
+
+function getInstalledFingerprint(adbPath, packageName) {
+  const result = run(adbPath, ["shell", "dumpsys", "package", packageName]);
+  if (result.status !== 0) {
+    return "";
+  }
+
+  const output = `${result.stdout || ""}\n${result.stderr || ""}`;
+  const match = output.match(/SHA-256\s*:\s*([0-9A-F:]{32,})/i);
+  return match ? match[1].trim().toUpperCase() : "";
 }
 
 function installApk(adbPath, apkPath) {
@@ -156,6 +178,18 @@ function main() {
 
   const adbPath = resolveAdbPath();
   ensureDevice(adbPath);
+
+  const installedFingerprint = getInstalledFingerprint(adbPath, packageName);
+  if (installedFingerprint && installedFingerprint !== apkFingerprint) {
+    console.log(`[twa:safe-install] Installed signature differs (${installedFingerprint}). Uninstalling before reinstall.`);
+    const uninstall = run(adbPath, ["uninstall", packageName]);
+    process.stdout.write(String(uninstall.stdout || ""));
+    process.stderr.write(String(uninstall.stderr || ""));
+    if (uninstall.status !== 0) {
+      fail(`adb uninstall failed for '${packageName}'.`);
+    }
+  }
+
   installApk(adbPath, apkPath);
   console.log("[twa:safe-install] APK installed with trusted signature.");
 }

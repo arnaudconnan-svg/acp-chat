@@ -45,6 +45,7 @@
     "android:icon:generate": "node scripts/android-icon-generate.js",
     "android:apply-customizations": "node scripts/apply-android-customizations.js",
     "android:build:release": "node scripts/android-build-release.js",
+    "android:deploy:release": "node scripts/android-deploy-release.js",
     "twa:install:safe": "npm run android:icon:verify && node scripts/twa-safe-install.js",
     "twa:signing-key": "node scripts/signing-key-setup.js",
     "twa:build": "node scripts/bubblewrap-init.js && npm run android:apply-customizations",
