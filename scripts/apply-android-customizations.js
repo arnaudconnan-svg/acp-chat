@@ -4,6 +4,7 @@ const path = require("path");
 const ROOT = path.join(__dirname, "..");
 const TEMPLATE_PATH = path.join(__dirname, "templates", "CountryPickerActivity.java");
 const LAUNCHER_TEMPLATE_PATH = path.join(__dirname, "templates", "LauncherActivity.java");
+const BIOMETRIC_TEMPLATE_PATH = path.join(__dirname, "templates", "BiometricActivity.java");
 const TWA_MANIFEST_PATH = path.join(ROOT, "android-project", "twa-manifest.json");
 const APP_BUILD_GRADLE_PATH = path.join(ROOT, "android-project", "app", "build.gradle");
 const LAUNCHER_ACTIVITY_PATH = path.join(ROOT, "android-project", "app", "src", "main", "java", "io", "facilitat", "app", "LauncherActivity.java");
@@ -20,6 +21,18 @@ const TARGET_PATH = path.join(
   "app",
   "CountryPickerActivity.java"
 );
+const BIOMETRIC_TARGET_PATH = path.join(
+  ROOT,
+  "android-project",
+  "app",
+  "src",
+  "main",
+  "java",
+  "io",
+  "facilitat",
+  "app",
+  "BiometricActivity.java"
+);
 
 function fail(message) {
   console.error(`[android-customize] ${message}`);
@@ -35,6 +48,10 @@ function main() {
 
   if (!fs.existsSync(LAUNCHER_TEMPLATE_PATH)) {
     fail(`Missing template: ${LAUNCHER_TEMPLATE_PATH}`);
+  }
+
+  if (!fs.existsSync(BIOMETRIC_TEMPLATE_PATH)) {
+    fail(`Missing template: ${BIOMETRIC_TEMPLATE_PATH}`);
   }
 
   if (!fs.existsSync(TARGET_PATH)) {
@@ -109,11 +126,20 @@ function main() {
 
   if (current === template) {
     console.log("[android-customize] Country picker already up to date.");
-    return;
+  } else {
+    fs.writeFileSync(TARGET_PATH, template, "utf8");
+    console.log("[android-customize] Country picker customization applied.");
   }
 
-  fs.writeFileSync(TARGET_PATH, template, "utf8");
-  console.log("[android-customize] Country picker customization applied.");
+  // BiometricActivity
+  const biometricTemplate = fs.readFileSync(BIOMETRIC_TEMPLATE_PATH, "utf8");
+  const biometricCurrent = fs.existsSync(BIOMETRIC_TARGET_PATH) ? fs.readFileSync(BIOMETRIC_TARGET_PATH, "utf8") : null;
+  if (biometricCurrent !== biometricTemplate) {
+    fs.writeFileSync(BIOMETRIC_TARGET_PATH, biometricTemplate, "utf8");
+    console.log("[android-customize] BiometricActivity customization applied.");
+  } else {
+    console.log("[android-customize] BiometricActivity already up to date.");
+  }
 }
 
 main();

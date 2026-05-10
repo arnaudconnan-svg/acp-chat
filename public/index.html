@@ -3256,22 +3256,9 @@
       return userId ? `${BIOMETRIC_HIDDEN_AT_KEY_PREFIX}${userId}` : "";
     }
 
-    function decodeBase64UrlToArrayBuffer(value) {
-      if (typeof value !== "string" || !value.trim()) return null;
-      const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
-      const padded = normalized + "=".repeat((4 - (normalized.length % 4 || 4)) % 4);
-      const binary = atob(padded);
-      const bytes = new Uint8Array(binary.length);
-      for (let i = 0; i < binary.length; i += 1) {
-        bytes[i] = binary.charCodeAt(i);
-      }
-      return bytes.buffer;
-    }
-
-    function createRandomChallenge(size = 32) {
-      const bytes = new Uint8Array(size);
-      crypto.getRandomValues(bytes);
-      return bytes;
+    function getBiometricPendingNonceKey() {
+      const userId = getBiometricUserId();
+      return userId ? `facilitatio_bio_nonce_v1_${userId}` : "facilitatio_bio_nonce_v1";
     }
 
     function isBiometricLockEnabledForSession() {
@@ -3291,9 +3278,7 @@
     }
 
     function loadBiometricCredentialId() {
-      const key = getBiometricCredentialStorageKey();
-      if (!key) return "";
-      return String(localStorage.getItem(key) || "").trim();
+      return ""; // Legacy WebAuthn — no longer used with native biometric bridge.
     }
 
     function setBiometricUnlockTimestamp(ts) {
@@ -3353,77 +3338,25 @@
     }
 
     async function isBiometricUnlockAvailable() {
-      if (!window.isSecureContext) return false;
-      if (typeof window.PublicKeyCredential !== "function") return false;
-      if (typeof window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable !== "function") return false;
-      try {
-        return await window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
-      } catch {
-        return false;
-      }
+      return true; // Native Android BiometricPrompt — always considered available when enabled.
     }
 
-    async function requestBiometricUnlock() {
-      if (!navigator.credentials || typeof navigator.credentials.get !== "function") {
-        throw new Error("Biometrie non supportee sur cet appareil.");
-      }
-
-      const credentialId = loadBiometricCredentialId();
-      const rawId = decodeBase64UrlToArrayBuffer(credentialId);
-      if (!rawId) {
-        throw new Error("Aucune cle biometrie configuree sur cet appareil. Ouvrez Mon compte > Confidentialite.");
-      }
-
-      const available = await isBiometricUnlockAvailable();
-      if (!available) {
-        throw new Error("Biometrie indisponible ou non configuree sur cet appareil.");
-      }
-
-      const assertion = await navigator.credentials.get({
-        publicKey: {
-          challenge: createRandomChallenge(32),
-          timeout: 60000,
-          userVerification: "required",
-          allowCredentials: [{
-            type: "public-key",
-            id: rawId
-          }]
-        }
-      });
-
-      if (!assertion) {
-        throw new Error("Verification biometrie annulee.");
-      }
-
-      // Request a short-lived unlock token from the server
+    function requestBiometricUnlock() {
+      // Store a short-lived nonce to verify the result when the app returns from BiometricActivity.
+      const nonceKey = getBiometricPendingNonceKey();
+      const nonce = Array.from(crypto.getRandomValues(new Uint8Array(16)))
+        .map(b => b.toString(16).padStart(2, "0")).join("");
       try {
-        const tokenRes = await fetch("/api/biometric/unlock-token", {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({})
-        });
+        localStorage.setItem(nonceKey, JSON.stringify({ nonce, expiresAt: Date.now() + 90000 }));
+      } catch (_) {}
 
-        if (tokenRes.ok) {
-          const tokenData = await tokenRes.json();
-          if (tokenData.token) {
-            sessionStorage.setItem("biometricUnlockToken", tokenData.token);
-            sessionStorage.setItem("biometricUnlockTokenExpiresAt", String(Date.now() + tokenData.expiresIn * 1000));
-          }
-        }
-      } catch (err) {
-        // Non-blocking: Token fetch failed, but unlock still succeeds
-        console.debug("Token issuance failed:", err.message);
-      }
-
-      setBiometricUnlockTimestamp(Date.now());
-      showPrivacyLockScreen(false);
-      return true;
+      // Navigate to native BiometricActivity via custom scheme.
+      const callbackPath = encodeURIComponent("/");
+      window.location.href = `facilitat://biometric-verify?callback_path=/&_bio_nonce=${nonce}`;
     }
 
     function shouldRequestBiometricUnlock(reason = "") {
       if (!isBiometricLockEnabledForSession()) return false;
-      if (!loadBiometricCredentialId()) return false;
 
       const lastUnlockTs = loadBiometricUnlockTimestamp();
       if (!lastUnlockTs) return true;
@@ -10217,16 +10150,8 @@
 
     const privacyUnlockBtn = document.getElementById("privacyUnlockBtn");
     if (privacyUnlockBtn) {
-      privacyUnlockBtn.onclick = async () => {
-        const noticeEl = document.getElementById("privacyLockNotice");
-        if (noticeEl) noticeEl.textContent = "";
-        try {
-          await requestBiometricUnlock();
-        } catch (err) {
-          if (noticeEl) {
-            noticeEl.textContent = err && err.message ? err.message : "Verification biometrie impossible.";
-          }
-        }
+      privacyUnlockBtn.onclick = () => {
+        requestBiometricUnlock();
       };
     }
 
@@ -10993,6 +10918,30 @@
     window.addEventListener("load", async () => {
       await syncUserSessionState();
       updateAccountBtnVisibility();
+
+      // --- Biometric result from native Android BiometricActivity ---
+      try {
+        const _bioUrl = new URL(window.location.href);
+        const _bioResult = _bioUrl.searchParams.get("_biometric_result");
+        const _bioNonce = _bioUrl.searchParams.get("_bio_nonce");
+        if (_bioResult || _bioNonce) {
+          _bioUrl.searchParams.delete("_biometric_result");
+          _bioUrl.searchParams.delete("_bio_nonce");
+          const _bioClean = _bioUrl.pathname + (_bioUrl.searchParams.toString() ? "?" + _bioUrl.searchParams.toString() : "") + (_bioUrl.hash || "");
+          history.replaceState(history.state || {}, "", _bioClean);
+
+          if (_bioResult === "success" && _bioNonce) {
+            const _nonceKey = getBiometricPendingNonceKey();
+            try {
+              const _stored = JSON.parse(localStorage.getItem(_nonceKey) || "null");
+              if (_stored && _stored.nonce === _bioNonce && Date.now() < (_stored.expiresAt || 0)) {
+                setBiometricUnlockTimestamp(Date.now());
+              }
+            } catch (_) {}
+            try { localStorage.removeItem(getBiometricPendingNonceKey()); } catch (_) {}
+          }
+        }
+      } catch (_) {}
 
       // Auto-save native Android country if user is authenticated and has no country set yet.
       try {

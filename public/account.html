@@ -414,6 +414,10 @@
       font-size: 14px;
       background: #fafafa;
     }
+    body.subscreen-privacy header img,
+    body.subscreen-privacy header .header-actions {
+      display: none;
+    }
   </style>
 </head>
 <body>
@@ -565,9 +569,12 @@
         main.innerHTML = "";
 
         if (accountSubscreen === "privacy") {
+          document.body.classList.add("subscreen-privacy");
           main.appendChild(buildPrivacySubscreen());
           return;
         }
+
+        document.body.classList.remove("subscreen-privacy");
 
         const h1 = document.createElement("h1");
         h1.textContent = "Mon compte";
@@ -1274,125 +1281,6 @@
         return 120;
       }
 
-      function getBiometricCredentialStorageKey() {
-        const userId = currentUser && typeof currentUser.id === "string" ? currentUser.id.trim() : "";
-        if (!userId) return null;
-        return `${BIOMETRIC_CREDENTIAL_KEY_PREFIX}${userId}`;
-      }
-
-      function toBase64Url(buffer) {
-        const bytes = new Uint8Array(buffer);
-        let binary = "";
-        for (let i = 0; i < bytes.length; i += 1) {
-          binary += String.fromCharCode(bytes[i]);
-        }
-        return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
-      }
-
-      function fromBase64Url(value) {
-        if (typeof value !== "string" || !value.trim()) return null;
-        const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
-        const padded = normalized + "=".repeat((4 - (normalized.length % 4 || 4)) % 4);
-        const binary = atob(padded);
-        const bytes = new Uint8Array(binary.length);
-        for (let i = 0; i < binary.length; i += 1) {
-          bytes[i] = binary.charCodeAt(i);
-        }
-        return bytes.buffer;
-      }
-
-      function getRandomChallenge(size = 32) {
-        const bytes = new Uint8Array(size);
-        crypto.getRandomValues(bytes);
-        return bytes;
-      }
-
-      async function isBiometricAvailable() {
-        if (typeof window.PublicKeyCredential !== "function") {
-          return false;
-        }
-
-        if (typeof window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable !== "function") {
-          return false;
-        }
-
-        try {
-          return await window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
-        } catch {
-          return false;
-        }
-      }
-
-      function loadStoredBiometricCredentialId() {
-        const key = getBiometricCredentialStorageKey();
-        if (!key) return "";
-        return String(localStorage.getItem(key) || "").trim();
-      }
-
-      function saveStoredBiometricCredentialId(credentialId) {
-        const key = getBiometricCredentialStorageKey();
-        if (!key) return;
-        if (typeof credentialId === "string" && credentialId.trim()) {
-          localStorage.setItem(key, credentialId.trim());
-        }
-      }
-
-      function clearStoredBiometricCredentialId() {
-        const key = getBiometricCredentialStorageKey();
-        if (!key) return;
-        localStorage.removeItem(key);
-      }
-
-      async function registerBiometricCredential() {
-        if (!(await isBiometricAvailable())) {
-          throw new Error("Biometrie indisponible sur cet appareil.");
-        }
-
-        if (!window.isSecureContext || !navigator.credentials || typeof navigator.credentials.create !== "function") {
-          throw new Error("Contexte securise requis pour activer la biometrie.");
-        }
-
-        const userId = currentUser && typeof currentUser.id === "string" ? currentUser.id.trim() : "";
-        const email = currentUser && typeof currentUser.email === "string" ? currentUser.email.trim() : "Utilisateur";
-        if (!userId) {
-          throw new Error("Session utilisateur introuvable.");
-        }
-
-        const credential = await navigator.credentials.create({
-          publicKey: {
-            challenge: getRandomChallenge(32),
-            rp: {
-              name: "Facilitat.io",
-              id: window.location.hostname
-            },
-            user: {
-              id: new TextEncoder().encode(userId),
-              name: email || userId,
-              displayName: email || userId
-            },
-            pubKeyCredParams: [
-              { type: "public-key", alg: -7 },
-              { type: "public-key", alg: -257 }
-            ],
-            timeout: 60000,
-            authenticatorSelection: {
-              authenticatorAttachment: "platform",
-              userVerification: "required",
-              residentKey: "preferred"
-            },
-            attestation: "none"
-          }
-        });
-
-        if (!credential || !credential.rawId) {
-          throw new Error("Impossible de creer une cle biometrie.");
-        }
-
-        const id = toBase64Url(credential.rawId);
-        saveStoredBiometricCredentialId(id);
-        return id;
-      }
-
       function buildBiometricLockCard() {
         const card = document.createElement("div");
         card.className = "card";
@@ -1448,18 +1336,6 @@
             const desiredEnabled = toggle.checked === true;
             const desiredRelock = normalizeBiometricRelockSeconds(relockSelect.value);
 
-            if (desiredEnabled) {
-              const available = await isBiometricAvailable();
-              if (!available) {
-                toggle.checked = false;
-                return;
-              }
-
-              if (!loadStoredBiometricCredentialId()) {
-                await registerBiometricCredential();
-              }
-            }
-
             const res = await fetch("/api/account/preferences", {
               method: "PUT",
               credentials: "include",
@@ -1478,10 +1354,6 @@
             currentUser.biometricRelockSeconds = normalizeBiometricRelockSeconds(data.biometricRelockSeconds);
             toggle.checked = currentUser.biometricLockEnabled === true;
             relockSelect.value = String(currentUser.biometricRelockSeconds);
-
-            if (!currentUser.biometricLockEnabled) {
-              clearStoredBiometricCredentialId();
-            }
           } catch (_) {}
         };
 
