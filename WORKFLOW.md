@@ -74,6 +74,15 @@ Verification complementaire selon le chantier :
 - test manuel cible quand le changement est visible
 - `pipeline:harness`, `debugmeta:harness` ou `eval:chat` sur GO explicite seulement (LLM en direct)
 
+Pour le chantier Android TWA, le chemin de validation et de deploiement doit etre le suivant :
+
+1. `npm run android:deploy:release`
+2. verification de la signature de l'APK contre `public/.well-known/assetlinks.json`
+3. installation via l'ADB du SDK Android, jamais via un binaire `adb` pris au hasard dans `PATH`
+4. en cas de signature incompatible sur le package deja installe, desinstallation automatique avant reinstall
+
+Si `adb devices` ne voit pas le telephone, utiliser d'abord l'ADB du SDK (`ANDROID_SDK_ROOT` ou `ANDROID_HOME`), puis seulement diagnostiquer le branchement physique ou l'autorisation USB. Ne pas multiplier les installs manuelles ni les essais de signature a l'aveugle.
+
 ## 5. Strategie de chantier
 
 L'ordre prefere est :

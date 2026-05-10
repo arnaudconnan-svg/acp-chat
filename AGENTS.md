@@ -206,6 +206,18 @@ Conditions :
 
 Principe : l'agent est responsable d'améliorer son outillage pour mieux aider l'utilisateur sur les incidents suivants.
 
+### Règle de deploiement Android TWA
+
+Pour toute reinstallation ou validation sur un telephone Android connecte :
+
+- utiliser en priorite `npm run android:deploy:release`
+- cette commande doit compiler, aligner, signer, verifier et installer l'APK via l'ADB du SDK Android
+- ne jamais utiliser l'ADB de `C:\Windows` ou un `adb` non resolu depuis le SDK pour un deploiement de release
+- verifier la signature de l'APK avant installation contre `public/.well-known/assetlinks.json`
+- si le package deja installe a une signature incompatible, desinstaller automatiquement avant reinstall plutot que tenter plusieurs installs successives
+
+Objectif : eviter les cycles d'installation manuels, les erreurs de signature, et les faux diagnostics de bandeau navigateur.
+
 Pour tout diagnostic de lenteur sur `/chat`, la premiere lecture utile est le log `pipeline_summary` avec les timings de stage, puis l'outil local `npm run perf:chat:summary` sur un log reel. Ne pas attendre d'arbitrage utilisateur pour faire cette lecture.
 
 ### Règle `max_tokens` (obligatoire)
