@@ -40,7 +40,9 @@
     "twa:check": "node scripts/twa-readiness-check.js",
     "twa:assetlinks": "node scripts/generate-assetlinks.js",
     "twa:manifest": "node scripts/generate-twa-manifest.js",
-    "twa:install:safe": "node scripts/twa-safe-install.js",
+    "android:icon:verify": "node scripts/android-icon-verify.js",
+    "android:icon:generate": "node scripts/android-icon-generate.js",
+    "twa:install:safe": "npm run android:icon:verify && node scripts/twa-safe-install.js",
     "twa:signing-key": "node scripts/signing-key-setup.js",
     "twa:build": "node scripts/bubblewrap-init.js",
     "test": "echo \"Error: no test specified\" && exit 1"
