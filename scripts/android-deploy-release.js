@@ -222,6 +222,10 @@ function main() {
     }
   }
 
+  console.log(`[android-deploy] Restarting ${PACKAGE_NAME} to ensure fresh runtime...`);
+  run(adb, ["shell", "am", "force-stop", PACKAGE_NAME], { stdio: "inherit" });
+  run(adb, ["shell", "monkey", "-p", PACKAGE_NAME, "-c", "android.intent.category.LAUNCHER", "1"], { stdio: "inherit" });
+
   console.log("[android-deploy] Deployment complete.");
 }
 
