@@ -3,10 +3,24 @@ const path = require("path");
 
 const ROOT = path.join(__dirname, "..");
 const TEMPLATE_PATH = path.join(__dirname, "templates", "CountryPickerActivity.java");
+const LAUNCHER_TEMPLATE_PATH = path.join(__dirname, "templates", "LauncherActivity.java");
 const TWA_MANIFEST_PATH = path.join(ROOT, "android-project", "twa-manifest.json");
 const APP_BUILD_GRADLE_PATH = path.join(ROOT, "android-project", "app", "build.gradle");
 const LAUNCHER_ACTIVITY_PATH = path.join(ROOT, "android-project", "app", "src", "main", "java", "io", "facilitat", "app", "LauncherActivity.java");
 const ANDROID_MANIFEST_PATH = path.join(ROOT, "android-project", "app", "src", "main", "AndroidManifest.xml");
+const SNAPSHOT_TEMPLATE_PATH = path.join(__dirname, "templates", "SnapshotPreferenceActivity.java");
+const SNAPSHOT_TARGET_PATH = path.join(
+  ROOT,
+  "android-project",
+  "app",
+  "src",
+  "main",
+  "java",
+  "io",
+  "facilitat",
+  "app",
+  "SnapshotPreferenceActivity.java"
+);
 const TARGET_PATH = path.join(
   ROOT,
   "android-project",
@@ -30,6 +44,14 @@ function main() {
 
   if (!fs.existsSync(TEMPLATE_PATH)) {
     fail(`Missing template: ${TEMPLATE_PATH}`);
+  }
+
+  if (!fs.existsSync(LAUNCHER_TEMPLATE_PATH)) {
+    fail(`Missing template: ${LAUNCHER_TEMPLATE_PATH}`);
+  }
+
+  if (!fs.existsSync(SNAPSHOT_TEMPLATE_PATH)) {
+    fail(`Missing template: ${SNAPSHOT_TEMPLATE_PATH}`);
   }
 
   if (!fs.existsSync(TARGET_PATH)) {
@@ -67,18 +89,6 @@ function main() {
     }
   }
 
-  if (fs.existsSync(LAUNCHER_ACTIVITY_PATH)) {
-    const launcherSource = fs.readFileSync(LAUNCHER_ACTIVITY_PATH, "utf8");
-    const updatedLauncherSource = launcherSource.replace(
-      /setRequestedOrientation\(ActivityInfo\.SCREEN_ORIENTATION_UNSPECIFIED\);/,
-      "setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);"
-    );
-    if (updatedLauncherSource !== launcherSource) {
-      fs.writeFileSync(LAUNCHER_ACTIVITY_PATH, updatedLauncherSource, "utf8");
-      console.log("[android-customize] Applied portrait orientation to LauncherActivity.");
-    }
-  }
-
   // Ensure AndroidManifest.xml has screenOrientation="portrait" on LauncherActivity
   if (fs.existsSync(ANDROID_MANIFEST_PATH)) {
     try {
@@ -98,42 +108,36 @@ function main() {
       } else if (launcherActivityPatternWithOrientation.test(manifest)) {
         console.log("[android-customize] AndroidManifest.xml LauncherActivity already has portrait orientation.");
       }
+
+      if (!manifest.includes('android:name="SnapshotPreferenceActivity"')) {
+        manifest = manifest.replace(
+          /<activity android:name="CountryPickerActivity"[\s\S]*?<\/activity>/,
+          match => `${match}\n\n        <activity android:name="SnapshotPreferenceActivity"\n            android:label="Confidentialite de l'ecran"\n            android:exported="true"\n            android:excludeFromRecents="true">\n            <intent-filter>\n                <action android:name="android.intent.action.VIEW" />\n                <category android:name="android.intent.category.DEFAULT" />\n                <category android:name="android.intent.category.BROWSABLE" />\n                <data android:scheme="facilitat" android:host="snapshot-preference" />\n            </intent-filter>\n        </activity>`
+        );
+        fs.writeFileSync(ANDROID_MANIFEST_PATH, manifest, "utf8");
+        console.log("[android-customize] Added SnapshotPreferenceActivity to AndroidManifest.xml.");
+      }
     } catch (err) {
       console.warn(`[android-customize] Warning: Could not update ${ANDROID_MANIFEST_PATH}: ${err.message}`);
     }
   }
 
-  // Ensure LauncherActivity.java has FLAG_SECURE applied
-  if (fs.existsSync(LAUNCHER_ACTIVITY_PATH)) {
-    try {
-      let launcherSource = fs.readFileSync(LAUNCHER_ACTIVITY_PATH, "utf8");
-      
-      // Check if FLAG_SECURE is already present
-      if (!launcherSource.includes("FLAG_SECURE")) {
-        // Add WindowManager import if not present
-        if (!launcherSource.includes("import android.view.WindowManager;")) {
-          launcherSource = launcherSource.replace(
-            /import android\.util\.Log;/,
-            "import android.util.Log;\nimport android.view.WindowManager;"
-          );
-        }
-        
-        // Add FLAG_SECURE call at the end of onCreate, before closing brace
-        launcherSource = launcherSource.replace(
-          /setRequestedOrientation\(ActivityInfo\.SCREEN_ORIENTATION_PORTRAIT\);\s*\}/,
-          "setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);\n        // Apply FLAG_SECURE to prevent screenshots and app preview by default\n        getWindow().setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE);\n    }"
-        );
-        
-        fs.writeFileSync(LAUNCHER_ACTIVITY_PATH, launcherSource, "utf8");
-        console.log("[android-customize] Applied FLAG_SECURE to LauncherActivity.java.");
-      }
-    } catch (err) {
-      console.warn(`[android-customize] Warning: Could not update ${LAUNCHER_ACTIVITY_PATH}: ${err.message}`);
-    }
-  }
-
   const template = fs.readFileSync(TEMPLATE_PATH, "utf8");
   const current = fs.readFileSync(TARGET_PATH, "utf8");
+  const launcherTemplate = fs.readFileSync(LAUNCHER_TEMPLATE_PATH, "utf8");
+  const launcherCurrent = fs.existsSync(LAUNCHER_ACTIVITY_PATH) ? fs.readFileSync(LAUNCHER_ACTIVITY_PATH, "utf8") : null;
+  const snapshotTemplate = fs.readFileSync(SNAPSHOT_TEMPLATE_PATH, "utf8");
+  const snapshotCurrent = fs.existsSync(SNAPSHOT_TARGET_PATH) ? fs.readFileSync(SNAPSHOT_TARGET_PATH, "utf8") : null;
+
+  if (launcherCurrent !== launcherTemplate) {
+    fs.writeFileSync(LAUNCHER_ACTIVITY_PATH, launcherTemplate, "utf8");
+    console.log("[android-customize] LauncherActivity customization applied.");
+  }
+
+  if (snapshotCurrent !== snapshotTemplate) {
+    fs.writeFileSync(SNAPSHOT_TARGET_PATH, snapshotTemplate, "utf8");
+    console.log("[android-customize] Snapshot preference customization applied.");
+  }
 
   if (current === template) {
     console.log("[android-customize] Country picker already up to date.");
