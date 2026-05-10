@@ -50,7 +50,7 @@ function main() {
     backgroundColor,
     startUrl: normalizeStartUrl(fullOrigin, startPath),
     iconUrl: `${fullOrigin}/images/icon-512.png`,
-    maskableIconUrl: `${fullOrigin}/images/icon-512.png`,
+    maskableIconUrl: `${fullOrigin}/images/icon-512-maskable.png`,
     appVersionName: "1.0.0",
     appVersionCode: 1,
     enableNotifications: false,

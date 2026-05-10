@@ -9,7 +9,7 @@
   "backgroundColor": "#ffffff",
   "startUrl": "https://acp-chat-beta.onrender.com/",
   "iconUrl": "https://acp-chat-beta.onrender.com/images/icon-512.png",
-  "maskableIconUrl": "https://acp-chat-beta.onrender.com/images/icon-512.png",
+  "maskableIconUrl": "https://acp-chat-beta.onrender.com/images/icon-512-maskable.png",
   "appVersionName": "1.0.0",
   "appVersionCode": 1,
   "enableNotifications": false,
