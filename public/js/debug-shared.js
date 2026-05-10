@@ -211,7 +211,6 @@
       externalSupportMode: toTrimmedString(safe.externalSupportMode, "") || "none",
       closureIntent: toBooleanTrue(safe.closureIntent),
       infoRoutingSource: toTrimmedString(safe.infoRoutingSource, "") || null,
-      tieBreakReason: toTrimmedString(safe.tieBreakReason, "") || null,
       affiliationScore: typeof safe.affiliationScore === "number" ? safe.affiliationScore : null,
       affiliationWindow: Array.isArray(safe.affiliationWindow)
         ? safe.affiliationWindow.map(function mapAffiliation(v) {
@@ -361,21 +360,6 @@
     if (value === "llm") return "LLM";
     if (value === "llm_fallback") return "LLM (fallback)";
     return value;
-  }
-
-  function translateTieBreakReason(value) {
-    var map = {
-      discharge_priority: "decharge prioritaire",
-      override_app_features: "demande app explicite prioritaire",
-      info_gt_exploration: "info prioritaire (confiance plus forte)",
-      exploration_gt_info: "exploration prioritaire (confiance plus forte)",
-      tie_break_equal_high_info_primary: "egalite confiance haute: info prioritaire",
-      tie_break_equal_medium_info_primary: "egalite confiance moyenne: info prioritaire",
-      tie_break_equal_low_exploration_primary: "egalite confiance basse: exploration prioritaire",
-      info_only_candidate: "seul candidat: info",
-      exploration_only_candidate: "seul candidat: exploration"
-    };
-    return map[value] || value;
   }
 
   function parseDeterministicEvidence(evidenceEntries) {
@@ -559,7 +543,6 @@
     translateSomaticFocusPolicy: translateSomaticFocusPolicy,
     translateConfidenceSignal: translateConfidenceSignal,
     translateInfoRoutingSource: translateInfoRoutingSource,
-    translateTieBreakReason: translateTieBreakReason,
     buildSomaticFocusPolicyDebugLine: buildSomaticFocusPolicyDebugLine,
     buildNaturalDebugSummary: buildNaturalDebugSummary,
     buildPipelineRuntimeText: buildPipelineRuntimeText,

@@ -7181,10 +7181,6 @@
         return window.FacilitatDebug.translateInfoRoutingSource(value);
       }
 
-      function translateTieBreakReasonDebug(value) {
-        return window.FacilitatDebug.translateTieBreakReason(value);
-      }
-
       function buildNaturalDebugSummary(meta) {
         return window.FacilitatDebug.buildNaturalDebugSummary(meta, "index");
       }
@@ -7268,7 +7264,6 @@
               meta.responseRegister && meta.responseRegister !== "courant" ? `Registre cible : ${translateRegisterDebug(meta.responseRegister)}` : null,
               meta.phraseLengthPolicy ? `Longueur phrase : ${translatePhraseLengthPolicyDebug(meta.phraseLengthPolicy)}` : null,
               meta.infoRoutingSource ? `Routage info : ${translateInfoRoutingSourceDebug(meta.infoRoutingSource)}` : null,
-              meta.tieBreakReason ? `Raison arbitrage : ${translateTieBreakReasonDebug(meta.tieBreakReason)}` : null,
               meta.stateTransitionValid === false && meta.stateTransitionRequested
                 ? `Transition refus\u00e9e : ${meta.stateTransitionFrom || "(inconnu)"} -> ${meta.stateTransitionRequested}`
                 : null,

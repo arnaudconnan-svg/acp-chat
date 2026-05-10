@@ -2213,7 +2213,6 @@ app.post("/api/account/conversations/import-local", requireUserAuth, async (req,
               externalSupportMode: typeof debugMeta.externalSupportMode === "string" ? debugMeta.externalSupportMode : null,
               closureIntent: debugMeta.closureIntent === true,
               infoRoutingSource: typeof debugMeta.infoRoutingSource === "string" ? debugMeta.infoRoutingSource : null,
-              tieBreakReason: typeof debugMeta.tieBreakReason === "string" ? debugMeta.tieBreakReason : null,
               modelConflict: debugMeta.modelConflict === true,
               // Fields stored in Firebase but previously missing from admin API
               writerIntentHints: Array.isArray(debugMeta.writerIntentHints) ? debugMeta.writerIntentHints.map(v => String(v || "")).filter(Boolean) : [],
@@ -4452,7 +4451,6 @@ app.post("/chat", async (req, res) => {
       dependencyRiskLevel: normalizeDependencyRiskLevel(safe.dependencyRiskLevel),
       externalSupportMode: normalizeExternalSupportMode(safe.externalSupportMode),
       closureIntent: safe.closureIntent === true,
-      tieBreakReason: typeof safe.tieBreakReason === "string" ? safe.tieBreakReason : null,
       affiliationScore: typeof safe.affiliationScore === "number" ? safe.affiliationScore : null,
       affiliationWindow: normalizeAffiliationWindow(safe.affiliationWindow),
       affiliationEstablished: safe.affiliationEstablished === true,
@@ -6103,7 +6101,6 @@ app.post("/chat", async (req, res) => {
       externalSupportMode: newFlags.externalSupportMode,
       closureIntent: newFlags.closureIntent,
       infoRoutingSource,
-      tieBreakReason,
       infoContextFlags: Array.isArray(postureDecision.infoContextFlags) ? postureDecision.infoContextFlags : [],
       promptRegistry: activePromptRegistry,
       // Lot 8 fields

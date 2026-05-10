@@ -1822,10 +1822,6 @@
           return window.FacilitatDebug.translateInfoRoutingSource(value);
         }
 
-        function translateTieBreakReason(value) {
-          return window.FacilitatDebug.translateTieBreakReason(value);
-        }
-
         function buildNaturalDebugSummary(meta) {
           return window.FacilitatDebug.buildNaturalDebugSummary(meta, "admin");
         }
@@ -1909,7 +1905,6 @@
                 meta.phraseLengthPolicy ? `Longueur phrase : ${translatePhraseLengthPolicy(meta.phraseLengthPolicy)}` : null,
                 (meta.actionCollapseGuardActive === true && !(Array.isArray(meta.writerIntentHints) && meta.writerIntentHints.some(h => String(h || "").indexOf("procedural_temptation_") === 0))) ? "Garde anti-rabattement action: active" : null,
                 meta.infoRoutingSource ? `Routage info : ${translateInfoRoutingSource(meta.infoRoutingSource)}` : null,
-                meta.tieBreakReason ? `Raison arbitrage : ${translateTieBreakReason(meta.tieBreakReason)}` : null,
                 meta.stateTransitionValid === false && meta.stateTransitionRequested
                   ? `Transition refus\u00e9e : ${meta.stateTransitionFrom || "(inconnu)"} -> ${meta.stateTransitionRequested}`
                   : null,
