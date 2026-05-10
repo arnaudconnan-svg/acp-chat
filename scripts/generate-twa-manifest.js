@@ -24,8 +24,8 @@ function main() {
   const startPath = String(process.env.TWA_START_PATH || "/").trim();
   const appName = String(process.env.TWA_APP_NAME || "Facilitat.io").trim();
   const launcherName = String(process.env.TWA_LAUNCHER_NAME || "Facilitat").trim();
-  const themeColor = String(process.env.TWA_THEME_COLOR || "#ffffff").trim();
-  const backgroundColor = String(process.env.TWA_BACKGROUND_COLOR || "#ffffff").trim();
+  const themeColor = String(process.env.TWA_THEME_COLOR || "#f4f9f9").trim();
+  const backgroundColor = String(process.env.TWA_BACKGROUND_COLOR || "#f4f9f9").trim();
   const fingerprints = normalizeFingerprints(process.env.TWA_SHA256_FINGERPRINTS || "");
 
   if (!packageId) {
