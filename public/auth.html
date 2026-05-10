@@ -218,10 +218,10 @@
         <input type="text" id="regFirstName" name="firstName" autocomplete="given-name" placeholder="Comment tu t'appelles ?">
       </div>
       <div class="form-group">
-        <label>Pays <span style="color:#aaa;font-weight:400">(obligatoire)</span></label>
-        <input type="hidden" id="regCountry" name="country">
-        <div id="regCountryDisplay" style="padding:11px 14px;border:1.5px solid #ddd;border-radius:8px;font-size:15px;color:#aaa;background:#fafafa;min-height:44px;box-sizing:border-box;line-height:22px">— Non défini —</div>
-        <button type="button" id="regCountryBtn" style="margin-top:8px;width:100%;padding:10px 14px;border:1.5px solid #245e66;border-radius:8px;font-size:14px;font-weight:600;background:#fff;color:#245e66;cursor:pointer">Choisir mon pays</button>
+        <label>Pays <span style="color:#aaa;font-weight:400">(facultatif)</span></label>
+        <div style="padding:11px 14px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;color:#666;background:#fafafa;min-height:44px;box-sizing:border-box;line-height:22px">
+            Ce choix est disponible après inscription dans Mon compte.
+        </div>
       </div>
       <div class="form-group">
         <label for="regEmail">Adresse e-mail</label>
@@ -341,49 +341,8 @@
         regPassword2.addEventListener("blur", refreshMismatchState);
       }
 
-      function getCountryName(code) {
-        if (!code) return "";
-        try {
-          return new Intl.DisplayNames(["fr"], { type: "region" }).of(code.toUpperCase()) || code;
-        } catch (_) { return code; }
-      }
-
-      function setRegCountry(code) {
-        if (!code) return;
-        code = code.toUpperCase();
-        document.getElementById("regCountry").value = code;
-        var name = getCountryName(code);
-        var display = document.getElementById("regCountryDisplay");
-        display.textContent = name || code;
-        display.style.color = "#1a1a1a";
-      }
-
-      function initCountryField() {
-        var params = new URLSearchParams(window.location.search);
-        var selected = params.get("_android_country_selected");
-        var detected = params.get("_android_country");
-        if (selected) setRegCountry(selected);
-        else if (detected) setRegCountry(detected);
-        if (selected || detected) {
-          try {
-            var url = new URL(window.location.href);
-            url.searchParams.delete("_android_country_selected");
-            url.searchParams.delete("_android_country");
-            history.replaceState(history.state, "", url.toString());
-          } catch (_) {}
-        }
-        var btn = document.getElementById("regCountryBtn");
-        if (btn) {
-          btn.addEventListener("click", function () {
-            var current = document.getElementById("regCountry").value || "";
-            window.location.href = "facilitat://country-picker?current=" + encodeURIComponent(current) + "&callback_path=" + encodeURIComponent("/auth.html");
-          });
-        }
-      }
-
       initPasswordToggles();
       initConfirmPasswordValidation();
-      initCountryField();
 
       window.showTab = function showTab(tab) {
         const isLogin = tab === "login";
@@ -443,7 +402,6 @@
         notice.className = "notice";
 
         const firstName = String(document.getElementById("regFirstName")?.value || "").trim();
-        const country = String(document.getElementById("regCountry")?.value || "").trim();
         const email = String(document.getElementById("regEmail").value || "").trim();
         const password = String(document.getElementById("regPassword").value || "");
         const password2 = String(document.getElementById("regPassword2").value || "");
@@ -463,12 +421,7 @@
           return;
         }
 
-        if (!country) {
-          notice.textContent = "Veuillez choisir votre pays.";
-          return;
-        }
-
-        const body = { email, password, country };
+        const body = { email, password };
         if (firstName) body.firstName = firstName;
 
         btn.disabled = true;

@@ -89,7 +89,10 @@ function main() {
   console.log("2. Build the Android App Bundle:");
   console.log("   bubblewrap build");
   console.log("");
-  console.log("3. Output file:");
+  console.log("3. Apply persistent Android customizations (country picker styles, etc.):");
+  console.log("   npm run android:apply-customizations");
+  console.log("");
+  console.log("4. Output file:");
   console.log("   dist/*.aab (ready to upload to Play Store)");
 }
 

@@ -43,9 +43,10 @@
     "twa:manifest": "node scripts/generate-twa-manifest.js",
     "android:icon:verify": "node scripts/android-icon-verify.js",
     "android:icon:generate": "node scripts/android-icon-generate.js",
+    "android:apply-customizations": "node scripts/apply-android-customizations.js",
     "twa:install:safe": "npm run android:icon:verify && node scripts/twa-safe-install.js",
     "twa:signing-key": "node scripts/signing-key-setup.js",
-    "twa:build": "node scripts/bubblewrap-init.js",
+    "twa:build": "node scripts/bubblewrap-init.js && npm run android:apply-customizations",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
