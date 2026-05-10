@@ -75,26 +75,20 @@ function main() {
 
   if (fs.existsSync(APP_BUILD_GRADLE_PATH)) {
     try {
-      const buildGradle = fs.readFileSync(APP_BUILD_GRADLE_PATH, "utf8");
-      const updatedBuildGradle = buildGradle.replace(
-        /orientation:\s*'default'/,
-        "orientation: 'portrait'"
-      );
-      if (updatedBuildGradle !== buildGradle) {
-        fs.writeFileSync(APP_BUILD_GRADLE_PATH, updatedBuildGradle, "utf8");
-        console.log("[android-customize] Applied portrait orientation to android-project/app/build.gradle.");
-      }
+      // Build.gradle orientation + biometric dependencies are handled below with AndroidManifest.
+      // No-op here to avoid double-processing.
     } catch (err) {
       fail(`Failed to update ${APP_BUILD_GRADLE_PATH}: ${err.message}`);
     }
   }
 
   // Ensure AndroidManifest.xml has screenOrientation="portrait" on LauncherActivity
+  // and USE_BIOMETRIC permission + BiometricActivity declaration
   if (fs.existsSync(ANDROID_MANIFEST_PATH)) {
     try {
       let manifest = fs.readFileSync(ANDROID_MANIFEST_PATH, "utf8");
       
-      // Pattern to match LauncherActivity opening tag without screenOrientation
+      // Portrait orientation on LauncherActivity
       const launcherActivityPattern = /<activity android:name="LauncherActivity"\s+android:alwaysRetainTaskState="true"\s+android:label="@string\/launcherName"\s+android:exported="true">/;
       const launcherActivityPatternWithOrientation = /<activity android:name="LauncherActivity"\s+android:alwaysRetainTaskState="true"\s+android:label="@string\/launcherName"\s+android:exported="true"\s+android:screenOrientation="portrait">/;
       
@@ -103,14 +97,82 @@ function main() {
           launcherActivityPattern,
           '<activity android:name="LauncherActivity"\n            android:alwaysRetainTaskState="true"\n            android:label="@string/launcherName"\n            android:exported="true"\n            android:screenOrientation="portrait">'
         );
-        fs.writeFileSync(ANDROID_MANIFEST_PATH, manifest, "utf8");
         console.log("[android-customize] Applied portrait screenOrientation to AndroidManifest.xml LauncherActivity.");
       } else if (launcherActivityPatternWithOrientation.test(manifest)) {
         console.log("[android-customize] AndroidManifest.xml LauncherActivity already has portrait orientation.");
       }
 
+      // USE_BIOMETRIC permission
+      if (!manifest.includes('android.permission.USE_BIOMETRIC')) {
+        manifest = manifest.replace(
+          '<uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>',
+          '<uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>\n        <uses-permission android:name="android.permission.USE_BIOMETRIC"/>'
+        );
+        console.log("[android-customize] Added USE_BIOMETRIC permission to AndroidManifest.xml.");
+      }
+
+      // BiometricActivity declaration
+      if (!manifest.includes('android:name="BiometricActivity"')) {
+        manifest = manifest.replace(
+          '<activity android:name="CountryPickerActivity"',
+          [
+            '<activity android:name="BiometricActivity"',
+            '            android:label="Facilitat.io"',
+            '            android:exported="true"',
+            '            android:screenOrientation="portrait">',
+            '            <intent-filter>',
+            '                <action android:name="android.intent.action.VIEW" />',
+            '                <category android:name="android.intent.category.DEFAULT" />',
+            '                <category android:name="android.intent.category.BROWSABLE" />',
+            '                <data android:scheme="facilitat" android:host="biometric-verify" />',
+            '            </intent-filter>',
+            '        </activity>',
+            '',
+            '        <activity android:name="CountryPickerActivity"'
+          ].join("\n        ")
+        );
+        console.log("[android-customize] Added BiometricActivity to AndroidManifest.xml.");
+      } else {
+        console.log("[android-customize] BiometricActivity already declared in AndroidManifest.xml.");
+      }
+
+      fs.writeFileSync(ANDROID_MANIFEST_PATH, manifest, "utf8");
     } catch (err) {
       console.warn(`[android-customize] Warning: Could not update ${ANDROID_MANIFEST_PATH}: ${err.message}`);
+    }
+  }
+
+  // Ensure build.gradle has biometric + fragment dependencies
+  if (fs.existsSync(APP_BUILD_GRADLE_PATH)) {
+    try {
+      let buildGradle = fs.readFileSync(APP_BUILD_GRADLE_PATH, "utf8");
+
+      // Portrait orientation fix (existing)
+      const updatedBuildGradle = buildGradle.replace(
+        /orientation:\s*'default'/,
+        "orientation: 'portrait'"
+      );
+      if (updatedBuildGradle !== buildGradle) {
+        buildGradle = updatedBuildGradle;
+        console.log("[android-customize] Applied portrait orientation to android-project/app/build.gradle.");
+      }
+
+      // Biometric dependencies
+      if (!buildGradle.includes("androidx.biometric:biometric")) {
+        buildGradle = buildGradle.replace(
+          "implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.6.2'",
+          [
+            "implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.6.2'",
+            "    implementation 'androidx.biometric:biometric:1.2.0-alpha05'",
+            "    implementation 'androidx.fragment:fragment:1.8.6'"
+          ].join("\n    ")
+        );
+        console.log("[android-customize] Added biometric/fragment dependencies to build.gradle.");
+      }
+
+      fs.writeFileSync(APP_BUILD_GRADLE_PATH, buildGradle, "utf8");
+    } catch (err) {
+      fail(`Failed to update ${APP_BUILD_GRADLE_PATH}: ${err.message}`);
     }
   }
 
