@@ -102,6 +102,31 @@ function main() {
         console.log("[android-customize] AndroidManifest.xml LauncherActivity already has portrait orientation.");
       }
 
+      // Ensure LauncherActivity reuses the existing task instead of recreating a new app instance.
+      const launcherBlockMatch = manifest.match(/<activity android:name="LauncherActivity"[\s\S]*?<\/activity>/);
+      if (launcherBlockMatch) {
+        const launcherBlock = launcherBlockMatch[0];
+        let updatedLauncherBlock = launcherBlock;
+        if (!updatedLauncherBlock.includes('android:launchMode="singleTask"')) {
+          if (updatedLauncherBlock.includes('android:launchMode="')) {
+            updatedLauncherBlock = updatedLauncherBlock.replace(
+              /android:launchMode="[^"]*"/,
+              'android:launchMode="singleTask"'
+            );
+          } else {
+            updatedLauncherBlock = updatedLauncherBlock.replace(
+              'android:screenOrientation="portrait"',
+              'android:screenOrientation="portrait"\n            android:launchMode="singleTask"'
+            );
+          }
+        }
+
+        if (updatedLauncherBlock !== launcherBlock) {
+          manifest = manifest.replace(launcherBlock, updatedLauncherBlock);
+          console.log("[android-customize] Set LauncherActivity launchMode=singleTask in AndroidManifest.xml.");
+        }
+      }
+
       // USE_BIOMETRIC permission
       if (!manifest.includes('android.permission.USE_BIOMETRIC')) {
         manifest = manifest.replace(

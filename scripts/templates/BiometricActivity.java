@@ -88,8 +88,12 @@ public class BiometricActivity extends FragmentActivity {
 
         Intent intent = new Intent(Intent.ACTION_VIEW, resultUri);
         intent.setClass(this, LauncherActivity.class);
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        // Reuse existing launcher task instead of recreating app task (prevents full restart splash).
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION);
         startActivity(intent);
+        overridePendingTransition(0, 0);
         finish();
+        overridePendingTransition(0, 0);
     }
 }
