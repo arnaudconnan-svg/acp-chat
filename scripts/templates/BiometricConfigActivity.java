@@ -9,6 +9,7 @@ public class BiometricConfigActivity extends Activity {
     private static final String PREFS_NAME = "facilitat_security";
     private static final String KEY_BIO_ENABLED = "biometric_enabled";
     private static final String KEY_BIO_RELOCK_SECONDS = "biometric_relock_seconds";
+    private static final String KEY_BIO_LAST_UNLOCK_MS = "biometric_last_unlock_ms";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -36,6 +37,7 @@ public class BiometricConfigActivity extends Activity {
         prefs.edit()
                 .putBoolean(KEY_BIO_ENABLED, enabled)
                 .putInt(KEY_BIO_RELOCK_SECONDS, relockSeconds)
+            .putLong(KEY_BIO_LAST_UNLOCK_MS, enabled ? 0L : 0L)
                 .apply();
 
         finish();
