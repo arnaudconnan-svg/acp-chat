@@ -363,13 +363,14 @@ app.get("/admin.html", requireAdminAuth, (req, res) => {
 });
 
 // Android TWA verification endpoint.
-// Use explicit path interception because dot-prefixed routes can be fragile across hosts.
+// Serve the same file that ships with the build so the live origin always matches the repo.
 app.use((req, res, next) => {
   if (req.path !== "/.well-known/assetlinks.json") {
     next();
     return;
   }
 
+  const assetLinksPath = __dirname + "/public/.well-known/assetlinks.json";
   const fallbackAssetLinks = [
     {
       relation: ["delegate_permission/common.handle_all_urls"],
@@ -382,13 +383,20 @@ app.use((req, res, next) => {
       }
     }
   ];
+
   res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
   res.setHeader("Pragma", "no-cache");
   res.setHeader("Expires", "0");
   res.type("application/json");
 
-  // Serve deterministic payload directly to avoid runtime filesystem edge cases on Render.
-  res.status(200).json(fallbackAssetLinks);
+  try {
+    const assetLinksRaw = fs.readFileSync(assetLinksPath, "utf8");
+    const assetLinks = JSON.parse(assetLinksRaw);
+    res.status(200).json(assetLinks);
+  } catch (error) {
+    logger.warn({ event: "assetlinks_fallback_used", error: error.message });
+    res.status(200).json(fallbackAssetLinks);
+  }
 });
 
 // Serve the public folder with cache headers tuned for SPA/PWA behavior.
