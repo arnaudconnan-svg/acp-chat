@@ -1,4 +1,4 @@
-const SHELL_CACHE = "facilitatio-shell-v1.0.0";
+const SHELL_CACHE = "facilitatio-shell-v1.0.1";
 const SHELL_ASSETS = [
   "/",
   "/index.html",
