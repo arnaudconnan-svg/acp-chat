@@ -139,7 +139,7 @@
     var normalizedMemoryState = safeMemoryState
       ? {
           sessionStableContext: Array.isArray(safeMemoryState.sessionStableContext)
-            ? safeMemoryState.sessionStableContext.map(function(item) { return toTrimmedString(item, ""); }).filter(Boolean).slice(0, 4)
+            ? safeMemoryState.sessionStableContext.map(function(item) { return toTrimmedString(item, ""); }).filter(Boolean)
             : [],
           onGoingMovements: normalizeMovementList(safeMemoryState.onGoingMovements, 2),
           ancientMovements: normalizeMovementList(safeMemoryState.ancientMovements),
@@ -155,6 +155,7 @@
         : [],
       memory: toTrimmedString(safe.memory, ""),
       memoryState: normalizedMemoryState,
+      intersessionMemoryRuntime: toTrimmedString(safe.intersessionMemoryRuntime, "") || null,
       directivityText: toTrimmedString(safe.directivityText, "") || toTrimmedString(safe.directivityLabel, ""),
       directivityLabel: toTrimmedString(safe.directivityLabel, ""),
       conversationState: toTrimmedString(safe.conversationState, "") || null,

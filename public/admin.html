@@ -1955,6 +1955,13 @@
             });
           }
 
+          if (typeof meta.intersessionMemoryRuntime === "string" && meta.intersessionMemoryRuntime.trim()) {
+            sections.push({
+              title: "M\u00e9moire inter-session (runtime)",
+              content: meta.intersessionMemoryRuntime.trim()
+            });
+          }
+
           const signauxLines = [];
           if (meta.contactInsightMoment === true) {
             signauxLines.push("Moment d'insight (contact)");

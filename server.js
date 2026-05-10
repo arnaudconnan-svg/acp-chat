@@ -864,44 +864,61 @@ function normalizeIntersessionMemory(memory, promptRegistry = buildDefaultPrompt
     buildDefaultPromptRegistry().NORMALIZE_INTERSESSION_MEMORY_TEMPLATE;
 }
 
-function extractStableContextOnlyFromIntersessionMemory(memory, promptRegistry = buildDefaultPromptRegistry()) {
-  const normalized = normalizeIntersessionMemory(memory, promptRegistry);
-  const match = normalized.match(/Contexte stable\s*:\s*([\s\S]*?)(?:\n\s*[A-Za-z\u00C0-\u017E][^:\n]*\s*:|$)/i);
-  if (!match) return "";
+function normalizeIntersessionSourceFromUserData(userData, promptRegistry = buildDefaultPromptRegistry()) {
+  if (!userData || typeof userData !== "object") {
+    return "";
+  }
 
-  return match[1]
-    .split("\n")
-    .map(line => line.trim())
-    .filter(line => line && line !== "-")
-    .map(line => line.startsWith("-") ? line.slice(1).trim() : line)
-    .filter(Boolean)
-    .join("\n");
+  const source = typeof userData.intersessionMemorySource === "string"
+    ? userData.intersessionMemorySource
+    : typeof userData.intersessionMemory === "string"
+      ? userData.intersessionMemory
+      : "";
+
+  return String(source || "").trim()
+    ? normalizeIntersessionMemory(source, promptRegistry)
+    : "";
 }
 
-function mergeStableContextOnlyIntoIntersessionMemory(stableContextText, previousMemory, promptRegistry = buildDefaultPromptRegistry()) {
-  const normalized = normalizeIntersessionMemory(previousMemory, promptRegistry);
-  const stableLines = String(stableContextText || "")
+function buildIntersessionCompactRuntime(memorySource = "", maxItems = 10, maxChars = 1200) {
+  const source = normalizeIntersessionMemory(memorySource, buildDefaultPromptRegistry());
+  const lines = String(source || "")
     .split("\n")
     .map(line => line.trim())
     .filter(Boolean);
 
-  const renderedStableBlock = stableLines.length > 0
-    ? stableLines.map(line => `- ${line.replace(/^[-\s]+/, "").trim()}`).join("\n")
-    : "-";
-
-  if (/Contexte stable\s*:/i.test(normalized)) {
-    return normalized.replace(
-      /(Contexte stable\s*:\s*)([\s\S]*?)(?=\n\s*[A-Za-z\u00C0-\u017E][^:\n]*\s*:|$)/i,
-      `$1\n${renderedStableBlock}\n`
-    ).trim();
+  const candidates = [];
+  for (const line of lines) {
+    if (/^m[ée]moire\s+inter-?session\s*:/i.test(line)) continue;
+    const cleaned = line.replace(/^[-*\s]+/, "").trim();
+    if (!cleaned || cleaned === "-") continue;
+    candidates.push(cleaned.replace(/\s+/g, " "));
   }
 
-  return [
-    "Contexte stable:",
-    renderedStableBlock,
-    "",
-    normalized
-  ].join("\n").trim();
+  const seen = new Set();
+  const compactItems = [];
+  for (const item of candidates) {
+    const key = item
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    compactItems.push(item);
+    if (compactItems.length >= maxItems) break;
+  }
+
+  if (compactItems.length === 0) {
+    return "";
+  }
+
+  const rendered = [
+    "Memoire inter-session compacte (runtime):",
+    ...compactItems.map(item => `- ${item}`)
+  ].join("\n");
+
+  return rendered.slice(0, Math.max(100, maxChars));
 }
 
 // Keep only the last valid user/assistant turns from history.
@@ -3020,15 +3037,37 @@ app.get("/api/intersession-memory", requireUserAuth, async (req, res) => {
     const session = req.userSession;
     const snap = await usersRef.child(session.userId).once("value");
     const userData = snap.val() || {};
-    const memory = userData.intersessionMemory;
+    const memorySource = normalizeIntersessionSourceFromUserData(userData, buildDefaultPromptRegistry());
+    const storedCompact = typeof userData.intersessionMemoryCompact === "string"
+      ? userData.intersessionMemoryCompact.trim()
+      : "";
+    const memoryCompact = storedCompact || buildIntersessionCompactRuntime(memorySource);
     const historyRaw = Array.isArray(userData.intersessionMemoryHistory) ? userData.intersessionMemoryHistory : [];
     return res.json({
-      memory: typeof memory === "string" && memory.trim() ? memory : null,
-      stableContextOnly: extractStableContextOnlyFromIntersessionMemory(memory),
+      memory: memorySource || null,
+      memorySource: memorySource || null,
+      memoryCompact: memoryCompact || null,
       intersessionMemoryUpdatedAt: typeof userData.intersessionMemoryUpdatedAt === "string" ? userData.intersessionMemoryUpdatedAt : null,
       intersessionMemoryHistory: historyRaw.slice(0, 3).map(entry => ({
-        memory: typeof entry?.memory === "string" ? entry.memory : "",
-        stableContextOnly: extractStableContextOnlyFromIntersessionMemory(entry?.memory || ""),
+        memory: typeof entry?.memorySource === "string"
+          ? entry.memorySource
+          : typeof entry?.memory === "string"
+            ? entry.memory
+            : "",
+        memorySource: typeof entry?.memorySource === "string"
+          ? entry.memorySource
+          : typeof entry?.memory === "string"
+            ? entry.memory
+            : "",
+        memoryCompact: typeof entry?.memoryCompact === "string"
+          ? entry.memoryCompact
+          : buildIntersessionCompactRuntime(
+              typeof entry?.memorySource === "string"
+                ? entry.memorySource
+                : typeof entry?.memory === "string"
+                  ? entry.memory
+                  : ""
+            ),
         savedAt: typeof entry?.savedAt === "string" ? entry.savedAt : null
       }))
     });
@@ -3129,15 +3168,15 @@ app.put("/api/intersession-memory", requireUserAuth, async (req, res) => {
       return res.json({ success: true, skipped: true, reason: "manual_edit_lock" });
     }
 
-    const previousIntersessionMemory = typeof userData.intersessionMemory === "string" ? userData.intersessionMemory : "";
-    const memory = await updateIntersessionMemory(
-      previousIntersessionMemory,
+    const previousIntersessionSource = normalizeIntersessionSourceFromUserData(userData, buildDefaultPromptRegistry());
+    const memorySource = await updateIntersessionMemory(
+      previousIntersessionSource,
       strippedSessionMemory,
       buildDefaultPromptRegistry()
     );
 
     await usersRef.child(session.userId).update({
-      intersessionMemory: memory,
+      intersessionMemorySource: memorySource,
       intersessionMemoryUpdatedAt: new Date().toISOString()
     });
 
@@ -3170,28 +3209,35 @@ app.patch("/api/intersession-memory/direct", requireUserAuth, async (req, res) =
       return res.status(400).json({ error: "Invalid payload" });
     }
 
-    const newStableContextOnly = String(req.body.memory || "").slice(0, 2000);
+    const newSourceMemory = String(req.body.memory || "").slice(0, 6000);
     const now = new Date().toISOString();
 
     // Archive current version before overwriting
     const snap = await usersRef.child(session.userId).once("value");
     const userData = snap.val() || {};
-    const currentMemory = userData.intersessionMemory;
+    const currentMemorySource = normalizeIntersessionSourceFromUserData(userData, buildDefaultPromptRegistry());
+    const currentMemoryCompact = typeof userData.intersessionMemoryCompact === "string"
+      ? userData.intersessionMemoryCompact
+      : buildIntersessionCompactRuntime(currentMemorySource);
     const currentUpdatedAt = userData.intersessionMemoryUpdatedAt;
     const currentHistory = Array.isArray(userData.intersessionMemoryHistory) ? userData.intersessionMemoryHistory : [];
 
-    if (typeof currentMemory === "string" && currentMemory.trim()) {
-      const newEntry = { memory: currentMemory, savedAt: currentUpdatedAt || now };
+    if (typeof currentMemorySource === "string" && currentMemorySource.trim()) {
+      const newEntry = {
+        memorySource: currentMemorySource,
+        memoryCompact: currentMemoryCompact,
+        savedAt: currentUpdatedAt || now
+      };
       const updatedHistory = [newEntry, ...currentHistory].slice(0, 3);
       await usersRef.child(session.userId).child("intersessionMemoryHistory").set(updatedHistory);
     }
 
-    const nextMemory = newStableContextOnly.trim()
-      ? mergeStableContextOnlyIntoIntersessionMemory(newStableContextOnly, currentMemory)
+    const nextMemorySource = newSourceMemory.trim()
+      ? normalizeIntersessionMemory(newSourceMemory, buildDefaultPromptRegistry())
       : "";
 
     await usersRef.child(session.userId).update({
-      intersessionMemory: nextMemory,
+      intersessionMemorySource: nextMemorySource,
       intersessionMemoryUpdatedAt: now,
       intersessionRefreshForced: true
     });
@@ -3246,9 +3292,7 @@ app.post("/api/session/beacon", async (req, res) => {
     }
 
     const strippedMemory = stripTransientMemoryBlocksForIntersession(memory);
-    const previousIntersessionMemory = typeof userData.intersessionMemory === "string"
-      ? userData.intersessionMemory
-      : "";
+    const previousIntersessionMemory = normalizeIntersessionSourceFromUserData(userData, buildDefaultPromptRegistry());
 
     const consolidated = await updateIntersessionMemory(
       previousIntersessionMemory,
@@ -3257,7 +3301,7 @@ app.post("/api/session/beacon", async (req, res) => {
     );
 
     await usersRef.child(session.userId).update({
-      intersessionMemory: consolidated,
+      intersessionMemorySource: consolidated,
       intersessionMemoryUpdatedAt: now
     });
   } catch (err) {
@@ -4408,6 +4452,7 @@ app.post("/chat", async (req, res) => {
       memory: normalizeMemory(safe.memory, promptRegistry),
       memoryBeforeSanitization: typeof safe.memoryBeforeSanitization === "string" ? normalizeMemory(safe.memoryBeforeSanitization, promptRegistry) : null,
       memoryState: normalizeMemoryStateShape(safe.memoryState, "", Date.now()),
+      intersessionMemoryRuntime: typeof safe.intersessionMemoryRuntime === "string" ? safe.intersessionMemoryRuntime.trim() : null,
       directivityText: typeof safe.directivityText === "string" ? safe.directivityText : "",
       conversationState: normalizeConversationState(safe.conversationState),
       consecutiveNonExplorationTurns: normalizeConsecutiveNonExplorationTurns(safe.consecutiveNonExplorationTurns),
@@ -4657,22 +4702,6 @@ app.post("/chat", async (req, res) => {
         } catch {
           // Fall back to cached userData if fresh fetch fails
         }
-        const stableContextOnly = extractStableContextOnlyFromIntersessionMemory(
-          typeof userData.intersessionMemory === "string" ? userData.intersessionMemory : "",
-          activePromptRegistry
-        );
-        previousMemory = mergeStableContextOnlyIntoIntersessionMemory(stableContextOnly, previousMemory, activePromptRegistry);
-        const stableOnlyFromMerged = {
-          sessionStableContext: String(stableContextOnly || "")
-            .split("\n")
-            .map(line => line.trim())
-            .filter(Boolean)
-            .slice(0, 4)
-        };
-        previousMemoryState = {
-          ...previousMemoryState,
-          sessionStableContext: stableOnlyFromMerged.sessionStableContext
-        };
         previousMemoryForCatch = previousMemory;
       }
     }
@@ -5212,9 +5241,15 @@ app.post("/chat", async (req, res) => {
         return "";
       }
 
-      const raw = typeof userData.intersessionMemory === "string"
-        ? userData.intersessionMemory.trim()
+      const compactStored = typeof userData.intersessionMemoryCompact === "string"
+        ? userData.intersessionMemoryCompact.trim()
         : "";
+      if (compactStored) {
+        return compactStored;
+      }
+
+      const source = normalizeIntersessionSourceFromUserData(userData, buildDefaultPromptRegistry());
+      const raw = buildIntersessionCompactRuntime(source).trim();
 
       return raw || "";
     }
@@ -5228,6 +5263,7 @@ app.post("/chat", async (req, res) => {
       if (!userId || userId === "u_anon") {
         return {
           intersessionMemoryForThisTurn: "",
+          intersessionMemoryRuntime: "",
           nextTurnsUntilIntersessionRefresh: Number.isInteger(flagsSnapshot?.turnsUntilIntersessionRefresh)
             ? Math.max(0, flagsSnapshot.turnsUntilIntersessionRefresh)
             : 0
@@ -5254,28 +5290,46 @@ app.post("/chat", async (req, res) => {
       const forceRefreshNow = currentTurnsUntil > 0 && hasForcedRefreshLock;
       const needsInjection = currentTurnsUntil === 0 || forceRefreshNow;
       let intersessionMemoryForThisTurn = "";
+      let intersessionMemoryRuntime = getUserIntersessionMemory(userData);
 
       if (needsInjection) {
-        const rawVal = userData && typeof userData.intersessionMemory === "string"
-          ? userData.intersessionMemory
+        const source = normalizeIntersessionSourceFromUserData(userData, buildDefaultPromptRegistry());
+        const compact = buildIntersessionCompactRuntime(source).trim();
+        intersessionMemoryForThisTurn = compact;
+        intersessionMemoryRuntime = compact;
+
+        const storedCompact = userData && typeof userData.intersessionMemoryCompact === "string"
+          ? userData.intersessionMemoryCompact.trim()
           : "";
-        intersessionMemoryForThisTurn = rawVal.trim() || "";
+        const shouldPersistCompact = compact && compact !== storedCompact;
+
         if (hasForcedRefreshLock) {
           try {
-            await usersRef.child(userId).update({ intersessionRefreshForced: false });
+            await usersRef.child(userId).update({
+              intersessionMemoryCompact: compact || "",
+              intersessionRefreshForced: false
+            });
           } catch {
             // Ignore a best-effort refresh-flag reset failure.
+          }
+        } else if (shouldPersistCompact) {
+          try {
+            await usersRef.child(userId).update({ intersessionMemoryCompact: compact });
+          } catch {
+            // Ignore a best-effort compact-memory cache failure.
           }
         }
 
         return {
           intersessionMemoryForThisTurn,
+          intersessionMemoryRuntime: intersessionMemoryRuntime || "",
           nextTurnsUntilIntersessionRefresh: 8
         };
       }
 
       return {
         intersessionMemoryForThisTurn: "",
+        intersessionMemoryRuntime: intersessionMemoryRuntime || "",
         nextTurnsUntilIntersessionRefresh: Math.max(0, currentTurnsUntil - 1)
       };
     }
@@ -5806,6 +5860,7 @@ app.post("/chat", async (req, res) => {
     // intersessionRefreshForced (Firebase) permet un refresh imm�diat apr�s �dition directe.
     const {
       intersessionMemoryForThisTurn,
+      intersessionMemoryRuntime,
       nextTurnsUntilIntersessionRefresh
     } = await intersessionMemoryPreparationPromise;
     newFlags.turnsUntilIntersessionRefresh = nextTurnsUntilIntersessionRefresh;
@@ -6065,6 +6120,7 @@ app.post("/chat", async (req, res) => {
         ? previousMemoryRewriteDebug.beforeSanitization
         : null,
       memoryState: previousMemoryState,
+      intersessionMemoryRuntime,
       outputGuardTriggered,
       outputGuardRegenerationUsed,
       outputGuardFallbackUsed,
