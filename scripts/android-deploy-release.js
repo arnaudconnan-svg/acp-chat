@@ -6,6 +6,7 @@ const ROOT = path.join(__dirname, "..");
 const ANDROID_DIR = path.join(ROOT, "android-project");
 const RELEASE_DIR = path.join(ANDROID_DIR, "app", "build", "outputs", "apk", "release");
 const PACKAGE_NAME = String(process.env.TWA_ANDROID_PACKAGE || "io.facilitat.app").trim() || "io.facilitat.app";
+const argv = new Set(process.argv.slice(2));
 
 function fail(message) {
   console.error(`[android-deploy] ${message}`);
@@ -13,7 +14,15 @@ function fail(message) {
 }
 
 function run(command, args, options = {}) {
-  const result = spawnSync(command, args, {
+  let resolvedCommand = command;
+  let resolvedArgs = args;
+
+  if (process.platform === "win32" && /\.(bat|cmd)$/i.test(command)) {
+    resolvedCommand = process.env.ComSpec || "cmd.exe";
+    resolvedArgs = ["/d", "/s", "/c", command, ...args];
+  }
+
+  const result = spawnSync(resolvedCommand, resolvedArgs, {
     cwd: options.cwd || ROOT,
     encoding: "utf8",
     stdio: options.stdio || "pipe",
@@ -35,6 +44,16 @@ function run(command, args, options = {}) {
   }
 
   return result;
+}
+
+function runNpm(args, options = {}) {
+  const npmExecPath = String(process.env.npm_execpath || "").trim();
+  if (npmExecPath) {
+    return run(process.execPath, [npmExecPath, ...args], options);
+  }
+
+  const npmCmd = process.platform === "win32" ? "npm.cmd" : "npm";
+  return run(npmCmd, args, options);
 }
 
 function getSdkRoot() {
@@ -80,7 +99,42 @@ function getAlignedUnsignedApk() {
   return path.join(RELEASE_DIR, "app-release-aligned-unsigned.apk");
 }
 
+function fileExists(filePath) {
+  return Boolean(filePath && fs.existsSync(filePath));
+}
+
+function getMtimeMs(filePath) {
+  return fileExists(filePath) ? fs.statSync(filePath).mtimeMs : 0;
+}
+
+function shouldReuseSignedApk(unsignedApk, signedApk, apksigner) {
+  if (!fileExists(unsignedApk) || !fileExists(signedApk)) {
+    return false;
+  }
+
+  if (getMtimeMs(signedApk) < getMtimeMs(unsignedApk)) {
+    return false;
+  }
+
+  const verify = spawnSync(
+    process.platform === "win32" && /\.(bat|cmd)$/i.test(apksigner) ? (process.env.ComSpec || "cmd.exe") : apksigner,
+    process.platform === "win32" && /\.(bat|cmd)$/i.test(apksigner)
+      ? ["/d", "/s", "/c", apksigner, "verify", "--verbose", signedApk]
+      : ["verify", "--verbose", signedApk],
+    {
+      cwd: ROOT,
+      encoding: "utf8",
+      stdio: "pipe",
+      shell: false
+    }
+  );
+
+  return verify.status === 0;
+}
+
 function main() {
+  const skipBuild = argv.has("--skip-build");
+  const skipSign = argv.has("--skip-sign");
   const sdkRoot = getSdkRoot();
   const buildToolsDir = getLatestBuildToolsDir(sdkRoot);
   const apksigner = process.platform === "win32" ? path.join(buildToolsDir, "apksigner.bat") : path.join(buildToolsDir, "apksigner");
@@ -91,9 +145,6 @@ function main() {
   if (!fs.existsSync(zipalign)) fail(`Missing zipalign at ${zipalign}`);
   if (!fs.existsSync(adb)) fail(`Missing adb at ${adb}`);
 
-  console.log("[android-deploy] Building release APK...");
-  run("npm", ["run", "android:build:release"], { stdio: "inherit" });
-
   const unsignedApk = getUnsignedApk();
   const alignedUnsignedApk = getAlignedUnsignedApk();
   const signedApk = getSignedApk();
@@ -101,25 +152,44 @@ function main() {
   const keystorePass = String(process.env.FACILITAT_KEYSTORE_PASS || "facilitat123");
   const keyAlias = String(process.env.FACILITAT_KEY_ALIAS || "facilitat-dev");
 
+  if (!skipBuild) {
+    console.log("[android-deploy] Building release APK...");
+    runNpm(["run", "android:build:release"], { stdio: "inherit" });
+  } else {
+    console.log("[android-deploy] Skipping build (--skip-build).");
+  }
+
+  if (!fileExists(unsignedApk) && !fileExists(signedApk)) {
+    fail(`Missing APK artifacts in ${RELEASE_DIR}. Run a release build first.`);
+  }
+
   if (!fs.existsSync(keystorePath)) {
     fail(`Missing keystore: ${keystorePath}`);
   }
 
-  console.log("[android-deploy] Aligning unsigned APK...");
-  if (fs.existsSync(alignedUnsignedApk)) fs.unlinkSync(alignedUnsignedApk);
-  run(zipalign, ["-v", "4", unsignedApk, alignedUnsignedApk], { stdio: "inherit" });
+  const canReuseSignedApk = !skipSign && shouldReuseSignedApk(unsignedApk, signedApk, apksigner);
 
-  console.log("[android-deploy] Signing aligned APK...");
-  if (fs.existsSync(signedApk)) fs.unlinkSync(signedApk);
-  run(apksigner, [
-    "sign",
-    "--ks", keystorePath,
-    "--ks-key-alias", keyAlias,
-    "--ks-pass", `pass:${keystorePass}`,
-    "--key-pass", `pass:${keystorePass}`,
-    "--out", signedApk,
-    alignedUnsignedApk
-  ], { stdio: "inherit" });
+  if (skipSign) {
+    console.log("[android-deploy] Skipping sign (--skip-sign).");
+  } else if (canReuseSignedApk) {
+    console.log("[android-deploy] Reusing existing signed APK (unchanged input).");
+  } else {
+    console.log("[android-deploy] Aligning unsigned APK...");
+    if (fs.existsSync(alignedUnsignedApk)) fs.unlinkSync(alignedUnsignedApk);
+    run(zipalign, ["-v", "4", unsignedApk, alignedUnsignedApk], { stdio: "inherit" });
+
+    console.log("[android-deploy] Signing aligned APK...");
+    if (fs.existsSync(signedApk)) fs.unlinkSync(signedApk);
+    run(apksigner, [
+      "sign",
+      "--ks", keystorePath,
+      "--ks-key-alias", keyAlias,
+      "--ks-pass", `pass:${keystorePass}`,
+      "--key-pass", `pass:${keystorePass}`,
+      "--out", signedApk,
+      alignedUnsignedApk
+    ], { stdio: "inherit" });
+  }
 
   console.log("[android-deploy] Verifying APK signature...");
   run(apksigner, ["verify", "--verbose", signedApk], { stdio: "inherit" });
