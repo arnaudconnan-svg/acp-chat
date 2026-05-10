@@ -144,6 +144,9 @@ function main() {
             '<activity android:name="BiometricActivity"',
             '            android:label="Facilitat.io"',
             '            android:exported="true"',
+            '            android:noHistory="true"',
+            '            android:excludeFromRecents="true"',
+            '            android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar"',
             '            android:screenOrientation="portrait">',
             '            <intent-filter>',
             '                <action android:name="android.intent.action.VIEW" />',
@@ -159,6 +162,39 @@ function main() {
         console.log("[android-customize] Added BiometricActivity to AndroidManifest.xml.");
       } else {
         console.log("[android-customize] BiometricActivity already declared in AndroidManifest.xml.");
+      }
+
+      // Keep BiometricActivity attributes aligned even if manifest changed manually.
+      const biometricBlockMatch = manifest.match(/<activity android:name="BiometricActivity"[\s\S]*?<\/activity>/);
+      if (biometricBlockMatch) {
+        const biometricBlock = biometricBlockMatch[0];
+        let updatedBiometricBlock = biometricBlock;
+
+        if (!updatedBiometricBlock.includes('android:noHistory="true"')) {
+          updatedBiometricBlock = updatedBiometricBlock.replace(
+            'android:exported="true"',
+            'android:exported="true"\n            android:noHistory="true"'
+          );
+        }
+
+        if (!updatedBiometricBlock.includes('android:excludeFromRecents="true"')) {
+          updatedBiometricBlock = updatedBiometricBlock.replace(
+            'android:noHistory="true"',
+            'android:noHistory="true"\n            android:excludeFromRecents="true"'
+          );
+        }
+
+        if (!updatedBiometricBlock.includes('android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar"')) {
+          updatedBiometricBlock = updatedBiometricBlock.replace(
+            'android:excludeFromRecents="true"',
+            'android:excludeFromRecents="true"\n            android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar"'
+          );
+        }
+
+        if (updatedBiometricBlock !== biometricBlock) {
+          manifest = manifest.replace(biometricBlock, updatedBiometricBlock);
+          console.log("[android-customize] Normalized BiometricActivity manifest attributes.");
+        }
       }
 
       fs.writeFileSync(ANDROID_MANIFEST_PATH, manifest, "utf8");
