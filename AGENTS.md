@@ -208,6 +208,14 @@ Principe : l'agent est responsable d'améliorer son outillage pour mieux aider l
 
 Pour tout diagnostic de lenteur sur `/chat`, la premiere lecture utile est le log `pipeline_summary` avec les timings de stage, puis l'outil local `npm run perf:chat:summary` sur un log reel. Ne pas attendre d'arbitrage utilisateur pour faire cette lecture.
 
+### Règle `max_tokens` (obligatoire)
+
+Le paramètre `max_tokens` ne doit jamais être utilisé pour piloter le style, la longueur éditoriale, ou le comportement produit d'une sortie LLM.
+
+Usage autorisé uniquement : garde-fou technique contre les dérives en cas de bug.
+
+Consigne de réglage : conserver une marge suffisante, définie au cas par cas selon la tâche, sans chercher à contraindre artificiellement la réponse.
+
 Après chaque modification significative :
 - `node --check server.js` pour valider la syntaxe
 - `npm run verify` pour enchaîner tous les harnesses déterministes locaux (sans serveur ni LLM)

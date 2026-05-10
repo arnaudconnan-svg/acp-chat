@@ -253,6 +253,7 @@ function readModelId(envKey, fallback) {
 
 const MODEL_IDS = {
   analysis: readModelId("OPENAI_MODEL_ANALYSIS", "gpt-4.1-mini"),
+  memoryUpdate: readModelId("OPENAI_MODEL_MEMORY_UPDATE", "gpt-5"),
   generation: readModelId("OPENAI_MODEL_GENERATION", "gpt-4.1"),
   title: readModelId("OPENAI_MODEL_TITLE", "gpt-4o-mini")
 };
