@@ -153,6 +153,19 @@ check("emotionalDecentering hints are blocked in discharge states", () => {
   assert(!out.writerIntentHints.includes("auto_compassion_door_open"), "did not expect auto_compassion_door_open hint in discharge");
 });
 
+check("emotionalDecentering hints stay inactive without functional affiliation", () => {
+  const out = buildPostureDecision(baseInput({
+    detectedState: "exploration",
+    affiliationEstablished: false,
+    emotionalDecenteringAnalysis: { emotionalDecentering: true }
+  }));
+  assert(!out.writerIntentHints.includes("hold_emotional_thread"), "did not expect hold_emotional_thread without affiliation");
+  assert(!out.writerIntentHints.includes("auto_compassion_door_open"), "did not expect auto_compassion_door_open without affiliation");
+  assert(Array.isArray(out.writerIntentHintsInactive), "expected writerIntentHintsInactive to be an array");
+  assert(out.writerIntentHintsInactive.some((entry) => entry.hint === "hold_emotional_thread" && entry.reason === "affiliation_not_established"), "expected inactive hold_emotional_thread reason");
+  assert(out.writerIntentHintsInactive.some((entry) => entry.hint === "auto_compassion_door_open" && entry.reason === "affiliation_not_established"), "expected inactive auto_compassion reason");
+});
+
 check("explicit incomprehension forces clarification-friendly exploration contract", () => {
   const out = buildPostureDecision(baseInput({
     detectedState: "exploration",

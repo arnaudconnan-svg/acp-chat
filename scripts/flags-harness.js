@@ -28,6 +28,7 @@ const {
 
 const {
   computeAffiliationTurnScore,
+  computeAffiliationFinalScore,
   computeAffiliationEstablished
 } = require("../lib/pipeline");
 
@@ -371,14 +372,25 @@ check("affiliationTurnScore: long message → > 0", () => {
 
 // ─── computeAffiliationEstablished ───────────────────────────────────────────
 
+check("affiliationFinalScore: empty window → 0", () => {
+  assert(computeAffiliationFinalScore([]) === 0, "expected 0 for empty window");
+});
+check("affiliationFinalScore: strong current join boosts final score", () => {
+  const score = computeAffiliationFinalScore([0, 0, 0, 0.8]);
+  assert(score > 0.5, "expected strong current join to cross functional range");
+});
+
 check("affiliationEstablished: [] → false", () => {
   assert(computeAffiliationEstablished([]) === false, "expected false for empty window");
 });
 check("affiliationEstablished: [0.3, 0.3, 0.3, 0.3] → false (max < 0.5)", () => {
   assert(computeAffiliationEstablished([0.3, 0.3, 0.3, 0.3]) === false, "expected false");
 });
-check("affiliationEstablished: [0, 0, 0, 0.5] → true (max >= 0.5)", () => {
-  assert(computeAffiliationEstablished([0, 0, 0, 0.5]) === true, "expected true");
+check("affiliationEstablished: [0, 0, 0, 0.5] → false (insufficient functional continuity)", () => {
+  assert(computeAffiliationEstablished([0, 0, 0, 0.5]) === false, "expected false");
+});
+check("affiliationEstablished: [0, 0, 0, 0.8] → true (functional threshold reached)", () => {
+  assert(computeAffiliationEstablished([0, 0, 0, 0.8]) === true, "expected true");
 });
 
 // ─── Summary ──────────────────────────────────────────────────────────────────

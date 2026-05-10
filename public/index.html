@@ -7193,6 +7193,10 @@
         return window.FacilitatDebug.buildSomaticFocusPolicyDebugLine(meta);
       }
 
+      function formatInactiveWriterHintsDebug(items) {
+        return window.FacilitatDebug.formatInactiveWriterHints(items);
+      }
+
       function buildPipelineRuntimeText(meta) {
         return window.FacilitatDebug.buildPipelineRuntimeText(meta);
       }
@@ -7368,8 +7372,16 @@
         if (typeof meta.affiliationScore === "number") {
           affiliationLines.push(`Degr\u00e9 d'affiliation du tour : ${meta.affiliationScore.toFixed(2)}`);
         }
+        if (typeof meta.affiliationFinalScore === "number") {
+          affiliationLines.push(`Score final d'affiliation : ${meta.affiliationFinalScore.toFixed(2)}`);
+        }
         if (meta.affiliationEstablished === true) {
           affiliationLines.push("Lien \u00e9tabli");
+        }
+        const inactiveAffiliationHints = formatInactiveWriterHintsDebug(meta.writerIntentHintsInactive)
+          .filter((line) => line.indexOf("fil \u00e9motionnel") !== -1 || line.indexOf("auto-compassion") !== -1);
+        if (inactiveAffiliationHints.length > 0) {
+          affiliationLines.push(...inactiveAffiliationHints);
         }
         if (affiliationLines.length > 0) {
           sections.push({ title: "Affiliation", content: affiliationLines.join("\n") });

@@ -213,6 +213,7 @@
       closureIntent: toBooleanTrue(safe.closureIntent),
       infoRoutingSource: toTrimmedString(safe.infoRoutingSource, "") || null,
       affiliationScore: typeof safe.affiliationScore === "number" ? safe.affiliationScore : null,
+      affiliationFinalScore: typeof safe.affiliationFinalScore === "number" ? safe.affiliationFinalScore : null,
       affiliationWindow: Array.isArray(safe.affiliationWindow)
         ? safe.affiliationWindow.map(function mapAffiliation(v) {
             return typeof v === "number" ? Math.round(v * 100) / 100 : 0;
@@ -223,6 +224,17 @@
       formalAddress: toBooleanTrue(safe.formalAddress),
       writerIntentHints: Array.isArray(safe.writerIntentHints)
         ? safe.writerIntentHints.map(function mapHint(v) { return String(v || "").trim(); }).filter(Boolean)
+        : [],
+      writerIntentHintsInactive: Array.isArray(safe.writerIntentHintsInactive)
+        ? safe.writerIntentHintsInactive
+            .map(function mapInactiveHint(entry) {
+              if (!entry || typeof entry !== "object") return null;
+              var hint = toTrimmedString(entry.hint, "");
+              var reason = toTrimmedString(entry.reason, "");
+              if (!hint || !reason) return null;
+              return { hint: hint, reason: reason };
+            })
+            .filter(Boolean)
         : [],
       contactInsightMoment: toBooleanTrue(safe.contactInsightMoment),
       contactSelfCriticismLevel: toTrimmedString(safe.contactSelfCriticismLevel, "") || "low",
@@ -336,6 +348,24 @@
       dependency_care_expressed_high: "lucidit\u00e9 relationnelle (high)"
     };
     return map[value] || value;
+  }
+
+  function translateWriterHintInactiveReason(value) {
+    var map = {
+      affiliation_not_established: "affiliation fonctionnelle non \u00e9tablie"
+    };
+    return map[value] || value;
+  }
+
+  function formatInactiveWriterHints(items) {
+    if (!Array.isArray(items)) return [];
+    return items
+      .map(function mapInactiveItem(entry) {
+        if (!entry || typeof entry !== "object") return null;
+        if (!entry.hint || !entry.reason) return null;
+        return "Indication inactive : " + translateWriterHint(entry.hint) + " (raison : " + translateWriterHintInactiveReason(entry.reason) + ")";
+      })
+      .filter(Boolean);
   }
 
   function translateOrientationHint(value) {
@@ -540,6 +570,8 @@
     translateAttentionQuality: translateAttentionQuality,
     translateAttentionEngagement: translateAttentionEngagement,
     translateWriterHint: translateWriterHint,
+    translateWriterHintInactiveReason: translateWriterHintInactiveReason,
+    formatInactiveWriterHints: formatInactiveWriterHints,
     translateOrientationHint: translateOrientationHint,
     translateSomaticFocusPolicy: translateSomaticFocusPolicy,
     translateConfidenceSignal: translateConfidenceSignal,

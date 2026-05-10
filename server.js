@@ -137,6 +137,7 @@ const {
   buildDebug,
   buildPostureDecision,
   computeAffiliationTurnDetails,
+  computeAffiliationFinalScore,
   computeAffiliationEstablished,
   electActiveStateFromCandidates,
   hasShortAffiliationMarker,
@@ -2279,8 +2280,19 @@ app.post("/api/account/conversations/import-local", requireUserAuth, async (req,
               modelConflict: debugMeta.modelConflict === true,
               // Fields stored in Firebase but previously missing from admin API
               writerIntentHints: Array.isArray(debugMeta.writerIntentHints) ? debugMeta.writerIntentHints.map(v => String(v || "")).filter(Boolean) : [],
+              writerIntentHintsInactive: Array.isArray(debugMeta.writerIntentHintsInactive)
+                ? debugMeta.writerIntentHintsInactive
+                    .map((entry) => {
+                      if (!entry || typeof entry !== "object") return null;
+                      const hint = String(entry.hint || "").trim();
+                      const reason = String(entry.reason || "").trim();
+                      return hint && reason ? { hint, reason } : null;
+                    })
+                    .filter(Boolean)
+                : [],
               stagnationWindow: Array.isArray(debugMeta.stagnationWindow) ? debugMeta.stagnationWindow.map(v => v === true) : [],
               affiliationScore: typeof debugMeta.affiliationScore === "number" ? debugMeta.affiliationScore : null,
+              affiliationFinalScore: typeof debugMeta.affiliationFinalScore === "number" ? debugMeta.affiliationFinalScore : null,
               affiliationWindow: Array.isArray(debugMeta.affiliationWindow) ? debugMeta.affiliationWindow.map(v => typeof v === "number" ? v : 0) : [],
               affiliationEstablished: debugMeta.affiliationEstablished === true,
               emotionalDecentering: debugMeta.emotionalDecentering === true,
@@ -4530,6 +4542,16 @@ app.post("/chat", async (req, res) => {
       somaticFocusPolicy: typeof safe.somaticFocusPolicy === "string" ? safe.somaticFocusPolicy : "none",
       actionCollapseGuardActive: safe.actionCollapseGuardActive === true,
       writerIntentHints: Array.isArray(safe.writerIntentHints) ? safe.writerIntentHints.map((hint) => String(hint || "").trim()).filter(Boolean) : [],
+      writerIntentHintsInactive: Array.isArray(safe.writerIntentHintsInactive)
+        ? safe.writerIntentHintsInactive
+            .map((entry) => {
+              if (!entry || typeof entry !== "object") return null;
+              const hint = String(entry.hint || "").trim();
+              const reason = String(entry.reason || "").trim();
+              return hint && reason ? { hint, reason } : null;
+            })
+            .filter(Boolean)
+        : [],
       stateTransitionFrom: typeof safe.stateTransitionFrom === "string" ? safe.stateTransitionFrom : null,
       stateTransitionValid: safe.stateTransitionValid !== false,
       stateTransitionRequested: typeof safe.stateTransitionRequested === "string" ? safe.stateTransitionRequested : null,
@@ -4543,6 +4565,7 @@ app.post("/chat", async (req, res) => {
       externalSupportMode: normalizeExternalSupportMode(safe.externalSupportMode),
       closureIntent: safe.closureIntent === true,
       affiliationScore: typeof safe.affiliationScore === "number" ? safe.affiliationScore : null,
+      affiliationFinalScore: typeof safe.affiliationFinalScore === "number" ? safe.affiliationFinalScore : null,
       affiliationWindow: normalizeAffiliationWindow(safe.affiliationWindow),
       affiliationEstablished: safe.affiliationEstablished === true,
       emotionalDecentering: safe.emotionalDecentering === true,
@@ -5702,6 +5725,7 @@ app.post("/chat", async (req, res) => {
     const affiliationScore = affiliationDetails.score;
     newFlags.affiliationAttachmentBoostStreak = affiliationDetails.nextAttachmentBoostStreak;
     const newAffiliationWindow = normalizeAffiliationWindow([...(newFlags.affiliationWindow || [0, 0, 0, 0]), affiliationScore]);
+    const affiliationFinalScore = computeAffiliationFinalScore(newAffiliationWindow);
     const affiliationEstablished = computeAffiliationEstablished(newAffiliationWindow);
 
 
@@ -6211,12 +6235,14 @@ app.post("/chat", async (req, res) => {
       promptRegistry: activePromptRegistry,
       // Lot 8 fields
       affiliationScore: affiliationScore,
+      affiliationFinalScore,
       affiliationWindow: newAffiliationWindow,
       affiliationEstablished,
       emotionalDecentering: emotionalDecenteringAnalysis?.emotionalDecentering === true,
       formalAddress: postureDecision.formalAddress === true,
       // Writer hints from posture decision
       writerIntentHints: postureDecision.writerIntentHints,
+      writerIntentHintsInactive: postureDecision.writerIntentHintsInactive,
       // Contact analyzer sub-fields
       contactInsightMoment: contactAnalysis?.insightMoment === true,
       contactSelfCriticismLevel: typeof contactAnalysis?.selfCriticismLevel === "string" ? contactAnalysis.selfCriticismLevel : "low",
