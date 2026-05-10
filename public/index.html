@@ -51,8 +51,7 @@
     
     #welcomeScreen {
       position: relative;
-      overflow-x: hidden;
-      overflow-y: auto;
+      overflow: hidden;
       justify-content: center;
       align-items: center;
       padding: 0 22px calc(22px + env(safe-area-inset-bottom, 0px)) 22px;
@@ -142,11 +141,12 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: flex-start;
-      min-height: 100%;
+      justify-content: center;
+      max-height: 100%;
       box-sizing: border-box;
       padding-top: clamp(20px, 9vh, 72px);
       padding-bottom: clamp(86px, 16vh, 164px);
+      overflow: hidden;
     }
     
     #welcomeLogoWrap {
