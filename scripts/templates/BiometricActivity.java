@@ -2,11 +2,8 @@ package io.facilitat.app;
 
 import android.app.Activity;
 import android.content.Intent;
-import android.graphics.Color;
-import android.graphics.drawable.ColorDrawable;
 import android.net.Uri;
 import android.os.Bundle;
-import android.view.Window;
 
 import androidx.annotation.NonNull;
 import androidx.biometric.BiometricManager;
@@ -25,13 +22,7 @@ public class BiometricActivity extends FragmentActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        overridePendingTransition(0, 0);
         super.onCreate(savedInstanceState);
-
-        Window window = getWindow();
-        if (window != null) {
-            window.setBackgroundDrawable(new ColorDrawable(Color.parseColor("#f4f9f9")));
-        }
 
         Uri data = getIntent().getData();
         if (data != null) {
@@ -99,7 +90,6 @@ public class BiometricActivity extends FragmentActivity {
         intent.setClass(this, LauncherActivity.class);
         // Reuse existing launcher task instead of recreating app task (prevents full restart splash).
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-        intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
         intent.addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION);
         startActivity(intent);
         overridePendingTransition(0, 0);

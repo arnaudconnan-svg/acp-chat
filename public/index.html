@@ -10870,12 +10870,8 @@
         return;
       }
 
-      const hasBiometricAccessOnLaunch = await ensureBiometricAccess("launch");
-      if (!hasBiometricAccessOnLaunch) {
-        return;
-      }
-
-      const shouldSkipWelcomeAnimation = isAdminUI;
+      const launchBiometricRequired = shouldRequestBiometricUnlock("launch");
+      const shouldSkipWelcomeAnimation = isAdminUI && !launchBiometricRequired;
 
       const loadUrl = new URL(window.location.href);
       const replayRequested = loadUrl.searchParams.get("adminReplay") === "1";
@@ -10891,7 +10887,7 @@
         history.replaceState(history.state || {}, "", `${loadUrl.pathname}${nextSearch ? `?${nextSearch}` : ""}${loadUrl.hash || ""}`);
       }
 
-      if (isAdminUI && replayPayload) {
+      if (!launchBiometricRequired && isAdminUI && replayPayload) {
         const replayConversationId = applyAdminReplayPayload(replayPayload);
         if (replayConversationId) {
           localStorage.setItem(CONVERSATION_ID_KEY, replayConversationId);
@@ -10911,7 +10907,7 @@
       }
 
       const requestedScreen = loadUrl.searchParams.get("screen");
-      if (requestedScreen === "conversationsScreen") {
+      if (!launchBiometricRequired && requestedScreen === "conversationsScreen") {
         loadUrl.searchParams.delete("screen");
         const cleanSearch = loadUrl.searchParams.toString();
         const cleanUrl = `${loadUrl.pathname}${cleanSearch ? `?${cleanSearch}` : ""}${loadUrl.hash || ""}`;
@@ -10928,7 +10924,7 @@
 
       // Branch resume: ?branch=<branchConversationId> from account.html
       const branchParam = loadUrl.searchParams.get("branch");
-      if (branchParam && typeof branchParam === "string" && branchParam.trim()) {
+      if (!launchBiometricRequired && branchParam && typeof branchParam === "string" && branchParam.trim()) {
         const branchConversationId = branchParam.trim();
         loadUrl.searchParams.delete("branch");
         const cleanSearch = loadUrl.searchParams.toString();
@@ -11393,8 +11389,37 @@
         
         welcomeInteractionBound = true;
       }
+
+      function setWelcomeLockedState(locked) {
+        const actions = document.getElementById("welcomeActions");
+        const textEl = document.getElementById("welcomeRitualText");
+        if (actions) {
+          actions.style.visibility = locked ? "hidden" : "";
+          actions.style.pointerEvents = locked ? "none" : "";
+        }
+        if (textEl && locked) {
+          textEl.textContent = "";
+          textEl.classList.remove("is-visible", "is-hidden");
+        }
+      }
       
       function showWelcome() {
+        if (launchBiometricRequired) {
+          clearWelcomeRitualTimers();
+          prepareWelcomeScreenStatic();
+          setWelcomeLockedState(true);
+          showScreen("welcomeScreen", {
+            replaceHistory: true,
+            pushHistory: false,
+            noAnimation: true,
+            noWelcomeIntro: true
+          });
+          requestBiometricUnlock();
+          return;
+        }
+
+        setWelcomeLockedState(false);
+
         if (shouldSkipWelcomeAnimation) {
           clearWelcomeRitualTimers();
           prepareWelcomeScreenStatic();
