@@ -1260,12 +1260,6 @@
         header.appendChild(title);
         wrap.appendChild(header);
 
-        const intro = document.createElement("p");
-        intro.className = "user-email";
-        intro.textContent = "Parametres de protection de session pour cet appareil.";
-        intro.style.marginBottom = "16px";
-        wrap.appendChild(intro);
-
         wrap.appendChild(buildPrivateDefaultCard());
         wrap.appendChild(buildBiometricLockCard());
         wrap.appendChild(buildPasswordCard());

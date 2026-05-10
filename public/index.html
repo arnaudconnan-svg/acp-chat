@@ -10993,6 +10993,33 @@
     window.addEventListener("load", async () => {
       await syncUserSessionState();
       updateAccountBtnVisibility();
+
+      // Auto-save native Android country if user is authenticated and has no country set yet.
+      try {
+        const _launchUrl = new URL(window.location.href);
+        const _androidCountry = _launchUrl.searchParams.get("_android_country");
+        if (_androidCountry && userSessionState.authenticated && userSessionState.user && !userSessionState.user.country) {
+          const _code = String(_androidCountry).toUpperCase().replace(/[^A-Z]/g, "").slice(0, 2);
+          if (_code.length === 2) {
+            fetch("/api/account/profile", {
+              method: "PUT",
+              credentials: "include",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ country: _code })
+            }).then(r => r.json()).then(d => {
+              if (d && d.success && userSessionState.user) {
+                userSessionState.user.country = typeof d.country === "string" ? d.country : _code;
+              }
+            }).catch(() => {});
+          }
+        }
+        if (_androidCountry) {
+          _launchUrl.searchParams.delete("_android_country");
+          const _clean = _launchUrl.pathname + (_launchUrl.searchParams.toString() ? "?" + _launchUrl.searchParams.toString() : "") + (_launchUrl.hash || "");
+          history.replaceState(history.state || {}, "", _clean);
+        }
+      } catch (_) {}
+
       const remoteConversationsSyncPromise = syncRemoteConversationsIndexIfApplicable()
         .then(() => {
           if (activeScreenId === "conversationsScreen") {
