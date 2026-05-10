@@ -39,12 +39,7 @@ public class LauncherActivity
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        if (shouldOpenNativeBiometricGate(getIntent())) {
-            openNativeBiometricGate();
-            finish();
-            overridePendingTransition(0, 0);
-            return;
-        }
+        if (handleNativeBiometricGate(getIntent())) return;
 
         if (Build.VERSION.SDK_INT > Build.VERSION_CODES.O) {
             setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
@@ -59,6 +54,7 @@ public class LauncherActivity
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
+        handleNativeBiometricGate(intent);
     }
 
     @Override
@@ -77,8 +73,18 @@ public class LauncherActivity
         if (country != null && !country.isEmpty()) {
             builder.appendQueryParameter("_android_country", country.toUpperCase(Locale.US));
         }
-        builder.appendQueryParameter("_android_native_bio_gate", "1");
         return builder.build();
+    }
+
+    private boolean handleNativeBiometricGate(Intent intent) {
+        if (!shouldOpenNativeBiometricGate(intent)) {
+            return false;
+        }
+
+        openNativeBiometricGate();
+        finish();
+        overridePendingTransition(0, 0);
+        return true;
     }
 
     private boolean shouldOpenNativeBiometricGate(Intent intent) {

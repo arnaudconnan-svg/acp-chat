@@ -1390,9 +1390,6 @@
         toggle.addEventListener("change", autoSaveBiometric);
         relockSelect.addEventListener("change", autoSaveBiometric);
 
-        // Ensure native gate gets current policy even if user does not change toggle this time.
-        syncNativeBiometricConfigIfNeeded(toggle.checked === true, relockSelect.value);
-
         return card;
       }
 
