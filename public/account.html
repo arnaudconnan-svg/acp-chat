@@ -521,18 +521,21 @@
         const _initParams = new URLSearchParams(window.location.search);
         const _pendingCountry = _initParams.get("_android_country_selected");
         const _openPrivacySubscreen = _initParams.get("_account_subscreen") === "privacy";
+        const _nativeBioConfig = _initParams.get("_android_bio_config");
         if (_pendingCountry) {
           try {
             const _cleanUrl = new URL(window.location.href);
             _cleanUrl.searchParams.delete("_android_country_selected");
             _cleanUrl.searchParams.delete("_android_country");
             _cleanUrl.searchParams.delete("_account_subscreen");
+            _cleanUrl.searchParams.delete("_android_bio_config");
             history.replaceState(history.state, "", _cleanUrl.toString());
           } catch (_) {}
-        } else if (_openPrivacySubscreen) {
+        } else if (_openPrivacySubscreen || _nativeBioConfig) {
           try {
             const _cleanUrl = new URL(window.location.href);
             _cleanUrl.searchParams.delete("_account_subscreen");
+            _cleanUrl.searchParams.delete("_android_bio_config");
             history.replaceState(history.state, "", _cleanUrl.toString());
           } catch (_) {}
         }
@@ -1281,6 +1284,18 @@
         return 120;
       }
 
+      function syncNativeBiometricConfig(enabled, relockSeconds) {
+        try {
+          if (!/Android/i.test(navigator.userAgent || "")) return;
+          const callbackPath = "/account.html?_account_subscreen=privacy";
+          const url = "facilitat://biometric-config"
+            + "?enabled=" + (enabled === true ? "1" : "0")
+            + "&relock=" + encodeURIComponent(String(normalizeBiometricRelockSeconds(relockSeconds)))
+            + "&callback_path=" + encodeURIComponent(callbackPath);
+          window.location.href = url;
+        } catch (_) {}
+      }
+
       function buildBiometricLockCard() {
         const card = document.createElement("div");
         card.className = "card";
@@ -1354,6 +1369,7 @@
             currentUser.biometricRelockSeconds = normalizeBiometricRelockSeconds(data.biometricRelockSeconds);
             toggle.checked = currentUser.biometricLockEnabled === true;
             relockSelect.value = String(currentUser.biometricRelockSeconds);
+            syncNativeBiometricConfig(currentUser.biometricLockEnabled === true, currentUser.biometricRelockSeconds);
           } catch (_) {}
         };
 

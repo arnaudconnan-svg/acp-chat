@@ -15,6 +15,8 @@
  */
 package io.facilitat.app;
 
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
 import android.net.Uri;
@@ -26,8 +28,24 @@ import java.util.Locale;
 
 public class LauncherActivity
         extends com.google.androidbrowserhelper.trusted.LauncherActivity {
+
+    private static final String PREFS_NAME = "facilitat_security";
+    private static final String KEY_BIO_ENABLED = "biometric_enabled";
+    private static final String KEY_BIO_RELOCK_SECONDS = "biometric_relock_seconds";
+    private static final String KEY_BIO_LAST_UNLOCK_MS = "biometric_last_unlock_ms";
+
+    private static final String EXTRA_NATIVE_GATE = "nativeGate";
+    private static final String EXTRA_NATIVE_GATE_PASSED = "nativeBioPassed";
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        if (shouldOpenNativeBiometricGate(getIntent())) {
+            openNativeBiometricGate();
+            finish();
+            overridePendingTransition(0, 0);
+            return;
+        }
+
         if (Build.VERSION.SDK_INT > Build.VERSION_CODES.O) {
             setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
         } else {
@@ -35,6 +53,12 @@ public class LauncherActivity
         }
         super.onCreate(savedInstanceState);
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
     }
 
     @Override
@@ -53,6 +77,44 @@ public class LauncherActivity
         if (country != null && !country.isEmpty()) {
             builder.appendQueryParameter("_android_country", country.toUpperCase(Locale.US));
         }
+        builder.appendQueryParameter("_android_native_bio_gate", "1");
         return builder.build();
+    }
+
+    private boolean shouldOpenNativeBiometricGate(Intent intent) {
+        if (intent != null && intent.getBooleanExtra(EXTRA_NATIVE_GATE_PASSED, false)) {
+            return false;
+        }
+
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        boolean enabled = prefs.getBoolean(KEY_BIO_ENABLED, false);
+        if (!enabled) {
+            return false;
+        }
+
+        int relockSeconds = prefs.getInt(KEY_BIO_RELOCK_SECONDS, 120);
+        if (relockSeconds != 0 && relockSeconds != 30 && relockSeconds != 120 && relockSeconds != 300) {
+            relockSeconds = 120;
+        }
+
+        long lastUnlockMs = prefs.getLong(KEY_BIO_LAST_UNLOCK_MS, 0L);
+        if (lastUnlockMs <= 0L) {
+            return true;
+        }
+
+        if (relockSeconds == 0) {
+            return true;
+        }
+
+        long elapsed = System.currentTimeMillis() - lastUnlockMs;
+        return elapsed >= relockSeconds * 1000L;
+    }
+
+    private void openNativeBiometricGate() {
+        Intent gateIntent = new Intent(this, BiometricActivity.class);
+        gateIntent.putExtra(EXTRA_NATIVE_GATE, true);
+        gateIntent.addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION);
+        startActivity(gateIntent);
+        overridePendingTransition(0, 0);
     }
 }

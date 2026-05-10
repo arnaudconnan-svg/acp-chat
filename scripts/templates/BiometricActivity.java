@@ -2,6 +2,7 @@ package io.facilitat.app;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
 
@@ -16,13 +17,20 @@ import java.util.concurrent.Executor;
 public class BiometricActivity extends FragmentActivity {
 
     private static final String BASE_URL = "https://acp-chat-beta.onrender.com";
+    private static final String PREFS_NAME = "facilitat_security";
+    private static final String KEY_BIO_LAST_UNLOCK_MS = "biometric_last_unlock_ms";
+    private static final String EXTRA_NATIVE_GATE = "nativeGate";
+    private static final String EXTRA_NATIVE_GATE_PASSED = "nativeBioPassed";
 
     private String callbackPath = "/";
     private String bioNonce = "";
+    private boolean launchedFromNativeGate = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        launchedFromNativeGate = getIntent() != null && getIntent().getBooleanExtra(EXTRA_NATIVE_GATE, false);
 
         Uri data = getIntent().getData();
         if (data != null) {
@@ -79,6 +87,11 @@ public class BiometricActivity extends FragmentActivity {
     }
 
     private void returnResult(boolean success) {
+        if (launchedFromNativeGate) {
+            returnNativeGateResult(success);
+            return;
+        }
+
         Uri.Builder uriBuilder = Uri.parse(BASE_URL + callbackPath).buildUpon()
                 .appendQueryParameter("_biometric_result", success ? "success" : "failed");
         if (!bioNonce.isEmpty()) {
@@ -90,6 +103,25 @@ public class BiometricActivity extends FragmentActivity {
         intent.setClass(this, LauncherActivity.class);
         // Reuse existing launcher task instead of recreating app task (prevents full restart splash).
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION);
+        startActivity(intent);
+        overridePendingTransition(0, 0);
+        finish();
+        overridePendingTransition(0, 0);
+    }
+
+    private void returnNativeGateResult(boolean success) {
+        if (!success) {
+            finish();
+            return;
+        }
+
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        prefs.edit().putLong(KEY_BIO_LAST_UNLOCK_MS, System.currentTimeMillis()).apply();
+
+        Intent intent = new Intent(this, LauncherActivity.class);
+        intent.putExtra(EXTRA_NATIVE_GATE_PASSED, true);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
         intent.addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION);
         startActivity(intent);
         overridePendingTransition(0, 0);

@@ -3270,6 +3270,12 @@
     }
 
     function shouldRequestBiometricUnlock(reason = "") {
+      try {
+        if (sessionStorage.getItem("nativeBiometricGateActive") === "1") {
+          return false;
+        }
+      } catch (_) {}
+
       if (!isBiometricLockEnabledForSession()) return false;
 
       const lastUnlockTs = loadBiometricUnlockTimestamp();
@@ -10807,8 +10813,15 @@
       // --- Biometric result from native Android BiometricActivity ---
       try {
         const _bioUrl = new URL(window.location.href);
+        const _nativeGate = _bioUrl.searchParams.get("_android_native_bio_gate");
         const _bioResult = _bioUrl.searchParams.get("_biometric_result");
         const _bioNonce = _bioUrl.searchParams.get("_bio_nonce");
+
+        if (_nativeGate === "1") {
+          try { sessionStorage.setItem("nativeBiometricGateActive", "1"); } catch (_) {}
+          _bioUrl.searchParams.delete("_android_native_bio_gate");
+        }
+
         if (_bioResult || _bioNonce) {
           _bioUrl.searchParams.delete("_biometric_result");
           _bioUrl.searchParams.delete("_bio_nonce");

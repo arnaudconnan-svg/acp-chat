@@ -5,6 +5,7 @@ const ROOT = path.join(__dirname, "..");
 const TEMPLATE_PATH = path.join(__dirname, "templates", "CountryPickerActivity.java");
 const LAUNCHER_TEMPLATE_PATH = path.join(__dirname, "templates", "LauncherActivity.java");
 const BIOMETRIC_TEMPLATE_PATH = path.join(__dirname, "templates", "BiometricActivity.java");
+const BIOMETRIC_CONFIG_TEMPLATE_PATH = path.join(__dirname, "templates", "BiometricConfigActivity.java");
 const TWA_MANIFEST_PATH = path.join(ROOT, "android-project", "twa-manifest.json");
 const APP_BUILD_GRADLE_PATH = path.join(ROOT, "android-project", "app", "build.gradle");
 const LAUNCHER_ACTIVITY_PATH = path.join(ROOT, "android-project", "app", "src", "main", "java", "io", "facilitat", "app", "LauncherActivity.java");
@@ -33,6 +34,18 @@ const BIOMETRIC_TARGET_PATH = path.join(
   "app",
   "BiometricActivity.java"
 );
+const BIOMETRIC_CONFIG_TARGET_PATH = path.join(
+  ROOT,
+  "android-project",
+  "app",
+  "src",
+  "main",
+  "java",
+  "io",
+  "facilitat",
+  "app",
+  "BiometricConfigActivity.java"
+);
 
 function fail(message) {
   console.error(`[android-customize] ${message}`);
@@ -52,6 +65,10 @@ function main() {
 
   if (!fs.existsSync(BIOMETRIC_TEMPLATE_PATH)) {
     fail(`Missing template: ${BIOMETRIC_TEMPLATE_PATH}`);
+  }
+
+  if (!fs.existsSync(BIOMETRIC_CONFIG_TEMPLATE_PATH)) {
+    fail(`Missing template: ${BIOMETRIC_CONFIG_TEMPLATE_PATH}`);
   }
 
   if (!fs.existsSync(TARGET_PATH)) {
@@ -161,6 +178,31 @@ function main() {
         console.log("[android-customize] BiometricActivity already declared in AndroidManifest.xml.");
       }
 
+      // BiometricConfigActivity declaration
+      if (!manifest.includes('android:name="BiometricConfigActivity"')) {
+        manifest = manifest.replace(
+          '<activity android:name="CountryPickerActivity"',
+          [
+            '<activity android:name="BiometricConfigActivity"',
+            '            android:label="Facilitat.io"',
+            '            android:exported="true"',
+            '            android:screenOrientation="portrait">',
+            '            <intent-filter>',
+            '                <action android:name="android.intent.action.VIEW" />',
+            '                <category android:name="android.intent.category.DEFAULT" />',
+            '                <category android:name="android.intent.category.BROWSABLE" />',
+            '                <data android:scheme="facilitat" android:host="biometric-config" />',
+            '            </intent-filter>',
+            '        </activity>',
+            '',
+            '        <activity android:name="CountryPickerActivity"'
+          ].join("\n        ")
+        );
+        console.log("[android-customize] Added BiometricConfigActivity to AndroidManifest.xml.");
+      } else {
+        console.log("[android-customize] BiometricConfigActivity already declared in AndroidManifest.xml.");
+      }
+
       // Keep BiometricActivity attributes aligned even if manifest changed manually.
       const biometricBlockMatch = manifest.match(/<activity android:name="BiometricActivity"[\s\S]*?<\/activity>/);
       if (biometricBlockMatch) {
@@ -242,6 +284,15 @@ function main() {
     console.log("[android-customize] BiometricActivity customization applied.");
   } else {
     console.log("[android-customize] BiometricActivity already up to date.");
+  }
+
+  const biometricConfigTemplate = fs.readFileSync(BIOMETRIC_CONFIG_TEMPLATE_PATH, "utf8");
+  const biometricConfigCurrent = fs.existsSync(BIOMETRIC_CONFIG_TARGET_PATH) ? fs.readFileSync(BIOMETRIC_CONFIG_TARGET_PATH, "utf8") : null;
+  if (biometricConfigCurrent !== biometricConfigTemplate) {
+    fs.writeFileSync(BIOMETRIC_CONFIG_TARGET_PATH, biometricConfigTemplate, "utf8");
+    console.log("[android-customize] BiometricConfigActivity customization applied.");
+  } else {
+    console.log("[android-customize] BiometricConfigActivity already up to date.");
   }
 }
 
