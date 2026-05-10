@@ -220,6 +220,14 @@
           })
         : [],
       affiliationEstablished: toBooleanTrue(safe.affiliationEstablished),
+      somaticSignalAnalysis: safe.somaticSignalAnalysis && typeof safe.somaticSignalAnalysis === "object" && !Array.isArray(safe.somaticSignalAnalysis)
+        ? {
+            somaticSignalActive: toBooleanTrue(safe.somaticSignalAnalysis.somaticSignalActive),
+            somaticLocalizationBlocked: toBooleanTrue(safe.somaticSignalAnalysis.somaticLocalizationBlocked),
+            regexMatch: toTrimmedString(safe.somaticSignalAnalysis.regexMatch, "") || null,
+            source: toTrimmedString(safe.somaticSignalAnalysis.source, "") || null
+          }
+        : null,
       emotionalDecentering: toBooleanTrue(safe.emotionalDecentering),
       formalAddress: toBooleanTrue(safe.formalAddress),
       writerIntentHints: Array.isArray(safe.writerIntentHints)
@@ -475,8 +483,14 @@
       lines.push(enrichLineWithMatch(decenteringLine, analyzerMatchMap, ["emotional_decentering_guard_active", "emotional_decentering_guard_llm_review"]));
     }
 
-    if (meta.stagnationTurns > 0) {
-      lines.push("Stagnation detectee depuis " + meta.stagnationTurns + " tour(s).");
+    if (meta.somaticSignalAnalysis && typeof meta.somaticSignalAnalysis === "object") {
+      var somaticLine = meta.somaticSignalAnalysis.somaticSignalActive === true
+        ? (variant === "admin" ? "Signal somatique confirme." : "Le systeme a confirme un signal somatique.")
+        : (variant === "admin" ? "Signal somatique non retenu." : "Le systeme n'a pas retenu de signal somatique.");
+      if (meta.somaticSignalAnalysis.regexMatch) {
+        somaticLine += ' (regex: "' + meta.somaticSignalAnalysis.regexMatch + '")';
+      }
+      lines.push(somaticLine);
     }
 
     if (meta.dependencyRiskLevel && meta.dependencyRiskLevel !== "low") {

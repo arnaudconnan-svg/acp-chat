@@ -5537,7 +5537,7 @@ app.post("/chat", async (req, res) => {
         withAnalyzerTiming("alliance_rupture", analyzeAllianceRupture(message, recentHistory, activePromptRegistry)),
         withAnalyzerTiming("relational_adjustment", analyzeRelationalAdjustmentNeed(message, recentHistory, previousMemory, false, activePromptRegistry)),
         withAnalyzerTiming("technical_context", analyzeTechnicalContext(message)),
-        withAnalyzerTiming("somatic_signal", analyzeSomaticSignal(message)),
+        withAnalyzerTiming("somatic_signal", analyzeSomaticSignal(message, recentHistory, activePromptRegistry)),
         withAnalyzerTiming("user_register", analyzeUserRegister(message)),
         withAnalyzerTiming("emotional_decentering", analyzeEmotionalDecentering(message, recentHistory)),
         shouldRunAttentionQuality
@@ -5675,6 +5675,7 @@ app.post("/chat", async (req, res) => {
     throwIfCanceled();
 
     const emotionalDecenteringAnalysis = emotionalDecenteringResult || { emotionalDecentering: false };
+    const safeSomaticSignalAnalysis = somaticSignalAnalysis || { somaticSignalActive: false, somaticLocalizationBlocked: false, regexMatch: null, source: "deterministic_no_signal" };
 
     const contactAnalysis = electedState.contactAnalysis;
     const dischargeAnalysis = electedState.dischargeAnalysis;
@@ -5783,6 +5784,7 @@ app.post("/chat", async (req, res) => {
       detectedState,
       contactAnalysis,
       emotionalDecenteringAnalysis,
+      somaticSignalAnalysis: safeSomaticSignalAnalysis,
       affiliationWindow: newAffiliationWindow,
       affiliationEstablished,
       relationalAdjustmentAnalysis,
@@ -6238,6 +6240,7 @@ app.post("/chat", async (req, res) => {
       affiliationFinalScore,
       affiliationWindow: newAffiliationWindow,
       affiliationEstablished,
+      somaticSignalAnalysis: safeSomaticSignalAnalysis,
       emotionalDecentering: emotionalDecenteringAnalysis?.emotionalDecentering === true,
       formalAddress: postureDecision.formalAddress === true,
       // Writer hints from posture decision
