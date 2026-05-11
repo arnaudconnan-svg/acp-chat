@@ -47,6 +47,13 @@ public class GateActivity extends FragmentActivity {
             setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
         }
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
+
+        // Keep screen on when test PIN mode is active (for easier testing)
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        if (prefs.getBoolean(KEY_TEST_PIN_MODE, false)) {
+            getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+            Log.d("Facilitat.GateActivity", "test pin mode detected: keeping screen on");
+        }
     }
 
     @Override

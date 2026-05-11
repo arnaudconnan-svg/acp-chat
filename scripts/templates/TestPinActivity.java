@@ -35,6 +35,7 @@ public class TestPinActivity extends AppCompatActivity {
             setRequestedOrientation(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
         }
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
         // Check if test pin mode is enabled
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);

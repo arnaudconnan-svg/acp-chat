@@ -36,13 +36,20 @@ public class BiometricActivity extends FragmentActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        // Keep screen on when test PIN mode is active (for easier testing)
+        SharedPreferences testPrefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        if (testPrefs.getBoolean(KEY_TEST_PIN_MODE, false)) {
+            getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+            Log.d("Facilitat.BiometricActivity", "test pin mode detected: keeping screen on");
+        }
+
         launchedFromNativeGate = getIntent() != null && getIntent().getBooleanExtra(EXTRA_NATIVE_GATE, false);
         launchedFromAppForeground = getIntent() != null && getIntent().getBooleanExtra(EXTRA_APP_FOREGROUND, false);
         android.net.Uri intentData = getIntent() != null ? getIntent().getData() : null;
         launchedFromWebRelock = !launchedFromNativeGate && !launchedFromAppForeground
-                && intentData != null
-                && "facilitat".equals(intentData.getScheme())
-                && "biometric-relock".equals(intentData.getHost());
+            && intentData != null
+            && "facilitat".equals(intentData.getScheme())
+            && "biometric-relock".equals(intentData.getHost());
 
         if (launchedFromWebRelock) {
             SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);

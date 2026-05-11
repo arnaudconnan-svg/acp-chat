@@ -50,6 +50,7 @@ Stabiliser et enrichir l'experience Android TWA pour un usage mobile fluide, fia
 **Implémentation :**
 
 1. **TestPinActivity.java** (nouveau)
+   - **FLAG_KEEP_SCREEN_ON** : l'écran reste allumé pendant les tests PIN (pas de verrouillage avant 10min)
    - Activity simple avec clavier numérique 0-9
    - Accepte le code PIN `999999`
    - Accessible seulement si `test_pin_mode` pref est `true`
@@ -57,6 +58,7 @@ Stabiliser et enrichir l'experience Android TWA pour un usage mobile fluide, fia
    - Retour au GateActivity / BiometricActivity via onActivityResult
 
 2. **GateActivity + BiometricActivity modifiées**
+   - **FLAG_KEEP_SCREEN_ON quand test_pin_mode actif** : écran reste actif pendant les tests (pas de verrouillage)
    - Vérification pref `test_pin_mode` dans `openNativeBiometricGate()` / `startNativePrompt()`
    - Si activée : lancer TestPinActivity au lieu de BiometricPrompt
    - Traiter onActivityResult pour simuler succès/échec biométrique
