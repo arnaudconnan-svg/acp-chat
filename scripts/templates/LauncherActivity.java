@@ -23,6 +23,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.WindowManager;
 
 import java.util.Locale;
 
@@ -39,6 +40,9 @@ public class LauncherActivity
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        // Hide app content from Android recent-apps thumbnails/screenshots.
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
+
         if (handleNativeBiometricGate(getIntent())) return;
 
         if (Build.VERSION.SDK_INT > Build.VERSION_CODES.O) {
@@ -95,6 +99,9 @@ public class LauncherActivity
 
     private boolean shouldOpenNativeBiometricGate(Intent intent) {
         if (intent != null && intent.getBooleanExtra(EXTRA_NATIVE_GATE_PASSED, false)) {
+            // Consume this bypass once: it must skip only the immediate post-auth restart.
+            intent.removeExtra(EXTRA_NATIVE_GATE_PASSED);
+            setIntent(intent);
             return false;
         }
 
