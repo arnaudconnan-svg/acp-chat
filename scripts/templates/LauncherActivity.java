@@ -42,6 +42,16 @@ public class LauncherActivity
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        // Guard against duplicate launcher instances (icon taps while task already exists).
+        Intent launchIntent = getIntent();
+        if (!isTaskRoot()
+                && launchIntent != null
+                && Intent.ACTION_MAIN.equals(launchIntent.getAction())
+                && launchIntent.hasCategory(Intent.CATEGORY_LAUNCHER)) {
+            finish();
+            return;
+        }
+
         if (Build.VERSION.SDK_INT > Build.VERSION_CODES.O) {
             setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
         } else {
@@ -79,12 +89,7 @@ public class LauncherActivity
         super.onNewIntent(intent);
 
         setIntent(intent);
-        // New launcher intents (icon tap / deep link) must clear stale in-flight flag.
-        biometricGateInFlight = false;
-
-        if (handleNativeBiometricGate(intent)) {
-            return;
-        }
+        // Gate is evaluated only in onResume to avoid duplicate trigger races.
     }
 
     @Override
@@ -106,6 +111,7 @@ public class LauncherActivity
         Log.d("Facilitat", "native-bio result canceled/failed -> HOME");
         // Fail-closed: remove the task to avoid any residual app reveal behind the prompt.
         try {
+            finishAffinity();
             finishAndRemoveTask();
         } catch (Exception ignored) {
             finish();
