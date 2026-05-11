@@ -20,19 +20,15 @@ public class BiometricActivity extends FragmentActivity {
     private static final String BASE_URL = "https://acp-chat-beta.onrender.com";
     private static final String PREFS_NAME = "facilitat_security";
     private static final String KEY_BIO_LAST_UNLOCK_MS = "biometric_last_unlock_ms";
-    private static final String KEY_NATIVE_GATE_STARTED_MS = "native_gate_started_ms";
     private static final String KEY_TEST_PIN_MODE = "test_pin_mode";
     private static final String KEY_TEST_PIN_AUTO_ACCEPT = "test_pin_auto_accept";
     private static final String EXTRA_NATIVE_GATE = "nativeGate";
-    static final String EXTRA_APP_FOREGROUND = "appForeground";
     private static final int REQUEST_CODE_TEST_PIN = 9002;
 
     private String callbackPath = "/";
     private String bioNonce = "";
     private boolean launchedFromNativeGate = false;
-    private boolean launchedFromAppForeground = false;
     private boolean nativeGateResultSent = false;
-    private boolean launchedFromWebRelock = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -46,38 +42,10 @@ public class BiometricActivity extends FragmentActivity {
         }
 
         launchedFromNativeGate = getIntent() != null && getIntent().getBooleanExtra(EXTRA_NATIVE_GATE, false);
-        launchedFromAppForeground = getIntent() != null && getIntent().getBooleanExtra(EXTRA_APP_FOREGROUND, false);
-        android.net.Uri intentData = getIntent() != null ? getIntent().getData() : null;
-        launchedFromWebRelock = !launchedFromNativeGate && !launchedFromAppForeground
-            && intentData != null
-            && "facilitat".equals(intentData.getScheme())
-            && "biometric-relock".equals(intentData.getHost());
 
-        if (launchedFromWebRelock) {
-            SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
-            long nativeGateStartedMs = prefs.getLong(KEY_NATIVE_GATE_STARTED_MS, 0L);
-            if (nativeGateStartedMs > 0L && (System.currentTimeMillis() - nativeGateStartedMs) < 10000L) {
-                Log.d("Facilitat", "BiometricActivity.onCreate ignore web relock: native gate just started");
-                nativeGateResultSent = true;
-                setResult(Activity.RESULT_CANCELED);
-                finish();
-                overridePendingTransition(0, 0);
-                return;
-            }
-        }
+        Log.d("Facilitat", "BiometricActivity.onCreate launchedFromNativeGate=" + launchedFromNativeGate);
 
-        if (launchedFromWebRelock && (Application.gateActivityStarted || Application.biometricActivityStarted)) {
-            Log.d("Facilitat", "BiometricActivity.onCreate ignore web relock: native gate/biometric already active");
-            nativeGateResultSent = true;
-            setResult(Activity.RESULT_CANCELED);
-            finish();
-            overridePendingTransition(0, 0);
-            return;
-        }
-
-        Log.d("Facilitat", "BiometricActivity.onCreate launchedFromNativeGate=" + launchedFromNativeGate + " launchedFromAppForeground=" + launchedFromAppForeground + " launchedFromWebRelock=" + launchedFromWebRelock);
-
-        if (launchedFromNativeGate || launchedFromAppForeground || launchedFromWebRelock) {
+        if (launchedFromNativeGate) {
             startNativePrompt();
             return;
         }
@@ -191,21 +159,6 @@ public class BiometricActivity extends FragmentActivity {
             homeIntent.addCategory(Intent.CATEGORY_HOME);
             homeIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             startActivity(homeIntent);
-            if (launchedFromAppForeground) {
-                // AppForeground mode: send to home and finish; app stays in memory,
-                // locked until next foreground return triggers a new prompt.
-                setResult(Activity.RESULT_CANCELED);
-                finish();
-                overridePendingTransition(0, 0);
-                return;
-            }
-            if (launchedFromWebRelock) {
-                // Web-relock fail-closed: Home already sent; just finish.
-                setResult(Activity.RESULT_CANCELED);
-                finish();
-                overridePendingTransition(0, 0);
-                return;
-            }
             setResult(Activity.RESULT_CANCELED);
             try {
                 finishAffinity();
@@ -216,26 +169,7 @@ public class BiometricActivity extends FragmentActivity {
             return;
         }
 
-        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
-        // Write timestamp + justUnlocked guard so Application.onStart() skips the
-        // immediate relock check when this activity finishes and the app resumes.
-        prefs.edit()
-                .putLong(KEY_BIO_LAST_UNLOCK_MS, System.currentTimeMillis())
-                .putBoolean(Application.KEY_BIO_JUST_UNLOCKED, true)
-                .apply();
-
-        if (launchedFromAppForeground) {
-            // AppForeground mode: auth done, just reveal the app underneath.
-            setResult(Activity.RESULT_OK);
-            finish();
-            overridePendingTransition(0, 0);
-            return;
-        }
-
-        if (launchedFromWebRelock) {
-            // Web-relock mode: finish and let Chrome return to foreground.
-            // The web overlay detects _bioRelockInFlight=true on next visibilitychange
-            // and removes itself cleanly.
+        if (launchedFromNativeGate) {
             setResult(Activity.RESULT_OK);
             finish();
             overridePendingTransition(0, 0);
@@ -253,12 +187,7 @@ public class BiometricActivity extends FragmentActivity {
     protected void onStop() {
         super.onStop();
         // Some devices dismiss biometric without callback; fail closed deterministically.
-        if ((!launchedFromNativeGate && !launchedFromAppForeground && !launchedFromWebRelock) || nativeGateResultSent) {
-            return;
-        }
-
-        if (launchedFromNativeGate && Application.gateActivityStarted) {
-            Log.d("Facilitat", "BiometricActivity.onStop: GateActivity active after interruption, skip fail-close");
+        if (!launchedFromNativeGate || nativeGateResultSent) {
             return;
         }
 

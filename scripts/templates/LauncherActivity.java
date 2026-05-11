@@ -22,7 +22,6 @@ import android.content.res.Configuration;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.WindowManager;
 
 import java.util.Locale;
@@ -32,14 +31,10 @@ public class LauncherActivity
 
     private static final String PREFS_NAME = "facilitat_security";
     private static final String KEY_BIO_ENABLED = "biometric_enabled";
-    private static final String KEY_BIO_RELOCK_SECONDS = "biometric_relock_seconds";
-    private static final String KEY_BIO_LAST_UNLOCK_MS = "biometric_last_unlock_ms";
-    private static final String EXTRA_FORCE_NATIVE_GATE = "forceNativeGate";
-    private static final long WEB_RELOCK_SUPPRESS_MS = 15000L;
-    private static final int FOREGROUND_BIO_REQUEST_CODE = 1411;
+    private static final int INITIAL_BIO_REQUEST_CODE = 1411;
 
-    private boolean foregroundGateInFlight = false;
-    private boolean backgroundGateInFlight = false;
+    private boolean initialGateInFlight = false;
+    private boolean initialGateCompleted = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -58,21 +53,18 @@ public class LauncherActivity
     protected void onResume() {
         super.onResume();
 
-        backgroundGateInFlight = false;
-
-        if (foregroundGateInFlight) {
+        if (initialGateCompleted || initialGateInFlight) {
             return;
         }
 
-        if (!shouldRequireForegroundGate()) {
+        if (!shouldRequireInitialLaunchGate()) {
             return;
         }
 
-        foregroundGateInFlight = true;
-        Intent gateIntent = new Intent(this, BiometricActivity.class);
-        gateIntent.putExtra(BiometricActivity.EXTRA_APP_FOREGROUND, true);
+        initialGateInFlight = true;
+        Intent gateIntent = new Intent(this, GateActivity.class);
         gateIntent.addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION);
-        startActivityForResult(gateIntent, FOREGROUND_BIO_REQUEST_CODE);
+        startActivityForResult(gateIntent, INITIAL_BIO_REQUEST_CODE);
         overridePendingTransition(0, 0);
     }
 
@@ -80,12 +72,13 @@ public class LauncherActivity
     @SuppressWarnings("deprecation")
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode != FOREGROUND_BIO_REQUEST_CODE) {
+        if (requestCode != INITIAL_BIO_REQUEST_CODE) {
             return;
         }
 
-        foregroundGateInFlight = false;
+        initialGateInFlight = false;
         if (resultCode == RESULT_OK) {
+            initialGateCompleted = true;
             return;
         }
 
@@ -95,85 +88,9 @@ public class LauncherActivity
         startActivity(homeIntent);
     }
 
-    @Override
-    protected void onUserLeaveHint() {
-        super.onUserLeaveHint();
-        Log.d("Facilitat.onUserLeaveHint", "called");
-
-        if (backgroundGateInFlight) {
-            Log.d("Facilitat.onUserLeaveHint", "backgroundGateInFlight=true, returning early");
-            return;
-        }
-
-        boolean shouldRequireGate = shouldRequireBackgroundGate();
-        Log.d("Facilitat.onUserLeaveHint", "shouldRequireBackgroundGate=" + shouldRequireGate);
-
-        if (!shouldRequireGate) {
-            return;
-        }
-
-        backgroundGateInFlight = true;
-        Log.d("Facilitat.onUserLeaveHint", "pushing GateActivity with forceNativeGate");
-        Intent gateIntent = new Intent(this, GateActivity.class);
-        gateIntent.putExtra(EXTRA_FORCE_NATIVE_GATE, true);
-        gateIntent.addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION);
-        startActivity(gateIntent);
-        overridePendingTransition(0, 0);
-    }
-
-
-    private boolean shouldRequireForegroundGate() {
+    private boolean shouldRequireInitialLaunchGate() {
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
-        if (!prefs.getBoolean(KEY_BIO_ENABLED, false)) {
-            return false;
-        }
-
-        if (prefs.getBoolean(Application.KEY_BIO_JUST_UNLOCKED, false)) {
-            prefs.edit().remove(Application.KEY_BIO_JUST_UNLOCKED).apply();
-            return false;
-        }
-
-        int relockSeconds = prefs.getInt(KEY_BIO_RELOCK_SECONDS, 120);
-        if (relockSeconds != 0 && relockSeconds != 30 && relockSeconds != 120 && relockSeconds != 300) {
-            relockSeconds = 120;
-        }
-
-        if (relockSeconds == 0) {
-            return true;
-        }
-
-        long lastUnlockMs = prefs.getLong(KEY_BIO_LAST_UNLOCK_MS, 0L);
-        if (lastUnlockMs <= 0L) {
-            return true;
-        }
-
-        long elapsedMs = System.currentTimeMillis() - lastUnlockMs;
-        return elapsedMs >= relockSeconds * 1000L;
-    }
-
-    private boolean shouldRequireBackgroundGate() {
-        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
-        if (!prefs.getBoolean(KEY_BIO_ENABLED, false)) {
-            Log.d("Facilitat.onUserLeaveHint", "background gate disabled: biometric_enabled=false");
-            return false;
-        }
-
-        if (backgroundGateInFlight) {
-            Log.d("Facilitat.onUserLeaveHint", "background gate skipped: backgroundGateInFlight=true");
-            return false;
-        }
-
-        if (foregroundGateInFlight || Application.biometricActivityStarted) {
-            Log.d(
-                    "Facilitat.onUserLeaveHint",
-                    "background gate skipped: foregroundGateInFlight=" + foregroundGateInFlight
-                            + ", biometricActivityStarted=" + Application.biometricActivityStarted
-            );
-            return false;
-        }
-
-        Log.d("Facilitat.onUserLeaveHint", "background gate eligible=true");
-        return true;
+        return prefs.getBoolean(KEY_BIO_ENABLED, false);
     }
 
     @Override
@@ -189,12 +106,6 @@ public class LauncherActivity
         Uri uri = super.getLaunchingUrl();
         String country = Locale.getDefault().getCountry();
         Uri.Builder builder = uri.buildUpon();
-        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
-
-        if (prefs.getBoolean(Application.KEY_BIO_JUST_UNLOCKED, false)) {
-            long suppressUntil = System.currentTimeMillis() + WEB_RELOCK_SUPPRESS_MS;
-            builder.appendQueryParameter("_suppress_web_relock_until", String.valueOf(suppressUntil));
-        }
 
         if (country != null && !country.isEmpty()) {
             builder.appendQueryParameter("_android_country", country.toUpperCase(Locale.US));
