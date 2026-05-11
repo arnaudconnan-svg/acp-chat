@@ -35,11 +35,6 @@ public class LauncherActivity
     private static final String KEY_BIO_RELOCK_SECONDS = "biometric_relock_seconds";
     private static final String KEY_BIO_LAST_UNLOCK_MS = "biometric_last_unlock_ms";
 
-    private static final String EXTRA_NATIVE_GATE = "nativeGate";
-    private static final String EXTRA_NATIVE_GATE_PASSED = "nativeBioPassed";
-
-    private boolean biometricGateInFlight = false;
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         if (Build.VERSION.SDK_INT > Build.VERSION_CODES.O) {
@@ -56,17 +51,14 @@ public class LauncherActivity
     @Override
     protected void onResume() {
         super.onResume();
-        if (biometricGateInFlight) {
-            biometricGateInFlight = false;
-        }
-        handleNativeBiometricGate(getIntent());
+        checkBiometricPolicy(getIntent());
     }
 
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
-        handleNativeBiometricGate(intent);
+        checkBiometricPolicy(intent);
     }
 
     @Override
@@ -88,32 +80,12 @@ public class LauncherActivity
         return builder.build();
     }
 
-    private boolean handleNativeBiometricGate(Intent intent) {
-        if (!shouldOpenNativeBiometricGate(intent)) {
-            return false;
-        }
-
-        if (biometricGateInFlight) {
-            return true;
-        }
-
-        openNativeBiometricGate();
-        return true;
-    }
-
-    private boolean shouldOpenNativeBiometricGate(Intent intent) {
-        if (intent != null && intent.getBooleanExtra(EXTRA_NATIVE_GATE_PASSED, false)) {
-            // Consume this bypass once: it must skip only the immediate post-auth restart.
-            intent.removeExtra(EXTRA_NATIVE_GATE_PASSED);
-            setIntent(intent);
-            biometricGateInFlight = false;
-            return false;
-        }
-
+    private void checkBiometricPolicy(Intent intent) {
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
         boolean enabled = prefs.getBoolean(KEY_BIO_ENABLED, false);
         if (!enabled) {
-            return false;
+            Log.d("Facilitat", "native-bio policy: disabled");
+            return;
         }
 
         int relockSeconds = prefs.getInt(KEY_BIO_RELOCK_SECONDS, 120);
@@ -123,23 +95,22 @@ public class LauncherActivity
 
         long lastUnlockMs = prefs.getLong(KEY_BIO_LAST_UNLOCK_MS, 0L);
         if (lastUnlockMs <= 0L) {
-            return true;
+            Log.d("Facilitat", "native-bio policy: would require auth (no unlock timestamp)");
+            return;
         }
 
         if (relockSeconds == 0) {
-            return true;
+            Log.d("Facilitat", "native-bio policy: would require auth (relock=0)");
+            return;
         }
 
         long elapsed = System.currentTimeMillis() - lastUnlockMs;
-        return elapsed >= relockSeconds * 1000L;
-    }
-
-    private void openNativeBiometricGate() {
-        biometricGateInFlight = true;
-        Intent gateIntent = new Intent(this, BiometricActivity.class);
-        gateIntent.putExtra(EXTRA_NATIVE_GATE, true);
-        gateIntent.addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION);
-        startActivity(gateIntent);
-        overridePendingTransition(0, 0);
+        boolean shouldRequireAuth = elapsed >= relockSeconds * 1000L;
+        Log.d(
+                "Facilitat",
+                "native-bio policy: enabled, relockSeconds=" + relockSeconds
+                        + ", elapsedMs=" + elapsed
+                        + ", wouldRequireAuth=" + shouldRequireAuth
+        );
     }
 }
