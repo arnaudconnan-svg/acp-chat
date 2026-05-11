@@ -38,25 +38,27 @@ public class LauncherActivity
     private static final String EXTRA_NATIVE_GATE = "nativeGate";
     private static final String EXTRA_NATIVE_GATE_PASSED = "nativeBioPassed";
 
+    private boolean biometricGateInFlight = false;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        // Hide app content from Android recent-apps thumbnails/screenshots.
-        getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
-
-        if (handleNativeBiometricGate(getIntent())) return;
-
         if (Build.VERSION.SDK_INT > Build.VERSION_CODES.O) {
             setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
         } else {
             setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
         }
         super.onCreate(savedInstanceState);
+        // Hide app content from Android recent-apps thumbnails/screenshots.
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
+        if (biometricGateInFlight) {
+            biometricGateInFlight = false;
+        }
         handleNativeBiometricGate(getIntent());
     }
 
@@ -102,6 +104,7 @@ public class LauncherActivity
             // Consume this bypass once: it must skip only the immediate post-auth restart.
             intent.removeExtra(EXTRA_NATIVE_GATE_PASSED);
             setIntent(intent);
+            biometricGateInFlight = false;
             return false;
         }
 
@@ -130,6 +133,7 @@ public class LauncherActivity
     }
 
     private void openNativeBiometricGate() {
+        biometricGateInFlight = true;
         Intent gateIntent = new Intent(this, BiometricActivity.class);
         gateIntent.putExtra(EXTRA_NATIVE_GATE, true);
         gateIntent.addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION);
