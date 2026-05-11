@@ -61,11 +61,6 @@ public class GateActivity extends FragmentActivity {
     protected void onResume() {
         super.onResume();
 
-        if (launchDispatched && isLauncherEntryIntent()) {
-            // OEM launchers may redeliver launcher intents to an existing Gate instance.
-            launchDispatched = false;
-        }
-
         if (launchDispatched || gateInFlight) {
             return;
         }
@@ -88,6 +83,18 @@ public class GateActivity extends FragmentActivity {
         super.onNewIntent(intent);
         if (gateInFlight) {
             Log.d("Facilitat", "GateActivity.onNewIntent ignored while native gate in-flight");
+            return;
+        }
+
+        boolean launcherRedeliveryDuringDispatch = launchDispatched
+                && intent != null
+                && intent.getBooleanExtra(EXTRA_FORCE_NATIVE_GATE, false) == false
+                && Intent.ACTION_MAIN.equals(intent.getAction())
+                && (intent.hasCategory(Intent.CATEGORY_LAUNCHER)
+                || intent.hasCategory(Intent.CATEGORY_LEANBACK_LAUNCHER));
+
+        if (launcherRedeliveryDuringDispatch) {
+            Log.d("Facilitat", "GateActivity.onNewIntent ignored launcher redelivery while dispatching");
             return;
         }
 
