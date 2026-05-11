@@ -9,6 +9,8 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.WindowManager;
 
+import java.util.Set;
+
 public class GateActivity extends Activity {
 
     private static final String PREFS_NAME = "facilitat_security";
@@ -21,10 +23,12 @@ public class GateActivity extends Activity {
 
     private boolean gateInFlight = false;
     private boolean launchDispatched = false;
+    private boolean isStateRestore = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        isStateRestore = (savedInstanceState != null);
 
         if (Build.VERSION.SDK_INT > Build.VERSION_CODES.O) {
             setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
@@ -37,8 +41,19 @@ public class GateActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+
+        if (launchDispatched && isLauncherEntryIntent()) {
+            // OEM launchers may redeliver launcher intents to an existing Gate instance.
+            launchDispatched = false;
+        }
+
         if (launchDispatched || gateInFlight) {
             return;
+        }
+
+        if (isStateRestore) {
+            Log.d("Facilitat", "GateActivity resumed from state restore; checking if relock is needed");
+            isStateRestore = false;
         }
 
         if (shouldRequireNativeGate()) {
@@ -53,6 +68,10 @@ public class GateActivity extends Activity {
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
+
+        launchDispatched = false;
+        gateInFlight = false;
+        Log.d("Facilitat", "GateActivity.onNewIntent -> reset dispatch state");
     }
 
     @Override
@@ -123,6 +142,11 @@ public class GateActivity extends Activity {
             return false;
         }
 
+        if (isLauncherEntryIntent()) {
+            Log.d("Facilitat", "native-bio policy: require auth (launcher entry)");
+            return true;
+        }
+
         int relockSeconds = prefs.getInt(KEY_BIO_RELOCK_SECONDS, 120);
         if (relockSeconds != 0 && relockSeconds != 30 && relockSeconds != 120 && relockSeconds != 300) {
             relockSeconds = 120;
@@ -148,5 +172,25 @@ public class GateActivity extends Activity {
                         + ", requireAuth=" + shouldRequireAuth
         );
         return shouldRequireAuth;
+    }
+
+    private boolean isLauncherEntryIntent() {
+        Intent intent = getIntent();
+        if (intent == null) {
+            return false;
+        }
+        if (!Intent.ACTION_MAIN.equals(intent.getAction())) {
+            return false;
+        }
+
+        if (intent.hasCategory(Intent.CATEGORY_LAUNCHER)
+                || intent.hasCategory(Intent.CATEGORY_LEANBACK_LAUNCHER)) {
+            return true;
+        }
+
+        Set<String> categories = intent.getCategories();
+        return (categories == null || categories.isEmpty())
+                && intent.getData() == null
+                && intent.getType() == null;
     }
 }
