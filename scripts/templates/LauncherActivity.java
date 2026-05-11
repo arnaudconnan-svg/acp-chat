@@ -104,6 +104,12 @@ public class LauncherActivity
         }
 
         Log.d("Facilitat", "native-bio result canceled/failed -> HOME");
+        // Fail-closed: remove the task to avoid any residual app reveal behind the prompt.
+        try {
+            finishAndRemoveTask();
+        } catch (Exception ignored) {
+            finish();
+        }
         Intent homeIntent = new Intent(Intent.ACTION_MAIN);
         homeIntent.addCategory(Intent.CATEGORY_HOME);
         homeIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);

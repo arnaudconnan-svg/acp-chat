@@ -114,6 +114,7 @@ public class BiometricActivity extends FragmentActivity {
         if (!success) {
             setResult(Activity.RESULT_CANCELED);
             finish();
+            overridePendingTransition(0, 0);
             return;
         }
 
@@ -122,5 +123,6 @@ public class BiometricActivity extends FragmentActivity {
 
         setResult(Activity.RESULT_OK);
         finish();
+        overridePendingTransition(0, 0);
     }
 }
