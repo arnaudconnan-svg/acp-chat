@@ -3035,6 +3035,7 @@
     const BIOMETRIC_CREDENTIAL_KEY_PREFIX = "facilitatio_bio_cred_v1_";
     const BIOMETRIC_UNLOCK_TS_KEY_PREFIX = "facilitatio_bio_unlock_ts_v1_";
     const BIOMETRIC_HIDDEN_AT_KEY_PREFIX = "facilitatio_bio_hidden_at_v1_";
+    const BIOMETRIC_WEB_RELOCK_SUPPRESS_KEY = "facilitatio_bio_web_relock_suppress_until_v1";
     let userSessionState = {
       authenticated: false,
       user: null
@@ -3176,6 +3177,26 @@
     function getBiometricPendingNonceKey() {
       const userId = getBiometricUserId();
       return userId ? `facilitatio_bio_nonce_v1_${userId}` : "facilitatio_bio_nonce_v1";
+    }
+
+    function consumeBiometricWebRelockSuppressionFromUrl() {
+      try {
+        const url = new URL(window.location.href);
+        const raw = Number(url.searchParams.get("_suppress_web_relock_until") || 0);
+        if (Number.isFinite(raw) && raw > Date.now()) {
+          sessionStorage.setItem(BIOMETRIC_WEB_RELOCK_SUPPRESS_KEY, String(raw));
+        }
+
+        if (url.searchParams.has("_suppress_web_relock_until")) {
+          url.searchParams.delete("_suppress_web_relock_until");
+          window.history.replaceState({}, "", url.pathname + (url.search ? url.search : "") + url.hash);
+        }
+      } catch {}
+    }
+
+    function isBiometricWebRelockSuppressed() {
+      const n = Number(sessionStorage.getItem(BIOMETRIC_WEB_RELOCK_SUPPRESS_KEY) || 0);
+      return Number.isFinite(n) && n > Date.now();
     }
 
     function isBiometricLockEnabledForSession() {
@@ -5468,12 +5489,21 @@
       _bioRelockInFlight = false;
     }
 
+    function settleBioRecentsOverlayOnForeground() {
+      if (document.visibilityState !== "visible") return;
+      var _overlay = document.getElementById("bioRecentsOverlay");
+      if (!_bioRelockInFlight && !_overlay) return;
+      removeBioRecentsOverlay();
+      setBiometricUnlockTimestamp(Date.now());
+    }
+
     // Intersession beacon � pagehide + visibilitychange.
     // pagehide covers desktop close / navigation; visibilitychange covers mobile
     // (iOS Safari, Android Chrome where pagehide fires late or not at all).
     // A debounce flag prevents double-fire when both events fire in the same cycle.
     let _beaconFired = false;
     let _bioRelockInFlight = false;
+    let _bioSawHiddenTransition = false;
     window.addEventListener("pagehide", () => {
       _beaconFired = true;
       sendIntersessionBeacon();
@@ -5487,6 +5517,7 @@
         if (hiddenKey) {
           sessionStorage.setItem(hiddenKey, String(Date.now()));
         }
+        _bioSawHiddenTransition = true;
         // Invalidate biometric unlock token when app enters background
         invalidateBiometricTokenOnServerLock().catch(() => {});
       }
@@ -5494,20 +5525,28 @@
       // Reset after a short delay so future visibility changes can trigger again.
       if (document.visibilityState === "visible") {
         _beaconFired = false;
-        if (_bioRelockInFlight) {
-          // Returned from native bio attempt (success path — fail sends to Home).
-          _bioRelockInFlight = false;
-          removeBioRecentsOverlay();
-        } else if (isBiometricLockEnabledForSession()) {
+        settleBioRecentsOverlayOnForeground();
+
+        if (_bioSawHiddenTransition
+          && !_bioRelockInFlight
+          && !isBiometricWebRelockSuppressed()
+          && isBiometricLockEnabledForSession()
+          && document.hasFocus()) {
           var _hiddenKey = getBiometricHiddenAtStorageKey();
           var _hiddenAt = _hiddenKey ? Number(sessionStorage.getItem(_hiddenKey) || 0) : 0;
           var _relockDelayMs = getBiometricRelockDelayMs();
-          if (_hiddenAt > 0 && (Date.now() - _hiddenAt) >= _relockDelayMs) {
+          if (_relockDelayMs > 0 && _hiddenAt > 0 && (Date.now() - _hiddenAt) >= _relockDelayMs) {
             showBioRecentsOverlay();
           }
         }
+
+        _bioSawHiddenTransition = false;
       }
     });
+
+    window.addEventListener("focus", settleBioRecentsOverlayOnForeground);
+    window.addEventListener("pageshow", settleBioRecentsOverlayOnForeground);
+    consumeBiometricWebRelockSuppressionFromUrl();
     
     function applyScreen(id) {
       document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));

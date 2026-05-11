@@ -93,8 +93,9 @@ public class Application extends android.app.Application implements DefaultLifec
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
 
         if (prefs.getBoolean(KEY_BIO_JUST_UNLOCKED, false)) {
-            prefs.edit().remove(KEY_BIO_JUST_UNLOCKED).apply();
-            Log.d("Facilitat", source + ": justUnlocked flag set, skipping relock");
+            // Keep the marker so LauncherActivity can consume it and avoid
+            // a second biometric prompt right after GateActivity auth success.
+            Log.d("Facilitat", source + ": justUnlocked flag set, skipping relock (marker kept for Launcher)");
             return;
         }
 

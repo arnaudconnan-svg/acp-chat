@@ -17,6 +17,7 @@ public class GateActivity extends Activity {
     private static final String KEY_BIO_ENABLED = "biometric_enabled";
     private static final String KEY_BIO_RELOCK_SECONDS = "biometric_relock_seconds";
     private static final String KEY_BIO_LAST_UNLOCK_MS = "biometric_last_unlock_ms";
+    private static final String KEY_NATIVE_GATE_STARTED_MS = "native_gate_started_ms";
     private static final String EXTRA_NATIVE_GATE = "nativeGate";
     private static final String EXTRA_NATIVE_GATE_PASSED = "nativeBioPassed";
     private static final int NATIVE_GATE_REQUEST_CODE = 1407;
@@ -24,6 +25,7 @@ public class GateActivity extends Activity {
     private boolean gateInFlight = false;
     private boolean launchDispatched = false;
     private boolean isStateRestore = false;
+    private boolean duplicateLauncherIntentDuringGate = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -67,6 +69,12 @@ public class GateActivity extends Activity {
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
+        if (gateInFlight) {
+            duplicateLauncherIntentDuringGate = true;
+            Log.d("Facilitat", "GateActivity.onNewIntent ignored while native gate in-flight");
+            return;
+        }
+
         setIntent(intent);
 
         launchDispatched = false;
@@ -82,8 +90,14 @@ public class GateActivity extends Activity {
             return;
         }
 
+        getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+            .edit()
+            .remove(KEY_NATIVE_GATE_STARTED_MS)
+            .apply();
+
         gateInFlight = false;
         if (resultCode == RESULT_OK && data != null && data.getBooleanExtra(EXTRA_NATIVE_GATE_PASSED, false)) {
+            duplicateLauncherIntentDuringGate = false;
             if (!isTaskRoot()) {
                 // Gate injected over an existing task: reveal current app state instead
                 // of relaunching LauncherActivity from root.
@@ -96,11 +110,21 @@ public class GateActivity extends Activity {
             return;
         }
 
+        if (duplicateLauncherIntentDuringGate) {
+            duplicateLauncherIntentDuringGate = false;
+            Log.d("Facilitat", "GateActivity.onActivityResult canceled after duplicate launcher intent -> ignore and let onResume re-open gate");
+            return;
+        }
+
         failClosedToHome();
     }
 
     private void openNativeBiometricGate() {
         gateInFlight = true;
+        getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+            .edit()
+            .putLong(KEY_NATIVE_GATE_STARTED_MS, System.currentTimeMillis())
+            .apply();
         Intent gateIntent = new Intent(this, BiometricActivity.class);
         gateIntent.putExtra(EXTRA_NATIVE_GATE, true);
         gateIntent.addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION);

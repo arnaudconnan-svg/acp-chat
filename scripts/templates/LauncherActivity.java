@@ -34,6 +34,7 @@ public class LauncherActivity
     private static final String KEY_BIO_ENABLED = "biometric_enabled";
     private static final String KEY_BIO_RELOCK_SECONDS = "biometric_relock_seconds";
     private static final String KEY_BIO_LAST_UNLOCK_MS = "biometric_last_unlock_ms";
+    private static final long WEB_RELOCK_SUPPRESS_MS = 15000L;
     private static final int FOREGROUND_BIO_REQUEST_CODE = 1411;
 
     private boolean foregroundGateInFlight = false;
@@ -132,6 +133,13 @@ public class LauncherActivity
         Uri uri = super.getLaunchingUrl();
         String country = Locale.getDefault().getCountry();
         Uri.Builder builder = uri.buildUpon();
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+
+        if (prefs.getBoolean(Application.KEY_BIO_JUST_UNLOCKED, false)) {
+            long suppressUntil = System.currentTimeMillis() + WEB_RELOCK_SUPPRESS_MS;
+            builder.appendQueryParameter("_suppress_web_relock_until", String.valueOf(suppressUntil));
+        }
+
         if (country != null && !country.isEmpty()) {
             builder.appendQueryParameter("_android_country", country.toUpperCase(Locale.US));
         }
