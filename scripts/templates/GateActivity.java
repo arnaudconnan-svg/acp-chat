@@ -26,6 +26,7 @@ public class GateActivity extends FragmentActivity {
     private static final String KEY_BIO_LAST_UNLOCK_MS = "biometric_last_unlock_ms";
     private static final String KEY_NATIVE_GATE_STARTED_MS = "native_gate_started_ms";
     private static final String KEY_TEST_PIN_MODE = "test_pin_mode";
+    private static final String KEY_TEST_PIN_AUTO_ACCEPT = "test_pin_auto_accept";
     private static final String EXTRA_NATIVE_GATE = "nativeGate";
     private static final String EXTRA_FORCE_NATIVE_GATE = "forceNativeGate";
     private static final String EXTRA_NATIVE_GATE_PASSED = "nativeBioPassed";
@@ -110,6 +111,27 @@ public class GateActivity extends FragmentActivity {
 
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
         if (prefs.getBoolean(KEY_TEST_PIN_MODE, false)) {
+            if (prefs.getBoolean(KEY_TEST_PIN_AUTO_ACCEPT, false)) {
+                Log.d("Facilitat", "test pin mode auto-accept enabled in GateActivity");
+                gateInFlight = false;
+                getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+                        .edit()
+                        .remove(KEY_NATIVE_GATE_STARTED_MS)
+                        .putLong(KEY_BIO_LAST_UNLOCK_MS, System.currentTimeMillis())
+                        .putBoolean(Application.KEY_BIO_JUST_UNLOCKED, true)
+                        .apply();
+
+                if (!isTaskRoot()) {
+                    launchDispatched = true;
+                    finish();
+                    overridePendingTransition(0, 0);
+                    return;
+                }
+
+                launchTwa();
+                return;
+            }
+
             Log.d("Facilitat", "test pin mode enabled -> launching TestPinActivity");
             Intent testPinIntent = new Intent(this, TestPinActivity.class);
             startActivityForResult(testPinIntent, REQUEST_CODE_TEST_PIN);

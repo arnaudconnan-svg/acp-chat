@@ -27,11 +27,13 @@ public class Application extends android.app.Application implements DefaultLifec
     private static final String KEY_BIO_RELOCK_SECONDS = "biometric_relock_seconds";
     private static final String KEY_BIO_LAST_UNLOCK_MS = "biometric_last_unlock_ms";
     static final String KEY_BIO_JUST_UNLOCKED = "biometric_just_unlocked";
+    private static final String EXTRA_FORCE_NATIVE_GATE = "forceNativeGate";
 
     // Accessible from LauncherActivity/GateActivity to skip spurious relocks
     // during intra-app navigation (biometric or gate activity is already showing).
     static volatile boolean gateActivityStarted = false;
     static volatile boolean biometricActivityStarted = false;
+    private volatile boolean appWentToBackground = false;
 
     @Override
     public void onCreate() {
@@ -86,7 +88,18 @@ public class Application extends android.app.Application implements DefaultLifec
             Log.d("Facilitat", "Application.onStart: GateActivity active, skip appForeground relock");
             return;
         }
+
+        if (!appWentToBackground) {
+            return;
+        }
+
+        appWentToBackground = false;
         maybeLaunchAppForegroundBiometric("Application.onStart");
+    }
+
+    @Override
+    public void onStop(@NonNull LifecycleOwner owner) {
+        appWentToBackground = true;
     }
 
     private void maybeLaunchAppForegroundBiometric(String source) {
@@ -104,25 +117,11 @@ public class Application extends android.app.Application implements DefaultLifec
             return;
         }
 
-        int relockSeconds = prefs.getInt(KEY_BIO_RELOCK_SECONDS, 120);
-        if (relockSeconds != 0 && relockSeconds != 30 && relockSeconds != 120 && relockSeconds != 300) {
-            relockSeconds = 120;
-        }
-
-        if (relockSeconds != 0) {
-            long lastUnlockMs = prefs.getLong(KEY_BIO_LAST_UNLOCK_MS, 0L);
-            if (lastUnlockMs > 0) {
-                long elapsed = System.currentTimeMillis() - lastUnlockMs;
-                if (elapsed < relockSeconds * 1000L) {
-                    Log.d("Facilitat", source + ": within relock window (" + elapsed + "ms / " + relockSeconds + "s), skip");
-                    return;
-                }
-            }
-        }
-
-        Log.d("Facilitat", source + ": relock required, launching BiometricActivity (appForeground)");
-        Intent intent = new Intent(this, BiometricActivity.class);
-        intent.putExtra(BiometricActivity.EXTRA_APP_FOREGROUND, true);
+        // Deterministic fallback for Recents/background return: always relock
+        // after a real process background transition when biometric is enabled.
+        Log.d("Facilitat", source + ": relock required, launching GateActivity with forceNativeGate");
+        Intent intent = new Intent(this, GateActivity.class);
+        intent.putExtra(EXTRA_FORCE_NATIVE_GATE, true);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_NO_ANIMATION);
         startActivity(intent);
     }

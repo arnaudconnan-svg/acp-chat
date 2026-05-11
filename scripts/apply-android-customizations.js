@@ -7,6 +7,7 @@ const GATE_TEMPLATE_PATH = path.join(__dirname, "templates", "GateActivity.java"
 const LAUNCHER_TEMPLATE_PATH = path.join(__dirname, "templates", "LauncherActivity.java");
 const BIOMETRIC_TEMPLATE_PATH = path.join(__dirname, "templates", "BiometricActivity.java");
 const BIOMETRIC_CONFIG_TEMPLATE_PATH = path.join(__dirname, "templates", "BiometricConfigActivity.java");
+const TEST_PIN_TEMPLATE_PATH = path.join(__dirname, "templates", "TestPinActivity.java");
 const APPLICATION_TEMPLATE_PATH = path.join(__dirname, "templates", "Application.java");
 const TWA_MANIFEST_PATH = path.join(ROOT, "android-project", "twa-manifest.json");
 const APP_BUILD_GRADLE_PATH = path.join(ROOT, "android-project", "app", "build.gradle");
@@ -49,6 +50,18 @@ const BIOMETRIC_CONFIG_TARGET_PATH = path.join(
   "app",
   "BiometricConfigActivity.java"
 );
+const TEST_PIN_TARGET_PATH = path.join(
+  ROOT,
+  "android-project",
+  "app",
+  "src",
+  "main",
+  "java",
+  "io",
+  "facilitat",
+  "app",
+  "TestPinActivity.java"
+);
 const APPLICATION_TARGET_PATH = path.join(
   ROOT,
   "android-project",
@@ -88,6 +101,10 @@ function main() {
 
   if (!fs.existsSync(BIOMETRIC_CONFIG_TEMPLATE_PATH)) {
     fail(`Missing template: ${BIOMETRIC_CONFIG_TEMPLATE_PATH}`);
+  }
+
+  if (!fs.existsSync(TEST_PIN_TEMPLATE_PATH)) {
+    fail(`Missing template: ${TEST_PIN_TEMPLATE_PATH}`);
   }
 
   if (!fs.existsSync(TARGET_PATH)) {
@@ -305,6 +322,25 @@ function main() {
         console.log("[android-customize] BiometricConfigActivity already declared in AndroidManifest.xml.");
       }
 
+      if (!manifest.includes('android:name="TestPinActivity"')) {
+        manifest = manifest.replace(
+          '<activity android:name="CountryPickerActivity"',
+          [
+            '<activity android:name="TestPinActivity"',
+            '            android:label="Facilitat.io"',
+            '            android:exported="false"',
+            '            android:noHistory="true"',
+            '            android:excludeFromRecents="true"',
+            '            android:screenOrientation="portrait" />',
+            '',
+            '        <activity android:name="CountryPickerActivity"'
+          ].join("\n        ")
+        );
+        console.log("[android-customize] Added TestPinActivity to AndroidManifest.xml.");
+      } else {
+        console.log("[android-customize] TestPinActivity already declared in AndroidManifest.xml.");
+      }
+
       // Keep BiometricActivity attributes aligned even if manifest changed manually.
       const biometricBlockMatch = manifest.match(/<activity android:name="BiometricActivity"[\s\S]*?<\/activity>/);
       if (biometricBlockMatch) {
@@ -409,6 +445,15 @@ function main() {
     console.log("[android-customize] BiometricConfigActivity customization applied.");
   } else {
     console.log("[android-customize] BiometricConfigActivity already up to date.");
+  }
+
+  const testPinTemplate = fs.readFileSync(TEST_PIN_TEMPLATE_PATH, "utf8");
+  const testPinCurrent = fs.existsSync(TEST_PIN_TARGET_PATH) ? fs.readFileSync(TEST_PIN_TARGET_PATH, "utf8") : null;
+  if (testPinCurrent !== testPinTemplate) {
+    fs.writeFileSync(TEST_PIN_TARGET_PATH, testPinTemplate, "utf8");
+    console.log("[android-customize] TestPinActivity customization applied.");
+  } else {
+    console.log("[android-customize] TestPinActivity already up to date.");
   }
 
   // Application (ProcessLifecycleOwner-based app lock)

@@ -154,17 +154,25 @@ public class LauncherActivity
     private boolean shouldRequireBackgroundGate() {
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
         if (!prefs.getBoolean(KEY_BIO_ENABLED, false)) {
+            Log.d("Facilitat.onUserLeaveHint", "background gate disabled: biometric_enabled=false");
             return false;
         }
 
         if (backgroundGateInFlight) {
+            Log.d("Facilitat.onUserLeaveHint", "background gate skipped: backgroundGateInFlight=true");
             return false;
         }
 
-        if (foregroundGateInFlight || Application.gateActivityStarted || Application.biometricActivityStarted) {
+        if (foregroundGateInFlight || Application.biometricActivityStarted) {
+            Log.d(
+                    "Facilitat.onUserLeaveHint",
+                    "background gate skipped: foregroundGateInFlight=" + foregroundGateInFlight
+                            + ", biometricActivityStarted=" + Application.biometricActivityStarted
+            );
             return false;
         }
 
+        Log.d("Facilitat.onUserLeaveHint", "background gate eligible=true");
         return true;
     }
 

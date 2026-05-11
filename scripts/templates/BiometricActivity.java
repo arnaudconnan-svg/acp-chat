@@ -6,6 +6,7 @@ import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.WindowManager;
 import androidx.annotation.NonNull;
 import androidx.biometric.BiometricManager;
 import androidx.biometric.BiometricPrompt;
@@ -21,6 +22,7 @@ public class BiometricActivity extends FragmentActivity {
     private static final String KEY_BIO_LAST_UNLOCK_MS = "biometric_last_unlock_ms";
     private static final String KEY_NATIVE_GATE_STARTED_MS = "native_gate_started_ms";
     private static final String KEY_TEST_PIN_MODE = "test_pin_mode";
+    private static final String KEY_TEST_PIN_AUTO_ACCEPT = "test_pin_auto_accept";
     private static final String EXTRA_NATIVE_GATE = "nativeGate";
     static final String EXTRA_APP_FOREGROUND = "appForeground";
     private static final int REQUEST_CODE_TEST_PIN = 9002;
@@ -112,6 +114,12 @@ public class BiometricActivity extends FragmentActivity {
     private void startNativePrompt() {
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
         if (prefs.getBoolean(KEY_TEST_PIN_MODE, false)) {
+            if (prefs.getBoolean(KEY_TEST_PIN_AUTO_ACCEPT, false)) {
+                Log.d("Facilitat", "test pin mode auto-accept enabled in BiometricActivity");
+                returnNativeGateResult(true);
+                return;
+            }
+
             Log.d("Facilitat", "test pin mode enabled -> launching TestPinActivity from BiometricActivity");
             Intent testPinIntent = new Intent(this, TestPinActivity.class);
             startActivityForResult(testPinIntent, REQUEST_CODE_TEST_PIN);
