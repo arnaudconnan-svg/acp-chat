@@ -5449,11 +5449,31 @@
       });
     });
 
+    function showBioRecentsOverlay() {
+      var el = document.getElementById("bioRecentsOverlay");
+      if (!el) {
+        el = document.createElement("div");
+        el.id = "bioRecentsOverlay";
+        el.style.cssText = "position:fixed;inset:0;z-index:2147483647;background:#0d0d1a;";
+        document.body.appendChild(el);
+      }
+      el.style.display = "block";
+      _bioRelockInFlight = true;
+      try { window.location.href = "facilitat://biometric-relock"; } catch (_e) {}
+    }
+
+    function removeBioRecentsOverlay() {
+      var el = document.getElementById("bioRecentsOverlay");
+      if (el) el.remove();
+      _bioRelockInFlight = false;
+    }
+
     // Intersession beacon � pagehide + visibilitychange.
     // pagehide covers desktop close / navigation; visibilitychange covers mobile
     // (iOS Safari, Android Chrome where pagehide fires late or not at all).
     // A debounce flag prevents double-fire when both events fire in the same cycle.
     let _beaconFired = false;
+    let _bioRelockInFlight = false;
     window.addEventListener("pagehide", () => {
       _beaconFired = true;
       sendIntersessionBeacon();
@@ -5474,6 +5494,18 @@
       // Reset after a short delay so future visibility changes can trigger again.
       if (document.visibilityState === "visible") {
         _beaconFired = false;
+        if (_bioRelockInFlight) {
+          // Returned from native bio attempt (success path — fail sends to Home).
+          _bioRelockInFlight = false;
+          removeBioRecentsOverlay();
+        } else if (isBiometricLockEnabledForSession()) {
+          var _hiddenKey = getBiometricHiddenAtStorageKey();
+          var _hiddenAt = _hiddenKey ? Number(sessionStorage.getItem(_hiddenKey) || 0) : 0;
+          var _relockDelayMs = getBiometricRelockDelayMs();
+          if (_hiddenAt > 0 && (Date.now() - _hiddenAt) >= _relockDelayMs) {
+            showBioRecentsOverlay();
+          }
+        }
       }
     });
     

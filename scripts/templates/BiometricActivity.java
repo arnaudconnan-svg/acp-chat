@@ -27,6 +27,7 @@ public class BiometricActivity extends FragmentActivity {
     private boolean launchedFromNativeGate = false;
     private boolean launchedFromAppForeground = false;
     private boolean nativeGateResultSent = false;
+    private boolean launchedFromWebRelock = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -34,9 +35,14 @@ public class BiometricActivity extends FragmentActivity {
 
         launchedFromNativeGate = getIntent() != null && getIntent().getBooleanExtra(EXTRA_NATIVE_GATE, false);
         launchedFromAppForeground = getIntent() != null && getIntent().getBooleanExtra(EXTRA_APP_FOREGROUND, false);
-        Log.d("Facilitat", "BiometricActivity.onCreate launchedFromNativeGate=" + launchedFromNativeGate + " launchedFromAppForeground=" + launchedFromAppForeground);
+        android.net.Uri intentData = getIntent() != null ? getIntent().getData() : null;
+        launchedFromWebRelock = !launchedFromNativeGate && !launchedFromAppForeground
+                && intentData != null
+                && "facilitat".equals(intentData.getScheme())
+                && "biometric-relock".equals(intentData.getHost());
+        Log.d("Facilitat", "BiometricActivity.onCreate launchedFromNativeGate=" + launchedFromNativeGate + " launchedFromAppForeground=" + launchedFromAppForeground + " launchedFromWebRelock=" + launchedFromWebRelock);
 
-        if (launchedFromNativeGate || launchedFromAppForeground) {
+        if (launchedFromNativeGate || launchedFromAppForeground || launchedFromWebRelock) {
             startNativePrompt();
             return;
         }
@@ -129,6 +135,13 @@ public class BiometricActivity extends FragmentActivity {
                 overridePendingTransition(0, 0);
                 return;
             }
+            if (launchedFromWebRelock) {
+                // Web-relock fail-closed: Home already sent; just finish.
+                setResult(Activity.RESULT_CANCELED);
+                finish();
+                overridePendingTransition(0, 0);
+                return;
+            }
             setResult(Activity.RESULT_CANCELED);
             try {
                 finishAffinity();
@@ -155,6 +168,16 @@ public class BiometricActivity extends FragmentActivity {
             return;
         }
 
+        if (launchedFromWebRelock) {
+            // Web-relock mode: finish and let Chrome return to foreground.
+            // The web overlay detects _bioRelockInFlight=true on next visibilitychange
+            // and removes itself cleanly.
+            setResult(Activity.RESULT_OK);
+            finish();
+            overridePendingTransition(0, 0);
+            return;
+        }
+
         Intent result = new Intent();
         result.putExtra("nativeBioPassed", true);
         setResult(Activity.RESULT_OK, result);
@@ -166,7 +189,7 @@ public class BiometricActivity extends FragmentActivity {
     protected void onStop() {
         super.onStop();
         // Some devices dismiss biometric without callback; fail closed deterministically.
-        if ((!launchedFromNativeGate && !launchedFromAppForeground) || nativeGateResultSent) {
+        if ((!launchedFromNativeGate && !launchedFromAppForeground && !launchedFromWebRelock) || nativeGateResultSent) {
             return;
         }
         nativeGateResultSent = true;

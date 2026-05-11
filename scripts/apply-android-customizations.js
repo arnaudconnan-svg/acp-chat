@@ -264,6 +264,12 @@ function main() {
             '                <category android:name="android.intent.category.BROWSABLE" />',
             '                <data android:scheme="facilitat" android:host="biometric-verify" />',
             '            </intent-filter>',
+            '            <intent-filter>',
+            '                <action android:name="android.intent.action.VIEW" />',
+            '                <category android:name="android.intent.category.DEFAULT" />',
+            '                <category android:name="android.intent.category.BROWSABLE" />',
+            '                <data android:scheme="facilitat" android:host="biometric-relock" />',
+            '            </intent-filter>',
             '        </activity>',
             '',
             '        <activity android:name="CountryPickerActivity"'
