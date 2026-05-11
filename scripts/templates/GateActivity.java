@@ -9,9 +9,16 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.WindowManager;
 
-import java.util.Set;
+import androidx.annotation.NonNull;
+import androidx.biometric.BiometricManager;
+import androidx.biometric.BiometricPrompt;
+import androidx.core.content.ContextCompat;
+import androidx.fragment.app.FragmentActivity;
 
-public class GateActivity extends Activity {
+import java.util.Set;
+import java.util.concurrent.Executor;
+
+public class GateActivity extends FragmentActivity {
 
     private static final String PREFS_NAME = "facilitat_security";
     private static final String KEY_BIO_ENABLED = "biometric_enabled";
@@ -20,12 +27,11 @@ public class GateActivity extends Activity {
     private static final String KEY_NATIVE_GATE_STARTED_MS = "native_gate_started_ms";
     private static final String EXTRA_NATIVE_GATE = "nativeGate";
     private static final String EXTRA_NATIVE_GATE_PASSED = "nativeBioPassed";
-    private static final int NATIVE_GATE_REQUEST_CODE = 1407;
 
     private boolean gateInFlight = false;
     private boolean launchDispatched = false;
     private boolean isStateRestore = false;
-    private boolean duplicateLauncherIntentDuringGate = false;
+    private BiometricPrompt nativeGatePrompt;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -70,7 +76,6 @@ public class GateActivity extends Activity {
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         if (gateInFlight) {
-            duplicateLauncherIntentDuringGate = true;
             Log.d("Facilitat", "GateActivity.onNewIntent ignored while native gate in-flight");
             return;
         }
@@ -82,54 +87,83 @@ public class GateActivity extends Activity {
         Log.d("Facilitat", "GateActivity.onNewIntent -> reset dispatch state");
     }
 
-    @Override
-    @SuppressWarnings("deprecation")
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode != NATIVE_GATE_REQUEST_CODE) {
-            return;
-        }
-
-        getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
-            .edit()
-            .remove(KEY_NATIVE_GATE_STARTED_MS)
-            .apply();
-
-        gateInFlight = false;
-        if (resultCode == RESULT_OK && data != null && data.getBooleanExtra(EXTRA_NATIVE_GATE_PASSED, false)) {
-            duplicateLauncherIntentDuringGate = false;
-            if (!isTaskRoot()) {
-                // Gate injected over an existing task: reveal current app state instead
-                // of relaunching LauncherActivity from root.
-                launchDispatched = true;
-                finish();
-                overridePendingTransition(0, 0);
-                return;
-            }
-            launchTwa();
-            return;
-        }
-
-        if (duplicateLauncherIntentDuringGate) {
-            duplicateLauncherIntentDuringGate = false;
-            Log.d("Facilitat", "GateActivity.onActivityResult canceled after duplicate launcher intent -> ignore and let onResume re-open gate");
-            return;
-        }
-
-        failClosedToHome();
-    }
-
     private void openNativeBiometricGate() {
+        if (gateInFlight) {
+            return;
+        }
+
         gateInFlight = true;
         getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
             .edit()
             .putLong(KEY_NATIVE_GATE_STARTED_MS, System.currentTimeMillis())
             .apply();
-        Intent gateIntent = new Intent(this, BiometricActivity.class);
-        gateIntent.putExtra(EXTRA_NATIVE_GATE, true);
-        gateIntent.addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION);
-        startActivityForResult(gateIntent, NATIVE_GATE_REQUEST_CODE);
-        overridePendingTransition(0, 0);
+
+        BiometricManager biometricManager = BiometricManager.from(this);
+        int canAuthenticate = biometricManager.canAuthenticate(
+                BiometricManager.Authenticators.BIOMETRIC_STRONG
+                        | BiometricManager.Authenticators.DEVICE_CREDENTIAL);
+
+        if (canAuthenticate != BiometricManager.BIOMETRIC_SUCCESS) {
+            Log.d("Facilitat", "native-bio unavailable in GateActivity");
+            gateInFlight = false;
+            getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+                    .edit()
+                    .remove(KEY_NATIVE_GATE_STARTED_MS)
+                    .apply();
+            failClosedToHome();
+            return;
+        }
+
+        Executor executor = ContextCompat.getMainExecutor(this);
+        nativeGatePrompt = new BiometricPrompt(this, executor, new BiometricPrompt.AuthenticationCallback() {
+            @Override
+            public void onAuthenticationSucceeded(@NonNull BiometricPrompt.AuthenticationResult result) {
+                Log.d("Facilitat", "native-bio success (GateActivity)");
+                gateInFlight = false;
+                getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+                        .edit()
+                        .remove(KEY_NATIVE_GATE_STARTED_MS)
+                        .putLong(KEY_BIO_LAST_UNLOCK_MS, System.currentTimeMillis())
+                        .putBoolean(Application.KEY_BIO_JUST_UNLOCKED, true)
+                        .apply();
+
+                if (!isTaskRoot()) {
+                    launchDispatched = true;
+                    finish();
+                    overridePendingTransition(0, 0);
+                    return;
+                }
+
+                launchTwa();
+            }
+
+            @Override
+            public void onAuthenticationError(int errorCode, @NonNull CharSequence errString) {
+                Log.d("Facilitat", "native-bio error (GateActivity)=" + errorCode + " " + errString);
+                gateInFlight = false;
+                getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+                        .edit()
+                        .remove(KEY_NATIVE_GATE_STARTED_MS)
+                        .apply();
+                failClosedToHome();
+            }
+
+            @Override
+            public void onAuthenticationFailed() {
+                Log.d("Facilitat", "native-bio failed attempt (GateActivity)");
+            }
+        });
+
+        BiometricPrompt.PromptInfo promptInfo = new BiometricPrompt.PromptInfo.Builder()
+                .setTitle("Facilitat.io")
+                .setSubtitle("Verification requise")
+                .setConfirmationRequired(true)
+                .setAllowedAuthenticators(
+                        BiometricManager.Authenticators.BIOMETRIC_STRONG
+                                | BiometricManager.Authenticators.DEVICE_CREDENTIAL)
+                .build();
+
+        nativeGatePrompt.authenticate(promptInfo);
     }
 
     private void launchTwa() {
