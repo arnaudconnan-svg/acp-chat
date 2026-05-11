@@ -15,6 +15,8 @@
  */
 package io.facilitat.app;
 
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
 import android.net.Uri;
@@ -28,6 +30,14 @@ import java.util.Locale;
 public class LauncherActivity
         extends com.google.androidbrowserhelper.trusted.LauncherActivity {
 
+    private static final String PREFS_NAME = "facilitat_security";
+    private static final String KEY_BIO_ENABLED = "biometric_enabled";
+    private static final String KEY_BIO_RELOCK_SECONDS = "biometric_relock_seconds";
+    private static final String KEY_BIO_LAST_UNLOCK_MS = "biometric_last_unlock_ms";
+    private static final int FOREGROUND_BIO_REQUEST_CODE = 1411;
+
+    private boolean foregroundGateInFlight = false;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         if (Build.VERSION.SDK_INT > Build.VERSION_CODES.O) {
@@ -39,6 +49,74 @@ public class LauncherActivity
         // Hide app content from Android recent-apps thumbnails/screenshots.
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        if (foregroundGateInFlight) {
+            return;
+        }
+
+        if (!shouldRequireForegroundGate()) {
+            return;
+        }
+
+        foregroundGateInFlight = true;
+        Intent gateIntent = new Intent(this, BiometricActivity.class);
+        gateIntent.putExtra(BiometricActivity.EXTRA_APP_FOREGROUND, true);
+        gateIntent.addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION);
+        startActivityForResult(gateIntent, FOREGROUND_BIO_REQUEST_CODE);
+        overridePendingTransition(0, 0);
+    }
+
+    @Override
+    @SuppressWarnings("deprecation")
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode != FOREGROUND_BIO_REQUEST_CODE) {
+            return;
+        }
+
+        foregroundGateInFlight = false;
+        if (resultCode == RESULT_OK) {
+            return;
+        }
+
+        Intent homeIntent = new Intent(Intent.ACTION_MAIN);
+        homeIntent.addCategory(Intent.CATEGORY_HOME);
+        homeIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        startActivity(homeIntent);
+    }
+
+    private boolean shouldRequireForegroundGate() {
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        if (!prefs.getBoolean(KEY_BIO_ENABLED, false)) {
+            return false;
+        }
+
+        if (prefs.getBoolean(Application.KEY_BIO_JUST_UNLOCKED, false)) {
+            prefs.edit().remove(Application.KEY_BIO_JUST_UNLOCKED).apply();
+            return false;
+        }
+
+        int relockSeconds = prefs.getInt(KEY_BIO_RELOCK_SECONDS, 120);
+        if (relockSeconds != 0 && relockSeconds != 30 && relockSeconds != 120 && relockSeconds != 300) {
+            relockSeconds = 120;
+        }
+
+        if (relockSeconds == 0) {
+            return true;
+        }
+
+        long lastUnlockMs = prefs.getLong(KEY_BIO_LAST_UNLOCK_MS, 0L);
+        if (lastUnlockMs <= 0L) {
+            return true;
+        }
+
+        long elapsedMs = System.currentTimeMillis() - lastUnlockMs;
+        return elapsedMs >= relockSeconds * 1000L;
     }
 
     @Override

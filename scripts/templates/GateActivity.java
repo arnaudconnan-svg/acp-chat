@@ -84,6 +84,14 @@ public class GateActivity extends Activity {
 
         gateInFlight = false;
         if (resultCode == RESULT_OK && data != null && data.getBooleanExtra(EXTRA_NATIVE_GATE_PASSED, false)) {
+            if (!isTaskRoot()) {
+                // Gate injected over an existing task: reveal current app state instead
+                // of relaunching LauncherActivity from root.
+                launchDispatched = true;
+                finish();
+                overridePendingTransition(0, 0);
+                return;
+            }
             launchTwa();
             return;
         }

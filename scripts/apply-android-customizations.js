@@ -7,6 +7,7 @@ const GATE_TEMPLATE_PATH = path.join(__dirname, "templates", "GateActivity.java"
 const LAUNCHER_TEMPLATE_PATH = path.join(__dirname, "templates", "LauncherActivity.java");
 const BIOMETRIC_TEMPLATE_PATH = path.join(__dirname, "templates", "BiometricActivity.java");
 const BIOMETRIC_CONFIG_TEMPLATE_PATH = path.join(__dirname, "templates", "BiometricConfigActivity.java");
+const APPLICATION_TEMPLATE_PATH = path.join(__dirname, "templates", "Application.java");
 const TWA_MANIFEST_PATH = path.join(ROOT, "android-project", "twa-manifest.json");
 const APP_BUILD_GRADLE_PATH = path.join(ROOT, "android-project", "app", "build.gradle");
 const LAUNCHER_ACTIVITY_PATH = path.join(ROOT, "android-project", "app", "src", "main", "java", "io", "facilitat", "app", "LauncherActivity.java");
@@ -47,6 +48,18 @@ const BIOMETRIC_CONFIG_TARGET_PATH = path.join(
   "facilitat",
   "app",
   "BiometricConfigActivity.java"
+);
+const APPLICATION_TARGET_PATH = path.join(
+  ROOT,
+  "android-project",
+  "app",
+  "src",
+  "main",
+  "java",
+  "io",
+  "facilitat",
+  "app",
+  "Application.java"
 );
 
 function fail(message) {
@@ -112,17 +125,23 @@ function main() {
       let manifest = fs.readFileSync(ANDROID_MANIFEST_PATH, "utf8");
       
       // Portrait orientation on LauncherActivity
-      const launcherActivityPattern = /<activity android:name="LauncherActivity"\s+android:alwaysRetainTaskState="true"\s+android:label="@string\/launcherName"\s+android:exported="true">/;
-      const launcherActivityPatternWithOrientation = /<activity android:name="LauncherActivity"\s+android:alwaysRetainTaskState="true"\s+android:label="@string\/launcherName"\s+android:exported="true"\s+android:screenOrientation="portrait">/;
+      const launcherActivityPattern = /<activity android:name="LauncherActivity"\s+android:label="@string\/launcherName"\s+android:exported="true">/;
+      const launcherActivityPatternWithOrientation = /<activity android:name="LauncherActivity"\s+android:label="@string\/launcherName"\s+android:exported="true"\s+android:screenOrientation="portrait">/;
 
       if (!launcherActivityPatternWithOrientation.test(manifest) && launcherActivityPattern.test(manifest)) {
         manifest = manifest.replace(
           launcherActivityPattern,
-          '<activity android:name="LauncherActivity"\n            android:alwaysRetainTaskState="true"\n            android:label="@string/launcherName"\n            android:exported="true"\n            android:screenOrientation="portrait">'
+          '<activity android:name="LauncherActivity"\n            android:label="@string/launcherName"\n            android:exported="true"\n            android:screenOrientation="portrait">'
         );
         console.log("[android-customize] Applied portrait screenOrientation to AndroidManifest.xml LauncherActivity.");
       } else if (launcherActivityPatternWithOrientation.test(manifest)) {
         console.log("[android-customize] AndroidManifest.xml LauncherActivity already has portrait orientation.");
+      }
+
+      // Avoid sticky task retention that can keep Chrome on top and bypass Gate on relaunch.
+      if (manifest.includes('android:alwaysRetainTaskState="true"')) {
+        manifest = manifest.replace(/\s*android:alwaysRetainTaskState="true"\n/g, "\n");
+        console.log("[android-customize] Removed LauncherActivity alwaysRetainTaskState=true.");
       }
 
       // Insert GateActivity as the app entrypoint when missing.
@@ -148,6 +167,33 @@ function main() {
           ].join("\n        ")
         );
         console.log("[android-customize] Added GateActivity launcher entrypoint to AndroidManifest.xml.");
+      }
+
+      // Ensure GateActivity is relaunched as task entry without clearing the current session stack.
+      const gateBlockMatch = manifest.match(/<activity android:name="GateActivity"[\s\S]*?<\/activity>/);
+      if (gateBlockMatch) {
+        const gateBlock = gateBlockMatch[0];
+        let updatedGateBlock = gateBlock;
+
+        if (!updatedGateBlock.includes('android:launchMode="singleTask"')) {
+          if (updatedGateBlock.includes('android:launchMode="')) {
+            updatedGateBlock = updatedGateBlock.replace(/android:launchMode="[^"]*"/, 'android:launchMode="singleTask"');
+          } else {
+            updatedGateBlock = updatedGateBlock.replace(
+              'android:screenOrientation="portrait"',
+              'android:screenOrientation="portrait"\n                    android:launchMode="singleTask"'
+            );
+          }
+        }
+
+        if (updatedGateBlock.includes('android:clearTaskOnLaunch="true"')) {
+          updatedGateBlock = updatedGateBlock.replace(/\s*android:clearTaskOnLaunch="true"\n/g, "\n");
+        }
+
+        if (updatedGateBlock !== gateBlock) {
+          manifest = manifest.replace(gateBlock, updatedGateBlock);
+          console.log("[android-customize] Enforced GateActivity singleTask without clearTaskOnLaunch.");
+        }
       }
 
       // Ensure LauncherActivity reuses the existing task instead of recreating a new app instance.
@@ -357,6 +403,16 @@ function main() {
     console.log("[android-customize] BiometricConfigActivity customization applied.");
   } else {
     console.log("[android-customize] BiometricConfigActivity already up to date.");
+  }
+
+  // Application (ProcessLifecycleOwner-based app lock)
+  const applicationTemplate = fs.readFileSync(APPLICATION_TEMPLATE_PATH, "utf8");
+  const applicationCurrent = fs.existsSync(APPLICATION_TARGET_PATH) ? fs.readFileSync(APPLICATION_TARGET_PATH, "utf8") : null;
+  if (applicationCurrent !== applicationTemplate) {
+    fs.writeFileSync(APPLICATION_TARGET_PATH, applicationTemplate, "utf8");
+    console.log("[android-customize] Application customization applied.");
+  } else {
+    console.log("[android-customize] Application already up to date.");
   }
 }
 

@@ -5,7 +5,6 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.Process;
 import android.util.Log;
 import androidx.annotation.NonNull;
 import androidx.biometric.BiometricManager;
@@ -21,10 +20,12 @@ public class BiometricActivity extends FragmentActivity {
     private static final String PREFS_NAME = "facilitat_security";
     private static final String KEY_BIO_LAST_UNLOCK_MS = "biometric_last_unlock_ms";
     private static final String EXTRA_NATIVE_GATE = "nativeGate";
+    static final String EXTRA_APP_FOREGROUND = "appForeground";
 
     private String callbackPath = "/";
     private String bioNonce = "";
     private boolean launchedFromNativeGate = false;
+    private boolean launchedFromAppForeground = false;
     private boolean nativeGateResultSent = false;
 
     @Override
@@ -32,9 +33,10 @@ public class BiometricActivity extends FragmentActivity {
         super.onCreate(savedInstanceState);
 
         launchedFromNativeGate = getIntent() != null && getIntent().getBooleanExtra(EXTRA_NATIVE_GATE, false);
-        Log.d("Facilitat", "BiometricActivity.onCreate launchedFromNativeGate=" + launchedFromNativeGate);
+        launchedFromAppForeground = getIntent() != null && getIntent().getBooleanExtra(EXTRA_APP_FOREGROUND, false);
+        Log.d("Facilitat", "BiometricActivity.onCreate launchedFromNativeGate=" + launchedFromNativeGate + " launchedFromAppForeground=" + launchedFromAppForeground);
 
-        if (launchedFromNativeGate) {
+        if (launchedFromNativeGate || launchedFromAppForeground) {
             startNativePrompt();
             return;
         }
@@ -119,6 +121,14 @@ public class BiometricActivity extends FragmentActivity {
             homeIntent.addCategory(Intent.CATEGORY_HOME);
             homeIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             startActivity(homeIntent);
+            if (launchedFromAppForeground) {
+                // AppForeground mode: send to home and finish; app stays in memory,
+                // locked until next foreground return triggers a new prompt.
+                setResult(Activity.RESULT_CANCELED);
+                finish();
+                overridePendingTransition(0, 0);
+                return;
+            }
             setResult(Activity.RESULT_CANCELED);
             try {
                 finishAffinity();
@@ -126,13 +136,24 @@ public class BiometricActivity extends FragmentActivity {
             }
             finish();
             overridePendingTransition(0, 0);
-            // Ultimate fail-closed: ensure no app content remains foreground.
-            Process.killProcess(Process.myPid());
             return;
         }
 
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
-        prefs.edit().putLong(KEY_BIO_LAST_UNLOCK_MS, System.currentTimeMillis()).apply();
+        // Write timestamp + justUnlocked guard so Application.onStart() skips the
+        // immediate relock check when this activity finishes and the app resumes.
+        prefs.edit()
+                .putLong(KEY_BIO_LAST_UNLOCK_MS, System.currentTimeMillis())
+                .putBoolean(Application.KEY_BIO_JUST_UNLOCKED, true)
+                .apply();
+
+        if (launchedFromAppForeground) {
+            // AppForeground mode: auth done, just reveal the app underneath.
+            setResult(Activity.RESULT_OK);
+            finish();
+            overridePendingTransition(0, 0);
+            return;
+        }
 
         Intent result = new Intent();
         result.putExtra("nativeBioPassed", true);
@@ -145,7 +166,7 @@ public class BiometricActivity extends FragmentActivity {
     protected void onStop() {
         super.onStop();
         // Some devices dismiss biometric without callback; fail closed deterministically.
-        if (!launchedFromNativeGate || nativeGateResultSent) {
+        if ((!launchedFromNativeGate && !launchedFromAppForeground) || nativeGateResultSent) {
             return;
         }
         nativeGateResultSent = true;
