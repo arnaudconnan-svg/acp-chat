@@ -55,6 +55,8 @@ public class LauncherActivity
 
     @Override
     protected void onResume() {
+        super.onResume();
+
         if (biometricGateInFlight) {
             // If we resumed while gate is still marked in-flight, treat it as inconsistent
             // and fail closed (never reveal app content).
@@ -70,12 +72,12 @@ public class LauncherActivity
         if (handleNativeBiometricGate(getIntent())) {
             return;
         }
-
-        super.onResume();
     }
 
     @Override
     protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+
         setIntent(intent);
         // New launcher intents (icon tap / deep link) must clear stale in-flight flag.
         biometricGateInFlight = false;
@@ -83,8 +85,6 @@ public class LauncherActivity
         if (handleNativeBiometricGate(intent)) {
             return;
         }
-
-        super.onNewIntent(intent);
     }
 
     @Override
