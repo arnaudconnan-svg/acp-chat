@@ -1277,36 +1277,28 @@
         return wrap;
       }
 
-      function normalizeBiometricRelockSeconds(value) {
-        const n = Number(value);
-        if (!Number.isFinite(n)) return 120;
-        if (n === 0 || n === 30 || n === 120 || n === 300) return n;
-        return 120;
-      }
-
-      function syncNativeBiometricConfig(enabled, relockSeconds) {
+      function syncNativeBiometricConfig(enabled) {
         try {
           if (!/Android/i.test(navigator.userAgent || "")) return;
           const callbackPath = "/account.html?_account_subscreen=privacy";
           const url = "facilitat://biometric-config"
             + "?enabled=" + (enabled === true ? "1" : "0")
-            + "&relock=" + encodeURIComponent(String(normalizeBiometricRelockSeconds(relockSeconds)))
+            + "&relock=0"
             + "&callback_path=" + encodeURIComponent(callbackPath);
           window.location.href = url;
         } catch (_) {}
       }
 
-      function syncNativeBiometricConfigIfNeeded(enabled, relockSeconds) {
+      function syncNativeBiometricConfigIfNeeded(enabled) {
         try {
           if (!/Android/i.test(navigator.userAgent || "")) return;
           const normalizedEnabled = enabled === true;
-          const normalizedRelock = normalizeBiometricRelockSeconds(relockSeconds);
-          const hash = (normalizedEnabled ? "1" : "0") + ":" + String(normalizedRelock);
+          const hash = normalizedEnabled ? "1" : "0";
           const key = "facilitat_native_bio_policy_hash_v1";
           const previous = localStorage.getItem(key);
           if (previous === hash) return;
           localStorage.setItem(key, hash);
-          syncNativeBiometricConfig(normalizedEnabled, normalizedRelock);
+          syncNativeBiometricConfig(normalizedEnabled);
         } catch (_) {}
       }
 
@@ -1337,33 +1329,9 @@
         row.appendChild(toggle);
         card.appendChild(row);
 
-        const controls = document.createElement("div");
-        controls.className = "setting-inline-controls";
-
-        const selectLabel = document.createElement("span");
-        selectLabel.textContent = "Re-verrouiller apres";
-        selectLabel.style.fontSize = "13px";
-        selectLabel.style.color = "#555";
-
-        const relockSelect = document.createElement("select");
-        relockSelect.id = "biometricRelockSelect";
-        relockSelect.innerHTML = [
-          '<option value="0">retour en premier plan (immediat)</option>',
-          '<option value="30">30 secondes</option>',
-          '<option value="120">2 minutes</option>',
-          '<option value="300">5 minutes</option>'
-        ].join("");
-        const currentRelock = normalizeBiometricRelockSeconds(currentUser && currentUser.biometricRelockSeconds);
-        relockSelect.value = String(currentRelock);
-
-        controls.appendChild(selectLabel);
-        controls.appendChild(relockSelect);
-        card.appendChild(controls);
-
         const autoSaveBiometric = async () => {
           try {
             const desiredEnabled = toggle.checked === true;
-            const desiredRelock = normalizeBiometricRelockSeconds(relockSelect.value);
 
             const res = await fetch("/api/account/preferences", {
               method: "PUT",
@@ -1371,7 +1339,7 @@
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 biometricLockEnabled: desiredEnabled,
-                biometricRelockSeconds: desiredRelock
+                biometricRelockSeconds: 0
               })
             });
 
@@ -1380,15 +1348,13 @@
             if (!res.ok) return;
 
             currentUser.biometricLockEnabled = data.biometricLockEnabled === true;
-            currentUser.biometricRelockSeconds = normalizeBiometricRelockSeconds(data.biometricRelockSeconds);
+            currentUser.biometricRelockSeconds = 0;
             toggle.checked = currentUser.biometricLockEnabled === true;
-            relockSelect.value = String(currentUser.biometricRelockSeconds);
-            syncNativeBiometricConfigIfNeeded(currentUser.biometricLockEnabled === true, currentUser.biometricRelockSeconds);
+            syncNativeBiometricConfigIfNeeded(currentUser.biometricLockEnabled === true);
           } catch (_) {}
         };
 
         toggle.addEventListener("change", autoSaveBiometric);
-        relockSelect.addEventListener("change", autoSaveBiometric);
 
         return card;
       }
