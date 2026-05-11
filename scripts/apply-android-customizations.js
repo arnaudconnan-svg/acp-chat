@@ -161,6 +161,8 @@ function main() {
             '<activity android:name="BiometricActivity"',
             '            android:label="Facilitat.io"',
             '            android:exported="true"',
+            '            android:noHistory="true"',
+            '            android:excludeFromRecents="true"',
             '            android:screenOrientation="portrait">',
             '            <intent-filter>',
             '                <action android:name="android.intent.action.VIEW" />',
@@ -209,13 +211,18 @@ function main() {
         const biometricBlock = biometricBlockMatch[0];
         let updatedBiometricBlock = biometricBlock;
 
+        // Reset any previous values first, then force true deterministically.
         updatedBiometricBlock = updatedBiometricBlock.replace(/\s+android:noHistory="[^"]*"/g, "");
         updatedBiometricBlock = updatedBiometricBlock.replace(/\s+android:excludeFromRecents="[^"]*"/g, "");
-        updatedBiometricBlock = updatedBiometricBlock.replace(/\s+android:theme="[^"]*"/g, "");
+        updatedBiometricBlock = updatedBiometricBlock.replace(
+          /android:exported="true"/,
+          'android:exported="true"\n            android:noHistory="true"\n            android:excludeFromRecents="true"'
+        );
 
         if (updatedBiometricBlock !== biometricBlock) {
           manifest = manifest.replace(biometricBlock, updatedBiometricBlock);
-          console.log("[android-customize] Normalized BiometricActivity manifest attributes (removed unstable overrides).");
+          console.log("[android-customize] Normalized BiometricActivity manifest attributes (noHistory + excludeFromRecents)."
+          );
         }
       }
 

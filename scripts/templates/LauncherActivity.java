@@ -94,8 +94,6 @@ public class LauncherActivity
         }
 
         openNativeBiometricGate();
-        finish();
-        overridePendingTransition(0, 0);
         return true;
     }
 
