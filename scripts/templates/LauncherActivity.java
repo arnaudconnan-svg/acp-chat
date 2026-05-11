@@ -98,16 +98,22 @@ public class LauncherActivity
     @Override
     protected void onUserLeaveHint() {
         super.onUserLeaveHint();
+        Log.d("Facilitat.onUserLeaveHint", "called");
 
         if (backgroundGateInFlight) {
+            Log.d("Facilitat.onUserLeaveHint", "backgroundGateInFlight=true, returning early");
             return;
         }
 
-        if (!shouldRequireBackgroundGate()) {
+        boolean shouldRequireGate = shouldRequireBackgroundGate();
+        Log.d("Facilitat.onUserLeaveHint", "shouldRequireBackgroundGate=" + shouldRequireGate);
+
+        if (!shouldRequireGate) {
             return;
         }
 
         backgroundGateInFlight = true;
+        Log.d("Facilitat.onUserLeaveHint", "pushing GateActivity with forceNativeGate");
         Intent gateIntent = new Intent(this, GateActivity.class);
         gateIntent.putExtra(EXTRA_FORCE_NATIVE_GATE, true);
         gateIntent.addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION);

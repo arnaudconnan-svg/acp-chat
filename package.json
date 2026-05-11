@@ -52,6 +52,9 @@
     "twa:install:safe": "npm run android:icon:verify && node scripts/twa-safe-install.js",
     "twa:signing-key": "node scripts/signing-key-setup.js",
     "twa:build": "node scripts/bubblewrap-init.js && npm run android:apply-customizations",
+    "logcat:recents": "node scripts/logcat-reader.js 100",
+    "logcat:all": "node scripts/logcat-reader.js 500",
+    "testpin:mode": "node scripts/testpin-mode.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

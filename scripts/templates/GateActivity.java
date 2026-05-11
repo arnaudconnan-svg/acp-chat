@@ -25,9 +25,11 @@ public class GateActivity extends FragmentActivity {
     private static final String KEY_BIO_RELOCK_SECONDS = "biometric_relock_seconds";
     private static final String KEY_BIO_LAST_UNLOCK_MS = "biometric_last_unlock_ms";
     private static final String KEY_NATIVE_GATE_STARTED_MS = "native_gate_started_ms";
+    private static final String KEY_TEST_PIN_MODE = "test_pin_mode";
     private static final String EXTRA_NATIVE_GATE = "nativeGate";
     private static final String EXTRA_FORCE_NATIVE_GATE = "forceNativeGate";
     private static final String EXTRA_NATIVE_GATE_PASSED = "nativeBioPassed";
+    private static final int REQUEST_CODE_TEST_PIN = 9001;
 
     private boolean gateInFlight = false;
     private boolean launchDispatched = false;
@@ -99,6 +101,14 @@ public class GateActivity extends FragmentActivity {
             .putLong(KEY_NATIVE_GATE_STARTED_MS, System.currentTimeMillis())
             .apply();
 
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        if (prefs.getBoolean(KEY_TEST_PIN_MODE, false)) {
+            Log.d("Facilitat", "test pin mode enabled -> launching TestPinActivity");
+            Intent testPinIntent = new Intent(this, TestPinActivity.class);
+            startActivityForResult(testPinIntent, REQUEST_CODE_TEST_PIN);
+            return;
+        }
+
         BiometricManager biometricManager = BiometricManager.from(this);
         int canAuthenticate = biometricManager.canAuthenticate(
                 BiometricManager.Authenticators.BIOMETRIC_STRONG
@@ -165,6 +175,41 @@ public class GateActivity extends FragmentActivity {
                 .build();
 
         nativeGatePrompt.authenticate(promptInfo);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode == REQUEST_CODE_TEST_PIN) {
+            if (resultCode == RESULT_OK && data != null && data.getBooleanExtra("test_pin_accepted", false)) {
+                Log.d("Facilitat", "test pin accepted in GateActivity");
+                gateInFlight = false;
+                getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+                        .edit()
+                        .remove(KEY_NATIVE_GATE_STARTED_MS)
+                        .putLong(KEY_BIO_LAST_UNLOCK_MS, System.currentTimeMillis())
+                        .putBoolean(Application.KEY_BIO_JUST_UNLOCKED, true)
+                        .apply();
+
+                if (!isTaskRoot()) {
+                    launchDispatched = true;
+                    finish();
+                    overridePendingTransition(0, 0);
+                    return;
+                }
+
+                launchTwa();
+            } else {
+                Log.d("Facilitat", "test pin rejected/cancelled");
+                gateInFlight = false;
+                getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+                        .edit()
+                        .remove(KEY_NATIVE_GATE_STARTED_MS)
+                        .apply();
+                failClosedToHome();
+            }
+        }
     }
 
     private void launchTwa() {
@@ -248,7 +293,9 @@ public class GateActivity extends FragmentActivity {
 
     private boolean isForcedRelockIntent() {
         Intent intent = getIntent();
-        return intent != null && intent.getBooleanExtra(EXTRA_FORCE_NATIVE_GATE, false);
+        boolean result = intent != null && intent.getBooleanExtra(EXTRA_FORCE_NATIVE_GATE, false);
+        Log.d("Facilitat.GateActivity", "isForcedRelockIntent=" + result);
+        return result;
     }
 
     private boolean isLauncherEntryIntent() {

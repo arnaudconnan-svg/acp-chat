@@ -20,8 +20,10 @@ public class BiometricActivity extends FragmentActivity {
     private static final String PREFS_NAME = "facilitat_security";
     private static final String KEY_BIO_LAST_UNLOCK_MS = "biometric_last_unlock_ms";
     private static final String KEY_NATIVE_GATE_STARTED_MS = "native_gate_started_ms";
+    private static final String KEY_TEST_PIN_MODE = "test_pin_mode";
     private static final String EXTRA_NATIVE_GATE = "nativeGate";
     static final String EXTRA_APP_FOREGROUND = "appForeground";
+    private static final int REQUEST_CODE_TEST_PIN = 9002;
 
     private String callbackPath = "/";
     private String bioNonce = "";
@@ -101,6 +103,14 @@ public class BiometricActivity extends FragmentActivity {
     }
 
     private void startNativePrompt() {
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        if (prefs.getBoolean(KEY_TEST_PIN_MODE, false)) {
+            Log.d("Facilitat", "test pin mode enabled -> launching TestPinActivity from BiometricActivity");
+            Intent testPinIntent = new Intent(this, TestPinActivity.class);
+            startActivityForResult(testPinIntent, REQUEST_CODE_TEST_PIN);
+            return;
+        }
+
         BiometricManager biometricManager = BiometricManager.from(this);
         int canAuthenticate = biometricManager.canAuthenticate(
                 BiometricManager.Authenticators.BIOMETRIC_STRONG
@@ -142,6 +152,21 @@ public class BiometricActivity extends FragmentActivity {
                 .build();
 
         prompt.authenticate(promptInfo);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode == REQUEST_CODE_TEST_PIN) {
+            if (resultCode == RESULT_OK && data != null && data.getBooleanExtra("test_pin_accepted", false)) {
+                Log.d("Facilitat", "test pin accepted in BiometricActivity");
+                returnNativeGateResult(true);
+            } else {
+                Log.d("Facilitat", "test pin rejected/cancelled in BiometricActivity");
+                returnNativeGateResult(false);
+            }
+        }
     }
 
     private void returnNativeGateResult(boolean success) {

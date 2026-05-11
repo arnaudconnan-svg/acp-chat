@@ -36,6 +36,58 @@ Stabiliser et enrichir l'experience Android TWA pour un usage mobile fluide, fia
 - Cette trace sert de memoire de travail a l'agent, pas au cadrage produit pour l'utilisateur.
 - Avant tout nouveau patch biometrie/Recents, verifier si l'hypothese a deja ete testee ou invalidee.
 - Pour chaque nouvel essai utile, noter en une ligne: hypothese, fichier touche, resultat observe, et critere d'abandon.
-- Essai Recents natif en cours: LauncherActivity.onUserLeaveHint() pousse GateActivity avec relock force via un extra dedie.
+## Recents biometric protection
+
+### Essai 1 (invalide)
+- LauncherActivity.onUserLeaveHint() → Recents réouvre l'app SANS biométrie
+- L'hook n'est probablement pas appelé pour Recents, ou le timing est trop tard
+- ABANDONNER cette approche
+
+### Essai 2 (en cours) — Mode test PIN + logs déterminants
+
+**Objectif :** Éliminer les hypothèses sur pourquoi onUserLeaveHint n'a pas marché. Utiliser des logs + mode test PIN pour des itérations rapides sans dépendre des tests manuels biométriques.
+
+**Implémentation :**
+
+1. **TestPinActivity.java** (nouveau)
+   - Activity simple avec clavier numérique 0-9
+   - Accepte le code PIN `999999`
+   - Accessible seulement si `test_pin_mode` pref est `true`
+   - Simule une authentification réussie quand le bon code est entré
+   - Retour au GateActivity / BiometricActivity via onActivityResult
+
+2. **GateActivity + BiometricActivity modifiées**
+   - Vérification pref `test_pin_mode` dans `openNativeBiometricGate()` / `startNativePrompt()`
+   - Si activée : lancer TestPinActivity au lieu de BiometricPrompt
+   - Traiter onActivityResult pour simuler succès/échec biométrique
+
+3. **Logs ajoutés**
+   - LauncherActivity.onUserLeaveHint() : `Log.d("Facilitat.onUserLeaveHint", "called")` et `shouldRequireBackgroundGate=X`
+   - LauncherActivity.shouldRequireBackgroundGate() : logs d'état (bio enabled, conflicts, conditions)
+   - GateActivity.isForcedRelockIntent() : `Log.d("Facilitat.GateActivity", "isForcedRelockIntent=X")`
+   - Tous les logs GateActivity/BiometricActivity existants restent en place
+
+**Protocole de test :**
+
+1. Activer mode test PIN dans SharedPreferences : `setProperty("test_pin_mode", true)` 
+   - Ou via les paramètres de config android si interface disponible
+2. Redémarrer l'app
+3. Tester Recents : appuyer sur Recents, re-appuyer sur l'app → doit demander code PIN `999999`
+4. Lire logcat avec : `npm run logcat:recents` (voir ci-dessous)
+5. Observer les logs pour voir si onUserLeaveHint() a été appelé et quel état a retourné shouldRequireBackgroundGate()
+
+**Lectures logcat :**
+- `npm run logcat:recents` : lire les 100 dernières lignes de logcat filtrées sur Facilitat
+- Pour une session complète : `adb logcat | grep Facilitat`
+
+**Résultats attendus :**
+- Si logs montrent `onUserLeaveHint() called` + `shouldRequireBackgroundGate=true` : l'hook marche, mais la Gate n'est pas lancée. Revoir LauncherActivity.startActivity ou les flags.
+- Si logs montrent `onUserLeaveHint()` NOT called : l'hook n'existe pas pour Recents. Pivot à Application.onStart() ou autre.
+- Si logs montrent `isForcedRelockIntent=true` dans GateActivity : la Gate a bien reçu le flag. Flow fonctionne jusqu'ici.
+
+### Repère pour l'agent
+- Cette trace sert de memoire de travail a l'agent, pas au cadrage produit pour l'utilisateur.
+- Avant tout nouveau patch biometrie/Recents, verifier si l'hypothese a deja ete testee ou invalidee.
+- Pour chaque nouvel essai utile, noter en une ligne: hypothese, fichier touche, resultat observe, et critere d'abandon.
 - Ne pas retenter deux fois la meme hypothese sans nouvelle observation terrain.
 - Si un essai corrige Launcher mais degrade Recents ou l'inverse, l'indiquer explicitement avant d'aller plus loin.
