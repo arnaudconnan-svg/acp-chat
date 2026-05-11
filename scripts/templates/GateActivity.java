@@ -26,6 +26,7 @@ public class GateActivity extends FragmentActivity {
     private static final String KEY_BIO_LAST_UNLOCK_MS = "biometric_last_unlock_ms";
     private static final String KEY_NATIVE_GATE_STARTED_MS = "native_gate_started_ms";
     private static final String EXTRA_NATIVE_GATE = "nativeGate";
+    private static final String EXTRA_FORCE_NATIVE_GATE = "forceNativeGate";
     private static final String EXTRA_NATIVE_GATE_PASSED = "nativeBioPassed";
 
     private boolean gateInFlight = false;
@@ -208,6 +209,11 @@ public class GateActivity extends FragmentActivity {
             return false;
         }
 
+        if (isForcedRelockIntent()) {
+            Log.d("Facilitat", "native-bio policy: require auth (app leave / Recents)");
+            return true;
+        }
+
         if (isLauncherEntryIntent()) {
             Log.d("Facilitat", "native-bio policy: require auth (launcher entry)");
             return true;
@@ -238,6 +244,11 @@ public class GateActivity extends FragmentActivity {
                         + ", requireAuth=" + shouldRequireAuth
         );
         return shouldRequireAuth;
+    }
+
+    private boolean isForcedRelockIntent() {
+        Intent intent = getIntent();
+        return intent != null && intent.getBooleanExtra(EXTRA_FORCE_NATIVE_GATE, false);
     }
 
     private boolean isLauncherEntryIntent() {

@@ -34,10 +34,12 @@ public class LauncherActivity
     private static final String KEY_BIO_ENABLED = "biometric_enabled";
     private static final String KEY_BIO_RELOCK_SECONDS = "biometric_relock_seconds";
     private static final String KEY_BIO_LAST_UNLOCK_MS = "biometric_last_unlock_ms";
+    private static final String EXTRA_FORCE_NATIVE_GATE = "forceNativeGate";
     private static final long WEB_RELOCK_SUPPRESS_MS = 15000L;
     private static final int FOREGROUND_BIO_REQUEST_CODE = 1411;
 
     private boolean foregroundGateInFlight = false;
+    private boolean backgroundGateInFlight = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -55,6 +57,8 @@ public class LauncherActivity
     @Override
     protected void onResume() {
         super.onResume();
+
+        backgroundGateInFlight = false;
 
         if (foregroundGateInFlight) {
             return;
@@ -91,6 +95,27 @@ public class LauncherActivity
         startActivity(homeIntent);
     }
 
+    @Override
+    protected void onUserLeaveHint() {
+        super.onUserLeaveHint();
+
+        if (backgroundGateInFlight) {
+            return;
+        }
+
+        if (!shouldRequireBackgroundGate()) {
+            return;
+        }
+
+        backgroundGateInFlight = true;
+        Intent gateIntent = new Intent(this, GateActivity.class);
+        gateIntent.putExtra(EXTRA_FORCE_NATIVE_GATE, true);
+        gateIntent.addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION);
+        startActivity(gateIntent);
+        overridePendingTransition(0, 0);
+    }
+
+
     private boolean shouldRequireForegroundGate() {
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
         if (!prefs.getBoolean(KEY_BIO_ENABLED, false)) {
@@ -118,6 +143,23 @@ public class LauncherActivity
 
         long elapsedMs = System.currentTimeMillis() - lastUnlockMs;
         return elapsedMs >= relockSeconds * 1000L;
+    }
+
+    private boolean shouldRequireBackgroundGate() {
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        if (!prefs.getBoolean(KEY_BIO_ENABLED, false)) {
+            return false;
+        }
+
+        if (backgroundGateInFlight) {
+            return false;
+        }
+
+        if (foregroundGateInFlight || Application.gateActivityStarted || Application.biometricActivityStarted) {
+            return false;
+        }
+
+        return true;
     }
 
     @Override

@@ -1329,6 +1329,12 @@
         row.appendChild(toggle);
         card.appendChild(row);
 
+        const note = document.createElement("p");
+        note.className = "longterm-memory-warning";
+        note.style.marginTop = "10px";
+        note.textContent = "Attention : certains appareils ne supportent pas la securite biometrie au retour dans l'app deja ouverte. Si ce probleme vous concerne, pensez a bien refermer votre application apres usage.";
+        card.appendChild(note);
+
         const autoSaveBiometric = async () => {
           try {
             const desiredEnabled = toggle.checked === true;
