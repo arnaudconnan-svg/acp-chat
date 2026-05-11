@@ -38,6 +38,7 @@ public class LauncherActivity
     private static final int NATIVE_GATE_REQUEST_CODE = 1407;
 
     private boolean biometricGateInFlight = false;
+    private boolean skipNextNativeGateOnce = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -56,7 +57,14 @@ public class LauncherActivity
     protected void onResume() {
         super.onResume();
         if (biometricGateInFlight) {
-            Log.d("Facilitat", "native-bio gate in-flight, skip duplicate launch onResume");
+            // If we resumed while gate is still marked in-flight, treat it as inconsistent
+            // and fail closed (never reveal app content).
+            Log.d("Facilitat", "native-bio in-flight resume detected -> HOME");
+            biometricGateInFlight = false;
+            Intent homeIntent = new Intent(Intent.ACTION_MAIN);
+            homeIntent.addCategory(Intent.CATEGORY_HOME);
+            homeIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(homeIntent);
             return;
         }
         handleNativeBiometricGate(getIntent());
@@ -82,6 +90,8 @@ public class LauncherActivity
         biometricGateInFlight = false;
         if (resultCode == RESULT_OK) {
             Log.d("Facilitat", "native-bio result OK");
+            // Consume one launcher resume without reopening the gate.
+            skipNextNativeGateOnce = true;
             return;
         }
 
@@ -126,6 +136,12 @@ public class LauncherActivity
     }
 
     private boolean shouldOpenNativeBiometricGate(Intent intent) {
+        if (skipNextNativeGateOnce) {
+            skipNextNativeGateOnce = false;
+            Log.d("Facilitat", "native-bio bypass consumed after success");
+            return false;
+        }
+
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
         boolean enabled = prefs.getBoolean(KEY_BIO_ENABLED, false);
         if (!enabled) {
