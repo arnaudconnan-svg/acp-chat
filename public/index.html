@@ -5470,7 +5470,12 @@
       });
     });
 
+    const ENABLE_BIO_RECENTS_RELOCK = false;
+
     function showBioRecentsOverlay() {
+      if (!ENABLE_BIO_RECENTS_RELOCK) {
+        return;
+      }
       var el = document.getElementById("bioRecentsOverlay");
       if (!el) {
         el = document.createElement("div");
@@ -5527,7 +5532,8 @@
         _beaconFired = false;
         settleBioRecentsOverlayOnForeground();
 
-        if (_bioSawHiddenTransition
+        if (ENABLE_BIO_RECENTS_RELOCK
+          && _bioSawHiddenTransition
           && !_bioRelockInFlight
           && !isBiometricWebRelockSuppressed()
           && isBiometricLockEnabledForSession()
