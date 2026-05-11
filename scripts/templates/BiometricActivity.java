@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Process;
 import android.util.Log;
 import androidx.annotation.NonNull;
 import androidx.biometric.BiometricManager;
@@ -24,6 +25,7 @@ public class BiometricActivity extends FragmentActivity {
     private String callbackPath = "/";
     private String bioNonce = "";
     private boolean launchedFromNativeGate = false;
+    private boolean nativeGateResultSent = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -111,18 +113,47 @@ public class BiometricActivity extends FragmentActivity {
     }
 
     private void returnNativeGateResult(boolean success) {
+        nativeGateResultSent = true;
         if (!success) {
+            Intent homeIntent = new Intent(Intent.ACTION_MAIN);
+            homeIntent.addCategory(Intent.CATEGORY_HOME);
+            homeIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(homeIntent);
             setResult(Activity.RESULT_CANCELED);
+            try {
+                finishAffinity();
+            } catch (Exception ignored) {
+            }
             finish();
             overridePendingTransition(0, 0);
+            // Ultimate fail-closed: ensure no app content remains foreground.
+            Process.killProcess(Process.myPid());
             return;
         }
 
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
         prefs.edit().putLong(KEY_BIO_LAST_UNLOCK_MS, System.currentTimeMillis()).apply();
 
-        setResult(Activity.RESULT_OK);
+        Intent result = new Intent();
+        result.putExtra("nativeBioPassed", true);
+        setResult(Activity.RESULT_OK, result);
         finish();
         overridePendingTransition(0, 0);
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        // Some devices dismiss biometric without callback; fail closed deterministically.
+        if (!launchedFromNativeGate || nativeGateResultSent) {
+            return;
+        }
+        nativeGateResultSent = true;
+        Intent homeIntent = new Intent(Intent.ACTION_MAIN);
+        homeIntent.addCategory(Intent.CATEGORY_HOME);
+        homeIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        startActivity(homeIntent);
+        setResult(Activity.RESULT_CANCELED);
+        finish();
     }
 }

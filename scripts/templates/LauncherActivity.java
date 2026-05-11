@@ -15,8 +15,6 @@
  */
 package io.facilitat.app;
 
-import android.content.Intent;
-import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
 import android.net.Uri;
@@ -30,28 +28,8 @@ import java.util.Locale;
 public class LauncherActivity
         extends com.google.androidbrowserhelper.trusted.LauncherActivity {
 
-    private static final String PREFS_NAME = "facilitat_security";
-    private static final String KEY_BIO_ENABLED = "biometric_enabled";
-    private static final String KEY_BIO_RELOCK_SECONDS = "biometric_relock_seconds";
-    private static final String KEY_BIO_LAST_UNLOCK_MS = "biometric_last_unlock_ms";
-    private static final String EXTRA_NATIVE_GATE = "nativeGate";
-    private static final int NATIVE_GATE_REQUEST_CODE = 1407;
-
-    private boolean biometricGateInFlight = false;
-    private boolean skipNextNativeGateOnce = false;
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        // Guard against duplicate launcher instances (icon taps while task already exists).
-        Intent launchIntent = getIntent();
-        if (!isTaskRoot()
-                && launchIntent != null
-                && Intent.ACTION_MAIN.equals(launchIntent.getAction())
-                && launchIntent.hasCategory(Intent.CATEGORY_LAUNCHER)) {
-            finish();
-            return;
-        }
-
         if (Build.VERSION.SDK_INT > Build.VERSION_CODES.O) {
             setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
         } else {
@@ -61,65 +39,6 @@ public class LauncherActivity
         // Hide app content from Android recent-apps thumbnails/screenshots.
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-
-        if (biometricGateInFlight) {
-            // If we resumed while gate is still marked in-flight, treat it as inconsistent
-            // and fail closed (never reveal app content).
-            Log.d("Facilitat", "native-bio in-flight resume detected -> HOME");
-            biometricGateInFlight = false;
-            Intent homeIntent = new Intent(Intent.ACTION_MAIN);
-            homeIntent.addCategory(Intent.CATEGORY_HOME);
-            homeIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            startActivity(homeIntent);
-            return;
-        }
-
-        if (handleNativeBiometricGate(getIntent())) {
-            return;
-        }
-    }
-
-    @Override
-    protected void onNewIntent(Intent intent) {
-        super.onNewIntent(intent);
-
-        setIntent(intent);
-        // Gate is evaluated only in onResume to avoid duplicate trigger races.
-    }
-
-    @Override
-    @SuppressWarnings("deprecation")
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode != NATIVE_GATE_REQUEST_CODE) {
-            return;
-        }
-
-        biometricGateInFlight = false;
-        if (resultCode == RESULT_OK) {
-            Log.d("Facilitat", "native-bio result OK");
-            // Consume one launcher resume without reopening the gate.
-            skipNextNativeGateOnce = true;
-            return;
-        }
-
-        Log.d("Facilitat", "native-bio result canceled/failed -> HOME");
-        // Fail-closed: remove the task to avoid any residual app reveal behind the prompt.
-        try {
-            finishAffinity();
-            finishAndRemoveTask();
-        } catch (Exception ignored) {
-            finish();
-        }
-        Intent homeIntent = new Intent(Intent.ACTION_MAIN);
-        homeIntent.addCategory(Intent.CATEGORY_HOME);
-        homeIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        startActivity(homeIntent);
     }
 
     @Override
@@ -139,69 +58,5 @@ public class LauncherActivity
             builder.appendQueryParameter("_android_country", country.toUpperCase(Locale.US));
         }
         return builder.build();
-    }
-
-    private boolean handleNativeBiometricGate(Intent intent) {
-        if (!shouldOpenNativeBiometricGate(intent)) {
-            return false;
-        }
-
-        if (biometricGateInFlight) {
-            Log.d("Facilitat", "native-bio gate already in-flight");
-            return true;
-        }
-
-        openNativeBiometricGate();
-        return true;
-    }
-
-    private boolean shouldOpenNativeBiometricGate(Intent intent) {
-        if (skipNextNativeGateOnce) {
-            skipNextNativeGateOnce = false;
-            Log.d("Facilitat", "native-bio bypass consumed after success");
-            return false;
-        }
-
-        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
-        boolean enabled = prefs.getBoolean(KEY_BIO_ENABLED, false);
-        if (!enabled) {
-            Log.d("Facilitat", "native-bio policy: disabled");
-            return false;
-        }
-
-        int relockSeconds = prefs.getInt(KEY_BIO_RELOCK_SECONDS, 120);
-        if (relockSeconds != 0 && relockSeconds != 30 && relockSeconds != 120 && relockSeconds != 300) {
-            relockSeconds = 120;
-        }
-
-        long lastUnlockMs = prefs.getLong(KEY_BIO_LAST_UNLOCK_MS, 0L);
-        if (lastUnlockMs <= 0L) {
-            Log.d("Facilitat", "native-bio policy: would require auth (no unlock timestamp)");
-            return true;
-        }
-
-        if (relockSeconds == 0) {
-            Log.d("Facilitat", "native-bio policy: would require auth (relock=0)");
-            return true;
-        }
-
-        long elapsed = System.currentTimeMillis() - lastUnlockMs;
-        boolean shouldRequireAuth = elapsed >= relockSeconds * 1000L;
-        Log.d(
-                "Facilitat",
-                "native-bio policy: enabled, relockSeconds=" + relockSeconds
-                        + ", elapsedMs=" + elapsed
-                        + ", wouldRequireAuth=" + shouldRequireAuth
-        );
-        return shouldRequireAuth;
-    }
-
-    private void openNativeBiometricGate() {
-        biometricGateInFlight = true;
-        Intent gateIntent = new Intent(this, BiometricActivity.class);
-        gateIntent.putExtra(EXTRA_NATIVE_GATE, true);
-        gateIntent.addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION);
-        startActivityForResult(gateIntent, NATIVE_GATE_REQUEST_CODE);
-        overridePendingTransition(0, 0);
     }
 }

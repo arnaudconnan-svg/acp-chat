@@ -3,12 +3,14 @@ const path = require("path");
 
 const ROOT = path.join(__dirname, "..");
 const TEMPLATE_PATH = path.join(__dirname, "templates", "CountryPickerActivity.java");
+const GATE_TEMPLATE_PATH = path.join(__dirname, "templates", "GateActivity.java");
 const LAUNCHER_TEMPLATE_PATH = path.join(__dirname, "templates", "LauncherActivity.java");
 const BIOMETRIC_TEMPLATE_PATH = path.join(__dirname, "templates", "BiometricActivity.java");
 const BIOMETRIC_CONFIG_TEMPLATE_PATH = path.join(__dirname, "templates", "BiometricConfigActivity.java");
 const TWA_MANIFEST_PATH = path.join(ROOT, "android-project", "twa-manifest.json");
 const APP_BUILD_GRADLE_PATH = path.join(ROOT, "android-project", "app", "build.gradle");
 const LAUNCHER_ACTIVITY_PATH = path.join(ROOT, "android-project", "app", "src", "main", "java", "io", "facilitat", "app", "LauncherActivity.java");
+const GATE_ACTIVITY_PATH = path.join(ROOT, "android-project", "app", "src", "main", "java", "io", "facilitat", "app", "GateActivity.java");
 const ANDROID_MANIFEST_PATH = path.join(ROOT, "android-project", "app", "src", "main", "AndroidManifest.xml");
 const TARGET_PATH = path.join(
   ROOT,
@@ -63,6 +65,10 @@ function main() {
     fail(`Missing template: ${LAUNCHER_TEMPLATE_PATH}`);
   }
 
+  if (!fs.existsSync(GATE_TEMPLATE_PATH)) {
+    fail(`Missing template: ${GATE_TEMPLATE_PATH}`);
+  }
+
   if (!fs.existsSync(BIOMETRIC_TEMPLATE_PATH)) {
     fail(`Missing template: ${BIOMETRIC_TEMPLATE_PATH}`);
   }
@@ -108,7 +114,7 @@ function main() {
       // Portrait orientation on LauncherActivity
       const launcherActivityPattern = /<activity android:name="LauncherActivity"\s+android:alwaysRetainTaskState="true"\s+android:label="@string\/launcherName"\s+android:exported="true">/;
       const launcherActivityPatternWithOrientation = /<activity android:name="LauncherActivity"\s+android:alwaysRetainTaskState="true"\s+android:label="@string\/launcherName"\s+android:exported="true"\s+android:screenOrientation="portrait">/;
-      
+
       if (!launcherActivityPatternWithOrientation.test(manifest) && launcherActivityPattern.test(manifest)) {
         manifest = manifest.replace(
           launcherActivityPattern,
@@ -117,6 +123,31 @@ function main() {
         console.log("[android-customize] Applied portrait screenOrientation to AndroidManifest.xml LauncherActivity.");
       } else if (launcherActivityPatternWithOrientation.test(manifest)) {
         console.log("[android-customize] AndroidManifest.xml LauncherActivity already has portrait orientation.");
+      }
+
+      // Insert GateActivity as the app entrypoint when missing.
+      if (!manifest.includes('android:name="GateActivity"')) {
+        manifest = manifest.replace(
+          '<activity android:name="LauncherActivity"',
+          [
+            '<activity android:name="GateActivity"',
+            '            android:label="@string/launcherName"',
+            '            android:exported="true"',
+            '            android:noHistory="true"',
+            '            android:excludeFromRecents="true"',
+            '            android:screenOrientation="portrait"',
+            '            android:launchMode="singleTask"',
+            '            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize">',
+            '            <intent-filter>',
+            '                <action android:name="android.intent.action.MAIN" />',
+            '                <category android:name="android.intent.category.LAUNCHER" />',
+            '            </intent-filter>',
+            '        </activity>',
+            '',
+            '        <activity android:name="LauncherActivity"'
+          ].join("\n        ")
+        );
+        console.log("[android-customize] Added GateActivity launcher entrypoint to AndroidManifest.xml.");
       }
 
       // Ensure LauncherActivity reuses the existing task instead of recreating a new app instance.
@@ -141,6 +172,23 @@ function main() {
         if (updatedLauncherBlock !== launcherBlock) {
           manifest = manifest.replace(launcherBlock, updatedLauncherBlock);
           console.log("[android-customize] Set LauncherActivity launchMode=singleTask in AndroidManifest.xml.");
+        }
+
+        // LauncherActivity is internal only; external entry is GateActivity.
+        const exportedTrueRe = /android:exported="true"/;
+        if (exportedTrueRe.test(updatedLauncherBlock)) {
+          const internalLauncherBlock = updatedLauncherBlock.replace(exportedTrueRe, 'android:exported="false"');
+          manifest = manifest.replace(updatedLauncherBlock, internalLauncherBlock);
+          updatedLauncherBlock = internalLauncherBlock;
+          console.log("[android-customize] Set LauncherActivity exported=false (internal launch only).");
+        }
+
+        // Remove MAIN/LAUNCHER intent filter from LauncherActivity to prevent pre-gate entry.
+        const mainLauncherFilterRe = /\s*<intent-filter>\s*<action android:name="android\.intent\.action\.MAIN" \/>\s*<category android:name="android\.intent\.category\.LAUNCHER" \/>\s*<\/intent-filter>/;
+        if (mainLauncherFilterRe.test(updatedLauncherBlock)) {
+          const noLauncherFilterBlock = updatedLauncherBlock.replace(mainLauncherFilterRe, "");
+          manifest = manifest.replace(updatedLauncherBlock, noLauncherFilterBlock);
+          console.log("[android-customize] Removed MAIN/LAUNCHER filter from LauncherActivity.");
         }
       }
 
@@ -270,10 +318,19 @@ function main() {
   const current = fs.readFileSync(TARGET_PATH, "utf8");
   const launcherTemplate = fs.readFileSync(LAUNCHER_TEMPLATE_PATH, "utf8");
   const launcherCurrent = fs.existsSync(LAUNCHER_ACTIVITY_PATH) ? fs.readFileSync(LAUNCHER_ACTIVITY_PATH, "utf8") : null;
+  const gateTemplate = fs.readFileSync(GATE_TEMPLATE_PATH, "utf8");
+  const gateCurrent = fs.existsSync(GATE_ACTIVITY_PATH) ? fs.readFileSync(GATE_ACTIVITY_PATH, "utf8") : null;
 
   if (launcherCurrent !== launcherTemplate) {
     fs.writeFileSync(LAUNCHER_ACTIVITY_PATH, launcherTemplate, "utf8");
     console.log("[android-customize] LauncherActivity customization applied.");
+  }
+
+  if (gateCurrent !== gateTemplate) {
+    fs.writeFileSync(GATE_ACTIVITY_PATH, gateTemplate, "utf8");
+    console.log("[android-customize] GateActivity customization applied.");
+  } else {
+    console.log("[android-customize] GateActivity already up to date.");
   }
 
   if (current === template) {
