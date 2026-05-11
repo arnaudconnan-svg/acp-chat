@@ -5,7 +5,6 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
-
 import androidx.annotation.NonNull;
 import androidx.biometric.BiometricManager;
 import androidx.biometric.BiometricPrompt;
@@ -78,6 +77,7 @@ public class BiometricActivity extends FragmentActivity {
         BiometricPrompt.PromptInfo promptInfo = new BiometricPrompt.PromptInfo.Builder()
                 .setTitle("Facilitat.io")
                 .setSubtitle("Vérification requise")
+                .setConfirmationRequired(true)
                 .setAllowedAuthenticators(
                         BiometricManager.Authenticators.BIOMETRIC_STRONG |
                         BiometricManager.Authenticators.DEVICE_CREDENTIAL)
@@ -112,6 +112,11 @@ public class BiometricActivity extends FragmentActivity {
 
     private void returnNativeGateResult(boolean success) {
         if (!success) {
+            // Do not reveal app content when auth is cancelled/failed.
+            Intent homeIntent = new Intent(Intent.ACTION_MAIN);
+            homeIntent.addCategory(Intent.CATEGORY_HOME);
+            homeIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(homeIntent);
             finish();
             return;
         }

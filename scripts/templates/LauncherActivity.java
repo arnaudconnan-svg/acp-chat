@@ -93,6 +93,10 @@ public class LauncherActivity
             return false;
         }
 
+        if (biometricGateInFlight) {
+            return true;
+        }
+
         openNativeBiometricGate();
         return true;
     }
