@@ -20,7 +20,6 @@ public class BiometricActivity extends FragmentActivity {
     private static final String PREFS_NAME = "facilitat_security";
     private static final String KEY_BIO_LAST_UNLOCK_MS = "biometric_last_unlock_ms";
     private static final String EXTRA_NATIVE_GATE = "nativeGate";
-    private static final String EXTRA_NATIVE_GATE_PASSED = "nativeBioPassed";
 
     private String callbackPath = "/";
     private String bioNonce = "";
@@ -113,11 +112,7 @@ public class BiometricActivity extends FragmentActivity {
 
     private void returnNativeGateResult(boolean success) {
         if (!success) {
-            // Never reveal app content on cancelled/failed native auth.
-            Intent homeIntent = new Intent(Intent.ACTION_MAIN);
-            homeIntent.addCategory(Intent.CATEGORY_HOME);
-            homeIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            startActivity(homeIntent);
+            setResult(Activity.RESULT_CANCELED);
             finish();
             return;
         }
@@ -125,12 +120,7 @@ public class BiometricActivity extends FragmentActivity {
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
         prefs.edit().putLong(KEY_BIO_LAST_UNLOCK_MS, System.currentTimeMillis()).apply();
 
-        Intent intent = new Intent(this, LauncherActivity.class);
-        intent.putExtra(EXTRA_NATIVE_GATE_PASSED, true);
-        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-        intent.addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION);
-        startActivity(intent);
-        overridePendingTransition(0, 0);
+        setResult(Activity.RESULT_OK);
         finish();
     }
 }

@@ -35,7 +35,7 @@ public class LauncherActivity
     private static final String KEY_BIO_RELOCK_SECONDS = "biometric_relock_seconds";
     private static final String KEY_BIO_LAST_UNLOCK_MS = "biometric_last_unlock_ms";
     private static final String EXTRA_NATIVE_GATE = "nativeGate";
-    private static final String EXTRA_NATIVE_GATE_PASSED = "nativeBioPassed";
+    private static final int NATIVE_GATE_REQUEST_CODE = 1407;
 
     private boolean biometricGateInFlight = false;
 
@@ -72,6 +72,27 @@ public class LauncherActivity
     }
 
     @Override
+    @SuppressWarnings("deprecation")
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode != NATIVE_GATE_REQUEST_CODE) {
+            return;
+        }
+
+        biometricGateInFlight = false;
+        if (resultCode == RESULT_OK) {
+            Log.d("Facilitat", "native-bio result OK");
+            return;
+        }
+
+        Log.d("Facilitat", "native-bio result canceled/failed -> HOME");
+        Intent homeIntent = new Intent(Intent.ACTION_MAIN);
+        homeIntent.addCategory(Intent.CATEGORY_HOME);
+        homeIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        startActivity(homeIntent);
+    }
+
+    @Override
     public void onConfigurationChanged(Configuration newConfig) {
         Log.d("Facilitat", "onConfigurationChanged called with orientation: " + newConfig.orientation);
         super.onConfigurationChanged(newConfig);
@@ -105,15 +126,6 @@ public class LauncherActivity
     }
 
     private boolean shouldOpenNativeBiometricGate(Intent intent) {
-        if (intent != null && intent.getBooleanExtra(EXTRA_NATIVE_GATE_PASSED, false)) {
-            // Consume bypass once: skip only immediate post-auth launcher restart.
-            intent.removeExtra(EXTRA_NATIVE_GATE_PASSED);
-            setIntent(intent);
-            biometricGateInFlight = false;
-            Log.d("Facilitat", "native-bio policy: bypass consumed");
-            return false;
-        }
-
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
         boolean enabled = prefs.getBoolean(KEY_BIO_ENABLED, false);
         if (!enabled) {
@@ -153,7 +165,7 @@ public class LauncherActivity
         Intent gateIntent = new Intent(this, BiometricActivity.class);
         gateIntent.putExtra(EXTRA_NATIVE_GATE, true);
         gateIntent.addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION);
-        startActivity(gateIntent);
+        startActivityForResult(gateIntent, NATIVE_GATE_REQUEST_CODE);
         overridePendingTransition(0, 0);
     }
 }
