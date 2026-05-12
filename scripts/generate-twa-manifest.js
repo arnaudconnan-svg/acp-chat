@@ -17,6 +17,60 @@ function normalizeStartUrl(origin, startPath) {
   return `${safeOrigin}${safePath}`;
 }
 
+function normalizeShortcutUrl(origin, shortcutUrl) {
+  const raw = String(shortcutUrl || "").trim();
+  if (!raw) return "";
+  if (/^https?:\/\//i.test(raw)) return raw;
+  return normalizeStartUrl(origin, raw);
+}
+
+function readWebManifestShortcuts(origin) {
+  const manifestPath = path.join(__dirname, "..", "public", "manifest.json");
+
+  try {
+    const raw = fs.readFileSync(manifestPath, "utf8");
+    const parsed = JSON.parse(raw);
+    const shortcuts = Array.isArray(parsed.shortcuts) ? parsed.shortcuts : [];
+
+    return shortcuts
+      .map((item) => {
+        const name = String(item && item.name ? item.name : "").trim();
+        const shortName = String(item && item.short_name ? item.short_name : "").trim();
+        const shortcutUrl = normalizeShortcutUrl(origin, item && item.url);
+        const icons = Array.isArray(item && item.icons)
+          ? item.icons
+              .map((icon) => {
+                const src = normalizeShortcutUrl(origin, icon && icon.src);
+                const sizes = String(icon && icon.sizes ? icon.sizes : "").trim();
+                const type = String(icon && icon.type ? icon.type : "").trim();
+                if (!src) return null;
+                return {
+                  src,
+                  ...(sizes ? { sizes } : {}),
+                  ...(type ? { type } : {})
+                };
+              })
+              .filter(Boolean)
+          : [];
+
+        if (!name || !shortcutUrl) {
+          return null;
+        }
+
+        return {
+          name,
+          ...(shortName ? { short_name: shortName } : {}),
+          url: shortcutUrl,
+          ...(icons.length > 0 ? { icons } : {})
+        };
+      })
+      .filter(Boolean)
+      .slice(0, 4);
+  } catch (_) {
+    return [];
+  }
+}
+
 function main() {
   const packageId = String(process.env.TWA_ANDROID_PACKAGE || "io.facilitat.app").trim();
   const host = String(process.env.TWA_WEB_HOST || "acp-chat-beta.onrender.com").trim();
@@ -39,6 +93,7 @@ function main() {
   }
 
   const fullOrigin = `${protocol}://${host}`;
+  const shortcuts = readWebManifestShortcuts(fullOrigin);
   const manifest = {
     packageId,
     host,
@@ -55,7 +110,7 @@ function main() {
     appVersionName: "1.0.0",
     appVersionCode: 1,
     enableNotifications: false,
-    shortcuts: [],
+    shortcuts,
     generatorApp: "bubblewrap",
     webManifestUrl: `${fullOrigin}/manifest.json`,
     fallbackType: "customtabs"

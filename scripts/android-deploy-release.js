@@ -259,7 +259,7 @@ function main() {
     "-S",
     "-W",
     "-n",
-    `${PACKAGE_NAME}/.GateActivity`,
+    `${PACKAGE_NAME}/.LauncherActivity`,
     "-a",
     "android.intent.action.MAIN",
     "-c",

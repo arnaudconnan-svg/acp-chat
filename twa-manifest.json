@@ -14,7 +14,32 @@
   "appVersionName": "1.0.0",
   "appVersionCode": 1,
   "enableNotifications": false,
-  "shortcuts": [],
+  "shortcuts": [
+    {
+      "name": "Nouvelle conversation",
+      "short_name": "Conversation",
+      "url": "https://acp-chat-beta.onrender.com/?launch=new-normal",
+      "icons": [
+        {
+          "src": "https://acp-chat-beta.onrender.com/images/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Nouvelle conversation privee",
+      "short_name": "Conversation privee",
+      "url": "https://acp-chat-beta.onrender.com/?launch=new-private",
+      "icons": [
+        {
+          "src": "https://acp-chat-beta.onrender.com/images/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ],
   "generatorApp": "bubblewrap",
   "webManifestUrl": "https://acp-chat-beta.onrender.com/manifest.json",
   "fallbackType": "customtabs"
