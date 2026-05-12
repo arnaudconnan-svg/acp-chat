@@ -31,5 +31,33 @@
       "type": "image/png",
       "purpose": "maskable"
     }
+  ],
+  "shortcuts": [
+    {
+      "name": "Nouvelle conversation",
+      "short_name": "Conversation",
+      "description": "Demarrer une nouvelle conversation",
+      "url": "/?launch=new-normal",
+      "icons": [
+        {
+          "src": "/images/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Nouvelle conversation privee",
+      "short_name": "Conversation privee",
+      "description": "Demarrer une nouvelle conversation privee",
+      "url": "/?launch=new-private",
+      "icons": [
+        {
+          "src": "/images/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
   ]
 }
