@@ -10,6 +10,7 @@ const SHORTCUT_ICON_TARGET_PATH = path.join(SHORTCUT_ICON_TARGET_DIR, 'shortcut_
 const WEB_MANIFEST_PATH = path.join(ROOT, 'public', 'manifest.json');
 const ANDROID_MANIFEST_PATH = path.join(ROOT, 'android-project', 'app', 'src', 'main', 'AndroidManifest.xml');
 const SHORTCUTS_XML_PATH = path.join(ROOT, 'android-project', 'app', 'src', 'main', 'res', 'xml', 'shortcuts.xml');
+const SHORTCUT_STRINGS_PATH = path.join(ROOT, 'android-project', 'app', 'src', 'main', 'res', 'values', 'shortcut_strings.xml');
 const ANDROID_BUILD_GRADLE_PATH = path.join(ROOT, 'android-project', 'app', 'build.gradle');
 
 function toXmlEscaped(value) {
@@ -74,8 +75,10 @@ function writeShortcutsXml(shortcuts) {
   ];
 
   for (const shortcut of shortcuts) {
+    const shortLabelRef = `@string/${shortcut.id}_short_label`;
+    const longLabelRef = `@string/${shortcut.id}_long_label`;
     lines.push(
-      `    <shortcut android:shortcutId="${toXmlEscaped(shortcut.id)}" android:enabled="true" android:icon="@mipmap/ic_launcher" android:shortcutShortLabel="${toXmlEscaped(shortcut.shortLabel)}" android:shortcutLongLabel="${toXmlEscaped(shortcut.longLabel)}">`,
+      `    <shortcut android:shortcutId="${toXmlEscaped(shortcut.id)}" android:enabled="true" android:icon="@mipmap/ic_launcher" android:shortcutShortLabel="${shortLabelRef}" android:shortcutLongLabel="${longLabelRef}">`,
       `        <intent android:action="android.intent.action.VIEW" android:targetPackage="io.facilitat.app" android:targetClass="io.facilitat.app.LauncherActivity" android:data="${toXmlEscaped(shortcut.url)}" />`,
       '    </shortcut>'
     );
@@ -84,6 +87,21 @@ function writeShortcutsXml(shortcuts) {
   lines.push('</shortcuts>');
   fs.writeFileSync(SHORTCUTS_XML_PATH, `${lines.join('\n')}\n`);
   console.log(`[android-customize] Synced shortcuts.xml (${shortcuts.length} shortcut(s)).`);
+}
+
+function writeShortcutStringResources(shortcuts) {
+  const lines = ['<?xml version="1.0" encoding="utf-8"?>', '<resources>'];
+
+  for (const shortcut of shortcuts) {
+    lines.push(
+      `    <string name="${toXmlEscaped(shortcut.id)}_short_label">${toXmlEscaped(shortcut.shortLabel)}</string>`,
+      `    <string name="${toXmlEscaped(shortcut.id)}_long_label">${toXmlEscaped(shortcut.longLabel)}</string>`
+    );
+  }
+
+  lines.push('</resources>');
+  fs.writeFileSync(SHORTCUT_STRINGS_PATH, `${lines.join('\n')}\n`);
+  console.log(`[android-customize] Synced shortcut string resources (${shortcuts.length} shortcut(s)).`);
 }
 
 function toGroovySingleQuoted(value) {
@@ -212,6 +230,7 @@ function main() {
   const shortcuts = readShortcutConfig();
   syncBuildGradleShortcuts(shortcuts);
   syncShortcutIconDrawable();
+  writeShortcutStringResources(shortcuts);
   writeShortcutsXml(shortcuts);
   ensureManifestShortcutMetadata();
   ensureLauncherPortraitOrientation();

@@ -10896,6 +10896,29 @@
         history.replaceState(history.state || {}, "", `${loadUrl.pathname}${nextSearch ? `?${nextSearch}` : ""}${loadUrl.hash || ""}`);
       }
 
+      const launchShortcut = loadUrl.searchParams.get("launch");
+      if (launchShortcut === "new-normal" || launchShortcut === "new-private") {
+        const isPrivateLaunch = launchShortcut === "new-private";
+
+        loadUrl.searchParams.delete("launch");
+        const cleanSearch = loadUrl.searchParams.toString();
+        history.replaceState(
+          { screenId: "chatScreen" },
+          "",
+          `${loadUrl.pathname}${cleanSearch ? `?${cleanSearch}` : ""}${loadUrl.hash || ""}`
+        );
+
+        clearSessionStorageExceptMemory();
+        resetLocalSessionState();
+        localStorage.removeItem(CONVERSATION_ID_KEY);
+        closeEditMode({ restoreDraft: false });
+        showScreen("chatScreen", { replaceHistory: true, pushHistory: false, noAnimation: true });
+        renderHistory();
+        startFreshSession({ isPrivate: isPrivateLaunch, useDefault: false });
+        defocusInput();
+        return;
+      }
+
       if (isAdminUI && replayPayload) {
         const replayConversationId = applyAdminReplayPayload(replayPayload);
         if (replayConversationId) {
