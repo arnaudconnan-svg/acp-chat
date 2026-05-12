@@ -16,6 +16,7 @@
 package io.facilitat.app;
 
 import android.content.pm.ActivityInfo;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.WindowManager;
@@ -32,5 +33,27 @@ public class LauncherActivity
         }
         super.onCreate(savedInstanceState);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
+    }
+
+    @Override
+    protected Uri getLaunchingUrl() {
+        Uri incoming = getIntent() != null ? getIntent().getData() : null;
+        if (incoming == null) {
+            return super.getLaunchingUrl();
+        }
+
+        if (incoming.isAbsolute()) {
+            return incoming;
+        }
+
+        String host = getString(R.string.hostName);
+        String path = incoming.toString();
+        if (path == null || path.trim().isEmpty()) {
+            return super.getLaunchingUrl();
+        }
+        if (!path.startsWith("/")) {
+            path = "/" + path;
+        }
+        return Uri.parse("https://" + host + path);
     }
 }

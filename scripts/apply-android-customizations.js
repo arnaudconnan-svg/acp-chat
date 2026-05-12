@@ -4,6 +4,9 @@ const path = require('path');
 const ROOT = path.join(__dirname, '..');
 const LAUNCHER_TEMPLATE_PATH = path.join(__dirname, 'templates', 'LauncherActivity.java');
 const LAUNCHER_ACTIVITY_PATH = path.join(ROOT, 'android-project', 'app', 'src', 'main', 'java', 'io', 'facilitat', 'app', 'LauncherActivity.java');
+const SHORTCUT_ICON_TEMPLATE_PATH = path.join(__dirname, 'templates', 'shortcut_legacy_background.xml');
+const SHORTCUT_ICON_TARGET_DIR = path.join(ROOT, 'android-project', 'app', 'src', 'main', 'res', 'drawable');
+const SHORTCUT_ICON_TARGET_PATH = path.join(SHORTCUT_ICON_TARGET_DIR, 'shortcut_legacy_background.xml');
 const WEB_MANIFEST_PATH = path.join(ROOT, 'public', 'manifest.json');
 const ANDROID_MANIFEST_PATH = path.join(ROOT, 'android-project', 'app', 'src', 'main', 'AndroidManifest.xml');
 const SHORTCUTS_XML_PATH = path.join(ROOT, 'android-project', 'app', 'src', 'main', 'res', 'xml', 'shortcuts.xml');
@@ -151,6 +154,21 @@ function ensureManifestShortcutMetadata() {
   console.log('[android-customize] Added android.app.shortcuts metadata to LauncherActivity.');
 }
 
+function syncShortcutIconDrawable() {
+  if (!fs.existsSync(SHORTCUT_ICON_TEMPLATE_PATH)) {
+    console.warn('[android-customize] Missing shortcut icon template: ' + SHORTCUT_ICON_TEMPLATE_PATH);
+    return;
+  }
+
+  try {
+    fs.mkdirSync(SHORTCUT_ICON_TARGET_DIR, { recursive: true });
+    fs.copyFileSync(SHORTCUT_ICON_TEMPLATE_PATH, SHORTCUT_ICON_TARGET_PATH);
+    console.log('[android-customize] Synced shortcut icon drawable.');
+  } catch (err) {
+    console.warn('[android-customize] Failed to sync shortcut icon drawable: ' + err.message);
+  }
+}
+
 function ensureLauncherPortraitOrientation() {
   if (!fs.existsSync(ANDROID_MANIFEST_PATH)) {
     console.warn('[android-customize] AndroidManifest.xml not found; skipping orientation patch.');
@@ -193,6 +211,7 @@ function main() {
 
   const shortcuts = readShortcutConfig();
   syncBuildGradleShortcuts(shortcuts);
+  syncShortcutIconDrawable();
   writeShortcutsXml(shortcuts);
   ensureManifestShortcutMetadata();
   ensureLauncherPortraitOrientation();
