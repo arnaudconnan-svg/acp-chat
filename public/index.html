@@ -677,6 +677,27 @@
       white-space: nowrap;
     }
 
+    #conversationsPrivateTopbarLock {
+      position: absolute;
+      left: 18px;
+      top: calc(14px + env(safe-area-inset-top, 0px));
+      width: 32px;
+      height: 32px;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      color: #245e66;
+      background: rgba(36, 94, 102, 0.08);
+      border: 1px solid rgba(36, 94, 102, 0.2);
+      border-radius: 50%;
+      box-sizing: border-box;
+      pointer-events: none;
+    }
+
+    #conversationsPrivateTopbarLock.is-visible {
+      display: inline-flex;
+    }
+
     #conversationsAccountMenuWrap {
       position: absolute;
       right: 18px;
@@ -1237,13 +1258,6 @@
       border-right: 1px solid rgba(36, 94, 102, 0.12);
       border-bottom: 1px solid rgba(36, 94, 102, 0.12);
       transform: translateX(100%) rotate(-45deg);
-    }
-
-    #conversationsPrivacyHintTitle {
-      margin: 0 0 8px 0;
-      font-size: 17px;
-      line-height: 1.3;
-      color: #173b40;
     }
 
     #conversationsPrivacyHintText {
@@ -2393,6 +2407,12 @@
   
   <div id="conversationsScreen" class="screen">
     <div id="conversationsTopBar" class="topBar">
+      <span id="conversationsPrivateTopbarLock" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
+          <path d="M6.5 11.2h11a1.5 1.5 0 0 1 1.5 1.5v5.8a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-5.8a1.5 1.5 0 0 1 1.5-1.5z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"></path>
+          <path d="M8.4 11.2V8.9a3.6 3.6 0 1 1 7.2 0v2.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>
+        </svg>
+      </span>
       <div class="topBarContent">
         <span class="topBarTitle">Facilitat.io</span>
       </div>
@@ -2414,7 +2434,7 @@
       <div id="conversationsList">
         <div class="conversationItem conversationItemEmptyState">
           <div class="conversationItemPlaceholder">
-            Aucune conversation locale pour le moment.
+            Aucune conversation pour le moment.
           </div>
         </div>
       </div>
@@ -2439,9 +2459,9 @@
     <div id="conversationsPrivacyHintOverlay" aria-live="polite">
       <div id="conversationsPrivacyHintBackdrop"></div>
       <div id="conversationsPrivacyHintCard">
-        <h3 id="conversationsPrivacyHintTitle">Conversation priv&eacute;e</h3>
         <p id="conversationsPrivacyHintText">
-          Maintenez le bouton + pour faire appara&icirc;tre l'option conversation priv&eacute;e. Elle permet de garder cette nouvelle session uniquement sur votre appareil.
+          Maintenez le bouton + pour faire appara&icirc;tre l'option <strong>conversation priv&eacute;e</strong>.<br>
+          Attention : la conversation ne sera pas sauvegard&eacute;e sur le Cloud et Facilitat.io ne fera pas de liens avec vos autres conversations.
         </p>
         <label id="conversationsPrivacyHintToggleRow">
           <input id="conversationsPrivacyHintDontShow" type="checkbox">
@@ -3499,6 +3519,18 @@
       }
 
       return loadPrivateConversationIds().includes(id);
+    }
+
+    function syncConversationsPrivateTopbarLock() {
+      const lockEl = document.getElementById("conversationsPrivateTopbarLock");
+      if (!lockEl) return;
+
+      const conversationId = getConversationId();
+      const isPrivate = conversationId ?
+        isConversationPrivateById(conversationId, loadConversationData(conversationId)) :
+        false;
+
+      lockEl.classList.toggle("is-visible", isPrivate === true);
     }
 
     function updateMakePublicBtnVisibility() {
@@ -5665,6 +5697,7 @@
       
       if (id === "conversationsScreen") {
         renderConversationsList();
+        syncConversationsPrivateTopbarLock();
         
         requestAnimationFrame(() => {
           const conversationsEl = document.getElementById("conversationsListWrap");
@@ -8861,7 +8894,7 @@
         
         const textEl = document.createElement("div");
         textEl.className = "conversationItemPlaceholder";
-        textEl.textContent = "Aucune conversation locale pour le moment.";
+        textEl.textContent = "Aucune conversation pour le moment.";
         
         itemEl.appendChild(textEl);
         listEl.appendChild(itemEl);
@@ -11184,7 +11217,7 @@
         "Se comprendre",
         "S'accepter",
         "Se faire confiance",
-        "Liberer son potentiel..."
+        "Lib\u00e9rer son potentiel..."
       ];
       
       const WELCOME_BOOT_PAUSE_MS = 0;
