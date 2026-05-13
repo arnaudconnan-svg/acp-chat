@@ -150,8 +150,13 @@ function syncBuildGradleShortcuts(shortcuts) {
   const targetClassReplacement = `$1twaManifest.applicationId + '.BiometricGateActivity'`;
   const actionPattern = /('android:action':\s*)'android\.intent\.action\.MAIN'/;
   const actionReplacement = `$1'android.intent.action.MAIN'`;
+  const iconPattern = /('android:icon':\s*)'@drawable\/' \+ s\.icon/;
+  const iconReplacement = `$1'@mipmap/ic_launcher'`;
 
-  const withGateTarget = gradle.replace(targetClassPattern, targetClassReplacement).replace(actionPattern, actionReplacement);
+  const withGateTarget = gradle
+    .replace(targetClassPattern, targetClassReplacement)
+    .replace(actionPattern, actionReplacement)
+    .replace(iconPattern, iconReplacement);
   fs.writeFileSync(ANDROID_BUILD_GRADLE_PATH, withGateTarget, 'utf8');
   console.log(`[android-customize] Synced app/build.gradle shortcuts (${shortcuts.length} shortcut(s)).`);
 }
