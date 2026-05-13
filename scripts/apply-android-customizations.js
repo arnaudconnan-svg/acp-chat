@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const zlib = require('zlib');
 
 const ROOT = path.join(__dirname, '..');
 const LAUNCHER_TEMPLATE_PATH = path.join(__dirname, 'templates', 'LauncherActivity.java');
@@ -18,6 +19,92 @@ const SHORTCUTS_XML_PATH = path.join(ROOT, 'android-project', 'app', 'src', 'mai
 const SHORTCUT_STRINGS_PATH = path.join(ROOT, 'android-project', 'app', 'src', 'main', 'res', 'values', 'shortcut_strings.xml');
 const ANDROID_BUILD_GRADLE_PATH = path.join(ROOT, 'android-project', 'app', 'build.gradle');
 const SHORTCUT_TARGET_CLASS = 'io.facilitat.app.BiometricGateActivity';
+
+const SPLASH_DIRS = [
+  path.join(ROOT, 'android-project', 'app', 'src', 'main', 'res', 'drawable-hdpi'),
+  path.join(ROOT, 'android-project', 'app', 'src', 'main', 'res', 'drawable-mdpi'),
+  path.join(ROOT, 'android-project', 'app', 'src', 'main', 'res', 'drawable-xhdpi'),
+  path.join(ROOT, 'android-project', 'app', 'src', 'main', 'res', 'drawable-xxhdpi'),
+  path.join(ROOT, 'android-project', 'app', 'src', 'main', 'res', 'drawable-xxxhdpi')
+];
+
+function generateMinimalPng() {
+  // Generate a minimal 1x1 PNG with background color #F4F9F9
+  // PNG structure: signature + IHDR + IDAT (zlib compressed) + IEND
+  const signature = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+  
+  // IHDR: 1x1, 8-bit RGB
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(1, 0);      // width: 1
+  ihdr.writeUInt32BE(1, 4);      // height: 1
+  ihdr.writeUInt8(8, 8);         // bit depth: 8
+  ihdr.writeUInt8(2, 9);         // color type: 2 (RGB)
+  ihdr.writeUInt8(0, 10);        // compression method
+  ihdr.writeUInt8(0, 11);        // filter method
+  ihdr.writeUInt8(0, 12);        // interlace method
+  const ihdrChunk = createPngChunk('IHDR', ihdr);
+  
+  // IDAT: 1x1 pixel with color #F4F9F9 (244, 249, 249)
+  // Scanline format: filter_type (0x00) + RGB values
+  const pixelData = Buffer.from([0x00, 0xf4, 0xf9, 0xf9]);
+  const idatData = zlib.deflateSync(pixelData);
+  const idatChunk = createPngChunk('IDAT', idatData);
+  
+  // IEND: empty chunk
+  const iendChunk = createPngChunk('IEND', Buffer.alloc(0));
+  
+  return Buffer.concat([signature, ihdrChunk, idatChunk, iendChunk]);
+}
+
+function createPngChunk(type, data) {
+  const length = Buffer.alloc(4);
+  length.writeUInt32BE(data.length, 0);
+  
+  const typeBytes = Buffer.from(type, 'ascii');
+  const chunk = Buffer.concat([typeBytes, data]);
+  
+  // CRC32 calculation (simplified: use a hardcoded value for minimal PNG)
+  // For production, use proper CRC32; for now, we compute it
+  const crc = calculateCrc32(chunk);
+  const crcBytes = Buffer.alloc(4);
+  crcBytes.writeUInt32BE(crc >>> 0, 0);
+  
+  return Buffer.concat([length, chunk, crcBytes]);
+}
+
+function calculateCrc32(data) {
+  // CRC32 lookup table
+  const table = new Uint32Array(256);
+  for (let i = 0; i < 256; i++) {
+    let c = i;
+    for (let j = 0; j < 8; j++) {
+      c = (c & 1) ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    }
+    table[i] = c >>> 0;
+  }
+  
+  let crc = 0xffffffff;
+  for (let i = 0; i < data.length; i++) {
+    crc = table[(crc ^ data[i]) & 0xff] ^ (crc >>> 8);
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function syncSplashScreens() {
+  const splashData = generateMinimalPng();
+  
+  SPLASH_DIRS.forEach(dir => {
+    const splashPath = path.join(dir, 'splash.png');
+    try {
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(splashPath, splashData);
+    } catch (err) {
+      console.warn(`[android-customize] Failed to sync splash.png in ${dir}: ${err.message}`);
+    }
+  });
+  
+  console.log('[android-customize] Synced splash screens (background only, no logo).');
+}
 
 function toXmlEscaped(value) {
   return String(value || '')
@@ -358,6 +445,7 @@ function main() {
   ensureManifestShortcutMetadata();
   ensureLauncherPortraitOrientation();
   ensureBiometricGateManifestWiring();
+  syncSplashScreens();
 
   console.log('[android-customize] Done.');
 }

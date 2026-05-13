@@ -110,7 +110,8 @@ public class BiometricGateActivity extends FragmentActivity {
         params.topMargin = topMargin;
         logoView.setLayoutParams(params);
 
-        root.addView(logoView);
+        // Logo view intentionally not added; only background is displayed
+        // root.addView(logoView);
         return root;
     }
 
