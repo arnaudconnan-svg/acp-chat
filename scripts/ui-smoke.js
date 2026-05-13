@@ -71,14 +71,36 @@ async function run() {
     if (enterVisible) {
       pass("welcome screen visible");
       
-      // Check that welcome screen is not scrollable
-      const isScrollable = await page.evaluate(() => {
+      // Check that welcome screen is not actually scrollable.
+      // A larger inner content can legitimately be clipped by overflow:hidden.
+      const scrollCheck = await page.evaluate(() => {
         const screen = document.getElementById("welcomeScreen");
-        if (!screen) return false;
-        return screen.scrollHeight > screen.clientHeight;
+        if (!screen) {
+          return { isMissing: true };
+        }
+
+        const style = window.getComputedStyle(screen);
+        const overflowY = String(style.overflowY || "").toLowerCase();
+        const overflow = String(style.overflow || "").toLowerCase();
+        const allowsScroll = /(auto|scroll)/.test(overflowY) || /(auto|scroll)/.test(overflow);
+        const clipped = /(hidden|clip)/.test(overflowY) || /(hidden|clip)/.test(overflow);
+
+        return {
+          isMissing: false,
+          allowsScroll,
+          clipped,
+          overflowY,
+          overflow,
+          heightDelta: screen.scrollHeight - screen.clientHeight
+        };
       });
-      if (isScrollable) {
-        fail("welcome screen scrollable check", "welcome screen has unwanted scroll");
+      if (scrollCheck.isMissing) {
+        fail("welcome screen scrollable check", "#welcomeScreen not found");
+      } else if (scrollCheck.allowsScroll) {
+        fail(
+          "welcome screen scrollable check",
+          `unexpected scrollable overflow (overflow=${scrollCheck.overflow}, overflowY=${scrollCheck.overflowY}, delta=${scrollCheck.heightDelta})`
+        );
       } else {
         pass("welcome screen not scrollable");
       }
