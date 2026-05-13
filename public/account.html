@@ -468,6 +468,34 @@
         } catch (_) {}
       }
 
+      function detectCountryCodeFromClientLocale() {
+        const localeCandidates = [];
+        try {
+          const intlLocale = Intl.DateTimeFormat().resolvedOptions().locale;
+          if (intlLocale) localeCandidates.push(intlLocale);
+        } catch (_) {}
+
+        if (Array.isArray(navigator.languages)) {
+          localeCandidates.push(...navigator.languages);
+        }
+        if (navigator.language) {
+          localeCandidates.push(navigator.language);
+        }
+
+        for (const rawLocale of localeCandidates) {
+          const locale = String(rawLocale || "").trim();
+          if (!locale) continue;
+          const regionMatch = locale.match(/[-_]([A-Za-z]{2})\b/);
+          if (!regionMatch) continue;
+          const code = regionMatch[1].toUpperCase();
+          if (/^[A-Z]{2}$/.test(code)) {
+            return code;
+          }
+        }
+
+        return "";
+      }
+
       function navigateAway(url, options = {}) {
         document.body.style.animation = "none";
         document.body.style.transition = "opacity 0.32s ease, transform 0.32s ease";
@@ -553,7 +581,8 @@
 
           currentUser = data.user || {};
 
-          const _resolvedCountry = String(_pendingCountry || "").toUpperCase().replace(/[^A-Z]/g, "").slice(0, 2) || _pendingCountryStored;
+          const _localeCountry = detectCountryCodeFromClientLocale();
+          const _resolvedCountry = String(_pendingCountry || "").toUpperCase().replace(/[^A-Z]/g, "").slice(0, 2) || _pendingCountryStored || _localeCountry;
 
           if (_resolvedCountry && (!currentUser.country || String(currentUser.country).trim() === "")) {
             await autoSaveCountry(_resolvedCountry);
