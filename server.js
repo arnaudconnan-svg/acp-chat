@@ -1,4 +1,4 @@
-﻿require("dotenv").config();
+require("dotenv").config();
 
 // Main server entry point.
 // - initialize Firebase admin with credentials
@@ -1077,7 +1077,7 @@ async function llmInfoAnalysis(message = "", history = [], promptRegistry = buil
   const r = await client.chat.completions.create({
     model: MODEL_IDS.analysis,
     temperature: 0,
-    max_tokens: 60,
+    max_completion_tokens: 60,
     messages: [
       { role: "system", content: promptRegistry.ANALYZE_INFO },
       ...context.map(m => ({ role: m.role, content: m.content })),
@@ -1182,7 +1182,7 @@ async function analyzeModelConflict(content = "", promptRegistry = buildDefaultP
   const r = await client.chat.completions.create({
     model: MODEL_IDS.analysis,
     temperature: 0,
-    max_tokens: 40,
+    max_completion_tokens: 40,
     messages: [
       { role: "system", content: promptRegistry.ANALYZE_CONFLICT_MODEL },
       { role: "user", content: content }
@@ -1227,7 +1227,7 @@ ${originalContent}
   const r = await client.chat.completions.create({
     model: MODEL_IDS.generation,
     temperature: 0.3,
-    max_tokens: 500,
+    max_completion_tokens: 500,
     messages: [
       { role: "system", content: promptRegistry.REWRITE_TITLE_CONFLICT_MODEL },
       { role: "user", content: user }
@@ -1410,7 +1410,7 @@ async function generateConversationTitle(messages, options = {}) {
     const completion = await client.chat.completions.create({
       model: MODEL_IDS.title,
       temperature: 0.2,
-      max_tokens: 30,
+      max_completion_tokens: 30,
       messages: [{
         role: "system",
         content: [
@@ -1994,7 +1994,7 @@ app.put("/api/account/profile", requireUserAuth, async (req, res) => {
 
     const now = new Date().toISOString();
     const update = { ...patch, updatedAt: now };
-    // Firebase doesn't store null fields � remove them so they're deleted
+    // Firebase doesn't store null fields - remove them so they're deleted
     for (const [k, v] of Object.entries(update)) {
       if (v === null) update[k] = null; // Firebase treats null as delete
     }
@@ -2879,7 +2879,7 @@ app.post("/api/branches/create-and-activate", async (req, res) => {
 });
 
 // Store feedback (thumbUp/thumbDown + optional comment) on an existing message.
-// If devShare is false, the call should not reach this endpoint � frontend handles locally only.
+// If devShare is false, the call should not reach this endpoint - frontend handles locally only.
 app.post("/api/messages/:id/feedback", async (req, res) => {
   try {
     const messageId = String(req.params?.id || "").trim();
@@ -3454,17 +3454,17 @@ app.patch("/api/intersession-memory/direct", requireUserAuth, async (req, res) =
   }
 });
 
-// POST beacon � called by sendBeacon on pagehide / visibilitychange.
+// POST beacon - called by sendBeacon on pagehide / visibilitychange.
 // Responds 200 immediately; consolidation runs async in the background.
 // Race-condition guard: ignored if the beacon's timestamp is older than the
 // intersessionMemoryUpdatedAt already stored (e.g. explicit close arrived first).
 app.post("/api/session/beacon", async (req, res) => {
-  // Respond immediately � sendBeacon ignores the body anyway.
+  // Respond immediately - sendBeacon ignores the body anyway.
   res.status(200).json({ ok: true });
 
   try {
     const session = await getUserSession(req);
-    if (!session) return; // unauthenticated � ignore silently
+    if (!session) return; // unauthenticated - ignore silently
 
     const requestedConversationId = typeof req.body?.conversationId === "string" ? req.body.conversationId.trim() : "";
     const memory = await resolveAuthoritativeSessionMemoryForIntersession({
@@ -3478,7 +3478,7 @@ app.post("/api/session/beacon", async (req, res) => {
 
     const now = new Date().toISOString();
 
-    // Update lastActiveAt unconditionally � lightweight, no LLM.
+    // Update lastActiveAt unconditionally - lightweight, no LLM.
     await usersRef.child(session.userId).update({ lastActiveAt: now });
 
     // Race-condition guard: skip consolidation if a more recent update already exists.
@@ -3492,7 +3492,7 @@ app.post("/api/session/beacon", async (req, res) => {
     }
 
     if (beaconTimestamp && storedUpdatedAt && new Date(storedUpdatedAt) > new Date(beaconTimestamp)) {
-      // A more recent consolidation (explicit close) already happened � skip.
+      // A more recent consolidation (explicit close) already happened - skip.
       return;
     }
 
@@ -3510,7 +3510,7 @@ app.post("/api/session/beacon", async (req, res) => {
       intersessionMemoryUpdatedAt: now
     });
   } catch (err) {
-    // Background processing � errors are non-critical, log and continue.
+    // Background processing - errors are non-critical, log and continue.
     console.error("Erreur /api/session/beacon (background):", err.message);
   }
 });
@@ -3642,7 +3642,7 @@ app.get("/api/admin/intersession-memory/:userId", requireAdminAuth, async (req, 
     return res.json({ memory });
   } catch (err) {
     console.error("Erreur GET /api/admin/intersession-memory/:userId:", err.message);
-    return res.status(500).json({ error: "Lecture m�moire inter-sessions �chou�e" });
+    return res.status(500).json({ error: "Lecture mémoire inter-sessions échouée" });
   }
 });
 
@@ -4494,7 +4494,7 @@ ${context.map(m => `${m.role === "user" ? "Utilisateur" : "Assistant"} : ${m.con
     const r = await client.chat.completions.create({
       model: MODEL_IDS.analysis,
       temperature: 0,
-      max_tokens: 60,
+      max_completion_tokens: 60,
       messages: [
         {
           role: "system",
@@ -5327,7 +5327,7 @@ app.post("/chat", async (req, res) => {
           };
         }
       } catch {
-        // Non-bloquant : on continue avec les num�ros FR par d�faut si la r�solution �choue
+        // Non-bloquant : on continue avec les numéros FR par défaut si la résolution échoue
       }
 
       let reply;
@@ -5592,8 +5592,8 @@ app.post("/chat", async (req, res) => {
       return emergencySupportTextPromise;
     }
     
-    // 1) Analyse suicide : risque imm�diat et clarification possible.
-    // Cette �tape peut d�clencher des r�ponses prioris�es sans aller plus loin.
+    // 1) Analyse suicide : risque immédiat et clarification possible.
+    // Cette étape peut déclencher des réponses priorisées sans aller plus loin.
     const crisisPrelude = await analyzeSuicideAndBuildCrisisPrelude();
     const suicide = crisisPrelude.suicide;
     const crisisDecision = crisisPrelude.crisisDecision;
@@ -5753,7 +5753,7 @@ app.post("/chat", async (req, res) => {
       ? 3
       : Math.max(0, currentAttentionQualityTurnsUntilRefresh - 1);
 
-    // C2 — mise a jour du score de dependance si l'analyzer a tourne ce tour.
+    // C2 - mise a jour du score de dependance si l'analyzer a tourne ce tour.
     // Gate discharge : on n'incremente jamais en etat de decharge, decrements autorises.
     if (shouldRunDependencyAnalysis && dependencyRiskAnalysis) {
       const isInDischarge = (newFlags.dischargeState?.wasDischarge === true)
@@ -5780,7 +5780,7 @@ app.post("/chat", async (req, res) => {
         : "high";
 
       // Dependency care message trigger (x1/convo, 66+ absorbe 31+ si saut direct).
-      // On utilise currentFlags pour lire l'état AVANT ce tour — les newFlags viennent d'être calculés.
+      // On utilise currentFlags pour lire l'�tat AVANT ce tour � les newFlags viennent d'�tre calcul�s.
       const _careTriggered = flags.dependencyCareTriggered || "none";
       if (newFlags.dependencyRiskLevel === "high" && _careTriggered !== "high") {
         newFlags.dependencyCareTriggered = "high";
@@ -5796,9 +5796,9 @@ app.post("/chat", async (req, res) => {
       ? 4
       : Math.max(0, currentDependencyAnalysisTurnsUntilRefresh - 1);
 
-    // C3 arbitrage : élit l'état actif depuis les candidats C2 (discharge > info > exploration).
-    // nonElectedCandidates[0] est le candidat C2 non-élu le plus fort (confiance >= medium) ;
-    // il sera passé à buildPostureDecision comme tension secondaire candidate.
+    // C3 arbitrage : �lit l'�tat actif depuis les candidats C2 (discharge > info > exploration).
+    // nonElectedCandidates[0] est le candidat C2 non-�lu le plus fort (confiance >= medium) ;
+    // il sera pass� � buildPostureDecision comme tension secondaire candidate.
     const electedState = electActiveStateFromCandidates(stateProposal.stateCandidates, stateProposal.contactAnalysis);
     const secondaryTension = (electedState.nonElectedCandidates && electedState.nonElectedCandidates[0]) || null;
 
@@ -5854,14 +5854,14 @@ app.post("/chat", async (req, res) => {
       ? (Array.isArray(electedState.infoContextFlags) ? electedState.infoContextFlags : [])
       : [];
 
-    // Source de routage info pour observabilit� admin
+    // Source de routage info pour observabilit? admin
     let infoRoutingSource = null;
     const tieBreakReason = typeof electedState.tieBreakReason === "string" ? electedState.tieBreakReason : null;
     if (typeof detectedState === "string" && detectedState.startsWith("info_")) {
       const src = electedState.infoSource;
       const subSrc = electedState.infoSignalSource;
       if (src === "deterministic_app_features") {
-        infoRoutingSource = "d�terministe";
+        infoRoutingSource = "d?terministe";
       } else if (src === "llm_fallback") {
         infoRoutingSource = "LLM (fallback)";
       } else if (subSrc === "llm_fallback") {
@@ -5940,7 +5940,7 @@ app.post("/chat", async (req, res) => {
       });
     }
 
-    // Phase 3: Deterministic arbitrator � consolidate all analyzer outputs into a
+    // Phase 3: Deterministic arbitrator ? consolidate all analyzer outputs into a
     // PostureDecision struct. No LLM calls, no side effects outside this block.
     const previousConversationState = normalizeConversationState(flags.conversationState);
     const postureDecision = buildPostureDecision({
@@ -5960,7 +5960,7 @@ app.post("/chat", async (req, res) => {
       previousConversationState,
       currentConsecutiveNonExplorationTurns: normalizeConsecutiveNonExplorationTurns(newFlags.consecutiveNonExplorationTurns),
       currentExplorationRelanceWindow: newFlags.explorationRelanceWindow,
-      // Phase B structural flags � persistent fallback values (overridden by C2 per-turn analysis)
+      // Phase B structural flags ? persistent fallback values (overridden by C2 per-turn analysis)
       allianceSignal: newFlags.allianceSignal,
       engagementLevel: newFlags.engagementLevel,
       stagnationTurns: newFlags.stagnationTurns,
@@ -6011,8 +6011,8 @@ app.post("/chat", async (req, res) => {
 
     Object.assign(newFlags, postureDecision.flagUpdates);
 
-    // Règle produit: si onGoingMovements est vide ce tour, forcer la case courante
-    // de la fenêtre de stagnation à 1.
+    // R�gle produit: si onGoingMovements est vide ce tour, forcer la case courante
+    // de la fen�tre de stagnation � 1.
     if (!Array.isArray(previousMemoryState?.onGoingMovements) || previousMemoryState.onGoingMovements.length === 0) {
       const forcedWindow = [...normalizeStagnationWindow(newFlags.stagnationWindow), true].slice(-4);
       newFlags.stagnationWindow = forcedWindow;
@@ -6021,9 +6021,9 @@ app.post("/chat", async (req, res) => {
 
     flagsForCatch = normalizeSessionFlags(newFlags);
 
-    // Injection du hint de lucidité relationnelle (dependencyCare).
-    // On lit currentFlags (valeur Firebase de ce tour) pour éviter l'injection au tour même
-    // où le seuil est franchi ("pas de but en blanc").
+    // Injection du hint de lucidit� relationnelle (dependencyCare).
+    // On lit currentFlags (valeur Firebase de ce tour) pour �viter l'injection au tour m�me
+    // o� le seuil est franchi ("pas de but en blanc").
     const _carePending = flags.dependencyCareMessagePending || false;
     if (_carePending) {
       const _careBlockingStates = ["n1_crisis", "n2_crisis", "discharge_regulated", "discharge_dysregulated", "alliance_rupture"];
@@ -6035,7 +6035,7 @@ app.post("/chat", async (req, res) => {
         const _carePendingTurns = (flags.dependencyCareMessagePendingTurns || 0) + 1;
         newFlags.dependencyCareMessagePendingTurns = _carePendingTurns;
         if (_carePendingTurns >= 2) {
-          // Après 2 tours éligibles, on considère le message livré ou définitivement différé.
+          // Apr�s 2 tours �ligibles, on consid�re le message livr� ou d�finitivement diff�r�.
           newFlags.dependencyCareMessagePending = false;
           newFlags.dependencyCareMessagePendingTurns = 0;
         }
@@ -6089,13 +6089,13 @@ app.post("/chat", async (req, res) => {
       });
     }
     
-    // 4) G�n�ration principale de la r�ponse selon le mode d�tect�,
-    // puis application d'un pipeline de correction si le contenu est en conflit mod�le.
+    // 4) G?n?ration principale de la r?ponse selon le mode d?tect?,
+    // puis application d'un pipeline de correction si le contenu est en conflit mod?le.
     markChatStage("reply_generation");
 
-    // Blocs 3+4 : injection m�moire longue terme (intersession compress�e).
-    // turnsUntilIntersessionRefresh === 0 ? injection. Sinon, d�cr�ment� chaque tour.
-    // intersessionRefreshForced (Firebase) permet un refresh imm�diat apr�s �dition directe.
+    // Blocs 3+4 : injection m?moire longue terme (intersession compress?e).
+    // turnsUntilIntersessionRefresh === 0 ? injection. Sinon, d?cr?ment? chaque tour.
+    // intersessionRefreshForced (Firebase) permet un refresh imm?diat apr?s ?dition directe.
     const {
       intersessionMemoryForThisTurn,
       intersessionMemoryRuntime,
@@ -6464,9 +6464,9 @@ app.post("/chat", async (req, res) => {
           const messageData = snapshot.val();
           if (messageData && typeof messageData.content === "string") {
             let newContent = messageData.content;
-            // Replace [MODIFIÉ] with [ENVOI STOPPE] if present, otherwise append it
-            if (newContent.includes("[MODIFIÉ]") || newContent.includes("[MODIFI�]")) {
-              newContent = newContent.replace(/\n?\[MODIFI[É�]\]$/, "\n[ENVOI STOPPE]");
+            // Replace [MODIFI\u00c9] with [ENVOI STOPPE] if present, otherwise append it
+            if (newContent.includes("[MODIFI\u00c9]") || newContent.includes("[MODIFI?]")) {
+              newContent = newContent.replace(/\n?\[(MODIFI\u00c9|MODIFI\?)\]$/, "\n[ENVOI STOPPE]");
             } else {
               newContent = newContent.trim() + "\n[ENVOI STOPPE]";
             }
