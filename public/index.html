@@ -3268,17 +3268,73 @@
     }
 
     function isBiometricUnlockAvailable() {
-      return false;
+      return isBiometricLockEnabledForSession();
     }
 
-    function requestBiometricUnlock() {}
+    async function requestBiometricUnlock() {
+      if (!isBiometricLockEnabledForSession()) {
+        return { ok: true, reason: "not_enabled" };
+      }
+
+      try {
+        const res = await fetch("/api/biometric/unlock-token", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: "{}"
+        });
+
+        const data = await parseAppJsonResponseSafely(res);
+        if (!res.ok) {
+          return {
+            ok: false,
+            reason: String(data?.reason || data?.error || `status_${res.status}`)
+          };
+        }
+
+        const token = String(data?.token || "").trim();
+        const expiresIn = Number(data?.expiresIn || 0);
+        if (!token || !Number.isFinite(expiresIn) || expiresIn <= 0) {
+          return { ok: false, reason: "invalid_token_payload" };
+        }
+
+        const expiresAt = Date.now() + Math.max(0, Math.floor(expiresIn * 1000) - 5000);
+        sessionStorage.setItem("biometricUnlockToken", token);
+        sessionStorage.setItem("biometricUnlockTokenExpiresAt", String(expiresAt));
+        setBiometricUnlockTimestamp(Date.now());
+        return { ok: true, reason: "token_issued" };
+      } catch (err) {
+        return {
+          ok: false,
+          reason: String(err?.message || "unlock_request_failed")
+        };
+      }
+    }
 
     function shouldRequestBiometricUnlock(reason = "") {
-      return false;
+      if (!isBiometricLockEnabledForSession()) {
+        return false;
+      }
+
+      const safeReason = String(reason || "").trim();
+      if (!safeReason) {
+        return getBiometricUnlockTokenValue() === null;
+      }
+
+      return getBiometricUnlockTokenValue() === null;
     }
 
     async function ensureBiometricAccess(reason = "navigation") {
-      return true;
+      if (!isBiometricLockEnabledForSession()) {
+        return true;
+      }
+
+      if (!shouldRequestBiometricUnlock(reason)) {
+        return true;
+      }
+
+      const unlockResult = await requestBiometricUnlock();
+      return unlockResult.ok === true;
     }
 
     async function persistAdminMailsPreference(mailsEnabled) {
@@ -9450,6 +9506,27 @@
         }
       }
       
+      const biometricReady = await ensureBiometricAccess("chat_send");
+      if (!biometricReady && isBiometricLockEnabledForSession()) {
+        if (
+          getConversationId() === conversationIdBeforeSend &&
+          document.querySelector(".screen.active")?.id === "chatScreen"
+        ) {
+          addMessage("bot", "Le verrou biom\u00e9trique de ce compte est actif. Ouvre l'app via le d\u00e9verrouillage biom\u00e9trique puis r\u00e9essaie.", [], {
+            shouldAutoScroll: wasAtBottom || isEditing,
+            pulseScrollButton: !wasAtBottom && !isEditing
+          });
+        }
+
+        isSending = false;
+        sendingConversationId = "";
+        syncInputAvailability();
+        syncWaitingIndicatorForCurrentConversation();
+        processQueuedMessagesForCurrentConversation();
+        updateScrollToBottomBtn();
+        return;
+      }
+
       let requestConversationId = getConversationId();
       if (!requestConversationId) {
         requestConversationId = createConversationId({
