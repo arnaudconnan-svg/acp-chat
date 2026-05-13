@@ -79,10 +79,6 @@ public class BiometricGateActivity extends FragmentActivity {
             return false;
         }
 
-        if ((flags & Intent.FLAG_ACTIVITY_BROUGHT_TO_FRONT) != 0) {
-            return false;
-        }
-
         return true;
     }
 
