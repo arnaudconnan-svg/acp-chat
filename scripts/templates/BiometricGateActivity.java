@@ -149,7 +149,7 @@ public class BiometricGateActivity extends FragmentActivity {
             next.addCategory(Intent.CATEGORY_LAUNCHER);
         }
 
-        next.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        next.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         startActivity(next);
         finish();
     }
