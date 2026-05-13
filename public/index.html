@@ -5153,14 +5153,37 @@
       const safeHistory = Array.isArray(history) ? history : [];
       return safeHistory
         .map(({ role, content, signals }) => {
+          const normalizedRole = typeof role === "string" ? role.trim() : "";
+          if (!normalizedRole || typeof content !== "string") {
+            return null;
+          }
+
           const normalizedSignals = normalizeSignalsForRequest(signals);
           return {
-            role,
+            role: normalizedRole,
             content,
             ...(normalizedSignals ? { signals: normalizedSignals } : {})
           };
         })
+        .filter(Boolean)
         .slice(-MAX_RECENT_TURNS);
+    }
+
+    function buildConversationBranchHistoryForChatRequest(history = loadHistory()) {
+      const safeHistory = Array.isArray(history) ? history : [];
+      return safeHistory
+        .map(({ role, content }) => {
+          const normalizedRole = typeof role === "string" ? role.trim() : "";
+          if (!normalizedRole || typeof content !== "string") {
+            return null;
+          }
+
+          return {
+            role: normalizedRole,
+            content
+          };
+        })
+        .filter(Boolean);
     }
     
     function saveHistory(history) {
@@ -8488,6 +8511,12 @@
         return "";
       }
 
+      const errorText = String(data?.error || "").toLowerCase();
+      const reasonText = String(data?.reason || "").toLowerCase();
+      if (status === 403 && (errorText.includes("biometric") || reasonText.includes("biometric"))) {
+        return "Le verrou biom\u00e9trique de ce compte est actif. Ouvre l'app via le d\u00e9verrouillage biom\u00e9trique puis r\u00e9essaie.";
+      }
+
       if (status >= 500) {
         return "Je traverse un incident technique cote Facilitat.io. Tu peux reessayer dans quelques instants.";
       }
@@ -9421,7 +9450,12 @@
         }
       }
       
-      const requestConversationId = getConversationId();
+      let requestConversationId = getConversationId();
+      if (!requestConversationId) {
+        requestConversationId = createConversationId({
+          isPrivate: shouldCreatePrivateConversationByDefault()
+        });
+      }
       const requestScreenId = document.querySelector(".screen.active")?.id || "";
       sendingConversationId = requestConversationId;
       
@@ -9499,7 +9533,7 @@
             isPrivateConversation: isConversationPrivateById(requestConversationId, loadConversationData(requestConversationId)),
             adminUiActive: document.body.classList.contains("admin-ui"),
             recentHistory: buildRecentHistoryForChatRequest(loadHistory()),
-            conversationBranchHistory: loadHistory().map(({ role, content }) => ({ role, content })),
+            conversationBranchHistory: buildConversationBranchHistoryForChatRequest(loadHistory()),
             titleDenyList: buildTitleDenyListForConversation(requestConversationId),
             memory: loadConversationData(requestConversationId).memory,
             flags: normalizeStoredFlags(loadConversationData(requestConversationId).flags),
