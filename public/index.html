@@ -167,16 +167,25 @@
       display: block;
       filter: none;
     }
+
+    #welcomeBottomSlot {
+      width: 100%;
+      max-width: 380px;
+      margin-top: auto;
+      display: grid;
+      position: relative;
+    }
     
     #welcomeRitualText {
       width: 100%;
-      min-height: clamp(52px, 10vh, 92px);
-      height: clamp(52px, 10vh, 92px);
+      min-height: 0;
+      height: auto;
       display: flex;
       align-items: center;
       justify-content: center;
       text-align: center;
-      margin-top: auto;
+      grid-area: 1 / 1;
+      align-self: center;
       font-size: clamp(30px, 7vw, 42px);
       font-weight: 500;
       line-height: 1.35;
@@ -209,7 +218,9 @@
     #welcomeActions {
       width: 100%;
       max-width: 380px;
-      margin-top: clamp(18px, 4.2vh, 42px);
+      grid-area: 1 / 1;
+      align-self: center;
+      position: relative;
       padding-top: 0;
       display: flex;
       flex-direction: column;
@@ -227,7 +238,11 @@
       align-items: center;
       width: 100%;
       gap: 18px;
-      margin-top: 50px;
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      margin-top: 12px;
       opacity: 0;
       pointer-events: none;
       transform: translateY(10px);
@@ -482,20 +497,17 @@
       }
 
       #welcomeRitualText {
-        margin-top: auto;
-        min-height: 56px;
         font-size: clamp(23px, 6.6vw, 34px);
       }
 
       #welcomeActions {
         max-width: 360px;
-        margin-top: clamp(14px, 3vh, 26px);
         padding-top: 0;
       }
 
       #welcomeSecondaryActions {
         gap: 14px;
-        margin-top: 39px;
+        margin-top: 10px;
       }
 
       .welcomeBtnPrimary {
@@ -523,14 +535,11 @@
       }
 
       #welcomeRitualText {
-        margin-top: auto;
-        min-height: 42px;
         font-size: clamp(20px, 6vw, 28px);
         line-height: 1.25;
       }
 
       #welcomeActions {
-        margin-top: clamp(10px, 2vh, 18px);
         padding-top: 0;
       }
 
@@ -2327,22 +2336,24 @@
         <img id="welcomeLogo" src="/images/logo.png" alt="Facilitat.io">
       </div>
       
-      <div id="welcomeRitualText" aria-live="polite"></div>
-      
-      <div id="welcomeActions">
-        <button id="welcomeEnterBtn" class="welcomeBtnPrimary" type="button">
-          Entrer
-        </button>
-
-        <div id="welcomeSecondaryActions">
-          <button id="welcomeAboutBtn" class="welcomeBtnSecondary" type="button" aria-label="Plus d'informations" title="Plus d'informations">
-            ?
+      <div id="welcomeBottomSlot">
+        <div id="welcomeRitualText" aria-live="polite"></div>
+        
+        <div id="welcomeActions">
+          <button id="welcomeEnterBtn" class="welcomeBtnPrimary" type="button">
+            Entrer
           </button>
 
-          <div id="welcomeDevAccessWrap">
-            <button id="welcomeDevAccessBtn" class="welcomeBtnTertiary" type="button" aria-label="Acc&egrave;s admin" title="Acc&egrave;s admin">
-              &#9881;
+          <div id="welcomeSecondaryActions">
+            <button id="welcomeAboutBtn" class="welcomeBtnSecondary" type="button" aria-label="Plus d'informations" title="Plus d'informations">
+              ?
             </button>
+
+            <div id="welcomeDevAccessWrap">
+              <button id="welcomeDevAccessBtn" class="welcomeBtnTertiary" type="button" aria-label="Acc&egrave;s admin" title="Acc&egrave;s admin">
+                &#9881;
+              </button>
+            </div>
           </div>
         </div>
       </div>
