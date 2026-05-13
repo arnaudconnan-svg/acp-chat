@@ -71,10 +71,6 @@ public class BiometricGateActivity extends FragmentActivity {
         }
 
         String action = incoming.getAction();
-        if (Intent.ACTION_VIEW.equals(action)) {
-            return false;
-        }
-
         int flags = incoming.getFlags();
         if ((flags & Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY) != 0) {
             return false;
@@ -134,23 +130,10 @@ public class BiometricGateActivity extends FragmentActivity {
         Intent next = new Intent(this, LauncherActivity.class);
 
         if (incoming != null) {
-            String action = incoming.getAction();
-            if (action != null && !action.trim().isEmpty()) {
-                next.setAction(action);
-            }
-
             Uri data = incoming.getData();
             if (data != null) {
+                next.setAction(Intent.ACTION_VIEW);
                 next.setData(data);
-            }
-
-            Set<String> categories = incoming.getCategories();
-            if (categories != null) {
-                for (String category : categories) {
-                    if (category != null && !category.trim().isEmpty()) {
-                        next.addCategory(category);
-                    }
-                }
             }
 
             Bundle extras = incoming.getExtras();

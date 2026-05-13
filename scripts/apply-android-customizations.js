@@ -142,10 +142,17 @@ function syncBuildGradleShortcuts(shortcuts) {
 
   if (nextGradle === gradle) {
     console.warn('[android-customize] Could not update shortcuts block in app/build.gradle.');
-    return;
+  } else {
+    gradle = nextGradle;
   }
 
-  fs.writeFileSync(ANDROID_BUILD_GRADLE_PATH, nextGradle);
+  const targetClassPattern = /('android:targetClass':\s*)twaManifest\.applicationId \+ '\.LauncherActivity'/;
+  const targetClassReplacement = `$1twaManifest.applicationId + '.BiometricGateActivity'`;
+  const actionPattern = /('android:action':\s*)'android\.intent\.action\.MAIN'/;
+  const actionReplacement = `$1'android.intent.action.MAIN'`;
+
+  const withGateTarget = gradle.replace(targetClassPattern, targetClassReplacement).replace(actionPattern, actionReplacement);
+  fs.writeFileSync(ANDROID_BUILD_GRADLE_PATH, withGateTarget, 'utf8');
   console.log(`[android-customize] Synced app/build.gradle shortcuts (${shortcuts.length} shortcut(s)).`);
 }
 
@@ -156,23 +163,27 @@ function ensureManifestShortcutMetadata() {
   }
 
   let manifest = fs.readFileSync(ANDROID_MANIFEST_PATH, 'utf8');
-  if (manifest.includes('android:name="android.app.shortcuts"')) {
-    console.log('[android-customize] LauncherActivity shortcut metadata already present.');
+  const gateShortcutMeta = '            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />\n';
+
+  manifest = manifest.replace(/\n\s*<meta-data android:name="android\.app\.shortcuts" android:resource="@xml\/shortcuts" \/>\n/g, '\n');
+
+  if (manifest.includes('<activity android:name="BiometricGateActivity"') && manifest.includes('android:name="android.app.shortcuts"')) {
+    fs.writeFileSync(ANDROID_MANIFEST_PATH, manifest, 'utf8');
+    console.log('[android-customize] BiometricGateActivity shortcut metadata already present.');
     return;
   }
 
-  const launcherMetaNeedle = '<meta-data android:name="android.support.customtabs.trusted.SCREEN_ORIENTATION"';
-  const launcherMetaInsert = '            <meta-data android:name="android.app.shortcuts"\n                android:resource="@xml/shortcuts" />\n';
-
-  const markerIndex = manifest.indexOf(launcherMetaNeedle);
-  if (markerIndex === -1) {
-    console.warn('[android-customize] Could not find LauncherActivity metadata marker; skipping shortcut metadata patch.');
+  const gateNeedle = '            android:theme="@android:style/Theme.Translucent.NoTitleBar">\n';
+  const gateIndex = manifest.indexOf(gateNeedle);
+  if (gateIndex === -1) {
+    console.warn('[android-customize] Could not find BiometricGateActivity marker; skipping shortcut metadata patch.');
     return;
   }
 
-  manifest = `${manifest.slice(0, markerIndex)}${launcherMetaInsert}${manifest.slice(markerIndex)}`;
+  const insertAt = gateIndex + gateNeedle.length;
+  manifest = `${manifest.slice(0, insertAt)}${gateShortcutMeta}${manifest.slice(insertAt)}`;
   fs.writeFileSync(ANDROID_MANIFEST_PATH, manifest);
-  console.log('[android-customize] Added android.app.shortcuts metadata to LauncherActivity.');
+  console.log('[android-customize] Added android.app.shortcuts metadata to BiometricGateActivity.');
 }
 
 function syncShortcutIconDrawable() {
@@ -273,7 +284,7 @@ function ensureBiometricGateManifestWiring() {
   if (!manifest.includes('android:name="BiometricGateActivity"')) {
     const insertionPoint = manifest.indexOf('<activity android:name="LauncherActivity"');
     if (insertionPoint !== -1) {
-      const gateBlock = `        <activity android:name="BiometricGateActivity"\n            android:exported="true"\n            android:excludeFromRecents="true"\n            android:noHistory="true"\n            android:screenOrientation="portrait"\n            android:theme="@android:style/Theme.Translucent.NoTitleBar">\n            <intent-filter>\n                <action android:name="android.intent.action.MAIN" />\n                <category android:name="android.intent.category.LAUNCHER" />\n            </intent-filter>\n\n            <intent-filter>\n                <action android:name="android.intent.action.VIEW" />\n                <category android:name="android.intent.category.DEFAULT" />\n                <category android:name="android.intent.category.BROWSABLE" />\n                <data android:scheme="facilitat"\n                    android:host="biometric-config"\n                />\n            </intent-filter>\n        </activity>\n\n`;
+      const gateBlock = `        <activity android:name="BiometricGateActivity"\n            android:exported="true"\n            android:excludeFromRecents="true"\n            android:noHistory="true"\n            android:screenOrientation="portrait"\n            android:theme="@android:style/Theme.Translucent.NoTitleBar">\n            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />\n            <intent-filter>\n                <action android:name="android.intent.action.MAIN" />\n                <category android:name="android.intent.category.LAUNCHER" />\n            </intent-filter>\n\n            <intent-filter>\n                <action android:name="android.intent.action.VIEW" />\n                <category android:name="android.intent.category.DEFAULT" />\n                <category android:name="android.intent.category.BROWSABLE" />\n                <data android:scheme="facilitat"\n                    android:host="biometric-config"\n                />\n            </intent-filter>\n        </activity>\n\n`;
       manifest = `${manifest.slice(0, insertionPoint)}${gateBlock}${manifest.slice(insertionPoint)}`;
     } else {
       console.warn('[android-customize] Could not find LauncherActivity insertion point for BiometricGateActivity.');
