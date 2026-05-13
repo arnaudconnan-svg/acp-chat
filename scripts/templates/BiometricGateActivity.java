@@ -128,10 +128,12 @@ public class BiometricGateActivity extends FragmentActivity {
         forwarded = true;
 
         Intent next = new Intent(this, LauncherActivity.class);
+        boolean hasUsableData = false;
 
         if (incoming != null) {
             Uri data = incoming.getData();
-            if (data != null) {
+            if (data != null && String.valueOf(data).trim().length() > 0) {
+                hasUsableData = true;
                 next.setAction(Intent.ACTION_VIEW);
                 next.setData(data);
             }
@@ -140,6 +142,11 @@ public class BiometricGateActivity extends FragmentActivity {
             if (extras != null) {
                 next.putExtras(extras);
             }
+        }
+
+        if (!hasUsableData) {
+            next.setAction(Intent.ACTION_MAIN);
+            next.addCategory(Intent.CATEGORY_LAUNCHER);
         }
 
         next.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
