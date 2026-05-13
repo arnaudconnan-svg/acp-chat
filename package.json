@@ -47,6 +47,7 @@
     "android:apply-customizations": "node scripts/apply-android-customizations.js",
     "android:build:release": "node scripts/android-build-release.js",
     "android:deploy:release": "node scripts/android-deploy-release.js",
+    "android:rebuild:release": "node scripts/android-rebuild-release.js",
     "android:deploy:fast": "node scripts/android-deploy-release.js --skip-build",
     "android:install:release": "node scripts/android-deploy-release.js --skip-build --skip-sign",
     "android:keep-awake:on": "node scripts/android-keep-awake.js on",
