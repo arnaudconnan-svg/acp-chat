@@ -1,6 +1,6 @@
 const fs = require("fs");
 const path = require("path");
-const { execSync } = require("child_process");
+const { execSync, spawnSync } = require("child_process");
 
 function getTwaManifestPath() {
   return path.join(__dirname, "..", "twa-manifest.json");
@@ -20,6 +20,85 @@ function readTwaManifest() {
   }
 
   return manifest;
+}
+
+function normalizeUrlPath(value, fallback = "/") {
+  const raw = String(value || "").trim();
+  if (!raw) return fallback;
+
+  try {
+    const url = new URL(raw);
+    return `${url.pathname || "/"}${url.search || ""}${url.hash || ""}` || fallback;
+  } catch (_) {
+    return raw.startsWith("/") ? raw : `/${raw}`;
+  }
+}
+
+function resolveSdkRoot() {
+  const candidates = [
+    String(process.env.ANDROID_SDK_ROOT || "").trim(),
+    String(process.env.ANDROID_HOME || "").trim(),
+    path.join(String(process.env.LOCALAPPDATA || "").trim(), "Android", "Sdk"),
+    path.join(String(process.env.USERPROFILE || process.env.HOME || "").trim(), ".bubblewrap", "android_sdk")
+  ].filter(Boolean);
+
+  for (const candidate of candidates) {
+    if (candidate && fs.existsSync(candidate)) return candidate;
+  }
+
+  return "";
+}
+
+function writeLocalProperties(projectDir) {
+  const sdkRoot = resolveSdkRoot();
+  if (!sdkRoot) {
+    console.warn("[bubblewrap] Android SDK not found; skipping local.properties generation.");
+    return;
+  }
+
+  const localPropertiesPath = path.join(projectDir, "local.properties");
+  const escapedSdkRoot = sdkRoot.replace(/\\/g, "\\\\");
+  fs.writeFileSync(localPropertiesPath, `sdk.dir=${escapedSdkRoot}\n`, "utf8");
+  console.log("[bubblewrap] Wrote local.properties with resolved Android SDK path.");
+}
+
+function buildBubblewrapAnswers(manifest) {
+  const startPath = normalizeUrlPath(manifest.startUrl || "/", "/");
+  const packageId = String(manifest.packageId || "io.facilitat.app").trim() || "io.facilitat.app";
+  const appName = String(manifest.name || "Facilitat.io").trim() || "Facilitat.io";
+  const launcherName = String(manifest.launcherName || appName).trim() || appName;
+  const versionCode = Number.isFinite(Number(manifest.appVersionCode)) ? String(Number(manifest.appVersionCode)) : "1";
+  const display = String(manifest.display || "standalone").trim() || "standalone";
+  const orientation = String(manifest.orientation || "portrait").trim() || "portrait";
+  const themeColor = String(manifest.themeColor || "#F4F9F9").trim() || "#F4F9F9";
+  const backgroundColor = String(manifest.backgroundColor || themeColor).trim() || themeColor;
+  const iconUrl = String(manifest.iconUrl || "").trim();
+  const maskableIconUrl = String(manifest.maskableIconUrl || "").trim();
+  const includeShortcuts = Array.isArray(manifest.shortcuts) && manifest.shortcuts.length > 0 ? "Y" : "n";
+  const keystorePath = path.join(String(process.env.USERPROFILE || process.env.HOME || ""), ".android", "facilitat-dev.keystore");
+  const keyAlias = String(process.env.FACILITAT_KEY_ALIAS || "facilitat-dev").trim() || "facilitat-dev";
+
+  return [
+    "y",
+    String(manifest.host || "acp-chat-beta.onrender.com").trim() || "acp-chat-beta.onrender.com",
+    startPath,
+    appName,
+    launcherName,
+    packageId,
+    versionCode,
+    display,
+    orientation,
+    themeColor,
+    backgroundColor,
+    iconUrl,
+    maskableIconUrl,
+    includeShortcuts,
+    "",
+    "N",
+    "N",
+    keystorePath,
+    keyAlias
+  ].join("\n") + "\n";
 }
 
 function checkBubblewrap() {
@@ -62,8 +141,26 @@ function initBubblewrap(manifest) {
   ];
 
   try {
-    execSync("bubblewrap " + args.join(" "), { stdio: "inherit", shell: true });
+    const bubblewrapCommand = process.platform === "win32" ? "bubblewrap.cmd" : "bubblewrap";
+    const result = spawnSync(bubblewrapCommand, args, {
+      cwd: path.join(__dirname, ".."),
+      encoding: "utf8",
+      input: buildBubblewrapAnswers(manifest),
+      stdio: ["pipe", "pipe", "pipe"],
+      shell: false
+    });
+
+    if (result.stdout) process.stdout.write(result.stdout);
+    if (result.stderr) process.stderr.write(result.stderr);
+    if (result.error) {
+      throw result.error;
+    }
+    if (result.status !== 0) {
+      throw new Error(`bubblewrap init exited with code ${result.status || 1}`);
+    }
+
     console.log("[bubblewrap] Project initialized at", projectDir);
+    writeLocalProperties(projectDir);
     return projectDir;
   } catch (err) {
     console.error("[bubblewrap] Initialization failed:", err.message);

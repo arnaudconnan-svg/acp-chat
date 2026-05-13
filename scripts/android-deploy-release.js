@@ -172,10 +172,6 @@ function main() {
   if (!fs.existsSync(apksigner)) fail(`Missing apksigner at ${apksigner}`);
   if (!fs.existsSync(zipalign)) fail(`Missing zipalign at ${zipalign}`);
   if (!fs.existsSync(adb)) fail(`Missing adb at ${adb}`);
-
-  const unsignedApk = getUnsignedApk();
-  const alignedUnsignedApk = getAlignedUnsignedApk();
-  const signedApk = getSignedApk();
   const keystorePath = path.join(String(process.env.USERPROFILE || process.env.HOME || ""), ".android", "facilitat-dev.keystore");
   const keystorePass = String(process.env.FACILITAT_KEYSTORE_PASS || "facilitat123");
   const keyAlias = String(process.env.FACILITAT_KEY_ALIAS || "facilitat-dev");
@@ -186,6 +182,10 @@ function main() {
   } else {
     console.log("[android-deploy] Skipping build (--skip-build).");
   }
+
+  const unsignedApk = getUnsignedApk();
+  const alignedUnsignedApk = getAlignedUnsignedApk();
+  const signedApk = getSignedApk();
 
   if (!fileExists(unsignedApk) && !fileExists(signedApk)) {
     fail(`Missing APK artifacts in ${RELEASE_DIR}. Run a release build first.`);
