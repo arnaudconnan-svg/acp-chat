@@ -441,6 +441,7 @@
       const CONVERSATION_STORAGE_KEY_PREFIX = "facilitatio_conversation_data_";
       const PRIVATE_CONVERSATION_IDS_KEY = "facilitatio_private_conversation_ids";
       const BIOMETRIC_CREDENTIAL_KEY_PREFIX = "facilitatio_bio_cred_v1_";
+      const ANDROID_COUNTRY_PENDING_KEY = "facilitatio_android_country_pending";
 
       let currentUser = null;
       let accountSubscreen = "main";
@@ -520,6 +521,7 @@
       async function init() {
         const _initParams = new URLSearchParams(window.location.search);
         const _pendingCountry = _initParams.get("_android_country_selected");
+        const _pendingCountryStored = String(localStorage.getItem(ANDROID_COUNTRY_PENDING_KEY) || "").toUpperCase().replace(/[^A-Z]/g, "").slice(0, 2);
         const _openPrivacySubscreen = _initParams.get("_account_subscreen") === "privacy";
         const _nativeBioConfig = _initParams.get("_android_bio_config");
         if (_pendingCountry) {
@@ -551,8 +553,16 @@
 
           currentUser = data.user || {};
 
-          if (_pendingCountry) {
-            await autoSaveCountry(_pendingCountry.toUpperCase());
+          const _resolvedCountry = String(_pendingCountry || "").toUpperCase().replace(/[^A-Z]/g, "").slice(0, 2) || _pendingCountryStored;
+
+          if (_resolvedCountry && (!currentUser.country || String(currentUser.country).trim() === "")) {
+            await autoSaveCountry(_resolvedCountry);
+          }
+
+          if (_resolvedCountry && currentUser && currentUser.country) {
+            localStorage.removeItem(ANDROID_COUNTRY_PENDING_KEY);
+          } else if (_resolvedCountry) {
+            localStorage.setItem(ANDROID_COUNTRY_PENDING_KEY, _resolvedCountry);
           }
 
           if (_openPrivacySubscreen) {

@@ -677,27 +677,6 @@
       white-space: nowrap;
     }
 
-    #conversationsPrivateTopbarLock {
-      position: absolute;
-      left: 18px;
-      top: calc(14px + env(safe-area-inset-top, 0px));
-      width: 32px;
-      height: 32px;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      color: #245e66;
-      background: rgba(36, 94, 102, 0.08);
-      border: 1px solid rgba(36, 94, 102, 0.2);
-      border-radius: 50%;
-      box-sizing: border-box;
-      pointer-events: none;
-    }
-
-    #conversationsPrivateTopbarLock.is-visible {
-      display: inline-flex;
-    }
-
     #conversationsAccountMenuWrap {
       position: absolute;
       right: 18px;
@@ -1438,6 +1417,27 @@
 
     #topBar h2 {
       color: #245e66;
+    }
+
+    #chatPrivateTopbarLock {
+      position: absolute;
+      left: 58px;
+      top: calc(14px + env(safe-area-inset-top, 0px));
+      width: 32px;
+      height: 32px;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      color: #245e66;
+      background: rgba(36, 94, 102, 0.08);
+      border: 1px solid rgba(36, 94, 102, 0.2);
+      border-radius: 50%;
+      box-sizing: border-box;
+      pointer-events: none;
+    }
+
+    #chatPrivateTopbarLock.is-visible {
+      display: inline-flex;
     }
     
     #chat {
@@ -2407,12 +2407,6 @@
   
   <div id="conversationsScreen" class="screen">
     <div id="conversationsTopBar" class="topBar">
-      <span id="conversationsPrivateTopbarLock" aria-hidden="true">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
-          <path d="M6.5 11.2h11a1.5 1.5 0 0 1 1.5 1.5v5.8a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-5.8a1.5 1.5 0 0 1 1.5-1.5z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"></path>
-          <path d="M8.4 11.2V8.9a3.6 3.6 0 1 1 7.2 0v2.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>
-        </svg>
-      </span>
       <div class="topBarContent">
         <span class="topBarTitle">Facilitat.io</span>
       </div>
@@ -2492,6 +2486,12 @@
   
   <div id="chatScreen" class="screen" tabindex="-1">
     <div id="topBar">
+      <span id="chatPrivateTopbarLock" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
+          <path d="M6.5 11.2h11a1.5 1.5 0 0 1 1.5 1.5v5.8a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-5.8a1.5 1.5 0 0 1 1.5-1.5z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"></path>
+          <path d="M8.4 11.2V8.9a3.6 3.6 0 1 1 7.2 0v2.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>
+        </svg>
+      </span>
       <div id="chatMakePublicBtnWrap">
         <button id="chatMakePublicBtn" type="button" aria-label="Rendre la conversation publique">
           <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -2835,11 +2835,7 @@
     }
 
     function openPrivateConversationModal() {
-      openModal("privateConversationModal");
-
-      return new Promise(resolve => {
-        pendingPrivateConversationResolver = resolve;
-      });
+      return Promise.resolve(true);
     }
 
     function resolvePrivateConversationModal(accepted) {
@@ -3077,6 +3073,7 @@
     const BIOMETRIC_UNLOCK_TS_KEY_PREFIX = "facilitatio_bio_unlock_ts_v1_";
     const BIOMETRIC_HIDDEN_AT_KEY_PREFIX = "facilitatio_bio_hidden_at_v1_";
     const BIOMETRIC_WEB_RELOCK_SUPPRESS_KEY = "facilitatio_bio_web_relock_suppress_until_v1";
+    const ANDROID_COUNTRY_PENDING_KEY = "facilitatio_android_country_pending";
     let userSessionState = {
       authenticated: false,
       user: null
@@ -3521,8 +3518,8 @@
       return loadPrivateConversationIds().includes(id);
     }
 
-    function syncConversationsPrivateTopbarLock() {
-      const lockEl = document.getElementById("conversationsPrivateTopbarLock");
+    function syncChatPrivateTopbarLock() {
+      const lockEl = document.getElementById("chatPrivateTopbarLock");
       if (!lockEl) return;
 
       const conversationId = getConversationId();
@@ -3539,10 +3536,12 @@
       const conversationId = getConversationId();
       if (!conversationId) {
         wrap.style.visibility = "hidden";
+        syncChatPrivateTopbarLock();
         return;
       }
       const data = loadConversationData(conversationId);
       wrap.style.visibility = isConversationPrivateById(conversationId, data) ? "visible" : "hidden";
+      syncChatPrivateTopbarLock();
     }
 
     function closeMakePublicModal() {
@@ -5564,6 +5563,7 @@
           renderHistory();
           updateScrollToBottomBtn();
         }
+        updateMakePublicBtnVisibility();
         syncDebugVisibility();
         return;
       }
@@ -5573,6 +5573,7 @@
           renderHistory();
           updateScrollToBottomBtn();
         }
+        updateMakePublicBtnVisibility();
         if (isConversationsActive) {
           renderConversationsList();
         }
@@ -5697,7 +5698,6 @@
       
       if (id === "conversationsScreen") {
         renderConversationsList();
-        syncConversationsPrivateTopbarLock();
         
         requestAnimationFrame(() => {
           const conversationsEl = document.getElementById("conversationsListWrap");
@@ -5721,6 +5721,7 @@
       
       if (id === "chatScreen") {
         const chat = document.getElementById("chat");
+        updateMakePublicBtnVisibility();
         
         const shouldScrollToBottom = () => {
           if (!chat) return false;
@@ -11008,20 +11009,26 @@
       try {
         const _launchUrl = new URL(window.location.href);
         const _androidCountry = _launchUrl.searchParams.get("_android_country");
-        if (_androidCountry && userSessionState.authenticated && userSessionState.user && !userSessionState.user.country) {
-          const _code = String(_androidCountry).toUpperCase().replace(/[^A-Z]/g, "").slice(0, 2);
-          if (_code.length === 2) {
-            fetch("/api/account/profile", {
-              method: "PUT",
-              credentials: "include",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ country: _code })
-            }).then(r => r.json()).then(d => {
-              if (d && d.success && userSessionState.user) {
-                userSessionState.user.country = typeof d.country === "string" ? d.country : _code;
-              }
-            }).catch(() => {});
-          }
+        const _fromUrlCountry = String(_androidCountry || "").toUpperCase().replace(/[^A-Z]/g, "").slice(0, 2);
+        const _pendingStoredCountry = String(localStorage.getItem(ANDROID_COUNTRY_PENDING_KEY) || "").toUpperCase().replace(/[^A-Z]/g, "").slice(0, 2);
+        const _resolvedCountry = _fromUrlCountry.length === 2 ? _fromUrlCountry : _pendingStoredCountry;
+
+        if (_fromUrlCountry.length === 2) {
+          localStorage.setItem(ANDROID_COUNTRY_PENDING_KEY, _fromUrlCountry);
+        }
+
+        if (_resolvedCountry.length === 2 && userSessionState.authenticated && userSessionState.user && !userSessionState.user.country) {
+          fetch("/api/account/profile", {
+            method: "PUT",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ country: _resolvedCountry })
+          }).then(r => r.json()).then(d => {
+            if (d && d.success && userSessionState.user) {
+              userSessionState.user.country = typeof d.country === "string" ? d.country : _resolvedCountry;
+              localStorage.removeItem(ANDROID_COUNTRY_PENDING_KEY);
+            }
+          }).catch(() => {});
         }
         if (_androidCountry) {
           _launchUrl.searchParams.delete("_android_country");
