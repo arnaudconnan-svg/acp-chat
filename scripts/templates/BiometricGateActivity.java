@@ -2,16 +2,19 @@ package io.facilitat.app;
 
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
+import android.util.TypedValue;
+import android.view.Gravity;
+import android.widget.FrameLayout;
+import android.widget.ImageView;
 
 import androidx.annotation.NonNull;
 import androidx.biometric.BiometricManager;
 import androidx.biometric.BiometricPrompt;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.FragmentActivity;
-
-import java.util.Set;
 
 public class BiometricGateActivity extends FragmentActivity {
     private static final String PREFS_NAME = "facilitat_native_biometrics";
@@ -35,6 +38,7 @@ public class BiometricGateActivity extends FragmentActivity {
             return;
         }
 
+        setContentView(createGateView());
         requestBiometricThenForward(incoming);
     }
 
@@ -70,7 +74,6 @@ public class BiometricGateActivity extends FragmentActivity {
             return false;
         }
 
-        String action = incoming.getAction();
         int flags = incoming.getFlags();
         if ((flags & Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY) != 0) {
             return false;
@@ -86,6 +89,46 @@ public class BiometricGateActivity extends FragmentActivity {
     private boolean isBiometricEnabledByUser() {
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
         return prefs.getBoolean(PREF_BIOMETRIC_ENABLED, false);
+    }
+
+    private FrameLayout createGateView() {
+        FrameLayout root = new FrameLayout(this);
+        root.setLayoutParams(new FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT,
+            FrameLayout.LayoutParams.MATCH_PARENT
+        ));
+        root.setBackgroundColor(Color.parseColor("#F4F9F9"));
+
+        ImageView logoView = new ImageView(this);
+        logoView.setImageResource(resolveGateLogoResId());
+        logoView.setAdjustViewBounds(true);
+        logoView.setScaleType(ImageView.ScaleType.FIT_CENTER);
+
+        int maxWidth = Math.min(dpToPx(220), Math.round(getResources().getDisplayMetrics().widthPixels * 0.62f));
+        int topMargin = Math.round(getResources().getDisplayMetrics().heightPixels * 0.16f);
+        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
+            maxWidth,
+            FrameLayout.LayoutParams.WRAP_CONTENT
+        );
+        params.gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
+        params.topMargin = topMargin;
+        logoView.setLayoutParams(params);
+
+        root.addView(logoView);
+        return root;
+    }
+
+    private int resolveGateLogoResId() {
+        int resourceId = getResources().getIdentifier("gate_logo", "drawable", getPackageName());
+        return resourceId != 0 ? resourceId : R.mipmap.ic_launcher;
+    }
+
+    private int dpToPx(int dp) {
+        return Math.round(TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP,
+            dp,
+            getResources().getDisplayMetrics()
+        ));
     }
 
     private void requestBiometricThenForward(Intent incoming) {

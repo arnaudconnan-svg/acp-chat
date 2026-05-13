@@ -9,6 +9,9 @@ const BIOMETRIC_GATE_ACTIVITY_PATH = path.join(ROOT, 'android-project', 'app', '
 const SHORTCUT_ICON_TEMPLATE_PATH = path.join(__dirname, 'templates', 'shortcut_legacy_background.xml');
 const SHORTCUT_ICON_TARGET_DIR = path.join(ROOT, 'android-project', 'app', 'src', 'main', 'res', 'drawable');
 const SHORTCUT_ICON_TARGET_PATH = path.join(SHORTCUT_ICON_TARGET_DIR, 'shortcut_legacy_background.xml');
+const GATE_LOGO_SOURCE_PATH = path.join(ROOT, 'public', 'images', 'logo.png');
+const GATE_LOGO_TARGET_DIR = path.join(ROOT, 'android-project', 'app', 'src', 'main', 'res', 'drawable-nodpi');
+const GATE_LOGO_TARGET_PATH = path.join(GATE_LOGO_TARGET_DIR, 'gate_logo.png');
 const WEB_MANIFEST_PATH = path.join(ROOT, 'public', 'manifest.json');
 const ANDROID_MANIFEST_PATH = path.join(ROOT, 'android-project', 'app', 'src', 'main', 'AndroidManifest.xml');
 const SHORTCUTS_XML_PATH = path.join(ROOT, 'android-project', 'app', 'src', 'main', 'res', 'xml', 'shortcuts.xml');
@@ -178,7 +181,7 @@ function ensureManifestShortcutMetadata() {
     return;
   }
 
-  const gateNeedle = '            android:theme="@android:style/Theme.Translucent.NoTitleBar">\n';
+  const gateNeedle = '            android:theme="@android:style/Theme.Material.Light.NoActionBar.Fullscreen">\n';
   const gateIndex = manifest.indexOf(gateNeedle);
   if (gateIndex === -1) {
     console.warn('[android-customize] Could not find BiometricGateActivity marker; skipping shortcut metadata patch.');
@@ -194,15 +197,27 @@ function ensureManifestShortcutMetadata() {
 function syncShortcutIconDrawable() {
   if (!fs.existsSync(SHORTCUT_ICON_TEMPLATE_PATH)) {
     console.warn('[android-customize] Missing shortcut icon template: ' + SHORTCUT_ICON_TEMPLATE_PATH);
+  } else {
+    try {
+      fs.mkdirSync(SHORTCUT_ICON_TARGET_DIR, { recursive: true });
+      fs.copyFileSync(SHORTCUT_ICON_TEMPLATE_PATH, SHORTCUT_ICON_TARGET_PATH);
+      console.log('[android-customize] Synced shortcut icon drawable.');
+    } catch (err) {
+      console.warn('[android-customize] Failed to sync shortcut icon drawable: ' + err.message);
+    }
+  }
+
+  if (!fs.existsSync(GATE_LOGO_SOURCE_PATH)) {
+    console.warn('[android-customize] Missing gate logo source: ' + GATE_LOGO_SOURCE_PATH);
     return;
   }
 
   try {
-    fs.mkdirSync(SHORTCUT_ICON_TARGET_DIR, { recursive: true });
-    fs.copyFileSync(SHORTCUT_ICON_TEMPLATE_PATH, SHORTCUT_ICON_TARGET_PATH);
-    console.log('[android-customize] Synced shortcut icon drawable.');
+    fs.mkdirSync(GATE_LOGO_TARGET_DIR, { recursive: true });
+    fs.copyFileSync(GATE_LOGO_SOURCE_PATH, GATE_LOGO_TARGET_PATH);
+    console.log('[android-customize] Synced biometric gate logo.');
   } catch (err) {
-    console.warn('[android-customize] Failed to sync shortcut icon drawable: ' + err.message);
+    console.warn('[android-customize] Failed to sync biometric gate logo: ' + err.message);
   }
 }
 
@@ -289,7 +304,7 @@ function ensureBiometricGateManifestWiring() {
   if (!manifest.includes('android:name="BiometricGateActivity"')) {
     const insertionPoint = manifest.indexOf('<activity android:name="LauncherActivity"');
     if (insertionPoint !== -1) {
-      const gateBlock = `        <activity android:name="BiometricGateActivity"\n            android:exported="true"\n            android:noHistory="true"\n            android:screenOrientation="portrait"\n            android:theme="@android:style/Theme.Translucent.NoTitleBar">\n            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />\n            <intent-filter>\n                <action android:name="android.intent.action.MAIN" />\n                <category android:name="android.intent.category.LAUNCHER" />\n            </intent-filter>\n\n            <intent-filter>\n                <action android:name="android.intent.action.VIEW" />\n                <category android:name="android.intent.category.DEFAULT" />\n                <category android:name="android.intent.category.BROWSABLE" />\n                <data android:scheme="facilitat"\n                    android:host="biometric-config"\n                />\n            </intent-filter>\n        </activity>\n\n`;
+      const gateBlock = `        <activity android:name="BiometricGateActivity"\n            android:exported="true"\n            android:noHistory="true"\n            android:screenOrientation="portrait"\n            android:theme="@android:style/Theme.Material.Light.NoActionBar.Fullscreen">\n            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />\n            <intent-filter>\n                <action android:name="android.intent.action.MAIN" />\n                <category android:name="android.intent.category.LAUNCHER" />\n            </intent-filter>\n\n            <intent-filter>\n                <action android:name="android.intent.action.VIEW" />\n                <category android:name="android.intent.category.DEFAULT" />\n                <category android:name="android.intent.category.BROWSABLE" />\n                <data android:scheme="facilitat"\n                    android:host="biometric-config"\n                />\n            </intent-filter>\n        </activity>\n\n`;
       manifest = `${manifest.slice(0, insertionPoint)}${gateBlock}${manifest.slice(insertionPoint)}`;
     } else {
       console.warn('[android-customize] Could not find LauncherActivity insertion point for BiometricGateActivity.');
@@ -299,6 +314,11 @@ function ensureBiometricGateManifestWiring() {
   manifest = manifest.replace(
     /(<activity android:name="BiometricGateActivity"[\s\S]*?)\n\s*android:excludeFromRecents="true"/,
     "$1"
+  );
+
+  manifest = manifest.replace(
+    /(<activity android:name="BiometricGateActivity"[\s\S]*?android:theme=")@android:style\/Theme\.Translucent\.NoTitleBar(")/,
+    "$1@android:style/Theme.Material.Light.NoActionBar.Fullscreen$2"
   );
 
   if (manifest !== original) {
