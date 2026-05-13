@@ -142,13 +142,14 @@
       width: 100%;
       max-width: 680px;
       margin: 0 auto;
+      flex: 1 1 auto;
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
+      justify-content: flex-start;
       max-height: 100%;
       box-sizing: border-box;
-      padding-top: clamp(20px, 9vh, 72px);
+      padding-top: clamp(20px, 16vh, 144px);
       padding-bottom: clamp(86px, 16vh, 164px);
       overflow: visible;
     }
@@ -488,7 +489,7 @@
 
     @media (max-height: 760px) {
       #welcomeInner {
-        padding-top: 24px;
+        padding-top: clamp(14px, 12vh, 91px);
         padding-bottom: 74px;
       }
 
@@ -522,7 +523,7 @@
 
     @media (max-height: 640px) {
       #welcomeInner {
-        padding-top: 14px;
+        padding-top: clamp(10px, 12vh, 77px);
         padding-bottom: 52px;
       }
 
