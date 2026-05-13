@@ -54,7 +54,11 @@
       overflow: hidden;
       justify-content: center;
       align-items: center;
-      padding: 0 22px calc(22px + env(safe-area-inset-bottom, 0px)) 22px;
+      padding:
+        0
+        calc(12px + env(safe-area-inset-right, 0px))
+        calc(14px + env(safe-area-inset-bottom, 0px))
+        calc(12px + env(safe-area-inset-left, 0px));
       opacity: 0;
       transition: opacity 2.5s cubic-bezier(0.8, 0.2, 1, 1);
       background:
@@ -146,7 +150,7 @@
       box-sizing: border-box;
       padding-top: clamp(20px, 9vh, 72px);
       padding-bottom: clamp(86px, 16vh, 164px);
-      overflow: hidden;
+      overflow: visible;
     }
     
     #welcomeLogoWrap {
