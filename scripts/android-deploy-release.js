@@ -259,7 +259,7 @@ function main() {
     "-S",
     "-W",
     "-n",
-    `${PACKAGE_NAME}/.LauncherActivity`,
+    `${PACKAGE_NAME}/.BiometricGateActivity`,
     "-a",
     "android.intent.action.MAIN",
     "-c",

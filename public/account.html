@@ -1324,6 +1324,7 @@
         toggle.id = "biometricLockToggle";
         toggle.type = "checkbox";
         toggle.checked = currentUser && currentUser.biometricLockEnabled === true;
+        syncNativeBiometricConfigIfNeeded(toggle.checked === true);
 
         row.appendChild(rowText);
         row.appendChild(toggle);

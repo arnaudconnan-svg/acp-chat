@@ -4,6 +4,8 @@ const path = require('path');
 const ROOT = path.join(__dirname, '..');
 const LAUNCHER_TEMPLATE_PATH = path.join(__dirname, 'templates', 'LauncherActivity.java');
 const LAUNCHER_ACTIVITY_PATH = path.join(ROOT, 'android-project', 'app', 'src', 'main', 'java', 'io', 'facilitat', 'app', 'LauncherActivity.java');
+const BIOMETRIC_GATE_TEMPLATE_PATH = path.join(__dirname, 'templates', 'BiometricGateActivity.java');
+const BIOMETRIC_GATE_ACTIVITY_PATH = path.join(ROOT, 'android-project', 'app', 'src', 'main', 'java', 'io', 'facilitat', 'app', 'BiometricGateActivity.java');
 const SHORTCUT_ICON_TEMPLATE_PATH = path.join(__dirname, 'templates', 'shortcut_legacy_background.xml');
 const SHORTCUT_ICON_TARGET_DIR = path.join(ROOT, 'android-project', 'app', 'src', 'main', 'res', 'drawable');
 const SHORTCUT_ICON_TARGET_PATH = path.join(SHORTCUT_ICON_TARGET_DIR, 'shortcut_legacy_background.xml');
@@ -12,6 +14,7 @@ const ANDROID_MANIFEST_PATH = path.join(ROOT, 'android-project', 'app', 'src', '
 const SHORTCUTS_XML_PATH = path.join(ROOT, 'android-project', 'app', 'src', 'main', 'res', 'xml', 'shortcuts.xml');
 const SHORTCUT_STRINGS_PATH = path.join(ROOT, 'android-project', 'app', 'src', 'main', 'res', 'values', 'shortcut_strings.xml');
 const ANDROID_BUILD_GRADLE_PATH = path.join(ROOT, 'android-project', 'app', 'build.gradle');
+const SHORTCUT_TARGET_CLASS = 'io.facilitat.app.BiometricGateActivity';
 
 function toXmlEscaped(value) {
   return String(value || '')
@@ -79,7 +82,7 @@ function writeShortcutsXml(shortcuts) {
     const longLabelRef = `@string/${shortcut.id}_long_label`;
     lines.push(
       `    <shortcut android:shortcutId="${toXmlEscaped(shortcut.id)}" android:enabled="true" android:icon="@mipmap/ic_launcher" android:shortcutShortLabel="${shortLabelRef}" android:shortcutLongLabel="${longLabelRef}">`,
-      `        <intent android:action="android.intent.action.VIEW" android:targetPackage="io.facilitat.app" android:targetClass="io.facilitat.app.LauncherActivity" android:data="${toXmlEscaped(shortcut.url)}" />`,
+      `        <intent android:action="android.intent.action.VIEW" android:targetPackage="io.facilitat.app" android:targetClass="${SHORTCUT_TARGET_CLASS}" android:data="${toXmlEscaped(shortcut.url)}" />`,
       '    </shortcut>'
     );
   }
@@ -209,31 +212,111 @@ function ensureLauncherPortraitOrientation() {
   }
 }
 
-function main() {
-  console.log('[android-customize] Applying persistent Android customizations...');
-
-  if (!fs.existsSync(LAUNCHER_TEMPLATE_PATH)) {
-    console.error('[android-customize] Missing template: ' + LAUNCHER_TEMPLATE_PATH);
-    process.exit(1);
+function ensureBiometricDependency() {
+  if (!fs.existsSync(ANDROID_BUILD_GRADLE_PATH)) {
+    console.warn('[android-customize] app/build.gradle not found; skipping biometric dependency patch.');
+    return;
   }
 
-  if (fs.existsSync(LAUNCHER_ACTIVITY_PATH)) {
-    try {
-      fs.copyFileSync(LAUNCHER_TEMPLATE_PATH, LAUNCHER_ACTIVITY_PATH);
-      console.log('[android-customize] LauncherActivity already up to date.');
-    } catch (err) {
-      console.error('[android-customize] Failed to copy LauncherActivity: ' + err.message);
-      process.exit(1);
+  const dependency = "implementation 'androidx.biometric:biometric:1.1.0'";
+  let gradle = fs.readFileSync(ANDROID_BUILD_GRADLE_PATH, 'utf8');
+  if (gradle.includes(dependency)) {
+    return;
+  }
+
+  let nextGradle = gradle.replace(
+    /(implementation 'com\.google\.androidbrowserhelper:androidbrowserhelper:2\.6\.2'\s*)/,
+    `$1\n    ${dependency}\n`
+  );
+
+  if (nextGradle === gradle) {
+    nextGradle = gradle.replace(/dependencies\s*\{/, `dependencies {\n    ${dependency}`);
+  }
+
+  if (nextGradle !== gradle) {
+    fs.writeFileSync(ANDROID_BUILD_GRADLE_PATH, nextGradle, 'utf8');
+    console.log('[android-customize] Added androidx.biometric dependency.');
+  } else {
+    console.warn('[android-customize] Could not patch biometric dependency in app/build.gradle.');
+  }
+}
+
+function ensureBiometricGateManifestWiring() {
+  if (!fs.existsSync(ANDROID_MANIFEST_PATH)) {
+    console.warn('[android-customize] AndroidManifest.xml not found; skipping biometric gate patch.');
+    return;
+  }
+
+  let manifest = fs.readFileSync(ANDROID_MANIFEST_PATH, 'utf8');
+  const original = manifest;
+
+  if (!manifest.includes('android:name="LauncherActivity"') || !manifest.includes('android:launchMode="singleTop"')) {
+    manifest = manifest.replace(
+      /<activity android:name="LauncherActivity"(\s)/,
+      '<activity android:name="LauncherActivity"\n            android:launchMode="singleTop"$1'
+    );
+  }
+
+  const launcherStart = manifest.indexOf('<activity android:name="LauncherActivity"');
+  if (launcherStart !== -1) {
+    const launcherEnd = manifest.indexOf('</activity>', launcherStart);
+    if (launcherEnd !== -1) {
+      const launcherBlock = manifest.slice(launcherStart, launcherEnd + '</activity>'.length);
+      const nextLauncherBlock = launcherBlock.replace(
+        /\n\s*<intent-filter>\s*\n\s*<action android:name="android.intent.action.MAIN" \/>\s*\n\s*<category android:name="android.intent.category.LAUNCHER" \/>\s*\n\s*<\/intent-filter>\n/,
+        '\n'
+      );
+      manifest = `${manifest.slice(0, launcherStart)}${nextLauncherBlock}${manifest.slice(launcherEnd + '</activity>'.length)}`;
     }
   }
 
+  if (!manifest.includes('android:name="BiometricGateActivity"')) {
+    const insertionPoint = manifest.indexOf('<activity android:name="LauncherActivity"');
+    if (insertionPoint !== -1) {
+      const gateBlock = `        <activity android:name="BiometricGateActivity"\n            android:exported="true"\n            android:excludeFromRecents="true"\n            android:noHistory="true"\n            android:screenOrientation="portrait"\n            android:theme="@android:style/Theme.Translucent.NoTitleBar">\n            <intent-filter>\n                <action android:name="android.intent.action.MAIN" />\n                <category android:name="android.intent.category.LAUNCHER" />\n            </intent-filter>\n\n            <intent-filter>\n                <action android:name="android.intent.action.VIEW" />\n                <category android:name="android.intent.category.DEFAULT" />\n                <category android:name="android.intent.category.BROWSABLE" />\n                <data android:scheme="facilitat"\n                    android:host="biometric-config"\n                />\n            </intent-filter>\n        </activity>\n\n`;
+      manifest = `${manifest.slice(0, insertionPoint)}${gateBlock}${manifest.slice(insertionPoint)}`;
+    } else {
+      console.warn('[android-customize] Could not find LauncherActivity insertion point for BiometricGateActivity.');
+    }
+  }
+
+  if (manifest !== original) {
+    fs.writeFileSync(ANDROID_MANIFEST_PATH, manifest, 'utf8');
+    console.log('[android-customize] Wired BiometricGateActivity and Launcher launchMode in AndroidManifest.xml.');
+  }
+}
+
+function syncJavaTemplate(templatePath, targetPath, label) {
+  if (!fs.existsSync(templatePath)) {
+    console.error(`[android-customize] Missing template: ${templatePath}`);
+    process.exit(1);
+  }
+
+  try {
+    fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+    fs.copyFileSync(templatePath, targetPath);
+    console.log(`[android-customize] ${label} already up to date.`);
+  } catch (err) {
+    console.error(`[android-customize] Failed to copy ${label}: ${err.message}`);
+    process.exit(1);
+  }
+}
+
+function main() {
+  console.log('[android-customize] Applying persistent Android customizations...');
+
+  syncJavaTemplate(LAUNCHER_TEMPLATE_PATH, LAUNCHER_ACTIVITY_PATH, 'LauncherActivity');
+  syncJavaTemplate(BIOMETRIC_GATE_TEMPLATE_PATH, BIOMETRIC_GATE_ACTIVITY_PATH, 'BiometricGateActivity');
+
   const shortcuts = readShortcutConfig();
   syncBuildGradleShortcuts(shortcuts);
+  ensureBiometricDependency();
   syncShortcutIconDrawable();
   writeShortcutStringResources(shortcuts);
   writeShortcutsXml(shortcuts);
   ensureManifestShortcutMetadata();
   ensureLauncherPortraitOrientation();
+  ensureBiometricGateManifestWiring();
 
   console.log('[android-customize] Done.');
 }
