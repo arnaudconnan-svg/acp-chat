@@ -149,8 +149,8 @@
       justify-content: flex-start;
       max-height: 100%;
       box-sizing: border-box;
-      padding-top: clamp(20px, 12vh, 116px);
-      padding-bottom: clamp(86px, 16vh, 164px);
+      padding-top: clamp(96px, 25vh, 320px);
+      padding-bottom: clamp(148px, 22vh, 296px);
       overflow: visible;
     }
     
@@ -158,7 +158,7 @@
       display: flex;
       justify-content: center;
       width: 100%;
-      margin: 0 0 38px 0;
+      margin: 0 0 clamp(28px, 4.5vh, 56px) 0;
       opacity: 0;
     }
     
@@ -171,7 +171,7 @@
 
     #welcomeBottomSlot {
       width: 100%;
-      max-width: 500px;
+      max-width: 620px;
       margin-top: auto;
       display: grid;
       position: relative;
@@ -218,7 +218,7 @@
 
     #welcomeActions {
       width: 100%;
-      max-width: 500px;
+      max-width: 620px;
       grid-area: 1 / 1;
       align-self: center;
       position: relative;
@@ -238,12 +238,12 @@
       justify-content: center;
       align-items: center;
       width: 100%;
-      gap: 32px;
+      gap: clamp(20px, 3vw, 28px);
       position: absolute;
       top: 100%;
       left: 0;
       right: 0;
-      margin-top: 22px;
+      margin-top: clamp(28px, 3.8vh, 36px);
       opacity: 0;
       pointer-events: none;
       transform: translateY(10px);
@@ -267,51 +267,52 @@
     }
     
     .welcomeBtnPrimary {
-      width: 100%;
+      width: min(76vw, 620px);
+      min-height: clamp(64px, 8vh, 72px);
       border: none;
-      border-radius: 28px;
+      border-radius: 24px;
       background: linear-gradient(90deg, #16737b 0%, #0f8b96 100%);
       color: #ffffff;
       font-size: 17px;
       font-weight: 600;
-      padding: 15px 28px;
+      padding: 0 28px;
       box-shadow:
-        0 14px 28px rgba(22, 115, 123, 0.22),
+        0 10px 20px rgba(22, 115, 123, 0.2),
         0 1px 0 rgba(255, 255, 255, 0.22) inset;
     }
     
     .welcomeBtnSecondary {
-      width: 34px;
-      height: 34px;
+      width: clamp(54px, 7.4vw, 60px);
+      height: clamp(54px, 7.4vw, 60px);
       border: 1px solid rgba(36, 94, 102, 0.28);
       border-radius: 999px;
       background: rgba(248, 251, 251, 0.88);
-      color: #1d6d75;
-      font-size: 18px;
+      color: #2b8088;
+      font-size: 30px;
       font-weight: 600;
       display: inline-flex;
       align-items: center;
       justify-content: center;
       padding: 0;
-      box-shadow: 0 5px 14px rgba(36, 94, 102, 0.12);
+      box-shadow: 0 8px 16px rgba(36, 94, 102, 0.12);
       -webkit-tap-highlight-color: transparent;
       outline: none;
     }
     
     .welcomeBtnTertiary {
-      width: 34px;
-      height: 34px;
+      width: clamp(54px, 7.4vw, 60px);
+      height: clamp(54px, 7.4vw, 60px);
       border: 1px solid rgba(36, 94, 102, 0.28);
       border-radius: 999px;
       background: rgba(248, 251, 251, 0.88);
-      color: #1d6d75;
-      font-size: 17px;
+      color: #2b8088;
+      font-size: 28px;
       font-weight: 700;
       display: inline-flex;
       align-items: center;
       justify-content: center;
       padding: 0;
-      box-shadow: 0 5px 14px rgba(36, 94, 102, 0.12);
+      box-shadow: 0 8px 16px rgba(36, 94, 102, 0.12);
     }
     
     #welcomeEnterBtn {
@@ -489,12 +490,12 @@
 
     @media (max-height: 760px) {
       #welcomeInner {
-        padding-top: clamp(14px, 10vh, 76px);
-        padding-bottom: 74px;
+        padding-top: clamp(56px, 20vh, 164px);
+        padding-bottom: clamp(124px, 19vh, 188px);
       }
 
       #welcomeLogoWrap {
-        margin: 0 0 20px 0;
+        margin: 0 0 clamp(20px, 3.6vh, 34px) 0;
       }
 
       #welcomeRitualText {
@@ -502,18 +503,18 @@
       }
 
       #welcomeActions {
-        max-width: 460px;
+        max-width: 560px;
         padding-top: 0;
       }
 
       #welcomeSecondaryActions {
-        gap: 24px;
-        margin-top: 16px;
+        margin-top: clamp(24px, 3.4vh, 32px);
       }
 
       .welcomeBtnPrimary {
         font-size: 16px;
-        padding: 13px 18px;
+        min-height: clamp(60px, 7.6vh, 68px);
+        padding: 0 22px;
       }
 
       #welcomeEnterBtn {
@@ -523,8 +524,8 @@
 
     @media (max-height: 640px) {
       #welcomeInner {
-        padding-top: clamp(10px, 9vh, 58px);
-        padding-bottom: 52px;
+        padding-top: clamp(44px, 17vh, 128px);
+        padding-bottom: clamp(104px, 16vh, 154px);
       }
 
       #welcomeLogo {
@@ -532,7 +533,7 @@
       }
 
       #welcomeLogoWrap {
-        margin: 0 0 12px 0;
+        margin: 0 0 clamp(14px, 2.8vh, 24px) 0;
       }
 
       #welcomeRitualText {
@@ -545,25 +546,26 @@
       }
 
       #welcomeSecondaryActions {
-        gap: 20px;
-        margin-top: 14px;
+        gap: clamp(16px, 2.8vw, 22px);
+        margin-top: clamp(20px, 3vh, 28px);
       }
 
       .welcomeBtnPrimary {
         font-size: 15px;
-        padding: 11px 16px;
+        min-height: clamp(56px, 7vh, 62px);
+        padding: 0 18px;
       }
 
       .welcomeBtnSecondary {
-        width: 30px;
-        height: 30px;
-        font-size: 16px;
+        width: clamp(48px, 7vw, 54px);
+        height: clamp(48px, 7vw, 54px);
+        font-size: 27px;
       }
 
       .welcomeBtnTertiary {
-        width: 30px;
-        height: 30px;
-        font-size: 15px;
+        width: clamp(48px, 7vw, 54px);
+        height: clamp(48px, 7vw, 54px);
+        font-size: 24px;
       }
     }
 
@@ -584,22 +586,22 @@
       0% {
         transform: scale(1);
         box-shadow:
-          0 14px 30px rgba(36, 94, 102, 0.22),
-          0 1px 0 rgba(255, 255, 255, 0.18) inset;
+          0 10px 20px rgba(22, 115, 123, 0.2),
+          0 1px 0 rgba(255, 255, 255, 0.22) inset;
       }
       
       50% {
         transform: scale(1.035);
         box-shadow:
-          0 18px 36px rgba(36, 94, 102, 0.28),
-          0 1px 0 rgba(255, 255, 255, 0.18) inset;
+          0 14px 28px rgba(22, 115, 123, 0.24),
+          0 1px 0 rgba(255, 255, 255, 0.22) inset;
       }
       
       100% {
         transform: scale(1);
         box-shadow:
-          0 14px 30px rgba(36, 94, 102, 0.22),
-          0 1px 0 rgba(255, 255, 255, 0.18) inset;
+          0 10px 20px rgba(22, 115, 123, 0.2),
+          0 1px 0 rgba(255, 255, 255, 0.22) inset;
       }
     }
     
