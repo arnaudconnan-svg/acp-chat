@@ -284,12 +284,17 @@ function ensureBiometricGateManifestWiring() {
   if (!manifest.includes('android:name="BiometricGateActivity"')) {
     const insertionPoint = manifest.indexOf('<activity android:name="LauncherActivity"');
     if (insertionPoint !== -1) {
-      const gateBlock = `        <activity android:name="BiometricGateActivity"\n            android:exported="true"\n            android:excludeFromRecents="true"\n            android:noHistory="true"\n            android:screenOrientation="portrait"\n            android:theme="@android:style/Theme.Translucent.NoTitleBar">\n            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />\n            <intent-filter>\n                <action android:name="android.intent.action.MAIN" />\n                <category android:name="android.intent.category.LAUNCHER" />\n            </intent-filter>\n\n            <intent-filter>\n                <action android:name="android.intent.action.VIEW" />\n                <category android:name="android.intent.category.DEFAULT" />\n                <category android:name="android.intent.category.BROWSABLE" />\n                <data android:scheme="facilitat"\n                    android:host="biometric-config"\n                />\n            </intent-filter>\n        </activity>\n\n`;
+      const gateBlock = `        <activity android:name="BiometricGateActivity"\n            android:exported="true"\n            android:noHistory="true"\n            android:screenOrientation="portrait"\n            android:theme="@android:style/Theme.Translucent.NoTitleBar">\n            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />\n            <intent-filter>\n                <action android:name="android.intent.action.MAIN" />\n                <category android:name="android.intent.category.LAUNCHER" />\n            </intent-filter>\n\n            <intent-filter>\n                <action android:name="android.intent.action.VIEW" />\n                <category android:name="android.intent.category.DEFAULT" />\n                <category android:name="android.intent.category.BROWSABLE" />\n                <data android:scheme="facilitat"\n                    android:host="biometric-config"\n                />\n            </intent-filter>\n        </activity>\n\n`;
       manifest = `${manifest.slice(0, insertionPoint)}${gateBlock}${manifest.slice(insertionPoint)}`;
     } else {
       console.warn('[android-customize] Could not find LauncherActivity insertion point for BiometricGateActivity.');
     }
   }
+
+  manifest = manifest.replace(
+    /(<activity android:name="BiometricGateActivity"[\s\S]*?)\n\s*android:excludeFromRecents="true"/,
+    "$1"
+  );
 
   if (manifest !== original) {
     fs.writeFileSync(ANDROID_MANIFEST_PATH, manifest, 'utf8');
