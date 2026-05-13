@@ -1041,6 +1041,9 @@
       font-weight: 700;
       letter-spacing: 0.02em;
       text-transform: lowercase;
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
     }
     
     #conversationsFabLabel {
@@ -1213,6 +1216,9 @@
       opacity: 0;
       transform: translateY(10px);
       transition: opacity 0.24s ease, transform 0.24s ease;
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
     }
 
     #conversationsPrivacyHintOverlay.is-copy-visible #conversationsPrivacyHintCard {
@@ -10439,6 +10445,7 @@
 
         document.addEventListener("pointerdown", event => {
           if (!privateQuickBtn.classList.contains("is-visible")) return;
+          if (conversationsPrivateHintActive) return;
           if (event.target.closest("#conversationsPrivateFabBtn")) return;
           hidePrivateQuickButton();
         });
