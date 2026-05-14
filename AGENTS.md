@@ -298,6 +298,12 @@ Méthode de lecture :
 - Filtrer ensuite localement (temps + motifs mémoire/debug) pour éviter les faux négatifs liés aux paramètres.
 - Si pagination/cursor est présent, itérer jusqu'à couvrir la fenêtre demandée (ex : dernières 4h).
 
+Règle requestId (obligatoire) :
+
+- Si l'utilisateur demande les logs d'un `requestId` précis, récupérer d'abord l'intégralité brute paginée, puis extraire toutes les lignes contenant ce `requestId`.
+- Ne pas appliquer de préfiltre métier (memory/stagnation/etc.) avant cette extraction requestId.
+- Restituer le contenu complet des lignes trouvées (pas seulement un résumé), puis proposer une synthèse en second temps.
+
 Hygiène d'environnement (Windows/PowerShell) :
 
 - Si les variables process contiennent des valeurs `dummy_*`, recharger depuis `HKCU:\Environment` avant diagnostic.

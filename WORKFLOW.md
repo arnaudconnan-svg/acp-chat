@@ -75,6 +75,10 @@ Verification complementaire selon le chantier :
 	- 2) `GET /v1/logs?ownerId=<ownerId>&resource=<serviceId>`
 	- 3) lecture brute initiale, puis filtrage local (temps + motifs)
 	- 4) en cas de pagination, iterer jusqu'a couvrir la fenetre demandee
+- si un `requestId` est fourni par l'utilisateur :
+	- 1) extraire d'abord toutes les lignes de logs contenant ce `requestId` depuis le dump brut pagine
+	- 2) ne pas prefiltrer par theme avant cette extraction
+	- 3) restituer les lignes completes trouvees avant toute synthese
 - interpretation erreurs Render :
 	- `404` = mauvais endpoint (route non disponible)
 	- `400` = endpoint valide, parametres invalides/incomplets
