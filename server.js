@@ -6035,7 +6035,34 @@ app.post("/chat", async (req, res) => {
       attachmentLevel: deriveAttachmentLevelFromScore(newFlags.attachmentScore),
       attachmentBoostStreak: newFlags.affiliationAttachmentBoostStreak
     });
-    const affiliationScore = affiliationDetails.score;
+    const previousAffiliationScore = Array.isArray(newFlags.affiliationWindow) && newFlags.affiliationWindow.length > 0
+      ? Number(newFlags.affiliationWindow[newFlags.affiliationWindow.length - 1])
+      : null;
+    const currentAllianceSignalForAffiliation = normalizeAllianceState(
+      allianceRuptureAnalysis?.allianceSignal || newFlags.allianceSignal
+    );
+    const AFFILIATION_MAX_DROP_PER_TURN = 0.2;
+
+    let affiliationScore = affiliationDetails.score;
+    if (
+      currentAllianceSignalForAffiliation !== "rupture"
+      && Number.isFinite(previousAffiliationScore)
+    ) {
+      const minAllowedScore = Math.max(0, previousAffiliationScore - AFFILIATION_MAX_DROP_PER_TURN);
+      if (affiliationScore < minAllowedScore) {
+        const rawAffiliationScore = affiliationScore;
+        affiliationScore = minAllowedScore;
+        logChatDecision("affiliation_drop_limited", {
+          allianceSignal: currentAllianceSignalForAffiliation,
+          previousAffiliationScore,
+          rawAffiliationScore,
+          minAllowedScore,
+          appliedAffiliationScore: affiliationScore,
+          maxDropPerTurn: AFFILIATION_MAX_DROP_PER_TURN
+        });
+      }
+    }
+
     newFlags.affiliationAttachmentBoostStreak = affiliationDetails.nextAttachmentBoostStreak;
     const newAffiliationWindow = normalizeAffiliationWindow([...(newFlags.affiliationWindow || [0, 0, 0, 0]), affiliationScore]);
     const affiliationFinalScore = computeAffiliationFinalScore(newAffiliationWindow);
