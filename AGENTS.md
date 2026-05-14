@@ -281,6 +281,28 @@ Objectif : éviter les copier-coller manuels de logs et réduire le temps de dia
 
 Si les credentials manquent ou sont invalides, l'agent le signale explicitement et demande seulement les éléments manquants.
 
+Runbook API Render (obligatoire, anti-régression) :
+
+- Résoudre d'abord `ownerId` via `GET /v1/services/{RENDER_SERVICE_ID}`.
+- Utiliser ensuite `GET /v1/logs?ownerId=<ownerId>&resource=<RENDER_SERVICE_ID>`.
+- Ne pas diagnostiquer un vide de logs tant que cette combinaison n'a pas été testée.
+
+Interprétation des erreurs :
+
+- `404` sur un endpoint logs = route invalide pour ce service/ce contrat (ex : `/v1/services/{id}/logs`).
+- `400` sur `/v1/logs` = endpoint valide mais paramètres invalides/incomplets.
+
+Méthode de lecture :
+
+- Commencer sans filtre métier pour voir la forme réelle des entrées retournées.
+- Filtrer ensuite localement (temps + motifs mémoire/debug) pour éviter les faux négatifs liés aux paramètres.
+- Si pagination/cursor est présent, itérer jusqu'à couvrir la fenêtre demandée (ex : dernières 4h).
+
+Hygiène d'environnement (Windows/PowerShell) :
+
+- Si les variables process contiennent des valeurs `dummy_*`, recharger depuis `HKCU:\Environment` avant diagnostic.
+- Le profil PowerShell doit corriger automatiquement ces valeurs de test pour éviter les faux `401` inter-sessions.
+
 ### Règles de présentation du debug front
 
 Ces règles s'appliquent à toute section debug visible dans `index.html` et `admin.html`.

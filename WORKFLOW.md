@@ -70,6 +70,15 @@ Verification complementaire selon le chantier :
 - lecture des logs `[PIPELINE]` pour un diagnostic fin de `/chat`
 - pour toute lenteur percue sur `/chat`, commencer par les `pipeline_summary` et lancer `npm run perf:chat:summary` sur un log reel avant de modifier le code
 - des qu'un diagnostic production Render est necessaire, l'agent lit les logs live directement depuis VS Code via commande API Render quand `RENDER_API_KEY` et `RENDER_SERVICE_ID` sont disponibles (pas de copier-coller manuel requis)
+- sequence Render de reference :
+	- 1) `GET /v1/services/{serviceId}` pour recuperer `ownerId`
+	- 2) `GET /v1/logs?ownerId=<ownerId>&resource=<serviceId>`
+	- 3) lecture brute initiale, puis filtrage local (temps + motifs)
+	- 4) en cas de pagination, iterer jusqu'a couvrir la fenetre demandee
+- interpretation erreurs Render :
+	- `404` = mauvais endpoint (route non disponible)
+	- `400` = endpoint valide, parametres invalides/incomplets
+	- ne pas conclure "pas de logs" avant d'avoir valide la combinaison `ownerId + resource`
 - harness comportemental centre sur `debugMeta`
 - test manuel cible quand le changement est visible
 - `pipeline:harness`, `debugmeta:harness` ou `eval:chat` sur GO explicite seulement (LLM en direct)
