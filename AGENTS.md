@@ -156,22 +156,11 @@ Sauf exception ci-dessous, **le repo prime sur `plan.md`** en cas de conflit.
 
 Règle de publication : si `plan.md` est le seul fichier modifié, ne pas pousser sur le remote. Le push n'est autorisé que si d'autres changements sont déjà en cours de publication, ou sur demande explicite de l'utilisateur.
 
-**Contenu attendu** de `plan.md` quand un chantier est actif :
-- objectif produit courant
-- décisions déjà prises
-- validation attendue
-- questions ouvertes
+Le contenu de `plan.md` est libre de forme. Aucune section, ordre, gabarit, style rédactionnel, granularité ou contrainte de mise en page ne peut être imposée par défaut.
 
-Ces informations sont obligatoires, mais **la structure n'est pas rigide** :
-- elles peuvent être regroupées par sujet (ex : "Déclenchement mémoire", "Observabilité", "Sync/Async")
-- l'ordre des sections est libre
-- les redondances doivent être évitées (une information donnée ne doit pas être répétée dans plusieurs sections)
+L'agent doit uniquement viser l'utilité de reprise inter-sessions selon la demande explicite de l'utilisateur, y compris si cela prend la forme de notes brutes, d'une seule phrase, d'un bloc unique, ou d'une structure ad hoc.
 
-**Intention de forme (obligatoire) : clarté + synthèse + non-éparpillement**
-- `plan.md` doit privilégier une lecture rapide : blocs courts, intitulés explicites, et densité d'information utile
-- éviter les sections parallèles qui disent presque la même chose ; regrouper par axe/sujet quand cela améliore la lisibilité
-- garder un niveau de synthèse orienté décision/action (pas de narration longue ni d'historique)
-- cette intention est contraignante, mais **sans imposer un template unique** : l'agent adapte la forme au chantier tant que la lecture reste claire et compacte
+En conséquence, l'agent ne doit plus reproposer automatiquement une structure type (ex : "objectif / décisions / validation / questions ouvertes") sauf demande explicite de l'utilisateur pour ce format.
 
 `plan.md` ne contient pas d'historique de modifications ni de backlog.
 

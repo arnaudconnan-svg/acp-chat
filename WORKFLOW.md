@@ -168,11 +168,11 @@ Objectif :
 
 `plan.md` est le pont de reprise entre sessions. Il contient le contexte minimal pour qu'une nouvelle session puisse reprendre le chantier sans reconstitution.
 
-Contenu obligatoire quand un chantier est actif :
-- objectif produit courant
-- decisions deja prises
-- validation attendue
-- questions ouvertes
+Le contenu de `plan.md` est libre de forme. Aucune section, ordre, gabarit, style redactionnel, granularite ou contrainte de mise en page ne doit etre imposee par defaut.
+
+Copilot doit viser uniquement l'utilite de reprise inter-sessions selon la demande explicite de l'utilisateur, y compris si cela prend la forme de notes brutes, d'une seule phrase, d'un bloc unique, ou d'une structure ad hoc.
+
+En consequence, Copilot ne doit plus reproposer automatiquement une structure type (ex : "objectif / decisions / validation / questions ouvertes") sauf demande explicite de l'utilisateur pour ce format.
 
 Contenu exclu :
 - historique de modifications deja consommees
