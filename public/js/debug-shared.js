@@ -599,4 +599,5 @@
         ? "\u0047arde m\u00e9moire activ\u00e9e"
         : null;
     }
+  };
 })(window);
