@@ -6333,6 +6333,9 @@ app.post("/chat", async (req, res) => {
             reason: postureDecision.memoryUpdateReason,
             source: postureDecision.memoryUpdateSource,
             contractSource: typeof memoryUpdateContract?.source === "string" ? memoryUpdateContract.source : "unknown",
+            contractLlmMeta: memoryUpdateContract?.llmMeta && typeof memoryUpdateContract.llmMeta === "object"
+              ? memoryUpdateContract.llmMeta
+              : null,
             deleteAncientCount: Array.isArray(memoryUpdateContract?.deleteAncientMovementsById)
               ? memoryUpdateContract.deleteAncientMovementsById.length
               : 0,
