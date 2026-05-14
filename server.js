@@ -4175,7 +4175,7 @@ const CHAT_REQUEST_STALE_TTL_MS = 15 * 60 * 1000;
 const activeChatProgressStreams = new Map(); // requestId -> Set(response)
 const privateConversationMemoryCache = new Map(); // conversationId -> { memory, memoryState, updatedAt }
 const conversationMemorySyncLocks = new Map(); // conversationId -> { promise, startedAt }
-const MEMORY_SYNC_GATE_TIMEOUT_MS = 2500;
+const MEMORY_SYNC_GATE_TIMEOUT_MS = 12000;
 
 function trackConversationMemorySync(conversationId, promiseLike) {
   const safeConversationId = String(conversationId || "").trim();
