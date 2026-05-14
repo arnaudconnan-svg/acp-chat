@@ -6012,14 +6012,37 @@ app.post("/chat", async (req, res) => {
       ? memoryUpdateAnalysis.source.trim()
       : "deterministic";
 
+    logChatDecision("memory_update_decision", {
+      decision: postureDecision.memoryUpdateDecision,
+      reason: postureDecision.memoryUpdateReason,
+      source: postureDecision.memoryUpdateSource,
+      previousMemoryStateCounts: {
+        sessionStableContext: Array.isArray(previousMemoryState?.sessionStableContext) ? previousMemoryState.sessionStableContext.length : 0,
+        onGoingMovements: Array.isArray(previousMemoryState?.onGoingMovements) ? previousMemoryState.onGoingMovements.length : 0,
+        ancientMovements: Array.isArray(previousMemoryState?.ancientMovements) ? previousMemoryState.ancientMovements.length : 0,
+        pastSignals: previousMemoryState?.pastSignals && typeof previousMemoryState.pastSignals === "object"
+          ? Object.keys(previousMemoryState.pastSignals).length
+          : 0
+      }
+    });
+
     Object.assign(newFlags, postureDecision.flagUpdates);
 
     // R�gle produit: si onGoingMovements est vide ce tour, forcer la case courante
     // de la fen�tre de stagnation � 1.
-    if (!Array.isArray(previousMemoryState?.onGoingMovements) || previousMemoryState.onGoingMovements.length === 0) {
+    const hadEmptyOngoingBeforeTurn = !Array.isArray(previousMemoryState?.onGoingMovements) || previousMemoryState.onGoingMovements.length === 0;
+    if (hadEmptyOngoingBeforeTurn) {
+      const previousStagnationWindow = normalizeStagnationWindow(newFlags.stagnationWindow);
+      const previousStagnationTurns = normalizeStagnationTurns(newFlags.stagnationTurns);
       const forcedWindow = [...normalizeStagnationWindow(newFlags.stagnationWindow), true].slice(-4);
       newFlags.stagnationWindow = forcedWindow;
       newFlags.stagnationTurns = Math.max(1, normalizeStagnationTurns(newFlags.stagnationTurns));
+      logChatDecision("stagnation_forced_due_empty_ongoing", {
+        previousStagnationWindow,
+        forcedStagnationWindow: forcedWindow,
+        previousStagnationTurns,
+        forcedStagnationTurns: newFlags.stagnationTurns
+      });
     }
 
     flagsForCatch = normalizeSessionFlags(newFlags);
@@ -6305,6 +6328,28 @@ app.post("/chat", async (req, res) => {
           });
           const persistedMemoryText = normalizeMemory(mergedStateResult.memoryText, _registry);
 
+          logChatDecision("memory_update_result", {
+            decision: "update",
+            reason: postureDecision.memoryUpdateReason,
+            source: postureDecision.memoryUpdateSource,
+            contractSource: typeof memoryUpdateContract?.source === "string" ? memoryUpdateContract.source : "unknown",
+            deleteAncientCount: Array.isArray(memoryUpdateContract?.deleteAncientMovementsById)
+              ? memoryUpdateContract.deleteAncientMovementsById.length
+              : 0,
+            purgedByInactivity: mergedStateResult.purgedByInactivity === true,
+            nextMemoryStateCounts: {
+              sessionStableContext: Array.isArray(mergedStateResult?.memoryState?.sessionStableContext)
+                ? mergedStateResult.memoryState.sessionStableContext.length
+                : 0,
+              onGoingMovements: Array.isArray(mergedStateResult?.memoryState?.onGoingMovements)
+                ? mergedStateResult.memoryState.onGoingMovements.length
+                : 0,
+              ancientMovements: Array.isArray(mergedStateResult?.memoryState?.ancientMovements)
+                ? mergedStateResult.memoryState.ancientMovements.length
+                : 0
+            }
+          });
+
           if (isPrivateConversation && conversationId) {
             privateConversationMemoryCache.set(String(conversationId), {
               memory: persistedMemoryText,
@@ -6336,6 +6381,12 @@ app.post("/chat", async (req, res) => {
           );
         } catch (e) {
           console.warn("[CHAT][MEMORY_BG_FAILED]", e && e.message ? e.message : e);
+          logChatDecision("memory_update_failed", {
+            decision: "update",
+            reason: postureDecision.memoryUpdateReason,
+            source: postureDecision.memoryUpdateSource,
+            error: e && e.message ? e.message : String(e)
+          });
         }
       })();
     }
@@ -6445,6 +6496,10 @@ app.post("/chat", async (req, res) => {
         interpretationRejection: responseDebugMeta.interpretationRejection === true,
         needsSoberReadjustment: responseDebugMeta.needsSoberReadjustment === true,
         relationalAdjustmentActive: responseDebugMeta.relationalAdjustmentActive === true,
+        memoryUpdateDecision: postureDecision.memoryUpdateDecision,
+        memoryUpdateReason: postureDecision.memoryUpdateReason,
+        memoryUpdateSource: postureDecision.memoryUpdateSource,
+        hadEmptyOngoingBeforeTurn,
         confidenceSignal: responseDebugMeta.confidenceSignal,
         explorationCalibrationLevel: responseDebugMeta.explorationCalibrationLevel,
         explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
