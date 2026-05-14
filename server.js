@@ -4218,7 +4218,7 @@ async function waitForConversationMemorySync(conversationId, timeoutMs = MEMORY_
   let timedOut = false;
   await Promise.race([
     pending.promise,
-    waitMs(Math.max(0, timeoutMs)).then(() => {
+    wait(Math.max(0, timeoutMs)).then(() => {
       timedOut = true;
     })
   ]);
