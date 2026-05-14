@@ -4174,6 +4174,61 @@ const activeChatRequests = new Map();
 const CHAT_REQUEST_STALE_TTL_MS = 15 * 60 * 1000;
 const activeChatProgressStreams = new Map(); // requestId -> Set(response)
 const privateConversationMemoryCache = new Map(); // conversationId -> { memory, memoryState, updatedAt }
+const conversationMemorySyncLocks = new Map(); // conversationId -> { promise, startedAt }
+const MEMORY_SYNC_GATE_TIMEOUT_MS = 2500;
+
+function trackConversationMemorySync(conversationId, promiseLike) {
+  const safeConversationId = String(conversationId || "").trim();
+  if (!safeConversationId || !promiseLike || typeof promiseLike.then !== "function") {
+    return null;
+  }
+
+  let trackedPromise = null;
+  trackedPromise = Promise.resolve(promiseLike)
+    .catch(() => {
+      // Non-blocking safeguard: background memory sync failures must not break future requests.
+    })
+    .finally(() => {
+      const current = conversationMemorySyncLocks.get(safeConversationId);
+      if (current && current.promise === trackedPromise) {
+        conversationMemorySyncLocks.delete(safeConversationId);
+      }
+    });
+
+  conversationMemorySyncLocks.set(safeConversationId, {
+    promise: trackedPromise,
+    startedAt: Date.now()
+  });
+
+  return trackedPromise;
+}
+
+async function waitForConversationMemorySync(conversationId, timeoutMs = MEMORY_SYNC_GATE_TIMEOUT_MS) {
+  const safeConversationId = String(conversationId || "").trim();
+  if (!safeConversationId) {
+    return { waited: false, timedOut: false, waitMs: 0 };
+  }
+
+  const pending = conversationMemorySyncLocks.get(safeConversationId);
+  if (!pending || !pending.promise) {
+    return { waited: false, timedOut: false, waitMs: 0 };
+  }
+
+  const start = Date.now();
+  let timedOut = false;
+  await Promise.race([
+    pending.promise,
+    waitMs(Math.max(0, timeoutMs)).then(() => {
+      timedOut = true;
+    })
+  ]);
+
+  return {
+    waited: true,
+    timedOut,
+    waitMs: Math.max(0, Date.now() - start)
+  };
+}
 
 function mapChatStageToProgressStep(stage = "") {
   const key = String(stage || "").trim();
@@ -4858,6 +4913,15 @@ app.post("/chat", async (req, res) => {
     if (!conversationId) {
       return res.status(400).json({ error: "Missing conversationId" });
     }
+
+    const memorySyncGateResult = await waitForConversationMemorySync(conversationId, MEMORY_SYNC_GATE_TIMEOUT_MS);
+    if (memorySyncGateResult.waited) {
+      logChatDecision("memory_sync_gate", {
+        waitedMs: memorySyncGateResult.waitMs,
+        timedOut: memorySyncGateResult.timedOut === true
+      });
+    }
+    throwIfCanceled();
     
     // Normalize memory and flags with the active registry so all later steps use the same rules.
     const activePromptRegistry = buildDefaultPromptRegistry();
@@ -5183,7 +5247,7 @@ app.post("/chat", async (req, res) => {
     }
 
     function scheduleBackgroundMemoryUpdate(memorySnapshot, replyText, memoryPrioritySignal = "normal", intersessionMemoryForTurn = "") {
-      (async () => {
+      const backgroundMemoryTask = (async () => {
         try {
           // PRODUCT DECISION (memory audit baseline): memory update is intentionally non-blocking.
           // The user-facing reply must not wait for UPDATE_MEMORY/merge/persistence.
@@ -5234,6 +5298,10 @@ app.post("/chat", async (req, res) => {
           // Non-bloquant : la reponse utilisateur ne depend pas de cette mise a jour memoire.
         }
       })();
+
+      if (conversationId) {
+        trackConversationMemorySync(conversationId, backgroundMemoryTask);
+      }
     }
 
     function sendChatJsonResponse(reply, memory, flags, debug, debugMeta, botMessageId, signals) {
@@ -6300,7 +6368,7 @@ app.post("/chat", async (req, res) => {
       const _lastActivityMs = previousConversationActivityMs;
       const _prioritySignal = effectiveMemoryPrioritySignalForDebug;
 
-      (async () => {
+      const backgroundMemoryTask = (async () => {
         try {
           const memoryUpdateContract = await updateMemory(
             _prevMem,
@@ -6392,6 +6460,10 @@ app.post("/chat", async (req, res) => {
           });
         }
       })();
+
+      if (conversationId) {
+        trackConversationMemorySync(conversationId, backgroundMemoryTask);
+      }
     }
     const postCrisisSupportCarryTurnActive = req.__postCrisisSupportCarryTurnActive === true;
     const emergencySupportText = postCrisisSupportCarryTurnActive
