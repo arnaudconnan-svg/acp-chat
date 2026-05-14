@@ -1325,6 +1325,7 @@ ${originalContent}
 
 const {
   MEMORY_INACTIVITY_TTL_MS,
+  archiveOngoingMovementsOnHold,
   mergeMemoryStateWithFinalizedText,
   normalizeMemoryStateShape,
   updateIntersessionMemory,
@@ -6563,6 +6564,61 @@ app.post("/chat", async (req, res) => {
 
       if (conversationId) {
         trackConversationMemorySync(conversationId, backgroundMemoryTask);
+      }
+    } else {
+      // Decision = hold: archive previous onGoingMovements into ancientMovements.
+      // They described a movement that was not explicitly present in the current user message,
+      // so they should not persist indefinitely as "in progress".
+      const _prevMemStateForHold = previousMemoryState;
+      const _lastActivityMsForHold = previousConversationActivityMs;
+
+      const holdArchiveTask = (async () => {
+        try {
+          const holdResult = archiveOngoingMovementsOnHold({
+            previousMemoryState: _prevMemStateForHold,
+            nowMs: Date.now(),
+            lastActivityMs: _lastActivityMsForHold,
+            ttlMs: MEMORY_INACTIVITY_TTL_MS
+          });
+
+          if (!holdResult.archived) return; // nothing to archive
+
+          logChatDecision("memory_hold_archive", {
+            decision: "hold",
+            reason: postureDecision.memoryUpdateReason,
+            archivedCount: Array.isArray(_prevMemStateForHold?.onGoingMovements)
+              ? _prevMemStateForHold.onGoingMovements.length
+              : 0
+          });
+
+          const persistedMemoryText = normalizeMemory(holdResult.memoryText, activePromptRegistry);
+
+          if (isPrivateConversation && conversationId) {
+            privateConversationMemoryCache.set(String(conversationId), {
+              memory: persistedMemoryText,
+              memoryState: holdResult.memoryState,
+              memoryRewriteDebug: null,
+              updatedAt: Date.now()
+            });
+            return;
+          }
+
+          if (conversationId) {
+            await persistConversationMemoryWithRetry(
+              persistedMemoryText,
+              activePromptRegistry,
+              2,
+              holdResult.memoryState,
+              null
+            );
+          }
+        } catch (e) {
+          console.warn("[CHAT][MEMORY_HOLD_ARCHIVE_FAILED]", e && e.message ? e.message : e);
+        }
+      })();
+
+      if (conversationId) {
+        trackConversationMemorySync(conversationId, holdArchiveTask);
       }
     }
     const postCrisisSupportCarryTurnActive = req.__postCrisisSupportCarryTurnActive === true;
