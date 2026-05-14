@@ -593,6 +593,10 @@
     buildSomaticFocusPolicyDebugLine: buildSomaticFocusPolicyDebugLine,
     buildNaturalDebugSummary: buildNaturalDebugSummary,
     buildPipelineRuntimeText: buildPipelineRuntimeText,
-    formatSecondaryTension: formatSecondaryTension
-  };
+    formatSecondaryTension: formatSecondaryTension,
+    detectMemoryReactivationSignal: function(meta) {
+      return meta && meta.memoryReactivationGuardTriggered === true
+        ? "\u0047arde m\u00e9moire activ\u00e9e"
+        : null;
+    }
 })(window);

@@ -7878,6 +7878,17 @@
             sectionContent.appendChild(createSubBlock("Contexte stable (session)", stableLines));
             sectionContent.appendChild(createSubBlock("Mouvements en cours", ongoingLines));
 
+            if (section.memoryReactivationGuardTriggered === true) {
+              var guardDiv = document.createElement("div");
+              guardDiv.style.fontSize = "11px";
+              guardDiv.style.fontStyle = "italic";
+              guardDiv.style.color = "#d97706";
+              guardDiv.style.marginTop = "6px";
+              guardDiv.style.marginBottom = "10px";
+              guardDiv.textContent = "\u0047arde m\u00e9moire activ\u00e9e";
+              sectionContent.appendChild(guardDiv);
+            }
+
             const ancientWrap = document.createElement("div");
             ancientWrap.style.marginBottom = "10px";
             const ancientTitle = document.createElement("div");
