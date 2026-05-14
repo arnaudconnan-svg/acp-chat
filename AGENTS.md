@@ -124,6 +124,27 @@ Toute modification de `lib/debugmeta.js` (ajout, suppression ou renommage de cha
 
 **Règle spécifique aux tokens nommés** (tokens `forbidden`, `writerIntentHints`, etc.) : tout nouveau token doit être ajouté dans le même patch dans la map de traduction correspondante de `debug-shared.js` (`translateForbidden`, `translateWriterHint`, etc.).
 
+### Règle mémoire — décisions produit actées (audit)
+
+Les points suivants sont des **décisions produit actées** et ne doivent plus être remontés comme "dysfonctionnement probable" lors d'un audit mémoire :
+
+- Le debug de réponse expose la mémoire disponible en début de tour (N-1), pas la mémoire recalculée en fin de tour.
+- La mise à jour mémoire est asynchrone et non bloquante pour la réponse utilisateur.
+
+Conséquence attendue : un décalage d'un tour peut apparaître entre le debug mémoire et la mise à jour persistée. Ce décalage est un comportement voulu.
+
+Si un audit mémoire est demandé, l'agent doit partir de cette base et chercher des écarts réels ailleurs (gating update/hold, fallback format, sanitization, propagation, rendu), sans requalifier ces deux points comme incidents.
+
+### Règle d'observabilité mémoire — décisions traçables
+
+Pour tout chantier mémoire ou ajustement relationnel dépendant de la mémoire, le debug doit permettre d'identifier explicitement :
+
+- la décision de mise à jour mémoire (`update` vs `hold`)
+- le motif de décision (`reason`) et sa source (`deterministic`, `llm`, `llm_fallback`, etc.)
+- le statut des ajustements relationnels annoncés (décision retenue vs exécution effective vs hint inactif)
+
+Si ces décisions ne sont pas traçables en debug, c'est une dette d'observabilité à corriger dans le patch concerné.
+
 Avant toute modification qui change un comportement visible :
 
 1. **Annoncer en langage produit** : ce qui va changer pour l'utilisateur final

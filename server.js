@@ -5185,6 +5185,9 @@ app.post("/chat", async (req, res) => {
     function scheduleBackgroundMemoryUpdate(memorySnapshot, replyText, memoryPrioritySignal = "normal", intersessionMemoryForTurn = "") {
       (async () => {
         try {
+          // PRODUCT DECISION (memory audit baseline): memory update is intentionally non-blocking.
+          // The user-facing reply must not wait for UPDATE_MEMORY/merge/persistence.
+          // Consequence: debug memory can lag by one turn; this is expected behavior, not a defect.
           const updatedMemory = await updateMemory(
             memorySnapshot,
             [...recentHistory, { role: "user", content: message }, { role: "assistant", content: replyText }],
@@ -6357,6 +6360,10 @@ app.post("/chat", async (req, res) => {
       memoryBeforeSanitization: typeof previousMemoryRewriteDebug?.beforeSanitization === "string"
         ? previousMemoryRewriteDebug.beforeSanitization
         : null,
+      // PRODUCT DECISION (memory audit baseline): response debug exposes the memory state
+      // available at turn start (previousMemoryState). The merged memory state generated during
+      // this turn is persisted asynchronously for the next turn and is not injected here.
+      // This one-turn offset is intentional for runtime latency and stability.
       memoryState: previousMemoryState,
       intersessionMemoryRuntime,
       outputGuardTriggered,

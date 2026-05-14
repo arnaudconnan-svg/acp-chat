@@ -60,6 +60,15 @@ Consequence d'architecture :
 - aucune instruction prompt ne doit reintroduire une logique d'archivage LLM-driven
 - un harnais `prompts:consistency` enforce cette contrainte dans la verification standard
 
+Semantique runtime actee (decision produit) :
+- le `debugMeta.memoryState` de la reponse represente l'etat memoire disponible en debut de tour (N-1)
+- la recomposition memoire du tour courant est effectuee en asynchrone et persistee pour N+1
+- ce decalage d'un tour est intentionnel (latence et robustesse) et ne constitue pas un bug par defaut
+
+Point d'observabilite requis :
+- la decision de mise a jour memoire (`update` / `hold`) et son motif doivent etre tracables au debug
+- les ajustements relationnels annonces comme appliques doivent etre distinguables des simples hints
+
 ## Observabilite
 
 Le pipeline produit plusieurs traces utiles :
