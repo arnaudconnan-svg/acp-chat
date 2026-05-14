@@ -304,6 +304,12 @@ Règle requestId (obligatoire) :
 - Ne pas appliquer de préfiltre métier (memory/stagnation/etc.) avant cette extraction requestId.
 - Restituer le contenu complet des lignes trouvées (pas seulement un résumé), puis proposer une synthèse en second temps.
 
+Règle de visibilité admin pour les tests live (obligatoire) :
+
+- Si l'utilisateur veut suivre les tests depuis `admin.html`, ne pas lancer les tests en `isPrivateConversation=true`.
+- Utiliser `isPrivateConversation=false` par défaut pour ces tests et partager `conversationId` + `requestId` pour le suivi.
+- N'utiliser `isPrivateConversation=true` que sur demande explicite de l'utilisateur.
+
 Hygiène d'environnement (Windows/PowerShell) :
 
 - Si les variables process contiennent des valeurs `dummy_*`, recharger depuis `HKCU:\Environment` avant diagnostic.

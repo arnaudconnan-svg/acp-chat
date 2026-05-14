@@ -50,6 +50,8 @@ Points supplementaires a surveiller
 - Changement de libelle memoire entre tours ("Memoire session utilisee..." vs "Memoire structuree (4 blocs)") peut brouiller la lecture produit.
 - La reponse utilisateur-visible reste globalement bonne: le risque principal est une incoherence de debug/pipeline, pas une rupture flagrante de qualite percue.
 - Le cockpit semble sous-instrumente sur la chaine memoire: ajouter des logs utiles est prioritaire si les logs existants ne suffisent pas.
+- A traiter: ne pas laisser partir le traitement du nouveau message utilisateur tant que la memoire async du tour N-1 n'est pas revenue, ou explicitement declaree `null`.
+- Regle de test immediate: pour tout test que l'utilisateur doit suivre dans admin, ne plus utiliser `isPrivateConversation=true` (utiliser non-prive par defaut).
 
 Prochaine sequence validee
 - D'abord lecture des logs Render sur le creneau de la conversation test pour chercher des traces aidantes.
