@@ -6174,16 +6174,18 @@ app.post("/chat", async (req, res) => {
 
     Object.assign(newFlags, postureDecision.flagUpdates);
 
-    // R�gle produit: si onGoingMovements est vide ce tour, forcer la case courante
-    // de la fen�tre de stagnation � 1.
+    // Observabilite: garder ce signal pour les logs pipeline.
     const hadEmptyOngoingBeforeTurn = !Array.isArray(previousMemoryState?.onGoingMovements) || previousMemoryState.onGoingMovements.length === 0;
-    if (hadEmptyOngoingBeforeTurn) {
+
+    // Regle produit: stagnation impossible au premier tour evaluable.
+    // On force la case courante de la fenetre a 0 et le cumul a 0.
+    if (isFirstTurn) {
       const previousStagnationWindow = normalizeStagnationWindow(newFlags.stagnationWindow);
       const previousStagnationTurns = normalizeStagnationTurns(newFlags.stagnationTurns);
-      const forcedWindow = [...normalizeStagnationWindow(newFlags.stagnationWindow), true].slice(-4);
+      const forcedWindow = [...previousStagnationWindow.slice(0, 3), false];
       newFlags.stagnationWindow = forcedWindow;
-      newFlags.stagnationTurns = Math.max(1, normalizeStagnationTurns(newFlags.stagnationTurns));
-      logChatDecision("stagnation_forced_due_empty_ongoing", {
+      newFlags.stagnationTurns = 0;
+      logChatDecision("stagnation_forced_first_turn_false", {
         previousStagnationWindow,
         forcedStagnationWindow: forcedWindow,
         previousStagnationTurns,
