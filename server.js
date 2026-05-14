@@ -965,6 +965,83 @@ function normalizeIntersessionMemory(memory, promptRegistry = buildDefaultPrompt
     buildDefaultPromptRegistry().NORMALIZE_INTERSESSION_MEMORY_TEMPLATE;
 }
 
+function normalizeMemoryTraceText(value = "") {
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function buildMemoryReactivationTrace({
+  previousMemoryState = null,
+  memoryUpdateContract = null,
+  mergedMemoryState = null,
+  currentUserMessage = "",
+  memoryPrioritySignal = "normal"
+} = {}) {
+  const previousAncientTexts = Array.isArray(previousMemoryState?.ancientMovements)
+    ? previousMemoryState.ancientMovements.map((item) => String(item?.text || "").trim()).filter(Boolean)
+    : [];
+
+  const previousOngoingTexts = Array.isArray(previousMemoryState?.onGoingMovements)
+    ? previousMemoryState.onGoingMovements.map((item) => String(item?.text || "").trim()).filter(Boolean)
+    : [];
+
+  const mergedOngoingTexts = Array.isArray(mergedMemoryState?.onGoingMovements)
+    ? mergedMemoryState.onGoingMovements.map((item) => String(item?.text || "").trim()).filter(Boolean)
+    : [];
+
+  const contractMemoryText = typeof memoryUpdateContract?.memoryBeforeSanitization === "string"
+    ? memoryUpdateContract.memoryBeforeSanitization
+    : typeof memoryUpdateContract?.memoryText === "string"
+      ? memoryUpdateContract.memoryText
+      : "";
+
+  const contractOngoingTexts = extractMemorySectionBullets(contractMemoryText, "Mouvements en cours");
+  const ancientKeys = new Set(previousAncientTexts.map(normalizeMemoryTraceText).filter(Boolean));
+
+  const overlapContractWithAncient = contractOngoingTexts
+    .filter((text) => ancientKeys.has(normalizeMemoryTraceText(text)))
+    .slice(0, 3);
+
+  const overlapMergedWithAncient = mergedOngoingTexts
+    .filter((text) => ancientKeys.has(normalizeMemoryTraceText(text)))
+    .slice(0, 3);
+
+  const normalizedUserMessage = normalizeMemoryTraceText(currentUserMessage);
+  const mergedOutsideCurrentUser = mergedOngoingTexts
+    .filter((text) => {
+      const key = normalizeMemoryTraceText(text);
+      if (!key || !normalizedUserMessage) return false;
+      return !normalizedUserMessage.includes(key);
+    })
+    .slice(0, 3);
+
+  const likelySource = overlapContractWithAncient.length > 0
+    ? "updateMemory_contract"
+    : overlapMergedWithAncient.length > 0
+      ? "merge"
+      : "none";
+
+  return {
+    reactivationDetected: overlapMergedWithAncient.length > 0,
+    likelySource,
+    memoryPrioritySignal: String(memoryPrioritySignal || "normal"),
+    previousCounts: {
+      ancient: previousAncientTexts.length,
+      ongoing: previousOngoingTexts.length
+    },
+    contractOngoingCount: contractOngoingTexts.length,
+    mergedOngoingCount: mergedOngoingTexts.length,
+    overlapContractWithAncient,
+    overlapMergedWithAncient,
+    mergedOutsideCurrentUser
+  };
+}
+
 function normalizeIntersessionSourceFromUserData(userData, promptRegistry = buildDefaultPromptRegistry()) {
   if (!userData || typeof userData !== "object") {
     return "";
@@ -6394,7 +6471,23 @@ app.post("/chat", async (req, res) => {
             lastActivityMs: _lastActivityMs,
             ttlMs: MEMORY_INACTIVITY_TTL_MS
           });
+          const reactivationTrace = buildMemoryReactivationTrace({
+            previousMemoryState: _prevMemState,
+            memoryUpdateContract,
+            mergedMemoryState: mergedStateResult.memoryState,
+            currentUserMessage: _message,
+            memoryPrioritySignal: _prioritySignal
+          });
           const persistedMemoryText = normalizeMemory(mergedStateResult.memoryText, _registry);
+
+          if (reactivationTrace.reactivationDetected === true || reactivationTrace.mergedOutsideCurrentUser.length > 0) {
+            logChatDecision("memory_reactivation_trace", {
+              decision: "update",
+              reason: postureDecision.memoryUpdateReason,
+              source: postureDecision.memoryUpdateSource,
+              ...reactivationTrace
+            });
+          }
 
           logChatDecision("memory_update_result", {
             decision: "update",
@@ -6404,6 +6497,13 @@ app.post("/chat", async (req, res) => {
             contractLlmMeta: memoryUpdateContract?.llmMeta && typeof memoryUpdateContract.llmMeta === "object"
               ? memoryUpdateContract.llmMeta
               : null,
+            reactivationTraceSummary: {
+              detected: reactivationTrace.reactivationDetected === true,
+              likelySource: reactivationTrace.likelySource,
+              contractOverlapCount: reactivationTrace.overlapContractWithAncient.length,
+              mergedOverlapCount: reactivationTrace.overlapMergedWithAncient.length,
+              mergedOutsideCurrentUserCount: reactivationTrace.mergedOutsideCurrentUser.length
+            },
             deleteAncientCount: Array.isArray(memoryUpdateContract?.deleteAncientMovementsById)
               ? memoryUpdateContract.deleteAncientMovementsById.length
               : 0,
