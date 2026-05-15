@@ -156,6 +156,9 @@
       memory: toTrimmedString(safe.memory, ""),
       memoryState: normalizedMemoryState,
       intersessionMemoryRuntime: toTrimmedString(safe.intersessionMemoryRuntime, "") || null,
+      memoryAncientCleanupDeletedIds: Array.isArray(safe.memoryAncientCleanupDeletedIds)
+        ? safe.memoryAncientCleanupDeletedIds.map(function mapDeletedId(v) { return String(v || "").trim(); }).filter(Boolean)
+        : [],
       directivityText: toTrimmedString(safe.directivityText, "") || toTrimmedString(safe.directivityLabel, ""),
       directivityLabel: toTrimmedString(safe.directivityLabel, ""),
       conversationState: toTrimmedString(safe.conversationState, "") || null,

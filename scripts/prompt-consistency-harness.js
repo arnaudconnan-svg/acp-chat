@@ -28,49 +28,64 @@ function check(label, condition, details = "") {
 
 function run() {
   const registry = buildDefaultPromptRegistry();
-  const updateMemory = String(registry.UPDATE_MEMORY || "");
+  const extractOngoing = String(registry.EXTRACT_ONGOING_MOVEMENTS || "");
+  const extractStable = String(registry.EXTRACT_STABLE_CONTEXT || "");
+  const cleanupAncient = String(registry.CLEANUP_ANCIENT_DUPLICATES || "");
   const updateIntersessionMemory = String(registry.UPDATE_INTERSESSION_MEMORY || "");
   const intersessionTemplate = String(registry.NORMALIZE_INTERSESSION_MEMORY_TEMPLATE || "");
 
   check(
-    "UPDATE_MEMORY exists",
-    updateMemory.length > 0,
-    "Missing UPDATE_MEMORY prompt"
-  );
-
-  const periodicMatches = updateMemory.match(/- `periodic_refresh` :/g) || [];
-  check(
-    "periodic_refresh instruction appears exactly once",
-    periodicMatches.length === 1,
-    `Found ${periodicMatches.length} periodic_refresh instructions`
+    "EXTRACT_ONGOING_MOVEMENTS exists",
+    extractOngoing.length > 0,
+    "Missing EXTRACT_ONGOING_MOVEMENTS prompt"
   );
 
   check(
-    "legacy transfer wording is absent",
-    !updateMemory.includes('Copie l\'etat precedent de "Mouvements en cours" dans "Anciens mouvements"'),
-    "Found legacy LLM-driven transfer instruction"
+    "EXTRACT_ONGOING_MOVEMENTS enforces strict JSON output",
+    extractOngoing.includes('"items"') && extractOngoing.includes("JSON valide uniquement"),
+    "Missing strict JSON contract for EXTRACT_ONGOING_MOVEMENTS"
   );
 
   check(
-    "deterministic transfer wording is present",
-    updateMemory.includes('Le transfert vers "Anciens mouvements" est géré automatiquement'),
-    "Missing deterministic transfer instruction"
+    "EXTRACT_ONGOING_MOVEMENTS caps list to 2 items",
+    extractOngoing.includes("max 2 items"),
+    "Missing max-2 guard for ongoing extraction"
   );
 
   check(
-    "legacy 4.e ANCIENS MOUVEMENTS section is absent",
-    !updateMemory.includes("4.e ANCIENS MOUVEMENTS"),
-    "Found legacy ANCIENS MOUVEMENTS section"
+    "EXTRACT_STABLE_CONTEXT exists",
+    extractStable.length > 0,
+    "Missing EXTRACT_STABLE_CONTEXT prompt"
   );
 
   check(
-    "UPDATE_MEMORY structure keeps 3 sections with locked Anciens mouvements",
-    updateMemory.includes("Contexte stable:") &&
-      updateMemory.includes("Mouvements en cours:") &&
-      updateMemory.includes("Anciens mouvements:") &&
-      updateMemory.includes("Les trois blocs doivent toujours être présents") &&
-      updateMemory.includes('laisse toujours "Anciens mouvements" à "-"'),
-    "Missing strict 3-block runtime-compatible structure guard"
+    "EXTRACT_STABLE_CONTEXT enforces strict JSON output",
+    extractStable.includes('"items"') && extractStable.includes("JSON valide uniquement"),
+    "Missing strict JSON contract for EXTRACT_STABLE_CONTEXT"
+  );
+
+  check(
+    "CLEANUP_ANCIENT_DUPLICATES exists",
+    cleanupAncient.length > 0,
+    "Missing CLEANUP_ANCIENT_DUPLICATES prompt"
+  );
+
+  check(
+    "CLEANUP_ANCIENT_DUPLICATES enforces deleteAncientIds contract",
+    cleanupAncient.includes('"deleteAncientIds"') && cleanupAncient.includes("JSON valide uniquement"),
+    "Missing strict deleteAncientIds contract"
+  );
+
+  check(
+    "legacy UPDATE_MEMORY prompt stays absent",
+    !Object.prototype.hasOwnProperty.call(registry, "UPDATE_MEMORY"),
+    "Legacy UPDATE_MEMORY key should not be present"
+  );
+
+  check(
+    "legacy ANALYZE_MEMORY_UPDATE_NEEDS prompt stays absent",
+    !Object.prototype.hasOwnProperty.call(registry, "ANALYZE_MEMORY_UPDATE_NEEDS"),
+    "Legacy ANALYZE_MEMORY_UPDATE_NEEDS key should not be present"
   );
 
   check(

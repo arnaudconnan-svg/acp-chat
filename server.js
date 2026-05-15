@@ -133,7 +133,6 @@ const {
   registerExplorationRelance
 } = require("./lib/flags");
 const { createAnalyzers } = require("./lib/analyzers");
-const { baseStateOf } = require("./lib/conversation-state");
 const { createMemoryHelpers } = require("./lib/memory");
 const {
   buildAdvancedDebugTrace,
@@ -1186,7 +1185,6 @@ const {
   analyzeDependencyRisk,
   analyzeClosureIntent,
   analyzeAllianceRupture,
-  analyzeMemoryUpdateNeeds,
   analyzeInterpretationRejection,
   analyzeTechnicalContext,
   analyzeSomaticSignal,
@@ -1325,7 +1323,6 @@ ${originalContent}
 
 const {
   MEMORY_INACTIVITY_TTL_MS,
-  archiveOngoingMovementsOnHold,
   mergeMemoryStateWithFinalizedText,
   normalizeMemoryStateShape,
   updateIntersessionMemory,
@@ -4804,6 +4801,9 @@ app.post("/chat", async (req, res) => {
       topChips: Array.isArray(safe.topChips) ? safe.topChips.map((chip) => String(chip || "").trim()).filter(Boolean) : [],
       memory: normalizeMemory(safe.memory, promptRegistry),
       memoryBeforeSanitization: typeof safe.memoryBeforeSanitization === "string" ? normalizeMemory(safe.memoryBeforeSanitization, promptRegistry) : null,
+      memoryAncientCleanupDeletedIds: Array.isArray(safe.memoryAncientCleanupDeletedIds)
+        ? safe.memoryAncientCleanupDeletedIds.map((id) => String(id || "").trim()).filter(Boolean)
+        : [],
       memoryState: normalizeMemoryStateShape(safe.memoryState, "", Date.now()),
       intersessionMemoryRuntime: typeof safe.intersessionMemoryRuntime === "string" ? safe.intersessionMemoryRuntime.trim() : null,
       directivityText: typeof safe.directivityText === "string" ? safe.directivityText : "",
@@ -4916,6 +4916,7 @@ app.post("/chat", async (req, res) => {
   function buildFallbackResponseDebugMeta({
     memory = "",
     memoryBeforeSanitization = null,
+    memoryAncientCleanupDeletedIds = [],
     suicideLevel = "N0",
     conversationState = "exploration_open",
     interpretationRejection = false,
@@ -4941,6 +4942,9 @@ app.post("/chat", async (req, res) => {
       }),
       memory: normalizeMemory(memory, promptRegistry),
       memoryBeforeSanitization: typeof memoryBeforeSanitization === "string" ? normalizeMemory(memoryBeforeSanitization, promptRegistry) : null,
+      memoryAncientCleanupDeletedIds: Array.isArray(memoryAncientCleanupDeletedIds)
+        ? memoryAncientCleanupDeletedIds.map((id) => String(id || "").trim()).filter(Boolean)
+        : [],
       directivityText: buildDirectivityText({
         conversationState,
         explorationCalibrationLevel,
@@ -5324,7 +5328,7 @@ app.post("/chat", async (req, res) => {
       throw lastError || new Error("memory_persist_retry_failed");
     }
 
-    function scheduleBackgroundMemoryUpdate(memorySnapshot, replyText, memoryPrioritySignal = "normal", intersessionMemoryForTurn = "") {
+    function scheduleBackgroundMemoryUpdate(memorySnapshot, replyText) {
       const backgroundMemoryTask = (async () => {
         try {
           // PRODUCT DECISION (memory audit baseline): memory update is intentionally non-blocking.
@@ -5334,8 +5338,8 @@ app.post("/chat", async (req, res) => {
             memorySnapshot,
             [...recentHistory, { role: "user", content: message }, { role: "assistant", content: replyText }],
             activePromptRegistry,
-            memoryPrioritySignal,
-            intersessionMemoryForTurn,
+            "normal",
+            "",
             null,
             previousMemoryState
           );
@@ -5357,6 +5361,9 @@ app.post("/chat", async (req, res) => {
             beforeSanitization: typeof updatedMemory?.memoryBeforeSanitization === "string"
               ? normalizeMemory(updatedMemory.memoryBeforeSanitization, activePromptRegistry)
               : null,
+            deletedAncientIds: Array.isArray(updatedMemory?.deleteAncientMovementsById)
+              ? updatedMemory.deleteAncientMovementsById
+              : [],
             source: typeof updatedMemory?.source === "string" ? updatedMemory.source : null,
             capturedAt: new Date().toISOString()
           };
@@ -5494,7 +5501,7 @@ app.post("/chat", async (req, res) => {
       }
 
       const responseMemory = previousMemory;
-      scheduleBackgroundMemoryUpdate(previousMemory, reply, "crisis", "");
+      scheduleBackgroundMemoryUpdate(previousMemory, reply);
 
       const responseDebugMeta = buildCrisisResponseDebugMeta({
         memory: responseMemory,
@@ -5543,7 +5550,7 @@ app.post("/chat", async (req, res) => {
       }
 
       const responseMemory = previousMemory;
-      scheduleBackgroundMemoryUpdate(previousMemory, reply, "crisis", "");
+      scheduleBackgroundMemoryUpdate(previousMemory, reply);
 
       const responseDebugMeta = buildCrisisResponseDebugMeta({
         memory: responseMemory,
@@ -6123,7 +6130,6 @@ app.post("/chat", async (req, res) => {
       detectedState,
       contactAnalysis,
       emotionalDecenteringAnalysis,
-      somaticSignalAnalysis: safeSomaticSignalAnalysis,
       affiliationWindow: newAffiliationWindow,
       affiliationEstablished,
       relationalAdjustmentAnalysis,
@@ -6169,21 +6175,9 @@ app.post("/chat", async (req, res) => {
     finalExplorationSignal = postureDecision.finalExplorationSignal;
     const { conversationState, consecutiveNonExplorationTurns } = postureDecision;
 
-    const memoryUpdateAnalysis = await withAnalyzerTiming("memory_update_needs", analyzeMemoryUpdateNeeds({
-      message,
-      memory: previousMemory,
-      conversationState: postureDecision.conversationState,
-      previousConversationState,
-      interpretationRejection: safeInterpretationRejection.isInterpretationRejection === true,
-      promptRegistry: activePromptRegistry
-    }));
-    postureDecision.memoryUpdateDecision = memoryUpdateAnalysis?.shouldUpdate === true ? "update" : "hold";
-    postureDecision.memoryUpdateReason = typeof memoryUpdateAnalysis?.reason === "string" && memoryUpdateAnalysis.reason.trim()
-      ? memoryUpdateAnalysis.reason.trim()
-      : "unspecified";
-    postureDecision.memoryUpdateSource = typeof memoryUpdateAnalysis?.source === "string" && memoryUpdateAnalysis.source.trim()
-      ? memoryUpdateAnalysis.source.trim()
-      : "deterministic";
+    postureDecision.memoryUpdateDecision = "update";
+    postureDecision.memoryUpdateReason = "always_update";
+    postureDecision.memoryUpdateSource = "deterministic";
 
     logChatDecision("memory_update_decision", {
       decision: postureDecision.memoryUpdateDecision,
@@ -6448,207 +6442,147 @@ app.post("/chat", async (req, res) => {
     // The response always exposes the memory used for this turn (N-1), while
     // update/finalization/persistence runs in background for the next turn.
     let newMemory = previousMemory;
-    const shouldRunMemoryUpdate = postureDecision.memoryUpdateDecision === "update";
+    const effectiveMemoryPrioritySignalForDebug = postureDecision.memoryPrioritySignal || "normal";
+    newFlags.dependencyAnalysisTurnsUntilRefresh = 1;
+    markChatStage("memory_update");
 
-    // Cadence disabled: explicit decision from arbiter/analyzer drives each turn.
-    newFlags.memoryUpdateTurnsUntilRefresh = 0;
+    const memoryClinicalSignals = {
+      risque_dependance: newFlags.dependencyRiskLevel || "low",
+      stagnation: Number.isInteger(newFlags.stagnationTurns) ? Math.max(0, newFlags.stagnationTurns) : 0,
+      decentrage_emotionnel: emotionalDecenteringAnalysis?.emotionalDecentering === true,
+      agressivite_vers_bot: dischargeAnalysis?.aggressiveDischargeDirectedToBot === true
+    };
 
-    if (shouldRunMemoryUpdate) {
-      const effectiveMemoryPrioritySignalForDebug = postureDecision.memoryPrioritySignal || "normal";
-      newFlags.dependencyAnalysisTurnsUntilRefresh = 1;
-      markChatStage("memory_update");
+    const _prevMem = previousMemory;
+    const _history = recentHistory;
+    const _message = message;
+    const _reply = reply;
+    const _registry = activePromptRegistry;
+    const _interSession = intersessionMemoryForThisTurn;
+    const _prevMemState = previousMemoryState;
+    const _lastActivityMs = previousConversationActivityMs;
+    const _prioritySignal = effectiveMemoryPrioritySignalForDebug;
 
-      const memoryClinicalSignals = {
-        risque_dependance: newFlags.dependencyRiskLevel || "low",
-        stagnation: Number.isInteger(newFlags.stagnationTurns) ? Math.max(0, newFlags.stagnationTurns) : 0,
-        decentrage_emotionnel: emotionalDecenteringAnalysis?.emotionalDecentering === true,
-        agressivite_vers_bot: dischargeAnalysis?.aggressiveDischargeDirectedToBot === true
-      };
+    const backgroundMemoryTask = (async () => {
+      try {
+        const memoryUpdateContract = await updateMemory(
+          _prevMem,
+          [..._history, { role: "user", content: _message }, { role: "assistant", content: _reply }],
+          _registry,
+          _prioritySignal,
+          _interSession,
+          memoryClinicalSignals,
+          _prevMemState
+        );
+        const rawMem = typeof memoryUpdateContract?.memoryText === "string"
+          ? memoryUpdateContract.memoryText
+          : _prevMem;
 
-      const _prevMem = previousMemory;
-      const _history = recentHistory;
-      const _message = message;
-      const _reply = reply;
-      const _registry = activePromptRegistry;
-      const _interSession = intersessionMemoryForThisTurn;
-      const _prevMemState = previousMemoryState;
-      const _lastActivityMs = previousConversationActivityMs;
-      const _prioritySignal = effectiveMemoryPrioritySignalForDebug;
+        const mergedStateResult = mergeMemoryStateWithFinalizedText({
+          previousMemoryState: _prevMemState,
+          finalizedMemoryText: rawMem,
+          deleteAncientMovementsById: Array.isArray(memoryUpdateContract?.deleteAncientMovementsById)
+            ? memoryUpdateContract.deleteAncientMovementsById
+            : [],
+          pastSignals: memoryClinicalSignals,
+          nowMs: Date.now(),
+          lastActivityMs: _lastActivityMs,
+          ttlMs: MEMORY_INACTIVITY_TTL_MS
+        });
+        const reactivationTrace = buildMemoryReactivationTrace({
+          previousMemoryState: _prevMemState,
+          memoryUpdateContract,
+          mergedMemoryState: mergedStateResult.memoryState,
+          currentUserMessage: _message,
+          memoryPrioritySignal: _prioritySignal
+        });
+        const persistedMemoryText = normalizeMemory(mergedStateResult.memoryText, _registry);
 
-      const backgroundMemoryTask = (async () => {
-        try {
-          const memoryUpdateContract = await updateMemory(
-            _prevMem,
-            [..._history, { role: "user", content: _message }, { role: "assistant", content: _reply }],
-            _registry,
-            _prioritySignal,
-            _interSession,
-            memoryClinicalSignals,
-            _prevMemState
-          );
-          const rawMem = typeof memoryUpdateContract?.memoryText === "string"
-            ? memoryUpdateContract.memoryText
-            : _prevMem;
-
-          const mergedStateResult = mergeMemoryStateWithFinalizedText({
-            previousMemoryState: _prevMemState,
-            finalizedMemoryText: rawMem,
-            deleteAncientMovementsById: Array.isArray(memoryUpdateContract?.deleteAncientMovementsById)
-              ? memoryUpdateContract.deleteAncientMovementsById
-              : [],
-            pastSignals: memoryClinicalSignals,
-            nowMs: Date.now(),
-            lastActivityMs: _lastActivityMs,
-            ttlMs: MEMORY_INACTIVITY_TTL_MS
-          });
-          const reactivationTrace = buildMemoryReactivationTrace({
-            previousMemoryState: _prevMemState,
-            memoryUpdateContract,
-            mergedMemoryState: mergedStateResult.memoryState,
-            currentUserMessage: _message,
-            memoryPrioritySignal: _prioritySignal
-          });
-          const persistedMemoryText = normalizeMemory(mergedStateResult.memoryText, _registry);
-
-          if (reactivationTrace.reactivationDetected === true || reactivationTrace.mergedOutsideCurrentUser.length > 0) {
-            logChatDecision("memory_reactivation_trace", {
-              decision: "update",
-              reason: postureDecision.memoryUpdateReason,
-              source: postureDecision.memoryUpdateSource,
-              ...reactivationTrace
-            });
-          }
-
-          logChatDecision("memory_update_result", {
+        if (reactivationTrace.reactivationDetected === true || reactivationTrace.mergedOutsideCurrentUser.length > 0) {
+          logChatDecision("memory_reactivation_trace", {
             decision: "update",
             reason: postureDecision.memoryUpdateReason,
             source: postureDecision.memoryUpdateSource,
-            contractSource: typeof memoryUpdateContract?.source === "string" ? memoryUpdateContract.source : "unknown",
-            contractLlmMeta: memoryUpdateContract?.llmMeta && typeof memoryUpdateContract.llmMeta === "object"
-              ? memoryUpdateContract.llmMeta
-              : null,
-            reactivationTraceSummary: {
-              detected: reactivationTrace.reactivationDetected === true,
-              likelySource: reactivationTrace.likelySource,
-              contractOverlapCount: reactivationTrace.overlapContractWithAncient.length,
-              mergedOverlapCount: reactivationTrace.overlapMergedWithAncient.length,
-              mergedOutsideCurrentUserCount: reactivationTrace.mergedOutsideCurrentUser.length
-            },
-            deleteAncientCount: Array.isArray(memoryUpdateContract?.deleteAncientMovementsById)
-              ? memoryUpdateContract.deleteAncientMovementsById.length
-              : 0,
-            purgedByInactivity: mergedStateResult.purgedByInactivity === true,
-            nextMemoryStateCounts: {
-              sessionStableContext: Array.isArray(mergedStateResult?.memoryState?.sessionStableContext)
-                ? mergedStateResult.memoryState.sessionStableContext.length
-                : 0,
-              onGoingMovements: Array.isArray(mergedStateResult?.memoryState?.onGoingMovements)
-                ? mergedStateResult.memoryState.onGoingMovements.length
-                : 0,
-              ancientMovements: Array.isArray(mergedStateResult?.memoryState?.ancientMovements)
-                ? mergedStateResult.memoryState.ancientMovements.length
-                : 0
-            }
+            ...reactivationTrace
           });
+        }
 
-          if (isPrivateConversation && conversationId) {
-            privateConversationMemoryCache.set(String(conversationId), {
-              memory: persistedMemoryText,
-              memoryState: mergedStateResult.memoryState,
-              memoryRewriteDebug: {
-                beforeSanitization: typeof memoryUpdateContract?.memoryBeforeSanitization === "string"
-                  ? normalizeMemory(memoryUpdateContract.memoryBeforeSanitization, _registry)
-                  : null,
-                source: typeof memoryUpdateContract?.source === "string" ? memoryUpdateContract.source : null,
-                capturedAt: new Date().toISOString()
-              },
-              updatedAt: Date.now()
-            });
-            return;
+        logChatDecision("memory_update_result", {
+          decision: "update",
+          reason: postureDecision.memoryUpdateReason,
+          source: postureDecision.memoryUpdateSource,
+          contractSource: typeof memoryUpdateContract?.source === "string" ? memoryUpdateContract.source : "unknown",
+          contractLlmMeta: memoryUpdateContract?.llmMeta && typeof memoryUpdateContract.llmMeta === "object"
+            ? memoryUpdateContract.llmMeta
+            : null,
+          reactivationTraceSummary: {
+            detected: reactivationTrace.reactivationDetected === true,
+            likelySource: reactivationTrace.likelySource,
+            contractOverlapCount: reactivationTrace.overlapContractWithAncient.length,
+            mergedOverlapCount: reactivationTrace.overlapMergedWithAncient.length,
+            mergedOutsideCurrentUserCount: reactivationTrace.mergedOutsideCurrentUser.length
+          },
+          deleteAncientCount: Array.isArray(memoryUpdateContract?.deleteAncientMovementsById)
+            ? memoryUpdateContract.deleteAncientMovementsById.length
+            : 0,
+          purgedByInactivity: mergedStateResult.purgedByInactivity === true,
+          nextMemoryStateCounts: {
+            sessionStableContext: Array.isArray(mergedStateResult?.memoryState?.sessionStableContext)
+              ? mergedStateResult.memoryState.sessionStableContext.length
+              : 0,
+            onGoingMovements: Array.isArray(mergedStateResult?.memoryState?.onGoingMovements)
+              ? mergedStateResult.memoryState.onGoingMovements.length
+              : 0,
+            ancientMovements: Array.isArray(mergedStateResult?.memoryState?.ancientMovements)
+              ? mergedStateResult.memoryState.ancientMovements.length
+              : 0
           }
+        });
 
-          await persistConversationMemoryWithRetry(
-            persistedMemoryText,
-            _registry,
-            2,
-            mergedStateResult.memoryState,
-            {
-              beforeSanitization: typeof memoryUpdateContract?.memoryBeforeSanitization === "string"
-                ? normalizeMemory(memoryUpdateContract.memoryBeforeSanitization, _registry)
-                : null,
+        if (isPrivateConversation && conversationId) {
+          privateConversationMemoryCache.set(String(conversationId), {
+            memory: persistedMemoryText,
+            memoryState: mergedStateResult.memoryState,
+            memoryRewriteDebug: {
+              beforeSanitization: null,
+              deletedAncientIds: Array.isArray(memoryUpdateContract?.deleteAncientMovementsById)
+                ? memoryUpdateContract.deleteAncientMovementsById
+                : [],
               source: typeof memoryUpdateContract?.source === "string" ? memoryUpdateContract.source : null,
               capturedAt: new Date().toISOString()
-            }
-          );
-        } catch (e) {
-          console.warn("[CHAT][MEMORY_BG_FAILED]", e && e.message ? e.message : e);
-          logChatDecision("memory_update_failed", {
-            decision: "update",
-            reason: postureDecision.memoryUpdateReason,
-            source: postureDecision.memoryUpdateSource,
-            error: e && e.message ? e.message : String(e)
+            },
+            updatedAt: Date.now()
           });
+          return;
         }
-      })();
 
-      if (conversationId) {
-        trackConversationMemorySync(conversationId, backgroundMemoryTask);
-      }
-    } else {
-      // Decision = hold: archive previous onGoingMovements into ancientMovements.
-      // They described a movement that was not explicitly present in the current user message,
-      // so they should not persist indefinitely as "in progress".
-      const _prevMemStateForHold = previousMemoryState;
-      const _lastActivityMsForHold = previousConversationActivityMs;
-
-      const holdArchiveTask = (async () => {
-        try {
-          const holdResult = archiveOngoingMovementsOnHold({
-            previousMemoryState: _prevMemStateForHold,
-            nowMs: Date.now(),
-            lastActivityMs: _lastActivityMsForHold,
-            ttlMs: MEMORY_INACTIVITY_TTL_MS
-          });
-
-          if (!holdResult.archived) return; // nothing to archive
-
-          logChatDecision("memory_hold_archive", {
-            decision: "hold",
-            reason: postureDecision.memoryUpdateReason,
-            archivedCount: Array.isArray(_prevMemStateForHold?.onGoingMovements)
-              ? _prevMemStateForHold.onGoingMovements.length
-              : 0
-          });
-
-          const persistedMemoryText = normalizeMemory(holdResult.memoryText, activePromptRegistry);
-
-          if (isPrivateConversation && conversationId) {
-            privateConversationMemoryCache.set(String(conversationId), {
-              memory: persistedMemoryText,
-              memoryState: holdResult.memoryState,
-              memoryRewriteDebug: null,
-              updatedAt: Date.now()
-            });
-            return;
+        await persistConversationMemoryWithRetry(
+          persistedMemoryText,
+          _registry,
+          2,
+          mergedStateResult.memoryState,
+          {
+            beforeSanitization: null,
+            deletedAncientIds: Array.isArray(memoryUpdateContract?.deleteAncientMovementsById)
+              ? memoryUpdateContract.deleteAncientMovementsById
+              : [],
+            source: typeof memoryUpdateContract?.source === "string" ? memoryUpdateContract.source : null,
+            capturedAt: new Date().toISOString()
           }
-
-          if (conversationId) {
-            await persistConversationMemoryWithRetry(
-              persistedMemoryText,
-              activePromptRegistry,
-              2,
-              holdResult.memoryState,
-              null
-            );
-          }
-        } catch (e) {
-          console.warn("[CHAT][MEMORY_HOLD_ARCHIVE_FAILED]", e && e.message ? e.message : e);
-        }
-      })();
-
-      if (conversationId) {
-        trackConversationMemorySync(conversationId, holdArchiveTask);
+        );
+      } catch (e) {
+        console.warn("[CHAT][MEMORY_BG_FAILED]", e && e.message ? e.message : e);
+        logChatDecision("memory_update_failed", {
+          decision: "update",
+          reason: postureDecision.memoryUpdateReason,
+          source: postureDecision.memoryUpdateSource,
+          error: e && e.message ? e.message : String(e)
+        });
       }
+    })();
+
+    if (conversationId) {
+      trackConversationMemorySync(conversationId, backgroundMemoryTask);
     }
     const postCrisisSupportCarryTurnActive = req.__postCrisisSupportCarryTurnActive === true;
     const emergencySupportText = postCrisisSupportCarryTurnActive
@@ -6671,6 +6605,9 @@ app.post("/chat", async (req, res) => {
       memoryBeforeSanitization: typeof previousMemoryRewriteDebug?.beforeSanitization === "string"
         ? previousMemoryRewriteDebug.beforeSanitization
         : null,
+      memoryAncientCleanupDeletedIds: Array.isArray(previousMemoryRewriteDebug?.deletedAncientIds)
+        ? previousMemoryRewriteDebug.deletedAncientIds
+        : [],
       // PRODUCT DECISION (memory audit baseline): response debug exposes the memory state
       // available at turn start (previousMemoryState). The merged memory state generated during
       // this turn is persisted asynchronously for the next turn and is not injected here.
@@ -6828,6 +6765,9 @@ app.post("/chat", async (req, res) => {
       memoryBeforeSanitization: typeof previousMemoryRewriteDebugForCatch?.beforeSanitization === "string"
         ? previousMemoryRewriteDebugForCatch.beforeSanitization
         : null,
+      memoryAncientCleanupDeletedIds: Array.isArray(previousMemoryRewriteDebugForCatch?.deletedAncientIds)
+        ? previousMemoryRewriteDebugForCatch.deletedAncientIds
+        : [],
       suicideLevel: "N0",
       conversationState: modeForCatch,
       isRecallRequest: false,

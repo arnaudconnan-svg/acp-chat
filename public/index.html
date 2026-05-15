@@ -7534,6 +7534,9 @@
         return {
           title: "M\u00e9moire structur\u00e9e (4 blocs)",
           memoryStructured: true,
+          memoryAncientCleanupDeletedIds: Array.isArray(meta.memoryAncientCleanupDeletedIds)
+            ? meta.memoryAncientCleanupDeletedIds
+            : [],
           memoryStructuredData: {
             sessionStableContext: Array.isArray(state.sessionStableContext) ? state.sessionStableContext : [],
             onGoingMovements: Array.isArray(state.onGoingMovements) ? state.onGoingMovements : [],
@@ -7887,6 +7890,17 @@
               guardDiv.style.marginBottom = "10px";
               guardDiv.textContent = "\u0047arde m\u00e9moire activ\u00e9e";
               sectionContent.appendChild(guardDiv);
+            }
+
+            if (Array.isArray(section.memoryAncientCleanupDeletedIds) && section.memoryAncientCleanupDeletedIds.length > 0) {
+              var cleanupDiv = document.createElement("div");
+              cleanupDiv.style.fontSize = "11px";
+              cleanupDiv.style.fontStyle = "italic";
+              cleanupDiv.style.color = "#1d4ed8";
+              cleanupDiv.style.marginTop = "6px";
+              cleanupDiv.style.marginBottom = "10px";
+              cleanupDiv.textContent = "Cleanup ancient (ids supprim\u00e9s) : " + section.memoryAncientCleanupDeletedIds.join(", ");
+              sectionContent.appendChild(cleanupDiv);
             }
 
             const ancientWrap = document.createElement("div");
