@@ -185,6 +185,8 @@ Objectif :
 
 Le contenu de `plan.md` est libre de forme. Aucune section, ordre, gabarit, style redactionnel, granularite ou contrainte de mise en page ne doit etre imposee par defaut.
 
+Preference utilisateur (non obligatoire, sauf demande contraire explicite) : favoriser une ecriture compacte par point, avec constat + decision + scope regroupes dans le meme bloc, et eviter les sections separees qui repetent ces informations et rallongent la lecture.
+
 Copilot doit viser uniquement l'utilite de reprise inter-sessions selon la demande explicite de l'utilisateur, y compris si cela prend la forme de notes brutes, d'une seule phrase, d'un bloc unique, ou d'une structure ad hoc.
 
 En consequence, Copilot ne doit plus reproposer automatiquement une structure type (ex : "objectif / decisions / validation / questions ouvertes") sauf demande explicite de l'utilisateur pour ce format.

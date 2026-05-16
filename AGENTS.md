@@ -179,6 +179,8 @@ Règle de publication : si `plan.md` est le seul fichier modifié, ne pas pousse
 
 Le contenu de `plan.md` est libre de forme. Aucune section, ordre, gabarit, style rédactionnel, granularité ou contrainte de mise en page ne peut être imposée par défaut.
 
+Préférence utilisateur (non-obligatoire, sauf demande contraire explicite) : privilégier un rendu compact par point, où constat + décision + scope du point restent dans le même bloc, et éviter les sections séparées qui dupliquent ces informations et allongent inutilement la lecture.
+
 L'agent doit uniquement viser l'utilité de reprise inter-sessions selon la demande explicite de l'utilisateur, y compris si cela prend la forme de notes brutes, d'une seule phrase, d'un bloc unique, ou d'une structure ad hoc.
 
 En conséquence, l'agent ne doit plus reproposer automatiquement une structure type (ex : "objectif / décisions / validation / questions ouvertes") sauf demande explicite de l'utilisateur pour ce format.
