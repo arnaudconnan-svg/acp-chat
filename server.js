@@ -5008,7 +5008,10 @@ app.post("/chat", async (req, res) => {
     // Normalize memory and flags with the active registry so all later steps use the same rules.
     const activePromptRegistry = buildDefaultPromptRegistry();
     const { flags } = normalizeChatMemoryAndFlags(req, activePromptRegistry);
-    let previousMemory = normalizeMemory(req.body?.memory, activePromptRegistry);
+    let previousMemory = normalizeMemory(
+      isPrivateConversation === true ? req.body?.memory : "",
+      activePromptRegistry
+    );
     let previousMemoryState = normalizeMemoryStateShape(req.body?.memoryState, "", Date.now());
     let previousMemoryRewriteDebug = null;
     let previousConversationActivityMs = Date.now();
@@ -5070,8 +5073,21 @@ app.post("/chat", async (req, res) => {
         previousMemoryRewriteDebugForCatch = previousMemoryRewriteDebug;
       }
     }
+    if (isPrivateConversation !== true && hasPersistedConversationMemory !== true) {
+      previousMemory = normalizeMemory("", activePromptRegistry);
+      previousMemoryState = normalizeMemoryStateShape(null, "", Date.now());
+      previousMemoryRewriteDebug = null;
+      previousMemoryForCatch = previousMemory;
+      previousMemoryRewriteDebugForCatch = null;
+
+      logChatDecision("memory_seed_reset_non_private_without_db_memory", {
+        conversationId,
+        reason: "no_persisted_memory"
+      });
+    }
+
     const recentHistoryCountForMemorySeed = Array.isArray(recentHistory) ? recentHistory.length : 0;
-    if (recentHistoryCountForMemorySeed === 0 && hasPersistedConversationMemory !== true) {
+    if (isPrivateConversation === true && recentHistoryCountForMemorySeed === 0 && hasPersistedConversationMemory !== true) {
       previousMemory = normalizeMemory("", activePromptRegistry);
       previousMemoryState = normalizeMemoryStateShape(null, "", Date.now());
       previousMemoryRewriteDebug = null;
