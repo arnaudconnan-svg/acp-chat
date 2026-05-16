@@ -103,18 +103,19 @@ function run() {
   );
 
   check(
-    "UPDATE_INTERSESSION_MEMORY enforces single-block format",
-    updateIntersessionMemory.includes("FORMAT OBLIGATOIRE") &&
-      updateIntersessionMemory.includes("Memoire inter-session:") &&
-      updateIntersessionMemory.includes("Le bloc doit toujours etre present"),
-    "Missing strict single-block format guard"
+    "UPDATE_INTERSESSION_MEMORY enforces natural editable format",
+    updateIntersessionMemory.includes("FORMAT ATTENDU") &&
+      updateIntersessionMemory.includes("texte naturel lisible et editable par un humain") &&
+      updateIntersessionMemory.includes("pas de prefixe technique") &&
+      updateIntersessionMemory.includes("tu peux utiliser des puces \"-\" si utile, mais ce n'est pas obligatoire"),
+    "Missing natural editable format guard"
   );
 
   check(
-    "UPDATE_INTERSESSION_MEMORY keeps compact factual constraints",
+    "UPDATE_INTERSESSION_MEMORY keeps factual compact constraints",
     updateIntersessionMemory.includes("style factuel, concret, sans theorie ni interpretation") &&
-      updateIntersessionMemory.includes("4 a 10 items max") &&
-      updateIntersessionMemory.includes("chaque item doit rester compact"),
+      updateIntersessionMemory.includes("4 a 10 points max") &&
+      updateIntersessionMemory.includes("chaque point doit rester compact (une phrase courte)"),
     "Missing compact factual constraints"
   );
 

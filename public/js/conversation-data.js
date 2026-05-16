@@ -27,10 +27,7 @@ function defaultMemory() {
     "- ",
     "",
     "Mouvements anciens",
-    "- ",
-    "",
-    "Signaux du tour précédent",
-    "(vide)"
+    "- "
   ].join("\n");
 }
 

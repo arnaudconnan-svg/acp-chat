@@ -3056,6 +3056,7 @@
     // Module-level intersession memory for authenticated accounts.
     // Populated once on load; used as initial memory for new conversations.
     let _pendingIntersessionMemory = null;
+    let _pendingIntersessionMemoryNatural = null;
     let conversationsPrivateHintShownThisLoad = false;
     let conversationsPrivateHintActive = false;
     let conversationsPrivateHintRevealTimer = null;
@@ -3361,23 +3362,39 @@
       } catch {}
     }
 
-    function updateIntersessionMemoryDebugChip(memory) {
-      const block = document.getElementById("adminLtMemoryBlock");
-      const content = document.getElementById("adminLtMemoryContent");
-      if (!block || !content) return;
-      const text = typeof memory === "string" && memory.trim() ? memory.trim() : null;
-      if (text) {
-        content.textContent = text;
-        block.style.display = "flex";
+    function updateIntersessionMemoryDebugChip(compactMemory, naturalMemory) {
+      const compactBlock = document.getElementById("adminLtMemoryCompactBlock");
+      const compactContent = document.getElementById("adminLtMemoryCompactContent");
+      const naturalBlock = document.getElementById("adminLtMemoryNaturalBlock");
+      const naturalContent = document.getElementById("adminLtMemoryNaturalContent");
+      const wrapper = document.getElementById("adminLtMemoryWrapper");
+      if (!compactBlock || !compactContent || !naturalBlock || !naturalContent || !wrapper) return;
+
+      const compactText = typeof compactMemory === "string" && compactMemory.trim() ? compactMemory.trim() : "";
+      const naturalText = typeof naturalMemory === "string" && naturalMemory.trim() ? naturalMemory.trim() : "";
+
+      if (compactText) {
+        compactContent.textContent = compactText;
+        compactBlock.style.display = "block";
       } else {
-        block.style.display = "none";
+        compactBlock.style.display = "none";
       }
+
+      if (naturalText) {
+        naturalContent.textContent = naturalText;
+        naturalBlock.style.display = "block";
+      } else {
+        naturalBlock.style.display = "none";
+      }
+
+      wrapper.style.display = compactText || naturalText ? "flex" : "none";
     }
 
     async function syncIntersessionMemoryIfApplicable() {
       if (!userSessionState.authenticated) {
         _pendingIntersessionMemory = null;
-        updateIntersessionMemoryDebugChip(null);
+        _pendingIntersessionMemoryNatural = null;
+        updateIntersessionMemoryDebugChip(null, null);
         return;
       }
       try {
@@ -3388,13 +3405,20 @@
         });
         if (!res.ok) return;
         const data = await res.json().catch(() => ({}));
-        const serverMemory = typeof data.memoryCompact === "string" && data.memoryCompact.trim()
+        const serverMemoryCompact = typeof data.memoryCompact === "string" && data.memoryCompact.trim()
           ? data.memoryCompact
           : typeof data.memory === "string" && data.memory.trim()
             ? data.memory
             : null;
-        _pendingIntersessionMemory = serverMemory;
-        updateIntersessionMemoryDebugChip(_pendingIntersessionMemory);
+        const serverMemoryNatural = typeof data.memorySource === "string" && data.memorySource.trim()
+          ? data.memorySource
+          : typeof data.memory === "string" && data.memory.trim()
+            ? data.memory
+            : null;
+
+        _pendingIntersessionMemory = serverMemoryCompact;
+        _pendingIntersessionMemoryNatural = serverMemoryNatural;
+        updateIntersessionMemoryDebugChip(_pendingIntersessionMemory, _pendingIntersessionMemoryNatural);
         if (isAdminPopoverOpen()) {
           positionAdminPopover();
         }
@@ -6141,25 +6165,19 @@
             return "- " + (id ? "[" + id + "] " : "") + (text || "(vide)");
           })
         : [];
-      const pastSignals = memoryState.pastSignals && typeof memoryState.pastSignals === "object" ? memoryState.pastSignals : {};
-      const pastSignalLines = Object.keys(pastSignals)
-        .sort()
-        .map(key => "- " + key + " : " + String(pastSignals[key]));
       const cleanupLine = Array.isArray(deletedAncientIds) && deletedAncientIds.length > 0
         ? "Cleanup ancient (ids supprim\u00e9s) : " + deletedAncientIds.join(", ")
         : "";
 
       return [
-        "M\u00e9moire structur\u00e9e (4 blocs)",
+        "M\u00e9moire structur\u00e9e (3 blocs)",
         "Contexte stable (session)",
         stableLines.length ? stableLines.join("\n") : "(vide)",
         "Mouvements en cours",
         ongoingLines.length ? ongoingLines.join("\n") : "(vide)",
         cleanupLine,
         "Mouvements anciens",
-        ancientLines.length ? ancientLines.join("\n") : "(vide)",
-        "Signaux du tour pr\u00e9c\u00e9dent",
-        pastSignalLines.length ? pastSignalLines.join("\n") : "(vide)"
+        ancientLines.length ? ancientLines.join("\n") : "(vide)"
       ].filter(Boolean).join("\n\n");
     }
 
@@ -6303,9 +6321,15 @@
       
       popover.innerHTML = `
     <div style="display:flex;flex-direction:column;gap:10px;">
-      <div id="adminLtMemoryBlock" style="display:none;flex-direction:column;gap:4px;">
-        <div style="font-size:11px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#245e66;">M\u00e9m. compacte runtime</div>
-        <div id="adminLtMemoryContent" style="font-size:12px;line-height:1.45;color:#334155;white-space:pre-wrap;word-break:break-word;max-height:180px;overflow-y:auto;background:rgba(36,94,102,0.05);border:1px solid rgba(36,94,102,0.14);border-radius:10px;padding:8px 10px;"></div>
+      <div id="adminLtMemoryWrapper" style="display:none;flex-direction:column;gap:6px;">
+        <details id="adminLtMemoryNaturalBlock" style="display:none;">
+          <summary class="debug-chip" style="list-style:none;display:inline-block;">M\u00e9m. source naturelle</summary>
+          <div id="adminLtMemoryNaturalContent" style="margin-top:6px;font-size:12px;line-height:1.45;color:#334155;white-space:pre-wrap;word-break:break-word;max-height:180px;overflow-y:auto;background:rgba(36,94,102,0.05);border:1px solid rgba(36,94,102,0.14);border-radius:10px;padding:8px 10px;"></div>
+        </details>
+        <details id="adminLtMemoryCompactBlock" style="display:none;">
+          <summary class="debug-chip" style="list-style:none;display:inline-block;">M\u00e9m. compacte runtime</summary>
+          <div id="adminLtMemoryCompactContent" style="margin-top:6px;font-size:12px;line-height:1.45;color:#334155;white-space:pre-wrap;word-break:break-word;max-height:180px;overflow-y:auto;background:rgba(36,94,102,0.05);border:1px solid rgba(36,94,102,0.14);border-radius:10px;padding:8px 10px;"></div>
+        </details>
       </div>
       <button id="adminCopyConversationBtn" type="button" style="width:100%;border:none;border-radius:12px;background:#245e66;color:#ffffff;padding:10px 12px;font:inherit;font-size:13px;font-weight:600;cursor:pointer;">
         Copier la conversation
@@ -6332,7 +6356,7 @@
       function refreshPopoverFields() {
         mailsToggle.checked = adminUiState.mailsEnabled !== false;
         logsToggle.checked = adminUiState.logsEnabled === true;
-        updateIntersessionMemoryDebugChip(_pendingIntersessionMemory);
+        updateIntersessionMemoryDebugChip(_pendingIntersessionMemory, _pendingIntersessionMemoryNatural);
       }
       
       function refreshAdminUi(options = {}) {
@@ -7762,7 +7786,7 @@
         }
         var state = meta.memoryState;
         return {
-          title: "M\u00e9moire structur\u00e9e (4 blocs)",
+          title: "M\u00e9moire structur\u00e9e (3 blocs)",
           memoryStructured: true,
           memoryAncientCleanupDeletedIds: Array.isArray(meta.memoryAncientCleanupDeletedIds)
             ? meta.memoryAncientCleanupDeletedIds
@@ -7770,8 +7794,7 @@
           memoryStructuredData: {
             sessionStableContext: Array.isArray(state.sessionStableContext) ? state.sessionStableContext : [],
             onGoingMovements: Array.isArray(state.onGoingMovements) ? state.onGoingMovements : [],
-            ancientMovements: Array.isArray(state.ancientMovements) ? state.ancientMovements : [],
-            pastSignals: state.pastSignals && typeof state.pastSignals === "object" ? state.pastSignals : {}
+            ancientMovements: Array.isArray(state.ancientMovements) ? state.ancientMovements : []
           },
           content: "ok"
         };
@@ -7871,10 +7894,6 @@
         const naturalSummaryLines = buildNaturalDebugSummary(meta);
         if (naturalSummaryLines.length > 0) {
           sections.push({ title: "Lecture interne", content: naturalSummaryLines.join("\n") });
-        }
-
-        if (typeof meta.intersessionMemoryRuntime === "string" && meta.intersessionMemoryRuntime.trim()) {
-          sections.push({ title: "M\u00e9moire inter-session (runtime)", content: meta.intersessionMemoryRuntime.trim() });
         }
 
         const signauxLines = [];
@@ -8070,36 +8089,6 @@
               return subWrap;
             }
 
-            function buildPastSignalsLines(pastSignals) {
-              const safePastSignals = pastSignals && typeof pastSignals === "object" ? pastSignals : {};
-              const lines = [];
-
-              if (safePastSignals.decentrage_emotionnel === true) {
-                lines.push("D\u00e9centrage \u00e9motionnel actif");
-              }
-              if (safePastSignals.agressivite_vers_bot === true) {
-                lines.push("D\u00e9charge agressive sur le bot");
-              }
-
-              const stagnation = Number.isInteger(safePastSignals.stagnation)
-                ? safePastSignals.stagnation
-                : Number(safePastSignals.stagnation);
-              if (Number.isFinite(stagnation) && stagnation > 0) {
-                lines.push("Stagnation d\u00e9tect\u00e9e (" + Math.round(stagnation) + " tour(s))");
-              }
-
-              const risk = typeof safePastSignals.risque_dependance === "string"
-                ? safePastSignals.risque_dependance
-                : "";
-              if (risk === "medium") {
-                lines.push("Risque de d\u00e9pendance (mod\u00e9r\u00e9)");
-              } else if (risk === "high") {
-                lines.push("Risque de d\u00e9pendance (\u00e9lev\u00e9)");
-              }
-
-              return lines.length > 0 ? lines : ["(vide)"];
-            }
-
             const data = section.memoryStructuredData;
             const stableLines = (Array.isArray(data.sessionStableContext) ? data.sessionStableContext : []).map(function(item) {
               return "- " + String(item || "");
@@ -8212,8 +8201,6 @@
 
             sectionContent.appendChild(ancientWrap);
 
-            const pastSignalsObj = data.pastSignals && typeof data.pastSignals === "object" ? data.pastSignals : {};
-            sectionContent.appendChild(createSubBlock("Signaux du tour pr\u00e9c\u00e9dent", buildPastSignalsLines(pastSignalsObj)));
           } else {
             sectionContent.textContent = section.content;
           }

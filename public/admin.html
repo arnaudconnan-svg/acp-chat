@@ -1698,7 +1698,21 @@
           fetchWithTimeout("/api/admin/intersession-memory/" + encodeURIComponent(firstUserId))
             .then(r => r.json().catch(() => ({})))
             .then(d => {
-              const memory = typeof d.memory === "string" && d.memory.trim() ? d.memory.trim() : null;
+              const memoryNatural = typeof d.memorySource === "string" && d.memorySource.trim()
+                ? d.memorySource.trim()
+                : typeof d.memory === "string" && d.memory.trim()
+                  ? d.memory.trim()
+                  : null;
+              const memoryCompact = typeof d.memoryCompact === "string" && d.memoryCompact.trim()
+                ? d.memoryCompact.trim()
+                : null;
+              const blocks = [];
+              if (memoryNatural) {
+                blocks.push("M\u00e9moire source (naturelle)\n" + memoryNatural);
+              }
+              if (memoryCompact) {
+                blocks.push("M\u00e9moire compacte (runtime)\n" + memoryCompact);
+              }
               const chip = document.createElement("details");
               chip.style.marginBottom = "10px";
               chip.innerHTML =
@@ -1706,7 +1720,7 @@
                 'Mém. LT' +
                 '</summary>' +
                 '<div style="background:rgba(255,255,255,0.96);border:1px solid rgba(215,222,226,0.92);border-top:none;border-radius:0 10px 10px 10px;padding:8px 10px;font-size:12px;line-height:1.45;color:#334155;white-space:pre-wrap;word-break:break-word;max-height:240px;overflow-y:auto;user-select:text;cursor:text;">' +
-                (memory ? memory.replace(/</g, "&lt;").replace(/>/g, "&gt;") : "(aucune mémoire inter-sessions)") +
+                ((blocks.length > 0 ? blocks.join("\n\n") : "(aucune mémoire inter-sessions)").replace(/</g, "&lt;").replace(/>/g, "&gt;")) +
                 '</div>';
               if (list.firstChild) {
                 list.insertBefore(chip, list.firstChild);
@@ -1844,7 +1858,7 @@
           }
           var state = meta.memoryState;
           return {
-            title: "M\u00e9moire structur\u00e9e (4 blocs)",
+            title: "M\u00e9moire structur\u00e9e (3 blocs)",
             memoryStructured: true,
             memoryAncientCleanupDeletedIds: Array.isArray(meta.memoryAncientCleanupDeletedIds)
               ? meta.memoryAncientCleanupDeletedIds
@@ -1852,8 +1866,7 @@
             memoryStructuredData: {
               sessionStableContext: Array.isArray(state.sessionStableContext) ? state.sessionStableContext : [],
               onGoingMovements: Array.isArray(state.onGoingMovements) ? state.onGoingMovements : [],
-              ancientMovements: Array.isArray(state.ancientMovements) ? state.ancientMovements : [],
-              pastSignals: state.pastSignals && typeof state.pastSignals === "object" ? state.pastSignals : {}
+              ancientMovements: Array.isArray(state.ancientMovements) ? state.ancientMovements : []
             },
             content: "ok"
           };
@@ -1959,13 +1972,6 @@
             sections.push({
               title: "Lecture interne",
               content: naturalSummaryLines.join("\n")
-            });
-          }
-
-          if (typeof meta.intersessionMemoryRuntime === "string" && meta.intersessionMemoryRuntime.trim()) {
-            sections.push({
-              title: "M\u00e9moire inter-session (runtime)",
-              content: meta.intersessionMemoryRuntime.trim()
             });
           }
 
@@ -2178,36 +2184,6 @@
                 return subWrap;
               }
 
-              function buildPastSignalsLines(pastSignals) {
-                const safePastSignals = pastSignals && typeof pastSignals === "object" ? pastSignals : {};
-                const lines = [];
-
-                if (safePastSignals.decentrage_emotionnel === true) {
-                  lines.push("D\u00e9centrage \u00e9motionnel actif");
-                }
-                if (safePastSignals.agressivite_vers_bot === true) {
-                  lines.push("D\u00e9charge agressive sur le bot");
-                }
-
-                const stagnation = Number.isInteger(safePastSignals.stagnation)
-                  ? safePastSignals.stagnation
-                  : Number(safePastSignals.stagnation);
-                if (Number.isFinite(stagnation) && stagnation > 0) {
-                  lines.push("Stagnation d\u00e9tect\u00e9e (" + Math.round(stagnation) + " tour(s))");
-                }
-
-                const risk = typeof safePastSignals.risque_dependance === "string"
-                  ? safePastSignals.risque_dependance
-                  : "";
-                if (risk === "medium") {
-                  lines.push("Risque de d\u00e9pendance (mod\u00e9r\u00e9)");
-                } else if (risk === "high") {
-                  lines.push("Risque de d\u00e9pendance (\u00e9lev\u00e9)");
-                }
-
-                return lines.length > 0 ? lines : ["(vide)"];
-              }
-
               const data = section.memoryStructuredData;
               const stableLines = (Array.isArray(data.sessionStableContext) ? data.sessionStableContext : []).map(function(item) {
                 return "- " + String(item || "");
@@ -2328,8 +2304,6 @@
 
               sectionContent.appendChild(ancientWrap);
 
-              const pastSignalsObj = data.pastSignals && typeof data.pastSignals === "object" ? data.pastSignals : {};
-              sectionContent.appendChild(createSubBlock("Signaux du tour pr\u00e9c\u00e9dent", buildPastSignalsLines(pastSignalsObj)));
             } else {
               sectionContent.textContent = section.content;
             }

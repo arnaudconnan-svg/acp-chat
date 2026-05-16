@@ -1052,13 +1052,20 @@ function normalizeIntersessionSourceFromUserData(userData, promptRegistry = buil
       ? userData.intersessionMemory
       : "";
 
-  return String(source || "").trim()
-    ? normalizeIntersessionMemory(source, promptRegistry)
-    : "";
+  const raw = String(source || "").trim();
+  if (!raw) {
+    return "";
+  }
+
+  // Backward compatibility with legacy stored values that included a technical header.
+  return raw.replace(/^m[ée]moire\s+inter-?session\s*:\s*/i, "").trim();
 }
 
 function buildIntersessionCompactRuntime(memorySource = "", maxItems = 10, maxChars = 1200) {
-  const source = normalizeIntersessionMemory(memorySource, buildDefaultPromptRegistry());
+  const source = String(memorySource || "").trim();
+  if (!source) {
+    return "";
+  }
   const lines = String(source || "")
     .split("\n")
     .map(line => line.trim())
@@ -3511,9 +3518,7 @@ app.patch("/api/intersession-memory/direct", requireUserAuth, async (req, res) =
       await usersRef.child(session.userId).child("intersessionMemoryHistory").set(updatedHistory);
     }
 
-    const nextMemorySource = newSourceMemory.trim()
-      ? normalizeIntersessionMemory(newSourceMemory, buildDefaultPromptRegistry())
-      : "";
+    const nextMemorySource = newSourceMemory.trim();
 
     await usersRef.child(session.userId).update({
       intersessionMemorySource: nextMemorySource,
@@ -3712,9 +3717,15 @@ app.get("/api/admin/intersession-memory/:userId", requireAdminAuth, async (req, 
   try {
     const userId = String(req.params.userId || "").trim();
     if (!userId) return res.status(400).json({ error: "userId requis" });
-    const snap = await usersRef.child(userId).child("intersessionMemory").once("value");
-    const memory = typeof snap.val() === "string" ? snap.val() : "";
-    return res.json({ memory });
+    const snap = await usersRef.child(userId).once("value");
+    const userData = snap.val() || {};
+    const memorySource = normalizeIntersessionSourceFromUserData(userData, buildDefaultPromptRegistry());
+    const memoryCompact = buildIntersessionCompactRuntime(memorySource).trim();
+    return res.json({
+      memory: memorySource,
+      memorySource,
+      memoryCompact
+    });
   } catch (err) {
     console.error("Erreur GET /api/admin/intersession-memory/:userId:", err.message);
     return res.status(500).json({ error: "Lecture mémoire inter-sessions échouée" });
@@ -5384,7 +5395,6 @@ app.post("/chat", async (req, res) => {
             deleteAncientMovementsById: Array.isArray(updatedMemory?.deleteAncientMovementsById)
               ? updatedMemory.deleteAncientMovementsById
               : [],
-            pastSignals: null,
             nowMs: Date.now(),
             lastActivityMs: previousConversationActivityMs,
             ttlMs: MEMORY_INACTIVITY_TTL_MS
@@ -6219,10 +6229,7 @@ app.post("/chat", async (req, res) => {
       previousMemoryStateCounts: {
         sessionStableContext: Array.isArray(previousMemoryState?.sessionStableContext) ? previousMemoryState.sessionStableContext.length : 0,
         onGoingMovements: Array.isArray(previousMemoryState?.onGoingMovements) ? previousMemoryState.onGoingMovements.length : 0,
-        ancientMovements: Array.isArray(previousMemoryState?.ancientMovements) ? previousMemoryState.ancientMovements.length : 0,
-        pastSignals: previousMemoryState?.pastSignals && typeof previousMemoryState.pastSignals === "object"
-          ? Object.keys(previousMemoryState.pastSignals).length
-          : 0
+        ancientMovements: Array.isArray(previousMemoryState?.ancientMovements) ? previousMemoryState.ancientMovements.length : 0
       }
     });
 
@@ -6517,7 +6524,6 @@ app.post("/chat", async (req, res) => {
           deleteAncientMovementsById: Array.isArray(memoryUpdateContract?.deleteAncientMovementsById)
             ? memoryUpdateContract.deleteAncientMovementsById
             : [],
-          pastSignals: memoryClinicalSignals,
           nowMs: Date.now(),
           lastActivityMs: _lastActivityMs,
           ttlMs: MEMORY_INACTIVITY_TTL_MS

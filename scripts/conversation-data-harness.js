@@ -60,7 +60,7 @@ const mem = defaultMemory();
 assert("defaultMemory: returns string", typeof mem === "string");
 assert("defaultMemory: contains 'Contexte stable'", mem.includes("Contexte stable (session)"));
 assert("defaultMemory: contains 'Mouvements en cours'", mem.includes("Mouvements en cours"));
-assert("defaultMemory: contains 'Signaux du tour precedent'", mem.includes("Signaux du tour precedent") || mem.includes("Signaux du tour pr\u00e9c\u00e9dent"));
+assert("defaultMemory: does not contain 'Signaux du tour precedent'", !mem.includes("Signaux du tour precedent") && !mem.includes("Signaux du tour pr\u00e9c\u00e9dent"));
 
 // ── normalizeStoredFlags ─────────────────────────────────────────────────────
 

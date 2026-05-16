@@ -142,10 +142,7 @@
             ? safeMemoryState.sessionStableContext.map(function(item) { return toTrimmedString(item, ""); }).filter(Boolean)
             : [],
           onGoingMovements: normalizeMovementList(safeMemoryState.onGoingMovements, 2),
-          ancientMovements: normalizeMovementList(safeMemoryState.ancientMovements),
-          pastSignals: safeMemoryState.pastSignals && typeof safeMemoryState.pastSignals === "object" && !Array.isArray(safeMemoryState.pastSignals)
-            ? safeMemoryState.pastSignals
-            : {}
+          ancientMovements: normalizeMovementList(safeMemoryState.ancientMovements)
         }
       : null;
 
@@ -507,10 +504,6 @@
 
     if (meta.externalSupportMode && meta.externalSupportMode !== "none") {
       lines.push("Rapport au soutien externe detecte: " + meta.externalSupportMode + ".");
-    }
-
-    if (meta.closureIntent === true) {
-      lines.push("Une intention de cloture de session a ete detectee.");
     }
 
     if (meta.outputGuardTriggered === true) {
