@@ -5012,6 +5012,7 @@ app.post("/chat", async (req, res) => {
     let previousMemoryState = normalizeMemoryStateShape(req.body?.memoryState, "", Date.now());
     let previousMemoryRewriteDebug = null;
     let previousConversationActivityMs = Date.now();
+    let hasPersistedConversationMemory = false;
     const convMemoryPromise = (!isPrivateConversation && convRef)
           ? convRef.once("value").then(s => {
               const d = s.val();
@@ -5046,6 +5047,7 @@ app.post("/chat", async (req, res) => {
         if (typeof convMemoryFromDb.memory === "string" && convMemoryFromDb.memory.trim()) {
           previousMemory = normalizeMemory(convMemoryFromDb.memory, activePromptRegistry);
           previousMemoryForCatch = previousMemory;
+          hasPersistedConversationMemory = true;
         }
         previousMemoryState = normalizeMemoryStateShape(convMemoryFromDb.memoryState, "", Date.now());
         previousMemoryRewriteDebug = convMemoryFromDb.memoryRewriteDebug;
@@ -5060,12 +5062,27 @@ app.post("/chat", async (req, res) => {
         previousMemory = normalizeMemory(cachedPrivateMemory.memory, activePromptRegistry);
         previousMemoryState = normalizeMemoryStateShape(cachedPrivateMemory.memoryState, "", Date.now());
         previousMemoryRewriteDebug = cachedPrivateMemory.memoryRewriteDebug || null;
+        hasPersistedConversationMemory = true;
         if (Number.isFinite(cachedPrivateMemory.updatedAt) && cachedPrivateMemory.updatedAt > 0) {
           previousConversationActivityMs = cachedPrivateMemory.updatedAt;
         }
         previousMemoryForCatch = previousMemory;
         previousMemoryRewriteDebugForCatch = previousMemoryRewriteDebug;
       }
+    }
+    const recentHistoryCountForMemorySeed = Array.isArray(recentHistory) ? recentHistory.length : 0;
+    if (recentHistoryCountForMemorySeed === 0 && hasPersistedConversationMemory !== true) {
+      previousMemory = normalizeMemory("", activePromptRegistry);
+      previousMemoryState = normalizeMemoryStateShape(null, "", Date.now());
+      previousMemoryRewriteDebug = null;
+      previousMemoryForCatch = previousMemory;
+      previousMemoryRewriteDebugForCatch = null;
+
+      logChatDecision("memory_first_turn_seed_reset", {
+        conversationId,
+        isPrivateConversation: isPrivateConversation === true,
+        reason: "no_persisted_memory"
+      });
     }
     previousMemoryRewriteDebugForCatch = previousMemoryRewriteDebug;
     if (!isPrivateConversation && shouldLoadUserProfile) {
