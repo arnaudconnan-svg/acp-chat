@@ -6104,7 +6104,7 @@ app.post("/chat", async (req, res) => {
     }
 
     newFlags.affiliationAttachmentBoostStreak = affiliationDetails.nextAttachmentBoostStreak;
-    const newAffiliationWindow = normalizeAffiliationWindow([...(newFlags.affiliationWindow || [0, 0, 0, 0]), affiliationScore]);
+    const newAffiliationWindow = normalizeAffiliationWindow([...(newFlags.affiliationWindow || []), affiliationScore]);
     const affiliationFinalScore = computeAffiliationFinalScore(newAffiliationWindow);
     const affiliationEstablished = computeAffiliationEstablished(newAffiliationWindow);
 

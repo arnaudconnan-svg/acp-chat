@@ -342,13 +342,14 @@ check("detectClosureIntent: null → false (safe)", () => {
 
 // ─── normalizeAffiliationWindow ───────────────────────────────────────────────
 
-check("affiliationWindow: non-array → [0,0,0,0]", () => {
-  assert(deepEqual(normalizeAffiliationWindow(null), [0, 0, 0, 0]), "expected [0,0,0,0] for null");
+check("affiliationWindow: non-array → []", () => {
+  assert(deepEqual(normalizeAffiliationWindow(null), []), "expected [] for null");
 });
-check("affiliationWindow: filters non-numbers, pads to 4", () => {
+check("affiliationWindow: filters non-numbers, no padding", () => {
   const result = normalizeAffiliationWindow(["a", 0.5, null]);
-  assert(result.length === 4, "expected length 4");
-  assert(typeof result[3] === "number", "expected numbers only");
+  assert(result.length === 1, "expected length 1 (only 0.5)");
+  assert(typeof result[0] === "number", "expected numbers only");
+  assert(result[0] === 0.5, "expected 0.5");
 });
 check("affiliationWindow: slices to last 4", () => {
   const w = [0.1, 0.2, 0.3, 0.4, 0.5];

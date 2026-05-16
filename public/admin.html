@@ -2008,7 +2008,7 @@
           const shouldShowDirectivity = !!meta.directivityText && isExplorationMode;
           if (shouldShowDirectivity) {
             sections.push({
-              title: "Directivit\u00e9",
+              title: "Fen\u00eatre de relance (tour suivant)",
               content: meta.directivityText
             });
           }
@@ -2023,7 +2023,9 @@
           if (typeof meta.affiliationFinalScore === "number") {
             affiliationLines.push(`Score final d'affiliation : ${meta.affiliationFinalScore.toFixed(2)}`);
           }
-          if (meta.affiliationEstablished === true) {
+          if (typeof meta.affiliationFinalScore === "number" && meta.affiliationFinalScore > 0.70) {
+            affiliationLines.push("Lien de confiance");
+          } else if (meta.affiliationEstablished === true) {
             affiliationLines.push("Lien \u00e9tabli");
           }
           const inactiveAffiliationHints = formatInactiveWriterHintsDebug(meta.writerIntentHintsInactive)
