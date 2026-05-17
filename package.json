@@ -18,6 +18,7 @@
     "output-guard:harness": "node scripts/output-guard-harness.js",
     "llm-messages:harness": "node scripts/llm-messages-harness.js",
     "conversation-data:harness": "node scripts/conversation-data-harness.js",
+    "usage-envelope:harness": "node scripts/usage-envelope-harness.js",
     "chat-routing:harness": "node scripts/chat-routing-harness.js",
     "branching:harness": "node scripts/branching-harness.js",
     "transcript:harness": "node scripts/transcript-regression-harness.js",

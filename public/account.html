@@ -391,6 +391,182 @@
 
     .upgrade-banner button:hover { opacity: 0.85; }
 
+    .usage-envelope-card {
+      border-color: #dbe7e9;
+    }
+
+    .usage-title {
+      margin: 0 0 10px;
+      font-size: 15px;
+      font-weight: 600;
+      color: #2c3e40;
+    }
+
+    .usage-block {
+      margin-bottom: 14px;
+    }
+
+    .usage-block:last-child {
+      margin-bottom: 0;
+    }
+
+    .gauge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 14px;
+      flex-wrap: wrap;
+    }
+
+    .gauge-main,
+    .gauge-rollover {
+      display: inline-flex;
+      gap: 6px;
+    }
+
+    .gauge-segment {
+      width: 30px;
+      height: 10px;
+      border-radius: 6px;
+      border: 1px solid transparent;
+      transition: background-color 0.15s ease, border-color 0.15s ease;
+    }
+
+    .gauge-segment--green {
+      background: #2f7a66;
+      border-color: #2f7a66;
+    }
+
+    .gauge-segment--green-light {
+      background: #8eb9a9;
+      border-color: #8eb9a9;
+    }
+
+    .gauge-segment--blue {
+      background: #2e6ea4;
+      border-color: #2e6ea4;
+    }
+
+    .gauge-segment--blue-light {
+      background: #8fb4d2;
+      border-color: #8fb4d2;
+    }
+
+    .gauge-segment--red {
+      background: #c74444;
+      border-color: #c74444;
+    }
+
+    .gauge-segment--rollover {
+      background: #5f8a31;
+      border-color: #5f8a31;
+    }
+
+    .gauge-segment--empty {
+      background: #edf2f3;
+      border-color: #d6dfe1;
+    }
+
+    .usage-action-btn {
+      width: 100%;
+      margin-top: 8px;
+      border: 1.5px solid #245e66;
+      border-radius: 8px;
+      background: #fff;
+      color: #245e66;
+      font-size: 14px;
+      font-weight: 600;
+      padding: 10px 14px;
+      cursor: pointer;
+    }
+
+    .usage-action-btn:hover {
+      background: rgba(36, 94, 102, 0.06);
+    }
+
+    .usage-modal-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 1200;
+      background: rgba(16, 29, 31, 0.42);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .usage-modal-overlay.is-open {
+      display: flex;
+    }
+
+    .usage-modal {
+      width: 100%;
+      max-width: 380px;
+      border-radius: 12px;
+      border: 1.5px solid #d6e0e2;
+      background: #fff;
+      padding: 18px;
+      box-shadow: 0 14px 32px rgba(20, 63, 69, 0.16);
+    }
+
+    .usage-modal-title {
+      margin: 0 0 8px;
+      font-size: 17px;
+      color: #223335;
+    }
+
+    .usage-modal-text {
+      margin: 0 0 14px;
+      font-size: 14px;
+      line-height: 1.45;
+      color: #4a5e61;
+    }
+
+    .usage-modal-actions {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .usage-option-btn {
+      flex: 1;
+      border: 1.5px solid #245e66;
+      background: #fff;
+      color: #245e66;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 700;
+      padding: 10px 0;
+      cursor: pointer;
+    }
+
+    .usage-option-btn:hover {
+      background: rgba(36, 94, 102, 0.08);
+    }
+
+    .usage-modal-close {
+      width: 100%;
+      border: none;
+      border-radius: 8px;
+      background: #e9eff0;
+      color: #415557;
+      padding: 10px 0;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .usage-modal-close:hover {
+      background: #e1e9ea;
+    }
+
+    .usage-modal-notice {
+      min-height: 18px;
+      font-size: 13px;
+      color: #245e66;
+      margin: 0 0 8px;
+    }
+
     .subscreen-header {
       display: flex;
       align-items: center;
@@ -442,6 +618,24 @@
       const PRIVATE_CONVERSATION_IDS_KEY = "facilitatio_private_conversation_ids";
       const BIOMETRIC_CREDENTIAL_KEY_PREFIX = "facilitatio_bio_cred_v1_";
       const ANDROID_COUNTRY_PENDING_KEY = "facilitatio_android_country_pending";
+      const ACCOUNT_USAGE_ENVELOPE_UI_ENABLED = true;
+      const LOW_ENVELOPE_THRESHOLD = 12.5;
+
+      const MOCK_USAGE_ENVELOPE_STATE = {
+        monthly: {
+          capacity: 100,
+          remaining: 100
+        },
+        rollover: {
+          capacity: 25,
+          remaining: 0
+        },
+        reserve: {
+          capacity: 100,
+          remaining: 0
+        },
+        lastRenewalAt: null
+      };
 
       let currentUser = null;
       let accountSubscreen = "main";
@@ -631,6 +825,253 @@
         main.appendChild(buildPrivacyEntryCard());
         main.appendChild(buildLocalImportCard());
         main.appendChild(buildLongtermMemoryCard());
+        if (ACCOUNT_USAGE_ENVELOPE_UI_ENABLED) {
+          main.appendChild(buildUsageEnvelopeCard());
+        }
+      }
+
+      function clampUsageValue(value, min, max) {
+        const numeric = Number(value);
+        if (!Number.isFinite(numeric)) return min;
+        return Math.min(max, Math.max(min, numeric));
+      }
+
+      function getUsageEnvelopeState(rawUsageData) {
+        const safe = rawUsageData && typeof rawUsageData === "object" ? rawUsageData : {};
+
+        const monthlyRemaining = clampUsageValue(safe.monthly && safe.monthly.remaining, 0, 100);
+        const rolloverRemaining = clampUsageValue(safe.rollover && safe.rollover.remaining, 0, 25);
+        const reserveRemaining = clampUsageValue(safe.reserve && safe.reserve.remaining, 0, 100);
+
+        return {
+          monthly: {
+            capacity: 100,
+            remaining: monthlyRemaining
+          },
+          rollover: {
+            capacity: 25,
+            remaining: rolloverRemaining
+          },
+          reserve: {
+            capacity: 100,
+            remaining: reserveRemaining
+          },
+          totalAvailable: rolloverRemaining + monthlyRemaining + reserveRemaining,
+          lastRenewalAt: typeof safe.lastRenewalAt === "string" ? safe.lastRenewalAt : null
+        };
+      }
+
+      function computeGaugeSegments(amount, options) {
+        const safeOptions = options && typeof options === "object" ? options : {};
+        const capacity = clampUsageValue(safeOptions.capacity, 1, Number.MAX_SAFE_INTEGER);
+        const segmentCount = Number.isInteger(safeOptions.segmentCount) && safeOptions.segmentCount > 0
+          ? safeOptions.segmentCount
+          : 4;
+        const segmentUnit = capacity / segmentCount;
+        const halfSegment = segmentUnit / 2;
+        const showRedWhenLow = safeOptions.showRedWhenLow === true;
+
+        const safeAmount = clampUsageValue(amount, 0, capacity);
+        const fullSegments = Math.floor(safeAmount / segmentUnit);
+        const remainder = safeAmount - fullSegments * segmentUnit;
+        const hasHalfSegment = remainder >= halfSegment;
+        const isLowPositive = safeAmount > 0 && safeAmount < halfSegment;
+
+        const segments = [];
+        for (let index = 0; index < segmentCount; index += 1) {
+          if (index < fullSegments) {
+            segments.push("dark");
+            continue;
+          }
+
+          if (index === fullSegments && (hasHalfSegment || isLowPositive)) {
+            segments.push(showRedWhenLow && isLowPositive ? "red" : "light");
+            continue;
+          }
+
+          segments.push("empty");
+        }
+
+        return segments;
+      }
+
+      function shouldShowLowEnvelopeWarning(rawUsageData) {
+        const state = getUsageEnvelopeState(rawUsageData);
+        return state.totalAvailable < LOW_ENVELOPE_THRESHOLD;
+      }
+
+      function renderGaugeSegments(segments, colorType) {
+        const map = {
+          green: {
+            dark: "gauge-segment--green",
+            light: "gauge-segment--green-light"
+          },
+          blue: {
+            dark: "gauge-segment--blue",
+            light: "gauge-segment--blue-light"
+          },
+          rollover: {
+            dark: "gauge-segment--rollover",
+            light: "gauge-segment--rollover"
+          }
+        };
+
+        const palette = map[colorType] || map.green;
+        const frag = document.createDocumentFragment();
+
+        (Array.isArray(segments) ? segments : []).forEach(segment => {
+          const part = document.createElement("span");
+          part.className = "gauge-segment";
+
+          if (segment === "red") {
+            part.classList.add("gauge-segment--red");
+          } else if (segment === "empty") {
+            part.classList.add("gauge-segment--empty");
+          } else {
+            part.classList.add(segment === "dark" ? palette.dark : palette.light);
+          }
+
+          frag.appendChild(part);
+        });
+
+        return frag;
+      }
+
+      function renderEnvelopeGauge(state) {
+        const container = document.createElement("div");
+        container.className = "gauge";
+
+        const monthlyWrap = document.createElement("span");
+        monthlyWrap.className = "gauge-main";
+
+        const reserveAvailable = state.reserve.remaining > 0;
+        const monthlyLow = state.monthly.remaining > 0 && state.monthly.remaining < LOW_ENVELOPE_THRESHOLD;
+        const monthlySegments = computeGaugeSegments(state.monthly.remaining, {
+          capacity: state.monthly.capacity,
+          showRedWhenLow: monthlyLow && !reserveAvailable && state.rollover.remaining <= 0
+        });
+        monthlyWrap.appendChild(renderGaugeSegments(monthlySegments, "green"));
+        container.appendChild(monthlyWrap);
+
+        if (state.rollover.remaining > 0) {
+          const rolloverWrap = document.createElement("span");
+          rolloverWrap.className = "gauge-rollover";
+          rolloverWrap.appendChild(renderGaugeSegments(["dark"], "rollover"));
+          container.appendChild(rolloverWrap);
+        }
+
+        return container;
+      }
+
+      function renderReserveGauge(state) {
+        const container = document.createElement("div");
+        container.className = "gauge";
+
+        const reserveWrap = document.createElement("span");
+        reserveWrap.className = "gauge-main";
+
+        const showRed = state.reserve.remaining > 0
+          && state.reserve.remaining < LOW_ENVELOPE_THRESHOLD
+          && state.monthly.remaining <= 0
+          && state.rollover.remaining <= 0;
+
+        const reserveSegments = computeGaugeSegments(state.reserve.remaining, {
+          capacity: state.reserve.capacity,
+          showRedWhenLow: showRed
+        });
+        reserveWrap.appendChild(renderGaugeSegments(reserveSegments, "blue"));
+        container.appendChild(reserveWrap);
+
+        return container;
+      }
+
+      function ensureUsageTopUpModal() {
+        let overlay = document.getElementById("usageTopUpModal");
+        if (overlay) return overlay;
+
+        overlay = document.createElement("div");
+        overlay.id = "usageTopUpModal";
+        overlay.className = "usage-modal-overlay";
+        overlay.innerHTML = [
+          '<div class="usage-modal" role="dialog" aria-modal="true" aria-labelledby="usageModalTitle">',
+          '  <h2 class="usage-modal-title" id="usageModalTitle">Alimenter ma r\u00e9serve compl\u00e9mentaire</h2>',
+          '  <p class="usage-modal-text">Cet espace reste disponible tant qu\'il n\'est pas utilis\u00e9.</p>',
+          '  <div class="usage-modal-actions">',
+          '    <button type="button" class="usage-option-btn" data-amount="5">5 \u20ac</button>',
+          '    <button type="button" class="usage-option-btn" data-amount="10">10 \u20ac</button>',
+          '  </div>',
+          '  <p class="usage-modal-notice" id="usageModalNotice"></p>',
+          '  <button type="button" class="usage-modal-close" id="usageModalCloseBtn">Fermer</button>',
+          '</div>'
+        ].join("");
+
+        const closeModal = () => {
+          overlay.classList.remove("is-open");
+        };
+
+        overlay.addEventListener("click", event => {
+          if (event.target === overlay) {
+            closeModal();
+          }
+        });
+
+        overlay.querySelector("#usageModalCloseBtn").addEventListener("click", closeModal);
+        overlay.querySelectorAll(".usage-option-btn").forEach(button => {
+          button.addEventListener("click", () => {
+            const amount = button.getAttribute("data-amount") || "";
+            const notice = overlay.querySelector("#usageModalNotice");
+            notice.textContent = "Paiement non encore activ\u00e9.";
+            console.info("[usage-envelope] top-up intent", { amount: amount + " EUR" });
+          });
+        });
+
+        document.body.appendChild(overlay);
+        return overlay;
+      }
+
+      function buildUsageEnvelopeCard() {
+        const usageState = getUsageEnvelopeState(MOCK_USAGE_ENVELOPE_STATE);
+        const card = document.createElement("div");
+        card.className = "card usage-envelope-card";
+
+        const envelopeBlock = document.createElement("div");
+        envelopeBlock.className = "usage-block";
+        const envelopeTitle = document.createElement("h3");
+        envelopeTitle.className = "usage-title";
+        envelopeTitle.textContent = "Enveloppe mensuelle d'accompagnement";
+        envelopeBlock.appendChild(envelopeTitle);
+        envelopeBlock.appendChild(renderEnvelopeGauge(usageState));
+        card.appendChild(envelopeBlock);
+
+        const reserveBlock = document.createElement("div");
+        reserveBlock.className = "usage-block";
+        const reserveTitle = document.createElement("h3");
+        reserveTitle.className = "usage-title";
+        reserveTitle.textContent = "R\u00e9serve compl\u00e9mentaire";
+        reserveBlock.appendChild(reserveTitle);
+        reserveBlock.appendChild(renderReserveGauge(usageState));
+        card.appendChild(reserveBlock);
+
+        const warning = document.createElement("p");
+        warning.className = "setting-help";
+        warning.style.margin = "4px 0 0";
+        warning.style.display = shouldShowLowEnvelopeWarning(usageState) ? "block" : "none";
+        warning.textContent = "Il reste peu d'espace disponible dans votre enveloppe. Pour eviter une interruption pendant l'echange, vous pouvez l'alimenter maintenant.";
+        card.appendChild(warning);
+
+        const actionButton = document.createElement("button");
+        actionButton.type = "button";
+        actionButton.className = "usage-action-btn";
+        actionButton.textContent = "Je m'offre plus d'espace";
+        actionButton.addEventListener("click", () => {
+          const modal = ensureUsageTopUpModal();
+          const notice = modal.querySelector("#usageModalNotice");
+          notice.textContent = "";
+          modal.classList.add("is-open");
+        });
+        card.appendChild(actionButton);
+
+        return card;
       }
 
       function getConversationStorageKey(conversationId) {
