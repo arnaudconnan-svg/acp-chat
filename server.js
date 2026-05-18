@@ -27,6 +27,7 @@ const db = admin.database();
 const messagesRef = db.ref("messages");
 const userLabelsRef = db.ref("userLabels");
 const usersRef = db.ref("users");
+const accountArchivesRef = db.ref("accountArchives");
 const adminSettingsRef = db.ref("adminSettings");
 const branchRecordsRef = db.ref("branches");
 const branchSeedSnapshotsRef = db.ref("branchSeeds");
@@ -761,6 +762,23 @@ async function requireUserAuth(req, res, next) {
   } catch (err) {
     console.error("Erreur requireUserAuth:", err.message);
     return res.status(500).json({ error: "Auth check failed" });
+  }
+}
+
+function invalidateUserSessionsByUserId(userId = "") {
+  const targetUserId = String(userId || "").trim();
+  if (!targetUserId) return;
+
+  for (const [token, data] of userSessions.entries()) {
+    if (String(data?.userId || "").trim() === targetUserId) {
+      userSessions.delete(token);
+    }
+  }
+
+  for (const [token, data] of biometricUnlockTokens.entries()) {
+    if (String(data?.userId || "").trim() === targetUserId) {
+      biometricUnlockTokens.delete(token);
+    }
   }
 }
 
@@ -2153,6 +2171,176 @@ app.put("/api/account/profile", requireUserAuth, async (req, res) => {
   } catch (err) {
     console.error("Erreur PUT /api/account/profile:", err.message);
     return res.status(500).json({ error: "Profile update failed" });
+  }
+});
+
+app.post("/api/account/reset", requireUserAuth, async (req, res) => {
+  try {
+    const session = req.userSession;
+    const oldUserId = String(session.userId || "").trim();
+    const oldUser = session.user && typeof session.user === "object" ? session.user : {};
+    const now = new Date().toISOString();
+    const requestId = String(req.headers["x-request-id"] || "").trim() || null;
+
+    if (!oldUserId) {
+      return res.status(400).json({ error: "Invalid user session" });
+    }
+
+    const newUserId = `u_${crypto.randomBytes(12).toString("hex")}`;
+    const nextUserRecord = {
+      email: normalizeEmail(oldUser.email),
+      passwordHash: typeof oldUser.passwordHash === "string" ? oldUser.passwordHash : "",
+      privateConversationsByDefault: oldUser.privateConversationsByDefault === true,
+      biometricLockEnabled: oldUser.biometricLockEnabled === true,
+      biometricRelockSeconds: normalizeBiometricRelockSeconds(oldUser.biometricRelockSeconds) ?? 120,
+      createdAt: now,
+      updatedAt: now,
+      firstName: typeof oldUser.firstName === "string" && oldUser.firstName.trim() ? oldUser.firstName.trim() : null,
+      country: normalizeCountryCode(oldUser.country)
+    };
+
+    if (!nextUserRecord.email || !nextUserRecord.passwordHash) {
+      return res.status(400).json({ error: "Compte incomplet pour remise a zero" });
+    }
+
+    await usersRef.child(newUserId).set(nextUserRecord);
+    await usersRef.child(oldUserId).remove();
+
+    const previousSessionToken = parseCookies(req).userSessionId;
+    if (previousSessionToken) {
+      userSessions.delete(previousSessionToken);
+    }
+
+    invalidateUserSessionsByUserId(oldUserId);
+
+    const newSessionToken = buildUserSessionToken(newUserId);
+    userSessions.set(newSessionToken, {
+      userId: newUserId,
+      createdAt: Date.now()
+    });
+
+    res.setHeader(
+      "Set-Cookie",
+      `userSessionId=${newSessionToken}; HttpOnly; Path=/; SameSite=Lax; Max-Age=${Math.floor(USER_SESSION_DURATION / 1000)}`
+    );
+
+    console.info("[ACCOUNT_MEMORY_RESET]", {
+      action: "account_memory_reset",
+      oldUserId,
+      newUserId,
+      status: "success",
+      at: now,
+      requestId
+    });
+
+    return res.json({
+      success: true,
+      user: toPublicUser(newUserId, nextUserRecord)
+    });
+  } catch (err) {
+    console.error("[ACCOUNT_MEMORY_RESET]", {
+      action: "account_memory_reset",
+      status: "failed",
+      at: new Date().toISOString(),
+      error: err && err.message ? err.message : String(err)
+    });
+    return res.status(500).json({ error: "Operation impossible pour le moment" });
+  }
+});
+
+app.post("/api/account/close", requireUserAuth, async (req, res) => {
+  try {
+    const session = req.userSession;
+    const userId = String(session.userId || "").trim();
+    const userRecord = session.user && typeof session.user === "object" ? session.user : {};
+    const now = new Date().toISOString();
+    const requestId = String(req.headers["x-request-id"] || "").trim() || null;
+
+    if (!userId) {
+      return res.status(400).json({ error: "Invalid user session" });
+    }
+
+    const conversationsSnap = await db.ref("conversations")
+      .orderByChild("userId")
+      .equalTo(userId)
+      .once("value");
+
+    const conversations = conversationsSnap.val() || {};
+    const conversationEntries = Object.entries(conversations)
+      .filter(([conversationId, value]) => typeof conversationId === "string" && value && typeof value === "object");
+
+    const archivedConversations = {};
+    const archivedMessagesByConversation = {};
+    const conversationDeletePatch = {};
+    const messageDeletePatch = {};
+
+    for (const [conversationId, conversationData] of conversationEntries) {
+      archivedConversations[conversationId] = conversationData;
+      conversationDeletePatch[conversationId] = null;
+
+      const messageSnap = await messagesRef
+        .orderByChild("conversationId")
+        .equalTo(conversationId)
+        .once("value");
+      const messageMap = messageSnap.val() || {};
+      archivedMessagesByConversation[conversationId] = messageMap;
+
+      Object.keys(messageMap).forEach((messageId) => {
+        if (typeof messageId === "string" && messageId.trim()) {
+          messageDeletePatch[messageId] = null;
+        }
+      });
+    }
+
+    await accountArchivesRef.child(userId).set({
+      userId,
+      archivedAt: now,
+      closeReason: "user_requested_closure",
+      requestId,
+      user: userRecord,
+      conversations: archivedConversations,
+      messagesByConversation: archivedMessagesByConversation
+    });
+
+    if (Object.keys(messageDeletePatch).length > 0) {
+      await messagesRef.update(messageDeletePatch);
+    }
+    if (Object.keys(conversationDeletePatch).length > 0) {
+      await db.ref("conversations").update(conversationDeletePatch);
+    }
+
+    await usersRef.child(userId).remove();
+    await userLabelsRef.child(userId).remove();
+
+    const sessionToken = parseCookies(req).userSessionId;
+    if (sessionToken) {
+      userSessions.delete(sessionToken);
+    }
+    invalidateUserSessionsByUserId(userId);
+
+    res.setHeader(
+      "Set-Cookie",
+      "userSessionId=; HttpOnly; Path=/; Max-Age=0"
+    );
+
+    console.info("[ACCOUNT_CLOSURE]", {
+      action: "account_closure",
+      userId,
+      status: "success",
+      at: now,
+      requestId,
+      archivedConversationCount: conversationEntries.length
+    });
+
+    return res.json({ success: true });
+  } catch (err) {
+    console.error("[ACCOUNT_CLOSURE]", {
+      action: "account_closure",
+      status: "failed",
+      at: new Date().toISOString(),
+      error: err && err.message ? err.message : String(err)
+    });
+    return res.status(500).json({ error: "Operation impossible pour le moment" });
   }
 });
 

@@ -302,6 +302,56 @@
       color: #245e66;
     }
 
+    .danger-zone-card {
+      border: 1px solid #f0d4d4;
+      background: #fff7f7;
+    }
+
+    .danger-zone-warning {
+      font-size: 13px;
+      color: #8f2b2b;
+      margin: 0 0 12px;
+    }
+
+    .danger-action {
+      border: 1px solid #efdfdf;
+      border-radius: 10px;
+      background: #fff;
+      padding: 12px;
+      margin-top: 10px;
+    }
+
+    .danger-action-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #7e1f1f;
+      margin: 0 0 6px;
+    }
+
+    .danger-action-help {
+      font-size: 13px;
+      color: #6b4f4f;
+      margin: 0 0 10px;
+      line-height: 1.45;
+    }
+
+    .danger-action-buttons {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .danger-action-buttons .secondary-btn,
+    .danger-action-buttons .action-btn {
+      width: auto;
+      min-width: 160px;
+    }
+
+    .danger-confirm-btn.is-ready {
+      background: #b3261e;
+      cursor: pointer;
+    }
+
     .empty-state, .loading-state, .error-notice {
       font-size: 14px;
       color: #aaa;
@@ -881,6 +931,7 @@
           main.appendChild(buildLocalImportCard());
         }
         main.appendChild(buildPrivacyEntryCard());
+        main.appendChild(buildDangerZoneCard());
       }
 
       function clampUsageValue(value, min, max) {
@@ -1738,6 +1789,215 @@
         });
 
         return card;
+      }
+
+      function buildDangerZoneCard() {
+        const card = document.createElement("div");
+        card.className = "card danger-zone-card";
+
+        const title = document.createElement("div");
+        title.className = "section-title";
+        title.textContent = "Zone sensible";
+        card.appendChild(title);
+
+        const warning = document.createElement("p");
+        warning.className = "danger-zone-warning";
+        warning.textContent = "Action irreversible.";
+        card.appendChild(warning);
+
+        card.appendChild(buildDangerAction({
+          actionKey: "reset",
+          title: "Remise a zero du compte",
+          description: "Efface la memoire inter-session de ce compte et les conversations locales de cet appareil.",
+          triggerLabel: "Preparer",
+          confirmLabel: "Valider",
+          onConfirm: handleSensitiveAccountReset
+        }));
+
+        card.appendChild(buildDangerAction({
+          actionKey: "closure",
+          title: "Cloturer mon compte",
+          description: "Archive le compte cote serveur puis coupe l'acces immediatement.",
+          triggerLabel: "Preparer",
+          confirmLabel: "Valider",
+          onConfirm: handleSensitiveAccountClosure
+        }));
+
+        return card;
+      }
+
+      function buildDangerAction({ actionKey, title, description, triggerLabel, confirmLabel, onConfirm }) {
+        const box = document.createElement("div");
+        box.className = "danger-action";
+
+        const head = document.createElement("p");
+        head.className = "danger-action-title";
+        head.textContent = title;
+        box.appendChild(head);
+
+        const help = document.createElement("p");
+        help.className = "danger-action-help";
+        help.textContent = description;
+        box.appendChild(help);
+
+        const buttons = document.createElement("div");
+        buttons.className = "danger-action-buttons";
+
+        const triggerBtn = document.createElement("button");
+        triggerBtn.type = "button";
+        triggerBtn.className = "secondary-btn";
+        triggerBtn.textContent = triggerLabel;
+
+        const confirmBtn = document.createElement("button");
+        confirmBtn.type = "button";
+        confirmBtn.className = "action-btn danger-confirm-btn";
+        confirmBtn.textContent = `${confirmLabel} (5)`;
+        confirmBtn.disabled = true;
+
+        buttons.appendChild(triggerBtn);
+        buttons.appendChild(confirmBtn);
+        box.appendChild(buttons);
+
+        const notice = document.createElement("div");
+        notice.className = "notice";
+        box.appendChild(notice);
+
+        let countdownTimer = null;
+        let remaining = 0;
+
+        const resetCountdown = () => {
+          if (countdownTimer) {
+            clearInterval(countdownTimer);
+            countdownTimer = null;
+          }
+          remaining = 0;
+          confirmBtn.disabled = true;
+          confirmBtn.classList.remove("is-ready");
+          confirmBtn.textContent = `${confirmLabel} (5)`;
+        };
+
+        triggerBtn.addEventListener("click", () => {
+          notice.textContent = "";
+          notice.className = "notice";
+          resetCountdown();
+          remaining = 5;
+          confirmBtn.textContent = `${confirmLabel} (${remaining})`;
+          countdownTimer = setInterval(() => {
+            remaining -= 1;
+            if (remaining <= 0) {
+              clearInterval(countdownTimer);
+              countdownTimer = null;
+              confirmBtn.disabled = false;
+              confirmBtn.classList.add("is-ready");
+              confirmBtn.textContent = confirmLabel;
+              return;
+            }
+            confirmBtn.textContent = `${confirmLabel} (${remaining})`;
+          }, 1000);
+        });
+
+        confirmBtn.addEventListener("click", async () => {
+          if (confirmBtn.disabled) return;
+          triggerBtn.disabled = true;
+          confirmBtn.disabled = true;
+          confirmBtn.classList.remove("is-ready");
+          notice.textContent = "";
+          notice.className = "notice";
+
+          try {
+            await onConfirm(notice);
+          } catch {
+            notice.textContent = "Operation impossible pour le moment";
+            notice.className = "notice";
+          } finally {
+            triggerBtn.disabled = false;
+            resetCountdown();
+          }
+        });
+
+        box.dataset.actionKey = String(actionKey || "");
+        return box;
+      }
+
+      function clearLocalConversationStorageForReset() {
+        const keysToRemove = [
+          CONVERSATIONS_INDEX_KEY,
+          PRIVATE_CONVERSATION_IDS_KEY,
+          "facilitatio_conversation_id",
+          "facilitatio_hidden_trunk_ids"
+        ];
+
+        keysToRemove.forEach((key) => {
+          try {
+            localStorage.removeItem(key);
+          } catch {}
+        });
+
+        const conversationKeys = [];
+        for (let i = 0; i < localStorage.length; i += 1) {
+          const key = String(localStorage.key(i) || "");
+          if (key.startsWith(CONVERSATION_STORAGE_KEY_PREFIX)) {
+            conversationKeys.push(key);
+          }
+        }
+
+        conversationKeys.forEach((key) => {
+          try {
+            localStorage.removeItem(key);
+          } catch {}
+        });
+      }
+
+      function rotateLocalAnonymousUserId() {
+        const next = `u_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+        try {
+          localStorage.setItem(USER_ID_KEY, next);
+        } catch {}
+      }
+
+      async function handleSensitiveAccountReset(noticeEl) {
+        const res = await fetch("/api/account/reset", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({})
+        });
+
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || data.success !== true) {
+          throw new Error(data?.error || "Operation impossible pour le moment");
+        }
+
+        clearLocalConversationStorageForReset();
+        rotateLocalAnonymousUserId();
+
+        noticeEl.textContent = "Remise a zero effectuee";
+        noticeEl.className = "notice success";
+
+        setTimeout(() => {
+          navigateAway("/index.html", { replace: true });
+        }, 700);
+      }
+
+      async function handleSensitiveAccountClosure(noticeEl) {
+        const res = await fetch("/api/account/close", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({})
+        });
+
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || data.success !== true) {
+          throw new Error(data?.error || "Operation impossible pour le moment");
+        }
+
+        noticeEl.textContent = "Compte reinitialise";
+        noticeEl.className = "notice success";
+
+        setTimeout(() => {
+          navigateAway("/auth.html", { replace: true });
+        }, 700);
       }
 
       function buildPrivacyEntryCard() {
