@@ -4128,7 +4128,6 @@ app.post("/api/admin/wipe-data", requireAdminAuth, async (req, res) => {
     const firebaseTargets = [
       "conversations",
       "messages",
-      "users",
       "userLabels",
       "branches",
       "branchSeeds",
