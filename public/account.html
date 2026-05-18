@@ -799,6 +799,39 @@
         }
       }
 
+      function hasImportableConversations() {
+        let index = [];
+        try {
+          const rawIndex = JSON.parse(localStorage.getItem(CONVERSATIONS_INDEX_KEY) || "[]");
+          index = Array.isArray(rawIndex) ? rawIndex : [];
+        } catch {
+          index = [];
+        }
+
+        const privateConversationIds = loadPrivateConversationIds();
+        const indexById = new Map(
+          index
+            .map(item => [String(item?.id || "").trim(), item])
+            .filter(([id]) => Boolean(id))
+        );
+
+        const allConversationIds = new Set(indexById.keys());
+        for (const privateId of privateConversationIds) {
+          allConversationIds.add(privateId);
+        }
+
+        for (let i = 0; i < localStorage.length; i += 1) {
+          const key = String(localStorage.key(i) || "");
+          if (!key.startsWith(CONVERSATION_STORAGE_KEY_PREFIX)) continue;
+          const id = key.slice(CONVERSATION_STORAGE_KEY_PREFIX.length).trim();
+          if (id) {
+            allConversationIds.add(id);
+          }
+        }
+
+        return allConversationIds.size > 0;
+      }
+
       function renderPage() {
         const main = document.getElementById("mainContent");
 
@@ -821,13 +854,15 @@
         emailEl.textContent = String(currentUser.email || "");
         main.appendChild(emailEl);
 
-        main.appendChild(buildProfileCard());
-        main.appendChild(buildPrivacyEntryCard());
-        main.appendChild(buildLocalImportCard());
-        main.appendChild(buildLongtermMemoryCard());
         if (ACCOUNT_USAGE_ENVELOPE_UI_ENABLED) {
           main.appendChild(buildUsageEnvelopeCard());
         }
+        main.appendChild(buildProfileCard());
+        main.appendChild(buildLongtermMemoryCard());
+        if (hasImportableConversations()) {
+          main.appendChild(buildLocalImportCard());
+        }
+        main.appendChild(buildPrivacyEntryCard());
       }
 
       function clampUsageValue(value, min, max) {
@@ -1206,7 +1241,7 @@
         card.className = "card";
         const title = document.createElement("div");
         title.className = "section-title";
-        title.textContent = "M\u00e9moire longue terme";
+        title.textContent = "M\u00e9moire long terme";
         card.appendChild(title);
         const content = document.createElement("div");
         content.innerHTML = '<p class="loading-state">Chargement\u2026</p>';
