@@ -1998,7 +1998,11 @@
 
           try {
             await onConfirm(noticeEl);
-          } catch {
+          } catch (err) {
+            console.warn("[ACCOUNT][SENSITIVE_ACTION_FAILED]", {
+              title: title || "unknown_action",
+              error: err && err.message ? err.message : String(err)
+            });
             noticeEl.textContent = "Operation impossible pour le moment";
             noticeEl.className = "notice sensitive-modal-notice";
             isBusy = false;
@@ -2056,7 +2060,12 @@
 
         const data = await res.json().catch(() => ({}));
         if (!res.ok || data.success !== true) {
-          throw new Error(data?.error || "Operation impossible pour le moment");
+          console.warn("[ACCOUNT][RESET_FAILED]", {
+            status: res.status,
+            error: data?.error || null,
+            success: data?.success === true
+          });
+          throw new Error("Operation impossible pour le moment");
         }
 
         clearLocalConversationStorageForReset();
@@ -2080,7 +2089,12 @@
 
         const data = await res.json().catch(() => ({}));
         if (!res.ok || data.success !== true) {
-          throw new Error(data?.error || "Operation impossible pour le moment");
+          console.warn("[ACCOUNT][CLOSURE_FAILED]", {
+            status: res.status,
+            error: data?.error || null,
+            success: data?.success === true
+          });
+          throw new Error("Operation impossible pour le moment");
         }
 
         noticeEl.textContent = "Compte reinitialise";

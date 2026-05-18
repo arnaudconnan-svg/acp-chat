@@ -2240,6 +2240,12 @@ app.post("/api/account/reset", requireUserAuth, async (req, res) => {
     const requestId = String(req.headers["x-request-id"] || "").trim() || null;
 
     if (!oldUserId) {
+      console.warn("[ACCOUNT_MEMORY_RESET]", {
+        action: "account_memory_reset",
+        status: "rejected_invalid_session",
+        at: now,
+        requestId
+      });
       return res.status(400).json({ error: "Invalid user session" });
     }
 
@@ -2257,6 +2263,15 @@ app.post("/api/account/reset", requireUserAuth, async (req, res) => {
     };
 
     if (!nextUserRecord.email || !nextUserRecord.passwordHash) {
+      console.warn("[ACCOUNT_MEMORY_RESET]", {
+        action: "account_memory_reset",
+        status: "rejected_incomplete_account",
+        at: now,
+        requestId,
+        oldUserId,
+        hasEmail: !!nextUserRecord.email,
+        hasPasswordHash: !!nextUserRecord.passwordHash
+      });
       return res.status(400).json({ error: "Compte incomplet pour remise a zero" });
     }
 
