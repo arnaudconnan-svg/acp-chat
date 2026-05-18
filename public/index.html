@@ -80,62 +80,6 @@
       opacity: 1;
     }
 
-    #deviceGateScreen {
-      position: fixed;
-      inset: 0;
-      z-index: 4000;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      padding: 24px;
-      box-sizing: border-box;
-      background: radial-gradient(circle at 50% 18%, rgba(223, 237, 239, 0.98) 0%, rgba(244, 249, 249, 0.96) 48%, rgba(255, 255, 255, 0.99) 100%);
-    }
-
-    #deviceGateBox {
-      width: min(460px, 100%);
-      border-radius: 20px;
-      padding: 24px 22px;
-      box-sizing: border-box;
-      background: rgba(255, 255, 255, 0.94);
-      border: 1px solid rgba(36, 94, 102, 0.12);
-      box-shadow: 0 18px 42px rgba(36, 94, 102, 0.14);
-      text-align: left;
-      color: #24464b;
-    }
-
-    #deviceGateTitle {
-      margin: 0 0 10px 0;
-      font-size: 22px;
-      line-height: 1.3;
-      color: #173b40;
-    }
-
-    #deviceGateText {
-      margin: 0;
-      font-size: 15px;
-      line-height: 1.6;
-      color: #365e63;
-    }
-
-    #deviceGateActions {
-      margin-top: 20px;
-      display: flex;
-      justify-content: flex-end;
-      gap: 10px;
-    }
-
-    #deviceGateAdminBtn {
-      border: none;
-      border-radius: 12px;
-      background: #245e66;
-      color: #ffffff;
-      font-size: 14px;
-      font-weight: 600;
-      padding: 10px 14px;
-      cursor: pointer;
-    }
-
     #welcomeInner {
       position: relative;
       z-index: 1;
@@ -2319,19 +2263,6 @@
 </head>
 
 <body>
-  <div id="deviceGateScreen" aria-live="polite">
-    <div id="deviceGateBox">
-      <h2 id="deviceGateTitle">Version mobile uniquement</h2>
-      <p id="deviceGateText">
-        Facilitat.io est actuellement r&eacute;serv&eacute; aux t&eacute;l&eacute;phones.
-        Si vous &ecirc;tes administrateur, vous pouvez d&eacute;verrouiller l'acc&egrave;s desktop avec votre mot de passe admin.
-      </p>
-      <div id="deviceGateActions">
-        <button id="deviceGateAdminBtn" type="button">Acc&egrave;s admin</button>
-      </div>
-    </div>
-  </div>
-
   <div id="welcomeScreen" class="screen">
     <div id="welcomeInner">
       
@@ -3127,35 +3058,9 @@
       }
     }
 
-    function isPhoneOnlyTargetDevice() {
-      const ua = String(navigator.userAgent || "").toLowerCase();
-      const isTablet = /ipad|tablet|kindle|silk|playbook|sm-t\d|tab\s/i.test(ua);
-      const isPhoneUa = /iphone|ipod|android.*mobile|windows phone|mobile/i.test(ua);
-      const maxViewport = Math.max(window.innerWidth || 0, window.innerHeight || 0);
-
-      return !isTablet && isPhoneUa && maxViewport <= 950;
-    }
-
-    function setDeviceGateVisibility(visible) {
-      const gate = document.getElementById("deviceGateScreen");
-      if (!gate) return;
-      gate.style.display = visible ? "flex" : "none";
-    }
-
     async function enforcePhoneOnlyAccessGate() {
-      if (isPhoneOnlyTargetDevice()) {
-        setDeviceGateVisibility(false);
-        return true;
-      }
-
-      const isAdminAuthenticated = await hasValidAdminSession();
-      if (isAdminAuthenticated) {
-        setDeviceGateVisibility(false);
-        return true;
-      }
-
-      setDeviceGateVisibility(true);
-      return false;
+      // Legacy device gate removed: access is no longer restricted by device/viewport.
+      return true;
     }
 
     function normalizeBiometricRelockSeconds(value) {
@@ -10489,13 +10394,6 @@
       };
     }
 
-    const deviceGateAdminBtn = document.getElementById("deviceGateAdminBtn");
-    if (deviceGateAdminBtn) {
-      deviceGateAdminBtn.onclick = () => {
-        navigateAway("/admin-login.html?next=%2Findex.html%3FadminUi%3D1");
-      };
-    }
-
     const conversationsPrivacyHintContinueBtn = document.getElementById("conversationsPrivacyHintContinueBtn");
     if (conversationsPrivacyHintContinueBtn) {
       conversationsPrivacyHintContinueBtn.onclick = () => {
@@ -11283,10 +11181,7 @@
       const isAdminUI = await syncAdminUiFromSession();
       await refreshDevAccessPrimaryAction();
 
-      const canAccessCurrentDevice = await enforcePhoneOnlyAccessGate();
-      if (!canAccessCurrentDevice) {
-        return;
-      }
+      await enforcePhoneOnlyAccessGate();
 
       const shouldSkipWelcomeAnimation = isAdminUI;
 
