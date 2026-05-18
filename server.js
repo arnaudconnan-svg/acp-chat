@@ -6598,14 +6598,16 @@ Reponds strictement en JSON: {"items": ["..."]}
     finalExplorationSignal = postureDecision.finalExplorationSignal;
     const { conversationState, consecutiveNonExplorationTurns } = postureDecision;
 
-    postureDecision.memoryUpdateDecision = "update";
-    postureDecision.memoryUpdateReason = "always_update";
-    postureDecision.memoryUpdateSource = "deterministic";
+    postureDecision.memoryUpdateDecision = shouldUpdateMemory ? "update" : "skip";
+    postureDecision.memoryUpdateReason = shouldUpdateMemory ? "llm_signal_new_content" : "llm_signal_no_new_content";
+    postureDecision.memoryUpdateSource = memoryUpdateSignalSource;
 
     logChatDecision("memory_update_decision", {
       decision: postureDecision.memoryUpdateDecision,
       reason: postureDecision.memoryUpdateReason,
       source: postureDecision.memoryUpdateSource,
+      llmSignal: shouldUpdateMemory,
+      signalSource: memoryUpdateSignalSource,
       previousMemoryStateCounts: {
         sessionStableContext: Array.isArray(previousMemoryState?.sessionStableContext) ? previousMemoryState.sessionStableContext.length : 0,
         onGoingMovements: Array.isArray(previousMemoryState?.onGoingMovements) ? previousMemoryState.onGoingMovements.length : 0,
@@ -6730,6 +6732,8 @@ Reponds strictement en JSON: {"items": ["..."]}
     throwIfCanceled();
 
     let reply = generatedBase.reply;
+    let shouldUpdateMemory = generatedBase.shouldUpdateMemory === true;
+    let memoryUpdateSignalSource = generatedBase.signalSource || "unknown";
     let relanceAnalysis = null;
     let outputGuardTriggered = false;
     let outputGuardRegenerationUsed = false;
@@ -6861,6 +6865,7 @@ Reponds strictement en JSON: {"items": ["..."]}
     // 5) Mise a jour memoire (fire-and-forget unifie).
     // The response always exposes the memory used for this turn (N-1), while
     // update/finalization/persistence runs in background for the next turn.
+    // Conditional launch based on LLM signal: skip if LLM signals no new content.
     let newMemory = previousMemory;
     const effectiveMemoryPrioritySignalForDebug = postureDecision.memoryPrioritySignal || "normal";
     newFlags.dependencyAnalysisTurnsUntilRefresh = 1;
@@ -6883,20 +6888,24 @@ Reponds strictement en JSON: {"items": ["..."]}
     const _lastActivityMs = previousConversationActivityMs;
     const _prioritySignal = effectiveMemoryPrioritySignalForDebug;
 
-    const backgroundMemoryTask = (async () => {
-      try {
-        const memoryUpdateContract = await updateMemory(
-          _prevMem,
-          [..._history, { role: "user", content: _message }, { role: "assistant", content: _reply }],
-          _registry,
-          _prioritySignal,
-          _interSession,
-          memoryClinicalSignals,
-          _prevMemState
-        );
-        const rawMem = typeof memoryUpdateContract?.memoryText === "string"
-          ? memoryUpdateContract.memoryText
-          : _prevMem;
+    // Background memory task: only launch if shouldUpdateMemory is true
+    let backgroundMemoryTask = null;
+
+    if (shouldUpdateMemory === true) {
+      backgroundMemoryTask = (async () => {
+        try {
+          const memoryUpdateContract = await updateMemory(
+            _prevMem,
+            [..._history, { role: "user", content: _message }, { role: "assistant", content: _reply }],
+            _registry,
+            _prioritySignal,
+            _interSession,
+            memoryClinicalSignals,
+            _prevMemState
+          );
+          const rawMem = typeof memoryUpdateContract?.memoryText === "string"
+            ? memoryUpdateContract.memoryText
+            : _prevMem;
 
         const mergedStateResult = mergeMemoryStateWithFinalizedText({
           previousMemoryState: _prevMemState,
@@ -6998,9 +7007,20 @@ Reponds strictement en JSON: {"items": ["..."]}
           error: e && e.message ? e.message : String(e)
         });
       }
-    })();
+      })();
+    } else {
+      // Memory update skipped per LLM signal
+      logChatDecision("memory_update_skipped", {
+        decision: "skip",
+        reason: postureDecision.memoryUpdateReason,
+        source: postureDecision.memoryUpdateSource,
+        llmSignal: false,
+        signalSource: memoryUpdateSignalSource
+      });
+      backgroundMemoryTask = null;
+    }
 
-    if (conversationId) {
+    if (conversationId && backgroundMemoryTask) {
       trackConversationMemorySync(conversationId, backgroundMemoryTask);
     }
     const postCrisisSupportCarryTurnActive = req.__postCrisisSupportCarryTurnActive === true;
