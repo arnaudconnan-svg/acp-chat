@@ -28,6 +28,7 @@ const messagesRef = db.ref("messages");
 const userLabelsRef = db.ref("userLabels");
 const usersRef = db.ref("users");
 const accountArchivesRef = db.ref("accountArchives");
+const accountResetAuditsRef = db.ref("accountResetAudits");
 const adminSettingsRef = db.ref("adminSettings");
 const branchRecordsRef = db.ref("branches");
 const branchSeedSnapshotsRef = db.ref("branchSeeds");
@@ -39,6 +40,7 @@ const ADMIN_SESSION_DURATION = 24 * 60 * 60 * 1000; // 24h
 const ADMIN_SESSION_SIGNING_SECRET = appConfig.adminSessionSecret || SESSION_SECRET || ADMIN_PASSWORD || "dev-admin-session-secret";
 const userSessions = new Map(); // sessionToken -> { userId, createdAt }
 const USER_SESSION_DURATION = 30 * 24 * 60 * 60 * 1000; // 30d
+const ACCOUNT_RESET_AUDIT_RETENTION_MS = 30 * 24 * 60 * 60 * 1000; // 30d
 const USER_SESSION_SIGNING_SECRET = appConfig.userSessionSecret || SESSION_SECRET || ADMIN_PASSWORD || "dev-user-session-secret";
 // Biometric unlock tokens: sessionToken -> { userId, expiresAt }
 const biometricUnlockTokens = new Map();
@@ -780,6 +782,61 @@ function invalidateUserSessionsByUserId(userId = "") {
       biometricUnlockTokens.delete(token);
     }
   }
+}
+
+function buildAccountResetAuditHash(value = "") {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+
+  return crypto
+    .createHmac("sha256", USER_SESSION_SIGNING_SECRET)
+    .update(raw)
+    .digest("hex")
+    .slice(0, 24);
+}
+
+async function purgeExpiredAccountResetAudits(nowMs = Date.now()) {
+  const snapshot = await accountResetAuditsRef
+    .orderByChild("expiresAtMs")
+    .endAt(nowMs)
+    .once("value");
+
+  const expiredEntries = snapshot.val();
+  if (!expiredEntries || typeof expiredEntries !== "object") {
+    return 0;
+  }
+
+  const deletePatch = {};
+  let deletedCount = 0;
+
+  for (const auditId of Object.keys(expiredEntries)) {
+    if (typeof auditId === "string" && auditId.trim()) {
+      deletePatch[auditId] = null;
+      deletedCount += 1;
+    }
+  }
+
+  if (deletedCount > 0) {
+    await accountResetAuditsRef.update(deletePatch);
+  }
+
+  return deletedCount;
+}
+
+async function writeAccountResetAudit({ oldUserId = "", newUserId = "", requestId = null, nowIso = new Date().toISOString() } = {}) {
+  const nowMs = Date.parse(nowIso) || Date.now();
+  const expiresAtMs = nowMs + ACCOUNT_RESET_AUDIT_RETENTION_MS;
+
+  await purgeExpiredAccountResetAudits(nowMs);
+  await accountResetAuditsRef.push({
+    action: "account_reset",
+    createdAt: nowIso,
+    expiresAt: new Date(expiresAtMs).toISOString(),
+    expiresAtMs,
+    requestId: typeof requestId === "string" && requestId.trim() ? requestId.trim() : null,
+    oldUserIdHash: buildAccountResetAuditHash(oldUserId),
+    newUserIdHash: buildAccountResetAuditHash(newUserId)
+  });
 }
 
 // Validate biometric unlock token if biometric lock is enabled for the user
@@ -2218,6 +2275,23 @@ app.post("/api/account/reset", requireUserAuth, async (req, res) => {
       userId: newUserId,
       createdAt: Date.now()
     });
+
+    try {
+      await writeAccountResetAudit({
+        oldUserId,
+        newUserId,
+        requestId,
+        nowIso: now
+      });
+    } catch (auditErr) {
+      console.warn("[ACCOUNT_MEMORY_RESET_AUDIT_FAILED]", {
+        action: "account_memory_reset_audit",
+        status: "failed",
+        at: now,
+        requestId,
+        error: auditErr && auditErr.message ? auditErr.message : String(auditErr)
+      });
+    }
 
     res.setHeader(
       "Set-Cookie",
