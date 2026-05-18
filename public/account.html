@@ -829,7 +829,25 @@
           }
         }
 
-        return allConversationIds.size > 0;
+        for (const id of allConversationIds) {
+          const indexItem = indexById.get(id) || null;
+          let data = null;
+          try {
+            const rawData = localStorage.getItem(getConversationStorageKey(id));
+            data = rawData ? JSON.parse(rawData) : null;
+          } catch {
+            data = null;
+          }
+
+          const messages = Array.isArray(data?.messages) ? data.messages : [];
+          const hasUserMessage = messages.some(entry => entry && entry.role === "user" && typeof entry.content === "string" && entry.content.trim());
+
+          if (indexItem || hasUserMessage) {
+            return true;
+          }
+        }
+
+        return false;
       }
 
       function renderPage() {
