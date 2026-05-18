@@ -575,6 +575,10 @@
       display: flex;
     }
 
+    .sensitive-modal-overlay {
+      align-items: flex-start;
+    }
+
     .usage-modal {
       width: 100%;
       max-width: 380px;
@@ -1862,6 +1866,7 @@
           openSensitiveActionModal({
             title,
             text: modalText || description || "Action irreversible.",
+            anchorEl: triggerBtn,
             onConfirm
           });
         });
@@ -1884,7 +1889,7 @@
 
         overlay = document.createElement("div");
         overlay.id = "sensitiveActionModal";
-        overlay.className = "usage-modal-overlay";
+        overlay.className = "usage-modal-overlay sensitive-modal-overlay";
         overlay.innerHTML = [
           '<div class="usage-modal" role="dialog" aria-modal="true" aria-labelledby="sensitiveActionModalTitle">',
           '  <h2 class="usage-modal-title" id="sensitiveActionModalTitle"></h2>',
@@ -1901,13 +1906,22 @@
         return overlay;
       }
 
-      function openSensitiveActionModal({ title, text, onConfirm }) {
+      function openSensitiveActionModal({ title, text, anchorEl, onConfirm }) {
         const overlay = ensureSensitiveActionModal();
         const titleEl = overlay.querySelector("#sensitiveActionModalTitle");
         const textEl = overlay.querySelector("#sensitiveActionModalText");
         const noticeEl = overlay.querySelector("#sensitiveActionModalNotice");
         const cancelBtn = overlay.querySelector("#sensitiveActionModalCancel");
         const confirmBtn = overlay.querySelector("#sensitiveActionModalConfirm");
+
+        const anchorRect = anchorEl && typeof anchorEl.getBoundingClientRect === "function"
+          ? anchorEl.getBoundingClientRect()
+          : null;
+        const preferredTop = anchorRect && Number.isFinite(anchorRect.top)
+          ? Math.round(anchorRect.top - 8)
+          : 72;
+        const clampedTop = Math.max(20, Math.min(preferredTop, Math.max(20, window.innerHeight - 260)));
+        overlay.style.paddingTop = `${clampedTop}px`;
 
         titleEl.textContent = title || "Confirmation";
         textEl.textContent = text || "Action irreversible.";
