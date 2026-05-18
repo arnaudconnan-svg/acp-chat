@@ -321,30 +321,45 @@
       margin-top: 10px;
     }
 
-    .danger-action-title {
+    .danger-action-trigger {
+      width: 100%;
+      border: 1.5px solid #c94a44;
+      border-radius: 8px;
+      background: #fff;
+      color: #9f231d;
       font-size: 14px;
       font-weight: 700;
-      color: #7e1f1f;
-      margin: 0 0 6px;
+      padding: 11px 14px;
+      cursor: pointer;
+      text-align: left;
+    }
+
+    .danger-action-trigger:hover {
+      background: #fff5f5;
     }
 
     .danger-action-help {
       font-size: 13px;
       color: #6b4f4f;
-      margin: 0 0 10px;
+      margin: 10px 0 0;
       line-height: 1.45;
     }
 
-    .danger-action-buttons {
+    .sensitive-modal-actions {
       display: flex;
       gap: 8px;
-      flex-wrap: wrap;
     }
 
-    .danger-action-buttons .secondary-btn,
-    .danger-action-buttons .action-btn {
+    .sensitive-modal-actions .secondary-btn,
+    .sensitive-modal-actions .action-btn {
       width: auto;
-      min-width: 160px;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .sensitive-modal-notice {
+      min-height: 18px;
+      margin: 0 0 10px;
     }
 
     .danger-confirm-btn.is-ready {
@@ -1808,115 +1823,166 @@
         card.appendChild(buildDangerAction({
           actionKey: "reset",
           title: "Remise a zero du compte",
-          description: "Efface la memoire inter-session de ce compte et les conversations locales de cet appareil.",
-          triggerLabel: "Preparer",
-          confirmLabel: "Valider",
+          description: "Effacer la memoire inter-session et les conversations enregistrees sur l'appareil.",
+          modalText: "Cette action efface la memoire inter-session et les conversations enregistrees sur l'appareil.",
           onConfirm: handleSensitiveAccountReset
         }));
 
         card.appendChild(buildDangerAction({
           actionKey: "closure",
           title: "Cloturer mon compte",
-          description: "Archive le compte cote serveur puis coupe l'acces immediatement.",
-          triggerLabel: "Preparer",
-          confirmLabel: "Valider",
+          description: "",
+          modalText: "Cette action cloture le compte et coupe l'acces immediatement.",
           onConfirm: handleSensitiveAccountClosure
         }));
 
         return card;
       }
 
-      function buildDangerAction({ actionKey, title, description, triggerLabel, confirmLabel, onConfirm }) {
+      function buildDangerAction({ actionKey, title, description, modalText, onConfirm }) {
         const box = document.createElement("div");
         box.className = "danger-action";
 
-        const head = document.createElement("p");
-        head.className = "danger-action-title";
-        head.textContent = title;
-        box.appendChild(head);
-
-        const help = document.createElement("p");
-        help.className = "danger-action-help";
-        help.textContent = description;
-        box.appendChild(help);
-
-        const buttons = document.createElement("div");
-        buttons.className = "danger-action-buttons";
-
         const triggerBtn = document.createElement("button");
         triggerBtn.type = "button";
-        triggerBtn.className = "secondary-btn";
-        triggerBtn.textContent = triggerLabel;
+        triggerBtn.className = "danger-action-trigger";
+        triggerBtn.textContent = title;
+        triggerBtn.addEventListener("click", () => {
+          openSensitiveActionModal({
+            title,
+            text: modalText || description || "Action irreversible.",
+            onConfirm
+          });
+        });
+        box.appendChild(triggerBtn);
 
-        const confirmBtn = document.createElement("button");
-        confirmBtn.type = "button";
-        confirmBtn.className = "action-btn danger-confirm-btn";
-        confirmBtn.textContent = `${confirmLabel} (5)`;
-        confirmBtn.disabled = true;
+        if (description) {
+          const help = document.createElement("p");
+          help.className = "danger-action-help";
+          help.textContent = description;
+          box.appendChild(help);
+        }
 
-        buttons.appendChild(triggerBtn);
-        buttons.appendChild(confirmBtn);
-        box.appendChild(buttons);
+        box.dataset.actionKey = String(actionKey || "");
+        return box;
+      }
 
-        const notice = document.createElement("div");
-        notice.className = "notice";
-        box.appendChild(notice);
+      function ensureSensitiveActionModal() {
+        let overlay = document.getElementById("sensitiveActionModal");
+        if (overlay) return overlay;
+
+        overlay = document.createElement("div");
+        overlay.id = "sensitiveActionModal";
+        overlay.className = "usage-modal-overlay";
+        overlay.innerHTML = [
+          '<div class="usage-modal" role="dialog" aria-modal="true" aria-labelledby="sensitiveActionModalTitle">',
+          '  <h2 class="usage-modal-title" id="sensitiveActionModalTitle"></h2>',
+          '  <p class="usage-modal-text" id="sensitiveActionModalText"></p>',
+          '  <p class="notice sensitive-modal-notice" id="sensitiveActionModalNotice"></p>',
+          '  <div class="sensitive-modal-actions">',
+          '    <button type="button" class="secondary-btn" id="sensitiveActionModalCancel">Annuler</button>',
+          '    <button type="button" class="action-btn danger-confirm-btn" id="sensitiveActionModalConfirm" disabled>Confirmer (5)</button>',
+          '  </div>',
+          '</div>'
+        ].join("");
+
+        document.body.appendChild(overlay);
+        return overlay;
+      }
+
+      function openSensitiveActionModal({ title, text, onConfirm }) {
+        const overlay = ensureSensitiveActionModal();
+        const titleEl = overlay.querySelector("#sensitiveActionModalTitle");
+        const textEl = overlay.querySelector("#sensitiveActionModalText");
+        const noticeEl = overlay.querySelector("#sensitiveActionModalNotice");
+        const cancelBtn = overlay.querySelector("#sensitiveActionModalCancel");
+        const confirmBtn = overlay.querySelector("#sensitiveActionModalConfirm");
+
+        titleEl.textContent = title || "Confirmation";
+        textEl.textContent = text || "Action irreversible.";
+        noticeEl.textContent = "";
+        noticeEl.className = "notice sensitive-modal-notice";
 
         let countdownTimer = null;
-        let remaining = 0;
+        let remaining = 5;
+        let isBusy = false;
+        const handleKeydown = event => {
+          if (event.key === "Escape") {
+            requestClose();
+          }
+        };
 
-        const resetCountdown = () => {
+        const cleanup = () => {
           if (countdownTimer) {
             clearInterval(countdownTimer);
             countdownTimer = null;
           }
-          remaining = 0;
-          confirmBtn.disabled = true;
-          confirmBtn.classList.remove("is-ready");
-          confirmBtn.textContent = `${confirmLabel} (5)`;
+          overlay.classList.remove("is-open");
+          overlay.onclick = null;
+          cancelBtn.onclick = null;
+          confirmBtn.onclick = null;
+          document.removeEventListener("keydown", handleKeydown);
         };
 
-        triggerBtn.addEventListener("click", () => {
-          notice.textContent = "";
-          notice.className = "notice";
-          resetCountdown();
-          remaining = 5;
-          confirmBtn.textContent = `${confirmLabel} (${remaining})`;
-          countdownTimer = setInterval(() => {
-            remaining -= 1;
-            if (remaining <= 0) {
-              clearInterval(countdownTimer);
-              countdownTimer = null;
-              confirmBtn.disabled = false;
-              confirmBtn.classList.add("is-ready");
-              confirmBtn.textContent = confirmLabel;
-              return;
-            }
-            confirmBtn.textContent = `${confirmLabel} (${remaining})`;
-          }, 1000);
-        });
+        const renderConfirmState = () => {
+          if (remaining <= 0) {
+            confirmBtn.disabled = false;
+            confirmBtn.classList.add("is-ready");
+            confirmBtn.textContent = "Confirmer";
+            return;
+          }
 
-        confirmBtn.addEventListener("click", async () => {
-          if (confirmBtn.disabled) return;
-          triggerBtn.disabled = true;
           confirmBtn.disabled = true;
           confirmBtn.classList.remove("is-ready");
-          notice.textContent = "";
-          notice.className = "notice";
+          confirmBtn.textContent = `Confirmer (${remaining})`;
+        };
+
+        const requestClose = () => {
+          if (isBusy) return;
+          cleanup();
+        };
+
+        renderConfirmState();
+        countdownTimer = setInterval(() => {
+          remaining -= 1;
+          renderConfirmState();
+          if (remaining <= 0 && countdownTimer) {
+            clearInterval(countdownTimer);
+            countdownTimer = null;
+          }
+        }, 1000);
+
+        overlay.onclick = event => {
+          if (event.target === overlay) {
+            requestClose();
+          }
+        };
+
+        cancelBtn.onclick = requestClose;
+        document.addEventListener("keydown", handleKeydown);
+
+        confirmBtn.onclick = async () => {
+          if (confirmBtn.disabled || isBusy) return;
+
+          isBusy = true;
+          cancelBtn.disabled = true;
+          confirmBtn.disabled = true;
+          confirmBtn.classList.remove("is-ready");
+          noticeEl.textContent = "";
+          noticeEl.className = "notice sensitive-modal-notice";
 
           try {
-            await onConfirm(notice);
+            await onConfirm(noticeEl);
           } catch {
-            notice.textContent = "Operation impossible pour le moment";
-            notice.className = "notice";
-          } finally {
-            triggerBtn.disabled = false;
-            resetCountdown();
+            noticeEl.textContent = "Operation impossible pour le moment";
+            noticeEl.className = "notice sensitive-modal-notice";
+            isBusy = false;
+            cancelBtn.disabled = false;
+            renderConfirmState();
           }
-        });
+        };
 
-        box.dataset.actionKey = String(actionKey || "");
-        return box;
+        overlay.classList.add("is-open");
       }
 
       function clearLocalConversationStorageForReset() {
