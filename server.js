@@ -1061,6 +1061,67 @@ function normalizeIntersessionSourceFromUserData(userData, promptRegistry = buil
   return raw.replace(/^m[ée]moire\s+inter-?session\s*:\s*/i, "").trim();
 }
 
+const INTERSESSION_COMPACT_FAILURE_NOTE = "- Derniere mise a jour memoire echouee.";
+const INTERSESSION_COMPACT_EMPTY_NOTE = "- Aucun repere intersession disponible";
+
+function parseLooseJsonObject(raw = "") {
+  const text = String(raw || "").trim();
+  if (!text) return null;
+  const start = text.indexOf("{");
+  const end = text.lastIndexOf("}");
+  if (start === -1 || end === -1 || end <= start) return null;
+
+  const candidate = text.slice(start, end + 1);
+  try {
+    return JSON.parse(candidate);
+  } catch {
+    const repaired = candidate
+      .replace(/[\u2018\u2019]/g, "'")
+      .replace(/[\u201C\u201D]/g, '"')
+      .replace(/,\s*([}\]])/g, "$1")
+      .replace(/([{,]\s*)'([^'\\]+?)'\s*:/g, '$1"$2":')
+      .replace(/:\s*'([^'\\]*?)'(\s*[,}])/g, ': "$1"$2');
+    try {
+      return JSON.parse(repaired);
+    } catch {
+      return null;
+    }
+  }
+}
+
+function extractRuntimeCompactItems(raw = "") {
+  const parsed = parseLooseJsonObject(String(raw || "").replace(/```json|```/gi, "").trim());
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return [];
+  if (!Array.isArray(parsed.items)) return [];
+
+  const seen = new Set();
+  const items = [];
+  for (const value of parsed.items) {
+    if (typeof value !== "string") continue;
+    const text = value.replace(/\s+/g, " ").trim();
+    if (!text) continue;
+    const key = text
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    items.push(text);
+  }
+  return items;
+}
+
+function formatRuntimeCompactMemory(items = []) {
+  const safeItems = Array.isArray(items)
+    ? items.map(item => String(item || "").replace(/\s+/g, " ").trim()).filter(Boolean)
+    : [];
+  if (safeItems.length === 0) {
+    return INTERSESSION_COMPACT_EMPTY_NOTE;
+  }
+  return safeItems.map(item => `- ${item}`).join("\n");
+}
+
 function buildIntersessionCompactRuntime(memorySource = "", maxItems = 10, maxChars = 1200) {
   const source = String(memorySource || "").trim();
   if (!source) {
@@ -3325,7 +3386,10 @@ app.get("/api/intersession-memory", requireUserAuth, async (req, res) => {
     const snap = await usersRef.child(session.userId).once("value");
     const userData = snap.val() || {};
     const memorySource = normalizeIntersessionSourceFromUserData(userData, buildDefaultPromptRegistry());
-    const memoryCompact = buildIntersessionCompactRuntime(memorySource).trim();
+    const storedCompact = typeof userData.intersessionMemoryCompact === "string"
+      ? userData.intersessionMemoryCompact.trim()
+      : "";
+    const memoryCompact = storedCompact || buildIntersessionCompactRuntime(memorySource).trim();
     const historyRaw = Array.isArray(userData.intersessionMemoryHistory) ? userData.intersessionMemoryHistory : [];
     return res.json({
       memory: memorySource || null,
@@ -3458,12 +3522,11 @@ app.put("/api/intersession-memory", requireUserAuth, async (req, res) => {
       strippedSessionMemory,
       buildDefaultPromptRegistry()
     );
-    const memoryCompact = buildIntersessionCompactRuntime(memorySource).trim();
 
     await usersRef.child(session.userId).update({
       intersessionMemorySource: memorySource,
-      intersessionMemoryCompact: memoryCompact,
-      intersessionMemoryUpdatedAt: new Date().toISOString()
+      intersessionMemoryUpdatedAt: new Date().toISOString(),
+      intersessionCompactOutdated: true
     });
 
     return res.json({ success: true });
@@ -3522,9 +3585,9 @@ app.patch("/api/intersession-memory/direct", requireUserAuth, async (req, res) =
 
     await usersRef.child(session.userId).update({
       intersessionMemorySource: nextMemorySource,
-      intersessionMemoryCompact: "",
       intersessionMemoryUpdatedAt: now,
-      intersessionRefreshForced: true
+      intersessionRefreshForced: true,
+      intersessionCompactOutdated: true
     });
 
     return res.json({ success: true });
@@ -3587,7 +3650,8 @@ app.post("/api/session/beacon", async (req, res) => {
 
     await usersRef.child(session.userId).update({
       intersessionMemorySource: consolidated,
-      intersessionMemoryUpdatedAt: now
+      intersessionMemoryUpdatedAt: now,
+      intersessionCompactOutdated: true
     });
   } catch (err) {
     // Background processing - errors are non-critical, log and continue.
@@ -3720,7 +3784,10 @@ app.get("/api/admin/intersession-memory/:userId", requireAdminAuth, async (req, 
     const snap = await usersRef.child(userId).once("value");
     const userData = snap.val() || {};
     const memorySource = normalizeIntersessionSourceFromUserData(userData, buildDefaultPromptRegistry());
-    const memoryCompact = buildIntersessionCompactRuntime(memorySource).trim();
+    const storedCompact = typeof userData.intersessionMemoryCompact === "string"
+      ? userData.intersessionMemoryCompact.trim()
+      : "";
+    const memoryCompact = storedCompact || buildIntersessionCompactRuntime(memorySource).trim();
     return res.json({
       memory: memorySource,
       memorySource,
@@ -5666,21 +5733,86 @@ app.post("/chat", async (req, res) => {
       });
     }
 
-    function getUserIntersessionMemory(userData) {
+    function getStoredIntersessionCompact(userData) {
       if (!userData || typeof userData !== "object") {
         return "";
-      }
-
-      const source = normalizeIntersessionSourceFromUserData(userData, buildDefaultPromptRegistry());
-      const compactFromSource = buildIntersessionCompactRuntime(source).trim();
-      if (source || compactFromSource) {
-        return compactFromSource;
       }
 
       const compactStored = typeof userData.intersessionMemoryCompact === "string"
         ? userData.intersessionMemoryCompact.trim()
         : "";
-      return compactStored || "";
+      if (compactStored) {
+        return compactStored;
+      }
+
+      const source = normalizeIntersessionSourceFromUserData(userData, buildDefaultPromptRegistry());
+      return buildIntersessionCompactRuntime(source).trim();
+    }
+
+    function appendIntersessionFailureNote(compactText = "") {
+      const base = String(compactText || "").trim() || INTERSESSION_COMPACT_EMPTY_NOTE;
+      if (base.includes("Derniere mise a jour memoire echouee.")) {
+        return base;
+      }
+      return `${base}\n${INTERSESSION_COMPACT_FAILURE_NOTE}`;
+    }
+
+    async function runIntersessionCompactAttempt(memorySource, timeoutMs = 10000) {
+      const defaults = buildDefaultPromptRegistry();
+      const systemPrompt = String(activePromptRegistry.COMPACT_INTERSESSION_RUNTIME_MEMORY || defaults.COMPACT_INTERSESSION_RUNTIME_MEMORY || "").trim();
+      const source = String(memorySource || "").trim();
+      const userPrompt = `
+[MEMOIRE_INTERSESSION_SOURCE]
+${source || "(vide)"}
+
+[CONTRAT]
+Reponds strictement en JSON: {"items": ["..."]}
+`;
+
+      let timeoutHandle = null;
+      const requestPromise = client.chat.completions.create({
+        model: MODEL_IDS.analysis,
+        max_completion_tokens: 500,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt }
+        ]
+      });
+
+      const timeoutPromise = new Promise((_, reject) => {
+        timeoutHandle = setTimeout(() => {
+          reject(new Error(`intersession_compact_timeout_${timeoutMs}ms`));
+        }, Math.max(1000, timeoutMs));
+      });
+
+      try {
+        const response = await Promise.race([requestPromise, timeoutPromise]);
+        const raw = String(response?.choices?.[0]?.message?.content || "").trim();
+        const items = extractRuntimeCompactItems(raw);
+        const finishReason = typeof response?.choices?.[0]?.finish_reason === "string"
+          ? response.choices[0].finish_reason
+          : null;
+
+        if (!raw) {
+          throw new Error("intersession_compact_empty_output");
+        }
+
+        if (!Array.isArray(items)) {
+          throw new Error("intersession_compact_invalid_items");
+        }
+
+        return {
+          ok: true,
+          items,
+          raw,
+          finishReason,
+          model: typeof response?.model === "string" ? response.model : null
+        };
+      } finally {
+        if (timeoutHandle) {
+          clearTimeout(timeoutHandle);
+        }
+      }
     }
 
     async function getFreshUserDataIfRefreshForced(userData) {
@@ -5700,11 +5832,11 @@ app.post("/chat", async (req, res) => {
     async function loadCurrentUserIntersessionMemory() {
       const cachedUserData = await userProfilePromise;
       const userData = await getFreshUserDataIfRefreshForced(cachedUserData);
-      return getUserIntersessionMemory(userData);
+      return getStoredIntersessionCompact(userData);
     }
 
     async function prepareIntersessionMemoryForTurn(flagsSnapshot) {
-      if (!userId || userId === "u_anon") {
+      if (!userId || userId === "u_anon" || isPrivateConversation === true) {
         return {
           intersessionMemoryForThisTurn: "",
           intersessionMemoryRuntime: "",
@@ -5718,52 +5850,112 @@ app.post("/chat", async (req, res) => {
         ? flagsSnapshot.turnsUntilIntersessionRefresh
         : 0;
       const cachedUserData = await userProfilePromise;
-      let userData = await getFreshUserDataIfRefreshForced(cachedUserData);
+      const userData = await getFreshUserDataIfRefreshForced(cachedUserData);
+      const source = normalizeIntersessionSourceFromUserData(userData, buildDefaultPromptRegistry());
+      const storedCompact = getStoredIntersessionCompact(userData);
+      const compactMissing = !storedCompact;
+      const outdated = userData?.intersessionCompactOutdated === true;
+      const forcedByManualEdit = userData?.intersessionRefreshForced === true;
+      const mustRefreshCompact = compactMissing || outdated || forcedByManualEdit;
 
-      const hasForcedRefreshLock = userData && userData.intersessionRefreshForced === true;
-      const forceRefreshNow = currentTurnsUntil > 0 && hasForcedRefreshLock;
-      const needsInjection = currentTurnsUntil === 0 || forceRefreshNow;
-      let intersessionMemoryForThisTurn = "";
-      let intersessionMemoryRuntime = getUserIntersessionMemory(userData);
+      let runtimeCompact = storedCompact || (source ? buildIntersessionCompactRuntime(source).trim() : "");
 
-      if (needsInjection) {
-        const source = normalizeIntersessionSourceFromUserData(userData, buildDefaultPromptRegistry());
-        const compact = buildIntersessionCompactRuntime(source).trim();
-        intersessionMemoryForThisTurn = compact;
-        intersessionMemoryRuntime = compact;
+      if (mustRefreshCompact) {
+        const refreshReason = compactMissing
+          ? "compact_missing"
+          : forcedByManualEdit
+            ? "manual_edit_force"
+            : "outdated_flag";
 
-        const storedCompact = userData && typeof userData.intersessionMemoryCompact === "string"
-          ? userData.intersessionMemoryCompact.trim()
-          : "";
-        const shouldPersistCompact = compact !== storedCompact;
+        console.info("[INTERSESSION_COMPACT_REFRESH_START]", {
+          userId,
+          reason: refreshReason,
+          compactMissing,
+          outdated,
+          forcedByManualEdit
+        });
 
-        if (hasForcedRefreshLock) {
+        const attempts = [];
+        let successPayload = null;
+        for (let attempt = 1; attempt <= 3; attempt += 1) {
+          const startedAtMs = Date.now();
           try {
-            await usersRef.child(userId).update({
-              intersessionMemoryCompact: compact || "",
-              intersessionRefreshForced: false
+            const attemptResult = await runIntersessionCompactAttempt(source, 10000);
+            const durationMs = Date.now() - startedAtMs;
+            attempts.push({
+              attempt,
+              status: "success",
+              durationMs,
+              finishReason: attemptResult.finishReason || null,
+              itemCount: Array.isArray(attemptResult.items) ? attemptResult.items.length : 0
             });
-          } catch {
-            // Ignore a best-effort refresh-flag reset failure.
-          }
-        } else if (shouldPersistCompact) {
-          try {
-            await usersRef.child(userId).update({ intersessionMemoryCompact: compact || "" });
-          } catch {
-            // Ignore a best-effort compact-memory cache failure.
+            console.info("[INTERSESSION_COMPACT_ATTEMPT]", {
+              userId,
+              attempt,
+              status: "success",
+              durationMs,
+              finishReason: attemptResult.finishReason || null,
+              itemCount: Array.isArray(attemptResult.items) ? attemptResult.items.length : 0
+            });
+            successPayload = attemptResult;
+            break;
+          } catch (error) {
+            const durationMs = Date.now() - startedAtMs;
+            const message = error && error.message ? error.message : String(error);
+            attempts.push({ attempt, status: "failed", durationMs, error: message });
+            console.warn("[INTERSESSION_COMPACT_ATTEMPT]", {
+              userId,
+              attempt,
+              status: "failed",
+              durationMs,
+              error: message
+            });
           }
         }
 
-        return {
-          intersessionMemoryForThisTurn,
-          intersessionMemoryRuntime: intersessionMemoryRuntime || "",
-          nextTurnsUntilIntersessionRefresh: 8
-        };
+        if (successPayload) {
+          runtimeCompact = formatRuntimeCompactMemory(successPayload.items);
+          try {
+            await usersRef.child(userId).update({
+              intersessionMemoryCompact: runtimeCompact,
+              intersessionCompactOutdated: false,
+              intersessionRefreshForced: false
+            });
+          } catch (error) {
+            console.warn("[INTERSESSION_COMPACT_PERSIST_FAILED]", {
+              userId,
+              error: error && error.message ? error.message : String(error)
+            });
+          }
+
+          console.info("[INTERSESSION_COMPACT_REFRESH_RESULT]", {
+            userId,
+            status: "success",
+            attempts: attempts.length,
+            itemCount: Array.isArray(successPayload.items) ? successPayload.items.length : 0
+          });
+        } else {
+          runtimeCompact = appendIntersessionFailureNote(storedCompact || "");
+          console.error("[INTERSESSION_COMPACT_FALLBACK_USED]", {
+            userId,
+            status: "fallback",
+            attempts: attempts.length,
+            keptOutdated: true,
+            injectedFailureNote: true
+          });
+        }
       }
 
+      const safeRuntimeCompact = String(runtimeCompact || "").trim() || INTERSESSION_COMPACT_EMPTY_NOTE;
+      console.info("[INTERSESSION_LONGTERM_INJECTION]", {
+        userId,
+        hasFailureNote: safeRuntimeCompact.includes("Derniere mise a jour memoire echouee."),
+        compactLength: safeRuntimeCompact.length
+      });
+
       return {
-        intersessionMemoryForThisTurn: "",
-        intersessionMemoryRuntime: intersessionMemoryRuntime || "",
+        intersessionMemoryForThisTurn: safeRuntimeCompact,
+        intersessionMemoryRuntime: safeRuntimeCompact,
         nextTurnsUntilIntersessionRefresh: Math.max(0, currentTurnsUntil - 1)
       };
     }
