@@ -576,7 +576,7 @@
     }
 
     .sensitive-modal-overlay {
-      align-items: flex-start;
+      /* Modal centered on visible viewport */
     }
 
     .usage-modal {
@@ -1914,14 +1914,7 @@
         const cancelBtn = overlay.querySelector("#sensitiveActionModalCancel");
         const confirmBtn = overlay.querySelector("#sensitiveActionModalConfirm");
 
-        const anchorRect = anchorEl && typeof anchorEl.getBoundingClientRect === "function"
-          ? anchorEl.getBoundingClientRect()
-          : null;
-        const preferredTop = anchorRect && Number.isFinite(anchorRect.top)
-          ? Math.round(anchorRect.top - 8)
-          : 72;
-        const clampedTop = Math.max(20, Math.min(preferredTop, Math.max(20, window.innerHeight - 260)));
-        overlay.style.paddingTop = `${clampedTop}px`;
+        // Modal centers naturally on viewport via flexbox
 
         titleEl.textContent = title || "Confirmation";
         textEl.textContent = text || "Action irreversible.";
