@@ -46,6 +46,7 @@ function baseInput(overrides = {}) {
     stagnationTurns: 0,
     attentionWindow: "open",
     closureIntent: false,
+    dependencyCareMessagePending: false,
     engagementAllianceAnalysis: null,
     message: "",
     recentHistory: [],
@@ -237,6 +238,18 @@ check("secondary tension is disabled during aggressive discharge", () => {
     dischargeAnalysis: { aggressiveDischargeDirectedToBot: true }
   }));
   assert(out.secondaryTension === null, "expected secondaryTension=null when aggressive discharge is detected");
+});
+
+check("dependency care pending activates need_human_support", () => {
+  const out = buildPostureDecision(baseInput({
+    detectedState: "exploration",
+    dependencyCareMessagePending: "high",
+    allianceSignal: "fragile"
+  }));
+  assert(out.conversationState === "need_human_support", `expected need_human_support, got ${out.conversationState}`);
+  assert(out.intent === "tenir le point et ouvrir doucement vers un appui humain", `unexpected intent: ${out.intent}`);
+  assert(out.phraseLengthPolicy === "courte", `expected courte, got ${out.phraseLengthPolicy}`);
+  assert(out.secondaryTension && out.secondaryTension.family === "alliance_rupture", `expected alliance_rupture tension, got ${out.secondaryTension && out.secondaryTension.family}`);
 });
 
 check("election tie-break reason: discharge priority", () => {

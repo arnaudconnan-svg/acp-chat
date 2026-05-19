@@ -6660,6 +6660,7 @@ Reponds strictement en JSON: {"items": ["..."]}
       currentStagnationWindow: newFlags.stagnationWindow,
       attentionWindow: newFlags.attentionWindow,
       closureIntent: newFlags.closureIntent,
+      dependencyCareMessagePending: newFlags.dependencyCareMessagePending || flags.dependencyCareMessagePending || false,
       // C2 per-turn attention analysis (periodic) + rupture analysis (event-driven)
       attentionAnalysis,
       allianceRuptureAnalysis,

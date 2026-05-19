@@ -264,6 +264,7 @@
       exploration_open: "exploration ouverte",
       exploration_restrained: "exploration restreinte",
       stabilization: "stabilisation",
+      need_human_support: "besoin d'appui humain",
       alliance_rupture: "rupture d'alliance",
       closure: "cl\u00f4ture",
       discharge_regulated: "d\u00e9charge r\u00e9gul\u00e9e",

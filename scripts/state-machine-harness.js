@@ -46,7 +46,7 @@ function resolve(overrides = {}) {
 }
 
 // ─── 1. CONVERSATION_STATES completeness ─────────────────────────────────────
-const EXPECTED_STATES = ["exploration", "discharge", "info", "stabilization", "alliance_rupture", "closure", "n1_crisis", "n2_crisis"];
+const EXPECTED_STATES = ["exploration", "discharge", "info", "stabilization", "alliance_rupture", "need_human_support", "closure", "n1_crisis", "n2_crisis"];
 assert(Array.isArray(CONVERSATION_STATES), "CONVERSATION_STATES is an array");
 for (const s of EXPECTED_STATES) {
   assert(CONVERSATION_STATES.includes(s), `CONVERSATION_STATES includes '${s}'`);
@@ -150,13 +150,14 @@ assert(baseStateOf("info_features") === "info", "baseStateOf: info_features -> i
 assert(baseStateOf("info_psychoeducation") === "info", "baseStateOf: info_psychoeducation -> info");
 assert(baseStateOf("stabilization") === "stabilization", "baseStateOf: stabilization -> stabilization");
 assert(baseStateOf("alliance_rupture") === "alliance_rupture", "baseStateOf: alliance_rupture -> alliance_rupture");
+assert(baseStateOf("need_human_support") === "need_human_support", "baseStateOf: need_human_support passthrough");
 assert(baseStateOf("closure") === "closure", "baseStateOf: closure -> closure");
 assert(baseStateOf("n1_crisis") === "n1_crisis", "baseStateOf: n1_crisis passthrough");
 
 // ─── 6. STATE_* tables consistency ───────────────────────────────────────────
 const allStates = [
   "exploration_open", "exploration_restrained", "stabilization",
-  "alliance_rupture", "closure", "discharge_regulated", "discharge_dysregulated",
+  "alliance_rupture", "need_human_support", "closure", "discharge_regulated", "discharge_dysregulated",
   "info_pure", "info_psychoeducation", "info_features", "n1_crisis", "n2_crisis"
 ];
 for (const st of allStates) {

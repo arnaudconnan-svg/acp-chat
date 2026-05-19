@@ -67,8 +67,26 @@ check("Phase B overrides exploration", () => {
   assert(resolveConversationState({ detectedState: "exploration", closureIntent: true }) === "closure");
 });
 
+check("dependency care pending overrides exploration and info", () => {
+  assert(resolveConversationState({ detectedState: "exploration", dependencyCareMessagePending: true }) === "need_human_support");
+  assert(resolveConversationState({ detectedState: "info_features", dependencyCareMessagePending: true }) === "need_human_support");
+});
+
+check("dependency care pending keeps support state through alliance rupture", () => {
+  assert(resolveConversationState({ detectedState: "exploration", dependencyCareMessagePending: true, allianceSignal: "rupture" }) === "need_human_support");
+});
+
 check("isValidTransition blocks closure -> stabilization", () => {
   assert(isValidTransition("closure", "stabilization") === false);
+});
+
+check("isValidTransition allows closure -> need_human_support", () => {
+  assert(isValidTransition("closure", "need_human_support") === true);
+});
+
+check("isValidTransition supports need_human_support transitions", () => {
+  assert(isValidTransition("need_human_support", "need_human_support") === true);
+  assert(isValidTransition("need_human_support", "exploration") === true);
 });
 
 check("state tables contain no contact key", () => {
