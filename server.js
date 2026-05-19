@@ -151,14 +151,6 @@ const {
 } = require("./lib/pipeline");
 const { buildDefaultPromptRegistry } = require("./lib/prompts");
 const {
-  hasSignalLeakRisk,
-  stripSignalLeakFragments,
-  canStrictlyStripSignalLeakWithoutAmputating,
-  validateReplyContract,
-  buildRepairDirectives,
-  buildDeterministicFallbackReply
-} = require("./lib/output-guard");
-const {
   buildTopChips,
   buildDirectivityText,
   buildResponseDebugMeta: _buildResponseDebugMeta
@@ -6778,8 +6770,7 @@ Reponds strictement en JSON: {"items": ["..."]}
       });
     }
     
-    // 4) G?n?ration principale de la r?ponse selon le mode d?tect?,
-    // puis application d'un pipeline de correction si le contenu est en conflit mod?le.
+    // 4) Generation principale de la reponse selon le mode detecte.
     markChatStage("reply_generation");
 
     // Blocs 3+4 : injection m?moire longue terme (intersession compress?e).
@@ -6804,19 +6795,15 @@ Reponds strictement en JSON: {"items": ["..."]}
     throwIfCanceled();
 
     let reply = generatedBase.reply;
-    let shouldUpdateMemory = generatedBase.shouldUpdateMemory === true;
-    let memoryUpdateSignalSource = generatedBase.signalSource || "unknown";
 
-    postureDecision.memoryUpdateDecision = shouldUpdateMemory ? "update" : "skip";
-    postureDecision.memoryUpdateReason = shouldUpdateMemory ? "llm_signal_new_content" : "llm_signal_no_new_content";
-    postureDecision.memoryUpdateSource = memoryUpdateSignalSource;
+    postureDecision.memoryUpdateDecision = "update";
+    postureDecision.memoryUpdateReason = "deterministic_runtime_always_update";
+    postureDecision.memoryUpdateSource = "runtime";
 
     logChatDecision("memory_update_decision", {
       decision: postureDecision.memoryUpdateDecision,
       reason: postureDecision.memoryUpdateReason,
       source: postureDecision.memoryUpdateSource,
-      llmSignal: shouldUpdateMemory,
-      signalSource: memoryUpdateSignalSource,
       previousMemoryStateCounts: {
         sessionStableContext: Array.isArray(previousMemoryState?.sessionStableContext) ? previousMemoryState.sessionStableContext.length : 0,
         onGoingMovements: Array.isArray(previousMemoryState?.onGoingMovements) ? previousMemoryState.onGoingMovements.length : 0,
@@ -6825,67 +6812,6 @@ Reponds strictement en JSON: {"items": ["..."]}
     });
 
     let relanceAnalysis = null;
-    let outputGuardTriggered = false;
-    let outputGuardRegenerationUsed = false;
-    let outputGuardFallbackUsed = false;
-    let outputGuardViolations = [];
-    let outputGuardEvidence = [];
-
-    const initialGuardResult = validateReplyContract({
-      reply,
-      postureDecision,
-      message
-    });
-
-    if (!initialGuardResult.isValid) {
-      outputGuardTriggered = true;
-      outputGuardViolations = initialGuardResult.violations;
-      outputGuardEvidence = initialGuardResult.evidence;
-
-      const repairDirectives = buildRepairDirectives(initialGuardResult.violations);
-      const retryPostureDecision = {
-        ...postureDecision,
-        outputGuardRepairDirectives: repairDirectives
-      };
-
-      const retryGenerated = await generateReply({
-        message,
-        history: recentHistory,
-        memory: recallRouting.isRecallAttempt === true ? memoryForReply : previousMemory,
-        postureDecision: retryPostureDecision,
-        interpretationRejection: safeInterpretationRejection,
-        intersessionMemoryForTurn: intersessionMemoryForThisTurn,
-        promptRegistry: activePromptRegistry,
-      });
-      throwIfCanceled();
-
-      outputGuardRegenerationUsed = true;
-      reply = retryGenerated.reply;
-
-      const retryGuardResult = validateReplyContract({
-        reply,
-        postureDecision,
-        message
-      });
-
-      if (!retryGuardResult.isValid) {
-        outputGuardFallbackUsed = true;
-        outputGuardViolations = retryGuardResult.violations;
-        outputGuardEvidence = retryGuardResult.evidence;
-
-        reply = buildDeterministicFallbackReply({
-          conversationState: postureDecision.conversationState,
-          formalAddress: postureDecision.formalAddress === true
-        });
-      }
-
-      if (hasSignalLeakRisk(reply)) {
-        const stripped = stripSignalLeakFragments(reply);
-        if (canStrictlyStripSignalLeakWithoutAmputating(reply, stripped)) {
-          reply = stripped;
-        }
-      }
-    }
 
     if (detectedState === "exploration") {
       relanceAnalysis = await analyzeExplorationRelance({
@@ -6955,7 +6881,7 @@ Reponds strictement en JSON: {"items": ["..."]}
     // 5) Mise a jour memoire (fire-and-forget unifie).
     // The response always exposes the memory used for this turn (N-1), while
     // update/finalization/persistence runs in background for the next turn.
-    // Conditional launch based on LLM signal: skip if LLM signals no new content.
+    // Runtime rule: movement memory is refreshed every turn.
     let newMemory = previousMemory;
     const effectiveMemoryPrioritySignalForDebug = postureDecision.memoryPrioritySignal || "normal";
     newFlags.dependencyAnalysisTurnsUntilRefresh = 1;
@@ -6978,11 +6904,7 @@ Reponds strictement en JSON: {"items": ["..."]}
     const _lastActivityMs = previousConversationActivityMs;
     const _prioritySignal = effectiveMemoryPrioritySignalForDebug;
 
-    // Background memory task: only launch if shouldUpdateMemory is true
-    let backgroundMemoryTask = null;
-
-    if (shouldUpdateMemory === true) {
-      backgroundMemoryTask = (async () => {
+    let backgroundMemoryTask = (async () => {
         try {
           const memoryUpdateContract = await updateMemory(
             _prevMem,
@@ -7098,17 +7020,6 @@ Reponds strictement en JSON: {"items": ["..."]}
         });
       }
       })();
-    } else {
-      // Memory update skipped per LLM signal
-      logChatDecision("memory_update_skipped", {
-        decision: "skip",
-        reason: postureDecision.memoryUpdateReason,
-        source: postureDecision.memoryUpdateSource,
-        llmSignal: false,
-        signalSource: memoryUpdateSignalSource
-      });
-      backgroundMemoryTask = null;
-    }
 
     if (conversationId && backgroundMemoryTask) {
       trackConversationMemorySync(conversationId, backgroundMemoryTask);
@@ -7143,11 +7054,6 @@ Reponds strictement en JSON: {"items": ["..."]}
       // This one-turn offset is intentional for runtime latency and stability.
       memoryState: previousMemoryState,
       intersessionMemoryRuntime,
-      outputGuardTriggered,
-      outputGuardRegenerationUsed,
-      outputGuardFallbackUsed,
-      outputGuardViolations,
-      outputGuardEvidence,
       analyzerDeterministicEvidence,
       // Posture contract fields (V3)
       intent: postureDecision.intent,
