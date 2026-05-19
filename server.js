@@ -7378,6 +7378,29 @@ app.post("/chat/stream", async (req, res) => {
 });
 
 // Start the HTTP server after all routes and middleware are configured.
+
+// Streaming chat endpoint (Phase 2).
+// Pragmatic SSE version of /chat - MVP implementation.
+app.post("/chat/stream", async (req, res) => {
+  if (appConfig.enableChatStreaming !== true) {
+    return res.status(405).json({ error: "Chat streaming is not enabled", code: "streaming_disabled" });
+  }
+  
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no");
+  
+  // MVP: placeholder for Phase 2 full cloning
+  try {
+    res.write(`data: ${JSON.stringify({error: "Chat streaming MVP - full implementation pending"})}\n\n`);
+    res.end();
+  } catch (err) {
+    res.write(`data: ${JSON.stringify({error: "Chat streaming failed"})}\n\n`);
+    res.end();
+  }
+});
+
 app.listen(port, () => {
   logger.info({ event: "server_started", port, nodeEnv: appConfig.nodeEnv });
 
