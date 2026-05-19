@@ -10,8 +10,8 @@
     *, *::before, *::after { box-sizing: border-box; }
 
     @keyframes pageIn {
-      from { opacity: 0; transform: translateY(12px); }
-      to   { opacity: 1; transform: translateY(0); }
+      from { opacity: 0; }
+      to   { opacity: 1; }
     }
 
     html, body {
@@ -772,9 +772,8 @@
 
       function navigateAway(url, options = {}) {
         document.body.style.animation = "none";
-        document.body.style.transition = "opacity 0.32s ease, transform 0.32s ease";
+        document.body.style.transition = "opacity 0.32s ease";
         document.body.style.opacity = "0";
-        document.body.style.transform = "translateY(10px)";
         setTimeout(() => {
           if (options.replace === true) {
             window.location.replace(url);
@@ -817,7 +816,6 @@
         document.body.style.animation = "";
         document.body.style.transition = "";
         document.body.style.opacity = "";
-        document.body.style.transform = "";
       });
 
       async function init() {
