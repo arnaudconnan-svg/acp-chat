@@ -6686,23 +6686,6 @@ Reponds strictement en JSON: {"items": ["..."]}
     finalExplorationSignal = postureDecision.finalExplorationSignal;
     const { conversationState, consecutiveNonExplorationTurns } = postureDecision;
 
-    postureDecision.memoryUpdateDecision = shouldUpdateMemory ? "update" : "skip";
-    postureDecision.memoryUpdateReason = shouldUpdateMemory ? "llm_signal_new_content" : "llm_signal_no_new_content";
-    postureDecision.memoryUpdateSource = memoryUpdateSignalSource;
-
-    logChatDecision("memory_update_decision", {
-      decision: postureDecision.memoryUpdateDecision,
-      reason: postureDecision.memoryUpdateReason,
-      source: postureDecision.memoryUpdateSource,
-      llmSignal: shouldUpdateMemory,
-      signalSource: memoryUpdateSignalSource,
-      previousMemoryStateCounts: {
-        sessionStableContext: Array.isArray(previousMemoryState?.sessionStableContext) ? previousMemoryState.sessionStableContext.length : 0,
-        onGoingMovements: Array.isArray(previousMemoryState?.onGoingMovements) ? previousMemoryState.onGoingMovements.length : 0,
-        ancientMovements: Array.isArray(previousMemoryState?.ancientMovements) ? previousMemoryState.ancientMovements.length : 0
-      }
-    });
-
     Object.assign(newFlags, postureDecision.flagUpdates);
 
     // Observabilite: garder ce signal pour les logs pipeline.
@@ -6822,6 +6805,24 @@ Reponds strictement en JSON: {"items": ["..."]}
     let reply = generatedBase.reply;
     let shouldUpdateMemory = generatedBase.shouldUpdateMemory === true;
     let memoryUpdateSignalSource = generatedBase.signalSource || "unknown";
+
+    postureDecision.memoryUpdateDecision = shouldUpdateMemory ? "update" : "skip";
+    postureDecision.memoryUpdateReason = shouldUpdateMemory ? "llm_signal_new_content" : "llm_signal_no_new_content";
+    postureDecision.memoryUpdateSource = memoryUpdateSignalSource;
+
+    logChatDecision("memory_update_decision", {
+      decision: postureDecision.memoryUpdateDecision,
+      reason: postureDecision.memoryUpdateReason,
+      source: postureDecision.memoryUpdateSource,
+      llmSignal: shouldUpdateMemory,
+      signalSource: memoryUpdateSignalSource,
+      previousMemoryStateCounts: {
+        sessionStableContext: Array.isArray(previousMemoryState?.sessionStableContext) ? previousMemoryState.sessionStableContext.length : 0,
+        onGoingMovements: Array.isArray(previousMemoryState?.onGoingMovements) ? previousMemoryState.onGoingMovements.length : 0,
+        ancientMovements: Array.isArray(previousMemoryState?.ancientMovements) ? previousMemoryState.ancientMovements.length : 0
+      }
+    });
+
     let relanceAnalysis = null;
     let outputGuardTriggered = false;
     let outputGuardRegenerationUsed = false;
@@ -7286,7 +7287,7 @@ Reponds strictement en JSON: {"items": ["..."]}
         ? n1Fallback()
         : modeForCatch === "discharge"
           ? "Je suis la."
-          : "Desole, reformule.";
+          : "Un probleme technique est survenu. Reessaie dans un instant.";
     const fallbackDebugMeta = buildFallbackResponseDebugMeta({
       memory: previousMemoryForCatch,
       memoryBeforeSanitization: typeof previousMemoryRewriteDebugForCatch?.beforeSanitization === "string"
