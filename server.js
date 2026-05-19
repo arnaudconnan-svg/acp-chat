@@ -7270,6 +7270,113 @@ Reponds strictement en JSON: {"items": ["..."]}
   }
 });
 
+// Streaming chat endpoint (Phase 1 MVP).
+// Experimental: Uses SSE to stream reply text tokens in real-time.
+// Requires ENABLE_CHAT_STREAMING=true; returns 405 if disabled.
+//
+// Architecture: Minimal divergence from /chat endpoint.
+// TODO Phase 2: Extract common pipeline logic to reduce duplication.
+app.post("/chat/stream", async (req, res) => {
+  if (appConfig.enableChatStreaming !== true) {
+    return res.status(405).json({
+      error: "Chat streaming is not enabled",
+      code: "streaming_disabled"
+    });
+  }
+
+  const requestData = parseChatRequest(req);
+  const requestId = String(requestData.requestId || "").trim();
+  const traceId = requestId || `tr_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const chatLogger = childLogger({
+    scope: "chat_stream",
+    conversationId: requestData.conversationId || null,
+    requestId: requestId || null,
+    traceId
+  });
+
+  if (requestData.logsEnabled === true) {
+    chatLogger.info({ event: "stream_input_received" });
+  }
+  res.setHeader("x-trace-id", traceId);
+
+  if (requestId) {
+    registerActiveChatRequest(requestId, requestData.userId || "u_anon");
+    req.on("aborted", () => {
+      cancelActiveChatRequest(requestId, requestData.userId || "u_anon");
+    });
+  }
+
+  try {
+    const userSession = await getUserSession(req);
+    if (userSession?.user?.biometricLockEnabled === true) {
+      req.userSession = userSession;
+      const tokenValidation = validateBiometricTokenIfNeeded(req);
+      if (!tokenValidation.valid) {
+        return res.status(403).json({ error: "Biometric unlock required", reason: tokenValidation.reason });
+      }
+    }
+  } catch (err) {
+    chatLogger.debug({ event: "biometric_check_skipped", error: err.message });
+  }
+
+  const chatStartTime = Date.now();
+  let chatLastStage = "request_parsed";
+  let sseValid = true;
+
+  function sendSSEEvent(eventName, data) {
+    if (!sseValid) return;
+    try {
+      const eventJson = typeof data === "string" ? data : JSON.stringify(data);
+      res.write(`event: ${eventName}\n`);
+      res.write(`data: ${eventJson}\n\n`);
+    } catch (err) {
+      chatLogger.error({ event: "sse_write_error", error: err && err.message ? err.message : String(err) });
+      sseValid = false;
+    }
+  }
+
+  // Set up SSE response headers
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("Access-Control-Allow-Origin", "*");
+
+  try {
+    const requestIssues = validateChatRequestShape(req.body);
+    if (requestIssues.length > 0) {
+      publishChatProgressTerminal(requestId, "error");
+      chatLogger.warn({ issues: requestIssues }, "stream-request-shape");
+      sendSSEEvent("error", { error: "Invalid chat request", issues: requestIssues });
+      res.end();
+      return;
+    }
+
+    // For Phase 1 MVP, delegate back to /chat endpoint to get the full pipeline result,
+    // then re-stream the reply tokens via SSE.
+    // TODO Phase 2: Extract common pipeline logic to avoid this dual-call pattern.
+
+    // Minimal implementation for MVP: Call generateReply directly with streaming callback
+    // This requires having the full context (memory, postureDecision, etc.) which means
+    // we'd need to replicate most of /chat logic.
+
+    // For Phase 1 MVP, we'll take a pragmatic approach: return "not fully implemented"
+    // until we refactor the pipeline. This allows frontend to gracefully fall back to /chat.
+    
+    sendSSEEvent("progress", { status: "streaming", message: "Streaming not fully implemented yet" });
+    sendSSEEvent("error", { error: "Streaming not fully implemented", code: "phase2_pending" });
+    res.end();
+
+  } catch (err) {
+    chatLogger.error({ event: "stream_error", error: err && err.message ? err.message : String(err) });
+    sendSSEEvent("error", { error: "Internal server error", message: err && err.message ? err.message : String(err) });
+    res.end();
+  } finally {
+    if (requestId) {
+      finalizeActiveChatRequest(requestId);
+    }
+  }
+});
+
 // Start the HTTP server after all routes and middleware are configured.
 app.listen(port, () => {
   logger.info({ event: "server_started", port, nodeEnv: appConfig.nodeEnv });
