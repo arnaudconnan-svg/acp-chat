@@ -4529,11 +4529,6 @@ function parseChatRequest(req) {
   const mailsEnabled = req.body?.mailsEnabled !== false;
   const logsEnabled = req.body?.logsEnabled === true;
   const adminUiActive = req.body?.adminUiActive === true;
-  const regenerationModeRaw = typeof req.body?.regenerationMode === "string" ? req.body.regenerationMode.trim() : "";
-  const regenerationMode = regenerationModeRaw === "from_partial_reply" ? "from_partial_reply" : "none";
-  const partialAssistantText = typeof req.body?.partialAssistantText === "string"
-    ? req.body.partialAssistantText.slice(0, 12000)
-    : "";
   const titleDenyList = Array.isArray(req.body?.titleDenyList)
     ? req.body.titleDenyList
         .map(value => String(value || "").trim())
@@ -4554,9 +4549,7 @@ function parseChatRequest(req) {
     titleDenyList,
     mailsEnabled,
     logsEnabled,
-    adminUiActive,
-    regenerationMode,
-    partialAssistantText
+    adminUiActive
   };
 }
 
@@ -4589,21 +4582,6 @@ function validateChatRequestShape(body = {}) {
 
   if (body.memory !== undefined && typeof body.memory !== "string") {
     return ["memory: not_string"];
-  }
-
-  if (body.regenerationMode !== undefined) {
-    const safeRegenerationMode = typeof body.regenerationMode === "string" ? body.regenerationMode.trim() : "";
-    if (!safeRegenerationMode || !["none", "from_partial_reply"].includes(safeRegenerationMode)) {
-      return ["regenerationMode: invalid_value"];
-    }
-  }
-
-  if (body.partialAssistantText !== undefined && typeof body.partialAssistantText !== "string") {
-    return ["partialAssistantText: not_string"];
-  }
-
-  if (typeof body.partialAssistantText === "string" && body.partialAssistantText.length > 12000) {
-    return ["partialAssistantText: too_long"];
   }
 
   if (body.flags !== undefined && (typeof body.flags !== "object" || body.flags === null || Array.isArray(body.flags))) {
@@ -5024,9 +5002,6 @@ async function handleChatPost(req, res) {
     ? req.onTokenCallbackForChat
     : null;
   const requestData = parseChatRequest(req);
-  const regenerationPrefix = requestData.regenerationMode === "from_partial_reply"
-    ? String(requestData.partialAssistantText || "")
-    : "";
   const requestId = String(requestData.requestId || "").trim();
   // traceId: server-generated per-request, always present even without a client requestId.
   const traceId = requestId || `tr_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
@@ -5266,13 +5241,9 @@ async function handleChatPost(req, res) {
       return;
     }
 
-    const fallbackSuffix = requestData.regenerationMode === "from_partial_reply"
-      ? "\n[REGENERÉ]"
-      : (isEditedForCatch ? "\n[MODIFIÉ]" : "");
-
     await messagesRef.push({
       role: "assistant",
-      content: fallbackSuffix ? reply + fallbackSuffix : reply,
+      content: isEditedForCatch ? reply + "\n[MODIFIÉ]" : reply,
       timestamp: Date.now(),
       userId: userIdForCatch,
       conversationId: conversationIdForCatch,
@@ -5356,11 +5327,8 @@ async function handleChatPost(req, res) {
       titleDenyList,
       mailsEnabled,
       logsEnabled,
-      adminUiActive,
-      regenerationMode
+      adminUiActive
     } = requestData;
-
-    const isRegenerationRequest = regenerationMode === "from_partial_reply";
 
     conversationIdForCatch = conversationId;
     userIdForCatch = userId;
@@ -5585,7 +5553,7 @@ async function handleChatPost(req, res) {
       }
     }
     
-    if (!isPrivateConversation && !isRegenerationRequest) {
+    if (!isPrivateConversation) {
       const userMessagePushPromise = messagesRef.push({
         role: "user",
         content: isEdited ? message + "\n[MODIFIÉ]" : message,
@@ -5643,13 +5611,9 @@ async function handleChatPost(req, res) {
         return null;
       }
 
-      const assistantSuffix = isRegenerationRequest
-        ? "\n[REGENERÉ]"
-        : (isEdited ? "\n[MODIFIÉ]" : "");
-
       const pushedRef = await messagesRef.push({
         role: "assistant",
-        content: assistantSuffix ? reply + assistantSuffix : reply,
+        content: isEdited ? reply + "\n[MODIFIÉ]" : reply,
         timestamp: Date.now(),
         userId,
         conversationId,
@@ -5911,8 +5875,7 @@ async function handleChatPost(req, res) {
           memory: previousMemory,
           postureDecision: buildN2CrisisPostureDecision(),
           promptRegistry: n2PromptRegistry,
-          onTokenCallback: onTokenCallbackForChat,
-          regenerationPrefix
+          onTokenCallback: onTokenCallbackForChat
         });
         reply = n2Result.reply;
       } catch {
@@ -6833,7 +6796,6 @@ Reponds strictement en JSON: {"items": ["..."]}
       intersessionMemoryForTurn: intersessionMemoryForThisTurn,
       promptRegistry: activePromptRegistry,
       onTokenCallback: onTokenCallbackForChat,
-      regenerationPrefix,
     });
     throwIfCanceled();
 

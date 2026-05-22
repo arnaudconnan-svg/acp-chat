@@ -4128,105 +4128,7 @@
       send({ skipUserHistoryInsert: nextMessageEntry.alreadyInserted === true });
     }
 
-    function disableInterruptedRegenerationButtons() {
-      document.querySelectorAll(".stream-regenerate-btn").forEach((btn) => {
-        btn.disabled = true;
-        btn.setAttribute("aria-disabled", "true");
-        btn.style.opacity = "0.55";
-        btn.style.cursor = "not-allowed";
-      });
-    }
-
-    function getLastInterruptedAssistantHistoryIndex(history = loadHistory()) {
-      const safeHistory = Array.isArray(history) ? history : [];
-      for (let i = safeHistory.length - 1; i >= 0; i -= 1) {
-        const entry = safeHistory[i];
-        if (
-          entry &&
-          entry.role === "assistant" &&
-          entry.interruptedStream &&
-          entry.interruptedStream.active === true
-        ) {
-          return i;
-        }
-      }
-      return -1;
-    }
-
-    function appendInterruptedRegenerationControls(contentWrap, options = {}) {
-      if (!contentWrap) return null;
-      if (contentWrap.querySelector(".stream-regenerate-btn")) return null;
-
-      const partialReply = String(options.partialReply || "").trim();
-      if (!partialReply) return null;
-
-      const history = loadHistory();
-      const historyIndex = Number.isInteger(options.historyIndex) ? options.historyIndex : -1;
-      const lastInterruptedIndex = getLastInterruptedAssistantHistoryIndex(history);
-      const latestHistoryIndex = history.length - 1;
-      if (historyIndex >= 0 && lastInterruptedIndex >= 0 && historyIndex !== lastInterruptedIndex) {
-        return null;
-      }
-      // Regeneration is allowed only on the latest bot response in history.
-      if (historyIndex >= 0 && historyIndex !== latestHistoryIndex) {
-        return null;
-      }
-
-      const fallbackPrompt = [...history]
-        .reverse()
-        .find((entry) => entry && entry.role === "user" && typeof entry.content === "string")
-        ?.content || "";
-      const regenerationPrompt = String(options.regenerationPrompt || "").trim() || String(fallbackPrompt || "").trim();
-
-      const appendix = document.createElement("div");
-      appendix.style.marginTop = "8px";
-      appendix.style.display = "flex";
-      appendix.style.alignItems = "center";
-      appendix.style.gap = "8px";
-      appendix.style.flexWrap = "wrap";
-
-      const text = document.createElement("span");
-      text.textContent = "R\u00e9ponse \u00e0 r\u00e9g\u00e9n\u00e9rer.";
-      text.style.fontSize = "12px";
-      text.style.color = "#567176";
-
-      const regenerateBtn = document.createElement("button");
-      regenerateBtn.type = "button";
-      regenerateBtn.className = "stream-regenerate-btn";
-      regenerateBtn.textContent = "R\u00e9g\u00e9n\u00e9rer la r\u00e9ponse";
-      regenerateBtn.setAttribute("aria-label", "R\u00e9g\u00e9n\u00e9rer la r\u00e9ponse");
-      regenerateBtn.title = "R\u00e9g\u00e9n\u00e9rer la r\u00e9ponse";
-      regenerateBtn.style.fontSize = "12px";
-      regenerateBtn.style.padding = "5px 10px";
-      regenerateBtn.style.borderRadius = "999px";
-      regenerateBtn.style.border = "1px solid rgba(36, 94, 102, 0.4)";
-      regenerateBtn.style.background = "rgba(255, 255, 255, 0.82)";
-      regenerateBtn.style.color = "#245e66";
-      regenerateBtn.style.cursor = "pointer";
-
-      regenerateBtn.addEventListener("click", async () => {
-        if (isSending) return;
-        regenerateBtn.disabled = true;
-        regenerateBtn.setAttribute("aria-disabled", "true");
-        regenerateBtn.style.opacity = "0.55";
-        regenerateBtn.style.cursor = "not-allowed";
-        const input = document.getElementById("input");
-        if (input) {
-          input.value = regenerationPrompt;
-        }
-        await send({
-          skipUserHistoryInsert: true,
-          regenerationFromPartialReply: partialReply,
-          regenerationUserMessage: regenerationPrompt,
-          regenerationInterruptedHistoryIndex: historyIndex >= 0 ? historyIndex : lastInterruptedIndex
-        });
-      });
-
-      appendix.appendChild(text);
-      appendix.appendChild(regenerateBtn);
-      contentWrap.appendChild(appendix);
-      return regenerateBtn;
-    }
+    
     
     function ensureBootOverlay() {
       if (bootOverlayEl) return bootOverlayEl;
@@ -5321,95 +5223,7 @@
       });
     }
 
-    function upsertInterruptedAssistantHistory(partialReply, regenerationPrompt = "") {
-      const partialText = String(partialReply || "").trim();
-      if (!partialText) return false;
-
-      const history = loadHistory();
-      const nextRegenerationPrompt = String(regenerationPrompt || "").trim();
-      const lastIndex = history.length - 1;
-      const lastEntry = lastIndex >= 0 ? history[lastIndex] : null;
-      const shouldUpdateLast =
-        !!lastEntry &&
-        lastEntry.role === "assistant" &&
-        lastEntry.interruptedStream &&
-        lastEntry.interruptedStream.active === true;
-
-      if (shouldUpdateLast) {
-        const previousPrompt = String(lastEntry.interruptedStream.regenerationPrompt || "").trim();
-        history[lastIndex] = {
-          ...lastEntry,
-          content: partialText,
-          interruptedStream: {
-            active: true,
-            regenerationPrompt: nextRegenerationPrompt || previousPrompt
-          },
-          t: Date.now()
-        };
-      } else {
-        history.push({
-          role: "assistant",
-          content: partialText,
-          debug: [],
-          debugMeta: null,
-          stateSnapshot: null,
-          interruptedStream: {
-            active: true,
-            regenerationPrompt: nextRegenerationPrompt
-          },
-          t: Date.now()
-        });
-      }
-
-      saveHistory(history);
-      return true;
-    }
-
-    function replaceLatestInterruptedAssistantHistory(
-      finalReply,
-      debug,
-      debugMeta = null,
-      id = null,
-      stateSnapshot = null,
-      signals = null,
-      targetIndex = -1
-    ) {
-      const history = loadHistory();
-
-      if (!Number.isInteger(targetIndex) || targetIndex < 0 || targetIndex >= history.length) {
-        targetIndex = getLastInterruptedAssistantHistoryIndex(history);
-      }
-
-      if (targetIndex < 0) {
-        return false;
-      }
-
-      const entry = history[targetIndex];
-      if (
-        !entry ||
-        entry.role !== "assistant" ||
-        !entry.interruptedStream ||
-        entry.interruptedStream.active !== true
-      ) {
-        return false;
-      }
-
-      const safeSignals = normalizeSignalsForRequest(signals) || undefined;
-      history[targetIndex] = {
-        ...entry,
-        content: String(finalReply || ""),
-        debug: Array.isArray(debug) ? debug : [],
-        debugMeta: normalizeClientDebugMeta(debugMeta),
-        stateSnapshot: normalizeStoredStateSnapshot(stateSnapshot),
-        id: id && typeof id === "string" ? id : undefined,
-        t: Date.now(),
-        ...(safeSignals !== undefined ? { signals: safeSignals } : {})
-      };
-      delete history[targetIndex].interruptedStream;
-
-      saveHistory(history);
-      return true;
-    }
+    
     
     function pushHistory(role, content, debug, debugMeta = null, id = null, stateSnapshot = null, signals = null) {
       let conversationId = getConversationId();
@@ -7645,8 +7459,7 @@
           pulseScrollButton = false,
           progressive = true,
           historyIndex = -1,
-          debugMeta: debugMetaRaw = null,
-          interruptedStreamMeta = null
+          debugMeta: debugMetaRaw = null
       } = options;
       
       const chat = document.getElementById("chat");
@@ -8729,19 +8542,6 @@
         }
       }
 
-      if (
-        role === "bot" &&
-        interruptedStreamMeta &&
-        interruptedStreamMeta.active === true &&
-        !isOpeningGreetingMessage(rawText)
-      ) {
-        appendInterruptedRegenerationControls(contentWrap, {
-          regenerationPrompt: interruptedStreamMeta.regenerationPrompt || "",
-          partialReply: rawText,
-          historyIndex
-        });
-      }
-
       msg.appendChild(contentWrap);
       chat.appendChild(msg);
 
@@ -8782,11 +8582,7 @@
             progressive: false,
             pulseScrollButton: false,
             historyIndex: index,
-            debugMeta: m.debugMeta || null,
-            interruptedStreamMeta:
-              m && m.interruptedStream && typeof m.interruptedStream === "object"
-                ? m.interruptedStream
-                : null
+            debugMeta: m.debugMeta || null
           }
         );
       });
@@ -9699,25 +9495,15 @@
       _lastSendTs = now;
 
       const {
-        skipUserHistoryInsert = false,
-        regenerationFromPartialReply = "",
-        regenerationUserMessage = "",
-        regenerationInterruptedHistoryIndex = -1
+        skipUserHistoryInsert = false
       } = options;
       let shouldSkipUserHistoryInsert = skipUserHistoryInsert === true;
-      const regenerationPartialReply = typeof regenerationFromPartialReply === "string"
-        ? regenerationFromPartialReply.trim()
-        : "";
       
       const input = document.getElementById("input");
       const chat = document.getElementById("chat");
-      const nextMessage = regenerationPartialReply
-        ? String(regenerationUserMessage || input.value || "").trim()
-        : input.value.trim();
+      const nextMessage = input.value.trim();
       
       if (!nextMessage) return;
-
-      disableInterruptedRegenerationButtons();
 
       if (isSending) {
         if (editMode.active) {
@@ -9745,26 +9531,6 @@
         };
       
       let message = nextMessage;
-      const isRegenerationRequest = regenerationPartialReply.length > 0;
-
-      if (isRegenerationRequest && !isEditing) {
-        const history = loadHistory();
-        const lastUserIndex = getLastUserHistoryIndex(history);
-        const lastUserEntry = lastUserIndex >= 0 ? history[lastUserIndex] : null;
-        const lastUserContent = lastUserEntry && lastUserEntry.role === "user"
-          ? String(lastUserEntry.content || "").trim()
-          : "";
-
-        if (!lastUserContent) {
-          showTemporaryNotice("Regeneration impossible: dernier message utilisateur introuvable.");
-          return;
-        }
-
-        // Reuse the existing last user turn instead of creating a new duplicate user message.
-        message = lastUserContent;
-        shouldSkipUserHistoryInsert = true;
-        requestIsEdited = true;
-      }
       
       isSending = true;
       updateActivity();
@@ -9989,7 +9755,7 @@
       }
       
       const shouldAutoScrollReply = isEditing || wasAtBottom || isChatAtBottom();
-      let liveStreamText = regenerationPartialReply || "";
+      let liveStreamText = "";
       let liveStreamNode = null;
 
       function getChatDistanceFromBottom(chatEl) {
@@ -10028,31 +9794,6 @@
 
         const chatEl = document.getElementById("chat");
         if (!chatEl) return null;
-
-        if (regenerationPartialReply) {
-          const existingMsg = chatEl.querySelector('.message[data-stream-bubble="1"]');
-          const existingContentWrap = existingMsg ? existingMsg.querySelector('.message-content') : null;
-          const existingBubble = existingContentWrap ? existingContentWrap.querySelector('.bubble') : null;
-
-          if (existingMsg && existingContentWrap && existingBubble) {
-            const regenerateBtn = existingContentWrap.querySelector('.stream-regenerate-btn');
-            const regenerateWrap = regenerateBtn && regenerateBtn.parentNode ? regenerateBtn.parentNode : null;
-            if (regenerateWrap && regenerateWrap.parentNode) {
-              regenerateWrap.parentNode.removeChild(regenerateWrap);
-            }
-
-            existingBubble.textContent = liveStreamText;
-            updateScrollToBottomBtn();
-
-            return {
-              msg: existingMsg,
-              bubble: existingBubble,
-              contentWrap: existingContentWrap,
-              interrupted: false,
-              keepBottomLocked: false
-            };
-          }
-        }
 
   const shouldKeepBottomLocked = shouldAutoScrollReply === true;
 
@@ -10345,14 +10086,6 @@
         const beforeScrollTop = chatEl ? chatEl.scrollTop : 0;
         const beforeDistanceBottom = chatEl ? getChatDistanceFromBottom(chatEl) : 0;
 
-        const regenerateBtn = liveStreamNode.contentWrap
-          ? liveStreamNode.contentWrap.querySelector(".stream-regenerate-btn")
-          : null;
-        const regenerateWrap = regenerateBtn && regenerateBtn.parentNode ? regenerateBtn.parentNode : null;
-        if (regenerateWrap && regenerateWrap.parentNode) {
-          regenerateWrap.parentNode.removeChild(regenerateWrap);
-        }
-
         liveStreamNode.interrupted = false;
         renderBotMessageContent(liveStreamNode.bubble, String(finalReply || ""), {
           progressive: false,
@@ -10376,14 +10109,6 @@
         if (!liveStreamNode || !liveStreamNode.contentWrap) return;
         if (liveStreamNode.interrupted === true) return;
         liveStreamNode.interrupted = true;
-
-        upsertInterruptedAssistantHistory(liveStreamText, message);
-        const interruptedHistoryIndex = getLastInterruptedAssistantHistoryIndex();
-        appendInterruptedRegenerationControls(liveStreamNode.contentWrap, {
-          regenerationPrompt: message,
-          partialReply: liveStreamText,
-          historyIndex: interruptedHistoryIndex
-        });
       }
 
       const chatRequestId = buildChatRequestId();
@@ -10593,8 +10318,6 @@
           userId: getOrCreateUserId(),
           conversationId: requestConversationId,
           isPrivateConversation: isConversationPrivateById(requestConversationId, loadConversationData(requestConversationId)),
-          regenerationMode: regenerationPartialReply ? "from_partial_reply" : "none",
-          partialAssistantText: regenerationPartialReply || undefined,
           adminUiActive: document.body.classList.contains("admin-ui"),
           recentHistory: buildRecentHistoryForChatRequest(loadHistory()),
           conversationBranchHistory: buildConversationBranchHistoryForChatRequest(loadHistory()),
@@ -10711,28 +10434,10 @@
             }
           }
 
-          let replacedInterruptedEntry = false;
-          if (regenerationPartialReply) {
-            replacedInterruptedEntry = replaceLatestInterruptedAssistantHistory(
-              data.reply,
-              data.debug || [],
-              data.debugMeta || null,
-              data.botMessageId || null,
-              {
-                memory: data.memory,
-                flags: data.flags
-              },
-              data && data.signals ? data.signals : null,
-              Number.isInteger(regenerationInterruptedHistoryIndex) ? regenerationInterruptedHistoryIndex : -1
-            );
-          }
-
-          if (!replacedInterruptedEntry) {
-            pushHistory("assistant", data.reply, data.debug || [], data.debugMeta || null, data.botMessageId || null, {
-              memory: data.memory,
-              flags: data.flags
-            }, data && data.signals ? data.signals : null);
-          }
+          pushHistory("assistant", data.reply, data.debug || [], data.debugMeta || null, data.botMessageId || null, {
+            memory: data.memory,
+            flags: data.flags
+          }, data && data.signals ? data.signals : null);
           streamHistoryIndex = loadHistory().length - 1;
         } else {
           const storedData = loadConversationData(requestConversationId);
