@@ -10182,6 +10182,11 @@
           return false;
         }
 
+        const chatEl = document.getElementById("chat");
+        const beforeScrollTop = chatEl ? chatEl.scrollTop : 0;
+        const beforeScrollHeight = chatEl ? chatEl.scrollHeight : 0;
+        const beforeDistanceBottom = chatEl ? getChatDistanceFromBottom(chatEl) : 0;
+
         logStreamScroll("finalize_start", { historyIndex });
 
         const resumeBtn = liveStreamNode.contentWrap
@@ -10198,6 +10203,18 @@
           wasAtBottomBeforeInsert: false
         });
         ensureFinalizedStreamActions(finalReply, historyIndex);
+
+        if (chatEl) {
+          const growthPx = Math.max(0, chatEl.scrollHeight - beforeScrollHeight);
+          if (beforeDistanceBottom > 80 && growthPx > 0) {
+            chatEl.scrollTop = Math.max(0, beforeScrollTop + growthPx);
+            logStreamScroll("finalize_viewport_adjust", {
+              historyIndex,
+              growthPx: Math.round(growthPx)
+            });
+          }
+        }
+
         liveStreamNode.msg.removeAttribute("data-stream-bubble");
         logStreamScroll("finalize_end", { historyIndex });
         return true;
