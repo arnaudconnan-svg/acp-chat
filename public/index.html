@@ -4205,6 +4205,10 @@
         resumeBtn.setAttribute("aria-disabled", "true");
         resumeBtn.style.opacity = "0.55";
         resumeBtn.style.cursor = "not-allowed";
+        const input = document.getElementById("input");
+        if (input) {
+          input.value = resumePrompt;
+        }
         await send({
           skipUserHistoryInsert: true,
           resumeFromPartialReply: partialReply,
