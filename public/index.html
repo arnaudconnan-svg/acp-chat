@@ -4163,7 +4163,12 @@
       const history = loadHistory();
       const historyIndex = Number.isInteger(options.historyIndex) ? options.historyIndex : -1;
       const lastInterruptedIndex = getLastInterruptedAssistantHistoryIndex(history);
+      const latestHistoryIndex = history.length - 1;
       if (historyIndex >= 0 && lastInterruptedIndex >= 0 && historyIndex !== lastInterruptedIndex) {
+        return null;
+      }
+      // Regeneration is allowed only on the latest bot response in history.
+      if (historyIndex >= 0 && historyIndex !== latestHistoryIndex) {
         return null;
       }
 
@@ -9740,6 +9745,26 @@
         };
       
       let message = nextMessage;
+      const isRegenerationRequest = regenerationPartialReply.length > 0;
+
+      if (isRegenerationRequest && !isEditing) {
+        const history = loadHistory();
+        const lastUserIndex = getLastUserHistoryIndex(history);
+        const lastUserEntry = lastUserIndex >= 0 ? history[lastUserIndex] : null;
+        const lastUserContent = lastUserEntry && lastUserEntry.role === "user"
+          ? String(lastUserEntry.content || "").trim()
+          : "";
+
+        if (!lastUserContent) {
+          showTemporaryNotice("Regeneration impossible: dernier message utilisateur introuvable.");
+          return;
+        }
+
+        // Reuse the existing last user turn instead of creating a new duplicate user message.
+        message = lastUserContent;
+        shouldSkipUserHistoryInsert = true;
+        requestIsEdited = true;
+      }
       
       isSending = true;
       updateActivity();

@@ -5266,9 +5266,13 @@ async function handleChatPost(req, res) {
       return;
     }
 
+    const fallbackSuffix = requestData.regenerationMode === "from_partial_reply"
+      ? "\n[REGENERÉ]"
+      : (isEditedForCatch ? "\n[MODIFIÉ]" : "");
+
     await messagesRef.push({
       role: "assistant",
-      content: isEditedForCatch ? reply + "\n[MODIFIÉ]" : reply,
+      content: fallbackSuffix ? reply + fallbackSuffix : reply,
       timestamp: Date.now(),
       userId: userIdForCatch,
       conversationId: conversationIdForCatch,
@@ -5352,8 +5356,11 @@ async function handleChatPost(req, res) {
       titleDenyList,
       mailsEnabled,
       logsEnabled,
-      adminUiActive
+      adminUiActive,
+      regenerationMode
     } = requestData;
+
+    const isRegenerationRequest = regenerationMode === "from_partial_reply";
 
     conversationIdForCatch = conversationId;
     userIdForCatch = userId;
@@ -5578,7 +5585,7 @@ async function handleChatPost(req, res) {
       }
     }
     
-    if (!isPrivateConversation) {
+    if (!isPrivateConversation && !isRegenerationRequest) {
       const userMessagePushPromise = messagesRef.push({
         role: "user",
         content: isEdited ? message + "\n[MODIFIÉ]" : message,
@@ -5636,9 +5643,13 @@ async function handleChatPost(req, res) {
         return null;
       }
 
+      const assistantSuffix = isRegenerationRequest
+        ? "\n[REGENERÉ]"
+        : (isEdited ? "\n[MODIFIÉ]" : "");
+
       const pushedRef = await messagesRef.push({
         role: "assistant",
-        content: isEdited ? reply + "\n[MODIFIÉ]" : reply,
+        content: assistantSuffix ? reply + assistantSuffix : reply,
         timestamp: Date.now(),
         userId,
         conversationId,
