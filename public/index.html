@@ -4136,6 +4136,66 @@
         btn.style.cursor = "not-allowed";
       });
     }
+
+    function appendInterruptedResumeControls(contentWrap, options = {}) {
+      if (!contentWrap) return null;
+      if (contentWrap.querySelector(".stream-resume-btn")) return null;
+
+      const partialReply = String(options.partialReply || "").trim();
+      if (!partialReply) return null;
+
+      const history = loadHistory();
+      const fallbackPrompt = [...history]
+        .reverse()
+        .find((entry) => entry && entry.role === "user" && typeof entry.content === "string")
+        ?.content || "";
+      const resumePrompt = String(options.resumePrompt || "").trim() || String(fallbackPrompt || "").trim();
+
+      const appendix = document.createElement("div");
+      appendix.style.marginTop = "8px";
+      appendix.style.display = "flex";
+      appendix.style.alignItems = "center";
+      appendix.style.gap = "8px";
+      appendix.style.flexWrap = "wrap";
+
+      const text = document.createElement("span");
+      text.textContent = "Reponse interrompue.";
+      text.style.fontSize = "12px";
+      text.style.color = "#567176";
+
+      const resumeBtn = document.createElement("button");
+      resumeBtn.type = "button";
+      resumeBtn.className = "stream-resume-btn";
+      resumeBtn.textContent = "Reprendre";
+      resumeBtn.style.fontSize = "12px";
+      resumeBtn.style.padding = "5px 10px";
+      resumeBtn.style.borderRadius = "999px";
+      resumeBtn.style.border = "1px solid rgba(36, 94, 102, 0.4)";
+      resumeBtn.style.background = "rgba(255, 255, 255, 0.82)";
+      resumeBtn.style.color = "#245e66";
+      resumeBtn.style.cursor = "pointer";
+
+      resumeBtn.addEventListener("click", async () => {
+        if (isSending) return;
+        resumeBtn.disabled = true;
+        resumeBtn.setAttribute("aria-disabled", "true");
+        resumeBtn.style.opacity = "0.55";
+        resumeBtn.style.cursor = "not-allowed";
+        const input = document.getElementById("input");
+        if (input) {
+          input.value = resumePrompt;
+        }
+        await send({
+          skipUserHistoryInsert: true,
+          resumeFromPartialReply: partialReply
+        });
+      });
+
+      appendix.appendChild(text);
+      appendix.appendChild(resumeBtn);
+      contentWrap.appendChild(appendix);
+      return resumeBtn;
+    }
     
     function ensureBootOverlay() {
       if (bootOverlayEl) return bootOverlayEl;
@@ -5228,6 +5288,96 @@
         messages: Array.isArray(history) ? history : [],
         updatedAt: Date.now()
       });
+    }
+
+    function upsertInterruptedAssistantHistory(partialReply, resumePrompt = "") {
+      const partialText = String(partialReply || "").trim();
+      if (!partialText) return false;
+
+      const history = loadHistory();
+      const nextResumePrompt = String(resumePrompt || "").trim();
+      const lastIndex = history.length - 1;
+      const lastEntry = lastIndex >= 0 ? history[lastIndex] : null;
+      const shouldUpdateLast =
+        !!lastEntry &&
+        lastEntry.role === "assistant" &&
+        lastEntry.interruptedStream &&
+        lastEntry.interruptedStream.active === true;
+
+      if (shouldUpdateLast) {
+        const previousPrompt = String(lastEntry.interruptedStream.resumePrompt || "").trim();
+        history[lastIndex] = {
+          ...lastEntry,
+          content: partialText,
+          interruptedStream: {
+            active: true,
+            resumePrompt: nextResumePrompt || previousPrompt
+          },
+          t: Date.now()
+        };
+      } else {
+        history.push({
+          role: "assistant",
+          content: partialText,
+          debug: [],
+          debugMeta: null,
+          stateSnapshot: null,
+          interruptedStream: {
+            active: true,
+            resumePrompt: nextResumePrompt
+          },
+          t: Date.now()
+        });
+      }
+
+      saveHistory(history);
+      return true;
+    }
+
+    function replaceLatestInterruptedAssistantHistory(
+      finalReply,
+      debug,
+      debugMeta = null,
+      id = null,
+      stateSnapshot = null,
+      signals = null
+    ) {
+      const history = loadHistory();
+      let targetIndex = -1;
+
+      for (let i = history.length - 1; i >= 0; i -= 1) {
+        const entry = history[i];
+        if (
+          entry &&
+          entry.role === "assistant" &&
+          entry.interruptedStream &&
+          entry.interruptedStream.active === true
+        ) {
+          targetIndex = i;
+          break;
+        }
+      }
+
+      if (targetIndex < 0) {
+        return false;
+      }
+
+      const safeSignals = normalizeSignalsForRequest(signals) || undefined;
+      const previous = history[targetIndex];
+      history[targetIndex] = {
+        ...previous,
+        content: String(finalReply || ""),
+        debug: Array.isArray(debug) ? debug : [],
+        debugMeta: normalizeClientDebugMeta(debugMeta),
+        stateSnapshot: normalizeStoredStateSnapshot(stateSnapshot),
+        id: id && typeof id === "string" ? id : undefined,
+        t: Date.now(),
+        ...(safeSignals !== undefined ? { signals: safeSignals } : {})
+      };
+      delete history[targetIndex].interruptedStream;
+
+      saveHistory(history);
+      return true;
     }
     
     function pushHistory(role, content, debug, debugMeta = null, id = null, stateSnapshot = null, signals = null) {
@@ -7464,7 +7614,8 @@
           pulseScrollButton = false,
           progressive = true,
           historyIndex = -1,
-          debugMeta: debugMetaRaw = null
+          debugMeta: debugMetaRaw = null,
+          interruptedStreamMeta = null
       } = options;
       
       const chat = document.getElementById("chat");
@@ -8547,6 +8698,18 @@
         }
       }
 
+      if (
+        role === "bot" &&
+        interruptedStreamMeta &&
+        interruptedStreamMeta.active === true &&
+        !isOpeningGreetingMessage(rawText)
+      ) {
+        appendInterruptedResumeControls(contentWrap, {
+          resumePrompt: interruptedStreamMeta.resumePrompt || "",
+          partialReply: rawText
+        });
+      }
+
       msg.appendChild(contentWrap);
       chat.appendChild(msg);
 
@@ -8587,7 +8750,11 @@
             progressive: false,
             pulseScrollButton: false,
             historyIndex: index,
-            debugMeta: m.debugMeta || null
+            debugMeta: m.debugMeta || null,
+            interruptedStreamMeta:
+              m && m.interruptedStream && typeof m.interruptedStream === "object"
+                ? m.interruptedStream
+                : null
           }
         );
       });
@@ -10154,46 +10321,11 @@
         if (liveStreamNode.interrupted === true) return;
         liveStreamNode.interrupted = true;
 
-        const appendix = document.createElement("div");
-        appendix.style.marginTop = "8px";
-        appendix.style.display = "flex";
-        appendix.style.alignItems = "center";
-        appendix.style.gap = "8px";
-        appendix.style.flexWrap = "wrap";
-
-        const text = document.createElement("span");
-        text.textContent = "Reponse interrompue.";
-        text.style.fontSize = "12px";
-        text.style.color = "#567176";
-
-        const resumeBtn = document.createElement("button");
-        resumeBtn.type = "button";
-        resumeBtn.className = "stream-resume-btn";
-        resumeBtn.textContent = "Reprendre";
-        resumeBtn.style.fontSize = "12px";
-        resumeBtn.style.padding = "5px 10px";
-        resumeBtn.style.borderRadius = "999px";
-        resumeBtn.style.border = "1px solid rgba(36, 94, 102, 0.4)";
-        resumeBtn.style.background = "rgba(255, 255, 255, 0.82)";
-        resumeBtn.style.color = "#245e66";
-        resumeBtn.style.cursor = "pointer";
-
-        resumeBtn.addEventListener("click", async () => {
-          if (isSending) return;
-          resumeBtn.disabled = true;
-          resumeBtn.setAttribute("aria-disabled", "true");
-          resumeBtn.style.opacity = "0.55";
-          resumeBtn.style.cursor = "not-allowed";
-          input.value = message;
-          await send({
-            skipUserHistoryInsert: true,
-            resumeFromPartialReply: liveStreamText
-          });
+        upsertInterruptedAssistantHistory(liveStreamText, message);
+        appendInterruptedResumeControls(liveStreamNode.contentWrap, {
+          resumePrompt: message,
+          partialReply: liveStreamText
         });
-
-        appendix.appendChild(text);
-        appendix.appendChild(resumeBtn);
-        liveStreamNode.contentWrap.appendChild(appendix);
       }
 
       const chatRequestId = buildChatRequestId();
@@ -10521,10 +10653,27 @@
             }
           }
 
-          pushHistory("assistant", data.reply, data.debug || [], data.debugMeta || null, data.botMessageId || null, {
-            memory: data.memory,
-            flags: data.flags
-          }, data && data.signals ? data.signals : null);
+          let replacedInterruptedEntry = false;
+          if (resumePartialReply) {
+            replacedInterruptedEntry = replaceLatestInterruptedAssistantHistory(
+              data.reply,
+              data.debug || [],
+              data.debugMeta || null,
+              data.botMessageId || null,
+              {
+                memory: data.memory,
+                flags: data.flags
+              },
+              data && data.signals ? data.signals : null
+            );
+          }
+
+          if (!replacedInterruptedEntry) {
+            pushHistory("assistant", data.reply, data.debug || [], data.debugMeta || null, data.botMessageId || null, {
+              memory: data.memory,
+              flags: data.flags
+            }, data && data.signals ? data.signals : null);
+          }
           streamHistoryIndex = loadHistory().length - 1;
         } else {
           const storedData = loadConversationData(requestConversationId);
