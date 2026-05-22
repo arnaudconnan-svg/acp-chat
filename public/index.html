@@ -9757,23 +9757,15 @@
       const shouldAutoScrollReply = isEditing || wasAtBottom || isChatAtBottom();
       let liveStreamText = "";
       let liveStreamNode = null;
+      let streamProgrammaticScrollLock = false;
 
       function getChatDistanceFromBottom(chatEl) {
         if (!chatEl) return Infinity;
         return Math.max(0, chatEl.scrollHeight - chatEl.clientHeight - chatEl.scrollTop);
       }
 
-      function getStreamStopLineY() {
-        const topBar = document.getElementById("topBar");
-        if (!topBar) return null;
-        return topBar.getBoundingClientRect().bottom + 12;
-      }
-
-      function hasStreamBubbleReachedReadingPosition(bubbleEl) {
-        const stopLineY = getStreamStopLineY();
-        if (stopLineY === null || !bubbleEl) return false;
-        return bubbleEl.getBoundingClientRect().top <= stopLineY;
-      }
+      const STREAM_AUTOSCROLL_SUSPEND_DISTANCE_PX = 56;
+      const STREAM_AUTOSCROLL_RESUME_DISTANCE_PX = 8;
 
       function keepStreamBottomLocked(chatEl) {
         if (!chatEl) return;
@@ -9795,7 +9787,7 @@
         const chatEl = document.getElementById("chat");
         if (!chatEl) return null;
 
-  const shouldKeepBottomLocked = shouldAutoScrollReply === true;
+        const shouldKeepBottomLocked = shouldAutoScrollReply === true;
 
         const msg = document.createElement("div");
         msg.className = "message bot";
@@ -9826,8 +9818,54 @@
         msg.appendChild(contentWrap);
         chatEl.appendChild(msg);
         if (shouldKeepBottomLocked) {
+          streamProgrammaticScrollLock = true;
           keepStreamBottomLocked(chatEl);
+          streamProgrammaticScrollLock = false;
         }
+
+        const onUserScrollIntent = () => {
+          if (!liveStreamNode || liveStreamNode.msg !== msg) return;
+          if (streamProgrammaticScrollLock) return;
+
+          const distance = getChatDistanceFromBottom(chatEl);
+          if (liveStreamNode.keepBottomLocked === true && distance > STREAM_AUTOSCROLL_SUSPEND_DISTANCE_PX) {
+            liveStreamNode.keepBottomLocked = false;
+            liveStreamNode.autoScrollSuspendedByUser = true;
+            updateScrollToBottomBtn();
+            return;
+          }
+
+          if (liveStreamNode.autoScrollSuspendedByUser === true && distance <= STREAM_AUTOSCROLL_RESUME_DISTANCE_PX) {
+            liveStreamNode.keepBottomLocked = true;
+            liveStreamNode.autoScrollSuspendedByUser = false;
+          }
+        };
+
+        const onWheel = (event) => {
+          if (!event) return;
+          if (event.deltaY < 0) {
+            onUserScrollIntent();
+          }
+        };
+
+        const onTouchMove = () => {
+          onUserScrollIntent();
+        };
+
+        const onChatScroll = () => {
+          onUserScrollIntent();
+        };
+
+        chatEl.addEventListener("wheel", onWheel, { passive: true });
+        chatEl.addEventListener("touchmove", onTouchMove, { passive: true });
+        chatEl.addEventListener("scroll", onChatScroll, { passive: true });
+
+        const detachAutoScrollListeners = () => {
+          chatEl.removeEventListener("wheel", onWheel, { passive: true });
+          chatEl.removeEventListener("touchmove", onTouchMove, { passive: true });
+          chatEl.removeEventListener("scroll", onChatScroll, { passive: true });
+        };
+
         updateScrollToBottomBtn();
 
         return {
@@ -9835,7 +9873,9 @@
           bubble,
           contentWrap,
           interrupted: false,
-          keepBottomLocked: shouldKeepBottomLocked
+          keepBottomLocked: shouldKeepBottomLocked,
+          autoScrollSuspendedByUser: false,
+          detachAutoScrollListeners
         };
       }
 
@@ -9846,16 +9886,18 @@
         const chatEl = document.getElementById("chat");
         liveStreamNode.bubble.textContent = liveStreamText;
         if (chatEl && liveStreamNode.keepBottomLocked === true) {
+          streamProgrammaticScrollLock = true;
           keepStreamBottomLocked(chatEl);
-          if (hasStreamBubbleReachedReadingPosition(liveStreamNode.bubble)) {
-            liveStreamNode.keepBottomLocked = false;
-          }
+          streamProgrammaticScrollLock = false;
         }
         updateScrollToBottomBtn();
       }
 
       function removeLiveStreamBubble() {
         if (!liveStreamNode || !liveStreamNode.msg) return;
+        if (typeof liveStreamNode.detachAutoScrollListeners === "function") {
+          liveStreamNode.detachAutoScrollListeners();
+        }
         if (liveStreamNode.msg.parentNode) {
           liveStreamNode.msg.parentNode.removeChild(liveStreamNode.msg);
         }
@@ -10080,6 +10122,9 @@
       function finalizeLiveStreamBubble(finalReply, historyIndex = -1) {
         if (!liveStreamNode || !liveStreamNode.msg || !liveStreamNode.bubble) {
           return false;
+        }
+        if (typeof liveStreamNode.detachAutoScrollListeners === "function") {
+          liveStreamNode.detachAutoScrollListeners();
         }
 
         const chatEl = document.getElementById("chat");
