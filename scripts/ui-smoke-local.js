@@ -11,8 +11,10 @@ const { spawn } = require("child_process");
 const http = require("http");
 
 const HOST = process.env.SMOKE_HOST || "127.0.0.1";
-const PORT = Number.parseInt(process.env.PORT || "3000", 10);
-const BASE_URL = process.env.SMOKE_BASE_URL || `http://${HOST}:${PORT}`;
+const DEFAULT_PORT = Number.parseInt(process.env.PORT || "3000", 10);
+const BASE_URL = process.env.SMOKE_BASE_URL || `http://${HOST}:${DEFAULT_PORT}`;
+const BASE_URL_PARSED = new URL(BASE_URL);
+const PORT = Number.parseInt(BASE_URL_PARSED.port || `${DEFAULT_PORT}`, 10);
 const SERVER_READY_TIMEOUT_MS = 30000;
 const SERVER_POLL_INTERVAL_MS = 500;
 
