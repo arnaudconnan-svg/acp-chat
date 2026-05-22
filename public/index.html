@@ -9769,6 +9769,29 @@
       let liveStreamText = "";
       const liveStreamShouldSnapOnCreate = shouldAutoScrollReply === true;
       let liveStreamNode = null;
+      const streamScrollDebugEnabled = true;
+
+      function logStreamScroll(stage, details = {}) {
+        if (streamScrollDebugEnabled !== true) return;
+
+        const chatEl = document.getElementById("chat");
+        const snapshot = {
+          stage,
+          conversationId: requestConversationId,
+          screenId: requestScreenId,
+          scrollTop: chatEl ? Math.round(chatEl.scrollTop) : null,
+          scrollHeight: chatEl ? Math.round(chatEl.scrollHeight) : null,
+          clientHeight: chatEl ? Math.round(chatEl.clientHeight) : null,
+          distanceBottom: chatEl ? Math.round(getChatDistanceFromBottom(chatEl)) : null,
+          liveLength: liveStreamText.length,
+          atBottomReply: shouldAutoScrollReply === true,
+          ...details
+        };
+
+        try {
+          console.info("[STREAM_SCROLL]", snapshot);
+        } catch {}
+      }
 
       function getChatDistanceFromBottom(chatEl) {
         if (!chatEl) return Infinity;
@@ -9793,7 +9816,14 @@
         if (Math.abs(delta) < 2) return;
 
         const nextTop = Math.max(0, chatEl.scrollTop + delta);
+        logStreamScroll("snap_before", {
+          delta: Math.round(delta),
+          targetTop: Math.round(targetTop),
+          bubbleTop: Math.round(bubbleRect.top),
+          nextTop: Math.round(nextTop)
+        });
         chatEl.scrollTop = nextTop;
+        logStreamScroll("snap_after");
       }
 
       function createLiveStreamBubble() {
@@ -9837,6 +9867,7 @@
         contentWrap.appendChild(bubble);
         msg.appendChild(contentWrap);
         chatEl.appendChild(msg);
+        logStreamScroll("bubble_created", { canSnapOnCreate });
 
         if (canSnapOnCreate) {
           snapStreamBubbleUnderTopBar(chatEl, bubble);
@@ -9862,11 +9893,15 @@
         if (!force && liveStreamNode.interrupted === true) return;
 
         liveStreamNode.bubble.textContent = liveStreamText;
+        if (force || liveStreamText.length < 5 || liveStreamText.length % 80 === 0) {
+          logStreamScroll("token_flush", { force, interrupted: liveStreamNode.interrupted === true });
+        }
         updateScrollToBottomBtn();
       }
 
       function removeLiveStreamBubble() {
         if (!liveStreamNode || !liveStreamNode.msg) return;
+        logStreamScroll("bubble_remove");
         if (liveStreamNode.msg.parentNode) {
           liveStreamNode.msg.parentNode.removeChild(liveStreamNode.msg);
         }
@@ -10093,6 +10128,8 @@
           return false;
         }
 
+        logStreamScroll("finalize_start", { historyIndex });
+
         const resumeBtn = liveStreamNode.contentWrap
           ? liveStreamNode.contentWrap.querySelector(".stream-resume-btn")
           : null;
@@ -10108,6 +10145,7 @@
         });
         ensureFinalizedStreamActions(finalReply, historyIndex);
         liveStreamNode.msg.removeAttribute("data-stream-bubble");
+        logStreamScroll("finalize_end", { historyIndex });
         return true;
       }
 
@@ -10460,6 +10498,11 @@
           getConversationId() === requestConversationId &&
           document.querySelector(".screen.active")?.id === requestScreenId &&
           requestScreenId === "chatScreen";
+        logStreamScroll("response_received", {
+          usedStreaming,
+          shouldRenderInCurrentChat,
+          hasReply: !!(data && data.reply)
+        });
 
         let finalizedStreamInPlace = false;
         let streamHistoryIndex = -1;
@@ -10483,6 +10526,7 @@
             flags: data.flags
           }, data && data.signals ? data.signals : null);
           streamHistoryIndex = loadHistory().length - 1;
+          logStreamScroll("history_pushed", { streamHistoryIndex });
         } else {
           const storedData = loadConversationData(requestConversationId);
           const existingMessages = Array.isArray(storedData.messages) ? storedData.messages : [];
@@ -10515,6 +10559,7 @@
           usedStreaming === true &&
           shouldRenderInCurrentChat &&
           finalizeLiveStreamBubble(data.reply, streamHistoryIndex);
+        logStreamScroll("finalize_decision", { finalizedStreamInPlace, streamHistoryIndex });
 
         if (!finalizedStreamInPlace) {
           removeLiveStreamBubble();
