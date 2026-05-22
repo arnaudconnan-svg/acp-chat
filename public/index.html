@@ -10233,7 +10233,8 @@
           addMessage("bot", data.reply, data.debug || [], {
             shouldAutoScroll: shouldAutoScrollReply,
             pulseScrollButton: !shouldAutoScrollReply,
-            debugMeta: data.debugMeta || null
+            debugMeta: data.debugMeta || null,
+            progressive: usedStreaming !== true
           });
           updateCrisisSupportCard(data.debugMeta || null);
         }
