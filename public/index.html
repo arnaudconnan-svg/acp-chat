@@ -10129,6 +10129,12 @@
         const shouldMaintainBottomLock =
           liveStreamNode.keepBottomLocked === true &&
           liveStreamNode.autoScrollSuspendedByUser !== true;
+        const beforeScrollTop = chatEl ? chatEl.scrollTop : 0;
+        const previousOverflowAnchor = chatEl ? chatEl.style.overflowAnchor : "";
+
+        if (chatEl && !shouldMaintainBottomLock) {
+          chatEl.style.overflowAnchor = "none";
+        }
 
         liveStreamNode.interrupted = false;
         renderBotMessageContent(liveStreamNode.bubble, String(finalReply || ""), {
@@ -10139,6 +10145,12 @@
 
         if (chatEl && shouldMaintainBottomLock) {
           keepStreamBottomLocked(chatEl);
+        } else if (chatEl) {
+          chatEl.scrollTop = beforeScrollTop;
+          requestAnimationFrame(() => {
+            chatEl.scrollTop = beforeScrollTop;
+            chatEl.style.overflowAnchor = previousOverflowAnchor || "";
+          });
         }
 
         liveStreamNode.msg.removeAttribute("data-stream-bubble");
