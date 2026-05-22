@@ -72,7 +72,7 @@ for (const field of [
   "pipelineStages","explorationCalibrationLevel","explorationSignal",
   "memoryBeforeSanitization",
   "intent","forbidden","confidenceSignal",
-  "responseRegister","phraseLengthPolicy","relancePolicy","somaticFocusPolicy","actionCollapseGuardActive",
+  "responseRegister","phraseLengthPolicy","relancePolicy","actionCollapseGuardActive",
   "stateTransitionFrom","stateTransitionValid","stateTransitionRequested",
   "allianceSignal","engagementLevel","stagnationTurns","attentionWindow",
   "dependencyRiskScore","dependencyRiskLevel","externalSupportMode","closureIntent","postDischargeTransitionActive",
@@ -99,7 +99,6 @@ assertDeepEqual("default values", base, {
   responseRegister: "courant",
   phraseLengthPolicy: "moyenne",
   relancePolicy: "selective",
-  somaticFocusPolicy: "none",
   actionCollapseGuardActive: false,
   stateTransitionFrom: null,
   stateTransitionValid: true,
@@ -139,7 +138,6 @@ const explo = buildResponseDebugMeta({
   responseRegister: "familier",
   phraseLengthPolicy: "courte",
   relancePolicy: "discouraged",
-  somaticFocusPolicy: "prioritize_somatic_proximity",
   actionCollapseGuardActive: true,
   explorationDirectivityLevel: 2,
   explorationCalibrationLevel: 3,
@@ -156,7 +154,6 @@ assert("exploration forbidden", explo.forbidden, ["diagnostic", "conseil_direct"
 assert("exploration responseRegister", explo.responseRegister, "familier");
 assert("exploration phraseLengthPolicy", explo.phraseLengthPolicy, "courte");
 assert("exploration relancePolicy", explo.relancePolicy, "discouraged");
-assert("exploration somaticFocusPolicy", explo.somaticFocusPolicy, "prioritize_somatic_proximity");
 assert("exploration actionCollapseGuardActive", explo.actionCollapseGuardActive, true);
 assert("exploration explorationSignal", explo.explorationSignal, "phenomenological_follow");
 assert("exploration directivityText includes calibration",

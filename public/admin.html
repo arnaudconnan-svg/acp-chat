@@ -1825,9 +1825,6 @@
         }
 
         function translateSomaticFocusPolicy(value) {
-          return window.FacilitatDebug.translateSomaticFocusPolicy(value);
-        }
-
         function translateConfidenceSignal(value) {
           return window.FacilitatDebug.translateConfidenceSignal(value);
         }
@@ -1838,10 +1835,6 @@
 
         function buildNaturalDebugSummary(meta) {
           return window.FacilitatDebug.buildNaturalDebugSummary(meta, "admin");
-        }
-
-        function buildSomaticFocusPolicyDebugLine(meta) {
-          return window.FacilitatDebug.buildSomaticFocusPolicyDebugLine(meta);
         }
 
         function formatInactiveWriterHintsDebug(items) {
@@ -1998,9 +1991,6 @@
             signauxLines.push("Transition post-d\u00e9charge active (C3)");
           }
           var somaticPolicyLine = buildSomaticFocusPolicyDebugLine(meta);
-          if (somaticPolicyLine) {
-            signauxLines.push(somaticPolicyLine);
-          }
           if (meta.secondaryTension) {
             var secondaryLabel = window.FacilitatDebug.formatSecondaryTension(meta.secondaryTension);
             if (secondaryLabel) {

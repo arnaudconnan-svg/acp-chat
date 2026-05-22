@@ -192,7 +192,6 @@
       phraseLengthPolicy: toTrimmedString(safe.phraseLengthPolicy, "") || "moyenne",
       relancePolicy: toTrimmedString(safe.relancePolicy, "") || "selective",
       useDirectAddress: toBooleanTrue(safe.useDirectAddress),
-      somaticFocusPolicy: toTrimmedString(safe.somaticFocusPolicy, "") || "none",
       actionCollapseGuardActive: toBooleanTrue(safe.actionCollapseGuardActive),
       stateTransitionFrom: toTrimmedString(safe.stateTransitionFrom, "") || null,
       stateTransitionValid: safe.stateTransitionValid !== false,
@@ -220,14 +219,6 @@
           })
         : [],
       affiliationEstablished: toBooleanTrue(safe.affiliationEstablished),
-      somaticSignalAnalysis: safe.somaticSignalAnalysis && typeof safe.somaticSignalAnalysis === "object" && !Array.isArray(safe.somaticSignalAnalysis)
-        ? {
-            somaticSignalActive: toBooleanTrue(safe.somaticSignalAnalysis.somaticSignalActive),
-            somaticLocalizationBlocked: toBooleanTrue(safe.somaticSignalAnalysis.somaticLocalizationBlocked),
-            regexMatch: toTrimmedString(safe.somaticSignalAnalysis.regexMatch, "") || null,
-            source: toTrimmedString(safe.somaticSignalAnalysis.source, "") || null
-          }
-        : null,
       emotionalDecentering: toBooleanTrue(safe.emotionalDecentering),
       formalAddress: toBooleanTrue(safe.formalAddress),
       writerIntentHints: Array.isArray(safe.writerIntentHints)
@@ -382,12 +373,6 @@
     return value;
   }
 
-  function translateSomaticFocusPolicy(value) {
-    if (value === "prioritize_somatic_proximity") return "priorite proximite somatique";
-    if (value === "address_frustration_before_somatic_relocalization") return "frustration d'abord, pas de relocalisation imposee";
-    return "aucune";
-  }
-
   function translateConfidenceSignal(value) {
     if (value === "low") return "faible";
     if (value === "high") return "\u00e9lev\u00e9";
@@ -429,26 +414,6 @@
       }
     }
     return text;
-  }
-
-  function buildSomaticFocusPolicyDebugLine(meta) {
-    if (!meta || !meta.somaticFocusPolicy || meta.somaticFocusPolicy === "none") {
-      return null;
-    }
-
-    var policyLabel = translateSomaticFocusPolicy(meta.somaticFocusPolicy);
-    var baseLine = "Politique somatique : " + policyLabel;
-    var analyzerMatchMap = parseDeterministicEvidence(meta.analyzerDeterministicEvidence);
-
-    if (meta.somaticFocusPolicy === "address_frustration_before_somatic_relocalization") {
-      return enrichLineWithMatch(baseLine, analyzerMatchMap, ["somatic_localization_guard_active", "somatic_signal_guard_active"]);
-    }
-
-    if (meta.somaticFocusPolicy === "prioritize_somatic_proximity") {
-      return enrichLineWithMatch(baseLine, analyzerMatchMap, ["somatic_signal_guard_active"]);
-    }
-
-    return baseLine;
   }
 
   function buildNaturalDebugSummary(meta, variant) {
@@ -584,10 +549,8 @@
     translateWriterHintInactiveReason: translateWriterHintInactiveReason,
     formatInactiveWriterHints: formatInactiveWriterHints,
     translateOrientationHint: translateOrientationHint,
-    translateSomaticFocusPolicy: translateSomaticFocusPolicy,
     translateConfidenceSignal: translateConfidenceSignal,
     translateInfoRoutingSource: translateInfoRoutingSource,
-    buildSomaticFocusPolicyDebugLine: buildSomaticFocusPolicyDebugLine,
     buildNaturalDebugSummary: buildNaturalDebugSummary,
     buildPipelineRuntimeText: buildPipelineRuntimeText,
     formatSecondaryTension: formatSecondaryTension,

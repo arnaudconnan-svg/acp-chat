@@ -1323,7 +1323,6 @@ const {
   analyzeAllianceRupture,
   analyzeInterpretationRejection,
   analyzeTechnicalContext,
-  analyzeSomaticSignal,
   analyzeUserRegister,
   analyzeRecallRouting,
   analyzeRelationalAdjustmentNeed,
@@ -6401,7 +6400,6 @@ Reponds strictement en JSON: {"items": ["..."]}
         allianceRuptureAnalysis,
         relationalAdjustmentAnalysis,
         technicalContextAnalysis,
-        somaticSignalAnalysis,
         userRegisterAnalysis,
         emotionalDecenteringResult,
         attentionAnalysis,
@@ -6412,7 +6410,6 @@ Reponds strictement en JSON: {"items": ["..."]}
         withAnalyzerTiming("alliance_rupture", analyzeAllianceRupture(message, recentHistory, activePromptRegistry)),
         withAnalyzerTiming("relational_adjustment", analyzeRelationalAdjustmentNeed(message, recentHistory, previousMemory, false, activePromptRegistry)),
         withAnalyzerTiming("technical_context", analyzeTechnicalContext(message)),
-        withAnalyzerTiming("somatic_signal", analyzeSomaticSignal(message, recentHistory, activePromptRegistry)),
         withAnalyzerTiming("user_register", analyzeUserRegister(message)),
         withAnalyzerTiming("emotional_decentering", analyzeEmotionalDecentering(message, recentHistory)),
         shouldRunAttentionQuality
@@ -6432,7 +6429,6 @@ Reponds strictement en JSON: {"items": ["..."]}
         allianceRuptureAnalysis,
         relationalAdjustmentAnalysis,
         technicalContextAnalysis,
-        somaticSignalAnalysis,
         userRegisterAnalysis,
         emotionalDecenteringResult,
         attentionAnalysis,
@@ -6446,7 +6442,6 @@ Reponds strictement en JSON: {"items": ["..."]}
       allianceRuptureAnalysis,
       relationalAdjustmentAnalysis,
       technicalContextAnalysis,
-      somaticSignalAnalysis,
       userRegisterAnalysis,
       emotionalDecenteringResult,
       attentionAnalysis,
@@ -6550,7 +6545,6 @@ Reponds strictement en JSON: {"items": ["..."]}
     throwIfCanceled();
 
     const emotionalDecenteringAnalysis = emotionalDecenteringResult || { emotionalDecentering: false };
-    const safeSomaticSignalAnalysis = somaticSignalAnalysis || { somaticSignalActive: false, somaticLocalizationBlocked: false, regexMatch: null, source: "deterministic_no_signal" };
 
     const contactAnalysis = electedState.contactAnalysis;
     const dischargeAnalysis = electedState.dischargeAnalysis;
@@ -6691,7 +6685,6 @@ Reponds strictement en JSON: {"items": ["..."]}
       relationalAdjustmentAnalysis,
       calibrationAnalysis,
       technicalContextDetected: technicalContextAnalysis?.technicalContextDetected === true,
-      somaticSignalAnalysis,
       userRegisterAnalysis,
       interpretationRejection: safeInterpretationRejection,
       effectiveExplorationDirectivityLevel,
@@ -6890,7 +6883,6 @@ Reponds strictement en JSON: {"items": ["..."]}
       ...(Array.isArray(stateProposal?.dischargeAnalysis?.deterministicEvidence) ? stateProposal.dischargeAnalysis.deterministicEvidence : []),
       ...(Array.isArray(stateProposal?.contactAnalysis?.deterministicEvidence) ? stateProposal.contactAnalysis.deterministicEvidence : []),
       ...(Array.isArray(emotionalDecenteringAnalysis?.deterministicEvidence) ? emotionalDecenteringAnalysis.deterministicEvidence : []),
-      ...(Array.isArray(somaticSignalAnalysis?.deterministicEvidence) ? somaticSignalAnalysis.deterministicEvidence : []),
       ...(Array.isArray(relationalAdjustmentAnalysis?.deterministicEvidence) ? relationalAdjustmentAnalysis.deterministicEvidence : []),
       ...(Array.isArray(allianceRuptureAnalysis?.deterministicEvidence) ? allianceRuptureAnalysis.deterministicEvidence : []),
       ...(Array.isArray(safeInterpretationRejection?.deterministicEvidence) ? safeInterpretationRejection.deterministicEvidence : []),
@@ -7147,7 +7139,6 @@ Reponds strictement en JSON: {"items": ["..."]}
       affiliationFinalScore,
       affiliationWindow: newAffiliationWindow,
       affiliationEstablished,
-      somaticSignalAnalysis: safeSomaticSignalAnalysis,
       emotionalDecentering: emotionalDecenteringAnalysis?.emotionalDecentering === true,
       formalAddress: postureDecision.formalAddress === true,
       // Writer hints from posture decision
