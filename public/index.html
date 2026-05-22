@@ -9873,6 +9873,28 @@
         liveStreamNode = null;
       }
 
+      function finalizeLiveStreamBubble(finalReply) {
+        if (!liveStreamNode || !liveStreamNode.msg || !liveStreamNode.bubble) {
+          return false;
+        }
+
+        const resumeBtn = liveStreamNode.contentWrap
+          ? liveStreamNode.contentWrap.querySelector(".stream-resume-btn")
+          : null;
+        const resumeWrap = resumeBtn && resumeBtn.parentNode ? resumeBtn.parentNode : null;
+        if (resumeWrap && resumeWrap.parentNode) {
+          resumeWrap.parentNode.removeChild(resumeWrap);
+        }
+
+        liveStreamNode.interrupted = false;
+        renderBotMessageContent(liveStreamNode.bubble, String(finalReply || ""), {
+          progressive: false,
+          wasAtBottomBeforeInsert: false
+        });
+        liveStreamNode.msg.removeAttribute("data-stream-bubble");
+        return true;
+      }
+
       function markLiveStreamInterrupted() {
         if (!liveStreamNode || !liveStreamNode.contentWrap) return;
         if (liveStreamNode.interrupted === true) return;
@@ -10223,38 +10245,14 @@
           document.querySelector(".screen.active")?.id === requestScreenId &&
           requestScreenId === "chatScreen";
 
-        let preserveViewportAnchor = null;
-        if (usedStreaming === true && shouldRenderInCurrentChat) {
-          const chatEl = document.getElementById("chat");
-          const topBarEl = document.getElementById("topBar");
-          if (chatEl && topBarEl) {
-            const stopLineY = topBarEl.getBoundingClientRect().bottom + 6;
-            const messageNodes = Array.from(chatEl.querySelectorAll(".message"));
-            let anchorNode = null;
+        const finalizedStreamInPlace =
+          usedStreaming === true &&
+          shouldRenderInCurrentChat &&
+          finalizeLiveStreamBubble(data.reply);
 
-            for (let i = 0; i < messageNodes.length; i += 1) {
-              const node = messageNodes[i];
-              const rect = node.getBoundingClientRect();
-              if (rect.bottom > stopLineY) {
-                anchorNode = node;
-                break;
-              }
-            }
-
-            if (!anchorNode) {
-              anchorNode = messageNodes.length > 0 ? messageNodes[messageNodes.length - 1] : null;
-            }
-
-            if (anchorNode) {
-              preserveViewportAnchor = {
-                node: anchorNode,
-                top: anchorNode.getBoundingClientRect().top
-              };
-            }
-          }
+        if (!finalizedStreamInPlace) {
+          removeLiveStreamBubble();
         }
-
-        removeLiveStreamBubble();
 
         const currentConversationId = getConversationId();
         const isSameConversation = currentConversationId === requestConversationId;
@@ -10302,28 +10300,17 @@
           });
         }
         
-        if (shouldRenderInCurrentChat) {
+        if (shouldRenderInCurrentChat && !finalizedStreamInPlace) {
           addMessage("bot", data.reply, data.debug || [], {
             shouldAutoScroll: usedStreaming === true ? false : shouldAutoScrollReply,
             pulseScrollButton: usedStreaming === true ? false : !shouldAutoScrollReply,
             debugMeta: data.debugMeta || null,
             progressive: usedStreaming !== true
           });
+        }
 
-          if (usedStreaming === true && preserveViewportAnchor && preserveViewportAnchor.node && preserveViewportAnchor.node.isConnected) {
-            const chatEl = document.getElementById("chat");
-            if (chatEl) {
-              const currentTop = preserveViewportAnchor.node.getBoundingClientRect().top;
-              const delta = currentTop - preserveViewportAnchor.top;
-              const nextScrollTop = Math.max(0, chatEl.scrollTop + delta);
-              chatEl.scrollTop = nextScrollTop;
-              requestAnimationFrame(() => {
-                chatEl.scrollTop = nextScrollTop;
-                updateScrollToBottomBtn();
-              });
-            }
-          }
-
+        if (shouldRenderInCurrentChat) {
+          updateScrollToBottomBtn();
           updateCrisisSupportCard(data.debugMeta || null);
         }
         
