@@ -43,7 +43,7 @@ function check(label, fn) {
 function baseInput(overrides = {}) {
   return {
     detectedState: "exploration",
-    contactAnalysis: { selfCriticismLevel: null, meaningCrisis: false, insightMoment: false },
+    contactAnalysis: { selfCriticismLevel: null, insightMoment: false },
     relationalAdjustmentAnalysis: { needsRelationalAdjustment: false },
     calibrationAnalysis: { calibrationLevel: 0, explorationSignal: "interpretation" },
     technicalContextDetected: false,
@@ -154,12 +154,12 @@ check("relancePolicy follows contract constraints", () => {
   }));
   assert(openExploration.relancePolicy === "open", "exploration level 0 should keep relance open");
 
-  const discouragedExploration = buildPostureDecision(baseInput({
+  const selectiveExploration = buildPostureDecision(baseInput({
     detectedState: "exploration",
     effectiveExplorationDirectivityLevel: 4,
     calibrationAnalysis: { calibrationLevel: 4, explorationSignal: "interpretation" }
   }));
-  assert(discouragedExploration.relancePolicy === "discouraged", "exploration level 4 should discourage relance");
+  assert(selectiveExploration.relancePolicy === "selective", "exploration level 4 should keep relance selective");
 
   const ruptureForbidden = buildPostureDecision(baseInput({
     detectedState: "exploration",

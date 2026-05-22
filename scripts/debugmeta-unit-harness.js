@@ -136,7 +136,7 @@ const explo = buildResponseDebugMeta({
   confidenceSignal: 0.5,
   responseRegister: "familier",
   phraseLengthPolicy: "courte",
-  relancePolicy: "discouraged",
+  relancePolicy: "selective",
   actionCollapseGuardActive: true,
   explorationDirectivityLevel: 2,
   explorationCalibrationLevel: 3,
@@ -152,7 +152,7 @@ assert("exploration intent", explo.intent, "accompagner_sans_guider");
 assert("exploration forbidden", explo.forbidden, ["diagnostic", "conseil_direct"]);
 assert("exploration responseRegister", explo.responseRegister, "familier");
 assert("exploration phraseLengthPolicy", explo.phraseLengthPolicy, "courte");
-assert("exploration relancePolicy", explo.relancePolicy, "discouraged");
+assert("exploration relancePolicy", explo.relancePolicy, "selective");
 assert("exploration actionCollapseGuardActive", explo.actionCollapseGuardActive, true);
 assert("exploration explorationSignal", explo.explorationSignal, "phenomenological_follow");
 assert("exploration directivityText includes calibration",

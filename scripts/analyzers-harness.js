@@ -56,7 +56,6 @@ function makeFakeClient() {
                       isContact: false,
                       contactSignal: null,
                       selfCriticismLevel: "low",
-                      meaningCrisis: false,
                       insightMoment: false
                     })
                   }

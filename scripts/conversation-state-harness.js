@@ -58,6 +58,7 @@ check("info states pass through", () => {
 
 check("exploration expands by directivity", () => {
   assert(resolveConversationState({ detectedState: "exploration", directivityLevel: 0 }) === "exploration_open");
+  assert(resolveConversationState({ detectedState: "exploration", directivityLevel: 2 }) === "exploration_open");
   assert(resolveConversationState({ detectedState: "exploration", directivityLevel: 3 }) === "exploration_restrained");
 });
 

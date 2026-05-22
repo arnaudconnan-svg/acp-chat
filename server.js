@@ -2849,7 +2849,6 @@ app.post("/api/account/conversations/import-local", requireUserAuth, async (req,
               formalAddress: debugMeta.formalAddress === true,
               contactInsightMoment: debugMeta.contactInsightMoment === true,
               contactSelfCriticismLevel: typeof debugMeta.contactSelfCriticismLevel === "string" ? debugMeta.contactSelfCriticismLevel : "low",
-              contactMeaningCrisis: debugMeta.contactMeaningCrisis === true,
               aggressiveDischargeDetected: debugMeta.aggressiveDischargeDetected === true,
               postDischargeTransitionActive: debugMeta.postDischargeTransitionActive === true,
               secondaryTension: (debugMeta.secondaryTension && typeof debugMeta.secondaryTension === "object" && !Array.isArray(debugMeta.secondaryTension)) ? debugMeta.secondaryTension : null,
@@ -4938,7 +4937,6 @@ function buildTurnSignals(postureDecision, {
   interpretationRejectionActive = false,
   insightMoment = false,
   selfCriticismLevel = "low",
-  meaningCrisis = false,
   emotionalDecentering = false,
   dependencyRiskLevel = "low"
 } = {}) {
@@ -4968,7 +4966,6 @@ function buildTurnSignals(postureDecision, {
   if (interpretationRejectionActive) parts.push("rejet_interp");
   if (insightMoment) parts.push("insight");
   if (selfCriticismLevel && selfCriticismLevel !== "low") parts.push(`autocrit:${selfCriticismLevel}`);
-  if (meaningCrisis) parts.push("crise_sens");
 
   const reg = postureDecision.responseRegister;
   if (reg && reg !== "courant") parts.push(`registre:${reg}`);
@@ -5243,7 +5240,6 @@ async function handleChatPost(req, res) {
       formalAddress: safe.formalAddress === true,
       contactInsightMoment: safe.contactInsightMoment === true,
       contactSelfCriticismLevel: typeof safe.contactSelfCriticismLevel === "string" ? safe.contactSelfCriticismLevel : "low",
-      contactMeaningCrisis: safe.contactMeaningCrisis === true,
       aggressiveDischargeDetected: safe.aggressiveDischargeDetected === true,
       postDischargeTransitionActive: safe.postDischargeTransitionActive === true,
       secondaryTension: (safe.secondaryTension && typeof safe.secondaryTension === "object" && !Array.isArray(safe.secondaryTension)) ? safe.secondaryTension : null,
@@ -6734,7 +6730,6 @@ Reponds strictement en JSON: {"items": ["..."]}
       interpretationRejectionActive: safeInterpretationRejection.isInterpretationRejection === true,
       insightMoment: contactAnalysis?.insightMoment === true,
       selfCriticismLevel: contactAnalysis?.selfCriticismLevel || "low",
-      meaningCrisis: contactAnalysis?.meaningCrisis === true,
       emotionalDecentering: emotionalDecenteringAnalysis?.emotionalDecentering === true,
       dependencyRiskLevel: newFlags.dependencyRiskLevel || "low"
     });
@@ -7101,7 +7096,6 @@ Reponds strictement en JSON: {"items": ["..."]}
       // Contact analyzer sub-fields
       contactInsightMoment: contactAnalysis?.insightMoment === true,
       contactSelfCriticismLevel: typeof contactAnalysis?.selfCriticismLevel === "string" ? contactAnalysis.selfCriticismLevel : "low",
-      contactMeaningCrisis: contactAnalysis?.meaningCrisis === true,
       // C3 limiting_belief gate
       aggressiveDischargeDetected: postureDecision.aggressiveDischargeDetected === true,
       postDischargeTransitionActive: postureDecision.postDischargeTransitionActive === true,

@@ -23,7 +23,7 @@ function check(label, fn) {
 function baseInput(overrides = {}) {
   return {
     detectedState: "exploration",
-    contactAnalysis: { isContact: false, selfCriticismLevel: "low", meaningCrisis: false, insightMoment: false },
+    contactAnalysis: { isContact: false, selfCriticismLevel: "low", insightMoment: false },
     emotionalDecenteringAnalysis: { emotionalDecentering: false },
     affiliationWindow: [0, 0, 0, 0],
     affiliationEstablished: true,
@@ -110,26 +110,19 @@ check("post-discharge transition applies in non-exploration states without forci
 check("contact self-criticism signal enriches forbidden + hints", () => {
   const out = buildPostureDecision(baseInput({
     detectedState: "exploration",
-    contactAnalysis: { isContact: true, selfCriticismLevel: "high", meaningCrisis: false, insightMoment: false }
+    contactAnalysis: { isContact: true, selfCriticismLevel: "high", insightMoment: false }
   }));
   assert(out.forbidden.includes("value_affirmation"), "expected value_affirmation in forbidden");
   assert(out.writerIntentHints.includes("signify_pain_without_blocking"), "expected signify_pain_without_blocking hint");
   assert(out.writerIntentHints.includes("auto_compassion_door_open"), "expected auto_compassion_door_open hint");
 });
 
-check("meaningCrisis signal constrains relance", () => {
+check("insightMoment keeps hint without relance lock", () => {
   const out = buildPostureDecision(baseInput({
     detectedState: "exploration",
-    contactAnalysis: { isContact: true, selfCriticismLevel: "low", meaningCrisis: true, insightMoment: false }
+    contactAnalysis: { isContact: true, selfCriticismLevel: "low", insightMoment: true }
   }));
-  assert(out.forbidden.includes("relance"), "expected relance in forbidden");
-});
-
-check("insightMoment signal adds amplify_insight hint", () => {
-  const out = buildPostureDecision(baseInput({
-    detectedState: "exploration",
-    contactAnalysis: { isContact: true, selfCriticismLevel: "low", meaningCrisis: false, insightMoment: true }
-  }));
+  assert(!out.forbidden.includes("relance"), "did not expect relance in forbidden");
   assert(out.writerIntentHints.includes("amplify_insight"), "expected amplify_insight hint");
 });
 

@@ -89,7 +89,8 @@ assert(resolve({ detectedState: "info_psychoeducation" }) === "info_psychoeducat
 assert(resolve() === "exploration_open", "resolve: default is exploration_open");
 
 // Default with restrained: exploration_restrained
-assert(resolve({ directivityLevel: 3 }) === "exploration_restrained", "resolve: directivityLevel>=2 gives exploration_restrained");
+assert(resolve({ directivityLevel: 2 }) === "exploration_open", "resolve: directivityLevel=2 keeps exploration_open");
+assert(resolve({ directivityLevel: 3 }) === "exploration_restrained", "resolve: directivityLevel>=3 gives exploration_restrained");
 
 // Phase B: alliance_rupture override
 assert(
