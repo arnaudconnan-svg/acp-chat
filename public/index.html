@@ -4128,8 +4128,8 @@
       send({ skipUserHistoryInsert: nextMessageEntry.alreadyInserted === true });
     }
 
-    function disableInterruptedResumeButtons() {
-      document.querySelectorAll(".stream-resume-btn").forEach((btn) => {
+    function disableInterruptedRegenerationButtons() {
+      document.querySelectorAll(".stream-regenerate-btn").forEach((btn) => {
         btn.disabled = true;
         btn.setAttribute("aria-disabled", "true");
         btn.style.opacity = "0.55";
@@ -4153,9 +4153,9 @@
       return -1;
     }
 
-    function appendInterruptedResumeControls(contentWrap, options = {}) {
+    function appendInterruptedRegenerationControls(contentWrap, options = {}) {
       if (!contentWrap) return null;
-      if (contentWrap.querySelector(".stream-resume-btn")) return null;
+      if (contentWrap.querySelector(".stream-regenerate-btn")) return null;
 
       const partialReply = String(options.partialReply || "").trim();
       if (!partialReply) return null;
@@ -4171,7 +4171,7 @@
         .reverse()
         .find((entry) => entry && entry.role === "user" && typeof entry.content === "string")
         ?.content || "";
-      const resumePrompt = String(options.resumePrompt || "").trim() || String(fallbackPrompt || "").trim();
+      const regenerationPrompt = String(options.regenerationPrompt || "").trim() || String(fallbackPrompt || "").trim();
 
       const appendix = document.createElement("div");
       appendix.style.marginTop = "8px";
@@ -4185,42 +4185,42 @@
       text.style.fontSize = "12px";
       text.style.color = "#567176";
 
-      const resumeBtn = document.createElement("button");
-      resumeBtn.type = "button";
-      resumeBtn.className = "stream-resume-btn";
-      resumeBtn.textContent = "R\u00e9g\u00e9n\u00e9rer la r\u00e9ponse";
-      resumeBtn.setAttribute("aria-label", "R\u00e9g\u00e9n\u00e9rer la r\u00e9ponse");
-      resumeBtn.title = "R\u00e9g\u00e9n\u00e9rer la r\u00e9ponse";
-      resumeBtn.style.fontSize = "12px";
-      resumeBtn.style.padding = "5px 10px";
-      resumeBtn.style.borderRadius = "999px";
-      resumeBtn.style.border = "1px solid rgba(36, 94, 102, 0.4)";
-      resumeBtn.style.background = "rgba(255, 255, 255, 0.82)";
-      resumeBtn.style.color = "#245e66";
-      resumeBtn.style.cursor = "pointer";
+      const regenerateBtn = document.createElement("button");
+      regenerateBtn.type = "button";
+      regenerateBtn.className = "stream-regenerate-btn";
+      regenerateBtn.textContent = "R\u00e9g\u00e9n\u00e9rer la r\u00e9ponse";
+      regenerateBtn.setAttribute("aria-label", "R\u00e9g\u00e9n\u00e9rer la r\u00e9ponse");
+      regenerateBtn.title = "R\u00e9g\u00e9n\u00e9rer la r\u00e9ponse";
+      regenerateBtn.style.fontSize = "12px";
+      regenerateBtn.style.padding = "5px 10px";
+      regenerateBtn.style.borderRadius = "999px";
+      regenerateBtn.style.border = "1px solid rgba(36, 94, 102, 0.4)";
+      regenerateBtn.style.background = "rgba(255, 255, 255, 0.82)";
+      regenerateBtn.style.color = "#245e66";
+      regenerateBtn.style.cursor = "pointer";
 
-      resumeBtn.addEventListener("click", async () => {
+      regenerateBtn.addEventListener("click", async () => {
         if (isSending) return;
-        resumeBtn.disabled = true;
-        resumeBtn.setAttribute("aria-disabled", "true");
-        resumeBtn.style.opacity = "0.55";
-        resumeBtn.style.cursor = "not-allowed";
+        regenerateBtn.disabled = true;
+        regenerateBtn.setAttribute("aria-disabled", "true");
+        regenerateBtn.style.opacity = "0.55";
+        regenerateBtn.style.cursor = "not-allowed";
         const input = document.getElementById("input");
         if (input) {
-          input.value = resumePrompt;
+          input.value = regenerationPrompt;
         }
         await send({
           skipUserHistoryInsert: true,
-          resumeFromPartialReply: partialReply,
-          resumeUserMessage: resumePrompt,
-          resumeInterruptedHistoryIndex: historyIndex >= 0 ? historyIndex : lastInterruptedIndex
+          regenerationFromPartialReply: partialReply,
+          regenerationUserMessage: regenerationPrompt,
+          regenerateInterruptedHistoryIndex: historyIndex >= 0 ? historyIndex : lastInterruptedIndex
         });
       });
 
       appendix.appendChild(text);
-      appendix.appendChild(resumeBtn);
+      appendix.appendChild(regenerateBtn);
       contentWrap.appendChild(appendix);
-      return resumeBtn;
+      return regenerateBtn;
     }
     
     function ensureBootOverlay() {
@@ -5316,12 +5316,12 @@
       });
     }
 
-    function upsertInterruptedAssistantHistory(partialReply, resumePrompt = "") {
+    function upsertInterruptedAssistantHistory(partialReply, regenerationPrompt = "") {
       const partialText = String(partialReply || "").trim();
       if (!partialText) return false;
 
       const history = loadHistory();
-      const nextResumePrompt = String(resumePrompt || "").trim();
+      const nextRegenerationPrompt = String(regenerationPrompt || "").trim();
       const lastIndex = history.length - 1;
       const lastEntry = lastIndex >= 0 ? history[lastIndex] : null;
       const shouldUpdateLast =
@@ -5331,13 +5331,13 @@
         lastEntry.interruptedStream.active === true;
 
       if (shouldUpdateLast) {
-        const previousPrompt = String(lastEntry.interruptedStream.resumePrompt || "").trim();
+        const previousPrompt = String(lastEntry.interruptedStream.regenerationPrompt || "").trim();
         history[lastIndex] = {
           ...lastEntry,
           content: partialText,
           interruptedStream: {
             active: true,
-            resumePrompt: nextResumePrompt || previousPrompt
+            regenerationPrompt: nextRegenerationPrompt || previousPrompt
           },
           t: Date.now()
         };
@@ -5350,7 +5350,7 @@
           stateSnapshot: null,
           interruptedStream: {
             active: true,
-            resumePrompt: nextResumePrompt
+            regenerationPrompt: nextRegenerationPrompt
           },
           t: Date.now()
         });
@@ -5641,7 +5641,7 @@
         return;
       }
       
-      startFreshOrResumeSession();
+      startFreshOrContinueSession();
     }
 
     function syncFromStorageEvent(event) {
@@ -8730,8 +8730,8 @@
         interruptedStreamMeta.active === true &&
         !isOpeningGreetingMessage(rawText)
       ) {
-        appendInterruptedResumeControls(contentWrap, {
-          resumePrompt: interruptedStreamMeta.resumePrompt || "",
+        appendInterruptedRegenerationControls(contentWrap, {
+          regenerationPrompt: interruptedStreamMeta.regenerationPrompt || "",
           partialReply: rawText,
           historyIndex
         });
@@ -9219,7 +9219,7 @@
         return;
       }
       
-      startFreshOrResumeSession();
+      startFreshOrContinueSession();
     }
     
     function renderConversationsList() {
@@ -9582,7 +9582,7 @@
       });
     }
     
-    function startFreshOrResumeSession() {
+    function startFreshOrContinueSession() {
       closeSessionInfoModal();
       showScreen("chatScreen", { pushHistory: true });
       restoreFormalAddressPreferenceForConversation();
@@ -9695,24 +9695,24 @@
 
       const {
         skipUserHistoryInsert = false,
-        resumeFromPartialReply = "",
-        resumeUserMessage = "",
-        resumeInterruptedHistoryIndex = -1
+        regenerationFromPartialReply = "",
+        regenerationUserMessage = "",
+        regenerateInterruptedHistoryIndex = -1
       } = options;
       let shouldSkipUserHistoryInsert = skipUserHistoryInsert === true;
-      const resumePartialReply = typeof resumeFromPartialReply === "string"
-        ? resumeFromPartialReply.trim()
+      const regenerationPartialReply = typeof regenerationFromPartialReply === "string"
+        ? regenerationFromPartialReply.trim()
         : "";
       
       const input = document.getElementById("input");
       const chat = document.getElementById("chat");
-      const nextMessage = resumePartialReply
-        ? String(resumeUserMessage || input.value || "").trim()
+      const nextMessage = regenerationPartialReply
+        ? String(regenerationUserMessage || input.value || "").trim()
         : input.value.trim();
       
       if (!nextMessage) return;
 
-      disableInterruptedResumeButtons();
+      disableInterruptedRegenerationButtons();
 
       if (isSending) {
         if (editMode.active) {
@@ -9964,7 +9964,7 @@
       }
       
       const shouldAutoScrollReply = isEditing || wasAtBottom || isChatAtBottom();
-      let liveStreamText = resumePartialReply || "";
+      let liveStreamText = regenerationPartialReply || "";
       let liveStreamNode = null;
 
       function getChatDistanceFromBottom(chatEl) {
@@ -10004,16 +10004,16 @@
         const chatEl = document.getElementById("chat");
         if (!chatEl) return null;
 
-        if (resumePartialReply) {
+        if (regenerationPartialReply) {
           const existingMsg = chatEl.querySelector('.message[data-stream-bubble="1"]');
           const existingContentWrap = existingMsg ? existingMsg.querySelector('.message-content') : null;
           const existingBubble = existingContentWrap ? existingContentWrap.querySelector('.bubble') : null;
 
           if (existingMsg && existingContentWrap && existingBubble) {
-            const resumeBtn = existingContentWrap.querySelector('.stream-resume-btn');
-            const resumeWrap = resumeBtn && resumeBtn.parentNode ? resumeBtn.parentNode : null;
-            if (resumeWrap && resumeWrap.parentNode) {
-              resumeWrap.parentNode.removeChild(resumeWrap);
+            const regenerateBtn = existingContentWrap.querySelector('.stream-regenerate-btn');
+            const regenerateWrap = regenerateBtn && regenerateBtn.parentNode ? regenerateBtn.parentNode : null;
+            if (regenerateWrap && regenerateWrap.parentNode) {
+              regenerateWrap.parentNode.removeChild(regenerateWrap);
             }
 
             existingBubble.textContent = liveStreamText;
@@ -10320,12 +10320,12 @@
         const beforeScrollTop = chatEl ? chatEl.scrollTop : 0;
         const beforeDistanceBottom = chatEl ? getChatDistanceFromBottom(chatEl) : 0;
 
-        const resumeBtn = liveStreamNode.contentWrap
-          ? liveStreamNode.contentWrap.querySelector(".stream-resume-btn")
+        const regenerateBtn = liveStreamNode.contentWrap
+          ? liveStreamNode.contentWrap.querySelector(".stream-regenerate-btn")
           : null;
-        const resumeWrap = resumeBtn && resumeBtn.parentNode ? resumeBtn.parentNode : null;
-        if (resumeWrap && resumeWrap.parentNode) {
-          resumeWrap.parentNode.removeChild(resumeWrap);
+        const regenerateWrap = regenerateBtn && regenerateBtn.parentNode ? regenerateBtn.parentNode : null;
+        if (regenerateWrap && regenerateWrap.parentNode) {
+          regenerateWrap.parentNode.removeChild(regenerateWrap);
         }
 
         liveStreamNode.interrupted = false;
@@ -10354,8 +10354,8 @@
 
         upsertInterruptedAssistantHistory(liveStreamText, message);
         const interruptedHistoryIndex = getLastInterruptedAssistantHistoryIndex();
-        appendInterruptedResumeControls(liveStreamNode.contentWrap, {
-          resumePrompt: message,
+        appendInterruptedRegenerationControls(liveStreamNode.contentWrap, {
+          regenerationPrompt: message,
           partialReply: liveStreamText,
           historyIndex: interruptedHistoryIndex
         });
@@ -10568,8 +10568,8 @@
           userId: getOrCreateUserId(),
           conversationId: requestConversationId,
           isPrivateConversation: isConversationPrivateById(requestConversationId, loadConversationData(requestConversationId)),
-          resumeMode: resumePartialReply ? "continue_from_partial" : "none",
-          partialAssistantReply: resumePartialReply || undefined,
+          regenerationMode: regenerationPartialReply ? "from_partial_reply" : "none",
+          partialAssistantText: regenerationPartialReply || undefined,
           adminUiActive: document.body.classList.contains("admin-ui"),
           recentHistory: buildRecentHistoryForChatRequest(loadHistory()),
           conversationBranchHistory: buildConversationBranchHistoryForChatRequest(loadHistory()),
@@ -10687,7 +10687,7 @@
           }
 
           let replacedInterruptedEntry = false;
-          if (resumePartialReply) {
+          if (regenerationPartialReply) {
             replacedInterruptedEntry = replaceLatestInterruptedAssistantHistory(
               data.reply,
               data.debug || [],
@@ -10698,7 +10698,7 @@
                 flags: data.flags
               },
               data && data.signals ? data.signals : null,
-              Number.isInteger(resumeInterruptedHistoryIndex) ? resumeInterruptedHistoryIndex : -1
+              Number.isInteger(regenerateInterruptedHistoryIndex) ? regenerateInterruptedHistoryIndex : -1
             );
           }
 
@@ -11518,7 +11518,7 @@
     if (sessionInfoContinueBtn) {
       sessionInfoContinueBtn.onclick = () => {
         saveSessionInfoDismissed(document.getElementById("sessionInfoDontShow").checked);
-        startFreshOrResumeSession();
+        startFreshOrContinueSession();
       };
     }
     
@@ -11766,9 +11766,9 @@
         requestAnimationFrame(() => syncComposerUiDeferred({ keepBottom: true }));
       };
       
-      const originalStartFreshOrResumeSession = startFreshOrResumeSession;
-      startFreshOrResumeSession = function(...args) {
-        originalStartFreshOrResumeSession.apply(this, args);
+      const originalStartFreshOrContinueSession = startFreshOrContinueSession;
+      startFreshOrContinueSession = function(...args) {
+        originalStartFreshOrContinueSession.apply(this, args);
         requestAnimationFrame(updateMakePublicBtnVisibility);
         requestAnimationFrame(() => syncComposerUiDeferred({ keepBottom: true }));
         setTimeout(() => syncComposerUiDeferred({ keepBottom: true }), 40);

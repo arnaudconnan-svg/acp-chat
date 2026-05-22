@@ -3592,7 +3592,7 @@ app.post("/api/branches/:id/activate", async (req, res) => {
   }
 });
 
-// Fetch a single branch record + seed messages (for cross-device resume).
+// Fetch a single branch record + seed messages (for cross-device continuity).
 app.get("/api/branches/:id", async (req, res) => {
   try {
     const branchId = String(req.params?.id || "").trim();
@@ -4529,10 +4529,10 @@ function parseChatRequest(req) {
   const mailsEnabled = req.body?.mailsEnabled !== false;
   const logsEnabled = req.body?.logsEnabled === true;
   const adminUiActive = req.body?.adminUiActive === true;
-  const resumeModeRaw = typeof req.body?.resumeMode === "string" ? req.body.resumeMode.trim() : "";
-  const resumeMode = resumeModeRaw === "continue_from_partial" ? "continue_from_partial" : "none";
-  const partialAssistantReply = typeof req.body?.partialAssistantReply === "string"
-    ? req.body.partialAssistantReply.slice(0, 12000)
+  const regenerationModeRaw = typeof req.body?.regenerationMode === "string" ? req.body.regenerationMode.trim() : "";
+  const regenerationMode = regenerationModeRaw === "from_partial_reply" ? "from_partial_reply" : "none";
+  const partialAssistantText = typeof req.body?.partialAssistantText === "string"
+    ? req.body.partialAssistantText.slice(0, 12000)
     : "";
   const titleDenyList = Array.isArray(req.body?.titleDenyList)
     ? req.body.titleDenyList
@@ -4555,8 +4555,8 @@ function parseChatRequest(req) {
     mailsEnabled,
     logsEnabled,
     adminUiActive,
-    resumeMode,
-    partialAssistantReply
+    regenerationMode,
+    partialAssistantText
   };
 }
 
@@ -4591,19 +4591,19 @@ function validateChatRequestShape(body = {}) {
     return ["memory: not_string"];
   }
 
-  if (body.resumeMode !== undefined) {
-    const safeResumeMode = typeof body.resumeMode === "string" ? body.resumeMode.trim() : "";
-    if (!safeResumeMode || !["none", "continue_from_partial"].includes(safeResumeMode)) {
-      return ["resumeMode: invalid_value"];
+  if (body.regenerationMode !== undefined) {
+    const safeRegenerationMode = typeof body.regenerationMode === "string" ? body.regenerationMode.trim() : "";
+    if (!safeRegenerationMode || !["none", "from_partial_reply"].includes(safeRegenerationMode)) {
+      return ["regenerationMode: invalid_value"];
     }
   }
 
-  if (body.partialAssistantReply !== undefined && typeof body.partialAssistantReply !== "string") {
-    return ["partialAssistantReply: not_string"];
+  if (body.partialAssistantText !== undefined && typeof body.partialAssistantText !== "string") {
+    return ["partialAssistantText: not_string"];
   }
 
-  if (typeof body.partialAssistantReply === "string" && body.partialAssistantReply.length > 12000) {
-    return ["partialAssistantReply: too_long"];
+  if (typeof body.partialAssistantText === "string" && body.partialAssistantText.length > 12000) {
+    return ["partialAssistantText: too_long"];
   }
 
   if (body.flags !== undefined && (typeof body.flags !== "object" || body.flags === null || Array.isArray(body.flags))) {
@@ -5024,8 +5024,8 @@ async function handleChatPost(req, res) {
     ? req.onTokenCallbackForChat
     : null;
   const requestData = parseChatRequest(req);
-  const continuationPrefix = requestData.resumeMode === "continue_from_partial"
-    ? String(requestData.partialAssistantReply || "")
+  const regenerationPrefix = requestData.regenerationMode === "from_partial_reply"
+    ? String(requestData.partialAssistantText || "")
     : "";
   const requestId = String(requestData.requestId || "").trim();
   // traceId: server-generated per-request, always present even without a client requestId.
@@ -5901,7 +5901,7 @@ async function handleChatPost(req, res) {
           postureDecision: buildN2CrisisPostureDecision(),
           promptRegistry: n2PromptRegistry,
           onTokenCallback: onTokenCallbackForChat,
-          continuationPrefix
+          regenerationPrefix
         });
         reply = n2Result.reply;
       } catch {
@@ -6822,7 +6822,7 @@ Reponds strictement en JSON: {"items": ["..."]}
       intersessionMemoryForTurn: intersessionMemoryForThisTurn,
       promptRegistry: activePromptRegistry,
       onTokenCallback: onTokenCallbackForChat,
-      continuationPrefix,
+      regenerationPrefix,
     });
     throwIfCanceled();
 

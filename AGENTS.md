@@ -159,7 +159,7 @@ Si une demande produit est ambiguë techniquement : proposer deux interprétatio
 
 ### Règle de continuité inter-sessions — plan.md
 
-`plan.md` est le témoin de l'état conversationnel entre sessions (PC, mobile, tunneling). Il sert de pont de reprise quand l'historique de conversation n'est pas disponible.
+`plan.md` est le témoin de l'état conversationnel entre sessions (PC, mobile, tunneling). Il sert de pont de continuite quand l'historique de conversation n'est pas disponible.
 
 **À l'ouverture de chaque nouvelle session**, si `plan.md` existe dans le repo, l'agent doit :
 1. le lire avant toute autre action
@@ -181,7 +181,7 @@ Le contenu de `plan.md` est libre de forme. Aucune section, ordre, gabarit, styl
 
 Préférence utilisateur (non-obligatoire, sauf demande contraire explicite) : privilégier un rendu compact par point, où constat + décision + scope du point restent dans le même bloc, et éviter les sections séparées qui dupliquent ces informations et allongent inutilement la lecture.
 
-L'agent doit uniquement viser l'utilité de reprise inter-sessions selon la demande explicite de l'utilisateur, y compris si cela prend la forme de notes brutes, d'une seule phrase, d'un bloc unique, ou d'une structure ad hoc.
+L'agent doit uniquement viser l'utilité de continuite inter-sessions selon la demande explicite de l'utilisateur, y compris si cela prend la forme de notes brutes, d'une seule phrase, d'un bloc unique, ou d'une structure ad hoc.
 
 En conséquence, l'agent ne doit plus reproposer automatiquement une structure type (ex : "objectif / décisions / validation / questions ouvertes") sauf demande explicite de l'utilisateur pour ce format.
 
