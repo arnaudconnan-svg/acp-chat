@@ -9873,7 +9873,222 @@
         liveStreamNode = null;
       }
 
-      function finalizeLiveStreamBubble(finalReply) {
+      function getStreamCopyIconMarkup() {
+        return `
+          <span class="messageActionBtnIcon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none">
+              <rect x="9" y="8" width="10" height="12" rx="2.2" stroke="currentColor" stroke-width="1.9"></rect>
+              <path d="M7 16H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"></path>
+            </svg>
+          </span>
+        `;
+      }
+
+      function getStreamCheckIconMarkup() {
+        return `
+          <span class="messageActionBtnIcon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none">
+              <path d="M5 12.5l4.1 4.1L19 7.2" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"></path>
+            </svg>
+          </span>
+        `;
+      }
+
+      function getStreamThumbUpIconMarkup() {
+        return `
+          <span class="messageActionBtnIcon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none">
+              <path d="M10.2 10.2V6.9c0-1 .4-1.9 1.1-2.6l1.3-1.3c.5-.5 1.4-.2 1.5.6l.2 2.3c.1.8-.1 1.6-.5 2.3l-.8 1.3H17a2 2 0 0 1 2 2.3l-1 6.2a2 2 0 0 1-2 1.7h-6.8" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"></path>
+              <path d="M5 10.2h3.2v9H5a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1Z" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"></path>
+            </svg>
+          </span>
+        `;
+      }
+
+      function getStreamThumbDownIconMarkup() {
+        return `
+          <span class="messageActionBtnIcon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none">
+              <path d="M13.8 13.8v3.3c0 1-.4 1.9-1.1 2.6l-1.3 1.3c-.5.5-1.4.2-1.5-.6l-.2-2.3c-.1-.8.1-1.6.5-2.3l.8-1.3H7a2 2 0 0 1-2-2.3l1-6.2a2 2 0 0 1 2-1.7h6.8" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"></path>
+              <path d="M19 13.8h-3.2v-9H19a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1Z" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"></path>
+            </svg>
+          </span>
+        `;
+      }
+
+      function getStreamShareIconMarkup() {
+        return `
+          <span class="messageActionBtnIcon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none">
+              <circle cx="18" cy="5" r="2.2" stroke="currentColor" stroke-width="1.9"></circle>
+              <circle cx="6" cy="12" r="2.2" stroke="currentColor" stroke-width="1.9"></circle>
+              <circle cx="18" cy="19" r="2.2" stroke="currentColor" stroke-width="1.9"></circle>
+              <path d="M7.9 11.1l8-4.3" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"></path>
+              <path d="M7.9 12.9l8 4.3" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"></path>
+            </svg>
+          </span>
+        `;
+      }
+
+      function setStreamActionButtonCopiedState(button, copied) {
+        if (!button) return;
+        button.classList.toggle("is-copied", copied === true);
+        button.innerHTML = copied === true ? getStreamCheckIconMarkup() : getStreamCopyIconMarkup();
+      }
+
+      function setStreamActionButtonTemporaryCheck(button, idleMarkup, duration = 3600) {
+        if (!button) return;
+
+        if (button._temporaryCheckTimer) {
+          clearTimeout(button._temporaryCheckTimer);
+          button._temporaryCheckTimer = null;
+        }
+
+        button.classList.add("is-copied");
+        button.innerHTML = getStreamCheckIconMarkup();
+
+        button._temporaryCheckTimer = setTimeout(() => {
+          button.classList.remove("is-copied");
+          button.innerHTML = idleMarkup;
+          button._temporaryCheckTimer = null;
+        }, duration);
+      }
+
+      async function copyStreamMessageTextToClipboard(value) {
+        const textToCopy = String(value || "");
+        if (!textToCopy) return false;
+
+        if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+          try {
+            await navigator.clipboard.writeText(textToCopy);
+            return true;
+          } catch {}
+        }
+
+        const fallback = document.createElement("textarea");
+        fallback.value = textToCopy;
+        fallback.setAttribute("readonly", "");
+        fallback.style.position = "fixed";
+        fallback.style.opacity = "0";
+        fallback.style.pointerEvents = "none";
+        fallback.style.left = "-9999px";
+        document.body.appendChild(fallback);
+        fallback.focus();
+        fallback.select();
+
+        try {
+          document.execCommand("copy");
+          document.body.removeChild(fallback);
+          return true;
+        } catch {}
+
+        document.body.removeChild(fallback);
+        return false;
+      }
+
+      function ensureFinalizedStreamActions(finalReply, historyIndex = -1) {
+        if (!liveStreamNode || !liveStreamNode.contentWrap) return;
+        if (liveStreamNode.contentWrap.querySelector('[data-stream-final-actions="1"]')) return;
+        if (typeof isOpeningGreetingMessage === "function" && isOpeningGreetingMessage(finalReply)) return;
+
+        const displayText = String(finalReply || "");
+        const actionsRow = document.createElement("div");
+        actionsRow.dataset.streamFinalActions = "1";
+        actionsRow.style.display = "flex";
+        actionsRow.style.alignItems = "center";
+        actionsRow.style.gap = "8px";
+        actionsRow.style.paddingLeft = "4px";
+        actionsRow.style.paddingRight = "4px";
+        actionsRow.style.marginTop = "-2px";
+
+        const copyBotBtn = document.createElement("button");
+        copyBotBtn.type = "button";
+        copyBotBtn.setAttribute("aria-label", "Copier la reponse");
+        copyBotBtn.title = "Copier";
+        copyBotBtn.className = "messageActionBtn messageActionBtnBot";
+        copyBotBtn.innerHTML = getStreamCopyIconMarkup();
+        copyBotBtn.style.color = "#245e66";
+        copyBotBtn.style.marginLeft = "12px";
+
+        const thumbUpBtn = document.createElement("button");
+        thumbUpBtn.type = "button";
+        thumbUpBtn.setAttribute("aria-label", "Avis positif");
+        thumbUpBtn.title = "Pouce vers le haut";
+        thumbUpBtn.className = "messageActionBtn messageActionBtnBot messageActionBtnBotAux";
+        thumbUpBtn.innerHTML = getStreamThumbUpIconMarkup();
+        thumbUpBtn.style.color = "#245e66";
+
+        const thumbDownBtn = document.createElement("button");
+        thumbDownBtn.type = "button";
+        thumbDownBtn.setAttribute("aria-label", "Avis negatif");
+        thumbDownBtn.title = "Pouce vers le bas";
+        thumbDownBtn.className = "messageActionBtn messageActionBtnBot messageActionBtnBotAux";
+        thumbDownBtn.innerHTML = getStreamThumbDownIconMarkup();
+        thumbDownBtn.style.color = "#245e66";
+
+        const shareBtn = document.createElement("button");
+        shareBtn.type = "button";
+        shareBtn.setAttribute("aria-label", "Partager");
+        shareBtn.title = "Partager";
+        shareBtn.className = "messageActionBtn messageActionBtnBot messageActionBtnBotAux";
+        const shareIdleMarkup = getStreamShareIconMarkup();
+        shareBtn.innerHTML = shareIdleMarkup;
+        shareBtn.style.color = "#245e66";
+
+        let copyResetTimer = null;
+        copyBotBtn.addEventListener("click", async event => {
+          event.preventDefault();
+          event.stopPropagation();
+          const copied = await copyStreamMessageTextToClipboard(displayText);
+          if (!copied) return;
+          clearTimeout(copyResetTimer);
+          setStreamActionButtonCopiedState(copyBotBtn, true);
+          copyResetTimer = setTimeout(() => {
+            setStreamActionButtonCopiedState(copyBotBtn, false);
+          }, 3600);
+        });
+
+        thumbUpBtn.addEventListener("click", event => {
+          event.preventDefault();
+          event.stopPropagation();
+          openFeedbackModal("thumbUp", displayText, historyIndex, thumbUpBtn, thumbDownBtn);
+        });
+
+        thumbDownBtn.addEventListener("click", event => {
+          event.preventDefault();
+          event.stopPropagation();
+          openFeedbackModal("thumbDown", displayText, historyIndex, thumbUpBtn, thumbDownBtn);
+        });
+
+        shareBtn.addEventListener("click", async event => {
+          event.preventDefault();
+          event.stopPropagation();
+          if (navigator.share) {
+            try {
+              await navigator.share({
+                title: "Facilitat.io",
+                text: displayText,
+                url: window.location.href
+              });
+              setStreamActionButtonTemporaryCheck(shareBtn, shareIdleMarkup);
+            } catch (err) {
+              if (!err || err.name !== "AbortError") {
+                console.error("Share failed:", err);
+              }
+            }
+          } else {
+            alert("Option indisponible sur ce navigateur");
+          }
+        });
+
+        actionsRow.appendChild(copyBotBtn);
+        actionsRow.appendChild(thumbUpBtn);
+        actionsRow.appendChild(thumbDownBtn);
+        actionsRow.appendChild(shareBtn);
+        liveStreamNode.contentWrap.appendChild(actionsRow);
+      }
+
+      function finalizeLiveStreamBubble(finalReply, historyIndex = -1) {
         if (!liveStreamNode || !liveStreamNode.msg || !liveStreamNode.bubble) {
           return false;
         }
@@ -9891,6 +10106,7 @@
           progressive: false,
           wasAtBottomBeforeInsert: false
         });
+        ensureFinalizedStreamActions(finalReply, historyIndex);
         liveStreamNode.msg.removeAttribute("data-stream-bubble");
         return true;
       }
@@ -10245,14 +10461,8 @@
           document.querySelector(".screen.active")?.id === requestScreenId &&
           requestScreenId === "chatScreen";
 
-        const finalizedStreamInPlace =
-          usedStreaming === true &&
-          shouldRenderInCurrentChat &&
-          finalizeLiveStreamBubble(data.reply);
-
-        if (!finalizedStreamInPlace) {
-          removeLiveStreamBubble();
-        }
+        let finalizedStreamInPlace = false;
+        let streamHistoryIndex = -1;
 
         const currentConversationId = getConversationId();
         const isSameConversation = currentConversationId === requestConversationId;
@@ -10272,6 +10482,7 @@
             memory: data.memory,
             flags: data.flags
           }, data && data.signals ? data.signals : null);
+          streamHistoryIndex = loadHistory().length - 1;
         } else {
           const storedData = loadConversationData(requestConversationId);
           const existingMessages = Array.isArray(storedData.messages) ? storedData.messages : [];
@@ -10298,6 +10509,15 @@
             ],
             updatedAt: Date.now()
           });
+        }
+
+        finalizedStreamInPlace =
+          usedStreaming === true &&
+          shouldRenderInCurrentChat &&
+          finalizeLiveStreamBubble(data.reply, streamHistoryIndex);
+
+        if (!finalizedStreamInPlace) {
+          removeLiveStreamBubble();
         }
         
         if (shouldRenderInCurrentChat && !finalizedStreamInPlace) {
