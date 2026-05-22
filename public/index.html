@@ -9807,7 +9807,7 @@
 
         const chatEl = document.getElementById("chat");
         if (!chatEl) return null;
-        const canSnapOnCreate = liveStreamShouldSnapOnCreate && isChatNearBottom(chatEl, 120);
+        const canSnapOnCreate = liveStreamShouldSnapOnCreate;
 
         const msg = document.createElement("div");
         msg.className = "message bot";
@@ -10223,11 +10223,34 @@
           document.querySelector(".screen.active")?.id === requestScreenId &&
           requestScreenId === "chatScreen";
 
-        let preserveDistanceFromBottomAfterStream = null;
+        let preserveViewportAnchor = null;
         if (usedStreaming === true && shouldRenderInCurrentChat) {
           const chatEl = document.getElementById("chat");
-          if (chatEl) {
-            preserveDistanceFromBottomAfterStream = getChatDistanceFromBottom(chatEl);
+          const topBarEl = document.getElementById("topBar");
+          if (chatEl && topBarEl) {
+            const stopLineY = topBarEl.getBoundingClientRect().bottom + 6;
+            const messageNodes = Array.from(chatEl.querySelectorAll(".message"));
+            let anchorNode = null;
+
+            for (let i = 0; i < messageNodes.length; i += 1) {
+              const node = messageNodes[i];
+              const rect = node.getBoundingClientRect();
+              if (rect.bottom > stopLineY) {
+                anchorNode = node;
+                break;
+              }
+            }
+
+            if (!anchorNode) {
+              anchorNode = messageNodes.length > 0 ? messageNodes[messageNodes.length - 1] : null;
+            }
+
+            if (anchorNode) {
+              preserveViewportAnchor = {
+                node: anchorNode,
+                top: anchorNode.getBoundingClientRect().top
+              };
+            }
           }
         }
 
@@ -10287,13 +10310,12 @@
             progressive: usedStreaming !== true
           });
 
-          if (usedStreaming === true && preserveDistanceFromBottomAfterStream !== null) {
+          if (usedStreaming === true && preserveViewportAnchor && preserveViewportAnchor.node && preserveViewportAnchor.node.isConnected) {
             const chatEl = document.getElementById("chat");
             if (chatEl) {
-              const nextScrollTop = Math.max(
-                0,
-                chatEl.scrollHeight - chatEl.clientHeight - preserveDistanceFromBottomAfterStream
-              );
+              const currentTop = preserveViewportAnchor.node.getBoundingClientRect().top;
+              const delta = currentTop - preserveViewportAnchor.top;
+              const nextScrollTop = Math.max(0, chatEl.scrollTop + delta);
               chatEl.scrollTop = nextScrollTop;
               requestAnimationFrame(() => {
                 chatEl.scrollTop = nextScrollTop;
