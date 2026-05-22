@@ -9776,12 +9776,24 @@
       function pushStreamRuntimeTrace(snapshot) {
         if (!snapshot || typeof snapshot !== "object") return;
         streamRuntimeTrace.push(snapshot);
-        if (streamRuntimeTrace.length > 220) {
-          streamRuntimeTrace.splice(0, streamRuntimeTrace.length - 220);
+        if (streamRuntimeTrace.length > 120) {
+          streamRuntimeTrace.splice(0, streamRuntimeTrace.length - 120);
         }
       }
 
-      function postStreamRuntimeTrace(reason) {
+      function buildCompactRuntimeTraceEvents() {
+        return streamRuntimeTrace.slice(-80).map((event) => ({
+          ts: Number(event.ts) || Date.now(),
+          stage: String(event.stage || "").slice(0, 64),
+          scrollTop: Number.isFinite(event.scrollTop) ? Math.round(event.scrollTop) : null,
+          distanceBottom: Number.isFinite(event.distanceBottom) ? Math.round(event.distanceBottom) : null,
+          liveLength: Number.isFinite(event.liveLength) ? Math.round(event.liveLength) : null,
+          finalizedStreamInPlace: event.finalizedStreamInPlace === true,
+          usedStreaming: event.usedStreaming === true
+        }));
+      }
+
+      async function postStreamRuntimeTrace(reason) {
         if (streamRuntimeTraceSent === true) return;
         if (!requestConversationId || !chatRequestId) return;
 
@@ -9791,17 +9803,21 @@
           conversationId: requestConversationId,
           reason: String(reason || "completed"),
           transport: activeChatRequestTransport,
-          events: streamRuntimeTrace
+          events: buildCompactRuntimeTraceEvents()
         };
 
-        fetch("/chat/runtime-trace", {
+        const uploadPromise = fetch("/chat/runtime-trace", {
           method: "POST",
           headers: {
             "Content-Type": "application/json"
           },
-          keepalive: true,
           body: JSON.stringify(payload)
-        }).catch(() => {});
+        }).catch(() => null);
+
+        await Promise.race([
+          uploadPromise,
+          new Promise(resolve => setTimeout(resolve, 450))
+        ]);
       }
 
       function logStreamScroll(stage, details = {}) {
@@ -10663,7 +10679,7 @@
             : activeChatRequestTransport === "streaming"
               ? "streaming_complete"
               : "classic_complete";
-          postStreamRuntimeTrace(runtimeTraceReason);
+          await postStreamRuntimeTrace(runtimeTraceReason);
 
           activeChatRequestId = "";
           activeChatAbortController = null;
