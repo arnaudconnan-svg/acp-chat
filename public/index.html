@@ -9775,6 +9775,29 @@
         chatEl.style.scrollBehavior = prev || "";
       }
 
+      function restoreStreamViewportPosition(chatEl, scrollTop) {
+        if (!chatEl || !Number.isFinite(scrollTop)) return;
+
+        const previousOverflowAnchor = chatEl.style.overflowAnchor;
+        chatEl.style.overflowAnchor = "none";
+
+        const restore = () => {
+          chatEl.scrollTop = scrollTop;
+        };
+
+        restore();
+        requestAnimationFrame(restore);
+        requestAnimationFrame(() => {
+          requestAnimationFrame(restore);
+        });
+        setTimeout(restore, 40);
+        setTimeout(restore, 140);
+        setTimeout(() => {
+          restore();
+          chatEl.style.overflowAnchor = previousOverflowAnchor || "";
+        }, 260);
+      }
+
       function createLiveStreamBubble() {
         if (
           getConversationId() !== requestConversationId ||
@@ -10541,6 +10564,17 @@
           getConversationId() === requestConversationId &&
           document.querySelector(".screen.active")?.id === requestScreenId &&
           requestScreenId === "chatScreen";
+        const chatElForStreamCompletion = shouldRenderInCurrentChat
+          ? document.getElementById("chat")
+          : null;
+        const preserveViewportAfterStreamCompletion =
+          usedStreaming === true &&
+          shouldRenderInCurrentChat &&
+          !!liveStreamNode &&
+          liveStreamNode.autoScrollSuspendedByUser === true;
+        const preservedStreamScrollTop = preserveViewportAfterStreamCompletion && chatElForStreamCompletion
+          ? chatElForStreamCompletion.scrollTop
+          : null;
 
         let finalizedStreamInPlace = false;
         let streamHistoryIndex = -1;
@@ -10613,6 +10647,9 @@
         if (shouldRenderInCurrentChat) {
           updateScrollToBottomBtn();
           updateCrisisSupportCard(data.debugMeta || null);
+          if (preserveViewportAfterStreamCompletion && chatElForStreamCompletion) {
+            restoreStreamViewportPosition(chatElForStreamCompletion, preservedStreamScrollTop);
+          }
         }
         
         if (data.conversationId) {
