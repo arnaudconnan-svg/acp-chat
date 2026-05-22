@@ -4841,6 +4841,54 @@ app.post("/chat/cancel", (req, res) => {
   return res.json({ success: true, requestId, canceled });
 });
 
+app.post("/chat/stream/interrupted", async (req, res) => {
+  const conversationId = typeof req.body?.conversationId === "string" ? req.body.conversationId.trim() : "";
+  const userId = typeof req.body?.userId === "string" ? req.body.userId.trim() : "u_anon";
+  const requestId = typeof req.body?.requestId === "string" ? req.body.requestId.trim() : "";
+  const partialReply = typeof req.body?.partialReply === "string" ? req.body.partialReply : "";
+  const isPrivateConversation = req.body?.isPrivateConversation === true;
+  const isEdited = req.body?.isEdited === true;
+
+  if (!conversationId) {
+    return res.status(400).json({ error: "Missing conversationId" });
+  }
+
+  const normalizedPartial = partialReply.trim();
+  if (!normalizedPartial) {
+    return res.status(400).json({ error: "Missing partialReply" });
+  }
+
+  if (isPrivateConversation) {
+    return res.json({ success: true, skipped: true, reason: "private_conversation" });
+  }
+
+  try {
+    const pushedRef = await messagesRef.push({
+      role: "assistant",
+      content: isEdited ? normalizedPartial + "\n[MODIFIÉ]" : normalizedPartial,
+      timestamp: Date.now(),
+      userId,
+      conversationId,
+      streamInterrupted: true,
+      requestId: requestId || null
+    });
+
+    const convRef = db.ref("conversations").child(conversationId);
+    await convRef.update({
+      updatedAt: new Date().toISOString()
+    });
+
+    return res.json({
+      success: true,
+      messageId: pushedRef.key || null,
+      conversationId
+    });
+  } catch (err) {
+    console.error("[STREAM_INTERRUPTED_PERSIST][FAILED]", err && err.message ? err.message : String(err));
+    return res.status(500).json({ error: "Failed to persist interrupted stream" });
+  }
+});
+
 app.get("/chat/progress", (req, res) => {
   const requestId = typeof req.query?.requestId === "string" ? req.query.requestId.trim() : "";
 

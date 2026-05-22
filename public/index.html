@@ -10109,6 +10109,59 @@
         if (!liveStreamNode || !liveStreamNode.contentWrap) return;
         if (liveStreamNode.interrupted === true) return;
         liveStreamNode.interrupted = true;
+
+        const partialReply = String(liveStreamText || "").trim();
+        if (!partialReply) return;
+
+        const isPrivateConversation = isConversationPrivateById(
+          requestConversationId,
+          loadConversationData(requestConversationId)
+        );
+
+        if (isPrivateConversation) {
+          const history = loadHistory();
+          history.push({
+            role: "assistant",
+            content: partialReply,
+            debug: [],
+            debugMeta: null,
+            stateSnapshot: null,
+            t: Date.now(),
+            streamInterrupted: true
+          });
+          saveHistory(history);
+        }
+
+        const persistPayload = {
+          conversationId: requestConversationId,
+          userId: getOrCreateUserId(),
+          requestId: chatRequestId,
+          partialReply,
+          isPrivateConversation,
+          isEdited: requestIsEdited === true
+        };
+
+        try {
+          if (navigator && typeof navigator.sendBeacon === "function") {
+            const body = new Blob([JSON.stringify(persistPayload)], { type: "application/json" });
+            const accepted = navigator.sendBeacon("/chat/stream/interrupted", body);
+            if (!accepted) {
+              fetch("/chat/stream/interrupted", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(persistPayload),
+                keepalive: true
+              }).catch(() => {});
+            }
+          } else {
+            fetch("/chat/stream/interrupted", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(persistPayload),
+              keepalive: true
+            }).catch(() => {});
+          }
+        } catch {}
       }
 
       const chatRequestId = buildChatRequestId();
