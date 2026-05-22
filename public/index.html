@@ -9766,6 +9766,7 @@
 
       const STREAM_AUTOSCROLL_SUSPEND_DISTANCE_PX = 56;
       const STREAM_AUTOSCROLL_RESUME_DISTANCE_PX = 8;
+      const STREAM_TOPBAR_STOP_MARGIN_PX = 12;
 
       function keepStreamBottomLocked(chatEl) {
         if (!chatEl) return;
@@ -9773,6 +9774,15 @@
         chatEl.style.scrollBehavior = "auto";
         chatEl.scrollTop = chatEl.scrollHeight;
         chatEl.style.scrollBehavior = prev || "";
+      }
+
+      function hasLiveStreamBubbleReachedTopbarStopLine(bubbleEl) {
+        if (!bubbleEl) return false;
+        const topBarEl = document.getElementById("topBar");
+        if (!topBarEl) return false;
+
+        const stopLineY = topBarEl.getBoundingClientRect().bottom + STREAM_TOPBAR_STOP_MARGIN_PX;
+        return bubbleEl.getBoundingClientRect().top <= stopLineY;
       }
 
       function restoreStreamViewportPosition(chatEl, scrollTop) {
@@ -9906,6 +9916,15 @@
 
         const chatEl = document.getElementById("chat");
         liveStreamNode.bubble.textContent = liveStreamText;
+
+        if (
+          liveStreamNode.keepBottomLocked === true &&
+          hasLiveStreamBubbleReachedTopbarStopLine(liveStreamNode.bubble)
+        ) {
+          liveStreamNode.keepBottomLocked = false;
+          updateScrollToBottomBtn();
+        }
+
         if (chatEl && liveStreamNode.keepBottomLocked === true) {
           streamProgrammaticScrollLock = true;
           keepStreamBottomLocked(chatEl);
