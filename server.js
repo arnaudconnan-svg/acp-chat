@@ -131,8 +131,6 @@ const {
   normalizeFlags,
   normalizeAttentionWindow,
   normalizeSessionFlags,
-  normalizeStagnationTurns,
-  normalizeStagnationWindow,
   registerExplorationRelance
 } = require("./lib/flags");
 const { createAnalyzers } = require("./lib/analyzers");
@@ -2830,7 +2828,6 @@ app.post("/api/account/conversations/import-local", requireUserAuth, async (req,
               stateTransitionRequested: typeof debugMeta.stateTransitionRequested === "string" ? debugMeta.stateTransitionRequested : null,
               allianceSignal: typeof debugMeta.allianceSignal === "string" ? debugMeta.allianceSignal : null,
               engagementLevel: typeof debugMeta.engagementLevel === "string" ? debugMeta.engagementLevel : null,
-              stagnationTurns: Number.isInteger(debugMeta.stagnationTurns) ? Math.max(0, debugMeta.stagnationTurns) : 0,
               attentionWindow: typeof debugMeta.attentionWindow === "string" ? debugMeta.attentionWindow : null,
               dependencyRiskScore: Number.isFinite(debugMeta.dependencyRiskScore) ? Math.max(0, Math.min(100, Math.round(Number(debugMeta.dependencyRiskScore)))) : 0,
               dependencyRiskLevel: typeof debugMeta.dependencyRiskLevel === "string" ? debugMeta.dependencyRiskLevel : null,
@@ -2850,7 +2847,6 @@ app.post("/api/account/conversations/import-local", requireUserAuth, async (req,
                     })
                     .filter(Boolean)
                 : [],
-              stagnationWindow: Array.isArray(debugMeta.stagnationWindow) ? debugMeta.stagnationWindow.map(v => v === true) : [],
               affiliationScore: typeof debugMeta.affiliationScore === "number" ? debugMeta.affiliationScore : null,
               affiliationFinalScore: typeof debugMeta.affiliationFinalScore === "number" ? debugMeta.affiliationFinalScore : null,
               affiliationWindow: Array.isArray(debugMeta.affiliationWindow) ? debugMeta.affiliationWindow.map(v => typeof v === "number" ? v : 0) : [],
@@ -5250,8 +5246,6 @@ async function handleChatPost(req, res) {
       stateTransitionRequested: typeof safe.stateTransitionRequested === "string" ? safe.stateTransitionRequested : null,
       allianceSignal: normalizeAllianceState(safe.allianceSignal),
       engagementLevel: normalizeEngagementLevel(safe.engagementLevel),
-      stagnationTurns: normalizeStagnationTurns(safe.stagnationTurns),
-      stagnationWindow: normalizeStagnationWindow(safe.stagnationWindow),
       attentionWindow: normalizeAttentionWindow(safe.attentionWindow),
       dependencyRiskScore: clampDependencyRiskScore(safe.dependencyRiskScore),
       dependencyRiskLevel: normalizeDependencyRiskLevel(safe.dependencyRiskLevel),
@@ -6694,8 +6688,6 @@ Reponds strictement en JSON: {"items": ["..."]}
       // Phase B structural flags ? persistent fallback values (overridden by C2 per-turn analysis)
       allianceSignal: newFlags.allianceSignal,
       engagementLevel: newFlags.engagementLevel,
-      stagnationTurns: newFlags.stagnationTurns,
-      currentStagnationWindow: newFlags.stagnationWindow,
       attentionWindow: newFlags.attentionWindow,
       closureIntent: newFlags.closureIntent,
       dependencyCareMessagePending: newFlags.dependencyCareMessagePending || flags.dependencyCareMessagePending || false,
@@ -6729,22 +6721,6 @@ Reponds strictement en JSON: {"items": ["..."]}
 
     // Observabilite: garder ce signal pour les logs pipeline.
     const hadEmptyOngoingBeforeTurn = !Array.isArray(previousMemoryState?.onGoingMovements) || previousMemoryState.onGoingMovements.length === 0;
-
-    // Regle produit: stagnation impossible au premier tour evaluable.
-    // On force la case courante de la fenetre a 0 et le cumul a 0.
-    if (isFirstTurn) {
-      const previousStagnationWindow = normalizeStagnationWindow(newFlags.stagnationWindow);
-      const previousStagnationTurns = normalizeStagnationTurns(newFlags.stagnationTurns);
-      const forcedWindow = [...previousStagnationWindow.slice(0, 3), false];
-      newFlags.stagnationWindow = forcedWindow;
-      newFlags.stagnationTurns = 0;
-      logChatDecision("stagnation_forced_first_turn_false", {
-        previousStagnationWindow,
-        forcedStagnationWindow: forcedWindow,
-        previousStagnationTurns,
-        forcedStagnationTurns: newFlags.stagnationTurns
-      });
-    }
 
     flagsForCatch = normalizeSessionFlags(newFlags);
 
@@ -6935,7 +6911,6 @@ Reponds strictement en JSON: {"items": ["..."]}
 
     const memoryClinicalSignals = {
       risque_dependance: newFlags.dependencyRiskLevel || "low",
-      stagnation: Number.isInteger(newFlags.stagnationTurns) ? Math.max(0, newFlags.stagnationTurns) : 0,
       decentrage_emotionnel: emotionalDecenteringAnalysis?.emotionalDecentering === true,
       agressivite_vers_bot: dischargeAnalysis?.aggressiveDischargeDirectedToBot === true
     };
@@ -7121,8 +7096,6 @@ Reponds strictement en JSON: {"items": ["..."]}
       // Phase B structural flags
       allianceSignal: newFlags.allianceSignal,
       engagementLevel: newFlags.engagementLevel,
-      stagnationTurns: newFlags.stagnationTurns,
-      stagnationWindow: newFlags.stagnationWindow,
       attentionWindow: newFlags.attentionWindow,
       dependencyRiskScore: newFlags.dependencyRiskScore,
       dependencyRiskLevel: newFlags.dependencyRiskLevel,

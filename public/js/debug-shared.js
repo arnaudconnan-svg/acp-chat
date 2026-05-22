@@ -198,10 +198,6 @@
       stateTransitionRequested: toTrimmedString(safe.stateTransitionRequested, "") || null,
       allianceSignal: toTrimmedString(safe.allianceSignal, "") || "good",
       engagementLevel: toTrimmedString(safe.engagementLevel, "") || "active",
-      stagnationTurns: Number.isInteger(safe.stagnationTurns) ? Math.max(0, safe.stagnationTurns) : 0,
-      stagnationWindow: Array.isArray(safe.stagnationWindow)
-        ? safe.stagnationWindow.map(function mapStagnation(v) { return v === true; }).slice(-4)
-        : [],
       attentionWindow: toTrimmedString(safe.attentionWindow, "") || "open",
       dependencyRiskScore: clamp100(safe.dependencyRiskScore, 0),
       dependencyRiskLevel: toTrimmedString(safe.dependencyRiskLevel, "") || "low",
@@ -336,7 +332,6 @@
       alliance_fragile_sensitive: "alliance fragile — avancée avec soin",
       alliance_restored_presence: "retour d'alliance",
       engagement_withdrawn_noticed: "retrait d'engagement not\u00e9",
-      stagnation_noticed: "enlisement not\u00e9",
       meaning_crisis_witnessed: "effondrement de sens reconnu",
       formal_address_adopted: "passage au vouvoiement adopt\u00e9",
       formal_address_transition_query: "retour au tutoiement — question pos\u00e9e",

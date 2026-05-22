@@ -7870,17 +7870,6 @@
           sections.push({ title: "Affiliation", content: affiliationLines.join("\n") });
         }
 
-        const stagnationLines = [];
-        if (Array.isArray(meta.stagnationWindow) && meta.stagnationWindow.length > 0) {
-          stagnationLines.push(`Fenêtre de stagnation : [${meta.stagnationWindow.map(v => v ? "1" : "0").join("-")}]`);
-        }
-        if (typeof meta.stagnationTurns === "number") {
-          stagnationLines.push(`Stagnation cumulée : ${meta.stagnationTurns} tour(s)`);
-        }
-        if (stagnationLines.length > 0) {
-          sections.push({ title: "Stagnation", content: stagnationLines.join("\n") });
-        }
-
         const structuredMemorySection = buildStructuredMemorySection(meta);
         if (structuredMemorySection) {
           sections.push(structuredMemorySection);

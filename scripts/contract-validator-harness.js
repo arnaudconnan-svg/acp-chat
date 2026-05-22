@@ -60,7 +60,6 @@ function baseInput(overrides = {}) {
     currentExplorationRelanceWindow: [false, false, false, false],
     allianceSignal: "good",
     engagementLevel: "active",
-    stagnationTurns: 0,
     attentionWindow: "open",
     closureIntent: false,
     message: "",

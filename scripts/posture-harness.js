@@ -43,7 +43,6 @@ function baseInput(overrides = {}) {
     currentExplorationRelanceWindow: [false, false, false, false],
     allianceSignal: "good",
     engagementLevel: "active",
-    stagnationTurns: 0,
     attentionWindow: "open",
     closureIntent: false,
     dependencyCareMessagePending: false,
@@ -224,7 +223,6 @@ check("secondary tension suppresses redundancy with active base family", () => {
     allianceSignal: "good",
     engagementLevel: "active",
     attentionWindow: "open",
-    stagnationTurns: 0,
     secondaryTension: { family: "info", confidence: "high" }
   }));
   assert(out.secondaryTension === null, "expected secondaryTension=null when candidate duplicates active base family");

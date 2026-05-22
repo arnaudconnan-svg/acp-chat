@@ -21,7 +21,6 @@ const {
   normalizeFlags,
   normalizeAttentionWindow,
   normalizeSessionFlags,
-  normalizeStagnationTurns,
   normalizeAffiliationWindow,
   registerExplorationRelance
 } = require("../lib/flags");
@@ -159,13 +158,6 @@ check("engagementLevel: 'withdrawn' → 'withdrawn'", () => assert(normalizeEnga
 check("engagementLevel: null → 'active'", () => assert(normalizeEngagementLevel(null) === "active"));
 check("engagementLevel: unknown → 'active'", () => assert(normalizeEngagementLevel("bad") === "active"));
 
-// ─── normalizeStagnationTurns ─────────────────────────────────────────────────
-
-check("stagnationTurns: 0 → 0", () => assert(normalizeStagnationTurns(0) === 0));
-check("stagnationTurns: 3 → 3", () => assert(normalizeStagnationTurns(3) === 3));
-check("stagnationTurns: -1 → 0", () => assert(normalizeStagnationTurns(-1) === 0));
-check("stagnationTurns: 'bad' → 0", () => assert(normalizeStagnationTurns("bad") === 0));
-
 // ─── normalizeAttentionWindow ─────────────────────────────────────────────────
 
 check("attentionWindow: 'open' → 'open'", () => assert(normalizeAttentionWindow("open") === "open"));
@@ -259,11 +251,6 @@ check("sessionFlags: allianceSignal preserved", () => {
 check("sessionFlags: engagementLevel preserved", () => {
   const out = normalizeSessionFlags({ engagementLevel: "withdrawn" });
   assert(out.engagementLevel === "withdrawn");
-});
-
-check("sessionFlags: stagnationTurns preserved", () => {
-  const out = normalizeSessionFlags({ stagnationTurns: 3 });
-  assert(out.stagnationTurns === 3);
 });
 
 check("sessionFlags: dependencyRiskScore clamped", () => {

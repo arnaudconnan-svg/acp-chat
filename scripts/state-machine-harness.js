@@ -38,7 +38,6 @@ function resolve(overrides = {}) {
     directivityLevel: 0,
     allianceSignal: "good",
     engagementLevel: "active",
-    stagnationTurns: 0,
     attentionWindow: "open",
     closureIntent: false,
     ...overrides
@@ -109,19 +108,6 @@ assert(
 assert(
   resolve({ attentionWindow: "overloaded", engagementLevel: "withdrawn" }) === "stabilization",
   "resolve: stabilization when overloaded+withdrawn"
-);
-assert(
-  resolve({ attentionWindow: "overloaded", stagnationTurns: 2 }) === "stabilization",
-  "resolve: stabilization when overloaded+stagnation>=2"
-);
-assert(
-  resolve({ engagementLevel: "withdrawn", stagnationTurns: 2 }) === "stabilization",
-  "resolve: stabilization when withdrawn+stagnation>=2"
-);
-// stabilization does NOT apply when stagnation is only 1
-assert(
-  resolve({ attentionWindow: "overloaded", stagnationTurns: 1, engagementLevel: "active" }) === "exploration_open",
-  "resolve: no stabilization with overloaded+stagnation=1 when not withdrawn"
 );
 
 // alliance_rupture takes precedence over stabilization

@@ -2033,17 +2033,6 @@
             sections.push({ title: "Affiliation", content: affiliationLines.join("\n") });
           }
 
-          const stagnationLines = [];
-          if (Array.isArray(meta.stagnationWindow) && meta.stagnationWindow.length > 0) {
-            stagnationLines.push(`Fenêtre de stagnation : [${meta.stagnationWindow.map(v => v ? "1" : "0").join("-")}]`);
-          }
-          if (typeof meta.stagnationTurns === "number") {
-            stagnationLines.push(`Stagnation cumulée : ${meta.stagnationTurns} tour(s)`);
-          }
-          if (stagnationLines.length > 0) {
-            sections.push({ title: "Stagnation", content: stagnationLines.join("\n") });
-          }
-
           const structuredMemorySection = buildStructuredMemorySection(meta);
           if (structuredMemorySection) {
             sections.push(structuredMemorySection);
@@ -2090,7 +2079,7 @@
             if (title === "Contrat de posture" || title === "Contrat de posture (V3)") {
               return { titleColor: "#6b3a7d", blockBackground: "#f8f0ff", blockBorder: "#c9a3e0" };
             }
-            if (title === "Affiliation" || title === "Stagnation") {
+            if (title === "Affiliation") {
               return { titleColor: "#1a6b8a", blockBackground: "#eaf5fa", blockBorder: "#7ac4e0" };
             }
             return { titleColor: "#245e66", blockBackground: "#ffffff", blockBorder: "#d6e2e1" };

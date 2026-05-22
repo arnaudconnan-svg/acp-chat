@@ -74,7 +74,7 @@ for (const field of [
   "intent","forbidden","confidenceSignal",
   "responseRegister","phraseLengthPolicy","relancePolicy","actionCollapseGuardActive",
   "stateTransitionFrom","stateTransitionValid","stateTransitionRequested",
-  "allianceSignal","engagementLevel","stagnationTurns","attentionWindow",
+  "allianceSignal","engagementLevel","attentionWindow",
   "dependencyRiskScore","dependencyRiskLevel","externalSupportMode","closureIntent","postDischargeTransitionActive",
   "postCrisisSupportActive","postCrisisSupportCarryTurn","emergencySupportText","requestId","traceId"
 ]) {
@@ -105,7 +105,6 @@ assertDeepEqual("default values", base, {
   stateTransitionRequested: null,
   allianceSignal: "good",
   engagementLevel: "active",
-  stagnationTurns: 0,
   attentionWindow: "open",
   dependencyRiskScore: 0,
   dependencyRiskLevel: "low",
@@ -218,13 +217,12 @@ assert("memoryBeforeSanitization null when empty", withoutBeforeSanitization.mem
 // 12. Phase B flags
 console.log("\n-- buildResponseDebugMeta Phase B flags");
 const phaseB = buildResponseDebugMeta({
-  allianceSignal: "fragile", engagementLevel: "withdrawn", stagnationTurns: 5,
+  allianceSignal: "fragile", engagementLevel: "withdrawn",
   attentionWindow: "narrowed", dependencyRiskScore: 0.7, dependencyRiskLevel: "medium",
   externalSupportMode: "discovery_validation", closureIntent: true
 });
 assert("allianceSignal", phaseB.allianceSignal, "fragile");
 assert("engagementLevel", phaseB.engagementLevel, "withdrawn");
-assert("stagnationTurns", phaseB.stagnationTurns, 5);
 assert("attentionWindow", phaseB.attentionWindow, "narrowed");
 assert("dependencyRiskLevel", phaseB.dependencyRiskLevel, "medium");
 assert("externalSupportMode", phaseB.externalSupportMode, "discovery_validation");
