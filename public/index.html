@@ -9789,6 +9789,7 @@
 
         const chatEl = document.getElementById("chat");
         if (!chatEl) return null;
+        const canSnapOnCreate = liveStreamShouldSnapOnCreate && isChatAtBottom();
 
         const msg = document.createElement("div");
         msg.className = "message bot";
@@ -9819,10 +9820,10 @@
         msg.appendChild(contentWrap);
         chatEl.appendChild(msg);
 
-        if (liveStreamShouldSnapOnCreate && isChatAtBottom()) {
+        if (canSnapOnCreate) {
+          snapStreamBubbleUnderTopBar(chatEl, bubble);
           requestAnimationFrame(() => {
             if (!msg.isConnected || !bubble.isConnected) return;
-            if (!isChatAtBottom()) return;
             snapStreamBubbleUnderTopBar(chatEl, bubble);
             updateScrollToBottomBtn();
           });
@@ -9993,12 +9994,6 @@
             return null;
           }
 
-          if (dotAnimation) dotAnimation.cancel();
-          removeWaitingIndicatorFromChat();
-          closeActiveChatProgressSource();
-
-          liveStreamNode = createLiveStreamBubble();
-
           const reader = streamRes.body.getReader();
           const decoder = new TextDecoder();
           let sseBuffer = "";
@@ -10006,6 +10001,16 @@
           let lastFlushTs = Date.now();
           let finalData = null;
           let streamErrorPayload = null;
+          let streamLiveRenderingActivated = false;
+
+          function activateLiveStreamRendering() {
+            if (streamLiveRenderingActivated) return;
+            streamLiveRenderingActivated = true;
+            if (dotAnimation) dotAnimation.cancel();
+            removeWaitingIndicatorFromChat();
+            closeActiveChatProgressSource();
+            liveStreamNode = createLiveStreamBubble();
+          }
 
           function computeFlushIntervalMs(totalLength) {
             if (totalLength < 220) return 100;
@@ -10040,6 +10045,8 @@
               if (eventName === "token") {
                 const token = typeof data?.token === "string" ? data.token : "";
                 if (!token) continue;
+
+                activateLiveStreamRendering();
 
                 liveStreamText += token;
                 pendingBatch += token;
@@ -10243,8 +10250,8 @@
           requestScreenId === "chatScreen"
         ) {
           addMessage("bot", data.reply, data.debug || [], {
-            shouldAutoScroll: shouldAutoScrollReply,
-            pulseScrollButton: !shouldAutoScrollReply,
+            shouldAutoScroll: usedStreaming === true ? false : shouldAutoScrollReply,
+            pulseScrollButton: usedStreaming === true ? false : !shouldAutoScrollReply,
             debugMeta: data.debugMeta || null,
             progressive: usedStreaming !== true
           });
