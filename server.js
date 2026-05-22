@@ -1048,26 +1048,27 @@ function buildMemoryReactivationTrace({
   currentUserMessage = "",
   memoryPrioritySignal = "normal"
 } = {}) {
+  const previousOngoingTexts = Array.isArray(previousMemoryState?.onGoingMovements)
+    ? previousMemoryState.onGoingMovements.map((item) => String(item?.text || "").trim()).filter(Boolean)
+    : [];
+
   const previousAncientTexts = Array.isArray(previousMemoryState?.ancientMovements)
     ? previousMemoryState.ancientMovements.map((item) => String(item?.text || "").trim()).filter(Boolean)
     : [];
 
-  const previousOngoingTexts = Array.isArray(previousMemoryState?.onGoingMovements)
-    ? previousMemoryState.onGoingMovements.map((item) => String(item?.text || "").trim()).filter(Boolean)
+  const ancientKeys = new Set(
+    previousAncientTexts
+      .map((text) => normalizeMemoryTraceText(text))
+      .filter(Boolean)
+  );
+
+  const contractOngoingTexts = Array.isArray(memoryUpdateContract?.ongoingMovements)
+    ? memoryUpdateContract.ongoingMovements.map((item) => String(item?.text || item || "").trim()).filter(Boolean)
     : [];
 
   const mergedOngoingTexts = Array.isArray(mergedMemoryState?.onGoingMovements)
     ? mergedMemoryState.onGoingMovements.map((item) => String(item?.text || "").trim()).filter(Boolean)
     : [];
-
-  const contractMemoryText = typeof memoryUpdateContract?.memoryBeforeSanitization === "string"
-    ? memoryUpdateContract.memoryBeforeSanitization
-    : typeof memoryUpdateContract?.memoryText === "string"
-      ? memoryUpdateContract.memoryText
-      : "";
-
-  const contractOngoingTexts = extractMemorySectionBullets(contractMemoryText, "Mouvements en cours");
-  const ancientKeys = new Set(previousAncientTexts.map(normalizeMemoryTraceText).filter(Boolean));
 
   const overlapContractWithAncient = contractOngoingTexts
     .filter((text) => ancientKeys.has(normalizeMemoryTraceText(text)))

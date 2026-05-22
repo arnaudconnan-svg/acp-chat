@@ -9787,7 +9787,10 @@
         const chatEl = document.getElementById("chat");
         if (!chatEl) return null;
 
-        const shouldKeepBottomLocked = shouldAutoScrollReply === true;
+        const distanceFromBottomAtStreamStart = getChatDistanceFromBottom(chatEl);
+        const shouldKeepBottomLocked =
+          shouldAutoScrollReply === true &&
+          distanceFromBottomAtStreamStart <= STREAM_AUTOSCROLL_RESUME_DISTANCE_PX;
 
         const msg = document.createElement("div");
         msg.className = "message bot";
@@ -9817,11 +9820,6 @@
         contentWrap.appendChild(bubble);
         msg.appendChild(contentWrap);
         chatEl.appendChild(msg);
-        if (shouldKeepBottomLocked) {
-          streamProgrammaticScrollLock = true;
-          keepStreamBottomLocked(chatEl);
-          streamProgrammaticScrollLock = false;
-        }
 
         const onUserScrollIntent = () => {
           if (!liveStreamNode || liveStreamNode.msg !== msg) return;
@@ -10163,19 +10161,39 @@
           loadConversationData(requestConversationId)
         );
 
-        if (isPrivateConversation) {
-          const history = loadHistory();
-          history.push({
-            role: "assistant",
-            content: partialReply,
-            debug: [],
-            debugMeta: null,
-            stateSnapshot: null,
-            t: Date.now(),
-            streamInterrupted: true
-          });
-          saveHistory(history);
+        const storedData = loadConversationData(requestConversationId);
+        const existingMessages = Array.isArray(storedData.messages) ? storedData.messages : [];
+        const interruptedHistoryIndex = existingMessages.length;
+        const interruptedMessage = {
+          role: "assistant",
+          content: partialReply,
+          debug: [],
+          debugMeta: null,
+          stateSnapshot: null,
+          t: Date.now(),
+          streamInterrupted: true
+        };
+
+        saveConversationData(requestConversationId, {
+          ...storedData,
+          messages: [
+            ...existingMessages,
+            interruptedMessage
+          ],
+          updatedAt: Date.now()
+        });
+
+        if (typeof liveStreamNode.detachAutoScrollListeners === "function") {
+          liveStreamNode.detachAutoScrollListeners();
         }
+        liveStreamNode.keepBottomLocked = false;
+        renderBotMessageContent(liveStreamNode.bubble, partialReply, {
+          progressive: false,
+          wasAtBottomBeforeInsert: false
+        });
+        ensureFinalizedStreamActions(partialReply, interruptedHistoryIndex);
+        liveStreamNode.msg.removeAttribute("data-stream-bubble");
+        updateScrollToBottomBtn();
 
         const persistPayload = {
           conversationId: requestConversationId,
