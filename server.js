@@ -3592,7 +3592,7 @@ app.post("/api/branches/:id/activate", async (req, res) => {
   }
 });
 
-// Fetch a single branch record + seed messages (for cross-device continuity).
+// Fetch a single branch record + seed messages (for cross-device resume).
 app.get("/api/branches/:id", async (req, res) => {
   try {
     const branchId = String(req.params?.id || "").trim();

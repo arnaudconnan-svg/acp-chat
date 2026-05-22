@@ -4213,7 +4213,7 @@
           skipUserHistoryInsert: true,
           regenerationFromPartialReply: partialReply,
           regenerationUserMessage: regenerationPrompt,
-          regenerateInterruptedHistoryIndex: historyIndex >= 0 ? historyIndex : lastInterruptedIndex
+          regenerationInterruptedHistoryIndex: historyIndex >= 0 ? historyIndex : lastInterruptedIndex
         });
       });
 
@@ -5641,7 +5641,7 @@
         return;
       }
       
-      startFreshOrContinueSession();
+      startFreshOrResumeSession();
     }
 
     function syncFromStorageEvent(event) {
@@ -9219,7 +9219,7 @@
         return;
       }
       
-      startFreshOrContinueSession();
+      startFreshOrResumeSession();
     }
     
     function renderConversationsList() {
@@ -9582,7 +9582,7 @@
       });
     }
     
-    function startFreshOrContinueSession() {
+    function startFreshOrResumeSession() {
       closeSessionInfoModal();
       showScreen("chatScreen", { pushHistory: true });
       restoreFormalAddressPreferenceForConversation();
@@ -9697,7 +9697,7 @@
         skipUserHistoryInsert = false,
         regenerationFromPartialReply = "",
         regenerationUserMessage = "",
-        regenerateInterruptedHistoryIndex = -1
+        regenerationInterruptedHistoryIndex = -1
       } = options;
       let shouldSkipUserHistoryInsert = skipUserHistoryInsert === true;
       const regenerationPartialReply = typeof regenerationFromPartialReply === "string"
@@ -10698,7 +10698,7 @@
                 flags: data.flags
               },
               data && data.signals ? data.signals : null,
-              Number.isInteger(regenerateInterruptedHistoryIndex) ? regenerateInterruptedHistoryIndex : -1
+              Number.isInteger(regenerationInterruptedHistoryIndex) ? regenerationInterruptedHistoryIndex : -1
             );
           }
 
@@ -11518,7 +11518,7 @@
     if (sessionInfoContinueBtn) {
       sessionInfoContinueBtn.onclick = () => {
         saveSessionInfoDismissed(document.getElementById("sessionInfoDontShow").checked);
-        startFreshOrContinueSession();
+        startFreshOrResumeSession();
       };
     }
     
@@ -11766,9 +11766,9 @@
         requestAnimationFrame(() => syncComposerUiDeferred({ keepBottom: true }));
       };
       
-      const originalStartFreshOrContinueSession = startFreshOrContinueSession;
-      startFreshOrContinueSession = function(...args) {
-        originalStartFreshOrContinueSession.apply(this, args);
+      const originalStartFreshOrResumeSession = startFreshOrResumeSession;
+      startFreshOrResumeSession = function(...args) {
+        originalStartFreshOrResumeSession.apply(this, args);
         requestAnimationFrame(updateMakePublicBtnVisibility);
         requestAnimationFrame(() => syncComposerUiDeferred({ keepBottom: true }));
         setTimeout(() => syncComposerUiDeferred({ keepBottom: true }), 40);
