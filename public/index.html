@@ -11614,19 +11614,20 @@
       const originalSend = send;
       send = async function(...args) {
         const hadTextBeforeSend = inputEl.value.trim().length > 0;
+        const wasAtBottomOnSendStart = isChatAtBottom();
         
         const sendPromise = originalSend(...args);
         
         if (hadTextBeforeSend) {
-          requestAnimationFrame(() => syncComposerUiDeferred({ keepBottom: true }));
-          setTimeout(() => syncComposerUiDeferred({ keepBottom: true }), 0);
-          setTimeout(() => syncComposerUiDeferred({ keepBottom: true }), 60);
+          requestAnimationFrame(() => syncComposerUiDeferred({ keepBottom: wasAtBottomOnSendStart }));
+          setTimeout(() => syncComposerUiDeferred({ keepBottom: wasAtBottomOnSendStart }), 0);
+          setTimeout(() => syncComposerUiDeferred({ keepBottom: wasAtBottomOnSendStart }), 60);
         }
         
         try {
           await sendPromise;
         } finally {
-          syncComposerUiDeferred({ keepBottom: true });
+          syncComposerUiDeferred({ keepBottom: isChatAtBottom() });
         }
       };
       
