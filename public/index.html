@@ -9758,8 +9758,25 @@
       
       const shouldAutoScrollReply = isEditing || wasAtBottom || isChatAtBottom();
       let liveStreamText = "";
-      let liveStreamAutoFollow = shouldAutoScrollReply;
+      const liveStreamShouldSnapOnCreate = shouldAutoScrollReply === true;
       let liveStreamNode = null;
+
+      function snapStreamBubbleUnderTopBar(chatEl, bubbleEl) {
+        if (!chatEl || !bubbleEl) return;
+
+        const topBar = document.getElementById("topBar");
+        if (!topBar) return;
+
+        const topBarRect = topBar.getBoundingClientRect();
+        const bubbleRect = bubbleEl.getBoundingClientRect();
+        const targetTop = topBarRect.bottom + 12;
+        const delta = bubbleRect.top - targetTop;
+
+        if (Math.abs(delta) < 2) return;
+
+        const nextTop = Math.max(0, chatEl.scrollTop + delta);
+        chatEl.scrollTop = nextTop;
+      }
 
       function createLiveStreamBubble() {
         if (
@@ -9802,8 +9819,13 @@
         msg.appendChild(contentWrap);
         chatEl.appendChild(msg);
 
-        if (liveStreamAutoFollow) {
-          scrollChatToBottom();
+        if (liveStreamShouldSnapOnCreate && isChatAtBottom()) {
+          requestAnimationFrame(() => {
+            if (!msg.isConnected || !bubble.isConnected) return;
+            if (!isChatAtBottom()) return;
+            snapStreamBubbleUnderTopBar(chatEl, bubble);
+            updateScrollToBottomBtn();
+          });
         } else {
           updateScrollToBottomBtn();
         }
@@ -9821,17 +9843,7 @@
         if (!force && liveStreamNode.interrupted === true) return;
 
         liveStreamNode.bubble.textContent = liveStreamText;
-
-        if (liveStreamAutoFollow) {
-          if (isChatAtBottom()) {
-            scrollChatToBottom({ smooth: false });
-          } else {
-            liveStreamAutoFollow = false;
-            updateScrollToBottomBtn({ forcePulse: true });
-          }
-        } else {
-          updateScrollToBottomBtn();
-        }
+        updateScrollToBottomBtn();
       }
 
       function removeLiveStreamBubble() {
