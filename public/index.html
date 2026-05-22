@@ -3716,6 +3716,7 @@
     let activeChatRequestId = "";
     let activeChatAbortController = null;
     let activeChatProgressSource = null;
+    let activeChatRequestTransport = "unknown";
     let chatFormalAddressPreference = null; // null = inconnu, false = tutoiement, true = vouvoiement
     let _lastSendTs = 0;
 
@@ -3844,10 +3845,18 @@
       const waitingMsg = document.getElementById("chatWaitingMsg");
       if (!waitingMsg) return;
 
+      const safeProgressStep = String(progressStep || "").trim();
+      if (
+        activeChatRequestTransport === "streaming" &&
+        (safeProgressStep === "drafting" || safeProgressStep === "finalizing")
+      ) {
+        return;
+      }
+
       const waitingStageText = waitingMsg.querySelector(".waiting-stage-text");
       if (!waitingStageText) return;
 
-      const nextText = getChatProgressText(progressStep);
+      const nextText = getChatProgressText(safeProgressStep);
       if (waitingStageText.textContent !== nextText) {
         waitingStageText.textContent = nextText;
         waitingStageText.setAttribute("data-text", nextText);
@@ -9911,6 +9920,7 @@
       }, CHAT_REQUEST_TIMEOUT_MS);
       activeChatRequestId = chatRequestId;
       activeChatAbortController = chatAbortController;
+      activeChatRequestTransport = "unknown";
       startChatProgressSource(chatRequestId);
       syncSendButtonMode();
       
@@ -9993,6 +10003,8 @@
           if (!streamContentType.includes("text/event-stream") || !streamRes.body || typeof streamRes.body.getReader !== "function") {
             return null;
           }
+
+          activeChatRequestTransport = "streaming";
 
           const reader = streamRes.body.getReader();
           const decoder = new TextDecoder();
@@ -10138,6 +10150,7 @@
         }
 
         if (!usedStreaming) {
+          activeChatRequestTransport = "classic";
           const classicRes = await fetch("/chat", {
             method: "POST",
             headers: {
@@ -10196,6 +10209,19 @@
         }
 
         setServiceAvailabilityBlocked(false);
+        const shouldRenderInCurrentChat =
+          getConversationId() === requestConversationId &&
+          document.querySelector(".screen.active")?.id === requestScreenId &&
+          requestScreenId === "chatScreen";
+
+        let preserveDistanceFromBottomAfterStream = null;
+        if (usedStreaming === true && shouldRenderInCurrentChat) {
+          const chatEl = document.getElementById("chat");
+          if (chatEl) {
+            preserveDistanceFromBottomAfterStream = Math.max(0, chatEl.scrollHeight - chatEl.scrollTop);
+          }
+        }
+
         removeLiveStreamBubble();
 
         const currentConversationId = getConversationId();
@@ -10244,17 +10270,26 @@
           });
         }
         
-        if (
-          getConversationId() === requestConversationId &&
-          document.querySelector(".screen.active")?.id === requestScreenId &&
-          requestScreenId === "chatScreen"
-        ) {
+        if (shouldRenderInCurrentChat) {
           addMessage("bot", data.reply, data.debug || [], {
             shouldAutoScroll: usedStreaming === true ? false : shouldAutoScrollReply,
             pulseScrollButton: usedStreaming === true ? false : !shouldAutoScrollReply,
             debugMeta: data.debugMeta || null,
             progressive: usedStreaming !== true
           });
+
+          if (usedStreaming === true && preserveDistanceFromBottomAfterStream !== null) {
+            const chatEl = document.getElementById("chat");
+            if (chatEl) {
+              const nextScrollTop = Math.max(0, chatEl.scrollHeight - preserveDistanceFromBottomAfterStream);
+              chatEl.scrollTop = nextScrollTop;
+              requestAnimationFrame(() => {
+                chatEl.scrollTop = nextScrollTop;
+                updateScrollToBottomBtn();
+              });
+            }
+          }
+
           updateCrisisSupportCard(data.debugMeta || null);
         }
         
@@ -10301,6 +10336,7 @@
         if (activeChatRequestId === chatRequestId) {
           activeChatRequestId = "";
           activeChatAbortController = null;
+          activeChatRequestTransport = "unknown";
           syncSendButtonMode();
         }
 
