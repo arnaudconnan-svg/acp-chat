@@ -1824,7 +1824,6 @@
           return window.FacilitatDebug.translateOrientationHint(value);
         }
 
-        function translateSomaticFocusPolicy(value) {
         function translateConfidenceSignal(value) {
           return window.FacilitatDebug.translateConfidenceSignal(value);
         }
@@ -1990,7 +1989,6 @@
           if (meta.postDischargeTransitionActive === true) {
             signauxLines.push("Transition post-d\u00e9charge active (C3)");
           }
-          var somaticPolicyLine = buildSomaticFocusPolicyDebugLine(meta);
           if (meta.secondaryTension) {
             var secondaryLabel = window.FacilitatDebug.formatSecondaryTension(meta.secondaryTension);
             if (secondaryLabel) {

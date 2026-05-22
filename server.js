@@ -2821,7 +2821,6 @@ app.post("/api/account/conversations/import-local", requireUserAuth, async (req,
               responseRegister: typeof debugMeta.responseRegister === "string" ? debugMeta.responseRegister : null,
               phraseLengthPolicy: typeof debugMeta.phraseLengthPolicy === "string" ? debugMeta.phraseLengthPolicy : null,
               relancePolicy: typeof debugMeta.relancePolicy === "string" ? debugMeta.relancePolicy : null,
-              somaticFocusPolicy: typeof debugMeta.somaticFocusPolicy === "string" ? debugMeta.somaticFocusPolicy : null,
               actionCollapseGuardActive: debugMeta.actionCollapseGuardActive === true,
               stateTransitionFrom: typeof debugMeta.stateTransitionFrom === "string" ? debugMeta.stateTransitionFrom : null,
               stateTransitionValid: debugMeta.stateTransitionValid !== false,
@@ -5228,7 +5227,6 @@ async function handleChatPost(req, res) {
       phraseLengthPolicy: typeof safe.phraseLengthPolicy === "string" ? safe.phraseLengthPolicy : "moyenne",
       relancePolicy: typeof safe.relancePolicy === "string" ? safe.relancePolicy : "selective",
       useDirectAddress: safe.useDirectAddress === true,
-      somaticFocusPolicy: typeof safe.somaticFocusPolicy === "string" ? safe.somaticFocusPolicy : "none",
       actionCollapseGuardActive: safe.actionCollapseGuardActive === true,
       writerIntentHints: Array.isArray(safe.writerIntentHints) ? safe.writerIntentHints.map((hint) => String(hint || "").trim()).filter(Boolean) : [],
       writerIntentHintsInactive: Array.isArray(safe.writerIntentHintsInactive)
@@ -5868,7 +5866,6 @@ async function handleChatPost(req, res) {
         confidenceSignal: 1.0,
         responseRegister: "courant",
         phraseLengthPolicy: "courte",
-        somaticFocusPolicy: "none",
         relationalAdjustmentActive: false,
         interpretationRejectionModeActive: false,
         needsSoberReadjustment: false,
@@ -6779,7 +6776,6 @@ Reponds strictement en JSON: {"items": ["..."]}
       responseRegister: postureDecision.responseRegister,
       phraseLengthPolicy: postureDecision.phraseLengthPolicy,
       relancePolicy: postureDecision.relancePolicy,
-      somaticFocusPolicy: postureDecision.somaticFocusPolicy,
       actionCollapseGuardActive: postureDecision.actionCollapseGuardActive
     });
 
@@ -7085,7 +7081,6 @@ Reponds strictement en JSON: {"items": ["..."]}
       responseRegister: postureDecision.responseRegister,
       phraseLengthPolicy: postureDecision.phraseLengthPolicy,
       relancePolicy: postureDecision.relancePolicy,
-      somaticFocusPolicy: postureDecision.somaticFocusPolicy,
       useDirectAddress: postureDecision.useDirectAddress === true,
       actionCollapseGuardActive: postureDecision.actionCollapseGuardActive,
       stateTransitionFrom: postureDecision.previousConversationState,
