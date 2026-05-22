@@ -9767,117 +9767,31 @@
       
       const shouldAutoScrollReply = isEditing || wasAtBottom || isChatAtBottom();
       let liveStreamText = "";
-      const liveStreamShouldSnapOnCreate = shouldAutoScrollReply === true;
       let liveStreamNode = null;
-      const streamScrollDebugEnabled = true;
-      const streamRuntimeTrace = [];
-      let streamRuntimeTraceSent = false;
-
-      function pushStreamRuntimeTrace(snapshot) {
-        if (!snapshot || typeof snapshot !== "object") return;
-        streamRuntimeTrace.push(snapshot);
-        if (streamRuntimeTrace.length > 120) {
-          streamRuntimeTrace.splice(0, streamRuntimeTrace.length - 120);
-        }
-      }
-
-      function buildCompactRuntimeTraceEvents() {
-        return streamRuntimeTrace.slice(-80).map((event) => ({
-          ts: Number(event.ts) || Date.now(),
-          stage: String(event.stage || "").slice(0, 64),
-          scrollTop: Number.isFinite(event.scrollTop) ? Math.round(event.scrollTop) : null,
-          distanceBottom: Number.isFinite(event.distanceBottom) ? Math.round(event.distanceBottom) : null,
-          liveLength: Number.isFinite(event.liveLength) ? Math.round(event.liveLength) : null,
-          finalizedStreamInPlace: event.finalizedStreamInPlace === true,
-          usedStreaming: event.usedStreaming === true
-        }));
-      }
-
-      async function postStreamRuntimeTrace(reason) {
-        if (streamRuntimeTraceSent === true) return;
-        if (!requestConversationId || !chatRequestId) return;
-
-        streamRuntimeTraceSent = true;
-        const payload = {
-          requestId: chatRequestId,
-          conversationId: requestConversationId,
-          reason: String(reason || "completed"),
-          transport: activeChatRequestTransport,
-          events: buildCompactRuntimeTraceEvents()
-        };
-
-        const uploadPromise = fetch("/chat/runtime-trace", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify(payload)
-        }).catch(() => null);
-
-        await Promise.race([
-          uploadPromise,
-          new Promise(resolve => setTimeout(resolve, 450))
-        ]);
-      }
-
-      function logStreamScroll(stage, details = {}) {
-        if (streamScrollDebugEnabled !== true) return;
-
-        const chatEl = document.getElementById("chat");
-        const snapshot = {
-          stage,
-          conversationId: requestConversationId,
-          screenId: requestScreenId,
-          scrollTop: chatEl ? Math.round(chatEl.scrollTop) : null,
-          scrollHeight: chatEl ? Math.round(chatEl.scrollHeight) : null,
-          clientHeight: chatEl ? Math.round(chatEl.clientHeight) : null,
-          distanceBottom: chatEl ? Math.round(getChatDistanceFromBottom(chatEl)) : null,
-          liveLength: liveStreamText.length,
-          atBottomReply: shouldAutoScrollReply === true,
-          ...details
-        };
-
-        pushStreamRuntimeTrace({
-          ts: Date.now(),
-          ...snapshot
-        });
-
-        try {
-          console.info("[STREAM_SCROLL]", snapshot);
-        } catch {}
-      }
 
       function getChatDistanceFromBottom(chatEl) {
         if (!chatEl) return Infinity;
         return Math.max(0, chatEl.scrollHeight - chatEl.clientHeight - chatEl.scrollTop);
       }
 
-      function isChatNearBottom(chatEl, thresholdPx = 120) {
-        return getChatDistanceFromBottom(chatEl) <= thresholdPx;
+      function getStreamStopLineY() {
+        const topBar = document.getElementById("topBar");
+        if (!topBar) return null;
+        return topBar.getBoundingClientRect().bottom + 12;
       }
 
-      function snapStreamBubbleUnderTopBar(chatEl, bubbleEl) {
-        if (!chatEl || !bubbleEl) return;
+      function hasStreamBubbleReachedReadingPosition(bubbleEl) {
+        const stopLineY = getStreamStopLineY();
+        if (stopLineY === null || !bubbleEl) return false;
+        return bubbleEl.getBoundingClientRect().top <= stopLineY;
+      }
 
-        const topBar = document.getElementById("topBar");
-        if (!topBar) return;
-
-        const topBarRect = topBar.getBoundingClientRect();
-        const bubbleRect = bubbleEl.getBoundingClientRect();
-        const targetTop = topBarRect.bottom + 12;
-        const delta = bubbleRect.top - targetTop;
-
-        if (Math.abs(delta) < 2) return;
-
-        const nextTop = Math.max(0, chatEl.scrollTop + delta);
-        logStreamScroll("snap_before", {
-          delta: Math.round(delta),
-          targetTop: Math.round(targetTop),
-          bubbleTop: Math.round(bubbleRect.top),
-          nextTop: Math.round(nextTop)
-        });
-        chatEl.scrollTop = nextTop;
-        logStreamScroll("snap_after");
+      function keepStreamBottomLocked(chatEl) {
+        if (!chatEl) return;
+        const prev = chatEl.style.scrollBehavior;
+        chatEl.style.scrollBehavior = "auto";
+        chatEl.scrollTop = chatEl.scrollHeight;
+        chatEl.style.scrollBehavior = prev || "";
       }
 
       function createLiveStreamBubble() {
@@ -9891,7 +9805,7 @@
 
         const chatEl = document.getElementById("chat");
         if (!chatEl) return null;
-        const canSnapOnCreate = liveStreamShouldSnapOnCreate;
+  const shouldKeepBottomLocked = shouldAutoScrollReply === true;
 
         const msg = document.createElement("div");
         msg.className = "message bot";
@@ -9921,24 +9835,17 @@
         contentWrap.appendChild(bubble);
         msg.appendChild(contentWrap);
         chatEl.appendChild(msg);
-        logStreamScroll("bubble_created", { canSnapOnCreate });
-
-        if (canSnapOnCreate) {
-          snapStreamBubbleUnderTopBar(chatEl, bubble);
-          requestAnimationFrame(() => {
-            if (!msg.isConnected || !bubble.isConnected) return;
-            snapStreamBubbleUnderTopBar(chatEl, bubble);
-            updateScrollToBottomBtn();
-          });
-        } else {
-          updateScrollToBottomBtn();
+        if (shouldKeepBottomLocked) {
+          keepStreamBottomLocked(chatEl);
         }
+        updateScrollToBottomBtn();
 
         return {
           msg,
           bubble,
           contentWrap,
-          interrupted: false
+          interrupted: false,
+          keepBottomLocked: shouldKeepBottomLocked
         };
       }
 
@@ -9946,16 +9853,19 @@
         if (!liveStreamNode || !liveStreamNode.bubble) return;
         if (!force && liveStreamNode.interrupted === true) return;
 
+        const chatEl = document.getElementById("chat");
         liveStreamNode.bubble.textContent = liveStreamText;
-        if (force || liveStreamText.length < 5 || liveStreamText.length % 80 === 0) {
-          logStreamScroll("token_flush", { force, interrupted: liveStreamNode.interrupted === true });
+        if (chatEl && liveStreamNode.keepBottomLocked === true) {
+          keepStreamBottomLocked(chatEl);
+          if (hasStreamBubbleReachedReadingPosition(liveStreamNode.bubble)) {
+            liveStreamNode.keepBottomLocked = false;
+          }
         }
         updateScrollToBottomBtn();
       }
 
       function removeLiveStreamBubble() {
         if (!liveStreamNode || !liveStreamNode.msg) return;
-        logStreamScroll("bubble_remove");
         if (liveStreamNode.msg.parentNode) {
           liveStreamNode.msg.parentNode.removeChild(liveStreamNode.msg);
         }
@@ -10186,8 +10096,6 @@
         const beforeScrollTop = chatEl ? chatEl.scrollTop : 0;
         const beforeDistanceBottom = chatEl ? getChatDistanceFromBottom(chatEl) : 0;
 
-        logStreamScroll("finalize_start", { historyIndex });
-
         const resumeBtn = liveStreamNode.contentWrap
           ? liveStreamNode.contentWrap.querySelector(".stream-resume-btn")
           : null;
@@ -10208,24 +10116,10 @@
           const driftPx = Math.max(0, afterDistanceBottom - beforeDistanceBottom);
           if (beforeDistanceBottom > 80 && driftPx > 0) {
             chatEl.scrollTop = Math.max(0, beforeScrollTop + driftPx);
-            logStreamScroll("finalize_viewport_adjust", {
-              historyIndex,
-              driftPx: Math.round(driftPx),
-              beforeDistanceBottom: Math.round(beforeDistanceBottom),
-              afterDistanceBottom: Math.round(afterDistanceBottom)
-            });
-          } else {
-            logStreamScroll("finalize_viewport_no_adjust", {
-              historyIndex,
-              driftPx: Math.round(driftPx),
-              beforeDistanceBottom: Math.round(beforeDistanceBottom),
-              afterDistanceBottom: Math.round(afterDistanceBottom)
-            });
           }
         }
 
         liveStreamNode.msg.removeAttribute("data-stream-bubble");
-        logStreamScroll("finalize_end", { historyIndex });
         return true;
       }
 
@@ -10578,11 +10472,6 @@
           getConversationId() === requestConversationId &&
           document.querySelector(".screen.active")?.id === requestScreenId &&
           requestScreenId === "chatScreen";
-        logStreamScroll("response_received", {
-          usedStreaming,
-          shouldRenderInCurrentChat,
-          hasReply: !!(data && data.reply)
-        });
 
         let finalizedStreamInPlace = false;
         let streamHistoryIndex = -1;
@@ -10606,7 +10495,6 @@
             flags: data.flags
           }, data && data.signals ? data.signals : null);
           streamHistoryIndex = loadHistory().length - 1;
-          logStreamScroll("history_pushed", { streamHistoryIndex });
         } else {
           const storedData = loadConversationData(requestConversationId);
           const existingMessages = Array.isArray(storedData.messages) ? storedData.messages : [];
@@ -10639,7 +10527,6 @@
           usedStreaming === true &&
           shouldRenderInCurrentChat &&
           finalizeLiveStreamBubble(data.reply, streamHistoryIndex);
-        logStreamScroll("finalize_decision", { finalizedStreamInPlace, streamHistoryIndex });
 
         if (!finalizedStreamInPlace) {
           removeLiveStreamBubble();
@@ -10700,13 +10587,6 @@
         closeActiveChatProgressSource();
 
         if (activeChatRequestId === chatRequestId) {
-          const runtimeTraceReason = didTimeout
-            ? "timeout_abort"
-            : activeChatRequestTransport === "streaming"
-              ? "streaming_complete"
-              : "classic_complete";
-          await postStreamRuntimeTrace(runtimeTraceReason);
-
           activeChatRequestId = "";
           activeChatAbortController = null;
           activeChatRequestTransport = "unknown";
