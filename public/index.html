@@ -11745,10 +11745,10 @@
       }
       
       const originalSend = send;
-      send = async function() {
+      send = async function(...args) {
         const hadTextBeforeSend = inputEl.value.trim().length > 0;
         
-        const sendPromise = originalSend();
+        const sendPromise = originalSend(...args);
         
         if (hadTextBeforeSend) {
           requestAnimationFrame(() => syncComposerUiDeferred({ keepBottom: true }));
