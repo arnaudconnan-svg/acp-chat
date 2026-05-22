@@ -10395,7 +10395,12 @@
           streamAttempt = await tryStreamChatResponse(requestPayload);
         } catch (streamErr) {
           streamAttempt = null;
-          removeLiveStreamBubble();
+          const isStreamAbort = streamErr && streamErr.name === "AbortError";
+          if (isStreamAbort && liveStreamText.trim()) {
+            markLiveStreamInterrupted();
+          } else {
+            removeLiveStreamBubble();
+          }
         }
 
         let res = null;
@@ -10558,6 +10563,10 @@
         if (err && err.name === "AbortError") {
           if (didTimeout) {
             showTemporaryNotice("Delai depasse: le serveur met trop de temps a repondre.");
+          }
+
+          if (liveStreamText.trim()) {
+            markLiveStreamInterrupted();
           }
           return;
         }
