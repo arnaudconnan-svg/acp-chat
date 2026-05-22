@@ -105,4 +105,4 @@ La priorite immédiate est de consolider le comportement sur l'architecture exis
 
 Les extractions modulaires et refactorings qui ameliorent la fiabilite et la testabilite restent bienvenus, a condition de ne pas introduire de nouveau comportement visible.
 
-La liste des extractions structurelles prevues (prompts, normalisateurs, analyzers, memoire, arbitrage/writer) reste l'objectif moyen terme. Elle sera poursuivie apres la phase de stabilisation.
+La liste des extractions structurelles prevues (prompts, normalisateurs, analyzers, memoire, arbitrage/writer) reste l'objectif moyen terme. Elle sera reprise apres la phase de stabilisation.
