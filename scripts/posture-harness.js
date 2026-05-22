@@ -117,13 +117,12 @@ check("contact self-criticism signal enriches forbidden + hints", () => {
   assert(out.writerIntentHints.includes("auto_compassion_door_open"), "expected auto_compassion_door_open hint");
 });
 
-check("meaningCrisis signal constrains relance + interpretation", () => {
+check("meaningCrisis signal constrains relance", () => {
   const out = buildPostureDecision(baseInput({
     detectedState: "exploration",
     contactAnalysis: { isContact: true, selfCriticismLevel: "low", meaningCrisis: true, insightMoment: false }
   }));
   assert(out.forbidden.includes("relance"), "expected relance in forbidden");
-  assert(out.forbidden.includes("interpretive_hypothesis"), "expected interpretive_hypothesis in forbidden");
 });
 
 check("insightMoment signal adds amplify_insight hint", () => {
@@ -166,14 +165,13 @@ check("emotionalDecentering hints stay inactive without functional affiliation",
   assert(out.writerIntentHintsInactive.some((entry) => entry.hint === "auto_compassion_door_open" && entry.reason === "affiliation_not_established"), "expected inactive auto_compassion reason");
 });
 
-check("explicit incomprehension forces clarification-friendly exploration contract", () => {
+check("explicit incomprehension keeps clarification-friendly exploration contract", () => {
   const out = buildPostureDecision(baseInput({
     detectedState: "exploration",
     calibrationAnalysis: { calibrationLevel: 0, explorationSignal: "interpretation" },
     message: "Je n'ai pas compris ta question"
   }));
   assert(out.finalExplorationSignal === "phenomenological_follow", `expected phenomenological_follow, got ${out.finalExplorationSignal}`);
-  assert(out.forbidden.includes("interpretive_hypothesis"), "expected interpretive_hypothesis forbidden on explicit incomprehension");
 });
 
 check("narrowed processing window enforces single-axis exploration contract", () => {

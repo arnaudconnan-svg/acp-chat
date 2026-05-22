@@ -257,7 +257,6 @@
     var map = {
       prescriptive_language: "langage prescriptif",
       relance: "relance",
-      interpretive_hypothesis: "hypoth\u00e8ses interpr\u00e9tatives",
       open_question: "question ouverte",
       list: "liste",
       self_justification: "auto-justification",
