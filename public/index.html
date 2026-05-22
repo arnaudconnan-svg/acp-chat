@@ -4188,7 +4188,9 @@
       const resumeBtn = document.createElement("button");
       resumeBtn.type = "button";
       resumeBtn.className = "stream-resume-btn";
-      resumeBtn.textContent = "Reprendre";
+      resumeBtn.textContent = "R\u00e9g\u00e9n\u00e9rer la r\u00e9ponse";
+      resumeBtn.setAttribute("aria-label", "R\u00e9g\u00e9n\u00e9rer la r\u00e9ponse");
+      resumeBtn.title = "R\u00e9g\u00e9n\u00e9rer la r\u00e9ponse";
       resumeBtn.style.fontSize = "12px";
       resumeBtn.style.padding = "5px 10px";
       resumeBtn.style.borderRadius = "999px";
