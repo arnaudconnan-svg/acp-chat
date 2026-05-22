@@ -9770,6 +9770,39 @@
       const liveStreamShouldSnapOnCreate = shouldAutoScrollReply === true;
       let liveStreamNode = null;
       const streamScrollDebugEnabled = true;
+      const streamRuntimeTrace = [];
+      let streamRuntimeTraceSent = false;
+
+      function pushStreamRuntimeTrace(snapshot) {
+        if (!snapshot || typeof snapshot !== "object") return;
+        streamRuntimeTrace.push(snapshot);
+        if (streamRuntimeTrace.length > 220) {
+          streamRuntimeTrace.splice(0, streamRuntimeTrace.length - 220);
+        }
+      }
+
+      function postStreamRuntimeTrace(reason) {
+        if (streamRuntimeTraceSent === true) return;
+        if (!requestConversationId || !chatRequestId) return;
+
+        streamRuntimeTraceSent = true;
+        const payload = {
+          requestId: chatRequestId,
+          conversationId: requestConversationId,
+          reason: String(reason || "completed"),
+          transport: activeChatRequestTransport,
+          events: streamRuntimeTrace
+        };
+
+        fetch("/chat/runtime-trace", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          keepalive: true,
+          body: JSON.stringify(payload)
+        }).catch(() => {});
+      }
 
       function logStreamScroll(stage, details = {}) {
         if (streamScrollDebugEnabled !== true) return;
@@ -9787,6 +9820,11 @@
           atBottomReply: shouldAutoScrollReply === true,
           ...details
         };
+
+        pushStreamRuntimeTrace({
+          ts: Date.now(),
+          ...snapshot
+        });
 
         try {
           console.info("[STREAM_SCROLL]", snapshot);
@@ -10620,6 +10658,13 @@
         closeActiveChatProgressSource();
 
         if (activeChatRequestId === chatRequestId) {
+          const runtimeTraceReason = didTimeout
+            ? "timeout_abort"
+            : activeChatRequestTransport === "streaming"
+              ? "streaming_complete"
+              : "classic_complete";
+          postStreamRuntimeTrace(runtimeTraceReason);
+
           activeChatRequestId = "";
           activeChatAbortController = null;
           activeChatRequestTransport = "unknown";
