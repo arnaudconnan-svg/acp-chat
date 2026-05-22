@@ -66,8 +66,6 @@
       information: "info",
       informational: "info",
       exploration: "exploration",
-      stabilization: "stabilization",
-      stabilisation: "stabilization",
       alliance_rupture: "alliance_rupture",
       alliancerupture: "alliance_rupture",
       rupture_alliance: "alliance_rupture",
@@ -171,15 +169,6 @@
       explorationCalibrationLevel: Number.isInteger(safe.explorationCalibrationLevel) ? safe.explorationCalibrationLevel : null,
       explorationSignal: toTrimmedString(safe.explorationSignal, "") || null,
       memoryBeforeSanitization: toTrimmedString(safe.memoryBeforeSanitization, "") || null,
-      outputGuardTriggered: toBooleanTrue(safe.outputGuardTriggered),
-      outputGuardRegenerationUsed: toBooleanTrue(safe.outputGuardRegenerationUsed),
-      outputGuardFallbackUsed: toBooleanTrue(safe.outputGuardFallbackUsed),
-      outputGuardViolations: Array.isArray(safe.outputGuardViolations)
-        ? safe.outputGuardViolations.map(function mapViolation(v) { return String(v || "").trim(); }).filter(Boolean)
-        : [],
-      outputGuardEvidence: Array.isArray(safe.outputGuardEvidence)
-        ? safe.outputGuardEvidence.map(function mapEvidence(v) { return String(v || "").trim(); }).filter(Boolean)
-        : [],
       analyzerDeterministicEvidence: Array.isArray(safe.analyzerDeterministicEvidence)
         ? safe.analyzerDeterministicEvidence.map(function mapAnalyzerEvidence(v) { return String(v || "").trim(); }).filter(Boolean)
         : [],
@@ -250,7 +239,6 @@
     var map = {
       exploration_open: "exploration ouverte",
       exploration_restrained: "exploration restreinte",
-      stabilization: "stabilisation",
       need_human_support: "besoin d'appui humain",
       alliance_rupture: "rupture d'alliance",
       closure: "cl\u00f4ture",
@@ -467,20 +455,6 @@
       lines.push("Rapport au soutien externe detecte: " + meta.externalSupportMode + ".");
     }
 
-    if (meta.outputGuardTriggered === true) {
-      if (meta.outputGuardFallbackUsed === true) {
-        lines.push("Le garde de sortie deterministe a applique un fallback minimal apres echec de regeneration.");
-      } else if (meta.outputGuardRegenerationUsed === true) {
-        lines.push("Le garde de sortie deterministe a impose une regeneration ciblee du writer.");
-      } else {
-        lines.push("Le garde de sortie deterministe a ete declenche.");
-      }
-
-      if (Array.isArray(meta.outputGuardViolations) && meta.outputGuardViolations.length > 0) {
-        lines.push("Violations detectees : " + meta.outputGuardViolations.join(" · "));
-      }
-    }
-
     return lines;
   }
 
@@ -511,8 +485,7 @@
       discharge: "D\u00e9charge",
       info: "Info",
       exploration: "Exploration",
-      alliance_rupture: "Rupture d'alliance",
-      stabilization: "Stabilisation"
+      alliance_rupture: "Rupture d'alliance"
     };
 
     var confMap = {

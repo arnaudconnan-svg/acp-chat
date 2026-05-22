@@ -63,7 +63,6 @@ check("exploration expands by directivity", () => {
 
 check("Phase B overrides exploration", () => {
   assert(resolveConversationState({ detectedState: "exploration", allianceSignal: "rupture" }) === "alliance_rupture");
-  assert(resolveConversationState({ detectedState: "exploration", attentionWindow: "overloaded", engagementLevel: "withdrawn" }) === "stabilization");
   assert(resolveConversationState({ detectedState: "exploration", closureIntent: true }) === "closure");
 });
 
@@ -74,10 +73,6 @@ check("dependency care pending overrides exploration and info", () => {
 
 check("dependency care pending keeps support state through alliance rupture", () => {
   assert(resolveConversationState({ detectedState: "exploration", dependencyCareMessagePending: true, allianceSignal: "rupture" }) === "need_human_support");
-});
-
-check("isValidTransition blocks closure -> stabilization", () => {
-  assert(isValidTransition("closure", "stabilization") === false);
 });
 
 check("isValidTransition allows closure -> need_human_support", () => {

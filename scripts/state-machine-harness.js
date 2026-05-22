@@ -45,7 +45,7 @@ function resolve(overrides = {}) {
 }
 
 // ─── 1. CONVERSATION_STATES completeness ─────────────────────────────────────
-const EXPECTED_STATES = ["exploration", "discharge", "info", "stabilization", "alliance_rupture", "need_human_support", "closure", "n1_crisis", "n2_crisis"];
+const EXPECTED_STATES = ["exploration", "discharge", "info", "alliance_rupture", "need_human_support", "closure", "n1_crisis", "n2_crisis"];
 assert(Array.isArray(CONVERSATION_STATES), "CONVERSATION_STATES is an array");
 for (const s of EXPECTED_STATES) {
   assert(CONVERSATION_STATES.includes(s), `CONVERSATION_STATES includes '${s}'`);
@@ -61,15 +61,12 @@ for (const s of CONVERSATION_STATES) {
 // Known valid edges
 assert(isValidTransition("exploration", "discharge"), "isValidTransition: exploration -> discharge");
 assert(isValidTransition("discharge", "exploration"), "isValidTransition: discharge -> exploration");
-assert(isValidTransition("stabilization", "closure"), "isValidTransition: stabilization -> closure");
 // Self-transitions
 assert(isValidTransition("exploration", "exploration"), "isValidTransition: exploration -> exploration (self)");
 assert(isValidTransition("discharge", "discharge"), "isValidTransition: discharge -> discharge (self)");
-assert(isValidTransition("stabilization", "stabilization"), "isValidTransition: stabilization -> stabilization (self)");
 assert(isValidTransition("info", "info"), "isValidTransition: info -> info (self)");
 // closure has restricted successors
 assert(!isValidTransition("closure", "alliance_rupture"), "isValidTransition: closure -> alliance_rupture BLOCKED");
-assert(!isValidTransition("closure", "stabilization"), "isValidTransition: closure -> stabilization BLOCKED");
 // unknown state is permissive
 assert(isValidTransition("unknown_legacy_state", "exploration"), "isValidTransition: unknown legacy state is permissive");
 
@@ -104,16 +101,10 @@ assert(
   "resolve: alliance_rupture overrides exploration (post-discharge)"
 );
 
-// Phase B: stabilization
-assert(
-  resolve({ attentionWindow: "overloaded", engagementLevel: "withdrawn" }) === "stabilization",
-  "resolve: stabilization when overloaded+withdrawn"
-);
-
-// alliance_rupture takes precedence over stabilization
+// alliance_rupture takes precedence over structural exploration overrides
 assert(
   resolve({ allianceSignal: "rupture", attentionWindow: "overloaded", engagementLevel: "withdrawn" }) === "alliance_rupture",
-  "resolve: alliance_rupture takes precedence over stabilization"
+  "resolve: alliance_rupture takes precedence"
 );
 
 // Closure
@@ -134,7 +125,6 @@ assert(baseStateOf("discharge_dysregulated") === "discharge", "baseStateOf: disc
 assert(baseStateOf("info_pure") === "info", "baseStateOf: info_pure -> info");
 assert(baseStateOf("info_features") === "info", "baseStateOf: info_features -> info");
 assert(baseStateOf("info_psychoeducation") === "info", "baseStateOf: info_psychoeducation -> info");
-assert(baseStateOf("stabilization") === "stabilization", "baseStateOf: stabilization -> stabilization");
 assert(baseStateOf("alliance_rupture") === "alliance_rupture", "baseStateOf: alliance_rupture -> alliance_rupture");
 assert(baseStateOf("need_human_support") === "need_human_support", "baseStateOf: need_human_support passthrough");
 assert(baseStateOf("closure") === "closure", "baseStateOf: closure -> closure");
@@ -142,7 +132,7 @@ assert(baseStateOf("n1_crisis") === "n1_crisis", "baseStateOf: n1_crisis passthr
 
 // ─── 6. STATE_* tables consistency ───────────────────────────────────────────
 const allStates = [
-  "exploration_open", "exploration_restrained", "stabilization",
+  "exploration_open", "exploration_restrained",
   "alliance_rupture", "need_human_support", "closure", "discharge_regulated", "discharge_dysregulated",
   "info_pure", "info_psychoeducation", "info_features", "n1_crisis", "n2_crisis"
 ];

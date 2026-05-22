@@ -82,7 +82,7 @@ function expectedStatesForBaseState(state) {
   if (state === "exploration") return ["exploration_open", "exploration_restrained"];
   if (state === "discharge") return ["discharge_regulated", "discharge_dysregulated"];
   if (state === "info") return ["info_pure", "info_psychoeducation", "info_features"];
-  return [state]; // stabilization, alliance_rupture, closure
+  return [state]; // alliance_rupture, need_human_support, closure
 }
 
 check("state tables are aligned", () => {
@@ -161,12 +161,11 @@ check("relancePolicy follows contract constraints", () => {
   }));
   assert(discouragedExploration.relancePolicy === "discouraged", "exploration level 4 should discourage relance");
 
-  const stabilizationForbidden = buildPostureDecision(baseInput({
+  const ruptureForbidden = buildPostureDecision(baseInput({
     detectedState: "exploration",
-    attentionWindow: "overloaded",
-    engagementLevel: "withdrawn"
+    allianceSignal: "rupture"
   }));
-  assert(stabilizationForbidden.relancePolicy === "forbidden", "stabilization should forbid relance");
+  assert(ruptureForbidden.relancePolicy === "forbidden", "alliance_rupture should forbid relance");
 });
 
 check("situated impasse activates action collapse guard", () => {

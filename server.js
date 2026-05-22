@@ -2809,11 +2809,6 @@ app.post("/api/account/conversations/import-local", requireUserAuth, async (req,
               })).filter(e => e.stage) : [],
               explorationCalibrationLevel: Number.isInteger(debugMeta.explorationCalibrationLevel) ? debugMeta.explorationCalibrationLevel : null,
               explorationSignal: typeof debugMeta.explorationSignal === "string" ? debugMeta.explorationSignal : null,
-              outputGuardTriggered: debugMeta.outputGuardTriggered === true,
-              outputGuardRegenerationUsed: debugMeta.outputGuardRegenerationUsed === true,
-              outputGuardFallbackUsed: debugMeta.outputGuardFallbackUsed === true,
-              outputGuardViolations: Array.isArray(debugMeta.outputGuardViolations) ? debugMeta.outputGuardViolations.map(v => String(v || "")).filter(Boolean) : [],
-              outputGuardEvidence: Array.isArray(debugMeta.outputGuardEvidence) ? debugMeta.outputGuardEvidence.map(v => String(v || "")).filter(Boolean) : [],
               analyzerDeterministicEvidence: Array.isArray(debugMeta.analyzerDeterministicEvidence) ? debugMeta.analyzerDeterministicEvidence.map(v => String(v || "")).filter(Boolean) : [],
               intent: typeof debugMeta.intent === "string" ? debugMeta.intent : null,
               forbidden: Array.isArray(debugMeta.forbidden) ? debugMeta.forbidden.map(v => String(v || "")).filter(Boolean) : [],
@@ -5207,15 +5202,6 @@ async function handleChatPost(req, res) {
       pipelineStages: normalizePipelineStagesForStorage(safe.pipelineStages),
       explorationCalibrationLevel: Number.isInteger(safe.explorationCalibrationLevel) ? clampExplorationDirectivityLevel(safe.explorationCalibrationLevel) : null,
       explorationSignal: typeof safe.explorationSignal === "string" ? safe.explorationSignal : null,
-      outputGuardTriggered: safe.outputGuardTriggered === true,
-      outputGuardRegenerationUsed: safe.outputGuardRegenerationUsed === true,
-      outputGuardFallbackUsed: safe.outputGuardFallbackUsed === true,
-      outputGuardViolations: Array.isArray(safe.outputGuardViolations)
-        ? safe.outputGuardViolations.map((v) => String(v || "").trim()).filter(Boolean)
-        : [],
-      outputGuardEvidence: Array.isArray(safe.outputGuardEvidence)
-        ? safe.outputGuardEvidence.map((v) => String(v || "").trim()).filter(Boolean)
-        : [],
       analyzerDeterministicEvidence: Array.isArray(safe.analyzerDeterministicEvidence)
         ? safe.analyzerDeterministicEvidence.map((v) => String(v || "").trim()).filter(Boolean)
         : [],

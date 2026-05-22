@@ -272,12 +272,6 @@ const stAlias = buildResponseDebugMeta({
 assert("secondaryTension family alias relationalRupture", stAlias.secondaryTension?.family, "alliance_rupture");
 assert("secondaryTension confidence alias strong", stAlias.secondaryTension?.confidence, "high");
 
-const stAliasFr = buildResponseDebugMeta({
-  secondaryTension: { family: "stabilisation", confidence: "moyenne" }
-});
-assert("secondaryTension family alias stabilisation", stAliasFr.secondaryTension?.family, "stabilization");
-assert("secondaryTension confidence alias moyenne", stAliasFr.secondaryTension?.confidence, "medium");
-
 const stUnknown = buildResponseDebugMeta({
   secondaryTension: { family: "unknown_family", confidence: "high" }
 });

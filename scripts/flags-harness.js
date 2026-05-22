@@ -125,7 +125,7 @@ check("dischargeState: {wasDischarge:'yes'} → {wasDischarge:false}", () => {
 
 const VALID_EXTENDED_STATES = [
   "exploration_open", "exploration_restrained", "info_pure", "info_features",
-  "info_psychoeducation", "stabilization", "alliance_rupture", "closure",
+  "info_psychoeducation", "alliance_rupture", "closure",
   "discharge_regulated", "discharge_dysregulated", "n1_crisis", "n2_crisis"
 ];
 for (const s of VALID_EXTENDED_STATES) {
