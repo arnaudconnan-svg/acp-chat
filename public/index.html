@@ -9770,6 +9770,15 @@
       const liveStreamShouldSnapOnCreate = shouldAutoScrollReply === true;
       let liveStreamNode = null;
 
+      function getChatDistanceFromBottom(chatEl) {
+        if (!chatEl) return Infinity;
+        return Math.max(0, chatEl.scrollHeight - chatEl.clientHeight - chatEl.scrollTop);
+      }
+
+      function isChatNearBottom(chatEl, thresholdPx = 120) {
+        return getChatDistanceFromBottom(chatEl) <= thresholdPx;
+      }
+
       function snapStreamBubbleUnderTopBar(chatEl, bubbleEl) {
         if (!chatEl || !bubbleEl) return;
 
@@ -9798,7 +9807,7 @@
 
         const chatEl = document.getElementById("chat");
         if (!chatEl) return null;
-        const canSnapOnCreate = liveStreamShouldSnapOnCreate && isChatAtBottom();
+        const canSnapOnCreate = liveStreamShouldSnapOnCreate && isChatNearBottom(chatEl, 120);
 
         const msg = document.createElement("div");
         msg.className = "message bot";
@@ -10218,7 +10227,7 @@
         if (usedStreaming === true && shouldRenderInCurrentChat) {
           const chatEl = document.getElementById("chat");
           if (chatEl) {
-            preserveDistanceFromBottomAfterStream = Math.max(0, chatEl.scrollHeight - chatEl.scrollTop);
+            preserveDistanceFromBottomAfterStream = getChatDistanceFromBottom(chatEl);
           }
         }
 
@@ -10281,7 +10290,10 @@
           if (usedStreaming === true && preserveDistanceFromBottomAfterStream !== null) {
             const chatEl = document.getElementById("chat");
             if (chatEl) {
-              const nextScrollTop = Math.max(0, chatEl.scrollHeight - preserveDistanceFromBottomAfterStream);
+              const nextScrollTop = Math.max(
+                0,
+                chatEl.scrollHeight - chatEl.clientHeight - preserveDistanceFromBottomAfterStream
+              );
               chatEl.scrollTop = nextScrollTop;
               requestAnimationFrame(() => {
                 chatEl.scrollTop = nextScrollTop;
