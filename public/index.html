@@ -9766,7 +9766,7 @@
       }
       
       const shouldAutoScrollReply = isEditing || wasAtBottom || isChatAtBottom();
-      let liveStreamText = "";
+      let liveStreamText = resumePartialReply || "";
       let liveStreamNode = null;
 
       function getChatDistanceFromBottom(chatEl) {
@@ -9805,6 +9805,32 @@
 
         const chatEl = document.getElementById("chat");
         if (!chatEl) return null;
+
+        if (resumePartialReply) {
+          const existingMsg = chatEl.querySelector('.message[data-stream-bubble="1"]');
+          const existingContentWrap = existingMsg ? existingMsg.querySelector('.message-content') : null;
+          const existingBubble = existingContentWrap ? existingContentWrap.querySelector('.bubble') : null;
+
+          if (existingMsg && existingContentWrap && existingBubble) {
+            const resumeBtn = existingContentWrap.querySelector('.stream-resume-btn');
+            const resumeWrap = resumeBtn && resumeBtn.parentNode ? resumeBtn.parentNode : null;
+            if (resumeWrap && resumeWrap.parentNode) {
+              resumeWrap.parentNode.removeChild(resumeWrap);
+            }
+
+            existingBubble.textContent = liveStreamText;
+            updateScrollToBottomBtn();
+
+            return {
+              msg: existingMsg,
+              bubble: existingBubble,
+              contentWrap: existingContentWrap,
+              interrupted: false,
+              keepBottomLocked: false
+            };
+          }
+        }
+
   const shouldKeepBottomLocked = shouldAutoScrollReply === true;
 
         const msg = document.createElement("div");
@@ -9830,7 +9856,7 @@
         bubble.style.boxShadow = "0 10px 24px rgba(36, 94, 102, 0.05), 0 1px 0 rgba(255, 255, 255, 0.42) inset";
         bubble.style.backdropFilter = "blur(8px)";
         bubble.style.webkitBackdropFilter = "blur(8px)";
-        bubble.textContent = "";
+        bubble.textContent = liveStreamText;
 
         contentWrap.appendChild(bubble);
         msg.appendChild(contentWrap);
