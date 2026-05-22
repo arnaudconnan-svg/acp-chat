@@ -4529,6 +4529,11 @@ function parseChatRequest(req) {
   const mailsEnabled = req.body?.mailsEnabled !== false;
   const logsEnabled = req.body?.logsEnabled === true;
   const adminUiActive = req.body?.adminUiActive === true;
+  const resumeModeRaw = typeof req.body?.resumeMode === "string" ? req.body.resumeMode.trim() : "";
+  const resumeMode = resumeModeRaw === "continue_from_partial" ? "continue_from_partial" : "none";
+  const partialAssistantReply = typeof req.body?.partialAssistantReply === "string"
+    ? req.body.partialAssistantReply.slice(0, 12000)
+    : "";
   const titleDenyList = Array.isArray(req.body?.titleDenyList)
     ? req.body.titleDenyList
         .map(value => String(value || "").trim())
@@ -4549,7 +4554,9 @@ function parseChatRequest(req) {
     titleDenyList,
     mailsEnabled,
     logsEnabled,
-    adminUiActive
+    adminUiActive,
+    resumeMode,
+    partialAssistantReply
   };
 }
 
@@ -4582,6 +4589,21 @@ function validateChatRequestShape(body = {}) {
 
   if (body.memory !== undefined && typeof body.memory !== "string") {
     return ["memory: not_string"];
+  }
+
+  if (body.resumeMode !== undefined) {
+    const safeResumeMode = typeof body.resumeMode === "string" ? body.resumeMode.trim() : "";
+    if (!safeResumeMode || !["none", "continue_from_partial"].includes(safeResumeMode)) {
+      return ["resumeMode: invalid_value"];
+    }
+  }
+
+  if (body.partialAssistantReply !== undefined && typeof body.partialAssistantReply !== "string") {
+    return ["partialAssistantReply: not_string"];
+  }
+
+  if (typeof body.partialAssistantReply === "string" && body.partialAssistantReply.length > 12000) {
+    return ["partialAssistantReply: too_long"];
   }
 
   if (body.flags !== undefined && (typeof body.flags !== "object" || body.flags === null || Array.isArray(body.flags))) {
@@ -4997,8 +5019,14 @@ ${context.map(m => `${m.role === "user" ? "Utilisateur" : "Assistant"} : ${m.con
 // Main chat endpoint.
 // This route orchestrates the request parsing, safety analysis, mode detection,
 // response generation, memory update, and persistence of both user and assistant messages.
-app.post("/chat", async (req, res) => {
+async function handleChatPost(req, res) {
+  const onTokenCallbackForChat = typeof req.onTokenCallbackForChat === "function"
+    ? req.onTokenCallbackForChat
+    : null;
   const requestData = parseChatRequest(req);
+  const continuationPrefix = requestData.resumeMode === "continue_from_partial"
+    ? String(requestData.partialAssistantReply || "")
+    : "";
   const requestId = String(requestData.requestId || "").trim();
   // traceId: server-generated per-request, always present even without a client requestId.
   const traceId = requestId || `tr_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
@@ -5871,7 +5899,9 @@ app.post("/chat", async (req, res) => {
           history: recentHistory,
           memory: previousMemory,
           postureDecision: buildN2CrisisPostureDecision(),
-          promptRegistry: n2PromptRegistry
+          promptRegistry: n2PromptRegistry,
+          onTokenCallback: onTokenCallbackForChat,
+          continuationPrefix
         });
         reply = n2Result.reply;
       } catch {
@@ -6791,6 +6821,8 @@ Reponds strictement en JSON: {"items": ["..."]}
       interpretationRejection: safeInterpretationRejection,
       intersessionMemoryForTurn: intersessionMemoryForThisTurn,
       promptRegistry: activePromptRegistry,
+      onTokenCallback: onTokenCallbackForChat,
+      continuationPrefix,
     });
     throwIfCanceled();
 
@@ -7267,6 +7299,83 @@ Reponds strictement en JSON: {"items": ["..."]}
         stageTimings: chatStageTimings
       });
     }
+  }
+}
+
+app.post("/chat", handleChatPost);
+
+app.post("/chat/stream", async (req, res) => {
+  if (appConfig.enableChatStreaming !== true) {
+    return res.status(405).json({
+      error: "Chat streaming is not enabled",
+      code: "streaming_disabled"
+    });
+  }
+
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache, no-transform");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no");
+  res.flushHeaders?.();
+
+  writeSSEEvent(res, "ready", {
+    status: "connected",
+    ts: Date.now()
+  });
+
+  req.onTokenCallbackForChat = (token) => {
+    writeSSEEvent(res, "token", { token });
+  };
+
+  req.on("close", () => {
+    req.onTokenCallbackForChat = null;
+  });
+
+  const streamRes = {
+    _statusCode: 200,
+    setHeader(name, value) {
+      try {
+        res.setHeader(name, value);
+      } catch {
+        // Ignore late header writes once SSE stream is active.
+      }
+      return this;
+    },
+    status(code) {
+      this._statusCode = Number(code) || 500;
+      return this;
+    },
+    json(payload) {
+      if (this._statusCode >= 400) {
+        writeSSEEvent(res, "error", {
+          status: this._statusCode,
+          ...(payload && typeof payload === "object" ? payload : { error: "stream_error" })
+        });
+      } else {
+        writeSSEEvent(res, "result", payload);
+      }
+      if (!res.writableEnded) {
+        res.end();
+      }
+      return this;
+    }
+  };
+
+  try {
+    await handleChatPost(req, streamRes);
+    if (!res.writableEnded) {
+      res.end();
+    }
+  } catch (err) {
+    writeSSEEvent(res, "error", {
+      error: "streaming_failed",
+      message: err && err.message ? err.message : ""
+    });
+    if (!res.writableEnded) {
+      res.end();
+    }
+  } finally {
+    req.onTokenCallbackForChat = null;
   }
 });
 

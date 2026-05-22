@@ -4118,6 +4118,15 @@
       syncInputAvailability();
       send({ skipUserHistoryInsert: nextMessageEntry.alreadyInserted === true });
     }
+
+    function disableInterruptedResumeButtons() {
+      document.querySelectorAll(".stream-resume-btn").forEach((btn) => {
+        btn.disabled = true;
+        btn.setAttribute("aria-disabled", "true");
+        btn.style.opacity = "0.55";
+        btn.style.cursor = "not-allowed";
+      });
+    }
     
     function ensureBootOverlay() {
       if (bootOverlayEl) return bootOverlayEl;
@@ -9481,14 +9490,22 @@
       if (now - _lastSendTs < 400) return;
       _lastSendTs = now;
 
-      const { skipUserHistoryInsert = false } = options;
+      const {
+        skipUserHistoryInsert = false,
+        resumeFromPartialReply = ""
+      } = options;
       let shouldSkipUserHistoryInsert = skipUserHistoryInsert === true;
+      const resumePartialReply = typeof resumeFromPartialReply === "string"
+        ? resumeFromPartialReply.trim()
+        : "";
       
       const input = document.getElementById("input");
       const chat = document.getElementById("chat");
       const nextMessage = input.value.trim();
       
       if (!nextMessage) return;
+
+      disableInterruptedResumeButtons();
 
       if (isSending) {
         if (editMode.active) {
@@ -9740,6 +9757,137 @@
       }
       
       const shouldAutoScrollReply = isEditing || wasAtBottom || isChatAtBottom();
+      let liveStreamText = "";
+      let liveStreamAutoFollow = shouldAutoScrollReply;
+      let liveStreamNode = null;
+
+      function createLiveStreamBubble() {
+        if (
+          getConversationId() !== requestConversationId ||
+          document.querySelector(".screen.active")?.id !== requestScreenId ||
+          requestScreenId !== "chatScreen"
+        ) {
+          return null;
+        }
+
+        const chatEl = document.getElementById("chat");
+        if (!chatEl) return null;
+
+        const msg = document.createElement("div");
+        msg.className = "message bot";
+        msg.dataset.streamBubble = "1";
+
+        const contentWrap = document.createElement("div");
+        contentWrap.className = "message-content";
+
+        const bubble = document.createElement("div");
+        bubble.className = "bubble";
+        bubble.style.padding = "13px 15px";
+        bubble.style.borderRadius = "20px";
+        bubble.style.lineHeight = "1.54";
+        bubble.style.whiteSpace = "pre-wrap";
+        bubble.style.wordBreak = "normal";
+        bubble.style.overflowWrap = "break-word";
+        bubble.style.boxSizing = "border-box";
+        bubble.style.display = "block";
+        bubble.style.background = "rgba(255, 255, 255, 0.62)";
+        bubble.style.color = "#3e5e62";
+        bubble.style.borderTopLeftRadius = "8px";
+        bubble.style.boxShadow = "0 10px 24px rgba(36, 94, 102, 0.05), 0 1px 0 rgba(255, 255, 255, 0.42) inset";
+        bubble.style.backdropFilter = "blur(8px)";
+        bubble.style.webkitBackdropFilter = "blur(8px)";
+        bubble.textContent = "";
+
+        contentWrap.appendChild(bubble);
+        msg.appendChild(contentWrap);
+        chatEl.appendChild(msg);
+
+        if (liveStreamAutoFollow) {
+          scrollChatToBottom();
+        } else {
+          updateScrollToBottomBtn();
+        }
+
+        return {
+          msg,
+          bubble,
+          contentWrap,
+          interrupted: false
+        };
+      }
+
+      function updateLiveStreamBubble(force = false) {
+        if (!liveStreamNode || !liveStreamNode.bubble) return;
+        if (!force && liveStreamNode.interrupted === true) return;
+
+        liveStreamNode.bubble.textContent = liveStreamText;
+
+        if (liveStreamAutoFollow) {
+          if (isChatAtBottom()) {
+            scrollChatToBottom({ smooth: false });
+          } else {
+            liveStreamAutoFollow = false;
+            updateScrollToBottomBtn({ forcePulse: true });
+          }
+        } else {
+          updateScrollToBottomBtn();
+        }
+      }
+
+      function removeLiveStreamBubble() {
+        if (!liveStreamNode || !liveStreamNode.msg) return;
+        if (liveStreamNode.msg.parentNode) {
+          liveStreamNode.msg.parentNode.removeChild(liveStreamNode.msg);
+        }
+        liveStreamNode = null;
+      }
+
+      function markLiveStreamInterrupted() {
+        if (!liveStreamNode || !liveStreamNode.contentWrap) return;
+        if (liveStreamNode.interrupted === true) return;
+        liveStreamNode.interrupted = true;
+
+        const appendix = document.createElement("div");
+        appendix.style.marginTop = "8px";
+        appendix.style.display = "flex";
+        appendix.style.alignItems = "center";
+        appendix.style.gap = "8px";
+        appendix.style.flexWrap = "wrap";
+
+        const text = document.createElement("span");
+        text.textContent = "Reponse interrompue.";
+        text.style.fontSize = "12px";
+        text.style.color = "#567176";
+
+        const resumeBtn = document.createElement("button");
+        resumeBtn.type = "button";
+        resumeBtn.className = "stream-resume-btn";
+        resumeBtn.textContent = "Reprendre";
+        resumeBtn.style.fontSize = "12px";
+        resumeBtn.style.padding = "5px 10px";
+        resumeBtn.style.borderRadius = "999px";
+        resumeBtn.style.border = "1px solid rgba(36, 94, 102, 0.4)";
+        resumeBtn.style.background = "rgba(255, 255, 255, 0.82)";
+        resumeBtn.style.color = "#245e66";
+        resumeBtn.style.cursor = "pointer";
+
+        resumeBtn.addEventListener("click", async () => {
+          if (isSending) return;
+          resumeBtn.disabled = true;
+          resumeBtn.setAttribute("aria-disabled", "true");
+          resumeBtn.style.opacity = "0.55";
+          resumeBtn.style.cursor = "not-allowed";
+          input.value = message;
+          await send({
+            skipUserHistoryInsert: true,
+            resumeFromPartialReply: liveStreamText
+          });
+        });
+
+        appendix.appendChild(text);
+        appendix.appendChild(resumeBtn);
+        liveStreamNode.contentWrap.appendChild(appendix);
+      }
 
       const chatRequestId = buildChatRequestId();
       const chatAbortController = new AbortController();
@@ -9785,33 +9933,205 @@
           }
         }
 
-        const res = await fetch("/chat", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-request-id": chatRequestId
-          },
-          signal: chatAbortController.signal,
-          body: JSON.stringify({
-            message,
-            isEdited: requestIsEdited === true,
-            requestId: chatRequestId,
-            userId: getOrCreateUserId(),
-            conversationId: requestConversationId,
-            isPrivateConversation: isConversationPrivateById(requestConversationId, loadConversationData(requestConversationId)),
-            adminUiActive: document.body.classList.contains("admin-ui"),
-            recentHistory: buildRecentHistoryForChatRequest(loadHistory()),
-            conversationBranchHistory: buildConversationBranchHistoryForChatRequest(loadHistory()),
-            titleDenyList: buildTitleDenyListForConversation(requestConversationId),
-            memory: loadConversationData(requestConversationId).memory,
-            flags: normalizeStoredFlags(loadConversationData(requestConversationId).flags),
-            mailsEnabled: adminPayload.mailsEnabled !== false,
-            logsEnabled: adminPayload.logsEnabled === true,
-            biometricUnlockToken: getBiometricUnlockTokenValue() || undefined
-          })
-        });
+        function parseSSEEvent(rawEvent) {
+          const lines = String(rawEvent || "").split("\n");
+          let eventName = "message";
+          const dataLines = [];
 
-        const data = await parseJsonResponseSafely(res, "send:/chat");
+          lines.forEach((line) => {
+            if (line.startsWith("event:")) {
+              eventName = line.slice(6).trim() || "message";
+              return;
+            }
+            if (line.startsWith("data:")) {
+              dataLines.push(line.slice(5).trim());
+            }
+          });
+
+          let data = null;
+          const joined = dataLines.join("\n");
+          if (joined) {
+            try {
+              data = JSON.parse(joined);
+            } catch {
+              data = null;
+            }
+          }
+
+          return { eventName, data };
+        }
+
+        async function tryStreamChatResponse(requestPayload) {
+          const streamRes = await fetch("/chat/stream", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-request-id": chatRequestId
+            },
+            signal: chatAbortController.signal,
+            body: JSON.stringify(requestPayload)
+          });
+
+          if (streamRes.status === 405) {
+            return null;
+          }
+
+          const streamContentType = String(streamRes.headers.get("content-type") || "").toLowerCase();
+          if (!streamContentType.includes("text/event-stream") || !streamRes.body || typeof streamRes.body.getReader !== "function") {
+            return null;
+          }
+
+          if (dotAnimation) dotAnimation.cancel();
+          removeWaitingIndicatorFromChat();
+          closeActiveChatProgressSource();
+
+          liveStreamNode = createLiveStreamBubble();
+
+          const reader = streamRes.body.getReader();
+          const decoder = new TextDecoder();
+          let sseBuffer = "";
+          let pendingBatch = "";
+          let lastFlushTs = Date.now();
+          let finalData = null;
+          let streamErrorPayload = null;
+
+          function computeFlushIntervalMs(totalLength) {
+            if (totalLength < 220) return 100;
+            if (totalLength > 1400) return 160;
+            return 120;
+          }
+
+          function flushPendingBatch(force = false) {
+            if (!pendingBatch && !force) return;
+            pendingBatch = "";
+            updateLiveStreamBubble(force);
+            lastFlushTs = Date.now();
+          }
+
+          while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+
+            sseBuffer += decoder.decode(value, { stream: true });
+
+            while (true) {
+              const splitIndex = sseBuffer.indexOf("\n\n");
+              if (splitIndex === -1) break;
+
+              const rawEvent = sseBuffer.slice(0, splitIndex);
+              sseBuffer = sseBuffer.slice(splitIndex + 2);
+              const parsed = parseSSEEvent(rawEvent);
+
+              if (!parsed) continue;
+              const { eventName, data } = parsed;
+
+              if (eventName === "token") {
+                const token = typeof data?.token === "string" ? data.token : "";
+                if (!token) continue;
+
+                liveStreamText += token;
+                pendingBatch += token;
+                const flushInterval = computeFlushIntervalMs(liveStreamText.length);
+                const sentenceEnd = /[.!?]\s*$/.test(token);
+                if (sentenceEnd || Date.now() - lastFlushTs >= flushInterval) {
+                  flushPendingBatch();
+                }
+                continue;
+              }
+
+              if (eventName === "result") {
+                finalData = data;
+                continue;
+              }
+
+              if (eventName === "error") {
+                streamErrorPayload = data || { error: "stream_error" };
+              }
+            }
+          }
+
+          flushPendingBatch(true);
+
+          if (streamErrorPayload && !finalData) {
+            markLiveStreamInterrupted();
+            return {
+              res: streamRes,
+              data: null,
+              streamingError: streamErrorPayload,
+              usedStreaming: true
+            };
+          }
+
+          if (!finalData || typeof finalData.reply !== "string") {
+            markLiveStreamInterrupted();
+            return {
+              res: streamRes,
+              data: null,
+              streamingError: { error: "stream_no_result" },
+              usedStreaming: true
+            };
+          }
+
+          return {
+            res: streamRes,
+            data: finalData,
+            streamingError: null,
+            usedStreaming: true
+          };
+        }
+
+        const requestPayload = {
+          message,
+          isEdited: requestIsEdited === true,
+          requestId: chatRequestId,
+          userId: getOrCreateUserId(),
+          conversationId: requestConversationId,
+          isPrivateConversation: isConversationPrivateById(requestConversationId, loadConversationData(requestConversationId)),
+          resumeMode: resumePartialReply ? "continue_from_partial" : "none",
+          partialAssistantReply: resumePartialReply || undefined,
+          adminUiActive: document.body.classList.contains("admin-ui"),
+          recentHistory: buildRecentHistoryForChatRequest(loadHistory()),
+          conversationBranchHistory: buildConversationBranchHistoryForChatRequest(loadHistory()),
+          titleDenyList: buildTitleDenyListForConversation(requestConversationId),
+          memory: loadConversationData(requestConversationId).memory,
+          flags: normalizeStoredFlags(loadConversationData(requestConversationId).flags),
+          mailsEnabled: adminPayload.mailsEnabled !== false,
+          logsEnabled: adminPayload.logsEnabled === true,
+          biometricUnlockToken: getBiometricUnlockTokenValue() || undefined
+        };
+
+        let streamAttempt = null;
+        try {
+          streamAttempt = await tryStreamChatResponse(requestPayload);
+        } catch (streamErr) {
+          streamAttempt = null;
+          removeLiveStreamBubble();
+        }
+
+        let res = null;
+        let data = null;
+        let usedStreaming = false;
+
+        if (streamAttempt && streamAttempt.usedStreaming === true) {
+          usedStreaming = true;
+          res = streamAttempt.res;
+          data = streamAttempt.data;
+        }
+
+        if (!usedStreaming) {
+          const classicRes = await fetch("/chat", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-request-id": chatRequestId
+            },
+            signal: chatAbortController.signal,
+            body: JSON.stringify(requestPayload)
+          });
+
+          res = classicRes;
+          data = await parseJsonResponseSafely(classicRes, "send:/chat");
+        }
         const responseRequestId = String(res.headers.get("x-request-id") || "").trim();
         const responseTraceId = String(res.headers.get("x-trace-id") || "").trim();
 
@@ -9848,10 +10168,16 @@
               pulseScrollButton: !wasAtBottom && !isEditing
             });
           }
+          if (!data && usedStreaming && liveStreamText.trim()) {
+            markLiveStreamInterrupted();
+          } else {
+            removeLiveStreamBubble();
+          }
           return;
         }
 
         setServiceAvailabilityBlocked(false);
+        removeLiveStreamBubble();
 
         const currentConversationId = getConversationId();
         const isSameConversation = currentConversationId === requestConversationId;
@@ -9941,6 +10267,12 @@
             shouldAutoScroll: shouldAutoScrollReply,
             pulseScrollButton: !shouldAutoScrollReply
           });
+        }
+
+        if (liveStreamText.trim()) {
+          markLiveStreamInterrupted();
+        } else {
+          removeLiveStreamBubble();
         }
       } finally {
         clearTimeout(chatTimeoutId);
