@@ -10184,7 +10184,6 @@
 
         const chatEl = document.getElementById("chat");
         const beforeScrollTop = chatEl ? chatEl.scrollTop : 0;
-        const beforeScrollHeight = chatEl ? chatEl.scrollHeight : 0;
         const beforeDistanceBottom = chatEl ? getChatDistanceFromBottom(chatEl) : 0;
 
         logStreamScroll("finalize_start", { historyIndex });
@@ -10205,12 +10204,22 @@
         ensureFinalizedStreamActions(finalReply, historyIndex);
 
         if (chatEl) {
-          const growthPx = Math.max(0, chatEl.scrollHeight - beforeScrollHeight);
-          if (beforeDistanceBottom > 80 && growthPx > 0) {
-            chatEl.scrollTop = Math.max(0, beforeScrollTop + growthPx);
+          const afterDistanceBottom = getChatDistanceFromBottom(chatEl);
+          const driftPx = Math.max(0, afterDistanceBottom - beforeDistanceBottom);
+          if (beforeDistanceBottom > 80 && driftPx > 0) {
+            chatEl.scrollTop = Math.max(0, beforeScrollTop + driftPx);
             logStreamScroll("finalize_viewport_adjust", {
               historyIndex,
-              growthPx: Math.round(growthPx)
+              driftPx: Math.round(driftPx),
+              beforeDistanceBottom: Math.round(beforeDistanceBottom),
+              afterDistanceBottom: Math.round(afterDistanceBottom)
+            });
+          } else {
+            logStreamScroll("finalize_viewport_no_adjust", {
+              historyIndex,
+              driftPx: Math.round(driftPx),
+              beforeDistanceBottom: Math.round(beforeDistanceBottom),
+              afterDistanceBottom: Math.round(afterDistanceBottom)
             });
           }
         }
