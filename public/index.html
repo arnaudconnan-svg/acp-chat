@@ -10126,8 +10126,9 @@
         }
 
         const chatEl = document.getElementById("chat");
-        const beforeScrollTop = chatEl ? chatEl.scrollTop : 0;
-        const beforeDistanceBottom = chatEl ? getChatDistanceFromBottom(chatEl) : 0;
+        const shouldMaintainBottomLock =
+          liveStreamNode.keepBottomLocked === true &&
+          liveStreamNode.autoScrollSuspendedByUser !== true;
 
         liveStreamNode.interrupted = false;
         renderBotMessageContent(liveStreamNode.bubble, String(finalReply || ""), {
@@ -10136,12 +10137,8 @@
         });
         ensureFinalizedStreamActions(finalReply, historyIndex);
 
-        if (chatEl) {
-          const afterDistanceBottom = getChatDistanceFromBottom(chatEl);
-          const driftPx = Math.max(0, afterDistanceBottom - beforeDistanceBottom);
-          if (beforeDistanceBottom > 80 && driftPx > 0) {
-            chatEl.scrollTop = Math.max(0, beforeScrollTop + driftPx);
-          }
+        if (chatEl && shouldMaintainBottomLock) {
+          keepStreamBottomLocked(chatEl);
         }
 
         liveStreamNode.msg.removeAttribute("data-stream-bubble");
