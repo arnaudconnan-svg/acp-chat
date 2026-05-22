@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>Facilitat.io — Compte</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="#f4f9f9">
   <meta name="color-scheme" content="light">
   <style>
@@ -346,8 +346,12 @@
         document.getElementById("tabRegister").classList.toggle("active", !isLogin);
       };
 
-      window.handleLogin = async function handleLogin(event) {
-        event.preventDefault();
+      let loginRequestInFlight = false;
+      let lastAutoLoginFingerprint = "";
+
+      async function submitLoginCredentials() {
+        if (loginRequestInFlight) return;
+
         const notice = document.getElementById("loginNotice");
         const btn = document.getElementById("loginBtn");
         notice.textContent = "";
@@ -361,6 +365,7 @@
           return;
         }
 
+        loginRequestInFlight = true;
         btn.disabled = true;
         try {
           const res = await fetch("/api/auth/login", {
@@ -384,9 +389,84 @@
         } catch (_) {
           notice.textContent = "Erreur réseau. Réessayez.";
         } finally {
+          loginRequestInFlight = false;
           btn.disabled = false;
         }
+      }
+
+      window.handleLogin = async function handleLogin(event) {
+        if (event && typeof event.preventDefault === "function") {
+          event.preventDefault();
+        }
+        await submitLoginCredentials();
       };
+
+      function triggerInputValidation(inputEl) {
+        if (!inputEl) return;
+        inputEl.dispatchEvent(new Event("input", { bubbles: true }));
+        inputEl.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+
+      function maybeAutoSubmitLoginFromAutofill() {
+        const loginForm = document.getElementById("loginForm");
+        const loginEmailInput = document.getElementById("loginEmail");
+        const loginPasswordInput = document.getElementById("loginPassword");
+        const isLoginVisible = loginForm && loginForm.style.display !== "none";
+
+        if (!loginForm || !loginEmailInput || !loginPasswordInput || !isLoginVisible) {
+          return;
+        }
+
+        const email = String(loginEmailInput.value || "").trim();
+        const password = String(loginPasswordInput.value || "");
+        if (!email || !password) {
+          return;
+        }
+
+        triggerInputValidation(loginEmailInput);
+        triggerInputValidation(loginPasswordInput);
+
+        if (typeof loginForm.reportValidity === "function" && !loginForm.reportValidity()) {
+          return;
+        }
+
+        const fingerprint = `${email}\n${password}`;
+        if (fingerprint === lastAutoLoginFingerprint || loginRequestInFlight) {
+          return;
+        }
+
+        lastAutoLoginFingerprint = fingerprint;
+        window.handleLogin();
+      }
+
+      function scheduleAutofillLoginChecks() {
+        const intervals = [
+          0,
+          80,
+          180,
+          320,
+          520,
+          900,
+          1400,
+          2200,
+          3200
+        ];
+        intervals.forEach(delay => {
+          setTimeout(maybeAutoSubmitLoginFromAutofill, delay);
+        });
+      }
+
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") {
+          maybeAutoSubmitLoginFromAutofill();
+        }
+      });
+      window.addEventListener("focus", maybeAutoSubmitLoginFromAutofill);
+      window.addEventListener("pageshow", () => {
+        scheduleAutofillLoginChecks();
+        requestAnimationFrame(maybeAutoSubmitLoginFromAutofill);
+      });
+      scheduleAutofillLoginChecks();
 
       window.handleRegister = async function handleRegister(event) {
         event.preventDefault();

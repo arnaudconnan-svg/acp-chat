@@ -47,6 +47,7 @@
   const errorDiv = document.getElementById("error");
   
   let autoSubmitDone = false;
+  let lastAutoSubmittedPassword = "";
   
   history.replaceState({ adminLogin: true }, "", window.location.href);
   history.pushState({ adminLoginBack: true }, "", window.location.href);
@@ -116,6 +117,45 @@
   passwordInput.addEventListener("input", () => {
     errorDiv.textContent = "";
   });
+
+  function maybeAutoSubmitFromAutofill() {
+    const password = passwordInput.value.trim();
+    if (!password) return;
+
+    passwordInput.dispatchEvent(new Event("input", { bubbles: true }));
+    passwordInput.dispatchEvent(new Event("change", { bubbles: true }));
+
+    if (typeof form.reportValidity === "function" && !form.reportValidity()) {
+      return;
+    }
+
+    if (password === lastAutoSubmittedPassword || autoSubmitDone) {
+      return;
+    }
+
+    lastAutoSubmittedPassword = password;
+    submitLogin();
+  }
+
+  function scheduleAutofillChecks() {
+    const delays = [0, 80, 180, 320, 520, 900, 1400, 2200, 3200];
+    delays.forEach(delay => {
+      setTimeout(maybeAutoSubmitFromAutofill, delay);
+    });
+  }
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      maybeAutoSubmitFromAutofill();
+    }
+  });
+
+  window.addEventListener("focus", maybeAutoSubmitFromAutofill);
+  window.addEventListener("pageshow", () => {
+    scheduleAutofillChecks();
+    requestAnimationFrame(maybeAutoSubmitFromAutofill);
+  });
+  scheduleAutofillChecks();
 </script>
 </body>
 </html>
