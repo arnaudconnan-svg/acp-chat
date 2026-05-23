@@ -1882,7 +1882,21 @@
             const intentIsDefault =
               (resolvedState === "exploration_open" && meta.intent === "explorer librement") ||
               (resolvedState === "exploration_restrained" && meta.intent === "structurer doucement");
-            const visibleHints = (meta.writerIntentHints || []);
+            const rawHints = Array.isArray(meta.writerIntentHints) ? meta.writerIntentHints : [];
+            const hintSet = new Set(rawHints.map((hint) => String(hint || "").trim()).filter(Boolean));
+            const hasRelanceForbidden = Array.isArray(meta.forbidden) && meta.forbidden.includes("relance");
+            const hasSingleAxisIntent = typeof meta.intent === "string" && /suivre un seul axe/i.test(meta.intent);
+            const hideFrictionHint = typeof meta.allianceSignal === "string" && meta.allianceSignal !== "good";
+            const hasAttentionGuidanceHint = hintSet.has("attention_narrow_single_axis") || hintSet.has("attention_engagement_soft_guidance");
+            const visibleHints = rawHints.filter((hint) => {
+              const key = String(hint || "").trim();
+              if (!key) return false;
+              if (hasSingleAxisIntent && key === "attention_narrow_single_axis") return false;
+              if (hideFrictionHint && (key === "relational_adjustment_noticed" || key === "alliance_fragile_sensitive")) return false;
+              return true;
+            });
+            const shouldShowRelanceLine = !hasRelanceForbidden && !relanceIsPredictable && meta.relancePolicy;
+            const shouldShowPhraseLengthLine = !!meta.phraseLengthPolicy && !(meta.phraseLengthPolicy === "courte" && hasAttentionGuidanceHint);
 
             sections.push({
               title: "Contrat de posture",
@@ -1908,13 +1922,13 @@
                   `Signal d'exploration : ${translateExplorationSignal(meta.explorationSignal)}` : null,
                 !intentIsDefault && meta.intent ? `Intention : ${meta.intent}` : null,
                 (meta.forbidden && meta.forbidden.length) ? `Interdit : ${meta.forbidden.map(translateForbidden).join(", ")}` : null,
-                !relanceIsPredictable && meta.relancePolicy ? `Relance : ${translateRelancePolicy(meta.relancePolicy)}` : null,
+                shouldShowRelanceLine ? `Relance : ${translateRelancePolicy(meta.relancePolicy)}` : null,
                 meta.allianceSignal && meta.allianceSignal !== "good" ? `Rupture relationnelle : ${meta.allianceSignal}` : null,
                 meta.engagementLevel && meta.engagementLevel !== "active" ? `Disponibilit\u00e9 attentionnelle : ${translateAttentionEngagement(meta.engagementLevel)}` : null,
                 meta.attentionWindow && meta.attentionWindow !== "open" ? `Qualit\u00e9 de l'attention : ${translateAttentionQuality(meta.attentionWindow)}` : null,
                 visibleHints.length ? `Indications : ${visibleHints.map(translateWriterHint).join(", ")}` : null,
                 meta.responseRegister && meta.responseRegister !== "courant" ? `Registre cible : ${translateRegister(meta.responseRegister)}` : null,
-                meta.phraseLengthPolicy ? `Longueur phrase : ${translatePhraseLengthPolicy(meta.phraseLengthPolicy)}` : null,
+                shouldShowPhraseLengthLine ? `Longueur phrase : ${translatePhraseLengthPolicy(meta.phraseLengthPolicy)}` : null,
                 (meta.actionCollapseGuardActive === true && !(Array.isArray(meta.writerIntentHints) && meta.writerIntentHints.some(h => String(h || "").indexOf("procedural_temptation_") === 0))) ? "Garde anti-rabattement action: active" : null,
                 meta.infoRoutingSource ? `Routage info : ${translateInfoRoutingSource(meta.infoRoutingSource)}` : null,
                 meta.stateTransitionValid === false && meta.stateTransitionRequested

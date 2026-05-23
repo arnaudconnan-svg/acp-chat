@@ -7725,7 +7725,21 @@
           const intentIsDefault =
             (meta.conversationState === "exploration_open" && meta.intent === "explorer librement") ||
             (meta.conversationState === "exploration_restrained" && meta.intent === "structurer doucement");
-          const visibleHints = (meta.writerIntentHints || []);
+          const rawHints = Array.isArray(meta.writerIntentHints) ? meta.writerIntentHints : [];
+          const hintSet = new Set(rawHints.map((hint) => String(hint || "").trim()).filter(Boolean));
+          const hasRelanceForbidden = Array.isArray(meta.forbidden) && meta.forbidden.includes("relance");
+          const hasSingleAxisIntent = typeof meta.intent === "string" && /suivre un seul axe/i.test(meta.intent);
+          const hideFrictionHint = typeof meta.allianceSignal === "string" && meta.allianceSignal !== "good";
+          const hasAttentionGuidanceHint = hintSet.has("attention_narrow_single_axis") || hintSet.has("attention_engagement_soft_guidance");
+          const visibleHints = rawHints.filter((hint) => {
+            const key = String(hint || "").trim();
+            if (!key) return false;
+            if (hasSingleAxisIntent && key === "attention_narrow_single_axis") return false;
+            if (hideFrictionHint && (key === "relational_adjustment_noticed" || key === "alliance_fragile_sensitive")) return false;
+            return true;
+          });
+          const shouldShowRelanceLine = !hasRelanceForbidden && !relanceIsPredictable && typeof meta.relancePolicy === "string" && meta.relancePolicy;
+          const shouldShowPhraseLengthLine = !!meta.phraseLengthPolicy && !(meta.phraseLengthPolicy === "courte" && hasAttentionGuidanceHint);
 
           sections.push({
             title: "Contrat de posture",
@@ -7751,13 +7765,13 @@
                 `Signal d'exploration : ${translateExplorationSignalDebug(meta.explorationSignal)}` : null,
               !intentIsDefault && meta.intent ? `Intention : ${meta.intent}` : null,
               (meta.forbidden && meta.forbidden.length) ? `Interdit : ${meta.forbidden.map(translateForbiddenDebug).join(", ")}` : null,
-              !relanceIsPredictable && typeof meta.relancePolicy === "string" && meta.relancePolicy ? `Relance : ${translateRelancePolicyDebug(meta.relancePolicy)}` : null,
+              shouldShowRelanceLine ? `Relance : ${translateRelancePolicyDebug(meta.relancePolicy)}` : null,
               typeof meta.allianceSignal === "string" && meta.allianceSignal !== "good" ? `Rupture relationnelle : ${meta.allianceSignal}` : null,
               typeof meta.engagementLevel === "string" && meta.engagementLevel !== "active" ? `Disponibilit\u00e9 attentionnelle : ${translateAttentionEngagementDebug(meta.engagementLevel)}` : null,
               typeof meta.attentionWindow === "string" && meta.attentionWindow !== "open" ? `Qualit\u00e9 de l'attention : ${translateAttentionQualityDebug(meta.attentionWindow)}` : null,
               visibleHints.length ? `Indications : ${visibleHints.map(translateWriterHintDebug).join(", ")}` : null,
               meta.responseRegister && meta.responseRegister !== "courant" ? `Registre cible : ${translateRegisterDebug(meta.responseRegister)}` : null,
-              meta.phraseLengthPolicy ? `Longueur phrase : ${translatePhraseLengthPolicyDebug(meta.phraseLengthPolicy)}` : null,
+              shouldShowPhraseLengthLine ? `Longueur phrase : ${translatePhraseLengthPolicyDebug(meta.phraseLengthPolicy)}` : null,
               meta.infoRoutingSource ? `Routage info : ${translateInfoRoutingSourceDebug(meta.infoRoutingSource)}` : null,
               meta.stateTransitionValid === false && meta.stateTransitionRequested
                 ? `Transition refus\u00e9e : ${meta.stateTransitionFrom || "(inconnu)"} -> ${meta.stateTransitionRequested}`
