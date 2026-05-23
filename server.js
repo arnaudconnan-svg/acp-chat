@@ -5036,19 +5036,21 @@ async function handleChatPost(req, res) {
   const onTokenCallbackForChat = typeof req.onTokenCallbackForChat === "function"
     ? req.onTokenCallbackForChat
     : null;
+  const chatTransport = onTokenCallbackForChat ? "stream" : "classic";
   const requestData = parseChatRequest(req);
   const requestId = String(requestData.requestId || "").trim();
   // traceId: server-generated per-request, always present even without a client requestId.
   const traceId = requestId || `tr_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
   const chatLogger = childLogger({
     scope: "chat",
+    transport: chatTransport,
     conversationId: requestData.conversationId || null,
     requestId: requestId || null,
     traceId
   });
 
   if (requestData.logsEnabled === true) {
-    chatLogger.info({ event: "chat_input_received" });
+    chatLogger.info({ event: "chat_input_received", transport: chatTransport });
   }
   res.setHeader("x-trace-id", traceId);
 
@@ -7279,6 +7281,15 @@ app.post("/chat/stream", async (req, res) => {
   res.setHeader("X-Accel-Buffering", "no");
   res.flushHeaders?.();
 
+  const streamRequestId = String(req.body?.requestId || "").trim() || null;
+  const streamConversationId = String(req.body?.conversationId || "").trim() || null;
+  logger.info({
+    scope: "chat_stream",
+    event: "chat_stream_opened",
+    requestId: streamRequestId,
+    conversationId: streamConversationId
+  });
+
   writeSSEEvent(res, "ready", {
     status: "connected",
     ts: Date.now()
@@ -7289,6 +7300,13 @@ app.post("/chat/stream", async (req, res) => {
   };
 
   req.on("close", () => {
+    logger.info({
+      scope: "chat_stream",
+      event: "chat_stream_closed",
+      requestId: streamRequestId,
+      conversationId: streamConversationId,
+      writableEnded: res.writableEnded === true
+    });
     req.onTokenCallbackForChat = null;
   });
 
@@ -7308,11 +7326,24 @@ app.post("/chat/stream", async (req, res) => {
     },
     json(payload) {
       if (this._statusCode >= 400) {
+        logger.warn({
+          scope: "chat_stream",
+          event: "chat_stream_result_error",
+          requestId: streamRequestId,
+          conversationId: streamConversationId,
+          status: this._statusCode
+        });
         writeSSEEvent(res, "error", {
           status: this._statusCode,
           ...(payload && typeof payload === "object" ? payload : { error: "stream_error" })
         });
       } else {
+        logger.info({
+          scope: "chat_stream",
+          event: "chat_stream_result_ok",
+          requestId: streamRequestId,
+          conversationId: streamConversationId
+        });
         writeSSEEvent(res, "result", payload);
       }
       if (!res.writableEnded) {
