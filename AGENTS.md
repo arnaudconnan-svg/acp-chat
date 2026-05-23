@@ -24,7 +24,7 @@ L'architecture cible est à quatre couches strictes (V4) :
 3. **Arbitrage explicite** — `buildPostureDecision` résout les conflits entre signaux et produit une décision de posture unique : état cible, permissions, interdits, style
 4. **Writer piloté** — `generateReply` reçoit un contrat déjà arbitré et ne découvre plus la politique, il la formule
 
-**Garde de sortie V4** : la conformité finale est assurée par un validateur déterministe (C1) et, si nécessaire, une régénération Writer bornée puis un fallback déterministe par état. Aucun Critic post-génération LLM.
+**Garde de sortie V4** : la conformité finale est assurée en amont de la génération (contrat de posture + contraintes déterministes). Aucun mécanisme de réécriture/régénération post-génération. Aucun Critic post-génération LLM.
 
 La règle centrale : **la politique conversationnelle est décidée avant la génération, jamais pendant ou après.**
 
@@ -360,11 +360,17 @@ Avant d'ajouter ou modifier une instruction dans un prompt de writer (état, niv
 | Détecter un signal dans le message utilisateur | Couche 2 — analyseur | registre de langue, signal somatique, friction, impasse |
 | Décider d'une politique (longueur, relance, registre cible) | Couche 3 — arbitrage → champ dans le contrat de posture | `phraseLength`, `relancePolicy`, `responseRegister` |
 | Formuler une décision déjà contenue dans le contrat reçu | Couche 4 — writer prompt | interdictions de formulations, structure de paragraphe, voix |
-| Vérifier la conformité de sortie au contrat | Couche 1 + Couche 4 (validateur + régénération bornée) | interdits, longueur, tu/vous, fuite de signaux |
+| Vérifier la conformité de sortie au contrat | Couche 1 + Couche 4 (prévention déterministe en amont) | interdits, longueur, tu/vous, fuite de signaux |
 
 **Mnémonique : le writer ne découvre pas la politique, il la formule.**
 
-En V4 strict, il n'existe plus de couche post-génération LLM de correction : la conformité est traitée dans le cadre déterministe + Writer.
+En V4 strict, il n'existe plus de couche post-génération de correction : la conformité est traitée uniquement en amont dans le cadre déterministe + Writer.
+
+### Règle streaming/latence/coûts — amont uniquement
+
+- Ne jamais proposer ni implémenter de garde post-traitement, réécriture ou régénération de réponse.
+- Toute stabilisation du comportement doit se faire avant génération (analyseurs, arbitrage, contrat writer, contraintes déterministes).
+- Cette règle est prioritaire pour préserver le streaming, contenir la latence et maîtriser les coûts.
 
 Si une instruction dans un prompt de writer contient un `si` conditionnel sur un signal runtime (registre de l'utilisateur, présence d'un affect, niveau d'un paramètre détecté), c'est un signal fort qu'elle appartient en couche 2 ou 3, pas 4.
 

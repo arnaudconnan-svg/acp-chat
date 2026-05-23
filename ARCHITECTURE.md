@@ -17,7 +17,7 @@ Le systeme converge vers quatre couches strictes (V4) :
 3. arbitrage explicite
 4. writer pilote par contrat
 
-La conformite de sortie est assuree par un garde deterministe (validation contractuelle, regeneration bornee, fallback minimal par etat) sans couche Critic LLM.
+La conformite de sortie est pilotee en amont par le contrat de posture et les contraintes deterministes. Aucun mecanisme de reecriture ou regeneration post-generation n'est autorise.
 
 La regle centrale est : la politique conversationnelle doit etre decidee avant la generation, pas pendant ni apres.
 
@@ -33,7 +33,7 @@ Le coeur du backend reste dans `server.js`, avec une route `/chat` qui orchestre
 - vague d'analyse parallele pour les autres signaux
 - arbitrage via `buildPostureDecision(...)`
 - generation via `generateReply(...)`
-- validation contractuelle deterministe post-generation (output guard)
+- validation contractuelle deterministe pre-generation via contrat de posture
 - mise a jour de la memoire
 - persistence et reponse HTTP
 
@@ -45,8 +45,8 @@ Les invariants protegent le comportement, pas la forme du code.
 - l'ordre de priorite reste : securite > crise > rupture relationnelle > decharge > exploration > information
 - la memoire reste un resume recalcule a chaque tour
 - le contrat frontend/backend doit rester coherent dans le meme patch
-- aucune passe LLM post-generation ne modifie la reponse
-- seul le flux deterministic guard + regeneration writer bornee + fallback deterministe peut ajuster la sortie
+- aucune passe post-generation ne modifie la reponse
+- aucun mecanisme de reecriture/regeneration n'est utilise apres generation (objectif : streaming stable, latence contenue, couts maitrises)
 
 ## Contrat prompting/memoire (source de verite)
 

@@ -169,7 +169,7 @@ Sur ce projet :
 - mais stabilite du comportement ne signifie pas immobilite du code
 - si une structure interne freine la fiabilite, l'agent doit la faire evoluer
 - l'architecture doit progressivement converger vers V4 strict : noyau deterministe, analyseurs paralleles, arbitrage explicite, writer pilote par contrat
-- la conformite de sortie est assuree par garde deterministe + regeneration bornee + fallback minimal, sans couche Critic LLM
+- la conformite de sortie est assuree uniquement en amont (analyseurs, arbitrage, contrat writer, contraintes deterministes), sans post-traitement, sans reecriture, sans regeneration
 
 ---
 
