@@ -12,7 +12,6 @@ const {
   STATE_TRANSITIONS,
   STATE_FORBIDDEN,
   STATE_INTENT,
-  STATE_CONSTRAINTS,
   resolveConversationState,
   baseStateOf,
   isValidTransition
@@ -142,11 +141,6 @@ for (const st of allStates) {
   assert(st in STATE_INTENT, `STATE_INTENT has '${st}'`);
   assert(Array.isArray(STATE_FORBIDDEN[st]), `STATE_FORBIDDEN['${st}'] is array`);
   assert(typeof STATE_INTENT[st] === "string", `STATE_INTENT['${st}'] is string`);
-}
-for (const st of Object.keys(STATE_CONSTRAINTS)) {
-  const c = STATE_CONSTRAINTS[st];
-  assert(typeof c.maxSentences === "number", `STATE_CONSTRAINTS['${st}'].maxSentences is number`);
-  assert(typeof c.toneConstraint === "string" || c.toneConstraint === null, `STATE_CONSTRAINTS['${st}'].toneConstraint is string or null`);
 }
 
 // ─── Report ───────────────────────────────────────────────────────────────────

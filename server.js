@@ -5844,7 +5844,6 @@ async function handleChatPost(req, res) {
         finalExplorationSignal: "interpretation",
         intent: "orienter vers les ressources de crise",
         forbidden: ["relance", "open_question", "exploration_hypothesis", "reflect"],
-        maxSentences: 3,
         toneConstraint: "contained",
         relancePolicy: "forbidden",
         confidenceSignal: 1.0,

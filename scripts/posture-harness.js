@@ -177,8 +177,8 @@ check("narrowed processing window enforces single-axis exploration contract", ()
       attentionQuality: "narrowed"
     }
   }));
-  assert(out.writerIntentHints.includes("attention_narrow_single_axis"), "expected attention_narrow_single_axis hint");
-  assert(out.intent === "suivre un seul axe sans ouvrir de nouveau chantier", `unexpected intent: ${out.intent}`);
+  assert(out.writerIntentHints.includes("attention_engagement_soft_guidance"), "expected attention_engagement_soft_guidance hint");
+  assert(!out.writerIntentHints.includes("attention_narrow_single_axis"), "attention_narrow_single_axis should not be present");
 });
 
 check("emotionSequenceStage removed from posture decision output", () => {
@@ -237,7 +237,7 @@ check("dependency care pending activates need_human_support", () => {
   }));
   assert(out.conversationState === "need_human_support", `expected need_human_support, got ${out.conversationState}`);
   assert(out.intent === "tenir le point et ouvrir doucement vers un appui humain", `unexpected intent: ${out.intent}`);
-  assert(out.phraseLengthPolicy === "courte", `expected courte, got ${out.phraseLengthPolicy}`);
+  assert(out.phraseLengthPolicy === "moyenne", `expected moyenne, got ${out.phraseLengthPolicy}`);
   assert(out.secondaryTension && out.secondaryTension.family === "alliance_rupture", `expected alliance_rupture tension, got ${out.secondaryTension && out.secondaryTension.family}`);
 });
 

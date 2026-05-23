@@ -18,8 +18,7 @@ const {
   CONVERSATION_STATES,
   STATE_FORBIDDEN,
   STATE_ALLOWED,
-  STATE_INTENT,
-  STATE_CONSTRAINTS
+  STATE_INTENT
 } = require("../lib/conversation-state");
 
 let passed = 0;
@@ -92,13 +91,6 @@ check("state tables are aligned", () => {
 
   assert(JSON.stringify(allowedKeys) === JSON.stringify(forbiddenKeys), "STATE_FORBIDDEN keys mismatch STATE_ALLOWED");
   assert(JSON.stringify(allowedKeys) === JSON.stringify(intentKeys), "STATE_INTENT keys mismatch STATE_ALLOWED");
-});
-
-check("constraints keys are subset of state table keys", () => {
-  const stateSet = new Set(Object.keys(STATE_ALLOWED));
-  for (const key of Object.keys(STATE_CONSTRAINTS)) {
-    assert(stateSet.has(key), `constraint key '${key}' missing from STATE_ALLOWED`);
-  }
 });
 
 check("every conversation state maps to a known extended state", () => {
@@ -177,7 +169,7 @@ check("situated impasse activates action collapse guard", () => {
   assert(out.forbidden.includes("action_concrete_proposal"), "forbidden should include action_concrete_proposal");
 });
 
-check("narrowed processing enforces single-axis contract", () => {
+check("narrowed processing adds soft attention guidance hint", () => {
   const out = buildPostureDecision(baseInput({
     detectedState: "exploration",
     engagementAllianceAnalysis: {
@@ -186,8 +178,8 @@ check("narrowed processing enforces single-axis contract", () => {
       attentionQuality: "narrowed"
     }
   }));
-  assert(out.writerIntentHints.includes("attention_narrow_single_axis"), "narrowed processing must add single-axis hint");
-  assert(out.intent === "suivre un seul axe sans ouvrir de nouveau chantier", "narrowed processing must adjust intent");
+  assert(out.writerIntentHints.includes("attention_engagement_soft_guidance"), "narrowed processing must add soft attention guidance hint");
+  assert(!out.writerIntentHints.includes("attention_narrow_single_axis"), "attention_narrow_single_axis should be absent");
 });
 
 check("info features prompt enforces Option B for bot nature and capacity doubts", () => {

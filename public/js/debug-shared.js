@@ -313,7 +313,7 @@
       auto_compassion_door_open: "invitation \u00e0 l'auto-compassion",
       signify_pain_without_blocking: "signifier la douleur sans bloquer",
       amplify_insight: "amplifier l'insight",
-      attention_narrow_single_axis: "attention restreinte: rester sur un seul axe",
+      attention_engagement_soft_guidance: "baisse d\u2019attention ou d\u2019engagement \u2014 invitation \u00e0 simplifier",
       alliance_fragile_sensitive: "alliance fragile — avancée avec soin",
       alliance_restored_presence: "retour d'alliance",
       engagement_withdrawn_noticed: "retrait d'engagement not\u00e9",
