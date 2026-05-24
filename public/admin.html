@@ -1428,7 +1428,11 @@
 
           const title = document.createElement("div");
           title.className = "admin-conversation-title";
-          title.textContent = "Dossier " + String(item?.superId || "inconnu");
+          title.textContent = "Dossier SAV";
+
+          const superIdLine = document.createElement("div");
+          superIdLine.className = "support-meta-line";
+          superIdLine.textContent = "SuperId: " + String(item?.superId || "inconnu");
 
           const count = document.createElement("div");
           count.className = "admin-conversation-count";
@@ -1452,6 +1456,7 @@
 
           card.appendChild(activity);
           card.appendChild(title);
+          card.appendChild(superIdLine);
           card.appendChild(count);
           card.appendChild(emailLine);
           card.appendChild(activeLine);
