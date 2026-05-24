@@ -990,6 +990,10 @@
         if (accountSubscreen === "privacy") {
           document.body.classList.add("subscreen-privacy");
           main.appendChild(buildPrivacySubscreen());
+          requestAnimationFrame(() => {
+            main.scrollTop = 0;
+            window.scrollTo(0, 0);
+          });
           return;
         }
 

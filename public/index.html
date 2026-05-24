@@ -965,7 +965,7 @@
     }
 
     #conversationsPrivateFabBtn.is-visible {
-      display: none;
+      display: inline-flex;
     }
 
     #conversationsPrivateFabBtn.is-onboarding-highlight {
@@ -3410,6 +3410,35 @@
       const fabBtn = document.getElementById("conversationsFabBtn");
       if (!fabBtn) return;
       fabBtn.classList.toggle("is-private-default", shouldCreatePrivateConversationByDefault());
+      syncDesktopPrivateQuickButtonVisibility();
+    }
+
+    function shouldShowDesktopPrivateQuickButton() {
+      if (shouldCreatePrivateConversationByDefault()) {
+        return false;
+      }
+
+      const ua = String(navigator.userAgent || "");
+      const isMobileUa = /Android|iPhone|iPad|iPod|Mobile/i.test(ua);
+      if (isMobileUa) {
+        return false;
+      }
+
+      if (typeof window.matchMedia === "function") {
+        const hasDesktopPointer = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+        const isWideViewport = window.matchMedia("(min-width: 980px)").matches;
+        return hasDesktopPointer || isWideViewport;
+      }
+
+      return window.innerWidth >= 980;
+    }
+
+    function syncDesktopPrivateQuickButtonVisibility() {
+      const privateQuickBtn = document.getElementById("conversationsPrivateFabBtn");
+      if (!privateQuickBtn) return;
+      const shouldShow = shouldShowDesktopPrivateQuickButton();
+      privateQuickBtn.classList.toggle("is-visible", shouldShow);
+      privateQuickBtn.style.display = shouldShow ? "inline-flex" : "none";
     }
 
     function shouldCreatePrivateConversationByDefault() {
@@ -5715,6 +5744,7 @@
 
       if (id === "conversationsScreen") {
         renderConversationsList();
+        syncDesktopPrivateQuickButtonVisibility();
 
         requestAnimationFrame(() => {
           const conversationsEl = document.getElementById("conversationsListWrap");
@@ -11314,20 +11344,120 @@
     const conversationsFabBtn = document.getElementById("conversationsFabBtn");
     if (conversationsFabBtn) {
       const privateQuickBtn = document.getElementById("conversationsPrivateFabBtn");
+      const FAB_LONG_PRESS_MS = 620;
+      let fabPrivateFlowActive = false;
+      let fabLongPressTimer = null;
+      let fabLongPressTriggered = false;
+      let touchPrivateQuickVisible = false;
 
-      const hidePrivateQuickButton = () => {
-        if (!privateQuickBtn) return;
-        privateQuickBtn.classList.remove("is-visible");
+      const shouldEnableTouchLongPressPrivateQuick = () => {
+        if (shouldCreatePrivateConversationByDefault()) {
+          return false;
+        }
+        return !shouldShowDesktopPrivateQuickButton();
       };
 
-      const showPrivateQuickButton = () => {
-        hidePrivateQuickButton();
+      const applyPrivateQuickButtonVisibility = () => {
+        if (!privateQuickBtn) return;
+        const shouldShowDesktop = shouldShowDesktopPrivateQuickButton();
+        const shouldShowTouch = touchPrivateQuickVisible === true && shouldEnableTouchLongPressPrivateQuick();
+        const shouldShow = shouldShowDesktop || shouldShowTouch;
+        privateQuickBtn.classList.toggle("is-visible", shouldShow);
+        privateQuickBtn.style.display = shouldShow ? "inline-flex" : "none";
+      };
+
+      const clearFabLongPress = () => {
+        if (fabLongPressTimer) {
+          clearTimeout(fabLongPressTimer);
+          fabLongPressTimer = null;
+        }
+      };
+
+      const hidePrivateQuickButton = (options = {}) => {
+        const force = options.force === true;
+        if (force || shouldEnableTouchLongPressPrivateQuick()) {
+          touchPrivateQuickVisible = false;
+        }
+        applyPrivateQuickButtonVisibility();
+      };
+
+      const showPrivateQuickButton = (options = {}) => {
+        if (options.touchTemporary === true && shouldEnableTouchLongPressPrivateQuick()) {
+          touchPrivateQuickVisible = true;
+        }
+        applyPrivateQuickButtonVisibility();
       };
 
       conversationsFabBtn._showPrivateQuickButton = showPrivateQuickButton;
       conversationsFabBtn._hidePrivateQuickButton = hidePrivateQuickButton;
 
+      const triggerPrivateConversationFlow = async () => {
+        if (sessionStatus === "closing" || fabPrivateFlowActive) return;
+
+        fabPrivateFlowActive = true;
+        hidePrivateQuickButton({ force: true });
+
+        try {
+          const accepted = await openPrivateConversationModal();
+          if (!accepted) {
+            showPrivateQuickButton();
+            return;
+          }
+
+          if (conversationsFabBtn._ackTimer) {
+            clearTimeout(conversationsFabBtn._ackTimer);
+          }
+
+          conversationsFabBtn.classList.remove("is-acknowledged");
+          void conversationsFabBtn.offsetWidth;
+          conversationsFabBtn.classList.add("is-acknowledged");
+          conversationsFabBtn._ackTimer = setTimeout(() => {
+            conversationsFabBtn.classList.remove("is-acknowledged");
+            conversationsFabBtn._ackTimer = null;
+          }, 260);
+
+          conversationsFabBtn.classList.add("is-pending");
+          await finalizeAndStartNewSession({ isPrivate: true });
+        } finally {
+          if (conversationsFabBtn._ackTimer) {
+            clearTimeout(conversationsFabBtn._ackTimer);
+            conversationsFabBtn._ackTimer = null;
+          }
+          conversationsFabBtn.classList.remove("is-acknowledged");
+          conversationsFabBtn.classList.remove("is-pending");
+          fabPrivateFlowActive = false;
+          showPrivateQuickButton();
+        }
+      };
+
+      conversationsFabBtn.addEventListener("pointerdown", event => {
+        if (!shouldEnableTouchLongPressPrivateQuick()) {
+          return;
+        }
+        if (event.pointerType === "mouse" && event.button !== 0) {
+          return;
+        }
+
+        fabLongPressTriggered = false;
+        clearFabLongPress();
+
+        fabLongPressTimer = setTimeout(() => {
+          fabLongPressTriggered = true;
+          showPrivateQuickButton({ touchTemporary: true });
+        }, FAB_LONG_PRESS_MS);
+      });
+
+      conversationsFabBtn.addEventListener("pointerup", clearFabLongPress);
+      conversationsFabBtn.addEventListener("pointerleave", clearFabLongPress);
+      conversationsFabBtn.addEventListener("pointercancel", clearFabLongPress);
+
       conversationsFabBtn.onclick = async () => {
+        if (fabLongPressTriggered || fabPrivateFlowActive) {
+          fabLongPressTriggered = false;
+          return;
+        }
+
+        clearFabLongPress();
         hidePrivateQuickButton();
 
         if (conversationsFabBtn._ackTimer) {
@@ -11355,11 +11485,29 @@
           }
           conversationsFabBtn.classList.remove("is-acknowledged");
           conversationsFabBtn.classList.remove("is-pending");
+          showPrivateQuickButton();
         }
       };
 
       if (privateQuickBtn) {
-        privateQuickBtn.style.display = "none";
+        privateQuickBtn.addEventListener("click", async event => {
+          event.preventDefault();
+          event.stopPropagation();
+          await triggerPrivateConversationFlow();
+        });
+
+        applyPrivateQuickButtonVisibility();
+
+        document.addEventListener("pointerdown", event => {
+          if (!touchPrivateQuickVisible) return;
+          if (event.target.closest("#conversationsPrivateFabBtn")) return;
+          if (event.target.closest("#conversationsFabBtn")) return;
+          hidePrivateQuickButton();
+        });
+
+        window.addEventListener("resize", () => {
+          applyPrivateQuickButtonVisibility();
+        });
       }
     }
 
