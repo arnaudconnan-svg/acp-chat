@@ -10,6 +10,18 @@
   <meta name="viewport"
     content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <meta name="color-scheme" content="light">
+  <script>
+    // Alpha policy: keep service workers disabled to avoid stale-cache UX regressions.
+    window.__FACILITAT_SW_POLICY__ = "disabled_alpha";
+
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.getRegistrations()
+          .then((registrations) => Promise.all(registrations.map((registration) => registration.unregister())))
+          .catch(() => {});
+      });
+    }
+  </script>
   <!-- Markdown parser et sanitizer -->
   <script src="https://cdn.jsdelivr.net/npm/markdown-it@13/dist/markdown-it.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.3/dist/purify.min.js"></script>

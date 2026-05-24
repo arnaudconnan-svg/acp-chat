@@ -5,6 +5,7 @@ const rootDir = path.join(__dirname, "..");
 const publicDir = path.join(rootDir, "public");
 const manifestPath = path.join(publicDir, "manifest.json");
 const assetLinksPath = path.join(publicDir, ".well-known", "assetlinks.json");
+const indexPath = path.join(publicDir, "index.html");
 
 function readJson(filePath) {
   return JSON.parse(fs.readFileSync(filePath, "utf8"));
@@ -54,6 +55,17 @@ function main() {
   }
 
   allGood = check(fs.existsSync(path.join(publicDir, "sw.js")), "service worker file present", "public/sw.js missing") && allGood;
+  if (fs.existsSync(indexPath)) {
+    const indexHtml = fs.readFileSync(indexPath, "utf8");
+    const hasDisabledAlphaPolicyMarker = indexHtml.includes("__FACILITAT_SW_POLICY__") && indexHtml.includes("disabled_alpha");
+    allGood = check(
+      hasDisabledAlphaPolicyMarker,
+      "service worker runtime policy explicit (disabled_alpha)",
+      "service worker runtime policy marker missing in public/index.html"
+    ) && allGood;
+  } else {
+    allGood = check(false, "", "public/index.html missing") && allGood;
+  }
   allGood = check(fs.existsSync(assetLinksPath), "assetlinks file present", "public/.well-known/assetlinks.json missing") && allGood;
 
   if (fs.existsSync(assetLinksPath)) {
