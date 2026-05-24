@@ -965,7 +965,7 @@
     }
 
     #conversationsPrivateFabBtn.is-visible {
-      display: inline-flex;
+      display: none;
     }
 
     #conversationsPrivateFabBtn.is-onboarding-highlight {
@@ -1032,6 +1032,37 @@
     #conversationsFabBtn svg {
       display: block;
       transition: transform 0.22s ease, opacity 0.22s ease;
+    }
+
+    #conversationsFabPrivateBadge {
+      position: absolute;
+      right: -4px;
+      bottom: -4px;
+      width: 24px;
+      height: 24px;
+      border-radius: 999px;
+      background: #245e66;
+      border: 2px solid rgba(234, 242, 242, 0.95);
+      box-shadow: 0 4px 10px rgba(18, 52, 58, 0.24);
+      color: #ffffff;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+
+    #conversationsFabPrivateBadge svg {
+      width: 13px;
+      height: 13px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    #conversationsFabBtn.is-private-default #conversationsFabPrivateBadge {
+      display: inline-flex;
     }
 
     #conversationsFabBtn::before {
@@ -2373,6 +2404,12 @@
           <path d="M12 5v14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
           <path d="M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
         </svg>
+        <span id="conversationsFabPrivateBadge" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <rect x="5" y="11" width="14" height="10" rx="2"></rect>
+            <path d="M8 11V8.8a4 4 0 0 1 8 0V11"></path>
+          </svg>
+        </span>
       </button>
     </div>
 
@@ -3023,6 +3060,7 @@
             authenticated: false,
             user: null
           };
+          syncConversationsFabPrivateDefaultBadge();
           return userSessionState;
         }
 
@@ -3034,12 +3072,16 @@
           user
         };
 
+        syncConversationsFabPrivateDefaultBadge();
+
         return userSessionState;
       } catch {
         userSessionState = {
           authenticated: false,
           user: null
         };
+
+        syncConversationsFabPrivateDefaultBadge();
 
         return userSessionState;
       }
@@ -3360,6 +3402,14 @@
       } else {
         actionBtn.textContent = "Connexion";
       }
+
+      syncConversationsFabPrivateDefaultBadge();
+    }
+
+    function syncConversationsFabPrivateDefaultBadge() {
+      const fabBtn = document.getElementById("conversationsFabBtn");
+      if (!fabBtn) return;
+      fabBtn.classList.toggle("is-private-default", shouldCreatePrivateConversationByDefault());
     }
 
     function shouldCreatePrivateConversationByDefault() {
@@ -5423,6 +5473,9 @@
     }
 
     function maybeStartConversationsPrivateHint() {
+      // Long-press quick private FAB is deprecated.
+      return;
+
       if (conversationsPrivateHintShownThisLoad || conversationsPrivateHintActive || loadConversationsPrivateHintDismissed()) {
         return;
       }
@@ -11261,10 +11314,6 @@
     const conversationsFabBtn = document.getElementById("conversationsFabBtn");
     if (conversationsFabBtn) {
       const privateQuickBtn = document.getElementById("conversationsPrivateFabBtn");
-      const FAB_LONG_PRESS_MS = 620;
-      let fabLongPressTimer = null;
-      let fabLongPressTriggered = false;
-      let fabPrivateFlowActive = false;
 
       const hidePrivateQuickButton = () => {
         if (!privateQuickBtn) return;
@@ -11272,82 +11321,13 @@
       };
 
       const showPrivateQuickButton = () => {
-        if (!privateQuickBtn || sessionStatus === "closing") return;
-        privateQuickBtn.classList.add("is-visible");
+        hidePrivateQuickButton();
       };
 
       conversationsFabBtn._showPrivateQuickButton = showPrivateQuickButton;
       conversationsFabBtn._hidePrivateQuickButton = hidePrivateQuickButton;
 
-      const clearFabLongPress = () => {
-        if (fabLongPressTimer) {
-          clearTimeout(fabLongPressTimer);
-          fabLongPressTimer = null;
-        }
-      };
-
-      const triggerPrivateConversationFlow = async () => {
-        if (sessionStatus === "closing" || fabPrivateFlowActive) return;
-
-        fabPrivateFlowActive = true;
-        hidePrivateQuickButton();
-
-        try {
-          const accepted = await openPrivateConversationModal();
-          if (!accepted) {
-            return;
-          }
-
-          if (conversationsFabBtn._ackTimer) {
-            clearTimeout(conversationsFabBtn._ackTimer);
-          }
-
-          conversationsFabBtn.classList.remove("is-acknowledged");
-          void conversationsFabBtn.offsetWidth;
-          conversationsFabBtn.classList.add("is-acknowledged");
-          conversationsFabBtn._ackTimer = setTimeout(() => {
-            conversationsFabBtn.classList.remove("is-acknowledged");
-            conversationsFabBtn._ackTimer = null;
-          }, 260);
-
-          conversationsFabBtn.classList.add("is-pending");
-          await finalizeAndStartNewSession({ isPrivate: true });
-        } finally {
-          if (conversationsFabBtn._ackTimer) {
-            clearTimeout(conversationsFabBtn._ackTimer);
-            conversationsFabBtn._ackTimer = null;
-          }
-          conversationsFabBtn.classList.remove("is-acknowledged");
-          conversationsFabBtn.classList.remove("is-pending");
-          fabPrivateFlowActive = false;
-        }
-      };
-
-      conversationsFabBtn.addEventListener("pointerdown", event => {
-        if (event.pointerType === "mouse" && event.button !== 0) {
-          return;
-        }
-
-        fabLongPressTriggered = false;
-        clearFabLongPress();
-
-        fabLongPressTimer = setTimeout(() => {
-          fabLongPressTriggered = true;
-          showPrivateQuickButton();
-        }, FAB_LONG_PRESS_MS);
-      });
-
-      conversationsFabBtn.addEventListener("pointerup", clearFabLongPress);
-      conversationsFabBtn.addEventListener("pointerleave", clearFabLongPress);
-      conversationsFabBtn.addEventListener("pointercancel", clearFabLongPress);
-
       conversationsFabBtn.onclick = async () => {
-        if (fabLongPressTriggered || fabPrivateFlowActive) {
-          fabLongPressTriggered = false;
-          return;
-        }
-
-        clearFabLongPress();
         hidePrivateQuickButton();
 
         if (conversationsFabBtn._ackTimer) {
@@ -11379,18 +11359,7 @@
       };
 
       if (privateQuickBtn) {
-        privateQuickBtn.addEventListener("click", async event => {
-          event.preventDefault();
-          event.stopPropagation();
-          await triggerPrivateConversationFlow();
-        });
-
-        document.addEventListener("pointerdown", event => {
-          if (!privateQuickBtn.classList.contains("is-visible")) return;
-          if (conversationsPrivateHintActive) return;
-          if (event.target.closest("#conversationsPrivateFabBtn")) return;
-          hidePrivateQuickButton();
-        });
+        privateQuickBtn.style.display = "none";
       }
     }
 

@@ -116,10 +116,23 @@
     }
 
     .card-link-arrow {
-      font-size: 24px;
-      line-height: 1;
       color: #8a989a;
       flex: 0 0 auto;
+      width: 22px;
+      height: 22px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .card-link-arrow svg {
+      width: 18px;
+      height: 18px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
     }
 
     .field-group {
@@ -1864,16 +1877,6 @@
         const section = document.createElement("div");
         section.className = "danger-zone-section";
 
-        const title = document.createElement("div");
-        title.className = "section-title";
-        title.textContent = "Zone sensible";
-        section.appendChild(title);
-
-        const warning = document.createElement("p");
-        warning.className = "danger-zone-warning";
-        warning.textContent = "Action irréversible.";
-        section.appendChild(warning);
-
         section.appendChild(buildDangerAction({
           actionKey: "reset",
           title: "Remise à zéro du compte",
@@ -2152,16 +2155,12 @@
         const title = document.createElement("div");
         title.className = "section-title";
         title.textContent = "Confidentialité";
+        title.style.marginBottom = "0";
         textWrap.appendChild(title);
-
-        const help = document.createElement("p");
-        help.className = "setting-help";
-        help.textContent = "Réglez ici vos options de confidentialité, dont le verrouillage biométrie et le mot de passe.";
-        textWrap.appendChild(help);
 
         const arrow = document.createElement("div");
         arrow.className = "card-link-arrow";
-        arrow.textContent = ">";
+        arrow.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg>';
 
         linkRow.appendChild(textWrap);
         linkRow.appendChild(arrow);
@@ -2251,12 +2250,6 @@
         row.appendChild(rowText);
         row.appendChild(toggle);
         card.appendChild(row);
-
-        const note = document.createElement("p");
-        note.className = "longterm-memory-warning";
-        note.style.marginTop = "10px";
-        note.textContent = "Attention : certains appareils ne supportent pas la sécurité biométrie au retour dans l'app déjà ouverte. Si ce problème vous concerne, pensez à bien refermer votre application après usage.";
-        card.appendChild(note);
 
         const autoSaveBiometric = async () => {
           try {
