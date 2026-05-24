@@ -2,39 +2,9 @@
 
 Objectif : corriger les points UX qui peuvent brouiller la perception de sérieux, de contrôle utilisateur ou de confidentialité avant mise entre les mains des alpha testeurs.
 
-Périmètre strict :
-- UX uniquement.
-- Ne pas modifier le comportement du bot.
-- Ne pas modifier les prompts.
-- Ne pas refactorer globalement.
-- Patches courts, ciblés, testables.
-- Priorité à la stabilité TWA Android.
-- Ne pas réouvrir les arbitrages déjà verrouillés.
-
-## 6. Actions conversation : améliorer la découvrabilité
-
-Fichier probable :
-`public/index.html`
-
-Problème :
-Renommer / supprimer une conversation via swipe ou clic droit est peu découvrable, surtout sur mobile Android.
-
-Objectif UX :
-Rendre les actions disponibles sans alourdir l’écran conversations.
-
-Actions :
-Hint temporaire après première conversation
-Afficher une seule fois un indice sobre :
-- Balaye une conversation pour la renommer ou la supprimer.
-
-Critères d’acceptation :
-Un alpha testeur peut comprendre comment renommer/supprimer sans explication externe.
-Pas de surcharge visuelle majeure.
-Les actions destructrices restent confirmées.
-
 ---
 
-## Point spécifique — Bouton développeur sur l’accueil
+## 2. Bouton développeur sur l’accueil
 
 Fichier probable :
 `public/index.html`
@@ -145,23 +115,31 @@ Critères d’acceptation :
 
 ---
 
+## 2. Actions conversation : améliorer la découvrabilité
+
+Fichier probable :
+`public/index.html`
+
+Problème :
+Renommer / supprimer une conversation via swipe ou clic droit est peu découvrable, surtout sur mobile Android.
+
+Objectif UX :
+Rendre les actions disponibles sans alourdir l’écran conversations.
+
+Actions :
+Hint temporaire après première conversation
+Afficher une seule fois un indice sobre :
+- Balaye une conversation pour la renommer ou la supprimer.
+
+Critères d’acceptation :
+Un alpha testeur peut comprendre comment renommer/supprimer sans explication externe.
+Pas de surcharge visuelle majeure.
+Les actions destructrices restent confirmées.
+
+---
+
 # Règles pour GitHub Copilot
 
 Avant chaque patch :
 - Lire le fichier concerné.
 - Identifier les fonctions/classes existantes.
-- Proposer un diff minimal.
-- Ne pas réorganiser le fichier.
-- Ne pas renommer les fonctions existantes sauf nécessité.
-- Ne pas modifier les prompts.
-- Ne pas modifier la logique de génération du bot.
-- Ne pas toucher aux routes backend sauf si nécessaire pour un message UX visible.
-- Tester mentalement le parcours Android/TWA.
-
-Après chaque patch :
-- Vérifier qu’aucun comportement bot n’a changé.
-- Vérifier l’écran mobile.
-- Vérifier qu’aucune chaîne technique n’apparaît à l’utilisateur.
-- Vérifier que l’expérience reste sobre.
-
-Le cœur critique avant alpha, ce n’est pas d’ajouter de l’UX. C’est de retirer les signaux involontaires : paiement ambigu, dev visible, consentement implicite, feedback de confidentialité trop silencieux.
