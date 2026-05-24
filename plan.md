@@ -305,55 +305,27 @@ Compatible TWA Android.
 
 ---
 
-## 10. Auth obligatoire + jauge : arbitrages actes
+## 10. Suivi support, coûts et identite utilisateur
 
-Objectif : verrouiller les decisions produit deja arbitrees pour eviter toute perte de contexte en cas de compactage.
+Objectif : donner à l'admin/SAV un point d'entree simple pour suivre l'etat d'un dossier, son historique de consommation et sa continuité dans le temps.
 
-Perimetre arbitre :
-1. Auth obligatoire des le premier appui sur Entrer.
-2. Auth obligatoire aussi pour les raccourcis Launcher :
-- launch non prive et launch prive.
-3. Non connecte = impossible d'acceder a Conversations et au chat (gating UX/navigation pour ce patch).
-4. Apres authentification, reprise automatique du chemin demande :
-- cas Entrer : Auth -> Conversations.
-- cas Launcher non prive : Auth -> chat non prive direct.
-- cas Launcher prive : Auth -> chat prive direct.
-5. Le meme comportement de reprise s'applique apres connexion et apres inscription.
-6. Le mode conversation privee est conserve, mais seulement apres authentification.
-7. Dans Conversations, suppression du chemin Se connecter au profit de Mon compte.
-8. Redirection silencieuse vers auth (pas de message intermediaire "connexion requise").
-9. Navigation:
-- retour arriere depuis Conversations = toujours Accueil.
-- comportement retour arriere des lancements Launcher garde tel quel (pas de changement dans ce patch).
-10. Donnees locales pre-auth : aucun traitement de migration/reprise dans ce patch (wipe data + reset total prevu).
-11. Patch jauge en parallele :
-- reset mensuel au 1er du mois UTC.
-- reset en mode lazy, cote serveur, dans le flux auth/session, avec logique idempotente.
-- premier demarrage compte en 100/100 avec report initial a 0.
-- report active des le premier renouvellement mensuel.
-- message simple dans account : "Votre enveloppe mensuelle est reinitialisee au debut de chaque mois." (accents en sequences Unicode dans le JS inline).
-- application du 100/100 + report initial a 0 pour les nouveaux comptes uniquement.
-- reset compte: transferer l'etat courant des enveloppes (mensuelle + reserve) vers le nouvel id utilisateur.
-- reset compte: transferer aussi l'historique cumule de consommation (tokens/cout) pour garder la continuite de suivi.
+Contexte d'usage :
+- le besoin principal n'est pas de "surveiller les gros utilisateurs", mais de pouvoir répondre vite quand une personne questionne le SAV.
+- la liste Coûts doit être accessible depuis le menu 3 points de l'admin, avec un nouvel écran dédié.
 
-Notes d'implementation :
-- Le gating auth doit couvrir le bouton Entrer et les shortcuts launch=new-normal / launch=new-private.
-- Le chemin prive ne doit pas etre supprime : il doit etre rejoue apres auth si c'etait l'intention initiale.
-- Portee patch auth: UX/navigation uniquement (pas de blocage backend strict des routes chat dans ce lot).
-
----
-
-## 11. Evolution identite utilisateur (hors patch courant)
-
-Decision produit :
-- cible retenue a terme : identifiant global utilisateur stable + sous-identifiant actif.
+Direction produit :
+1. Vue admin/SAV orientée recherche d'une personne + fiche détaillée de dossier.
+2. Présentation de type liste, cohérente avec la liste des conversations de l'écran principal admin.
+3. Tri par défaut par activité la plus récente.
+4. Le superId est pertinent dans ce contexte, car il sert de point d'ancrage stable pour le suivi longitudinal du dossier.
+5. Cible retenue a terme : identifiant global utilisateur stable + sous-identifiant actif.
+6. Le superId doit pouvoir survivre aux resets et aux changements d'identifiant actif.
+7. Le reset de compte garde la continuité du dossier : l'etat courant des enveloppes et l'historique cumule de consommation suivent le dossier.
 
 Perimetre :
-- ne pas implementer cette evolution dans le patch courant (trop large et risquee).
-- conserver cette piste comme chantier dedie ulterieur, avec migration explicite.
-
-Objectif vise :
-- faciliter la continuite du dossier personnel et du suivi de consommation lors des resets/changements techniques.
+- ne pas implementer ici une migration globale complexe vers le superId si elle n'est pas nécessaire au patch courant.
+- garder cette evolution compatible avec l'ecran Coûts/SAV et les futures vues admin.
+- documenter la piste comme chantier dedie ulterieur si la structure doit etre durcie plus tard.
 
 ---
 
