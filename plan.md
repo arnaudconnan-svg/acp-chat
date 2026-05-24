@@ -4,7 +4,7 @@ Objectif : corriger les points UX qui peuvent brouiller la perception de sérieu
 
 ---
 
-## 2. Bouton développeur sur l’accueil
+## 1. Bouton développeur sur l’accueil
 
 Fichier probable :
 `public/index.html`
