@@ -546,6 +546,17 @@
       border-color: #dbe7e9;
     }
 
+    .usage-simulation-info {
+      border: 1.5px solid #cfe0e3;
+      border-radius: 10px;
+      background: rgba(36, 94, 102, 0.06);
+      color: #355a5f;
+      font-size: 13px;
+      line-height: 1.45;
+      padding: 10px 12px;
+      margin: 0 0 14px;
+    }
+
     .usage-title {
       margin: 0 0 10px;
       font-size: 15px;
@@ -840,6 +851,26 @@
 
       let currentUser = null;
       let accountSubscreen = "main";
+
+      function resolveUsageEnvelopeStateFromSession() {
+        const raw = currentUser && typeof currentUser === "object" ? currentUser.usageEnvelope : null;
+        if (!raw || typeof raw !== "object") {
+          return getUsageEnvelopeState(MOCK_USAGE_ENVELOPE_STATE);
+        }
+
+        return getUsageEnvelopeState({
+          monthly: {
+            remaining: raw?.monthly?.remaining
+          },
+          rollover: {
+            remaining: raw?.rollover?.remaining
+          },
+          reserve: {
+            remaining: raw?.reserve?.remaining
+          },
+          lastRenewalAt: typeof raw.lastRenewalAt === "string" ? raw.lastRenewalAt : null
+        });
+      }
 
       function getCountryName(code) {
         if (!code) return "";
@@ -1341,9 +1372,14 @@
       }
 
       function buildUsageEnvelopeCard() {
-        const usageState = getUsageEnvelopeState(MOCK_USAGE_ENVELOPE_STATE);
+        const usageState = resolveUsageEnvelopeStateFromSession();
         const card = document.createElement("div");
         card.className = "card usage-envelope-card";
+
+        const simulationInfo = document.createElement("p");
+        simulationInfo.className = "usage-simulation-info";
+        simulationInfo.textContent = "Aucun paiement actif - l'enveloppe se met a jour en mode simulation pendant la phase de test.";
+        card.appendChild(simulationInfo);
 
         const envelopeBlock = document.createElement("div");
         envelopeBlock.className = "usage-block";

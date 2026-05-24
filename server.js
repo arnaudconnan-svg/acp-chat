@@ -14,6 +14,14 @@ const {
   debugMetaSchema,
   validateShape
 } = require("./lib/runtime-schemas");
+const {
+  MONTHLY_CAPACITY,
+  ROLLOVER_CAPACITY,
+  RESERVE_CAPACITY,
+  getEnvelopeState,
+  consumeEnvelope,
+  applyMonthlyRenewal
+} = require("./lib/usage-envelope");
 
 const appConfig = parseAppConfig(process.env);
 const serviceAccount = resolveServiceAccount(appConfig);
@@ -42,6 +50,11 @@ const userSessions = new Map(); // sessionToken -> { userId, createdAt }
 const USER_SESSION_DURATION = 30 * 24 * 60 * 60 * 1000; // 30d
 const ACCOUNT_RESET_AUDIT_RETENTION_MS = 30 * 24 * 60 * 60 * 1000; // 30d
 const USER_SESSION_SIGNING_SECRET = appConfig.userSessionSecret || SESSION_SECRET || ADMIN_PASSWORD || "dev-user-session-secret";
+const USAGE_SIMULATION_FROZEN_MODEL = "gpt-4.1";
+const USAGE_SIMULATION_PHASE_LABEL = "phase de test";
+const USAGE_SIMULATION_PAYMENT_ACTIVE = false;
+const USAGE_SIMULATION_GPT41_EUR_PER_1M_TOKENS = 4;
+const USAGE_SIMULATION_MARGIN_MULTIPLIER = 2;
 // Biometric unlock tokens: sessionToken -> { userId, expiresAt }
 const biometricUnlockTokens = new Map();
 const BIOMETRIC_UNLOCK_TOKEN_DURATION = 10 * 60 * 1000; // 10 minutes
@@ -164,6 +177,7 @@ const express = require("express");
 const OpenAI = require("openai");
 const http = require("http");
 const https = require("https");
+const { AsyncLocalStorage } = require("async_hooks");
 
 const app = express();
 const port = appConfig.port;
@@ -192,6 +206,58 @@ const client = new OpenAI({
   httpAgent: _httpsAgent,
   fetchOptions: { agent: (url) => url.startsWith("https") ? _httpsAgent : _httpAgent }
 });
+
+const llmUsageContext = new AsyncLocalStorage();
+
+function createLlmUsageAccumulator() {
+  return {
+    promptTokens: 0,
+    completionTokens: 0,
+    totalTokens: 0,
+    chargedTokens: 0
+  };
+}
+
+function normalizeLlmUsage(rawUsage = null) {
+  const usage = rawUsage && typeof rawUsage === "object" ? rawUsage : null;
+  if (!usage) return null;
+
+  const promptTokens = Number(usage.prompt_tokens ?? usage.promptTokens);
+  const completionTokens = Number(usage.completion_tokens ?? usage.completionTokens);
+  const totalTokens = Number(usage.total_tokens ?? usage.totalTokens);
+
+  const safePromptTokens = Number.isFinite(promptTokens) && promptTokens > 0 ? promptTokens : 0;
+  const safeCompletionTokens = Number.isFinite(completionTokens) && completionTokens > 0 ? completionTokens : 0;
+  const safeTotalTokens = Number.isFinite(totalTokens) && totalTokens > 0
+    ? totalTokens
+    : safePromptTokens + safeCompletionTokens;
+
+  if (!(safeTotalTokens > 0)) {
+    return null;
+  }
+
+  return {
+    promptTokens: safePromptTokens,
+    completionTokens: safeCompletionTokens,
+    totalTokens: safeTotalTokens
+  };
+}
+
+function appendLlmUsageToCurrentRequest(rawUsage = null) {
+  const accumulator = llmUsageContext.getStore();
+  if (!accumulator || typeof accumulator !== "object") {
+    return;
+  }
+
+  const usage = normalizeLlmUsage(rawUsage);
+  if (!usage) {
+    return;
+  }
+
+  accumulator.promptTokens += usage.promptTokens;
+  accumulator.completionTokens += usage.completionTokens;
+  accumulator.totalTokens += usage.totalTokens;
+}
 
 function wait(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -230,7 +296,9 @@ client.chat.completions.create = async function createChatCompletionWithRetry(..
 
   while (true) {
     try {
-      return await originalCreateChatCompletion(...args);
+      const response = await originalCreateChatCompletion(...args);
+      appendLlmUsageToCurrentRequest(response && typeof response === "object" ? response.usage : null);
+      return response;
     } catch (err) {
       if (!isRetryableOpenAIError(err) || attempt >= 2) {
         throw err;
@@ -655,6 +723,72 @@ function normalizeBiometricRelockSeconds(value) {
   return allowed.has(n) ? n : null;
 }
 
+function buildDefaultUsageEnvelope() {
+  const nowIso = new Date().toISOString();
+  return {
+    monthly: {
+      remaining: MONTHLY_CAPACITY
+    },
+    rollover: {
+      remaining: ROLLOVER_CAPACITY
+    },
+    reserve: {
+      remaining: RESERVE_CAPACITY
+    },
+    lastRenewalAt: nowIso
+  };
+}
+
+function toUsageEnvelopeStorageShape(state) {
+  const safe = getEnvelopeState(state && typeof state === "object" ? state : buildDefaultUsageEnvelope());
+  return {
+    monthly: {
+      remaining: safe.monthly.remaining
+    },
+    rollover: {
+      remaining: safe.rollover.remaining
+    },
+    reserve: {
+      remaining: safe.reserve.remaining
+    },
+    lastRenewalAt: safe.lastRenewalAt || null
+  };
+}
+
+function resolveUsageEnvelopeForRead(rawUsageEnvelope) {
+  const fallback = buildDefaultUsageEnvelope();
+  const source = rawUsageEnvelope && typeof rawUsageEnvelope === "object"
+    ? rawUsageEnvelope
+    : fallback;
+  return toUsageEnvelopeStorageShape(source);
+}
+
+function tokensToSimulatedEur(totalTokens = 0) {
+  const safeTokens = Number(totalTokens);
+  if (!Number.isFinite(safeTokens) || safeTokens <= 0) return 0;
+  const eurPerToken = (USAGE_SIMULATION_GPT41_EUR_PER_1M_TOKENS / 1_000_000) * USAGE_SIMULATION_MARGIN_MULTIPLIER;
+  return safeTokens * eurPerToken;
+}
+
+function normalizeUsageMeter(rawMeter = {}) {
+  const safe = rawMeter && typeof rawMeter === "object" ? rawMeter : {};
+  const totalTokens = Number(safe.totalTokens);
+  const totalSimulatedEur = Number(safe.totalSimulatedEur);
+  return {
+    totalTokens: Number.isFinite(totalTokens) && totalTokens > 0 ? Math.round(totalTokens) : 0,
+    totalSimulatedEur: Number.isFinite(totalSimulatedEur) && totalSimulatedEur > 0 ? totalSimulatedEur : 0,
+    updatedAt: typeof safe.updatedAt === "string" ? safe.updatedAt : null
+  };
+}
+
+function buildUsageSimulationPublic() {
+  return {
+    paymentActive: USAGE_SIMULATION_PAYMENT_ACTIVE,
+    modelReference: USAGE_SIMULATION_FROZEN_MODEL,
+    phaseLabel: USAGE_SIMULATION_PHASE_LABEL
+  };
+}
+
 function toPublicUser(userId, userData, _options = {}) {
   const safeUser = userData && typeof userData === "object" ? userData : {};
   const normalizedRelock = normalizeBiometricRelockSeconds(safeUser.biometricRelockSeconds);
@@ -668,7 +802,9 @@ function toPublicUser(userId, userData, _options = {}) {
     updatedAt: typeof safeUser.updatedAt === "string" ? safeUser.updatedAt : null,
     privateConversationsByDefault: safeUser.privateConversationsByDefault === true,
     biometricLockEnabled: safeUser.biometricLockEnabled === true,
-    biometricRelockSeconds: normalizedRelock === null ? 120 : normalizedRelock
+    biometricRelockSeconds: normalizedRelock === null ? 120 : normalizedRelock,
+    usageEnvelope: resolveUsageEnvelopeForRead(safeUser.usageEnvelope),
+    usageSimulation: buildUsageSimulationPublic()
   };
 }
 
@@ -1907,6 +2043,8 @@ app.post("/api/auth/register", async (req, res) => {
       privateConversationsByDefault: false,
       biometricLockEnabled: false,
       biometricRelockSeconds: 120,
+      usageEnvelope: buildDefaultUsageEnvelope(),
+      usageMeter: normalizeUsageMeter(),
       createdAt: now,
       updatedAt: now
     };
@@ -2246,6 +2384,8 @@ app.post("/api/account/reset", requireUserAuth, async (req, res) => {
       privateConversationsByDefault: oldUser.privateConversationsByDefault === true,
       biometricLockEnabled: oldUser.biometricLockEnabled === true,
       biometricRelockSeconds: normalizeBiometricRelockSeconds(oldUser.biometricRelockSeconds) ?? 120,
+      usageEnvelope: buildDefaultUsageEnvelope(),
+      usageMeter: normalizeUsageMeter(),
       createdAt: now,
       updatedAt: now,
       firstName: typeof oldUser.firstName === "string" && oldUser.firstName.trim() ? oldUser.firstName.trim() : null,
@@ -5033,6 +5173,7 @@ ${context.map(m => `${m.role === "user" ? "Utilisateur" : "Assistant"} : ${m.con
 // This route orchestrates the request parsing, safety analysis, mode detection,
 // response generation, memory update, and persistence of both user and assistant messages.
 async function handleChatPost(req, res) {
+  return llmUsageContext.run(createLlmUsageAccumulator(), async () => {
   const onTokenCallbackForChat = typeof req.onTokenCallbackForChat === "function"
     ? req.onTokenCallbackForChat
     : null;
@@ -5080,6 +5221,7 @@ async function handleChatPost(req, res) {
   let chatLastStage = "request_parsed";
   let chatStageMarkTime = chatStartTime;
   let logsEnabledForCatch = requestData.logsEnabled === true;
+  let authenticatedUsageUserId = "";
   const chatStageTimings = [];
   const CHAT_SLOW_LOG_THRESHOLD_MS = 4000;
   
@@ -5116,6 +5258,83 @@ async function handleChatPost(req, res) {
       maxStage: sortedByDelta[0] || null,
       topStages: sortedByDelta.slice(0, 6)
     };
+  }
+
+  async function resolveUsageUserId() {
+    if (authenticatedUsageUserId) {
+      return authenticatedUsageUserId;
+    }
+
+    try {
+      const session = req.userSession || await getUserSession(req);
+      authenticatedUsageUserId = String(session?.userId || "").trim();
+      return authenticatedUsageUserId;
+    } catch {
+      return "";
+    }
+  }
+
+  async function registerUsageConsumptionFromTurn({ writerUsage = null } = {}) {
+    if (chatTransport === "stream") {
+      appendLlmUsageToCurrentRequest(writerUsage);
+    }
+
+    const accumulator = llmUsageContext.getStore();
+    const totalTokens = Number(accumulator?.totalTokens);
+    const chargedTokens = Number(accumulator?.chargedTokens);
+    const safeTotalTokens = Number.isFinite(totalTokens) && totalTokens > 0 ? totalTokens : 0;
+    const safeChargedTokens = Number.isFinite(chargedTokens) && chargedTokens > 0 ? chargedTokens : 0;
+    const deltaTokens = Math.max(0, safeTotalTokens - safeChargedTokens);
+
+    if (!(deltaTokens > 0)) {
+      return;
+    }
+
+    if (accumulator && typeof accumulator === "object") {
+      accumulator.chargedTokens = safeChargedTokens + deltaTokens;
+    }
+
+    const usageUserId = await resolveUsageUserId();
+    if (!usageUserId) {
+      return;
+    }
+
+    const simulatedAmount = tokensToSimulatedEur(deltaTokens);
+    if (!(simulatedAmount > 0)) {
+      return;
+    }
+
+    try {
+      const userSnap = await usersRef.child(usageUserId).once("value");
+      const userData = userSnap.val();
+      if (!userData || typeof userData !== "object") {
+        return;
+      }
+
+      const rawUsageEnvelope = userData.usageEnvelope && typeof userData.usageEnvelope === "object"
+        ? userData.usageEnvelope
+        : buildDefaultUsageEnvelope();
+      const renewed = applyMonthlyRenewal(rawUsageEnvelope, new Date());
+      const consumed = consumeEnvelope(renewed.state, simulatedAmount);
+
+      const previousMeter = normalizeUsageMeter(userData.usageMeter);
+      const nextMeter = {
+        totalTokens: previousMeter.totalTokens + Math.round(deltaTokens),
+        totalSimulatedEur: previousMeter.totalSimulatedEur + simulatedAmount,
+        updatedAt: new Date().toISOString()
+      };
+
+      await usersRef.child(usageUserId).update({
+        usageEnvelope: toUsageEnvelopeStorageShape(consumed.state),
+        usageMeter: nextMeter,
+        updatedAt: new Date().toISOString()
+      });
+    } catch (error) {
+      chatLogger.warn({
+        event: "usage_envelope_update_failed",
+        error: error && error.message ? error.message : String(error)
+      });
+    }
   }
 
   function logChatDecision(event, payload = {}) {
@@ -5786,6 +6005,8 @@ async function handleChatPost(req, res) {
           await persistConversationMemoryWithRetry(persistedMemoryText, activePromptRegistry, 2, mergedStateResult.memoryState, crisisMemoryRewriteDebug);
         } catch {
           // Non-bloquant : la reponse utilisateur ne depend pas de cette mise a jour memoire.
+        } finally {
+          await registerUsageConsumptionFromTurn();
         }
       })();
 
@@ -5794,7 +6015,8 @@ async function handleChatPost(req, res) {
       }
     }
 
-    function sendChatJsonResponse(reply, memory, flags, debug, debugMeta, botMessageId, signals) {
+    async function sendChatJsonResponse(reply, memory, flags, debug, debugMeta, botMessageId, signals) {
+      await registerUsageConsumptionFromTurn();
       maybeGenerateConversationTitle();
       publishChatProgressTerminal(requestId, "done");
 
@@ -5890,6 +6112,7 @@ async function handleChatPost(req, res) {
       }
 
       let reply;
+      let writerUsage = null;
       try {
         const n2Result = await generateReply({
           message,
@@ -5900,9 +6123,11 @@ async function handleChatPost(req, res) {
           onTokenCallback: onTokenCallbackForChat
         });
         reply = n2Result.reply;
+        writerUsage = n2Result.usage || null;
       } catch {
         reply = n2Response();
       }
+      await registerUsageConsumptionFromTurn({ writerUsage });
 
       const responseMemory = previousMemory;
       scheduleBackgroundMemoryUpdate(previousMemory, reply);
@@ -5940,6 +6165,7 @@ async function handleChatPost(req, res) {
       const followupEmergencyText = await resolveEmergencySupportText();
 
       let reply;
+      let writerUsage = null;
       try {
         reply = await acuteCrisisFollowupResponseLLM({
           message,
@@ -5952,6 +6178,8 @@ async function handleChatPost(req, res) {
       } catch {
         reply = acuteCrisisFollowupResponse();
       }
+
+      await registerUsageConsumptionFromTurn({ writerUsage });
 
       const responseMemory = previousMemory;
       scheduleBackgroundMemoryUpdate(previousMemory, reply);
@@ -6794,6 +7022,7 @@ Reponds strictement en JSON: {"items": ["..."]}
       onTokenCallback: onTokenCallbackForChat,
     });
     throwIfCanceled();
+    await registerUsageConsumptionFromTurn({ writerUsage: generatedBase.usage || null });
 
     let reply = generatedBase.reply;
 
@@ -7017,6 +7246,8 @@ Reponds strictement en JSON: {"items": ["..."]}
           source: postureDecision.memoryUpdateSource,
           error: e && e.message ? e.message : String(e)
         });
+      } finally {
+        await registerUsageConsumptionFromTurn();
       }
       })();
 
@@ -7262,6 +7493,7 @@ Reponds strictement en JSON: {"items": ["..."]}
       });
     }
   }
+});
 }
 
 app.post("/chat", handleChatPost);
