@@ -313,19 +313,30 @@ Perimetre arbitre :
 1. Auth obligatoire des le premier appui sur Entrer.
 2. Auth obligatoire aussi pour les raccourcis Launcher :
 - launch non prive et launch prive.
-3. Apres connexion, reprise automatique du chemin demande :
-- non prive reste non prive,
-- prive reste prive.
-4. Le mode conversation privee est conserve, mais seulement apres authentification.
-5. Dans Conversations, suppression du chemin Se connecter au profit de Mon compte.
-6. Patch jauge en parallele :
-- reset mensuel au 1er du mois UTC,
-- premier demarrage compte en 100/100 avec report initial a 0,
-- message simple dans account sur la remise a niveau mensuelle.
+3. Non connecte = impossible d'acceder a Conversations et au chat (gating UX/navigation pour ce patch).
+4. Apres authentification, reprise automatique du chemin demande :
+- cas Entrer : Auth -> Conversations.
+- cas Launcher non prive : Auth -> chat non prive direct.
+- cas Launcher prive : Auth -> chat prive direct.
+5. Le meme comportement de reprise s'applique apres connexion et apres inscription.
+6. Le mode conversation privee est conserve, mais seulement apres authentification.
+7. Dans Conversations, suppression du chemin Se connecter au profit de Mon compte.
+8. Redirection silencieuse vers auth (pas de message intermediaire "connexion requise").
+9. Navigation:
+- retour arriere depuis Conversations = toujours Accueil.
+- comportement retour arriere des lancements Launcher garde tel quel (pas de changement dans ce patch).
+10. Donnees locales pre-auth : aucun traitement de migration/reprise dans ce patch (wipe data + reset total prevu).
+11. Patch jauge en parallele :
+- reset mensuel au 1er du mois UTC.
+- reset en mode lazy, cote serveur, dans le flux auth/session, avec logique idempotente.
+- premier demarrage compte en 100/100 avec report initial a 0.
+- report active des le premier renouvellement mensuel.
+- message simple dans account : "Votre enveloppe mensuelle est reinitialisee au debut de chaque mois." (accents en sequences Unicode dans le JS inline).
 
 Notes d'implementation :
-- Le gating auth doit couvrir le bouton Entrer et les shortcuts `launch=new-normal` / `launch=new-private`.
-- Le chemin prive ne doit pas etre supprime : il doit etre rejoue apres login si c'etait l'intention initiale.
+- Le gating auth doit couvrir le bouton Entrer et les shortcuts launch=new-normal / launch=new-private.
+- Le chemin prive ne doit pas etre supprime : il doit etre rejoue apres auth si c'etait l'intention initiale.
+- Portee patch auth: UX/navigation uniquement (pas de blocage backend strict des routes chat dans ce lot).
 
 ---
 
