@@ -332,11 +332,28 @@ Perimetre arbitre :
 - premier demarrage compte en 100/100 avec report initial a 0.
 - report active des le premier renouvellement mensuel.
 - message simple dans account : "Votre enveloppe mensuelle est reinitialisee au debut de chaque mois." (accents en sequences Unicode dans le JS inline).
+- application du 100/100 + report initial a 0 pour les nouveaux comptes uniquement.
+- reset compte: transferer l'etat courant des enveloppes (mensuelle + reserve) vers le nouvel id utilisateur.
+- reset compte: transferer aussi l'historique cumule de consommation (tokens/cout) pour garder la continuite de suivi.
 
 Notes d'implementation :
 - Le gating auth doit couvrir le bouton Entrer et les shortcuts launch=new-normal / launch=new-private.
 - Le chemin prive ne doit pas etre supprime : il doit etre rejoue apres auth si c'etait l'intention initiale.
 - Portee patch auth: UX/navigation uniquement (pas de blocage backend strict des routes chat dans ce lot).
+
+---
+
+## 11. Evolution identite utilisateur (hors patch courant)
+
+Decision produit :
+- cible retenue a terme : identifiant global utilisateur stable + sous-identifiant actif.
+
+Perimetre :
+- ne pas implementer cette evolution dans le patch courant (trop large et risquee).
+- conserver cette piste comme chantier dedie ulterieur, avec migration explicite.
+
+Objectif vise :
+- faciliter la continuite du dossier personnel et du suivi de consommation lors des resets/changements techniques.
 
 ---
 
