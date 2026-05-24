@@ -730,7 +730,7 @@ function buildDefaultUsageEnvelope() {
       remaining: MONTHLY_CAPACITY
     },
     rollover: {
-      remaining: ROLLOVER_CAPACITY
+      remaining: 0
     },
     reserve: {
       remaining: RESERVE_CAPACITY
@@ -778,6 +778,47 @@ function normalizeUsageMeter(rawMeter = {}) {
     totalTokens: Number.isFinite(totalTokens) && totalTokens > 0 ? Math.round(totalTokens) : 0,
     totalSimulatedEur: Number.isFinite(totalSimulatedEur) && totalSimulatedEur > 0 ? totalSimulatedEur : 0,
     updatedAt: typeof safe.updatedAt === "string" ? safe.updatedAt : null
+  };
+}
+
+async function ensureUserUsageEnvelopeFresh(userId = "", userData = null) {
+  const safeUserId = String(userId || "").trim();
+  const safeUserData = userData && typeof userData === "object" ? userData : {};
+
+  if (!safeUserId) {
+    return safeUserData;
+  }
+
+  const currentEnvelope = safeUserData.usageEnvelope && typeof safeUserData.usageEnvelope === "object"
+    ? safeUserData.usageEnvelope
+    : buildDefaultUsageEnvelope();
+  const renewal = applyMonthlyRenewal(currentEnvelope, new Date());
+  const normalizedEnvelope = toUsageEnvelopeStorageShape(renewal.state);
+  const normalizedMeter = normalizeUsageMeter(safeUserData.usageMeter);
+
+  const shouldPersistEnvelope = renewal.renewed === true || !(safeUserData.usageEnvelope && typeof safeUserData.usageEnvelope === "object");
+  const shouldPersistMeter = !(safeUserData.usageMeter && typeof safeUserData.usageMeter === "object");
+
+  if (shouldPersistEnvelope || shouldPersistMeter) {
+    const patch = {
+      updatedAt: new Date().toISOString()
+    };
+
+    if (shouldPersistEnvelope) {
+      patch.usageEnvelope = normalizedEnvelope;
+    }
+
+    if (shouldPersistMeter) {
+      patch.usageMeter = normalizedMeter;
+    }
+
+    await usersRef.child(safeUserId).update(patch);
+  }
+
+  return {
+    ...safeUserData,
+    usageEnvelope: normalizedEnvelope,
+    usageMeter: normalizedMeter
   };
 }
 
@@ -1993,9 +2034,11 @@ app.get("/api/auth/session", async (req, res) => {
       return res.json({ authenticated: false, user: null });
     }
 
+    const refreshedUser = await ensureUserUsageEnvelopeFresh(session.userId, session.user);
+
     return res.json({
       authenticated: true,
-      user: toPublicUser(session.userId, session.user, { isAdmin })
+      user: toPublicUser(session.userId, refreshedUser, { isAdmin })
     });
   } catch (err) {
     console.error("Erreur /api/auth/session:", err.message);
@@ -2384,8 +2427,8 @@ app.post("/api/account/reset", requireUserAuth, async (req, res) => {
       privateConversationsByDefault: oldUser.privateConversationsByDefault === true,
       biometricLockEnabled: oldUser.biometricLockEnabled === true,
       biometricRelockSeconds: normalizeBiometricRelockSeconds(oldUser.biometricRelockSeconds) ?? 120,
-      usageEnvelope: buildDefaultUsageEnvelope(),
-      usageMeter: normalizeUsageMeter(),
+      usageEnvelope: resolveUsageEnvelopeForRead(oldUser.usageEnvelope),
+      usageMeter: normalizeUsageMeter(oldUser.usageMeter),
       createdAt: now,
       updatedAt: now,
       firstName: typeof oldUser.firstName === "string" && oldUser.firstName.trim() ? oldUser.firstName.trim() : null,

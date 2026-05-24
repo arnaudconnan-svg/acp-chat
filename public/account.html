@@ -1381,6 +1381,12 @@
         simulationInfo.textContent = "Aucun paiement actif - l'enveloppe se met a jour en mode simulation pendant la phase de test.";
         card.appendChild(simulationInfo);
 
+        const renewalInfo = document.createElement("p");
+        renewalInfo.className = "setting-help";
+        renewalInfo.style.margin = "0 0 12px";
+        renewalInfo.textContent = "Votre enveloppe mensuelle est r\u00e9initialis\u00e9e au d\u00e9but de chaque mois.";
+        card.appendChild(renewalInfo);
+
         const envelopeBlock = document.createElement("div");
         envelopeBlock.className = "usage-block";
         const envelopeTitle = document.createElement("h3");

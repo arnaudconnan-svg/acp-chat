@@ -2374,7 +2374,7 @@
           </svg>
         </button>
         <div id="conversationsAccountMenu" class="conversationMenuPopover" data-menu="account-menu">
-          <button id="conversationsAccountMenuAction" type="button" class="conversationMenuAction">Connexion</button>
+          <button id="conversationsAccountMenuAction" type="button" class="conversationMenuAction">Mon compte</button>
         </div>
       </div>
     </div>
@@ -3397,11 +3397,7 @@
 
       wrap.style.display = "block";
 
-      if (userSessionState.authenticated) {
-        actionBtn.textContent = "Mon compte";
-      } else {
-        actionBtn.textContent = "Connexion";
-      }
+      actionBtn.textContent = "Mon compte";
 
       syncConversationsFabPrivateDefaultBadge();
     }
@@ -9395,6 +9391,11 @@
     }
 
     function enterConversations() {
+      if (!userSessionState.authenticated) {
+        navigateAway("/auth.html?next=" + encodeURIComponent("/?screen=conversationsScreen"));
+        return;
+      }
+
       const welcomeScreen = document.getElementById("welcomeScreen");
       const conversationsScreen = document.getElementById("conversationsScreen");
       const bgValue = window.getComputedStyle(conversationsScreen).backgroundImage || "";
@@ -12095,6 +12096,11 @@
 
       const launchShortcut = loadUrl.searchParams.get("launch");
       if (launchShortcut === "new-normal" || launchShortcut === "new-private") {
+        if (!userSessionState.authenticated) {
+          navigateAway("/auth.html?next=" + encodeURIComponent("/?launch=" + encodeURIComponent(launchShortcut)));
+          return;
+        }
+
         const isPrivateLaunch = launchShortcut === "new-private";
 
         loadUrl.searchParams.delete("launch");
@@ -12137,6 +12143,11 @@
 
       const requestedScreen = loadUrl.searchParams.get("screen");
       if (requestedScreen === "conversationsScreen") {
+        if (!userSessionState.authenticated) {
+          navigateAway("/auth.html?next=" + encodeURIComponent("/?screen=conversationsScreen"));
+          return;
+        }
+
         loadUrl.searchParams.delete("screen");
         const cleanSearch = loadUrl.searchParams.toString();
         const cleanUrl = `${loadUrl.pathname}${cleanSearch ? `?${cleanSearch}` : ""}${loadUrl.hash || ""}`;
