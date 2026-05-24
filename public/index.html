@@ -12110,11 +12110,11 @@
       }
       
       const WELCOME_RITUAL = [
-        "D\u00e9poser",
-        "Clarifier",
-        "\u00c9prouver",
-        "Se r\u00e9aligner..."
-      ];
+  "D\u00e9poser ce qui est l\u00e0",
+  "Clarifier pour soi",
+  "\u00c9prouver,&nbsp;<em>peut-\u00eatre</em>",
+  "Se r\u00e9aligner..."
+];
       
       const WELCOME_BOOT_PAUSE_MS = 0;
       const WELCOME_RITUAL_TEXT_DURATION = 2000;
@@ -12326,7 +12326,7 @@
         const isLastPhrase = ritualIndex === WELCOME_RITUAL.length - 1;
         
         welcomePhase = "ritual";
-        textEl.textContent = WELCOME_RITUAL[ritualIndex];
+        textEl.innerHTML = WELCOME_RITUAL[ritualIndex];
         textEl.classList.remove("is-visible", "is-hidden");
         
         if (isFirstPhrase) {
