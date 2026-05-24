@@ -11,81 +11,7 @@ Périmètre strict :
 - Priorité à la stabilité TWA Android.
 - Ne pas réouvrir les arbitrages déjà verrouillés.
 
----
-
-## 1. Auth / compte : éviter le clipping mobile
-
-Fichiers probables :
-- `public/auth.html`
-- `public/account.html`
-
-Problème :
-Les écrans auth/compte peuvent être trop rigides sur petits écrans Android, notamment avec clavier ouvert. Les logos et conteneurs centrés peuvent produire du clipping ou une navigation verticale pénible.
-
-Objectif UX :
-Garantir une page lisible, scrollable et stable sur téléphone Android, y compris avec clavier ouvert.
-
-Actions :
-- Remplacer les hauteurs fixes ou équivalents par une logique compatible mobile :
-  - préférer `min-height: 100dvh`
-  - éviter les `height: 100%` bloquants sur les wrappers principaux
-- Autoriser le scroll vertical :
-  - `overflow-y: auto`
-- Rendre les logos responsive :
-  - utiliser `clamp(...)`
-  - éviter une taille fixe trop grande
-- Vérifier les marges haut/bas avec safe areas :
-  - `env(safe-area-inset-top, 0px)`
-  - `env(safe-area-inset-bottom, 0px)`
-
-Critères d’acceptation :
-- Sur écran mobile court, aucun bouton important n’est inaccessible.
-- Avec clavier ouvert, le formulaire reste utilisable.
-- Pas de saut visuel majeur.
-- Pas de régression desktop.
-
----
-
-## 2. Jauge d’usage : clarifier ou masquer le non-branché
-
-Fichier probable :
-- `public/account.html`
-
-Problème :
-La jauge d’usage est visible alors qu’elle n’est pas encore branchée à Stripe / API / logique économique réelle. Elle peut laisser croire que le paiement ou les limites sont déjà actifs.
-
-Objectif UX :
-Éviter toute ambiguïté économique pendant l’alpha.
-
-Option A — Recommandée pour alpha fermée :
-Masquer temporairement le bloc de jauge d’usage.
-
-Option B — Si on veut tester la perception économique :
-Garder le bloc visible, mais ajouter un libellé explicite :
-
-> Indicateur en cours de test — aucun paiement actif.
-
-Actions Option A :
-- Identifier le bloc UI de jauge dans `account.html`.
-- Le masquer via condition simple ou classe dédiée.
-- Ne pas supprimer la logique si elle doit être réactivée plus tard.
-
-Actions Option B :
-- Ajouter une mention visible, courte, non alarmante.
-- Éviter toute formulation laissant penser qu’un achat est possible maintenant.
-- Si des boutons d’achat existent, les désactiver ou les masquer.
-
-Critères d’acceptation :
-- L’utilisateur ne peut pas croire qu’un paiement est actif.
-- L’utilisateur ne peut pas déclencher d’achat.
-- La jauge ne parasite pas la compréhension de l’alpha.
-
-Décision provisoire :
-- Préférence : masquer pendant l’alpha, sauf test explicite de perception économique.
-
----
-
-## 3. Confidentialité : feedback clair sur les toggles
+## 1. Confidentialité : feedback clair sur les toggles
 
 Fichier probable :
 - `public/account.html`
@@ -117,7 +43,7 @@ Critères d’acceptation :
 
 ---
 
-## 4. Bouton “descendre en bas” : le rendre moins fugitif
+## 2. Bouton “descendre en bas” : le rendre moins fugitif
 
 Fichier probable :
 - `public/index.html`
@@ -143,7 +69,7 @@ Critères d’acceptation :
 
 ---
 
-## 5. Modales : robustesse petit écran Android
+## 3. Modales : robustesse petit écran Android
 
 Fichiers probables :
 - `public/index.html`
@@ -183,7 +109,7 @@ Pas de scroll double excessivement pénible.
 
 ---
 
-## 6. Remplacer les alert() / confirm() visibles
+## 4. Remplacer les alert() / confirm() visibles
 
 Fichiers probables :
 `public/index.html`
@@ -216,7 +142,7 @@ L’esthétique reste cohérente avec l’app.
 
 ---
 
-## 7. Feedback développeur : ne pas cocher l’envoi par défaut
+## 5. Feedback développeur : ne pas cocher l’envoi par défaut
 
 Fichier probable :
 `public/index.html`
@@ -243,7 +169,7 @@ Le feedback reste possible sans friction excessive.
 
 ---
 
-## 8. Actions conversation : améliorer la découvrabilité
+## 6. Actions conversation : améliorer la découvrabilité
 
 Fichier probable :
 `public/index.html`
@@ -266,7 +192,7 @@ Les actions destructrices restent confirmées.
 
 ---
 
-## 9. Bouton stop : synchroniser l’accessibilité
+## 7. Bouton stop : synchroniser l’accessibilité
 
 Fichier probable :
 `public/index.html`
@@ -297,7 +223,7 @@ Pas de régression sur le fonctionnement du stop.
 
 ---
 
-## 10. Nettoyer les chaînes visibles sans accents / trop techniques
+## 8. Nettoyer les chaînes visibles sans accents / trop techniques
 
 Fichiers probables :
 `public/index.html`
@@ -339,7 +265,7 @@ Pas de régression fonctionnelle.
 
 ---
 
-## 11. Service worker / PWA : clarifier l’état réel
+## 9. Service worker / PWA : clarifier l’état réel
 
 Fichiers probables :
 `public/index.html`
@@ -376,6 +302,30 @@ L’état du service worker est intentionnel.
 Pas de version obsolète persistante après déploiement.
 Pas d’écran offline inattendu.
 Compatible TWA Android.
+
+---
+
+## 10. Auth obligatoire + jauge : arbitrages actes
+
+Objectif : verrouiller les decisions produit deja arbitrees pour eviter toute perte de contexte en cas de compactage.
+
+Perimetre arbitre :
+1. Auth obligatoire des le premier appui sur Entrer.
+2. Auth obligatoire aussi pour les raccourcis Launcher :
+- launch non prive et launch prive.
+3. Apres connexion, reprise automatique du chemin demande :
+- non prive reste non prive,
+- prive reste prive.
+4. Le mode conversation privee est conserve, mais seulement apres authentification.
+5. Dans Conversations, suppression du chemin Se connecter au profit de Mon compte.
+6. Patch jauge en parallele :
+- reset mensuel au 1er du mois UTC,
+- premier demarrage compte en 100/100 avec report initial a 0,
+- message simple dans account sur la remise a niveau mensuelle.
+
+Notes d'implementation :
+- Le gating auth doit couvrir le bouton Entrer et les shortcuts `launch=new-normal` / `launch=new-private`.
+- Le chemin prive ne doit pas etre supprime : il doit etre rejoue apres login si c'etait l'intention initiale.
 
 ---
 
@@ -487,23 +437,6 @@ Critères d’acceptation :
 - Le flag persiste localement.
 - Il existe une manière simple de désactiver le mode dev.
 - Aucun impact sur les utilisateurs standards.
-
----
-
-# Ordre de traitement recommandé :
-
-- Masquer ou clarifier la jauge d’usage.
-- Ajouter feedback clair sur les toggles de confidentialité.
-- Décocher par défaut l’envoi au développeur dans le feedback.
-- Masquer l’accès dev hors mode dev.
-- Corriger auth/account pour petits écrans Android.
-- Robustifier les modales.
-- Remplacer les alertes natives.
-- Améliorer le bouton “descendre en bas”.
-- Améliorer la découvrabilité renommer/supprimer.
-- Corriger aria-label du bouton stop.
-- Nettoyer les chaînes visibles sans accents.
-- Clarifier/enregistrer/tester le service worker.
 
 ---
 
