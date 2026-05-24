@@ -115,6 +115,51 @@
     .adminActionsMenuActionDanger {
       color: #a63a32;
     }
+
+    .support-search-wrap {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .support-search-input {
+      width: 100%;
+      min-height: 40px;
+      border-radius: 10px;
+      border: 1px solid #cfd8db;
+      background: #ffffff;
+      color: #1f3f44;
+      font-size: 14px;
+      padding: 9px 11px;
+      outline: none;
+    }
+
+    .support-search-input:focus {
+      border-color: #245e66;
+      box-shadow: 0 0 0 3px rgba(36, 94, 102, 0.12);
+    }
+
+    .support-meta-line {
+      font-size: 13px;
+      color: #4b6366;
+      margin-top: 4px;
+      word-break: break-word;
+    }
+
+    .support-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      line-height: 1;
+      border-radius: 999px;
+      border: 1px solid #cfd8db;
+      color: #245e66;
+      background: #ffffff;
+      padding: 5px 9px;
+      margin-top: 8px;
+    }
     
     h1 {
       font-size: 20px;
@@ -618,6 +663,7 @@
             </svg>
           </button>
           <div id="adminActionsMenu">
+            <button id="adminSupportCasesBtn" type="button" class="adminActionsMenuAction">Dossiers SAV</button>
             <button id="adminWipeDataBtn" type="button" class="adminActionsMenuAction adminActionsMenuActionDanger">Wipe data Firebase</button>
           </div>
         </div>
@@ -640,6 +686,12 @@
     function getConversationIdFromUrl() {
       const params = new URLSearchParams(window.location.search);
       return params.get("c");
+    }
+
+    function getAdminViewFromUrl() {
+      const params = new URLSearchParams(window.location.search);
+      const view = String(params.get("view") || "").trim().toLowerCase();
+      return view === "support" ? "support" : "conversations";
     }
 
     function closeAdminActionsMenu() {
@@ -1316,6 +1368,147 @@
       }
       renderBranchTree(data);
       return data;
+    }
+
+    async function loadSupportCases() {
+      const list = document.getElementById("list");
+      const debugToggleBtn = document.getElementById("debugToggleBtn");
+      const memoryToggleBtn = document.getElementById("memoryToggleBtn");
+
+      if (debugToggleBtn) {
+        debugToggleBtn.style.display = "none";
+        debugToggleBtn.classList.remove("active");
+        debugToggleBtn.onclick = null;
+      }
+      if (memoryToggleBtn) {
+        memoryToggleBtn.style.display = "none";
+        memoryToggleBtn.classList.remove("active");
+        memoryToggleBtn.textContent = "Deplier toute la memoire";
+        memoryToggleBtn.onclick = null;
+      }
+
+      hideBranchTree();
+      list.innerHTML = "";
+
+      const searchWrap = document.createElement("div");
+      searchWrap.className = "support-search-wrap";
+
+      const searchInput = document.createElement("input");
+      searchInput.className = "support-search-input";
+      searchInput.type = "search";
+      searchInput.placeholder = "Recherche email...";
+      searchInput.autocomplete = "off";
+
+      searchWrap.appendChild(searchInput);
+      list.appendChild(searchWrap);
+
+      const resultWrap = document.createElement("div");
+      resultWrap.style.display = "flex";
+      resultWrap.style.flexDirection = "column";
+      resultWrap.style.gap = "12px";
+      list.appendChild(resultWrap);
+
+      let debounceTimer = null;
+
+      const renderCases = (cases = []) => {
+        resultWrap.innerHTML = "";
+
+        if (!Array.isArray(cases) || cases.length === 0) {
+          resultWrap.innerHTML = '<div class="empty">Aucun dossier SAV</div>';
+          return;
+        }
+
+        cases.forEach((item) => {
+          const card = document.createElement("div");
+          card.className = "item";
+
+          const activity = document.createElement("div");
+          activity.className = "admin-conversation-main";
+          activity.textContent = "Maj " + formatAdminDate(item?.lastActivityAt);
+
+          const title = document.createElement("div");
+          title.className = "admin-conversation-title";
+          title.textContent = "Dossier " + String(item?.superId || "inconnu");
+
+          const count = document.createElement("div");
+          count.className = "admin-conversation-count";
+          const totalTokens = Number(item?.totalTokens || 0);
+          const conversationCount = Number(item?.conversationCount || 0);
+          count.textContent = `${conversationCount} conversations - ${totalTokens} tokens`;
+
+          const emails = Array.isArray(item?.emails) ? item.emails.filter(Boolean) : [];
+          const emailLine = document.createElement("div");
+          emailLine.className = "support-meta-line";
+          emailLine.textContent = "Emails: " + (emails.length ? emails.join(" | ") : "aucun");
+
+          const activeLine = document.createElement("div");
+          activeLine.className = "support-meta-line";
+          activeLine.textContent = "User actif: " + String(item?.activeUserId || "inconnu");
+
+          const chip = document.createElement("div");
+          chip.className = "support-chip";
+          const eur = Number(item?.totalSimulatedEur || 0);
+          chip.textContent = `Total simule: ${eur.toFixed(4)} EUR`;
+
+          card.appendChild(activity);
+          card.appendChild(title);
+          card.appendChild(count);
+          card.appendChild(emailLine);
+          card.appendChild(activeLine);
+          card.appendChild(chip);
+          resultWrap.appendChild(card);
+        });
+      };
+
+      const loadCases = async () => {
+        const emailQuery = String(searchInput.value || "").trim();
+        resultWrap.innerHTML = '<div class="loading">Chargement des dossiers SAV...</div>';
+
+        const params = new URLSearchParams();
+        if (emailQuery) {
+          params.set("email", emailQuery);
+        }
+
+        const url = params.toString()
+          ? "/api/admin/support-cases?" + params.toString()
+          : "/api/admin/support-cases";
+
+        try {
+          const res = await fetchWithTimeout(url);
+          const response = await readAdminJsonResponse(res);
+
+          if (response.redirectedToLogin) {
+            resultWrap.innerHTML = '<div class="error">Session admin expiree. Redirection...</div>';
+            return;
+          }
+
+          if (!res.ok || !response.isJson) {
+            const message = typeof response.data?.error === "string"
+              ? response.data.error
+              : "Erreur chargement dossiers SAV";
+            resultWrap.innerHTML = '<div class="error">' + message + '</div>';
+            return;
+          }
+
+          renderCases(response.data?.cases || []);
+        } catch (err) {
+          const msg = err && err.name === "AbortError"
+            ? "Le serveur ne repond pas a temps."
+            : "Erreur chargement dossiers SAV: " + (err?.message || "inconnue");
+          resultWrap.innerHTML = '<div class="error">' + msg + '</div>';
+        }
+      };
+
+      searchInput.addEventListener("input", () => {
+        if (debounceTimer) {
+          clearTimeout(debounceTimer);
+        }
+        debounceTimer = setTimeout(() => {
+          loadCases();
+        }, 220);
+      });
+
+      await loadCases();
     }
     
     async function loadConversations() {
@@ -2663,6 +2856,7 @@
       setupRootBackToIndex();
       
       const conversationId = getConversationIdFromUrl();
+      const adminView = getAdminViewFromUrl();
       const conversationMeta = document.getElementById("conversationMeta");
       const title = document.querySelector("h1");
       
@@ -2674,6 +2868,14 @@
         conversationMeta.style.display = "none";
         conversationMeta.textContent = "";
         await loadMessages(conversationId);
+      } else if (adminView === "support") {
+        title.textContent = "Dossiers SAV";
+        if (adminActionsWrap) {
+          adminActionsWrap.style.display = "block";
+        }
+        conversationMeta.style.display = "none";
+        conversationMeta.textContent = "";
+        await loadSupportCases();
       } else {
         title.textContent = "Conversations";
         if (adminActionsWrap) {
@@ -2702,9 +2904,17 @@
     document.addEventListener("DOMContentLoaded", () => {
       const adminActionsBtn = document.getElementById("adminActionsBtn");
       const adminWipeDataBtn = document.getElementById("adminWipeDataBtn");
+      const adminSupportCasesBtn = document.getElementById("adminSupportCasesBtn");
 
       if (adminActionsBtn) {
         adminActionsBtn.addEventListener("click", toggleAdminActionsMenu);
+      }
+
+      if (adminSupportCasesBtn) {
+        adminSupportCasesBtn.addEventListener("click", () => {
+          closeAdminActionsMenu();
+          window.location.href = "/admin.html?view=support";
+        });
       }
 
       if (adminWipeDataBtn) {

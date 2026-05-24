@@ -186,6 +186,29 @@ function buildRequestId(prefix = "req") {
   return `${prefix}_${Date.now().toString(36)}_${crypto.randomBytes(3).toString("hex")}`;
 }
 
+function normalizeSuperId(value = "") {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  return /^sup_[a-f0-9]{12,}$/i.test(raw) ? raw.toLowerCase() : "";
+}
+
+function buildSuperId() {
+  return `sup_${crypto.randomBytes(10).toString("hex")}`;
+}
+
+function resolveStableSuperId(userId = "", userData = null) {
+  const safeUserData = userData && typeof userData === "object" ? userData : {};
+  const fromUser = normalizeSuperId(safeUserData.superId);
+  if (fromUser) return fromUser;
+
+  const fallbackSeed = String(userId || "").trim();
+  if (fallbackSeed) {
+    return `sup_${buildAccountResetAuditHash(fallbackSeed)}`;
+  }
+
+  return buildSuperId();
+}
+
 app.use((req, res, next) => {
   const headerRequestId = typeof req.headers["x-request-id"] === "string"
     ? String(req.headers["x-request-id"]).trim()
@@ -2083,6 +2106,7 @@ app.post("/api/auth/register", async (req, res) => {
     const userRecord = {
       email,
       passwordHash: hashPassword(password),
+      superId: buildSuperId(),
       privateConversationsByDefault: false,
       biometricLockEnabled: false,
       biometricRelockSeconds: 120,
@@ -2135,6 +2159,12 @@ app.post("/api/auth/login", async (req, res) => {
 
     if (!found || !found.user || !verifyPassword(password, found.user.passwordHash)) {
       return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const normalizedSuperId = normalizeSuperId(found.user.superId);
+    if (!normalizedSuperId) {
+      found.user.superId = buildSuperId();
+      await usersRef.child(found.userId).update({ superId: found.user.superId });
     }
 
     const sessionToken = buildUserSessionToken(found.userId);
@@ -2424,6 +2454,7 @@ app.post("/api/account/reset", requireUserAuth, async (req, res) => {
     const nextUserRecord = {
       email: normalizeEmail(oldUser.email),
       passwordHash: typeof oldUser.passwordHash === "string" ? oldUser.passwordHash : "",
+      superId: resolveStableSuperId(oldUserId, oldUser),
       privateConversationsByDefault: oldUser.privateConversationsByDefault === true,
       biometricLockEnabled: oldUser.biometricLockEnabled === true,
       biometricRelockSeconds: normalizeBiometricRelockSeconds(oldUser.biometricRelockSeconds) ?? 120,
@@ -4155,6 +4186,134 @@ app.get("/api/admin/users", requireAdminAuth, async (req, res) => {
   } catch (err) {
     console.error("Erreur /api/admin/users:", err.message);
     return res.status(500).json({ error: "Users lookup failed" });
+  }
+});
+
+app.get("/api/admin/support-cases", requireAdminAuth, async (req, res) => {
+  try {
+    const emailFilter = String(req.query?.email || "").trim().toLowerCase();
+
+    const [usersSnap, conversationsSnap] = await Promise.all([
+      usersRef.once("value"),
+      db.ref("conversations").once("value")
+    ]);
+
+    const usersRaw = usersSnap.val() || {};
+    const conversationsRaw = conversationsSnap.val() || {};
+
+    const latestActivityByUserId = new Map();
+    const conversationCountByUserId = new Map();
+
+    for (const [, value] of Object.entries(conversationsRaw)) {
+      const safeConversation = value && typeof value === "object" ? value : {};
+      if (safeConversation.isBranch === true) continue;
+
+      const userId = String(safeConversation.userId || "").trim();
+      if (!userId) continue;
+
+      const updatedAtMs = Date.parse(String(safeConversation.updatedAt || safeConversation.createdAt || ""));
+      const safeUpdatedAtMs = Number.isFinite(updatedAtMs) ? updatedAtMs : 0;
+
+      const previousLast = Number(latestActivityByUserId.get(userId) || 0);
+      if (safeUpdatedAtMs > previousLast) {
+        latestActivityByUserId.set(userId, safeUpdatedAtMs);
+      }
+
+      conversationCountByUserId.set(userId, Number(conversationCountByUserId.get(userId) || 0) + 1);
+    }
+
+    const casesBySuperId = new Map();
+
+    for (const [userId, userValue] of Object.entries(usersRaw)) {
+      const safeUserId = String(userId || "").trim();
+      if (!safeUserId) continue;
+
+      const safeUser = userValue && typeof userValue === "object" ? userValue : {};
+      const superId = resolveStableSuperId(safeUserId, safeUser);
+      const email = normalizeEmail(safeUser.email || "");
+
+      if (emailFilter && !email.toLowerCase().includes(emailFilter)) {
+        continue;
+      }
+
+      const usageMeter = normalizeUsageMeter(safeUser.usageMeter);
+      const usageEnvelope = resolveUsageEnvelopeForRead(safeUser.usageEnvelope);
+      const userUpdatedAtMs = Date.parse(String(safeUser.updatedAt || safeUser.createdAt || ""));
+      const safeUserUpdatedAtMs = Number.isFinite(userUpdatedAtMs) ? userUpdatedAtMs : 0;
+      const conversationLastActivityMs = Number(latestActivityByUserId.get(safeUserId) || 0);
+      const lastActivityMs = Math.max(safeUserUpdatedAtMs, conversationLastActivityMs);
+      const conversationCount = Number(conversationCountByUserId.get(safeUserId) || 0);
+
+      if (!casesBySuperId.has(superId)) {
+        casesBySuperId.set(superId, {
+          superId,
+          activeUserId: safeUserId,
+          createdAt: typeof safeUser.createdAt === "string" ? safeUser.createdAt : null,
+          updatedAt: typeof safeUser.updatedAt === "string" ? safeUser.updatedAt : null,
+          lastActivityAt: lastActivityMs > 0 ? new Date(lastActivityMs).toISOString() : null,
+          emails: email ? [email] : [],
+          totalTokens: usageMeter.totalTokens,
+          totalSimulatedEur: usageMeter.totalSimulatedEur,
+          conversationCount,
+          usageEnvelope,
+          usageMeterUpdatedAt: usageMeter.updatedAt,
+          members: [{
+            userId: safeUserId,
+            email: email || null,
+            createdAt: typeof safeUser.createdAt === "string" ? safeUser.createdAt : null,
+            updatedAt: typeof safeUser.updatedAt === "string" ? safeUser.updatedAt : null,
+            conversationCount
+          }]
+        });
+        continue;
+      }
+
+      const existing = casesBySuperId.get(superId);
+      if (email && !existing.emails.includes(email)) {
+        existing.emails.push(email);
+      }
+
+      existing.totalTokens += usageMeter.totalTokens;
+      existing.totalSimulatedEur += usageMeter.totalSimulatedEur;
+      existing.conversationCount += conversationCount;
+      existing.members.push({
+        userId: safeUserId,
+        email: email || null,
+        createdAt: typeof safeUser.createdAt === "string" ? safeUser.createdAt : null,
+        updatedAt: typeof safeUser.updatedAt === "string" ? safeUser.updatedAt : null,
+        conversationCount
+      });
+
+      const existingLastActivityMs = Date.parse(String(existing.lastActivityAt || ""));
+      const safeExistingLastActivityMs = Number.isFinite(existingLastActivityMs) ? existingLastActivityMs : 0;
+      if (lastActivityMs > safeExistingLastActivityMs) {
+        existing.lastActivityAt = new Date(lastActivityMs).toISOString();
+        existing.activeUserId = safeUserId;
+        existing.usageEnvelope = usageEnvelope;
+        existing.usageMeterUpdatedAt = usageMeter.updatedAt;
+      }
+    }
+
+    const cases = Array.from(casesBySuperId.values())
+      .map((item) => ({
+        ...item,
+        emails: item.emails.sort((a, b) => a.localeCompare(b))
+      }))
+      .sort((a, b) => {
+        const aMs = Date.parse(String(a.lastActivityAt || ""));
+        const bMs = Date.parse(String(b.lastActivityAt || ""));
+        const safeAMs = Number.isFinite(aMs) ? aMs : 0;
+        const safeBMs = Number.isFinite(bMs) ? bMs : 0;
+        return safeBMs - safeAMs;
+      });
+
+    return res.json({
+      cases,
+      count: cases.length
+    });
+  } catch (err) {
+    console.error("Erreur /api/admin/support-cases:", err.message);
+    return res.status(500).json({ error: "Support cases lookup failed" });
   }
 });
 
