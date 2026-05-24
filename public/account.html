@@ -344,9 +344,8 @@
       color: #245e66;
     }
 
-    .danger-zone-card {
-      border: 1px solid #f0d4d4;
-      background: #fff7f7;
+    .danger-zone-section {
+      margin-bottom: 24px;
     }
 
     .danger-zone-warning {
@@ -1230,7 +1229,7 @@
         warning.className = "setting-help";
         warning.style.margin = "4px 0 0";
         warning.style.display = shouldShowLowEnvelopeWarning(usageState) ? "block" : "none";
-        warning.textContent = "Il reste peu d'espace disponible dans votre enveloppe. Pour eviter une interruption pendant l'echange, vous pouvez l'alimenter maintenant.";
+        warning.textContent = "Il reste peu d'espace disponible dans votre enveloppe. Pour éviter une interruption pendant l'échange, vous pouvez l'alimenter maintenant.";
         card.appendChild(warning);
 
         const actionButton = document.createElement("button");
@@ -1562,7 +1561,7 @@
 
         const help = document.createElement("p");
         help.className = "setting-help";
-        help.textContent = "Ces conversations sont detectees uniquement sur cet appareil. Les conversations privees locales sont indiquees par un cadenas.";
+        help.textContent = "Ces conversations sont détectées uniquement sur cet appareil. Les conversations privées locales sont indiquées par un cadenas.";
         card.appendChild(help);
 
         const list = document.createElement("div");
@@ -1576,12 +1575,12 @@
         const refreshBtn = document.createElement("button");
         refreshBtn.type = "button";
         refreshBtn.className = "secondary-btn";
-        refreshBtn.textContent = "Rafraichir";
+        refreshBtn.textContent = "Rafraîchir";
 
         const importBtn = document.createElement("button");
         importBtn.type = "button";
         importBtn.className = "action-btn";
-        importBtn.textContent = "Importer la selection";
+        importBtn.textContent = "Importer la sélection";
         importBtn.disabled = true;
 
         actions.appendChild(refreshBtn);
@@ -1665,7 +1664,7 @@
 
             const metaLine = document.createElement("div");
             metaLine.className = "import-item-meta";
-            metaLine.textContent = `${item.messages.length} message(s) · ${formatImportDate(item.updatedAt)}${item.isPrivate ? " · locale privee" : ""}`;
+            metaLine.textContent = `${item.messages.length} message(s) · ${formatImportDate(item.updatedAt)}${item.isPrivate ? " · locale privée" : ""}`;
 
             main.appendChild(titleLine);
             main.appendChild(metaLine);
@@ -1734,12 +1733,12 @@
             const alreadyOwnedCount = Number(data.alreadyOwnedCount || 0);
             const skippedCount = Number(data.skippedCount || 0);
 
-            notice.textContent = `Import termine: ${importedCount} importee(s), ${alreadyOwnedCount} deja rattachee(s), ${skippedCount} ignoree(s).`;
+            notice.textContent = `Import terminé: ${importedCount} importée(s), ${alreadyOwnedCount} déjà rattachée(s), ${skippedCount} ignorée(s).`;
             notice.className = "notice success";
 
             await renderItems();
           } catch (_) {
-            notice.textContent = "Erreur reseau. Reessayez.";
+            notice.textContent = "Erreur réseau. Réessayez.";
             updateImportButtonState();
           }
         });
@@ -1862,36 +1861,36 @@
       }
 
       function buildDangerZoneCard() {
-        const card = document.createElement("div");
-        card.className = "card danger-zone-card";
+        const section = document.createElement("div");
+        section.className = "danger-zone-section";
 
         const title = document.createElement("div");
         title.className = "section-title";
         title.textContent = "Zone sensible";
-        card.appendChild(title);
+        section.appendChild(title);
 
         const warning = document.createElement("p");
         warning.className = "danger-zone-warning";
-        warning.textContent = "Action irreversible.";
-        card.appendChild(warning);
+        warning.textContent = "Action irréversible.";
+        section.appendChild(warning);
 
-        card.appendChild(buildDangerAction({
+        section.appendChild(buildDangerAction({
           actionKey: "reset",
-          title: "Remise a zero du compte",
-          description: "Effacer la memoire inter-session et les conversations enregistrees sur l'appareil.",
-          modalText: "Cette action efface la memoire inter-session et les conversations enregistrees sur l'appareil.",
+          title: "Remise à zéro du compte",
+          description: "Effacer la mémoire inter-session et les conversations enregistrées sur l'appareil.",
+          modalText: "Cette action efface la mémoire inter-session et les conversations enregistrées sur l'appareil.",
           onConfirm: handleSensitiveAccountReset
         }));
 
-        card.appendChild(buildDangerAction({
+        section.appendChild(buildDangerAction({
           actionKey: "closure",
-          title: "Cloturer mon compte",
+          title: "Clôturer mon compte",
           description: "",
-          modalText: "Cette action cloture le compte et coupe l'acces immediatement.",
+          modalText: "Cette action clôture le compte et coupe l'accès immédiatement.",
           onConfirm: handleSensitiveAccountClosure
         }));
 
-        return card;
+        return section;
       }
 
       function buildDangerAction({ actionKey, title, description, modalText, onConfirm }) {
@@ -1905,7 +1904,7 @@
         triggerBtn.addEventListener("click", () => {
           openSensitiveActionModal({
             title,
-            text: modalText || description || "Action irreversible.",
+            text: modalText || description || "Action irréversible.",
             anchorEl: triggerBtn,
             onConfirm
           });
@@ -1957,7 +1956,7 @@
         // Modal centers naturally on viewport via flexbox
 
         titleEl.textContent = title || "Confirmation";
-        textEl.textContent = text || "Action irreversible.";
+        textEl.textContent = text || "Action irréversible.";
         noticeEl.textContent = "";
         noticeEl.className = "notice sensitive-modal-notice";
 
@@ -2036,7 +2035,7 @@
               title: title || "unknown_action",
               error: err && err.message ? err.message : String(err)
             });
-            noticeEl.textContent = "Operation impossible pour le moment";
+            noticeEl.textContent = "Opération impossible pour le moment";
             noticeEl.className = "notice sensitive-modal-notice";
             isBusy = false;
             cancelBtn.disabled = false;
@@ -2098,13 +2097,13 @@
             error: data?.error || null,
             success: data?.success === true
           });
-          throw new Error("Operation impossible pour le moment");
+          throw new Error("Opération impossible pour le moment");
         }
 
         clearLocalConversationStorageForReset();
         rotateLocalAnonymousUserId();
 
-        noticeEl.textContent = "Remise a zero effectuee";
+        noticeEl.textContent = "Remise à zéro effectuée";
         noticeEl.className = "notice success";
 
         setTimeout(() => {
@@ -2127,10 +2126,10 @@
             error: data?.error || null,
             success: data?.success === true
           });
-          throw new Error("Operation impossible pour le moment");
+          throw new Error("Opération impossible pour le moment");
         }
 
-        noticeEl.textContent = "Compte reinitialise";
+        noticeEl.textContent = "Compte réinitialisé";
         noticeEl.className = "notice success";
 
         setTimeout(() => {
@@ -2143,7 +2142,7 @@
         card.className = "card clickable-card";
         card.tabIndex = 0;
         card.setAttribute("role", "button");
-        card.setAttribute("aria-label", "Ouvrir Confidentialite");
+        card.setAttribute("aria-label", "Ouvrir Confidentialité");
 
         const linkRow = document.createElement("div");
         linkRow.className = "card-link-row";
@@ -2152,12 +2151,12 @@
 
         const title = document.createElement("div");
         title.className = "section-title";
-        title.textContent = "Confidentialite";
+        title.textContent = "Confidentialité";
         textWrap.appendChild(title);
 
         const help = document.createElement("p");
         help.className = "setting-help";
-        help.textContent = "Reglez ici vos options de confidentialite, dont le verrouillage biometrie et le mot de passe.";
+        help.textContent = "Réglez ici vos options de confidentialité, dont le verrouillage biométrie et le mot de passe.";
         textWrap.appendChild(help);
 
         const arrow = document.createElement("div");
@@ -2187,7 +2186,7 @@
         header.className = "subscreen-header";
 
         const title = document.createElement("h1");
-        title.textContent = "Confidentialite";
+        title.textContent = "Confidentialité";
         title.style.margin = "0";
 
         header.appendChild(title);
@@ -2231,7 +2230,7 @@
 
         const title = document.createElement("div");
         title.className = "section-title";
-        title.textContent = "Verrouillage biometrie";
+        title.textContent = "Verrouillage biométrie";
         card.appendChild(title);
 
         const row = document.createElement("label");
@@ -2239,7 +2238,7 @@
         row.setAttribute("for", "biometricLockToggle");
 
         const rowText = document.createElement("span");
-        rowText.textContent = "Demander la biometrie pour acceder a la session";
+        rowText.textContent = "Demander la biométrie pour accéder à la session";
         rowText.style.fontSize = "14px";
         rowText.style.color = "#333";
 
@@ -2256,7 +2255,7 @@
         const note = document.createElement("p");
         note.className = "longterm-memory-warning";
         note.style.marginTop = "10px";
-        note.textContent = "Attention : certains appareils ne supportent pas la securite biometrie au retour dans l'app deja ouverte. Si ce probleme vous concerne, pensez a bien refermer votre application apres usage.";
+        note.textContent = "Attention : certains appareils ne supportent pas la sécurité biométrie au retour dans l'app déjà ouverte. Si ce problème vous concerne, pensez à bien refermer votre application après usage.";
         card.appendChild(note);
 
         const autoSaveBiometric = async () => {
@@ -2295,7 +2294,7 @@
 
         const title = document.createElement("div");
         title.className = "section-title";
-        title.textContent = "Confidentialite par defaut";
+        title.textContent = "Confidentialité par défaut";
         card.appendChild(title);
 
         const row = document.createElement("label");
@@ -2303,7 +2302,7 @@
         row.setAttribute("for", "privateDefaultToggle");
 
         const rowText = document.createElement("span");
-        rowText.textContent = "Mode prive par defaut pour les futures conversations";
+        rowText.textContent = "Mode privé par défaut pour les futures conversations";
         rowText.style.fontSize = "14px";
         rowText.style.color = "#333";
 
@@ -2546,7 +2545,7 @@
         try {
           await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
         } catch (_) {}
-        navigateAway("/");
+        navigateAway("/auth.html", { replace: true });
       };
 
       function showError(msg) {

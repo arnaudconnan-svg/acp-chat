@@ -47,9 +47,9 @@
       ]
     },
     {
-      "name": "Nouvelle conversation privee",
-      "short_name": "Conversation privee",
-      "description": "Demarrer une nouvelle conversation privee",
+      "name": "Nouvelle conversation priv\u00e9e",
+      "short_name": "Conversation priv\u00e9e",
+      "description": "D\u00e9marrer une nouvelle conversation priv\u00e9e",
       "url": "/?launch=new-private",
       "icons": [
         {

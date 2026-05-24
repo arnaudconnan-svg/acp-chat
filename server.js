@@ -299,8 +299,8 @@ function createEmailNotifier() {
       await send(
         "[Facilitat.io] Nouveau message utilisateur",
         [
-          "Il y a un ou plusieurs nouveaux messages enregistres dans Firebase.",
-          "Rappel: une seule alerte est envoyee tant que l'admin n'est pas revenue sur /admin.html"
+          "Il y a un ou plusieurs nouveaux messages enregistr\u00e9s dans Firebase.",
+          "Rappel: une seule alerte est envoy\u00e9e tant que l'admin n'est pas revenue sur /admin.html"
         ].join("\n")
       );
     }
@@ -2262,7 +2262,7 @@ app.post("/api/account/reset", requireUserAuth, async (req, res) => {
         hasEmail: !!nextUserRecord.email,
         hasPasswordHash: !!nextUserRecord.passwordHash
       });
-      return res.status(400).json({ error: "Compte incomplet pour remise a zero" });
+      return res.status(400).json({ error: "Compte incomplet pour remise \u00e0 z\u00e9ro" });
     }
 
     await usersRef.child(newUserId).set(nextUserRecord);
@@ -2323,7 +2323,7 @@ app.post("/api/account/reset", requireUserAuth, async (req, res) => {
       at: new Date().toISOString(),
       error: err && err.message ? err.message : String(err)
     });
-    return res.status(500).json({ error: "Operation impossible pour le moment" });
+    return res.status(500).json({ error: "Op\u00e9ration impossible pour le moment" });
   }
 });
 
@@ -2419,7 +2419,7 @@ app.post("/api/account/close", requireUserAuth, async (req, res) => {
       at: new Date().toISOString(),
       error: err && err.message ? err.message : String(err)
     });
-    return res.status(500).json({ error: "Operation impossible pour le moment" });
+    return res.status(500).json({ error: "Op\u00e9ration impossible pour le moment" });
   }
 });
 

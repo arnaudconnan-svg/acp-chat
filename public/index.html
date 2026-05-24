@@ -2359,7 +2359,7 @@
     </div>
 
     <div id="conversationsFabWrap">
-      <button id="conversationsPrivateFabBtn" type="button" aria-label="Nouvelle session privee">
+      <button id="conversationsPrivateFabBtn" type="button" aria-label="Nouvelle session priv&eacute;e">
         <svg viewBox="0 0 24 24" aria-hidden="true" fill="none">
           <path d="M6.5 11.2h11a1.5 1.5 0 0 1 1.5 1.5v5.8a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-5.8a1.5 1.5 0 0 1 1.5-1.5z"
             stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"></path>
@@ -2492,17 +2492,17 @@
       <h3 class="modalTitle">Avant de commencer</h3>
 
       <p class="modalText">
-        A chaque nouvelle session, les informations importantes sont gardees en memoire pour la continuite de votre
+        &Agrave; chaque nouvelle session, les informations importantes sont gard&eacute;es en m&eacute;moire pour la continuit&eacute; de votre
         exploration personnelle.
       </p>
 
       <p class="modalText">
-        Les sessions sont limitees dans le temps (12h sans activite).
+        Les sessions sont limit&eacute;es dans le temps (12h sans activit&eacute;).
       </p>
 
       <p class="modalText">
-        Elles sont aussi limitees en longueur. Vous serez prevenu suffisamment avant la fin de la session pour anticiper
-        le passage a une nouvelle session.
+        Elles sont aussi limit&eacute;es en longueur. Vous serez pr&eacute;venu suffisamment avant la fin de la session pour anticiper
+        le passage &agrave; une nouvelle session.
       </p>
 
       <label class="modalCheckboxRow">
@@ -2520,7 +2520,7 @@
     <div class="modalBox">
       <h3 class="modalTitle">Nouvelle session</h3>
       <p class="modalText">
-        Voulez-vous vraiment demarrer une nouvelle session ?
+        Voulez-vous vraiment d&eacute;marrer une nouvelle session ?
       </p>
 
       <div class="modalActions">
@@ -2532,9 +2532,9 @@
 
   <div id="expiredSessionModal" class="modal">
     <div class="modalBox">
-      <h3 class="modalTitle">Session expiree</h3>
+      <h3 class="modalTitle">Session expir&eacute;e</h3>
       <p class="modalText">
-        La session precedente a expire.
+        La session pr&eacute;c&eacute;dente a expir&eacute;.
       </p>
 
       <div class="modalActions">
@@ -2545,9 +2545,9 @@
 
   <div id="terminatedSessionModal" class="modal">
     <div class="modalBox">
-      <h3 class="modalTitle">Session terminee</h3>
+      <h3 class="modalTitle">Session termin&eacute;e</h3>
       <p class="modalText" id="terminatedSessionText">
-        Cette session est arrivee a sa limite.
+        Cette session est arriv&eacute;e &agrave; sa limite.
       </p>
 
       <div class="modalActions">
@@ -2597,15 +2597,15 @@
 
   <div id="privateConversationModal" class="modal">
     <div class="modalBox">
-      <h3 class="modalTitle">Conversation privee (locale)</h3>
+      <h3 class="modalTitle">Conversation priv&eacute;e (locale)</h3>
       <p class="modalText">
-        Cette conversation restera sur cet appareil et ne sera pas enregistree dans Firebase par defaut.
+        Cette conversation restera sur cet appareil et ne sera pas enregistr&eacute;e dans Firebase par d&eacute;faut.
       </p>
       <p class="modalText">
-        Les messages transitent tout de meme par ChatGPT/OpenAI pour generer les reponses.
+        Les messages transitent tout de m&ecirc;me par ChatGPT/OpenAI pour g&eacute;n&eacute;rer les r&eacute;ponses.
       </p>
       <p class="modalText">
-        La memoire inter-session est desactivee pour cette conversation.
+        La m&eacute;moire inter-session est d&eacute;sactiv&eacute;e pour cette conversation.
       </p>
       <div class="modalActions">
         <button class="modalBtnSecondary" id="cancelPrivateConversationBtn" type="button">Annuler</button>
@@ -3779,18 +3779,18 @@
     }
 
     const CRISIS_SUPPORT_CARD_TEXT_NEUTRAL = {
-      title: "Rappel de securite",
-      body: "Si le danger redevient immediat, utilise sans attendre ces ressources : "
+      title: "Rappel de s\u00e9curit\u00e9",
+      body: "Si le danger redevient imm\u00e9diat, utilise sans attendre ces ressources : "
     };
 
     const CRISIS_SUPPORT_CARD_TEXT_TUTOIEMENT = {
-      title: "Rappel de securite",
-      body: "Si le danger redevient immediat, utilise sans attendre ces ressources : "
+      title: "Rappel de s\u00e9curit\u00e9",
+      body: "Si le danger redevient imm\u00e9diat, utilise sans attendre ces ressources : "
     };
 
     const CRISIS_SUPPORT_CARD_TEXT_VOUVOIEMENT = {
-      title: "Rappel de securite",
-      body: "Si le danger redevient immediat, utilisez sans attendre ces ressources : "
+      title: "Rappel de s\u00e9curit\u00e9",
+      body: "Si le danger redevient imm\u00e9diat, utilisez sans attendre ces ressources : "
     };
 
     function getCrisisSupportCardCopy() {
@@ -9123,7 +9123,7 @@
           privateIcon.appendChild(shacklePath);
           titleRow.appendChild(privateIcon);
 
-          openBtn.setAttribute("aria-label", `Ouvrir la conversation privee: ${safeTitle}`);
+          openBtn.setAttribute("aria-label", `Ouvrir la conversation priv\u00e9e: ${safeTitle}`);
         }
 
         const titleText = document.createElement("span");
@@ -10805,7 +10805,7 @@
 
       const persisted = await persistConversationTitleIfApplicable(conversationId, newTitle || null);
       if (!persisted) {
-        showTemporaryNotice("Renommage enregistre localement seulement");
+        showTemporaryNotice("Renommage enregistr\u00e9 localement seulement");
       }
 
       renderConversationsList();
@@ -12010,8 +12010,8 @@
         closeEditMode({ restoreDraft: false });
         renderHistory();
         const replayNotice = replayPayload.anchorMessageId ?
-          "Contexte charge depuis " + replayPayload.sourceConversationId + " (point cible + debug conserves, flags reinitialises)" :
-          "Contexte charge depuis " + replayPayload.sourceConversationId + " (debug conserve, flags reinitialises)";
+          "Contexte charg\u00e9 depuis " + replayPayload.sourceConversationId + " (point cible + debug conserv\u00e9s, flags r\u00e9initialis\u00e9s)" :
+          "Contexte charg\u00e9 depuis " + replayPayload.sourceConversationId + " (debug conserv\u00e9, flags r\u00e9initialis\u00e9s)";
         showTemporaryNotice(replayNotice);
         updateActivity();
         defocusInput();
@@ -12058,7 +12058,7 @@
           showScreen("chatScreen", { replaceHistory: true, pushHistory: false, noAnimation: true });
           renderHistory();
           scrollChatToBottom();
-          showTemporaryNotice("Branche chargee depuis la memoire locale");
+          showTemporaryNotice("Branche charg\u00e9e depuis la m\u00e9moire locale");
           updateActivity();
           return;
         }
@@ -12105,7 +12105,7 @@
         showScreen("chatScreen", { replaceHistory: true, pushHistory: false, noAnimation: true });
         renderHistory();
         scrollChatToBottom();
-        showTemporaryNotice("Branche chargee");
+        showTemporaryNotice("Branche charg\u00e9e");
         updateActivity();
         return;
       }

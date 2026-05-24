@@ -790,7 +790,7 @@
           }
 
           closeAdminWipeModal();
-          alert("Wipe Firebase termine.");
+          alert("Wipe Firebase termin\u00e9.");
           await loadConversations();
         } catch (err) {
           alert("Erreur wipe: " + (err?.message || "inconnue"));
@@ -931,7 +931,7 @@
         const response = await readAdminJsonResponse(res);
 
         if (response.redirectedToLogin) {
-          list.innerHTML = '<div class="error">Session admin expiree. Redirection...</div>';
+          list.innerHTML = '<div class="error">Session admin expir\u00e9e. Redirection...</div>';
           return;
         }
 
@@ -1343,7 +1343,7 @@
         const response = await readAdminJsonResponse(res);
 
         if (response.redirectedToLogin) {
-          list.innerHTML = '<div class="error">Session admin expiree. Redirection...</div>';
+          list.innerHTML = '<div class="error">Session admin expir\u00e9e. Redirection...</div>';
           return;
         }
         
@@ -1413,7 +1413,7 @@
         };
 
         const deleteConversation = async conv => {
-          const ok = window.confirm("Supprimer cette conversation de Firebase ?\n\nCette action est irreversible.");
+          const ok = window.confirm("Supprimer cette conversation de Firebase ?\n\nCette action est irr\u00e9versible.");
           if (!ok) {
             return;
           }
@@ -1669,7 +1669,7 @@
         const response = await readAdminJsonResponse(res);
 
         if (response.redirectedToLogin) {
-          list.innerHTML = '<div class="error">Session admin expiree. Redirection...</div>';
+          list.innerHTML = '<div class="error">Session admin expir\u00e9e. Redirection...</div>';
           return;
         }
 

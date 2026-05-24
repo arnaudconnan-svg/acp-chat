@@ -401,30 +401,30 @@
 
     if (meta.interpretationRejection === true) {
       var interpretationLine = variant === "admin"
-        ? "Un rejet d'interpretation a ete detecte et pris en compte."
-        : "Le systeme a detecte un rejet d'interpretation et a recentre la reponse.";
+        ? "Un rejet d'interpretation a ete d\u00e9tect\u00e9 et pris en compte."
+        : "Le syst\u00e8me a d\u00e9tect\u00e9 un rejet d'interpretation et a recentr\u00e9 la r\u00e9ponse.";
       lines.push(enrichLineWithMatch(interpretationLine, analyzerMatchMap, ["interpretation_rejection_guard_no_signal"]));
     }
 
     if (meta.needsSoberReadjustment === true) {
       if (variant === "admin") {
-        lines.push("Un reajustement sobre a ete applique sur ce tour.");
+        lines.push("Un r\u00e9ajustement sobre a \u00e9t\u00e9 appliqu\u00e9 sur ce tour.");
       } else {
-        lines.push("Un reajustement sobre a ete applique pour reduire la pression de la reponse.");
+        lines.push("Un r\u00e9ajustement sobre a \u00e9t\u00e9 appliqu\u00e9 pour r\u00e9duire la pression de la r\u00e9ponse.");
       }
     }
 
     if (meta.relationalAdjustmentActive === true) {
       var relationalLine = variant === "admin"
-        ? "Un ajustement relationnel a ete declenche."
-        : "Un ajustement relationnel a ete declenche pour proteger l'alliance.";
+        ? "Un ajustement relationnel a \u00e9t\u00e9 d\u00e9clench\u00e9."
+        : "Un ajustement relationnel a \u00e9t\u00e9 d\u00e9clench\u00e9 pour prot\u00e9ger l'alliance.";
       lines.push(enrichLineWithMatch(relationalLine, analyzerMatchMap, ["relational_adjustment_guard_no_trigger"]));
     }
 
     if (meta.emotionalDecentering === true) {
       var decenteringLine = variant === "admin"
-        ? "Un decentrage emotionnel a ete detecte."
-        : "Le systeme a detecte un decentrage emotionnel.";
+        ? "Un d\u00e9centrage \u00e9motionnel a \u00e9t\u00e9 d\u00e9tect\u00e9."
+        : "Le syst\u00e8me a d\u00e9tect\u00e9 un d\u00e9centrage \u00e9motionnel.";
       lines.push(enrichLineWithMatch(decenteringLine, analyzerMatchMap, ["emotional_decentering_guard_active", "emotional_decentering_guard_llm_review"]));
     }
 
@@ -448,7 +448,7 @@
     }
 
     if (meta.externalSupportMode && meta.externalSupportMode !== "none") {
-      lines.push("Rapport au soutien externe detecte: " + meta.externalSupportMode + ".");
+      lines.push("Rapport au soutien externe d\u00e9tect\u00e9: " + meta.externalSupportMode + ".");
     }
 
     return lines;
