@@ -118,7 +118,7 @@
 
     .password-field-wrap input[type="password"],
     .password-field-wrap input[type="text"] {
-      padding-right: 68px;
+      padding-right: 52px;
     }
 
     .toggle-password-btn {
@@ -126,20 +126,62 @@
       top: 50%;
       right: 10px;
       transform: translateY(-50%);
-      border: none;
+      border: 1px solid transparent;
       background: transparent;
       color: #777;
-      font-size: 11px;
       cursor: pointer;
-      padding: 4px 0;
-      width: 50px;
-      text-align: center;
+      padding: 0;
+      width: 32px;
+      height: 32px;
       border-radius: 6px;
-      line-height: 1.1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     }
 
     .toggle-password-btn:hover {
-      background: rgba(0, 0, 0, 0.05);
+      color: #4d4d4d;
+    }
+
+    .toggle-password-btn:focus-visible {
+      outline: none;
+      border-color: #1a1a1a;
+      background: transparent;
+    }
+
+    .toggle-password-btn svg {
+      width: 18px;
+      height: 18px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      pointer-events: none;
+    }
+
+    .toggle-password-btn .icon-eye-off {
+      display: none;
+    }
+
+    .toggle-password-btn.is-visible .icon-eye {
+      display: none;
+    }
+
+    .toggle-password-btn.is-visible .icon-eye-off {
+      display: block;
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
     }
 
     input.mismatch-focus {
@@ -204,7 +246,11 @@
         <label for="loginPassword">Mot de passe</label>
         <div class="password-field-wrap">
           <input type="password" id="loginPassword" name="password" required autocomplete="current-password" placeholder="••••••••">
-          <button type="button" class="toggle-password-btn" data-target="loginPassword">Voir</button>
+          <button type="button" class="toggle-password-btn" data-target="loginPassword" aria-label="Afficher le mot de passe" title="Afficher le mot de passe">
+            <span class="sr-only">Afficher le mot de passe</span>
+            <svg class="icon-eye" viewBox="0 0 24 24" aria-hidden="true"><path d="M1 12C3.8 7.5 7.4 5.25 12 5.25S20.2 7.5 23 12c-2.8 4.5-6.4 6.75-11 6.75S3.8 16.5 1 12Z"></path><circle cx="12" cy="12" r="3.25"></circle></svg>
+            <svg class="icon-eye-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M1 12C3.8 7.5 7.4 5.25 12 5.25S20.2 7.5 23 12c-2.8 4.5-6.4 6.75-11 6.75S3.8 16.5 1 12Z"></path><circle cx="12" cy="12" r="3.25"></circle><line x1="3" y1="21" x2="21" y2="3"></line></svg>
+          </button>
         </div>
       </div>
       <button type="submit" class="submit-btn" id="loginBtn">Se connecter</button>
@@ -225,14 +271,22 @@
         <label for="regPassword">Mot de passe</label>
         <div class="password-field-wrap">
           <input type="password" id="regPassword" name="password" required autocomplete="new-password" minlength="8" placeholder="8 caractères minimum">
-          <button type="button" class="toggle-password-btn" data-target="regPassword">Voir</button>
+          <button type="button" class="toggle-password-btn" data-target="regPassword" aria-label="Afficher le mot de passe" title="Afficher le mot de passe">
+            <span class="sr-only">Afficher le mot de passe</span>
+            <svg class="icon-eye" viewBox="0 0 24 24" aria-hidden="true"><path d="M1 12C3.8 7.5 7.4 5.25 12 5.25S20.2 7.5 23 12c-2.8 4.5-6.4 6.75-11 6.75S3.8 16.5 1 12Z"></path><circle cx="12" cy="12" r="3.25"></circle></svg>
+            <svg class="icon-eye-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M1 12C3.8 7.5 7.4 5.25 12 5.25S20.2 7.5 23 12c-2.8 4.5-6.4 6.75-11 6.75S3.8 16.5 1 12Z"></path><circle cx="12" cy="12" r="3.25"></circle><line x1="3" y1="21" x2="21" y2="3"></line></svg>
+          </button>
         </div>
       </div>
       <div class="form-group">
         <label for="regPassword2">Confirmer le mot de passe</label>
         <div class="password-field-wrap">
           <input type="password" id="regPassword2" name="password2" required autocomplete="new-password" placeholder="••••••••">
-          <button type="button" class="toggle-password-btn" data-target="regPassword2">Voir</button>
+          <button type="button" class="toggle-password-btn" data-target="regPassword2" aria-label="Afficher le mot de passe" title="Afficher le mot de passe">
+            <span class="sr-only">Afficher le mot de passe</span>
+            <svg class="icon-eye" viewBox="0 0 24 24" aria-hidden="true"><path d="M1 12C3.8 7.5 7.4 5.25 12 5.25S20.2 7.5 23 12c-2.8 4.5-6.4 6.75-11 6.75S3.8 16.5 1 12Z"></path><circle cx="12" cy="12" r="3.25"></circle></svg>
+            <svg class="icon-eye-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M1 12C3.8 7.5 7.4 5.25 12 5.25S20.2 7.5 23 12c-2.8 4.5-6.4 6.75-11 6.75S3.8 16.5 1 12Z"></path><circle cx="12" cy="12" r="3.25"></circle><line x1="3" y1="21" x2="21" y2="3"></line></svg>
+          </button>
         </div>
       </div>
       <button type="submit" class="submit-btn" id="registerBtn">Créer mon compte</button>
@@ -305,16 +359,60 @@
       }
 
       function initPasswordToggles() {
+        function setPasswordToggleVisualState(btn, isVisible) {
+          if (!btn) return;
+          btn.classList.toggle("is-visible", isVisible === true);
+          const label = isVisible ? "Masquer le mot de passe" : "Afficher le mot de passe";
+          btn.setAttribute("aria-label", label);
+          btn.setAttribute("title", label);
+          const srOnly = btn.querySelector(".sr-only");
+          if (srOnly) {
+            srOnly.textContent = label;
+          }
+        }
+
+        function syncPasswordToggleWithInput(btn) {
+          if (!btn) return;
+          const targetId = btn.getAttribute("data-target");
+          const input = targetId ? document.getElementById(targetId) : null;
+          if (!input) return;
+          setPasswordToggleVisualState(btn, input.type === "text");
+        }
+
         document.querySelectorAll(".toggle-password-btn").forEach(btn => {
+          syncPasswordToggleWithInput(btn);
+
+          const targetId = btn.getAttribute("data-target");
+          const input = targetId ? document.getElementById(targetId) : null;
+          if (input) {
+            input.addEventListener("focus", () => syncPasswordToggleWithInput(btn));
+            input.addEventListener("input", () => syncPasswordToggleWithInput(btn));
+            input.addEventListener("change", () => syncPasswordToggleWithInput(btn));
+
+            const typeObserver = new MutationObserver(() => syncPasswordToggleWithInput(btn));
+            typeObserver.observe(input, { attributes: true, attributeFilter: ["type"] });
+
+            requestAnimationFrame(() => syncPasswordToggleWithInput(btn));
+            setTimeout(() => syncPasswordToggleWithInput(btn), 120);
+          }
+
           btn.addEventListener("click", () => {
-            const targetId = btn.getAttribute("data-target");
-            const input = targetId ? document.getElementById(targetId) : null;
+            const clickTargetId = btn.getAttribute("data-target");
+            const input = clickTargetId ? document.getElementById(clickTargetId) : null;
             if (!input) return;
 
             const isHidden = input.type === "password";
             input.type = isHidden ? "text" : "password";
-            btn.textContent = isHidden ? "Masquer" : "Voir";
+            setPasswordToggleVisualState(btn, !isHidden);
           });
+        });
+
+        window.addEventListener("pageshow", () => {
+          document.querySelectorAll(".toggle-password-btn").forEach(syncPasswordToggleWithInput);
+        });
+
+        window.addEventListener("focus", () => {
+          document.querySelectorAll(".toggle-password-btn").forEach(syncPasswordToggleWithInput);
         });
       }
 
