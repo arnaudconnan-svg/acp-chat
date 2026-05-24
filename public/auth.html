@@ -604,10 +604,10 @@
               navigateAway(getRedirectTarget());
             }, 400);
           } else {
-            notice.textContent = data.error || "Identifiants incorrects.";
+            notice.textContent = mapAuthApiErrorToUserMessage(data.error, "Identifiants incorrects.");
           }
         } catch (_) {
-          notice.textContent = "Erreur réseau. Réessayez.";
+          notice.textContent = "Le service ne répond pas pour le moment. Un nouvel essai sera possible dans quelques instants.";
         } finally {
           loginRequestInFlight = false;
           btn.disabled = false;
@@ -676,6 +676,34 @@
         });
       }
 
+      function mapAuthApiErrorToUserMessage(rawError, fallbackMessage) {
+        const fallback = String(fallbackMessage || "Une erreur est survenue.");
+        const lower = String(rawError || "").trim().toLowerCase();
+        if (!lower) return fallback;
+
+        if (lower.includes("unauthorized") || lower.includes("identifiants incorrects")) {
+          return "Identifiants incorrects.";
+        }
+
+        if (lower.includes("invalid email")) {
+          return "Adresse e-mail invalide.";
+        }
+
+        if (lower.includes("email already registered")) {
+          return "Cette adresse e-mail est déjà utilisée.";
+        }
+
+        if (lower.includes("password must contain at least")) {
+          return "Le mot de passe doit contenir au moins 10 caractères.";
+        }
+
+        if (lower.includes("invalid") || lower.includes("invalide")) {
+          return "Certaines informations ne sont pas valides.";
+        }
+
+        return fallback;
+      }
+
       document.addEventListener("visibilitychange", () => {
         if (document.visibilityState === "visible") {
           maybeAutoSubmitLoginFromAutofill();
@@ -736,10 +764,10 @@
               navigateAway(getRedirectTarget());
             }, 400);
           } else {
-            notice.textContent = data.error || "Impossible de créer le compte.";
+            notice.textContent = mapAuthApiErrorToUserMessage(data.error, "Impossible de créer le compte pour le moment.");
           }
         } catch (_) {
-          notice.textContent = "Erreur réseau. Réessayez.";
+          notice.textContent = "Le service ne répond pas pour le moment. Un nouvel essai sera possible dans quelques instants.";
         } finally {
           btn.disabled = false;
         }

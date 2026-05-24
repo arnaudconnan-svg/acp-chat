@@ -3578,7 +3578,7 @@
 
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || "Erreur réseau");
+        throw new Error(body.error || "Erreur r\u00e9seau");
       }
 
       const responseData = await res.json().catch(() => ({}));
@@ -3728,7 +3728,7 @@
             await executeMakePublic();
             closeMakePublicModal();
           } catch (err) {
-            alert("Erreur : " + (err?.message || "inconnue"));
+            alert("Op\u00e9ration impossible pour le moment : " + (err?.message || "inconnue"));
             closeMakePublicModal();
           }
         };
@@ -4860,7 +4860,7 @@
             status: createRes.status,
             error: String(data.error || "")
           });
-          showTemporaryNotice("Erreur branche : " + (data.error || createRes.status));
+          showTemporaryNotice("Branchement impossible : " + (data.error || createRes.status));
           return;
         }
 
@@ -4873,7 +4873,7 @@
             sourceConversationId,
             anchorMessageId
           });
-          showTemporaryNotice("Erreur branche : reponse invalide");
+          showTemporaryNotice("Branchement impossible : r\u00e9ponse invalide.");
           return;
         }
 
@@ -4897,7 +4897,7 @@
             status: activateRes.status,
             error: String(data.error || "")
           });
-          showTemporaryNotice("Erreur activation branche : " + (data.error || activateRes.status));
+          showTemporaryNotice("Activation de branche impossible : " + (data.error || activateRes.status));
           return;
         }
 
@@ -7344,7 +7344,7 @@
         showTemporaryNotice("Merci pour votre retour.");
       } catch (err) {
         console.error("[FEEDBACK_SUBMIT]", err && err.message ? err.message : String(err));
-        showTemporaryNotice("Envoi au developpeur impossible. Retour conserve localement.");
+        showTemporaryNotice("Envoi \u00e0 l'\u00c9quipe Facilitat.io impossible. Retour conserv\u00e9 localement.");
       }
     }
     // -- /Feedback -------------------------------------------------------------
@@ -8474,7 +8474,7 @@
 
         const copyBotBtn = document.createElement("button");
         copyBotBtn.type = "button";
-        copyBotBtn.setAttribute("aria-label", "Copier la reponse");
+        copyBotBtn.setAttribute("aria-label", "Copier la r\u00e9ponse");
         copyBotBtn.title = "Copier";
         copyBotBtn.className = "messageActionBtn messageActionBtnBot";
         copyBotBtn.innerHTML = getCopyIconMarkup();
@@ -8492,7 +8492,7 @@
 
         const thumbDownBtn = document.createElement("button");
         thumbDownBtn.type = "button";
-        thumbDownBtn.setAttribute("aria-label", "Avis negatif");
+        thumbDownBtn.setAttribute("aria-label", "Avis n\u00e9gatif");
         thumbDownBtn.title = "Pouce vers le bas";
         thumbDownBtn.className = "messageActionBtn messageActionBtnBot messageActionBtnBotAux";
         const thumbDownIdleMarkup = getThumbDownIconMarkup();
@@ -8554,7 +8554,7 @@
               }
             }
           } else {
-            alert("Option indisponible sur ce navigateur");
+            alert("Partage indisponible sur cet appareil.");
           }
         });
 
@@ -8875,11 +8875,11 @@
       }
 
       if (status >= 500) {
-        return "Je traverse un incident technique cote Facilitat.io. Tu peux reessayer dans quelques instants.";
+        return "Le service Facilitat.io ne r\u00e9pond pas pour le moment. Un nouvel essai sera possible dans quelques instants.";
       }
 
       if (status >= 400) {
-        return "Je n'ai pas pu traiter ce message a cause d'une incoherence technique cote Facilitat.io. Tu peux reessayer.";
+        return "Le message n'a pas pu \u00eatre trait\u00e9 pour le moment. Un nouvel essai sera possible dans quelques instants.";
       }
 
       return "";
@@ -8900,10 +8900,10 @@
       }
 
       if (isOffline) {
-        return "Je ne peux pas envoyer ce message car la connexion internet semble indisponible. Verifie la connexion puis reessaie.";
+        return "Connexion internet indisponible. Le message sera envoyable d\u00e8s le retour de la connexion.";
       }
 
-      return "Je n'ai pas pu joindre le service pour le moment. Verifie la connexion internet puis reessaie.";
+      return "Le service Facilitat.io est momentan\u00e9ment inaccessible. Un nouvel essai sera possible dans quelques instants.";
     }
 
     const BACKEND_WARMUP_MIN_INTERVAL_MS = 45000;
@@ -9609,7 +9609,7 @@
 
       if (isSending) {
         if (editMode.active) {
-          showTemporaryNotice("Attends la reponse en cours avant de modifier un message");
+          showTemporaryNotice("Attends la r\u00e9ponse en cours avant de modifier un message");
           return;
         }
 
@@ -9743,7 +9743,7 @@
                   shouldSkipUserHistoryInsert = true;
                   branchActivated = true;
                 } else {
-                  branchFailureMessage = "Branche invalide : identifiant conversation manquant";
+                  branchFailureMessage = "Branchement impossible : identifiant de conversation manquant";
                   logBranchClientEvent("edit_branch_invalid_payload", {
                     sourceConversationId: conversationIdBeforeSend,
                     anchorMessageId
@@ -9760,7 +9760,7 @@
                 });
               }
             } catch (err) {
-              branchFailureMessage = "Erreur branche : " + (err && err.message ? err.message : "inconnue");
+              branchFailureMessage = "Branchement impossible : " + (err && err.message ? err.message : "inconnue");
               logBranchClientEvent("edit_branch_exception", {
                 sourceConversationId: conversationIdBeforeSend,
                 anchorMessageId,
@@ -10176,7 +10176,7 @@
 
           const copyBotBtn = document.createElement("button");
           copyBotBtn.type = "button";
-          copyBotBtn.setAttribute("aria-label", "Copier la reponse");
+          copyBotBtn.setAttribute("aria-label", "Copier la r\u00e9ponse");
           copyBotBtn.title = "Copier";
           copyBotBtn.className = "messageActionBtn messageActionBtnBot";
           copyBotBtn.innerHTML = getStreamCopyIconMarkup();
@@ -10193,7 +10193,7 @@
 
           const thumbDownBtn = document.createElement("button");
           thumbDownBtn.type = "button";
-          thumbDownBtn.setAttribute("aria-label", "Avis negatif");
+          thumbDownBtn.setAttribute("aria-label", "Avis n\u00e9gatif");
           thumbDownBtn.title = "Pouce vers le bas";
           thumbDownBtn.className = "messageActionBtn messageActionBtnBot messageActionBtnBotAux";
           thumbDownBtn.innerHTML = getStreamThumbDownIconMarkup();
@@ -10250,7 +10250,7 @@
                 }
               }
             } else {
-              alert("Option indisponible sur ce navigateur");
+              alert("Partage indisponible sur cet appareil.");
             }
           });
 
@@ -10660,7 +10660,7 @@
 
             const chatServerFailureMessage = readChatServerFailureMessage(res, data);
             const fallbackErrorMessage = chatServerFailureMessage ||
-              "Je n'ai pas pu te repondre pour le moment. Tu peux reessayer dans quelques instants.";
+              "Le service Facilitat.io ne r\u00e9pond pas pour le moment. Un nouvel essai sera possible dans quelques instants.";
 
             if (
               getConversationId() === requestConversationId &&
@@ -10784,7 +10784,7 @@
 
           if (err && err.name === "AbortError") {
             if (didTimeout) {
-              showTemporaryNotice("Delai depasse: le serveur met trop de temps a repondre.");
+              showTemporaryNotice("D\u00e9lai d\u00e9pass\u00e9 : le service met trop de temps \u00e0 r\u00e9pondre.");
             }
 
             if (liveStreamText.trim()) {
@@ -10795,7 +10795,7 @@
 
           const networkFailureMessage = readChatNetworkFailureMessage(err);
           const fallbackErrorMessage = networkFailureMessage ||
-            "Je traverse un incident technique cote Facilitat.io. Tu peux reessayer dans quelques instants.";
+            "Le service Facilitat.io ne r\u00e9pond pas pour le moment. Un nouvel essai sera possible dans quelques instants.";
 
           if (
             getConversationId() === requestConversationId &&

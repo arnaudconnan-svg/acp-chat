@@ -1079,7 +1079,7 @@
 
           renderPage();
         } catch (_) {
-          showError("Impossible de charger la session. Réessayez.");
+          showError("Le service ne répond pas pour le moment. Un nouvel essai sera possible dans quelques instants.");
         }
       }
 
@@ -1904,7 +1904,7 @@
             const data = await res.json().catch(() => ({}));
 
             if (!res.ok) {
-              notice.textContent = data.error || "Import impossible pour le moment.";
+              notice.textContent = mapAccountApiErrorToUserMessage(data.error, "Import impossible pour le moment.");
               updateImportButtonState();
               return;
             }
@@ -1918,7 +1918,7 @@
 
             await renderItems();
           } catch (_) {
-            notice.textContent = "Erreur réseau. Réessayez.";
+            notice.textContent = "Le service ne répond pas pour le moment. Un nouvel essai sera possible dans quelques instants.";
             updateImportButtonState();
           }
         });
@@ -2028,11 +2028,11 @@
               notice.textContent = "Enregistré.";
               notice.className = "notice success";
             } else {
-              notice.textContent = data.error || "Erreur lors de l'enregistrement.";
+              notice.textContent = mapAccountApiErrorToUserMessage(data.error, "Impossible d'enregistrer la modification pour le moment.");
               saveBtn.disabled = false;
             }
           } catch (_) {
-            notice.textContent = "Erreur réseau. Réessayez.";
+            notice.textContent = "Le service ne répond pas pour le moment. Un nouvel essai sera possible dans quelques instants.";
             saveBtn.disabled = false;
           }
         });
@@ -2687,10 +2687,10 @@
             });
             btn.classList.remove("is-ready");
           } else {
-            notice.textContent = data.error || "Impossible de changer le mot de passe.";
+            notice.textContent = mapAccountApiErrorToUserMessage(data.error, "Impossible de changer le mot de passe pour le moment.");
           }
         } catch (_) {
-          notice.textContent = "Erreur réseau. Réessayez.";
+          notice.textContent = "Le service ne répond pas pour le moment. Un nouvel essai sera possible dans quelques instants.";
         } finally {
           const currentValue = String(document.getElementById("currentPassword").value || "");
           const newValue = String(document.getElementById("newPassword").value || "");
@@ -2715,6 +2715,31 @@
         err.className = "error-notice";
         err.textContent = msg;
         main.appendChild(err);
+      }
+
+      function mapAccountApiErrorToUserMessage(rawError, fallbackMessage) {
+        const fallback = String(fallbackMessage || "Une erreur est survenue.");
+        const raw = String(rawError || "").trim();
+        const lower = raw.toLowerCase();
+        if (!lower) return fallback;
+
+        if (lower.includes("current password is incorrect")) {
+          return "Le mot de passe actuel ne correspond pas.";
+        }
+
+        if (lower.includes("password must contain at least")) {
+          return "Le nouveau mot de passe doit contenir au moins 10 caractères.";
+        }
+
+        if (lower.includes("unauthorized") || lower.includes("invalid user session")) {
+          return "Session expirée. Une reconnexion est nécessaire.";
+        }
+
+        if (lower.includes("invalid") || lower.includes("invalide")) {
+          return "Certaines informations ne sont pas valides.";
+        }
+
+        return fallback;
       }
 
       init();

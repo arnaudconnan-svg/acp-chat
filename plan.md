@@ -223,48 +223,6 @@ Pas de régression sur le fonctionnement du stop.
 
 ---
 
-## 8. Nettoyer les chaînes visibles sans accents / trop techniques
-
-Fichiers probables :
-`public/index.html`
-`public/account.html`
-`public/auth.html`
-éventuellement `server.js` si messages frontend issus du backend
-
-Problème :
-Des messages visibles du type Delai depasse, reponse invalide, developpeur, etc. donnent une impression de prototype.
-
-Objectif UX :
-Améliorer la qualité typographique et la perception de finition.
-
-Actions :
-Rechercher les chaînes visibles contenant :
-- Delai
-- reponse
-- developpeur
-- echec
-- connexion
-- invalide
-- erreur
-
-Ne pas modifier les clés techniques internes si elles ne sont pas visibles.
-Corriger uniquement le texte affiché utilisateur.
-
-Utiliser des formulations sobres :
-- Délai dépassé
-- Réponse invalide
-- Développeur
-- Échec de connexion
-- Une erreur est survenue
-
-Critères d’acceptation :
-Les messages visibles sont accentués et lisibles.
-Pas de modification des constantes techniques si elles sont utilisées comme clés.
-Pas de régression fonctionnelle.
-
-
----
-
 ## Point spécifique — Bouton développeur sur l’accueil
 
 Fichier probable :
