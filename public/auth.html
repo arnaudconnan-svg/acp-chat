@@ -17,12 +17,18 @@
     html, body {
       margin: 0;
       padding: 0;
-      height: 100%;
+      min-height: 100%;
       background: #f4f9f9;
       font-family: Arial, sans-serif;
+      overflow-y: auto;
+    }
+
+    body {
       display: flex;
       align-items: center;
       justify-content: center;
+      min-height: 100dvh;
+      padding: calc(24px + env(safe-area-inset-top, 0px)) 0 calc(24px + env(safe-area-inset-bottom, 0px));
       animation: pageIn 0.68s ease 0.05s both;
     }
 
@@ -30,7 +36,7 @@
       width: 100%;
       max-width: 360px;
       padding: 32px 28px 28px;
-      margin: 24px 16px;
+      margin: 0 16px;
     }
 
     .auth-logo {
@@ -42,6 +48,25 @@
     .auth-logo img {
       height: 264px;
       width: auto;
+    }
+
+    .auth-brand-mobile {
+      display: none;
+    }
+
+    .auth-brand-mobile-icon {
+      width: 30px;
+      height: 30px;
+      border-radius: 7px;
+      display: block;
+      flex: 0 0 auto;
+    }
+
+    .auth-brand-mobile-name {
+      font-size: 15px;
+      font-weight: 700;
+      color: #1f2c2e;
+      letter-spacing: 0.01em;
     }
 
     h1 {
@@ -220,11 +245,54 @@
       color: #245e66;
     }
 
+    @media (max-width: 768px) {
+      body {
+        align-items: flex-start;
+        justify-content: flex-start;
+        padding: calc(14px + env(safe-area-inset-top, 0px)) 0 calc(18px + env(safe-area-inset-bottom, 0px));
+      }
+
+      .auth-card {
+        max-width: 420px;
+        padding: 16px 16px 20px;
+      }
+
+      .auth-logo {
+        display: none;
+      }
+
+      .auth-brand-mobile {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        margin: 0 0 12px;
+        max-height: 48px;
+        opacity: 1;
+        transform: translateY(0);
+        transition: opacity 0.22s ease, transform 0.22s ease, max-height 0.22s ease, margin 0.22s ease;
+        overflow: hidden;
+      }
+
+      body.keyboard-open .auth-brand-mobile {
+        opacity: 0;
+        transform: translateY(-8px);
+        max-height: 0;
+        margin: 0;
+        pointer-events: none;
+      }
+    }
+
 
   </style>
 </head>
 <body>
   <div class="auth-card">
+    <div class="auth-brand-mobile" aria-hidden="true">
+      <img class="auth-brand-mobile-icon" src="/images/icon-512.png" alt="">
+      <span class="auth-brand-mobile-name">Facilitat.io</span>
+    </div>
+
     <div class="auth-logo">
       <img src="/images/logo.png" alt="Facilitat.io">
     </div>
@@ -333,6 +401,60 @@
         document.body.style.opacity = "";
         document.body.style.transform = "";
       });
+
+      function initMobileKeyboardState() {
+        const MOBILE_WIDTH = 768;
+        const KEYBOARD_THRESHOLD = 140;
+        const visualViewportRef = window.visualViewport || null;
+        let baselineHeight = 0;
+
+        function isMobileLayout() {
+          return window.innerWidth <= MOBILE_WIDTH;
+        }
+
+        function getViewportHeight() {
+          if (visualViewportRef && Number.isFinite(visualViewportRef.height) && visualViewportRef.height > 0) {
+            return visualViewportRef.height;
+          }
+          return window.innerHeight;
+        }
+
+        function hasInputFocus() {
+          const active = document.activeElement;
+          if (!active) return false;
+          const tag = String(active.tagName || "").toUpperCase();
+          return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
+        }
+
+        function refreshKeyboardState() {
+          if (!isMobileLayout()) {
+            baselineHeight = 0;
+            document.body.classList.remove("keyboard-open");
+            return;
+          }
+
+          const currentHeight = getViewportHeight();
+          if (!baselineHeight || currentHeight > baselineHeight) {
+            baselineHeight = currentHeight;
+          }
+
+          const keyboardOffset = Math.max(0, baselineHeight - currentHeight);
+          const keyboardOpen = keyboardOffset > KEYBOARD_THRESHOLD && hasInputFocus();
+          document.body.classList.toggle("keyboard-open", keyboardOpen);
+        }
+
+        if (visualViewportRef) {
+          visualViewportRef.addEventListener("resize", refreshKeyboardState);
+          visualViewportRef.addEventListener("scroll", refreshKeyboardState);
+        }
+        window.addEventListener("resize", refreshKeyboardState);
+        document.addEventListener("focusin", refreshKeyboardState);
+        document.addEventListener("focusout", () => setTimeout(refreshKeyboardState, 90));
+        window.addEventListener("orientationchange", () => setTimeout(refreshKeyboardState, 120));
+        refreshKeyboardState();
+      }
+
+      initMobileKeyboardState();
 
       // Redirect if already authenticated
       fetch("/api/auth/session", { credentials: "include" })

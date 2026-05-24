@@ -21,6 +21,7 @@
       background: #f4f9f9;
       font-family: Arial, sans-serif;
       color: #1a1a1a;
+      overflow-y: auto;
       animation: pageIn 0.68s ease 0.05s both;
     }
 
@@ -28,7 +29,8 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 0 0 48px;
+      min-height: 100dvh;
+      padding: calc(env(safe-area-inset-top, 0px)) 0 calc(48px + env(safe-area-inset-bottom, 0px));
     }
 
     header {
@@ -44,6 +46,25 @@
     header img {
       height: 144px;
       width: auto;
+    }
+
+    .header-brand-mobile {
+      display: none;
+    }
+
+    .header-brand-mobile-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 7px;
+      display: block;
+      flex: 0 0 auto;
+    }
+
+    .header-brand-mobile-name {
+      font-size: 15px;
+      font-weight: 700;
+      color: #1f2c2e;
+      letter-spacing: 0.01em;
     }
 
     .header-actions {
@@ -728,11 +749,57 @@
     body.subscreen-privacy header .header-actions {
       display: none;
     }
+
+    @media (max-width: 768px) {
+      body {
+        padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+      }
+
+      header {
+        padding: calc(14px + env(safe-area-inset-top, 0px)) 16px 0;
+      }
+
+      header img {
+        display: none;
+      }
+
+      .header-brand-mobile {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin: 0;
+        max-height: 48px;
+        opacity: 1;
+        transform: translateY(0);
+        transition: opacity 0.22s ease, transform 0.22s ease, max-height 0.22s ease, margin 0.22s ease;
+        overflow: hidden;
+      }
+
+      body.keyboard-open .header-brand-mobile {
+        opacity: 0;
+        transform: translateY(-8px);
+        max-height: 0;
+        margin: 0;
+        pointer-events: none;
+      }
+
+      body.keyboard-open header {
+        padding-top: calc(8px + env(safe-area-inset-top, 0px));
+      }
+
+      main {
+        padding: 20px 16px 0;
+      }
+    }
   </style>
 </head>
 <body>
   <header>
     <img src="/images/logo.png" alt="Facilitat.io">
+    <div class="header-brand-mobile" aria-hidden="true">
+      <img class="header-brand-mobile-icon" src="/images/icon-512.png" alt="">
+      <span class="header-brand-mobile-name">Facilitat.io</span>
+    </div>
     <div class="header-actions">
       <button class="btn-link" id="logoutBtn" onclick="handleLogout()">Se déconnecter</button>
     </div>
@@ -871,6 +938,60 @@
         document.body.style.transition = "";
         document.body.style.opacity = "";
       });
+
+      function initMobileKeyboardState() {
+        const MOBILE_WIDTH = 768;
+        const KEYBOARD_THRESHOLD = 140;
+        const visualViewportRef = window.visualViewport || null;
+        let baselineHeight = 0;
+
+        function isMobileLayout() {
+          return window.innerWidth <= MOBILE_WIDTH;
+        }
+
+        function getViewportHeight() {
+          if (visualViewportRef && Number.isFinite(visualViewportRef.height) && visualViewportRef.height > 0) {
+            return visualViewportRef.height;
+          }
+          return window.innerHeight;
+        }
+
+        function hasInputFocus() {
+          const active = document.activeElement;
+          if (!active) return false;
+          const tag = String(active.tagName || "").toUpperCase();
+          return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
+        }
+
+        function refreshKeyboardState() {
+          if (!isMobileLayout()) {
+            baselineHeight = 0;
+            document.body.classList.remove("keyboard-open");
+            return;
+          }
+
+          const currentHeight = getViewportHeight();
+          if (!baselineHeight || currentHeight > baselineHeight) {
+            baselineHeight = currentHeight;
+          }
+
+          const keyboardOffset = Math.max(0, baselineHeight - currentHeight);
+          const keyboardOpen = keyboardOffset > KEYBOARD_THRESHOLD && hasInputFocus();
+          document.body.classList.toggle("keyboard-open", keyboardOpen);
+        }
+
+        if (visualViewportRef) {
+          visualViewportRef.addEventListener("resize", refreshKeyboardState);
+          visualViewportRef.addEventListener("scroll", refreshKeyboardState);
+        }
+        window.addEventListener("resize", refreshKeyboardState);
+        document.addEventListener("focusin", refreshKeyboardState);
+        document.addEventListener("focusout", () => setTimeout(refreshKeyboardState, 90));
+        window.addEventListener("orientationchange", () => setTimeout(refreshKeyboardState, 120));
+        refreshKeyboardState();
+      }
+
+      initMobileKeyboardState();
 
       async function init() {
         const _initParams = new URLSearchParams(window.location.search);
