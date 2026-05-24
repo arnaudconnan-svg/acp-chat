@@ -182,6 +182,26 @@
       color: #555;
     }
 
+    .setting-save-status {
+      margin: 2px 0 0;
+      font-size: 12px;
+      line-height: 1.4;
+      color: #6a7a7d;
+      min-height: 17px;
+    }
+
+    .setting-save-status.is-saving {
+      color: #6a7a7d;
+    }
+
+    .setting-save-status.is-success {
+      color: #2f6d4f;
+    }
+
+    .setting-save-status.is-error {
+      color: #b03a2e;
+    }
+
     .import-list {
       display: flex;
       flex-direction: column;
@@ -673,6 +693,8 @@
       background: #fff;
       padding: 18px;
       box-shadow: 0 14px 32px rgba(20, 63, 69, 0.16);
+      max-height: calc(100dvh - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+      overflow-y: auto;
     }
 
     .usage-modal-title {
@@ -1686,12 +1708,19 @@
             previewRestoreBtn.textContent = "Restaurer cette version";
             previewRestoreBtn.addEventListener("click", () => {
               if (selectedPreviewIndex < 0) return;
-              const confirmed = window.confirm("Restaurer cette version\u202f? Le contenu actuel sera archiv\u00e9.");
-              if (!confirmed) return;
-              textarea.value = previewTextarea.value;
-              counter.textContent = `${textarea.value.length} / 6000`;
-              saveNotice.textContent = "";
-              saveNotice.className = "notice";
+              openSensitiveActionModal({
+                title: "Restaurer cette version",
+                text: "Le contenu actuel sera archiv\u00e9. Continuer ?",
+                anchorEl: previewRestoreBtn,
+                onConfirm: async (noticeEl) => {
+                  textarea.value = previewTextarea.value;
+                  counter.textContent = `${textarea.value.length} / 6000`;
+                  saveNotice.textContent = "";
+                  saveNotice.className = "notice";
+                  noticeEl.textContent = "Version restaur\u00e9e";
+                  noticeEl.className = "notice sensitive-modal-notice success";
+                }
+              });
             });
             previewEl.appendChild(previewRestoreBtn);
 
@@ -2390,6 +2419,24 @@
         } catch (_) {}
       }
 
+      function createToggleSaveStatus() {
+        const statusEl = document.createElement("p");
+        statusEl.className = "setting-save-status";
+        statusEl.textContent = "";
+
+        function setStatus(text, className) {
+          statusEl.textContent = text || "";
+          statusEl.className = "setting-save-status" + (className ? " " + className : "");
+        }
+
+        return {
+          element: statusEl,
+          saving: () => setStatus("Enregistrement…", "is-saving"),
+          success: () => setStatus("Enregistré", "is-success"),
+          error: () => setStatus("Non enregistré — réessaie", "is-error")
+        };
+      }
+
       function buildBiometricLockCard() {
         const card = document.createElement("div");
         card.className = "card";
@@ -2418,7 +2465,14 @@
         row.appendChild(toggle);
         card.appendChild(row);
 
+        const biometricStatus = createToggleSaveStatus();
+        card.appendChild(biometricStatus.element);
+
         const autoSaveBiometric = async () => {
+          const previousValue = currentUser && currentUser.biometricLockEnabled === true;
+          toggle.disabled = true;
+          biometricStatus.saving();
+
           try {
             const desiredEnabled = toggle.checked === true;
 
@@ -2434,13 +2488,23 @@
 
             const data = await res.json().catch(() => ({}));
 
-            if (!res.ok) return;
+            if (!res.ok) {
+              toggle.checked = previousValue;
+              biometricStatus.error();
+              return;
+            }
 
             currentUser.biometricLockEnabled = data.biometricLockEnabled === true;
             currentUser.biometricRelockSeconds = 0;
             toggle.checked = currentUser.biometricLockEnabled === true;
             syncNativeBiometricConfigIfNeeded(currentUser.biometricLockEnabled === true);
-          } catch (_) {}
+            biometricStatus.success();
+          } catch (_) {
+            toggle.checked = previousValue;
+            biometricStatus.error();
+          } finally {
+            toggle.disabled = false;
+          }
         };
 
         toggle.addEventListener("change", autoSaveBiometric);
@@ -2475,7 +2539,14 @@
         row.appendChild(toggle);
         card.appendChild(row);
 
+        const privacyStatus = createToggleSaveStatus();
+        card.appendChild(privacyStatus.element);
+
         toggle.addEventListener("change", async () => {
+          const previousValue = currentUser && currentUser.privateConversationsByDefault === true;
+          toggle.disabled = true;
+          privacyStatus.saving();
+
           try {
             const res = await fetch("/api/account/preferences", {
               method: "PUT",
@@ -2489,14 +2560,19 @@
             const data = await res.json().catch(() => ({}));
 
             if (!res.ok) {
-              toggle.checked = currentUser && currentUser.privateConversationsByDefault === true;
+              toggle.checked = previousValue;
+              privacyStatus.error();
               return;
             }
 
             currentUser.privateConversationsByDefault = data.privateConversationsByDefault === true;
             toggle.checked = currentUser.privateConversationsByDefault === true;
+            privacyStatus.success();
           } catch (_) {
-            toggle.checked = currentUser && currentUser.privateConversationsByDefault === true;
+            toggle.checked = previousValue;
+            privacyStatus.error();
+          } finally {
+            toggle.disabled = false;
           }
         });
 

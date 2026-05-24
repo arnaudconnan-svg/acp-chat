@@ -2165,6 +2165,8 @@
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22);
       font-size: 16px;
       box-sizing: border-box;
+      max-height: calc(100dvh - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+      overflow-y: auto;
     }
 
     .modal.bottom-sheet .modalBox {
@@ -2683,7 +2685,7 @@
           font-family:inherit;
         "></textarea>
       <div class="modalCheckboxRow" style="margin-top:14px;">
-        <input type="checkbox" id="feedbackDevShareToggle" checked />
+        <input type="checkbox" id="feedbackDevShareToggle" />
         <label for="feedbackDevShareToggle">Transmettre au développeur de Facilitat.io</label>
       </div>
       <div class="modalActions">
@@ -3728,7 +3730,7 @@
             await executeMakePublic();
             closeMakePublicModal();
           } catch (err) {
-            alert("Op\u00e9ration impossible pour le moment : " + (err?.message || "inconnue"));
+            showTemporaryNotice("Op\u00e9ration impossible pour le moment.");
             closeMakePublicModal();
           }
         };
@@ -4028,7 +4030,9 @@
     function syncSendButtonMode() {
       const sendBtn = document.getElementById("sendBtn");
       if (!sendBtn) return;
-      sendBtn.classList.toggle("is-stop-mode", !!activeChatRequestId);
+      const stopModeActive = !!activeChatRequestId;
+      sendBtn.classList.toggle("is-stop-mode", stopModeActive);
+      sendBtn.setAttribute("aria-label", stopModeActive ? "Interrompre la r\u00e9ponse" : "Envoyer");
     }
 
     async function stopCurrentChatRequest() {
@@ -6769,19 +6773,8 @@
     }
 
     function scheduleScrollToBottomAutoHide() {
-      const btn = ensureScrollToBottomBtn();
-      if (!btn || !scrollToBottomBtnVisible) return;
-
+      // Keep the button available until the user actually comes back to bottom.
       clearScrollToBottomAutoHideTimer();
-      scrollToBottomBtnHideTimer = setTimeout(() => {
-        if (!scrollToBottomBtnEl || !scrollToBottomBtnVisible) return;
-
-        scrollToBottomBtnEl.style.opacity = "0";
-        scrollToBottomBtnEl.style.pointerEvents = "none";
-        scrollToBottomBtnEl.style.transform = "translateX(-50%) translateY(8px) scale(0.96)";
-        scrollToBottomBtnVisible = false;
-        stopScrollToBottomPulse();
-      }, 700);
     }
 
     function pulseScrollToBottomBtn() {
@@ -6847,12 +6840,11 @@
         btn.style.pointerEvents = "auto";
         btn.style.transform = "translateX(-50%) translateY(0) scale(1)";
         scrollToBottomBtnVisible = true;
+        clearScrollToBottomAutoHideTimer();
 
         if (forcePulse) {
           pulseScrollToBottomBtn();
         }
-
-        scheduleScrollToBottomAutoHide();
         return;
       }
 
@@ -7257,7 +7249,7 @@
         ? "Merci pour votre retour positif."
         : "Dites-nous ce qui pourrait être amélioré.";
       commentInput.value = existing ? (existing.comment || "") : "";
-      devShareToggle.checked = existing ? existing.devShare : true;
+      devShareToggle.checked = existing ? existing.devShare : false;
       applyFeedbackToggleUiState(devShareToggle, devShareLabel, isDevShareLocked);
       confirmBtn.disabled = false;
       confirmBtn.textContent = "Enregistrer";
@@ -8554,7 +8546,7 @@
               }
             }
           } else {
-            alert("Partage indisponible sur cet appareil.");
+            showTemporaryNotice("Partage indisponible sur cet appareil.");
           }
         });
 
@@ -10250,7 +10242,7 @@
                 }
               }
             } else {
-              alert("Partage indisponible sur cet appareil.");
+              showTemporaryNotice("Partage indisponible sur cet appareil.");
             }
           });
 
