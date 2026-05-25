@@ -3,14 +3,10 @@
     ".read": false,
     ".write": false,
     "messages": {
-      ".indexOn": [
-        "conversationId"
-      ]
+      ".indexOn": ["conversationId"]
     },
     "users": {
-      ".indexOn": [
-        "email"
-      ]
+      ".indexOn": ["email"]
     }
   }
 }

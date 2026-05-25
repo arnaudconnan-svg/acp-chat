@@ -1,778 +1,990 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="fr">
-<head>
-  <meta charset="UTF-8">
-  <title>Facilitat.io — Compte</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-  <meta name="theme-color" content="#f4f9f9">
-  <meta name="color-scheme" content="light">
-  <style>
-    *, *::before, *::after { box-sizing: border-box; }
+  <head>
+    <meta charset="UTF-8" />
+    <title>Facilitat.io — Compte</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#f4f9f9" />
+    <meta name="color-scheme" content="light" />
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
 
-    @keyframes pageIn {
-      from { opacity: 0; transform: translateY(12px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
+      @keyframes pageIn {
+        from {
+          opacity: 0;
+          transform: translateY(12px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
 
-    html, body {
-      margin: 0;
-      padding: 0;
-      min-height: 100%;
-      background: #f4f9f9;
-      font-family: Arial, sans-serif;
-      overflow-y: auto;
-    }
-
-    body {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 100dvh;
-      padding: calc(24px + env(safe-area-inset-top, 0px)) 0 calc(24px + env(safe-area-inset-bottom, 0px));
-      animation: pageIn 0.68s ease 0.05s both;
-    }
-
-    .auth-card {
-      width: 100%;
-      max-width: 360px;
-      padding: 32px 28px 28px;
-      margin: 0 16px;
-    }
-
-    .auth-logo {
-      display: flex;
-      justify-content: center;
-      margin-bottom: 28px;
-    }
-
-    .auth-logo img {
-      height: 264px;
-      width: auto;
-    }
-
-    .auth-brand-mobile {
-      display: none;
-    }
-
-    .auth-brand-mobile-icon {
-      width: 30px;
-      height: 30px;
-      border-radius: 7px;
-      display: block;
-      flex: 0 0 auto;
-    }
-
-    .auth-brand-mobile-name {
-      font-size: 15px;
-      font-weight: 700;
-      color: #1f2c2e;
-      letter-spacing: 0.01em;
-    }
-
-    h1 {
-      font-size: 18px;
-      font-weight: 600;
-      color: #1a1a1a;
-      margin: 0 0 24px 0;
-      text-align: center;
-    }
-
-    .tab-row {
-      display: flex;
-      border-bottom: 2px solid #e8e8e8;
-      margin-bottom: 24px;
-    }
-
-    .tab-btn {
-      flex: 1;
-      background: none;
-      border: none;
-      padding: 10px 0 12px;
-      font-size: 14px;
-      font-weight: 500;
-      color: #888;
-      cursor: pointer;
-      border-bottom: 2px solid transparent;
-      margin-bottom: -2px;
-      transition: color 0.15s, border-color 0.15s;
-    }
-
-    .tab-btn.active {
-      color: #1a1a1a;
-      border-bottom-color: #1a1a1a;
-    }
-
-    .form-group {
-      margin-bottom: 16px;
-    }
-
-    label {
-      display: block;
-      font-size: 13px;
-      color: #555;
-      margin-bottom: 6px;
-    }
-
-    input[type="email"],
-    input[type="password"],
-    input[type="text"],
-    select {
-      width: 100%;
-      padding: 11px 14px;
-      border: 1.5px solid #ddd;
-      border-radius: 8px;
-      font-size: 15px;
-      color: #1a1a1a;
-      background: #fafafa;
-      outline: none;
-      transition: border-color 0.15s;
-      appearance: none;
-    }
-
-    input[type="email"]:focus,
-    input[type="password"]:focus,
-    input[type="text"]:focus,
-    select:focus {
-      border-color: #1a1a1a;
-      background: #fff;
-    }
-
-    .password-field-wrap {
-      position: relative;
-    }
-
-    .password-field-wrap input[type="password"],
-    .password-field-wrap input[type="text"] {
-      padding-right: 52px;
-    }
-
-    .toggle-password-btn {
-      position: absolute;
-      top: 50%;
-      right: 10px;
-      transform: translateY(-50%);
-      border: 1px solid transparent;
-      background: transparent;
-      color: #777;
-      cursor: pointer;
-      padding: 0;
-      width: 32px;
-      height: 32px;
-      border-radius: 6px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .toggle-password-btn:hover {
-      color: #4d4d4d;
-    }
-
-    .toggle-password-btn:focus-visible {
-      outline: none;
-      border-color: #1a1a1a;
-      background: transparent;
-    }
-
-    .toggle-password-btn svg {
-      width: 18px;
-      height: 18px;
-      fill: none;
-      stroke: currentColor;
-      stroke-width: 1.8;
-      stroke-linecap: round;
-      stroke-linejoin: round;
-      pointer-events: none;
-    }
-
-    .toggle-password-btn .icon-eye-off {
-      display: none;
-    }
-
-    .toggle-password-btn.is-visible .icon-eye {
-      display: none;
-    }
-
-    .toggle-password-btn.is-visible .icon-eye-off {
-      display: block;
-    }
-
-    .sr-only {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      padding: 0;
-      margin: -1px;
-      overflow: hidden;
-      clip: rect(0, 0, 0, 0);
-      white-space: nowrap;
-      border: 0;
-    }
-
-    input.mismatch-focus {
-      border-color: #d93025 !important;
-      background: #fff6f6 !important;
-    }
-
-    .submit-btn {
-      width: 100%;
-      padding: 12px;
-      background: #245e66;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      font-size: 15px;
-      font-weight: 600;
-      cursor: pointer;
-      margin-top: 8px;
-      transition: opacity 0.15s;
-    }
-
-    .submit-btn:disabled {
-      opacity: 0.45;
-      cursor: default;
-    }
-
-    .notice {
-      font-size: 13px;
-      color: #c0392b;
-      margin-top: 14px;
-      text-align: center;
-      min-height: 18px;
-    }
-
-    .notice.success {
-      color: #245e66;
-    }
-
-    @media (max-width: 768px) {
+      html,
       body {
-        align-items: flex-start;
-        justify-content: flex-start;
-        padding: calc(14px + env(safe-area-inset-top, 0px)) 0 calc(18px + env(safe-area-inset-bottom, 0px));
+        margin: 0;
+        padding: 0;
+        min-height: 100%;
+        background: #f4f9f9;
+        font-family: Arial, sans-serif;
+        overflow-y: auto;
       }
 
-      .auth-card {
-        max-width: 420px;
-        padding: 16px 16px 20px;
-      }
-
-      .auth-logo {
-        display: none;
-      }
-
-      .auth-brand-mobile {
+      body {
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 8px;
-        margin: 0 0 12px;
-        max-height: 48px;
-        opacity: 1;
-        transform: translateY(0);
-        transition: opacity 0.22s ease, transform 0.22s ease, max-height 0.22s ease, margin 0.22s ease;
-        overflow: hidden;
+        min-height: 100dvh;
+        padding: calc(24px + env(safe-area-inset-top, 0px)) 0
+          calc(24px + env(safe-area-inset-bottom, 0px));
+        animation: pageIn 0.68s ease 0.05s both;
       }
 
-      body.keyboard-open .auth-brand-mobile {
-        opacity: 0;
-        transform: translateY(-8px);
-        max-height: 0;
-        margin: 0;
+      .auth-card {
+        width: 100%;
+        max-width: 360px;
+        padding: 32px 28px 28px;
+        margin: 0 16px;
+      }
+
+      .auth-logo {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 28px;
+      }
+
+      .auth-logo img {
+        height: 264px;
+        width: auto;
+      }
+
+      .auth-brand-mobile {
+        display: none;
+      }
+
+      .auth-brand-mobile-icon {
+        width: 30px;
+        height: 30px;
+        border-radius: 7px;
+        display: block;
+        flex: 0 0 auto;
+      }
+
+      .auth-brand-mobile-name {
+        font-size: 15px;
+        font-weight: 700;
+        color: #1f2c2e;
+        letter-spacing: 0.01em;
+      }
+
+      h1 {
+        font-size: 18px;
+        font-weight: 600;
+        color: #1a1a1a;
+        margin: 0 0 24px 0;
+        text-align: center;
+      }
+
+      .tab-row {
+        display: flex;
+        border-bottom: 2px solid #e8e8e8;
+        margin-bottom: 24px;
+      }
+
+      .tab-btn {
+        flex: 1;
+        background: none;
+        border: none;
+        padding: 10px 0 12px;
+        font-size: 14px;
+        font-weight: 500;
+        color: #888;
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        margin-bottom: -2px;
+        transition:
+          color 0.15s,
+          border-color 0.15s;
+      }
+
+      .tab-btn.active {
+        color: #1a1a1a;
+        border-bottom-color: #1a1a1a;
+      }
+
+      .form-group {
+        margin-bottom: 16px;
+      }
+
+      label {
+        display: block;
+        font-size: 13px;
+        color: #555;
+        margin-bottom: 6px;
+      }
+
+      input[type='email'],
+      input[type='password'],
+      input[type='text'],
+      select {
+        width: 100%;
+        padding: 11px 14px;
+        border: 1.5px solid #ddd;
+        border-radius: 8px;
+        font-size: 15px;
+        color: #1a1a1a;
+        background: #fafafa;
+        outline: none;
+        transition: border-color 0.15s;
+        appearance: none;
+      }
+
+      input[type='email']:focus,
+      input[type='password']:focus,
+      input[type='text']:focus,
+      select:focus {
+        border-color: #1a1a1a;
+        background: #fff;
+      }
+
+      .password-field-wrap {
+        position: relative;
+      }
+
+      .password-field-wrap input[type='password'],
+      .password-field-wrap input[type='text'] {
+        padding-right: 52px;
+      }
+
+      .toggle-password-btn {
+        position: absolute;
+        top: 50%;
+        right: 10px;
+        transform: translateY(-50%);
+        border: 1px solid transparent;
+        background: transparent;
+        color: #777;
+        cursor: pointer;
+        padding: 0;
+        width: 32px;
+        height: 32px;
+        border-radius: 6px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .toggle-password-btn:hover {
+        color: #4d4d4d;
+      }
+
+      .toggle-password-btn:focus-visible {
+        outline: none;
+        border-color: #1a1a1a;
+        background: transparent;
+      }
+
+      .toggle-password-btn svg {
+        width: 18px;
+        height: 18px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.8;
+        stroke-linecap: round;
+        stroke-linejoin: round;
         pointer-events: none;
       }
-    }
 
+      .toggle-password-btn .icon-eye-off {
+        display: none;
+      }
 
-  </style>
-</head>
-<body>
-  <div class="auth-card">
-    <div class="auth-brand-mobile" aria-hidden="true">
-      <img class="auth-brand-mobile-icon" src="/images/icon-512.png" alt="">
-      <span class="auth-brand-mobile-name">Facilitat.io</span>
+      .toggle-password-btn.is-visible .icon-eye {
+        display: none;
+      }
+
+      .toggle-password-btn.is-visible .icon-eye-off {
+        display: block;
+      }
+
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+      }
+
+      input.mismatch-focus {
+        border-color: #d93025 !important;
+        background: #fff6f6 !important;
+      }
+
+      .submit-btn {
+        width: 100%;
+        padding: 12px;
+        background: #245e66;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+        margin-top: 8px;
+        transition: opacity 0.15s;
+      }
+
+      .submit-btn:disabled {
+        opacity: 0.45;
+        cursor: default;
+      }
+
+      .notice {
+        font-size: 13px;
+        color: #c0392b;
+        margin-top: 14px;
+        text-align: center;
+        min-height: 18px;
+      }
+
+      .notice.success {
+        color: #245e66;
+      }
+
+      @media (max-width: 768px) {
+        body {
+          align-items: flex-start;
+          justify-content: flex-start;
+          padding: calc(14px + env(safe-area-inset-top, 0px)) 0
+            calc(18px + env(safe-area-inset-bottom, 0px));
+        }
+
+        .auth-card {
+          max-width: 420px;
+          padding: 16px 16px 20px;
+        }
+
+        .auth-logo {
+          display: none;
+        }
+
+        .auth-brand-mobile {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          margin: 0 0 12px;
+          max-height: 48px;
+          opacity: 1;
+          transform: translateY(0);
+          transition:
+            opacity 0.22s ease,
+            transform 0.22s ease,
+            max-height 0.22s ease,
+            margin 0.22s ease;
+          overflow: hidden;
+        }
+
+        body.keyboard-open .auth-brand-mobile {
+          opacity: 0;
+          transform: translateY(-8px);
+          max-height: 0;
+          margin: 0;
+          pointer-events: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="auth-card">
+      <div class="auth-brand-mobile" aria-hidden="true">
+        <img class="auth-brand-mobile-icon" src="/images/icon-512.png" alt="" />
+        <span class="auth-brand-mobile-name">Facilitat.io</span>
+      </div>
+
+      <div class="auth-logo">
+        <img src="/images/logo.png" alt="Facilitat.io" />
+      </div>
+
+      <h1>Mon compte</h1>
+
+      <div class="tab-row">
+        <button class="tab-btn active" id="tabLogin" onclick="showTab('login')">
+          Connexion
+        </button>
+        <button class="tab-btn" id="tabRegister" onclick="showTab('register')">
+          Inscription
+        </button>
+      </div>
+
+      <!-- LOGIN FORM -->
+      <form id="loginForm" onsubmit="handleLogin(event)">
+        <div class="form-group">
+          <label for="loginEmail">Adresse e-mail</label>
+          <input
+            type="email"
+            id="loginEmail"
+            name="email"
+            required
+            autocomplete="email"
+            placeholder="exemple@mail.com"
+          />
+        </div>
+        <div class="form-group">
+          <label for="loginPassword">Mot de passe</label>
+          <div class="password-field-wrap">
+            <input
+              type="password"
+              id="loginPassword"
+              name="password"
+              required
+              autocomplete="current-password"
+              placeholder="••••••••"
+            />
+            <button
+              type="button"
+              class="toggle-password-btn"
+              data-target="loginPassword"
+              aria-label="Afficher le mot de passe"
+              title="Afficher le mot de passe"
+            >
+              <span class="sr-only">Afficher le mot de passe</span>
+              <svg class="icon-eye" viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  d="M1 12C3.8 7.5 7.4 5.25 12 5.25S20.2 7.5 23 12c-2.8 4.5-6.4 6.75-11 6.75S3.8 16.5 1 12Z"
+                ></path>
+                <circle cx="12" cy="12" r="3.25"></circle>
+              </svg>
+              <svg class="icon-eye-off" viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  d="M1 12C3.8 7.5 7.4 5.25 12 5.25S20.2 7.5 23 12c-2.8 4.5-6.4 6.75-11 6.75S3.8 16.5 1 12Z"
+                ></path>
+                <circle cx="12" cy="12" r="3.25"></circle>
+                <line x1="3" y1="21" x2="21" y2="3"></line>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <button type="submit" class="submit-btn" id="loginBtn">
+          Se connecter
+        </button>
+        <p class="notice" id="loginNotice"></p>
+      </form>
+
+      <!-- REGISTER FORM -->
+      <form
+        id="registerForm"
+        style="display: none"
+        onsubmit="handleRegister(event)"
+      >
+        <div class="form-group">
+          <label for="regFirstName"
+            >Prénom
+            <span style="color: #aaa; font-weight: 400"
+              >(facultatif)</span
+            ></label
+          >
+          <input
+            type="text"
+            id="regFirstName"
+            name="firstName"
+            autocomplete="given-name"
+            placeholder="Comment tu t'appelles ?"
+          />
+        </div>
+        <div class="form-group">
+          <label for="regEmail">Adresse e-mail</label>
+          <input
+            type="email"
+            id="regEmail"
+            name="email"
+            required
+            autocomplete="email"
+            placeholder="exemple@mail.com"
+          />
+        </div>
+        <div class="form-group">
+          <label for="regPassword">Mot de passe</label>
+          <div class="password-field-wrap">
+            <input
+              type="password"
+              id="regPassword"
+              name="password"
+              required
+              autocomplete="new-password"
+              minlength="10"
+              placeholder="10 caractères minimum"
+            />
+            <button
+              type="button"
+              class="toggle-password-btn"
+              data-target="regPassword"
+              aria-label="Afficher le mot de passe"
+              title="Afficher le mot de passe"
+            >
+              <span class="sr-only">Afficher le mot de passe</span>
+              <svg class="icon-eye" viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  d="M1 12C3.8 7.5 7.4 5.25 12 5.25S20.2 7.5 23 12c-2.8 4.5-6.4 6.75-11 6.75S3.8 16.5 1 12Z"
+                ></path>
+                <circle cx="12" cy="12" r="3.25"></circle>
+              </svg>
+              <svg class="icon-eye-off" viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  d="M1 12C3.8 7.5 7.4 5.25 12 5.25S20.2 7.5 23 12c-2.8 4.5-6.4 6.75-11 6.75S3.8 16.5 1 12Z"
+                ></path>
+                <circle cx="12" cy="12" r="3.25"></circle>
+                <line x1="3" y1="21" x2="21" y2="3"></line>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="regPassword2">Confirmer le mot de passe</label>
+          <div class="password-field-wrap">
+            <input
+              type="password"
+              id="regPassword2"
+              name="password2"
+              required
+              autocomplete="new-password"
+              placeholder="••••••••"
+            />
+            <button
+              type="button"
+              class="toggle-password-btn"
+              data-target="regPassword2"
+              aria-label="Afficher le mot de passe"
+              title="Afficher le mot de passe"
+            >
+              <span class="sr-only">Afficher le mot de passe</span>
+              <svg class="icon-eye" viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  d="M1 12C3.8 7.5 7.4 5.25 12 5.25S20.2 7.5 23 12c-2.8 4.5-6.4 6.75-11 6.75S3.8 16.5 1 12Z"
+                ></path>
+                <circle cx="12" cy="12" r="3.25"></circle>
+              </svg>
+              <svg class="icon-eye-off" viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  d="M1 12C3.8 7.5 7.4 5.25 12 5.25S20.2 7.5 23 12c-2.8 4.5-6.4 6.75-11 6.75S3.8 16.5 1 12Z"
+                ></path>
+                <circle cx="12" cy="12" r="3.25"></circle>
+                <line x1="3" y1="21" x2="21" y2="3"></line>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <button type="submit" class="submit-btn" id="registerBtn">
+          Créer mon compte
+        </button>
+        <p class="notice" id="registerNotice"></p>
+      </form>
     </div>
 
-    <div class="auth-logo">
-      <img src="/images/logo.png" alt="Facilitat.io">
-    </div>
+    <script>
+      (function () {
+        'use strict';
 
-    <h1>Mon compte</h1>
+        function navigateAway(url, options = {}) {
+          document.body.style.animation = 'none';
+          document.body.style.transition =
+            'opacity 0.32s ease, transform 0.32s ease';
+          document.body.style.opacity = '0';
+          document.body.style.transform = 'translateY(10px)';
+          setTimeout(() => {
+            if (options.replace === true) {
+              window.location.replace(url);
+              return;
+            }
+            window.location.href = url;
+          }, 320);
+        }
 
-    <div class="tab-row">
-      <button class="tab-btn active" id="tabLogin" onclick="showTab('login')">Connexion</button>
-      <button class="tab-btn" id="tabRegister" onclick="showTab('register')">Inscription</button>
-    </div>
+        const authHistoryState = history.state || {};
+        if (
+          authHistoryState.__page !== 'auth' ||
+          authHistoryState.__guard !== true
+        ) {
+          history.replaceState(
+            { __page: 'auth', __base: true },
+            '',
+            window.location.href
+          );
+          history.pushState(
+            { __page: 'auth', __guard: true },
+            '',
+            window.location.href
+          );
+        }
 
-    <!-- LOGIN FORM -->
-    <form id="loginForm" onsubmit="handleLogin(event)">
-      <div class="form-group">
-        <label for="loginEmail">Adresse e-mail</label>
-        <input type="email" id="loginEmail" name="email" required autocomplete="email" placeholder="exemple@mail.com">
-      </div>
-      <div class="form-group">
-        <label for="loginPassword">Mot de passe</label>
-        <div class="password-field-wrap">
-          <input type="password" id="loginPassword" name="password" required autocomplete="current-password" placeholder="••••••••">
-          <button type="button" class="toggle-password-btn" data-target="loginPassword" aria-label="Afficher le mot de passe" title="Afficher le mot de passe">
-            <span class="sr-only">Afficher le mot de passe</span>
-            <svg class="icon-eye" viewBox="0 0 24 24" aria-hidden="true"><path d="M1 12C3.8 7.5 7.4 5.25 12 5.25S20.2 7.5 23 12c-2.8 4.5-6.4 6.75-11 6.75S3.8 16.5 1 12Z"></path><circle cx="12" cy="12" r="3.25"></circle></svg>
-            <svg class="icon-eye-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M1 12C3.8 7.5 7.4 5.25 12 5.25S20.2 7.5 23 12c-2.8 4.5-6.4 6.75-11 6.75S3.8 16.5 1 12Z"></path><circle cx="12" cy="12" r="3.25"></circle><line x1="3" y1="21" x2="21" y2="3"></line></svg>
-          </button>
-        </div>
-      </div>
-      <button type="submit" class="submit-btn" id="loginBtn">Se connecter</button>
-      <p class="notice" id="loginNotice"></p>
-    </form>
-
-    <!-- REGISTER FORM -->
-    <form id="registerForm" style="display:none" onsubmit="handleRegister(event)">
-      <div class="form-group">
-        <label for="regFirstName">Prénom <span style="color:#aaa;font-weight:400">(facultatif)</span></label>
-        <input type="text" id="regFirstName" name="firstName" autocomplete="given-name" placeholder="Comment tu t'appelles ?">
-      </div>
-      <div class="form-group">
-        <label for="regEmail">Adresse e-mail</label>
-        <input type="email" id="regEmail" name="email" required autocomplete="email" placeholder="exemple@mail.com">
-      </div>
-      <div class="form-group">
-        <label for="regPassword">Mot de passe</label>
-        <div class="password-field-wrap">
-          <input type="password" id="regPassword" name="password" required autocomplete="new-password" minlength="10" placeholder="10 caractères minimum">
-          <button type="button" class="toggle-password-btn" data-target="regPassword" aria-label="Afficher le mot de passe" title="Afficher le mot de passe">
-            <span class="sr-only">Afficher le mot de passe</span>
-            <svg class="icon-eye" viewBox="0 0 24 24" aria-hidden="true"><path d="M1 12C3.8 7.5 7.4 5.25 12 5.25S20.2 7.5 23 12c-2.8 4.5-6.4 6.75-11 6.75S3.8 16.5 1 12Z"></path><circle cx="12" cy="12" r="3.25"></circle></svg>
-            <svg class="icon-eye-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M1 12C3.8 7.5 7.4 5.25 12 5.25S20.2 7.5 23 12c-2.8 4.5-6.4 6.75-11 6.75S3.8 16.5 1 12Z"></path><circle cx="12" cy="12" r="3.25"></circle><line x1="3" y1="21" x2="21" y2="3"></line></svg>
-          </button>
-        </div>
-      </div>
-      <div class="form-group">
-        <label for="regPassword2">Confirmer le mot de passe</label>
-        <div class="password-field-wrap">
-          <input type="password" id="regPassword2" name="password2" required autocomplete="new-password" placeholder="••••••••">
-          <button type="button" class="toggle-password-btn" data-target="regPassword2" aria-label="Afficher le mot de passe" title="Afficher le mot de passe">
-            <span class="sr-only">Afficher le mot de passe</span>
-            <svg class="icon-eye" viewBox="0 0 24 24" aria-hidden="true"><path d="M1 12C3.8 7.5 7.4 5.25 12 5.25S20.2 7.5 23 12c-2.8 4.5-6.4 6.75-11 6.75S3.8 16.5 1 12Z"></path><circle cx="12" cy="12" r="3.25"></circle></svg>
-            <svg class="icon-eye-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M1 12C3.8 7.5 7.4 5.25 12 5.25S20.2 7.5 23 12c-2.8 4.5-6.4 6.75-11 6.75S3.8 16.5 1 12Z"></path><circle cx="12" cy="12" r="3.25"></circle><line x1="3" y1="21" x2="21" y2="3"></line></svg>
-          </button>
-        </div>
-      </div>
-      <button type="submit" class="submit-btn" id="registerBtn">Créer mon compte</button>
-      <p class="notice" id="registerNotice"></p>
-    </form>
-
-
-  </div>
-
-  <script>
-    (function () {
-      "use strict";
-
-      function navigateAway(url, options = {}) {
-        document.body.style.animation = "none";
-        document.body.style.transition = "opacity 0.32s ease, transform 0.32s ease";
-        document.body.style.opacity = "0";
-        document.body.style.transform = "translateY(10px)";
-        setTimeout(() => {
-          if (options.replace === true) {
-            window.location.replace(url);
-            return;
+        window.addEventListener('popstate', (event) => {
+          const state = event.state || {};
+          if (state.__page === 'auth' && state.__base === true) {
+            navigateAway('/?screen=conversationsScreen', { replace: true });
           }
-          window.location.href = url;
-        }, 320);
-      }
+        });
 
-      const authHistoryState = history.state || {};
-      if (authHistoryState.__page !== "auth" || authHistoryState.__guard !== true) {
-        history.replaceState({ __page: "auth", __base: true }, "", window.location.href);
-        history.pushState({ __page: "auth", __guard: true }, "", window.location.href);
-      }
+        window.addEventListener('pageshow', () => {
+          document.body.style.animation = '';
+          document.body.style.transition = '';
+          document.body.style.opacity = '';
+          document.body.style.transform = '';
+        });
 
-      window.addEventListener("popstate", event => {
-        const state = event.state || {};
-        if (state.__page === "auth" && state.__base === true) {
-          navigateAway("/?screen=conversationsScreen", { replace: true });
-        }
-      });
+        function initMobileKeyboardState() {
+          const MOBILE_WIDTH = 768;
+          const KEYBOARD_THRESHOLD = 140;
+          const visualViewportRef = window.visualViewport || null;
+          let baselineHeight = 0;
 
-      window.addEventListener("pageshow", () => {
-        document.body.style.animation = "";
-        document.body.style.transition = "";
-        document.body.style.opacity = "";
-        document.body.style.transform = "";
-      });
-
-      function initMobileKeyboardState() {
-        const MOBILE_WIDTH = 768;
-        const KEYBOARD_THRESHOLD = 140;
-        const visualViewportRef = window.visualViewport || null;
-        let baselineHeight = 0;
-
-        function isMobileLayout() {
-          return window.innerWidth <= MOBILE_WIDTH;
-        }
-
-        function getViewportHeight() {
-          if (visualViewportRef && Number.isFinite(visualViewportRef.height) && visualViewportRef.height > 0) {
-            return visualViewportRef.height;
-          }
-          return window.innerHeight;
-        }
-
-        function hasInputFocus() {
-          const active = document.activeElement;
-          if (!active) return false;
-          const tag = String(active.tagName || "").toUpperCase();
-          return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
-        }
-
-        function refreshKeyboardState() {
-          if (!isMobileLayout()) {
-            baselineHeight = 0;
-            document.body.classList.remove("keyboard-open");
-            return;
+          function isMobileLayout() {
+            return window.innerWidth <= MOBILE_WIDTH;
           }
 
-          const currentHeight = getViewportHeight();
-          if (!baselineHeight || currentHeight > baselineHeight) {
-            baselineHeight = currentHeight;
+          function getViewportHeight() {
+            if (
+              visualViewportRef &&
+              Number.isFinite(visualViewportRef.height) &&
+              visualViewportRef.height > 0
+            ) {
+              return visualViewportRef.height;
+            }
+            return window.innerHeight;
           }
 
-          const keyboardOffset = Math.max(0, baselineHeight - currentHeight);
-          const keyboardOpen = keyboardOffset > KEYBOARD_THRESHOLD && hasInputFocus();
-          document.body.classList.toggle("keyboard-open", keyboardOpen);
-        }
-
-        if (visualViewportRef) {
-          visualViewportRef.addEventListener("resize", refreshKeyboardState);
-          visualViewportRef.addEventListener("scroll", refreshKeyboardState);
-        }
-        window.addEventListener("resize", refreshKeyboardState);
-        document.addEventListener("focusin", refreshKeyboardState);
-        document.addEventListener("focusout", () => setTimeout(refreshKeyboardState, 90));
-        window.addEventListener("orientationchange", () => setTimeout(refreshKeyboardState, 120));
-        refreshKeyboardState();
-      }
-
-      initMobileKeyboardState();
-
-      // Redirect if already authenticated
-      fetch("/api/auth/session", { credentials: "include" })
-        .then(r => r.json())
-        .then(data => {
-          if (data && data.authenticated === true) {
-            const redirectTarget = getRedirectTarget();
-            window.location.href = redirectTarget;
+          function hasInputFocus() {
+            const active = document.activeElement;
+            if (!active) return false;
+            const tag = String(active.tagName || '').toUpperCase();
+            return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
           }
-        })
-        .catch(() => {});
 
-      function getRedirectTarget() {
-        try {
-          const params = new URLSearchParams(window.location.search);
-          const raw = params.get("next") || "/?screen=conversationsScreen";
-          const url = new URL(raw, window.location.origin);
-          // Only allow same-origin redirects
-          if (url.origin !== window.location.origin) return "/?screen=conversationsScreen";
-          return url.pathname + url.search + url.hash;
-        } catch (_) {
-          return "/?screen=conversationsScreen";
+          function refreshKeyboardState() {
+            if (!isMobileLayout()) {
+              baselineHeight = 0;
+              document.body.classList.remove('keyboard-open');
+              return;
+            }
+
+            const currentHeight = getViewportHeight();
+            if (!baselineHeight || currentHeight > baselineHeight) {
+              baselineHeight = currentHeight;
+            }
+
+            const keyboardOffset = Math.max(0, baselineHeight - currentHeight);
+            const keyboardOpen =
+              keyboardOffset > KEYBOARD_THRESHOLD && hasInputFocus();
+            document.body.classList.toggle('keyboard-open', keyboardOpen);
+          }
+
+          if (visualViewportRef) {
+            visualViewportRef.addEventListener('resize', refreshKeyboardState);
+            visualViewportRef.addEventListener('scroll', refreshKeyboardState);
+          }
+          window.addEventListener('resize', refreshKeyboardState);
+          document.addEventListener('focusin', refreshKeyboardState);
+          document.addEventListener('focusout', () =>
+            setTimeout(refreshKeyboardState, 90)
+          );
+          window.addEventListener('orientationchange', () =>
+            setTimeout(refreshKeyboardState, 120)
+          );
+          refreshKeyboardState();
         }
-      }
 
-      function initPasswordToggles() {
-        function setPasswordToggleVisualState(btn, isVisible) {
-          if (!btn) return;
-          btn.classList.toggle("is-visible", isVisible === true);
-          const label = isVisible ? "Masquer le mot de passe" : "Afficher le mot de passe";
-          btn.setAttribute("aria-label", label);
-          btn.setAttribute("title", label);
-          const srOnly = btn.querySelector(".sr-only");
-          if (srOnly) {
-            srOnly.textContent = label;
+        initMobileKeyboardState();
+
+        // Redirect if already authenticated
+        fetch('/api/auth/session', { credentials: 'include' })
+          .then((r) => r.json())
+          .then((data) => {
+            if (data && data.authenticated === true) {
+              const redirectTarget = getRedirectTarget();
+              window.location.href = redirectTarget;
+            }
+          })
+          .catch(() => {});
+
+        function getRedirectTarget() {
+          try {
+            const params = new URLSearchParams(window.location.search);
+            const raw = params.get('next') || '/?screen=conversationsScreen';
+            const url = new URL(raw, window.location.origin);
+            // Only allow same-origin redirects
+            if (url.origin !== window.location.origin)
+              return '/?screen=conversationsScreen';
+            return url.pathname + url.search + url.hash;
+          } catch (_) {
+            return '/?screen=conversationsScreen';
           }
         }
 
-        function syncPasswordToggleWithInput(btn) {
-          if (!btn) return;
-          const targetId = btn.getAttribute("data-target");
-          const input = targetId ? document.getElementById(targetId) : null;
-          if (!input) return;
-          setPasswordToggleVisualState(btn, input.type === "text");
-        }
-
-        document.querySelectorAll(".toggle-password-btn").forEach(btn => {
-          syncPasswordToggleWithInput(btn);
-
-          const targetId = btn.getAttribute("data-target");
-          const input = targetId ? document.getElementById(targetId) : null;
-          if (input) {
-            input.addEventListener("focus", () => syncPasswordToggleWithInput(btn));
-            input.addEventListener("input", () => syncPasswordToggleWithInput(btn));
-            input.addEventListener("change", () => syncPasswordToggleWithInput(btn));
-
-            const typeObserver = new MutationObserver(() => syncPasswordToggleWithInput(btn));
-            typeObserver.observe(input, { attributes: true, attributeFilter: ["type"] });
-
-            requestAnimationFrame(() => syncPasswordToggleWithInput(btn));
-            setTimeout(() => syncPasswordToggleWithInput(btn), 120);
+        function initPasswordToggles() {
+          function setPasswordToggleVisualState(btn, isVisible) {
+            if (!btn) return;
+            btn.classList.toggle('is-visible', isVisible === true);
+            const label = isVisible
+              ? 'Masquer le mot de passe'
+              : 'Afficher le mot de passe';
+            btn.setAttribute('aria-label', label);
+            btn.setAttribute('title', label);
+            const srOnly = btn.querySelector('.sr-only');
+            if (srOnly) {
+              srOnly.textContent = label;
+            }
           }
 
-          btn.addEventListener("click", () => {
-            const clickTargetId = btn.getAttribute("data-target");
-            const input = clickTargetId ? document.getElementById(clickTargetId) : null;
+          function syncPasswordToggleWithInput(btn) {
+            if (!btn) return;
+            const targetId = btn.getAttribute('data-target');
+            const input = targetId ? document.getElementById(targetId) : null;
             if (!input) return;
-
-            const isHidden = input.type === "password";
-            input.type = isHidden ? "text" : "password";
-            setPasswordToggleVisualState(btn, !isHidden);
-          });
-        });
-
-        window.addEventListener("pageshow", () => {
-          document.querySelectorAll(".toggle-password-btn").forEach(syncPasswordToggleWithInput);
-        });
-
-        window.addEventListener("focus", () => {
-          document.querySelectorAll(".toggle-password-btn").forEach(syncPasswordToggleWithInput);
-        });
-      }
-
-      function initConfirmPasswordValidation() {
-        const regPassword = document.getElementById("regPassword");
-        const regPassword2 = document.getElementById("regPassword2");
-        if (!regPassword || !regPassword2) return;
-
-        function refreshMismatchState() {
-          const isFocused = document.activeElement === regPassword2;
-          const hasMismatch = regPassword2.value.length > 0 && regPassword.value !== regPassword2.value;
-          regPassword2.classList.toggle("mismatch-focus", isFocused && hasMismatch);
-        }
-
-        regPassword.addEventListener("input", refreshMismatchState);
-        regPassword2.addEventListener("input", refreshMismatchState);
-        regPassword2.addEventListener("focus", refreshMismatchState);
-        regPassword2.addEventListener("blur", refreshMismatchState);
-      }
-
-      initPasswordToggles();
-      initConfirmPasswordValidation();
-
-      window.showTab = function showTab(tab) {
-        const isLogin = tab === "login";
-        document.getElementById("loginForm").style.display = isLogin ? "" : "none";
-        document.getElementById("registerForm").style.display = isLogin ? "none" : "";
-        document.getElementById("tabLogin").classList.toggle("active", isLogin);
-        document.getElementById("tabRegister").classList.toggle("active", !isLogin);
-      };
-
-      let loginRequestInFlight = false;
-      let lastAutoLoginFingerprint = "";
-
-      async function submitLoginCredentials() {
-        if (loginRequestInFlight) return;
-
-        const notice = document.getElementById("loginNotice");
-        const btn = document.getElementById("loginBtn");
-        notice.textContent = "";
-        notice.className = "notice";
-
-        const email = String(document.getElementById("loginEmail").value || "").trim();
-        const password = String(document.getElementById("loginPassword").value || "");
-
-        if (!email || !password) {
-          notice.textContent = "Veuillez remplir tous les champs.";
-          return;
-        }
-
-        loginRequestInFlight = true;
-        btn.disabled = true;
-        try {
-          const res = await fetch("/api/auth/login", {
-            method: "POST",
-            credentials: "include",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email, password })
-          });
-
-          const data = await res.json().catch(() => ({}));
-
-          if (res.ok && data.success) {
-            notice.textContent = "Connexion réussie…";
-            notice.className = "notice success";
-            setTimeout(() => {
-              navigateAway(getRedirectTarget());
-            }, 400);
-          } else {
-            notice.textContent = mapAuthApiErrorToUserMessage(data.error, "Identifiants incorrects.");
+            setPasswordToggleVisualState(btn, input.type === 'text');
           }
-        } catch (_) {
-          notice.textContent = "Le service ne répond pas pour le moment. Un nouvel essai sera possible dans quelques instants.";
-        } finally {
-          loginRequestInFlight = false;
-          btn.disabled = false;
+
+          document.querySelectorAll('.toggle-password-btn').forEach((btn) => {
+            syncPasswordToggleWithInput(btn);
+
+            const targetId = btn.getAttribute('data-target');
+            const input = targetId ? document.getElementById(targetId) : null;
+            if (input) {
+              input.addEventListener('focus', () =>
+                syncPasswordToggleWithInput(btn)
+              );
+              input.addEventListener('input', () =>
+                syncPasswordToggleWithInput(btn)
+              );
+              input.addEventListener('change', () =>
+                syncPasswordToggleWithInput(btn)
+              );
+
+              const typeObserver = new MutationObserver(() =>
+                syncPasswordToggleWithInput(btn)
+              );
+              typeObserver.observe(input, {
+                attributes: true,
+                attributeFilter: ['type']
+              });
+
+              requestAnimationFrame(() => syncPasswordToggleWithInput(btn));
+              setTimeout(() => syncPasswordToggleWithInput(btn), 120);
+            }
+
+            btn.addEventListener('click', () => {
+              const clickTargetId = btn.getAttribute('data-target');
+              const input = clickTargetId
+                ? document.getElementById(clickTargetId)
+                : null;
+              if (!input) return;
+
+              const isHidden = input.type === 'password';
+              input.type = isHidden ? 'text' : 'password';
+              setPasswordToggleVisualState(btn, !isHidden);
+            });
+          });
+
+          window.addEventListener('pageshow', () => {
+            document
+              .querySelectorAll('.toggle-password-btn')
+              .forEach(syncPasswordToggleWithInput);
+          });
+
+          window.addEventListener('focus', () => {
+            document
+              .querySelectorAll('.toggle-password-btn')
+              .forEach(syncPasswordToggleWithInput);
+          });
         }
-      }
 
-      window.handleLogin = async function handleLogin(event) {
-        if (event && typeof event.preventDefault === "function") {
-          event.preventDefault();
-        }
-        await submitLoginCredentials();
-      };
+        function initConfirmPasswordValidation() {
+          const regPassword = document.getElementById('regPassword');
+          const regPassword2 = document.getElementById('regPassword2');
+          if (!regPassword || !regPassword2) return;
 
-      function triggerInputValidation(inputEl) {
-        if (!inputEl) return;
-        inputEl.dispatchEvent(new Event("input", { bubbles: true }));
-        inputEl.dispatchEvent(new Event("change", { bubbles: true }));
-      }
+          function refreshMismatchState() {
+            const isFocused = document.activeElement === regPassword2;
+            const hasMismatch =
+              regPassword2.value.length > 0 &&
+              regPassword.value !== regPassword2.value;
+            regPassword2.classList.toggle(
+              'mismatch-focus',
+              isFocused && hasMismatch
+            );
+          }
 
-      function maybeAutoSubmitLoginFromAutofill() {
-        const loginForm = document.getElementById("loginForm");
-        const loginEmailInput = document.getElementById("loginEmail");
-        const loginPasswordInput = document.getElementById("loginPassword");
-        const isLoginVisible = loginForm && loginForm.style.display !== "none";
-
-        if (!loginForm || !loginEmailInput || !loginPasswordInput || !isLoginVisible) {
-          return;
+          regPassword.addEventListener('input', refreshMismatchState);
+          regPassword2.addEventListener('input', refreshMismatchState);
+          regPassword2.addEventListener('focus', refreshMismatchState);
+          regPassword2.addEventListener('blur', refreshMismatchState);
         }
 
-        const email = String(loginEmailInput.value || "").trim();
-        const password = String(loginPasswordInput.value || "");
-        if (!email || !password) {
-          return;
+        initPasswordToggles();
+        initConfirmPasswordValidation();
+
+        window.showTab = function showTab(tab) {
+          const isLogin = tab === 'login';
+          document.getElementById('loginForm').style.display = isLogin
+            ? ''
+            : 'none';
+          document.getElementById('registerForm').style.display = isLogin
+            ? 'none'
+            : '';
+          document
+            .getElementById('tabLogin')
+            .classList.toggle('active', isLogin);
+          document
+            .getElementById('tabRegister')
+            .classList.toggle('active', !isLogin);
+        };
+
+        let loginRequestInFlight = false;
+        let lastAutoLoginFingerprint = '';
+
+        async function submitLoginCredentials() {
+          if (loginRequestInFlight) return;
+
+          const notice = document.getElementById('loginNotice');
+          const btn = document.getElementById('loginBtn');
+          notice.textContent = '';
+          notice.className = 'notice';
+
+          const email = String(
+            document.getElementById('loginEmail').value || ''
+          ).trim();
+          const password = String(
+            document.getElementById('loginPassword').value || ''
+          );
+
+          if (!email || !password) {
+            notice.textContent = 'Veuillez remplir tous les champs.';
+            return;
+          }
+
+          loginRequestInFlight = true;
+          btn.disabled = true;
+          try {
+            const res = await fetch('/api/auth/login', {
+              method: 'POST',
+              credentials: 'include',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email, password })
+            });
+
+            const data = await res.json().catch(() => ({}));
+
+            if (res.ok && data.success) {
+              notice.textContent = 'Connexion réussie…';
+              notice.className = 'notice success';
+              setTimeout(() => {
+                navigateAway(getRedirectTarget());
+              }, 400);
+            } else {
+              notice.textContent = mapAuthApiErrorToUserMessage(
+                data.error,
+                'Identifiants incorrects.'
+              );
+            }
+          } catch (_) {
+            notice.textContent =
+              'Le service ne répond pas pour le moment. Un nouvel essai sera possible dans quelques instants.';
+          } finally {
+            loginRequestInFlight = false;
+            btn.disabled = false;
+          }
         }
 
-        triggerInputValidation(loginEmailInput);
-        triggerInputValidation(loginPasswordInput);
+        window.handleLogin = async function handleLogin(event) {
+          if (event && typeof event.preventDefault === 'function') {
+            event.preventDefault();
+          }
+          await submitLoginCredentials();
+        };
 
-        if (typeof loginForm.reportValidity === "function" && !loginForm.reportValidity()) {
-          return;
+        function triggerInputValidation(inputEl) {
+          if (!inputEl) return;
+          inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+          inputEl.dispatchEvent(new Event('change', { bubbles: true }));
         }
 
-        const fingerprint = `${email}\n${password}`;
-        if (fingerprint === lastAutoLoginFingerprint || loginRequestInFlight) {
-          return;
+        function maybeAutoSubmitLoginFromAutofill() {
+          const loginForm = document.getElementById('loginForm');
+          const loginEmailInput = document.getElementById('loginEmail');
+          const loginPasswordInput = document.getElementById('loginPassword');
+          const isLoginVisible =
+            loginForm && loginForm.style.display !== 'none';
+
+          if (
+            !loginForm ||
+            !loginEmailInput ||
+            !loginPasswordInput ||
+            !isLoginVisible
+          ) {
+            return;
+          }
+
+          const email = String(loginEmailInput.value || '').trim();
+          const password = String(loginPasswordInput.value || '');
+          if (!email || !password) {
+            return;
+          }
+
+          triggerInputValidation(loginEmailInput);
+          triggerInputValidation(loginPasswordInput);
+
+          if (
+            typeof loginForm.reportValidity === 'function' &&
+            !loginForm.reportValidity()
+          ) {
+            return;
+          }
+
+          const fingerprint = `${email}\n${password}`;
+          if (
+            fingerprint === lastAutoLoginFingerprint ||
+            loginRequestInFlight
+          ) {
+            return;
+          }
+
+          lastAutoLoginFingerprint = fingerprint;
+          window.handleLogin();
         }
 
-        lastAutoLoginFingerprint = fingerprint;
-        window.handleLogin();
-      }
+        function scheduleAutofillLoginChecks() {
+          const intervals = [0, 80, 180, 320, 520, 900, 1400, 2200, 3200];
+          intervals.forEach((delay) => {
+            setTimeout(maybeAutoSubmitLoginFromAutofill, delay);
+          });
+        }
 
-      function scheduleAutofillLoginChecks() {
-        const intervals = [
-          0,
-          80,
-          180,
-          320,
-          520,
-          900,
-          1400,
-          2200,
-          3200
-        ];
-        intervals.forEach(delay => {
-          setTimeout(maybeAutoSubmitLoginFromAutofill, delay);
+        function mapAuthApiErrorToUserMessage(rawError, fallbackMessage) {
+          const fallback = String(
+            fallbackMessage || 'Une erreur est survenue.'
+          );
+          const lower = String(rawError || '')
+            .trim()
+            .toLowerCase();
+          if (!lower) return fallback;
+
+          if (
+            lower.includes('unauthorized') ||
+            lower.includes('identifiants incorrects')
+          ) {
+            return 'Identifiants incorrects.';
+          }
+
+          if (lower.includes('invalid email')) {
+            return 'Adresse e-mail invalide.';
+          }
+
+          if (lower.includes('email already registered')) {
+            return 'Cette adresse e-mail est déjà utilisée.';
+          }
+
+          if (lower.includes('password must contain at least')) {
+            return 'Le mot de passe doit contenir au moins 10 caractères.';
+          }
+
+          if (lower.includes('invalid') || lower.includes('invalide')) {
+            return 'Certaines informations ne sont pas valides.';
+          }
+
+          return fallback;
+        }
+
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') {
+            maybeAutoSubmitLoginFromAutofill();
+          }
         });
-      }
-
-      function mapAuthApiErrorToUserMessage(rawError, fallbackMessage) {
-        const fallback = String(fallbackMessage || "Une erreur est survenue.");
-        const lower = String(rawError || "").trim().toLowerCase();
-        if (!lower) return fallback;
-
-        if (lower.includes("unauthorized") || lower.includes("identifiants incorrects")) {
-          return "Identifiants incorrects.";
-        }
-
-        if (lower.includes("invalid email")) {
-          return "Adresse e-mail invalide.";
-        }
-
-        if (lower.includes("email already registered")) {
-          return "Cette adresse e-mail est déjà utilisée.";
-        }
-
-        if (lower.includes("password must contain at least")) {
-          return "Le mot de passe doit contenir au moins 10 caractères.";
-        }
-
-        if (lower.includes("invalid") || lower.includes("invalide")) {
-          return "Certaines informations ne sont pas valides.";
-        }
-
-        return fallback;
-      }
-
-      document.addEventListener("visibilitychange", () => {
-        if (document.visibilityState === "visible") {
-          maybeAutoSubmitLoginFromAutofill();
-        }
-      });
-      window.addEventListener("focus", maybeAutoSubmitLoginFromAutofill);
-      window.addEventListener("pageshow", () => {
+        window.addEventListener('focus', maybeAutoSubmitLoginFromAutofill);
+        window.addEventListener('pageshow', () => {
+          scheduleAutofillLoginChecks();
+          requestAnimationFrame(maybeAutoSubmitLoginFromAutofill);
+        });
         scheduleAutofillLoginChecks();
-        requestAnimationFrame(maybeAutoSubmitLoginFromAutofill);
-      });
-      scheduleAutofillLoginChecks();
 
-      window.handleRegister = async function handleRegister(event) {
-        event.preventDefault();
-        const notice = document.getElementById("registerNotice");
-        const btn = document.getElementById("registerBtn");
-        notice.textContent = "";
-        notice.className = "notice";
+        window.handleRegister = async function handleRegister(event) {
+          event.preventDefault();
+          const notice = document.getElementById('registerNotice');
+          const btn = document.getElementById('registerBtn');
+          notice.textContent = '';
+          notice.className = 'notice';
 
-        const firstName = String(document.getElementById("regFirstName")?.value || "").trim();
-        const email = String(document.getElementById("regEmail").value || "").trim();
-        const password = String(document.getElementById("regPassword").value || "");
-        const password2 = String(document.getElementById("regPassword2").value || "");
+          const firstName = String(
+            document.getElementById('regFirstName')?.value || ''
+          ).trim();
+          const email = String(
+            document.getElementById('regEmail').value || ''
+          ).trim();
+          const password = String(
+            document.getElementById('regPassword').value || ''
+          );
+          const password2 = String(
+            document.getElementById('regPassword2').value || ''
+          );
 
-        if (!email || !password || !password2) {
-          notice.textContent = "Veuillez remplir les champs obligatoires.";
-          return;
-        }
-
-        if (password !== password2) {
-          notice.textContent = "Les mots de passe ne correspondent pas.";
-          return;
-        }
-
-        if (password.length < 10) {
-          notice.textContent = "Le mot de passe doit faire au moins 10 caractères.";
-          return;
-        }
-
-        const body = { email, password };
-        if (firstName) body.firstName = firstName;
-
-        btn.disabled = true;
-        try {
-          const res = await fetch("/api/auth/register", {
-            method: "POST",
-            credentials: "include",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body)
-          });
-
-          const data = await res.json().catch(() => ({}));
-
-          if (res.ok && data.success) {
-            notice.textContent = "Compte créé avec succès. Redirection…";
-            notice.className = "notice success";
-            setTimeout(() => {
-              navigateAway(getRedirectTarget());
-            }, 400);
-          } else {
-            notice.textContent = mapAuthApiErrorToUserMessage(data.error, "Impossible de créer le compte pour le moment.");
+          if (!email || !password || !password2) {
+            notice.textContent = 'Veuillez remplir les champs obligatoires.';
+            return;
           }
-        } catch (_) {
-          notice.textContent = "Le service ne répond pas pour le moment. Un nouvel essai sera possible dans quelques instants.";
-        } finally {
-          btn.disabled = false;
-        }
-      };
-    })();
-  </script>
-</body>
+
+          if (password !== password2) {
+            notice.textContent = 'Les mots de passe ne correspondent pas.';
+            return;
+          }
+
+          if (password.length < 10) {
+            notice.textContent =
+              'Le mot de passe doit faire au moins 10 caractères.';
+            return;
+          }
+
+          const body = { email, password };
+          if (firstName) body.firstName = firstName;
+
+          btn.disabled = true;
+          try {
+            const res = await fetch('/api/auth/register', {
+              method: 'POST',
+              credentials: 'include',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(body)
+            });
+
+            const data = await res.json().catch(() => ({}));
+
+            if (res.ok && data.success) {
+              notice.textContent = 'Compte créé avec succès. Redirection…';
+              notice.className = 'notice success';
+              setTimeout(() => {
+                navigateAway(getRedirectTarget());
+              }, 400);
+            } else {
+              notice.textContent = mapAuthApiErrorToUserMessage(
+                data.error,
+                'Impossible de créer le compte pour le moment.'
+              );
+            }
+          } catch (_) {
+            notice.textContent =
+              'Le service ne répond pas pour le moment. Un nouvel essai sera possible dans quelques instants.';
+          } finally {
+            btn.disabled = false;
+          }
+        };
+      })();
+    </script>
+  </body>
 </html>

@@ -13,9 +13,7 @@
   {
     "label": "same content from assistant must not block user append",
     "message": "Je veux continuer",
-    "history": [
-      { "role": "assistant", "content": "Je veux continuer" }
-    ],
+    "history": [{ "role": "assistant", "content": "Je veux continuer" }],
     "expectedLength": 2,
     "expectedLastRole": "user",
     "expectNoConsecutiveUser": true
@@ -23,9 +21,7 @@
   {
     "label": "whitespace normalization avoids duplicate user turn",
     "message": "Avec espaces",
-    "history": [
-      { "role": "user", "content": "  Avec espaces  " }
-    ],
+    "history": [{ "role": "user", "content": "  Avec espaces  " }],
     "expectedLength": 1,
     "expectedLastRole": "user",
     "expectNoConsecutiveUser": true

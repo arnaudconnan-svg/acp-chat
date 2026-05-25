@@ -1,4 +1,3 @@
-
 /**
  * Clone /chat endpoint to /chat/stream with SSE output adaptation.
  * Pragmatic approach: full endpoint duplication with surgical SSE changes.
@@ -9,18 +8,18 @@
  * Pragmatic approach: full endpoint duplication, one-line adaptation for streaming.
  */
 
-const fs = require("fs");
-const path = require("path");
+const fs = require('fs');
+const path = require('path');
 
-const serverPath = path.join(__dirname, "..", "server.js");
-let serverContent = fs.readFileSync(serverPath, "utf8");
+const serverPath = path.join(__dirname, '..', 'server.js');
+let serverContent = fs.readFileSync(serverPath, 'utf8');
 
 // Find /chat endpoint (app.post("/chat", ...)
 const chatStartPattern = 'app.post("/chat", async (req, res) => {';
 const chatStartIdx = serverContent.indexOf(chatStartPattern);
 
 if (chatStartIdx === -1) {
-  console.error("ERROR: Could not find app.post(\"/chat\") in server.js");
+  console.error('ERROR: Could not find app.post("/chat") in server.js');
   process.exit(1);
 }
 
@@ -33,31 +32,31 @@ let chatEndIdx = -1;
 
 for (let i = chatStartIdx; i < serverContent.length; i++) {
   const char = serverContent[i];
-  const prevChar = i > 0 ? serverContent[i - 1] : "";
+  const prevChar = i > 0 ? serverContent[i - 1] : '';
 
   if (escapeNext) {
     escapeNext = false;
     continue;
   }
 
-  if (char === "\\") {
+  if (char === '\\') {
     escapeNext = true;
     continue;
   }
 
-  if (char === '"' && prevChar !== "\\") {
+  if (char === '"' && prevChar !== '\\') {
     inString = !inString;
     continue;
   }
 
   if (!inString) {
-    if (char === "{") {
+    if (char === '{') {
       braceCount++;
-    } else if (char === "}") {
+    } else if (char === '}') {
       braceCount--;
       if (braceCount === 0) {
         // Found the closing brace. Now find the "})" after it.
-        if (serverContent.substring(i, i + 3) === "});") {
+        if (serverContent.substring(i, i + 3) === '});') {
           chatEndIdx = i + 3;
           break;
         }
@@ -67,34 +66,40 @@ for (let i = chatStartIdx; i < serverContent.length; i++) {
 }
 
 if (chatEndIdx === -1) {
-  console.error("ERROR: Could not find end of /chat endpoint");
+  console.error('ERROR: Could not find end of /chat endpoint');
   process.exit(1);
 }
 
 const chatEndpoint = serverContent.substring(chatStartIdx, chatEndIdx);
-console.log(`[OK] Found /chat endpoint: ${chatStartIdx} to ${chatEndIdx} (${chatEndIdx - chatStartIdx} chars)`);
+console.log(
+  `[OK] Found /chat endpoint: ${chatStartIdx} to ${chatEndIdx} (${chatEndIdx - chatStartIdx} chars)`
+);
 
 // Now find /chat/stream endpoint location.
 const streamStartPattern = 'app.post("/chat/stream", async (req, res) => {';
 const streamStartIdx = serverContent.indexOf(streamStartPattern);
 
 if (streamStartIdx === -1) {
-  console.error("ERROR: Could not find app.post(\"/chat/stream\") stub in server.js");
+  console.error(
+    'ERROR: Could not find app.post("/chat/stream") stub in server.js'
+  );
   process.exit(1);
 }
 
 // Find end of /chat/stream stub (until next app.listen or end of file).
-const listenPattern = "app.listen(port, () => {";
+const listenPattern = 'app.listen(port, () => {';
 const listenIdx = serverContent.indexOf(listenPattern);
 
 if (listenIdx === -1) {
-  console.error("ERROR: Could not find app.listen in server.js");
+  console.error('ERROR: Could not find app.listen in server.js');
   process.exit(1);
 }
 
 const streamEndIdx = listenIdx;
 
-console.log(`[OK] Found /chat/stream stub: ${streamStartIdx} to ${streamEndIdx}`);
+console.log(
+  `[OK] Found /chat/stream stub: ${streamStartIdx} to ${streamEndIdx}`
+);
 
 // Create the streaming endpoint by:
 // 1. Clone the entire /chat endpoint
@@ -118,14 +123,14 @@ const sseHeadersCode = `
 `;
 
 // Find where to insert SSE headers: after biometric check, before main try block
-const tryBlockPattern = "try {";
+const tryBlockPattern = 'try {';
 const firstTryIdx = streamEndpoint.indexOf(tryBlockPattern, 500); // Skip early stuff
 if (firstTryIdx === -1) {
   console.error("ERROR: Could not find 'try {' block in cloned endpoint");
   process.exit(1);
 }
 
-streamEndpoint = 
+streamEndpoint =
   streamEndpoint.substring(0, firstTryIdx) +
   sseHeadersCode +
   streamEndpoint.substring(firstTryIdx);
@@ -164,9 +169,9 @@ streamEndpoint = streamEndpoint.replace(
 const newServerContent =
   serverContent.substring(0, streamStartIdx) +
   streamEndpoint +
-  "\n\n// Start the HTTP server after all routes and middleware are configured.\n" +
+  '\n\n// Start the HTTP server after all routes and middleware are configured.\n' +
   serverContent.substring(streamEndIdx);
 
-fs.writeFileSync(serverPath, newServerContent, "utf8");
+fs.writeFileSync(serverPath, newServerContent, 'utf8');
 console.log(`[OK] Cloned /chat to /chat/stream with SSE adaptation`);
 console.log(`[OK] server.js updated successfully`);
