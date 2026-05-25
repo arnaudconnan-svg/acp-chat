@@ -1358,11 +1358,11 @@
         overlay.className = "usage-modal-overlay";
         overlay.innerHTML = [
           '<div class="usage-modal" role="dialog" aria-modal="true" aria-labelledby="usageModalTitle">',
-          '  <h2 class="usage-modal-title" id="usageModalTitle">Alimenter ma r\u00e9serve compl\u00e9mentaire</h2>',
-          '  <p class="usage-modal-text">Cet espace reste disponible tant qu\'il n\'est pas utilis\u00e9.</p>',
+          '  <h2 class="usage-modal-title" id="usageModalTitle">Simulation de recharge de r\u00e9serve (alpha)</h2>',
+          '  <p class="usage-modal-text">Aucun paiement r\u00e9el n\'est effectu\u00e9. Cette simulation sert \u00e0 \u00e9valuer la perception \u00e9conomique.</p>',
           '  <div class="usage-modal-actions">',
-          '    <button type="button" class="usage-option-btn" data-amount="5">5 \u20ac</button>',
-          '    <button type="button" class="usage-option-btn" data-amount="10">10 \u20ac</button>',
+          '    <button type="button" class="usage-option-btn" data-amount="5">Simulation palier 5 \u20ac</button>',
+          '    <button type="button" class="usage-option-btn" data-amount="10">Simulation palier 10 \u20ac</button>',
           '  </div>',
           '  <p class="usage-modal-notice" id="usageModalNotice"></p>',
           '  <button type="button" class="usage-modal-close" id="usageModalCloseBtn">Fermer</button>',
@@ -1384,7 +1384,7 @@
           button.addEventListener("click", () => {
             const amount = button.getAttribute("data-amount") || "";
             const notice = overlay.querySelector("#usageModalNotice");
-            notice.textContent = "Paiement non encore activ\u00e9.";
+            notice.textContent = "Simulation enregistr\u00e9e (aucun d\u00e9bit).";
             console.info("[usage-envelope] top-up intent", { amount: amount + " EUR" });
           });
         });
@@ -1400,7 +1400,7 @@
 
         const simulationInfo = document.createElement("p");
         simulationInfo.className = "usage-simulation-info";
-        simulationInfo.textContent = "Aucun paiement actif - l'enveloppe se met a jour en mode simulation pendant la phase de test.";
+        simulationInfo.textContent = "Aucun paiement actif - l'enveloppe se met \u00e0 jour en mode simulation pendant la phase de test.";
         card.appendChild(simulationInfo);
 
         const renewalInfo = document.createElement("p");
@@ -1437,7 +1437,7 @@
         const actionButton = document.createElement("button");
         actionButton.type = "button";
         actionButton.className = "usage-action-btn";
-        actionButton.textContent = "Je m'offre plus d'espace";
+        actionButton.textContent = "Voir la simulation d'enveloppe";
         actionButton.addEventListener("click", () => {
           const modal = ensureUsageTopUpModal();
           const notice = modal.querySelector("#usageModalNotice");
