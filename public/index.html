@@ -3227,6 +3227,8 @@
     function bindTwaDevModeTapActivator() {
       const logo = document.getElementById("welcomeLogo");
       if (!logo) return;
+      const logoWrap = document.getElementById("welcomeLogoWrap");
+      const tapTarget = logoWrap || logo;
 
       const ua = String(navigator.userAgent || "");
       const isMobileUa = /Android|iPhone|iPad|iPod|Mobile/i.test(ua);
@@ -3237,12 +3239,12 @@
       if (!allowTapActivator) return;
 
       const REQUIRED_TAP_COUNT = 5;
-      const TAP_WINDOW_MS = 3000;
+      const TAP_WINDOW_MS = 9000;
       const COOLDOWN_MS = 4000;
       let tapCount = 0;
       let firstTapAt = 0;
       let lastActivationAt = 0;
-      let lastPointerTapAt = 0;
+      let lastTapAt = 0;
 
       const registerTap = () => {
         const now = Date.now();
@@ -3270,29 +3272,29 @@
       };
 
       const tapHandler = event => {
+        const now = Date.now();
+
         if (event && event.type === "pointerup") {
           if (event.isPrimary === false) return;
           if (event.pointerType === "mouse") return;
-          lastPointerTapAt = Date.now();
         }
 
-        if (event && event.type === "click") {
-          // On many mobile browsers, click follows pointer/touch.
-          if (Date.now() - lastPointerTapAt < 350) {
-            return;
-          }
+        // Avoid counting synthetic duplicate click after touch/pointer events.
+        if (event && event.type === "click" && now - lastTapAt < 450) {
+          return;
         }
 
+        lastTapAt = now;
         registerTap();
       };
 
       if (window.PointerEvent) {
-        logo.addEventListener("pointerup", tapHandler, { passive: true });
+        tapTarget.addEventListener("pointerup", tapHandler, { passive: true });
       } else {
-        logo.addEventListener("touchend", tapHandler, { passive: true });
+        tapTarget.addEventListener("touchend", tapHandler, { passive: true });
       }
 
-      logo.addEventListener("click", tapHandler);
+      tapTarget.addEventListener("click", tapHandler);
     }
 
     async function syncUserSessionState() {
