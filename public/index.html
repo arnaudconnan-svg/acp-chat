@@ -14352,6 +14352,12 @@
           resetLocalSessionState();
           localStorage.removeItem(CONVERSATION_ID_KEY);
           closeEditMode({ restoreDraft: false });
+          showScreen('conversationsScreen', {
+            replaceHistory: true,
+            pushHistory: false,
+            noAnimation: true,
+            noWelcomeIntro: true
+          });
           showScreen('chatScreen', { pushHistory: true, noAnimation: true });
           renderHistory();
           startFreshSession({
