@@ -3210,6 +3210,11 @@
         localStorage.removeItem(DEV_MODE_KEY);
       }
 
+      // On Android TWA, the admin entry must stay hidden until the 5-tap activator runs.
+      if (isTwaRuntimeContext() && devParam !== "1") {
+        localStorage.removeItem(DEV_MODE_KEY);
+      }
+
       if (isAdminAuthenticated && !isTwaRuntimeContext()) {
         localStorage.setItem(DEV_MODE_KEY, "1");
       }
@@ -3367,8 +3372,16 @@
       }
     }
 
-    async function enforcePhoneOnlyAccessGate() {
-      // Legacy device gate removed: access is no longer restricted by device/viewport.
+    async function enforcePhoneOnlyAccessGate({ isAdminUI = false } = {}) {
+      if (isTwaRuntimeContext()) {
+        return true;
+      }
+
+      if (isAdminUI) {
+        return true;
+      }
+
+      navigateAway("/admin-login.html?next=%2Findex.html%3FadminUi%3D1");
       return true;
     }
 
@@ -12316,7 +12329,7 @@
       const isAdminUI = await syncAdminUiFromSession();
       await refreshDevAccessPrimaryAction();
 
-      await enforcePhoneOnlyAccessGate();
+      await enforcePhoneOnlyAccessGate({ isAdminUI });
 
       const shouldSkipWelcomeAnimation = isAdminUI;
 
