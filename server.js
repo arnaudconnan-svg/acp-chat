@@ -6791,10 +6791,32 @@ async function analyzeAffiliationShortValidationCoherence(
   history = [],
   _promptRegistry = buildDefaultPromptRegistry()
 ) {
+  const trimmedMessage = String(message || '').trim();
+  const normalizedLead = trimmedMessage
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[\u2019]/g, "'");
+
   if (!hasShortAffiliationMarker(message)) {
     return {
       shortValidationConfirmed: true,
       source: 'deterministic_no_short_marker'
+    };
+  }
+
+  // Deterministic fast-path for explicit leading validation markers.
+  // This avoids unnecessary LLM rejects on forms like "Exact." or
+  // concession starts such as "Oui, mais ...".
+  if (
+    /^(?:oui|exact(?:ement)?|c[' ]est\s*(?:exactement\s+)?ca)\b/.test(
+      normalizedLead
+    ) &&
+    !/^oui\s*,?\s*mais\s+non\b/.test(normalizedLead)
+  ) {
+    return {
+      shortValidationConfirmed: true,
+      source: 'deterministic_leading_marker'
     };
   }
 
@@ -7133,6 +7155,9 @@ async function handleChatPost(req, res) {
         directivityText:
           typeof safe.directivityText === 'string' ? safe.directivityText : '',
         conversationState: normalizeConversationState(safe.conversationState),
+        effectiveConversationState: normalizeConversationState(
+          safe.effectiveConversationState
+        ),
         consecutiveNonExplorationTurns: normalizeConsecutiveNonExplorationTurns(
           safe.consecutiveNonExplorationTurns
         ),
@@ -9191,10 +9216,21 @@ Reponds strictement en JSON: {"items": ["..."]}
               newFlags.affiliationWindow[newFlags.affiliationWindow.length - 1]
             )
           : null;
+      const previousAffiliationFinalScore = computeAffiliationFinalScore(
+        Array.isArray(newFlags.affiliationWindow)
+          ? newFlags.affiliationWindow
+          : []
+      );
+      const previousAffiliationEstablished = computeAffiliationEstablished(
+        Array.isArray(newFlags.affiliationWindow)
+          ? newFlags.affiliationWindow
+          : []
+      );
       const currentAllianceSignalForAffiliation = normalizeAllianceState(
         allianceRuptureAnalysis?.allianceSignal || newFlags.allianceSignal
       );
       const AFFILIATION_MAX_DROP_PER_TURN = 0.2;
+      const AFFILIATION_ESTABLISHED_FLOOR = 0.41;
 
       let affiliationScore = affiliationDetails.score;
       if (
@@ -9217,6 +9253,23 @@ Reponds strictement en JSON: {"items": ["..."]}
             maxDropPerTurn: AFFILIATION_MAX_DROP_PER_TURN
           });
         }
+      }
+
+      if (
+        currentAllianceSignalForAffiliation !== 'rupture' &&
+        previousAffiliationEstablished === true &&
+        affiliationScore < AFFILIATION_ESTABLISHED_FLOOR
+      ) {
+        const rawAffiliationScore = affiliationScore;
+        affiliationScore = AFFILIATION_ESTABLISHED_FLOOR;
+        logChatDecision('affiliation_established_floor_applied', {
+          allianceSignal: currentAllianceSignalForAffiliation,
+          previousAffiliationFinalScore,
+          previousAffiliationEstablished,
+          rawAffiliationScore,
+          affiliationEstablishedFloor: AFFILIATION_ESTABLISHED_FLOOR,
+          appliedAffiliationScore: affiliationScore
+        });
       }
 
       newFlags.affiliationAttachmentBoostStreak =
@@ -9980,6 +10033,7 @@ Reponds strictement en JSON: {"items": ["..."]}
         memory: newMemory,
         suicideLevel: suicide.suicideLevel,
         conversationState: postureDecision.conversationState,
+        effectiveConversationState: postureDecision.effectiveConversationState,
         consecutiveNonExplorationTurns: newFlags.consecutiveNonExplorationTurns,
         interpretationRejection:
           safeInterpretationRejection.isInterpretationRejection,
@@ -10093,6 +10147,8 @@ Reponds strictement en JSON: {"items": ["..."]}
             suicideLevel: suicide.suicideLevel,
             detectedState: detectedState,
             conversationState: responseDebugMeta.conversationState,
+            effectiveConversationState:
+              responseDebugMeta.effectiveConversationState,
             interpretationRejection:
               responseDebugMeta.interpretationRejection === true,
             needsSoberReadjustment:

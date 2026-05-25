@@ -590,6 +590,12 @@ check("affiliationTurnScore: 'exactement' → >= 0.5", () => {
     'expected validation match'
   );
 });
+check("affiliationTurnScore: 'Exact.' → >= 0.5", () => {
+  assert(
+    computeAffiliationTurnScore('Exact.') >= 0.5,
+    'expected exact marker match'
+  );
+});
 check('affiliationTurnScore: long message → > 0', () => {
   const msg = 'a'.repeat(300);
   assert(computeAffiliationTurnScore(msg) > 0, 'expected length score > 0');

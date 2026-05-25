@@ -9517,7 +9517,10 @@
                   secondaryLabel.familyLabel +
                   ' (' +
                   secondaryLabel.confidenceLabel +
-                  ')'
+                  ')' +
+                  (secondaryLabel.detailLabel
+                    ? ' - ' + secondaryLabel.detailLabel
+                    : '')
               );
             }
           }

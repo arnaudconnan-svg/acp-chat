@@ -81,6 +81,27 @@ check('exploration detectedState -> exploration_* conversation state', () => {
   );
 });
 
+check('exploration directivity can rise progressively from inherited 0', () => {
+  const out = buildPostureDecision(
+    baseInput({
+      detectedState: 'exploration',
+      effectiveExplorationDirectivityLevel: 0,
+      calibrationAnalysis: {
+        calibrationLevel: 3,
+        explorationSignal: 'interpretation'
+      }
+    })
+  );
+  assert(
+    out.finalDirectivityLevel === 1,
+    `expected progressive rise to 1, got ${out.finalDirectivityLevel}`
+  );
+  assert(
+    out.flagUpdates.explorationDirectivityLevel === 1,
+    `expected flagUpdates.explorationDirectivityLevel=1, got ${out.flagUpdates.explorationDirectivityLevel}`
+  );
+});
+
 check('info detectedState passes through', () => {
   const out = buildPostureDecision(
     baseInput({ detectedState: 'info_features' })
@@ -98,6 +119,24 @@ check('discharge detectedState keeps discharge state', () => {
   assert(
     out.conversationState === 'discharge_regulated',
     `expected discharge_regulated, got ${out.conversationState}`
+  );
+});
+
+check('N1 keeps visible state and exposes effective crisis routing state', () => {
+  const out = buildPostureDecision(
+    baseInput({ detectedState: 'exploration', suicideLevel: 'N1' })
+  );
+  assert(
+    out.conversationState === 'exploration_open',
+    `expected visible exploration_open state, got ${out.conversationState}`
+  );
+  assert(
+    out.effectiveConversationState === 'n1_crisis',
+    `expected effectiveConversationState=n1_crisis, got ${out.effectiveConversationState}`
+  );
+  assert(
+    out.intent === 'clarifier le risque calmement',
+    `expected N1 intent, got ${out.intent}`
   );
 });
 

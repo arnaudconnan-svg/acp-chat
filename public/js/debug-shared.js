@@ -109,7 +109,18 @@
 
     return {
       family: family,
-      confidence: confidenceAliases[canonicalConfidence] || 'low'
+      confidence: confidenceAliases[canonicalConfidence] || 'low',
+      detectedState:
+        typeof value.detectedState === 'string' ? value.detectedState : null,
+      infoSource:
+        typeof value.infoSource === 'string' ? value.infoSource : null,
+      infoContextFlags: Array.isArray(value.infoContextFlags)
+        ? value.infoContextFlags
+            .filter(function (flag) {
+              return typeof flag === 'string';
+            })
+            .slice(0, 4)
+        : []
     };
   }
 
@@ -193,6 +204,8 @@
         toTrimmedString(safe.directivityLabel, ''),
       directivityLabel: toTrimmedString(safe.directivityLabel, ''),
       conversationState: toTrimmedString(safe.conversationState, '') || null,
+      effectiveConversationState:
+        toTrimmedString(safe.effectiveConversationState, '') || null,
       consecutiveNonExplorationTurns: Number.isInteger(
         safe.consecutiveNonExplorationTurns
       )
@@ -525,6 +538,19 @@
       meta.analyzerDeterministicEvidence
     );
 
+    if (
+      typeof meta.effectiveConversationState === 'string' &&
+      typeof meta.conversationState === 'string' &&
+      meta.effectiveConversationState &&
+      meta.effectiveConversationState !== meta.conversationState
+    ) {
+      lines.push(
+        'Routage effectif du tour : ' +
+          translateWriterMode(meta.effectiveConversationState) +
+          ' (override de securite).'
+      );
+    }
+
     if (meta.interpretationRejection === true) {
       var interpretationLine =
         variant === 'admin'
@@ -678,9 +704,33 @@
       low: 'faible'
     };
 
+    var detailLabel = null;
+    if (st.family === 'info') {
+      if (st.detectedState === 'info_features') {
+        if (
+          Array.isArray(st.infoContextFlags) &&
+          st.infoContextFlags.indexOf('bot_nature_question') >= 0
+        ) {
+          detailLabel = 'nature du bot';
+        } else if (
+          Array.isArray(st.infoContextFlags) &&
+          st.infoContextFlags.indexOf('bot_capacity_doubt') >= 0
+        ) {
+          detailLabel = 'capacite du bot';
+        } else {
+          detailLabel = 'fonctionnalites app';
+        }
+      } else if (st.detectedState === 'info_psychoeducation') {
+        detailLabel = 'psychoeducation';
+      } else if (st.detectedState === 'info_pure') {
+        detailLabel = 'information pure';
+      }
+    }
+
     return {
       familyLabel: familyMap[st.family] || st.family,
       confidenceLabel: confMap[st.confidence] || st.confidence,
+      detailLabel: detailLabel,
       normalized: st
     };
   }
