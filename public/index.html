@@ -14342,29 +14342,38 @@
 
           loadUrl.searchParams.delete('launch');
           const cleanSearch = loadUrl.searchParams.toString();
+          const cleanUrl = `${loadUrl.pathname}${cleanSearch ? `?${cleanSearch}` : ''}${loadUrl.hash || ''}`;
+
           history.replaceState(
             { screenId: 'conversationsScreen' },
             '',
-            `${loadUrl.pathname}${cleanSearch ? `?${cleanSearch}` : ''}${loadUrl.hash || ''}`
+            cleanUrl
           );
 
-          clearSessionStorageExceptMemory();
-          resetLocalSessionState();
-          localStorage.removeItem(CONVERSATION_ID_KEY);
-          closeEditMode({ restoreDraft: false });
+          renderConversationsList();
+          setSessionStatus('idle');
           showScreen('conversationsScreen', {
             replaceHistory: true,
             pushHistory: false,
             noAnimation: true,
             noWelcomeIntro: true
           });
-          showScreen('chatScreen', { pushHistory: true, noAnimation: true });
-          renderHistory();
-          startFreshSession({
-            isPrivate: isPrivateLaunch,
-            useDefault: shouldUseDefaultPrivacyPolicy
-          });
-          defocusInput();
+
+          const chatLaunchUrl = new URL(cleanUrl, window.location.origin);
+          chatLaunchUrl.searchParams.set('screen', 'chatScreen');
+          chatLaunchUrl.searchParams.set(
+            'launch_private',
+            isPrivateLaunch ? '1' : '0'
+          );
+          chatLaunchUrl.searchParams.set(
+            'launch_default_privacy',
+            shouldUseDefaultPrivacyPolicy ? '1' : '0'
+          );
+
+          window.location.href =
+            chatLaunchUrl.pathname +
+            (chatLaunchUrl.search || '') +
+            (chatLaunchUrl.hash || '');
           return;
         }
 
@@ -14399,6 +14408,58 @@
         }
 
         const requestedScreen = loadUrl.searchParams.get('screen');
+        if (requestedScreen === 'chatScreen') {
+          if (!userSessionState.authenticated) {
+            const launchPrivateParam =
+              loadUrl.searchParams.get('launch_private') === '1' ? '1' : '0';
+            const launchDefaultPrivacyParam =
+              loadUrl.searchParams.get('launch_default_privacy') === '1'
+                ? '1'
+                : '0';
+
+            navigateAway(
+              '/auth.html?next=' +
+                encodeURIComponent(
+                  '/?screen=chatScreen&launch_private=' +
+                    launchPrivateParam +
+                    '&launch_default_privacy=' +
+                    launchDefaultPrivacyParam
+                )
+            );
+            return;
+          }
+
+          const isPrivateLaunch = loadUrl.searchParams.get('launch_private') === '1';
+          const shouldUseDefaultPrivacyPolicy =
+            loadUrl.searchParams.get('launch_default_privacy') === '1';
+
+          loadUrl.searchParams.delete('screen');
+          loadUrl.searchParams.delete('launch_private');
+          loadUrl.searchParams.delete('launch_default_privacy');
+          const cleanSearch = loadUrl.searchParams.toString();
+          const cleanUrl = `${loadUrl.pathname}${cleanSearch ? `?${cleanSearch}` : ''}${loadUrl.hash || ''}`;
+
+          history.replaceState({ screenId: 'chatScreen' }, '', cleanUrl);
+
+          clearSessionStorageExceptMemory();
+          resetLocalSessionState();
+          localStorage.removeItem(CONVERSATION_ID_KEY);
+          closeEditMode({ restoreDraft: false });
+          showScreen('chatScreen', {
+            replaceHistory: true,
+            pushHistory: false,
+            noAnimation: true
+          });
+          renderHistory();
+          startFreshSession({
+            isPrivate: isPrivateLaunch,
+            useDefault: shouldUseDefaultPrivacyPolicy
+          });
+          defocusInput();
+          updateActivity();
+          return;
+        }
+
         if (requestedScreen === 'conversationsScreen') {
           if (!userSessionState.authenticated) {
             navigateAway(
