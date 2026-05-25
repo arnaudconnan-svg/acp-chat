@@ -14335,7 +14335,8 @@
           // through a dedicated launch bridge + auth guard for stable back.
           if (!launchAuthDone) {
             navigateAway(
-              '/launch-bridge.html?launch=' + encodeURIComponent(launchShortcut),
+              '/launch-bridge.html?launch=' +
+                encodeURIComponent(launchShortcut),
               { replace: true }
             );
             return;

@@ -24,27 +24,20 @@
       (function () {
         'use strict';
 
-        function redirectToConversations() {
-          window.location.replace('/?screen=conversationsScreen');
-        }
-
-        function getNavigationType() {
-          try {
-            const entries = performance.getEntriesByType('navigation');
-            if (Array.isArray(entries) && entries.length > 0) {
-              return String(entries[0].type || '').toLowerCase();
+        function navigateAway(url, options = {}) {
+          setTimeout(() => {
+            if (options.replace === true) {
+              window.location.replace(url);
+              return;
             }
-          } catch (_) {}
-          return '';
+            window.location.href = url;
+          }, 0);
         }
 
-        const bridgeState = history.state || {};
-        const isBridgeGuardState =
-          bridgeState.__page === 'launchBridge' &&
-          bridgeState.__guard === true;
+        const launchBridgeHistoryState = history.state || {};
         if (
-          bridgeState.__page !== 'launchBridge' ||
-          bridgeState.__guard !== true
+          launchBridgeHistoryState.__page !== 'launchBridge' ||
+          launchBridgeHistoryState.__guard !== true
         ) {
           history.replaceState(
             { __page: 'launchBridge', __base: true },
@@ -61,19 +54,9 @@
         window.addEventListener('popstate', (event) => {
           const state = event.state || {};
           if (state.__page === 'launchBridge' && state.__base === true) {
-            redirectToConversations();
+            navigateAway('/?screen=conversationsScreen', { replace: true });
           }
         });
-
-        if (isBridgeGuardState) {
-          redirectToConversations();
-          return;
-        }
-
-        if (getNavigationType() === 'back_forward') {
-          redirectToConversations();
-          return;
-        }
 
         function resolveLaunchShortcut() {
           try {
@@ -96,14 +79,14 @@
           .then((r) => r.json())
           .then((data) => {
             if (data && data.authenticated === true) {
-              window.location.href = next;
+              navigateAway(next);
               return;
             }
 
-            window.location.href = '/auth.html?next=' + encodeURIComponent(next);
+            navigateAway('/auth.html?next=' + encodeURIComponent(next));
           })
           .catch(() => {
-            window.location.href = '/auth.html?next=' + encodeURIComponent(next);
+            navigateAway('/auth.html?next=' + encodeURIComponent(next));
           });
       })();
     </script>
