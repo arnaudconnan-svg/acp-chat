@@ -14361,14 +14361,26 @@
           loadUrl.searchParams.delete('launchAuthDone');
           const cleanSearch = loadUrl.searchParams.toString();
           const cleanUrl = `${loadUrl.pathname}${cleanSearch ? `?${cleanSearch}` : ''}${loadUrl.hash || ''}`;
-          history.replaceState({ screenId: 'chatScreen' }, '', cleanUrl);
+          const conversationsUrl = new URL(cleanUrl, window.location.origin);
+          conversationsUrl.searchParams.set('screen', 'conversationsScreen');
+          const conversationsHistoryUrl =
+            conversationsUrl.pathname +
+            (conversationsUrl.search || '') +
+            (conversationsUrl.hash || '');
+
+          history.replaceState(
+            { screenId: 'conversationsScreen' },
+            '',
+            conversationsHistoryUrl
+          );
+          history.pushState({ screenId: 'chatScreen' }, '', cleanUrl);
 
           clearSessionStorageExceptMemory();
           resetLocalSessionState();
           localStorage.removeItem(CONVERSATION_ID_KEY);
           closeEditMode({ restoreDraft: false });
           showScreen('chatScreen', {
-            replaceHistory: true,
+            replaceHistory: false,
             pushHistory: false,
             noAnimation: true
           });
