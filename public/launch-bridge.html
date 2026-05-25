@@ -24,6 +24,10 @@
       (function () {
         'use strict';
 
+        function redirectToConversations() {
+          window.location.replace('/?screen=conversationsScreen');
+        }
+
         function getNavigationType() {
           try {
             const entries = performance.getEntriesByType('navigation');
@@ -35,6 +39,9 @@
         }
 
         const bridgeState = history.state || {};
+        const isBridgeGuardState =
+          bridgeState.__page === 'launchBridge' &&
+          bridgeState.__guard === true;
         if (
           bridgeState.__page !== 'launchBridge' ||
           bridgeState.__guard !== true
@@ -51,8 +58,20 @@
           );
         }
 
+        window.addEventListener('popstate', (event) => {
+          const state = event.state || {};
+          if (state.__page === 'launchBridge' && state.__base === true) {
+            redirectToConversations();
+          }
+        });
+
+        if (isBridgeGuardState) {
+          redirectToConversations();
+          return;
+        }
+
         if (getNavigationType() === 'back_forward') {
-          window.location.replace('/?screen=conversationsScreen');
+          redirectToConversations();
           return;
         }
 
