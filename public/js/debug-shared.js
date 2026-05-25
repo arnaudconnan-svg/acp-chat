@@ -211,6 +211,34 @@
       )
         ? safe.explorationCalibrationLevel
         : null,
+      directivityInputLevel: Number.isInteger(safe.directivityInputLevel)
+        ? safe.directivityInputLevel
+        : null,
+      directivityUsedLevel: Number.isInteger(safe.directivityUsedLevel)
+        ? safe.directivityUsedLevel
+        : null,
+      directivityNextLevel: Number.isInteger(safe.directivityNextLevel)
+        ? safe.directivityNextLevel
+        : null,
+      directivityNextWindow: Array.isArray(safe.directivityNextWindow)
+        ? safe.directivityNextWindow
+            .filter(function (v) {
+              return typeof v === 'boolean';
+            })
+            .slice(-4)
+        : [],
+      relanceAsyncStatus:
+        toTrimmedString(safe.relanceAsyncStatus, '') || null,
+      relanceAppliedAtTurnEntrySourceTurn: Number.isInteger(
+        safe.relanceAppliedAtTurnEntrySourceTurn
+      )
+        ? safe.relanceAppliedAtTurnEntrySourceTurn
+        : null,
+      relanceAppliedAtTurnEntryStatus:
+        toTrimmedString(safe.relanceAppliedAtTurnEntryStatus, '') || null,
+      relanceAsyncTargetTurn: Number.isInteger(safe.relanceAsyncTargetTurn)
+        ? safe.relanceAsyncTargetTurn
+        : null,
       explorationSignal: toTrimmedString(safe.explorationSignal, '') || null,
       memoryBeforeSanitization:
         toTrimmedString(safe.memoryBeforeSanitization, '') || null,

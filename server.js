@@ -6195,6 +6195,24 @@ const activeChatProgressStreams = new Map(); // requestId -> Set(response)
 const privateConversationMemoryCache = new Map(); // conversationId -> { memory, memoryState, updatedAt }
 const conversationMemorySyncLocks = new Map(); // conversationId -> { promise, startedAt }
 const MEMORY_SYNC_GATE_TIMEOUT_MS = 12000;
+const conversationRelanceSyncLocks = new Map(); // conversationId -> { promise, startedAt, targetTurnNumber }
+const conversationRelanceAsyncState = new Map(); // conversationId -> { targetTurnNumber, sourceTurnNumber, explorationRelanceWindow, explorationDirectivityLevel, isRelance, status, producedAt }
+const conversationTurnCounters = new Map(); // conversationId -> currentTurnNumber
+const RELANCE_SYNC_GATE_TIMEOUT_MS = 800;
+const RELANCE_ASYNC_TIMEOUT_MS = 2500;
+const RELANCE_ASYNC_STATE_TTL_MS = 30 * 1000;
+
+function nextConversationTurnNumber(conversationId) {
+  const safeConversationId = String(conversationId || '').trim();
+  if (!safeConversationId) {
+    return 1;
+  }
+
+  const previous = Number(conversationTurnCounters.get(safeConversationId));
+  const next = Number.isInteger(previous) && previous > 0 ? previous + 1 : 1;
+  conversationTurnCounters.set(safeConversationId, next);
+  return next;
+}
 
 function trackConversationMemorySync(conversationId, promiseLike) {
   const safeConversationId = String(conversationId || '').trim();
@@ -6253,6 +6271,140 @@ async function waitForConversationMemorySync(
     waited: true,
     timedOut,
     waitMs: Math.max(0, Date.now() - start)
+  };
+}
+
+function trackConversationRelanceSync(
+  conversationId,
+  promiseLike,
+  targetTurnNumber = null
+) {
+  const safeConversationId = String(conversationId || '').trim();
+  if (
+    !safeConversationId ||
+    !promiseLike ||
+    typeof promiseLike.then !== 'function'
+  ) {
+    return null;
+  }
+
+  let trackedPromise = null;
+  trackedPromise = Promise.resolve(promiseLike)
+    .catch(() => {
+      // Non-blocking safeguard: async relance failures must not break future requests.
+    })
+    .finally(() => {
+      const current = conversationRelanceSyncLocks.get(safeConversationId);
+      if (current && current.promise === trackedPromise) {
+        conversationRelanceSyncLocks.delete(safeConversationId);
+      }
+    });
+
+  conversationRelanceSyncLocks.set(safeConversationId, {
+    promise: trackedPromise,
+    targetTurnNumber: Number.isInteger(targetTurnNumber)
+      ? targetTurnNumber
+      : null,
+    startedAt: Date.now()
+  });
+
+  return trackedPromise;
+}
+
+async function waitForConversationRelanceSync(
+  conversationId,
+  timeoutMs = RELANCE_SYNC_GATE_TIMEOUT_MS
+) {
+  const safeConversationId = String(conversationId || '').trim();
+  if (!safeConversationId) {
+    return { waited: false, timedOut: false, waitMs: 0 };
+  }
+
+  const pending = conversationRelanceSyncLocks.get(safeConversationId);
+  if (!pending || !pending.promise) {
+    return { waited: false, timedOut: false, waitMs: 0 };
+  }
+
+  const start = Date.now();
+  let timedOut = false;
+  await Promise.race([
+    pending.promise,
+    wait(Math.max(0, timeoutMs)).then(() => {
+      timedOut = true;
+    })
+  ]);
+
+  return {
+    waited: true,
+    timedOut,
+    waitMs: Math.max(0, Date.now() - start)
+  };
+}
+
+function consumeRelanceAsyncStateForTurn(conversationId, currentTurnNumber) {
+  const safeConversationId = String(conversationId || '').trim();
+  if (!safeConversationId || !Number.isInteger(currentTurnNumber)) {
+    return {
+      appliedState: null,
+      droppedState: null,
+      droppedReason: null
+    };
+  }
+
+  const state = conversationRelanceAsyncState.get(safeConversationId);
+  if (!state || typeof state !== 'object') {
+    return {
+      appliedState: null,
+      droppedState: null,
+      droppedReason: null
+    };
+  }
+
+  const producedAt = Number(state.producedAt);
+  if (
+    Number.isFinite(producedAt) &&
+    Date.now() - producedAt > RELANCE_ASYNC_STATE_TTL_MS
+  ) {
+    conversationRelanceAsyncState.delete(safeConversationId);
+    return {
+      appliedState: null,
+      droppedState: state,
+      droppedReason: 'expired_ttl'
+    };
+  }
+
+  const targetTurnNumber = Number(state.targetTurnNumber);
+  if (!Number.isInteger(targetTurnNumber) || targetTurnNumber <= 0) {
+    conversationRelanceAsyncState.delete(safeConversationId);
+    return {
+      appliedState: null,
+      droppedState: state,
+      droppedReason: 'invalid_target_turn'
+    };
+  }
+
+  if (targetTurnNumber < currentTurnNumber) {
+    conversationRelanceAsyncState.delete(safeConversationId);
+    return {
+      appliedState: null,
+      droppedState: state,
+      droppedReason: 'stale_target_turn'
+    };
+  }
+
+  if (targetTurnNumber > currentTurnNumber) {
+    return {
+      appliedState: null,
+      droppedState: null,
+      droppedReason: null
+    };
+  }
+
+  conversationRelanceAsyncState.delete(safeConversationId);
+  return {
+    appliedState: state,
+    droppedState: null,
+    droppedReason: null
   };
 }
 
@@ -6991,6 +7143,36 @@ async function handleChatPost(req, res) {
         )
           ? clampExplorationDirectivityLevel(safe.explorationCalibrationLevel)
           : null,
+        directivityInputLevel: Number.isInteger(safe.directivityInputLevel)
+          ? clampExplorationDirectivityLevel(safe.directivityInputLevel)
+          : null,
+        directivityUsedLevel: Number.isInteger(safe.directivityUsedLevel)
+          ? clampExplorationDirectivityLevel(safe.directivityUsedLevel)
+          : null,
+        directivityNextLevel: Number.isInteger(safe.directivityNextLevel)
+          ? clampExplorationDirectivityLevel(safe.directivityNextLevel)
+          : null,
+        directivityNextWindow: Array.isArray(safe.directivityNextWindow)
+          ? safe.directivityNextWindow
+              .filter((v) => typeof v === 'boolean')
+              .slice(-4)
+          : [],
+        relanceAsyncStatus:
+          typeof safe.relanceAsyncStatus === 'string'
+            ? safe.relanceAsyncStatus
+            : null,
+        relanceAppliedAtTurnEntrySourceTurn: Number.isInteger(
+          safe.relanceAppliedAtTurnEntrySourceTurn
+        )
+          ? safe.relanceAppliedAtTurnEntrySourceTurn
+          : null,
+        relanceAppliedAtTurnEntryStatus:
+          typeof safe.relanceAppliedAtTurnEntryStatus === 'string'
+            ? safe.relanceAppliedAtTurnEntryStatus
+            : null,
+        relanceAsyncTargetTurn: Number.isInteger(safe.relanceAsyncTargetTurn)
+          ? safe.relanceAsyncTargetTurn
+          : null,
         explorationSignal:
           typeof safe.explorationSignal === 'string'
             ? safe.explorationSignal
@@ -7245,6 +7427,8 @@ async function handleChatPost(req, res) {
         return res.status(400).json({ error: 'Missing conversationId' });
       }
 
+      const currentTurnNumber = nextConversationTurnNumber(conversationId);
+
       const memorySyncGateResult = await waitForConversationMemorySync(
         conversationId,
         MEMORY_SYNC_GATE_TIMEOUT_MS
@@ -7255,11 +7439,93 @@ async function handleChatPost(req, res) {
           timedOut: memorySyncGateResult.timedOut === true
         });
       }
+
+      const relanceSyncGateResult = await waitForConversationRelanceSync(
+        conversationId,
+        RELANCE_SYNC_GATE_TIMEOUT_MS
+      );
+      if (relanceSyncGateResult.waited) {
+        logChatDecision('relance_async_gate', {
+          waitedMs: relanceSyncGateResult.waitMs,
+          timedOut: relanceSyncGateResult.timedOut === true
+        });
+      }
       throwIfCanceled();
 
       // Normalize memory and flags with the active registry so all later steps use the same rules.
       const activePromptRegistry = buildDefaultPromptRegistry();
-      const { flags } = normalizeChatMemoryAndFlags(req, activePromptRegistry);
+      const { flags: requestFlags } = normalizeChatMemoryAndFlags(
+        req,
+        activePromptRegistry
+      );
+      const relanceStateResolution = consumeRelanceAsyncStateForTurn(
+        conversationId,
+        currentTurnNumber
+      );
+      let flags = normalizeSessionFlags(requestFlags);
+      let relanceAppliedAtTurnEntry = null;
+
+      if (
+        relanceStateResolution.appliedState &&
+        typeof relanceStateResolution.appliedState === 'object'
+      ) {
+        const appliedState = relanceStateResolution.appliedState;
+        flags = normalizeSessionFlags({
+          ...flags,
+          explorationRelanceWindow: Array.isArray(
+            appliedState.explorationRelanceWindow
+          )
+            ? appliedState.explorationRelanceWindow
+            : flags.explorationRelanceWindow,
+          explorationDirectivityLevel: Number.isInteger(
+            appliedState.explorationDirectivityLevel
+          )
+            ? appliedState.explorationDirectivityLevel
+            : flags.explorationDirectivityLevel
+        });
+
+        relanceAppliedAtTurnEntry = {
+          sourceTurnNumber: Number.isInteger(appliedState.sourceTurnNumber)
+            ? appliedState.sourceTurnNumber
+            : null,
+          targetTurnNumber: Number.isInteger(appliedState.targetTurnNumber)
+            ? appliedState.targetTurnNumber
+            : null,
+          isRelance: appliedState.isRelance === true,
+          status:
+            typeof appliedState.status === 'string'
+              ? appliedState.status
+              : 'ready'
+        };
+
+        logChatDecision('relance_async_applied', {
+          currentTurnNumber,
+          sourceTurnNumber: relanceAppliedAtTurnEntry.sourceTurnNumber,
+          targetTurnNumber: relanceAppliedAtTurnEntry.targetTurnNumber,
+          status: relanceAppliedAtTurnEntry.status,
+          isRelance: relanceAppliedAtTurnEntry.isRelance,
+          explorationDirectivityLevel: flags.explorationDirectivityLevel,
+          explorationRelanceWindow: flags.explorationRelanceWindow
+        });
+      }
+
+      if (relanceStateResolution.droppedReason) {
+        logChatDecision('relance_async_state_dropped', {
+          currentTurnNumber,
+          reason: relanceStateResolution.droppedReason,
+          sourceTurnNumber: Number.isInteger(
+            relanceStateResolution.droppedState?.sourceTurnNumber
+          )
+            ? relanceStateResolution.droppedState.sourceTurnNumber
+            : null,
+          targetTurnNumber: Number.isInteger(
+            relanceStateResolution.droppedState?.targetTurnNumber
+          )
+            ? relanceStateResolution.droppedState.targetTurnNumber
+            : null
+        });
+      }
+
       let previousMemory = normalizeMemory(
         isPrivateConversation === true ? req.body?.memory : '',
         activePromptRegistry
@@ -9226,28 +9492,137 @@ Reponds strictement en JSON: {"items": ["..."]}
         }
       });
 
-      let relanceAnalysis = null;
+      const relanceTargetTurnNumber = currentTurnNumber + 1;
+      const relanceBaseFlagsSnapshot = normalizeSessionFlags(newFlags);
+      const relanceAppliedAtTurnEntrySourceTurn = Number.isInteger(
+        relanceAppliedAtTurnEntry?.sourceTurnNumber
+      )
+        ? relanceAppliedAtTurnEntry.sourceTurnNumber
+        : null;
+      const relanceAppliedAtTurnEntryStatus =
+        typeof relanceAppliedAtTurnEntry?.status === 'string'
+          ? relanceAppliedAtTurnEntry.status
+          : null;
+      let relanceAsyncStatusForDebug =
+        detectedState === 'exploration' ? 'pending' : 'not_requested';
+      let relancePreparedNextDirectivityLevelForDebug =
+        relanceBaseFlagsSnapshot.explorationDirectivityLevel;
+      let relancePreparedNextWindowForDebug =
+        relanceBaseFlagsSnapshot.explorationRelanceWindow;
+
+      if (relanceAppliedAtTurnEntrySourceTurn !== null) {
+        relanceAsyncStatusForDebug =
+          detectedState === 'exploration'
+            ? 'applied_at_entry_and_pending'
+            : 'applied_at_entry';
+      }
 
       if (detectedState === 'exploration') {
-        relanceAnalysis = await analyzeExplorationRelance({
-          message,
-          reply,
-          history: recentHistory,
-          memory: previousMemory,
-          promptRegistry: activePromptRegistry
-        });
+        const relanceBackgroundTask = (async () => {
+          const relanceStartedAt = Date.now();
+          const safeConversationId = String(conversationId || '').trim();
 
-        newFlags = registerExplorationRelance(
-          newFlags,
-          relanceAnalysis.isRelance === true
+          try {
+            const relanceAnalysis = await Promise.race([
+              analyzeExplorationRelance({
+                message,
+                reply,
+                history: recentHistory,
+                memory: previousMemory,
+                promptRegistry: activePromptRegistry
+              }),
+              wait(RELANCE_ASYNC_TIMEOUT_MS).then(() => {
+                const timeoutError = new Error('relance_async_timeout');
+                timeoutError.code = 'relance_async_timeout';
+                throw timeoutError;
+              })
+            ]);
+
+            const relanceNextFlags = registerExplorationRelance(
+              relanceBaseFlagsSnapshot,
+              relanceAnalysis?.isRelance === true
+            );
+
+            const currentTurnSeen = Number(
+              conversationTurnCounters.get(safeConversationId)
+            );
+            if (
+              Number.isInteger(currentTurnSeen) &&
+              currentTurnSeen > relanceTargetTurnNumber
+            ) {
+              logChatDecision('relance_async_result', {
+                status: 'stale_ignored',
+                currentTurnNumber,
+                currentTurnSeen,
+                targetTurnNumber: relanceTargetTurnNumber,
+                latencyMs: Date.now() - relanceStartedAt
+              });
+              return;
+            }
+
+            conversationRelanceAsyncState.set(safeConversationId, {
+              targetTurnNumber: relanceTargetTurnNumber,
+              sourceTurnNumber: currentTurnNumber,
+              explorationRelanceWindow: relanceNextFlags.explorationRelanceWindow,
+              explorationDirectivityLevel:
+                relanceNextFlags.explorationDirectivityLevel,
+              isRelance: relanceAnalysis?.isRelance === true,
+              status: 'ready',
+              producedAt: Date.now()
+            });
+
+            logChatDecision('relance_async_result', {
+              status: 'ready',
+              currentTurnNumber,
+              targetTurnNumber: relanceTargetTurnNumber,
+              isRelance: relanceAnalysis?.isRelance === true,
+              explorationRelanceWindow: relanceNextFlags.explorationRelanceWindow,
+              explorationDirectivityLevel:
+                relanceNextFlags.explorationDirectivityLevel,
+              latencyMs: Date.now() - relanceStartedAt
+            });
+          } catch (err) {
+            const fallbackFlags = normalizeSessionFlags(relanceBaseFlagsSnapshot);
+            const currentTurnSeen = Number(
+              conversationTurnCounters.get(safeConversationId)
+            );
+
+            if (
+              !Number.isInteger(currentTurnSeen) ||
+              currentTurnSeen <= relanceTargetTurnNumber
+            ) {
+              conversationRelanceAsyncState.set(safeConversationId, {
+                targetTurnNumber: relanceTargetTurnNumber,
+                sourceTurnNumber: currentTurnNumber,
+                explorationRelanceWindow: fallbackFlags.explorationRelanceWindow,
+                explorationDirectivityLevel:
+                  fallbackFlags.explorationDirectivityLevel,
+                isRelance: false,
+                status: 'fallback_retained_previous_level',
+                producedAt: Date.now()
+              });
+            }
+
+            logChatDecision('relance_async_result', {
+              status: 'fallback_retained_previous_level',
+              currentTurnNumber,
+              targetTurnNumber: relanceTargetTurnNumber,
+              explorationRelanceWindow: fallbackFlags.explorationRelanceWindow,
+              explorationDirectivityLevel:
+                fallbackFlags.explorationDirectivityLevel,
+              latencyMs: Date.now() - relanceStartedAt,
+              error: err && err.message ? err.message : String(err)
+            });
+          } finally {
+            await registerUsageConsumptionFromTurn();
+          }
+        })();
+
+        trackConversationRelanceSync(
+          conversationId,
+          relanceBackgroundTask,
+          relanceTargetTurnNumber
         );
-        flagsForCatch = normalizeSessionFlags(newFlags);
-
-        logChatDecision('exploration_relance_registered', {
-          isRelance: relanceAnalysis.isRelance === true,
-          explorationRelanceWindow: newFlags.explorationRelanceWindow,
-          explorationDirectivityLevel: newFlags.explorationDirectivityLevel
-        });
       }
 
       const analyzerDeterministicEvidence = [
@@ -9273,9 +9648,6 @@ Reponds strictement en JSON: {"items": ["..."]}
           : []),
         ...(Array.isArray(recallRouting?.deterministicEvidence)
           ? recallRouting.deterministicEvidence
-          : []),
-        ...(Array.isArray(relanceAnalysis?.deterministicEvidence)
-          ? relanceAnalysis.deterministicEvidence
           : [])
       ]
         .filter((entry) => typeof entry === 'string' && entry.trim())
@@ -9310,7 +9682,7 @@ Reponds strictement en JSON: {"items": ["..."]}
             flagsBefore: flags,
             flagsAfter: newFlags,
             generatedBase,
-            relanceAnalysis
+            relanceAnalysis: null
           })
         );
 
@@ -9558,6 +9930,15 @@ Reponds strictement en JSON: {"items": ["..."]}
         explorationCalibrationLevel: newFlags.explorationCalibrationLevel,
         explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
         explorationRelanceWindow: newFlags.explorationRelanceWindow,
+        directivityInputLevel: effectiveExplorationDirectivityLevel,
+        directivityUsedLevel: finalDirectivityLevel,
+        directivityNextLevel: relancePreparedNextDirectivityLevelForDebug,
+        directivityNextWindow: relancePreparedNextWindowForDebug,
+        relanceAsyncStatus: relanceAsyncStatusForDebug,
+        relanceAppliedAtTurnEntrySourceTurn,
+        relanceAppliedAtTurnEntryStatus,
+        relanceAsyncTargetTurn:
+          detectedState === 'exploration' ? relanceTargetTurnNumber : null,
         explorationSignal: finalExplorationSignal,
         memoryBeforeSanitization:
           typeof previousMemoryRewriteDebug?.beforeSanitization === 'string'

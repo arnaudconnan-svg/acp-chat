@@ -6480,10 +6480,6 @@
         return Number(localStorage.getItem(ACTIVITY_KEY) || 0);
       }
 
-      function isSessionExpired() {
-        return false;
-      }
-
       function loadSessionInfoDismissed() {
         return localStorage.getItem(SESSION_INFO_DISMISSED_KEY) === '1';
       }
@@ -6662,12 +6658,6 @@
           await hydrateRemoteConversationIfNeeded(conversationId);
         }
         localStorage.setItem(CONVERSATION_ID_KEY, conversationId);
-
-        if (isSessionExpired() && loadHistory().length > 0) {
-          showScreen('chatScreen', { pushHistory: true });
-          handleExpiredSessionOnEntry();
-          return;
-        }
 
         startFreshOrResumeSession();
       }
@@ -10858,11 +10848,6 @@
         showScreen('chatScreen', { pushHistory: true });
         updateActivity();
         warmBackendConnectionIfNeeded();
-
-        if (isSessionExpired() && loadHistory().length > 0) {
-          handleExpiredSessionOnEntry();
-          return;
-        }
 
         startFreshOrResumeSession();
       }
