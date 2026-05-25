@@ -10382,6 +10382,7 @@
         });
 
         updateCrisisSupportCard();
+  updateMakePublicBtnVisibility();
 
         syncInputAvailability();
         syncWaitingIndicatorForCurrentConversation();
@@ -14342,7 +14343,7 @@
           loadUrl.searchParams.delete('launch');
           const cleanSearch = loadUrl.searchParams.toString();
           history.replaceState(
-            { screenId: 'chatScreen' },
+            { screenId: 'conversationsScreen' },
             '',
             `${loadUrl.pathname}${cleanSearch ? `?${cleanSearch}` : ''}${loadUrl.hash || ''}`
           );
@@ -14351,11 +14352,7 @@
           resetLocalSessionState();
           localStorage.removeItem(CONVERSATION_ID_KEY);
           closeEditMode({ restoreDraft: false });
-          showScreen('chatScreen', {
-            replaceHistory: true,
-            pushHistory: false,
-            noAnimation: true
-          });
+          showScreen('chatScreen', { pushHistory: true, noAnimation: true });
           renderHistory();
           startFreshSession({
             isPrivate: isPrivateLaunch,
