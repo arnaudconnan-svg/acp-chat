@@ -9142,6 +9142,10 @@ Reponds strictement en JSON: {"items": ["..."]}
       const contactAnalysis = electedState.contactAnalysis;
       const dischargeAnalysis = electedState.dischargeAnalysis;
       const detectedState = electedState.detectedState;
+      const explorationAnalysis =
+        stateProposal && typeof stateProposal.explorationAnalysis === 'object'
+          ? stateProposal.explorationAnalysis
+          : { everydayConcreteShare: false };
       newFlags.dischargeState = {
         wasDischarge:
           typeof detectedState === 'string' &&
@@ -9384,6 +9388,7 @@ Reponds strictement en JSON: {"items": ["..."]}
         psychoeducationType: detectedPsychoeducationType,
         infoContextFlags: detectedInfoContextFlags,
         dischargeAnalysis,
+        explorationAnalysis,
         previousFormalAddress: newFlags.formalAddress === true,
         dependencyRiskLevel: flags.dependencyRiskLevel,
         secondaryTension

@@ -448,6 +448,8 @@
         'tentation proc\u00e9durale \u2014 auto-d\u00e9rision',
       procedural_temptation_neutral: 'tentation proc\u00e9durale \u2014 sobre',
       attention_overloaded_noticed: 'surcharge attentionnelle not\u00e9e',
+      everyday_concrete_reframe:
+        'partage quotidien concret \u2014 recadrage neutre',
       dependency_care_expressed_medium: 'lucidit\u00e9 relationnelle (medium)',
       dependency_care_expressed_high: 'lucidit\u00e9 relationnelle (high)'
     };

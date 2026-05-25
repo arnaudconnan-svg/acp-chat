@@ -100,12 +100,18 @@ function makeFakeClient() {
               /je me demande|j'essaie de comprendre|je cherche a comprendre|je cherche a voir ce que/i.test(
                 user
               );
+            const everydayConcreteShare =
+              /deliveroo|burger|chat gratte|bouchons|j'ai faim/i.test(user);
             const confidence = isExploration ? 'high' : 'low';
             return {
               choices: [
                 {
                   message: {
-                    content: JSON.stringify({ isExploration, confidence })
+                    content: JSON.stringify({
+                      isExploration,
+                      confidence,
+                      everydayConcreteShare
+                    })
                   }
                 }
               ]
@@ -496,6 +502,10 @@ async function run() {
         ['llm', 'llm_error'].includes(explorationSelfQuery.source),
         `expected llm source, got ${explorationSelfQuery.source}`
       );
+      assert(
+        explorationSelfQuery.everydayConcreteShare === false,
+        'expected everydayConcreteShare=false'
+      );
     }
   );
 
@@ -509,6 +519,24 @@ async function run() {
       assert(
         explorationNeutral.isExploration === false,
         'expected isExploration=false'
+      );
+      assert(
+        explorationNeutral.everydayConcreteShare === false,
+        'expected everydayConcreteShare=false'
+      );
+    }
+  );
+
+  const explorationEverydayConcrete = await analyzers.analyzeExplorationSignal(
+    "J'attends mon Deliveroo, j'ai faim",
+    []
+  );
+  check(
+    'analyzeExplorationSignal: partage quotidien concret -> everydayConcreteShare=true',
+    () => {
+      assert(
+        explorationEverydayConcrete.everydayConcreteShare === true,
+        'expected everydayConcreteShare=true'
       );
     }
   );
@@ -559,6 +587,27 @@ async function run() {
       assert(
         ['high', 'medium', 'low'].includes(candidate.confidence),
         `confidence inattendue: ${candidate.confidence}`
+      );
+      assert(
+        stateWithExploration.explorationAnalysis?.everydayConcreteShare ===
+          false,
+        'expected explorationAnalysis.everydayConcreteShare=false'
+      );
+    }
+  );
+
+  const stateEverydayConcrete = await analyzers.proposeState(
+    "J'attends mon Deliveroo, j'ai faim",
+    [],
+    { wasDischarge: false }
+  );
+  check(
+    'proposeState: partage quotidien concret -> explorationAnalysis.everydayConcreteShare=true',
+    () => {
+      assert(
+        stateEverydayConcrete.explorationAnalysis?.everydayConcreteShare ===
+          true,
+        'expected explorationAnalysis.everydayConcreteShare=true'
       );
     }
   );

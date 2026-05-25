@@ -67,6 +67,7 @@ function baseInput(overrides = {}) {
     psychoeducationType: null,
     infoContextFlags: [],
     dischargeAnalysis: { aggressiveDischargeDirectedToBot: false },
+    explorationAnalysis: { everydayConcreteShare: false },
     previousFormalAddress: false,
     dependencyRiskLevel: 'low',
     ...overrides
@@ -259,6 +260,41 @@ check('insightMoment keeps hint without relance lock', () => {
     'expected amplify_insight hint'
   );
 });
+
+check(
+  'everyday concrete share enforces neutral reframe without opening',
+  () => {
+    const out = buildPostureDecision(
+      baseInput({
+        detectedState: 'exploration',
+        effectiveExplorationDirectivityLevel: 1,
+        calibrationAnalysis: {
+          calibrationLevel: 1,
+          explorationSignal: 'interpretation'
+        },
+        explorationAnalysis: { everydayConcreteShare: true }
+      })
+    );
+
+    assert(
+      out.finalExplorationSignal === 'phenomenological_follow',
+      `expected phenomenological_follow, got ${out.finalExplorationSignal}`
+    );
+    assert(
+      out.finalDirectivityLevel === 3,
+      `expected finalDirectivityLevel=3, got ${out.finalDirectivityLevel}`
+    );
+    assert(out.forbidden.includes('relance'), 'expected relance forbidden');
+    assert(
+      out.writerIntentHints.includes('everyday_concrete_reframe'),
+      'expected everyday_concrete_reframe hint'
+    );
+    assert(
+      out.relancePolicy === 'forbidden',
+      `expected relancePolicy=forbidden, got ${out.relancePolicy}`
+    );
+  }
+);
 
 check('emotionalDecentering hints apply in info states', () => {
   const out = buildPostureDecision(
