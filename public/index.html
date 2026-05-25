@@ -10657,23 +10657,6 @@
         localStorage.removeItem(ACTIVITY_KEY);
       }
 
-      const LAUNCH_SHORTCUT_SESSION_KEY = 'pendingLaunchShortcut';
-
-      function consumePendingLaunchShortcut() {
-        try {
-          const launchShortcut = String(
-            sessionStorage.getItem(LAUNCH_SHORTCUT_SESSION_KEY) || ''
-          ).trim();
-          if (!launchShortcut) {
-            return '';
-          }
-          sessionStorage.removeItem(LAUNCH_SHORTCUT_SESSION_KEY);
-          return launchShortcut;
-        } catch {
-          return '';
-        }
-      }
-
       function buildSessionPayloadForClose() {
         return {
           memory: loadMemory(),
@@ -14344,10 +14327,13 @@
           launchShortcut === 'new-normal' ||
           launchShortcut === 'new-private'
         ) {
+          const launchAuthDone =
+            loadUrl.searchParams.get('launchAuthDone') === '1';
+
           // Android/TWA launcher back behavior is task-level and not 100% reliable
           // with web-only in-page history reconstruction. We force shortcuts
           // through a dedicated launch bridge + auth guard for stable back.
-          if (loadUrl.searchParams.has('launch')) {
+          if (!launchAuthDone) {
             navigateAway(
               '/launch-bridge.html?launch=' +
                 encodeURIComponent(launchShortcut),
@@ -14355,6 +14341,58 @@
             );
             return;
           }
+
+          if (!userSessionState.authenticated) {
+            navigateAway(
+              '/auth.html?next=' +
+                encodeURIComponent(
+                  '/?launch=' +
+                    encodeURIComponent(launchShortcut) +
+                    '&launchAuthDone=1'
+                ),
+              { replace: true }
+            );
+            return;
+          }
+
+          const isPrivateLaunch = launchShortcut === 'new-private';
+          const shouldUseDefaultPrivacyPolicy = launchShortcut === 'new-normal';
+
+          loadUrl.searchParams.delete('launch');
+          loadUrl.searchParams.delete('launchAuthDone');
+          const cleanSearch = loadUrl.searchParams.toString();
+          const cleanUrl = `${loadUrl.pathname}${cleanSearch ? `?${cleanSearch}` : ''}${loadUrl.hash || ''}`;
+          const conversationsUrl = new URL(cleanUrl, window.location.origin);
+          conversationsUrl.searchParams.set('screen', 'conversationsScreen');
+          const conversationsHistoryUrl =
+            conversationsUrl.pathname +
+            (conversationsUrl.search || '') +
+            (conversationsUrl.hash || '');
+
+          history.replaceState(
+            { screenId: 'conversationsScreen' },
+            '',
+            conversationsHistoryUrl
+          );
+          history.pushState({ screenId: 'chatScreen' }, '', cleanUrl);
+
+          clearSessionStorageExceptMemory();
+          resetLocalSessionState();
+          localStorage.removeItem(CONVERSATION_ID_KEY);
+          closeEditMode({ restoreDraft: false });
+          showScreen('chatScreen', {
+            replaceHistory: false,
+            pushHistory: false,
+            noAnimation: true
+          });
+          renderHistory();
+          startFreshSession({
+            isPrivate: isPrivateLaunch,
+            useDefault: shouldUseDefaultPrivacyPolicy
+          });
+          defocusInput();
+          updateActivity();
+          return;
         }
 
         if (isAdminUI && replayPayload) {
@@ -14389,51 +14427,6 @@
 
         const requestedScreen = loadUrl.searchParams.get('screen');
         if (requestedScreen === 'conversationsScreen') {
-          const pendingLaunchShortcut = consumePendingLaunchShortcut();
-          if (
-            pendingLaunchShortcut === 'new-normal' ||
-            pendingLaunchShortcut === 'new-private'
-          ) {
-            const isPrivateLaunch = pendingLaunchShortcut === 'new-private';
-            const shouldUseDefaultPrivacyPolicy =
-              pendingLaunchShortcut === 'new-normal';
-
-            loadUrl.searchParams.delete('screen');
-            const cleanSearch = loadUrl.searchParams.toString();
-            const cleanUrl = `${loadUrl.pathname}${cleanSearch ? `?${cleanSearch}` : ''}${loadUrl.hash || ''}`;
-            const conversationsUrl = new URL(cleanUrl, window.location.origin);
-            conversationsUrl.searchParams.set('screen', 'conversationsScreen');
-            const conversationsHistoryUrl =
-              conversationsUrl.pathname +
-              (conversationsUrl.search || '') +
-              (conversationsUrl.hash || '');
-
-            history.replaceState(
-              { screenId: 'conversationsScreen' },
-              '',
-              conversationsHistoryUrl
-            );
-            history.pushState({ screenId: 'chatScreen' }, '', cleanUrl);
-
-            clearSessionStorageExceptMemory();
-            resetLocalSessionState();
-            localStorage.removeItem(CONVERSATION_ID_KEY);
-            closeEditMode({ restoreDraft: false });
-            showScreen('chatScreen', {
-              replaceHistory: false,
-              pushHistory: false,
-              noAnimation: true
-            });
-            renderHistory();
-            startFreshSession({
-              isPrivate: isPrivateLaunch,
-              useDefault: shouldUseDefaultPrivacyPolicy
-            });
-            defocusInput();
-            updateActivity();
-            return;
-          }
-
           if (!userSessionState.authenticated) {
             navigateAway(
               '/auth.html?next=' +

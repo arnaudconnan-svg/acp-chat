@@ -24,21 +24,14 @@
       (function () {
         'use strict';
 
-        const LAUNCH_SHORTCUT_SESSION_KEY = 'pendingLaunchShortcut';
-
         function navigateAway(url, options = {}) {
-          document.body.style.animation = 'none';
-          document.body.style.transition =
-            'opacity 0.32s ease, transform 0.32s ease';
-          document.body.style.opacity = '0';
-          document.body.style.transform = 'translateY(10px)';
           setTimeout(() => {
             if (options.replace === true) {
               window.location.replace(url);
               return;
             }
             window.location.href = url;
-          }, 320);
+          }, 0);
         }
 
         const launchBridgeHistoryState = history.state || {};
@@ -65,13 +58,6 @@
           }
         });
 
-        window.addEventListener('pageshow', () => {
-          document.body.style.animation = '';
-          document.body.style.transition = '';
-          document.body.style.opacity = '';
-          document.body.style.transform = '';
-        });
-
         function resolveLaunchShortcut() {
           try {
             const params = new URLSearchParams(window.location.search);
@@ -86,38 +72,21 @@
         }
 
         const launch = resolveLaunchShortcut();
-        const launchBridgeNext =
-          '/launch-bridge.html?launch=' + encodeURIComponent(launch);
-
-        function storePendingLaunchShortcut() {
-          try {
-            sessionStorage.setItem(LAUNCH_SHORTCUT_SESSION_KEY, launch);
-          } catch (_) {}
-        }
-
-        function goToConversationsEntry() {
-          storePendingLaunchShortcut();
-          window.location.href = '/?screen=conversationsScreen';
-        }
+        const next =
+          '/?launch=' + encodeURIComponent(launch) + '&launchAuthDone=1';
 
         fetch('/api/auth/session', { credentials: 'include' })
           .then((r) => r.json())
           .then((data) => {
             if (data && data.authenticated === true) {
-              goToConversationsEntry();
+              navigateAway(next);
               return;
             }
 
-            navigateAway(
-              '/auth.html?next=' + encodeURIComponent(launchBridgeNext),
-              { replace: true }
-            );
+            navigateAway('/auth.html?next=' + encodeURIComponent(next));
           })
           .catch(() => {
-            navigateAway(
-              '/auth.html?next=' + encodeURIComponent(launchBridgeNext),
-              { replace: true }
-            );
+            navigateAway('/auth.html?next=' + encodeURIComponent(next));
           });
       })();
     </script>
