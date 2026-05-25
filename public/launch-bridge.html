@@ -24,6 +24,38 @@
       (function () {
         'use strict';
 
+        function getNavigationType() {
+          try {
+            const entries = performance.getEntriesByType('navigation');
+            if (Array.isArray(entries) && entries.length > 0) {
+              return String(entries[0].type || '').toLowerCase();
+            }
+          } catch (_) {}
+          return '';
+        }
+
+        const bridgeState = history.state || {};
+        if (
+          bridgeState.__page !== 'launchBridge' ||
+          bridgeState.__guard !== true
+        ) {
+          history.replaceState(
+            { __page: 'launchBridge', __base: true },
+            '',
+            window.location.href
+          );
+          history.pushState(
+            { __page: 'launchBridge', __guard: true },
+            '',
+            window.location.href
+          );
+        }
+
+        if (getNavigationType() === 'back_forward') {
+          window.location.replace('/?screen=conversationsScreen');
+          return;
+        }
+
         function resolveLaunchShortcut() {
           try {
             const params = new URLSearchParams(window.location.search);
@@ -45,18 +77,14 @@
           .then((r) => r.json())
           .then((data) => {
             if (data && data.authenticated === true) {
-              window.location.replace(next);
+              window.location.href = next;
               return;
             }
 
-            window.location.replace(
-              '/auth.html?next=' + encodeURIComponent(next)
-            );
+            window.location.href = '/auth.html?next=' + encodeURIComponent(next);
           })
           .catch(() => {
-            window.location.replace(
-              '/auth.html?next=' + encodeURIComponent(next)
-            );
+            window.location.href = '/auth.html?next=' + encodeURIComponent(next);
           });
       })();
     </script>
