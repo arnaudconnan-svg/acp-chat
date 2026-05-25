@@ -424,6 +424,8 @@
               required
               autocomplete="new-password"
               minlength="10"
+              pattern="(?=.*[A-Za-z])(?=.*\d).{10,}"
+              title="Au moins 10 caractères, avec au moins une lettre et un chiffre."
               placeholder="10 caractères minimum"
             />
             <button
@@ -893,7 +895,7 @@
           }
 
           if (lower.includes('password must contain at least')) {
-            return 'Le mot de passe doit contenir au moins 10 caractères.';
+            return 'Le mot de passe doit contenir au moins 10 caractères, avec au moins une lettre et un chiffre.';
           }
 
           if (lower.includes('invalid') || lower.includes('invalide')) {
@@ -901,6 +903,11 @@
           }
 
           return fallback;
+        }
+
+        function isStrongPasswordCandidate(password) {
+          const text = String(password || '');
+          return text.length >= 10 && /[A-Za-z]/.test(text) && /\d/.test(text);
         }
 
         document.addEventListener('visibilitychange', () => {
@@ -945,9 +952,9 @@
             return;
           }
 
-          if (password.length < 10) {
+          if (!isStrongPasswordCandidate(password)) {
             notice.textContent =
-              'Le mot de passe doit faire au moins 10 caractères.';
+              'Le mot de passe doit faire au moins 10 caractères, avec au moins une lettre et un chiffre.';
             return;
           }
 

@@ -3415,7 +3415,7 @@
         'facilitatio_conversations_swipe_hint_dismissed';
       const SESSION_TIMEOUT_MS = 12 * 60 * 60 * 1000;
       const MAX_RECENT_TURNS = 8;
-      const CHAT_REQUEST_TIMEOUT_MS = 45000;
+      const CHAT_REQUEST_TIMEOUT_MS = 60000;
       const ADMIN_UI_KEY = 'facilitatio_admin_ui';
       const DEV_MODE_KEY = 'facilitatio_dev_mode';
       const ADMIN_REPLAY_KEY = 'facilitatio_admin_replay';
@@ -3431,6 +3431,9 @@
         user: null
       };
       const conversationDataMemoryCache = new Map();
+      const MAX_CONVERSATION_DATA_MEMORY_CACHE_SIZE = 100;
+      const INTERSESSION_MEMORY_CACHE_KEY =
+        'facilitatio_intersession_memory_cache_v1';
 
       // Module-level intersession memory for authenticated accounts.
       // Populated once on load; used as initial memory for new conversations.
@@ -3438,6 +3441,92 @@
       let _pendingIntersessionMemoryNatural = null;
       let conversationsPrivateHintShouldOpenOnNextEntry = false;
       let conversationsPrivateHintActive = false;
+
+      function loadCachedIntersessionMemory() {
+        try {
+          const raw = localStorage.getItem(INTERSESSION_MEMORY_CACHE_KEY);
+          if (!raw) {
+            return { compact: null, natural: null };
+          }
+
+          const parsed = JSON.parse(raw);
+          if (!parsed || typeof parsed !== 'object') {
+            return { compact: null, natural: null };
+          }
+
+          const compact =
+            typeof parsed.memoryCompact === 'string' && parsed.memoryCompact.trim()
+              ? parsed.memoryCompact.trim()
+              : null;
+          const natural =
+            typeof parsed.memoryNatural === 'string' && parsed.memoryNatural.trim()
+              ? parsed.memoryNatural.trim()
+              : null;
+          const updatedAt = Number(parsed.updatedAt);
+
+          if (
+            Number.isFinite(updatedAt) &&
+            updatedAt > 0 &&
+            Date.now() - updatedAt > 12 * 60 * 60 * 1000
+          ) {
+            localStorage.removeItem(INTERSESSION_MEMORY_CACHE_KEY);
+            return { compact: null, natural: null };
+          }
+
+          return { compact, natural };
+        } catch {
+          return { compact: null, natural: null };
+        }
+      }
+
+      function saveCachedIntersessionMemory(compact, natural) {
+        try {
+          const safeCompact =
+            typeof compact === 'string' && compact.trim() ? compact.trim() : '';
+          const safeNatural =
+            typeof natural === 'string' && natural.trim() ? natural.trim() : '';
+
+          if (!safeCompact && !safeNatural) {
+            localStorage.removeItem(INTERSESSION_MEMORY_CACHE_KEY);
+            return;
+          }
+
+          localStorage.setItem(
+            INTERSESSION_MEMORY_CACHE_KEY,
+            JSON.stringify({
+              memoryCompact: safeCompact || null,
+              memoryNatural: safeNatural || null,
+              updatedAt: Date.now()
+            })
+          );
+        } catch {}
+      }
+
+      function clearCachedIntersessionMemory() {
+        try {
+          localStorage.removeItem(INTERSESSION_MEMORY_CACHE_KEY);
+        } catch {}
+      }
+
+      function rememberConversationDataMemoryCache(conversationId, data) {
+        const safeConversationId = String(conversationId || '').trim();
+        if (!safeConversationId) return;
+
+        if (conversationDataMemoryCache.has(safeConversationId)) {
+          conversationDataMemoryCache.delete(safeConversationId);
+        }
+
+        conversationDataMemoryCache.set(safeConversationId, data);
+
+        while (
+          conversationDataMemoryCache.size >
+          MAX_CONVERSATION_DATA_MEMORY_CACHE_SIZE
+        ) {
+          const oldestKey = conversationDataMemoryCache.keys().next().value;
+          if (!oldestKey) break;
+          conversationDataMemoryCache.delete(oldestKey);
+        }
+      }
 
       function isTwaRuntimeContext() {
         const ua = String(navigator.userAgent || '');
@@ -4002,9 +4091,19 @@
         if (!userSessionState.authenticated) {
           _pendingIntersessionMemory = null;
           _pendingIntersessionMemoryNatural = null;
+          clearCachedIntersessionMemory();
           updateIntersessionMemoryDebugChip(null, null);
           return;
         }
+
+        const cachedMemory = loadCachedIntersessionMemory();
+        _pendingIntersessionMemory = cachedMemory.compact;
+        _pendingIntersessionMemoryNatural = cachedMemory.natural;
+        updateIntersessionMemoryDebugChip(
+          _pendingIntersessionMemory,
+          _pendingIntersessionMemoryNatural
+        );
+
         try {
           const res = await fetch('/api/intersession-memory', {
             method: 'GET',
@@ -4028,6 +4127,14 @@
 
           _pendingIntersessionMemory = serverMemoryCompact;
           _pendingIntersessionMemoryNatural = serverMemoryNatural;
+          if (serverMemoryCompact || serverMemoryNatural) {
+            saveCachedIntersessionMemory(
+              serverMemoryCompact,
+              serverMemoryNatural
+            );
+          } else {
+            clearCachedIntersessionMemory();
+          }
           updateIntersessionMemoryDebugChip(
             _pendingIntersessionMemory,
             _pendingIntersessionMemoryNatural
@@ -5504,7 +5611,7 @@
             ? selectPreferredConversationData(safeData, cached)
             : safeData;
 
-          conversationDataMemoryCache.set(safeConversationId, preferredData);
+          rememberConversationDataMemoryCache(safeConversationId, preferredData);
           return preferredData;
         } catch {
           const cached = conversationDataMemoryCache.get(safeConversationId);
@@ -5522,7 +5629,7 @@
         if (!safeConversationId) return false;
 
         const safeData = buildSafeConversationData(data);
-        conversationDataMemoryCache.set(safeConversationId, safeData);
+        rememberConversationDataMemoryCache(safeConversationId, safeData);
 
         const stored = safeSetLocalStorage(
           getConversationStorageKey(safeConversationId),

@@ -34,6 +34,7 @@ const db = admin.database();
 const messagesRef = db.ref('messages');
 const userLabelsRef = db.ref('userLabels');
 const usersRef = db.ref('users');
+const privateConversationMemoryRef = db.ref('privateConversationMemory');
 const accountArchivesRef = db.ref('accountArchives');
 const accountResetAuditsRef = db.ref('accountResetAudits');
 const adminSettingsRef = db.ref('adminSettings');
@@ -157,8 +158,8 @@ function buildEmergencyNumbersText(emergencyInfo) {
   if (emergencyInfo.emergency)
     parts.push(`urgences : ${emergencyInfo.emergency}`);
   if (emergencyInfo.suicide)
-    parts.push(`pr�vention suicide : ${emergencyInfo.suicide}`);
-  return parts.join(' � ') || null;
+    parts.push(`prévention suicide : ${emergencyInfo.suicide}`);
+  return parts.join(' | ') || null;
 }
 // -----------------------------------------------------------------------------
 const {
@@ -214,6 +215,154 @@ const port = appConfig.port;
 
 function buildRequestId(prefix = 'req') {
   return `${prefix}_${Date.now().toString(36)}_${crypto.randomBytes(3).toString('hex')}`;
+}
+
+function getClientIpAddress(req) {
+  const forwardedFor = String(req.headers['x-forwarded-for'] || '').trim();
+  if (forwardedFor) {
+    return forwardedFor.split(',')[0].trim() || req.ip || req.socket?.remoteAddress || 'unknown';
+  }
+
+  return req.ip || req.socket?.remoteAddress || 'unknown';
+}
+
+function createInMemoryRateLimiter({ windowMs, max }) {
+  const buckets = new Map();
+
+  function readBucket(key, now = Date.now()) {
+    const safeKey = String(key || '').trim();
+    if (!safeKey) return null;
+
+    const existing = buckets.get(safeKey);
+    if (!existing || existing.resetAt <= now) {
+      const fresh = { count: 0, resetAt: now + windowMs };
+      buckets.set(safeKey, fresh);
+      return fresh;
+    }
+
+    return existing;
+  }
+
+  return {
+    check(key) {
+      const now = Date.now();
+      const bucket = readBucket(key, now);
+      if (!bucket) {
+        return { allowed: true, remaining: max, resetAt: now + windowMs };
+      }
+
+      if (bucket.count >= max) {
+        return {
+          allowed: false,
+          remaining: 0,
+          resetAt: bucket.resetAt
+        };
+      }
+
+      bucket.count += 1;
+      buckets.set(String(key || '').trim(), bucket);
+
+      return {
+        allowed: true,
+        remaining: Math.max(0, max - bucket.count),
+        resetAt: bucket.resetAt
+      };
+    },
+    reset(key) {
+      buckets.delete(String(key || '').trim());
+    }
+  };
+}
+
+const authRateLimiters = {
+  login: createInMemoryRateLimiter({ windowMs: 15 * 60 * 1000, max: 5 }),
+  register: createInMemoryRateLimiter({ windowMs: 60 * 60 * 1000, max: 10 })
+};
+
+function buildAuthRateLimitKey(req, scope, extra = '') {
+  const ip = getClientIpAddress(req);
+  const normalizedExtra = String(extra || '').trim().toLowerCase();
+  return [scope, ip, normalizedExtra].filter(Boolean).join('|');
+}
+
+function enforceAuthRateLimit(req, res, scope, extra = '') {
+  const limiter = authRateLimiters[scope];
+  if (!limiter) return true;
+
+  const key = buildAuthRateLimitKey(req, scope, extra);
+  const result = limiter.check(key);
+  if (result.allowed) return true;
+
+  const retryAfterSeconds = Math.max(
+    1,
+    Math.ceil((result.resetAt - Date.now()) / 1000)
+  );
+  res.setHeader('Retry-After', String(retryAfterSeconds));
+  return res.status(429).json({
+    error: 'Too many attempts. Please wait before trying again.'
+  });
+}
+
+function isStrongPassword(value = '') {
+  const password = String(value || '');
+  return password.length >= 10 && /[A-Za-zÀ-ÖØ-öø-ÿ]/.test(password) && /\d/.test(password);
+}
+
+function buildPrivateConversationMemoryPayload({
+  memory = '',
+  memoryState = {},
+  memoryRewriteDebug = null,
+  updatedAt = new Date().toISOString()
+} = {}) {
+  return {
+    memory: typeof memory === 'string' ? memory : '',
+    memoryState:
+      memoryState && typeof memoryState === 'object' && !Array.isArray(memoryState)
+        ? memoryState
+        : {},
+    memoryRewriteDebug:
+      memoryRewriteDebug && typeof memoryRewriteDebug === 'object'
+        ? memoryRewriteDebug
+        : null,
+    updatedAt: typeof updatedAt === 'string' ? updatedAt : new Date().toISOString()
+  };
+}
+
+async function readPrivateConversationMemory(conversationId = '') {
+  const safeConversationId = String(conversationId || '').trim();
+  if (!safeConversationId) return null;
+
+  try {
+    const snap = await privateConversationMemoryRef
+      .child(safeConversationId)
+      .once('value');
+    const data = snap.val();
+    if (!data || typeof data !== 'object') return null;
+
+    return buildPrivateConversationMemoryPayload({
+      memory: typeof data.memory === 'string' ? data.memory : '',
+      memoryState:
+        data.memoryState && typeof data.memoryState === 'object'
+          ? data.memoryState
+          : {},
+      memoryRewriteDebug:
+        data.memoryRewriteDebug && typeof data.memoryRewriteDebug === 'object'
+          ? data.memoryRewriteDebug
+          : null,
+      updatedAt: typeof data.updatedAt === 'string' ? data.updatedAt : new Date().toISOString()
+    });
+  } catch {
+    return null;
+  }
+}
+
+async function persistPrivateConversationMemory(conversationId = '', payload = {}) {
+  const safeConversationId = String(conversationId || '').trim();
+  if (!safeConversationId) return;
+
+  await privateConversationMemoryRef
+    .child(safeConversationId)
+    .set(buildPrivateConversationMemoryPayload(payload));
 }
 
 function normalizeSuperId(value = '') {
@@ -2299,7 +2448,7 @@ app.post('/api/admin/login', (req, res) => {
 
   res.setHeader(
     'Set-Cookie',
-    `adminSessionId=${sessionId}; HttpOnly; Path=/; SameSite=Lax; Max-Age=${Math.floor(ADMIN_SESSION_DURATION / 1000)}`
+    `adminSessionId=${sessionId}; HttpOnly; Path=/; SameSite=Lax; Secure; Max-Age=${Math.floor(ADMIN_SESSION_DURATION / 1000)}`
   );
 
   res.json({ success: true });
@@ -2314,7 +2463,10 @@ app.post('/api/admin/logout', (req, res) => {
     adminSessions.delete(sessionId);
   }
 
-  res.setHeader('Set-Cookie', 'adminSessionId=; HttpOnly; Path=/; Max-Age=0');
+  res.setHeader(
+    'Set-Cookie',
+    'adminSessionId=; HttpOnly; Path=/; Secure; Max-Age=0'
+  );
 
   res.json({ success: true });
 });
@@ -2358,14 +2510,21 @@ app.post('/api/auth/register', async (req, res) => {
     const email = normalizeEmail(req.body.email);
     const password = String(req.body.password || '');
 
+    if (!enforceAuthRateLimit(req, res, 'register', email)) {
+      return;
+    }
+
     if (!email || !email.includes('@')) {
       return res.status(400).json({ error: 'Invalid email' });
     }
 
-    if (password.length < 10) {
+    if (!isStrongPassword(password)) {
       return res
         .status(400)
-        .json({ error: 'Password must contain at least 10 characters' });
+        .json({
+          error:
+            'Password must contain at least 10 characters, including at least one letter and one number'
+        });
     }
 
     const existing = await findUserByEmail(email);
@@ -2407,7 +2566,7 @@ app.post('/api/auth/register', async (req, res) => {
 
     res.setHeader(
       'Set-Cookie',
-      `userSessionId=${sessionToken}; HttpOnly; Path=/; SameSite=Lax; Max-Age=${Math.floor(USER_SESSION_DURATION / 1000)}`
+      `userSessionId=${sessionToken}; HttpOnly; Path=/; SameSite=Lax; Secure; Max-Age=${Math.floor(USER_SESSION_DURATION / 1000)}`
     );
 
     return res.status(201).json({
@@ -2434,6 +2593,11 @@ app.post('/api/auth/login', async (req, res) => {
 
     const email = normalizeEmail(req.body.email);
     const password = String(req.body.password || '');
+
+    if (!enforceAuthRateLimit(req, res, 'login', email)) {
+      return;
+    }
+
     const found = await findUserByEmail(email);
 
     if (
@@ -2458,9 +2622,11 @@ app.post('/api/auth/login', async (req, res) => {
       createdAt: Date.now()
     });
 
+    authRateLimiters.login.reset(buildAuthRateLimitKey(req, 'login', email));
+
     res.setHeader(
       'Set-Cookie',
-      `userSessionId=${sessionToken}; HttpOnly; Path=/; SameSite=Lax; Max-Age=${Math.floor(USER_SESSION_DURATION / 1000)}`
+      `userSessionId=${sessionToken}; HttpOnly; Path=/; SameSite=Lax; Secure; Max-Age=${Math.floor(USER_SESSION_DURATION / 1000)}`
     );
 
     return res.json({
@@ -2481,7 +2647,10 @@ app.post('/api/auth/logout', (req, res) => {
     userSessions.delete(sessionToken);
   }
 
-  res.setHeader('Set-Cookie', 'userSessionId=; HttpOnly; Path=/; Max-Age=0');
+  res.setHeader(
+    'Set-Cookie',
+    'userSessionId=; HttpOnly; Path=/; Secure; Max-Age=0'
+  );
 
   return res.json({ success: true });
 });
@@ -2506,10 +2675,13 @@ app.post('/api/auth/change-password', requireUserAuth, async (req, res) => {
       return res.status(401).json({ error: 'Current password is incorrect' });
     }
 
-    if (newPassword.length < 10) {
+    if (!isStrongPassword(newPassword)) {
       return res
         .status(400)
-        .json({ error: 'Password must contain at least 10 characters' });
+        .json({
+          error:
+            'Password must contain at least 10 characters, including at least one letter and one number'
+        });
     }
 
     const now = new Date().toISOString();
@@ -2849,7 +3021,7 @@ app.post('/api/account/reset', requireUserAuth, async (req, res) => {
 
     res.setHeader(
       'Set-Cookie',
-      `userSessionId=${newSessionToken}; HttpOnly; Path=/; SameSite=Lax; Max-Age=${Math.floor(USER_SESSION_DURATION / 1000)}`
+      `userSessionId=${newSessionToken}; HttpOnly; Path=/; SameSite=Lax; Secure; Max-Age=${Math.floor(USER_SESSION_DURATION / 1000)}`
     );
 
     console.info('[ACCOUNT_MEMORY_RESET]', {
@@ -2952,7 +3124,10 @@ app.post('/api/account/close', requireUserAuth, async (req, res) => {
     }
     invalidateUserSessionsByUserId(userId);
 
-    res.setHeader('Set-Cookie', 'userSessionId=; HttpOnly; Path=/; Max-Age=0');
+    res.setHeader(
+      'Set-Cookie',
+      'userSessionId=; HttpOnly; Path=/; Secure; Max-Age=0'
+    );
 
     console.info('[ACCOUNT_CLOSURE]', {
       action: 'account_closure',
@@ -4805,7 +4980,7 @@ app.put('/api/intersession-memory', requireUserAuth, async (req, res) => {
         serviceUnavailable: true,
         serviceUnavailableReason: 'quota_exhausted',
         userMessage:
-          "Le service est temporairement indisponible car le quota API est epuise. Aucun nouveau message ne peut etre traite tant que ce quota n'est pas retabli. Recharge la page apres retablissement du quota."
+          "Le service est temporairement indisponible car le quota API est épuisé. Aucun nouveau message ne peut être traité tant que ce quota n'est pas rétabli. Recharge la page après rétablissement du quota."
       });
     }
     return res.status(500).json({ error: 'Intersession memory save failed' });
@@ -7171,9 +7346,18 @@ async function handleChatPost(req, res) {
         }
       }
       if (isPrivateConversation && conversationId) {
-        const cachedPrivateMemory = privateConversationMemoryCache.get(
+        let cachedPrivateMemory = privateConversationMemoryCache.get(
           String(conversationId)
         );
+        if (!cachedPrivateMemory) {
+          cachedPrivateMemory = await readPrivateConversationMemory(conversationId);
+          if (cachedPrivateMemory) {
+            privateConversationMemoryCache.set(
+              String(conversationId),
+              cachedPrivateMemory
+            );
+          }
+        }
         if (
           cachedPrivateMemory &&
           typeof cachedPrivateMemory.memory === 'string' &&
@@ -7658,6 +7842,22 @@ async function handleChatPost(req, res) {
                 memoryRewriteDebug: crisisMemoryRewriteDebug,
                 updatedAt: Date.now()
               });
+              try {
+                await persistPrivateConversationMemory(conversationId, {
+                  memory: persistedMemoryText,
+                  memoryState: mergedStateResult.memoryState,
+                  memoryRewriteDebug: crisisMemoryRewriteDebug,
+                  updatedAt: new Date().toISOString()
+                });
+              } catch (persistPrivateErr) {
+                console.warn('[CHAT][PRIVATE_MEMORY_PERSIST_FAILED]', {
+                  conversationId,
+                  error:
+                    persistPrivateErr && persistPrivateErr.message
+                      ? persistPrivateErr.message
+                      : String(persistPrivateErr)
+                });
+              }
               return;
             }
 
@@ -9264,6 +9464,35 @@ Reponds strictement en JSON: {"items": ["..."]}
               },
               updatedAt: Date.now()
             });
+
+                try {
+                  await persistPrivateConversationMemory(conversationId, {
+                    memory: persistedMemoryText,
+                    memoryState: mergedStateResult.memoryState,
+                    memoryRewriteDebug: {
+                      beforeSanitization: null,
+                      deletedAncientIds: Array.isArray(
+                        memoryUpdateContract?.deleteAncientMovementsById
+                      )
+                        ? memoryUpdateContract.deleteAncientMovementsById
+                        : [],
+                      source:
+                        typeof memoryUpdateContract?.source === 'string'
+                          ? memoryUpdateContract.source
+                          : null,
+                      capturedAt: new Date().toISOString()
+                    },
+                    updatedAt: new Date().toISOString()
+                  });
+                } catch (persistPrivateErr) {
+                  console.warn('[CHAT][PRIVATE_MEMORY_PERSIST_FAILED]', {
+                    conversationId,
+                    error:
+                      persistPrivateErr && persistPrivateErr.message
+                        ? persistPrivateErr.message
+                        : String(persistPrivateErr)
+                  });
+                }
             return;
           }
 
@@ -9517,12 +9746,12 @@ Reponds strictement en JSON: {"items": ["..."]}
         (err.code === 'insufficient_quota' ||
           err.type === 'insufficient_quota');
       const fallbackReply = isQuotaExhausted
-        ? "Le service est temporairement indisponible car le quota API est epuise. Je ne peux pas traiter de nouveau message tant que ce quota n'est pas retabli."
+        ? "Le service est temporairement indisponible car le quota API est épuisé. Je ne peux pas traiter de nouveau message tant que ce quota n'est pas rétabli."
         : suicideLevelForCatch === 'N1'
           ? n1Fallback()
           : modeForCatch === 'discharge'
-            ? 'Je suis la.'
-            : 'Un probleme technique est survenu. Reessaie dans un instant.';
+            ? 'Je suis là.'
+            : 'Un problème technique est survenu. Réessaie dans un instant.';
       const fallbackDebugMeta = buildFallbackResponseDebugMeta({
         memory: previousMemoryForCatch,
         memoryBeforeSanitization:
@@ -9582,7 +9811,7 @@ Reponds strictement en JSON: {"items": ["..."]}
           serviceUnavailable: true,
           serviceUnavailableReason: 'quota_exhausted',
           userMessage:
-            "Le service est temporairement indisponible car le quota API est epuise. Aucun nouveau message ne peut etre traite tant que ce quota n'est pas retabli. Recharge la page apres retablissement du quota.",
+            "Le service est temporairement indisponible car le quota API est épuisé. Aucun nouveau message ne peut être traité tant que ce quota n'est pas rétabli. Recharge la page après rétablissement du quota.",
           memory: previousMemoryForCatch,
           flags: flagsForCatch,
           debug: ['error'],
