@@ -12355,6 +12355,7 @@
         }
 
         const isPrivateLaunch = launchShortcut === "new-private";
+        const shouldUseDefaultPrivacyPolicy = launchShortcut === "new-normal";
 
         loadUrl.searchParams.delete("launch");
         const cleanSearch = loadUrl.searchParams.toString();
@@ -12370,7 +12371,10 @@
         closeEditMode({ restoreDraft: false });
         showScreen("chatScreen", { replaceHistory: true, pushHistory: false, noAnimation: true });
         renderHistory();
-        startFreshSession({ isPrivate: isPrivateLaunch, useDefault: false });
+        startFreshSession({
+          isPrivate: isPrivateLaunch,
+          useDefault: shouldUseDefaultPrivacyPolicy
+        });
         defocusInput();
         return;
       }
