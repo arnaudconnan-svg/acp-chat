@@ -6194,13 +6194,15 @@ const CHAT_REQUEST_STALE_TTL_MS = 15 * 60 * 1000;
 const activeChatProgressStreams = new Map(); // requestId -> Set(response)
 const privateConversationMemoryCache = new Map(); // conversationId -> { memory, memoryState, updatedAt }
 const conversationMemorySyncLocks = new Map(); // conversationId -> { promise, startedAt }
-const MEMORY_SYNC_GATE_TIMEOUT_MS = 12000;
+const MEMORY_SYNC_GATE_TIMEOUT_MS = 2000;
 const conversationRelanceSyncLocks = new Map(); // conversationId -> { promise, startedAt, targetTurnNumber }
 const conversationRelanceAsyncState = new Map(); // conversationId -> { targetTurnNumber, sourceTurnNumber, explorationRelanceWindow, explorationDirectivityLevel, isRelance, status, producedAt }
 const conversationTurnCounters = new Map(); // conversationId -> currentTurnNumber
 const RELANCE_SYNC_GATE_TIMEOUT_MS = 800;
 const RELANCE_ASYNC_TIMEOUT_MS = 2500;
 const RELANCE_ASYNC_STATE_TTL_MS = 30 * 1000;
+const INTERSESSION_PREPARATION_WAIT_TIMEOUT_MS = 1200;
+const INTERSESSION_FALLBACK_SEED_WAIT_TIMEOUT_MS = 120;
 
 function nextConversationTurnNumber(conversationId) {
   const safeConversationId = String(conversationId || '').trim();
@@ -8771,6 +8773,13 @@ Reponds strictement en JSON: {"items": ["..."]}
 
       const intersessionMemoryPreparationPromise =
         prepareIntersessionMemoryForTurn(newFlags);
+      const intersessionFallbackSeedPromise = (async () => {
+        if (isPrivateConversation === true || !userId || userId === 'u_anon') {
+          return '';
+        }
+        const userData = await userProfilePromise;
+        return getStoredIntersessionCompact(userData);
+      })();
       const shortAffiliationValidationPromise = hasShortAffiliationMarker(
         message
       )
@@ -9440,11 +9449,62 @@ Reponds strictement en JSON: {"items": ["..."]}
       // Blocs 3+4 : injection m?moire longue terme (intersession compress?e).
       // turnsUntilIntersessionRefresh === 0 ? injection. Sinon, d?cr?ment? chaque tour.
       // intersessionRefreshForced (Firebase) permet un refresh imm?diat apr?s ?dition directe.
-      const {
-        intersessionMemoryForThisTurn,
-        intersessionMemoryRuntime,
-        nextTurnsUntilIntersessionRefresh
-      } = await intersessionMemoryPreparationPromise;
+      let intersessionPreparationTimedOut = false;
+      const intersessionPreparationResult = await Promise.race([
+        intersessionMemoryPreparationPromise,
+        wait(INTERSESSION_PREPARATION_WAIT_TIMEOUT_MS).then(() => {
+          intersessionPreparationTimedOut = true;
+          return null;
+        })
+      ]);
+
+      let intersessionMemoryForThisTurn = '';
+      let intersessionMemoryRuntime = '';
+      let nextTurnsUntilIntersessionRefresh = Number.isInteger(
+        newFlags.turnsUntilIntersessionRefresh
+      )
+        ? Math.max(0, newFlags.turnsUntilIntersessionRefresh)
+        : 0;
+
+      if (
+        intersessionPreparationResult &&
+        typeof intersessionPreparationResult === 'object'
+      ) {
+        intersessionMemoryForThisTurn =
+          typeof intersessionPreparationResult.intersessionMemoryForThisTurn ===
+          'string'
+            ? intersessionPreparationResult.intersessionMemoryForThisTurn
+            : '';
+        intersessionMemoryRuntime =
+          typeof intersessionPreparationResult.intersessionMemoryRuntime ===
+          'string'
+            ? intersessionPreparationResult.intersessionMemoryRuntime
+            : '';
+        nextTurnsUntilIntersessionRefresh = Number.isInteger(
+          intersessionPreparationResult.nextTurnsUntilIntersessionRefresh
+        )
+          ? Math.max(
+              0,
+              intersessionPreparationResult.nextTurnsUntilIntersessionRefresh
+            )
+          : nextTurnsUntilIntersessionRefresh;
+      } else {
+        const fallbackCompactSeed = await Promise.race([
+          intersessionFallbackSeedPromise,
+          wait(INTERSESSION_FALLBACK_SEED_WAIT_TIMEOUT_MS).then(() => '')
+        ]);
+
+        const safeFallbackCompact = String(fallbackCompactSeed || '').trim();
+        intersessionMemoryForThisTurn = safeFallbackCompact;
+        intersessionMemoryRuntime = safeFallbackCompact;
+
+        logChatDecision('intersession_preparation_budget_fallback', {
+          timedOut: intersessionPreparationTimedOut === true,
+          waitBudgetMs: INTERSESSION_PREPARATION_WAIT_TIMEOUT_MS,
+          usedStoredCompactFallback: safeFallbackCompact.length > 0
+        });
+      }
+
       newFlags.turnsUntilIntersessionRefresh =
         nextTurnsUntilIntersessionRefresh;
 
