@@ -9,7 +9,8 @@ module.exports = [
       'node_modules/**',
       'data/**',
       'serviceAccount.json',
-      'coverage/**'
+      'coverage/**',
+      'public/js/vendor/**'
     ]
   },
   js.configs.recommended,
@@ -26,7 +27,11 @@ module.exports = [
     rules: {
       'no-unused-vars': [
         'warn',
-        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_'
+        }
       ],
       'no-dupe-keys': 'warn',
       'no-empty': 'warn',

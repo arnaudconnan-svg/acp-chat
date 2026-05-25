@@ -1,9 +1,9 @@
-const fs = require("fs");
-const path = require("path");
-const { execSync } = require("child_process");
+const fs = require('fs');
+const path = require('path');
+const { execSync } = require('child_process');
 
-const ROOT = path.join(__dirname, "..");
-const ANDROID_PROJECT = path.join(ROOT, "android-project");
+const ROOT = path.join(__dirname, '..');
+const ANDROID_PROJECT = path.join(ROOT, 'android-project');
 const EXPECTED_DIMS = {
   mdpi: 82,
   hdpi: 123,
@@ -18,7 +18,15 @@ function fail(message) {
 }
 
 function getMipmap(dpi) {
-  return path.join(ANDROID_PROJECT, "app", "src", "main", "res", `mipmap-${dpi}`, "ic_maskable.png");
+  return path.join(
+    ANDROID_PROJECT,
+    'app',
+    'src',
+    'main',
+    'res',
+    `mipmap-${dpi}`,
+    'ic_maskable.png'
+  );
 }
 
 function getImageDimensions(imagePath) {
@@ -27,15 +35,18 @@ function getImageDimensions(imagePath) {
   }
 
   try {
-    const result = execSync(`magick identify -format "%w,%h" "${imagePath}" 2>nul`, {
-      encoding: "utf8",
-      stdio: ["pipe", "pipe", "pipe"]
-    }).trim();
+    const result = execSync(
+      `magick identify -format "%w,%h" "${imagePath}" 2>nul`,
+      {
+        encoding: 'utf8',
+        stdio: ['pipe', 'pipe', 'pipe']
+      }
+    ).trim();
 
     if (!result) return null;
-    const [w, h] = result.split(",").map(Number);
+    const [w, h] = result.split(',').map(Number);
     return { width: w, height: h };
-  } catch (_) {
+  } catch (_identifyError) {
     return null;
   }
 }
@@ -50,14 +61,16 @@ function verifySingleMipmap(dpi) {
 
   const size = fs.statSync(filePath).size;
   if (size < 1000) {
-    fail(`mipmap-${dpi}/ic_maskable.png is too small (${size} bytes, likely corrupted)`);
+    fail(
+      `mipmap-${dpi}/ic_maskable.png is too small (${size} bytes, likely corrupted)`
+    );
   }
 
   const dims = getImageDimensions(filePath);
   if (dims && (dims.width !== expected || dims.height !== expected)) {
     fail(
       `mipmap-${dpi}/ic_maskable.png has wrong dimensions: ${dims.width}x${dims.height}px ` +
-      `(expected ${expected}x${expected}px). Run npm run android:icon:generate.`
+        `(expected ${expected}x${expected}px). Run npm run android:icon:generate.`
     );
   }
 
@@ -66,7 +79,9 @@ function verifySingleMipmap(dpi) {
 }
 
 function main() {
-  console.log("[android-icon-verify] Checking adaptive icon maskable resources...");
+  console.log(
+    '[android-icon-verify] Checking adaptive icon maskable resources...'
+  );
 
   let allGood = true;
   for (const dpi of Object.keys(EXPECTED_DIMS)) {
@@ -79,10 +94,12 @@ function main() {
   }
 
   if (!allGood) {
-    fail("Icon verification failed. Refusing build.");
+    fail('Icon verification failed. Refusing build.');
   }
 
-  console.log("[android-icon-verify] All icon resources valid. Build can proceed.");
+  console.log(
+    '[android-icon-verify] All icon resources valid. Build can proceed.'
+  );
 }
 
 main();
