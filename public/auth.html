@@ -338,7 +338,7 @@
       <div class="form-group">
         <label for="regPassword">Mot de passe</label>
         <div class="password-field-wrap">
-          <input type="password" id="regPassword" name="password" required autocomplete="new-password" minlength="8" placeholder="8 caractères minimum">
+          <input type="password" id="regPassword" name="password" required autocomplete="new-password" minlength="10" placeholder="10 caractères minimum">
           <button type="button" class="toggle-password-btn" data-target="regPassword" aria-label="Afficher le mot de passe" title="Afficher le mot de passe">
             <span class="sr-only">Afficher le mot de passe</span>
             <svg class="icon-eye" viewBox="0 0 24 24" aria-hidden="true"><path d="M1 12C3.8 7.5 7.4 5.25 12 5.25S20.2 7.5 23 12c-2.8 4.5-6.4 6.75-11 6.75S3.8 16.5 1 12Z"></path><circle cx="12" cy="12" r="3.25"></circle></svg>
@@ -738,8 +738,8 @@
           return;
         }
 
-        if (password.length < 8) {
-          notice.textContent = "Le mot de passe doit faire au moins 8 caractères.";
+        if (password.length < 10) {
+          notice.textContent = "Le mot de passe doit faire au moins 10 caractères.";
           return;
         }
 
