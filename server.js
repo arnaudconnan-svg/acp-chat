@@ -489,6 +489,13 @@ app.use((req, res, next) => {
 
 // Serve the public folder with cache headers tuned for SPA/PWA behavior.
 // HTML and manifest files are always revalidated, while static assets are cached.
+app.get("/telecharger", (req, res) => {
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Expires", "0");
+  res.sendFile(path.join(__dirname, "public", "telecharger.html"));
+});
+
 app.use(express.static("public", {
   etag: false,
   lastModified: false,
