@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+    />
+    <title>Facilitat.io</title>
+    <meta name="theme-color" content="#f4f9f9" />
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        background: #f4f9f9;
+      }
+    </style>
+  </head>
+  <body>
+    <script>
+      (function () {
+        'use strict';
+
+        function resolveLaunchShortcut() {
+          try {
+            const params = new URLSearchParams(window.location.search);
+            const launch = String(params.get('launch') || '').trim();
+            if (launch === 'new-normal' || launch === 'new-private') {
+              return launch;
+            }
+            return 'new-normal';
+          } catch (_) {
+            return 'new-normal';
+          }
+        }
+
+        const launch = resolveLaunchShortcut();
+        const next =
+          '/?launch=' + encodeURIComponent(launch) + '&launchAuthDone=1';
+
+        fetch('/api/auth/session', { credentials: 'include' })
+          .then((r) => r.json())
+          .then((data) => {
+            if (data && data.authenticated === true) {
+              window.location.replace(next);
+              return;
+            }
+
+            window.location.replace(
+              '/auth.html?next=' + encodeURIComponent(next)
+            );
+          })
+          .catch(() => {
+            window.location.replace(
+              '/auth.html?next=' + encodeURIComponent(next)
+            );
+          });
+      })();
+    </script>
+  </body>
+</html>

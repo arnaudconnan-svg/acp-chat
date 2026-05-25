@@ -14327,13 +14327,58 @@
           launchShortcut === 'new-normal' ||
           launchShortcut === 'new-private'
         ) {
+          const launchAuthDone =
+            loadUrl.searchParams.get('launchAuthDone') === '1';
+
           // Android/TWA launcher back behavior is task-level and not 100% reliable
-          // with web-only in-page history reconstruction. We force a pass through
-          // auth.html (which already has a robust guard stack) for consistent back.
-          navigateAway(
-            '/auth.html?next=' +
-              encodeURIComponent('/?launch=' + encodeURIComponent(launchShortcut))
-          );
+          // with web-only in-page history reconstruction. We force shortcuts
+          // through a dedicated launch bridge + auth guard for stable back.
+          if (!launchAuthDone) {
+            navigateAway(
+              '/launch-bridge.html?launch=' + encodeURIComponent(launchShortcut),
+              { replace: true }
+            );
+            return;
+          }
+
+          if (!userSessionState.authenticated) {
+            navigateAway(
+              '/auth.html?next=' +
+                encodeURIComponent(
+                  '/?launch=' +
+                    encodeURIComponent(launchShortcut) +
+                    '&launchAuthDone=1'
+                ),
+              { replace: true }
+            );
+            return;
+          }
+
+          const isPrivateLaunch = launchShortcut === 'new-private';
+          const shouldUseDefaultPrivacyPolicy = launchShortcut === 'new-normal';
+
+          loadUrl.searchParams.delete('launch');
+          loadUrl.searchParams.delete('launchAuthDone');
+          const cleanSearch = loadUrl.searchParams.toString();
+          const cleanUrl = `${loadUrl.pathname}${cleanSearch ? `?${cleanSearch}` : ''}${loadUrl.hash || ''}`;
+          history.replaceState({ screenId: 'chatScreen' }, '', cleanUrl);
+
+          clearSessionStorageExceptMemory();
+          resetLocalSessionState();
+          localStorage.removeItem(CONVERSATION_ID_KEY);
+          closeEditMode({ restoreDraft: false });
+          showScreen('chatScreen', {
+            replaceHistory: true,
+            pushHistory: false,
+            noAnimation: true
+          });
+          renderHistory();
+          startFreshSession({
+            isPrivate: isPrivateLaunch,
+            useDefault: shouldUseDefaultPrivacyPolicy
+          });
+          defocusInput();
+          updateActivity();
           return;
         }
 
