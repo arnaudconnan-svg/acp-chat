@@ -9261,6 +9261,7 @@ Reponds strictement en JSON: {"items": ["..."]}
 
       if (
         currentAllianceSignalForAffiliation !== 'rupture' &&
+        secondaryTension?.family !== 'alliance_rupture' &&
         previousAffiliationEstablished === true &&
         affiliationScore < AFFILIATION_ESTABLISHED_FLOOR
       ) {

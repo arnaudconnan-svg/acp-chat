@@ -6030,10 +6030,10 @@
       function parseBranchDirectivityText(directivityText = '') {
         const text = String(directivityText || '').trim();
         const windowMatch = text.match(
-          /Fenetre de relance\s*:\s*\[([01\-\s]+)\]/i
+          /Fen\u00eatre de relance pr\u00e9par\u00e9e[^:]*:\s*\[([01\-\s]+)\]/i
         );
         const nextLevelMatch = text.match(
-          /Niveau de directivite\s*\(tour suivant\)\s*:\s*(\d+)\/4/i
+          /Niveau de directivit\u00e9\s+pr\u00e9par\u00e9\s*:\s*(\d+)\/4/i
         );
 
         const explorationRelanceWindow = windowMatch
@@ -7329,7 +7329,7 @@
             })
           : [];
         const ancientLines = Array.isArray(memoryState.ancientMovements)
-          ? memoryState.ancientMovements.map((item) => {
+          ? memoryState.ancientMovements.slice().reverse().map((item) => {
               const id = String(item?.id || '').trim();
               const text = String(item?.text || '').trim();
               return '- ' + (id ? '[' + id + '] ' : '') + (text || '(vide)');
@@ -9535,7 +9535,7 @@
             !!meta.directivityLabel && isExplorationMode;
           if (shouldShowDirectivity) {
             sections.push({
-              title: 'Fen\u00eatre de relance (tour suivant)',
+              title: 'Fen\u00eatre de relance',
               content: meta.directivityLabel
             });
           }
@@ -9838,7 +9838,7 @@
 
               let ancientVisibleCount = 10;
               const ancientEntries = Array.isArray(data.ancientMovements)
-                ? data.ancientMovements
+                ? data.ancientMovements.slice().reverse()
                 : [];
 
               function renderAncient() {

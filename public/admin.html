@@ -2594,7 +2594,7 @@
               !!meta.directivityText && isExplorationMode;
             if (shouldShowDirectivity) {
               sections.push({
-                title: 'Fen\u00eatre de relance (tour suivant)',
+                title: 'Fen\u00eatre de relance',
                 content: meta.directivityText
               });
             }
@@ -2916,7 +2916,7 @@
 
                 let ancientVisibleCount = 10;
                 const ancientEntries = Array.isArray(data.ancientMovements)
-                  ? data.ancientMovements
+                  ? data.ancientMovements.slice().reverse()
                   : [];
 
                 function renderAncient() {

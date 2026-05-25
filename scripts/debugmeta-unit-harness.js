@@ -159,7 +159,7 @@ assert(
     explorationDirectivityLevel: 2,
     explorationCalibrationLevel: null
   }),
-  'Fenetre de relance preparee (N+1) : []\nNiveau de directivite prepare (N+1) : 2/4'
+  'Niveau de directivité préparé : 2/4\nFenêtre de relance préparée (tour suivant) : []'
 );
 assert(
   'exploration_open level 2 calibration 3',
@@ -169,7 +169,7 @@ assert(
     explorationCalibrationLevel: 3,
     explorationRelanceWindow: [true, false, true]
   }),
-  'Niveau de structuration retenu : 3/4\nFenetre de relance preparee (N+1) : [1-0-1]\nNiveau de directivite prepare (N+1) : 2/4'
+  'Niveau de structuration retenu : 3/4\nNiveau de directivité préparé : 2/4\nFenêtre de relance préparée (tour suivant) : [1-0-1]'
 );
 assert(
   'exploration_restrained calibration 1 shows retained level',
@@ -178,7 +178,7 @@ assert(
     explorationDirectivityLevel: 0,
     explorationCalibrationLevel: 1
   }),
-  'Niveau de structuration retenu : 1/4\nFenetre de relance preparee (N+1) : []\nNiveau de directivite prepare (N+1) : 0/4'
+  'Niveau de structuration retenu : 1/4\nNiveau de directivité préparé : 0/4\nFenêtre de relance préparée (tour suivant) : []'
 );
 assert('default call empty string', buildDirectivityText(), '');
 
