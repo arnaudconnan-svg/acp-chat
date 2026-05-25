@@ -14327,52 +14327,13 @@
           launchShortcut === 'new-normal' ||
           launchShortcut === 'new-private'
         ) {
-          if (!userSessionState.authenticated) {
-            navigateAway(
-              '/auth.html?next=' +
-                encodeURIComponent(
-                  '/?launch=' + encodeURIComponent(launchShortcut)
-                )
-            );
-            return;
-          }
-
-          const isPrivateLaunch = launchShortcut === 'new-private';
-          const shouldUseDefaultPrivacyPolicy = launchShortcut === 'new-normal';
-
-          loadUrl.searchParams.delete('launch');
-          const cleanSearch = loadUrl.searchParams.toString();
-          const cleanUrl = `${loadUrl.pathname}${cleanSearch ? `?${cleanSearch}` : ''}${loadUrl.hash || ''}`;
-          const conversationsUrl = new URL(cleanUrl, window.location.origin);
-          conversationsUrl.searchParams.set('screen', 'conversationsScreen');
-          const conversationsHistoryUrl =
-            conversationsUrl.pathname +
-            (conversationsUrl.search || '') +
-            (conversationsUrl.hash || '');
-
-          history.replaceState(
-            { screenId: 'conversationsScreen' },
-            '',
-            conversationsHistoryUrl
+          // Android/TWA launcher back behavior is task-level and not 100% reliable
+          // with web-only in-page history reconstruction. We force a pass through
+          // auth.html (which already has a robust guard stack) for consistent back.
+          navigateAway(
+            '/auth.html?next=' +
+              encodeURIComponent('/?launch=' + encodeURIComponent(launchShortcut))
           );
-          history.pushState({ screenId: 'chatScreen' }, '', cleanUrl);
-
-          clearSessionStorageExceptMemory();
-          resetLocalSessionState();
-          localStorage.removeItem(CONVERSATION_ID_KEY);
-          closeEditMode({ restoreDraft: false });
-          showScreen('chatScreen', {
-            replaceHistory: false,
-            pushHistory: false,
-            noAnimation: true
-          });
-          renderHistory();
-          startFreshSession({
-            isPrivate: isPrivateLaunch,
-            useDefault: shouldUseDefaultPrivacyPolicy
-          });
-          defocusInput();
-          updateActivity();
           return;
         }
 
