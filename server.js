@@ -4853,7 +4853,8 @@ function parseChatRequest(req) {
   const requestId = bodyRequestId || headerRequestId || String(req.requestId || "").trim();
   const conversationId = typeof req.body?.conversationId === "string" ? req.body.conversationId.trim() : "";
   const isPrivateConversation = req.body?.isPrivateConversation === true;
-  const userId = req.body?.userId || "u_anon";
+  const sessionUserId = String(req.userSession?.userId || "").trim();
+  const userId = sessionUserId || String(req.body?.userId || "u_anon").trim() || "u_anon";
   const convRef = conversationId && !isPrivateConversation ? db.ref("conversations").child(conversationId) : null;
   const recentHistory = trimHistory(req.body?.recentHistory);
   const conversationBranchHistory = normalizeConversationBranchHistory(req.body?.conversationBranchHistory);
@@ -5157,9 +5158,9 @@ setInterval(() => {
   }
 }, CHAT_REQUEST_STALE_TTL_MS);
 
-app.post("/chat/cancel", (req, res) => {
+app.post("/chat/cancel", requireUserAuth, (req, res) => {
   const requestId = typeof req.body?.requestId === "string" ? req.body.requestId.trim() : "";
-  const userId = typeof req.body?.userId === "string" ? req.body.userId.trim() : "";
+  const userId = String(req.userSession?.userId || "").trim();
 
   if (!requestId) {
     return res.status(400).json({ error: "Missing requestId" });
@@ -5172,9 +5173,9 @@ app.post("/chat/cancel", (req, res) => {
   return res.json({ success: true, requestId, canceled });
 });
 
-app.post("/chat/stream/interrupted", async (req, res) => {
+app.post("/chat/stream/interrupted", requireUserAuth, async (req, res) => {
   const conversationId = typeof req.body?.conversationId === "string" ? req.body.conversationId.trim() : "";
-  const userId = typeof req.body?.userId === "string" ? req.body.userId.trim() : "u_anon";
+  const userId = String(req.userSession?.userId || "").trim();
   const requestId = typeof req.body?.requestId === "string" ? req.body.requestId.trim() : "";
   const partialReply = typeof req.body?.partialReply === "string" ? req.body.partialReply : "";
   const isPrivateConversation = req.body?.isPrivateConversation === true;
@@ -5220,7 +5221,7 @@ app.post("/chat/stream/interrupted", async (req, res) => {
   }
 });
 
-app.get("/chat/progress", (req, res) => {
+app.get("/chat/progress", requireUserAuth, (req, res) => {
   const requestId = typeof req.query?.requestId === "string" ? req.query.requestId.trim() : "";
 
   if (!requestId) {
@@ -7698,9 +7699,9 @@ Reponds strictement en JSON: {"items": ["..."]}
 });
 }
 
-app.post("/chat", handleChatPost);
+app.post("/chat", requireUserAuth, handleChatPost);
 
-app.post("/chat/stream", async (req, res) => {
+app.post("/chat/stream", requireUserAuth, async (req, res) => {
   if (appConfig.enableChatStreaming !== true) {
     return res.status(405).json({
       error: "Chat streaming is not enabled",
