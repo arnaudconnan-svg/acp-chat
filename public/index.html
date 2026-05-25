@@ -311,7 +311,6 @@
       opacity: 1;
       transform: none;
       transition: none;
-      display: none;
     }
 
     .about-eyebrow {
@@ -3164,10 +3163,24 @@
       return String(localStorage.getItem(DEV_MODE_KEY) || "") === "1";
     }
 
+    function shouldForceWelcomeDevAccessVisible() {
+      // Desktop browsers should always keep the welcome admin entry visible.
+      const hasDesktopPointer = typeof window.matchMedia === "function"
+        ? window.matchMedia("(hover: hover) and (pointer: fine)").matches
+        : false;
+
+      if (hasDesktopPointer) {
+        return true;
+      }
+
+      // Outside Android TWA, keep the welcome admin entry visible.
+      return !isTwaRuntimeContext();
+    }
+
     function syncWelcomeDevAccessVisibility() {
       const wrap = document.getElementById("welcomeDevAccessWrap");
       if (!wrap) return;
-      wrap.style.display = isDevModeEnabled() ? "" : "none";
+      wrap.style.display = (shouldForceWelcomeDevAccessVisible() || isDevModeEnabled()) ? "" : "none";
     }
 
     function setDevModeEnabled(enabled) {
@@ -3229,13 +3242,9 @@
       let tapCount = 0;
       let firstTapAt = 0;
       let lastActivationAt = 0;
+      let lastPointerTapAt = 0;
 
-      const tapHandler = event => {
-        if (event && event.type === "pointerup") {
-          if (event.isPrimary === false) return;
-          if (event.pointerType === "mouse") return;
-        }
-
+      const registerTap = () => {
         const now = Date.now();
         if (now - lastActivationAt < COOLDOWN_MS) return;
 
@@ -3260,8 +3269,25 @@
         }
       };
 
+      const tapHandler = event => {
+        if (event && event.type === "pointerup") {
+          if (event.isPrimary === false) return;
+          if (event.pointerType === "mouse") return;
+          lastPointerTapAt = Date.now();
+        }
+
+        if (event && event.type === "click") {
+          // On many mobile browsers, click follows pointer/touch.
+          if (Date.now() - lastPointerTapAt < 350) {
+            return;
+          }
+        }
+
+        registerTap();
+      };
+
       if (window.PointerEvent) {
-        logo.addEventListener("pointerup", tapHandler);
+        logo.addEventListener("pointerup", tapHandler, { passive: true });
       } else {
         logo.addEventListener("touchend", tapHandler, { passive: true });
       }
