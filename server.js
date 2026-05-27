@@ -161,6 +161,10 @@ function buildEmergencyNumbersText(emergencyInfo) {
     parts.push(`prévention suicide : ${emergencyInfo.suicide}`);
   return parts.join(' | ') || null;
 }
+
+function buildEmergencyFallbackGuidance() {
+  return "Si ces numéros ne sont pas disponibles pour votre pays, appelez le numéro d'urgence local de votre opérateur téléphonique ou recherchez 'numéro urgence + votre pays' et 'ligne prévention suicide + votre pays'.";
+}
 // -----------------------------------------------------------------------------
 const {
   clampDependencyRiskScore,
@@ -2496,6 +2500,59 @@ app.get('/api/auth/session', async (req, res) => {
   } catch (err) {
     console.error('Erreur /api/auth/session:', err.message);
     return res.status(500).json({ error: 'Session lookup failed' });
+  }
+});
+
+app.get('/api/emergency-support', (req, res) => {
+  try {
+    const requestedCountry = normalizeCountryCode(req.query.country);
+    const fallbackCountry = normalizeCountryCode(req.query.fallbackCountry);
+    const primaryInfo = lookupEmergencyNumbers(requestedCountry);
+    const fallbackInfo = lookupEmergencyNumbers(fallbackCountry || 'FR');
+    const emergencyInfo = primaryInfo || fallbackInfo || null;
+
+    const hasStructuredNumbers = Boolean(
+      emergencyInfo &&
+        (String(emergencyInfo.emergency || '').trim() ||
+          String(emergencyInfo.suicide || '').trim())
+    );
+
+    return res.json({
+      requestedCountry: requestedCountry || null,
+      country:
+        hasStructuredNumbers && primaryInfo
+          ? requestedCountry
+          : hasStructuredNumbers && fallbackInfo
+            ? fallbackCountry || 'FR'
+            : null,
+      label:
+        hasStructuredNumbers && emergencyInfo
+          ? String(emergencyInfo.label || '').trim() || null
+          : null,
+      emergency:
+        hasStructuredNumbers && emergencyInfo
+          ? String(emergencyInfo.emergency || '').trim() || null
+          : null,
+      suicide:
+        hasStructuredNumbers && emergencyInfo
+          ? String(emergencyInfo.suicide || '').trim() || null
+          : null,
+      hasStructuredNumbers,
+      fallbackGuidance: buildEmergencyFallbackGuidance(),
+      updatedPeriod: 'periodic'
+    });
+  } catch (err) {
+    logger.error({ event: 'api_emergency_support_failed', error: err.message });
+    return res.status(500).json({
+      requestedCountry: null,
+      country: null,
+      label: null,
+      emergency: null,
+      suicide: null,
+      hasStructuredNumbers: false,
+      fallbackGuidance: buildEmergencyFallbackGuidance(),
+      updatedPeriod: 'periodic'
+    });
   }
 });
 

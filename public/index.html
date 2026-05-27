@@ -3076,6 +3076,17 @@
       <div class="modalBox">
         <h3 class="modalTitle">Parler avec un humain</h3>
 
+        <p class="modalText" style="margin-bottom: 10px">
+          Tu peux demander un &eacute;change avec une personne de l&rsquo;&eacute;quipe
+          Facilitat.io &agrave; partir de cette conversation.
+        </p>
+        <p class="modalText" style="margin-top: 0; margin-bottom: 14px">
+          <em
+            >NB : ce n&rsquo;est pas imm&eacute;diat. Ce n&rsquo;est pas un
+            <a href="/urgence.html">service d&rsquo;urgence ou d&rsquo;&eacute;coute 24/7</a></em
+          >
+        </p>
+
         <div class="modalActions modalActionsStack" style="gap: 10px">
           <button
             class="modalBtnSecondary"
@@ -3088,7 +3099,7 @@
             >
             <span
               style="display: block; margin-top: 4px; font-size: 13px; color: #51676b"
-              >Echange &eacute;crit en direct pendant 30 minutes.</span
+              >&Eacute;change &eacute;crit en direct pendant 30 minutes.</span
             >
           </button>
 
@@ -3103,7 +3114,7 @@
             >
             <span
               style="display: block; margin-top: 4px; font-size: 13px; color: #51676b"
-              >Echange en visioconf&eacute;rence, 30 minutes ou 1 heure.</span
+              >&Eacute;change en visioconf&eacute;rence, 30 minutes ou 1 heure.</span
             >
           </button>
 
@@ -3289,6 +3300,31 @@
           state.modalId !== 'devAccessModal'
         ) {
           closeDevAccessModal();
+        }
+
+        if (state.humanSupportModalOpen !== true) {
+          const humanSupportModal = document.getElementById(
+            'humanSupportRequestModal'
+          );
+          if (
+            typeof closeHumanSupportRequestModal === 'function' &&
+            humanSupportModal &&
+            humanSupportModal.style.display === 'flex'
+          ) {
+            closeHumanSupportRequestModal({
+              fromPopstate: true,
+              skipHistorySync: true
+            });
+          }
+        }
+
+        if (state.humanSupportPopoverOpen !== true) {
+          if (typeof closeHumanSupportPopover === 'function') {
+            closeHumanSupportPopover({
+              fromPopstate: true,
+              skipHistorySync: true
+            });
+          }
         }
       });
 
@@ -8422,6 +8458,20 @@
       let _humanSupportPopover = null;
       let _humanSupportPopoverAnchor = null;
       let _humanSupportPopoverCloseHandlers = null;
+      const HUMAN_SUPPORT_POPOVER_MARGIN_PX = 10;
+      const HUMAN_SUPPORT_POPOVER_GAP_PX = 6;
+
+      function pushHumanSupportHistoryState(statePatch) {
+        const state = history.state || {};
+        history.pushState(
+          {
+            ...(state || {}),
+            ...(statePatch || {})
+          },
+          '',
+          window.location.href
+        );
+      }
 
       function getMoreActionsIconMarkup() {
         return `
@@ -8435,7 +8485,13 @@
         `;
       }
 
-      function closeHumanSupportPopover() {
+      function closeHumanSupportPopover(options = {}) {
+        const {
+          fromPopstate = false,
+          skipHistorySync = false,
+          keepAnchor = false
+        } = options;
+
         if (_humanSupportPopoverCloseHandlers) {
           document.removeEventListener(
             'mousedown',
@@ -8470,16 +8526,57 @@
         }
 
         _humanSupportPopover = null;
-        _humanSupportPopoverAnchor = null;
+
+        if (!keepAnchor) {
+          _humanSupportPopoverAnchor = null;
+        }
+
+        if (
+          !fromPopstate &&
+          !skipHistorySync &&
+          history.state &&
+          history.state.humanSupportPopoverOpen === true
+        ) {
+          history.back();
+        }
       }
 
       function openHumanSupportRequestModal() {
-        closeHumanSupportPopover();
+        closeHumanSupportPopover({ skipHistorySync: true });
+
+        if (
+          history.state &&
+          history.state.humanSupportPopoverOpen === true
+        ) {
+          history.replaceState(
+            {
+              ...(history.state || {}),
+              humanSupportPopoverOpen: false
+            },
+            '',
+            window.location.href
+          );
+        }
+
+        pushHumanSupportHistoryState({
+          humanSupportPopoverOpen: false,
+          humanSupportModalOpen: true
+        });
         openModal('humanSupportRequestModal');
       }
 
-      function closeHumanSupportRequestModal() {
+      function closeHumanSupportRequestModal(options = {}) {
+        const { fromPopstate = false, skipHistorySync = false } = options;
         closeModal('humanSupportRequestModal');
+
+        if (
+          !fromPopstate &&
+          !skipHistorySync &&
+          history.state &&
+          history.state.humanSupportModalOpen === true
+        ) {
+          history.back();
+        }
       }
 
       function openHumanSupportPopover(anchorButton) {
@@ -8490,24 +8587,24 @@
           _humanSupportPopoverAnchor &&
           _humanSupportPopoverAnchor === anchorButton
         ) {
-          closeHumanSupportPopover();
+          closeHumanSupportPopover({ keepAnchor: false });
           return;
         }
 
-        closeHumanSupportPopover();
+        closeHumanSupportPopover({ skipHistorySync: true });
 
         const popover = document.createElement('div');
         popover.id = 'humanSupportActionPopover';
         popover.style.position = 'fixed';
-        popover.style.minWidth = '244px';
-        popover.style.maxWidth = 'calc(100vw - 24px)';
-        popover.style.padding = '8px';
-        popover.style.borderRadius = '14px';
-        popover.style.background = 'rgba(255, 255, 255, 0.98)';
-        popover.style.border = '1px solid rgba(190, 208, 211, 0.95)';
-        popover.style.boxShadow = '0 14px 34px rgba(36, 94, 102, 0.2)';
-        popover.style.backdropFilter = 'blur(12px)';
-        popover.style.webkitBackdropFilter = 'blur(12px)';
+        popover.style.width = 'max-content';
+        popover.style.maxWidth = '260px';
+        popover.style.padding = '4px';
+        popover.style.borderRadius = '10px';
+        popover.style.background = 'rgba(255, 255, 255, 0.97)';
+        popover.style.border = '1px solid rgba(36, 94, 102, 0.12)';
+        popover.style.boxShadow = '0 6px 14px rgba(16, 36, 40, 0.08)';
+        popover.style.backdropFilter = 'blur(6px)';
+        popover.style.webkitBackdropFilter = 'blur(6px)';
         popover.style.zIndex = '1300';
         popover.style.boxSizing = 'border-box';
 
@@ -8516,13 +8613,14 @@
         actionBtn.textContent = 'Demander \u00e0 en parler avec un humain';
         actionBtn.style.width = '100%';
         actionBtn.style.border = 'none';
-        actionBtn.style.borderRadius = '10px';
+        actionBtn.style.borderRadius = '8px';
         actionBtn.style.background = 'transparent';
-        actionBtn.style.color = '#1f4d54';
-        actionBtn.style.padding = '10px 12px';
+        actionBtn.style.color = '#245e66';
+        actionBtn.style.padding = '10px 14px';
         actionBtn.style.font = 'inherit';
-        actionBtn.style.fontSize = '14px';
-        actionBtn.style.fontWeight = '600';
+        actionBtn.style.fontSize = '13px';
+        actionBtn.style.fontWeight = '500';
+        actionBtn.style.lineHeight = '1.35';
         actionBtn.style.textAlign = 'left';
         actionBtn.style.cursor = 'pointer';
 
@@ -8545,18 +8643,43 @@
 
         const anchorRect = anchorButton.getBoundingClientRect();
         const popoverRect = popover.getBoundingClientRect();
-        const preferredLeft = anchorRect.right - popoverRect.width;
+        const preferredLeft =
+          anchorRect.left + anchorRect.width / 2 - popoverRect.width / 2;
         const left = Math.max(
-          12,
-          Math.min(window.innerWidth - popoverRect.width - 12, preferredLeft)
+          HUMAN_SUPPORT_POPOVER_MARGIN_PX,
+          Math.min(
+            window.innerWidth - popoverRect.width - HUMAN_SUPPORT_POPOVER_MARGIN_PX,
+            preferredLeft
+          )
         );
-        const top = Math.min(
-          window.innerHeight - popoverRect.height - 12,
-          anchorRect.bottom + 8
+
+        const spaceBelow =
+          window.innerHeight - anchorRect.bottom - HUMAN_SUPPORT_POPOVER_MARGIN_PX;
+        const spaceAbove =
+          anchorRect.top - HUMAN_SUPPORT_POPOVER_MARGIN_PX;
+        const placeAbove =
+          spaceBelow < popoverRect.height + HUMAN_SUPPORT_POPOVER_GAP_PX &&
+          spaceAbove > spaceBelow;
+
+        const top = placeAbove
+          ? anchorRect.top - popoverRect.height - HUMAN_SUPPORT_POPOVER_GAP_PX
+          : anchorRect.bottom + HUMAN_SUPPORT_POPOVER_GAP_PX;
+
+        const clampedTop = Math.max(
+          HUMAN_SUPPORT_POPOVER_MARGIN_PX,
+          Math.min(
+            window.innerHeight - popoverRect.height - HUMAN_SUPPORT_POPOVER_MARGIN_PX,
+            top
+          )
         );
 
         popover.style.left = `${left}px`;
-        popover.style.top = `${Math.max(12, top)}px`;
+        popover.style.top = `${clampedTop}px`;
+
+        pushHumanSupportHistoryState({
+          humanSupportPopoverOpen: true,
+          humanSupportModalOpen: false
+        });
 
         const onDocPointerDown = (event) => {
           if (!event || !event.target) return;
@@ -13657,9 +13780,17 @@
         'humanSupportChatBtn'
       );
       if (humanSupportChatBtn) {
-        humanSupportChatBtn.onclick = () => {
-          closeHumanSupportRequestModal();
+        humanSupportChatBtn.onclick = (event) => {
+          if (event) {
+            event.preventDefault();
+            event.stopPropagation();
+          }
+          closeHumanSupportRequestModal({ skipHistorySync: true });
+          closeHumanSupportPopover({ skipHistorySync: true });
           showTemporaryNotice('Option en cours de d\u00e9veloppement');
+          if (history.state && history.state.humanSupportModalOpen === true) {
+            history.back();
+          }
         };
       }
 
@@ -13667,9 +13798,17 @@
         'humanSupportVisioBtn'
       );
       if (humanSupportVisioBtn) {
-        humanSupportVisioBtn.onclick = () => {
-          closeHumanSupportRequestModal();
+        humanSupportVisioBtn.onclick = (event) => {
+          if (event) {
+            event.preventDefault();
+            event.stopPropagation();
+          }
+          closeHumanSupportRequestModal({ skipHistorySync: true });
+          closeHumanSupportPopover({ skipHistorySync: true });
           showTemporaryNotice('Option en cours de d\u00e9veloppement');
+          if (history.state && history.state.humanSupportModalOpen === true) {
+            history.back();
+          }
         };
       }
 
