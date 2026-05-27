@@ -3072,6 +3072,52 @@
       </div>
     </div>
 
+    <div id="humanSupportRequestModal" class="modal">
+      <div class="modalBox">
+        <h3 class="modalTitle">Parler avec un humain</h3>
+
+        <div class="modalActions modalActionsStack" style="gap: 10px">
+          <button
+            class="modalBtnSecondary"
+            id="humanSupportChatBtn"
+            type="button"
+            style="text-align: left"
+          >
+            <span style="display: block; font-weight: 700"
+              >Programmer un rendez-vous chat</span
+            >
+            <span
+              style="display: block; margin-top: 4px; font-size: 13px; color: #51676b"
+              >Echange &eacute;crit en direct pendant 30 minutes.</span
+            >
+          </button>
+
+          <button
+            class="modalBtnSecondary"
+            id="humanSupportVisioBtn"
+            type="button"
+            style="text-align: left"
+          >
+            <span style="display: block; font-weight: 700"
+              >Programmer un rendez-vous visio</span
+            >
+            <span
+              style="display: block; margin-top: 4px; font-size: 13px; color: #51676b"
+              >Echange en visioconf&eacute;rence, 30 minutes ou 1 heure.</span
+            >
+          </button>
+
+          <button
+            class="modalBtnSecondary"
+            id="humanSupportCancelBtn"
+            type="button"
+          >
+            Annuler
+          </button>
+        </div>
+      </div>
+    </div>
+
     <script>
       let pendingPrivateConversationResolver = null;
 
@@ -8373,6 +8419,180 @@
         }, 1700);
       }
 
+      let _humanSupportPopover = null;
+      let _humanSupportPopoverAnchor = null;
+      let _humanSupportPopoverCloseHandlers = null;
+
+      function getMoreActionsIconMarkup() {
+        return `
+          <span class="messageActionBtnIcon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="6" r="1.9" fill="currentColor"></circle>
+              <circle cx="12" cy="12" r="1.9" fill="currentColor"></circle>
+              <circle cx="12" cy="18" r="1.9" fill="currentColor"></circle>
+            </svg>
+          </span>
+        `;
+      }
+
+      function closeHumanSupportPopover() {
+        if (_humanSupportPopoverCloseHandlers) {
+          document.removeEventListener(
+            'mousedown',
+            _humanSupportPopoverCloseHandlers.onDocPointerDown,
+            true
+          );
+          document.removeEventListener(
+            'touchstart',
+            _humanSupportPopoverCloseHandlers.onDocPointerDown,
+            true
+          );
+          document.removeEventListener(
+            'keydown',
+            _humanSupportPopoverCloseHandlers.onDocKeyDown,
+            true
+          );
+          window.removeEventListener(
+            'resize',
+            _humanSupportPopoverCloseHandlers.onWindowClose,
+            true
+          );
+          window.removeEventListener(
+            'scroll',
+            _humanSupportPopoverCloseHandlers.onWindowClose,
+            true
+          );
+          _humanSupportPopoverCloseHandlers = null;
+        }
+
+        if (_humanSupportPopover && _humanSupportPopover.parentNode) {
+          _humanSupportPopover.parentNode.removeChild(_humanSupportPopover);
+        }
+
+        _humanSupportPopover = null;
+        _humanSupportPopoverAnchor = null;
+      }
+
+      function openHumanSupportRequestModal() {
+        closeHumanSupportPopover();
+        openModal('humanSupportRequestModal');
+      }
+
+      function closeHumanSupportRequestModal() {
+        closeModal('humanSupportRequestModal');
+      }
+
+      function openHumanSupportPopover(anchorButton) {
+        if (!anchorButton) return;
+
+        if (
+          _humanSupportPopover &&
+          _humanSupportPopoverAnchor &&
+          _humanSupportPopoverAnchor === anchorButton
+        ) {
+          closeHumanSupportPopover();
+          return;
+        }
+
+        closeHumanSupportPopover();
+
+        const popover = document.createElement('div');
+        popover.id = 'humanSupportActionPopover';
+        popover.style.position = 'fixed';
+        popover.style.minWidth = '244px';
+        popover.style.maxWidth = 'calc(100vw - 24px)';
+        popover.style.padding = '8px';
+        popover.style.borderRadius = '14px';
+        popover.style.background = 'rgba(255, 255, 255, 0.98)';
+        popover.style.border = '1px solid rgba(190, 208, 211, 0.95)';
+        popover.style.boxShadow = '0 14px 34px rgba(36, 94, 102, 0.2)';
+        popover.style.backdropFilter = 'blur(12px)';
+        popover.style.webkitBackdropFilter = 'blur(12px)';
+        popover.style.zIndex = '1300';
+        popover.style.boxSizing = 'border-box';
+
+        const actionBtn = document.createElement('button');
+        actionBtn.type = 'button';
+        actionBtn.textContent = 'Demander \u00e0 en parler avec un humain';
+        actionBtn.style.width = '100%';
+        actionBtn.style.border = 'none';
+        actionBtn.style.borderRadius = '10px';
+        actionBtn.style.background = 'transparent';
+        actionBtn.style.color = '#1f4d54';
+        actionBtn.style.padding = '10px 12px';
+        actionBtn.style.font = 'inherit';
+        actionBtn.style.fontSize = '14px';
+        actionBtn.style.fontWeight = '600';
+        actionBtn.style.textAlign = 'left';
+        actionBtn.style.cursor = 'pointer';
+
+        actionBtn.addEventListener('mouseenter', () => {
+          actionBtn.style.background = 'rgba(36, 94, 102, 0.08)';
+        });
+
+        actionBtn.addEventListener('mouseleave', () => {
+          actionBtn.style.background = 'transparent';
+        });
+
+        actionBtn.addEventListener('click', (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          openHumanSupportRequestModal();
+        });
+
+        popover.appendChild(actionBtn);
+        document.body.appendChild(popover);
+
+        const anchorRect = anchorButton.getBoundingClientRect();
+        const popoverRect = popover.getBoundingClientRect();
+        const preferredLeft = anchorRect.right - popoverRect.width;
+        const left = Math.max(
+          12,
+          Math.min(window.innerWidth - popoverRect.width - 12, preferredLeft)
+        );
+        const top = Math.min(
+          window.innerHeight - popoverRect.height - 12,
+          anchorRect.bottom + 8
+        );
+
+        popover.style.left = `${left}px`;
+        popover.style.top = `${Math.max(12, top)}px`;
+
+        const onDocPointerDown = (event) => {
+          if (!event || !event.target) return;
+          const target = event.target;
+          if (popover.contains(target)) return;
+          if (target === anchorButton || anchorButton.contains(target)) return;
+          closeHumanSupportPopover();
+        };
+
+        const onDocKeyDown = (event) => {
+          if (event.key === 'Escape') {
+            closeHumanSupportPopover();
+          }
+        };
+
+        const onWindowClose = () => {
+          closeHumanSupportPopover();
+        };
+
+        _humanSupportPopover = popover;
+        _humanSupportPopoverAnchor = anchorButton;
+        _humanSupportPopoverCloseHandlers = {
+          onDocPointerDown,
+          onDocKeyDown,
+          onWindowClose
+        };
+
+        setTimeout(() => {
+          document.addEventListener('mousedown', onDocPointerDown, true);
+          document.addEventListener('touchstart', onDocPointerDown, true);
+          document.addEventListener('keydown', onDocKeyDown, true);
+          window.addEventListener('resize', onWindowClose, true);
+          window.addEventListener('scroll', onWindowClose, true);
+        }, 0);
+      }
+
       // -- Feedback (pouces) ------------------------------------------------------
       // State tracking for the currently-open feedback modal
       let _feedbackModalPending = null;
@@ -10181,6 +10401,15 @@
           shareBtn.innerHTML = shareIdleMarkup;
           shareBtn.style.color = '#245e66';
 
+          const moreActionsBtn = document.createElement('button');
+          moreActionsBtn.type = 'button';
+          moreActionsBtn.setAttribute('aria-label', 'Plus d\'options');
+          moreActionsBtn.title = 'Plus d\'options';
+          moreActionsBtn.className =
+            'messageActionBtn messageActionBtnBot messageActionBtnBotAux';
+          moreActionsBtn.innerHTML = getMoreActionsIconMarkup();
+          moreActionsBtn.style.color = '#245e66';
+
           let botCopyResetTimer = null;
 
           copyBotBtn.addEventListener('click', async (event) => {
@@ -10243,10 +10472,17 @@
             }
           });
 
+          moreActionsBtn.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            openHumanSupportPopover(moreActionsBtn);
+          });
+
           actionsRow.appendChild(copyBotBtn);
           actionsRow.appendChild(thumbUpBtn);
           actionsRow.appendChild(thumbDownBtn);
           actionsRow.appendChild(shareBtn);
+          actionsRow.appendChild(moreActionsBtn);
 
           // Restore visual feedback state from local history if available
           if (historyIndex >= 0) {
@@ -12138,6 +12374,15 @@
             shareBtn.innerHTML = shareIdleMarkup;
             shareBtn.style.color = '#245e66';
 
+            const moreActionsBtn = document.createElement('button');
+            moreActionsBtn.type = 'button';
+            moreActionsBtn.setAttribute('aria-label', 'Plus d\'options');
+            moreActionsBtn.title = 'Plus d\'options';
+            moreActionsBtn.className =
+              'messageActionBtn messageActionBtnBot messageActionBtnBotAux';
+            moreActionsBtn.innerHTML = getMoreActionsIconMarkup();
+            moreActionsBtn.style.color = '#245e66';
+
             let copyResetTimer = null;
             copyBotBtn.addEventListener('click', async (event) => {
               event.preventDefault();
@@ -12200,10 +12445,17 @@
               }
             });
 
+            moreActionsBtn.addEventListener('click', (event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              openHumanSupportPopover(moreActionsBtn);
+            });
+
             actionsRow.appendChild(copyBotBtn);
             actionsRow.appendChild(thumbUpBtn);
             actionsRow.appendChild(thumbDownBtn);
             actionsRow.appendChild(shareBtn);
+            actionsRow.appendChild(moreActionsBtn);
             liveStreamNode.contentWrap.appendChild(actionsRow);
           }
 
@@ -13398,6 +13650,46 @@
       if (feedbackModal) {
         feedbackModal.addEventListener('click', (e) => {
           if (e.target.id === 'feedbackModal') closeFeedbackModal();
+        });
+      }
+
+      const humanSupportChatBtn = document.getElementById(
+        'humanSupportChatBtn'
+      );
+      if (humanSupportChatBtn) {
+        humanSupportChatBtn.onclick = () => {
+          closeHumanSupportRequestModal();
+          showTemporaryNotice('Option en cours de d\u00e9veloppement');
+        };
+      }
+
+      const humanSupportVisioBtn = document.getElementById(
+        'humanSupportVisioBtn'
+      );
+      if (humanSupportVisioBtn) {
+        humanSupportVisioBtn.onclick = () => {
+          closeHumanSupportRequestModal();
+          showTemporaryNotice('Option en cours de d\u00e9veloppement');
+        };
+      }
+
+      const humanSupportCancelBtn = document.getElementById(
+        'humanSupportCancelBtn'
+      );
+      if (humanSupportCancelBtn) {
+        humanSupportCancelBtn.onclick = () => {
+          closeHumanSupportRequestModal();
+        };
+      }
+
+      const humanSupportRequestModal = document.getElementById(
+        'humanSupportRequestModal'
+      );
+      if (humanSupportRequestModal) {
+        humanSupportRequestModal.addEventListener('click', (e) => {
+          if (e.target.id === 'humanSupportRequestModal') {
+            closeHumanSupportRequestModal();
+          }
         });
       }
 
