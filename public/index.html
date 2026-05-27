@@ -2366,6 +2366,22 @@
         color: #245e66;
       }
 
+      .humanSupportEmergencyLink {
+        color: #245e66;
+        text-decoration: underline;
+        text-decoration-color: rgba(36, 94, 102, 0.45);
+        text-underline-offset: 2px;
+      }
+
+      .humanSupportEmergencyLink:visited {
+        color: #245e66;
+      }
+
+      .humanSupportEmergencyLink:hover {
+        color: #1f4d54;
+        text-decoration-color: rgba(31, 77, 84, 0.55);
+      }
+
       #aboutModal {
         position: fixed;
         inset: 0;
@@ -3076,14 +3092,20 @@
       <div class="modalBox">
         <h3 class="modalTitle">Parler avec un humain</h3>
 
-        <p class="modalText" style="margin-bottom: 10px">
+        <p class="modalText" style="margin-bottom: 10px; font-size: 15px">
           Tu peux demander un &eacute;change avec une personne de l&rsquo;&eacute;quipe
           Facilitat.io &agrave; partir de cette conversation.
         </p>
-        <p class="modalText" style="margin-top: 0; margin-bottom: 14px">
-          <em
-            >NB : ce n&rsquo;est pas imm&eacute;diat. Ce n&rsquo;est pas un
-            <a href="/urgence.html">service d&rsquo;urgence ou d&rsquo;&eacute;coute 24/7</a></em
+        <p
+          class="modalText"
+          style="margin-top: 0; margin-bottom: 14px; font-size: 15px"
+        >
+          Ce n&rsquo;est pas imm&eacute;diat et ce n&rsquo;est pas un
+          <a
+            id="humanSupportEmergencyLink"
+            class="humanSupportEmergencyLink"
+            href="/urgence.html"
+            >service d&rsquo;urgence 24/7</a
           >
         </p>
 
@@ -8593,9 +8615,14 @@
 
         closeHumanSupportPopover({ skipHistorySync: true });
 
+        const anchorHost =
+          anchorButton.closest('[data-human-support-host="1"]') ||
+          anchorButton.parentElement;
+        if (!anchorHost) return;
+
         const popover = document.createElement('div');
         popover.id = 'humanSupportActionPopover';
-        popover.style.position = 'fixed';
+        popover.style.position = 'absolute';
         popover.style.width = 'max-content';
         popover.style.maxWidth = '260px';
         popover.style.padding = '4px';
@@ -8639,19 +8666,18 @@
         });
 
         popover.appendChild(actionBtn);
-        document.body.appendChild(popover);
+        anchorHost.appendChild(popover);
 
         const anchorRect = anchorButton.getBoundingClientRect();
         const popoverRect = popover.getBoundingClientRect();
+        const hostRect = anchorHost.getBoundingClientRect();
+        const anchorOffsetLeft = anchorRect.left - hostRect.left;
+        const anchorOffsetTop = anchorRect.top - hostRect.top;
+
         const preferredLeft =
-          anchorRect.left + anchorRect.width / 2 - popoverRect.width / 2;
-        const left = Math.max(
-          HUMAN_SUPPORT_POPOVER_MARGIN_PX,
-          Math.min(
-            window.innerWidth - popoverRect.width - HUMAN_SUPPORT_POPOVER_MARGIN_PX,
-            preferredLeft
-          )
-        );
+          anchorOffsetLeft + anchorRect.width - popoverRect.width;
+        const maxLeft = Math.max(0, hostRect.width - popoverRect.width);
+        const left = Math.max(0, Math.min(maxLeft, preferredLeft));
 
         const spaceBelow =
           window.innerHeight - anchorRect.bottom - HUMAN_SUPPORT_POPOVER_MARGIN_PX;
@@ -8662,19 +8688,11 @@
           spaceAbove > spaceBelow;
 
         const top = placeAbove
-          ? anchorRect.top - popoverRect.height - HUMAN_SUPPORT_POPOVER_GAP_PX
-          : anchorRect.bottom + HUMAN_SUPPORT_POPOVER_GAP_PX;
-
-        const clampedTop = Math.max(
-          HUMAN_SUPPORT_POPOVER_MARGIN_PX,
-          Math.min(
-            window.innerHeight - popoverRect.height - HUMAN_SUPPORT_POPOVER_MARGIN_PX,
-            top
-          )
-        );
+          ? anchorOffsetTop - popoverRect.height - HUMAN_SUPPORT_POPOVER_GAP_PX
+          : anchorOffsetTop + anchorRect.height + HUMAN_SUPPORT_POPOVER_GAP_PX;
 
         popover.style.left = `${left}px`;
-        popover.style.top = `${clampedTop}px`;
+        popover.style.top = `${top}px`;
 
         pushHumanSupportHistoryState({
           humanSupportPopoverOpen: true,
@@ -10478,12 +10496,15 @@
 
         if (role === 'bot' && !isOpeningGreetingMessage(rawText)) {
           const actionsRow = document.createElement('div');
+          actionsRow.dataset.humanSupportHost = '1';
           actionsRow.style.display = 'flex';
           actionsRow.style.alignItems = 'center';
           actionsRow.style.gap = '8px';
           actionsRow.style.paddingLeft = '4px';
           actionsRow.style.paddingRight = '4px';
           actionsRow.style.marginTop = '-2px';
+          actionsRow.style.position = 'relative';
+          actionsRow.style.overflow = 'visible';
 
           const copyBotBtn = document.createElement('button');
           copyBotBtn.type = 'button';
@@ -12453,12 +12474,15 @@
             const displayText = String(finalReply || '');
             const actionsRow = document.createElement('div');
             actionsRow.dataset.streamFinalActions = '1';
+            actionsRow.dataset.humanSupportHost = '1';
             actionsRow.style.display = 'flex';
             actionsRow.style.alignItems = 'center';
             actionsRow.style.gap = '8px';
             actionsRow.style.paddingLeft = '4px';
             actionsRow.style.paddingRight = '4px';
             actionsRow.style.marginTop = '-2px';
+            actionsRow.style.position = 'relative';
+            actionsRow.style.overflow = 'visible';
 
             const copyBotBtn = document.createElement('button');
             copyBotBtn.type = 'button';
@@ -13785,12 +13809,7 @@
             event.preventDefault();
             event.stopPropagation();
           }
-          closeHumanSupportRequestModal({ skipHistorySync: true });
-          closeHumanSupportPopover({ skipHistorySync: true });
           showTemporaryNotice('Option en cours de d\u00e9veloppement');
-          if (history.state && history.state.humanSupportModalOpen === true) {
-            history.back();
-          }
         };
       }
 
@@ -13803,13 +13822,28 @@
             event.preventDefault();
             event.stopPropagation();
           }
-          closeHumanSupportRequestModal({ skipHistorySync: true });
-          closeHumanSupportPopover({ skipHistorySync: true });
           showTemporaryNotice('Option en cours de d\u00e9veloppement');
-          if (history.state && history.state.humanSupportModalOpen === true) {
-            history.back();
-          }
         };
+      }
+
+      const humanSupportEmergencyLink = document.getElementById(
+        'humanSupportEmergencyLink'
+      );
+      if (humanSupportEmergencyLink) {
+        humanSupportEmergencyLink.addEventListener('click', () => {
+          const currentConversationId = String(getConversationId() || '').trim();
+          const payload = {
+            createdAt: Date.now(),
+            conversationId: currentConversationId || null
+          };
+
+          try {
+            sessionStorage.setItem(
+              'facilitatio_urgence_return_chat',
+              JSON.stringify(payload)
+            );
+          } catch {}
+        });
       }
 
       const humanSupportCancelBtn = document.getElementById(
@@ -15468,9 +15502,63 @@
           });
         }
 
+        function consumeUrgenceReturnSnapshot() {
+          let parsed = null;
+
+          try {
+            const raw = sessionStorage.getItem('facilitatio_urgence_return_chat');
+            if (!raw) return null;
+            parsed = JSON.parse(raw);
+          } catch {
+            return null;
+          } finally {
+            try {
+              sessionStorage.removeItem('facilitatio_urgence_return_chat');
+            } catch {}
+          }
+
+          if (!parsed || typeof parsed !== 'object') return null;
+
+          const createdAt = Number(parsed.createdAt || 0);
+          if (!Number.isFinite(createdAt) || Date.now() - createdAt > 2 * 60 * 60 * 1000) {
+            return null;
+          }
+
+          const referrer = String(document.referrer || '');
+          const fromUrgence = /\/urgence\.html(\?|$)/i.test(referrer);
+          if (!fromUrgence) {
+            return null;
+          }
+
+          const conversationId = String(parsed.conversationId || '').trim();
+          return {
+            conversationId: conversationId || null
+          };
+        }
+
+        async function restoreChatAfterUrgenceIfNeeded() {
+          const snapshot = consumeUrgenceReturnSnapshot();
+          if (!snapshot) return false;
+
+          if (snapshot.conversationId) {
+            await openConversation(snapshot.conversationId);
+            return true;
+          }
+
+          showScreen('chatScreen', {
+            replaceHistory: true,
+            pushHistory: false,
+            noAnimation: true
+          });
+          renderHistory();
+          return true;
+        }
+
         async function boot() {
           if (!logo || logo.complete) {
             await waitForBackendReady();
+            const restored = await restoreChatAfterUrgenceIfNeeded();
+            if (restored) return;
             showWelcome();
             return;
           }
@@ -15479,6 +15567,8 @@
             'load',
             async () => {
               await waitForBackendReady();
+              const restored = await restoreChatAfterUrgenceIfNeeded();
+              if (restored) return;
               showWelcome();
             },
             { once: true }
@@ -15488,6 +15578,8 @@
             'error',
             async () => {
               await waitForBackendReady();
+              const restored = await restoreChatAfterUrgenceIfNeeded();
+              if (restored) return;
               showWelcome();
             },
             { once: true }

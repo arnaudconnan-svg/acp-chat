@@ -123,7 +123,9 @@
         </p>
 
         <div class="actions">
-          <a class="back-link" href="/">Retour à Facilitat.io</a>
+          <a id="urgenceBackLink" class="back-link" href="/index.html?screen=chatScreen"
+            >Retour à Facilitat.io</a
+          >
         </div>
       </section>
     </main>
@@ -212,6 +214,19 @@
         }
       }
 
+      function wireBackLink() {
+        const backLink = document.getElementById('urgenceBackLink');
+        if (!backLink) return;
+
+        backLink.addEventListener('click', (event) => {
+          if (window.history.length > 1) {
+            event.preventDefault();
+            window.history.back();
+          }
+        });
+      }
+
+      wireBackLink();
       loadEmergencySupport();
     </script>
   </body>
