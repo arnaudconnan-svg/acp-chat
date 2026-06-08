@@ -9591,10 +9591,6 @@
           return window.FacilitatDebug.translateRegister(value);
         }
 
-        function translatePhraseLengthPolicyDebug(value) {
-          return window.FacilitatDebug.translatePhraseLengthPolicy(value);
-        }
-
         function translateExplorationSignalDebug(value) {
           return window.FacilitatDebug.translateExplorationSignal(value);
         }
@@ -9707,11 +9703,6 @@
               !relanceIsPredictable &&
               typeof meta.relancePolicy === 'string' &&
               meta.relancePolicy;
-            const shouldShowPhraseLengthLine =
-              !!meta.phraseLengthPolicy &&
-              !(
-                meta.phraseLengthPolicy === 'courte' && hasAttentionGuidanceHint
-              );
 
             sections.push({
               title: 'Contrat de posture',
@@ -9772,9 +9763,6 @@
                   : null,
                 meta.responseRegister && meta.responseRegister !== 'courant'
                   ? `Registre cible : ${translateRegisterDebug(meta.responseRegister)}`
-                  : null,
-                shouldShowPhraseLengthLine
-                  ? `Longueur phrase : ${translatePhraseLengthPolicyDebug(meta.phraseLengthPolicy)}`
                   : null,
                 meta.infoRoutingSource
                   ? `Routage info : ${translateInfoRoutingSourceDebug(meta.infoRoutingSource)}`

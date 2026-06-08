@@ -3754,10 +3754,6 @@ app.post(
                       typeof debugMeta.responseRegister === 'string'
                         ? debugMeta.responseRegister
                         : null,
-                    phraseLengthPolicy:
-                      typeof debugMeta.phraseLengthPolicy === 'string'
-                        ? debugMeta.phraseLengthPolicy
-                        : null,
                     relancePolicy:
                       typeof debugMeta.relancePolicy === 'string'
                         ? debugMeta.relancePolicy
@@ -7279,10 +7275,6 @@ async function handleChatPost(req, res) {
           typeof safe.responseRegister === 'string'
             ? safe.responseRegister
             : 'courant',
-        phraseLengthPolicy:
-          typeof safe.phraseLengthPolicy === 'string'
-            ? safe.phraseLengthPolicy
-            : 'moyenne',
         relancePolicy:
           typeof safe.relancePolicy === 'string'
             ? safe.relancePolicy
@@ -8302,7 +8294,6 @@ async function handleChatPost(req, res) {
           relancePolicy: 'forbidden',
           confidenceSignal: 1.0,
           responseRegister: 'courant',
-          phraseLengthPolicy: 'courte',
           relationalAdjustmentActive: false,
           interpretationRejectionModeActive: false,
           needsSoberReadjustment: false,
@@ -9544,7 +9535,6 @@ Reponds strictement en JSON: {"items": ["..."]}
         finalDirectivityLevel,
         finalExplorationSignal,
         responseRegister: postureDecision.responseRegister,
-        phraseLengthPolicy: postureDecision.phraseLengthPolicy,
         relancePolicy: postureDecision.relancePolicy,
         actionCollapseGuardActive: postureDecision.actionCollapseGuardActive
       });
@@ -10141,7 +10131,6 @@ Reponds strictement en JSON: {"items": ["..."]}
           postureDecision.uncertaintyExpressionPolicy,
         uncertaintyDrivers: postureDecision.uncertaintyDrivers,
         responseRegister: postureDecision.responseRegister,
-        phraseLengthPolicy: postureDecision.phraseLengthPolicy,
         relancePolicy: postureDecision.relancePolicy,
         useDirectAddress: postureDecision.useDirectAddress === true,
         actionCollapseGuardActive: postureDecision.actionCollapseGuardActive,

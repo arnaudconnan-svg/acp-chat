@@ -274,8 +274,6 @@
         : [],
       confidenceSignal: clamp01(safe.confidenceSignal, 1.0),
       responseRegister: toTrimmedString(safe.responseRegister, '') || 'courant',
-      phraseLengthPolicy:
-        toTrimmedString(safe.phraseLengthPolicy, '') || 'moyenne',
       relancePolicy: toTrimmedString(safe.relancePolicy, '') || 'selective',
       useDirectAddress: toBooleanTrue(safe.useDirectAddress),
       actionCollapseGuardActive: toBooleanTrue(safe.actionCollapseGuardActive),
@@ -392,11 +390,6 @@
     if (value === 'familier') return 'familier';
     if (value === 'soutenu') return 'soutenu';
     return 'courant';
-  }
-
-  function translatePhraseLengthPolicy(value) {
-    if (value === 'courte') return 'phrases courtes';
-    return 'phrases moyennes';
   }
 
   function translateExplorationSignal(value) {
@@ -744,7 +737,6 @@
     translateWriterMode: translateWriterMode,
     translateForbidden: translateForbidden,
     translateRegister: translateRegister,
-    translatePhraseLengthPolicy: translatePhraseLengthPolicy,
     translateExplorationSignal: translateExplorationSignal,
     translateRelancePolicy: translateRelancePolicy,
     translateAttentionQuality: translateAttentionQuality,

@@ -202,7 +202,6 @@ for (const field of [
   'forbidden',
   'confidenceSignal',
   'responseRegister',
-  'phraseLengthPolicy',
   'relancePolicy',
   'actionCollapseGuardActive',
   'stateTransitionFrom',
@@ -245,7 +244,6 @@ assertDeepEqual('default values', base, {
   forbidden: [],
   confidenceSignal: 1.0,
   responseRegister: 'courant',
-  phraseLengthPolicy: 'moyenne',
   relancePolicy: 'selective',
   actionCollapseGuardActive: false,
   stateTransitionFrom: null,
@@ -287,7 +285,6 @@ const explo = buildResponseDebugMeta({
   forbidden: ['diagnostic', 'conseil_direct'],
   confidenceSignal: 0.5,
   responseRegister: 'familier',
-  phraseLengthPolicy: 'courte',
   relancePolicy: 'selective',
   actionCollapseGuardActive: true,
   explorationDirectivityLevel: 2,
@@ -312,7 +309,6 @@ assert('exploration forbidden', explo.forbidden, [
   'conseil_direct'
 ]);
 assert('exploration responseRegister', explo.responseRegister, 'familier');
-assert('exploration phraseLengthPolicy', explo.phraseLengthPolicy, 'courte');
 assert('exploration relancePolicy', explo.relancePolicy, 'selective');
 assert(
   'exploration actionCollapseGuardActive',

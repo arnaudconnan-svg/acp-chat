@@ -517,10 +517,6 @@ check('dependency care pending activates need_human_support', () => {
     `unexpected intent: ${out.intent}`
   );
   assert(
-    out.phraseLengthPolicy === 'moyenne',
-    `expected moyenne, got ${out.phraseLengthPolicy}`
-  );
-  assert(
     out.secondaryTension && out.secondaryTension.family === 'alliance_rupture',
     `expected alliance_rupture tension, got ${out.secondaryTension && out.secondaryTension.family}`
   );
