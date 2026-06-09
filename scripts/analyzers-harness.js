@@ -1,6 +1,11 @@
 'use strict';
 
-const { createAnalyzers } = require('../lib/analyzers');
+const {
+  createAnalyzers,
+  hasExplicitPersonalSuicideMarker,
+  hasIdiomaticDeathExpressionMarker,
+  hasExplicitCrisisResolutionMarker
+} = require('../lib/analyzers');
 
 let passed = 0;
 let failed = 0;
@@ -158,6 +163,75 @@ function makeAnalyzers() {
 
 async function run() {
   const analyzers = makeAnalyzers();
+
+  check(
+    'lexical suicide: "j\'aimerais en finir" -> explicit personal marker true',
+    () => {
+      assert(
+        hasExplicitPersonalSuicideMarker("Parfois j'aimerais en finir") ===
+          true,
+        'expected explicit personal marker true'
+      );
+    }
+  );
+
+  check(
+    'lexical suicide: "ce serait mieux si je n\'etais plus la" -> explicit personal marker true',
+    () => {
+      assert(
+        hasExplicitPersonalSuicideMarker(
+          "Je pense que ce serait mieux si je n'etais plus la"
+        ) === true,
+        'expected explicit personal marker true'
+      );
+    }
+  );
+
+  check(
+    'lexical suicide: "ce boulot me tue" -> idiomatic marker true',
+    () => {
+      assert(
+        hasIdiomaticDeathExpressionMarker('Franchement ce boulot me tue') ===
+          true,
+        'expected idiomatic marker true'
+      );
+    }
+  );
+
+  check(
+    'lexical suicide: personal suicidality wording is not idiomatic',
+    () => {
+      assert(
+        hasIdiomaticDeathExpressionMarker("Je vais me donner la mort") ===
+          false,
+        'expected idiomatic marker false'
+      );
+    }
+  );
+
+  check(
+    'lexical crisis resolution: explicit test declaration -> true',
+    () => {
+      assert(
+        hasExplicitCrisisResolutionMarker(
+          "Je ne suis pas suicidaire, c'etait un test"
+        ) === true,
+        'expected explicit crisis resolution true'
+      );
+    }
+  );
+
+  check(
+    'lexical crisis resolution: acute intent statement -> false',
+    () => {
+      assert(
+        hasExplicitCrisisResolutionMarker(
+          'Je vais sans doute me donner la mort bientot'
+        ) === false,
+        'expected explicit crisis resolution false'
+      );
+    }
+  );
 
   const discharge = await analyzers.proposeState(
     "Je suis en train d'exploser",

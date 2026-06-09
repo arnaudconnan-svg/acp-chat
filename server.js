@@ -8308,6 +8308,28 @@ async function handleChatPost(req, res) {
         });
       }
 
+      function isMetaPurposeQuestionInAcuteCrisis(messageText = '') {
+        const text = String(messageText || '')
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/[\u2019\u2018]/g, "'")
+          .trim();
+
+        const patterns = [
+          /\ba quoi tu sers\b/,
+          /\bc'est quoi ton but\b/,
+          /\bquel est ton but\b/,
+          /\btu sers a quoi\b/,
+          /\btu es une sorte de\b/,
+          /\bqui es-tu\b/,
+          /\bqu'est-ce que tu es\b/,
+          /\bcomment tu accompagnes\b/
+        ];
+
+        return patterns.some((pattern) => pattern.test(text));
+      }
+
       async function handleN2CrisisRoute() {
         newFlags.acuteCrisis = true;
         newFlags.crisisFollowupTurnCount = 0;
@@ -8397,6 +8419,9 @@ async function handleChatPost(req, res) {
 
         const debug = buildOverrideDebug(suicide.suicideLevel);
         const n2TurnType = classifyN2TurnType(message);
+        const isMetaPurposeQuestion = isMetaPurposeQuestionInAcuteCrisis(
+          message
+        );
         const crisisFollowupTurnCount = Number.isInteger(
           flags.crisisFollowupTurnCount
         )
@@ -8416,7 +8441,8 @@ async function handleChatPost(req, res) {
             turnType: n2TurnType,
             includeNumbers,
             emergencyText: followupEmergencyText,
-            promptRegistry: activePromptRegistry
+            promptRegistry: activePromptRegistry,
+            isMetaPurposeQuestion
           });
         } catch {
           reply = acuteCrisisFollowupResponse();
@@ -8494,6 +8520,7 @@ async function handleChatPost(req, res) {
       function handleResolvedAcuteCrisisState() {
         const postCrisisSupportCarryTurnActive =
           flags.postCrisisSupportCarryTurn === true &&
+          suicide.crisisResolvedExplicit !== true &&
           crisisDecision.route !== 'n1_clarification';
         newFlags.acuteCrisis = false;
         newFlags.postCrisisSupportCarryTurn = false;
@@ -9672,9 +9699,9 @@ Reponds strictement en JSON: {"items": ["..."]}
       let relanceAsyncStatusForDebug =
         detectedState === 'exploration' ? 'pending' : 'not_requested';
       let relancePreparedNextDirectivityLevelForDebug =
-        relanceBaseFlagsSnapshot.explorationDirectivityLevel;
+        null;
       let relancePreparedNextWindowForDebug =
-        relanceBaseFlagsSnapshot.explorationRelanceWindow;
+        null;
 
       if (relanceAppliedAtTurnEntrySourceTurn !== null) {
         relanceAsyncStatusForDebug =

@@ -1599,6 +1599,7 @@
 
       #crisisSupportCard {
         display: none;
+        position: relative;
         width: calc(100% - 28px);
         max-width: 700px;
         margin: 0 auto 10px;
@@ -1639,6 +1640,24 @@
       .crisisSupportCardBody strong {
         font-weight: 700;
         color: #163f45;
+      }
+
+      .crisisSupportCardDismissBtn {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        border: none;
+        background: rgba(36, 94, 102, 0.08);
+        color: #245e66;
+        width: 24px;
+        height: 24px;
+        border-radius: 999px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        line-height: 1;
       }
 
       #inputShell {
@@ -2764,6 +2783,14 @@
           aria-live="polite"
           aria-hidden="true"
         >
+          <button
+            type="button"
+            class="crisisSupportCardDismissBtn"
+            aria-label="Masquer le rappel de sécurité"
+            title="Masquer"
+          >
+            &times;
+          </button>
           <p class="crisisSupportCardTitle"></p>
           <p class="crisisSupportCardBody"></p>
         </div>
@@ -4719,6 +4746,7 @@
       let activeChatProgressSource = null;
       let activeChatRequestTransport = 'unknown';
       let chatFormalAddressPreference = null; // null = inconnu, false = tutoiement, true = vouvoiement
+      const crisisSupportCardDismissedByConversation = new Set();
       let _lastSendTs = 0;
 
       const CHAT_PROGRESS_TEXT_NEUTRAL = {
@@ -4805,26 +4833,59 @@
         return null;
       }
 
+      function hideCrisisSupportCard(card, titleEl, bodyEl) {
+        card.classList.remove('is-visible');
+        card.setAttribute('aria-hidden', 'true');
+        if (titleEl) titleEl.textContent = '';
+        if (bodyEl) bodyEl.textContent = '';
+        document.body.classList.remove('has-crisis-support-card');
+      }
+
       function updateCrisisSupportCard(debugMetaValue = null) {
         const card = document.getElementById('crisisSupportCard');
         if (!card) return;
 
         const titleEl = card.querySelector('.crisisSupportCardTitle');
         const bodyEl = card.querySelector('.crisisSupportCardBody');
+        const dismissBtn = card.querySelector('.crisisSupportCardDismissBtn');
+        const conversationId = getConversationId();
         const meta = normalizeClientDebugMeta(
           debugMetaValue || getLatestAssistantDebugMeta()
         );
+
+        if (
+          conversationId &&
+          (meta.conversationState === 'n2_crisis' ||
+            meta.conversationState === 'n1_crisis')
+        ) {
+          crisisSupportCardDismissedByConversation.delete(conversationId);
+        }
+
+        if (dismissBtn) {
+          dismissBtn.onclick = () => {
+            const currentConversationId = getConversationId();
+            if (currentConversationId) {
+              crisisSupportCardDismissedByConversation.add(currentConversationId);
+            }
+            hideCrisisSupportCard(card, titleEl, bodyEl);
+          };
+        }
+
         const shouldShow =
           meta.postCrisisSupportActive === true &&
           typeof meta.emergencySupportText === 'string' &&
           meta.emergencySupportText.trim();
 
         if (!shouldShow) {
-          card.classList.remove('is-visible');
-          card.setAttribute('aria-hidden', 'true');
-          if (titleEl) titleEl.textContent = '';
-          if (bodyEl) bodyEl.textContent = '';
-          document.body.classList.remove('has-crisis-support-card');
+          hideCrisisSupportCard(card, titleEl, bodyEl);
+          return;
+        }
+
+        if (
+          conversationId &&
+          crisisSupportCardDismissedByConversation.has(conversationId)
+        ) {
+          hideCrisisSupportCard(card, titleEl, bodyEl);
           return;
         }
 
