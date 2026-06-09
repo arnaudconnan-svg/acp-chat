@@ -8253,6 +8253,9 @@ async function handleChatPost(req, res) {
 
       function buildCrisisResponseDebugMeta({
         memory,
+        memoryState = null,
+        memoryBeforeSanitization = null,
+        memoryAncientCleanupDeletedIds = [],
         suicideLevel,
         n2TurnType = null,
         emergencyNumbersIncluded = false,
@@ -8261,6 +8264,9 @@ async function handleChatPost(req, res) {
       }) {
         return buildResponseDebugMeta({
           memory,
+          memoryState,
+          memoryBeforeSanitization,
+          memoryAncientCleanupDeletedIds,
           suicideLevel,
           conversationState: 'n2_crisis',
           isRecallRequest: false,
@@ -8377,11 +8383,106 @@ async function handleChatPost(req, res) {
         }
         await registerUsageConsumptionFromTurn({ writerUsage });
 
-        const responseMemory = previousMemory;
-        scheduleBackgroundMemoryUpdate(previousMemory, reply);
+        let responseMemory = previousMemory;
+        let responseMemoryState = previousMemoryState;
+        let responseMemoryRewriteDebug = null;
+
+        try {
+          const memoryUpdateContract = await updateMemory(
+            previousMemory,
+            [
+              ...recentHistory,
+              { role: 'user', content: message },
+              { role: 'assistant', content: reply }
+            ],
+            activePromptRegistry,
+            'normal',
+            '',
+            null,
+            previousMemoryState
+          );
+
+          const rawMem =
+            typeof memoryUpdateContract?.memoryText === 'string'
+              ? memoryUpdateContract.memoryText
+              : previousMemory;
+
+          const mergedStateResult = mergeMemoryStateWithFinalizedText({
+            previousMemoryState,
+            finalizedMemoryText: rawMem,
+            deleteAncientMovementsById: Array.isArray(
+              memoryUpdateContract?.deleteAncientMovementsById
+            )
+              ? memoryUpdateContract.deleteAncientMovementsById
+              : [],
+            nowMs: Date.now(),
+            lastActivityMs: previousConversationActivityMs,
+            ttlMs: MEMORY_INACTIVITY_TTL_MS
+          });
+
+          responseMemory = normalizeMemory(
+            mergedStateResult.memoryText,
+            activePromptRegistry
+          );
+          responseMemoryState = mergedStateResult.memoryState;
+          responseMemoryRewriteDebug = {
+            beforeSanitization:
+              typeof memoryUpdateContract?.memoryBeforeSanitization === 'string'
+                ? normalizeMemory(
+                    memoryUpdateContract.memoryBeforeSanitization,
+                    activePromptRegistry
+                  )
+                : null,
+            deletedAncientIds: Array.isArray(
+              memoryUpdateContract?.deleteAncientMovementsById
+            )
+              ? memoryUpdateContract.deleteAncientMovementsById
+              : [],
+            source:
+              typeof memoryUpdateContract?.source === 'string'
+                ? memoryUpdateContract.source
+                : null,
+            capturedAt: new Date().toISOString()
+          };
+
+          if (isPrivateConversation && conversationId) {
+            privateConversationMemoryCache.set(String(conversationId), {
+              memory: responseMemory,
+              memoryState: responseMemoryState,
+              memoryRewriteDebug: responseMemoryRewriteDebug,
+              updatedAt: Date.now()
+            });
+            await persistPrivateConversationMemory(conversationId, {
+              memory: responseMemory,
+              memoryState: responseMemoryState,
+              memoryRewriteDebug: responseMemoryRewriteDebug,
+              updatedAt: new Date().toISOString()
+            });
+          } else {
+            await persistConversationMemoryWithRetry(
+              responseMemory,
+              activePromptRegistry,
+              2,
+              responseMemoryState,
+              responseMemoryRewriteDebug
+            );
+          }
+        } catch {
+          responseMemory = previousMemory;
+          responseMemoryState = previousMemoryState;
+          responseMemoryRewriteDebug = null;
+        }
 
         const responseDebugMeta = buildCrisisResponseDebugMeta({
           memory: responseMemory,
+          memoryState: responseMemoryState,
+          memoryBeforeSanitization:
+            responseMemoryRewriteDebug?.beforeSanitization || null,
+          memoryAncientCleanupDeletedIds: Array.isArray(
+            responseMemoryRewriteDebug?.deletedAncientIds
+          )
+            ? responseMemoryRewriteDebug.deletedAncientIds
+            : [],
           suicideLevel: 'N2',
           n2TurnType: null,
           emergencyNumbersIncluded: true,
@@ -8393,7 +8494,11 @@ async function handleChatPost(req, res) {
           reply,
           debug,
           responseDebugMeta,
-          { memory: responseMemory, flags: newFlags }
+          {
+            memory: responseMemory,
+            memoryState: responseMemoryState,
+            flags: newFlags
+          }
         );
         return sendChatJsonResponse(
           reply,
@@ -8450,11 +8555,106 @@ async function handleChatPost(req, res) {
 
         await registerUsageConsumptionFromTurn({ writerUsage });
 
-        const responseMemory = previousMemory;
-        scheduleBackgroundMemoryUpdate(previousMemory, reply);
+        let responseMemory = previousMemory;
+        let responseMemoryState = previousMemoryState;
+        let responseMemoryRewriteDebug = null;
+
+        try {
+          const memoryUpdateContract = await updateMemory(
+            previousMemory,
+            [
+              ...recentHistory,
+              { role: 'user', content: message },
+              { role: 'assistant', content: reply }
+            ],
+            activePromptRegistry,
+            'normal',
+            '',
+            null,
+            previousMemoryState
+          );
+
+          const rawMem =
+            typeof memoryUpdateContract?.memoryText === 'string'
+              ? memoryUpdateContract.memoryText
+              : previousMemory;
+
+          const mergedStateResult = mergeMemoryStateWithFinalizedText({
+            previousMemoryState,
+            finalizedMemoryText: rawMem,
+            deleteAncientMovementsById: Array.isArray(
+              memoryUpdateContract?.deleteAncientMovementsById
+            )
+              ? memoryUpdateContract.deleteAncientMovementsById
+              : [],
+            nowMs: Date.now(),
+            lastActivityMs: previousConversationActivityMs,
+            ttlMs: MEMORY_INACTIVITY_TTL_MS
+          });
+
+          responseMemory = normalizeMemory(
+            mergedStateResult.memoryText,
+            activePromptRegistry
+          );
+          responseMemoryState = mergedStateResult.memoryState;
+          responseMemoryRewriteDebug = {
+            beforeSanitization:
+              typeof memoryUpdateContract?.memoryBeforeSanitization === 'string'
+                ? normalizeMemory(
+                    memoryUpdateContract.memoryBeforeSanitization,
+                    activePromptRegistry
+                  )
+                : null,
+            deletedAncientIds: Array.isArray(
+              memoryUpdateContract?.deleteAncientMovementsById
+            )
+              ? memoryUpdateContract.deleteAncientMovementsById
+              : [],
+            source:
+              typeof memoryUpdateContract?.source === 'string'
+                ? memoryUpdateContract.source
+                : null,
+            capturedAt: new Date().toISOString()
+          };
+
+          if (isPrivateConversation && conversationId) {
+            privateConversationMemoryCache.set(String(conversationId), {
+              memory: responseMemory,
+              memoryState: responseMemoryState,
+              memoryRewriteDebug: responseMemoryRewriteDebug,
+              updatedAt: Date.now()
+            });
+            await persistPrivateConversationMemory(conversationId, {
+              memory: responseMemory,
+              memoryState: responseMemoryState,
+              memoryRewriteDebug: responseMemoryRewriteDebug,
+              updatedAt: new Date().toISOString()
+            });
+          } else {
+            await persistConversationMemoryWithRetry(
+              responseMemory,
+              activePromptRegistry,
+              2,
+              responseMemoryState,
+              responseMemoryRewriteDebug
+            );
+          }
+        } catch {
+          responseMemory = previousMemory;
+          responseMemoryState = previousMemoryState;
+          responseMemoryRewriteDebug = null;
+        }
 
         const responseDebugMeta = buildCrisisResponseDebugMeta({
           memory: responseMemory,
+          memoryState: responseMemoryState,
+          memoryBeforeSanitization:
+            responseMemoryRewriteDebug?.beforeSanitization || null,
+          memoryAncientCleanupDeletedIds: Array.isArray(
+            responseMemoryRewriteDebug?.deletedAncientIds
+          )
+            ? responseMemoryRewriteDebug.deletedAncientIds
+            : [],
           suicideLevel: suicide.suicideLevel,
           n2TurnType,
           emergencyNumbersIncluded: includeNumbers,
@@ -8466,7 +8666,11 @@ async function handleChatPost(req, res) {
           reply,
           debug,
           responseDebugMeta,
-          { memory: responseMemory, flags: newFlags }
+          {
+            memory: responseMemory,
+            memoryState: responseMemoryState,
+            flags: newFlags
+          }
         );
         return sendChatJsonResponse(
           reply,
