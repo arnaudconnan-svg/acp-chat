@@ -8308,28 +8308,6 @@ async function handleChatPost(req, res) {
         });
       }
 
-      function isMetaPurposeQuestionInAcuteCrisis(messageText = '') {
-        const text = String(messageText || '')
-          .toLowerCase()
-          .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '')
-          .replace(/[\u2019\u2018]/g, "'")
-          .trim();
-
-        const patterns = [
-          /\ba quoi tu sers\b/,
-          /\bc'est quoi ton but\b/,
-          /\bquel est ton but\b/,
-          /\btu sers a quoi\b/,
-          /\btu es une sorte de\b/,
-          /\bqui es-tu\b/,
-          /\bqu'est-ce que tu es\b/,
-          /\bcomment tu accompagnes\b/
-        ];
-
-        return patterns.some((pattern) => pattern.test(text));
-      }
-
       async function handleN2CrisisRoute() {
         newFlags.acuteCrisis = true;
         newFlags.crisisFollowupTurnCount = 0;
@@ -8419,9 +8397,6 @@ async function handleChatPost(req, res) {
 
         const debug = buildOverrideDebug(suicide.suicideLevel);
         const n2TurnType = classifyN2TurnType(message);
-        const isMetaPurposeQuestion = isMetaPurposeQuestionInAcuteCrisis(
-          message
-        );
         const crisisFollowupTurnCount = Number.isInteger(
           flags.crisisFollowupTurnCount
         )
@@ -8441,8 +8416,7 @@ async function handleChatPost(req, res) {
             turnType: n2TurnType,
             includeNumbers,
             emergencyText: followupEmergencyText,
-            promptRegistry: activePromptRegistry,
-            isMetaPurposeQuestion
+            promptRegistry: activePromptRegistry
           });
         } catch {
           reply = acuteCrisisFollowupResponse();
@@ -8520,7 +8494,6 @@ async function handleChatPost(req, res) {
       function handleResolvedAcuteCrisisState() {
         const postCrisisSupportCarryTurnActive =
           flags.postCrisisSupportCarryTurn === true &&
-          suicide.crisisResolvedExplicit !== true &&
           crisisDecision.route !== 'n1_clarification';
         newFlags.acuteCrisis = false;
         newFlags.postCrisisSupportCarryTurn = false;
@@ -9702,12 +9675,39 @@ Reponds strictement en JSON: {"items": ["..."]}
         null;
       let relancePreparedNextWindowForDebug =
         null;
+      const relanceStatePreparedForNextTurn = conversationRelanceAsyncState.get(
+        String(conversationId || '').trim()
+      );
 
       if (relanceAppliedAtTurnEntrySourceTurn !== null) {
         relanceAsyncStatusForDebug =
           detectedState === 'exploration'
             ? 'applied_at_entry_and_pending'
             : 'applied_at_entry';
+      }
+
+      if (
+        detectedState === 'exploration' &&
+        relanceStatePreparedForNextTurn &&
+        typeof relanceStatePreparedForNextTurn === 'object' &&
+        Number.isInteger(relanceStatePreparedForNextTurn.targetTurnNumber) &&
+        relanceStatePreparedForNextTurn.targetTurnNumber ===
+          relanceTargetTurnNumber
+      ) {
+        relancePreparedNextWindowForDebug = Array.isArray(
+          relanceStatePreparedForNextTurn.explorationRelanceWindow
+        )
+          ? relanceStatePreparedForNextTurn.explorationRelanceWindow
+          : null;
+        relancePreparedNextDirectivityLevelForDebug = Number.isInteger(
+          relanceStatePreparedForNextTurn.explorationDirectivityLevel
+        )
+          ? relanceStatePreparedForNextTurn.explorationDirectivityLevel
+          : null;
+        relanceAsyncStatusForDebug =
+          relanceAppliedAtTurnEntrySourceTurn !== null
+            ? 'applied_at_entry_and_ready_for_next'
+            : 'ready_for_next_turn';
       }
 
       if (detectedState === 'exploration') {
@@ -9739,22 +9739,14 @@ Reponds strictement en JSON: {"items": ["..."]}
             const currentTurnSeen = Number(
               conversationTurnCounters.get(safeConversationId)
             );
-            if (
+            const effectiveTargetTurnNumber =
               Number.isInteger(currentTurnSeen) &&
-              currentTurnSeen > relanceTargetTurnNumber
-            ) {
-              logChatDecision('relance_async_result', {
-                status: 'stale_ignored',
-                currentTurnNumber,
-                currentTurnSeen,
-                targetTurnNumber: relanceTargetTurnNumber,
-                latencyMs: Date.now() - relanceStartedAt
-              });
-              return;
-            }
+              currentTurnSeen >= relanceTargetTurnNumber
+                ? currentTurnSeen + 1
+                : relanceTargetTurnNumber;
 
             conversationRelanceAsyncState.set(safeConversationId, {
-              targetTurnNumber: relanceTargetTurnNumber,
+              targetTurnNumber: effectiveTargetTurnNumber,
               sourceTurnNumber: currentTurnNumber,
               explorationRelanceWindow: relanceNextFlags.explorationRelanceWindow,
               explorationDirectivityLevel:
@@ -9765,9 +9757,12 @@ Reponds strictement en JSON: {"items": ["..."]}
             });
 
             logChatDecision('relance_async_result', {
-              status: 'ready',
+              status:
+                effectiveTargetTurnNumber === relanceTargetTurnNumber
+                  ? 'ready'
+                  : 'ready_deferred',
               currentTurnNumber,
-              targetTurnNumber: relanceTargetTurnNumber,
+              targetTurnNumber: effectiveTargetTurnNumber,
               isRelance: relanceAnalysis?.isRelance === true,
               explorationRelanceWindow: relanceNextFlags.explorationRelanceWindow,
               explorationDirectivityLevel:
@@ -9779,13 +9774,18 @@ Reponds strictement en JSON: {"items": ["..."]}
             const currentTurnSeen = Number(
               conversationTurnCounters.get(safeConversationId)
             );
+            const effectiveTargetTurnNumber =
+              Number.isInteger(currentTurnSeen) &&
+              currentTurnSeen >= relanceTargetTurnNumber
+                ? currentTurnSeen + 1
+                : relanceTargetTurnNumber;
 
             if (
               !Number.isInteger(currentTurnSeen) ||
-              currentTurnSeen <= relanceTargetTurnNumber
+              currentTurnSeen <= effectiveTargetTurnNumber
             ) {
               conversationRelanceAsyncState.set(safeConversationId, {
-                targetTurnNumber: relanceTargetTurnNumber,
+                targetTurnNumber: effectiveTargetTurnNumber,
                 sourceTurnNumber: currentTurnNumber,
                 explorationRelanceWindow: fallbackFlags.explorationRelanceWindow,
                 explorationDirectivityLevel:
@@ -9797,9 +9797,12 @@ Reponds strictement en JSON: {"items": ["..."]}
             }
 
             logChatDecision('relance_async_result', {
-              status: 'fallback_retained_previous_level',
+              status:
+                effectiveTargetTurnNumber === relanceTargetTurnNumber
+                  ? 'fallback_retained_previous_level'
+                  : 'fallback_retained_previous_level_deferred',
               currentTurnNumber,
-              targetTurnNumber: relanceTargetTurnNumber,
+              targetTurnNumber: effectiveTargetTurnNumber,
               explorationRelanceWindow: fallbackFlags.explorationRelanceWindow,
               explorationDirectivityLevel:
                 fallbackFlags.explorationDirectivityLevel,
