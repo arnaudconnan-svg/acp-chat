@@ -7534,6 +7534,14 @@
           window.FacilitatDebug &&
           typeof window.FacilitatDebug.translateWriterMode === 'function'
         ) {
+          if (
+            meta.majorHarmRiskLevel === 'H1' ||
+            meta.majorHarmRiskLevel === 'H2'
+          ) {
+            postureLines.push(
+              "Override s\u00e9curit\u00e9 : risque majeur d'atteinte aux personnes"
+            );
+          }
           postureLines.push(
             '\u00c9tat : ' +
               window.FacilitatDebug.translateWriterMode(meta.conversationState)
@@ -9768,6 +9776,10 @@
             sections.push({
               title: 'Contrat de posture',
               content: [
+                meta.majorHarmRiskLevel === 'H1' ||
+                meta.majorHarmRiskLevel === 'H2'
+                  ? "Override s\u00e9curit\u00e9 : risque majeur d'atteinte aux personnes"
+                  : null,
                 `\u00c9tat : ${translateWriterModeDebug(meta.conversationState)}`,
                 typeof meta.confidenceSignal === 'number'
                   ? `Indice d'incertitude contextuelle : ${(1 - meta.confidenceSignal).toFixed(2)}`

@@ -2397,6 +2397,10 @@
               sections.push({
                 title: 'Contrat de posture',
                 content: [
+                  meta.majorHarmRiskLevel === 'H1' ||
+                  meta.majorHarmRiskLevel === 'H2'
+                    ? "Override s\u00e9curit\u00e9 : risque majeur d'atteinte aux personnes"
+                    : null,
                   `\u00c9tat : ${translateWriterMode(resolvedState)}`,
                   typeof meta.confidenceSignal === 'number'
                     ? `Indice d'incertitude contextuelle : ${(1 - meta.confidenceSignal).toFixed(2)}`
