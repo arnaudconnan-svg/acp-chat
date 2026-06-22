@@ -563,7 +563,7 @@
 
     if (meta.majorHarmRiskLevel === 'H1') {
       lines.push(
-        'Cadre de s\u00e9curit\u00e9 actif : signaux inqui\u00e9tants contre des personnes (clarification utile).'
+        '[H1] Cadre de s\u00e9curit\u00e9 actif : signaux inqui\u00e9tants contre des personnes (clarification utile).'
       );
     }
 
@@ -577,7 +577,7 @@
         imminenceLabel = 'intention + moyens/opportunit\u00e9';
       }
       lines.push(
-        'Cadre de s\u00e9curit\u00e9 actif : risque majeur ' +
+        '[H2] Cadre de s\u00e9curit\u00e9 actif : risque majeur ' +
           imminenceLabel +
           ' pour des personnes (rappel l\u00e9gal g\u00e9n\u00e9ral et retour au v\u00e9cu).'
       );

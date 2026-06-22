@@ -8515,7 +8515,7 @@ async function handleChatPost(req, res) {
           );
         } catch {
           reply =
-            "Je ne peux pas t'aider a preparer ou commettre une action qui met des personnes en danger. Cela peut avoir de lourdes consequences penales et humaines, pour toi comme pour les personnes visees. Qu'est-ce qui se passe en toi juste avant cette montee vers le passage a l'acte ?";
+            "Je ne peux pas t'aider \u00e0 pr\u00e9parer ou commettre une action qui met des personnes en danger. Cela peut avoir de lourdes cons\u00e9quences p\u00e9nales et humaines, pour toi comme pour les personnes vis\u00e9es. Qu'est-ce qui se passe en toi juste avant cette mont\u00e9e vers le passage \u00e0 l'acte ?";
         }
 
         await registerUsageConsumptionFromTurn({ writerUsage });
