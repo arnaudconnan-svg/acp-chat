@@ -346,6 +346,21 @@
       postCrisisSupportActive: toBooleanTrue(safe.postCrisisSupportActive),
       emergencySupportText:
         toTrimmedString(safe.emergencySupportText, '') || null,
+      majorHarmRiskLevel:
+        ['H0', 'H1', 'H2'].indexOf(toTrimmedString(safe.majorHarmRiskLevel)) >=
+        0
+          ? toTrimmedString(safe.majorHarmRiskLevel)
+          : 'H0',
+      majorHarmImminenceBand:
+        [
+          'none',
+          'immediate',
+          'short_term',
+          'capability_opportunity'
+        ].indexOf(toTrimmedString(safe.majorHarmImminenceBand)) >= 0
+          ? toTrimmedString(safe.majorHarmImminenceBand)
+          : 'none',
+      majorHarmTargetsPeople: toBooleanTrue(safe.majorHarmTargetsPeople),
       requestId: toTrimmedString(safe.requestId, '') || null,
       traceId: toTrimmedString(safe.traceId, '') || null,
       secondaryTension: normalizeSecondaryTension(safe.secondaryTension)
@@ -543,6 +558,22 @@
         'Routage effectif du tour : ' +
           translateWriterMode(meta.effectiveConversationState) +
           ' (override de securite).'
+      );
+    }
+
+    if (meta.majorHarmRiskLevel === 'H2') {
+      var imminenceLabel = 'proche';
+      if (meta.majorHarmImminenceBand === 'immediate') {
+        imminenceLabel = 'immediate';
+      } else if (meta.majorHarmImminenceBand === 'short_term') {
+        imminenceLabel = 'court terme';
+      } else if (meta.majorHarmImminenceBand === 'capability_opportunity') {
+        imminenceLabel = 'intention + moyens/opportunite';
+      }
+      lines.push(
+        'Cadre securite active : risque majeur ' +
+          imminenceLabel +
+          ' pour des personnes (rappel legal general et retour au vecu).'
       );
     }
 

@@ -4,7 +4,7 @@
 // Tests resolveChatPriorityRule and the CHAT_PRIORITY_MATCHERS table.
 //
 // Covers:
-//   - All 5 rules: suicide_n2, acute_crisis_followup, suicide_clarification,
+//   - All 6 rules: imminent_major_harm, suicide_n2, acute_crisis_followup, suicide_clarification,
 //                  recall_long_term, recall_none
 //   - Priority ordering within each phase
 //   - Phase isolation (post_suicide rules don't fire in post_recall and vice versa)
@@ -41,8 +41,8 @@ function assert(condition, msg) {
 
 check('CHAT_PRIORITY_RULES has 5 entries', () => {
   assert(
-    CHAT_PRIORITY_RULES.length === 5,
-    `expected 5, got ${CHAT_PRIORITY_RULES.length}`
+    CHAT_PRIORITY_RULES.length === 6,
+    `expected 6, got ${CHAT_PRIORITY_RULES.length}`
   );
 });
 
@@ -53,7 +53,9 @@ check('All rules have id, phase, priority', () => {
       `rule missing id`
     );
     assert(
-      rule.phase === 'post_suicide' || rule.phase === 'post_recall',
+      rule.phase === 'post_safety' ||
+        rule.phase === 'post_suicide' ||
+        rule.phase === 'post_recall',
       `unexpected phase: ${rule.phase}`
     );
     assert(
@@ -63,17 +65,27 @@ check('All rules have id, phase, priority', () => {
   }
 });
 
-check('post_suicide rules appear before post_recall in order', () => {
+check('post_safety and post_suicide rules appear before post_recall in order', () => {
   const firstRecall = CHAT_PRIORITY_RULES.findIndex(
     (r) => r.phase === 'post_recall'
   );
-  const lastSuicide = [...CHAT_PRIORITY_RULES]
+  const lastSafetyOrSuicide = [...CHAT_PRIORITY_RULES]
     .reverse()
-    .findIndex((r) => r.phase === 'post_suicide');
-  const lastSuicideIdx = CHAT_PRIORITY_RULES.length - 1 - lastSuicide;
+    .findIndex((r) => r.phase === 'post_safety' || r.phase === 'post_suicide');
+  const lastSafetyOrSuicideIdx =
+    CHAT_PRIORITY_RULES.length - 1 - lastSafetyOrSuicide;
   assert(
-    firstRecall > lastSuicideIdx,
-    'post_recall rules should come after all post_suicide rules'
+    firstRecall > lastSafetyOrSuicideIdx,
+    'post_recall rules should come after all post_safety/post_suicide rules'
+  );
+});
+
+check('Priority ordering: imminent_major_harm before suicide_n2', () => {
+  const harm = CHAT_PRIORITY_RULES.find((r) => r.id === 'imminent_major_harm');
+  const n2 = CHAT_PRIORITY_RULES.find((r) => r.id === 'suicide_n2');
+  assert(
+    harm.priority < n2.priority,
+    'imminent_major_harm should have lower priority number than suicide_n2'
   );
 });
 
@@ -117,6 +129,25 @@ check('CHAT_PRIORITY_MATCHERS has an entry for each rule id', () => {
 });
 
 // ─── Phase: post_suicide ──────────────────────────────────────────────────────
+
+check('imminent_major_harm: matches when harmRiskLevel=H2', () => {
+  const result = resolveChatPriorityRule({
+    phase: 'post_safety',
+    safety: { harmRiskLevel: 'H2' }
+  });
+  assert(
+    result?.id === 'imminent_major_harm',
+    `expected imminent_major_harm, got ${result?.id}`
+  );
+});
+
+check('post_safety: returns null when harmRiskLevel=H0', () => {
+  const result = resolveChatPriorityRule({
+    phase: 'post_safety',
+    safety: { harmRiskLevel: 'H0' }
+  });
+  assert(result === null, `expected null, got ${result?.id}`);
+});
 
 check('suicide_n2: matches when suicideLevel=N2', () => {
   const result = resolveChatPriorityRule({
@@ -303,6 +334,17 @@ check('post_suicide rules do NOT fire in post_recall phase (N2)', () => {
   assert(
     result === null || result.phase === 'post_recall',
     `post_recall should not return a post_suicide rule, got ${result?.id}`
+  );
+});
+
+check('post_safety rules do NOT fire in post_suicide phase', () => {
+  const result = resolveChatPriorityRule({
+    phase: 'post_suicide',
+    safety: { harmRiskLevel: 'H2' }
+  });
+  assert(
+    result === null || result.phase === 'post_suicide',
+    `post_suicide should not return a post_safety rule, got ${result?.id}`
   );
 });
 

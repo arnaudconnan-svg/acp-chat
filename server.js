@@ -203,7 +203,8 @@ const {
 } = require('./lib/debugmeta');
 const {
   resolveChatPriorityRule,
-  buildCrisisRoutingDecision
+  buildCrisisRoutingDecision,
+  buildSafetyRoutingDecision
 } = require('./lib/chat-routing');
 const { resolveBranchSeedPayload } = require('./lib/branching');
 const { createWriter } = require('./lib/writer');
@@ -1902,9 +1903,11 @@ const {
   analyzeRecallRouting,
   analyzeRelationalAdjustmentNeed,
   analyzeSuicideRisk,
+  analyzeImminentMajorHarmRisk,
   acuteCrisisFollowupResponse,
   acuteCrisisFollowupResponseLLM,
   classifyN2TurnType,
+  imminentMajorHarmResponseLLM,
   n1Fallback,
   n2Response,
   proposeState
@@ -3878,6 +3881,21 @@ app.post(
                       typeof debugMeta.emergencySupportText === 'string'
                         ? debugMeta.emergencySupportText
                         : null,
+                    majorHarmRiskLevel:
+                      debugMeta.majorHarmRiskLevel === 'H1' ||
+                      debugMeta.majorHarmRiskLevel === 'H2'
+                        ? debugMeta.majorHarmRiskLevel
+                        : 'H0',
+                    majorHarmImminenceBand: [
+                      'none',
+                      'immediate',
+                      'short_term',
+                      'capability_opportunity'
+                    ].includes(debugMeta.majorHarmImminenceBand)
+                      ? debugMeta.majorHarmImminenceBand
+                      : 'none',
+                    majorHarmTargetsPeople:
+                      debugMeta.majorHarmTargetsPeople === true,
                     requestId:
                       typeof debugMeta.requestId === 'string'
                         ? debugMeta.requestId
@@ -7351,6 +7369,19 @@ async function handleChatPost(req, res) {
           typeof safe.emergencySupportText === 'string'
             ? safe.emergencySupportText
             : null,
+        majorHarmRiskLevel:
+          safe.majorHarmRiskLevel === 'H1' || safe.majorHarmRiskLevel === 'H2'
+            ? safe.majorHarmRiskLevel
+            : 'H0',
+        majorHarmImminenceBand: [
+          'none',
+          'immediate',
+          'short_term',
+          'capability_opportunity'
+        ].includes(safe.majorHarmImminenceBand)
+          ? safe.majorHarmImminenceBand
+          : 'none',
+        majorHarmTargetsPeople: safe.majorHarmTargetsPeople === true,
         requestId: typeof safe.requestId === 'string' ? safe.requestId : null,
         traceId: typeof safe.traceId === 'string' ? safe.traceId : null,
         uncertaintyExpressionPolicy:
@@ -8254,6 +8285,9 @@ async function handleChatPost(req, res) {
       function buildCrisisResponseDebugMeta({
         memory,
         suicideLevel,
+        majorHarmRiskLevel = 'H0',
+        majorHarmImminenceBand = 'none',
+        majorHarmTargetsPeople = false,
         n2TurnType = null,
         emergencyNumbersIncluded = false,
         postCrisisSupportActive = false,
@@ -8262,6 +8296,9 @@ async function handleChatPost(req, res) {
         return buildResponseDebugMeta({
           memory,
           suicideLevel,
+          majorHarmRiskLevel,
+          majorHarmImminenceBand,
+          majorHarmTargetsPeople,
           conversationState: 'n2_crisis',
           isRecallRequest: false,
           explorationDirectivityLevel: newFlags.explorationDirectivityLevel,
@@ -8453,15 +8490,91 @@ async function handleChatPost(req, res) {
         );
       }
 
-      async function analyzeSuicideAndBuildCrisisPrelude() {
-        markChatStage('suicide_analysis');
-        const suicide = await analyzeSuicideRisk(
-          message,
-          recentHistory,
-          flags,
-          activePromptRegistry
+      async function handleImminentMajorHarmRoute(safety) {
+        newFlags.acuteCrisis = false;
+        newFlags.postCrisisSupportCarryTurn = false;
+        newFlags.dischargeState = { wasDischarge: false };
+        flagsForCatch = normalizeSessionFlags(newFlags);
+
+        logChatDecision('override_major_harm', {
+          harmRiskLevel: safety?.harmRiskLevel || 'H0',
+          imminenceBand: safety?.imminenceBand || 'none',
+          targetsPeople: safety?.targetsPeople === true,
+          isSelfDefenseClaimed: safety?.isSelfDefenseClaimed === true
+        });
+
+        const debug = buildOverrideDebug(suicide?.suicideLevel || 'N0');
+
+        let reply;
+        let writerUsage = null;
+        try {
+          reply = await imminentMajorHarmResponseLLM(
+            message,
+            recentHistory,
+            activePromptRegistry
+          );
+        } catch {
+          reply =
+            "Je ne peux pas t'aider a preparer ou commettre une action qui met des personnes en danger. Cela peut avoir de lourdes consequences penales et humaines, pour toi comme pour les personnes visees. Qu'est-ce qui se passe en toi juste avant cette montee vers le passage a l'acte ?";
+        }
+
+        await registerUsageConsumptionFromTurn({ writerUsage });
+
+        const responseMemory = previousMemory;
+        scheduleBackgroundMemoryUpdate(previousMemory, reply);
+
+        const responseDebugMeta = buildResponseDebugMeta({
+          memory: responseMemory,
+          suicideLevel: suicide?.suicideLevel || 'N0',
+          majorHarmRiskLevel: safety?.harmRiskLevel || 'H0',
+          majorHarmImminenceBand: safety?.imminenceBand || 'none',
+          majorHarmTargetsPeople: safety?.targetsPeople === true,
+          conversationState: 'exploration_restrained',
+          isRecallRequest: false,
+          explorationDirectivityLevel: 3,
+          explorationRelanceWindow: newFlags.explorationRelanceWindow,
+          rewriteSource: null,
+          memoryRewriteSource: null,
+          modelConflict: false,
+          promptRegistry: activePromptRegistry
+        });
+
+        const botMessageId = persistAssistantMessageAsync(
+          reply,
+          debug,
+          responseDebugMeta,
+          { memory: responseMemory, flags: newFlags }
         );
+        return sendChatJsonResponse(
+          reply,
+          responseMemory,
+          newFlags,
+          debug,
+          responseDebugMeta,
+          botMessageId,
+          'securite:risque_majeur_imminent'
+        );
+      }
+
+      async function analyzeSafetyAndBuildCrisisPrelude() {
+        markChatStage('safety_analysis');
+        const [safety, suicide] = await Promise.all([
+          analyzeImminentMajorHarmRisk(
+            message,
+            recentHistory,
+            activePromptRegistry
+          ),
+          analyzeSuicideRisk(message, recentHistory, flags, activePromptRegistry)
+        ]);
         throwIfCanceled();
+
+        logChatDecision('major_harm_analysis_result', {
+          harmRiskLevel: safety?.harmRiskLevel || 'H0',
+          imminenceBand: safety?.imminenceBand || 'none',
+          targetsPeople: safety?.targetsPeople === true,
+          needsImmediateSafetyFrame: safety?.needsImmediateSafetyFrame === true,
+          isSelfDefenseClaimed: safety?.isSelfDefenseClaimed === true
+        });
 
         logChatDecision('suicide_analysis_result', {
           suicideLevel: suicide.suicideLevel,
@@ -8474,9 +8587,22 @@ async function handleChatPost(req, res) {
         const nextFlags = normalizeSessionFlags(flags);
         nextFlags.explorationCalibrationLevel = 0;
 
+        const safetyDecision = buildSafetyRoutingDecision({
+          safety,
+          suicide,
+          flags
+        });
         const crisisDecision = buildCrisisRoutingDecision(suicide, flags);
 
-        if (crisisDecision.route) {
+        if (safetyDecision.route === 'major_harm') {
+          logChatDecision('priority_rule_selected', {
+            phase: 'post_safety',
+            ruleId: safetyDecision.ruleId,
+            priority: safetyDecision.priority,
+            safetyImminence: safetyDecision.safetyImminence,
+            suicideImminence: safetyDecision.suicideImminence
+          });
+        } else if (crisisDecision.route) {
           logChatDecision('priority_rule_selected', {
             phase: 'post_suicide',
             ruleId: crisisDecision.ruleId,
@@ -8485,6 +8611,8 @@ async function handleChatPost(req, res) {
         }
 
         return {
+          safety,
+          safetyDecision,
           suicide,
           crisisDecision,
           newFlags: nextFlags
@@ -8815,12 +8943,18 @@ Reponds strictement en JSON: {"items": ["..."]}
         return emergencySupportTextPromise;
       }
 
-      // 1) Analyse suicide : risque immédiat et clarification possible.
+      // 1) Analyse securite : risque majeur imminent et risque suicidaire.
       // Cette étape peut déclencher des réponses priorisées sans aller plus loin.
-      const crisisPrelude = await analyzeSuicideAndBuildCrisisPrelude();
+      const crisisPrelude = await analyzeSafetyAndBuildCrisisPrelude();
+      const safety = crisisPrelude.safety;
+      const safetyDecision = crisisPrelude.safetyDecision;
       const suicide = crisisPrelude.suicide;
       const crisisDecision = crisisPrelude.crisisDecision;
       let newFlags = crisisPrelude.newFlags;
+
+      if (safetyDecision.route === 'major_harm') {
+        return handleImminentMajorHarmRoute(safety);
+      }
 
       // Severe suicide risk override path.
       // If the analysis returns N2, we bypass normal generation and reply with a crisis response.
