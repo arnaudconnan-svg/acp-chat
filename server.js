@@ -8511,7 +8511,8 @@ async function handleChatPost(req, res) {
           reply = await imminentMajorHarmResponseLLM(
             message,
             recentHistory,
-            activePromptRegistry
+            activePromptRegistry,
+            onTokenCallbackForChat
           );
         } catch {
           reply =
