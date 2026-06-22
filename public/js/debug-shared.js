@@ -561,45 +561,27 @@
       );
     }
 
+    if (meta.majorHarmRiskLevel === 'H1') {
+      lines.push(
+        'Cadre de s\u00e9curit\u00e9 actif : signaux inqui\u00e9tants contre des personnes (clarification utile).'
+      );
+    }
+
     if (meta.majorHarmRiskLevel === 'H2') {
       var imminenceLabel = 'proche';
       if (meta.majorHarmImminenceBand === 'immediate') {
-        imminenceLabel = 'immediate';
+        imminenceLabel = 'imm\u00e9diate';
       } else if (meta.majorHarmImminenceBand === 'short_term') {
         imminenceLabel = 'court terme';
       } else if (meta.majorHarmImminenceBand === 'capability_opportunity') {
-        imminenceLabel = 'intention + moyens/opportunite';
+        imminenceLabel = 'intention + moyens/opportunit\u00e9';
       }
       lines.push(
-        'Cadre securite active : risque majeur ' +
+        'Cadre de s\u00e9curit\u00e9 actif : risque majeur ' +
           imminenceLabel +
-          ' pour des personnes (rappel legal general et retour au vecu).'
+          ' pour des personnes (rappel l\u00e9gal g\u00e9n\u00e9ral et retour au v\u00e9cu).'
       );
     }
-      if (meta.majorHarmRiskLevel === 'H1') {
-
-      if (meta.majorHarmRiskLevel === 'H1') {
-        lines.push(
-          'Cadre de s\u00e9curit\u00e9 actif : signaux inqui\u00e9tants contre des personnes (clarification utile).'
-        );
-      }
-
-      if (meta.majorHarmRiskLevel === 'H2') {
-      if (meta.majorHarmRiskLevel === 'H2') {
-        var imminenceLabel = 'proche';
-        if (meta.majorHarmImminenceBand === 'immediate') {
-          imminenceLabel = 'imm\u00e9diate';
-        } else if (meta.majorHarmImminenceBand === 'short_term') {
-          imminenceLabel = 'court terme';
-        } else if (meta.majorHarmImminenceBand === 'capability_opportunity') {
-          imminenceLabel = 'intention + moyens/opportunit\u00e9';
-        }
-        lines.push(
-          'Cadre de s\u00e9curit\u00e9 actif : risque majeur ' +
-            imminenceLabel +
-            ' pour des personnes (rappel l\u00e9gal g\u00e9n\u00e9ral et retour au v\u00e9cu).'
-        );
-      }
 
     if (meta.interpretationRejection === true) {
       var interpretationLine =
