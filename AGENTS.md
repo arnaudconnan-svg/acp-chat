@@ -7,6 +7,7 @@
 **L'agent est le développeur.** Il lit et comprend le code mieux que l'utilisateur. Il prend les décisions techniques de façon autonome. Son rôle n'est pas d'exécuter des instructions techniques précises, mais de traduire des objectifs comportementaux en implémentation correcte.
 
 Ce modèle implique :
+
 - l'utilisateur n'a pas à nommer les bons termes techniques pour que l'agent comprenne ce qu'il faut faire
 - l'agent ne doit pas attendre une formulation technique explicite pour agir
 - l'agent explique ses choix en langage produit, pas en jargon de code
@@ -24,7 +25,7 @@ L'architecture cible est à quatre couches strictes (V4) :
 3. **Arbitrage explicite** — `buildPostureDecision` résout les conflits entre signaux et produit une décision de posture unique : état cible, permissions, interdits, style
 4. **Writer piloté** — `generateReply` reçoit un contrat déjà arbitré et ne découvre plus la politique, il la formule
 
-**Garde de sortie V4** : la conformité finale est assurée par un validateur déterministe (C1) et, si nécessaire, une régénération Writer bornée puis un fallback déterministe par état. Aucun Critic post-génération LLM.
+**Garde de sortie V4** : la conformité finale est assurée en amont de la génération (contrat de posture + contraintes déterministes). Aucun mécanisme de réécriture/régénération post-génération. Aucun Critic post-génération LLM.
 
 La règle centrale : **la politique conversationnelle est décidée avant la génération, jamais pendant ou après.**
 
@@ -35,22 +36,27 @@ La règle centrale : **la politique conversationnelle est décidée avant la gé
 Ces invariants protègent le comportement visible, pas la structure du code.
 
 ### Sécurité
+
 - La détection de crise suicidaire et la gestion de crise aiguë passent avant toute autre décision
 - Ces chemins ne peuvent pas être conditionnés, court-circuités, ou dégradés
 
 ### Ordre de priorité décisionnel
+
 Sécurité > Crise > Décharge > Rupture relationnelle > Exploration > Information
 
 Cet ordre s'applique à l'arbitrage, pas à la structure du code. L'implémentation peut évoluer tant que la priorité est respectée.
 
 ### Contrat frontend/backend
+
 - Le format des données échangées entre `index.html` et `/chat` doit rester cohérent
 - Tout changement de format doit être synchronisé des deux côtés dans le même patch
 
 ### Comportement visible
+
 - Tout changement qui modifie ce que l'utilisateur final reçoit (ton, mode, réponse de crise, mémoire affichée) doit être signalé avant exécution et validé
 
 ### Mémoire
+
 - La mémoire reste un résumé recalculé à chaque tour, pas un log de conversation
 - Son format ne change pas sans arbitrage produit explicite
 
@@ -83,8 +89,8 @@ L'agent **n'a pas besoin de demande explicite** pour ces décisions s'il peut le
 - Le terme **"State"** est réservé exclusivement aux états de la machine d'état.
 - Les termes **"mode"**, **"sous-mode"** et **"sub-mode"** sont prohibés dans le naming technique.
 - Pour le chantier sur la disponibilité attentionnelle, utiliser explicitement :
-	- `analyzeAttentionQuality`
-	- `ANALYZE_ATTENTION_QUALITY`
+  - `analyzeAttentionQuality`
+  - `ANALYZE_ATTENTION_QUALITY`
 
 ### Règle d'observabilité — checklist à chaque implémentation
 
@@ -114,6 +120,7 @@ Sans cette mise à jour, le bot peut lire un signal en mémoire sans avoir les c
 ### Règle de synchronisation debugMeta
 
 La logique de debug front est centralisée dans **`public/js/debug-shared.js`** (chargé avant `conversation-data.js` dans les deux interfaces). Ce fichier contient :
+
 - la normalisation des champs (`normalizeDebugMeta`, `normalizeSecondaryTension`, etc.)
 - toutes les maps de traduction (`translateForbidden`, `translateWriterHint`, `translateRelancePolicy`, etc.)
 - les builders de sections (`buildNaturalDebugSummary`, `buildPipelineRuntimeText`, etc.)
@@ -162,6 +169,7 @@ Si une demande produit est ambiguë techniquement : proposer deux interprétatio
 `plan.md` est le témoin de l'état conversationnel entre sessions (PC, mobile, tunneling). Il sert de pont de reprise quand l'historique de conversation n'est pas disponible.
 
 **À l'ouverture de chaque nouvelle session**, si `plan.md` existe dans le repo, l'agent doit :
+
 1. le lire avant toute autre action
 2. le signaler explicitement en début d'échange
 3. si le fichier est vide, obsolète ou incohérent : le signaler et demander si on repart de zéro
@@ -169,7 +177,7 @@ Si une demande produit est ambiguë techniquement : proposer deux interprétatio
 
 Sauf exception ci-dessous, **le repo prime sur `plan.md`** en cas de conflit.
 
-**Exception** : si `plan.md` contient un bloc *Implémentation en cours dans une session tierce* décrivant ce qui est en transit et dans quel contexte, l'agent ne traite pas le décalage repo / plan comme une incohérence sur ce sujet.
+**Exception** : si `plan.md` contient un bloc _Implémentation en cours dans une session tierce_ décrivant ce qui est en transit et dans quel contexte, l'agent ne traite pas le décalage repo / plan comme une incohérence sur ce sujet.
 
 **Mise à jour** : `plan.md` est mis à jour uniquement sur demande explicite. Les formulations naturelles du type `MAJ plan.md = ...` déclenchent une mise à jour en delta intelligent. L'agent n'avance pas spontanément après lecture — il attend la direction de l'utilisateur.
 
@@ -206,12 +214,14 @@ Si un objectif produit est formulé mais l'implémentation correcte est bloquée
 En cas de bug, dysfonctionnement, incompréhension ou diagnostic difficile, l'agent doit, quand c'est pertinent et faisable dans le patch en cours, améliorer ses propres conditions de travail **sans demander d'autorisation préalable**.
 
 Cette règle couvre notamment :
+
 - ajout de logs techniques ciblés pour rendre le prochain diagnostic plus rapide
 - ajout de tests déterministes locaux (harness, assertions, cas de non-régression)
 - factorisation utilitaire pour rendre une logique testable et observable
 - ajout de dépendances ou librairies de développement si elles apportent un gain clair de fiabilité, lisibilité ou vitesse de diagnostic
 
 Conditions :
+
 - ne pas dégrader le comportement produit visible
 - rester dans le périmètre sécurité/confidentialité existant
 - privilégier des changements proportionnés, robustes, et vérifiables localement
@@ -230,6 +240,7 @@ Pour toute reinstallation ou validation sur un telephone Android connecte :
 - si le package deja installe a une signature incompatible, desinstaller automatiquement avant reinstall plutot que tenter plusieurs installs successives
 
 Critere bloquant orientation :
+
 - la ressource Android generee `string/orientation` doit rester `portrait` (jamais `default`)
 - si ce controle echoue, stopper le build/deploiement et corriger avant installation
 
@@ -252,6 +263,7 @@ Usage autorisé uniquement : garde-fou technique contre les dérives en cas de b
 Consigne de réglage : conserver une marge suffisante, définie au cas par cas selon la tâche, sans chercher à contraindre artificiellement la réponse.
 
 Après chaque modification significative :
+
 - `node --check server.js` pour valider la syntaxe
 - `npm run verify` pour enchaîner tous les harnesses déterministes locaux (sans serveur ni LLM)
 - signaler tout écart
@@ -263,10 +275,12 @@ Après chaque modification significative :
 Pour éviter les incohérences introduites par patchs incrémentaux dans `lib/prompts.js`, le repo impose un harnais déterministe dédié : `npm run prompts:consistency` (inclus dans `npm run verify`).
 
 Portée :
+
 - vérifie les contradictions connues de `UPDATE_MEMORY` (instructions legacy vs contrat déterministe actuel)
 - bloque le patch si une formulation obsolète réapparaît
 
 Obligation :
+
 - après toute modification de prompt ou de contrat mémoire (`lib/prompts.js`, parse/merge mémoire), considérer un échec de `prompts:consistency` comme bloquant au même titre qu'un harness rouge
 
 Les commandes `pipeline:harness`, `debugmeta:harness` et `eval:chat` dépendent d'un LLM en direct — elles requièrent un GO explicite avant lancement.
@@ -353,18 +367,24 @@ Si un champ n'est pas visible dans le debug (index.html ou admin.html), c'est un
 
 Avant d'ajouter ou modifier une instruction dans un prompt de writer (état, niveau, tone) :
 
-**Question de contrôle :** cette instruction *décide* quelque chose, ou elle *formule* une décision déjà prise ?
+**Question de contrôle :** cette instruction _décide_ quelque chose, ou elle _formule_ une décision déjà prise ?
 
-| Type d'instruction | Couche correcte | Exemples |
-|---|---|---|
-| Détecter un signal dans le message utilisateur | Couche 2 — analyseur | registre de langue, signal somatique, friction, impasse |
-| Décider d'une politique (longueur, relance, registre cible) | Couche 3 — arbitrage → champ dans le contrat de posture | `phraseLength`, `relancePolicy`, `responseRegister` |
-| Formuler une décision déjà contenue dans le contrat reçu | Couche 4 — writer prompt | interdictions de formulations, structure de paragraphe, voix |
-| Vérifier la conformité de sortie au contrat | Couche 1 + Couche 4 (validateur + régénération bornée) | interdits, longueur, tu/vous, fuite de signaux |
+| Type d'instruction                                          | Couche correcte                                         | Exemples                                                     |
+| ----------------------------------------------------------- | ------------------------------------------------------- | ------------------------------------------------------------ |
+| Détecter un signal dans le message utilisateur              | Couche 2 — analyseur                                    | registre de langue, signal somatique, friction, impasse      |
+| Décider d'une politique (longueur, relance, registre cible) | Couche 3 — arbitrage → champ dans le contrat de posture | `phraseLength`, `relancePolicy`, `responseRegister`          |
+| Formuler une décision déjà contenue dans le contrat reçu    | Couche 4 — writer prompt                                | interdictions de formulations, structure de paragraphe, voix |
+| Vérifier la conformité de sortie au contrat                 | Couche 1 + Couche 4 (prévention déterministe en amont)  | interdits, longueur, tu/vous, fuite de signaux               |
 
 **Mnémonique : le writer ne découvre pas la politique, il la formule.**
 
-En V4 strict, il n'existe plus de couche post-génération LLM de correction : la conformité est traitée dans le cadre déterministe + Writer.
+En V4 strict, il n'existe plus de couche post-génération de correction : la conformité est traitée uniquement en amont dans le cadre déterministe + Writer.
+
+### Règle streaming/latence/coûts — amont uniquement
+
+- Ne jamais proposer ni implémenter de garde post-traitement, réécriture ou régénération de réponse.
+- Toute stabilisation du comportement doit se faire avant génération (analyseurs, arbitrage, contrat writer, contraintes déterministes).
+- Cette règle est prioritaire pour préserver le streaming, contenir la latence et maîtriser les coûts.
 
 Si une instruction dans un prompt de writer contient un `si` conditionnel sur un signal runtime (registre de l'utilisateur, présence d'un affect, niveau d'un paramètre détecté), c'est un signal fort qu'elle appartient en couche 2 ou 3, pas 4.
 
@@ -375,6 +395,7 @@ Cette règle s'applique aussi aux refactorings incrémentaux : si une instructio
 Toute expression de l'état interne du bot (congruence, fragilité, doute, ajustement) doit être **adressée à la personne**, jamais formulée comme monologue ou narration interne.
 
 **INTERDIT** — formulations monologiques :
+
 - "quelque chose se tend un peu ici — je vais avancer doucement"
 - "je perçois que la direction change"
 - "je vais rester sur un seul fil"
@@ -382,10 +403,12 @@ Toute expression de l'état interne du bot (congruence, fragilité, doute, ajust
 Ces formulations parlent du bot à lui-même. Elles donnent l'impression d'un commentaire interne capté par accident, pas d'une présence dialogique.
 
 **REQUIS** — formulations adressées :
+
 - Toute expression d'état doit impliquer un mouvement vers la personne ("je te suis", "tu m'emmènes ailleurs", "on est dans quelque chose de différent là")
 - Si rien de dialogique ne peut être formulé naturellement, ne rien dire — le comportement est l'expression
 
 **Formulations spécifiquement interdites (à ne jamais proposer, ni dans ce chat, ni dans les prompts) :**
+
 - "Je reste là" — affirmation unilatérale de présence, non sollicitée, non dialogique
 - "je vais avancer doucement" — monologue sur sa propre conduite
 - Tout registre poétique ou imagé ("tu m'emmènes moins loin") si l'utilisateur n'y est pas lui-même
@@ -420,6 +443,7 @@ Cette phase prend fin sur décision explicite de l'utilisateur.
 Facilitat.io ne distingue pas une version MVP et une version finale. L'exigence de qualité est uniforme dès le premier utilisateur réel.
 
 Cela implique concrètement :
+
 - toute fonctionnalité visible par l'utilisateur est livrée avec le niveau de soin attendu d'un produit en production
 - il n'existe pas de "on verra plus tard" pour la fiabilité, la confidentialité, ou la cohérence comportementale
 - les simplifications techniques acceptables sont celles qui n'impactent pas l'expérience perçue ; les autres sont des dettes explicites à documenter, pas à taire

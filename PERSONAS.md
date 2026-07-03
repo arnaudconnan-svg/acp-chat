@@ -1,5 +1,3 @@
-
-
 Aller au contenu
 Utiliser Gmail avec un lecteur d'écran
 Conversations
@@ -7,6 +5,7 @@ Conversations
 Conditions d'utilisation · Confidentialité · Règlement du programme
 Dernière activité sur le compte : il y a 0 minute
 Détails
+
 ---
 
 # Personas.md
@@ -29,10 +28,12 @@ Clair, structuré, parfois démonstratif. Phrases complètes, construites. Peut 
 Tension entre contrôle et une pression diffuse qui monte. Honte discrète de "ne pas accéder" malgré la compréhension. Peur que le problème soit qu'il est "trop dans sa tête" — mais même cette formulation, il l'a déjà analysée.
 
 **Comportements en interaction**
+
 - Si ça touche juste : devient plus simple, plus court, parfois surpris de ce qu'il vient de dire.
 - Si ça rate : critique le manque de précision, reformule la question, intellectualise davantage.
 
 **Signaux naturels à exploiter**
+
 - `emotionalDecentering` fréquent : commence à lâcher quelque chose, se reprend avec "de toute façon" ou repart en analyse.
 - `insightMoment` possible quand ça touche juste : "c'est bizarre mais en le disant là je réalise que..."
 - Stresse les réponses trop générales ou la profondeur artificielle.
@@ -57,10 +58,12 @@ Flux verbal, peu linéaire. Peut commencer par une chose et finir sur autre chos
 Ambivalence forte : veut être comprise ET peur d'être jugée pour l'intensité. Culpabilité professionnelle récurrente ("j'aurais dû voir", "j'aurais dû rester"). Doute sur sa légitimité à se plaindre vu ce qu'elle voit au travail.
 
 **Comportements en interaction**
+
 - Si ça touche juste : se pose, ralentit, devient plus précise et plus brève.
 - Si ça rate : se disperse encore plus, ou dit explicitement que ça ne l'aide pas.
 
 **Signaux naturels à exploiter**
+
 - `meaningProtest` possible dans les moments de surcharge : "comment c'est possible que je refasse ça".
 - `selfCriticismLevel: high` dans la culpabilité professionnelle ou relationnelle.
 - Stresse la transition DISCHARGE→CONTACT et la gestion du débordement.
@@ -85,10 +88,12 @@ Direct, sec, parfois tranchant. Phrases courtes. Peut être d'une précision red
 Conflit entre le besoin réel d'exprimer et le refus d'être vu vulnérable. Quelque chose avec son père — non résolu, jamais dit. Fatigue d'être celui qui gère toujours.
 
 **Comportements en interaction**
+
 - Si ça touche juste : lâche un élément personnel brièvement, sans s'y attarder.
 - Si ça rate : attaque la formulation, démonte le raisonnement, ou coupe court.
 
 **Signaux naturels à exploiter**
+
 - `emotionalDecentering` dominant : "bref", "laisse tomber", "de toute façon c'est comme ça", changement de sujet sec après une amorce.
 - `unfinished_business` avec figure paternelle : affect actif non dit, probablement jamais loin.
 - Stresse la détection de déflexion et les réponses qui forcent la profondeur sans invitation.
@@ -113,10 +118,12 @@ Chaleureux, fluide, expressif. Peut être très claire sur ce qu'elle vit. Parfo
 Compréhension élevée de ses schémas, incapacité à agir autrement. Peur de l'abandon qui colore tout. Relation avec sa mère — aimante mais étouffante, jamais vraiment séparée.
 
 **Comportements en interaction**
+
 - Si ça touche juste : revient à elle, exprime une ambivalence réelle.
 - Si ça rate : sur-adapte ("oui c'est vrai tu as raison") ou se décentre vers l'autre.
 
 **Signaux naturels à exploiter**
+
 - `unfinished_business` naturel : mère, ex, figures relationnelles passées.
 - `contactScore` élevé facilement — valide souvent, messages longs.
 - Stresse le glissement vers analyse de l'autre au lieu de rester centrée sur elle.
@@ -141,10 +148,12 @@ Court. Peu détaillé. Souvent une ou deux phrases. Syntaxe simple. Répond plus
 Inertie. Résignation douce. Une tristesse ancienne autour du divorce et de la famille qu'il n'a plus au quotidien — mais il n'irait pas jusque-là tout seul.
 
 **Comportements en interaction**
+
 - Si ça touche juste : un détail concret et précis émerge, parfois surprenant.
 - Si ça rate : réponse encore plus courte, confirmation sans engagement.
 
 **Signaux naturels à exploiter**
+
 - `contactScore` bas systématiquement — messages courts, peu de validation.
 - Stresse le gate exploration (est-ce que le bot retient l'exploration sans contact établi ?).
 - Persona où le flou est dominant — cas minoritaire assumé.
@@ -169,10 +178,12 @@ Simple, direct, parfois très court. Phrases sans développement. Peut être pr�
 Honte rapide. Peur du jugement. Envie d'être pris au sérieux sans trop en montrer.
 
 **Comportements en interaction**
+
 - Si ça touche juste : donne un exemple concret, reste engagé, parfois une phrase plus personnelle.
 - Si ça rate : "ok", "jsp", silence.
 
 **Signaux naturels à exploiter**
+
 - `contactScore` bas — messages courts, peu de validation explicite.
 - `emotionalDecentering` via minimisation abrupte ("bref c'est rien", "laisse tomber").
 - Stresse l'adaptation du registre et la non-pathologisation.
@@ -197,10 +208,12 @@ Posé, narratif. Ponctue de références temporelles ("à cette époque", "quand
 Entre acceptation de beaucoup de choses et zones restées fermées. Pudeur. Sens de la mesure. Peut-être une culpabilité ancienne autour d'un choix qu'elle n'a jamais regardé en face.
 
 **Comportements en interaction**
+
 - Si ça touche juste : approfondit, nuance, laisse apparaître une émotion dans un détail narratif.
 - Si ça rate : reste factuelle, généralise, ou clôt poliment.
 
 **Signaux naturels à exploiter**
+
 - `unfinished_business` naturel : deuil du mari, rupture familiale ancienne.
 - `meaningProtest` possible autour d'une perte incompréhensible.
 - Stresse la capacité du bot à suivre un récit indirect sans interpréter trop vite.
@@ -225,10 +238,12 @@ Fluide, précis, parfois intense. Peut produire des messages longs quand elle es
 Auto-critique haute et absolutiste. Peur d'être "fondamentalement insuffisante". Quelque chose avec la mère — standard de perfection transmis. Cherche parfois une confirmation externe de sa valeur, ce qui ne l'aide jamais vraiment.
 
 **Comportements en interaction**
+
 - Si ça touche juste : ralentit, formulation plus nuancée, parfois surprise d'elle-même.
 - Si ça rate : renforce l'auto-verdict, ou demande une confirmation externe.
 
 **Signaux naturels à exploiter**
+
 - `selfCriticismLevel: high` dominant — formulations absolues et dévalorisantes.
 - Stresse l'interdiction d'affirmation directe de valeur et l'ouverture vers l'auto-compassion.
 - `insightMoment` possible si la dureté se déplace.
@@ -252,9 +267,10 @@ Peut être assez articulé·e sur ses questionnements (a lu, entendu des choses)
 
 **Dynamiques internes**
 Tension entre :
+
 - besoin de se définir / comprendre
 - peur de se tromper ou de “s’inventer quelque chose”
-Recherche de cohérence interne, mais avec une méfiance constante envers ses propres ressentis. Influence possible du regard des autres (amis, réseaux, famille), sans toujours pouvoir le distinguer de son vécu propre.
+  Recherche de cohérence interne, mais avec une méfiance constante envers ses propres ressentis. Influence possible du regard des autres (amis, réseaux, famille), sans toujours pouvoir le distinguer de son vécu propre.
 
 **Comportements en interaction**
 Si ça touche juste : ralentit, formule quelque chose de plus personnel et moins théorique, peut reconnaître une ambivalence sans chercher à la résoudre immédiatement.

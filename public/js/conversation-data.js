@@ -14,38 +14,39 @@ var OPENING_GREETINGS = [
 ];
 
 function isOpeningGreetingMessage(content) {
-  var text = String(content || "").trim();
+  var text = String(content || '').trim();
   return OPENING_GREETINGS.indexOf(text) !== -1;
 }
 
 function defaultMemory() {
   return [
-    "Contexte stable (session)",
-    "- ",
-    "",
-    "Mouvements en cours",
-    "- ",
-    "",
-    "Mouvements anciens",
-    "- "
-  ].join("\n");
+    'Contexte stable (session)',
+    '- ',
+    '',
+    'Mouvements en cours',
+    '- ',
+    '',
+    'Mouvements anciens',
+    '- '
+  ].join('\n');
 }
 
 function normalizeStoredFlags(flags) {
-  if (!flags || typeof flags !== "object" || Array.isArray(flags)) {
+  if (!flags || typeof flags !== 'object' || Array.isArray(flags)) {
     return {};
   }
   return flags;
 }
 
 function normalizeStoredStateSnapshot(snapshot) {
-  if (!snapshot || typeof snapshot !== "object" || Array.isArray(snapshot)) {
+  if (!snapshot || typeof snapshot !== 'object' || Array.isArray(snapshot)) {
     return null;
   }
   return {
-    memory: typeof snapshot.memory === "string" && snapshot.memory.trim() ?
-      snapshot.memory :
-      defaultMemory(),
+    memory:
+      typeof snapshot.memory === 'string' && snapshot.memory.trim()
+        ? snapshot.memory
+        : defaultMemory(),
     flags: normalizeStoredFlags(snapshot.flags || {})
   };
 }
@@ -61,9 +62,10 @@ function buildSafeConversationData(data) {
   if (data === undefined || data === null) data = {};
   return {
     messages: normalizeStoredMessages(data.messages),
-    memory: typeof data.memory === "string" && data.memory.trim() ?
-      data.memory :
-      defaultMemory(),
+    memory:
+      typeof data.memory === 'string' && data.memory.trim()
+        ? data.memory
+        : defaultMemory(),
     flags: normalizeStoredFlags(data.flags),
     updatedAt: Number(data.updatedAt || Date.now()),
     isPrivate: data.isPrivate === true
@@ -74,7 +76,7 @@ function countMeaningfulConversationMessages(messages) {
   if (!Array.isArray(messages)) {
     return 0;
   }
-  return messages.filter(function(item) {
+  return messages.filter(function (item) {
     return item && !isOpeningGreetingMessage(item.content);
   }).length;
 }
@@ -83,21 +85,28 @@ function selectPreferredConversationData(primaryData, fallbackData) {
   var safePrimary = buildSafeConversationData(primaryData || {});
   var safeFallback = buildSafeConversationData(fallbackData || {});
 
-  var primaryMeaningful = countMeaningfulConversationMessages(safePrimary.messages);
-  var fallbackMeaningful = countMeaningfulConversationMessages(safeFallback.messages);
+  var primaryMeaningful = countMeaningfulConversationMessages(
+    safePrimary.messages
+  );
+  var fallbackMeaningful = countMeaningfulConversationMessages(
+    safeFallback.messages
+  );
 
   if (fallbackMeaningful > primaryMeaningful) {
     return safeFallback;
   }
 
-  if (fallbackMeaningful === primaryMeaningful && safeFallback.updatedAt > safePrimary.updatedAt) {
+  if (
+    fallbackMeaningful === primaryMeaningful &&
+    safeFallback.updatedAt > safePrimary.updatedAt
+  ) {
     return safeFallback;
   }
 
   return safePrimary;
 }
 
-if (typeof module !== "undefined" && module.exports) {
+if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     OPENING_GREETINGS: OPENING_GREETINGS,
     isOpeningGreetingMessage: isOpeningGreetingMessage,

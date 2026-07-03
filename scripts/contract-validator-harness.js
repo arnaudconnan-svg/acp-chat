@@ -1,26 +1,21 @@
-"use strict";
+'use strict';
 
 // ─── contract-validator harness ─────────────────────────────────────────────
 // Pure deterministic checks for posture contracts and writer mode tables.
 // No server, no LLM, no network.
 
-const {
-  buildPostureDecision
-} = require("../lib/pipeline");
+const { buildPostureDecision } = require('../lib/pipeline');
 
-const {
-  buildDefaultPromptRegistry
-} = require("../lib/prompts");
+const { buildDefaultPromptRegistry } = require('../lib/prompts');
 
-const { createWriter } = require("../lib/writer");
+const { createWriter } = require('../lib/writer');
 
 const {
   CONVERSATION_STATES,
   STATE_FORBIDDEN,
   STATE_ALLOWED,
-  STATE_INTENT,
-  STATE_CONSTRAINTS
-} = require("../lib/conversation-state");
+  STATE_INTENT
+} = require('../lib/conversation-state');
 
 let passed = 0;
 let failed = 0;
@@ -42,28 +37,30 @@ function check(label, fn) {
 
 function baseInput(overrides = {}) {
   return {
-    detectedState: "exploration",
-    contactAnalysis: { selfCriticismLevel: null, meaningCrisis: false, insightMoment: false },
+    detectedState: 'exploration',
+    contactAnalysis: { selfCriticismLevel: null, insightMoment: false },
     relationalAdjustmentAnalysis: { needsRelationalAdjustment: false },
-    calibrationAnalysis: { calibrationLevel: 0, explorationSignal: "interpretation" },
+    calibrationAnalysis: {
+      calibrationLevel: 0,
+      explorationSignal: 'interpretation'
+    },
     technicalContextDetected: false,
     interpretationRejection: {
       isInterpretationRejection: false,
       needsSoberReadjustment: false,
       rejectsUnderlyingPhenomenon: false,
-      tensionHoldLevel: "medium"
+      tensionHoldLevel: 'medium'
     },
     effectiveExplorationDirectivityLevel: 0,
-    previousConversationState: "exploration",
+    previousConversationState: 'exploration',
     affiliationEstablished: true,
     currentConsecutiveNonExplorationTurns: 0,
     currentExplorationRelanceWindow: [false, false, false, false],
-    allianceSignal: "good",
-    engagementLevel: "active",
-    stagnationTurns: 0,
-    attentionWindow: "open",
+    allianceSignal: 'good',
+    engagementLevel: 'active',
+    attentionWindow: 'open',
     closureIntent: false,
-    message: "",
+    message: '',
     recentHistory: [],
     ...overrides
   };
@@ -71,159 +68,278 @@ function baseInput(overrides = {}) {
 
 function createWriterForHarness() {
   return createWriter({
-    client: { chat: { completions: { create: async () => ({ choices: [{ message: { content: "" } }] }) } } },
-    MODEL_IDS: { generation: "test-model" },
-    normalizeMemory: value => String(value || "")
+    client: {
+      chat: {
+        completions: {
+          create: async () => ({ choices: [{ message: { content: '' } }] })
+        }
+      }
+    },
+    MODEL_IDS: { generation: 'test-model' },
+    normalizeMemory: (value) => String(value || '')
   });
 }
 
 // Maps each base CONVERSATION_STATE to its extended STATE_ALLOWED key candidates.
 // discharge → ["discharge_regulated", "discharge_dysregulated"] ; etc.
 function expectedStatesForBaseState(state) {
-  if (state === "exploration") return ["exploration_open", "exploration_restrained"];
-  if (state === "discharge") return ["discharge_regulated", "discharge_dysregulated"];
-  if (state === "info") return ["info_pure", "info_psychoeducation", "info_features"];
-  return [state]; // stabilization, alliance_rupture, closure
+  if (state === 'exploration')
+    return ['exploration_open', 'exploration_restrained'];
+  if (state === 'discharge')
+    return ['discharge_regulated', 'discharge_dysregulated'];
+  if (state === 'info')
+    return ['info_pure', 'info_psychoeducation', 'info_features'];
+  return [state]; // alliance_rupture, need_human_support, closure
 }
 
-check("state tables are aligned", () => {
+check('state tables are aligned', () => {
   const allowedKeys = Object.keys(STATE_ALLOWED).sort();
   const forbiddenKeys = Object.keys(STATE_FORBIDDEN).sort();
   const intentKeys = Object.keys(STATE_INTENT).sort();
 
-  assert(JSON.stringify(allowedKeys) === JSON.stringify(forbiddenKeys), "STATE_FORBIDDEN keys mismatch STATE_ALLOWED");
-  assert(JSON.stringify(allowedKeys) === JSON.stringify(intentKeys), "STATE_INTENT keys mismatch STATE_ALLOWED");
+  assert(
+    JSON.stringify(allowedKeys) === JSON.stringify(forbiddenKeys),
+    'STATE_FORBIDDEN keys mismatch STATE_ALLOWED'
+  );
+  assert(
+    JSON.stringify(allowedKeys) === JSON.stringify(intentKeys),
+    'STATE_INTENT keys mismatch STATE_ALLOWED'
+  );
 });
 
-check("constraints keys are subset of state table keys", () => {
-  const stateSet = new Set(Object.keys(STATE_ALLOWED));
-  for (const key of Object.keys(STATE_CONSTRAINTS)) {
-    assert(stateSet.has(key), `constraint key '${key}' missing from STATE_ALLOWED`);
-  }
-});
-
-check("every conversation state maps to a known extended state", () => {
+check('every conversation state maps to a known extended state', () => {
   const stateSet = new Set(Object.keys(STATE_ALLOWED));
   for (const state of CONVERSATION_STATES) {
     const candidates = expectedStatesForBaseState(state);
     for (const extState of candidates) {
-      assert(stateSet.has(extState), `base state '${state}' maps to unknown extended state '${extState}'`);
+      assert(
+        stateSet.has(extState),
+        `base state '${state}' maps to unknown extended state '${extState}'`
+      );
     }
   }
 });
 
-check("posture decision always returns known conversationState", () => {
+check('posture decision always returns known conversationState', () => {
   const stateSet = new Set(Object.keys(STATE_ALLOWED));
 
   const cases = [
-    baseInput({ detectedState: "exploration", calibrationAnalysis: { calibrationLevel: 0, explorationSignal: "interpretation" } }),
-    baseInput({ detectedState: "exploration", calibrationAnalysis: { calibrationLevel: 3, explorationSignal: "interpretation" }, effectiveExplorationDirectivityLevel: 4 }),
-    baseInput({ detectedState: "discharge_regulated" }),
-    baseInput({ detectedState: "discharge_dysregulated" }),
-    baseInput({ detectedState: "info_pure" }),
-    baseInput({ detectedState: "info_psychoeducation" }),
-    baseInput({ detectedState: "info_features" }),
-    baseInput({ detectedState: "exploration", allianceSignal: "rupture" }),
-    baseInput({ detectedState: "exploration", closureIntent: true }),
-    baseInput({ detectedState: "exploration", attentionWindow: "overloaded", engagementLevel: "withdrawn" })
+    baseInput({
+      detectedState: 'exploration',
+      calibrationAnalysis: {
+        calibrationLevel: 0,
+        explorationSignal: 'interpretation'
+      }
+    }),
+    baseInput({
+      detectedState: 'exploration',
+      calibrationAnalysis: {
+        calibrationLevel: 3,
+        explorationSignal: 'interpretation'
+      },
+      effectiveExplorationDirectivityLevel: 4
+    }),
+    baseInput({ detectedState: 'discharge_regulated' }),
+    baseInput({ detectedState: 'discharge_dysregulated' }),
+    baseInput({ detectedState: 'info_pure' }),
+    baseInput({ detectedState: 'info_psychoeducation' }),
+    baseInput({ detectedState: 'info_features' }),
+    baseInput({ detectedState: 'exploration', allianceSignal: 'rupture' }),
+    baseInput({ detectedState: 'exploration', closureIntent: true }),
+    baseInput({
+      detectedState: 'exploration',
+      attentionWindow: 'overloaded',
+      engagementLevel: 'withdrawn'
+    })
   ];
 
   for (const input of cases) {
     const out = buildPostureDecision(input);
-    assert(stateSet.has(out.conversationState), `unknown conversationState '${out.conversationState}'`);
+    assert(
+      stateSet.has(out.conversationState),
+      `unknown conversationState '${out.conversationState}'`
+    );
   }
 });
 
-check("confidenceSignal is float between 0 and 1", () => {
+check('confidenceSignal is float between 0 and 1', () => {
   const cases = [
-    baseInput({ message: "je sais pas", recentHistory: [{ role: "user", content: "c'est pas ca" }] }),
-    baseInput({ message: "ok", recentHistory: [{ role: "user", content: "merci" }] })
+    baseInput({
+      message: 'je sais pas',
+      recentHistory: [{ role: 'user', content: "c'est pas ca" }]
+    }),
+    baseInput({
+      message: 'ok',
+      recentHistory: [{ role: 'user', content: 'merci' }]
+    })
   ];
 
   for (const input of cases) {
     const out = buildPostureDecision(input);
-    assert(typeof out.confidenceSignal === "number" && out.confidenceSignal >= 0 && out.confidenceSignal <= 1,
-      `invalid confidenceSignal '${out.confidenceSignal}' (must be number 0.00-1.00)`);
+    assert(
+      typeof out.confidenceSignal === 'number' &&
+        out.confidenceSignal >= 0 &&
+        out.confidenceSignal <= 1,
+      `invalid confidenceSignal '${out.confidenceSignal}' (must be number 0.00-1.00)`
+    );
   }
 });
 
-check("relancePolicy follows contract constraints", () => {
-  const openExploration = buildPostureDecision(baseInput({
-    detectedState: "exploration",
-    effectiveExplorationDirectivityLevel: 0,
-    calibrationAnalysis: { calibrationLevel: 0, explorationSignal: "interpretation" }
-  }));
-  assert(openExploration.relancePolicy === "open", "exploration level 0 should keep relance open");
+check('relancePolicy follows contract constraints', () => {
+  const openExploration = buildPostureDecision(
+    baseInput({
+      detectedState: 'exploration',
+      effectiveExplorationDirectivityLevel: 0,
+      calibrationAnalysis: {
+        calibrationLevel: 0,
+        explorationSignal: 'interpretation'
+      }
+    })
+  );
+  assert(
+    openExploration.relancePolicy === 'open',
+    'exploration level 0 should keep relance open'
+  );
 
-  const discouragedExploration = buildPostureDecision(baseInput({
-    detectedState: "exploration",
-    effectiveExplorationDirectivityLevel: 4,
-    calibrationAnalysis: { calibrationLevel: 4, explorationSignal: "interpretation" }
-  }));
-  assert(discouragedExploration.relancePolicy === "discouraged", "exploration level 4 should discourage relance");
+  const selectiveExploration = buildPostureDecision(
+    baseInput({
+      detectedState: 'exploration',
+      effectiveExplorationDirectivityLevel: 4,
+      calibrationAnalysis: {
+        calibrationLevel: 4,
+        explorationSignal: 'interpretation'
+      }
+    })
+  );
+  assert(
+    selectiveExploration.relancePolicy === 'selective',
+    'exploration level 4 should keep relance selective'
+  );
 
-  const stabilizationForbidden = buildPostureDecision(baseInput({
-    detectedState: "exploration",
-    attentionWindow: "overloaded",
-    engagementLevel: "withdrawn"
-  }));
-  assert(stabilizationForbidden.relancePolicy === "forbidden", "stabilization should forbid relance");
+  const ruptureForbidden = buildPostureDecision(
+    baseInput({
+      detectedState: 'exploration',
+      allianceSignal: 'rupture'
+    })
+  );
+  assert(
+    ruptureForbidden.relancePolicy === 'forbidden',
+    'alliance_rupture should forbid relance'
+  );
 });
 
-check("situated impasse activates action collapse guard", () => {
-  const out = buildPostureDecision(baseInput({
-    detectedState: "exploration",
-    technicalContextDetected: true
-  }));
-  assert(out.actionCollapseGuardActive === true, "actionCollapseGuardActive should be true");
-  assert(out.forbidden.includes("action_concrete_proposal"), "forbidden should include action_concrete_proposal");
+check('situated impasse activates action collapse guard', () => {
+  const out = buildPostureDecision(
+    baseInput({
+      detectedState: 'exploration',
+      technicalContextDetected: true
+    })
+  );
+  assert(
+    out.actionCollapseGuardActive === true,
+    'actionCollapseGuardActive should be true'
+  );
+  assert(
+    out.forbidden.includes('action_concrete_proposal'),
+    'forbidden should include action_concrete_proposal'
+  );
 });
 
-check("narrowed processing enforces single-axis contract", () => {
-  const out = buildPostureDecision(baseInput({
-    detectedState: "exploration",
-    engagementAllianceAnalysis: {
-      allianceSignal: "good",
-      engagementLevel: "active",
-      attentionQuality: "narrowed"
-    }
-  }));
-  assert(out.writerIntentHints.includes("attention_narrow_single_axis"), "narrowed processing must add single-axis hint");
-  assert(out.intent === "suivre un seul axe sans ouvrir de nouveau chantier", "narrowed processing must adjust intent");
+check('narrowed processing adds soft attention guidance hint', () => {
+  const out = buildPostureDecision(
+    baseInput({
+      detectedState: 'exploration',
+      engagementAllianceAnalysis: {
+        allianceSignal: 'good',
+        engagementLevel: 'active',
+        attentionQuality: 'narrowed'
+      }
+    })
+  );
+  assert(
+    out.writerIntentHints.includes('attention_engagement_soft_guidance'),
+    'narrowed processing must add soft attention guidance hint'
+  );
+  assert(
+    !out.writerIntentHints.includes('attention_narrow_single_axis'),
+    'attention_narrow_single_axis should be absent'
+  );
 });
 
-check("info features prompt enforces Option B for bot nature and capacity doubts", () => {
-  const prompt = String(buildDefaultPromptRegistry().STATE_INFO_FEATURES || "");
-  const optionBCount = (prompt.match(/Option B \(obligatoire\)/g) || []).length;
-  assert(optionBCount >= 2, "expected Option B policy in both bot_nature_question and bot_capacity_doubt sections");
-  assert(prompt.includes("mouvement 1 : transparence minimale"), "missing movement 1 transparency rule");
-  assert(prompt.includes("mouvement 2 : retour immediat"), "missing movement 2 return-to-user rule");
-});
+check(
+  'info features prompt enforces Option B for bot nature and capacity doubts',
+  () => {
+    const prompt = String(
+      buildDefaultPromptRegistry().STATE_INFO_FEATURES || ''
+    );
+    const optionBCount = (prompt.match(/Option B \(obligatoire\)/g) || [])
+      .length;
+    assert(
+      optionBCount >= 2,
+      'expected Option B policy in both bot_nature_question and bot_capacity_doubt sections'
+    );
+    assert(
+      prompt.includes('mouvement 1 : transparence minimale'),
+      'missing movement 1 transparency rule'
+    );
+    assert(
+      prompt.includes('mouvement 2 : retour immediat'),
+      'missing movement 2 return-to-user rule'
+    );
+  }
+);
 
-check("writer contract forces formalAddress over hint examples", () => {
+check('writer contract forces formalAddress over hint examples', () => {
   const writer = createWriterForHarness();
   const contract = writer.buildPostureContractBlock({
-    conversationState: "exploration_open",
+    conversationState: 'exploration_open',
     formalAddress: true,
     useDirectAddress: true,
-    writerIntentHints: ["hold_emotional_thread"]
+    writerIntentHints: ['hold_emotional_thread']
   });
 
-  assert(contract.includes("convertis-le mentalement en vouvoiement"), "formalAddress should override tutoiement examples in hints");
-  assert(contract.includes("Chaque phrase qui s'adresse a la personne doit utiliser vous/votre/vos"), "formalAddress hard constraint missing");
+  assert(
+    contract.includes('convertis-le mentalement en vouvoiement'),
+    'formalAddress should override tutoiement examples in hints'
+  );
+  assert(
+    contract.includes(
+      "Chaque phrase qui s'adresse a la personne doit utiliser vous/votre/vos"
+    ),
+    'formalAddress hard constraint missing'
+  );
 });
 
-check("procedural temptation hint avoids golden canned formula", () => {
+check('procedural temptation hint avoids golden canned formula', () => {
   const writer = createWriterForHarness();
   const contract = writer.buildPostureContractBlock({
-    conversationState: "exploration_open",
-    writerIntentHints: ["procedural_temptation_light", "procedural_temptation_neutral"]
+    conversationState: 'exploration_open',
+    writerIntentHints: [
+      'procedural_temptation_light',
+      'procedural_temptation_neutral'
+    ]
   });
 
-  assert(!contract.includes("Je pourrais facilement vous repondre de facon tres technique"), "golden procedural formula should be removed");
-  assert(!contract.includes("Je sens la tentation de vous faire une reponse bien rangee"), "second canned procedural formula should be removed");
-  assert(contract.includes("sans formule figee"), "procedural_temptation_light should forbid canned phrasing");
-  assert(contract.includes("sans phrase signature"), "procedural_temptation_neutral should forbid signature phrasing");
+  assert(
+    !contract.includes(
+      'Je pourrais facilement vous repondre de facon tres technique'
+    ),
+    'golden procedural formula should be removed'
+  );
+  assert(
+    !contract.includes(
+      'Je sens la tentation de vous faire une reponse bien rangee'
+    ),
+    'second canned procedural formula should be removed'
+  );
+  assert(
+    contract.includes('sans formule figee'),
+    'procedural_temptation_light should forbid canned phrasing'
+  );
+  assert(
+    contract.includes('sans phrase signature'),
+    'procedural_temptation_neutral should forbid signature phrasing'
+  );
 });
 
 if (failed > 0) {

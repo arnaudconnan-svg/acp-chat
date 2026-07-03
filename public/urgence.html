@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ressources d'urgence</title>
+    <style>
+      :root {
+        --bg: #f3f7f7;
+        --card: #ffffff;
+        --text: #1f3f44;
+        --muted: #5b7074;
+        --line: rgba(36, 94, 102, 0.16);
+        --accent: #245e66;
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      }
+
+      .wrap {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 20px 14px 36px 14px;
+      }
+
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 16px;
+        box-shadow: 0 6px 16px rgba(31, 63, 68, 0.06);
+      }
+
+      h1 {
+        margin: 0 0 8px 0;
+        font-size: 22px;
+        line-height: 1.25;
+      }
+
+      .intro {
+        margin: 0 0 14px 0;
+        font-size: 14px;
+        line-height: 1.55;
+        color: var(--muted);
+      }
+
+      .country {
+        margin: 0 0 12px 0;
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--accent);
+      }
+
+      .line {
+        margin: 0;
+        padding: 10px 0;
+        border-top: 1px solid rgba(36, 94, 102, 0.1);
+        font-size: 15px;
+        line-height: 1.45;
+      }
+
+      .line strong {
+        display: inline-block;
+        min-width: 160px;
+        font-weight: 600;
+      }
+
+      .fallback {
+        margin: 0;
+        font-size: 15px;
+        line-height: 1.55;
+      }
+
+      .note {
+        margin: 14px 0 0 0;
+        padding-top: 10px;
+        border-top: 1px dashed rgba(36, 94, 102, 0.2);
+        font-size: 13px;
+        color: var(--muted);
+      }
+
+      .actions {
+        margin-top: 14px;
+      }
+
+      .back-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        text-decoration: none;
+        color: var(--accent);
+        font-size: 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="wrap">
+      <section class="card" aria-live="polite">
+        <h1>Ressources d'urgence et d'écoute</h1>
+        <p class="intro">
+          Cette page affiche les ressources disponibles pour ton pays quand elles sont connues.
+          Les données sont mises à jour périodiquement.
+        </p>
+
+        <p class="country" id="countryLabel">Chargement...</p>
+
+        <div id="structuredBlock" hidden>
+          <p class="line" id="emergencyLine"></p>
+          <p class="line" id="suicideLine"></p>
+          <p class="fallback" id="partialFallback" hidden></p>
+        </div>
+
+        <p class="fallback" id="fallbackBlock" hidden></p>
+
+        <p class="note">
+          En cas de danger immédiat, appelle sans attendre les services d'urgence locaux.
+        </p>
+
+        <div class="actions">
+          <a id="urgenceBackLink" class="back-link" href="/index.html?screen=chatScreen"
+            >Retour à Facilitat.io</a
+          >
+        </div>
+      </section>
+    </main>
+
+    <script>
+      function getCountryFromNavigator() {
+        const locale = String(navigator.language || '').trim();
+        const parts = locale.split('-');
+        if (parts.length < 2) return '';
+        const code = String(parts[1] || '')
+          .trim()
+          .toUpperCase();
+        return /^[A-Z]{2}$/.test(code) ? code : '';
+      }
+
+      function getCountryFromQuery() {
+        const params = new URLSearchParams(window.location.search);
+        const code = String(params.get('country') || '')
+          .trim()
+          .toUpperCase();
+        return /^[A-Z]{2}$/.test(code) ? code : '';
+      }
+
+      async function loadEmergencySupport() {
+        const country = getCountryFromQuery() || getCountryFromNavigator();
+        const qs = country ? '?country=' + encodeURIComponent(country) : '';
+
+        const countryLabel = document.getElementById('countryLabel');
+        const structuredBlock = document.getElementById('structuredBlock');
+        const emergencyLine = document.getElementById('emergencyLine');
+        const suicideLine = document.getElementById('suicideLine');
+        const partialFallback = document.getElementById('partialFallback');
+        const fallbackBlock = document.getElementById('fallbackBlock');
+
+        try {
+          const res = await fetch('/api/emergency-support' + qs, {
+            credentials: 'same-origin'
+          });
+          const data = await res.json();
+
+          const hasStructured = data && data.hasStructuredNumbers === true;
+          if (!hasStructured) {
+            countryLabel.textContent = 'Ressources locales non disponibles automatiquement';
+            fallbackBlock.hidden = false;
+            fallbackBlock.textContent =
+              data && data.fallbackGuidance
+                ? data.fallbackGuidance
+                : "Compose le numéro d'urgence local ou cherche 'numéro urgence + ton pays' et 'ligne prévention suicide + ton pays'.";
+            structuredBlock.hidden = true;
+            return;
+          }
+
+          countryLabel.textContent =
+            data && data.label
+              ? 'Pays détecté : ' + data.label
+              : 'Ressources disponibles';
+
+          structuredBlock.hidden = false;
+
+          if (data.emergency) {
+            emergencyLine.hidden = false;
+            emergencyLine.innerHTML = '<strong>Urgences :</strong> ' + data.emergency;
+          } else {
+            emergencyLine.hidden = true;
+          }
+
+          if (data.suicide) {
+            suicideLine.hidden = false;
+            suicideLine.innerHTML = '<strong>Prévention suicide :</strong> ' + data.suicide;
+            partialFallback.hidden = true;
+          } else {
+            suicideLine.hidden = true;
+            partialFallback.hidden = false;
+            partialFallback.textContent =
+              data.fallbackGuidance ||
+              "Aucune ligne d'écoute locale confirmée pour ce pays. Appuie-toi sur le numéro d'urgence local ou une recherche web locale.";
+          }
+
+          fallbackBlock.hidden = true;
+        } catch {
+          countryLabel.textContent = 'Ressources temporairement indisponibles';
+          fallbackBlock.hidden = false;
+          fallbackBlock.textContent =
+            "Compose le numéro d'urgence local de ton opérateur ou cherche 'numéro urgence + ton pays' et 'ligne prévention suicide + ton pays'.";
+          structuredBlock.hidden = true;
+        }
+      }
+
+      function wireBackLink() {
+        const backLink = document.getElementById('urgenceBackLink');
+        if (!backLink) return;
+
+        backLink.addEventListener('click', (event) => {
+          if (window.history.length > 1) {
+            event.preventDefault();
+            window.history.back();
+          }
+        });
+      }
+
+      wireBackLink();
+      loadEmergencySupport();
+    </script>
+  </body>
+</html>

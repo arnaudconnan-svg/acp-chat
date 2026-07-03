@@ -1,2472 +1,3181 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="fr">
-<head>
-  <meta charset="UTF-8">
-  <title>Facilitat.io — Mon compte</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#f4f9f9">
-  <meta name="color-scheme" content="light">
-  <style>
-    *, *::before, *::after { box-sizing: border-box; }
-
-    @keyframes pageIn {
-      from { opacity: 0; transform: translateY(12px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-
-    html, body {
-      margin: 0;
-      padding: 0;
-      min-height: 100%;
-      background: #f4f9f9;
-      font-family: Arial, sans-serif;
-      color: #1a1a1a;
-      animation: pageIn 0.68s ease 0.05s both;
-    }
-
-    body {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 0 0 48px;
-    }
-
-    header {
-      width: 100%;
-      max-width: 520px;
-      padding: 28px 24px 0;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-    }
-
-    header img {
-      height: 144px;
-      width: auto;
-    }
-
-    .header-actions {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-    }
-
-    .btn-link {
-      font-size: 13px;
-      color: #888;
-      background: none;
-      border: none;
-      cursor: pointer;
-      padding: 0;
-      text-decoration: underline;
-    }
-
-    .btn-link:hover { color: #1a1a1a; }
-
-    main {
-      width: 100%;
-      max-width: 520px;
-      padding: 28px 24px 0;
-    }
-
-    h1 {
-      font-size: 20px;
-      font-weight: 700;
-      margin: 0 0 6px;
-    }
-
-    .user-email {
-      font-size: 14px;
-      color: #666;
-      margin: 0 0 28px;
-    }
-
-    .card {
-      border: 1.5px solid #e0e0e0;
-      border-radius: 12px;
-      padding: 18px 20px;
-      margin-bottom: 24px;
-      background: #fff;
-    }
-
-    .card.clickable-card {
-      cursor: pointer;
-      transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
-    }
-
-    .card.clickable-card:hover {
-      border-color: #c8d8db;
-      transform: translateY(-1px);
-      box-shadow: 0 8px 22px rgba(20, 63, 69, 0.08);
-    }
-
-    .section-title {
-      font-size: 15px;
-      font-weight: 600;
-      margin: 0 0 14px;
-      color: #333;
-    }
-
-    .card-link-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-    }
-
-    .card-link-arrow {
-      font-size: 24px;
-      line-height: 1;
-      color: #8a989a;
-      flex: 0 0 auto;
-    }
-
-    .field-group {
-      margin-bottom: 14px;
-    }
-
-    .field-label {
-      display: block;
-      font-size: 13px;
-      color: #555;
-      margin-bottom: 6px;
-    }
-
-    .setting-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 12px;
-    }
-
-    .setting-help {
-      margin: 0;
-      font-size: 13px;
-      line-height: 1.45;
-      color: #555;
-    }
-
-    .import-list {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      margin: 12px 0;
-    }
-
-    .import-item {
-      border: 1px solid #e3e3e3;
-      border-radius: 10px;
-      padding: 10px 12px;
-      background: #fafafa;
-    }
-
-    .import-item label {
-      display: flex;
-      align-items: flex-start;
-      gap: 10px;
-      cursor: pointer;
-    }
-
-    .import-item-main {
-      display: flex;
-      flex-direction: column;
-      gap: 3px;
-      min-width: 0;
-    }
-
-    .import-item-title {
-      font-size: 14px;
-      color: #1f1f1f;
-      line-height: 1.3;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .import-item-meta {
-      font-size: 12px;
-      color: #666;
-      line-height: 1.3;
-    }
-
-    .import-actions {
-      display: flex;
-      gap: 8px;
-      margin-top: 10px;
-    }
-
-    .import-actions .action-btn {
-      width: auto;
-      min-width: 130px;
-      padding: 10px 14px;
-      font-size: 14px;
-    }
-
-    .secondary-btn {
-      border: 1.5px solid #d3d3d3;
-      border-radius: 8px;
-      background: #fff;
-      color: #444;
-      font-size: 14px;
-      font-weight: 600;
-      padding: 10px 14px;
-      cursor: pointer;
-    }
-
-    .secondary-btn:hover {
-      background: #f5f5f5;
-    }
-
-    input[type="password"],
-    input[type="text"] {
-      width: 100%;
-      padding: 11px 14px;
-      border: 1.5px solid #ddd;
-      border-radius: 8px;
-      font-size: 15px;
-      color: #1a1a1a;
-      background: #fafafa;
-      outline: none;
-      transition: border-color 0.15s;
-    }
-
-    input[type="password"]:focus,
-    input[type="text"]:focus {
-      border-color: #1a1a1a;
-      background: #fff;
-    }
-
-    .password-field-wrap {
-      position: relative;
-    }
-
-    .password-field-wrap input[type="password"],
-    .password-field-wrap input[type="text"] {
-      padding-right: 68px;
-    }
-
-    .toggle-password-btn {
-      position: absolute;
-      top: 50%;
-      right: 10px;
-      transform: translateY(-50%);
-      border: none;
-      background: transparent;
-      color: #777;
-      font-size: 11px;
-      cursor: pointer;
-      padding: 4px 0;
-      width: 50px;
-      text-align: center;
-      border-radius: 6px;
-      line-height: 1.1;
-    }
-
-    .toggle-password-btn:hover {
-      background: rgba(0, 0, 0, 0.05);
-    }
-
-    .action-btn {
-      width: 100%;
-      padding: 12px;
-      background: #b8c2c4;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      font-size: 15px;
-      font-weight: 600;
-      cursor: default;
-      transition: background-color 0.15s ease;
-    }
-
-    .action-btn.is-ready {
-      background: #245e66;
-      cursor: pointer;
-    }
-
-    .action-btn:disabled {
-      opacity: 1;
-      cursor: default;
-    }
-
-    .notice {
-      font-size: 13px;
-      color: #c0392b;
-      margin-top: 12px;
-      min-height: 18px;
-    }
-
-    .notice.success {
-      color: #245e66;
-    }
-
-    .danger-zone-card {
-      border: 1px solid #f0d4d4;
-      background: #fff7f7;
-    }
-
-    .danger-zone-warning {
-      font-size: 13px;
-      color: #8f2b2b;
-      margin: 0 0 12px;
-    }
-
-    .danger-action {
-      border: 1px solid #efdfdf;
-      border-radius: 10px;
-      background: #fff;
-      padding: 12px;
-      margin-top: 10px;
-    }
-
-    .danger-action-trigger {
-      width: 100%;
-      border: 1.5px solid #c94a44;
-      border-radius: 8px;
-      background: #fff;
-      color: #9f231d;
-      font-size: 14px;
-      font-weight: 700;
-      padding: 11px 14px;
-      cursor: pointer;
-      text-align: left;
-    }
-
-    .danger-action-trigger:hover {
-      background: #fff5f5;
-    }
-
-    .danger-action[data-action-key="closure"] .danger-action-trigger {
-      background: #b3261e;
-      border-color: #b3261e;
-      color: #fff;
-    }
-
-    .danger-action[data-action-key="closure"] .danger-action-trigger:hover {
-      background: #961d17;
-      border-color: #961d17;
-    }
-
-    .danger-action-help {
-      font-size: 13px;
-      color: #6b4f4f;
-      margin: 10px 0 0;
-      line-height: 1.45;
-    }
-
-    .sensitive-modal-actions {
-      display: flex;
-      gap: 8px;
-    }
-
-    .sensitive-modal-actions .secondary-btn,
-    .sensitive-modal-actions .action-btn {
-      width: auto;
-      min-width: 0;
-      flex: 1;
-    }
-
-    .sensitive-modal-notice {
-      min-height: 18px;
-      margin: 0 0 10px;
-    }
-
-    .danger-confirm-btn.is-ready {
-      background: #b3261e;
-      cursor: pointer;
-    }
-
-    .empty-state, .loading-state, .error-notice {
-      font-size: 14px;
-      color: #aaa;
-      text-align: center;
-      padding: 24px 0;
-    }
-
-    .error-notice { color: #c0392b; }
-
-    .longterm-memory-warning {
-      font-size: 13px;
-      color: #888;
-      margin: 0 0 12px;
-    }
-
-    .longterm-memory-textarea {
-      width: 100%;
-      font-family: monospace;
-      font-size: 13px;
-      padding: 10px 12px;
-      border: 1.5px solid #d0d0d0;
-      border-radius: 8px;
-      resize: vertical;
-      box-sizing: border-box;
-      line-height: 1.5;
-    }
-
-    .longterm-memory-counter {
-      text-align: right;
-      font-size: 11px;
-      color: #999;
-      margin-top: 4px;
-    }
-
-    .history-toggle {
-      background: none;
-      border: none;
-      padding: 0;
-      font-size: 13px;
-      color: #888;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .history-item-btn {
-      background: none;
-      border: 1px solid #d0d0d0;
-      border-radius: 6px;
-      padding: 8px 12px;
-      font-size: 13px;
-      cursor: pointer;
-      text-align: left;
-      width: 100%;
-      color: #245e66;
-    }
-
-    .history-item-btn:hover {
-      background: rgba(36,94,102,0.05);
-    }
-
-    .upgrade-banner {
-      border: 1.5px solid #245e66;
-      border-radius: 12px;
-      padding: 16px 20px;
-      background: rgba(36, 94, 102, 0.06);
-      margin-bottom: 24px;
-    }
-
-    .upgrade-banner p {
-      margin: 0 0 12px;
-      font-size: 14px;
-      color: #245e66;
-    }
-
-    .upgrade-banner button {
-      font-size: 13px;
-      padding: 8px 18px;
-      border: none;
-      border-radius: 8px;
-      background: #245e66;
-      color: white;
-      cursor: pointer;
-      font-weight: 600;
-    }
-
-    .upgrade-banner button:hover { opacity: 0.85; }
-
-    .usage-envelope-card {
-      border-color: #dbe7e9;
-    }
-
-    .usage-title {
-      margin: 0 0 10px;
-      font-size: 15px;
-      font-weight: 600;
-      color: #2c3e40;
-    }
-
-    .usage-block {
-      margin-bottom: 14px;
-    }
-
-    .usage-block:last-child {
-      margin-bottom: 0;
-    }
-
-    .gauge {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      min-height: 14px;
-      flex-wrap: wrap;
-    }
-
-    .gauge-main,
-    .gauge-rollover {
-      display: inline-flex;
-      gap: 6px;
-    }
-
-    .gauge-segment {
-      width: 30px;
-      height: 10px;
-      border-radius: 6px;
-      border: 1px solid transparent;
-      transition: background-color 0.15s ease, border-color 0.15s ease;
-    }
-
-    .gauge-segment--green {
-      background: #2f7a66;
-      border-color: #2f7a66;
-    }
-
-    .gauge-segment--green-light {
-      background: #8eb9a9;
-      border-color: #8eb9a9;
-    }
-
-    .gauge-segment--blue {
-      background: #2e6ea4;
-      border-color: #2e6ea4;
-    }
-
-    .gauge-segment--blue-light {
-      background: #8fb4d2;
-      border-color: #8fb4d2;
-    }
-
-    .gauge-segment--red {
-      background: #c74444;
-      border-color: #c74444;
-    }
-
-    .gauge-segment--rollover {
-      background: #5f8a31;
-      border-color: #5f8a31;
-    }
-
-    .gauge-segment--empty {
-      background: #edf2f3;
-      border-color: #d6dfe1;
-    }
-
-    .usage-action-btn {
-      width: 100%;
-      margin-top: 8px;
-      border: 1.5px solid #245e66;
-      border-radius: 8px;
-      background: #fff;
-      color: #245e66;
-      font-size: 14px;
-      font-weight: 600;
-      padding: 10px 14px;
-      cursor: pointer;
-    }
-
-    .usage-action-btn:hover {
-      background: rgba(36, 94, 102, 0.06);
-    }
-
-    .usage-modal-overlay {
-      position: fixed;
-      inset: 0;
-      z-index: 1200;
-      background: rgba(16, 29, 31, 0.42);
-      display: none;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-    }
-
-    .usage-modal-overlay.is-open {
-      display: flex;
-    }
-
-    .sensitive-modal-overlay {
-      align-items: flex-start;
-    }
-
-    .usage-modal {
-      width: 100%;
-      max-width: 380px;
-      border-radius: 12px;
-      border: 1.5px solid #d6e0e2;
-      background: #fff;
-      padding: 18px;
-      box-shadow: 0 14px 32px rgba(20, 63, 69, 0.16);
-    }
-
-    .usage-modal-title {
-      margin: 0 0 8px;
-      font-size: 17px;
-      color: #223335;
-    }
-
-    .usage-modal-text {
-      margin: 0 0 14px;
-      font-size: 14px;
-      line-height: 1.45;
-      color: #4a5e61;
-    }
-
-    .usage-modal-actions {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 10px;
-    }
-
-    .usage-option-btn {
-      flex: 1;
-      border: 1.5px solid #245e66;
-      background: #fff;
-      color: #245e66;
-      border-radius: 8px;
-      font-size: 14px;
-      font-weight: 700;
-      padding: 10px 0;
-      cursor: pointer;
-    }
-
-    .usage-option-btn:hover {
-      background: rgba(36, 94, 102, 0.08);
-    }
-
-    .usage-modal-close {
-      width: 100%;
-      border: none;
-      border-radius: 8px;
-      background: #e9eff0;
-      color: #415557;
-      padding: 10px 0;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-    }
-
-    .usage-modal-close:hover {
-      background: #e1e9ea;
-    }
-
-    .usage-modal-notice {
-      min-height: 18px;
-      font-size: 13px;
-      color: #245e66;
-      margin: 0 0 8px;
-    }
-
-    .subscreen-header {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin: 0 0 16px;
-    }
-
-    .setting-inline-controls {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 12px;
-    }
-
-    .setting-inline-controls select {
-      flex: 1;
-      min-width: 0;
-      border: 1.5px solid #ddd;
-      border-radius: 8px;
-      padding: 9px 10px;
-      font-size: 14px;
-      background: #fafafa;
-    }
-    body.subscreen-privacy header img,
-    body.subscreen-privacy header .header-actions {
-      display: none;
-    }
-  </style>
-</head>
-<body>
-  <header>
-    <img src="/images/logo.png" alt="Facilitat.io">
-    <div class="header-actions">
-      <button class="btn-link" id="logoutBtn" onclick="handleLogout()">Se déconnecter</button>
-    </div>
-  </header>
-
-  <main id="mainContent">
-    <div class="loading-state">Chargement…</div>
-  </main>
-
-  <script>
-    (function () {
-      "use strict";
-
-      const USER_ID_KEY = "facilitatio_user_id";
-      const CONVERSATIONS_INDEX_KEY = "facilitatio_conversations_index";
-      const CONVERSATION_STORAGE_KEY_PREFIX = "facilitatio_conversation_data_";
-      const PRIVATE_CONVERSATION_IDS_KEY = "facilitatio_private_conversation_ids";
-      const BIOMETRIC_CREDENTIAL_KEY_PREFIX = "facilitatio_bio_cred_v1_";
-      const ANDROID_COUNTRY_PENDING_KEY = "facilitatio_android_country_pending";
-      const ACCOUNT_USAGE_ENVELOPE_UI_ENABLED = true;
-      const LOW_ENVELOPE_THRESHOLD = 12.5;
-
-      const MOCK_USAGE_ENVELOPE_STATE = {
-        monthly: {
-          capacity: 100,
-          remaining: 100
-        },
-        rollover: {
-          capacity: 25,
-          remaining: 25
-        },
-        reserve: {
-          capacity: 100,
-          remaining: 100
-        },
-        lastRenewalAt: null
-      };
-
-      let currentUser = null;
-      let accountSubscreen = "main";
-
-      function getCountryName(code) {
-        if (!code) return "";
-        try {
-          return new Intl.DisplayNames(["fr"], { type: "region" }).of(code.toUpperCase()) || code;
-        } catch (_) { return code; }
+  <head>
+    <meta charset="UTF-8" />
+    <title>Facilitat.io — Mon compte</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#f4f9f9" />
+    <meta name="color-scheme" content="light" />
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
       }
 
-      async function autoSaveCountry(code) {
-        try {
-          const res = await fetch("/api/account/profile", {
-            method: "PUT",
-            credentials: "include",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ country: code })
-          });
-          const d = await res.json().catch(() => ({}));
-          if (res.ok && d.success && currentUser) {
-            currentUser.country = typeof d.country === "string" ? d.country : code;
+      @keyframes pageIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        min-height: 100%;
+        background: #f4f9f9;
+        font-family: Arial, sans-serif;
+        color: #1a1a1a;
+        overflow-y: auto;
+        animation: pageIn 0.68s ease 0.05s both;
+      }
+
+      body {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        min-height: 100dvh;
+        padding: calc(env(safe-area-inset-top, 0px)) 0
+          calc(48px + env(safe-area-inset-bottom, 0px));
+      }
+
+      header {
+        width: 100%;
+        max-width: 520px;
+        padding: 28px 24px 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      header img {
+        height: 144px;
+        width: auto;
+      }
+
+      .header-brand-mobile {
+        display: none;
+      }
+
+      .header-brand-mobile-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 7px;
+        display: block;
+        flex: 0 0 auto;
+      }
+
+      .header-brand-mobile-name {
+        font-size: 15px;
+        font-weight: 700;
+        color: #1f2c2e;
+        letter-spacing: 0.01em;
+      }
+
+      .header-actions {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+      }
+
+      .btn-link {
+        font-size: 13px;
+        color: #888;
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 0;
+        text-decoration: underline;
+      }
+
+      .btn-link:hover {
+        color: #1a1a1a;
+      }
+
+      main {
+        width: 100%;
+        max-width: 520px;
+        padding: 28px 24px 0;
+      }
+
+      h1 {
+        font-size: 20px;
+        font-weight: 700;
+        margin: 0 0 6px;
+      }
+
+      .user-email {
+        font-size: 14px;
+        color: #666;
+        margin: 0 0 28px;
+      }
+
+      .card {
+        border: 1.5px solid #e0e0e0;
+        border-radius: 12px;
+        padding: 18px 20px;
+        margin-bottom: 24px;
+        background: #fff;
+      }
+
+      .card.clickable-card {
+        cursor: pointer;
+        transition:
+          border-color 0.15s ease,
+          transform 0.15s ease,
+          box-shadow 0.15s ease;
+      }
+
+      .card.clickable-card:hover {
+        border-color: #c8d8db;
+        transform: translateY(-1px);
+        box-shadow: 0 8px 22px rgba(20, 63, 69, 0.08);
+      }
+
+      .section-title {
+        font-size: 15px;
+        font-weight: 600;
+        margin: 0 0 14px;
+        color: #333;
+      }
+
+      .card-link-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+      }
+
+      .card-link-arrow {
+        color: #8a989a;
+        flex: 0 0 auto;
+        width: 22px;
+        height: 22px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .card-link-arrow svg {
+        width: 18px;
+        height: 18px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      .field-group {
+        margin-bottom: 14px;
+      }
+
+      .field-label {
+        display: block;
+        font-size: 13px;
+        color: #555;
+        margin-bottom: 6px;
+      }
+
+      .setting-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 12px;
+      }
+
+      .setting-help {
+        margin: 0;
+        font-size: 13px;
+        line-height: 1.45;
+        color: #555;
+      }
+
+      .setting-save-status {
+        margin: 2px 0 0;
+        font-size: 12px;
+        line-height: 1.4;
+        color: #6a7a7d;
+        min-height: 17px;
+      }
+
+      .setting-save-status.is-saving {
+        color: #6a7a7d;
+      }
+
+      .setting-save-status.is-success {
+        color: #2f6d4f;
+      }
+
+      .setting-save-status.is-error {
+        color: #b03a2e;
+      }
+
+      .import-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin: 12px 0;
+      }
+
+      .import-item {
+        border: 1px solid #e3e3e3;
+        border-radius: 10px;
+        padding: 10px 12px;
+        background: #fafafa;
+      }
+
+      .import-item label {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        cursor: pointer;
+      }
+
+      .import-item-main {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        min-width: 0;
+      }
+
+      .import-item-title {
+        font-size: 14px;
+        color: #1f1f1f;
+        line-height: 1.3;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .import-item-meta {
+        font-size: 12px;
+        color: #666;
+        line-height: 1.3;
+      }
+
+      .import-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 10px;
+      }
+
+      .import-actions .action-btn {
+        width: auto;
+        min-width: 130px;
+        padding: 10px 14px;
+        font-size: 14px;
+      }
+
+      .secondary-btn {
+        border: 1.5px solid #d3d3d3;
+        border-radius: 8px;
+        background: #fff;
+        color: #444;
+        font-size: 14px;
+        font-weight: 600;
+        padding: 10px 14px;
+        cursor: pointer;
+      }
+
+      .secondary-btn:hover {
+        background: #f5f5f5;
+      }
+
+      input[type='password'],
+      input[type='text'] {
+        width: 100%;
+        padding: 11px 14px;
+        border: 1.5px solid #ddd;
+        border-radius: 8px;
+        font-size: 15px;
+        color: #1a1a1a;
+        background: #fafafa;
+        outline: none;
+        transition: border-color 0.15s;
+      }
+
+      input[type='password']:focus,
+      input[type='text']:focus {
+        border-color: #1a1a1a;
+        background: #fff;
+      }
+
+      .password-field-wrap {
+        position: relative;
+      }
+
+      .password-field-wrap input[type='password'],
+      .password-field-wrap input[type='text'] {
+        padding-right: 52px;
+      }
+
+      .toggle-password-btn {
+        position: absolute;
+        top: 50%;
+        right: 10px;
+        transform: translateY(-50%);
+        border: 1px solid transparent;
+        background: transparent;
+        color: #777;
+        cursor: pointer;
+        padding: 0;
+        width: 32px;
+        height: 32px;
+        border-radius: 6px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .toggle-password-btn:hover {
+        color: #4d4d4d;
+      }
+
+      .toggle-password-btn:focus-visible {
+        outline: none;
+        border-color: #1a1a1a;
+        background: transparent;
+      }
+
+      .toggle-password-btn svg {
+        width: 18px;
+        height: 18px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.8;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        pointer-events: none;
+      }
+
+      .toggle-password-btn .icon-eye-off {
+        display: none;
+      }
+
+      .toggle-password-btn.is-visible .icon-eye {
+        display: none;
+      }
+
+      .toggle-password-btn.is-visible .icon-eye-off {
+        display: block;
+      }
+
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+      }
+
+      .action-btn {
+        width: 100%;
+        padding: 12px;
+        background: #b8c2c4;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: default;
+        transition: background-color 0.15s ease;
+      }
+
+      .action-btn.is-ready {
+        background: #245e66;
+        cursor: pointer;
+      }
+
+      .action-btn:disabled {
+        opacity: 1;
+        cursor: default;
+      }
+
+      .notice {
+        font-size: 13px;
+        color: #c0392b;
+        margin-top: 12px;
+        min-height: 18px;
+      }
+
+      .notice.success {
+        color: #245e66;
+      }
+
+      .danger-zone-section {
+        margin-bottom: 24px;
+      }
+
+      .danger-zone-warning {
+        font-size: 13px;
+        color: #8f2b2b;
+        margin: 0 0 12px;
+      }
+
+      .danger-action {
+        border: 1px solid #efdfdf;
+        border-radius: 10px;
+        background: #fff;
+        padding: 12px;
+        margin-top: 10px;
+      }
+
+      .danger-action-trigger {
+        width: 100%;
+        border: 1.5px solid #c94a44;
+        border-radius: 8px;
+        background: #fff;
+        color: #9f231d;
+        font-size: 14px;
+        font-weight: 700;
+        padding: 11px 14px;
+        cursor: pointer;
+        text-align: left;
+      }
+
+      .danger-action-trigger:hover {
+        background: #fff5f5;
+      }
+
+      .danger-action[data-action-key='closure'] .danger-action-trigger {
+        background: #b3261e;
+        border-color: #b3261e;
+        color: #fff;
+      }
+
+      .danger-action[data-action-key='closure'] .danger-action-trigger:hover {
+        background: #961d17;
+        border-color: #961d17;
+      }
+
+      .danger-action-help {
+        font-size: 13px;
+        color: #6b4f4f;
+        margin: 10px 0 0;
+        line-height: 1.45;
+      }
+
+      .sensitive-modal-actions {
+        display: flex;
+        gap: 8px;
+      }
+
+      .sensitive-modal-actions .secondary-btn,
+      .sensitive-modal-actions .action-btn {
+        width: auto;
+        min-width: 0;
+        flex: 1;
+      }
+
+      .sensitive-modal-notice {
+        min-height: 18px;
+        margin: 0 0 10px;
+      }
+
+      .danger-confirm-btn.is-ready {
+        background: #b3261e;
+        cursor: pointer;
+      }
+
+      .empty-state,
+      .loading-state,
+      .error-notice {
+        font-size: 14px;
+        color: #aaa;
+        text-align: center;
+        padding: 24px 0;
+      }
+
+      .error-notice {
+        color: #c0392b;
+      }
+
+      .longterm-memory-warning {
+        font-size: 13px;
+        color: #888;
+        margin: 0 0 12px;
+      }
+
+      .longterm-memory-textarea {
+        width: 100%;
+        font-family: monospace;
+        font-size: 13px;
+        padding: 10px 12px;
+        border: 1.5px solid #d0d0d0;
+        border-radius: 8px;
+        resize: vertical;
+        box-sizing: border-box;
+        line-height: 1.5;
+      }
+
+      .longterm-memory-counter {
+        text-align: right;
+        font-size: 11px;
+        color: #999;
+        margin-top: 4px;
+      }
+
+      .history-toggle {
+        background: none;
+        border: none;
+        padding: 0;
+        font-size: 13px;
+        color: #888;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .history-item-btn {
+        background: none;
+        border: 1px solid #d0d0d0;
+        border-radius: 6px;
+        padding: 8px 12px;
+        font-size: 13px;
+        cursor: pointer;
+        text-align: left;
+        width: 100%;
+        color: #245e66;
+      }
+
+      .history-item-btn:hover {
+        background: rgba(36, 94, 102, 0.05);
+      }
+
+      .upgrade-banner {
+        border: 1.5px solid #245e66;
+        border-radius: 12px;
+        padding: 16px 20px;
+        background: rgba(36, 94, 102, 0.06);
+        margin-bottom: 24px;
+      }
+
+      .upgrade-banner p {
+        margin: 0 0 12px;
+        font-size: 14px;
+        color: #245e66;
+      }
+
+      .upgrade-banner button {
+        font-size: 13px;
+        padding: 8px 18px;
+        border: none;
+        border-radius: 8px;
+        background: #245e66;
+        color: white;
+        cursor: pointer;
+        font-weight: 600;
+      }
+
+      .upgrade-banner button:hover {
+        opacity: 0.85;
+      }
+
+      .usage-envelope-card {
+        border-color: #dbe7e9;
+      }
+
+      .usage-simulation-info {
+        border: 1.5px solid #cfe0e3;
+        border-radius: 10px;
+        background: rgba(36, 94, 102, 0.06);
+        color: #355a5f;
+        font-size: 13px;
+        line-height: 1.45;
+        padding: 10px 12px;
+        margin: 0 0 14px;
+      }
+
+      .usage-title {
+        margin: 0 0 10px;
+        font-size: 15px;
+        font-weight: 600;
+        color: #2c3e40;
+      }
+
+      .usage-block {
+        margin-bottom: 14px;
+      }
+
+      .usage-block:last-child {
+        margin-bottom: 0;
+      }
+
+      .gauge {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        min-height: 14px;
+        flex-wrap: wrap;
+      }
+
+      .gauge-main,
+      .gauge-rollover {
+        display: inline-flex;
+        gap: 6px;
+      }
+
+      .gauge-segment {
+        width: 30px;
+        height: 10px;
+        border-radius: 6px;
+        border: 1px solid transparent;
+        transition:
+          background-color 0.15s ease,
+          border-color 0.15s ease;
+      }
+
+      .gauge-segment--green {
+        background: #2f7a66;
+        border-color: #2f7a66;
+      }
+
+      .gauge-segment--green-light {
+        background: #8eb9a9;
+        border-color: #8eb9a9;
+      }
+
+      .gauge-segment--blue {
+        background: #2e6ea4;
+        border-color: #2e6ea4;
+      }
+
+      .gauge-segment--blue-light {
+        background: #8fb4d2;
+        border-color: #8fb4d2;
+      }
+
+      .gauge-segment--red {
+        background: #c74444;
+        border-color: #c74444;
+      }
+
+      .gauge-segment--rollover {
+        background: #5f8a31;
+        border-color: #5f8a31;
+      }
+
+      .gauge-segment--empty {
+        background: #edf2f3;
+        border-color: #d6dfe1;
+      }
+
+      .usage-action-btn {
+        width: 100%;
+        margin-top: 8px;
+        border: 1.5px solid #245e66;
+        border-radius: 8px;
+        background: #fff;
+        color: #245e66;
+        font-size: 14px;
+        font-weight: 600;
+        padding: 10px 14px;
+        cursor: pointer;
+      }
+
+      .usage-action-btn:hover {
+        background: rgba(36, 94, 102, 0.06);
+      }
+
+      .usage-modal-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 1200;
+        background: rgba(16, 29, 31, 0.42);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+      }
+
+      .usage-modal-overlay.is-open {
+        display: flex;
+      }
+
+      .sensitive-modal-overlay {
+        /* Modal centered on visible viewport */
+      }
+
+      .usage-modal {
+        width: 100%;
+        max-width: 380px;
+        border-radius: 12px;
+        border: 1.5px solid #d6e0e2;
+        background: #fff;
+        padding: 18px;
+        box-shadow: 0 14px 32px rgba(20, 63, 69, 0.16);
+        max-height: calc(
+          100dvh - 24px - env(safe-area-inset-top, 0px) -
+            env(safe-area-inset-bottom, 0px)
+        );
+        overflow-y: auto;
+      }
+
+      .usage-modal-title {
+        margin: 0 0 8px;
+        font-size: 17px;
+        color: #223335;
+      }
+
+      .usage-modal-text {
+        margin: 0 0 14px;
+        font-size: 14px;
+        line-height: 1.45;
+        color: #4a5e61;
+      }
+
+      .usage-modal-actions {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 10px;
+      }
+
+      .usage-option-btn {
+        flex: 1;
+        border: 1.5px solid #245e66;
+        background: #fff;
+        color: #245e66;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 700;
+        padding: 10px 0;
+        cursor: pointer;
+      }
+
+      .usage-option-btn:hover {
+        background: rgba(36, 94, 102, 0.08);
+      }
+
+      .usage-modal-close {
+        width: 100%;
+        border: none;
+        border-radius: 8px;
+        background: #e9eff0;
+        color: #415557;
+        padding: 10px 0;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      .usage-modal-close:hover {
+        background: #e1e9ea;
+      }
+
+      .usage-modal-notice {
+        min-height: 18px;
+        font-size: 13px;
+        color: #245e66;
+        margin: 0 0 8px;
+      }
+
+      .subscreen-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin: 0 0 16px;
+      }
+
+      .setting-inline-controls {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+
+      .setting-inline-controls select {
+        flex: 1;
+        min-width: 0;
+        border: 1.5px solid #ddd;
+        border-radius: 8px;
+        padding: 9px 10px;
+        font-size: 14px;
+        background: #fafafa;
+      }
+      body.subscreen-privacy header img,
+      body.subscreen-privacy header .header-actions {
+        display: none;
+      }
+
+      @media (max-width: 768px) {
+        body {
+          padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+        }
+
+        header {
+          padding: calc(14px + env(safe-area-inset-top, 0px)) 16px 0;
+        }
+
+        header img {
+          display: none;
+        }
+
+        .header-brand-mobile {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          margin: 0;
+          max-height: 48px;
+          opacity: 1;
+          transform: translateY(0);
+          transition:
+            opacity 0.22s ease,
+            transform 0.22s ease,
+            max-height 0.22s ease,
+            margin 0.22s ease;
+          overflow: hidden;
+        }
+
+        body.keyboard-open .header-brand-mobile {
+          opacity: 0;
+          transform: translateY(-8px);
+          max-height: 0;
+          margin: 0;
+          pointer-events: none;
+        }
+
+        body.keyboard-open header {
+          padding-top: calc(8px + env(safe-area-inset-top, 0px));
+        }
+
+        main {
+          padding: 20px 16px 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <img src="/images/logo.png" alt="Facilitat.io" />
+      <div class="header-brand-mobile" aria-hidden="true">
+        <img
+          class="header-brand-mobile-icon"
+          src="/images/icon-512.png"
+          alt=""
+        />
+        <span class="header-brand-mobile-name">Facilitat.io</span>
+      </div>
+      <div class="header-actions">
+        <button class="btn-link" id="logoutBtn" onclick="handleLogout()">
+          Se déconnecter
+        </button>
+      </div>
+    </header>
+
+    <main id="mainContent">
+      <div class="loading-state">Chargement…</div>
+    </main>
+
+    <script>
+      (function () {
+        'use strict';
+
+        const USER_ID_KEY = 'facilitatio_user_id';
+        const CONVERSATIONS_INDEX_KEY = 'facilitatio_conversations_index';
+        const CONVERSATION_STORAGE_KEY_PREFIX =
+          'facilitatio_conversation_data_';
+        const PRIVATE_CONVERSATION_IDS_KEY =
+          'facilitatio_private_conversation_ids';
+        const BIOMETRIC_CREDENTIAL_KEY_PREFIX = 'facilitatio_bio_cred_v1_';
+        const ANDROID_COUNTRY_PENDING_KEY =
+          'facilitatio_android_country_pending';
+        const ACCOUNT_USAGE_ENVELOPE_UI_ENABLED = true;
+        const LOW_ENVELOPE_THRESHOLD = 12.5;
+
+        const MOCK_USAGE_ENVELOPE_STATE = {
+          monthly: {
+            capacity: 100,
+            remaining: 100
+          },
+          rollover: {
+            capacity: 25,
+            remaining: 25
+          },
+          reserve: {
+            capacity: 100,
+            remaining: 100
+          },
+          lastRenewalAt: null
+        };
+
+        let currentUser = null;
+        let accountSubscreen = 'main';
+
+        function resolveUsageEnvelopeStateFromSession() {
+          const raw =
+            currentUser && typeof currentUser === 'object'
+              ? currentUser.usageEnvelope
+              : null;
+          if (!raw || typeof raw !== 'object') {
+            return getUsageEnvelopeState(MOCK_USAGE_ENVELOPE_STATE);
           }
-        } catch (_) {}
-      }
 
-      function detectCountryCodeFromClientLocale() {
-        const localeCandidates = [];
-        try {
-          const intlLocale = Intl.DateTimeFormat().resolvedOptions().locale;
-          if (intlLocale) localeCandidates.push(intlLocale);
-        } catch (_) {}
-
-        if (Array.isArray(navigator.languages)) {
-          localeCandidates.push(...navigator.languages);
+          return getUsageEnvelopeState({
+            monthly: {
+              remaining: raw?.monthly?.remaining
+            },
+            rollover: {
+              remaining: raw?.rollover?.remaining
+            },
+            reserve: {
+              remaining: raw?.reserve?.remaining
+            },
+            lastRenewalAt:
+              typeof raw.lastRenewalAt === 'string' ? raw.lastRenewalAt : null
+          });
         }
-        if (navigator.language) {
-          localeCandidates.push(navigator.language);
-        }
 
-        for (const rawLocale of localeCandidates) {
-          const locale = String(rawLocale || "").trim();
-          if (!locale) continue;
-          const regionMatch = locale.match(/[-_]([A-Za-z]{2})\b/);
-          if (!regionMatch) continue;
-          const code = regionMatch[1].toUpperCase();
-          if (/^[A-Z]{2}$/.test(code)) {
+        function getCountryName(code) {
+          if (!code) return '';
+          try {
+            return (
+              new Intl.DisplayNames(['fr'], { type: 'region' }).of(
+                code.toUpperCase()
+              ) || code
+            );
+          } catch (_) {
             return code;
           }
         }
 
-        return "";
-      }
-
-      function navigateAway(url, options = {}) {
-        document.body.style.animation = "none";
-        document.body.style.transition = "opacity 0.32s ease, transform 0.32s ease";
-        document.body.style.opacity = "0";
-        document.body.style.transform = "translateY(10px)";
-        setTimeout(() => {
-          if (options.replace === true) {
-            window.location.replace(url);
-            return;
-          }
-          window.location.href = url;
-        }, 320);
-      }
-
-      const accountHistoryState = history.state || {};
-      if (accountHistoryState.__page !== "account" || accountHistoryState.__guard !== true) {
-        history.replaceState({ __page: "account", __base: true }, "", window.location.href);
-        history.pushState({ __page: "account", __guard: true }, "", window.location.href);
-      }
-
-      function openPrivacySubscreen() {
-        accountSubscreen = "privacy";
-        history.pushState({ __page: "account", __subscreen: "privacy" }, "", window.location.href);
-        renderPage();
-      }
-
-      window.addEventListener("popstate", event => {
-        const state = event.state || {};
-        if (state.__page === "account" && state.__subscreen === "privacy") {
-          accountSubscreen = "privacy";
-          renderPage();
-          return;
-        }
-        if (state.__page === "account" && state.__guard === true) {
-          accountSubscreen = "main";
-          renderPage();
-          return;
-        }
-        if (state.__page === "account" && state.__base === true) {
-          navigateAway("/?screen=conversationsScreen", { replace: true });
-        }
-      });
-
-      window.addEventListener("pageshow", () => {
-        document.body.style.animation = "";
-        document.body.style.transition = "";
-        document.body.style.opacity = "";
-        document.body.style.transform = "";
-      });
-
-      async function init() {
-        const _initParams = new URLSearchParams(window.location.search);
-        const _pendingCountry = _initParams.get("_android_country_selected");
-        const _pendingCountryStored = String(localStorage.getItem(ANDROID_COUNTRY_PENDING_KEY) || "").toUpperCase().replace(/[^A-Z]/g, "").slice(0, 2);
-        const _openPrivacySubscreen = _initParams.get("_account_subscreen") === "privacy";
-        const _nativeBioConfig = _initParams.get("_android_bio_config");
-        if (_pendingCountry) {
+        async function autoSaveCountry(code) {
           try {
-            const _cleanUrl = new URL(window.location.href);
-            _cleanUrl.searchParams.delete("_android_country_selected");
-            _cleanUrl.searchParams.delete("_android_country");
-            _cleanUrl.searchParams.delete("_account_subscreen");
-            _cleanUrl.searchParams.delete("_android_bio_config");
-            history.replaceState(history.state, "", _cleanUrl.toString());
-          } catch (_) {}
-        } else if (_openPrivacySubscreen || _nativeBioConfig) {
-          try {
-            const _cleanUrl = new URL(window.location.href);
-            _cleanUrl.searchParams.delete("_account_subscreen");
-            _cleanUrl.searchParams.delete("_android_bio_config");
-            history.replaceState(history.state, "", _cleanUrl.toString());
+            const res = await fetch('/api/account/profile', {
+              method: 'PUT',
+              credentials: 'include',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ country: code })
+            });
+            const d = await res.json().catch(() => ({}));
+            if (res.ok && d.success && currentUser) {
+              currentUser.country =
+                typeof d.country === 'string' ? d.country : code;
+            }
           } catch (_) {}
         }
 
-        try {
-          const res = await fetch("/api/auth/session", { credentials: "include" });
-          const data = await res.json().catch(() => ({}));
-
-          if (!data || data.authenticated !== true) {
-            navigateAway("/auth.html?next=/account.html");
-            return;
-          }
-
-          currentUser = data.user || {};
-
-          const _localeCountry = detectCountryCodeFromClientLocale();
-          const _resolvedCountry = String(_pendingCountry || "").toUpperCase().replace(/[^A-Z]/g, "").slice(0, 2) || _pendingCountryStored || _localeCountry;
-
-          if (_resolvedCountry && (!currentUser.country || String(currentUser.country).trim() === "")) {
-            await autoSaveCountry(_resolvedCountry);
-          }
-
-          if (_resolvedCountry && currentUser && currentUser.country) {
-            localStorage.removeItem(ANDROID_COUNTRY_PENDING_KEY);
-          } else if (_resolvedCountry) {
-            localStorage.setItem(ANDROID_COUNTRY_PENDING_KEY, _resolvedCountry);
-          }
-
-          if (_openPrivacySubscreen) {
-            openPrivacySubscreen();
-            return;
-          }
-
-          renderPage();
-        } catch (_) {
-          showError("Impossible de charger la session. Réessayez.");
-        }
-      }
-
-      function hasImportableConversations() {
-        let index = [];
-        try {
-          const rawIndex = JSON.parse(localStorage.getItem(CONVERSATIONS_INDEX_KEY) || "[]");
-          index = Array.isArray(rawIndex) ? rawIndex : [];
-        } catch {
-          index = [];
-        }
-
-        const privateConversationIds = loadPrivateConversationIds();
-        const indexById = new Map(
-          index
-            .map(item => [String(item?.id || "").trim(), item])
-            .filter(([id]) => Boolean(id))
-        );
-
-        const allConversationIds = new Set(indexById.keys());
-        for (const privateId of privateConversationIds) {
-          allConversationIds.add(privateId);
-        }
-
-        for (let i = 0; i < localStorage.length; i += 1) {
-          const key = String(localStorage.key(i) || "");
-          if (!key.startsWith(CONVERSATION_STORAGE_KEY_PREFIX)) continue;
-          const id = key.slice(CONVERSATION_STORAGE_KEY_PREFIX.length).trim();
-          if (id) {
-            allConversationIds.add(id);
-          }
-        }
-
-        for (const id of allConversationIds) {
-          const indexItem = indexById.get(id) || null;
-          let data = null;
+        function detectCountryCodeFromClientLocale() {
+          const localeCandidates = [];
           try {
-            const rawData = localStorage.getItem(getConversationStorageKey(id));
-            data = rawData ? JSON.parse(rawData) : null;
-          } catch {
-            data = null;
+            const intlLocale = Intl.DateTimeFormat().resolvedOptions().locale;
+            if (intlLocale) localeCandidates.push(intlLocale);
+          } catch (_) {}
+
+          if (Array.isArray(navigator.languages)) {
+            localeCandidates.push(...navigator.languages);
+          }
+          if (navigator.language) {
+            localeCandidates.push(navigator.language);
           }
 
-          const messages = Array.isArray(data?.messages) ? data.messages : [];
-          const hasUserMessage = messages.some(entry => entry && entry.role === "user" && typeof entry.content === "string" && entry.content.trim());
-
-          if (indexItem || hasUserMessage) {
-            return true;
+          for (const rawLocale of localeCandidates) {
+            const locale = String(rawLocale || '').trim();
+            if (!locale) continue;
+            const regionMatch = locale.match(/[-_]([A-Za-z]{2})\b/);
+            if (!regionMatch) continue;
+            const code = regionMatch[1].toUpperCase();
+            if (/^[A-Z]{2}$/.test(code)) {
+              return code;
+            }
           }
+
+          return '';
         }
 
-        return false;
-      }
-
-      function renderPage() {
-        const main = document.getElementById("mainContent");
-
-        main.innerHTML = "";
-
-        if (accountSubscreen === "privacy") {
-          document.body.classList.add("subscreen-privacy");
-          main.appendChild(buildPrivacySubscreen());
-          return;
+        function navigateAway(url, options = {}) {
+          document.body.style.animation = 'none';
+          document.body.style.transition = 'opacity 0.32s ease';
+          document.body.style.opacity = '0';
+          setTimeout(() => {
+            if (options.replace === true) {
+              window.location.replace(url);
+              return;
+            }
+            window.location.href = url;
+          }, 320);
         }
 
-        document.body.classList.remove("subscreen-privacy");
-
-        const h1 = document.createElement("h1");
-        h1.textContent = "Mon compte";
-        main.appendChild(h1);
-
-        const emailEl = document.createElement("p");
-        emailEl.className = "user-email";
-        emailEl.textContent = String(currentUser.email || "");
-        main.appendChild(emailEl);
-
-        if (ACCOUNT_USAGE_ENVELOPE_UI_ENABLED) {
-          main.appendChild(buildUsageEnvelopeCard());
-        }
-        main.appendChild(buildProfileCard());
-        main.appendChild(buildLongtermMemoryCard());
-        if (hasImportableConversations()) {
-          main.appendChild(buildLocalImportCard());
-        }
-        main.appendChild(buildPrivacyEntryCard());
-        main.appendChild(buildDangerZoneCard());
-      }
-
-      function clampUsageValue(value, min, max) {
-        const numeric = Number(value);
-        if (!Number.isFinite(numeric)) return min;
-        return Math.min(max, Math.max(min, numeric));
-      }
-
-      function getUsageEnvelopeState(rawUsageData) {
-        const safe = rawUsageData && typeof rawUsageData === "object" ? rawUsageData : {};
-
-        const monthlyRemaining = clampUsageValue(safe.monthly && safe.monthly.remaining, 0, 100);
-        const rolloverRemaining = clampUsageValue(safe.rollover && safe.rollover.remaining, 0, 25);
-        const reserveRemaining = clampUsageValue(safe.reserve && safe.reserve.remaining, 0, 100);
-
-        return {
-          monthly: {
-            capacity: 100,
-            remaining: monthlyRemaining
-          },
-          rollover: {
-            capacity: 25,
-            remaining: rolloverRemaining
-          },
-          reserve: {
-            capacity: 100,
-            remaining: reserveRemaining
-          },
-          totalAvailable: rolloverRemaining + monthlyRemaining + reserveRemaining,
-          lastRenewalAt: typeof safe.lastRenewalAt === "string" ? safe.lastRenewalAt : null
-        };
-      }
-
-      function computeGaugeSegments(amount, options) {
-        const safeOptions = options && typeof options === "object" ? options : {};
-        const capacity = clampUsageValue(safeOptions.capacity, 1, Number.MAX_SAFE_INTEGER);
-        const segmentCount = Number.isInteger(safeOptions.segmentCount) && safeOptions.segmentCount > 0
-          ? safeOptions.segmentCount
-          : 4;
-        const segmentUnit = capacity / segmentCount;
-        const halfSegment = segmentUnit / 2;
-        const showRedWhenLow = safeOptions.showRedWhenLow === true;
-
-        const safeAmount = clampUsageValue(amount, 0, capacity);
-        const fullSegments = Math.floor(safeAmount / segmentUnit);
-        const remainder = safeAmount - fullSegments * segmentUnit;
-        const hasHalfSegment = remainder >= halfSegment;
-        const isLowPositive = safeAmount > 0 && safeAmount < halfSegment;
-
-        const segments = [];
-        for (let index = 0; index < segmentCount; index += 1) {
-          if (index < fullSegments) {
-            segments.push("dark");
-            continue;
-          }
-
-          if (index === fullSegments && (hasHalfSegment || isLowPositive)) {
-            segments.push(showRedWhenLow && isLowPositive ? "red" : "light");
-            continue;
-          }
-
-          segments.push("empty");
-        }
-
-        return segments;
-      }
-
-      function shouldShowLowEnvelopeWarning(rawUsageData) {
-        const state = getUsageEnvelopeState(rawUsageData);
-        return state.totalAvailable < LOW_ENVELOPE_THRESHOLD;
-      }
-
-      function renderGaugeSegments(segments, colorType) {
-        const map = {
-          green: {
-            dark: "gauge-segment--green",
-            light: "gauge-segment--green-light"
-          },
-          blue: {
-            dark: "gauge-segment--blue",
-            light: "gauge-segment--blue-light"
-          },
-          rollover: {
-            dark: "gauge-segment--rollover",
-            light: "gauge-segment--rollover"
-          }
-        };
-
-        const palette = map[colorType] || map.green;
-        const frag = document.createDocumentFragment();
-
-        (Array.isArray(segments) ? segments : []).forEach(segment => {
-          const part = document.createElement("span");
-          part.className = "gauge-segment";
-
-          if (segment === "red") {
-            part.classList.add("gauge-segment--red");
-          } else if (segment === "empty") {
-            part.classList.add("gauge-segment--empty");
-          } else {
-            part.classList.add(segment === "dark" ? palette.dark : palette.light);
-          }
-
-          frag.appendChild(part);
-        });
-
-        return frag;
-      }
-
-      function renderEnvelopeGauge(state) {
-        const container = document.createElement("div");
-        container.className = "gauge";
-
-        const monthlyWrap = document.createElement("span");
-        monthlyWrap.className = "gauge-main";
-
-        const reserveAvailable = state.reserve.remaining > 0;
-        const monthlyLow = state.monthly.remaining > 0 && state.monthly.remaining < LOW_ENVELOPE_THRESHOLD;
-        const monthlySegments = computeGaugeSegments(state.monthly.remaining, {
-          capacity: state.monthly.capacity,
-          showRedWhenLow: monthlyLow && !reserveAvailable && state.rollover.remaining <= 0
-        });
-        monthlyWrap.appendChild(renderGaugeSegments(monthlySegments, "green"));
-        container.appendChild(monthlyWrap);
-
-        if (state.rollover.remaining > 0) {
-          const rolloverWrap = document.createElement("span");
-          rolloverWrap.className = "gauge-rollover";
-          rolloverWrap.appendChild(renderGaugeSegments(["dark"], "rollover"));
-          container.appendChild(rolloverWrap);
-        }
-
-        return container;
-      }
-
-      function renderReserveGauge(state) {
-        const container = document.createElement("div");
-        container.className = "gauge";
-
-        const reserveWrap = document.createElement("span");
-        reserveWrap.className = "gauge-main";
-
-        const showRed = state.reserve.remaining > 0
-          && state.reserve.remaining < LOW_ENVELOPE_THRESHOLD
-          && state.monthly.remaining <= 0
-          && state.rollover.remaining <= 0;
-
-        const reserveSegments = computeGaugeSegments(state.reserve.remaining, {
-          capacity: state.reserve.capacity,
-          showRedWhenLow: showRed
-        });
-        reserveWrap.appendChild(renderGaugeSegments(reserveSegments, "blue"));
-        container.appendChild(reserveWrap);
-
-        return container;
-      }
-
-      function ensureUsageTopUpModal() {
-        let overlay = document.getElementById("usageTopUpModal");
-        if (overlay) return overlay;
-
-        overlay = document.createElement("div");
-        overlay.id = "usageTopUpModal";
-        overlay.className = "usage-modal-overlay";
-        overlay.innerHTML = [
-          '<div class="usage-modal" role="dialog" aria-modal="true" aria-labelledby="usageModalTitle">',
-          '  <h2 class="usage-modal-title" id="usageModalTitle">Alimenter ma r\u00e9serve compl\u00e9mentaire</h2>',
-          '  <p class="usage-modal-text">Cet espace reste disponible tant qu\'il n\'est pas utilis\u00e9.</p>',
-          '  <div class="usage-modal-actions">',
-          '    <button type="button" class="usage-option-btn" data-amount="5">5 \u20ac</button>',
-          '    <button type="button" class="usage-option-btn" data-amount="10">10 \u20ac</button>',
-          '  </div>',
-          '  <p class="usage-modal-notice" id="usageModalNotice"></p>',
-          '  <button type="button" class="usage-modal-close" id="usageModalCloseBtn">Fermer</button>',
-          '</div>'
-        ].join("");
-
-        const closeModal = () => {
-          overlay.classList.remove("is-open");
-        };
-
-        overlay.addEventListener("click", event => {
-          if (event.target === overlay) {
-            closeModal();
-          }
-        });
-
-        overlay.querySelector("#usageModalCloseBtn").addEventListener("click", closeModal);
-        overlay.querySelectorAll(".usage-option-btn").forEach(button => {
-          button.addEventListener("click", () => {
-            const amount = button.getAttribute("data-amount") || "";
-            const notice = overlay.querySelector("#usageModalNotice");
-            notice.textContent = "Paiement non encore activ\u00e9.";
-            console.info("[usage-envelope] top-up intent", { amount: amount + " EUR" });
-          });
-        });
-
-        document.body.appendChild(overlay);
-        return overlay;
-      }
-
-      function buildUsageEnvelopeCard() {
-        const usageState = getUsageEnvelopeState(MOCK_USAGE_ENVELOPE_STATE);
-        const card = document.createElement("div");
-        card.className = "card usage-envelope-card";
-
-        const envelopeBlock = document.createElement("div");
-        envelopeBlock.className = "usage-block";
-        const envelopeTitle = document.createElement("h3");
-        envelopeTitle.className = "usage-title";
-        envelopeTitle.textContent = "Enveloppe mensuelle d'accompagnement";
-        envelopeBlock.appendChild(envelopeTitle);
-        envelopeBlock.appendChild(renderEnvelopeGauge(usageState));
-        card.appendChild(envelopeBlock);
-
-        const reserveBlock = document.createElement("div");
-        reserveBlock.className = "usage-block";
-        const reserveTitle = document.createElement("h3");
-        reserveTitle.className = "usage-title";
-        reserveTitle.textContent = "R\u00e9serve compl\u00e9mentaire";
-        reserveBlock.appendChild(reserveTitle);
-        reserveBlock.appendChild(renderReserveGauge(usageState));
-        card.appendChild(reserveBlock);
-
-        const warning = document.createElement("p");
-        warning.className = "setting-help";
-        warning.style.margin = "4px 0 0";
-        warning.style.display = shouldShowLowEnvelopeWarning(usageState) ? "block" : "none";
-        warning.textContent = "Il reste peu d'espace disponible dans votre enveloppe. Pour eviter une interruption pendant l'echange, vous pouvez l'alimenter maintenant.";
-        card.appendChild(warning);
-
-        const actionButton = document.createElement("button");
-        actionButton.type = "button";
-        actionButton.className = "usage-action-btn";
-        actionButton.textContent = "Je m'offre plus d'espace";
-        actionButton.addEventListener("click", () => {
-          const modal = ensureUsageTopUpModal();
-          const notice = modal.querySelector("#usageModalNotice");
-          notice.textContent = "";
-          modal.classList.add("is-open");
-        });
-        card.appendChild(actionButton);
-
-        return card;
-      }
-
-      function getConversationStorageKey(conversationId) {
-        return `${CONVERSATION_STORAGE_KEY_PREFIX}${conversationId}`;
-      }
-
-      function loadPrivateConversationIds() {
-        try {
-          const raw = JSON.parse(localStorage.getItem(PRIVATE_CONVERSATION_IDS_KEY) || "[]");
-          if (!Array.isArray(raw)) return new Set();
-          return new Set(
-            raw
-              .map(value => String(value || "").trim())
-              .filter(Boolean)
+        const accountHistoryState = history.state || {};
+        if (
+          accountHistoryState.__page !== 'account' ||
+          accountHistoryState.__guard !== true
+        ) {
+          history.replaceState(
+            { __page: 'account', __base: true },
+            '',
+            window.location.href
           );
-        } catch {
-          return new Set();
-        }
-      }
-
-      function loadLocalConversationsForImport() {
-        let index = [];
-
-        try {
-          const rawIndex = JSON.parse(localStorage.getItem(CONVERSATIONS_INDEX_KEY) || "[]");
-          index = Array.isArray(rawIndex) ? rawIndex : [];
-        } catch {
-          index = [];
+          history.pushState(
+            { __page: 'account', __guard: true },
+            '',
+            window.location.href
+          );
         }
 
-        const privateConversationIds = loadPrivateConversationIds();
-        const indexById = new Map(
-          index
-            .map(item => [String(item?.id || "").trim(), item])
-            .filter(([id]) => Boolean(id))
-        );
-
-        const allConversationIds = new Set(indexById.keys());
-        for (const privateId of privateConversationIds) {
-          allConversationIds.add(privateId);
+        function openPrivacySubscreen() {
+          accountSubscreen = 'privacy';
+          history.pushState(
+            { __page: 'account', __subscreen: 'privacy' },
+            '',
+            window.location.href
+          );
+          renderPage();
         }
 
-        for (let i = 0; i < localStorage.length; i += 1) {
-          const key = String(localStorage.key(i) || "");
-          if (!key.startsWith(CONVERSATION_STORAGE_KEY_PREFIX)) continue;
+        window.addEventListener('popstate', (event) => {
+          const state = event.state || {};
+          if (state.__page === 'account' && state.__subscreen === 'privacy') {
+            accountSubscreen = 'privacy';
+            renderPage();
+            return;
+          }
+          if (state.__page === 'account' && state.__guard === true) {
+            accountSubscreen = 'main';
+            renderPage();
+            return;
+          }
+          if (state.__page === 'account' && state.__base === true) {
+            navigateAway('/?screen=conversationsScreen', { replace: true });
+          }
+        });
 
-          const id = key.slice(CONVERSATION_STORAGE_KEY_PREFIX.length).trim();
-          if (id) {
-            allConversationIds.add(id);
+        window.addEventListener('pageshow', () => {
+          document.body.style.animation = '';
+          document.body.style.transition = '';
+          document.body.style.opacity = '';
+        });
+
+        function initMobileKeyboardState() {
+          const MOBILE_WIDTH = 768;
+          const KEYBOARD_THRESHOLD = 140;
+          const visualViewportRef = window.visualViewport || null;
+          let baselineHeight = 0;
+
+          function isMobileLayout() {
+            return window.innerWidth <= MOBILE_WIDTH;
+          }
+
+          function getViewportHeight() {
+            if (
+              visualViewportRef &&
+              Number.isFinite(visualViewportRef.height) &&
+              visualViewportRef.height > 0
+            ) {
+              return visualViewportRef.height;
+            }
+            return window.innerHeight;
+          }
+
+          function hasInputFocus() {
+            const active = document.activeElement;
+            if (!active) return false;
+            const tag = String(active.tagName || '').toUpperCase();
+            return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+          }
+
+          function refreshKeyboardState() {
+            if (!isMobileLayout()) {
+              baselineHeight = 0;
+              document.body.classList.remove('keyboard-open');
+              return;
+            }
+
+            const currentHeight = getViewportHeight();
+            if (!baselineHeight || currentHeight > baselineHeight) {
+              baselineHeight = currentHeight;
+            }
+
+            const keyboardOffset = Math.max(0, baselineHeight - currentHeight);
+            const keyboardOpen =
+              keyboardOffset > KEYBOARD_THRESHOLD && hasInputFocus();
+            document.body.classList.toggle('keyboard-open', keyboardOpen);
+          }
+
+          if (visualViewportRef) {
+            visualViewportRef.addEventListener('resize', refreshKeyboardState);
+            visualViewportRef.addEventListener('scroll', refreshKeyboardState);
+          }
+          window.addEventListener('resize', refreshKeyboardState);
+          document.addEventListener('focusin', refreshKeyboardState);
+          document.addEventListener('focusout', () =>
+            setTimeout(refreshKeyboardState, 90)
+          );
+          window.addEventListener('orientationchange', () =>
+            setTimeout(refreshKeyboardState, 120)
+          );
+          refreshKeyboardState();
+        }
+
+        initMobileKeyboardState();
+
+        async function init() {
+          const _initParams = new URLSearchParams(window.location.search);
+          const _pendingCountry = _initParams.get('_android_country_selected');
+          const _pendingCountryStored = String(
+            localStorage.getItem(ANDROID_COUNTRY_PENDING_KEY) || ''
+          )
+            .toUpperCase()
+            .replace(/[^A-Z]/g, '')
+            .slice(0, 2);
+          const _openPrivacySubscreen =
+            _initParams.get('_account_subscreen') === 'privacy';
+          const _nativeBioConfig = _initParams.get('_android_bio_config');
+          if (_pendingCountry) {
+            try {
+              const _cleanUrl = new URL(window.location.href);
+              _cleanUrl.searchParams.delete('_android_country_selected');
+              _cleanUrl.searchParams.delete('_android_country');
+              _cleanUrl.searchParams.delete('_account_subscreen');
+              _cleanUrl.searchParams.delete('_android_bio_config');
+              history.replaceState(history.state, '', _cleanUrl.toString());
+            } catch (_) {}
+          } else if (_openPrivacySubscreen || _nativeBioConfig) {
+            try {
+              const _cleanUrl = new URL(window.location.href);
+              _cleanUrl.searchParams.delete('_account_subscreen');
+              _cleanUrl.searchParams.delete('_android_bio_config');
+              history.replaceState(history.state, '', _cleanUrl.toString());
+            } catch (_) {}
+          }
+
+          try {
+            const res = await fetch('/api/auth/session', {
+              credentials: 'include'
+            });
+            const data = await res.json().catch(() => ({}));
+
+            if (!data || data.authenticated !== true) {
+              navigateAway('/auth.html?next=/account.html');
+              return;
+            }
+
+            currentUser = data.user || {};
+
+            const _localeCountry = detectCountryCodeFromClientLocale();
+            const _resolvedCountry =
+              String(_pendingCountry || '')
+                .toUpperCase()
+                .replace(/[^A-Z]/g, '')
+                .slice(0, 2) ||
+              _pendingCountryStored ||
+              _localeCountry;
+
+            if (
+              _resolvedCountry &&
+              (!currentUser.country ||
+                String(currentUser.country).trim() === '')
+            ) {
+              await autoSaveCountry(_resolvedCountry);
+            }
+
+            if (_resolvedCountry && currentUser && currentUser.country) {
+              localStorage.removeItem(ANDROID_COUNTRY_PENDING_KEY);
+            } else if (_resolvedCountry) {
+              localStorage.setItem(
+                ANDROID_COUNTRY_PENDING_KEY,
+                _resolvedCountry
+              );
+            }
+
+            if (_openPrivacySubscreen) {
+              openPrivacySubscreen();
+              return;
+            }
+
+            renderPage();
+          } catch (_) {
+            showError(
+              'Le service ne répond pas pour le moment. Un nouvel essai sera possible dans quelques instants.'
+            );
           }
         }
 
-        return Array.from(allConversationIds)
-          .map(id => {
-            const indexItem = indexById.get(id) || null;
+        function hasImportableConversations() {
+          let index = [];
+          try {
+            const rawIndex = JSON.parse(
+              localStorage.getItem(CONVERSATIONS_INDEX_KEY) || '[]'
+            );
+            index = Array.isArray(rawIndex) ? rawIndex : [];
+          } catch {
+            index = [];
+          }
 
+          const privateConversationIds = loadPrivateConversationIds();
+          const indexById = new Map(
+            index
+              .map((item) => [String(item?.id || '').trim(), item])
+              .filter(([id]) => Boolean(id))
+          );
+
+          const allConversationIds = new Set(indexById.keys());
+          for (const privateId of privateConversationIds) {
+            allConversationIds.add(privateId);
+          }
+
+          for (let i = 0; i < localStorage.length; i += 1) {
+            const key = String(localStorage.key(i) || '');
+            if (!key.startsWith(CONVERSATION_STORAGE_KEY_PREFIX)) continue;
+            const id = key.slice(CONVERSATION_STORAGE_KEY_PREFIX.length).trim();
+            if (id) {
+              allConversationIds.add(id);
+            }
+          }
+
+          for (const id of allConversationIds) {
+            const indexItem = indexById.get(id) || null;
             let data = null;
             try {
-              const rawData = localStorage.getItem(getConversationStorageKey(id));
+              const rawData = localStorage.getItem(
+                getConversationStorageKey(id)
+              );
               data = rawData ? JSON.parse(rawData) : null;
             } catch {
               data = null;
             }
 
             const messages = Array.isArray(data?.messages) ? data.messages : [];
-            const hasUserMessage = messages.some(entry => entry && entry.role === "user" && typeof entry.content === "string" && entry.content.trim());
-            const titleFromIndex = typeof indexItem?.title === "string" ? indexItem.title.trim() : "";
-            const fallbackTitle = messages.find(entry => entry && entry.role === "user" && typeof entry.content === "string")?.content?.slice(0, 60) || "Conversation sans titre";
+            const hasUserMessage = messages.some(
+              (entry) =>
+                entry &&
+                entry.role === 'user' &&
+                typeof entry.content === 'string' &&
+                entry.content.trim()
+            );
 
-            if (!indexItem && !data) {
-              return null;
+            if (indexItem || hasUserMessage) {
+              return true;
             }
+          }
 
-            // Ignore orphan local artifacts that never reached the app conversation index
-            // and never received a real user message.
-            if (!indexItem && !hasUserMessage) {
-              return null;
-            }
-
-            return {
-              id,
-              title: titleFromIndex || fallbackTitle,
-              updatedAt: Number(indexItem?.updatedAt || data?.updatedAt || Date.now()),
-              isCustomTitle: indexItem?.isCustomTitle === true,
-              isPrivate: (indexItem?.isPrivate === true) || (data?.isPrivate === true) || privateConversationIds.has(id),
-              memory: typeof data?.memory === "string" ? data.memory : "",
-              flags: data?.flags && typeof data.flags === "object" && !Array.isArray(data.flags) ? data.flags : {},
-              messages
-            };
-          })
-          .filter(Boolean)
-          .sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0));
-      }
-
-      function formatImportDate(timestamp) {
-        const value = Number(timestamp || 0);
-        if (!Number.isFinite(value) || value <= 0) return "date inconnue";
-
-        try {
-          return new Date(value).toLocaleString("fr-FR", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit"
-          });
-        } catch {
-          return "date inconnue";
+          return false;
         }
-      }
 
-      function escapeHtml(value) {
-        return String(value || "")
-          .replace(/&/g, "&amp;")
-          .replace(/</g, "&lt;")
-          .replace(/>/g, "&gt;")
-          .replace(/\"/g, "&quot;")
-          .replace(/'/g, "&#39;");
-      }
+        function renderPage() {
+          const main = document.getElementById('mainContent');
 
-      function buildPrivateLockIcon() {
-        return [
-          '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" style="display:inline-block;vertical-align:middle;">',
-          '  <path d="M6.5 11.2h11a1.5 1.5 0 0 1 1.5 1.5v5.8a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-5.8a1.5 1.5 0 0 1 1.5-1.5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"></path>',
-          '  <path d="M8.4 11.2V8.9a3.6 3.6 0 1 1 7.2 0v2.3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>',
-          '</svg>'
-        ].join("");
-      }
+          main.innerHTML = '';
 
-      function buildLongtermMemoryCard() {
-        const card = document.createElement("div");
-        card.className = "card";
-        const title = document.createElement("div");
-        title.className = "section-title";
-        title.textContent = "M\u00e9moire long terme";
-        card.appendChild(title);
-        const content = document.createElement("div");
-        content.innerHTML = '<p class="loading-state">Chargement\u2026</p>';
-        card.appendChild(content);
-        loadLongtermMemoryCardContent(content);
-        return card;
-      }
-
-      async function loadLongtermMemoryCardContent(container) {
-        try {
-          const res = await fetch("/api/intersession-memory", {
-            cache: "no-store",
-            credentials: "include"
-          });
-          if (!res.ok) {
-            container.innerHTML = '<p class="error-notice">Impossible de charger la m\u00e9moire.</p>';
+          if (accountSubscreen === 'privacy') {
+            document.body.classList.add('subscreen-privacy');
+            main.appendChild(buildPrivacySubscreen());
+            requestAnimationFrame(() => {
+              main.scrollTop = 0;
+              window.scrollTo(0, 0);
+            });
             return;
           }
-          const data = await res.json().catch(() => ({}));
-          const memoryValue = typeof data.memorySource === "string"
-            ? data.memorySource
-            : typeof data.memory === "string"
-              ? data.memory
-              : "";
-          const history = Array.isArray(data.intersessionMemoryHistory) ? data.intersessionMemoryHistory : [];
 
-          container.innerHTML = "";
+          document.body.classList.remove('subscreen-privacy');
 
-          const warning = document.createElement("p");
-          warning.className = "longterm-memory-warning";
-          warning.textContent = "Ce bloc est la source humaine inter-session et remplace la version existante.";
-          container.appendChild(warning);
+          const h1 = document.createElement('h1');
+          h1.textContent = 'Mon compte';
+          main.appendChild(h1);
 
-          const textarea = document.createElement("textarea");
-          textarea.className = "longterm-memory-textarea";
-          textarea.rows = 8;
-          textarea.maxLength = 6000;
-          textarea.value = memoryValue;
-          container.appendChild(textarea);
+          const emailEl = document.createElement('p');
+          emailEl.className = 'user-email';
+          emailEl.textContent = String(currentUser.email || '');
+          main.appendChild(emailEl);
 
-          const counter = document.createElement("div");
-          counter.className = "longterm-memory-counter";
-          counter.textContent = `${memoryValue.length} / 6000`;
-          textarea.addEventListener("input", () => {
-            counter.textContent = `${textarea.value.length} / 6000`;
-          });
-          container.appendChild(counter);
+          if (ACCOUNT_USAGE_ENVELOPE_UI_ENABLED) {
+            main.appendChild(buildUsageEnvelopeCard());
+          }
+          main.appendChild(buildProfileCard());
+          main.appendChild(buildLongtermMemoryCard());
+          if (hasImportableConversations()) {
+            main.appendChild(buildLocalImportCard());
+          }
+          main.appendChild(buildPrivacyEntryCard());
+          main.appendChild(buildDangerZoneCard());
+        }
 
-          const saveBtn = document.createElement("button");
-          saveBtn.className = "action-btn is-ready";
-          saveBtn.style.marginTop = "12px";
-          saveBtn.textContent = "Enregistrer";
-          container.appendChild(saveBtn);
+        function clampUsageValue(value, min, max) {
+          const numeric = Number(value);
+          if (!Number.isFinite(numeric)) return min;
+          return Math.min(max, Math.max(min, numeric));
+        }
 
-          const saveNotice = document.createElement("div");
-          saveNotice.className = "notice";
-          container.appendChild(saveNotice);
+        function getUsageEnvelopeState(rawUsageData) {
+          const safe =
+            rawUsageData && typeof rawUsageData === 'object'
+              ? rawUsageData
+              : {};
 
-          saveBtn.addEventListener("click", async () => {
-            saveBtn.disabled = true;
-            saveNotice.textContent = "";
-            saveNotice.className = "notice";
-            try {
-              const saveRes = await fetch("/api/intersession-memory/direct", {
-                method: "PATCH",
-                credentials: "include",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ memory: textarea.value })
-              });
-              if (saveRes.ok) {
-                saveNotice.className = "notice success";
-                saveNotice.textContent = "Vos modifications seront prises en compte d\u00e8s le prochain message envoy\u00e9.";
-                await loadLongtermMemoryCardContent(container);
-              } else {
-                saveNotice.textContent = "Erreur lors de la sauvegarde. R\u00e9essayez.";
-              }
-            } catch {
-              saveNotice.textContent = "Erreur r\u00e9seau.";
-            } finally {
-              saveBtn.disabled = false;
+          const monthlyRemaining = clampUsageValue(
+            safe.monthly && safe.monthly.remaining,
+            0,
+            100
+          );
+          const rolloverRemaining = clampUsageValue(
+            safe.rollover && safe.rollover.remaining,
+            0,
+            25
+          );
+          const reserveRemaining = clampUsageValue(
+            safe.reserve && safe.reserve.remaining,
+            0,
+            100
+          );
+
+          return {
+            monthly: {
+              capacity: 100,
+              remaining: monthlyRemaining
+            },
+            rollover: {
+              capacity: 25,
+              remaining: rolloverRemaining
+            },
+            reserve: {
+              capacity: 100,
+              remaining: reserveRemaining
+            },
+            totalAvailable:
+              rolloverRemaining + monthlyRemaining + reserveRemaining,
+            lastRenewalAt:
+              typeof safe.lastRenewalAt === 'string' ? safe.lastRenewalAt : null
+          };
+        }
+
+        function computeGaugeSegments(amount, options) {
+          const safeOptions =
+            options && typeof options === 'object' ? options : {};
+          const capacity = clampUsageValue(
+            safeOptions.capacity,
+            1,
+            Number.MAX_SAFE_INTEGER
+          );
+          const segmentCount =
+            Number.isInteger(safeOptions.segmentCount) &&
+            safeOptions.segmentCount > 0
+              ? safeOptions.segmentCount
+              : 4;
+          const segmentUnit = capacity / segmentCount;
+          const halfSegment = segmentUnit / 2;
+          const showRedWhenLow = safeOptions.showRedWhenLow === true;
+
+          const safeAmount = clampUsageValue(amount, 0, capacity);
+          const fullSegments = Math.floor(safeAmount / segmentUnit);
+          const remainder = safeAmount - fullSegments * segmentUnit;
+          const hasHalfSegment = remainder >= halfSegment;
+          const isLowPositive = safeAmount > 0 && safeAmount < halfSegment;
+
+          const segments = [];
+          for (let index = 0; index < segmentCount; index += 1) {
+            if (index < fullSegments) {
+              segments.push('dark');
+              continue;
             }
-          });
 
-          if (history.length > 0) {
-            const historySection = document.createElement("div");
-            historySection.style.marginTop = "18px";
+            if (index === fullSegments && (hasHalfSegment || isLowPositive)) {
+              segments.push(showRedWhenLow && isLowPositive ? 'red' : 'light');
+              continue;
+            }
 
-            const historyToggle = document.createElement("button");
-            historyToggle.type = "button";
-            historyToggle.className = "history-toggle";
-            historyToggle.textContent = "\u25b6 Versions pr\u00e9c\u00e9dentes";
-            historySection.appendChild(historyToggle);
-
-            const historyContent = document.createElement("div");
-            historyContent.style.display = "none";
-            historyContent.style.marginTop = "10px";
-            let historyOpen = false;
-            historyToggle.addEventListener("click", () => {
-              historyOpen = !historyOpen;
-              historyContent.style.display = historyOpen ? "block" : "none";
-              historyToggle.textContent = (historyOpen ? "\u25bc" : "\u25b6") + " Versions pr\u00e9c\u00e9dentes";
-            });
-
-            const historyList = document.createElement("div");
-            historyList.style.cssText = "display:flex;flex-direction:column;gap:8px;";
-
-            let selectedPreviewIndex = -1;
-            const previewEl = document.createElement("div");
-            previewEl.style.display = "none";
-            previewEl.style.marginTop = "8px";
-
-            const previewTextarea = document.createElement("textarea");
-            previewTextarea.className = "longterm-memory-textarea";
-            previewTextarea.readOnly = true;
-            previewTextarea.rows = 6;
-            previewTextarea.style.color = "#555";
-            previewTextarea.style.background = "#fafafa";
-            previewEl.appendChild(previewTextarea);
-
-            const previewRestoreBtn = document.createElement("button");
-            previewRestoreBtn.type = "button";
-            previewRestoreBtn.className = "secondary-btn";
-            previewRestoreBtn.style.marginTop = "8px";
-            previewRestoreBtn.textContent = "Restaurer cette version";
-            previewRestoreBtn.addEventListener("click", () => {
-              if (selectedPreviewIndex < 0) return;
-              const confirmed = window.confirm("Restaurer cette version\u202f? Le contenu actuel sera archiv\u00e9.");
-              if (!confirmed) return;
-              textarea.value = previewTextarea.value;
-              counter.textContent = `${textarea.value.length} / 6000`;
-              saveNotice.textContent = "";
-              saveNotice.className = "notice";
-            });
-            previewEl.appendChild(previewRestoreBtn);
-
-            history.forEach((entry, index) => {
-              const dateStr = entry.savedAt
-                ? new Date(entry.savedAt).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })
-                : "Date inconnue";
-              const itemBtn = document.createElement("button");
-              itemBtn.type = "button";
-              itemBtn.className = "history-item-btn";
-              itemBtn.textContent = `Version du ${dateStr}`;
-              itemBtn.addEventListener("click", () => {
-                selectedPreviewIndex = index;
-                previewTextarea.value = typeof entry.memorySource === "string"
-                  ? entry.memorySource
-                  : typeof entry.memory === "string"
-                    ? entry.memory
-                    : "";
-                previewEl.style.display = "block";
-                historyList.querySelectorAll(".history-item-btn").forEach((b, i) => {
-                  b.style.fontWeight = i === index ? "700" : "";
-                });
-              });
-              historyList.appendChild(itemBtn);
-            });
-
-            historyContent.appendChild(historyList);
-            historyContent.appendChild(previewEl);
-            historySection.appendChild(historyContent);
-            container.appendChild(historySection);
+            segments.push('empty');
           }
 
-        } catch {
-          container.innerHTML = '<p class="error-notice">Impossible de charger la m\u00e9moire.</p>';
+          return segments;
         }
-      }
 
-      function buildLocalImportCard() {
-        const card = document.createElement("div");
-        card.className = "card";
-        card.id = "localImportCardWrapper";
+        function shouldShowLowEnvelopeWarning(rawUsageData) {
+          const state = getUsageEnvelopeState(rawUsageData);
+          return state.totalAvailable < LOW_ENVELOPE_THRESHOLD;
+        }
 
-        const title = document.createElement("div");
-        title.className = "section-title";
-        title.textContent = "Importer des conversations locales";
-        card.appendChild(title);
+        function renderGaugeSegments(segments, colorType) {
+          const map = {
+            green: {
+              dark: 'gauge-segment--green',
+              light: 'gauge-segment--green-light'
+            },
+            blue: {
+              dark: 'gauge-segment--blue',
+              light: 'gauge-segment--blue-light'
+            },
+            rollover: {
+              dark: 'gauge-segment--rollover',
+              light: 'gauge-segment--rollover'
+            }
+          };
 
-        const help = document.createElement("p");
-        help.className = "setting-help";
-        help.textContent = "Ces conversations sont detectees uniquement sur cet appareil. Les conversations privees locales sont indiquees par un cadenas.";
-        card.appendChild(help);
+          const palette = map[colorType] || map.green;
+          const frag = document.createDocumentFragment();
 
-        const list = document.createElement("div");
-        list.className = "import-list";
-        list.id = "localImportList";
-        card.appendChild(list);
+          (Array.isArray(segments) ? segments : []).forEach((segment) => {
+            const part = document.createElement('span');
+            part.className = 'gauge-segment';
 
-        const actions = document.createElement("div");
-        actions.className = "import-actions";
-
-        const refreshBtn = document.createElement("button");
-        refreshBtn.type = "button";
-        refreshBtn.className = "secondary-btn";
-        refreshBtn.textContent = "Rafraichir";
-
-        const importBtn = document.createElement("button");
-        importBtn.type = "button";
-        importBtn.className = "action-btn";
-        importBtn.textContent = "Importer la selection";
-        importBtn.disabled = true;
-
-        actions.appendChild(refreshBtn);
-        actions.appendChild(importBtn);
-        card.appendChild(actions);
-
-        const notice = document.createElement("div");
-        notice.className = "notice";
-        notice.id = "localImportNotice";
-        card.appendChild(notice);
-
-        let localItems = [];
-        let remoteOwnedIds = new Set();
-
-        const syncRemoteOwnedConversationIds = async () => {
-          try {
-            const res = await fetch("/api/account/conversations", {
-              method: "GET",
-              credentials: "include",
-              cache: "no-store"
-            });
-
-            if (!res.ok) {
-              remoteOwnedIds = new Set();
-              return;
+            if (segment === 'red') {
+              part.classList.add('gauge-segment--red');
+            } else if (segment === 'empty') {
+              part.classList.add('gauge-segment--empty');
+            } else {
+              part.classList.add(
+                segment === 'dark' ? palette.dark : palette.light
+              );
             }
 
-            const data = await res.json().catch(() => ({}));
-            const conversations = Array.isArray(data?.conversations) ? data.conversations : [];
-            remoteOwnedIds = new Set(
-              conversations
-                .map(item => String(item?.id || "").trim())
-                .filter(Boolean)
+            frag.appendChild(part);
+          });
+
+          return frag;
+        }
+
+        function renderEnvelopeGauge(state) {
+          const container = document.createElement('div');
+          container.className = 'gauge';
+
+          const monthlyWrap = document.createElement('span');
+          monthlyWrap.className = 'gauge-main';
+
+          const reserveAvailable = state.reserve.remaining > 0;
+          const monthlyLow =
+            state.monthly.remaining > 0 &&
+            state.monthly.remaining < LOW_ENVELOPE_THRESHOLD;
+          const monthlySegments = computeGaugeSegments(
+            state.monthly.remaining,
+            {
+              capacity: state.monthly.capacity,
+              showRedWhenLow:
+                monthlyLow && !reserveAvailable && state.rollover.remaining <= 0
+            }
+          );
+          monthlyWrap.appendChild(
+            renderGaugeSegments(monthlySegments, 'green')
+          );
+          container.appendChild(monthlyWrap);
+
+          if (state.rollover.remaining > 0) {
+            const rolloverWrap = document.createElement('span');
+            rolloverWrap.className = 'gauge-rollover';
+            rolloverWrap.appendChild(renderGaugeSegments(['dark'], 'rollover'));
+            container.appendChild(rolloverWrap);
+          }
+
+          return container;
+        }
+
+        function renderReserveGauge(state) {
+          const container = document.createElement('div');
+          container.className = 'gauge';
+
+          const reserveWrap = document.createElement('span');
+          reserveWrap.className = 'gauge-main';
+
+          const showRed =
+            state.reserve.remaining > 0 &&
+            state.reserve.remaining < LOW_ENVELOPE_THRESHOLD &&
+            state.monthly.remaining <= 0 &&
+            state.rollover.remaining <= 0;
+
+          const reserveSegments = computeGaugeSegments(
+            state.reserve.remaining,
+            {
+              capacity: state.reserve.capacity,
+              showRedWhenLow: showRed
+            }
+          );
+          reserveWrap.appendChild(renderGaugeSegments(reserveSegments, 'blue'));
+          container.appendChild(reserveWrap);
+
+          return container;
+        }
+
+        function ensureUsageTopUpModal() {
+          let overlay = document.getElementById('usageTopUpModal');
+          if (overlay) return overlay;
+
+          overlay = document.createElement('div');
+          overlay.id = 'usageTopUpModal';
+          overlay.className = 'usage-modal-overlay';
+          overlay.innerHTML = [
+            '<div class="usage-modal" role="dialog" aria-modal="true" aria-labelledby="usageModalTitle">',
+            '  <h2 class="usage-modal-title" id="usageModalTitle">Simulation de recharge de r\u00e9serve (alpha)</h2>',
+            '  <p class="usage-modal-text">Aucun paiement r\u00e9el n\'est effectu\u00e9. Cette simulation sert \u00e0 \u00e9valuer la perception \u00e9conomique.</p>',
+            '  <div class="usage-modal-actions">',
+            '    <button type="button" class="usage-option-btn" data-amount="5">Simulation palier 5 \u20ac</button>',
+            '    <button type="button" class="usage-option-btn" data-amount="10">Simulation palier 10 \u20ac</button>',
+            '  </div>',
+            '  <p class="usage-modal-notice" id="usageModalNotice"></p>',
+            '  <button type="button" class="usage-modal-close" id="usageModalCloseBtn">Fermer</button>',
+            '</div>'
+          ].join('');
+
+          const closeModal = () => {
+            overlay.classList.remove('is-open');
+          };
+
+          overlay.addEventListener('click', (event) => {
+            if (event.target === overlay) {
+              closeModal();
+            }
+          });
+
+          overlay
+            .querySelector('#usageModalCloseBtn')
+            .addEventListener('click', closeModal);
+          overlay.querySelectorAll('.usage-option-btn').forEach((button) => {
+            button.addEventListener('click', () => {
+              const amount = button.getAttribute('data-amount') || '';
+              const notice = overlay.querySelector('#usageModalNotice');
+              notice.textContent =
+                'Simulation enregistr\u00e9e (aucun d\u00e9bit).';
+              console.info('[usage-envelope] top-up intent', {
+                amount: amount + ' EUR'
+              });
+            });
+          });
+
+          document.body.appendChild(overlay);
+          return overlay;
+        }
+
+        function buildUsageEnvelopeCard() {
+          const usageState = resolveUsageEnvelopeStateFromSession();
+          const card = document.createElement('div');
+          card.className = 'card usage-envelope-card';
+
+          const simulationInfo = document.createElement('p');
+          simulationInfo.className = 'usage-simulation-info';
+          simulationInfo.textContent =
+            "Aucun paiement actif - l'enveloppe se met \u00e0 jour en mode simulation pendant la phase de test.";
+          card.appendChild(simulationInfo);
+
+          const renewalInfo = document.createElement('p');
+          renewalInfo.className = 'setting-help';
+          renewalInfo.style.margin = '0 0 12px';
+          renewalInfo.textContent =
+            'Votre enveloppe mensuelle est r\u00e9initialis\u00e9e au d\u00e9but de chaque mois.';
+          card.appendChild(renewalInfo);
+
+          const envelopeBlock = document.createElement('div');
+          envelopeBlock.className = 'usage-block';
+          const envelopeTitle = document.createElement('h3');
+          envelopeTitle.className = 'usage-title';
+          envelopeTitle.textContent = "Enveloppe mensuelle d'accompagnement";
+          envelopeBlock.appendChild(envelopeTitle);
+          envelopeBlock.appendChild(renderEnvelopeGauge(usageState));
+          card.appendChild(envelopeBlock);
+
+          const reserveBlock = document.createElement('div');
+          reserveBlock.className = 'usage-block';
+          const reserveTitle = document.createElement('h3');
+          reserveTitle.className = 'usage-title';
+          reserveTitle.textContent = 'R\u00e9serve compl\u00e9mentaire';
+          reserveBlock.appendChild(reserveTitle);
+          reserveBlock.appendChild(renderReserveGauge(usageState));
+          card.appendChild(reserveBlock);
+
+          const warning = document.createElement('p');
+          warning.className = 'setting-help';
+          warning.style.margin = '4px 0 0';
+          warning.style.display = shouldShowLowEnvelopeWarning(usageState)
+            ? 'block'
+            : 'none';
+          warning.textContent =
+            "Il reste peu d'espace disponible dans votre enveloppe. Pour éviter une interruption pendant l'échange, vous pouvez l'alimenter maintenant.";
+          card.appendChild(warning);
+
+          const actionButton = document.createElement('button');
+          actionButton.type = 'button';
+          actionButton.className = 'usage-action-btn';
+          actionButton.textContent = "Voir la simulation d'enveloppe";
+          actionButton.addEventListener('click', () => {
+            const modal = ensureUsageTopUpModal();
+            const notice = modal.querySelector('#usageModalNotice');
+            notice.textContent = '';
+            modal.classList.add('is-open');
+          });
+          card.appendChild(actionButton);
+
+          return card;
+        }
+
+        function getConversationStorageKey(conversationId) {
+          return `${CONVERSATION_STORAGE_KEY_PREFIX}${conversationId}`;
+        }
+
+        function loadPrivateConversationIds() {
+          try {
+            const raw = JSON.parse(
+              localStorage.getItem(PRIVATE_CONVERSATION_IDS_KEY) || '[]'
+            );
+            if (!Array.isArray(raw)) return new Set();
+            return new Set(
+              raw.map((value) => String(value || '').trim()).filter(Boolean)
             );
           } catch {
-            remoteOwnedIds = new Set();
+            return new Set();
           }
-        };
+        }
 
-        const updateImportButtonState = () => {
-          const checked = Array.from(list.querySelectorAll('input[type="checkbox"]')).filter(input => input.checked);
-          const ready = checked.length > 0;
-          importBtn.disabled = !ready;
-          importBtn.classList.toggle("is-ready", ready);
-        };
-
-        const renderItems = async () => {
-          await syncRemoteOwnedConversationIds();
-
-          localItems = loadLocalConversationsForImport();
-          const importableItems = localItems.filter(item => !remoteOwnedIds.has(item.id));
-          list.innerHTML = "";
-          notice.textContent = "";
-          notice.className = "notice";
-
-          if (importableItems.length === 0) {
-            const wrapper = document.getElementById("localImportCardWrapper");
-            if (wrapper) {
-              wrapper.style.display = "none";
-            }
-            updateImportButtonState();
-            return;
-          }
-
-          importableItems.forEach(item => {
-            const row = document.createElement("div");
-            row.className = "import-item";
-
-            const label = document.createElement("label");
-            const checkbox = document.createElement("input");
-            checkbox.type = "checkbox";
-            checkbox.value = item.id;
-            checkbox.addEventListener("change", updateImportButtonState);
-
-            const main = document.createElement("div");
-            main.className = "import-item-main";
-
-            const titleLine = document.createElement("div");
-            titleLine.className = "import-item-title";
-            titleLine.innerHTML = `${item.isPrivate ? buildPrivateLockIcon() : ""}<span>${escapeHtml(item.title)}</span>`;
-
-            const metaLine = document.createElement("div");
-            metaLine.className = "import-item-meta";
-            metaLine.textContent = `${item.messages.length} message(s) · ${formatImportDate(item.updatedAt)}${item.isPrivate ? " · locale privee" : ""}`;
-
-            main.appendChild(titleLine);
-            main.appendChild(metaLine);
-            label.appendChild(checkbox);
-            label.appendChild(main);
-            row.appendChild(label);
-            list.appendChild(row);
-          });
-
-          updateImportButtonState();
-        };
-
-        refreshBtn.addEventListener("click", async () => {
-          await renderItems();
-        });
-
-        importBtn.addEventListener("click", async () => {
-          const selectedIds = Array.from(list.querySelectorAll('input[type="checkbox"]'))
-            .filter(input => input.checked)
-            .map(input => String(input.value || "").trim())
-            .filter(Boolean);
-
-          if (selectedIds.length === 0) {
-            updateImportButtonState();
-            return;
-          }
-
-          const selectedConversations = selectedIds
-            .map(id => localItems.find(item => item.id === id))
-            .filter(Boolean);
-
-          importBtn.disabled = true;
-          importBtn.classList.remove("is-ready");
-          notice.textContent = "";
-          notice.className = "notice";
+        function loadLocalConversationsForImport() {
+          let index = [];
 
           try {
-            const res = await fetch("/api/account/conversations/import-local", {
-              method: "POST",
-              credentials: "include",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                anonymousUserId: String(localStorage.getItem(USER_ID_KEY) || "").trim(),
-                conversations: selectedConversations.map(item => ({
-                  id: item.id,
-                  title: item.title,
-                  isCustomTitle: item.isCustomTitle === true,
-                  isPrivate: item.isPrivate === true,
-                  memory: item.memory,
-                  flags: item.flags,
-                  updatedAt: item.updatedAt,
-                  messages: item.messages
-                }))
-              })
+            const rawIndex = JSON.parse(
+              localStorage.getItem(CONVERSATIONS_INDEX_KEY) || '[]'
+            );
+            index = Array.isArray(rawIndex) ? rawIndex : [];
+          } catch {
+            index = [];
+          }
+
+          const privateConversationIds = loadPrivateConversationIds();
+          const indexById = new Map(
+            index
+              .map((item) => [String(item?.id || '').trim(), item])
+              .filter(([id]) => Boolean(id))
+          );
+
+          const allConversationIds = new Set(indexById.keys());
+          for (const privateId of privateConversationIds) {
+            allConversationIds.add(privateId);
+          }
+
+          for (let i = 0; i < localStorage.length; i += 1) {
+            const key = String(localStorage.key(i) || '');
+            if (!key.startsWith(CONVERSATION_STORAGE_KEY_PREFIX)) continue;
+
+            const id = key.slice(CONVERSATION_STORAGE_KEY_PREFIX.length).trim();
+            if (id) {
+              allConversationIds.add(id);
+            }
+          }
+
+          return Array.from(allConversationIds)
+            .map((id) => {
+              const indexItem = indexById.get(id) || null;
+
+              let data = null;
+              try {
+                const rawData = localStorage.getItem(
+                  getConversationStorageKey(id)
+                );
+                data = rawData ? JSON.parse(rawData) : null;
+              } catch {
+                data = null;
+              }
+
+              const messages = Array.isArray(data?.messages)
+                ? data.messages
+                : [];
+              const hasUserMessage = messages.some(
+                (entry) =>
+                  entry &&
+                  entry.role === 'user' &&
+                  typeof entry.content === 'string' &&
+                  entry.content.trim()
+              );
+              const titleFromIndex =
+                typeof indexItem?.title === 'string'
+                  ? indexItem.title.trim()
+                  : '';
+              const fallbackTitle =
+                messages
+                  .find(
+                    (entry) =>
+                      entry &&
+                      entry.role === 'user' &&
+                      typeof entry.content === 'string'
+                  )
+                  ?.content?.slice(0, 60) || 'Conversation sans titre';
+
+              if (!indexItem && !data) {
+                return null;
+              }
+
+              // Ignore orphan local artifacts that never reached the app conversation index
+              // and never received a real user message.
+              if (!indexItem && !hasUserMessage) {
+                return null;
+              }
+
+              return {
+                id,
+                title: titleFromIndex || fallbackTitle,
+                updatedAt: Number(
+                  indexItem?.updatedAt || data?.updatedAt || Date.now()
+                ),
+                isCustomTitle: indexItem?.isCustomTitle === true,
+                isPrivate:
+                  indexItem?.isPrivate === true ||
+                  data?.isPrivate === true ||
+                  privateConversationIds.has(id),
+                memory: typeof data?.memory === 'string' ? data.memory : '',
+                flags:
+                  data?.flags &&
+                  typeof data.flags === 'object' &&
+                  !Array.isArray(data.flags)
+                    ? data.flags
+                    : {},
+                messages
+              };
+            })
+            .filter(Boolean)
+            .sort(
+              (a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0)
+            );
+        }
+
+        function formatImportDate(timestamp) {
+          const value = Number(timestamp || 0);
+          if (!Number.isFinite(value) || value <= 0) return 'date inconnue';
+
+          try {
+            return new Date(value).toLocaleString('fr-FR', {
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            });
+          } catch {
+            return 'date inconnue';
+          }
+        }
+
+        function escapeHtml(value) {
+          return String(value || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/\"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+        }
+
+        function buildPrivateLockIcon() {
+          return [
+            '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" style="display:inline-block;vertical-align:middle;">',
+            '  <path d="M6.5 11.2h11a1.5 1.5 0 0 1 1.5 1.5v5.8a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-5.8a1.5 1.5 0 0 1 1.5-1.5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"></path>',
+            '  <path d="M8.4 11.2V8.9a3.6 3.6 0 1 1 7.2 0v2.3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>',
+            '</svg>'
+          ].join('');
+        }
+
+        function buildLongtermMemoryCard() {
+          const card = document.createElement('div');
+          card.className = 'card';
+          const title = document.createElement('div');
+          title.className = 'section-title';
+          title.textContent = 'M\u00e9moire long terme';
+          card.appendChild(title);
+          const content = document.createElement('div');
+          content.innerHTML = '<p class="loading-state">Chargement\u2026</p>';
+          card.appendChild(content);
+          loadLongtermMemoryCardContent(content);
+          return card;
+        }
+
+        async function loadLongtermMemoryCardContent(container) {
+          try {
+            const res = await fetch('/api/intersession-memory', {
+              cache: 'no-store',
+              credentials: 'include'
+            });
+            if (!res.ok) {
+              container.innerHTML =
+                '<p class="error-notice">Impossible de charger la m\u00e9moire.</p>';
+              return;
+            }
+            const data = await res.json().catch(() => ({}));
+            const memoryValue =
+              typeof data.memorySource === 'string'
+                ? data.memorySource
+                : typeof data.memory === 'string'
+                  ? data.memory
+                  : '';
+            const history = Array.isArray(data.intersessionMemoryHistory)
+              ? data.intersessionMemoryHistory
+              : [];
+
+            container.innerHTML = '';
+
+            const warning = document.createElement('p');
+            warning.className = 'longterm-memory-warning';
+            warning.textContent =
+              'Ce bloc est la source humaine inter-session et remplace la version existante.';
+            container.appendChild(warning);
+
+            const textarea = document.createElement('textarea');
+            textarea.className = 'longterm-memory-textarea';
+            textarea.rows = 8;
+            textarea.maxLength = 6000;
+            textarea.value = memoryValue;
+            container.appendChild(textarea);
+
+            const counter = document.createElement('div');
+            counter.className = 'longterm-memory-counter';
+            counter.textContent = `${memoryValue.length} / 6000`;
+            textarea.addEventListener('input', () => {
+              counter.textContent = `${textarea.value.length} / 6000`;
+            });
+            container.appendChild(counter);
+
+            const saveBtn = document.createElement('button');
+            saveBtn.className = 'action-btn is-ready';
+            saveBtn.style.marginTop = '12px';
+            saveBtn.textContent = 'Enregistrer';
+            container.appendChild(saveBtn);
+
+            const saveNotice = document.createElement('div');
+            saveNotice.className = 'notice';
+            container.appendChild(saveNotice);
+
+            saveBtn.addEventListener('click', async () => {
+              saveBtn.disabled = true;
+              saveNotice.textContent = '';
+              saveNotice.className = 'notice';
+              try {
+                const saveRes = await fetch('/api/intersession-memory/direct', {
+                  method: 'PATCH',
+                  credentials: 'include',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ memory: textarea.value })
+                });
+                if (saveRes.ok) {
+                  saveNotice.className = 'notice success';
+                  saveNotice.textContent =
+                    'Vos modifications seront prises en compte d\u00e8s le prochain message envoy\u00e9.';
+                  await loadLongtermMemoryCardContent(container);
+                } else {
+                  saveNotice.textContent =
+                    'Erreur lors de la sauvegarde. R\u00e9essayez.';
+                }
+              } catch {
+                saveNotice.textContent = 'Erreur r\u00e9seau.';
+              } finally {
+                saveBtn.disabled = false;
+              }
             });
 
-            const data = await res.json().catch(() => ({}));
+            if (history.length > 0) {
+              const historySection = document.createElement('div');
+              historySection.style.marginTop = '18px';
 
-            if (!res.ok) {
-              notice.textContent = data.error || "Import impossible pour le moment.";
+              const historyToggle = document.createElement('button');
+              historyToggle.type = 'button';
+              historyToggle.className = 'history-toggle';
+              historyToggle.textContent =
+                '\u25b6 Versions pr\u00e9c\u00e9dentes';
+              historySection.appendChild(historyToggle);
+
+              const historyContent = document.createElement('div');
+              historyContent.style.display = 'none';
+              historyContent.style.marginTop = '10px';
+              let historyOpen = false;
+              historyToggle.addEventListener('click', () => {
+                historyOpen = !historyOpen;
+                historyContent.style.display = historyOpen ? 'block' : 'none';
+                historyToggle.textContent =
+                  (historyOpen ? '\u25bc' : '\u25b6') +
+                  ' Versions pr\u00e9c\u00e9dentes';
+              });
+
+              const historyList = document.createElement('div');
+              historyList.style.cssText =
+                'display:flex;flex-direction:column;gap:8px;';
+
+              let selectedPreviewIndex = -1;
+              const previewEl = document.createElement('div');
+              previewEl.style.display = 'none';
+              previewEl.style.marginTop = '8px';
+
+              const previewTextarea = document.createElement('textarea');
+              previewTextarea.className = 'longterm-memory-textarea';
+              previewTextarea.readOnly = true;
+              previewTextarea.rows = 6;
+              previewTextarea.style.color = '#555';
+              previewTextarea.style.background = '#fafafa';
+              previewEl.appendChild(previewTextarea);
+
+              const previewRestoreBtn = document.createElement('button');
+              previewRestoreBtn.type = 'button';
+              previewRestoreBtn.className = 'secondary-btn';
+              previewRestoreBtn.style.marginTop = '8px';
+              previewRestoreBtn.textContent = 'Restaurer cette version';
+              previewRestoreBtn.addEventListener('click', () => {
+                if (selectedPreviewIndex < 0) return;
+                openSensitiveActionModal({
+                  title: 'Restaurer cette version',
+                  text: 'Le contenu actuel sera archiv\u00e9. Continuer ?',
+                  anchorEl: previewRestoreBtn,
+                  onConfirm: async (noticeEl) => {
+                    textarea.value = previewTextarea.value;
+                    counter.textContent = `${textarea.value.length} / 6000`;
+                    saveNotice.textContent = '';
+                    saveNotice.className = 'notice';
+                    noticeEl.textContent = 'Version restaur\u00e9e';
+                    noticeEl.className =
+                      'notice sensitive-modal-notice success';
+                  }
+                });
+              });
+              previewEl.appendChild(previewRestoreBtn);
+
+              history.forEach((entry, index) => {
+                const dateStr = entry.savedAt
+                  ? new Date(entry.savedAt).toLocaleString('fr-FR', {
+                      dateStyle: 'short',
+                      timeStyle: 'short'
+                    })
+                  : 'Date inconnue';
+                const itemBtn = document.createElement('button');
+                itemBtn.type = 'button';
+                itemBtn.className = 'history-item-btn';
+                itemBtn.textContent = `Version du ${dateStr}`;
+                itemBtn.addEventListener('click', () => {
+                  selectedPreviewIndex = index;
+                  previewTextarea.value =
+                    typeof entry.memorySource === 'string'
+                      ? entry.memorySource
+                      : typeof entry.memory === 'string'
+                        ? entry.memory
+                        : '';
+                  previewEl.style.display = 'block';
+                  historyList
+                    .querySelectorAll('.history-item-btn')
+                    .forEach((b, i) => {
+                      b.style.fontWeight = i === index ? '700' : '';
+                    });
+                });
+                historyList.appendChild(itemBtn);
+              });
+
+              historyContent.appendChild(historyList);
+              historyContent.appendChild(previewEl);
+              historySection.appendChild(historyContent);
+              container.appendChild(historySection);
+            }
+          } catch {
+            container.innerHTML =
+              '<p class="error-notice">Impossible de charger la m\u00e9moire.</p>';
+          }
+        }
+
+        function buildLocalImportCard() {
+          const card = document.createElement('div');
+          card.className = 'card';
+          card.id = 'localImportCardWrapper';
+
+          const title = document.createElement('div');
+          title.className = 'section-title';
+          title.textContent = 'Importer des conversations locales';
+          card.appendChild(title);
+
+          const help = document.createElement('p');
+          help.className = 'setting-help';
+          help.textContent =
+            'Ces conversations sont détectées uniquement sur cet appareil. Les conversations privées locales sont indiquées par un cadenas.';
+          card.appendChild(help);
+
+          const list = document.createElement('div');
+          list.className = 'import-list';
+          list.id = 'localImportList';
+          card.appendChild(list);
+
+          const actions = document.createElement('div');
+          actions.className = 'import-actions';
+
+          const refreshBtn = document.createElement('button');
+          refreshBtn.type = 'button';
+          refreshBtn.className = 'secondary-btn';
+          refreshBtn.textContent = 'Rafraîchir';
+
+          const importBtn = document.createElement('button');
+          importBtn.type = 'button';
+          importBtn.className = 'action-btn';
+          importBtn.textContent = 'Importer la sélection';
+          importBtn.disabled = true;
+
+          actions.appendChild(refreshBtn);
+          actions.appendChild(importBtn);
+          card.appendChild(actions);
+
+          const notice = document.createElement('div');
+          notice.className = 'notice';
+          notice.id = 'localImportNotice';
+          card.appendChild(notice);
+
+          let localItems = [];
+          let remoteOwnedIds = new Set();
+
+          const syncRemoteOwnedConversationIds = async () => {
+            try {
+              const res = await fetch('/api/account/conversations', {
+                method: 'GET',
+                credentials: 'include',
+                cache: 'no-store'
+              });
+
+              if (!res.ok) {
+                remoteOwnedIds = new Set();
+                return;
+              }
+
+              const data = await res.json().catch(() => ({}));
+              const conversations = Array.isArray(data?.conversations)
+                ? data.conversations
+                : [];
+              remoteOwnedIds = new Set(
+                conversations
+                  .map((item) => String(item?.id || '').trim())
+                  .filter(Boolean)
+              );
+            } catch {
+              remoteOwnedIds = new Set();
+            }
+          };
+
+          const updateImportButtonState = () => {
+            const checked = Array.from(
+              list.querySelectorAll('input[type="checkbox"]')
+            ).filter((input) => input.checked);
+            const ready = checked.length > 0;
+            importBtn.disabled = !ready;
+            importBtn.classList.toggle('is-ready', ready);
+          };
+
+          const renderItems = async () => {
+            await syncRemoteOwnedConversationIds();
+
+            localItems = loadLocalConversationsForImport();
+            const importableItems = localItems.filter(
+              (item) => !remoteOwnedIds.has(item.id)
+            );
+            list.innerHTML = '';
+            notice.textContent = '';
+            notice.className = 'notice';
+
+            if (importableItems.length === 0) {
+              const wrapper = document.getElementById('localImportCardWrapper');
+              if (wrapper) {
+                wrapper.style.display = 'none';
+              }
               updateImportButtonState();
               return;
             }
 
-            const importedCount = Number(data.importedCount || 0);
-            const alreadyOwnedCount = Number(data.alreadyOwnedCount || 0);
-            const skippedCount = Number(data.skippedCount || 0);
+            importableItems.forEach((item) => {
+              const row = document.createElement('div');
+              row.className = 'import-item';
 
-            notice.textContent = `Import termine: ${importedCount} importee(s), ${alreadyOwnedCount} deja rattachee(s), ${skippedCount} ignoree(s).`;
-            notice.className = "notice success";
+              const label = document.createElement('label');
+              const checkbox = document.createElement('input');
+              checkbox.type = 'checkbox';
+              checkbox.value = item.id;
+              checkbox.addEventListener('change', updateImportButtonState);
 
-            await renderItems();
-          } catch (_) {
-            notice.textContent = "Erreur reseau. Reessayez.";
+              const main = document.createElement('div');
+              main.className = 'import-item-main';
+
+              const titleLine = document.createElement('div');
+              titleLine.className = 'import-item-title';
+              titleLine.innerHTML = `${item.isPrivate ? buildPrivateLockIcon() : ''}<span>${escapeHtml(item.title)}</span>`;
+
+              const metaLine = document.createElement('div');
+              metaLine.className = 'import-item-meta';
+              metaLine.textContent = `${item.messages.length} message(s) · ${formatImportDate(item.updatedAt)}${item.isPrivate ? ' · locale privée' : ''}`;
+
+              main.appendChild(titleLine);
+              main.appendChild(metaLine);
+              label.appendChild(checkbox);
+              label.appendChild(main);
+              row.appendChild(label);
+              list.appendChild(row);
+            });
+
             updateImportButtonState();
-          }
-        });
-
-        renderItems();
-        return card;
-      }
-
-      function buildProfileCard() {
-        const card = document.createElement("div");
-        card.className = "card";
-
-        const title = document.createElement("div");
-        title.className = "section-title";
-        title.textContent = "Prénom et pays";
-        card.appendChild(title);
-
-        // Prénom
-        const firstNameGroup = document.createElement("div");
-        firstNameGroup.style.cssText = "margin-bottom:12px";
-        const firstNameLabel = document.createElement("label");
-        firstNameLabel.htmlFor = "profileFirstName";
-        firstNameLabel.style.cssText = "display:block;font-size:14px;color:#333;margin-bottom:5px";
-        firstNameLabel.textContent = "Prénom";
-        const firstNameInput = document.createElement("input");
-        firstNameInput.type = "text";
-        firstNameInput.id = "profileFirstName";
-        firstNameInput.maxLength = 50;
-        firstNameInput.autocomplete = "given-name";
-        firstNameInput.placeholder = "Votre prénom (facultatif)";
-        firstNameInput.value = currentUser && typeof currentUser.firstName === "string" ? currentUser.firstName : "";
-        firstNameInput.style.cssText = "width:100%;padding:11px 14px;border:1.5px solid #ddd;border-radius:8px;font-size:15px;color:#1a1a1a;background:#fafafa;outline:none;box-sizing:border-box";
-        firstNameGroup.appendChild(firstNameLabel);
-        firstNameGroup.appendChild(firstNameInput);
-        card.appendChild(firstNameGroup);
-
-        // Pays
-        const countryGroup = document.createElement("div");
-        countryGroup.style.cssText = "margin-bottom:16px";
-        const countryLabel = document.createElement("label");
-        countryLabel.style.cssText = "display:block;font-size:14px;color:#333;margin-bottom:5px";
-        countryLabel.textContent = "Pays";
-        const _currentCode = currentUser && typeof currentUser.country === "string" ? currentUser.country : "";
-        const countryDisplayEl = document.createElement("div");
-        countryDisplayEl.id = "profileCountryDisplay";
-        countryDisplayEl.style.cssText = "padding:11px 14px;border:1.5px solid #ddd;border-radius:8px;font-size:15px;background:#fafafa;min-height:44px;box-sizing:border-box;line-height:22px";
-        countryDisplayEl.style.color = _currentCode ? "#1a1a1a" : "#aaa";
-        countryDisplayEl.textContent = _currentCode ? getCountryName(_currentCode) : "\u2014 Non d\u00e9fini \u2014";
-        const countryPickerBtn = document.createElement("button");
-        countryPickerBtn.type = "button";
-        countryPickerBtn.style.cssText = "margin-top:8px;width:100%;padding:10px 14px;border:1.5px solid #245e66;border-radius:8px;font-size:14px;font-weight:600;background:#fff;color:#245e66;cursor:pointer";
-        countryPickerBtn.textContent = "Changer mon pays";
-        countryPickerBtn.addEventListener("click", function () {
-          var cur = currentUser && typeof currentUser.country === "string" ? currentUser.country : "";
-          window.location.href = "facilitat://country-picker?current=" + encodeURIComponent(cur) + "&callback_path=" + encodeURIComponent("/account.html");
-        });
-        countryGroup.appendChild(countryLabel);
-        countryGroup.appendChild(countryDisplayEl);
-        countryGroup.appendChild(countryPickerBtn);
-        card.appendChild(countryGroup);
-
-        const saveBtn = document.createElement("button");
-        saveBtn.type = "button";
-        saveBtn.className = "action-btn";
-        saveBtn.id = "saveProfileBtn";
-        saveBtn.textContent = "Enregistrer";
-        card.appendChild(saveBtn);
-
-        const notice = document.createElement("div");
-        notice.className = "notice";
-        notice.id = "profileNotice";
-        card.appendChild(notice);
-
-        const refreshSaveState = () => {
-          const currentFirstName = currentUser && typeof currentUser.firstName === "string" ? currentUser.firstName : "";
-          const changed = firstNameInput.value.trim() !== currentFirstName;
-          saveBtn.disabled = !changed;
-          saveBtn.classList.toggle("is-ready", changed);
-        };
-
-        firstNameInput.addEventListener("input", refreshSaveState);
-        refreshSaveState();
-
-        saveBtn.addEventListener("click", async () => {
-          notice.textContent = "";
-          notice.className = "notice";
-          saveBtn.disabled = true;
-
-          const body = {
-            firstName: firstNameInput.value.trim() || null
           };
 
-          try {
-            const res = await fetch("/api/account/profile", {
-              method: "PUT",
-              credentials: "include",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(body)
-            });
-
-            const data = await res.json().catch(() => ({}));
-
-            if (res.ok && data.success) {
-              if (currentUser) {
-                currentUser.firstName = data.firstName;
-              }
-              notice.textContent = "Enregistré.";
-              notice.className = "notice success";
-            } else {
-              notice.textContent = data.error || "Erreur lors de l'enregistrement.";
-              saveBtn.disabled = false;
-            }
-          } catch (_) {
-            notice.textContent = "Erreur réseau. Réessayez.";
-            saveBtn.disabled = false;
-          }
-        });
-
-        return card;
-      }
-
-      function buildDangerZoneCard() {
-        const card = document.createElement("div");
-        card.className = "card danger-zone-card";
-
-        const title = document.createElement("div");
-        title.className = "section-title";
-        title.textContent = "Zone sensible";
-        card.appendChild(title);
-
-        const warning = document.createElement("p");
-        warning.className = "danger-zone-warning";
-        warning.textContent = "Action irreversible.";
-        card.appendChild(warning);
-
-        card.appendChild(buildDangerAction({
-          actionKey: "reset",
-          title: "Remise a zero du compte",
-          description: "Effacer la memoire inter-session et les conversations enregistrees sur l'appareil.",
-          modalText: "Cette action efface la memoire inter-session et les conversations enregistrees sur l'appareil.",
-          onConfirm: handleSensitiveAccountReset
-        }));
-
-        card.appendChild(buildDangerAction({
-          actionKey: "closure",
-          title: "Cloturer mon compte",
-          description: "",
-          modalText: "Cette action cloture le compte et coupe l'acces immediatement.",
-          onConfirm: handleSensitiveAccountClosure
-        }));
-
-        return card;
-      }
-
-      function buildDangerAction({ actionKey, title, description, modalText, onConfirm }) {
-        const box = document.createElement("div");
-        box.className = "danger-action";
-
-        const triggerBtn = document.createElement("button");
-        triggerBtn.type = "button";
-        triggerBtn.className = "danger-action-trigger";
-        triggerBtn.textContent = title;
-        triggerBtn.addEventListener("click", () => {
-          openSensitiveActionModal({
-            title,
-            text: modalText || description || "Action irreversible.",
-            anchorEl: triggerBtn,
-            onConfirm
+          refreshBtn.addEventListener('click', async () => {
+            await renderItems();
           });
-        });
-        box.appendChild(triggerBtn);
 
-        if (description) {
-          const help = document.createElement("p");
-          help.className = "danger-action-help";
-          help.textContent = description;
-          box.appendChild(help);
-        }
-
-        box.dataset.actionKey = String(actionKey || "");
-        return box;
-      }
-
-      function ensureSensitiveActionModal() {
-        let overlay = document.getElementById("sensitiveActionModal");
-        if (overlay) return overlay;
-
-        overlay = document.createElement("div");
-        overlay.id = "sensitiveActionModal";
-        overlay.className = "usage-modal-overlay sensitive-modal-overlay";
-        overlay.innerHTML = [
-          '<div class="usage-modal" role="dialog" aria-modal="true" aria-labelledby="sensitiveActionModalTitle">',
-          '  <h2 class="usage-modal-title" id="sensitiveActionModalTitle"></h2>',
-          '  <p class="usage-modal-text" id="sensitiveActionModalText"></p>',
-          '  <p class="notice sensitive-modal-notice" id="sensitiveActionModalNotice"></p>',
-          '  <div class="sensitive-modal-actions">',
-          '    <button type="button" class="secondary-btn" id="sensitiveActionModalCancel">Annuler</button>',
-          '    <button type="button" class="action-btn danger-confirm-btn" id="sensitiveActionModalConfirm" disabled>Confirmer (5)</button>',
-          '  </div>',
-          '</div>'
-        ].join("");
-
-        document.body.appendChild(overlay);
-        return overlay;
-      }
-
-      function openSensitiveActionModal({ title, text, anchorEl, onConfirm }) {
-        const overlay = ensureSensitiveActionModal();
-        const titleEl = overlay.querySelector("#sensitiveActionModalTitle");
-        const textEl = overlay.querySelector("#sensitiveActionModalText");
-        const noticeEl = overlay.querySelector("#sensitiveActionModalNotice");
-        const cancelBtn = overlay.querySelector("#sensitiveActionModalCancel");
-        const confirmBtn = overlay.querySelector("#sensitiveActionModalConfirm");
-
-        const anchorRect = anchorEl && typeof anchorEl.getBoundingClientRect === "function"
-          ? anchorEl.getBoundingClientRect()
-          : null;
-        const preferredTop = anchorRect && Number.isFinite(anchorRect.top)
-          ? Math.round(anchorRect.top - 8)
-          : 72;
-        const clampedTop = Math.max(20, Math.min(preferredTop, Math.max(20, window.innerHeight - 260)));
-        overlay.style.paddingTop = `${clampedTop}px`;
-
-        titleEl.textContent = title || "Confirmation";
-        textEl.textContent = text || "Action irreversible.";
-        noticeEl.textContent = "";
-        noticeEl.className = "notice sensitive-modal-notice";
-
-        let countdownTimer = null;
-        let remaining = 5;
-        let isBusy = false;
-        const handleKeydown = event => {
-          if (event.key === "Escape") {
-            requestClose();
-          }
-        };
-
-        const cleanup = () => {
-          if (countdownTimer) {
-            clearInterval(countdownTimer);
-            countdownTimer = null;
-          }
-          overlay.classList.remove("is-open");
-          overlay.onclick = null;
-          cancelBtn.onclick = null;
-          confirmBtn.onclick = null;
-          document.removeEventListener("keydown", handleKeydown);
-        };
-
-        const renderConfirmState = () => {
-          if (remaining <= 0) {
-            confirmBtn.disabled = false;
-            confirmBtn.classList.add("is-ready");
-            confirmBtn.textContent = "Confirmer";
-            return;
-          }
-
-          confirmBtn.disabled = true;
-          confirmBtn.classList.remove("is-ready");
-          confirmBtn.textContent = `Confirmer (${remaining})`;
-        };
-
-        const requestClose = () => {
-          if (isBusy) return;
-          cleanup();
-        };
-
-        renderConfirmState();
-        countdownTimer = setInterval(() => {
-          remaining -= 1;
-          renderConfirmState();
-          if (remaining <= 0 && countdownTimer) {
-            clearInterval(countdownTimer);
-            countdownTimer = null;
-          }
-        }, 1000);
-
-        overlay.onclick = event => {
-          if (event.target === overlay) {
-            requestClose();
-          }
-        };
-
-        cancelBtn.onclick = requestClose;
-        document.addEventListener("keydown", handleKeydown);
-
-        confirmBtn.onclick = async () => {
-          if (confirmBtn.disabled || isBusy) return;
-
-          isBusy = true;
-          cancelBtn.disabled = true;
-          confirmBtn.disabled = true;
-          confirmBtn.classList.remove("is-ready");
-          noticeEl.textContent = "";
-          noticeEl.className = "notice sensitive-modal-notice";
-
-          try {
-            await onConfirm(noticeEl);
-          } catch (err) {
-            console.warn("[ACCOUNT][SENSITIVE_ACTION_FAILED]", {
-              title: title || "unknown_action",
-              error: err && err.message ? err.message : String(err)
-            });
-            noticeEl.textContent = "Operation impossible pour le moment";
-            noticeEl.className = "notice sensitive-modal-notice";
-            isBusy = false;
-            cancelBtn.disabled = false;
-            renderConfirmState();
-          }
-        };
-
-        overlay.classList.add("is-open");
-      }
-
-      function clearLocalConversationStorageForReset() {
-        const keysToRemove = [
-          CONVERSATIONS_INDEX_KEY,
-          PRIVATE_CONVERSATION_IDS_KEY,
-          "facilitatio_conversation_id",
-          "facilitatio_hidden_trunk_ids"
-        ];
-
-        keysToRemove.forEach((key) => {
-          try {
-            localStorage.removeItem(key);
-          } catch {}
-        });
-
-        const conversationKeys = [];
-        for (let i = 0; i < localStorage.length; i += 1) {
-          const key = String(localStorage.key(i) || "");
-          if (key.startsWith(CONVERSATION_STORAGE_KEY_PREFIX)) {
-            conversationKeys.push(key);
-          }
-        }
-
-        conversationKeys.forEach((key) => {
-          try {
-            localStorage.removeItem(key);
-          } catch {}
-        });
-      }
-
-      function rotateLocalAnonymousUserId() {
-        const next = `u_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
-        try {
-          localStorage.setItem(USER_ID_KEY, next);
-        } catch {}
-      }
-
-      async function handleSensitiveAccountReset(noticeEl) {
-        const res = await fetch("/api/account/reset", {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({})
-        });
-
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok || data.success !== true) {
-          console.warn("[ACCOUNT][RESET_FAILED]", {
-            status: res.status,
-            error: data?.error || null,
-            success: data?.success === true
-          });
-          throw new Error("Operation impossible pour le moment");
-        }
-
-        clearLocalConversationStorageForReset();
-        rotateLocalAnonymousUserId();
-
-        noticeEl.textContent = "Remise a zero effectuee";
-        noticeEl.className = "notice success";
-
-        setTimeout(() => {
-          navigateAway("/index.html", { replace: true });
-        }, 700);
-      }
-
-      async function handleSensitiveAccountClosure(noticeEl) {
-        const res = await fetch("/api/account/close", {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({})
-        });
-
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok || data.success !== true) {
-          console.warn("[ACCOUNT][CLOSURE_FAILED]", {
-            status: res.status,
-            error: data?.error || null,
-            success: data?.success === true
-          });
-          throw new Error("Operation impossible pour le moment");
-        }
-
-        noticeEl.textContent = "Compte reinitialise";
-        noticeEl.className = "notice success";
-
-        setTimeout(() => {
-          navigateAway("/auth.html", { replace: true });
-        }, 700);
-      }
-
-      function buildPrivacyEntryCard() {
-        const card = document.createElement("div");
-        card.className = "card clickable-card";
-        card.tabIndex = 0;
-        card.setAttribute("role", "button");
-        card.setAttribute("aria-label", "Ouvrir Confidentialite");
-
-        const linkRow = document.createElement("div");
-        linkRow.className = "card-link-row";
-
-        const textWrap = document.createElement("div");
-
-        const title = document.createElement("div");
-        title.className = "section-title";
-        title.textContent = "Confidentialite";
-        textWrap.appendChild(title);
-
-        const help = document.createElement("p");
-        help.className = "setting-help";
-        help.textContent = "Reglez ici vos options de confidentialite, dont le verrouillage biometrie et le mot de passe.";
-        textWrap.appendChild(help);
-
-        const arrow = document.createElement("div");
-        arrow.className = "card-link-arrow";
-        arrow.textContent = ">";
-
-        linkRow.appendChild(textWrap);
-        linkRow.appendChild(arrow);
-        card.appendChild(linkRow);
-
-        const activate = () => openPrivacySubscreen();
-        card.addEventListener("click", activate);
-        card.addEventListener("keydown", event => {
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            activate();
-          }
-        });
-
-        return card;
-      }
-
-      function buildPrivacySubscreen() {
-        const wrap = document.createElement("div");
-
-        const header = document.createElement("div");
-        header.className = "subscreen-header";
-
-        const title = document.createElement("h1");
-        title.textContent = "Confidentialite";
-        title.style.margin = "0";
-
-        header.appendChild(title);
-        wrap.appendChild(header);
-
-        wrap.appendChild(buildPrivateDefaultCard());
-        wrap.appendChild(buildBiometricLockCard());
-        wrap.appendChild(buildPasswordCard());
-
-        return wrap;
-      }
-
-      function syncNativeBiometricConfig(enabled) {
-        try {
-          if (!/Android/i.test(navigator.userAgent || "")) return;
-          const callbackPath = "/account.html?_account_subscreen=privacy";
-          const url = "facilitat://biometric-config"
-            + "?enabled=" + (enabled === true ? "1" : "0")
-            + "&relock=0"
-            + "&callback_path=" + encodeURIComponent(callbackPath);
-          window.location.href = url;
-        } catch (_) {}
-      }
-
-      function syncNativeBiometricConfigIfNeeded(enabled) {
-        try {
-          if (!/Android/i.test(navigator.userAgent || "")) return;
-          const normalizedEnabled = enabled === true;
-          const hash = normalizedEnabled ? "1" : "0";
-          const key = "facilitat_native_bio_policy_hash_v1";
-          const previous = localStorage.getItem(key);
-          if (previous === hash) return;
-          localStorage.setItem(key, hash);
-          syncNativeBiometricConfig(normalizedEnabled);
-        } catch (_) {}
-      }
-
-      function buildBiometricLockCard() {
-        const card = document.createElement("div");
-        card.className = "card";
-
-        const title = document.createElement("div");
-        title.className = "section-title";
-        title.textContent = "Verrouillage biometrie";
-        card.appendChild(title);
-
-        const row = document.createElement("label");
-        row.className = "setting-row";
-        row.setAttribute("for", "biometricLockToggle");
-
-        const rowText = document.createElement("span");
-        rowText.textContent = "Demander la biometrie pour acceder a la session";
-        rowText.style.fontSize = "14px";
-        rowText.style.color = "#333";
-
-        const toggle = document.createElement("input");
-        toggle.id = "biometricLockToggle";
-        toggle.type = "checkbox";
-        toggle.checked = currentUser && currentUser.biometricLockEnabled === true;
-        syncNativeBiometricConfigIfNeeded(toggle.checked === true);
-
-        row.appendChild(rowText);
-        row.appendChild(toggle);
-        card.appendChild(row);
-
-        const note = document.createElement("p");
-        note.className = "longterm-memory-warning";
-        note.style.marginTop = "10px";
-        note.textContent = "Attention : certains appareils ne supportent pas la securite biometrie au retour dans l'app deja ouverte. Si ce probleme vous concerne, pensez a bien refermer votre application apres usage.";
-        card.appendChild(note);
-
-        const autoSaveBiometric = async () => {
-          try {
-            const desiredEnabled = toggle.checked === true;
-
-            const res = await fetch("/api/account/preferences", {
-              method: "PUT",
-              credentials: "include",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                biometricLockEnabled: desiredEnabled,
-                biometricRelockSeconds: 0
-              })
-            });
-
-            const data = await res.json().catch(() => ({}));
-
-            if (!res.ok) return;
-
-            currentUser.biometricLockEnabled = data.biometricLockEnabled === true;
-            currentUser.biometricRelockSeconds = 0;
-            toggle.checked = currentUser.biometricLockEnabled === true;
-            syncNativeBiometricConfigIfNeeded(currentUser.biometricLockEnabled === true);
-          } catch (_) {}
-        };
-
-        toggle.addEventListener("change", autoSaveBiometric);
-
-        return card;
-      }
-
-      function buildPrivateDefaultCard() {
-        const card = document.createElement("div");
-        card.className = "card";
-
-        const title = document.createElement("div");
-        title.className = "section-title";
-        title.textContent = "Confidentialite par defaut";
-        card.appendChild(title);
-
-        const row = document.createElement("label");
-        row.className = "setting-row";
-        row.setAttribute("for", "privateDefaultToggle");
-
-        const rowText = document.createElement("span");
-        rowText.textContent = "Mode prive par defaut pour les futures conversations";
-        rowText.style.fontSize = "14px";
-        rowText.style.color = "#333";
-
-        const toggle = document.createElement("input");
-        toggle.id = "privateDefaultToggle";
-        toggle.type = "checkbox";
-        toggle.checked = currentUser && currentUser.privateConversationsByDefault === true;
-
-        row.appendChild(rowText);
-        row.appendChild(toggle);
-        card.appendChild(row);
-
-        toggle.addEventListener("change", async () => {
-          try {
-            const res = await fetch("/api/account/preferences", {
-              method: "PUT",
-              credentials: "include",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                privateConversationsByDefault: toggle.checked === true
-              })
-            });
-
-            const data = await res.json().catch(() => ({}));
-
-            if (!res.ok) {
-              toggle.checked = currentUser && currentUser.privateConversationsByDefault === true;
+          importBtn.addEventListener('click', async () => {
+            const selectedIds = Array.from(
+              list.querySelectorAll('input[type="checkbox"]')
+            )
+              .filter((input) => input.checked)
+              .map((input) => String(input.value || '').trim())
+              .filter(Boolean);
+
+            if (selectedIds.length === 0) {
+              updateImportButtonState();
               return;
             }
 
-            currentUser.privateConversationsByDefault = data.privateConversationsByDefault === true;
-            toggle.checked = currentUser.privateConversationsByDefault === true;
-          } catch (_) {
-            toggle.checked = currentUser && currentUser.privateConversationsByDefault === true;
+            const selectedConversations = selectedIds
+              .map((id) => localItems.find((item) => item.id === id))
+              .filter(Boolean);
+
+            importBtn.disabled = true;
+            importBtn.classList.remove('is-ready');
+            notice.textContent = '';
+            notice.className = 'notice';
+
+            try {
+              const res = await fetch(
+                '/api/account/conversations/import-local',
+                {
+                  method: 'POST',
+                  credentials: 'include',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    anonymousUserId: String(
+                      localStorage.getItem(USER_ID_KEY) || ''
+                    ).trim(),
+                    conversations: selectedConversations.map((item) => ({
+                      id: item.id,
+                      title: item.title,
+                      isCustomTitle: item.isCustomTitle === true,
+                      isPrivate: item.isPrivate === true,
+                      memory: item.memory,
+                      flags: item.flags,
+                      updatedAt: item.updatedAt,
+                      messages: item.messages
+                    }))
+                  })
+                }
+              );
+
+              const data = await res.json().catch(() => ({}));
+
+              if (!res.ok) {
+                notice.textContent = mapAccountApiErrorToUserMessage(
+                  data.error,
+                  'Import impossible pour le moment.'
+                );
+                updateImportButtonState();
+                return;
+              }
+
+              const importedCount = Number(data.importedCount || 0);
+              const alreadyOwnedCount = Number(data.alreadyOwnedCount || 0);
+              const skippedCount = Number(data.skippedCount || 0);
+
+              notice.textContent = `Import terminé: ${importedCount} importée(s), ${alreadyOwnedCount} déjà rattachée(s), ${skippedCount} ignorée(s).`;
+              notice.className = 'notice success';
+
+              await renderItems();
+            } catch (_) {
+              notice.textContent =
+                'Le service ne répond pas pour le moment. Un nouvel essai sera possible dans quelques instants.';
+              updateImportButtonState();
+            }
+          });
+
+          renderItems();
+          return card;
+        }
+
+        function buildProfileCard() {
+          const card = document.createElement('div');
+          card.className = 'card';
+
+          const title = document.createElement('div');
+          title.className = 'section-title';
+          title.textContent = 'Prénom et pays';
+          card.appendChild(title);
+
+          // Prénom
+          const firstNameGroup = document.createElement('div');
+          firstNameGroup.style.cssText = 'margin-bottom:12px';
+          const firstNameLabel = document.createElement('label');
+          firstNameLabel.htmlFor = 'profileFirstName';
+          firstNameLabel.style.cssText =
+            'display:block;font-size:14px;color:#333;margin-bottom:5px';
+          firstNameLabel.textContent = 'Prénom';
+          const firstNameInput = document.createElement('input');
+          firstNameInput.type = 'text';
+          firstNameInput.id = 'profileFirstName';
+          firstNameInput.maxLength = 50;
+          firstNameInput.autocomplete = 'given-name';
+          firstNameInput.placeholder = 'Votre prénom (facultatif)';
+          firstNameInput.value =
+            currentUser && typeof currentUser.firstName === 'string'
+              ? currentUser.firstName
+              : '';
+          firstNameInput.style.cssText =
+            'width:100%;padding:11px 14px;border:1.5px solid #ddd;border-radius:8px;font-size:15px;color:#1a1a1a;background:#fafafa;outline:none;box-sizing:border-box';
+          firstNameGroup.appendChild(firstNameLabel);
+          firstNameGroup.appendChild(firstNameInput);
+          card.appendChild(firstNameGroup);
+
+          // Pays
+          const countryGroup = document.createElement('div');
+          countryGroup.style.cssText = 'margin-bottom:16px';
+          const countryLabel = document.createElement('label');
+          countryLabel.style.cssText =
+            'display:block;font-size:14px;color:#333;margin-bottom:5px';
+          countryLabel.textContent = 'Pays';
+          const _currentCode =
+            currentUser && typeof currentUser.country === 'string'
+              ? currentUser.country
+              : '';
+          const countryDisplayEl = document.createElement('div');
+          countryDisplayEl.id = 'profileCountryDisplay';
+          countryDisplayEl.style.cssText =
+            'padding:11px 14px;border:1.5px solid #ddd;border-radius:8px;font-size:15px;background:#fafafa;min-height:44px;box-sizing:border-box;line-height:22px';
+          countryDisplayEl.style.color = _currentCode ? '#1a1a1a' : '#aaa';
+          countryDisplayEl.textContent = _currentCode
+            ? getCountryName(_currentCode)
+            : '\u2014 Non d\u00e9fini \u2014';
+          const countryPickerBtn = document.createElement('button');
+          countryPickerBtn.type = 'button';
+          countryPickerBtn.style.cssText =
+            'margin-top:8px;width:100%;padding:10px 14px;border:1.5px solid #245e66;border-radius:8px;font-size:14px;font-weight:600;background:#fff;color:#245e66;cursor:pointer';
+          countryPickerBtn.textContent = 'Changer mon pays';
+          countryPickerBtn.addEventListener('click', function () {
+            var cur =
+              currentUser && typeof currentUser.country === 'string'
+                ? currentUser.country
+                : '';
+            window.location.href =
+              'facilitat://country-picker?current=' +
+              encodeURIComponent(cur) +
+              '&callback_path=' +
+              encodeURIComponent('/account.html');
+          });
+          countryGroup.appendChild(countryLabel);
+          countryGroup.appendChild(countryDisplayEl);
+          countryGroup.appendChild(countryPickerBtn);
+          card.appendChild(countryGroup);
+
+          const saveBtn = document.createElement('button');
+          saveBtn.type = 'button';
+          saveBtn.className = 'action-btn';
+          saveBtn.id = 'saveProfileBtn';
+          saveBtn.textContent = 'Enregistrer';
+          card.appendChild(saveBtn);
+
+          const notice = document.createElement('div');
+          notice.className = 'notice';
+          notice.id = 'profileNotice';
+          card.appendChild(notice);
+
+          const refreshSaveState = () => {
+            const currentFirstName =
+              currentUser && typeof currentUser.firstName === 'string'
+                ? currentUser.firstName
+                : '';
+            const changed = firstNameInput.value.trim() !== currentFirstName;
+            saveBtn.disabled = !changed;
+            saveBtn.classList.toggle('is-ready', changed);
+          };
+
+          firstNameInput.addEventListener('input', refreshSaveState);
+          refreshSaveState();
+
+          saveBtn.addEventListener('click', async () => {
+            notice.textContent = '';
+            notice.className = 'notice';
+            saveBtn.disabled = true;
+
+            const body = {
+              firstName: firstNameInput.value.trim() || null
+            };
+
+            try {
+              const res = await fetch('/api/account/profile', {
+                method: 'PUT',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+              });
+
+              const data = await res.json().catch(() => ({}));
+
+              if (res.ok && data.success) {
+                if (currentUser) {
+                  currentUser.firstName = data.firstName;
+                }
+                notice.textContent = 'Enregistré.';
+                notice.className = 'notice success';
+              } else {
+                notice.textContent = mapAccountApiErrorToUserMessage(
+                  data.error,
+                  "Impossible d'enregistrer la modification pour le moment."
+                );
+                saveBtn.disabled = false;
+              }
+            } catch (_) {
+              notice.textContent =
+                'Le service ne répond pas pour le moment. Un nouvel essai sera possible dans quelques instants.';
+              saveBtn.disabled = false;
+            }
+          });
+
+          return card;
+        }
+
+        function buildDangerZoneCard() {
+          const section = document.createElement('div');
+          section.className = 'danger-zone-section';
+
+          section.appendChild(
+            buildDangerAction({
+              actionKey: 'reset',
+              title: 'Remise à zéro du compte',
+              description:
+                "Effacer la mémoire inter-session et les conversations enregistrées sur l'appareil.",
+              modalText:
+                "Cette action efface la mémoire inter-session et les conversations enregistrées sur l'appareil.",
+              onConfirm: handleSensitiveAccountReset
+            })
+          );
+
+          section.appendChild(
+            buildDangerAction({
+              actionKey: 'closure',
+              title: 'Clôturer mon compte',
+              description: '',
+              modalText:
+                "Cette action clôture le compte et coupe l'accès immédiatement.",
+              onConfirm: handleSensitiveAccountClosure
+            })
+          );
+
+          return section;
+        }
+
+        function buildDangerAction({
+          actionKey,
+          title,
+          description,
+          modalText,
+          onConfirm
+        }) {
+          const box = document.createElement('div');
+          box.className = 'danger-action';
+
+          const triggerBtn = document.createElement('button');
+          triggerBtn.type = 'button';
+          triggerBtn.className = 'danger-action-trigger';
+          triggerBtn.textContent = title;
+          triggerBtn.addEventListener('click', () => {
+            openSensitiveActionModal({
+              title,
+              text: modalText || description || 'Action irréversible.',
+              anchorEl: triggerBtn,
+              onConfirm
+            });
+          });
+          box.appendChild(triggerBtn);
+
+          if (description) {
+            const help = document.createElement('p');
+            help.className = 'danger-action-help';
+            help.textContent = description;
+            box.appendChild(help);
           }
-        });
 
-        return card;
-      }
+          box.dataset.actionKey = String(actionKey || '');
+          return box;
+        }
 
-      function buildPasswordCard() {
-        const card = document.createElement("div");
-        card.className = "card";
+        function ensureSensitiveActionModal() {
+          let overlay = document.getElementById('sensitiveActionModal');
+          if (overlay) return overlay;
 
-        const title = document.createElement("div");
-        title.className = "section-title";
-        title.textContent = "Changer mon mot de passe";
-        card.appendChild(title);
+          overlay = document.createElement('div');
+          overlay.id = 'sensitiveActionModal';
+          overlay.className = 'usage-modal-overlay sensitive-modal-overlay';
+          overlay.innerHTML = [
+            '<div class="usage-modal" role="dialog" aria-modal="true" aria-labelledby="sensitiveActionModalTitle">',
+            '  <h2 class="usage-modal-title" id="sensitiveActionModalTitle"></h2>',
+            '  <p class="usage-modal-text" id="sensitiveActionModalText"></p>',
+            '  <p class="notice sensitive-modal-notice" id="sensitiveActionModalNotice"></p>',
+            '  <div class="sensitive-modal-actions">',
+            '    <button type="button" class="secondary-btn" id="sensitiveActionModalCancel">Annuler</button>',
+            '    <button type="button" class="action-btn danger-confirm-btn" id="sensitiveActionModalConfirm" disabled>Confirmer (5)</button>',
+            '  </div>',
+            '</div>'
+          ].join('');
 
-        const form = document.createElement("form");
-        form.id = "changePasswordForm";
-        form.innerHTML = [
-          '<div class="field-group">',
-          '  <label class="field-label" for="currentPassword">Mot de passe actuel</label>',
-          '  <div class="password-field-wrap">',
-          '    <input type="password" id="currentPassword" autocomplete="current-password" required>',
-          '    <button type="button" class="toggle-password-btn" data-target="currentPassword">Voir</button>',
-          '  </div>',
-          '</div>',
-          '<div class="field-group">',
-          '  <label class="field-label" for="newPassword">Nouveau mot de passe</label>',
-          '  <div class="password-field-wrap">',
-          '    <input type="password" id="newPassword" autocomplete="new-password" required>',
-          '    <button type="button" class="toggle-password-btn" data-target="newPassword">Voir</button>',
-          '  </div>',
-          '</div>',
-          '<div class="field-group">',
-          '  <label class="field-label" for="confirmNewPassword">Confirmer le nouveau mot de passe</label>',
-          '  <div class="password-field-wrap">',
-          '    <input type="password" id="confirmNewPassword" autocomplete="new-password" required>',
-          '    <button type="button" class="toggle-password-btn" data-target="confirmNewPassword">Voir</button>',
-          '  </div>',
-          '</div>',
-          '<button type="submit" class="action-btn" id="changePasswordBtn" disabled>Enregistrer</button>',
-          '<div class="notice" id="changePasswordNotice"></div>'
-        ].join('');
-        form.addEventListener("submit", handlePasswordChange);
-        card.appendChild(form);
+          document.body.appendChild(overlay);
+          return overlay;
+        }
 
-        initPasswordToggles(card);
-        initChangePasswordButtonState(form);
-        return card;
-      }
+        function openSensitiveActionModal({
+          title,
+          text,
+          anchorEl,
+          onConfirm
+        }) {
+          const overlay = ensureSensitiveActionModal();
+          const titleEl = overlay.querySelector('#sensitiveActionModalTitle');
+          const textEl = overlay.querySelector('#sensitiveActionModalText');
+          const noticeEl = overlay.querySelector('#sensitiveActionModalNotice');
+          const cancelBtn = overlay.querySelector(
+            '#sensitiveActionModalCancel'
+          );
+          const confirmBtn = overlay.querySelector(
+            '#sensitiveActionModalConfirm'
+          );
 
-      function initChangePasswordButtonState(form) {
-        const currentInput = form.querySelector("#currentPassword");
-        const newInput = form.querySelector("#newPassword");
-        const confirmInput = form.querySelector("#confirmNewPassword");
-        const btn = form.querySelector("#changePasswordBtn");
-        if (!currentInput || !newInput || !confirmInput || !btn) return;
+          // Modal centers naturally on viewport via flexbox
 
-        const refresh = () => {
-          const currentValue = String(currentInput.value || "");
-          const newValue = String(newInput.value || "");
-          const confirmValue = String(confirmInput.value || "");
-          const ready = currentValue.length > 0 && newValue.length > 0 && confirmValue.length > 0 && newValue === confirmValue;
-          btn.disabled = !ready;
-          btn.classList.toggle("is-ready", ready);
-        };
+          titleEl.textContent = title || 'Confirmation';
+          textEl.textContent = text || 'Action irréversible.';
+          noticeEl.textContent = '';
+          noticeEl.className = 'notice sensitive-modal-notice';
 
-        currentInput.addEventListener("input", refresh);
-        newInput.addEventListener("input", refresh);
-        confirmInput.addEventListener("input", refresh);
-        refresh();
-      }
+          let countdownTimer = null;
+          let remaining = 5;
+          let isBusy = false;
+          const handleKeydown = (event) => {
+            if (event.key === 'Escape') {
+              requestClose();
+            }
+          };
 
-      function initPasswordToggles(root) {
-        root.querySelectorAll(".toggle-password-btn").forEach(btn => {
-          btn.addEventListener("click", () => {
-            const targetId = btn.getAttribute("data-target");
+          const cleanup = () => {
+            if (countdownTimer) {
+              clearInterval(countdownTimer);
+              countdownTimer = null;
+            }
+            overlay.classList.remove('is-open');
+            overlay.onclick = null;
+            cancelBtn.onclick = null;
+            confirmBtn.onclick = null;
+            document.removeEventListener('keydown', handleKeydown);
+          };
+
+          const renderConfirmState = () => {
+            if (remaining <= 0) {
+              confirmBtn.disabled = false;
+              confirmBtn.classList.add('is-ready');
+              confirmBtn.textContent = 'Confirmer';
+              return;
+            }
+
+            confirmBtn.disabled = true;
+            confirmBtn.classList.remove('is-ready');
+            confirmBtn.textContent = `Confirmer (${remaining})`;
+          };
+
+          const requestClose = () => {
+            if (isBusy) return;
+            cleanup();
+          };
+
+          renderConfirmState();
+          countdownTimer = setInterval(() => {
+            remaining -= 1;
+            renderConfirmState();
+            if (remaining <= 0 && countdownTimer) {
+              clearInterval(countdownTimer);
+              countdownTimer = null;
+            }
+          }, 1000);
+
+          overlay.onclick = (event) => {
+            if (event.target === overlay) {
+              requestClose();
+            }
+          };
+
+          cancelBtn.onclick = requestClose;
+          document.addEventListener('keydown', handleKeydown);
+
+          confirmBtn.onclick = async () => {
+            if (confirmBtn.disabled || isBusy) return;
+
+            isBusy = true;
+            cancelBtn.disabled = true;
+            confirmBtn.disabled = true;
+            confirmBtn.classList.remove('is-ready');
+            noticeEl.textContent = '';
+            noticeEl.className = 'notice sensitive-modal-notice';
+
+            try {
+              await onConfirm(noticeEl);
+            } catch (err) {
+              console.warn('[ACCOUNT][SENSITIVE_ACTION_FAILED]', {
+                title: title || 'unknown_action',
+                error: err && err.message ? err.message : String(err)
+              });
+              noticeEl.textContent = 'Opération impossible pour le moment';
+              noticeEl.className = 'notice sensitive-modal-notice';
+              isBusy = false;
+              cancelBtn.disabled = false;
+              renderConfirmState();
+            }
+          };
+
+          overlay.classList.add('is-open');
+        }
+
+        function clearLocalConversationStorageForReset() {
+          const keysToRemove = [
+            CONVERSATIONS_INDEX_KEY,
+            PRIVATE_CONVERSATION_IDS_KEY,
+            'facilitatio_conversation_id',
+            'facilitatio_hidden_trunk_ids'
+          ];
+
+          keysToRemove.forEach((key) => {
+            try {
+              localStorage.removeItem(key);
+            } catch {}
+          });
+
+          const conversationKeys = [];
+          for (let i = 0; i < localStorage.length; i += 1) {
+            const key = String(localStorage.key(i) || '');
+            if (key.startsWith(CONVERSATION_STORAGE_KEY_PREFIX)) {
+              conversationKeys.push(key);
+            }
+          }
+
+          conversationKeys.forEach((key) => {
+            try {
+              localStorage.removeItem(key);
+            } catch {}
+          });
+        }
+
+        function rotateLocalAnonymousUserId() {
+          const next = `u_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+          try {
+            localStorage.setItem(USER_ID_KEY, next);
+          } catch {}
+        }
+
+        async function handleSensitiveAccountReset(noticeEl) {
+          const res = await fetch('/api/account/reset', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({})
+          });
+
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok || data.success !== true) {
+            console.warn('[ACCOUNT][RESET_FAILED]', {
+              status: res.status,
+              error: data?.error || null,
+              success: data?.success === true
+            });
+            throw new Error('Opération impossible pour le moment');
+          }
+
+          clearLocalConversationStorageForReset();
+          rotateLocalAnonymousUserId();
+
+          noticeEl.textContent = 'Remise à zéro effectuée';
+          noticeEl.className = 'notice success';
+
+          setTimeout(() => {
+            navigateAway('/index.html', { replace: true });
+          }, 700);
+        }
+
+        async function handleSensitiveAccountClosure(noticeEl) {
+          const res = await fetch('/api/account/close', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({})
+          });
+
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok || data.success !== true) {
+            console.warn('[ACCOUNT][CLOSURE_FAILED]', {
+              status: res.status,
+              error: data?.error || null,
+              success: data?.success === true
+            });
+            throw new Error('Opération impossible pour le moment');
+          }
+
+          noticeEl.textContent = 'Compte réinitialisé';
+          noticeEl.className = 'notice success';
+
+          setTimeout(() => {
+            navigateAway('/auth.html', { replace: true });
+          }, 700);
+        }
+
+        function buildPrivacyEntryCard() {
+          const card = document.createElement('div');
+          card.className = 'card clickable-card';
+          card.tabIndex = 0;
+          card.setAttribute('role', 'button');
+          card.setAttribute('aria-label', 'Ouvrir Confidentialité');
+
+          const linkRow = document.createElement('div');
+          linkRow.className = 'card-link-row';
+
+          const textWrap = document.createElement('div');
+
+          const title = document.createElement('div');
+          title.className = 'section-title';
+          title.textContent = 'Confidentialité';
+          title.style.marginBottom = '0';
+          textWrap.appendChild(title);
+
+          const arrow = document.createElement('div');
+          arrow.className = 'card-link-arrow';
+          arrow.innerHTML =
+            '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg>';
+
+          linkRow.appendChild(textWrap);
+          linkRow.appendChild(arrow);
+          card.appendChild(linkRow);
+
+          const activate = () => openPrivacySubscreen();
+          card.addEventListener('click', activate);
+          card.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              activate();
+            }
+          });
+
+          return card;
+        }
+
+        function buildPrivacySubscreen() {
+          const wrap = document.createElement('div');
+
+          const header = document.createElement('div');
+          header.className = 'subscreen-header';
+
+          const title = document.createElement('h1');
+          title.textContent = 'Confidentialité';
+          title.style.margin = '0';
+
+          header.appendChild(title);
+          wrap.appendChild(header);
+
+          wrap.appendChild(buildPrivateDefaultCard());
+          wrap.appendChild(buildBiometricLockCard());
+          wrap.appendChild(buildPasswordCard());
+
+          return wrap;
+        }
+
+        function syncNativeBiometricConfig(enabled) {
+          try {
+            if (!/Android/i.test(navigator.userAgent || '')) return;
+            const callbackPath = '/account.html?_account_subscreen=privacy';
+            const url =
+              'facilitat://biometric-config' +
+              '?enabled=' +
+              (enabled === true ? '1' : '0') +
+              '&relock=0' +
+              '&callback_path=' +
+              encodeURIComponent(callbackPath);
+            window.location.href = url;
+          } catch (_) {}
+        }
+
+        function syncNativeBiometricConfigIfNeeded(enabled) {
+          try {
+            if (!/Android/i.test(navigator.userAgent || '')) return;
+            const normalizedEnabled = enabled === true;
+            const hash = normalizedEnabled ? '1' : '0';
+            const key = 'facilitat_native_bio_policy_hash_v1';
+            const previous = localStorage.getItem(key);
+            if (previous === hash) return;
+            localStorage.setItem(key, hash);
+            syncNativeBiometricConfig(normalizedEnabled);
+          } catch (_) {}
+        }
+
+        function createToggleSaveStatus() {
+          const statusEl = document.createElement('p');
+          statusEl.className = 'setting-save-status';
+          statusEl.textContent = '';
+
+          function setStatus(text, className) {
+            statusEl.textContent = text || '';
+            statusEl.className =
+              'setting-save-status' + (className ? ' ' + className : '');
+          }
+
+          return {
+            element: statusEl,
+            saving: () => setStatus('Enregistrement…', 'is-saving'),
+            success: () => setStatus('Enregistré', 'is-success'),
+            error: () => setStatus('Non enregistré — réessaie', 'is-error')
+          };
+        }
+
+        function buildBiometricLockCard() {
+          const card = document.createElement('div');
+          card.className = 'card';
+
+          const title = document.createElement('div');
+          title.className = 'section-title';
+          title.textContent = 'Verrouillage biométrie';
+          card.appendChild(title);
+
+          const row = document.createElement('label');
+          row.className = 'setting-row';
+          row.setAttribute('for', 'biometricLockToggle');
+
+          const rowText = document.createElement('span');
+          rowText.textContent =
+            'Demander la biométrie pour accéder à la session';
+          rowText.style.fontSize = '14px';
+          rowText.style.color = '#333';
+
+          const toggle = document.createElement('input');
+          toggle.id = 'biometricLockToggle';
+          toggle.type = 'checkbox';
+          toggle.checked =
+            currentUser && currentUser.biometricLockEnabled === true;
+          syncNativeBiometricConfigIfNeeded(toggle.checked === true);
+
+          row.appendChild(rowText);
+          row.appendChild(toggle);
+          card.appendChild(row);
+
+          const biometricStatus = createToggleSaveStatus();
+          card.appendChild(biometricStatus.element);
+
+          const autoSaveBiometric = async () => {
+            const previousValue =
+              currentUser && currentUser.biometricLockEnabled === true;
+            toggle.disabled = true;
+            biometricStatus.saving();
+
+            try {
+              const desiredEnabled = toggle.checked === true;
+
+              const res = await fetch('/api/account/preferences', {
+                method: 'PUT',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  biometricLockEnabled: desiredEnabled,
+                  biometricRelockSeconds: 0
+                })
+              });
+
+              const data = await res.json().catch(() => ({}));
+
+              if (!res.ok) {
+                toggle.checked = previousValue;
+                biometricStatus.error();
+                return;
+              }
+
+              currentUser.biometricLockEnabled =
+                data.biometricLockEnabled === true;
+              currentUser.biometricRelockSeconds = 0;
+              toggle.checked = currentUser.biometricLockEnabled === true;
+              syncNativeBiometricConfigIfNeeded(
+                currentUser.biometricLockEnabled === true
+              );
+              biometricStatus.success();
+            } catch (_) {
+              toggle.checked = previousValue;
+              biometricStatus.error();
+            } finally {
+              toggle.disabled = false;
+            }
+          };
+
+          toggle.addEventListener('change', autoSaveBiometric);
+
+          return card;
+        }
+
+        function buildPrivateDefaultCard() {
+          const card = document.createElement('div');
+          card.className = 'card';
+
+          const title = document.createElement('div');
+          title.className = 'section-title';
+          title.textContent = 'Confidentialité par défaut';
+          card.appendChild(title);
+
+          const row = document.createElement('label');
+          row.className = 'setting-row';
+          row.setAttribute('for', 'privateDefaultToggle');
+
+          const rowText = document.createElement('span');
+          rowText.textContent =
+            'Mode privé par défaut pour les futures conversations';
+          rowText.style.fontSize = '14px';
+          rowText.style.color = '#333';
+
+          const toggle = document.createElement('input');
+          toggle.id = 'privateDefaultToggle';
+          toggle.type = 'checkbox';
+          toggle.checked =
+            currentUser && currentUser.privateConversationsByDefault === true;
+
+          row.appendChild(rowText);
+          row.appendChild(toggle);
+          card.appendChild(row);
+
+          const privacyStatus = createToggleSaveStatus();
+          card.appendChild(privacyStatus.element);
+
+          toggle.addEventListener('change', async () => {
+            const previousValue =
+              currentUser && currentUser.privateConversationsByDefault === true;
+            toggle.disabled = true;
+            privacyStatus.saving();
+
+            try {
+              const res = await fetch('/api/account/preferences', {
+                method: 'PUT',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  privateConversationsByDefault: toggle.checked === true
+                })
+              });
+
+              const data = await res.json().catch(() => ({}));
+
+              if (!res.ok) {
+                toggle.checked = previousValue;
+                privacyStatus.error();
+                return;
+              }
+
+              currentUser.privateConversationsByDefault =
+                data.privateConversationsByDefault === true;
+              toggle.checked =
+                currentUser.privateConversationsByDefault === true;
+              privacyStatus.success();
+            } catch (_) {
+              toggle.checked = previousValue;
+              privacyStatus.error();
+            } finally {
+              toggle.disabled = false;
+            }
+          });
+
+          return card;
+        }
+
+        function buildPasswordToggleButtonHtml(targetId) {
+          return [
+            '<button type="button" class="toggle-password-btn" data-target="' +
+              targetId +
+              '" aria-label="Afficher le mot de passe" title="Afficher le mot de passe">',
+            '  <span class="sr-only">Afficher le mot de passe</span>',
+            '  <svg class="icon-eye" viewBox="0 0 24 24" aria-hidden="true"><path d="M1 12C3.8 7.5 7.4 5.25 12 5.25S20.2 7.5 23 12c-2.8 4.5-6.4 6.75-11 6.75S3.8 16.5 1 12Z"></path><circle cx="12" cy="12" r="3.25"></circle></svg>',
+            '  <svg class="icon-eye-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M1 12C3.8 7.5 7.4 5.25 12 5.25S20.2 7.5 23 12c-2.8 4.5-6.4 6.75-11 6.75S3.8 16.5 1 12Z"></path><circle cx="12" cy="12" r="3.25"></circle><line x1="3" y1="21" x2="21" y2="3"></line></svg>',
+            '</button>'
+          ].join('');
+        }
+
+        function buildPasswordCard() {
+          const card = document.createElement('div');
+          card.className = 'card';
+
+          const title = document.createElement('div');
+          title.className = 'section-title';
+          title.textContent = 'Changer mon mot de passe';
+          card.appendChild(title);
+
+          const form = document.createElement('form');
+          form.id = 'changePasswordForm';
+          form.innerHTML = [
+            '<div class="field-group">',
+            '  <label class="field-label" for="currentPassword">Mot de passe actuel</label>',
+            '  <div class="password-field-wrap">',
+            '    <input type="password" id="currentPassword" autocomplete="current-password" required>',
+            buildPasswordToggleButtonHtml('currentPassword'),
+            '  </div>',
+            '</div>',
+            '<div class="field-group">',
+            '  <label class="field-label" for="newPassword">Nouveau mot de passe</label>',
+            '  <div class="password-field-wrap">',
+            '    <input type="password" id="newPassword" autocomplete="new-password" required minlength="10" pattern="(?=.*[A-Za-z])(?=.*\\d).{10,}" title="Au moins 10 caractères, avec au moins une lettre et un chiffre.">',
+            buildPasswordToggleButtonHtml('newPassword'),
+            '  </div>',
+            '</div>',
+            '<div class="field-group">',
+            '  <label class="field-label" for="confirmNewPassword">Confirmer le nouveau mot de passe</label>',
+            '  <div class="password-field-wrap">',
+            '    <input type="password" id="confirmNewPassword" autocomplete="new-password" required>',
+            buildPasswordToggleButtonHtml('confirmNewPassword'),
+            '  </div>',
+            '</div>',
+            '<button type="submit" class="action-btn" id="changePasswordBtn" disabled>Enregistrer</button>',
+            '<div class="notice" id="changePasswordNotice"></div>'
+          ].join('');
+          form.addEventListener('submit', handlePasswordChange);
+          card.appendChild(form);
+
+          initPasswordToggles(card);
+          initChangePasswordButtonState(form);
+          return card;
+        }
+
+        function initChangePasswordButtonState(form) {
+          const currentInput = form.querySelector('#currentPassword');
+          const newInput = form.querySelector('#newPassword');
+          const confirmInput = form.querySelector('#confirmNewPassword');
+          const btn = form.querySelector('#changePasswordBtn');
+          if (!currentInput || !newInput || !confirmInput || !btn) return;
+
+          const refresh = () => {
+            const currentValue = String(currentInput.value || '');
+            const newValue = String(newInput.value || '');
+            const confirmValue = String(confirmInput.value || '');
+            const ready =
+              currentValue.length > 0 &&
+              newValue.length > 0 &&
+              confirmValue.length > 0 &&
+              newValue === confirmValue;
+            btn.disabled = !ready;
+            btn.classList.toggle('is-ready', ready);
+          };
+
+          currentInput.addEventListener('input', refresh);
+          newInput.addEventListener('input', refresh);
+          confirmInput.addEventListener('input', refresh);
+          refresh();
+        }
+
+        function initPasswordToggles(root) {
+          function setPasswordToggleVisualState(btn, isVisible) {
+            if (!btn) return;
+            btn.classList.toggle('is-visible', isVisible === true);
+            const label = isVisible
+              ? 'Masquer le mot de passe'
+              : 'Afficher le mot de passe';
+            btn.setAttribute('aria-label', label);
+            btn.setAttribute('title', label);
+            const srOnly = btn.querySelector('.sr-only');
+            if (srOnly) {
+              srOnly.textContent = label;
+            }
+          }
+
+          function syncPasswordToggleWithInput(btn) {
+            if (!btn) return;
+            const targetId = btn.getAttribute('data-target');
             const input = targetId ? document.getElementById(targetId) : null;
             if (!input) return;
-            const isHidden = input.type === "password";
-            input.type = isHidden ? "text" : "password";
-            btn.textContent = isHidden ? "Masquer" : "Voir";
-          });
-        });
-      }
-
-      async function handlePasswordChange(event) {
-        event.preventDefault();
-        const notice = document.getElementById("changePasswordNotice");
-        const btn = document.getElementById("changePasswordBtn");
-        const currentPassword = String(document.getElementById("currentPassword").value || "");
-        const newPassword = String(document.getElementById("newPassword").value || "");
-        const confirmNewPassword = String(document.getElementById("confirmNewPassword").value || "");
-
-        notice.textContent = "";
-        notice.className = "notice";
-
-        if (!currentPassword || !newPassword || !confirmNewPassword) {
-          notice.textContent = "Veuillez remplir tous les champs.";
-          return;
-        }
-
-        if (newPassword !== confirmNewPassword) {
-          notice.textContent = "Les nouveaux mots de passe ne correspondent pas.";
-          return;
-        }
-
-        if (newPassword.length < 10) {
-          notice.textContent = "Le mot de passe doit faire au moins 10 caractères.";
-          return;
-        }
-
-        btn.disabled = true;
-        try {
-          const res = await fetch("/api/auth/change-password", {
-            method: "POST",
-            credentials: "include",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ currentPassword, newPassword })
-          });
-          const data = await res.json().catch(() => ({}));
-
-          if (res.ok && data.success) {
-            notice.textContent = "Mot de passe mis à jour.";
-            notice.className = "notice success";
-            event.target.reset();
-            event.target.querySelectorAll('.toggle-password-btn').forEach(btnEl => {
-              btnEl.textContent = 'Voir';
-            });
-            btn.classList.remove("is-ready");
-          } else {
-            notice.textContent = data.error || "Impossible de changer le mot de passe.";
+            setPasswordToggleVisualState(btn, input.type === 'text');
           }
-        } catch (_) {
-          notice.textContent = "Erreur réseau. Réessayez.";
-        } finally {
-          const currentValue = String(document.getElementById("currentPassword").value || "");
-          const newValue = String(document.getElementById("newPassword").value || "");
-          const confirmValue = String(document.getElementById("confirmNewPassword").value || "");
-          const ready = currentValue.length > 0 && newValue.length > 0 && confirmValue.length > 0 && newValue === confirmValue;
-          btn.disabled = !ready;
-          btn.classList.toggle("is-ready", ready);
+
+          root.querySelectorAll('.toggle-password-btn').forEach((btn) => {
+            syncPasswordToggleWithInput(btn);
+
+            const targetId = btn.getAttribute('data-target');
+            const input = targetId ? document.getElementById(targetId) : null;
+            if (input) {
+              input.addEventListener('focus', () =>
+                syncPasswordToggleWithInput(btn)
+              );
+              input.addEventListener('input', () =>
+                syncPasswordToggleWithInput(btn)
+              );
+              input.addEventListener('change', () =>
+                syncPasswordToggleWithInput(btn)
+              );
+
+              const typeObserver = new MutationObserver(() =>
+                syncPasswordToggleWithInput(btn)
+              );
+              typeObserver.observe(input, {
+                attributes: true,
+                attributeFilter: ['type']
+              });
+
+              requestAnimationFrame(() => syncPasswordToggleWithInput(btn));
+              setTimeout(() => syncPasswordToggleWithInput(btn), 120);
+            }
+
+            btn.addEventListener('click', () => {
+              const clickTargetId = btn.getAttribute('data-target');
+              const input = clickTargetId
+                ? document.getElementById(clickTargetId)
+                : null;
+              if (!input) return;
+              const isHidden = input.type === 'password';
+              input.type = isHidden ? 'text' : 'password';
+              setPasswordToggleVisualState(btn, !isHidden);
+            });
+          });
+
+          window.addEventListener('pageshow', () => {
+            root
+              .querySelectorAll('.toggle-password-btn')
+              .forEach(syncPasswordToggleWithInput);
+          });
+
+          window.addEventListener('focus', () => {
+            root
+              .querySelectorAll('.toggle-password-btn')
+              .forEach(syncPasswordToggleWithInput);
+          });
         }
-      }
 
-      window.handleLogout = async function handleLogout() {
-        try {
-          await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
-        } catch (_) {}
-        navigateAway("/");
-      };
+        async function handlePasswordChange(event) {
+          event.preventDefault();
+          const notice = document.getElementById('changePasswordNotice');
+          const btn = document.getElementById('changePasswordBtn');
+          const currentPassword = String(
+            document.getElementById('currentPassword').value || ''
+          );
+          const newPassword = String(
+            document.getElementById('newPassword').value || ''
+          );
+          const confirmNewPassword = String(
+            document.getElementById('confirmNewPassword').value || ''
+          );
 
-      function showError(msg) {
-        const main = document.getElementById("mainContent");
-        main.innerHTML = "";
-        const err = document.createElement("div");
-        err.className = "error-notice";
-        err.textContent = msg;
-        main.appendChild(err);
-      }
+          notice.textContent = '';
+          notice.className = 'notice';
 
-      init();
-    })();
-  </script>
-</body>
+          if (!currentPassword || !newPassword || !confirmNewPassword) {
+            notice.textContent = 'Veuillez remplir tous les champs.';
+            return;
+          }
+
+          if (newPassword !== confirmNewPassword) {
+            notice.textContent =
+              'Les nouveaux mots de passe ne correspondent pas.';
+            return;
+          }
+
+          if (!isStrongPasswordCandidate(newPassword)) {
+            notice.textContent =
+              'Le mot de passe doit faire au moins 10 caractères, avec au moins une lettre et un chiffre.';
+            return;
+          }
+
+          btn.disabled = true;
+          try {
+            const res = await fetch('/api/auth/change-password', {
+              method: 'POST',
+              credentials: 'include',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ currentPassword, newPassword })
+            });
+            const data = await res.json().catch(() => ({}));
+
+            if (res.ok && data.success) {
+              notice.textContent = 'Mot de passe mis à jour.';
+              notice.className = 'notice success';
+              event.target.reset();
+              event.target
+                .querySelectorAll('.toggle-password-btn')
+                .forEach((btnEl) => {
+                  btnEl.classList.remove('is-visible');
+                  btnEl.setAttribute('aria-label', 'Afficher le mot de passe');
+                  btnEl.setAttribute('title', 'Afficher le mot de passe');
+                  const srOnly = btnEl.querySelector('.sr-only');
+                  if (srOnly) {
+                    srOnly.textContent = 'Afficher le mot de passe';
+                  }
+                });
+              btn.classList.remove('is-ready');
+            } else {
+              notice.textContent = mapAccountApiErrorToUserMessage(
+                data.error,
+                'Impossible de changer le mot de passe pour le moment.'
+              );
+            }
+          } catch (_) {
+            notice.textContent =
+              'Le service ne répond pas pour le moment. Un nouvel essai sera possible dans quelques instants.';
+          } finally {
+            const currentValue = String(
+              document.getElementById('currentPassword').value || ''
+            );
+            const newValue = String(
+              document.getElementById('newPassword').value || ''
+            );
+            const confirmValue = String(
+              document.getElementById('confirmNewPassword').value || ''
+            );
+            const ready =
+              currentValue.length > 0 &&
+              newValue.length > 0 &&
+              confirmValue.length > 0 &&
+              newValue === confirmValue;
+            btn.disabled = !ready;
+            btn.classList.toggle('is-ready', ready);
+          }
+        }
+
+        window.handleLogout = async function handleLogout() {
+          try {
+            await fetch('/api/auth/logout', {
+              method: 'POST',
+              credentials: 'include'
+            });
+          } catch (_) {}
+          navigateAway('/auth.html', { replace: true });
+        };
+
+        function showError(msg) {
+          const main = document.getElementById('mainContent');
+          main.innerHTML = '';
+          const err = document.createElement('div');
+          err.className = 'error-notice';
+          err.textContent = msg;
+          main.appendChild(err);
+        }
+
+        function mapAccountApiErrorToUserMessage(rawError, fallbackMessage) {
+          const fallback = String(
+            fallbackMessage || 'Une erreur est survenue.'
+          );
+          const raw = String(rawError || '').trim();
+          const lower = raw.toLowerCase();
+          if (!lower) return fallback;
+
+          if (lower.includes('current password is incorrect')) {
+            return 'Le mot de passe actuel ne correspond pas.';
+          }
+
+          if (lower.includes('password must contain at least')) {
+            return 'Le nouveau mot de passe doit contenir au moins 10 caractères, avec au moins une lettre et un chiffre.';
+          }
+
+          if (
+            lower.includes('unauthorized') ||
+            lower.includes('invalid user session')
+          ) {
+            return 'Session expirée. Une reconnexion est nécessaire.';
+          }
+
+          if (lower.includes('invalid') || lower.includes('invalide')) {
+            return 'Certaines informations ne sont pas valides.';
+          }
+
+          return fallback;
+        }
+
+        function isStrongPasswordCandidate(password) {
+          const text = String(password || '');
+          return text.length >= 10 && /[A-Za-z]/.test(text) && /\d/.test(text);
+        }
+
+        init();
+      })();
+    </script>
+  </body>
 </html>

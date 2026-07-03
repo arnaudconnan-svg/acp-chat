@@ -48,6 +48,7 @@ npm run twa:build
 ```
 
 This:
+
 - Installs bubblewrap globally (if needed)
 - Generates `android-project/` with all build files
 - Creates build configuration from `twa-manifest.json`
@@ -78,8 +79,6 @@ Must be reachable over HTTPS on your production domain.
 3. Upload `.aab` to internal test track
 4. Test on device
 5. Promote to production when ready
-
-
 
 The repo-side prerequisites are now in place:
 

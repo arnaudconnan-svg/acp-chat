@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+    />
+    <title>Facilitat.io</title>
+    <meta name="theme-color" content="#f4f9f9" />
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        background: #f4f9f9;
+      }
+    </style>
+  </head>
+  <body>
+    <script>
+      (function () {
+        'use strict';
+
+        function navigateAway(url, options = {}) {
+          setTimeout(() => {
+            if (options.replace === true) {
+              window.location.replace(url);
+              return;
+            }
+            window.location.href = url;
+          }, 0);
+        }
+
+        const launchBridgeHistoryState = history.state || {};
+        if (
+          launchBridgeHistoryState.__page !== 'launchBridge' ||
+          launchBridgeHistoryState.__guard !== true
+        ) {
+          history.replaceState(
+            { __page: 'launchBridge', __base: true },
+            '',
+            window.location.href
+          );
+          history.pushState(
+            { __page: 'launchBridge', __guard: true },
+            '',
+            window.location.href
+          );
+        }
+
+        window.addEventListener('popstate', (event) => {
+          const state = event.state || {};
+          if (state.__page === 'launchBridge' && state.__base === true) {
+            navigateAway('/?screen=conversationsScreen', { replace: true });
+          }
+        });
+
+        function resolveLaunchShortcut() {
+          try {
+            const params = new URLSearchParams(window.location.search);
+            const launch = String(params.get('launch') || '').trim();
+            if (launch === 'new-normal' || launch === 'new-private') {
+              return launch;
+            }
+            return 'new-normal';
+          } catch (_) {
+            return 'new-normal';
+          }
+        }
+
+        const launch = resolveLaunchShortcut();
+        const next =
+          '/?launch=' + encodeURIComponent(launch) + '&launchAuthDone=1';
+
+        fetch('/api/auth/session', { credentials: 'include' })
+          .then((r) => r.json())
+          .then((data) => {
+            if (data && data.authenticated === true) {
+              navigateAway(next);
+              return;
+            }
+
+            navigateAway('/auth.html?next=' + encodeURIComponent(next));
+          })
+          .catch(() => {
+            navigateAway('/auth.html?next=' + encodeURIComponent(next));
+          });
+      })();
+    </script>
+  </body>
+</html>

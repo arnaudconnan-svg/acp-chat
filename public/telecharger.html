@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Application Android</title>
+    <style>
+      :root {
+        --bg: #f4f9f9;
+        --card: #ffffff;
+        --text: #173a40;
+        --muted: #4f6a6f;
+        --primary: #245e66;
+        --primary-hover: #1d4f56;
+        --border: #d6e5e7;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100dvh;
+        display: grid;
+        place-items: center;
+        padding: 20px;
+        font-family: Arial, sans-serif;
+        color: var(--text);
+        background: radial-gradient(
+          circle at 20% 20%,
+          #ffffff 0%,
+          var(--bg) 55%,
+          #eaf3f3 100%
+        );
+      }
+
+      .card {
+        width: min(560px, 100%);
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        box-shadow: 0 14px 36px rgba(23, 58, 64, 0.11);
+        padding: 24px;
+      }
+
+      .logoWrap {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 12px;
+      }
+
+      .logoWrap img {
+        width: 88px;
+        height: 88px;
+        border-radius: 20px;
+      }
+
+      h1 {
+        margin: 0;
+        text-align: center;
+        font-size: 28px;
+        line-height: 1.2;
+      }
+
+      p {
+        margin: 14px 0 0;
+        text-align: center;
+        color: var(--muted);
+        font-size: 16px;
+        line-height: 1.45;
+      }
+
+      .actions {
+        display: grid;
+        gap: 10px;
+        margin-top: 22px;
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        min-height: 46px;
+        padding: 10px 14px;
+        border-radius: 12px;
+        font-size: 16px;
+        text-decoration: none;
+        cursor: pointer;
+        border: 1px solid transparent;
+        transition:
+          background 0.2s ease,
+          color 0.2s ease,
+          border-color 0.2s ease;
+      }
+
+      .btnPrimary {
+        background: var(--primary);
+        color: #ffffff;
+        border-color: var(--primary);
+      }
+
+      .btnPrimary:hover {
+        background: var(--primary-hover);
+        border-color: var(--primary-hover);
+      }
+
+      .btnSecondary {
+        background: #ffffff;
+        color: var(--primary);
+        border-color: #c5d5d8;
+      }
+
+      .btnSecondary:hover {
+        border-color: #9fb8bd;
+        background: #f8fcfc;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card" role="main" aria-labelledby="gateTitle">
+      <div class="logoWrap">
+        <img src="/images/logo.png" alt="Facilitat.io" />
+      </div>
+
+      <h1 id="gateTitle">Application disponible sur Android</h1>
+      <p>
+        Facilitat.io est disponible via l'application Android officielle. Pour
+        utiliser l'app, ouvre-la depuis Google Play.
+      </p>
+
+      <div class="actions">
+        <a
+          class="btn btnPrimary"
+          href="https://play.google.com/store/apps/details?id=io.facilitat.app"
+          rel="noopener noreferrer"
+        >
+          Ouvrir Google Play
+        </a>
+
+        <a
+          class="btn btnSecondary"
+          href="/admin-login.html?next=%2Findex.html%3FadminUi%3D1"
+        >
+          Connexion admin
+        </a>
+      </div>
+    </main>
+  </body>
+</html>

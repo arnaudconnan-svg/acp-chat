@@ -1,10 +1,62 @@
-const fs = require("fs");
-const path = require("path");
-const { execSync } = require("child_process");
+const fs = require('fs');
+const path = require('path');
+const { execSync } = require('child_process');
+
+function existsFile(filePath) {
+  return Boolean(filePath) && fs.existsSync(filePath);
+}
+
+function collectWindowsJdkCandidates() {
+  const candidates = [];
+  const roots = [
+    'C:\\Program Files\\Eclipse Adoptium',
+    'C:\\Program Files\\Java',
+    'C:\\Program Files\\Microsoft'
+  ];
+
+  for (const root of roots) {
+    if (!fs.existsSync(root)) continue;
+    const entries = fs
+      .readdirSync(root, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => path.join(root, entry.name, 'bin', 'keytool.exe'));
+    candidates.push(...entries);
+  }
+
+  return candidates;
+}
+
+function resolveKeytool() {
+  const envCandidates = [];
+
+  if (process.env.KEYTOOL_PATH) {
+    envCandidates.push(String(process.env.KEYTOOL_PATH).trim());
+  }
+
+  if (process.env.JAVA_HOME) {
+    envCandidates.push(
+      path.join(String(process.env.JAVA_HOME).trim(), 'bin', 'keytool.exe'),
+      path.join(String(process.env.JAVA_HOME).trim(), 'bin', 'keytool')
+    );
+  }
+
+  const platformCandidates =
+    process.platform === 'win32' ? collectWindowsJdkCandidates() : [];
+
+  const allCandidates = [...envCandidates, ...platformCandidates];
+  const matched = allCandidates.find((candidate) => existsFile(candidate));
+  if (matched) {
+    return matched;
+  }
+
+  return process.platform === 'win32' ? 'keytool.exe' : 'keytool';
+}
+
+const keytoolCmd = resolveKeytool();
 
 function checkKeytool() {
   try {
-    execSync("keytool -version", { stdio: "pipe" });
+    execSync(`"${keytoolCmd}" -help`, { stdio: 'pipe', shell: true });
     return true;
   } catch {
     return false;
@@ -13,7 +65,7 @@ function checkKeytool() {
 
 function getKeystorePath() {
   const home = process.env.HOME || process.env.USERPROFILE;
-  return path.join(home, ".android", "facilitat-dev.keystore");
+  return path.join(home, '.android', 'facilitat-dev.keystore');
 }
 
 function createKeystore(keystorePath) {
@@ -22,96 +74,110 @@ function createKeystore(keystorePath) {
     fs.mkdirSync(keystoreDir, { recursive: true });
   }
 
-  console.log("[signing-key] Generating keystore...");
+  console.log('[signing-key] Generating keystore...');
 
   try {
     const cmd = [
-      "keytool",
-      "-genkey",
-      "-v",
+      `"${keytoolCmd}"`,
+      '-genkey',
+      '-v',
       `-keystore "${keystorePath}"`,
-      "-keyalg RSA",
-      "-keysize 2048",
-      "-validity 10000",
-      "-alias facilitat-dev",
-      "-storepass facilitat123",
-      "-keypass facilitat123",
+      '-keyalg RSA',
+      '-keysize 2048',
+      '-validity 10000',
+      '-alias facilitat-dev',
+      '-storepass facilitat123',
+      '-keypass facilitat123',
       '-dname "CN=Facilitat Dev,O=Facilitat,C=FR"'
-    ].join(" ");
+    ].join(' ');
 
-    execSync(cmd, { stdio: "inherit", shell: true });
-    console.log("[signing-key] Keystore created successfully.");
+    execSync(cmd, { stdio: 'inherit', shell: true });
+    console.log('[signing-key] Keystore created successfully.');
   } catch (err) {
-    console.error("[signing-key] Failed to create keystore:", err.message);
+    console.error('[signing-key] Failed to create keystore:', err.message);
     process.exit(1);
   }
 }
 
 function extractSHA256(keystorePath) {
-  console.log("[signing-key] Extracting SHA256 fingerprint...");
+  console.log('[signing-key] Extracting SHA256 fingerprint...');
 
   try {
-    const cmd = `keytool -list -v -keystore "${keystorePath}" -alias facilitat-dev -storepass facilitat123`;
-    const output = execSync(cmd, { encoding: "utf8" });
+    const cmd = `"${keytoolCmd}" -list -v -keystore "${keystorePath}" -alias facilitat-dev -storepass facilitat123`;
+    const output = execSync(cmd, { encoding: 'utf8' });
 
-    const sha256Match = output.match(/SHA256:\s*([A-F0-9:]+)/i);
+    const sha256Match = output.match(/SHA\s*256\s*:\s*([A-F0-9:]+)/i);
     if (sha256Match) {
       return sha256Match[1];
     } else {
-      console.error("[signing-key] Could not extract SHA256 from keystore");
+      console.error('[signing-key] Could not extract SHA256 from keystore');
       process.exit(1);
     }
   } catch (err) {
-    console.error("[signing-key] Error reading keystore:", err.message);
+    console.error('[signing-key] Error reading keystore:', err.message);
     process.exit(1);
   }
 }
 
 function generateAssetlinks(sha256) {
-  const packageName = String(process.env.TWA_ANDROID_PACKAGE || "io.facilitat.app").trim();
-  const fingerprints = sha256
-    .split(":")
-    .map((item) => item.trim())
+  const packageName = String(
+    process.env.TWA_ANDROID_PACKAGE || 'io.facilitat.app'
+  ).trim();
+  const fingerprints = String(sha256)
+    .split(/\r?\n|,|;/)
+    .map((item) => item.trim().toUpperCase())
     .filter(Boolean);
 
   const assetLinksContent = [
     {
-      relation: ["delegate_permission/common.handle_all_urls"],
+      relation: ['delegate_permission/common.handle_all_urls'],
       target: {
-        namespace: "android_app",
+        namespace: 'android_app',
         package_name: packageName,
         sha256_cert_fingerprints: fingerprints
       }
     }
   ];
 
-  const outputPath = path.join(__dirname, "..", "public", ".well-known", "assetlinks.json");
+  const outputPath = path.join(
+    __dirname,
+    '..',
+    'public',
+    '.well-known',
+    'assetlinks.json'
+  );
   const outputDir = path.dirname(outputPath);
 
   if (!fs.existsSync(outputDir)) {
     fs.mkdirSync(outputDir, { recursive: true });
   }
 
-  fs.writeFileSync(outputPath, `${JSON.stringify(assetLinksContent, null, 2)}\n`, "utf8");
-  console.log("[signing-key] Generated assetlinks at", outputPath);
+  fs.writeFileSync(
+    outputPath,
+    `${JSON.stringify(assetLinksContent, null, 2)}\n`,
+    'utf8'
+  );
+  console.log('[signing-key] Generated assetlinks at', outputPath);
 }
 
 function main() {
   if (!checkKeytool()) {
-    console.error("[signing-key] keytool not found. Java/JDK is required.");
-    console.error("");
-    console.error("To install OpenJDK 21, run:");
-    console.error("");
-    console.error("  powershell -ExecutionPolicy Bypass -File scripts/jdk-setup.ps1 -Install");
-    console.error("");
-    console.error("Or install manually:");
+    console.error('[signing-key] keytool not found. Java/JDK is required.');
+    console.error('');
+    console.error('To install OpenJDK 21, run:');
+    console.error('');
+    console.error(
+      '  powershell -ExecutionPolicy Bypass -File scripts/jdk-setup.ps1 -Install'
+    );
+    console.error('');
+    console.error('Or install manually:');
     console.error("  - Microsoft Store: Search 'OpenJDK' or 'Temurin'");
-    console.error("  - Chocolatey: choco install openjdk21");
-    console.error("  - Direct: https://adoptium.net/ (Temurin JDK 21)");
-    console.error("");
-    console.error("After installation, restart PowerShell and run:");
-    console.error("  npm run twa:signing-key");
-    console.error("");
+    console.error('  - Chocolatey: choco install openjdk21');
+    console.error('  - Direct: https://adoptium.net/ (Temurin JDK 21)');
+    console.error('');
+    console.error('After installation, restart PowerShell and run:');
+    console.error('  npm run twa:signing-key');
+    console.error('');
     process.exit(1);
   }
 
@@ -120,18 +186,18 @@ function main() {
   if (!fs.existsSync(keystorePath)) {
     createKeystore(keystorePath);
   } else {
-    console.log("[signing-key] Found existing keystore at", keystorePath);
+    console.log('[signing-key] Found existing keystore at', keystorePath);
   }
 
   const sha256 = extractSHA256(keystorePath);
-  console.log("[signing-key] SHA256 fingerprint:");
-  console.log("");
+  console.log('[signing-key] SHA256 fingerprint:');
+  console.log('');
   console.log(sha256);
-  console.log("");
+  console.log('');
 
   generateAssetlinks(sha256);
 
-  console.log("[signing-key] Setup complete. assetlinks.json is ready.");
+  console.log('[signing-key] Setup complete. assetlinks.json is ready.');
 }
 
 main();

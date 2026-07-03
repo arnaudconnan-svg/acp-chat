@@ -3,72 +3,197 @@ const path = require('path');
 const zlib = require('zlib');
 
 const ROOT = path.join(__dirname, '..');
-const LAUNCHER_TEMPLATE_PATH = path.join(__dirname, 'templates', 'LauncherActivity.java');
-const LAUNCHER_ACTIVITY_PATH = path.join(ROOT, 'android-project', 'app', 'src', 'main', 'java', 'io', 'facilitat', 'app', 'LauncherActivity.java');
-const BIOMETRIC_GATE_TEMPLATE_PATH = path.join(__dirname, 'templates', 'BiometricGateActivity.java');
-const BIOMETRIC_GATE_ACTIVITY_PATH = path.join(ROOT, 'android-project', 'app', 'src', 'main', 'java', 'io', 'facilitat', 'app', 'BiometricGateActivity.java');
-const SHORTCUT_ICON_TEMPLATE_PATH = path.join(__dirname, 'templates', 'shortcut_legacy_background.xml');
-const SHORTCUT_ICON_TARGET_DIR = path.join(ROOT, 'android-project', 'app', 'src', 'main', 'res', 'drawable');
-const SHORTCUT_ICON_TARGET_PATH = path.join(SHORTCUT_ICON_TARGET_DIR, 'shortcut_legacy_background.xml');
+const LAUNCHER_TEMPLATE_PATH = path.join(
+  __dirname,
+  'templates',
+  'LauncherActivity.java'
+);
+const LAUNCHER_ACTIVITY_PATH = path.join(
+  ROOT,
+  'android-project',
+  'app',
+  'src',
+  'main',
+  'java',
+  'io',
+  'facilitat',
+  'app',
+  'LauncherActivity.java'
+);
+const BIOMETRIC_GATE_TEMPLATE_PATH = path.join(
+  __dirname,
+  'templates',
+  'BiometricGateActivity.java'
+);
+const BIOMETRIC_GATE_ACTIVITY_PATH = path.join(
+  ROOT,
+  'android-project',
+  'app',
+  'src',
+  'main',
+  'java',
+  'io',
+  'facilitat',
+  'app',
+  'BiometricGateActivity.java'
+);
+const SHORTCUT_ICON_TEMPLATE_PATH = path.join(
+  __dirname,
+  'templates',
+  'shortcut_legacy_background.xml'
+);
+const SHORTCUT_ICON_TARGET_DIR = path.join(
+  ROOT,
+  'android-project',
+  'app',
+  'src',
+  'main',
+  'res',
+  'drawable'
+);
+const SHORTCUT_ICON_TARGET_PATH = path.join(
+  SHORTCUT_ICON_TARGET_DIR,
+  'shortcut_legacy_background.xml'
+);
 const GATE_LOGO_SOURCE_PATH = path.join(ROOT, 'public', 'images', 'logo.png');
-const GATE_LOGO_TARGET_DIR = path.join(ROOT, 'android-project', 'app', 'src', 'main', 'res', 'drawable-nodpi');
+const GATE_LOGO_TARGET_DIR = path.join(
+  ROOT,
+  'android-project',
+  'app',
+  'src',
+  'main',
+  'res',
+  'drawable-nodpi'
+);
 const GATE_LOGO_TARGET_PATH = path.join(GATE_LOGO_TARGET_DIR, 'gate_logo.png');
 const WEB_MANIFEST_PATH = path.join(ROOT, 'public', 'manifest.json');
-const ANDROID_MANIFEST_PATH = path.join(ROOT, 'android-project', 'app', 'src', 'main', 'AndroidManifest.xml');
-const SHORTCUTS_XML_PATH = path.join(ROOT, 'android-project', 'app', 'src', 'main', 'res', 'xml', 'shortcuts.xml');
-const SHORTCUT_STRINGS_PATH = path.join(ROOT, 'android-project', 'app', 'src', 'main', 'res', 'values', 'shortcut_strings.xml');
-const ANDROID_BUILD_GRADLE_PATH = path.join(ROOT, 'android-project', 'app', 'build.gradle');
+const ANDROID_MANIFEST_PATH = path.join(
+  ROOT,
+  'android-project',
+  'app',
+  'src',
+  'main',
+  'AndroidManifest.xml'
+);
+const SHORTCUTS_XML_PATH = path.join(
+  ROOT,
+  'android-project',
+  'app',
+  'src',
+  'main',
+  'res',
+  'xml',
+  'shortcuts.xml'
+);
+const SHORTCUT_STRINGS_PATH = path.join(
+  ROOT,
+  'android-project',
+  'app',
+  'src',
+  'main',
+  'res',
+  'values',
+  'shortcut_strings.xml'
+);
+const ANDROID_BUILD_GRADLE_PATH = path.join(
+  ROOT,
+  'android-project',
+  'app',
+  'build.gradle'
+);
 const SHORTCUT_TARGET_CLASS = 'io.facilitat.app.BiometricGateActivity';
 
 const SPLASH_DIRS = [
-  path.join(ROOT, 'android-project', 'app', 'src', 'main', 'res', 'drawable-hdpi'),
-  path.join(ROOT, 'android-project', 'app', 'src', 'main', 'res', 'drawable-mdpi'),
-  path.join(ROOT, 'android-project', 'app', 'src', 'main', 'res', 'drawable-xhdpi'),
-  path.join(ROOT, 'android-project', 'app', 'src', 'main', 'res', 'drawable-xxhdpi'),
-  path.join(ROOT, 'android-project', 'app', 'src', 'main', 'res', 'drawable-xxxhdpi')
+  path.join(
+    ROOT,
+    'android-project',
+    'app',
+    'src',
+    'main',
+    'res',
+    'drawable-hdpi'
+  ),
+  path.join(
+    ROOT,
+    'android-project',
+    'app',
+    'src',
+    'main',
+    'res',
+    'drawable-mdpi'
+  ),
+  path.join(
+    ROOT,
+    'android-project',
+    'app',
+    'src',
+    'main',
+    'res',
+    'drawable-xhdpi'
+  ),
+  path.join(
+    ROOT,
+    'android-project',
+    'app',
+    'src',
+    'main',
+    'res',
+    'drawable-xxhdpi'
+  ),
+  path.join(
+    ROOT,
+    'android-project',
+    'app',
+    'src',
+    'main',
+    'res',
+    'drawable-xxxhdpi'
+  )
 ];
 
 function generateMinimalPng() {
   // Generate a minimal 1x1 PNG with background color #F4F9F9
   // PNG structure: signature + IHDR + IDAT (zlib compressed) + IEND
-  const signature = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
-  
+  const signature = Buffer.from([
+    0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a
+  ]);
+
   // IHDR: 1x1, 8-bit RGB
   const ihdr = Buffer.alloc(13);
-  ihdr.writeUInt32BE(1, 0);      // width: 1
-  ihdr.writeUInt32BE(1, 4);      // height: 1
-  ihdr.writeUInt8(8, 8);         // bit depth: 8
-  ihdr.writeUInt8(2, 9);         // color type: 2 (RGB)
-  ihdr.writeUInt8(0, 10);        // compression method
-  ihdr.writeUInt8(0, 11);        // filter method
-  ihdr.writeUInt8(0, 12);        // interlace method
+  ihdr.writeUInt32BE(1, 0); // width: 1
+  ihdr.writeUInt32BE(1, 4); // height: 1
+  ihdr.writeUInt8(8, 8); // bit depth: 8
+  ihdr.writeUInt8(2, 9); // color type: 2 (RGB)
+  ihdr.writeUInt8(0, 10); // compression method
+  ihdr.writeUInt8(0, 11); // filter method
+  ihdr.writeUInt8(0, 12); // interlace method
   const ihdrChunk = createPngChunk('IHDR', ihdr);
-  
+
   // IDAT: 1x1 pixel with color #F4F9F9 (244, 249, 249)
   // Scanline format: filter_type (0x00) + RGB values
   const pixelData = Buffer.from([0x00, 0xf4, 0xf9, 0xf9]);
   const idatData = zlib.deflateSync(pixelData);
   const idatChunk = createPngChunk('IDAT', idatData);
-  
+
   // IEND: empty chunk
   const iendChunk = createPngChunk('IEND', Buffer.alloc(0));
-  
+
   return Buffer.concat([signature, ihdrChunk, idatChunk, iendChunk]);
 }
 
 function createPngChunk(type, data) {
   const length = Buffer.alloc(4);
   length.writeUInt32BE(data.length, 0);
-  
+
   const typeBytes = Buffer.from(type, 'ascii');
   const chunk = Buffer.concat([typeBytes, data]);
-  
+
   // CRC32 calculation (simplified: use a hardcoded value for minimal PNG)
   // For production, use proper CRC32; for now, we compute it
   const crc = calculateCrc32(chunk);
   const crcBytes = Buffer.alloc(4);
   crcBytes.writeUInt32BE(crc >>> 0, 0);
-  
+
   return Buffer.concat([length, chunk, crcBytes]);
 }
 
@@ -78,11 +203,11 @@ function calculateCrc32(data) {
   for (let i = 0; i < 256; i++) {
     let c = i;
     for (let j = 0; j < 8; j++) {
-      c = (c & 1) ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+      c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
     }
     table[i] = c >>> 0;
   }
-  
+
   let crc = 0xffffffff;
   for (let i = 0; i < data.length; i++) {
     crc = table[(crc ^ data[i]) & 0xff] ^ (crc >>> 8);
@@ -92,18 +217,22 @@ function calculateCrc32(data) {
 
 function syncSplashScreens() {
   const splashData = generateMinimalPng();
-  
-  SPLASH_DIRS.forEach(dir => {
+
+  SPLASH_DIRS.forEach((dir) => {
     const splashPath = path.join(dir, 'splash.png');
     try {
       fs.mkdirSync(dir, { recursive: true });
       fs.writeFileSync(splashPath, splashData);
     } catch (err) {
-      console.warn(`[android-customize] Failed to sync splash.png in ${dir}: ${err.message}`);
+      console.warn(
+        `[android-customize] Failed to sync splash.png in ${dir}: ${err.message}`
+      );
     }
   });
-  
-  console.log('[android-customize] Synced splash screens (background only, no logo).');
+
+  console.log(
+    '[android-customize] Synced splash screens (background only, no logo).'
+  );
 }
 
 function toXmlEscaped(value) {
@@ -134,11 +263,16 @@ function readShortcutConfig() {
   try {
     parsed = JSON.parse(fs.readFileSync(WEB_MANIFEST_PATH, 'utf8'));
   } catch (err) {
-    console.warn('[android-customize] Unable to read public/manifest.json for shortcuts: ' + err.message);
+    console.warn(
+      '[android-customize] Unable to read public/manifest.json for shortcuts: ' +
+        err.message
+    );
     return [];
   }
 
-  const host = String(process.env.TWA_WEB_HOST || 'acp-chat-beta.onrender.com').trim();
+  const host = String(
+    process.env.TWA_WEB_HOST || 'acp-chat-beta.onrender.com'
+  ).trim();
   const protocol = String(process.env.TWA_WEB_PROTOCOL || 'https').trim();
   const origin = `${protocol}://${host}`;
   const shortcuts = Array.isArray(parsed.shortcuts) ? parsed.shortcuts : [];
@@ -146,7 +280,8 @@ function readShortcutConfig() {
   return shortcuts
     .map((item, index) => {
       const name = String(item && item.name ? item.name : '').trim();
-      const shortName = String(item && item.short_name ? item.short_name : '').trim() || name;
+      const shortName =
+        String(item && item.short_name ? item.short_name : '').trim() || name;
       const shortcutUrl = normalizeShortcutUrl(origin, item && item.url);
       if (!name || !shortName || !shortcutUrl) {
         return null;
@@ -179,7 +314,9 @@ function writeShortcutsXml(shortcuts) {
 
   lines.push('</shortcuts>');
   fs.writeFileSync(SHORTCUTS_XML_PATH, `${lines.join('\n')}\n`);
-  console.log(`[android-customize] Synced shortcuts.xml (${shortcuts.length} shortcut(s)).`);
+  console.log(
+    `[android-customize] Synced shortcuts.xml (${shortcuts.length} shortcut(s)).`
+  );
 }
 
 function writeShortcutStringResources(shortcuts) {
@@ -194,16 +331,22 @@ function writeShortcutStringResources(shortcuts) {
 
   lines.push('</resources>');
   fs.writeFileSync(SHORTCUT_STRINGS_PATH, `${lines.join('\n')}\n`);
-  console.log(`[android-customize] Synced shortcut string resources (${shortcuts.length} shortcut(s)).`);
+  console.log(
+    `[android-customize] Synced shortcut string resources (${shortcuts.length} shortcut(s)).`
+  );
 }
 
 function toGroovySingleQuoted(value) {
-  return String(value || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+  return String(value || '')
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'");
 }
 
 function syncBuildGradleShortcuts(shortcuts) {
   if (!fs.existsSync(ANDROID_BUILD_GRADLE_PATH)) {
-    console.warn('[android-customize] app/build.gradle not found; skipping shortcuts sync.');
+    console.warn(
+      '[android-customize] app/build.gradle not found; skipping shortcuts sync.'
+    );
     return;
   }
 
@@ -212,7 +355,7 @@ function syncBuildGradleShortcuts(shortcuts) {
       try {
         const url = new URL(shortcut.url);
         return `${url.pathname}${url.search || ''}${url.hash || ''}` || '/';
-      } catch (_) {
+      } catch (_urlError) {
         return '/';
       }
     })();
@@ -220,9 +363,10 @@ function syncBuildGradleShortcuts(shortcuts) {
     return `    [name: '${toGroovySingleQuoted(shortcut.longLabel)}', short_name: '${toGroovySingleQuoted(shortcut.shortLabel)}', url: '${toGroovySingleQuoted(relativeUrl)}', icon: 'shortcut_legacy_background']`;
   });
 
-  const shortcutsBlock = shortcutRows.length > 0
-    ? `    shortcuts: [\n${shortcutRows.join(',\n')}\n    ],`
-    : '    shortcuts: [],';
+  const shortcutsBlock =
+    shortcutRows.length > 0
+      ? `    shortcuts: [\n${shortcutRows.join(',\n')}\n    ],`
+      : '    shortcuts: [],';
 
   let gradle = fs.readFileSync(ANDROID_BUILD_GRADLE_PATH, 'utf8');
   const nextGradle = gradle.replace(
@@ -231,12 +375,15 @@ function syncBuildGradleShortcuts(shortcuts) {
   );
 
   if (nextGradle === gradle) {
-    console.warn('[android-customize] Could not update shortcuts block in app/build.gradle.');
+    console.warn(
+      '[android-customize] Could not update shortcuts block in app/build.gradle.'
+    );
   } else {
     gradle = nextGradle;
   }
 
-  const targetClassPattern = /('android:targetClass':\s*)twaManifest\.applicationId \+ '\.LauncherActivity'/;
+  const targetClassPattern =
+    /('android:targetClass':\s*)twaManifest\.applicationId \+ '\.LauncherActivity'/;
   const targetClassReplacement = `$1twaManifest.applicationId + '.BiometricGateActivity'`;
   const actionPattern = /('android:action':\s*)'android\.intent\.action\.MAIN'/;
   const actionReplacement = `$1'android.intent.action.MAIN'`;
@@ -248,54 +395,80 @@ function syncBuildGradleShortcuts(shortcuts) {
     .replace(actionPattern, actionReplacement)
     .replace(iconPattern, iconReplacement);
   fs.writeFileSync(ANDROID_BUILD_GRADLE_PATH, withGateTarget, 'utf8');
-  console.log(`[android-customize] Synced app/build.gradle shortcuts (${shortcuts.length} shortcut(s)).`);
+  console.log(
+    `[android-customize] Synced app/build.gradle shortcuts (${shortcuts.length} shortcut(s)).`
+  );
 }
 
 function ensureManifestShortcutMetadata() {
   if (!fs.existsSync(ANDROID_MANIFEST_PATH)) {
-    console.warn('[android-customize] AndroidManifest.xml not found; skipping shortcut metadata patch.');
+    console.warn(
+      '[android-customize] AndroidManifest.xml not found; skipping shortcut metadata patch.'
+    );
     return;
   }
 
   let manifest = fs.readFileSync(ANDROID_MANIFEST_PATH, 'utf8');
-  const gateShortcutMeta = '            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />\n';
+  const gateShortcutMeta =
+    '            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />\n';
 
-  manifest = manifest.replace(/\n\s*<meta-data android:name="android\.app\.shortcuts" android:resource="@xml\/shortcuts" \/>\n/g, '\n');
+  manifest = manifest.replace(
+    /\n\s*<meta-data android:name="android\.app\.shortcuts" android:resource="@xml\/shortcuts" \/>\n/g,
+    '\n'
+  );
 
-  if (manifest.includes('<activity android:name="BiometricGateActivity"') && manifest.includes('android:name="android.app.shortcuts"')) {
+  if (
+    manifest.includes('<activity android:name="BiometricGateActivity"') &&
+    manifest.includes('android:name="android.app.shortcuts"')
+  ) {
     fs.writeFileSync(ANDROID_MANIFEST_PATH, manifest, 'utf8');
-    console.log('[android-customize] BiometricGateActivity shortcut metadata already present.');
+    console.log(
+      '[android-customize] BiometricGateActivity shortcut metadata already present.'
+    );
     return;
   }
 
-  const gateNeedle = '            android:theme="@android:style/Theme.Material.Light.NoActionBar.Fullscreen">\n';
+  const gateNeedle =
+    '            android:theme="@android:style/Theme.Material.Light.NoActionBar.Fullscreen">\n';
   const gateIndex = manifest.indexOf(gateNeedle);
   if (gateIndex === -1) {
-    console.warn('[android-customize] Could not find BiometricGateActivity marker; skipping shortcut metadata patch.');
+    console.warn(
+      '[android-customize] Could not find BiometricGateActivity marker; skipping shortcut metadata patch.'
+    );
     return;
   }
 
   const insertAt = gateIndex + gateNeedle.length;
   manifest = `${manifest.slice(0, insertAt)}${gateShortcutMeta}${manifest.slice(insertAt)}`;
   fs.writeFileSync(ANDROID_MANIFEST_PATH, manifest);
-  console.log('[android-customize] Added android.app.shortcuts metadata to BiometricGateActivity.');
+  console.log(
+    '[android-customize] Added android.app.shortcuts metadata to BiometricGateActivity.'
+  );
 }
 
 function syncShortcutIconDrawable() {
   if (!fs.existsSync(SHORTCUT_ICON_TEMPLATE_PATH)) {
-    console.warn('[android-customize] Missing shortcut icon template: ' + SHORTCUT_ICON_TEMPLATE_PATH);
+    console.warn(
+      '[android-customize] Missing shortcut icon template: ' +
+        SHORTCUT_ICON_TEMPLATE_PATH
+    );
   } else {
     try {
       fs.mkdirSync(SHORTCUT_ICON_TARGET_DIR, { recursive: true });
       fs.copyFileSync(SHORTCUT_ICON_TEMPLATE_PATH, SHORTCUT_ICON_TARGET_PATH);
       console.log('[android-customize] Synced shortcut icon drawable.');
     } catch (err) {
-      console.warn('[android-customize] Failed to sync shortcut icon drawable: ' + err.message);
+      console.warn(
+        '[android-customize] Failed to sync shortcut icon drawable: ' +
+          err.message
+      );
     }
   }
 
   if (!fs.existsSync(GATE_LOGO_SOURCE_PATH)) {
-    console.warn('[android-customize] Missing gate logo source: ' + GATE_LOGO_SOURCE_PATH);
+    console.warn(
+      '[android-customize] Missing gate logo source: ' + GATE_LOGO_SOURCE_PATH
+    );
     return;
   }
 
@@ -304,18 +477,25 @@ function syncShortcutIconDrawable() {
     fs.copyFileSync(GATE_LOGO_SOURCE_PATH, GATE_LOGO_TARGET_PATH);
     console.log('[android-customize] Synced biometric gate logo.');
   } catch (err) {
-    console.warn('[android-customize] Failed to sync biometric gate logo: ' + err.message);
+    console.warn(
+      '[android-customize] Failed to sync biometric gate logo: ' + err.message
+    );
   }
 }
 
 function ensureLauncherPortraitOrientation() {
   if (!fs.existsSync(ANDROID_MANIFEST_PATH)) {
-    console.warn('[android-customize] AndroidManifest.xml not found; skipping orientation patch.');
+    console.warn(
+      '[android-customize] AndroidManifest.xml not found; skipping orientation patch.'
+    );
     return;
   }
 
   let manifest = fs.readFileSync(ANDROID_MANIFEST_PATH, 'utf8');
-  if (manifest.includes('android:name="LauncherActivity"') && manifest.includes('android:screenOrientation="portrait"')) {
+  if (
+    manifest.includes('android:name="LauncherActivity"') &&
+    manifest.includes('android:screenOrientation="portrait"')
+  ) {
     return;
   }
 
@@ -326,13 +506,17 @@ function ensureLauncherPortraitOrientation() {
 
   if (nextManifest !== manifest) {
     fs.writeFileSync(ANDROID_MANIFEST_PATH, nextManifest, 'utf8');
-    console.log('[android-customize] Added screenOrientation=portrait to LauncherActivity in AndroidManifest.xml.');
+    console.log(
+      '[android-customize] Added screenOrientation=portrait to LauncherActivity in AndroidManifest.xml.'
+    );
   }
 }
 
 function ensureBiometricDependency() {
   if (!fs.existsSync(ANDROID_BUILD_GRADLE_PATH)) {
-    console.warn('[android-customize] app/build.gradle not found; skipping biometric dependency patch.');
+    console.warn(
+      '[android-customize] app/build.gradle not found; skipping biometric dependency patch.'
+    );
     return;
   }
 
@@ -348,38 +532,53 @@ function ensureBiometricDependency() {
   );
 
   if (nextGradle === gradle) {
-    nextGradle = gradle.replace(/dependencies\s*\{/, `dependencies {\n    ${dependency}`);
+    nextGradle = gradle.replace(
+      /dependencies\s*\{/,
+      `dependencies {\n    ${dependency}`
+    );
   }
 
   if (nextGradle !== gradle) {
     fs.writeFileSync(ANDROID_BUILD_GRADLE_PATH, nextGradle, 'utf8');
     console.log('[android-customize] Added androidx.biometric dependency.');
   } else {
-    console.warn('[android-customize] Could not patch biometric dependency in app/build.gradle.');
+    console.warn(
+      '[android-customize] Could not patch biometric dependency in app/build.gradle.'
+    );
   }
 }
 
 function ensureBiometricGateManifestWiring() {
   if (!fs.existsSync(ANDROID_MANIFEST_PATH)) {
-    console.warn('[android-customize] AndroidManifest.xml not found; skipping biometric gate patch.');
+    console.warn(
+      '[android-customize] AndroidManifest.xml not found; skipping biometric gate patch.'
+    );
     return;
   }
 
   let manifest = fs.readFileSync(ANDROID_MANIFEST_PATH, 'utf8');
   const original = manifest;
 
-  if (!manifest.includes('android:name="LauncherActivity"') || !manifest.includes('android:launchMode="singleTop"')) {
+  if (
+    !manifest.includes('android:name="LauncherActivity"') ||
+    !manifest.includes('android:launchMode="singleTop"')
+  ) {
     manifest = manifest.replace(
       /<activity android:name="LauncherActivity"(\s)/,
       '<activity android:name="LauncherActivity"\n            android:launchMode="singleTop"$1'
     );
   }
 
-  const launcherStart = manifest.indexOf('<activity android:name="LauncherActivity"');
+  const launcherStart = manifest.indexOf(
+    '<activity android:name="LauncherActivity"'
+  );
   if (launcherStart !== -1) {
     const launcherEnd = manifest.indexOf('</activity>', launcherStart);
     if (launcherEnd !== -1) {
-      const launcherBlock = manifest.slice(launcherStart, launcherEnd + '</activity>'.length);
+      const launcherBlock = manifest.slice(
+        launcherStart,
+        launcherEnd + '</activity>'.length
+      );
       const nextLauncherBlock = launcherBlock.replace(
         /\n\s*<intent-filter>\s*\n\s*<action android:name="android.intent.action.MAIN" \/>\s*\n\s*<category android:name="android.intent.category.LAUNCHER" \/>\s*\n\s*<\/intent-filter>\n/,
         '\n'
@@ -389,28 +588,34 @@ function ensureBiometricGateManifestWiring() {
   }
 
   if (!manifest.includes('android:name="BiometricGateActivity"')) {
-    const insertionPoint = manifest.indexOf('<activity android:name="LauncherActivity"');
+    const insertionPoint = manifest.indexOf(
+      '<activity android:name="LauncherActivity"'
+    );
     if (insertionPoint !== -1) {
       const gateBlock = `        <activity android:name="BiometricGateActivity"\n            android:exported="true"\n            android:noHistory="true"\n            android:screenOrientation="portrait"\n            android:theme="@android:style/Theme.Material.Light.NoActionBar.Fullscreen">\n            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />\n            <intent-filter>\n                <action android:name="android.intent.action.MAIN" />\n                <category android:name="android.intent.category.LAUNCHER" />\n            </intent-filter>\n\n            <intent-filter>\n                <action android:name="android.intent.action.VIEW" />\n                <category android:name="android.intent.category.DEFAULT" />\n                <category android:name="android.intent.category.BROWSABLE" />\n                <data android:scheme="facilitat"\n                    android:host="biometric-config"\n                />\n            </intent-filter>\n        </activity>\n\n`;
       manifest = `${manifest.slice(0, insertionPoint)}${gateBlock}${manifest.slice(insertionPoint)}`;
     } else {
-      console.warn('[android-customize] Could not find LauncherActivity insertion point for BiometricGateActivity.');
+      console.warn(
+        '[android-customize] Could not find LauncherActivity insertion point for BiometricGateActivity.'
+      );
     }
   }
 
   manifest = manifest.replace(
     /(<activity android:name="BiometricGateActivity"[\s\S]*?)\n\s*android:excludeFromRecents="true"/,
-    "$1"
+    '$1'
   );
 
   manifest = manifest.replace(
     /(<activity android:name="BiometricGateActivity"[\s\S]*?android:theme=")@android:style\/Theme\.Translucent\.NoTitleBar(")/,
-    "$1@android:style/Theme.Material.Light.NoActionBar.Fullscreen$2"
+    '$1@android:style/Theme.Material.Light.NoActionBar.Fullscreen$2'
   );
 
   if (manifest !== original) {
     fs.writeFileSync(ANDROID_MANIFEST_PATH, manifest, 'utf8');
-    console.log('[android-customize] Wired BiometricGateActivity and Launcher launchMode in AndroidManifest.xml.');
+    console.log(
+      '[android-customize] Wired BiometricGateActivity and Launcher launchMode in AndroidManifest.xml.'
+    );
   }
 }
 
@@ -425,16 +630,28 @@ function syncJavaTemplate(templatePath, targetPath, label) {
     fs.copyFileSync(templatePath, targetPath);
     console.log(`[android-customize] ${label} already up to date.`);
   } catch (err) {
-    console.error(`[android-customize] Failed to copy ${label}: ${err.message}`);
+    console.error(
+      `[android-customize] Failed to copy ${label}: ${err.message}`
+    );
     process.exit(1);
   }
 }
 
 function main() {
-  console.log('[android-customize] Applying persistent Android customizations...');
+  console.log(
+    '[android-customize] Applying persistent Android customizations...'
+  );
 
-  syncJavaTemplate(LAUNCHER_TEMPLATE_PATH, LAUNCHER_ACTIVITY_PATH, 'LauncherActivity');
-  syncJavaTemplate(BIOMETRIC_GATE_TEMPLATE_PATH, BIOMETRIC_GATE_ACTIVITY_PATH, 'BiometricGateActivity');
+  syncJavaTemplate(
+    LAUNCHER_TEMPLATE_PATH,
+    LAUNCHER_ACTIVITY_PATH,
+    'LauncherActivity'
+  );
+  syncJavaTemplate(
+    BIOMETRIC_GATE_TEMPLATE_PATH,
+    BIOMETRIC_GATE_ACTIVITY_PATH,
+    'BiometricGateActivity'
+  );
 
   const shortcuts = readShortcutConfig();
   syncBuildGradleShortcuts(shortcuts);

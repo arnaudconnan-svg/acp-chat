@@ -1,12 +1,15 @@
-"use strict";
+'use strict';
 
-const { buildPostureDecision, electActiveStateFromCandidates } = require("../lib/pipeline");
+const {
+  buildPostureDecision,
+  electActiveStateFromCandidates
+} = require('../lib/pipeline');
 
 let passed = 0;
 let failed = 0;
 
 function assert(condition, message) {
-  if (!condition) throw new Error(message || "assertion failed");
+  if (!condition) throw new Error(message || 'assertion failed');
 }
 
 function check(label, fn) {
@@ -22,291 +25,697 @@ function check(label, fn) {
 
 function baseInput(overrides = {}) {
   return {
-    detectedState: "exploration",
-    contactAnalysis: { isContact: false, selfCriticismLevel: "low", meaningCrisis: false, insightMoment: false },
+    detectedState: 'exploration',
+    contactAnalysis: {
+      isContact: false,
+      selfCriticismLevel: 'low',
+      insightMoment: false
+    },
     emotionalDecenteringAnalysis: { emotionalDecentering: false },
     affiliationWindow: [0, 0, 0, 0],
     affiliationEstablished: true,
     relationalAdjustmentAnalysis: { needsRelationalAdjustment: false },
-    calibrationAnalysis: { calibrationLevel: 0, explorationSignal: "interpretation" },
+    calibrationAnalysis: {
+      calibrationLevel: 0,
+      explorationSignal: 'interpretation'
+    },
     technicalContextDetected: false,
-    somaticSignalAnalysis: { somaticSignalActive: false, somaticLocalizationBlocked: false },
-    userRegisterAnalysis: { userRegister: "courant", formalAddress: false },
+    somaticSignalAnalysis: {
+      somaticSignalActive: false,
+      somaticLocalizationBlocked: false
+    },
+    userRegisterAnalysis: { userRegister: 'courant', formalAddress: false },
     interpretationRejection: {
       isInterpretationRejection: false,
       rejectsUnderlyingPhenomenon: false,
-      relationalFrictionSignal: "none"
+      relationalFrictionSignal: 'none'
     },
     effectiveExplorationDirectivityLevel: 0,
-    previousConversationState: "exploration_open",
+    previousConversationState: 'exploration_open',
     currentConsecutiveNonExplorationTurns: 0,
     currentExplorationRelanceWindow: [false, false, false, false],
-    allianceSignal: "good",
-    engagementLevel: "active",
-    stagnationTurns: 0,
-    attentionWindow: "open",
+    allianceSignal: 'good',
+    engagementLevel: 'active',
+    attentionWindow: 'open',
     closureIntent: false,
+    dependencyCareMessagePending: false,
     engagementAllianceAnalysis: null,
-    message: "",
+    message: '',
     recentHistory: [],
-    suicideLevel: "N0",
+    suicideLevel: 'N0',
     isRecallAttempt: false,
     psychoeducationType: null,
     infoContextFlags: [],
     dischargeAnalysis: { aggressiveDischargeDirectedToBot: false },
+    explorationAnalysis: { everydayConcreteShare: false },
     previousFormalAddress: false,
-    dependencyRiskLevel: "low",
+    dependencyRiskLevel: 'low',
     ...overrides
   };
 }
 
-check("exploration detectedState -> exploration_* conversation state", () => {
-  const out = buildPostureDecision(baseInput({ detectedState: "exploration" }));
-  assert(out.conversationState === "exploration_open", `expected exploration_open, got ${out.conversationState}`);
+check('exploration detectedState -> exploration_* conversation state', () => {
+  const out = buildPostureDecision(baseInput({ detectedState: 'exploration' }));
+  assert(
+    out.conversationState === 'exploration_open',
+    `expected exploration_open, got ${out.conversationState}`
+  );
 });
 
-check("info detectedState passes through", () => {
-  const out = buildPostureDecision(baseInput({ detectedState: "info_features" }));
-  assert(out.conversationState === "info_features", `expected info_features, got ${out.conversationState}`);
+check('exploration directivity can rise progressively from inherited 0', () => {
+  const out = buildPostureDecision(
+    baseInput({
+      detectedState: 'exploration',
+      effectiveExplorationDirectivityLevel: 0,
+      calibrationAnalysis: {
+        calibrationLevel: 3,
+        explorationSignal: 'interpretation'
+      }
+    })
+  );
+  assert(
+    out.finalDirectivityLevel === 1,
+    `expected progressive rise to 1, got ${out.finalDirectivityLevel}`
+  );
+  assert(
+    out.flagUpdates.explorationDirectivityLevel === 1,
+    `expected flagUpdates.explorationDirectivityLevel=1, got ${out.flagUpdates.explorationDirectivityLevel}`
+  );
 });
 
-check("discharge detectedState keeps discharge state", () => {
-  const out = buildPostureDecision(baseInput({ detectedState: "discharge_regulated" }));
-  assert(out.conversationState === "discharge_regulated", `expected discharge_regulated, got ${out.conversationState}`);
+check('info detectedState passes through', () => {
+  const out = buildPostureDecision(
+    baseInput({ detectedState: 'info_features' })
+  );
+  assert(
+    out.conversationState === 'info_features',
+    `expected info_features, got ${out.conversationState}`
+  );
 });
 
-check("post-discharge cooldown returns exploration (no contact state)", () => {
-  const out = buildPostureDecision(baseInput({
-    detectedState: "exploration",
-    previousConversationState: "discharge_regulated"
-  }));
-  assert(out.conversationState === "exploration_open", `expected exploration_open, got ${out.conversationState}`);
+check('discharge detectedState keeps discharge state', () => {
+  const out = buildPostureDecision(
+    baseInput({ detectedState: 'discharge_regulated' })
+  );
+  assert(
+    out.conversationState === 'discharge_regulated',
+    `expected discharge_regulated, got ${out.conversationState}`
+  );
 });
 
-check("post-discharge transition enforces restrained phenomenological exploration", () => {
-  const out = buildPostureDecision(baseInput({
-    detectedState: "exploration",
-    previousConversationState: "discharge_dysregulated",
-    effectiveExplorationDirectivityLevel: 4,
-    calibrationAnalysis: { calibrationLevel: 4, explorationSignal: "interpretation" }
-  }));
-  assert(out.postDischargeTransitionActive === true, "expected postDischargeTransitionActive=true");
-  assert(out.finalDirectivityLevel === 2, `expected finalDirectivityLevel=2, got ${out.finalDirectivityLevel}`);
-  assert(out.finalExplorationSignal === "phenomenological_follow", `expected phenomenological_follow, got ${out.finalExplorationSignal}`);
-  assert(out.forbidden.includes("relance"), "expected relance forbidden on post-discharge transition");
-  assert(out.writerIntentHints.includes("post_discharge_soft_landing"), "expected post_discharge_soft_landing hint");
+check('N1 keeps visible state and exposes effective crisis routing state', () => {
+  const out = buildPostureDecision(
+    baseInput({ detectedState: 'exploration', suicideLevel: 'N1' })
+  );
+  assert(
+    out.conversationState === 'exploration_open',
+    `expected visible exploration_open state, got ${out.conversationState}`
+  );
+  assert(
+    out.effectiveConversationState === 'n1_crisis',
+    `expected effectiveConversationState=n1_crisis, got ${out.effectiveConversationState}`
+  );
+  assert(
+    out.intent === 'clarifier le risque calmement',
+    `expected N1 intent, got ${out.intent}`
+  );
 });
 
-check("post-discharge transition applies in non-exploration states without forcing exploration shape", () => {
-  const out = buildPostureDecision(baseInput({
-    detectedState: "info_features",
-    previousConversationState: "discharge_regulated"
-  }));
-  assert(out.postDischargeTransitionActive === true, "expected postDischargeTransitionActive=true");
-  assert(out.writerIntentHints.includes("post_discharge_soft_landing"), "expected post_discharge_soft_landing hint");
-  assert(out.forbidden.includes("relance"), "expected relance forbidden in info post-discharge transition");
+check('post-discharge cooldown returns exploration (no contact state)', () => {
+  const out = buildPostureDecision(
+    baseInput({
+      detectedState: 'exploration',
+      previousConversationState: 'discharge_regulated'
+    })
+  );
+  assert(
+    out.conversationState === 'exploration_open',
+    `expected exploration_open, got ${out.conversationState}`
+  );
 });
 
-check("contact self-criticism signal enriches forbidden + hints", () => {
-  const out = buildPostureDecision(baseInput({
-    detectedState: "exploration",
-    contactAnalysis: { isContact: true, selfCriticismLevel: "high", meaningCrisis: false, insightMoment: false }
-  }));
-  assert(out.forbidden.includes("value_affirmation"), "expected value_affirmation in forbidden");
-  assert(out.writerIntentHints.includes("signify_pain_without_blocking"), "expected signify_pain_without_blocking hint");
-  assert(out.writerIntentHints.includes("auto_compassion_door_open"), "expected auto_compassion_door_open hint");
+check(
+  'post-discharge transition enforces restrained phenomenological exploration',
+  () => {
+    const out = buildPostureDecision(
+      baseInput({
+        detectedState: 'exploration',
+        previousConversationState: 'discharge_dysregulated',
+        effectiveExplorationDirectivityLevel: 4,
+        calibrationAnalysis: {
+          calibrationLevel: 4,
+          explorationSignal: 'interpretation'
+        }
+      })
+    );
+    assert(
+      out.postDischargeTransitionActive === true,
+      'expected postDischargeTransitionActive=true'
+    );
+    assert(
+      out.finalDirectivityLevel === 2,
+      `expected finalDirectivityLevel=2, got ${out.finalDirectivityLevel}`
+    );
+    assert(
+      out.finalExplorationSignal === 'phenomenological_follow',
+      `expected phenomenological_follow, got ${out.finalExplorationSignal}`
+    );
+    assert(
+      out.forbidden.includes('relance'),
+      'expected relance forbidden on post-discharge transition'
+    );
+    assert(
+      out.writerIntentHints.includes('post_discharge_soft_landing'),
+      'expected post_discharge_soft_landing hint'
+    );
+  }
+);
+
+check(
+  'post-discharge transition applies in non-exploration states without forcing exploration shape',
+  () => {
+    const out = buildPostureDecision(
+      baseInput({
+        detectedState: 'info_features',
+        previousConversationState: 'discharge_regulated'
+      })
+    );
+    assert(
+      out.postDischargeTransitionActive === true,
+      'expected postDischargeTransitionActive=true'
+    );
+    assert(
+      out.writerIntentHints.includes('post_discharge_soft_landing'),
+      'expected post_discharge_soft_landing hint'
+    );
+    assert(
+      out.forbidden.includes('relance'),
+      'expected relance forbidden in info post-discharge transition'
+    );
+  }
+);
+
+check('contact self-criticism signal enriches forbidden + hints', () => {
+  const out = buildPostureDecision(
+    baseInput({
+      detectedState: 'exploration',
+      contactAnalysis: {
+        isContact: true,
+        selfCriticismLevel: 'high',
+        insightMoment: false
+      }
+    })
+  );
+  assert(
+    out.forbidden.includes('value_affirmation'),
+    'expected value_affirmation in forbidden'
+  );
+  assert(
+    out.writerIntentHints.includes('signify_pain_without_blocking'),
+    'expected signify_pain_without_blocking hint'
+  );
+  assert(
+    out.writerIntentHints.includes('auto_compassion_door_open'),
+    'expected auto_compassion_door_open hint'
+  );
 });
 
-check("meaningCrisis signal constrains relance + interpretation", () => {
-  const out = buildPostureDecision(baseInput({
-    detectedState: "exploration",
-    contactAnalysis: { isContact: true, selfCriticismLevel: "low", meaningCrisis: true, insightMoment: false }
-  }));
-  assert(out.forbidden.includes("relance"), "expected relance in forbidden");
-  assert(out.forbidden.includes("interpretive_hypothesis"), "expected interpretive_hypothesis in forbidden");
+check('insightMoment keeps hint without relance lock', () => {
+  const out = buildPostureDecision(
+    baseInput({
+      detectedState: 'exploration',
+      contactAnalysis: {
+        isContact: true,
+        selfCriticismLevel: 'low',
+        insightMoment: true
+      }
+    })
+  );
+  assert(
+    !out.forbidden.includes('relance'),
+    'did not expect relance in forbidden'
+  );
+  assert(
+    out.writerIntentHints.includes('amplify_insight'),
+    'expected amplify_insight hint'
+  );
 });
 
-check("insightMoment signal adds amplify_insight hint", () => {
-  const out = buildPostureDecision(baseInput({
-    detectedState: "exploration",
-    contactAnalysis: { isContact: true, selfCriticismLevel: "low", meaningCrisis: false, insightMoment: true }
-  }));
-  assert(out.writerIntentHints.includes("amplify_insight"), "expected amplify_insight hint");
+check(
+  'everyday concrete share enforces neutral reframe without opening',
+  () => {
+    const out = buildPostureDecision(
+      baseInput({
+        detectedState: 'exploration',
+        effectiveExplorationDirectivityLevel: 1,
+        calibrationAnalysis: {
+          calibrationLevel: 1,
+          explorationSignal: 'interpretation'
+        },
+        explorationAnalysis: { everydayConcreteShare: true }
+      })
+    );
+
+    assert(
+      out.finalExplorationSignal === 'phenomenological_follow',
+      `expected phenomenological_follow, got ${out.finalExplorationSignal}`
+    );
+    assert(
+      out.finalDirectivityLevel === 3,
+      `expected finalDirectivityLevel=3, got ${out.finalDirectivityLevel}`
+    );
+    assert(out.forbidden.includes('relance'), 'expected relance forbidden');
+    assert(
+      out.writerIntentHints.includes('everyday_concrete_reframe'),
+      'expected everyday_concrete_reframe hint'
+    );
+    assert(
+      out.relancePolicy === 'forbidden',
+      `expected relancePolicy=forbidden, got ${out.relancePolicy}`
+    );
+  }
+);
+
+check('emotionalDecentering hints apply in info states', () => {
+  const out = buildPostureDecision(
+    baseInput({
+      detectedState: 'info_psychoeducation',
+      emotionalDecenteringAnalysis: { emotionalDecentering: true }
+    })
+  );
+  assert(
+    out.writerIntentHints.includes('hold_emotional_thread'),
+    'expected hold_emotional_thread hint'
+  );
+  assert(
+    out.writerIntentHints.includes('auto_compassion_door_open'),
+    'expected auto_compassion_door_open hint'
+  );
 });
 
-check("emotionalDecentering hints apply in info states", () => {
-  const out = buildPostureDecision(baseInput({
-    detectedState: "info_psychoeducation",
-    emotionalDecenteringAnalysis: { emotionalDecentering: true }
-  }));
-  assert(out.writerIntentHints.includes("hold_emotional_thread"), "expected hold_emotional_thread hint");
-  assert(out.writerIntentHints.includes("auto_compassion_door_open"), "expected auto_compassion_door_open hint");
+check('emotionalDecentering hints are blocked in discharge states', () => {
+  const out = buildPostureDecision(
+    baseInput({
+      detectedState: 'discharge_regulated',
+      previousConversationState: 'exploration_open',
+      emotionalDecenteringAnalysis: { emotionalDecentering: true }
+    })
+  );
+  assert(
+    !out.writerIntentHints.includes('hold_emotional_thread'),
+    'did not expect hold_emotional_thread hint in discharge'
+  );
+  assert(
+    !out.writerIntentHints.includes('auto_compassion_door_open'),
+    'did not expect auto_compassion_door_open hint in discharge'
+  );
 });
 
-check("emotionalDecentering hints are blocked in discharge states", () => {
-  const out = buildPostureDecision(baseInput({
-    detectedState: "discharge_regulated",
-    previousConversationState: "exploration_open",
-    emotionalDecenteringAnalysis: { emotionalDecentering: true }
-  }));
-  assert(!out.writerIntentHints.includes("hold_emotional_thread"), "did not expect hold_emotional_thread hint in discharge");
-  assert(!out.writerIntentHints.includes("auto_compassion_door_open"), "did not expect auto_compassion_door_open hint in discharge");
+check(
+  'emotionalDecentering hints stay inactive without functional affiliation',
+  () => {
+    const out = buildPostureDecision(
+      baseInput({
+        detectedState: 'exploration',
+        affiliationEstablished: false,
+        emotionalDecenteringAnalysis: { emotionalDecentering: true }
+      })
+    );
+    assert(
+      !out.writerIntentHints.includes('hold_emotional_thread'),
+      'did not expect hold_emotional_thread without affiliation'
+    );
+    assert(
+      !out.writerIntentHints.includes('auto_compassion_door_open'),
+      'did not expect auto_compassion_door_open without affiliation'
+    );
+    assert(
+      Array.isArray(out.writerIntentHintsInactive),
+      'expected writerIntentHintsInactive to be an array'
+    );
+    assert(
+      out.writerIntentHintsInactive.some(
+        (entry) =>
+          entry.hint === 'hold_emotional_thread' &&
+          entry.reason === 'affiliation_not_established'
+      ),
+      'expected inactive hold_emotional_thread reason'
+    );
+    assert(
+      out.writerIntentHintsInactive.some(
+        (entry) =>
+          entry.hint === 'auto_compassion_door_open' &&
+          entry.reason === 'affiliation_not_established'
+      ),
+      'expected inactive auto_compassion reason'
+    );
+  }
+);
+
+check(
+  'explicit incomprehension keeps clarification-friendly exploration contract',
+  () => {
+    const out = buildPostureDecision(
+      baseInput({
+        detectedState: 'exploration',
+        calibrationAnalysis: {
+          calibrationLevel: 0,
+          explorationSignal: 'interpretation'
+        },
+        message: "Je n'ai pas compris ta question"
+      })
+    );
+    assert(
+      out.finalExplorationSignal === 'phenomenological_follow',
+      `expected phenomenological_follow, got ${out.finalExplorationSignal}`
+    );
+  }
+);
+
+check(
+  'narrowed processing window enforces single-axis exploration contract',
+  () => {
+    const out = buildPostureDecision(
+      baseInput({
+        detectedState: 'exploration',
+        attentionWindow: 'open',
+        engagementAllianceAnalysis: {
+          allianceSignal: 'good',
+          engagementLevel: 'active',
+          attentionQuality: 'narrowed'
+        }
+      })
+    );
+    assert(
+      out.writerIntentHints.includes('attention_engagement_soft_guidance'),
+      'expected attention_engagement_soft_guidance hint'
+    );
+    assert(
+      !out.writerIntentHints.includes('attention_narrow_single_axis'),
+      'attention_narrow_single_axis should not be present'
+    );
+  }
+);
+
+check('emotionSequenceStage removed from posture decision output', () => {
+  const out = buildPostureDecision(baseInput({ detectedState: 'exploration' }));
+  assert(
+    !('emotionSequenceStage' in out),
+    'emotionSequenceStage should not exist in output'
+  );
 });
 
-check("emotionalDecentering hints stay inactive without functional affiliation", () => {
-  const out = buildPostureDecision(baseInput({
-    detectedState: "exploration",
-    affiliationEstablished: false,
-    emotionalDecenteringAnalysis: { emotionalDecentering: true }
-  }));
-  assert(!out.writerIntentHints.includes("hold_emotional_thread"), "did not expect hold_emotional_thread without affiliation");
-  assert(!out.writerIntentHints.includes("auto_compassion_door_open"), "did not expect auto_compassion_door_open without affiliation");
-  assert(Array.isArray(out.writerIntentHintsInactive), "expected writerIntentHintsInactive to be an array");
-  assert(out.writerIntentHintsInactive.some((entry) => entry.hint === "hold_emotional_thread" && entry.reason === "affiliation_not_established"), "expected inactive hold_emotional_thread reason");
-  assert(out.writerIntentHintsInactive.some((entry) => entry.hint === "auto_compassion_door_open" && entry.reason === "affiliation_not_established"), "expected inactive auto_compassion reason");
+check(
+  'secondary tension arbitration prefers higher confidence over semantic priority',
+  () => {
+    const out = buildPostureDecision(
+      baseInput({
+        detectedState: 'exploration',
+        allianceSignal: 'fragile',
+        secondaryTension: { family: 'info', confidence: 'high' }
+      })
+    );
+    assert(!!out.secondaryTension, 'expected secondaryTension to be set');
+    assert(
+      out.secondaryTension.family === 'info',
+      `expected family=info, got ${out.secondaryTension.family}`
+    );
+    assert(
+      out.secondaryTension.confidence === 'high',
+      `expected confidence=high, got ${out.secondaryTension.confidence}`
+    );
+  }
+);
+
+check(
+  'secondary tension tie-break uses semantic priority on equal confidence',
+  () => {
+    const out = buildPostureDecision(
+      baseInput({
+        detectedState: 'exploration',
+        allianceSignal: 'fragile',
+        secondaryTension: { family: 'info', confidence: 'medium' }
+      })
+    );
+    assert(!!out.secondaryTension, 'expected secondaryTension to be set');
+    assert(
+      out.secondaryTension.family === 'alliance_rupture',
+      `expected family=alliance_rupture, got ${out.secondaryTension.family}`
+    );
+    assert(
+      out.secondaryTension.confidence === 'medium',
+      `expected confidence=medium, got ${out.secondaryTension.confidence}`
+    );
+  }
+);
+
+check('secondary tension suppresses redundancy with active base family', () => {
+  const out = buildPostureDecision(
+    baseInput({
+      detectedState: 'info_features',
+      allianceSignal: 'good',
+      engagementLevel: 'active',
+      attentionWindow: 'open',
+      secondaryTension: { family: 'info', confidence: 'high' }
+    })
+  );
+  assert(
+    out.secondaryTension === null,
+    'expected secondaryTension=null when candidate duplicates active base family'
+  );
 });
 
-check("explicit incomprehension forces clarification-friendly exploration contract", () => {
-  const out = buildPostureDecision(baseInput({
-    detectedState: "exploration",
-    calibrationAnalysis: { calibrationLevel: 0, explorationSignal: "interpretation" },
-    message: "Je n'ai pas compris ta question"
-  }));
-  assert(out.finalExplorationSignal === "phenomenological_follow", `expected phenomenological_follow, got ${out.finalExplorationSignal}`);
-  assert(out.forbidden.includes("interpretive_hypothesis"), "expected interpretive_hypothesis forbidden on explicit incomprehension");
+check('secondary tension is disabled during aggressive discharge', () => {
+  const out = buildPostureDecision(
+    baseInput({
+      detectedState: 'discharge_dysregulated',
+      allianceSignal: 'rupture',
+      secondaryTension: { family: 'discharge', confidence: 'high' },
+      dischargeAnalysis: { aggressiveDischargeDirectedToBot: true }
+    })
+  );
+  assert(
+    out.secondaryTension === null,
+    'expected secondaryTension=null when aggressive discharge is detected'
+  );
 });
 
-check("narrowed processing window enforces single-axis exploration contract", () => {
-  const out = buildPostureDecision(baseInput({
-    detectedState: "exploration",
-    attentionWindow: "open",
-    engagementAllianceAnalysis: {
-      allianceSignal: "good",
-      engagementLevel: "active",
-      attentionQuality: "narrowed"
-    }
-  }));
-  assert(out.writerIntentHints.includes("attention_narrow_single_axis"), "expected attention_narrow_single_axis hint");
-  assert(out.intent === "suivre un seul axe sans ouvrir de nouveau chantier", `unexpected intent: ${out.intent}`);
+check('dependency care pending activates need_human_support', () => {
+  const out = buildPostureDecision(
+    baseInput({
+      detectedState: 'exploration',
+      dependencyCareMessagePending: 'high',
+      allianceSignal: 'fragile'
+    })
+  );
+  assert(
+    out.conversationState === 'need_human_support',
+    `expected need_human_support, got ${out.conversationState}`
+  );
+  assert(
+    out.intent === 'tenir le point et ouvrir doucement vers un appui humain',
+    `unexpected intent: ${out.intent}`
+  );
+  assert(
+    out.secondaryTension && out.secondaryTension.family === 'alliance_rupture',
+    `expected alliance_rupture tension, got ${out.secondaryTension && out.secondaryTension.family}`
+  );
 });
 
-check("emotionSequenceStage removed from posture decision output", () => {
-  const out = buildPostureDecision(baseInput({ detectedState: "exploration" }));
-  assert(!("emotionSequenceStage" in out), "emotionSequenceStage should not exist in output");
+check('election tie-break reason: discharge priority', () => {
+  const out = electActiveStateFromCandidates(
+    [
+      {
+        family: 'discharge',
+        detectedState: 'discharge_regulated',
+        confidence: 'medium'
+      },
+      {
+        family: 'info',
+        detectedState: 'info_features',
+        confidence: 'high',
+        infoSource: 'llm',
+        infoSignalSource: 'llm'
+      }
+    ],
+    { isContact: true }
+  );
+  assert(
+    out.tieBreakReason === 'discharge_priority',
+    `expected discharge_priority, got ${out.tieBreakReason}`
+  );
 });
 
-check("secondary tension arbitration prefers higher confidence over semantic priority", () => {
-  const out = buildPostureDecision(baseInput({
-    detectedState: "exploration",
-    allianceSignal: "fragile",
-    secondaryTension: { family: "info", confidence: "high" }
-  }));
-  assert(!!out.secondaryTension, "expected secondaryTension to be set");
-  assert(out.secondaryTension.family === "info", `expected family=info, got ${out.secondaryTension.family}`);
-  assert(out.secondaryTension.confidence === "high", `expected confidence=high, got ${out.secondaryTension.confidence}`);
+check('election tie-break reason: app_features override', () => {
+  const out = electActiveStateFromCandidates(
+    [
+      {
+        family: 'info',
+        detectedState: 'info_features',
+        confidence: 'low',
+        infoSource: 'deterministic_app_features',
+        infoSignalSource: 'deterministic_app_features'
+      },
+      {
+        family: 'exploration',
+        detectedState: 'exploration',
+        confidence: 'high'
+      }
+    ],
+    { isContact: false }
+  );
+  assert(
+    out.tieBreakReason === 'override_app_features',
+    `expected override_app_features, got ${out.tieBreakReason}`
+  );
 });
 
-check("secondary tension tie-break uses semantic priority on equal confidence", () => {
-  const out = buildPostureDecision(baseInput({
-    detectedState: "exploration",
-    allianceSignal: "fragile",
-    secondaryTension: { family: "info", confidence: "medium" }
-  }));
-  assert(!!out.secondaryTension, "expected secondaryTension to be set");
-  assert(out.secondaryTension.family === "alliance_rupture", `expected family=alliance_rupture, got ${out.secondaryTension.family}`);
-  assert(out.secondaryTension.confidence === "medium", `expected confidence=medium, got ${out.secondaryTension.confidence}`);
+check('election tie-break reason: info stronger confidence', () => {
+  const out = electActiveStateFromCandidates(
+    [
+      {
+        family: 'info',
+        detectedState: 'info_pure',
+        confidence: 'high',
+        infoSource: 'llm',
+        infoSignalSource: 'llm'
+      },
+      { family: 'exploration', detectedState: 'exploration', confidence: 'low' }
+    ],
+    { isContact: false }
+  );
+  assert(
+    out.tieBreakReason === 'info_gt_exploration',
+    `expected info_gt_exploration, got ${out.tieBreakReason}`
+  );
 });
 
-check("secondary tension suppresses redundancy with active base family", () => {
-  const out = buildPostureDecision(baseInput({
-    detectedState: "info_features",
-    allianceSignal: "good",
-    engagementLevel: "active",
-    attentionWindow: "open",
-    stagnationTurns: 0,
-    secondaryTension: { family: "info", confidence: "high" }
-  }));
-  assert(out.secondaryTension === null, "expected secondaryTension=null when candidate duplicates active base family");
+check('election tie-break reason: exploration stronger confidence', () => {
+  const out = electActiveStateFromCandidates(
+    [
+      {
+        family: 'info',
+        detectedState: 'info_pure',
+        confidence: 'low',
+        infoSource: 'llm',
+        infoSignalSource: 'llm'
+      },
+      {
+        family: 'exploration',
+        detectedState: 'exploration',
+        confidence: 'high'
+      }
+    ],
+    { isContact: false }
+  );
+  assert(
+    out.tieBreakReason === 'exploration_gt_info',
+    `expected exploration_gt_info, got ${out.tieBreakReason}`
+  );
 });
 
-check("secondary tension is disabled during aggressive discharge", () => {
-  const out = buildPostureDecision(baseInput({
-    detectedState: "discharge_dysregulated",
-    allianceSignal: "rupture",
-    secondaryTension: { family: "discharge", confidence: "high" },
-    dischargeAnalysis: { aggressiveDischargeDirectedToBot: true }
-  }));
-  assert(out.secondaryTension === null, "expected secondaryTension=null when aggressive discharge is detected");
+check('election tie-break reason: equal high favors info', () => {
+  const out = electActiveStateFromCandidates(
+    [
+      {
+        family: 'info',
+        detectedState: 'info_pure',
+        confidence: 'high',
+        infoSource: 'llm',
+        infoSignalSource: 'llm'
+      },
+      {
+        family: 'exploration',
+        detectedState: 'exploration',
+        confidence: 'high'
+      }
+    ],
+    { isContact: false }
+  );
+  assert(
+    out.tieBreakReason === 'tie_break_equal_high_info_primary',
+    `expected tie_break_equal_high_info_primary, got ${out.tieBreakReason}`
+  );
 });
 
-check("election tie-break reason: discharge priority", () => {
-  const out = electActiveStateFromCandidates([
-    { family: "discharge", detectedState: "discharge_regulated", confidence: "medium" },
-    { family: "info", detectedState: "info_features", confidence: "high", infoSource: "llm", infoSignalSource: "llm" }
-  ], { isContact: true });
-  assert(out.tieBreakReason === "discharge_priority", `expected discharge_priority, got ${out.tieBreakReason}`);
+check('election tie-break reason: equal medium favors info', () => {
+  const out = electActiveStateFromCandidates(
+    [
+      {
+        family: 'info',
+        detectedState: 'info_pure',
+        confidence: 'medium',
+        infoSource: 'llm',
+        infoSignalSource: 'llm'
+      },
+      {
+        family: 'exploration',
+        detectedState: 'exploration',
+        confidence: 'medium'
+      }
+    ],
+    { isContact: false }
+  );
+  assert(
+    out.tieBreakReason === 'tie_break_equal_medium_info_primary',
+    `expected tie_break_equal_medium_info_primary, got ${out.tieBreakReason}`
+  );
 });
 
-check("election tie-break reason: app_features override", () => {
-  const out = electActiveStateFromCandidates([
-    { family: "info", detectedState: "info_features", confidence: "low", infoSource: "deterministic_app_features", infoSignalSource: "deterministic_app_features" },
-    { family: "exploration", detectedState: "exploration", confidence: "high" }
-  ], { isContact: false });
-  assert(out.tieBreakReason === "override_app_features", `expected override_app_features, got ${out.tieBreakReason}`);
+check('election tie-break reason: equal low favors exploration', () => {
+  const out = electActiveStateFromCandidates(
+    [
+      {
+        family: 'info',
+        detectedState: 'info_pure',
+        confidence: 'low',
+        infoSource: 'llm',
+        infoSignalSource: 'llm'
+      },
+      { family: 'exploration', detectedState: 'exploration', confidence: 'low' }
+    ],
+    { isContact: false }
+  );
+  assert(
+    out.tieBreakReason === 'tie_break_equal_low_exploration_primary',
+    `expected tie_break_equal_low_exploration_primary, got ${out.tieBreakReason}`
+  );
 });
 
-check("election tie-break reason: info stronger confidence", () => {
-  const out = electActiveStateFromCandidates([
-    { family: "info", detectedState: "info_pure", confidence: "high", infoSource: "llm", infoSignalSource: "llm" },
-    { family: "exploration", detectedState: "exploration", confidence: "low" }
-  ], { isContact: false });
-  assert(out.tieBreakReason === "info_gt_exploration", `expected info_gt_exploration, got ${out.tieBreakReason}`);
+check('election tie-break reason: info only candidate', () => {
+  const out = electActiveStateFromCandidates(
+    [
+      {
+        family: 'info',
+        detectedState: 'info_features',
+        confidence: 'medium',
+        infoSource: 'llm',
+        infoSignalSource: 'llm'
+      }
+    ],
+    { isContact: false }
+  );
+  assert(
+    out.tieBreakReason === 'info_only_candidate',
+    `expected info_only_candidate, got ${out.tieBreakReason}`
+  );
 });
 
-check("election tie-break reason: exploration stronger confidence", () => {
-  const out = electActiveStateFromCandidates([
-    { family: "info", detectedState: "info_pure", confidence: "low", infoSource: "llm", infoSignalSource: "llm" },
-    { family: "exploration", detectedState: "exploration", confidence: "high" }
-  ], { isContact: false });
-  assert(out.tieBreakReason === "exploration_gt_info", `expected exploration_gt_info, got ${out.tieBreakReason}`);
-});
-
-check("election tie-break reason: equal high favors info", () => {
-  const out = electActiveStateFromCandidates([
-    { family: "info", detectedState: "info_pure", confidence: "high", infoSource: "llm", infoSignalSource: "llm" },
-    { family: "exploration", detectedState: "exploration", confidence: "high" }
-  ], { isContact: false });
-  assert(out.tieBreakReason === "tie_break_equal_high_info_primary", `expected tie_break_equal_high_info_primary, got ${out.tieBreakReason}`);
-});
-
-check("election tie-break reason: equal medium favors info", () => {
-  const out = electActiveStateFromCandidates([
-    { family: "info", detectedState: "info_pure", confidence: "medium", infoSource: "llm", infoSignalSource: "llm" },
-    { family: "exploration", detectedState: "exploration", confidence: "medium" }
-  ], { isContact: false });
-  assert(out.tieBreakReason === "tie_break_equal_medium_info_primary", `expected tie_break_equal_medium_info_primary, got ${out.tieBreakReason}`);
-});
-
-check("election tie-break reason: equal low favors exploration", () => {
-  const out = electActiveStateFromCandidates([
-    { family: "info", detectedState: "info_pure", confidence: "low", infoSource: "llm", infoSignalSource: "llm" },
-    { family: "exploration", detectedState: "exploration", confidence: "low" }
-  ], { isContact: false });
-  assert(out.tieBreakReason === "tie_break_equal_low_exploration_primary", `expected tie_break_equal_low_exploration_primary, got ${out.tieBreakReason}`);
-});
-
-check("election tie-break reason: info only candidate", () => {
-  const out = electActiveStateFromCandidates([
-    { family: "info", detectedState: "info_features", confidence: "medium", infoSource: "llm", infoSignalSource: "llm" }
-  ], { isContact: false });
-  assert(out.tieBreakReason === "info_only_candidate", `expected info_only_candidate, got ${out.tieBreakReason}`);
-});
-
-check("election tie-break reason: exploration only candidate", () => {
-  const out = electActiveStateFromCandidates([
-    { family: "exploration", detectedState: "exploration", confidence: "medium" }
-  ], { isContact: false });
-  assert(out.tieBreakReason === "exploration_only_candidate", `expected exploration_only_candidate, got ${out.tieBreakReason}`);
+check('election tie-break reason: exploration only candidate', () => {
+  const out = electActiveStateFromCandidates(
+    [
+      {
+        family: 'exploration',
+        detectedState: 'exploration',
+        confidence: 'medium'
+      }
+    ],
+    { isContact: false }
+  );
+  assert(
+    out.tieBreakReason === 'exploration_only_candidate',
+    `expected exploration_only_candidate, got ${out.tieBreakReason}`
+  );
 });
 
 console.log(`\n[POSTURE] ${passed} passed, ${failed} failed.`);

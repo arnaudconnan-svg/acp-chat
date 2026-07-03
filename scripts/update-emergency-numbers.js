@@ -1,4 +1,4 @@
-﻿"use strict";
+﻿'use strict';
 
 /**
  * update-emergency-numbers.js
@@ -10,16 +10,18 @@
  * Usage : npm run update:emergency-numbers
  */
 
-const path = require("path");
-const { updateEmergencyNumbers } = require("../lib/emergency-updater");
+const path = require('path');
+const { updateEmergencyNumbers } = require('../lib/emergency-updater');
 
-const OUTPUT_FILE = path.join(__dirname, "../data/emergency-numbers.json");
+const OUTPUT_FILE = path.join(__dirname, '../data/emergency-numbers.json');
 
-updateEmergencyNumbers(OUTPUT_FILE, "[update-emergency-numbers]")
+updateEmergencyNumbers(OUTPUT_FILE, '[update-emergency-numbers]')
   .then(() => {
-    console.log("[update-emergency-numbers] RAPPEL : vérifier manuellement les entrées 'label' pour les nouveaux pays (Wikidata ne fournit pas les noms en français).");
+    console.log(
+      "[update-emergency-numbers] RAPPEL : vérifier manuellement les entrées 'label' pour les nouveaux pays (Wikidata ne fournit pas les noms en français)."
+    );
   })
-  .catch(err => {
-    console.error("[update-emergency-numbers] Erreur fatale:", err.message);
+  .catch((err) => {
+    console.error('[update-emergency-numbers] Erreur fatale:', err.message);
     process.exit(1);
   });

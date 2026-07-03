@@ -14,12 +14,14 @@ Ce fichier decrit le mode de travail reel du projet.
 Le controle porte sur le comportement visible, pas sur chaque decision de code.
 
 Toujours :
+
 1. formuler l'objectif en langage produit ou comportemental
 2. laisser l'agent choisir le moyen technique
 3. tester ce qui est modifie
 4. conserver un historique git lisible
 
 Ne jamais :
+
 - valider un changement visible non compris
 - melanger un vrai changement produit et un refactoring large sans l'annoncer
 - supposer qu'un diff court est automatiquement plus sur qu'un diff structurel propre
@@ -29,6 +31,7 @@ Ne jamais :
 ### Changement purement technique
 
 Exemples :
+
 - logs
 - renommage interne
 - extraction en modules
@@ -36,6 +39,7 @@ Exemples :
 - factorisation
 
 Dans ces cas :
+
 - l'agent agit directement
 - il explique apres coup ce qu'il a fait
 - il valide localement avec les commandes adaptees
@@ -43,6 +47,7 @@ Dans ces cas :
 ### Changement visible pour l'utilisateur final
 
 Exemples :
+
 - ton de reponse
 - routing de mode
 - reponse de crise
@@ -50,6 +55,7 @@ Exemples :
 - comportement frontend perceptible
 
 Dans ces cas :
+
 1. l'agent annonce ce qui va changer
 2. l'agent indique le risque principal
 3. il attend un go avant de coder
@@ -62,6 +68,7 @@ Verification minimale apres changement backend significatif :
 2. `npm run verify`
 
 Note prompting :
+
 - `npm run verify` inclut `npm run prompts:consistency`, garde-fou deterministe des incoherences de prompting (notamment `UPDATE_MEMORY`)
 - tout echec de ce harnais est bloquant, meme si le reste des harnesses passe
 
@@ -73,18 +80,18 @@ Verification complementaire selon le chantier :
 - si l'utilisateur doit suivre un test depuis `admin.html`, lancer le test en non-prive (`isPrivateConversation=false`) et communiquer `conversationId` + `requestId`
 - reserver `isPrivateConversation=true` aux tests demandes explicitement en prive
 - sequence Render de reference :
-	- 1) `GET /v1/services/{serviceId}` pour recuperer `ownerId`
-	- 2) `GET /v1/logs?ownerId=<ownerId>&resource=<serviceId>`
-	- 3) lecture brute initiale, puis filtrage local (temps + motifs)
-	- 4) en cas de pagination, iterer jusqu'a couvrir la fenetre demandee
+  - 1.  `GET /v1/services/{serviceId}` pour recuperer `ownerId`
+  - 2.  `GET /v1/logs?ownerId=<ownerId>&resource=<serviceId>`
+  - 3.  lecture brute initiale, puis filtrage local (temps + motifs)
+  - 4.  en cas de pagination, iterer jusqu'a couvrir la fenetre demandee
 - si un `requestId` est fourni par l'utilisateur :
-	- 1) extraire d'abord toutes les lignes de logs contenant ce `requestId` depuis le dump brut pagine
-	- 2) ne pas prefiltrer par theme avant cette extraction
-	- 3) restituer les lignes completes trouvees avant toute synthese
+  - 1.  extraire d'abord toutes les lignes de logs contenant ce `requestId` depuis le dump brut pagine
+  - 2.  ne pas prefiltrer par theme avant cette extraction
+  - 3.  restituer les lignes completes trouvees avant toute synthese
 - interpretation erreurs Render :
-	- `404` = mauvais endpoint (route non disponible)
-	- `400` = endpoint valide, parametres invalides/incomplets
-	- ne pas conclure "pas de logs" avant d'avoir valide la combinaison `ownerId + resource`
+  - `404` = mauvais endpoint (route non disponible)
+  - `400` = endpoint valide, parametres invalides/incomplets
+  - ne pas conclure "pas de logs" avant d'avoir valide la combinaison `ownerId + resource`
 - harness comportemental centre sur `debugMeta`
 - test manuel cible quand le changement est visible
 - `pipeline:harness`, `debugmeta:harness` ou `eval:chat` sur GO explicite seulement (LLM en direct)
@@ -93,12 +100,13 @@ Pour le chantier Android TWA, le chemin de validation et de deploiement doit etr
 
 1. `npm run android:deploy:release`
 2. verification automatique orientation via `npm run android:orientation:verify` (incluse dans `android:build:release`)
-2. verification de la signature de l'APK contre `public/.well-known/assetlinks.json`
-3. installation via l'ADB du SDK Android, jamais via un binaire `adb` pris au hasard dans `PATH`
-4. en cas de signature incompatible sur le package deja installe, desinstallation automatique avant reinstall
-5. apres install reussie, redemarrage force TWA: arret best-effort de l'hote navigateur puis `adb shell am start -S ...` (kill + start deterministes) pour eviter de garder une Custom Tab stale au premier plan
+3. verification de la signature de l'APK contre `public/.well-known/assetlinks.json`
+4. installation via l'ADB du SDK Android, jamais via un binaire `adb` pris au hasard dans `PATH`
+5. en cas de signature incompatible sur le package deja installe, desinstallation automatique avant reinstall
+6. apres install reussie, redemarrage force TWA: arret best-effort de l'hote navigateur puis `adb shell am start -S ...` (kill + start deterministes) pour eviter de garder une Custom Tab stale au premier plan
 
 Point de controle obligatoire orientation:
+
 - la valeur Android generee `string/orientation` doit rester `portrait` (pas `default`)
 - si ce point echoue, le build release doit etre considere bloque
 
@@ -169,7 +177,7 @@ Sur ce projet :
 - mais stabilite du comportement ne signifie pas immobilite du code
 - si une structure interne freine la fiabilite, l'agent doit la faire evoluer
 - l'architecture doit progressivement converger vers V4 strict : noyau deterministe, analyseurs paralleles, arbitrage explicite, writer pilote par contrat
-- la conformite de sortie est assuree par garde deterministe + regeneration bornee + fallback minimal, sans couche Critic LLM
+- la conformite de sortie est assuree uniquement en amont (analyseurs, arbitrage, contrat writer, contraintes deterministes), sans post-traitement, sans reecriture, sans regeneration
 
 ---
 
@@ -192,6 +200,7 @@ Copilot doit viser uniquement l'utilite de reprise inter-sessions selon la deman
 En consequence, Copilot ne doit plus reproposer automatiquement une structure type (ex : "objectif / decisions / validation / questions ouvertes") sauf demande explicite de l'utilisateur pour ce format.
 
 Contenu exclu :
+
 - historique de modifications deja consommees
 - backlog ou todo-list
 
@@ -203,6 +212,6 @@ Contenu exclu :
 
 Si un chantier est en cours d'implementation sur un autre terminal et que le repo n'est pas encore aligne avec `plan.md`, ajouter dans `plan.md` un bloc explicite :
 
-> *Implmentation en cours dans une session tierce* : [description de ce qui est en transit] — [contexte ou terminal concerne]
+> _Implmentation en cours dans une session tierce_ : [description de ce qui est en transit] — [contexte ou terminal concerne]
 
 Copilot ne traitera pas l'ecart repo / plan comme une incoherence sur ce sujet tant que ce bloc est present.
