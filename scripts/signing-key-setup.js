@@ -2,9 +2,61 @@ const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 
+function existsFile(filePath) {
+  return Boolean(filePath) && fs.existsSync(filePath);
+}
+
+function collectWindowsJdkCandidates() {
+  const candidates = [];
+  const roots = [
+    'C:\\Program Files\\Eclipse Adoptium',
+    'C:\\Program Files\\Java',
+    'C:\\Program Files\\Microsoft'
+  ];
+
+  for (const root of roots) {
+    if (!fs.existsSync(root)) continue;
+    const entries = fs
+      .readdirSync(root, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => path.join(root, entry.name, 'bin', 'keytool.exe'));
+    candidates.push(...entries);
+  }
+
+  return candidates;
+}
+
+function resolveKeytool() {
+  const envCandidates = [];
+
+  if (process.env.KEYTOOL_PATH) {
+    envCandidates.push(String(process.env.KEYTOOL_PATH).trim());
+  }
+
+  if (process.env.JAVA_HOME) {
+    envCandidates.push(
+      path.join(String(process.env.JAVA_HOME).trim(), 'bin', 'keytool.exe'),
+      path.join(String(process.env.JAVA_HOME).trim(), 'bin', 'keytool')
+    );
+  }
+
+  const platformCandidates =
+    process.platform === 'win32' ? collectWindowsJdkCandidates() : [];
+
+  const allCandidates = [...envCandidates, ...platformCandidates];
+  const matched = allCandidates.find((candidate) => existsFile(candidate));
+  if (matched) {
+    return matched;
+  }
+
+  return process.platform === 'win32' ? 'keytool.exe' : 'keytool';
+}
+
+const keytoolCmd = resolveKeytool();
+
 function checkKeytool() {
   try {
-    execSync('keytool -version', { stdio: 'pipe' });
+    execSync(`"${keytoolCmd}" -help`, { stdio: 'pipe', shell: true });
     return true;
   } catch {
     return false;
@@ -26,7 +78,7 @@ function createKeystore(keystorePath) {
 
   try {
     const cmd = [
-      'keytool',
+      `"${keytoolCmd}"`,
       '-genkey',
       '-v',
       `-keystore "${keystorePath}"`,
@@ -51,10 +103,10 @@ function extractSHA256(keystorePath) {
   console.log('[signing-key] Extracting SHA256 fingerprint...');
 
   try {
-    const cmd = `keytool -list -v -keystore "${keystorePath}" -alias facilitat-dev -storepass facilitat123`;
+    const cmd = `"${keytoolCmd}" -list -v -keystore "${keystorePath}" -alias facilitat-dev -storepass facilitat123`;
     const output = execSync(cmd, { encoding: 'utf8' });
 
-    const sha256Match = output.match(/SHA256:\s*([A-F0-9:]+)/i);
+    const sha256Match = output.match(/SHA\s*256\s*:\s*([A-F0-9:]+)/i);
     if (sha256Match) {
       return sha256Match[1];
     } else {
@@ -71,9 +123,9 @@ function generateAssetlinks(sha256) {
   const packageName = String(
     process.env.TWA_ANDROID_PACKAGE || 'io.facilitat.app'
   ).trim();
-  const fingerprints = sha256
-    .split(':')
-    .map((item) => item.trim())
+  const fingerprints = String(sha256)
+    .split(/\r?\n|,|;/)
+    .map((item) => item.trim().toUpperCase())
     .filter(Boolean);
 
   const assetLinksContent = [
