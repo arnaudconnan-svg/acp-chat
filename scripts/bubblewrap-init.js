@@ -185,7 +185,16 @@ function initBubblewrap(manifest) {
   try {
     const bubblewrapCommand =
       process.platform === 'win32' ? 'bubblewrap.cmd' : 'bubblewrap';
-    const result = spawnSync(bubblewrapCommand, args, {
+    const isCmdOnWindows =
+      process.platform === 'win32' && /\.(cmd|bat)$/i.test(bubblewrapCommand);
+    const resolvedCommand = isCmdOnWindows
+      ? process.env.ComSpec || 'cmd.exe'
+      : bubblewrapCommand;
+    const resolvedArgs = isCmdOnWindows
+      ? ['/d', '/s', '/c', bubblewrapCommand, ...args]
+      : args;
+
+    const result = spawnSync(resolvedCommand, resolvedArgs, {
       cwd: path.join(__dirname, '..'),
       encoding: 'utf8',
       input: buildBubblewrapAnswers(manifest),

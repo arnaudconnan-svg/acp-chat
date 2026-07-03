@@ -1,6 +1,6 @@
 {
   "packageId": "io.facilitat.app",
-  "host": "acp-chat-beta.onrender.com",
+  "host": "facilitat.io",
   "name": "Facilitat.io",
   "launcherName": "Facilitat",
   "display": "standalone",
@@ -8,9 +8,9 @@
   "themeColor": "#f4f9f9",
   "navigationColor": "#f4f9f9",
   "backgroundColor": "#f4f9f9",
-  "startUrl": "https://acp-chat-beta.onrender.com/",
-  "iconUrl": "https://acp-chat-beta.onrender.com/images/icon-512.png",
-  "maskableIconUrl": "https://acp-chat-beta.onrender.com/images/icon-512-maskable.png",
+  "startUrl": "https://facilitat.io/",
+  "iconUrl": "https://facilitat.io/images/icon-512.png",
+  "maskableIconUrl": "https://facilitat.io/images/icon-512-maskable.png",
   "appVersionName": "1.0.0",
   "appVersionCode": 1,
   "enableNotifications": false,
@@ -18,22 +18,22 @@
     {
       "name": "Nouvelle conversation",
       "short_name": "Conversation",
-      "url": "https://acp-chat-beta.onrender.com/?launch=new-normal",
+      "url": "https://facilitat.io/?launch=new-normal",
       "icons": [
         {
-          "src": "https://acp-chat-beta.onrender.com/images/icon-192.png",
+          "src": "https://facilitat.io/images/icon-192.png",
           "sizes": "192x192",
           "type": "image/png"
         }
       ]
     },
     {
-      "name": "Nouvelle conversation privee",
-      "short_name": "Conversation privee",
-      "url": "https://acp-chat-beta.onrender.com/?launch=new-private",
+      "name": "Nouvelle conversation privée",
+      "short_name": "Conversation privée",
+      "url": "https://facilitat.io/?launch=new-private",
       "icons": [
         {
-          "src": "https://acp-chat-beta.onrender.com/images/icon-192.png",
+          "src": "https://facilitat.io/images/icon-192.png",
           "sizes": "192x192",
           "type": "image/png"
         }
@@ -41,6 +41,6 @@
     }
   ],
   "generatorApp": "bubblewrap",
-  "webManifestUrl": "https://acp-chat-beta.onrender.com/manifest.json",
+  "webManifestUrl": "https://facilitat.io/manifest.json",
   "fallbackType": "customtabs"
 }
