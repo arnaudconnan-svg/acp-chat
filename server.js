@@ -42,8 +42,9 @@ const branchRecordsRef = db.ref('branches');
 const branchSeedSnapshotsRef = db.ref('branchSeeds');
 const crypto = require('crypto');
 const ADMIN_PASSWORD = appConfig.adminPassword;
+const ADMIN_REVIEW_PASSWORD = 'Review.615243';
 const ADMIN_PASSWORD_SET = new Set(
-  [ADMIN_PASSWORD, 'Review.615243']
+  [ADMIN_PASSWORD, ADMIN_REVIEW_PASSWORD]
     .map((value) => String(value || '').trim())
     .filter(Boolean)
 );
@@ -803,8 +804,14 @@ function signAdminSessionPayload(payload) {
     .digest('hex');
 }
 
-function buildAdminSessionToken(createdAt = Date.now()) {
-  const payload = String(createdAt);
+function normalizeAdminScope(scope = 'full') {
+  return scope === 'review' ? 'review' : 'full';
+}
+
+function buildAdminSessionToken(options = {}) {
+  const createdAt = Number(options.createdAt || Date.now());
+  const scope = normalizeAdminScope(options.scope);
+  const payload = `${createdAt}:${scope}`;
   const signature = signAdminSessionPayload(payload);
   return `${payload}.${signature}`;
 }
@@ -839,7 +846,9 @@ function parseAndValidateAdminSessionToken(token) {
     return null;
   }
 
-  const createdAt = Number(payload);
+  const payloadParts = payload.split(':');
+  const createdAt = Number(payloadParts[0] || 0);
+  const scope = normalizeAdminScope(payloadParts[1] || 'full');
   if (!Number.isFinite(createdAt) || createdAt <= 0) {
     return null;
   }
@@ -850,7 +859,10 @@ function parseAndValidateAdminSessionToken(token) {
 
   return {
     isAdmin: true,
-    createdAt
+    createdAt,
+    scope,
+    canBypassPhoneGate: true,
+    canUseAdminUi: scope !== 'review'
   };
 }
 
@@ -1444,7 +1456,7 @@ function warnRuntimeContract(label, issues, context = {}) {
 function requireAdminAuth(req, res, next) {
   const session = getAdminSession(req);
 
-  if (!session) {
+  if (!session || session.canUseAdminUi !== true) {
     const nextUrl = encodeURIComponent(req.originalUrl);
     return res.redirect(`/admin-login.html?next=${nextUrl}`);
   }
@@ -2408,10 +2420,14 @@ app.get('/api/admin/session', async (req, res) => {
       return res.json({ authenticated: false });
     }
 
+    const canUseAdminUi = session.canUseAdminUi !== false;
+
     return res.json({
       authenticated: true,
+      canBypassPhoneGate: session.canBypassPhoneGate === true,
+      canUseAdminUi,
       settings: {
-        mailsEnabled: getCachedAdminMailsEnabled()
+        mailsEnabled: canUseAdminUi ? getCachedAdminMailsEnabled() : false
       }
     });
   } catch (err) {
@@ -2458,17 +2474,30 @@ app.post('/api/admin/login', (req, res) => {
     return res.status(400).json({ error: 'Invalid admin login request' });
   }
 
-  const { password } = req.body;
+  const safePassword = String(req.body.password || '').trim();
+  const safePrimaryPassword = String(ADMIN_PASSWORD || '').trim();
+  const isPrimaryAdminPassword =
+    Boolean(safePrimaryPassword) && safePassword === safePrimaryPassword;
+  const isReviewPassword = safePassword === ADMIN_REVIEW_PASSWORD;
 
-  if (!password || !ADMIN_PASSWORD_SET.has(String(password).trim())) {
+  if (!safePassword || !ADMIN_PASSWORD_SET.has(safePassword)) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  const sessionId = buildAdminSessionToken();
+  const sessionScope = isPrimaryAdminPassword
+    ? 'full'
+    : isReviewPassword
+      ? 'review'
+      : 'full';
+
+  const sessionId = buildAdminSessionToken({ scope: sessionScope });
 
   adminSessions.set(sessionId, {
     isAdmin: true,
-    createdAt: Date.now()
+    createdAt: Date.now(),
+    scope: sessionScope,
+    canBypassPhoneGate: true,
+    canUseAdminUi: sessionScope !== 'review'
   });
 
   res.setHeader(

@@ -3312,11 +3312,12 @@
         const btn = document.getElementById('devAccessPrimaryBtn');
         if (!btn) return;
 
-        const isAdminAuthenticated = await hasValidAdminSession();
-        btn.dataset.mode = isAdminAuthenticated
+        const adminSession = await hasValidAdminSession();
+        const canUseAdminUi = adminSession.canUseAdminUi === true;
+        btn.dataset.mode = canUseAdminUi
           ? 'disable-admin'
           : 'enable-admin';
-        btn.textContent = isAdminAuthenticated
+        btn.textContent = canUseAdminUi
           ? "Revenir à l'UX normale"
           : 'Passer admin';
       }
@@ -3917,6 +3918,12 @@
       }
 
       async function hasValidAdminSession() {
+        const fallback = {
+          authenticated: false,
+          canUseAdminUi: false,
+          canBypassPhoneGate: false
+        };
+
         try {
           const res = await fetch('/api/admin/session', {
             method: 'GET',
@@ -3924,14 +3931,17 @@
           });
 
           if (!res.ok) {
-            return false;
+            return fallback;
           }
 
           const data = await parseAppJsonResponseSafely(res);
           const isAuthenticated = data && data.authenticated === true;
+          const canUseAdminUi = isAuthenticated && data?.canUseAdminUi === true;
+          const canBypassPhoneGate =
+            isAuthenticated && data?.canBypassPhoneGate === true;
 
           if (
-            isAuthenticated &&
+            canUseAdminUi &&
             data &&
             data.settings &&
             typeof data.settings === 'object' &&
@@ -3941,18 +3951,25 @@
             saveAdminUiState();
           }
 
-          return isAuthenticated;
+          return {
+            authenticated: isAuthenticated,
+            canUseAdminUi,
+            canBypassPhoneGate
+          };
         } catch {
-          return false;
+          return fallback;
         }
       }
 
-      async function enforcePhoneOnlyAccessGate({ isAdminUI = false } = {}) {
+      async function enforcePhoneOnlyAccessGate({
+        isAdminUI = false,
+        canBypassPhoneGate = false
+      } = {}) {
         if (isTwaRuntimeContext()) {
           return true;
         }
 
-        if (isAdminUI) {
+        if (isAdminUI || canBypassPhoneGate) {
           return true;
         }
 
@@ -4682,9 +4699,12 @@
       async function syncAdminUiFromSession() {
         const url = new URL(window.location.href);
         const wantsAdminUi = url.searchParams.get('adminUi') === '1';
-        const isAuthenticated = await hasValidAdminSession();
+        const adminSession = await hasValidAdminSession();
+        const isAuthenticated = adminSession.authenticated === true;
+        const canUseAdminUi = adminSession.canUseAdminUi === true;
+        const canBypassPhoneGate = adminSession.canBypassPhoneGate === true;
 
-        if (!isAuthenticated) {
+        if (!isAuthenticated || !canUseAdminUi) {
           localStorage.removeItem(ADMIN_UI_KEY);
           try {
             if (adminUiState && typeof adminUiState === 'object') {
@@ -4699,7 +4719,7 @@
         }
 
         const isAdminUI =
-          isAuthenticated && localStorage.getItem(ADMIN_UI_KEY) === '1';
+          canUseAdminUi && localStorage.getItem(ADMIN_UI_KEY) === '1';
         document.body.classList.toggle('admin-ui', isAdminUI);
 
         if (!isAdminUI) {
@@ -4718,9 +4738,12 @@
           history.replaceState(history.state || {}, '', nextUrl);
         }
 
-        syncDevModeFromUrlAndSession({ isAdminAuthenticated: isAuthenticated });
+        syncDevModeFromUrlAndSession({ isAdminAuthenticated: canUseAdminUi });
 
-        return isAdminUI;
+        return {
+          isAdminUI,
+          canBypassPhoneGate
+        };
       }
 
       function getOrCreateUserId() {
@@ -6866,8 +6889,9 @@
           : '';
 
         if (key === ADMIN_UI_KEY) {
-          hasValidAdminSession().then((isAuthenticated) => {
-            if (!isAuthenticated) {
+          hasValidAdminSession().then((adminSession) => {
+            const canUseAdminUi = adminSession.canUseAdminUi === true;
+            if (!canUseAdminUi) {
               localStorage.removeItem(ADMIN_UI_KEY);
               try {
                 adminUiState.logsEnabled = false;
@@ -6876,7 +6900,7 @@
             }
 
             const isAdminUI =
-              isAuthenticated && localStorage.getItem(ADMIN_UI_KEY) === '1';
+              canUseAdminUi && localStorage.getItem(ADMIN_UI_KEY) === '1';
             document.body.classList.toggle('admin-ui', isAdminUI);
             syncDebugVisibility();
 
@@ -14847,10 +14871,14 @@
             .catch(() => {});
         const intersessionMemorySyncPromise =
           syncIntersessionMemoryIfApplicable().catch(() => {});
-        const isAdminUI = await syncAdminUiFromSession();
+        const adminUiContext = await syncAdminUiFromSession();
+        const isAdminUI = adminUiContext.isAdminUI === true;
         await refreshDevAccessPrimaryAction();
 
-        await enforcePhoneOnlyAccessGate({ isAdminUI });
+        await enforcePhoneOnlyAccessGate({
+          isAdminUI,
+          canBypassPhoneGate: adminUiContext.canBypassPhoneGate === true
+        });
 
         const shouldSkipWelcomeAnimation = isAdminUI;
 
