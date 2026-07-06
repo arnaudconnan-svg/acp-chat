@@ -721,6 +721,16 @@ app.get('/telecharger', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'telecharger.html'));
 });
 
+app.get('/privacy-policy', (req, res) => {
+  res.setHeader(
+    'Cache-Control',
+    'no-store, no-cache, must-revalidate, proxy-revalidate'
+  );
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.sendFile(path.join(__dirname, 'public', 'privacy-policy.html'));
+});
+
 app.use(
   express.static('public', {
     etag: false,
