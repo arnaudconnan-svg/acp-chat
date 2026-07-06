@@ -619,6 +619,39 @@ function ensureBiometricGateManifestWiring() {
   }
 }
 
+function ensurePhoneOnlyDeviceCompatibility() {
+  if (!fs.existsSync(ANDROID_MANIFEST_PATH)) {
+    console.warn(
+      '[android-customize] AndroidManifest.xml not found; skipping phone-only compatibility patch.'
+    );
+    return;
+  }
+
+  let manifest = fs.readFileSync(ANDROID_MANIFEST_PATH, 'utf8');
+  const original = manifest;
+
+  if (!manifest.includes('android.hardware.telephony')) {
+    manifest = manifest.replace(
+      /(<manifest[\s\S]*?>\s*)/,
+      '$1\n    <uses-feature android:name="android.hardware.telephony" android:required="true" />\n'
+    );
+  }
+
+  if (!manifest.includes('<supports-screens')) {
+    manifest = manifest.replace(
+      /(<manifest[\s\S]*?>\s*)/,
+      '$1\n    <supports-screens\n        android:smallScreens="true"\n        android:normalScreens="true"\n        android:largeScreens="false"\n        android:xlargeScreens="false"\n        android:anyDensity="true" />\n'
+    );
+  }
+
+  if (manifest !== original) {
+    fs.writeFileSync(ANDROID_MANIFEST_PATH, manifest, 'utf8');
+    console.log(
+      '[android-customize] Enforced phone-only compatibility flags in AndroidManifest.xml.'
+    );
+  }
+}
+
 function syncJavaTemplate(templatePath, targetPath, label) {
   if (!fs.existsSync(templatePath)) {
     console.error(`[android-customize] Missing template: ${templatePath}`);
@@ -667,6 +700,7 @@ function main() {
   ensureManifestShortcutMetadata();
   ensureLauncherPortraitOrientation();
   ensureBiometricGateManifestWiring();
+  ensurePhoneOnlyDeviceCompatibility();
   syncSplashScreens();
 
   console.log('[android-customize] Done.');
