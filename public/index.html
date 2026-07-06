@@ -6443,7 +6443,9 @@
             }
           );
 
-          return res.ok || res.status === 404;
+          // 403 means the conversation ID exists remotely but belongs to another account.
+          // In that case, keep server data intact and allow local cleanup to proceed.
+          return res.ok || res.status === 404 || res.status === 403;
         } catch {
           return false;
         }
