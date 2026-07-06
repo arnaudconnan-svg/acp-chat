@@ -118,6 +118,18 @@
         margin: 0 0 28px;
       }
 
+      .user-support-email {
+        font-size: 13px;
+        color: #546367;
+        margin: -20px 0 28px;
+      }
+
+      .user-support-email a {
+        color: #245e66;
+        text-decoration: underline;
+        text-underline-offset: 2px;
+      }
+
       .card {
         border: 1.5px solid #e0e0e0;
         border-radius: 12px;
@@ -1291,6 +1303,12 @@
           emailEl.className = 'user-email';
           emailEl.textContent = String(currentUser.email || '');
           main.appendChild(emailEl);
+
+          const supportEmailEl = document.createElement('p');
+          supportEmailEl.className = 'user-support-email';
+          supportEmailEl.innerHTML =
+            'Contact : <a href="mailto:info@facilitat.io">info@facilitat.io</a>';
+          main.appendChild(supportEmailEl);
 
           if (ACCOUNT_USAGE_ENVELOPE_UI_ENABLED) {
             main.appendChild(buildUsageEnvelopeCard());
