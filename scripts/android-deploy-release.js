@@ -13,8 +13,8 @@ const RELEASE_DIR = path.join(
   'release'
 );
 const PACKAGE_NAME =
-  String(process.env.TWA_ANDROID_PACKAGE || 'io.facilitat.app').trim() ||
-  'io.facilitat.app';
+  String(process.env.TWA_ANDROID_PACKAGE || 'io.facilitat.mobile').trim() ||
+  'io.facilitat.mobile';
 const BROWSER_HOST_PACKAGE =
   String(process.env.TWA_BROWSER_HOST_PACKAGE || 'com.android.chrome').trim() ||
   'com.android.chrome';

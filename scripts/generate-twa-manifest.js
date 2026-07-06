@@ -77,7 +77,7 @@ function readWebManifestShortcuts(origin) {
 
 function main() {
   const packageId = String(
-    process.env.TWA_ANDROID_PACKAGE || 'io.facilitat.app'
+    process.env.TWA_ANDROID_PACKAGE || 'io.facilitat.mobile'
   ).trim();
   const host = String(
     process.env.TWA_WEB_HOST || 'acp-chat-beta.onrender.com'

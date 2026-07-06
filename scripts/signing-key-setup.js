@@ -121,7 +121,7 @@ function extractSHA256(keystorePath) {
 
 function generateAssetlinks(sha256) {
   const packageName = String(
-    process.env.TWA_ANDROID_PACKAGE || 'io.facilitat.app'
+    process.env.TWA_ANDROID_PACKAGE || 'io.facilitat.mobile'
   ).trim();
   const fingerprints = String(sha256)
     .split(/\r?\n|,|;/)

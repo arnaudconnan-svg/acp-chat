@@ -75,7 +75,7 @@ Must be reachable over HTTPS on your production domain.
 ## 7) Upload to Play Store
 
 1. Create/sign in to Google Play Console
-2. Create new app (package: `io.facilitat.app`)
+2. Create new app (package: `io.facilitat.mobile`)
 3. Upload `.aab` to internal test track
 4. Test on device
 5. Promote to production when ready

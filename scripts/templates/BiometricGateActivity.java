@@ -1,4 +1,4 @@
-package io.facilitat.app;
+package io.facilitat.mobile;
 
 import android.content.Intent;
 import android.content.SharedPreferences;

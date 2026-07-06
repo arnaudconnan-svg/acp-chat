@@ -83,8 +83,8 @@ function writeLocalProperties(projectDir) {
 function buildBubblewrapAnswers(manifest) {
   const startPath = normalizeUrlPath(manifest.startUrl || '/', '/');
   const packageId =
-    String(manifest.packageId || 'io.facilitat.app').trim() ||
-    'io.facilitat.app';
+    String(manifest.packageId || 'io.facilitat.mobile').trim() ||
+    'io.facilitat.mobile';
   const appName =
     String(manifest.name || 'Facilitat.io').trim() || 'Facilitat.io';
   const launcherName =

@@ -3,6 +3,10 @@ const path = require('path');
 const zlib = require('zlib');
 
 const ROOT = path.join(__dirname, '..');
+const PACKAGE_ID =
+  String(process.env.TWA_ANDROID_PACKAGE || 'io.facilitat.mobile').trim() ||
+  'io.facilitat.mobile';
+const PACKAGE_PATH_SEGMENTS = PACKAGE_ID.split('.').filter(Boolean);
 const LAUNCHER_TEMPLATE_PATH = path.join(
   __dirname,
   'templates',
@@ -15,9 +19,7 @@ const LAUNCHER_ACTIVITY_PATH = path.join(
   'src',
   'main',
   'java',
-  'io',
-  'facilitat',
-  'app',
+  ...PACKAGE_PATH_SEGMENTS,
   'LauncherActivity.java'
 );
 const BIOMETRIC_GATE_TEMPLATE_PATH = path.join(
@@ -32,9 +34,7 @@ const BIOMETRIC_GATE_ACTIVITY_PATH = path.join(
   'src',
   'main',
   'java',
-  'io',
-  'facilitat',
-  'app',
+  ...PACKAGE_PATH_SEGMENTS,
   'BiometricGateActivity.java'
 );
 const SHORTCUT_ICON_TEMPLATE_PATH = path.join(
@@ -101,7 +101,7 @@ const ANDROID_BUILD_GRADLE_PATH = path.join(
   'app',
   'build.gradle'
 );
-const SHORTCUT_TARGET_CLASS = 'io.facilitat.app.BiometricGateActivity';
+const SHORTCUT_TARGET_CLASS = `${PACKAGE_ID}.BiometricGateActivity`;
 
 const SPLASH_DIRS = [
   path.join(
@@ -307,7 +307,7 @@ function writeShortcutsXml(shortcuts) {
     const longLabelRef = `@string/${shortcut.id}_long_label`;
     lines.push(
       `    <shortcut android:shortcutId="${toXmlEscaped(shortcut.id)}" android:enabled="true" android:icon="@mipmap/ic_launcher" android:shortcutShortLabel="${shortLabelRef}" android:shortcutLongLabel="${longLabelRef}">`,
-      `        <intent android:action="android.intent.action.VIEW" android:targetPackage="io.facilitat.app" android:targetClass="${SHORTCUT_TARGET_CLASS}" android:data="${toXmlEscaped(shortcut.url)}" />`,
+      `        <intent android:action="android.intent.action.VIEW" android:targetPackage="${PACKAGE_ID}" android:targetClass="${SHORTCUT_TARGET_CLASS}" android:data="${toXmlEscaped(shortcut.url)}" />`,
       '    </shortcut>'
     );
   }
@@ -626,8 +626,13 @@ function syncJavaTemplate(templatePath, targetPath, label) {
   }
 
   try {
+    const templateContent = fs.readFileSync(templatePath, 'utf8');
+    const packageAwareContent = templateContent.replace(
+      /^package\s+[\w.]+;\s*$/m,
+      `package ${PACKAGE_ID};`
+    );
     fs.mkdirSync(path.dirname(targetPath), { recursive: true });
-    fs.copyFileSync(templatePath, targetPath);
+    fs.writeFileSync(targetPath, packageAwareContent, 'utf8');
     console.log(`[android-customize] ${label} already up to date.`);
   } catch (err) {
     console.error(

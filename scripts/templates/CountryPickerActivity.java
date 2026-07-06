@@ -1,4 +1,4 @@
-package io.facilitat.app;
+package io.facilitat.mobile;
 
 import android.app.Activity;
 import android.content.Intent;

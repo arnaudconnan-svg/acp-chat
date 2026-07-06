@@ -1,4 +1,4 @@
-package io.facilitat.app;
+package io.facilitat.mobile;
 
 public class Application extends android.app.Application {
 }

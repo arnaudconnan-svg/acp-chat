@@ -9,7 +9,7 @@ const ASSETLINKS_PATH = path.join(
   '.well-known',
   'assetlinks.json'
 );
-const DEFAULT_PACKAGE = 'io.facilitat.app';
+const DEFAULT_PACKAGE = 'io.facilitat.mobile';
 
 function fail(message) {
   console.error(`[twa:safe-install] ${message}`);
