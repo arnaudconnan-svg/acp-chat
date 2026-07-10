@@ -1101,6 +1101,17 @@ function normalizeUsageMeter(rawMeter = {}) {
   };
 }
 
+function getUsageMonthKey(now = new Date()) {
+  const safeNow = now instanceof Date ? now : new Date(now);
+  if (Number.isNaN(safeNow.getTime())) {
+    return null;
+  }
+
+  const year = safeNow.getUTCFullYear();
+  const month = String(safeNow.getUTCMonth() + 1).padStart(2, '0');
+  return `${year}-${month}`;
+}
+
 async function ensureUserUsageEnvelopeFresh(userId = '', userData = null) {
   const safeUserId = String(userId || '').trim();
   const safeUserData = userData && typeof userData === 'object' ? userData : {};
@@ -5402,6 +5413,8 @@ app.get('/api/admin/support-cases', requireAdminAuth, async (req, res) => {
         casesBySuperId.set(superId, {
           superId,
           activeUserId: safeUserId,
+          activeUserCreatedAt:
+            typeof safeUser.createdAt === 'string' ? safeUser.createdAt : null,
           createdAt:
             typeof safeUser.createdAt === 'string' ? safeUser.createdAt : null,
           updatedAt:
@@ -5460,6 +5473,8 @@ app.get('/api/admin/support-cases', requireAdminAuth, async (req, res) => {
       if (lastActivityMs > safeExistingLastActivityMs) {
         existing.lastActivityAt = new Date(lastActivityMs).toISOString();
         existing.activeUserId = safeUserId;
+        existing.activeUserCreatedAt =
+          typeof safeUser.createdAt === 'string' ? safeUser.createdAt : null;
         existing.usageEnvelope = usageEnvelope;
         existing.usageMeterUpdatedAt = usageMeter.updatedAt;
       }
@@ -7140,6 +7155,7 @@ async function handleChatPost(req, res) {
             : buildDefaultUsageEnvelope();
         const renewed = applyMonthlyRenewal(rawUsageEnvelope, new Date());
         const consumed = consumeEnvelope(renewed.state, simulatedAmount);
+        const usageMonthKey = getUsageMonthKey(new Date());
 
         const previousMeter = normalizeUsageMeter(userData.usageMeter);
         const nextMeter = {
@@ -7148,9 +7164,42 @@ async function handleChatPost(req, res) {
           updatedAt: new Date().toISOString()
         };
 
+        const rawMonthlyHistory =
+          userData.usageMonthlyHistory &&
+          typeof userData.usageMonthlyHistory === 'object' &&
+          !Array.isArray(userData.usageMonthlyHistory)
+            ? userData.usageMonthlyHistory
+            : {};
+
+        const nextMonthlyHistory = { ...rawMonthlyHistory };
+        if (usageMonthKey) {
+          const previousMonthEntry =
+            nextMonthlyHistory[usageMonthKey] &&
+            typeof nextMonthlyHistory[usageMonthKey] === 'object'
+              ? nextMonthlyHistory[usageMonthKey]
+              : {};
+          const previousMonthTokens = Number(previousMonthEntry.tokens || 0);
+          const previousMonthEur = Number(
+            previousMonthEntry.totalSimulatedEur || 0
+          );
+
+          nextMonthlyHistory[usageMonthKey] = {
+            tokens:
+              (Number.isFinite(previousMonthTokens) && previousMonthTokens > 0
+                ? Math.round(previousMonthTokens)
+                : 0) + Math.round(deltaTokens),
+            totalSimulatedEur:
+              (Number.isFinite(previousMonthEur) && previousMonthEur > 0
+                ? previousMonthEur
+                : 0) + simulatedAmount,
+            updatedAt: new Date().toISOString()
+          };
+        }
+
         await usersRef.child(usageUserId).update({
           usageEnvelope: toUsageEnvelopeStorageShape(consumed.state),
           usageMeter: nextMeter,
+          usageMonthlyHistory: nextMonthlyHistory,
           updatedAt: new Date().toISOString()
         });
 

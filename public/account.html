@@ -907,16 +907,19 @@
         const ANDROID_COUNTRY_PENDING_KEY =
           'facilitatio_android_country_pending';
         const ACCOUNT_USAGE_ENVELOPE_UI_ENABLED = true;
-        const LOW_ENVELOPE_THRESHOLD = 12.5;
+        const MONTHLY_ENVELOPE_CAPACITY_EUR = 12;
+        const ROLLOVER_ENVELOPE_CAPACITY_EUR = 3;
+        const LOW_MONTHLY_ENVELOPE_THRESHOLD = 1.5;
+        const LOW_RESERVE_ENVELOPE_THRESHOLD = 12.5;
 
         const MOCK_USAGE_ENVELOPE_STATE = {
           monthly: {
-            capacity: 100,
-            remaining: 100
+            capacity: MONTHLY_ENVELOPE_CAPACITY_EUR,
+            remaining: MONTHLY_ENVELOPE_CAPACITY_EUR
           },
           rollover: {
-            capacity: 25,
-            remaining: 25
+            capacity: ROLLOVER_ENVELOPE_CAPACITY_EUR,
+            remaining: ROLLOVER_ENVELOPE_CAPACITY_EUR
           },
           reserve: {
             capacity: 100,
@@ -1337,12 +1340,12 @@
           const monthlyRemaining = clampUsageValue(
             safe.monthly && safe.monthly.remaining,
             0,
-            100
+            MONTHLY_ENVELOPE_CAPACITY_EUR
           );
           const rolloverRemaining = clampUsageValue(
             safe.rollover && safe.rollover.remaining,
             0,
-            25
+            ROLLOVER_ENVELOPE_CAPACITY_EUR
           );
           const reserveRemaining = clampUsageValue(
             safe.reserve && safe.reserve.remaining,
@@ -1352,11 +1355,11 @@
 
           return {
             monthly: {
-              capacity: 100,
+              capacity: MONTHLY_ENVELOPE_CAPACITY_EUR,
               remaining: monthlyRemaining
             },
             rollover: {
-              capacity: 25,
+              capacity: ROLLOVER_ENVELOPE_CAPACITY_EUR,
               remaining: rolloverRemaining
             },
             reserve: {
@@ -1413,7 +1416,7 @@
 
         function shouldShowLowEnvelopeWarning(rawUsageData) {
           const state = getUsageEnvelopeState(rawUsageData);
-          return state.totalAvailable < LOW_ENVELOPE_THRESHOLD;
+          return state.totalAvailable < LOW_MONTHLY_ENVELOPE_THRESHOLD;
         }
 
         function renderGaugeSegments(segments, colorType) {
@@ -1465,7 +1468,7 @@
           const reserveAvailable = state.reserve.remaining > 0;
           const monthlyLow =
             state.monthly.remaining > 0 &&
-            state.monthly.remaining < LOW_ENVELOPE_THRESHOLD;
+            state.monthly.remaining < LOW_MONTHLY_ENVELOPE_THRESHOLD;
           const monthlySegments = computeGaugeSegments(
             state.monthly.remaining,
             {
@@ -1498,7 +1501,7 @@
 
           const showRed =
             state.reserve.remaining > 0 &&
-            state.reserve.remaining < LOW_ENVELOPE_THRESHOLD &&
+            state.reserve.remaining < LOW_RESERVE_ENVELOPE_THRESHOLD &&
             state.monthly.remaining <= 0 &&
             state.rollover.remaining <= 0;
 

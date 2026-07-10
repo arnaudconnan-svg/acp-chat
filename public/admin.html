@@ -1431,6 +1431,12 @@
             activeLine.textContent =
               'User actif: ' + String(item?.activeUserId || 'inconnu');
 
+            const signupLine = document.createElement('div');
+            signupLine.className = 'support-meta-line';
+            signupLine.textContent =
+              'Inscription user actif: ' +
+              formatAdminDate(item?.activeUserCreatedAt);
+
             const chip = document.createElement('div');
             chip.className = 'support-chip';
             const eur = Number(item?.totalSimulatedEur || 0);
@@ -1442,6 +1448,7 @@
             card.appendChild(count);
             card.appendChild(emailLine);
             card.appendChild(activeLine);
+            card.appendChild(signupLine);
             card.appendChild(chip);
             resultWrap.appendChild(card);
           });
