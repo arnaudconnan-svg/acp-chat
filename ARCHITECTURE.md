@@ -109,3 +109,19 @@ La priorite immédiate est de consolider le comportement sur l'architecture exis
 Les extractions modulaires et refactorings qui ameliorent la fiabilite et la testabilite restent bienvenus, a condition de ne pas introduire de nouveau comportement visible.
 
 La liste des extractions structurelles prevues (prompts, normalisateurs, analyzers, memoire, arbitrage/writer) reste l'objectif moyen terme. Elle sera reprise apres la phase de stabilisation.
+
+## Contrat enveloppe de consommation (admin)
+
+Regles produit actees pour l'enveloppe de simulation :
+
+- budget mensuel de base : 12 EUR
+- report max mensuel : +25% du budget de base, soit +3 EUR
+- ordre de consommation : report, puis budget mensuel, puis reserve
+- palier visuel jauge : 12.5% du budget mensuel (1.5 EUR)
+
+Important :
+
+- `usageMeter.totalSimulatedEur` = cumul historique (dossier SAV)
+- `usageEnvelope` = etat courant du mois (jauge utilisateur)
+
+Ces deux valeurs ont des usages differents et ne doivent pas etre comparees comme si elles representaient la meme grandeur temporelle.

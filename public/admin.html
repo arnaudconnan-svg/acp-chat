@@ -163,6 +163,107 @@
         margin-top: 8px;
       }
 
+      .support-case-card {
+        cursor: pointer;
+      }
+
+      .support-case-card:hover {
+        border-color: #b7cdd0;
+        box-shadow: 0 6px 16px rgba(43, 79, 82, 0.12);
+      }
+
+      .support-case-modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(20, 36, 40, 0.36);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 14px;
+        z-index: 1200;
+      }
+
+      .support-case-modal {
+        width: min(640px, 100%);
+        max-height: min(88vh, 760px);
+        overflow: auto;
+        background: #ffffff;
+        border-radius: 18px;
+        border: 1px solid #d6e2e1;
+        box-shadow: 0 20px 40px rgba(20, 36, 40, 0.22);
+        padding: 16px;
+      }
+
+      .support-case-modal-title {
+        font-size: 18px;
+        font-weight: 700;
+        color: #1f3f44;
+        margin: 0 0 8px;
+      }
+
+      .support-case-modal-meta {
+        font-size: 13px;
+        color: #4b6366;
+        margin: 0 0 10px;
+      }
+
+      .support-case-modal-block {
+        border: 1px solid #d6e2e1;
+        border-radius: 12px;
+        background: #f8fbfb;
+        padding: 10px;
+        margin: 0 0 10px;
+      }
+
+      .support-case-modal-block h3 {
+        margin: 0 0 8px;
+        font-size: 14px;
+        color: #245e66;
+      }
+
+      .support-case-modal-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 6px 10px;
+      }
+
+      .support-case-modal-grid p {
+        margin: 0;
+        font-size: 13px;
+        color: #1f3f44;
+      }
+
+      .support-case-history-row {
+        display: grid;
+        grid-template-columns: 1fr auto auto;
+        gap: 8px;
+        align-items: center;
+        font-size: 13px;
+        padding: 7px 0;
+        border-top: 1px solid #e6efef;
+      }
+
+      .support-case-history-row:first-child {
+        border-top: none;
+        padding-top: 0;
+      }
+
+      .support-case-modal-close {
+        margin-top: 8px;
+        border: 1px solid #cfd8db;
+        border-radius: 10px;
+        background: #ffffff;
+        color: #245e66;
+        padding: 10px 14px;
+        cursor: pointer;
+      }
+
+      @media (max-width: 520px) {
+        .support-case-modal-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
       h1 {
         font-size: 20px;
         line-height: 1.15;
@@ -1347,6 +1448,112 @@
       }
 
       async function loadSupportCases() {
+        const MONTHLY_BUDGET_EUR = 12;
+        const ROLLOVER_MAX_EUR = 3;
+
+        function formatMonthLabel(key) {
+          const raw = String(key || '').trim();
+          if (!/^\d{4}-\d{2}$/.test(raw)) return raw || 'mois inconnu';
+          const [year, month] = raw.split('-');
+          const date = new Date(Date.UTC(Number(year), Number(month) - 1, 1));
+          if (Number.isNaN(date.getTime())) return raw;
+          return date.toLocaleDateString('fr-FR', {
+            month: 'long',
+            year: 'numeric',
+            timeZone: 'UTC'
+          });
+        }
+
+        function ensureSupportCaseModal() {
+          let overlay = document.getElementById('supportCaseModalOverlay');
+          if (overlay) return overlay;
+
+          overlay = document.createElement('div');
+          overlay.id = 'supportCaseModalOverlay';
+          overlay.className = 'support-case-modal-overlay';
+
+          overlay.addEventListener('click', (event) => {
+            if (event.target === overlay) {
+              overlay.style.display = 'none';
+              overlay.innerHTML = '';
+            }
+          });
+
+          document.body.appendChild(overlay);
+          return overlay;
+        }
+
+        function openSupportCaseModal(item = {}) {
+          const overlay = ensureSupportCaseModal();
+          const history =
+            item?.usageMonthlyHistory && typeof item.usageMonthlyHistory === 'object'
+              ? item.usageMonthlyHistory
+              : {};
+          const historyEntries = Object.entries(history)
+            .filter(([key]) => /^\d{4}-\d{2}$/.test(String(key || '').trim()))
+            .sort((a, b) => String(b[0]).localeCompare(String(a[0])));
+
+          const currentEnvelope =
+            item?.usageEnvelope && typeof item.usageEnvelope === 'object'
+              ? item.usageEnvelope
+              : {};
+          const monthlyRemaining = Number(currentEnvelope?.monthly?.remaining || 0);
+          const rolloverRemaining = Number(currentEnvelope?.rollover?.remaining || 0);
+          const reserveRemaining = Number(currentEnvelope?.reserve?.remaining || 0);
+
+          const rowsHtml = historyEntries.length
+            ? historyEntries
+                .map(([monthKey, entry]) => {
+                  const eur = Number(entry?.totalSimulatedEur || 0);
+                  const tokens = Number(entry?.tokens || 0);
+                  return [
+                    '<div class="support-case-history-row">',
+                    `  <span>${formatMonthLabel(monthKey)}</span>`,
+                    `  <strong>${eur.toFixed(4)} EUR</strong>`,
+                    `  <span>${Math.round(tokens)} tokens</span>`,
+                    '</div>'
+                  ].join('');
+                })
+                .join('')
+            :
+                '<div class="support-case-history-row"><span>Aucune donnee mensuelle enregistree pour ce dossier.</span><span></span><span></span></div>';
+
+          const modal = [
+            '<div class="support-case-modal" role="dialog" aria-modal="true" aria-labelledby="supportCaseModalTitle">',
+            `  <h2 class="support-case-modal-title" id="supportCaseModalTitle">Dossier SAV ${String(item?.superId || '').trim() || 'inconnu'}</h2>`,
+            `  <p class="support-case-modal-meta">User actif: ${String(item?.activeUserId || 'inconnu')} • Inscription: ${formatAdminDate(item?.activeUserCreatedAt)}</p>`,
+            '  <div class="support-case-modal-block">',
+            '    <h3>Etat courant (budget mensuel)</h3>',
+            '    <div class="support-case-modal-grid">',
+            `      <p>Budget mensuel de base: ${MONTHLY_BUDGET_EUR.toFixed(2)} EUR</p>`,
+            `      <p>Report max du mois precedent: ${ROLLOVER_MAX_EUR.toFixed(2)} EUR</p>`,
+            `      <p>Mensuel restant: ${monthlyRemaining.toFixed(4)} EUR</p>`,
+            `      <p>Report restant: ${rolloverRemaining.toFixed(4)} EUR</p>`,
+            `      <p>Reserve restante: ${reserveRemaining.toFixed(4)} EUR</p>`,
+            `      <p>Total simule cumule dossier: ${Number(item?.totalSimulatedEur || 0).toFixed(4)} EUR</p>`,
+            '    </div>',
+            '  </div>',
+            '  <div class="support-case-modal-block">',
+            '    <h3>Historique mensuel des depenses simulees</h3>',
+            `    ${rowsHtml}`,
+            '  </div>',
+            '  <p class="support-case-modal-meta">Historique exact a partir de la mise en place du journal mensuel. Les mois anterieurs peuvent etre incomplets.</p>',
+            '  <button type="button" id="supportCaseModalClose" class="support-case-modal-close">Fermer</button>',
+            '</div>'
+          ].join('');
+
+          overlay.innerHTML = modal;
+          overlay.style.display = 'flex';
+
+          const closeBtn = document.getElementById('supportCaseModalClose');
+          if (closeBtn) {
+            closeBtn.addEventListener('click', () => {
+              overlay.style.display = 'none';
+              overlay.innerHTML = '';
+            });
+          }
+        }
+
         const list = document.getElementById('list');
         const debugToggleBtn = document.getElementById('debugToggleBtn');
         const memoryToggleBtn = document.getElementById('memoryToggleBtn');
@@ -1396,7 +1603,9 @@
 
           cases.forEach((item) => {
             const card = document.createElement('div');
-            card.className = 'item';
+            card.className = 'item support-case-card';
+            card.setAttribute('role', 'button');
+            card.setAttribute('tabindex', '0');
 
             const activity = document.createElement('div');
             activity.className = 'admin-conversation-main';
@@ -1450,6 +1659,17 @@
             card.appendChild(activeLine);
             card.appendChild(signupLine);
             card.appendChild(chip);
+
+            card.addEventListener('click', () => {
+              openSupportCaseModal(item);
+            });
+            card.addEventListener('keydown', (event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                openSupportCaseModal(item);
+              }
+            });
+
             resultWrap.appendChild(card);
           });
         };

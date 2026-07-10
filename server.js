@@ -1101,6 +1101,37 @@ function normalizeUsageMeter(rawMeter = {}) {
   };
 }
 
+function normalizeUsageMonthlyHistory(rawHistory = {}) {
+  const safe =
+    rawHistory && typeof rawHistory === 'object' && !Array.isArray(rawHistory)
+      ? rawHistory
+      : {};
+
+  const out = {};
+  for (const [key, value] of Object.entries(safe)) {
+    const monthKey = String(key || '').trim();
+    if (!/^\d{4}-\d{2}$/.test(monthKey)) continue;
+
+    const entry = value && typeof value === 'object' ? value : {};
+    const tokens = Number(entry.tokens);
+    const totalSimulatedEur = Number(entry.totalSimulatedEur);
+
+    out[monthKey] = {
+      tokens: Number.isFinite(tokens) && tokens > 0 ? Math.round(tokens) : 0,
+      totalSimulatedEur:
+        Number.isFinite(totalSimulatedEur) && totalSimulatedEur > 0
+          ? totalSimulatedEur
+          : 0,
+      updatedAt:
+        typeof entry.updatedAt === 'string' && entry.updatedAt.trim()
+          ? entry.updatedAt
+          : null
+    };
+  }
+
+  return out;
+}
+
 function getUsageMonthKey(now = new Date()) {
   const safeNow = now instanceof Date ? now : new Date(now);
   if (Number.isNaN(safeNow.getTime())) {
@@ -5392,6 +5423,9 @@ app.get('/api/admin/support-cases', requireAdminAuth, async (req, res) => {
 
       const usageMeter = normalizeUsageMeter(safeUser.usageMeter);
       const usageEnvelope = resolveUsageEnvelopeForRead(safeUser.usageEnvelope);
+      const usageMonthlyHistory = normalizeUsageMonthlyHistory(
+        safeUser.usageMonthlyHistory
+      );
       const userUpdatedAtMs = Date.parse(
         String(safeUser.updatedAt || safeUser.createdAt || '')
       );
@@ -5426,6 +5460,7 @@ app.get('/api/admin/support-cases', requireAdminAuth, async (req, res) => {
           totalSimulatedEur: usageMeter.totalSimulatedEur,
           conversationCount,
           usageEnvelope,
+          usageMonthlyHistory,
           usageMeterUpdatedAt: usageMeter.updatedAt,
           members: [
             {
@@ -5476,6 +5511,7 @@ app.get('/api/admin/support-cases', requireAdminAuth, async (req, res) => {
         existing.activeUserCreatedAt =
           typeof safeUser.createdAt === 'string' ? safeUser.createdAt : null;
         existing.usageEnvelope = usageEnvelope;
+        existing.usageMonthlyHistory = usageMonthlyHistory;
         existing.usageMeterUpdatedAt = usageMeter.updatedAt;
       }
     }
