@@ -5778,44 +5778,6 @@ app.delete(
   }
 );
 
-app.post('/api/admin/wipe-data', requireAdminAuth, async (req, res) => {
-  try {
-    const firebaseTargets = [
-      'conversations',
-      'messages',
-      'userLabels',
-      'branches',
-      'branchSeeds',
-      ['pre', 'miumBranches'].join(''),
-      ['pre', 'miumBranchSeeds'].join('')
-    ];
-
-    const results = await Promise.allSettled(
-      firebaseTargets.map((target) => db.ref(target).remove())
-    );
-
-    const failedTargets = results
-      .map((result, index) => ({ result, target: firebaseTargets[index] }))
-      .filter((entry) => entry.result.status === 'rejected')
-      .map((entry) => entry.target);
-
-    if (failedTargets.length > 0) {
-      return res.status(500).json({
-        error: 'Wipe Firebase incomplet',
-        failedTargets
-      });
-    }
-
-    return res.json({
-      success: true,
-      wipedTargets: firebaseTargets
-    });
-  } catch (err) {
-    console.error('Erreur POST /api/admin/wipe-data:', err.message);
-    return res.status(500).json({ error: 'Wipe Firebase failed' });
-  }
-});
-
 // Admin route to fetch all messages for a specific conversation.
 app.get(
   '/api/admin/conversations/:id/messages',

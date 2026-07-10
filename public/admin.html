@@ -689,13 +689,6 @@
               >
                 Interface admin
               </button>
-              <button
-                id="adminWipeDataBtn"
-                type="button"
-                class="adminActionsMenuAction adminActionsMenuActionDanger"
-              >
-                Wipe data Firebase
-              </button>
             </div>
           </div>
         </div>
@@ -712,7 +705,6 @@
     <script>
       let activeAdminConversationSwipeElement = null;
       let activeAdminConversationSwipeCloser = null;
-      let adminWipeCountdownTimer = null;
 
       function getConversationIdFromUrl() {
         const params = new URLSearchParams(window.location.search);
@@ -754,156 +746,6 @@
         btn.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
       }
 
-      function closeAdminWipeModal() {
-        const modal = document.getElementById('adminWipeModal');
-        if (adminWipeCountdownTimer) {
-          clearInterval(adminWipeCountdownTimer);
-          adminWipeCountdownTimer = null;
-        }
-        if (modal) {
-          modal.remove();
-        }
-      }
-
-      function openAdminWipeModal() {
-        closeAdminActionsMenu();
-        closeAdminWipeModal();
-
-        const modal = document.createElement('div');
-        modal.id = 'adminWipeModal';
-        modal.style.position = 'fixed';
-        modal.style.inset = '0';
-        modal.style.background = 'rgba(20, 36, 40, 0.36)';
-        modal.style.display = 'flex';
-        modal.style.alignItems = 'center';
-        modal.style.justifyContent = 'center';
-        modal.style.padding = '16px';
-        modal.style.zIndex = '1200';
-
-        const box = document.createElement('div');
-        box.style.width = '100%';
-        box.style.maxWidth = '420px';
-        box.style.background = '#ffffff';
-        box.style.borderRadius = '16px';
-        box.style.border = '1px solid #d6e2e1';
-        box.style.padding = '16px';
-        box.style.boxShadow = '0 18px 36px rgba(20, 36, 40, 0.18)';
-
-        const title = document.createElement('div');
-        title.textContent = 'Confirmer le wipe Firebase';
-        title.style.fontSize = '18px';
-        title.style.fontWeight = '700';
-        title.style.color = '#1f3f44';
-        title.style.marginBottom = '10px';
-
-        const text = document.createElement('div');
-        text.textContent =
-          'Cette action supprime conversations, messages, labels et branches dans Firebase.';
-        text.style.fontSize = '14px';
-        text.style.lineHeight = '1.45';
-        text.style.color = '#4b6366';
-        text.style.marginBottom = '14px';
-
-        const actions = document.createElement('div');
-        actions.style.display = 'flex';
-        actions.style.gap = '8px';
-        actions.style.justifyContent = 'flex-end';
-
-        const cancelBtn = document.createElement('button');
-        cancelBtn.type = 'button';
-        cancelBtn.textContent = 'Annuler';
-        cancelBtn.style.border = '1px solid #cfd8db';
-        cancelBtn.style.background = '#ffffff';
-        cancelBtn.style.color = '#245e66';
-        cancelBtn.style.borderRadius = '10px';
-        cancelBtn.style.padding = '10px 14px';
-        cancelBtn.style.cursor = 'pointer';
-
-        const confirmBtn = document.createElement('button');
-        confirmBtn.type = 'button';
-        confirmBtn.style.border = 'none';
-        confirmBtn.style.background = '#c44c43';
-        confirmBtn.style.color = '#ffffff';
-        confirmBtn.style.borderRadius = '10px';
-        confirmBtn.style.padding = '10px 14px';
-        confirmBtn.style.cursor = 'pointer';
-
-        let remaining = 5;
-        confirmBtn.disabled = true;
-        confirmBtn.textContent = `Confirmer (${remaining})`;
-
-        adminWipeCountdownTimer = setInterval(() => {
-          remaining -= 1;
-          if (remaining > 0) {
-            confirmBtn.textContent = `Confirmer (${remaining})`;
-            return;
-          }
-
-          clearInterval(adminWipeCountdownTimer);
-          adminWipeCountdownTimer = null;
-          confirmBtn.disabled = false;
-          confirmBtn.textContent = 'Confirmer';
-        }, 1000);
-
-        cancelBtn.onclick = () => {
-          closeAdminWipeModal();
-        };
-
-        confirmBtn.onclick = async () => {
-          if (confirmBtn.disabled) {
-            return;
-          }
-
-          confirmBtn.disabled = true;
-          cancelBtn.disabled = true;
-          confirmBtn.textContent = 'Suppression...';
-
-          try {
-            const res = await fetchWithTimeout(
-              '/api/admin/wipe-data',
-              {
-                method: 'POST'
-              },
-              30000
-            );
-            const response = await readAdminJsonResponse(res);
-
-            if (response.redirectedToLogin) {
-              return;
-            }
-
-            if (!res.ok) {
-              const message =
-                typeof response.data?.error === 'string'
-                  ? response.data.error
-                  : 'Wipe impossible';
-              alert(message);
-              closeAdminWipeModal();
-              return;
-            }
-
-            closeAdminWipeModal();
-            alert('Wipe Firebase termin\u00e9.');
-            await loadConversations();
-          } catch (err) {
-            alert('Erreur wipe: ' + (err?.message || 'inconnue'));
-            closeAdminWipeModal();
-          }
-        };
-
-        modal.onclick = (event) => {
-          if (event.target === modal) {
-            closeAdminWipeModal();
-          }
-        };
-
-        actions.appendChild(cancelBtn);
-        actions.appendChild(confirmBtn);
-        box.appendChild(title);
-        box.appendChild(text);
-        box.appendChild(actions);
-        modal.appendChild(box);
-        document.body.appendChild(modal);
       }
 
       function setupRootBackToIndex() {
@@ -3408,7 +3250,6 @@
 
       document.addEventListener('DOMContentLoaded', () => {
         const adminActionsBtn = document.getElementById('adminActionsBtn');
-        const adminWipeDataBtn = document.getElementById('adminWipeDataBtn');
         const adminSupportCasesBtn = document.getElementById(
           'adminSupportCasesBtn'
         );
@@ -3432,10 +3273,6 @@
               : '/admin.html?view=support';
             window.location.href = nextUrl;
           });
-        }
-
-        if (adminWipeDataBtn) {
-          adminWipeDataBtn.addEventListener('click', openAdminWipeModal);
         }
 
         document.addEventListener('click', (event) => {
