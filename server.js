@@ -7120,6 +7120,13 @@ async function handleChatPost(req, res) {
       const deltaTokens = Math.max(0, safeTotalTokens - safeChargedTokens);
 
       if (!(deltaTokens > 0)) {
+        chatLogger.debug({
+          event: 'usage_capture_skipped',
+          reason: 'no_delta_tokens',
+          totalTokens: safeTotalTokens,
+          chargedTokens: safeChargedTokens,
+          transport: chatTransport
+        });
         return;
       }
 
@@ -7129,11 +7136,24 @@ async function handleChatPost(req, res) {
 
       const usageUserId = await resolveUsageUserId();
       if (!usageUserId) {
+        chatLogger.warn({
+          event: 'usage_capture_skipped',
+          reason: 'missing_usage_user',
+          deltaTokens,
+          transport: chatTransport
+        });
         return;
       }
 
       const simulatedAmount = tokensToSimulatedEur(deltaTokens);
       if (!(simulatedAmount > 0)) {
+        chatLogger.warn({
+          event: 'usage_capture_skipped',
+          reason: 'non_positive_amount',
+          usageUserId,
+          deltaTokens,
+          transport: chatTransport
+        });
         return;
       }
 
@@ -7141,6 +7161,14 @@ async function handleChatPost(req, res) {
         const userSnap = await usersRef.child(usageUserId).once('value');
         const userData = userSnap.val();
         if (!userData || typeof userData !== 'object') {
+          chatLogger.warn({
+            event: 'usage_capture_skipped',
+            reason: 'missing_user_data',
+            usageUserId,
+            deltaTokens,
+            simulatedAmount,
+            transport: chatTransport
+          });
           return;
         }
 
@@ -7163,9 +7191,27 @@ async function handleChatPost(req, res) {
           usageMeter: nextMeter,
           updatedAt: new Date().toISOString()
         });
+
+        chatLogger.info({
+          event: 'usage_capture_applied',
+          usageUserId,
+          deltaTokens: Math.round(deltaTokens),
+          simulatedAmount,
+          totalTokensAfter: nextMeter.totalTokens,
+          totalSimulatedEurAfter: nextMeter.totalSimulatedEur,
+          transport: chatTransport,
+          isPrivateConversation: isPrivateConversation === true,
+          requestId: requestId || null
+        });
       } catch (error) {
         chatLogger.warn({
-          event: 'usage_envelope_update_failed',
+          event: 'usage_capture_failed',
+          usageUserId,
+          deltaTokens,
+          simulatedAmount,
+          transport: chatTransport,
+          isPrivateConversation: isPrivateConversation === true,
+          requestId: requestId || null,
           error: error && error.message ? error.message : String(error)
         });
       }
