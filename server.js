@@ -7162,7 +7162,7 @@ async function handleChatPost(req, res) {
           totalTokensAfter: nextMeter.totalTokens,
           totalSimulatedEurAfter: nextMeter.totalSimulatedEur,
           transport: chatTransport,
-          isPrivateConversation: isPrivateConversation === true,
+          isPrivateConversation: isPrivateConversationForCatch === true,
           requestId: requestId || null
         });
       } catch (error) {
@@ -7172,7 +7172,7 @@ async function handleChatPost(req, res) {
           deltaTokens,
           simulatedAmount,
           transport: chatTransport,
-          isPrivateConversation: isPrivateConversation === true,
+          isPrivateConversation: isPrivateConversationForCatch === true,
           requestId: requestId || null,
           error: error && error.message ? error.message : String(error)
         });
