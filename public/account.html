@@ -2768,6 +2768,17 @@
           row.appendChild(toggle);
           card.appendChild(row);
 
+          if (!/Android/i.test(navigator.userAgent || '')) {
+            const note = document.createElement('p');
+            note.textContent =
+              'Disponible uniquement sur les appareils Android compatibles.';
+            note.style.fontSize = '13px';
+            note.style.color = '#7a9599';
+            note.style.margin = '4px 0 0';
+            toggle.disabled = true;
+            card.appendChild(note);
+          }
+
           const biometricStatus = createToggleSaveStatus();
           card.appendChild(biometricStatus.element);
 
