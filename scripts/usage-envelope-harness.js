@@ -93,17 +93,17 @@ check('Scenario 4: low envelope with reserve', () => {
 });
 
 check('Scenario 5: envelope empty reserve low', () => {
-  const raw = { monthly: { remaining: 0 }, reserve: { remaining: 10 } };
+  const raw = { monthly: { remaining: 0 }, reserve: { remaining: 1 } };
   const warning = shouldShowLowEnvelopeWarning(raw);
-  const reserveSegments = computeGaugeSegments(10, {
-    capacity: 100,
+  const reserveSegments = computeGaugeSegments(1, {
+    capacity: 12,
     showRedWhenLow: true
   });
   assert(
     isEqual(reserveSegments, ['red', 'empty', 'empty', 'empty']),
     'reserve should show red'
   );
-  assert(warning === false, 'warning should be false');
+  assert(warning === true, 'warning should be true');
 });
 
 check('Scenario 6: rollover available', () => {
@@ -142,7 +142,7 @@ check('Scenario 8: monthly renewal', () => {
     {
       monthly: { remaining: 2 },
       rollover: { remaining: 0 },
-      reserve: { remaining: 80 },
+      reserve: { remaining: 8 },
       lastRenewalAt: '2026-01-10T12:00:00.000Z'
     },
     '2026-02-01T00:00:00.000Z'
@@ -151,12 +151,12 @@ check('Scenario 8: monthly renewal', () => {
   assert(renewal.renewed === true, 'renewal should occur');
   assert(renewal.state.rollover.remaining === 2, 'rollover should keep leftover up to 3');
   assert(renewal.state.monthly.remaining === 12, 'monthly should reset to 12');
-  assert(renewal.state.reserve.remaining === 80, 'reserve should persist');
+  assert(renewal.state.reserve.remaining === 8, 'reserve should persist');
 });
 
-check('add complementary reserve caps at 100', () => {
-  const state = addComplementaryReserve({ reserve: { remaining: 95 } }, 10);
-  assert(state.reserve.remaining === 100, 'reserve must be capped to 100');
+check('add complementary reserve caps at 12', () => {
+  const state = addComplementaryReserve({ reserve: { remaining: 10 } }, 10);
+  assert(state.reserve.remaining === 12, 'reserve must be capped to 12');
 });
 
 if (failed > 0) {

@@ -1450,6 +1450,8 @@
       async function loadSupportCases() {
         const MONTHLY_BUDGET_EUR = 12;
         const ROLLOVER_MAX_EUR = 3;
+        const RESERVE_USAGE_EQUIV_MAX = 12;
+        const RESERVE_PAID_EUR_MAX = 10;
 
         function formatMonthLabel(key) {
           const raw = String(key || '').trim();
@@ -1500,6 +1502,8 @@
           const monthlyRemaining = Number(currentEnvelope?.monthly?.remaining || 0);
           const rolloverRemaining = Number(currentEnvelope?.rollover?.remaining || 0);
           const reserveRemaining = Number(currentEnvelope?.reserve?.remaining || 0);
+          const reserveRemainingPaidEur =
+            (reserveRemaining / RESERVE_USAGE_EQUIV_MAX) * RESERVE_PAID_EUR_MAX;
 
           const rowsHtml = historyEntries.length
             ? historyEntries
@@ -1529,7 +1533,7 @@
             `      <p>Report max du mois precedent: ${ROLLOVER_MAX_EUR.toFixed(2)} EUR</p>`,
             `      <p>Mensuel restant: ${monthlyRemaining.toFixed(4)} EUR</p>`,
             `      <p>Report restant: ${rolloverRemaining.toFixed(4)} EUR</p>`,
-            `      <p>Reserve restante: ${reserveRemaining.toFixed(4)} EUR</p>`,
+            `      <p>Reserve restante: ${reserveRemainingPaidEur.toFixed(4)} EUR (equiv. ${reserveRemaining.toFixed(4)} EUR de capacite tokens)</p>`,
             `      <p>Total simule cumule dossier: ${Number(item?.totalSimulatedEur || 0).toFixed(4)} EUR</p>`,
             '    </div>',
             '  </div>',

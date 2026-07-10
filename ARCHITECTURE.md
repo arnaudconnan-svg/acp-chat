@@ -119,6 +119,12 @@ Regles produit actees pour l'enveloppe de simulation :
 - ordre de consommation : report, puis budget mensuel, puis reserve
 - palier visuel jauge : 12.5% du budget mensuel (1.5 EUR)
 
+Reserve (clarification unites) :
+
+- l'entree produit "reserve" est exprimee comme 10 EUR cote admin (montant de recharge)
+- cote runtime consommation tokens, cette reserve est mappee sur une capacite equivalente de 12 (coherence historique avec le ratio frais d'acces)
+- en affichage admin detaille, afficher explicitement les deux valeurs : EUR reserve et equivalence capacite tokens
+
 Important :
 
 - `usageMeter.totalSimulatedEur` = cumul historique (dossier SAV)

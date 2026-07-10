@@ -909,8 +909,9 @@
         const ACCOUNT_USAGE_ENVELOPE_UI_ENABLED = true;
         const MONTHLY_ENVELOPE_CAPACITY_EUR = 12;
         const ROLLOVER_ENVELOPE_CAPACITY_EUR = 3;
+        const RESERVE_ENVELOPE_CAPACITY_EQUIV_EUR = 12;
         const LOW_MONTHLY_ENVELOPE_THRESHOLD = 1.5;
-        const LOW_RESERVE_ENVELOPE_THRESHOLD = 12.5;
+        const LOW_RESERVE_ENVELOPE_THRESHOLD = 1.5;
 
         const MOCK_USAGE_ENVELOPE_STATE = {
           monthly: {
@@ -922,8 +923,8 @@
             remaining: ROLLOVER_ENVELOPE_CAPACITY_EUR
           },
           reserve: {
-            capacity: 100,
-            remaining: 100
+            capacity: RESERVE_ENVELOPE_CAPACITY_EQUIV_EUR,
+            remaining: RESERVE_ENVELOPE_CAPACITY_EQUIV_EUR
           },
           lastRenewalAt: null
         };
@@ -1350,7 +1351,7 @@
           const reserveRemaining = clampUsageValue(
             safe.reserve && safe.reserve.remaining,
             0,
-            100
+            RESERVE_ENVELOPE_CAPACITY_EQUIV_EUR
           );
 
           return {
@@ -1363,7 +1364,7 @@
               remaining: rolloverRemaining
             },
             reserve: {
-              capacity: 100,
+              capacity: RESERVE_ENVELOPE_CAPACITY_EQUIV_EUR,
               remaining: reserveRemaining
             },
             totalAvailable:
