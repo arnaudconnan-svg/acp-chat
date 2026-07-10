@@ -849,14 +849,19 @@
 
       function setupRootBackToIndex() {
         const conversationId = getConversationIdFromUrl();
-        if (conversationId) return;
+        const adminView = getAdminViewFromUrl();
+
+        const backTarget =
+          conversationId || adminView === 'conversations'
+            ? '/index.html'
+            : '/admin.html';
 
         history.replaceState({ adminRoot: true }, '', window.location.href);
         history.pushState({ adminTrap: true }, '', window.location.href);
 
         window.addEventListener('popstate', (e) => {
           if (e.state && e.state.adminRoot) {
-            window.location.replace('/admin.html');
+            window.location.replace(backTarget);
           }
         });
       }
