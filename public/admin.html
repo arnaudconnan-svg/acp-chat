@@ -687,7 +687,7 @@
                 type="button"
                 class="adminActionsMenuAction"
               >
-                Dossiers SAV
+                Interface admin
               </button>
               <button
                 id="adminWipeDataBtn"
@@ -3418,9 +3418,19 @@
         }
 
         if (adminSupportCasesBtn) {
+          const adminView = getAdminViewFromUrl();
+          if (adminView === 'support') {
+            adminSupportCasesBtn.textContent = 'Conversations';
+          } else {
+            adminSupportCasesBtn.textContent = 'Dossiers SAV';
+          }
           adminSupportCasesBtn.addEventListener('click', () => {
             closeAdminActionsMenu();
-            window.location.href = '/admin.html?view=support';
+            const currentView = getAdminViewFromUrl();
+            const nextUrl = currentView === 'support'
+              ? '/admin.html'
+              : '/admin.html?view=support';
+            window.location.href = nextUrl;
           });
         }
 
