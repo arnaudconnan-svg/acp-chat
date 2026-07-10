@@ -10613,9 +10613,7 @@ Reponds strictement en JSON: {"items": ["..."]}
         ? "Le service est temporairement indisponible car le quota API est épuisé. Je ne peux pas traiter de nouveau message tant que ce quota n'est pas rétabli."
         : suicideLevelForCatch === 'N1'
           ? n1Fallback()
-          : modeForCatch === 'discharge'
-            ? 'Je suis là.'
-            : 'Un problème technique est survenu. Réessaie dans un instant.';
+          : 'Un problème technique est survenu. Réessaie dans un instant.';
       const fallbackDebugMeta = buildFallbackResponseDebugMeta({
         memory: previousMemoryForCatch,
         memoryBeforeSanitization:
