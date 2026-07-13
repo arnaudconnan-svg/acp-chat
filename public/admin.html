@@ -852,9 +852,11 @@
         const adminView = getAdminViewFromUrl();
 
         const backTarget =
-          conversationId || adminView === 'conversations'
-            ? '/index.html'
-            : '/admin.html';
+          conversationId
+            ? '/admin.html'
+            : adminView === 'conversations'
+              ? '/index.html'
+              : '/admin.html';
 
         history.replaceState({ adminRoot: true }, '', window.location.href);
         history.pushState({ adminTrap: true }, '', window.location.href);
@@ -1519,11 +1521,11 @@
 
         function openSupportCaseModal(item = {}) {
           const overlay = ensureSupportCaseModal();
-          const history =
+          const monthlyHistory =
             item?.usageMonthlyHistory && typeof item.usageMonthlyHistory === 'object'
               ? item.usageMonthlyHistory
               : {};
-          const historyEntries = Object.entries(history)
+          const historyEntries = Object.entries(monthlyHistory)
             .filter(([key]) => /^\d{4}-\d{2}$/.test(String(key || '').trim()))
             .sort((a, b) => String(b[0]).localeCompare(String(a[0])));
 
@@ -1581,9 +1583,9 @@
           overlay.innerHTML = modal;
           overlay.style.display = 'flex';
 
-          const state = history.state || {};
+          const state = window.history.state || {};
           if (state.supportCaseModal !== true) {
-            history.pushState(
+            window.history.pushState(
               { ...state, supportCaseModal: true },
               '',
               window.location.href
