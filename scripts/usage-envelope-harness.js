@@ -59,6 +59,22 @@ check('Scenario 2: envelope lightly used', () => {
   );
 });
 
+check('Scenario 2b: top band shows light segment', () => {
+  const segments = computeGaugeSegments(10.5001, { capacity: 12 });
+  assert(
+    isEqual(segments, ['dark', 'dark', 'dark', 'light']),
+    'expected top band to show a light segment'
+  );
+});
+
+check('Scenario 2c: below top band stays empty on last segment', () => {
+  const segments = computeGaugeSegments(10.4279, { capacity: 12 });
+  assert(
+    isEqual(segments, ['dark', 'dark', 'dark', 'empty']),
+    'expected last segment to stay empty below 10.5'
+  );
+});
+
 check('Scenario 3: low envelope no reserve', () => {
   const raw = { monthly: { remaining: 1 }, reserve: { remaining: 0 } };
   const warning = shouldShowLowEnvelopeWarning(raw);

@@ -1394,8 +1394,13 @@
           const safeAmount = clampUsageValue(amount, 0, capacity);
           const fullSegments = Math.floor(safeAmount / segmentUnit);
           const remainder = safeAmount - fullSegments * segmentUnit;
-          const hasHalfSegment = remainder >= halfSegment;
+          const epsilon = 1e-9;
+          const hasHalfSegment = remainder + epsilon >= halfSegment;
           const isLowPositive = safeAmount > 0 && safeAmount < halfSegment;
+          const topBandLight =
+            fullSegments === segmentCount - 1 &&
+            safeAmount < capacity - epsilon &&
+            safeAmount > capacity - halfSegment + epsilon;
 
           const segments = [];
           for (let index = 0; index < segmentCount; index += 1) {
@@ -1404,7 +1409,10 @@
               continue;
             }
 
-            if (index === fullSegments && (hasHalfSegment || isLowPositive)) {
+            if (
+              index === fullSegments &&
+              (hasHalfSegment || isLowPositive || topBandLight)
+            ) {
               segments.push(showRedWhenLow && isLowPositive ? 'red' : 'light');
               continue;
             }
