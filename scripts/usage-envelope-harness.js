@@ -124,10 +124,11 @@ check('Scenario 5: envelope empty reserve low', () => {
 
 check('Scenario 6: rollover available', () => {
   const state = getEnvelopeState({
-    rollover: { remaining: 3 },
+    rollover: { startedWith: 3, remaining: 3 },
     monthly: { remaining: 12 }
   });
   assert(state.rollover.remaining === 3, 'rollover should be 3');
+  assert(state.rollover.startedWith === 3, 'rollover startedWith should be 3');
   assert(
     isEqual(computeGaugeSegments(state.monthly.remaining, { capacity: 12 }), [
       'dark',
@@ -142,7 +143,7 @@ check('Scenario 6: rollover available', () => {
 check('Scenario 7: consumption order', () => {
   const consumed = consumeEnvelope(
     {
-      rollover: { remaining: 3 },
+      rollover: { startedWith: 3, remaining: 3 },
       monthly: { remaining: 12 },
       reserve: { remaining: 50 }
     },
@@ -151,6 +152,24 @@ check('Scenario 7: consumption order', () => {
   assert(consumed.breakdown.rollover === 3, 'should consume rollover first');
   assert(consumed.breakdown.monthly === 7, 'should then consume monthly');
   assert(consumed.breakdown.reserve === 0, 'reserve should be untouched');
+  assert(
+    consumed.state.rollover.startedWith === 3,
+    'rollover startedWith should remain stable during month'
+  );
+});
+
+check('Scenario 7b: partial rollover spend keeps startedWith baseline', () => {
+  const consumed = consumeEnvelope(
+    {
+      rollover: { startedWith: 1.5, remaining: 1.5 },
+      monthly: { remaining: 12 },
+      reserve: { remaining: 12 }
+    },
+    0.4
+  );
+
+  assert(consumed.state.rollover.remaining === 1.1, 'rollover should decrease first');
+  assert(consumed.state.rollover.startedWith === 1.5, 'rollover startedWith must stay at cycle opening value');
 });
 
 check('Scenario 8: monthly renewal', () => {

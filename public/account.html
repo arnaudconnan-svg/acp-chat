@@ -920,6 +920,7 @@
           },
           rollover: {
             capacity: ROLLOVER_ENVELOPE_CAPACITY_EUR,
+            startedWith: ROLLOVER_ENVELOPE_CAPACITY_EUR,
             remaining: ROLLOVER_ENVELOPE_CAPACITY_EUR
           },
           reserve: {
@@ -946,6 +947,7 @@
               remaining: raw?.monthly?.remaining
             },
             rollover: {
+              startedWith: raw?.rollover?.startedWith,
               remaining: raw?.rollover?.remaining
             },
             reserve: {
@@ -1348,6 +1350,11 @@
             0,
             ROLLOVER_ENVELOPE_CAPACITY_EUR
           );
+          const rolloverStartedWith = clampUsageValue(
+            safe.rollover && safe.rollover.startedWith,
+            rolloverRemaining,
+            ROLLOVER_ENVELOPE_CAPACITY_EUR
+          );
           const reserveRemaining = clampUsageValue(
             safe.reserve && safe.reserve.remaining,
             0,
@@ -1361,6 +1368,7 @@
             },
             rollover: {
               capacity: ROLLOVER_ENVELOPE_CAPACITY_EUR,
+              startedWith: rolloverStartedWith,
               remaining: rolloverRemaining
             },
             reserve: {
@@ -1491,7 +1499,10 @@
           );
           container.appendChild(monthlyWrap);
 
-          if (state.rollover.remaining > 0) {
+          if (
+            state.rollover.remaining > 0 &&
+            state.rollover.remaining + 1e-9 >= state.rollover.startedWith
+          ) {
             const rolloverWrap = document.createElement('span');
             rolloverWrap.className = 'gauge-rollover';
             rolloverWrap.appendChild(renderGaugeSegments(['dark'], 'rollover'));

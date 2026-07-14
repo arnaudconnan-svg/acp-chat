@@ -1039,6 +1039,7 @@ function buildDefaultUsageEnvelope() {
       remaining: MONTHLY_CAPACITY
     },
     rollover: {
+      startedWith: 0,
       remaining: 0
     },
     reserve: {
@@ -1057,6 +1058,7 @@ function toUsageEnvelopeStorageShape(state) {
       remaining: safe.monthly.remaining
     },
     rollover: {
+      startedWith: safe.rollover.startedWith,
       remaining: safe.rollover.remaining
     },
     reserve: {
