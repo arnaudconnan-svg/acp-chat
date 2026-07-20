@@ -3399,6 +3399,11 @@ app.get('/api/account/conversations/:id', requireUserAuth, async (req, res) => {
         id,
         role: String(value?.role || ''),
         content: String(value?.content || ''),
+        feedback: normalizeFeedbackForRead(
+          value?.feedback && typeof value.feedback === 'object'
+            ? value.feedback
+            : null
+        ),
         debug: Array.isArray(value?.debug) ? value.debug : [],
         debugMeta:
           value?.debugMeta && typeof value.debugMeta === 'object'
@@ -4530,6 +4535,121 @@ app.post('/api/branches/create-and-activate', async (req, res) => {
   }
 });
 
+function sanitizeFeedbackContext(rawContext) {
+  if (
+    !rawContext ||
+    typeof rawContext !== 'object' ||
+    Array.isArray(rawContext)
+  ) {
+    return null;
+  }
+
+  const recentMessages = Array.isArray(rawContext.recentMessages)
+    ? rawContext.recentMessages
+        .slice(-4)
+        .map((entry) => {
+          if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
+            return null;
+          }
+
+          const role = String(entry.role || '').trim();
+          if (role !== 'user' && role !== 'assistant') {
+            return null;
+          }
+
+          const content = String(entry.content || '').trim().slice(0, 2000);
+          if (!content) {
+            return null;
+          }
+
+          return { role, content };
+        })
+        .filter(Boolean)
+    : [];
+
+  const memory =
+    typeof rawContext.memory === 'string'
+      ? rawContext.memory.trim().slice(0, 6000)
+      : '';
+
+  const flags = normalizeSessionFlags(rawContext.flags || {});
+
+  const botDebug = Array.isArray(rawContext.botDebug)
+    ? rawContext.botDebug
+        .map((line) => String(line || '').trim().slice(0, 500))
+        .filter(Boolean)
+        .slice(0, 60)
+    : [];
+
+  const defaults = buildDefaultPromptRegistry();
+  const botDebugMeta =
+    rawContext.botDebugMeta &&
+    typeof rawContext.botDebugMeta === 'object' &&
+    !Array.isArray(rawContext.botDebugMeta)
+      ? normalizeDebugMetaForStorage(rawContext.botDebugMeta, defaults)
+      : null;
+
+  const botStateSnapshot =
+    rawContext.botStateSnapshot &&
+    typeof rawContext.botStateSnapshot === 'object' &&
+    !Array.isArray(rawContext.botStateSnapshot)
+      ? {
+          memory:
+            typeof rawContext.botStateSnapshot.memory === 'string'
+              ? normalizeMemory(rawContext.botStateSnapshot.memory, defaults)
+              : '',
+          flags: normalizeSessionFlags(rawContext.botStateSnapshot.flags || {})
+        }
+      : null;
+
+  const capturedAt =
+    typeof rawContext.capturedAt === 'number' &&
+    Number.isFinite(rawContext.capturedAt)
+      ? Math.max(0, Math.round(rawContext.capturedAt))
+      : Date.now();
+
+  if (
+    recentMessages.length === 0 &&
+    !memory &&
+    botDebug.length === 0 &&
+    !botDebugMeta &&
+    !botStateSnapshot
+  ) {
+    return null;
+  }
+
+  return {
+    recentMessages,
+    memory: memory || null,
+    flags,
+    botDebug,
+    botDebugMeta,
+    botStateSnapshot,
+    capturedAt
+  };
+}
+
+function normalizeFeedbackForRead(rawFeedback) {
+  if (!rawFeedback || typeof rawFeedback !== 'object') {
+    return null;
+  }
+
+  const context = sanitizeFeedbackContext(rawFeedback.context);
+
+  return {
+    type:
+      rawFeedback.type === 'thumbUp' || rawFeedback.type === 'thumbDown'
+        ? rawFeedback.type
+        : null,
+    comment:
+      typeof rawFeedback.comment === 'string' ? rawFeedback.comment : null,
+    devShare: rawFeedback.devShare === true,
+    timestamp:
+      typeof rawFeedback.timestamp === 'number' ? rawFeedback.timestamp : null,
+    context
+  };
+}
+
 // Store feedback (thumbUp/thumbDown + optional comment) on an existing message.
 // If devShare is false, the call should not reach this endpoint - frontend handles locally only.
 app.post('/api/messages/:id/feedback', async (req, res) => {
@@ -4554,8 +4674,24 @@ app.post('/api/messages/:id/feedback', async (req, res) => {
       typeof req.body.comment === 'string' ? req.body.comment.trim() : '';
     const comment = rawComment.slice(0, 1000); // Bound comment length
     const devShare = req.body.devShare === true;
+    if (!devShare) {
+      return res.status(400).json({ error: 'devShare must be true' });
+    }
     const userId =
       typeof req.body.userId === 'string' ? req.body.userId.trim() : '';
+    if (!userId) {
+      return res.status(400).json({ error: 'Missing userId' });
+    }
+    if (!/^u_[A-Za-z0-9_\-]{6,120}$/.test(userId)) {
+      return res.status(400).json({ error: 'Invalid userId' });
+    }
+
+    const session = await getUserSession(req);
+    if (session && String(session.userId || '').trim() !== userId) {
+      return res.status(403).json({ error: 'Feedback ownership mismatch' });
+    }
+
+    const feedbackContext = sanitizeFeedbackContext(req.body.feedbackContext);
 
     const messageSnap = await messagesRef.child(messageId).once('value');
     if (!messageSnap.exists()) {
@@ -4568,12 +4704,30 @@ app.post('/api/messages/:id/feedback', async (req, res) => {
       return res.status(400).json({ error: 'Message has no conversationId' });
     }
 
+    if (String(messageData.userId || '').trim() !== userId) {
+      return res.status(403).json({ error: 'Feedback ownership mismatch' });
+    }
+
+    const conversationSnap = await db
+      .ref('conversations')
+      .child(String(messageData.conversationId || '').trim())
+      .once('value');
+    const conversationData = conversationSnap.val();
+    if (!conversationData || typeof conversationData !== 'object') {
+      return res.status(404).json({ error: 'Conversation not found' });
+    }
+
+    if (String(conversationData.userId || '').trim() !== userId) {
+      return res.status(403).json({ error: 'Feedback ownership mismatch' });
+    }
+
     const feedback = {
       type,
       comment: comment || null,
       devShare,
       userId: userId || null,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      context: feedbackContext
     };
 
     await messagesRef.child(messageId).update({ feedback });
@@ -4611,8 +4765,24 @@ app.post('/api/branches/feedback-snapshot', async (req, res) => {
       typeof req.body.comment === 'string' ? req.body.comment.trim() : '';
     const comment = rawComment.slice(0, 1000);
     const devShare = req.body.devShare === true;
+    if (!devShare) {
+      return res.status(400).json({ error: 'devShare must be true' });
+    }
     const userId =
       typeof req.body.userId === 'string' ? req.body.userId.trim() : '';
+    if (!userId) {
+      return res.status(400).json({ error: 'Missing userId' });
+    }
+    if (!/^u_[A-Za-z0-9_\-]{6,120}$/.test(userId)) {
+      return res.status(400).json({ error: 'Invalid userId' });
+    }
+
+    const session = await getUserSession(req);
+    if (session && String(session.userId || '').trim() !== userId) {
+      return res.status(403).json({ error: 'Feedback ownership mismatch' });
+    }
+
+    const feedbackContext = sanitizeFeedbackContext(req.body.feedbackContext);
 
     // The frontend sends the raw user + bot message content when from a private conversation
     const userContent =
@@ -4622,7 +4792,10 @@ app.post('/api/branches/feedback-snapshot', async (req, res) => {
     const botContent =
       typeof req.body.botContent === 'string' ? req.body.botContent.trim() : '';
 
-    if (!userContent || !botContent) {
+    const safeUserContent = userContent.slice(0, 8000);
+    const safeBotContent = botContent.slice(0, 8000);
+
+    if (!safeUserContent || !safeBotContent) {
       return res
         .status(400)
         .json({ error: 'Missing userContent or botContent' });
@@ -4640,18 +4813,28 @@ app.post('/api/branches/feedback-snapshot', async (req, res) => {
         userId: userId || 'u_anon',
         createdAt: now,
         updatedAt: now,
-        title: 'Feedback snapshot',
+        title: 'Partage feedback',
         titleLocked: true,
         messageCount: 2,
         feedbackSnapshot: true,
-        isPrivate: false
+        isPrivate: false,
+        memory:
+          feedbackContext && typeof feedbackContext.memory === 'string'
+            ? feedbackContext.memory
+            : '',
+        flags:
+          feedbackContext &&
+          feedbackContext.flags &&
+          typeof feedbackContext.flags === 'object'
+            ? normalizeSessionFlags(feedbackContext.flags)
+            : normalizeSessionFlags({})
       });
 
     // Push user message then bot message
     const timestampBase = Date.now();
     const userMsgRef = await messagesRef.push({
       role: 'user',
-      content: userContent,
+      content: safeUserContent,
       timestamp: timestampBase,
       userId: userId || 'u_anon',
       conversationId: snapshotConversationId,
@@ -4660,17 +4843,34 @@ app.post('/api/branches/feedback-snapshot', async (req, res) => {
 
     const botMsgRef = await messagesRef.push({
       role: 'assistant',
-      content: botContent,
+      content: safeBotContent,
       timestamp: timestampBase + 1,
       userId: userId || 'u_anon',
       conversationId: snapshotConversationId,
       feedbackSnapshot: true,
+      debug:
+        feedbackContext && Array.isArray(feedbackContext.botDebug)
+          ? feedbackContext.botDebug
+          : [],
+      debugMeta:
+        feedbackContext &&
+        feedbackContext.botDebugMeta &&
+        typeof feedbackContext.botDebugMeta === 'object'
+          ? feedbackContext.botDebugMeta
+          : null,
+      stateSnapshot:
+        feedbackContext &&
+        feedbackContext.botStateSnapshot &&
+        typeof feedbackContext.botStateSnapshot === 'object'
+          ? feedbackContext.botStateSnapshot
+          : null,
       feedback: {
         type,
         comment: comment || null,
         devShare,
         userId: userId || null,
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        context: feedbackContext
       }
     });
 
@@ -5864,28 +6064,11 @@ app.get(
           const label =
             rawUserId && labels[rawUserId] ? labels[rawUserId] : null;
 
-          const rawFeedback =
+          const normalizedFeedback = normalizeFeedbackForRead(
             value.feedback && typeof value.feedback === 'object'
               ? value.feedback
-              : null;
-          const normalizedFeedback = rawFeedback
-            ? {
-                type:
-                  rawFeedback.type === 'thumbUp' ||
-                  rawFeedback.type === 'thumbDown'
-                    ? rawFeedback.type
-                    : null,
-                comment:
-                  typeof rawFeedback.comment === 'string'
-                    ? rawFeedback.comment
-                    : null,
-                devShare: rawFeedback.devShare === true,
-                timestamp:
-                  typeof rawFeedback.timestamp === 'number'
-                    ? rawFeedback.timestamp
-                    : null
-              }
-            : null;
+              : null
+          );
 
           return {
             id,

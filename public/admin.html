@@ -3386,6 +3386,87 @@
                 fbRow.appendChild(commentEl);
               }
 
+              if (fb.context && typeof fb.context === 'object') {
+                const context = fb.context;
+                const recentMessages = Array.isArray(context.recentMessages)
+                  ? context.recentMessages
+                  : [];
+                const hasMemory =
+                  typeof context.memory === 'string' &&
+                  context.memory.trim().length > 0;
+                const hasInternalGuidance =
+                  (Array.isArray(context.botDebug) &&
+                    context.botDebug.length > 0) ||
+                  (context.botDebugMeta &&
+                    typeof context.botDebugMeta === 'object');
+
+                const contextSummary = document.createElement('span');
+                contextSummary.textContent =
+                  'Contexte partage: ' +
+                  recentMessages.length +
+                  ' message(s), ' +
+                  (hasMemory ? 'memoire jointe' : 'memoire absente') +
+                  ', ' +
+                  (hasInternalGuidance
+                    ? 'indications de reponse jointes'
+                    : 'indications de reponse absentes');
+                contextSummary.style.flex = '1 1 100%';
+                contextSummary.style.color = '#4a5d64';
+                contextSummary.style.marginTop = '2px';
+                fbRow.appendChild(contextSummary);
+
+                const contextDetails = document.createElement('details');
+                contextDetails.style.flex = '1 1 100%';
+                contextDetails.style.marginTop = '3px';
+
+                const contextSummaryTitle = document.createElement('summary');
+                contextSummaryTitle.textContent =
+                  'Voir le contexte partage';
+                contextSummaryTitle.style.cursor = 'pointer';
+                contextSummaryTitle.style.color = '#245e66';
+                contextSummaryTitle.style.fontWeight = '600';
+                contextDetails.appendChild(contextSummaryTitle);
+
+                const contextBody = document.createElement('div');
+                contextBody.style.marginTop = '6px';
+                contextBody.style.padding = '8px';
+                contextBody.style.borderRadius = '8px';
+                contextBody.style.background = '#f8fbfb';
+                contextBody.style.border = '1px solid #d6e2e1';
+                contextBody.style.color = '#2f4b51';
+                contextBody.style.whiteSpace = 'pre-wrap';
+                contextBody.style.lineHeight = '1.4';
+
+                const contextParts = [];
+                if (recentMessages.length > 0) {
+                  contextParts.push('4 derniers messages partages:');
+                  recentMessages.forEach((entry, idx) => {
+                    const role = entry && entry.role === 'user' ? 'Personne' : 'Assistant';
+                    const content = String(entry?.content || '').trim();
+                    contextParts.push(
+                      `${idx + 1}. ${role}: ${content || '(vide)'}`
+                    );
+                  });
+                }
+
+                if (hasMemory) {
+                  contextParts.push('');
+                  contextParts.push('Memoire active au moment du retour:');
+                  contextParts.push(String(context.memory || '').slice(0, 1200));
+                }
+
+                if (hasInternalGuidance) {
+                  contextParts.push('');
+                  contextParts.push(
+                    'Des indications internes ayant guide la reponse ont ete jointes.'
+                  );
+                }
+
+                contextBody.textContent = contextParts.join('\n');
+                contextDetails.appendChild(contextBody);
+                fbRow.appendChild(contextDetails);
+              }
+
               card.appendChild(fbRow);
             }
 

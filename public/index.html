@@ -3111,11 +3111,13 @@
         <h3 class="modalTitle">Partager ce feedback</h3>
         <p class="modalText">
           Cette conversation est privée. Pour transmettre votre avis au
-          développeur, une copie non-privée de cet échange (uniquement ce
-          message et la réponse associée) sera créée sur le serveur.
+          développeur, une copie non-privée sera créée avec la partie utile
+          de contexte: ce message, la réponse associée, les 4 derniers
+          messages, la mémoire active et les indications internes ayant guidé
+          la réponse.
         </p>
         <p class="modalText" style="font-size: 13px; color: #666">
-          Aucune autre partie de votre conversation ne sera partagée.
+          Le reste de la conversation privée ne sera pas partagé.
         </p>
         <div class="modalActions">
           <button
@@ -5620,6 +5622,31 @@
             messages.map((item, index) => ({
               role: String(item?.role || ''),
               content: String(item?.content || ''),
+              feedback:
+                item?.feedback && typeof item.feedback === 'object'
+                  ? {
+                      type:
+                        item.feedback.type === 'thumbUp' ||
+                        item.feedback.type === 'thumbDown'
+                          ? item.feedback.type
+                          : null,
+                      comment:
+                        typeof item.feedback.comment === 'string'
+                          ? item.feedback.comment
+                          : null,
+                      devShare: item.feedback.devShare === true,
+                      timestamp:
+                        typeof item.feedback.timestamp === 'number'
+                          ? item.feedback.timestamp
+                          : null,
+                      context:
+                        item.feedback.context &&
+                        typeof item.feedback.context === 'object' &&
+                        !Array.isArray(item.feedback.context)
+                          ? item.feedback.context
+                          : null
+                    }
+                  : null,
               debug: Array.isArray(item?.debug) ? item.debug : [],
               debugMeta:
                 item?.debugMeta && typeof item.debugMeta === 'object'
@@ -8964,6 +8991,57 @@
         }
       }
 
+      function buildFeedbackContextPayload(resolvedHistoryIndex) {
+        const conversationId = getConversationId();
+        const history = loadHistory();
+        const conversationData = loadConversationData(conversationId);
+
+        const safeHistory = Array.isArray(history) ? history : [];
+        const lastIndex =
+          Number.isInteger(resolvedHistoryIndex) && resolvedHistoryIndex >= 0
+            ? Math.min(resolvedHistoryIndex, safeHistory.length - 1)
+            : safeHistory.length - 1;
+
+        const fromIndex = Math.max(0, lastIndex - 3);
+        const recentMessages =
+          lastIndex >= 0
+            ? safeHistory.slice(fromIndex, lastIndex + 1).map((entry) => ({
+                role:
+                  String(entry?.role || '').trim() === 'user'
+                    ? 'user'
+                    : 'assistant',
+                content: String(entry?.content || '').slice(0, 2000)
+              }))
+            : [];
+
+        const botEntry =
+          lastIndex >= 0 && safeHistory[lastIndex]
+            ? safeHistory[lastIndex]
+            : null;
+
+        return {
+          recentMessages,
+          memory:
+            typeof conversationData?.memory === 'string'
+              ? conversationData.memory
+              : '',
+          flags: normalizeStoredFlags(conversationData?.flags || {}),
+          botDebug: Array.isArray(botEntry?.debug)
+            ? botEntry.debug.map((line) => String(line || '')).slice(0, 60)
+            : [],
+          botDebugMeta:
+            botEntry?.debugMeta && typeof botEntry.debugMeta === 'object'
+              ? botEntry.debugMeta
+              : null,
+          botStateSnapshot:
+            botEntry?.stateSnapshot &&
+            typeof botEntry.stateSnapshot === 'object'
+              ? botEntry.stateSnapshot
+              : null,
+          capturedAt: Date.now()
+        };
+      }
+
       async function submitFeedbackToServer(
         feedbackType,
         comment,
@@ -8980,6 +9058,9 @@
         const resolvedHistoryIndex = resolveFeedbackHistoryIndex(
           historyIndex,
           botContent
+        );
+        const feedbackContext = buildFeedbackContextPayload(
+          resolvedHistoryIndex
         );
 
         if (isPrivate) {
@@ -9002,6 +9083,7 @@
               comment: comment || null,
               devShare,
               userId,
+              feedbackContext,
               userContent,
               botContent:
                 botContent || String((botEntry && botEntry.content) || '')
@@ -9034,7 +9116,8 @@
               type: feedbackType,
               comment: comment || null,
               devShare,
-              userId
+              userId,
+              feedbackContext
             })
           }
         );
