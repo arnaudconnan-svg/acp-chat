@@ -8,6 +8,8 @@
     />
     <meta name="color-scheme" content="light" />
     <title>Admin - Conversations</title>
+    <script src="/js/vendor/markdown-it-13.0.2.min.js"></script>
+    <script src="/js/vendor/dompurify-3.0.3.min.js"></script>
 
     <style>
       * {
@@ -2352,6 +2354,54 @@
             return normalizeReplayDebugMeta(debugMeta);
           }
 
+          function getMd() {
+            if (window.__adminMd) return window.__adminMd;
+
+            const md = window
+              .markdownit({
+                html: false,
+                breaks: true,
+                linkify: true
+              })
+              .disable(['code', 'fence', 'html_inline', 'html_block']);
+
+            window.__adminMd = md;
+            return md;
+          }
+
+          function safeMarkdownToHtml(rawText = '') {
+            const dirty = getMd().render(String(rawText || ''));
+
+            return DOMPurify.sanitize(dirty, {
+              ALLOWED_TAGS: [
+                'p',
+                'br',
+                'strong',
+                'b',
+                'em',
+                'i',
+                'ul',
+                'ol',
+                'li',
+                'blockquote',
+                'hr',
+                'h1',
+                'h2',
+                'h3',
+                'h4',
+                'a'
+              ],
+              ALLOWED_ATTR: { a: ['href'] }
+            });
+          }
+
+          function fixLinks(containerEl) {
+            containerEl.querySelectorAll('a').forEach((a) => {
+              a.setAttribute('target', '_blank');
+              a.setAttribute('rel', 'noopener');
+            });
+          }
+
           function translateWriterMode(mode) {
             return window.FacilitatDebug.translateWriterMode(mode);
           }
@@ -3169,7 +3219,9 @@
 
             const main = document.createElement('div');
             main.className = 'main';
-            main.textContent = parsed.content || '';
+            main.style.whiteSpace = 'normal';
+            main.innerHTML = safeMarkdownToHtml(parsed.content || '');
+            fixLinks(main);
             box.appendChild(main);
 
             const normalizedDebugMeta = normalizeDebugMeta(variant.debugMeta);
@@ -3308,7 +3360,9 @@
                 if (variants.length === 1 && !variant.label) {
                   const main = document.createElement('div');
                   main.className = 'main';
-                  main.textContent = variant.content || '';
+                  main.style.whiteSpace = 'normal';
+                  main.innerHTML = safeMarkdownToHtml(variant.content || '');
+                  fixLinks(main);
                   card.appendChild(main);
 
                   const normalizedDebugMeta = normalizeDebugMeta(
