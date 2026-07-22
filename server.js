@@ -6111,11 +6111,40 @@ app.get(
           const label =
             rawUserId && labels[rawUserId] ? labels[rawUserId] : null;
 
-          const normalizedFeedback = normalizeFeedbackForRead(
-            value.feedback && typeof value.feedback === 'object'
-              ? value.feedback
-              : null
-          );
+          let normalizedFeedback = null;
+          try {
+            normalizedFeedback = normalizeFeedbackForRead(
+              value.feedback && typeof value.feedback === 'object'
+                ? value.feedback
+                : null
+            );
+          } catch (err) {
+            console.warn('[ADMIN_FEEDBACK_NORMALIZE_FAILED]', {
+              conversationId,
+              messageId: id,
+              error: err && err.message ? err.message : String(err)
+            });
+            normalizedFeedback =
+              value.feedback && typeof value.feedback === 'object'
+                ? {
+                    type:
+                      value.feedback.type === 'thumbUp' ||
+                      value.feedback.type === 'thumbDown'
+                        ? value.feedback.type
+                        : null,
+                    comment:
+                      typeof value.feedback.comment === 'string'
+                        ? value.feedback.comment
+                        : null,
+                    devShare: value.feedback.devShare === true,
+                    timestamp:
+                      typeof value.feedback.timestamp === 'number'
+                        ? value.feedback.timestamp
+                        : null,
+                    context: null
+                  }
+                : null;
+          }
 
           return {
             id,
