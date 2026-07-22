@@ -4673,7 +4673,15 @@ function normalizeFeedbackForRead(rawFeedback) {
     return null;
   }
 
-  const context = sanitizeFeedbackContext(rawFeedback.context);
+  let context = null;
+  try {
+    context = sanitizeFeedbackContext(rawFeedback.context);
+  } catch (err) {
+    console.warn('[FEEDBACK_CONTEXT_READ_FAILED]', {
+      error: err && err.message ? err.message : String(err)
+    });
+    context = null;
+  }
 
   return {
     type:
