@@ -4582,11 +4582,50 @@ function sanitizeFeedbackContext(rawContext) {
     : [];
 
   const defaults = buildDefaultPromptRegistry();
+  const safeNormalizeDebugMetaForFeedback = (value) => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      return null;
+    }
+
+    if (typeof normalizeDebugMetaForStorage === 'function') {
+      return normalizeDebugMetaForStorage(value, defaults);
+    }
+
+    // Fallback: keep a bounded subset when the full normalizer is unavailable.
+    return {
+      topChips: Array.isArray(value.topChips)
+        ? value.topChips
+            .map((entry) => String(entry || '').trim().slice(0, 120))
+            .filter(Boolean)
+            .slice(0, 20)
+        : [],
+      memory:
+        typeof value.memory === 'string'
+          ? value.memory.trim().slice(0, 6000)
+          : '',
+      directivityText:
+        typeof value.directivityText === 'string'
+          ? value.directivityText.trim().slice(0, 2000)
+          : '',
+      conversationState:
+        typeof value.conversationState === 'string'
+          ? value.conversationState.trim().slice(0, 80)
+          : null,
+      requestId:
+        typeof value.requestId === 'string'
+          ? value.requestId.trim().slice(0, 120)
+          : null,
+      traceId:
+        typeof value.traceId === 'string'
+          ? value.traceId.trim().slice(0, 120)
+          : null
+    };
+  };
   const botDebugMeta =
     rawContext.botDebugMeta &&
     typeof rawContext.botDebugMeta === 'object' &&
     !Array.isArray(rawContext.botDebugMeta)
-      ? normalizeDebugMetaForStorage(rawContext.botDebugMeta, defaults)
+      ? safeNormalizeDebugMetaForFeedback(rawContext.botDebugMeta)
       : null;
 
   const botStateSnapshot =
