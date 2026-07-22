@@ -18,6 +18,10 @@ const { chromium } = require('playwright');
 
 const BASE_URL = process.env.SMOKE_BASE_URL || 'http://localhost:3000';
 const ALLOW_LLM_CALLS = process.env.SMOKE_ALLOW_LLM === '1';
+const REQUIRE_REQUEST_ID = process.env.SMOKE_REQUIRE_REQUEST_ID === '1';
+const SMOKE_ADMIN_PASSWORD = String(
+  process.env.SMOKE_ADMIN_PASSWORD || ''
+).trim();
 const SMOKE_AUTH_EMAIL = String(process.env.SMOKE_AUTH_EMAIL || '').trim();
 const SMOKE_AUTH_PASSWORD = String(
   process.env.SMOKE_AUTH_PASSWORD || ''
@@ -26,6 +30,90 @@ const TEST_MESSAGE = 'Je teste le chat. Réponds brièvement.';
 const BOT_REPLY_TIMEOUT_MS = 60000;
 const WELCOME_TIMEOUT_MS = 25000;
 const COMPOSER_TIMEOUT_MS = 15000;
+
+async function maybeBypassTelecharger(page) {
+  const currentPath = await page
+    .evaluate(() => String(window.location.pathname || ''))
+    .catch(() => '');
+  if (currentPath !== '/telecharger') {
+    return;
+  }
+
+  if (!SMOKE_ADMIN_PASSWORD) {
+    throw new Error(
+      'telecharger gate detected and SMOKE_ADMIN_PASSWORD is missing'
+    );
+  }
+
+  const adminLink = page.getByRole('link', { name: /Connexion admin/i });
+  await adminLink.waitFor({ state: 'visible', timeout: 8000 });
+  await adminLink.click();
+
+  await page.locator('#password').waitFor({ state: 'visible', timeout: 10000 });
+  await page.fill('#password', SMOKE_ADMIN_PASSWORD);
+  await page.locator('#loginForm button[type="submit"]').click();
+
+  await page
+    .waitForFunction(
+      () =>
+        String(window.location.pathname || '') === '/admin.html' ||
+        String(window.location.pathname || '') === '/index.html' ||
+        String(window.location.pathname || '') === '/',
+      { timeout: 12000 }
+    )
+    .catch(() => {});
+
+  await page.goto(BASE_URL, {
+    waitUntil: 'domcontentloaded',
+    timeout: 12000
+  });
+}
+
+async function readSmokeTraceData(page, expectedUserMessage) {
+  return page.evaluate((expectedMessage) => {
+    const conversationId = String(
+      localStorage.getItem('facilitatio_conversation_id') || ''
+    ).trim();
+    if (!conversationId) {
+      return { conversationId: '', requestId: '', matchedUserMessage: false };
+    }
+
+    const key = `facilitatio_conversation_data_${conversationId}`;
+    const raw = localStorage.getItem(key);
+    if (!raw) {
+      return { conversationId, requestId: '', matchedUserMessage: false };
+    }
+
+    let parsed = null;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      parsed = null;
+    }
+
+    const messages = Array.isArray(parsed?.messages) ? parsed.messages : [];
+    const matchedUserMessage = messages.some(
+      (message) =>
+        message &&
+        message.role === 'user' &&
+        String(message.content || '').includes(String(expectedMessage || ''))
+    );
+
+    const lastAssistant = [...messages]
+      .reverse()
+      .find((message) => message && message.role === 'assistant');
+    const requestId =
+      typeof lastAssistant?.debugMeta?.requestId === 'string'
+        ? lastAssistant.debugMeta.requestId.trim()
+        : '';
+
+    return {
+      conversationId,
+      requestId,
+      matchedUserMessage
+    };
+  }, expectedUserMessage);
+}
 
 async function run() {
   const browser = await chromium.launch({ headless: true });
@@ -49,6 +137,11 @@ async function run() {
   });
 
   const checks = [];
+  let smokeTrace = {
+    conversationId: '',
+    requestId: '',
+    matchedUserMessage: false
+  };
 
   function pass(name) {
     checks.push({ name, ok: true });
@@ -66,6 +159,7 @@ async function run() {
       waitUntil: 'domcontentloaded',
       timeout: 10000
     });
+    await maybeBypassTelecharger(page);
     await page
       .evaluate(() => {
         if (typeof window.showScreen === 'function') {
@@ -425,6 +519,21 @@ async function run() {
             'expected user message not found in localStorage after reload'
           );
         }
+
+        smokeTrace = await readSmokeTraceData(page, TEST_MESSAGE);
+        if (smokeTrace.conversationId) {
+          pass('conversation id captured');
+        } else {
+          fail('conversation id captured', 'conversationId missing in localStorage');
+        }
+
+        if (smokeTrace.requestId) {
+          pass('requestId captured');
+        } else if (REQUIRE_REQUEST_ID) {
+          fail('requestId captured', 'requestId missing in latest assistant debugMeta');
+        } else {
+          pass('requestId optional (SMOKE_REQUIRE_REQUEST_ID not set)');
+        }
       } else {
         pass('conversation persistence skipped (SMOKE_ALLOW_LLM not set)');
       }
@@ -443,6 +552,14 @@ async function run() {
   console.log('');
   if (failed.length === 0) {
     console.log(`ui-smoke: ${passed}/${total} passed`);
+    if (smokeTrace.conversationId || smokeTrace.requestId) {
+      console.log(
+        `ui-smoke: trace ${JSON.stringify({
+          conversationId: smokeTrace.conversationId || null,
+          requestId: smokeTrace.requestId || null
+        })}`
+      );
+    }
   } else {
     console.log(`ui-smoke: ${passed}/${total} passed, ${failed.length} FAILED`);
     failed.forEach((c) => console.error(`  FAIL: ${c.name} — ${c.reason}`));
