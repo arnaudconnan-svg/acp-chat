@@ -8361,13 +8361,23 @@ async function handleChatPost(req, res) {
         reply,
         debug,
         debugMeta = {},
-        conversationState = null
+        conversationState = null,
+        messageId = null
       ) {
         if (isPrivateConversation) {
           return null;
         }
 
-        const pushedRef = await messagesRef.push({
+        const persistedMessageId =
+          typeof messageId === 'string' && messageId.trim()
+            ? messageId.trim()
+            : messagesRef.push().key;
+
+        if (!persistedMessageId) {
+          throw new Error('Assistant message key generation failed');
+        }
+
+        await messagesRef.child(persistedMessageId).set({
           role: 'assistant',
           content: isEdited ? reply + '\n[MODIFIÉ]' : reply,
           timestamp: Date.now(),
@@ -8429,7 +8439,7 @@ async function handleChatPost(req, res) {
 
         await convRef.update(conversationPatch);
 
-        return pushedRef.key || null;
+        return persistedMessageId;
       }
 
       // Fire-and-forget wrapper: generates a deterministic messageId synchronously,
@@ -8441,13 +8451,16 @@ async function handleChatPost(req, res) {
         conversationState = null
       ) {
         if (isPrivateConversation) return null;
-        const messageId =
-          'msg_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+        const messageId = messagesRef.push().key;
+        if (!messageId) {
+          throw new Error('Assistant message key reservation failed');
+        }
         persistAssistantMessage(
           reply,
           debug,
           debugMeta,
-          conversationState
+          conversationState,
+          messageId
         ).catch((err) => {
           console.error(
             '[PERSIST_ASYNC][FAILED]',
