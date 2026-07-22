@@ -613,9 +613,42 @@ function createEmailNotifier() {
 }
 
 const emailNotifier = createEmailNotifier();
+const EMAIL_ALERT_EXCLUDED_USER_EMAILS = new Set([
+  normalizeEmail('arnaud.connan@gmail.com'),
+  normalizeEmail('review@facilitat.io')
+]);
 let adminVisitedSinceLastAlert = true;
 let cachedAdminMailsEnabled = false;
 let adminMailsCacheReady = false;
+
+async function shouldSuppressAdminEmailAlertForUser(req, userId = '') {
+  const safeUserId = String(userId || '').trim();
+  if (!safeUserId) {
+    return false;
+  }
+
+  try {
+    const session = req && req.userSession ? req.userSession : await getUserSession(req);
+    if (session && String(session.userId || '').trim() === safeUserId) {
+      const sessionEmail = normalizeEmail(session.user && session.user.email);
+      if (sessionEmail) {
+        return EMAIL_ALERT_EXCLUDED_USER_EMAILS.has(sessionEmail);
+      }
+    }
+
+    const userSnap = await usersRef.child(safeUserId).once('value');
+    const userData = userSnap.val();
+    const userEmail = normalizeEmail(userData && userData.email);
+    return userEmail ? EMAIL_ALERT_EXCLUDED_USER_EMAILS.has(userEmail) : false;
+  } catch (err) {
+    logger.error({
+      event: 'admin_email_alert_exclusion_lookup_failed',
+      userId: safeUserId,
+      error: err.message
+    });
+    return false;
+  }
+}
 
 function normalizeMailsEnabledSetting(value) {
   return value !== false;
@@ -4724,6 +4757,8 @@ app.post('/api/messages/:id/feedback', async (req, res) => {
     if (!devShare) {
       return res.status(400).json({ error: 'devShare must be true' });
     }
+    const mailsEnabled = req.body?.mailsEnabled !== false;
+    const adminUiActive = req.body?.adminUiActive === true;
     const userId =
       typeof req.body.userId === 'string' ? req.body.userId.trim() : '';
     if (!userId) {
@@ -4779,6 +4814,25 @@ app.post('/api/messages/:id/feedback', async (req, res) => {
 
     await messagesRef.child(messageId).update({ feedback });
 
+    const effectiveMailsEnabled =
+      mailsEnabled !== false &&
+      (adminMailsCacheReady ? getCachedAdminMailsEnabled() : false);
+    const suppressAdminMailAlert = await shouldSuppressAdminEmailAlertForUser(
+      req,
+      userId
+    );
+
+    if (
+      emailNotifier.enabled &&
+      effectiveMailsEnabled &&
+      adminVisitedSinceLastAlert &&
+      adminUiActive !== true &&
+      !suppressAdminMailAlert
+    ) {
+      adminVisitedSinceLastAlert = false;
+      emailNotifier.sendNewMessageAlert();
+    }
+
     console.log('[FEEDBACK]', {
       messageId,
       type,
@@ -4815,6 +4869,8 @@ app.post('/api/branches/feedback-snapshot', async (req, res) => {
     if (!devShare) {
       return res.status(400).json({ error: 'devShare must be true' });
     }
+    const mailsEnabled = req.body?.mailsEnabled !== false;
+    const adminUiActive = req.body?.adminUiActive === true;
     const userId =
       typeof req.body.userId === 'string' ? req.body.userId.trim() : '';
     if (!userId) {
@@ -4920,6 +4976,25 @@ app.post('/api/branches/feedback-snapshot', async (req, res) => {
         context: feedbackContext
       }
     });
+
+    const effectiveMailsEnabled =
+      mailsEnabled !== false &&
+      (adminMailsCacheReady ? getCachedAdminMailsEnabled() : false);
+    const suppressAdminMailAlert = await shouldSuppressAdminEmailAlertForUser(
+      req,
+      userId
+    );
+
+    if (
+      emailNotifier.enabled &&
+      effectiveMailsEnabled &&
+      adminVisitedSinceLastAlert &&
+      adminUiActive !== true &&
+      !suppressAdminMailAlert
+    ) {
+      adminVisitedSinceLastAlert = false;
+      emailNotifier.sendNewMessageAlert();
+    }
 
     console.log('[FEEDBACK_SNAPSHOT]', {
       snapshotConversationId,
@@ -8381,13 +8456,18 @@ async function handleChatPost(req, res) {
       const effectiveMailsEnabled =
         mailsEnabled !== false &&
         (adminMailsCacheReady ? getCachedAdminMailsEnabled() : false);
+      const suppressAdminMailAlert = await shouldSuppressAdminEmailAlertForUser(
+        req,
+        userId
+      );
 
       if (
         !isPrivateConversation &&
         emailNotifier.enabled &&
         effectiveMailsEnabled &&
         adminVisitedSinceLastAlert &&
-        adminUiActive !== true
+        adminUiActive !== true &&
+        !suppressAdminMailAlert
       ) {
         adminVisitedSinceLastAlert = false;
         emailNotifier.sendNewMessageAlert();

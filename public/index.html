@@ -7386,6 +7386,13 @@
         };
       }
 
+      function getAdminMailAlertFlags() {
+        return {
+          mailsEnabled: getActiveAdminPayload().mailsEnabled !== false,
+          adminUiActive: document.body.classList.contains('admin-ui')
+        };
+      }
+
       window.getActiveAdminPayload = getActiveAdminPayload;
 
       function ensureAdminStatusBar() {
@@ -9165,7 +9172,8 @@
                         comment: comment || null,
                         devShare: true,
                         userId,
-                        feedbackContext
+                        feedbackContext,
+                        ...getAdminMailAlertFlags()
                       })
                     }
                   );
@@ -9198,6 +9206,7 @@
                       devShare: true,
                       userId,
                       feedbackContext,
+                      ...getAdminMailAlertFlags(),
                       userContent,
                       botContent
                     })
@@ -9309,6 +9318,7 @@
               devShare,
               userId,
               feedbackContext,
+              ...getAdminMailAlertFlags(),
               userContent,
               botContent:
                 botContent || String((botEntry && botEntry.content) || '')
@@ -9342,7 +9352,8 @@
               comment: comment || null,
               devShare,
               userId,
-              feedbackContext
+              feedbackContext,
+              ...getAdminMailAlertFlags()
             })
           }
         );
