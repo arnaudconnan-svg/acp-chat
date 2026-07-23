@@ -26,47 +26,81 @@ const SMOKE_AUTH_EMAIL = String(process.env.SMOKE_AUTH_EMAIL || '').trim();
 const SMOKE_AUTH_PASSWORD = String(
   process.env.SMOKE_AUTH_PASSWORD || ''
 ).trim();
+const ADMIN_LOGIN_PASSWORD = 'Facilitat.io29082025';
 const TEST_MESSAGE = 'Je teste le chat. Réponds brièvement.';
 const BOT_REPLY_TIMEOUT_MS = 60000;
 const WELCOME_TIMEOUT_MS = 25000;
 const COMPOSER_TIMEOUT_MS = 15000;
 
+async function waitForComposerVisible(page, input) {
+  const immediateVisible = await input
+    .isVisible({ timeout: 1000 })
+    .catch(() => false);
+  if (immediateVisible) {
+    return true;
+  }
+
+  return page
+    .waitForSelector('#input', {
+      state: 'visible',
+      timeout: COMPOSER_TIMEOUT_MS
+    })
+    .then(() => true)
+    .catch(() => false);
+}
+
+async function openNewConversationFromConversations(page) {
+  const conversationsFabBtn = page.locator('#conversationsFabBtn');
+  const visible = await conversationsFabBtn
+    .isVisible({ timeout: 12000 })
+    .catch(() => false);
+
+  if (!visible) {
+    return false;
+  }
+
+  await conversationsFabBtn.click();
+  return true;
+}
+
 async function maybeBypassTelecharger(page) {
-  const currentPath = await page
-    .evaluate(() => String(window.location.pathname || ''))
-    .catch(() => '');
-  if (currentPath !== '/telecharger') {
-    return;
+  const isTelecharger = /\/telecharger(?:$|\?)/.test(page.url());
+  if (!isTelecharger) {
+    return false;
   }
 
-  if (!SMOKE_ADMIN_PASSWORD) {
-    throw new Error(
-      'telecharger gate detected and SMOKE_ADMIN_PASSWORD is missing'
-    );
+  const adminPassword = SMOKE_ADMIN_PASSWORD || ADMIN_LOGIN_PASSWORD;
+  if (!adminPassword) {
+    throw new Error('telecharger gate detected and admin password is missing');
   }
 
-  const adminLink = page.getByRole('link', { name: /Connexion admin/i });
-  await adminLink.waitFor({ state: 'visible', timeout: 8000 });
+  const adminLink = page.getByRole('link', { name: /^Connexion admin$/i });
+  const linkVisible = await adminLink
+    .isVisible({ timeout: 5000 })
+    .catch(() => false);
+  if (!linkVisible) {
+    return false;
+  }
+
   await adminLink.click();
+  await page
+    .waitForURL((url) => /\/admin-login\.html/.test(url.pathname), {
+      timeout: 10000
+    })
+    .catch(() => {});
 
-  await page.locator('#password').waitFor({ state: 'visible', timeout: 10000 });
-  await page.fill('#password', SMOKE_ADMIN_PASSWORD);
+  const passwordInput = page.locator('#password');
+  await passwordInput.fill(adminPassword);
   await page.locator('#loginForm button[type="submit"]').click();
 
   await page
-    .waitForFunction(
-      () =>
-        String(window.location.pathname || '') === '/admin.html' ||
-        String(window.location.pathname || '') === '/index.html' ||
-        String(window.location.pathname || '') === '/',
+    .waitForURL(
+      (url) =>
+        url.origin === new URL(BASE_URL).origin &&
+        (url.pathname === '/' || url.pathname === '/index.html'),
       { timeout: 12000 }
     )
     .catch(() => {});
-
-  await page.goto(BASE_URL, {
-    waitUntil: 'domcontentloaded',
-    timeout: 12000
-  });
 }
 
 async function readSmokeTraceData(page, expectedUserMessage) {
@@ -113,6 +147,19 @@ async function readSmokeTraceData(page, expectedUserMessage) {
       matchedUserMessage
     };
   }, expectedUserMessage);
+}
+
+async function waitForConversationsScreen(page) {
+  return page
+    .waitForFunction(
+      () => {
+        const fabBtn = document.querySelector('#conversationsFabBtn');
+        return !!fabBtn && fabBtn.offsetParent !== null;
+      },
+      { timeout: 12000 }
+    )
+    .then(() => true)
+    .catch(() => false);
 }
 
 async function run() {
@@ -257,6 +304,17 @@ async function run() {
         if (button) button.click();
       });
       await page.waitForTimeout(500);
+
+      if (/\/telecharger(?:$|\?)/.test(page.url())) {
+        await maybeBypassTelecharger(page);
+        await page.waitForTimeout(500);
+        await page.evaluate(() => {
+          const button = document.getElementById('welcomeEnterBtn');
+          if (button) button.click();
+        });
+        await page.waitForTimeout(500);
+      }
+
       await page
         .waitForFunction(
           () => {
@@ -300,29 +358,20 @@ async function run() {
           await page.fill('#loginPassword', SMOKE_AUTH_PASSWORD);
           await page.locator('#loginBtn').click();
 
-          const postLoginConversationsVisible = await newSessionBtn
-            .isVisible({ timeout: 7000 })
-            .catch(() => false);
-          if (postLoginConversationsVisible) {
-            await page.evaluate(() => {
-              const button = document.getElementById('conversationsFabBtn');
-              if (button) button.click();
-            });
-          }
+          await page
+            .waitForURL(
+              (url) =>
+                url.origin === new URL(BASE_URL).origin &&
+                (url.pathname === '/' || url.pathname === '/index.html'),
+              { timeout: 12000 }
+            )
+            .catch(() => {});
+
+          await waitForConversationsScreen(page);
+          await openNewConversationFromConversations(page);
 
           await page.waitForTimeout(1200);
-          composerVisible = await input
-            .isVisible({ timeout: COMPOSER_TIMEOUT_MS })
-            .catch(() => false);
-          if (!composerVisible) {
-            composerVisible = await page
-              .waitForSelector('#input', {
-                state: 'visible',
-                timeout: COMPOSER_TIMEOUT_MS
-              })
-              .then(() => true)
-              .catch(() => false);
-          }
+          composerVisible = await waitForComposerVisible(page, input);
           if (!composerVisible) {
             throw new Error(
               'chat composer did not become visible after authentication'
@@ -346,14 +395,11 @@ async function run() {
             );
           }
         } else {
-          const newSessionVisible = await newSessionBtn
-            .isVisible({ timeout: 3000 })
-            .catch(() => false);
-          if (newSessionVisible) {
-            await page.evaluate(() => {
-              const button = document.getElementById('conversationsFabBtn');
-              if (button) button.click();
-            });
+          const conversationsScreenVisible = await waitForConversationsScreen(
+            page
+          );
+          if (conversationsScreenVisible) {
+            await openNewConversationFromConversations(page);
           } else {
             await page.evaluate(() => {
               if (typeof window.startFreshSession === 'function') {
@@ -363,18 +409,7 @@ async function run() {
           }
 
           await page.waitForTimeout(1200);
-          composerVisible = await input
-            .isVisible({ timeout: COMPOSER_TIMEOUT_MS })
-            .catch(() => false);
-          if (!composerVisible) {
-            composerVisible = await page
-              .waitForSelector('#input', {
-                state: 'visible',
-                timeout: COMPOSER_TIMEOUT_MS
-              })
-              .then(() => true)
-              .catch(() => false);
-          }
+          composerVisible = await waitForComposerVisible(page, input);
           if (!composerVisible) {
             throw new Error(
               'chat composer did not become visible after entering'
