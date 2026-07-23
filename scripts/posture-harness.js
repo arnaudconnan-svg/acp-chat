@@ -44,7 +44,7 @@ function baseInput(overrides = {}) {
       somaticSignalActive: false,
       somaticLocalizationBlocked: false
     },
-    userRegisterAnalysis: { userRegister: 'courant', formalAddress: false },
+    userRegisterAnalysis: { formalAddress: false },
     interpretationRejection: {
       isInterpretationRejection: false,
       rejectsUnderlyingPhenomenon: false,

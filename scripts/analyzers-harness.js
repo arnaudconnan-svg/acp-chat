@@ -164,6 +164,41 @@ function makeAnalyzers() {
 async function run() {
   const analyzers = makeAnalyzers();
 
+  const vouvoiementOnly = await analyzers.analyzeUserRegister(
+    'Pourriez-vous me dire ce que vous en pensez ?'
+  );
+  check('analyzeUserRegister: vouvoiement only -> formalAddress true', () => {
+    assert(vouvoiementOnly.formalAddress === true, 'expected formalAddress=true');
+    assert(
+      vouvoiementOnly.deterministicEvidence?.[0]?.includes('match: vous') ===
+        true,
+      'expected deterministic evidence to record vous'
+    );
+    assert(
+      Object.prototype.hasOwnProperty.call(vouvoiementOnly, 'userRegister') ===
+        false,
+      'expected userRegister to be absent'
+    );
+  });
+
+  const politeTutoiement = await analyzers.analyzeUserRegister(
+    'Je voudrais savoir si tu peux aider'
+  );
+  check(
+    'analyzeUserRegister: polite tutoiement keeps formalAddress false',
+    () => {
+      assert(
+        politeTutoiement.formalAddress === false,
+        'expected formalAddress=false'
+      );
+      assert(
+        politeTutoiement.deterministicEvidence?.[0]?.includes('match: tu') ===
+          true,
+        'expected deterministic evidence to record tu'
+      );
+    }
+  );
+
   check(
     'lexical suicide: "j\'aimerais en finir" -> explicit personal marker true',
     () => {

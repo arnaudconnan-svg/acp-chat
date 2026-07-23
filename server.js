@@ -3888,10 +3888,6 @@ app.post(
                       typeof debugMeta.confidenceSignal === 'number'
                         ? Math.max(0, Math.min(1, debugMeta.confidenceSignal))
                         : 1.0,
-                    responseRegister:
-                      typeof debugMeta.responseRegister === 'string'
-                        ? debugMeta.responseRegister
-                        : null,
                     relancePolicy:
                       typeof debugMeta.relancePolicy === 'string'
                         ? debugMeta.relancePolicy
@@ -7241,8 +7237,7 @@ function buildTurnSignals(
   if (selfCriticismLevel && selfCriticismLevel !== 'low')
     parts.push(`autocrit:${selfCriticismLevel}`);
 
-  const reg = postureDecision.responseRegister;
-  if (reg && reg !== 'courant') parts.push(`registre:${reg}`);
+  if (postureDecision.formalAddress === true) parts.push('adressage:vous');
 
   if (emotionalDecentering) parts.push('decentrage_emo');
 
@@ -7771,10 +7766,6 @@ async function handleChatPost(req, res) {
           typeof safe.confidenceSignal === 'number'
             ? Math.max(0, Math.min(1, safe.confidenceSignal))
             : 1.0,
-        responseRegister:
-          typeof safe.responseRegister === 'string'
-            ? safe.responseRegister
-            : 'courant',
         relancePolicy:
           typeof safe.relancePolicy === 'string'
             ? safe.relancePolicy
@@ -8830,7 +8821,6 @@ async function handleChatPost(req, res) {
           toneConstraint: 'contained',
           relancePolicy: 'forbidden',
           confidenceSignal: 1.0,
-          responseRegister: 'courant',
           relationalAdjustmentActive: false,
           interpretationRejectionModeActive: false,
           needsSoberReadjustment: false,
@@ -10169,7 +10159,6 @@ Reponds strictement en JSON: {"items": ["..."]}
         consecutiveNonExplorationTurns,
         finalDirectivityLevel,
         finalExplorationSignal,
-        responseRegister: postureDecision.responseRegister,
         relancePolicy: postureDecision.relancePolicy,
         actionCollapseGuardActive: postureDecision.actionCollapseGuardActive
       });
@@ -10795,7 +10784,6 @@ Reponds strictement en JSON: {"items": ["..."]}
         uncertaintyExpressionPolicy:
           postureDecision.uncertaintyExpressionPolicy,
         uncertaintyDrivers: postureDecision.uncertaintyDrivers,
-        responseRegister: postureDecision.responseRegister,
         relancePolicy: postureDecision.relancePolicy,
         useDirectAddress: postureDecision.useDirectAddress === true,
         actionCollapseGuardActive: postureDecision.actionCollapseGuardActive,

@@ -201,7 +201,7 @@ for (const field of [
   'intent',
   'forbidden',
   'confidenceSignal',
-  'responseRegister',
+  'formalAddress',
   'relancePolicy',
   'actionCollapseGuardActive',
   'stateTransitionFrom',
@@ -243,7 +243,7 @@ assertDeepEqual('default values', base, {
   intent: null,
   forbidden: [],
   confidenceSignal: 1.0,
-  responseRegister: 'courant',
+  formalAddress: false,
   relancePolicy: 'selective',
   actionCollapseGuardActive: false,
   stateTransitionFrom: null,
@@ -284,7 +284,7 @@ const explo = buildResponseDebugMeta({
   intent: 'accompagner_sans_guider',
   forbidden: ['diagnostic', 'conseil_direct'],
   confidenceSignal: 0.5,
-  responseRegister: 'familier',
+  formalAddress: true,
   relancePolicy: 'selective',
   actionCollapseGuardActive: true,
   explorationDirectivityLevel: 2,
@@ -308,7 +308,7 @@ assert('exploration forbidden', explo.forbidden, [
   'diagnostic',
   'conseil_direct'
 ]);
-assert('exploration responseRegister', explo.responseRegister, 'familier');
+assert('exploration formalAddress', explo.formalAddress, true);
 assert('exploration relancePolicy', explo.relancePolicy, 'selective');
 assert(
   'exploration actionCollapseGuardActive',

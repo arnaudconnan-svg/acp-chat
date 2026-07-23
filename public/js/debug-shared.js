@@ -273,7 +273,6 @@
             .filter(Boolean)
         : [],
       confidenceSignal: clamp01(safe.confidenceSignal, 1.0),
-      responseRegister: toTrimmedString(safe.responseRegister, '') || 'courant',
       relancePolicy: toTrimmedString(safe.relancePolicy, '') || 'selective',
       useDirectAddress: toBooleanTrue(safe.useDirectAddress),
       actionCollapseGuardActive: toBooleanTrue(safe.actionCollapseGuardActive),
@@ -399,12 +398,6 @@
       casual_register: 'registre complice suspendu'
     };
     return map[value] || value;
-  }
-
-  function translateRegister(value) {
-    if (value === 'familier') return 'familier';
-    if (value === 'soutenu') return 'soutenu';
-    return 'courant';
   }
 
   function translateExplorationSignal(value) {
@@ -773,7 +766,6 @@
     normalizeDebugMeta: normalizeDebugMeta,
     translateWriterMode: translateWriterMode,
     translateForbidden: translateForbidden,
-    translateRegister: translateRegister,
     translateExplorationSignal: translateExplorationSignal,
     translateRelancePolicy: translateRelancePolicy,
     translateAttentionQuality: translateAttentionQuality,
