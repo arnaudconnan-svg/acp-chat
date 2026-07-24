@@ -986,6 +986,7 @@
       }
 
       #conversationsScreen.is-private-hint-active #conversationsFabWrap {
+        z-index: 92;
         pointer-events: none;
       }
 
@@ -14494,6 +14495,12 @@
 
           document.addEventListener('pointerdown', (event) => {
             if (!touchPrivateQuickVisible) return;
+            if (
+              conversationsPrivateHintActive &&
+              conversationsPrivateHintMode === 'longpress'
+            ) {
+              return;
+            }
             if (event.target.closest('#conversationsPrivateFabBtn')) return;
             if (event.target.closest('#conversationsFabBtn')) return;
             hidePrivateQuickButton();
