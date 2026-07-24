@@ -7025,10 +7025,10 @@
           return;
         }
 
-      conversationsPrivateHintMode = 'swipe';
-      conversationsPrivateHintActive = true;
+        conversationsPrivateHintMode = 'swipe';
+        conversationsPrivateHintActive = true;
         checkbox.checked = false;
-      setConversationsPrivateHintMode('swipe');
+        setConversationsPrivateHintMode('swipe');
         overlay.classList.add('is-active');
         conversationsScreen.classList.add('is-private-hint-active');
         fabBtn.classList.remove('is-onboarding-press');
@@ -11976,7 +11976,7 @@
       function enterConversations() {
         const activeScreenId =
           document.querySelector('.screen.active')?.id || '';
-        const shouldShowLongpressHint = activeScreenId === 'welcomeScreen';
+        const shouldShowLongpressHint = activeScreenId !== 'chatScreen';
         const shouldShowSwipeHint = activeScreenId === 'chatScreen';
 
         if (!userSessionState.authenticated) {
