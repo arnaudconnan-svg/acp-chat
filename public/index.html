@@ -1341,7 +1341,7 @@
       }
 
       #conversationsSwipeHintDemoRow.is-demo-running {
-        animation: conversationsSwipeHintDemoMotion 1.95s
+        animation: conversationsSwipeHintDemoMotion 3.3s
           cubic-bezier(0.22, 1, 0.36, 1) 1;
       }
 
@@ -1350,19 +1350,19 @@
           transform: translateX(0);
         }
 
-        22% {
+        28% {
           transform: translateX(58px);
         }
 
-        42% {
+        52% {
           transform: translateX(0);
         }
 
-        66% {
+        76% {
           transform: translateX(-58px);
         }
 
-        86% {
+        94% {
           transform: translateX(0);
         }
 
@@ -3630,6 +3630,7 @@
       let conversationsPrivateHintMode = '';
       let conversationsLongpressHintRevealTimer = null;
       let conversationsLongpressHintCopyTimer = null;
+      let conversationsSwipeHintDemoTimer = null;
 
       function loadCachedIntersessionMemory() {
         try {
@@ -6833,6 +6834,13 @@
         }
       }
 
+      function clearConversationsSwipeHintTimer() {
+        if (conversationsSwipeHintDemoTimer) {
+          clearTimeout(conversationsSwipeHintDemoTimer);
+          conversationsSwipeHintDemoTimer = null;
+        }
+      }
+
       function setConversationsPrivateHintMode(mode) {
         const overlay = document.getElementById('conversationsPrivacyHintOverlay');
         if (!overlay) return;
@@ -6874,6 +6882,7 @@
         }
 
         clearConversationsLongpressHintTimers();
+        clearConversationsSwipeHintTimer();
         conversationsPrivateHintActive = false;
         conversationsPrivateHintMode = '';
 
@@ -7037,10 +7046,16 @@
 
         overlay.classList.add('is-copy-visible');
 
+        clearConversationsSwipeHintTimer();
         if (demoRow) {
           demoRow.classList.remove('is-demo-running');
-          void demoRow.offsetWidth;
-          demoRow.classList.add('is-demo-running');
+          conversationsSwipeHintDemoTimer = setTimeout(() => {
+            if (!conversationsPrivateHintActive) return;
+            if (conversationsPrivateHintMode !== 'swipe') return;
+            demoRow.classList.remove('is-demo-running');
+            void demoRow.offsetWidth;
+            demoRow.classList.add('is-demo-running');
+          }, 1450);
         }
       }
 
