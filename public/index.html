@@ -15318,6 +15318,8 @@
           history.replaceState({ screenId: 'welcomeScreen' }, '', cleanUrl);
           history.pushState({ screenId: 'conversationsScreen' }, '', cleanUrl);
           renderConversationsList();
+          conversationsLongpressHintShouldOpenOnNextEntry = true;
+          conversationsSwipeHintShouldOpenOnNextEntry = false;
           setSessionStatus('idle');
           showScreen('conversationsScreen', {
             replaceHistory: false,
