@@ -7246,6 +7246,9 @@
       consumeBiometricWebRelockSuppressionFromUrl();
 
       function applyScreen(id) {
+        const previousActiveScreenId =
+          document.querySelector('.screen.active')?.id || '';
+
         document
           .querySelectorAll('.screen')
           .forEach((s) => s.classList.remove('active'));
@@ -7257,6 +7260,11 @@
         }
 
         if (id === 'conversationsScreen') {
+          conversationsLongpressHintShouldOpenOnNextEntry =
+            previousActiveScreenId !== 'chatScreen';
+          conversationsSwipeHintShouldOpenOnNextEntry =
+            previousActiveScreenId === 'chatScreen';
+
           renderConversationsList();
           syncDesktopPrivateQuickButtonVisibility();
 
