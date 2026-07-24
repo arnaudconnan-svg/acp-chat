@@ -986,8 +986,12 @@
       }
 
       #conversationsScreen.is-private-hint-active #conversationsFabWrap {
-        z-index: 92;
         pointer-events: none;
+      }
+
+      #conversationsScreen.is-private-hint-active.is-private-hint-longpress
+        #conversationsFabWrap {
+        z-index: 92;
       }
 
       #conversationsPrivateFabBtn {
@@ -6843,12 +6847,21 @@
 
       function setConversationsPrivateHintMode(mode) {
         const overlay = document.getElementById('conversationsPrivacyHintOverlay');
+        const conversationsScreen = document.getElementById(
+          'conversationsScreen'
+        );
         if (!overlay) return;
 
         overlay.classList.remove('is-longpress-mode', 'is-swipe-mode');
+        if (conversationsScreen) {
+          conversationsScreen.classList.remove('is-private-hint-longpress');
+        }
 
         if (mode === 'longpress') {
           overlay.classList.add('is-longpress-mode');
+          if (conversationsScreen) {
+            conversationsScreen.classList.add('is-private-hint-longpress');
+          }
         } else if (mode === 'swipe') {
           overlay.classList.add('is-swipe-mode');
         }
@@ -6901,6 +6914,7 @@
 
         if (conversationsScreen) {
           conversationsScreen.classList.remove('is-private-hint-active');
+          conversationsScreen.classList.remove('is-private-hint-longpress');
         }
 
         if (fabBtn) {
