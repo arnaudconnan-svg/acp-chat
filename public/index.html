@@ -1267,11 +1267,27 @@
         transform: translate(-50%, -50%);
       }
 
-      #conversationsPrivacyHintText {
+      .conversationsPrivacyHintTextVariant {
         margin: 0;
         font-size: 14px;
         line-height: 1.55;
         color: #365e63;
+        display: none;
+      }
+
+      #conversationsPrivacyHintOverlay.is-longpress-mode
+        #conversationsPrivacyHintTextLongpress {
+        display: block;
+      }
+
+      #conversationsPrivacyHintOverlay.is-swipe-mode
+        #conversationsPrivacyHintTextSwipe {
+        display: block;
+      }
+
+      #conversationsPrivacyHintOverlay.is-longpress-mode
+        #conversationsPrivacyHintDemo {
+        display: none;
       }
 
       #conversationsPrivacyHintDemo {
@@ -2666,7 +2682,18 @@
       <div id="conversationsPrivacyHintOverlay" aria-live="polite">
         <div id="conversationsPrivacyHintBackdrop"></div>
         <div id="conversationsPrivacyHintCard">
-          <p id="conversationsPrivacyHintText">
+          <p
+            id="conversationsPrivacyHintTextLongpress"
+            class="conversationsPrivacyHintTextVariant"
+          >
+            Maintiens le bouton + pour faire appara&icirc;tre l'option
+            <strong>conversation priv&eacute;e</strong>.<br />
+            Cette nouvelle conversation restera uniquement sur cet appareil.
+          </p>
+          <p
+            id="conversationsPrivacyHintTextSwipe"
+            class="conversationsPrivacyHintTextVariant"
+          >
             Balaye une conversation vers la droite pour afficher
             <strong>Modifier</strong>.<br />
             Balaye vers la gauche pour afficher <strong>Supprimer</strong>.
@@ -3566,7 +3593,9 @@
         "Bienvenue dans cette nouvelle conversation. Que veux-tu explorer aujourd'hui ?";
       const ACTIVITY_KEY = 'facilitatio_last_activity';
       const SESSION_INFO_DISMISSED_KEY = 'facilitatio_session_info_dismissed';
-      const CONVERSATIONS_PRIVATE_HINT_DISMISSED_KEY =
+      const CONVERSATIONS_LONGPRESS_HINT_DISMISSED_KEY =
+        'facilitatio_conversations_private_hint_dismissed';
+      const CONVERSATIONS_SWIPE_HINT_DISMISSED_KEY =
         'facilitatio_conversations_swipe_hint_dismissed';
       const SESSION_TIMEOUT_MS = 12 * 60 * 60 * 1000;
       const MAX_RECENT_TURNS = 8;
@@ -3594,8 +3623,12 @@
       // Populated once on load; used as initial memory for new conversations.
       let _pendingIntersessionMemory = null;
       let _pendingIntersessionMemoryNatural = null;
-      let conversationsPrivateHintShouldOpenOnNextEntry = false;
+      let conversationsLongpressHintShouldOpenOnNextEntry = false;
+      let conversationsSwipeHintShouldOpenOnNextEntry = false;
       let conversationsPrivateHintActive = false;
+      let conversationsPrivateHintMode = '';
+      let conversationsLongpressHintRevealTimer = null;
+      let conversationsLongpressHintCopyTimer = null;
 
       function loadCachedIntersessionMemory() {
         try {
@@ -6730,17 +6763,32 @@
         }
       }
 
-      function loadConversationsPrivateHintDismissed() {
+      function loadConversationsLongpressHintDismissed() {
         return (
-          localStorage.getItem(CONVERSATIONS_PRIVATE_HINT_DISMISSED_KEY) === '1'
+          localStorage.getItem(CONVERSATIONS_LONGPRESS_HINT_DISMISSED_KEY) ===
+          '1'
         );
       }
 
-      function saveConversationsPrivateHintDismissed(value) {
+      function saveConversationsLongpressHintDismissed(value) {
         if (value) {
-          localStorage.setItem(CONVERSATIONS_PRIVATE_HINT_DISMISSED_KEY, '1');
+          localStorage.setItem(CONVERSATIONS_LONGPRESS_HINT_DISMISSED_KEY, '1');
         } else {
-          localStorage.removeItem(CONVERSATIONS_PRIVATE_HINT_DISMISSED_KEY);
+          localStorage.removeItem(CONVERSATIONS_LONGPRESS_HINT_DISMISSED_KEY);
+        }
+      }
+
+      function loadConversationsSwipeHintDismissed() {
+        return (
+          localStorage.getItem(CONVERSATIONS_SWIPE_HINT_DISMISSED_KEY) === '1'
+        );
+      }
+
+      function saveConversationsSwipeHintDismissed(value) {
+        if (value) {
+          localStorage.setItem(CONVERSATIONS_SWIPE_HINT_DISMISSED_KEY, '1');
+        } else {
+          localStorage.removeItem(CONVERSATIONS_SWIPE_HINT_DISMISSED_KEY);
         }
       }
 
@@ -6772,6 +6820,31 @@
         return '';
       }
 
+      function clearConversationsLongpressHintTimers() {
+        if (conversationsLongpressHintRevealTimer) {
+          clearTimeout(conversationsLongpressHintRevealTimer);
+          conversationsLongpressHintRevealTimer = null;
+        }
+
+        if (conversationsLongpressHintCopyTimer) {
+          clearTimeout(conversationsLongpressHintCopyTimer);
+          conversationsLongpressHintCopyTimer = null;
+        }
+      }
+
+      function setConversationsPrivateHintMode(mode) {
+        const overlay = document.getElementById('conversationsPrivacyHintOverlay');
+        if (!overlay) return;
+
+        overlay.classList.remove('is-longpress-mode', 'is-swipe-mode');
+
+        if (mode === 'longpress') {
+          overlay.classList.add('is-longpress-mode');
+        } else if (mode === 'swipe') {
+          overlay.classList.add('is-swipe-mode');
+        }
+      }
+
       function dismissConversationsPrivateHint(options = {}) {
         const overlay = document.getElementById(
           'conversationsPrivacyHintOverlay'
@@ -6791,13 +6864,25 @@
         );
 
         if (options.persistPreference === true && checkbox) {
-          saveConversationsPrivateHintDismissed(checkbox.checked === true);
+          if (conversationsPrivateHintMode === 'longpress') {
+            saveConversationsLongpressHintDismissed(checkbox.checked === true);
+          }
+          if (conversationsPrivateHintMode === 'swipe') {
+            saveConversationsSwipeHintDismissed(checkbox.checked === true);
+          }
         }
 
+        clearConversationsLongpressHintTimers();
         conversationsPrivateHintActive = false;
+        conversationsPrivateHintMode = '';
 
         if (overlay) {
-          overlay.classList.remove('is-active', 'is-copy-visible');
+          overlay.classList.remove(
+            'is-active',
+            'is-copy-visible',
+            'is-longpress-mode',
+            'is-swipe-mode'
+          );
         }
 
         if (demoRow) {
@@ -6820,15 +6905,84 @@
         }
       }
 
-      function maybeStartConversationsPrivateHint() {
+      function maybeStartConversationsLongpressHint() {
         const shouldOpenForThisEntry =
-          conversationsPrivateHintShouldOpenOnNextEntry === true;
-        conversationsPrivateHintShouldOpenOnNextEntry = false;
+          conversationsLongpressHintShouldOpenOnNextEntry === true;
+        conversationsLongpressHintShouldOpenOnNextEntry = false;
 
         if (
           !shouldOpenForThisEntry ||
           conversationsPrivateHintActive ||
-          loadConversationsPrivateHintDismissed()
+          loadConversationsLongpressHintDismissed()
+        ) {
+          return;
+        }
+
+        if (document.body.classList.contains('admin-ui')) {
+          return;
+        }
+
+        const overlay = document.getElementById(
+          'conversationsPrivacyHintOverlay'
+        );
+        const checkbox = document.getElementById(
+          'conversationsPrivacyHintDontShow'
+        );
+        const fabBtn = document.getElementById('conversationsFabBtn');
+        const privateBtn = document.getElementById(
+          'conversationsPrivateFabBtn'
+        );
+        const conversationsScreen = document.getElementById(
+          'conversationsScreen'
+        );
+
+        if (
+          !overlay ||
+          !fabBtn ||
+          !privateBtn ||
+          !conversationsScreen ||
+          !checkbox
+        ) {
+          return;
+        }
+
+        clearConversationsLongpressHintTimers();
+
+        conversationsPrivateHintMode = 'longpress';
+        conversationsPrivateHintActive = true;
+        checkbox.checked = false;
+        setConversationsPrivateHintMode('longpress');
+        overlay.classList.add('is-active');
+        conversationsScreen.classList.add('is-private-hint-active');
+        fabBtn.classList.remove('is-onboarding-press');
+        privateBtn.classList.remove('is-onboarding-highlight');
+
+        conversationsLongpressHintRevealTimer = setTimeout(() => {
+          if (!conversationsPrivateHintActive) return;
+          if (conversationsPrivateHintMode !== 'longpress') return;
+          fabBtn.classList.add('is-onboarding-press');
+        }, 700);
+
+        conversationsLongpressHintCopyTimer = setTimeout(() => {
+          if (!conversationsPrivateHintActive) return;
+          if (conversationsPrivateHintMode !== 'longpress') return;
+          if (typeof fabBtn._showPrivateQuickButton === 'function') {
+            fabBtn._showPrivateQuickButton({ touchTemporary: true });
+          }
+          privateBtn.classList.add('is-onboarding-highlight');
+          overlay.classList.add('is-copy-visible');
+        }, 1320);
+      }
+
+      function maybeStartConversationsPrivateHint() {
+        const shouldOpenForThisEntry =
+          conversationsSwipeHintShouldOpenOnNextEntry === true;
+        conversationsSwipeHintShouldOpenOnNextEntry = false;
+
+        if (
+          !shouldOpenForThisEntry ||
+          conversationsPrivateHintActive ||
+          loadConversationsSwipeHintDismissed()
         ) {
           return;
         }
@@ -6871,8 +7025,10 @@
           return;
         }
 
-        conversationsPrivateHintActive = true;
+      conversationsPrivateHintMode = 'swipe';
+      conversationsPrivateHintActive = true;
         checkbox.checked = false;
+      setConversationsPrivateHintMode('swipe');
         overlay.classList.add('is-active');
         conversationsScreen.classList.add('is-private-hint-active');
         fabBtn.classList.remove('is-onboarding-press');
@@ -7121,6 +7277,7 @@
             }
 
             updateScrollToBottomBtn();
+            maybeStartConversationsLongpressHint();
             maybeStartConversationsPrivateHint();
           });
 
@@ -11819,6 +11976,7 @@
       function enterConversations() {
         const activeScreenId =
           document.querySelector('.screen.active')?.id || '';
+        const shouldShowLongpressHint = activeScreenId === 'welcomeScreen';
         const shouldShowSwipeHint = activeScreenId === 'chatScreen';
 
         if (!userSessionState.authenticated) {
@@ -11857,7 +12015,9 @@
           welcomeScreen.style.opacity = '0';
 
           setTimeout(() => {
-            conversationsPrivateHintShouldOpenOnNextEntry = shouldShowSwipeHint;
+            conversationsLongpressHintShouldOpenOnNextEntry =
+              shouldShowLongpressHint;
+            conversationsSwipeHintShouldOpenOnNextEntry = shouldShowSwipeHint;
             conversationsScreen.style.transition = 'none';
             conversationsScreen.style.opacity = '0';
 
