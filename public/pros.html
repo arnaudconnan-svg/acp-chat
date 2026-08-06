@@ -7,7 +7,7 @@
       content="width=device-width, initial-scale=1, viewport-fit=cover"
     />
     <meta name="color-scheme" content="light" />
-    <title>Espaces professionnels</title>
+    <title>Espace professionnel</title>
 
     <style>
       * {
@@ -126,15 +126,15 @@
   <body>
     <div id="app">
       <div class="topbar">
-        <h1>Espaces professionnels</h1>
+        <h1>Espace professionnel</h1>
         <div class="topbar-actions">
           <button id="logoutBtn" type="button" class="topbar-btn">
-            Deconnexion
+            Déconnexion
           </button>
         </div>
       </div>
 
-      <div id="status">Verification des droits...</div>
+      <div id="status">Vérification des droits...</div>
       <div id="spaces"></div>
     </div>
 
@@ -186,8 +186,8 @@
         if (sessionData.canAccessAdminConversations === true) {
           spaces.push({
             key: 'conversations',
-            title: 'Conversations',
-            desc: 'Historique integral des echanges, debug et metadonnees.',
+            title: 'Admin',
+            desc: 'Historique intégral des échanges, debug et métadonnées.',
             href: '/admin.html'
           });
         }
@@ -204,8 +204,8 @@
         if (sessionData.canAccessFacilitationAdmin === true) {
           spaces.push({
             key: 'facilitation',
-            title: 'Facilitators',
-            desc: 'Espace Facilitators (structure prete, contenu a completer).',
+            title: 'Facilitateur-ice',
+            desc: 'Dossiers de suivi, messagerie, espace visio',
             href: '/facilitation-admin.html'
           });
         }
@@ -235,7 +235,7 @@
         if (allowedSpaces.length === 0) {
           statusEl.classList.add('error');
           statusEl.textContent =
-            'Aucun espace professionnel autorise pour ce compte.';
+            'Aucun espace professionnel autorisé pour ce compte.';
           return;
         }
 
@@ -244,8 +244,7 @@
           return;
         }
 
-        statusEl.textContent =
-          'Choisis un espace. Seules les surfaces autorisees sont affichees.';
+        statusEl.style.display = 'none';
 
         spacesEl.innerHTML = '';
         allowedSpaces.forEach((space) => {

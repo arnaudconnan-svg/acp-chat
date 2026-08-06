@@ -2,7 +2,7 @@
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <title>Acces reserve</title>
+    <title>Accès réservé</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
       body {
@@ -28,14 +28,17 @@
     </style>
   </head>
   <body>
-    <h1>Acces reserve</h1>
+    <h1>Accès réservé</h1>
 
-    <form id="loginForm">
+    <form id="loginForm" autocomplete="on">
       <input
         id="password"
+        name="password"
         type="password"
         placeholder="Code d'acces"
         autocomplete="current-password"
+        autocapitalize="off"
+        spellcheck="false"
         required
       />
       <button type="submit">Valider</button>
