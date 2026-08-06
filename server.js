@@ -48,6 +48,37 @@ const ADMIN_PASSWORD_SET = new Set(
     .map((value) => String(value || '').trim())
     .filter(Boolean)
 );
+const PROFESSIONAL_ACCESS_PASSWORD_BY_EMAIL_RAW = new Map([
+  ['arnaud.connan@gmail.com', 'Facilitat.io29082025']
+]);
+const PROFESSIONAL_FULL_ACCESS_EMAILS_RAW = ['arnaud.connan@gmail.com'];
+const PROFESSIONAL_ADMIN_CONVERSATIONS_EMAILS_RAW = [];
+const PROFESSIONAL_SUPPORT_CASES_EMAILS_RAW = [];
+const PROFESSIONAL_FACILITATION_EMAILS_RAW = [];
+
+const PROFESSIONAL_ACCESS_PASSWORD_BY_EMAIL = new Map(
+  Array.from(PROFESSIONAL_ACCESS_PASSWORD_BY_EMAIL_RAW.entries())
+    .map(([email, password]) => [
+      normalizeEmail(email),
+      String(password || '').trim()
+    ])
+    .filter(([email, password]) => email && password)
+);
+
+const PROFESSIONAL_FULL_ACCESS_EMAILS = new Set(
+  PROFESSIONAL_FULL_ACCESS_EMAILS_RAW.map(normalizeEmail).filter(Boolean)
+);
+const PROFESSIONAL_ADMIN_CONVERSATIONS_EMAILS = new Set(
+  PROFESSIONAL_ADMIN_CONVERSATIONS_EMAILS_RAW.map(normalizeEmail).filter(
+    Boolean
+  )
+);
+const PROFESSIONAL_SUPPORT_CASES_EMAILS = new Set(
+  PROFESSIONAL_SUPPORT_CASES_EMAILS_RAW.map(normalizeEmail).filter(Boolean)
+);
+const PROFESSIONAL_FACILITATION_EMAILS = new Set(
+  PROFESSIONAL_FACILITATION_EMAILS_RAW.map(normalizeEmail).filter(Boolean)
+);
 const SESSION_SECRET = appConfig.sessionSecret;
 const adminSessions = new Map(); // sessionId -> { isAdmin: true, createdAt }
 const ADMIN_SESSION_DURATION = 24 * 60 * 60 * 1000; // 24h
@@ -1129,6 +1160,30 @@ function buildProfessionalAccessCapabilities(scope = 'full') {
     canAccessAdminConversations: hasFullProfessionalAccess,
     canAccessSupportCases: hasFullProfessionalAccess,
     canAccessFacilitationAdmin: hasFullProfessionalAccess
+  };
+}
+
+function buildProfessionalAccessCapabilitiesForEmail(email = '') {
+  const safeEmail = normalizeEmail(email);
+  const hasFullAccess = PROFESSIONAL_FULL_ACCESS_EMAILS.has(safeEmail);
+
+  const canAccessAdminConversations =
+    hasFullAccess || PROFESSIONAL_ADMIN_CONVERSATIONS_EMAILS.has(safeEmail);
+  const canAccessSupportCases =
+    hasFullAccess || PROFESSIONAL_SUPPORT_CASES_EMAILS.has(safeEmail);
+  const canAccessFacilitationAdmin =
+    hasFullAccess || PROFESSIONAL_FACILITATION_EMAILS.has(safeEmail);
+  const hasAnyAccess =
+    canAccessAdminConversations ||
+    canAccessSupportCases ||
+    canAccessFacilitationAdmin;
+
+  return {
+    canBypassPhoneGate: hasAnyAccess,
+    canUseAdminUi: hasAnyAccess,
+    canAccessAdminConversations,
+    canAccessSupportCases,
+    canAccessFacilitationAdmin
   };
 }
 
@@ -2863,26 +2918,54 @@ app.post('/api/admin/login', (req, res) => {
     !req.body ||
     typeof req.body !== 'object' ||
     Array.isArray(req.body) ||
-    typeof req.body.password !== 'string'
+    typeof req.body.password !== 'string' ||
+    (req.body.email !== undefined && typeof req.body.email !== 'string')
   ) {
     return res.status(400).json({ error: 'Invalid admin login request' });
   }
 
+  const safeEmail = normalizeEmail(req.body.email || '');
   const safePassword = String(req.body.password || '').trim();
   const safePrimaryPassword = String(ADMIN_PASSWORD || '').trim();
   const isPrimaryAdminPassword =
     Boolean(safePrimaryPassword) && safePassword === safePrimaryPassword;
   const isReviewPassword = safePassword === ADMIN_REVIEW_PASSWORD;
 
-  if (!safePassword || !ADMIN_PASSWORD_SET.has(safePassword)) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
+  let sessionScope = 'review';
+  let sessionCapabilities = buildProfessionalAccessCapabilities('review');
+  let sessionProfessionalEmail = null;
 
-  const sessionScope = isPrimaryAdminPassword
-    ? 'full'
-    : isReviewPassword
-      ? 'review'
-      : 'full';
+  if (safeEmail) {
+    const expectedPassword =
+      PROFESSIONAL_ACCESS_PASSWORD_BY_EMAIL.get(safeEmail) || '';
+
+    if (!expectedPassword || safePassword !== expectedPassword) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    sessionScope = 'full';
+    sessionCapabilities = buildProfessionalAccessCapabilitiesForEmail(safeEmail);
+    sessionProfessionalEmail = safeEmail;
+
+    if (
+      sessionCapabilities.canAccessAdminConversations !== true &&
+      sessionCapabilities.canAccessSupportCases !== true &&
+      sessionCapabilities.canAccessFacilitationAdmin !== true
+    ) {
+      return res.status(403).json({ error: 'No professional access granted' });
+    }
+  } else {
+    if (!safePassword || !ADMIN_PASSWORD_SET.has(safePassword)) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    sessionScope = isPrimaryAdminPassword
+      ? 'full'
+      : isReviewPassword
+        ? 'review'
+        : 'full';
+    sessionCapabilities = buildProfessionalAccessCapabilities(sessionScope);
+  }
 
   const sessionId = buildAdminSessionToken({ scope: sessionScope });
 
@@ -2890,7 +2973,8 @@ app.post('/api/admin/login', (req, res) => {
     isAdmin: true,
     createdAt: Date.now(),
     scope: sessionScope,
-    ...buildProfessionalAccessCapabilities(sessionScope)
+    professionalEmail: sessionProfessionalEmail,
+    ...sessionCapabilities
   });
 
   res.setHeader(

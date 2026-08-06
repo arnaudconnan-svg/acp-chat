@@ -2,7 +2,7 @@
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <title>Connexion admin</title>
+    <title>Acces professionnels</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
       body {
@@ -28,9 +28,16 @@
     </style>
   </head>
   <body>
-    <h1>Connexion admin</h1>
+    <h1>Acces professionnels</h1>
 
     <form id="loginForm">
+      <input
+        id="email"
+        type="email"
+        placeholder="Email professionnel"
+        autocomplete="username"
+        required
+      />
       <input
         id="password"
         type="password"
@@ -44,6 +51,7 @@
 
     <script>
       const form = document.getElementById('loginForm');
+      const emailInput = document.getElementById('email');
       const passwordInput = document.getElementById('password');
       const errorDiv = document.getElementById('error');
 
@@ -75,8 +83,9 @@
 
       async function submitLogin() {
         if (autoSubmitDone) return;
+        const email = emailInput.value.trim().toLowerCase();
         const password = passwordInput.value.trim();
-        if (!password) return;
+        if (!email || !password) return;
 
         autoSubmitDone = true;
         errorDiv.textContent = '';
@@ -85,7 +94,7 @@
           const res = await fetch('/api/admin/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ password })
+            body: JSON.stringify({ email, password })
           });
           const data = await parseJsonResponseSafely(res);
 
@@ -93,7 +102,9 @@
             autoSubmitDone = false;
 
             if (res.status === 401) {
-              errorDiv.textContent = 'Mot de passe incorrect';
+              errorDiv.textContent = 'Identifiants incorrects';
+            } else if (res.status === 403) {
+              errorDiv.textContent = 'Acces professionnel non autorise';
             } else if (res.status === 400) {
               errorDiv.textContent =
                 typeof data?.error === 'string'
@@ -124,13 +135,18 @@
         submitLogin();
       });
 
+      emailInput.addEventListener('input', () => {
+        errorDiv.textContent = '';
+      });
+
       passwordInput.addEventListener('input', () => {
         errorDiv.textContent = '';
       });
 
       function maybeAutoSubmitFromAutofill() {
+        const email = emailInput.value.trim();
         const password = passwordInput.value.trim();
-        if (!password) return;
+        if (!email || !password) return;
 
         passwordInput.dispatchEvent(new Event('input', { bubbles: true }));
         passwordInput.dispatchEvent(new Event('change', { bubbles: true }));
