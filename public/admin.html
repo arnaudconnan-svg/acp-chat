@@ -1836,6 +1836,11 @@
 
           const data = response.data;
           list.innerHTML = '';
+          const secondaryConversationUserIds = new Set([
+            'u_be427bb5b738c711b0726703',
+            'u_ed6c766b0b8666541bf999ed',
+            'u_d3d39850658034a1492e9e5f'
+          ]);
           const secondaryConversationEmails = new Set([
             'arnaud.connan@gmail.com',
             'review@facilitat.io'
@@ -1944,9 +1949,11 @@
             const convUserEmail = String(conv.userEmail || '')
               .trim()
               .toLowerCase();
+            const convUserId = String(conv.userId || '').trim();
             if (
-              convUserEmail &&
-              secondaryConversationEmails.has(convUserEmail)
+              (convUserEmail &&
+                secondaryConversationEmails.has(convUserEmail)) ||
+              (convUserId && secondaryConversationUserIds.has(convUserId))
             ) {
               card.classList.add('admin-conversation-card-secondary');
             }

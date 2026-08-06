@@ -613,6 +613,11 @@ function createEmailNotifier() {
 }
 
 const emailNotifier = createEmailNotifier();
+const REVIEW_USER_IDS = new Set([
+  'u_be427bb5b738c711b0726703',
+  'u_ed6c766b0b8666541bf999ed',
+  'u_d3d39850658034a1492e9e5f'
+]);
 const EMAIL_ALERT_EXCLUDED_USER_EMAILS = new Set([
   normalizeEmail('arnaud.connan@gmail.com'),
   normalizeEmail('review@facilitat.io')
@@ -625,6 +630,10 @@ async function shouldSuppressAdminEmailAlertForUser(req, userId = '') {
   const safeUserId = String(userId || '').trim();
   if (!safeUserId) {
     return false;
+  }
+
+  if (REVIEW_USER_IDS.has(safeUserId)) {
+    return true;
   }
 
   try {
