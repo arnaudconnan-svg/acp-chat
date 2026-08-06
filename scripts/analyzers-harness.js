@@ -702,6 +702,10 @@ async function run() {
           false,
         'expected explorationAnalysis.everydayConcreteShare=false'
       );
+      assert(
+        stateWithExploration.explorationAnalysis?.lowContextOpening === false,
+        'expected explorationAnalysis.lowContextOpening=false'
+      );
     }
   );
 
@@ -717,6 +721,10 @@ async function run() {
         stateEverydayConcrete.explorationAnalysis?.everydayConcreteShare ===
           true,
         'expected explorationAnalysis.everydayConcreteShare=true'
+      );
+      assert(
+        stateEverydayConcrete.explorationAnalysis?.lowContextOpening === false,
+        'expected explorationAnalysis.lowContextOpening=false'
       );
     }
   );

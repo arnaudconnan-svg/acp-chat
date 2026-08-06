@@ -3596,6 +3596,12 @@
         "Bienvenue dans cette nouvelle session. Que veux-tu explorer aujourd'hui ?";
       const CONVERSATION_OPENING_GREETING =
         "Bienvenue dans cette nouvelle conversation. Que veux-tu explorer aujourd'hui ?";
+      const OPENING_GREETING_PS_SUFFIX =
+        "\n*PS : un peu de contexte peut m'aider a mieux comprendre la direction que tu veux prendre.*";
+      const SESSION_OPENING_GREETING_FORMAL =
+        "Bienvenue dans cette nouvelle session. Que voulez-vous explorer aujourd'hui ?\n*PS : un peu de contexte peut m'aider a mieux comprendre la direction que vous voulez prendre.*";
+      const CONVERSATION_OPENING_GREETING_FORMAL =
+        "Bienvenue dans cette nouvelle conversation. Que voulez-vous explorer aujourd'hui ?\n*PS : un peu de contexte peut m'aider a mieux comprendre la direction que vous voulez prendre.*";
       const ACTIVITY_KEY = 'facilitatio_last_activity';
       const SESSION_INFO_DISMISSED_KEY = 'facilitatio_session_info_dismissed';
       const CONVERSATIONS_LONGPRESS_HINT_DISMISSED_KEY =
@@ -4907,6 +4913,35 @@
             : null;
       }
 
+      function buildOpeningGreeting({ scope = 'session', formalAddress = false } = {}) {
+        const isConversationScope = scope === 'conversation';
+
+        if (formalAddress === true) {
+          return isConversationScope
+            ? CONVERSATION_OPENING_GREETING_FORMAL
+            : SESSION_OPENING_GREETING_FORMAL;
+        }
+
+        const base = isConversationScope
+          ? CONVERSATION_OPENING_GREETING
+          : SESSION_OPENING_GREETING;
+        return base + OPENING_GREETING_PS_SUFFIX;
+      }
+
+      function resolveOpeningGreetingForCurrentConversation(scope = 'session') {
+        const data = loadConversationData(getConversationId());
+        const flags = data && data.flags ? data.flags : null;
+        const formalAddress =
+          flags && typeof flags.formalAddress === 'boolean'
+            ? flags.formalAddress
+            : chatFormalAddressPreference === true;
+
+        return buildOpeningGreeting({
+          scope,
+          formalAddress: formalAddress === true
+        });
+      }
+
       function getLatestAssistantDebugMeta(history = loadHistory()) {
         const entries = Array.isArray(history) ? history : [];
         for (let index = entries.length - 1; index >= 0; index--) {
@@ -5695,7 +5730,7 @@
               id: typeof item?.id === 'string' ? item.id : undefined,
               t: Number(item?.timestamp || 0) || Date.now() + index
             })),
-            SESSION_OPENING_GREETING
+            resolveOpeningGreetingForCurrentConversation('session')
           );
 
           const localMeaningfulCount = existingMessages.filter(
@@ -5710,7 +5745,7 @@
               ? normalizedMessages
               : ensureOpeningGreeting(
                   existingMessages,
-                  SESSION_OPENING_GREETING
+                  resolveOpeningGreetingForCurrentConversation('session')
                 );
 
           saveConversationData(conversationId, {
@@ -10301,6 +10336,9 @@
           if (meta.postDischargeTransitionActive === true) {
             signauxLines.push('Transition post-d\u00e9charge active (C3)');
           }
+          if (meta.lowContextOpeningGuardActive === true) {
+            signauxLines.push('Ouverture initiale peu contextualisee');
+          }
           if (meta.secondaryTension) {
             var secondaryLabel = window.FacilitatDebug.formatSecondaryTension(
               meta.secondaryTension
@@ -11302,7 +11340,9 @@
           });
         }
 
-        ensureCurrentConversationOpeningGreeting(CONVERSATION_OPENING_GREETING);
+        ensureCurrentConversationOpeningGreeting(
+          resolveOpeningGreetingForCurrentConversation('conversation')
+        );
 
         closeEditMode({ restoreDraft: false });
         renderHistory();
@@ -11645,7 +11685,9 @@
           });
         }
 
-        ensureCurrentConversationOpeningGreeting(SESSION_OPENING_GREETING);
+        ensureCurrentConversationOpeningGreeting(
+          resolveOpeningGreetingForCurrentConversation('session')
+        );
 
         closeEditMode({ restoreDraft: false });
         renderHistory();
@@ -12122,7 +12164,7 @@
         updateActivity();
 
         const history = ensureCurrentConversationOpeningGreeting(
-          SESSION_OPENING_GREETING
+          resolveOpeningGreetingForCurrentConversation('session')
         );
 
         if (history.length > 0) {

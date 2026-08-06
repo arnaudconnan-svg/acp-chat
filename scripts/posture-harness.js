@@ -67,7 +67,10 @@ function baseInput(overrides = {}) {
     psychoeducationType: null,
     infoContextFlags: [],
     dischargeAnalysis: { aggressiveDischargeDirectedToBot: false },
-    explorationAnalysis: { everydayConcreteShare: false },
+    explorationAnalysis: {
+      everydayConcreteShare: false,
+      lowContextOpening: false
+    },
     previousFormalAddress: false,
     dependencyRiskLevel: 'low',
     ...overrides
@@ -292,6 +295,46 @@ check(
     assert(
       out.relancePolicy === 'forbidden',
       `expected relancePolicy=forbidden, got ${out.relancePolicy}`
+    );
+  }
+);
+
+check(
+  'low-context first turn enforces concise clarification posture',
+  () => {
+    const out = buildPostureDecision(
+      baseInput({
+        detectedState: 'exploration',
+        message: 'Je sais pas trop.',
+        recentHistory: [],
+        effectiveExplorationDirectivityLevel: 1,
+        calibrationAnalysis: {
+          calibrationLevel: 1,
+          explorationSignal: 'interpretation'
+        },
+        explorationAnalysis: {
+          everydayConcreteShare: false,
+          lowContextOpening: true
+        }
+      })
+    );
+
+    assert(
+      out.lowContextOpeningGuardActive === true,
+      'expected lowContextOpeningGuardActive=true'
+    );
+    assert(
+      out.finalExplorationSignal === 'phenomenological_follow',
+      `expected phenomenological_follow, got ${out.finalExplorationSignal}`
+    );
+    assert(
+      out.finalDirectivityLevel === 3,
+      `expected finalDirectivityLevel=3, got ${out.finalDirectivityLevel}`
+    );
+    assert(out.forbidden.includes('relance'), 'expected relance forbidden');
+    assert(
+      out.writerIntentHints.includes('opening_low_context_clarify_direction'),
+      'expected opening_low_context_clarify_direction hint'
     );
   }
 );

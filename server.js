@@ -9834,7 +9834,7 @@ Reponds strictement en JSON: {"items": ["..."]}
       const explorationAnalysis =
         stateProposal && typeof stateProposal.explorationAnalysis === 'object'
           ? stateProposal.explorationAnalysis
-          : { everydayConcreteShare: false };
+          : { everydayConcreteShare: false, lowContextOpening: false };
       newFlags.dischargeState = {
         wasDischarge:
           typeof detectedState === 'string' &&
@@ -10848,6 +10848,8 @@ Reponds strictement en JSON: {"items": ["..."]}
           postureDecision.aggressiveDischargeDetected === true,
         postDischargeTransitionActive:
           postureDecision.postDischargeTransitionActive === true,
+        lowContextOpeningGuardActive:
+          postureDecision.lowContextOpeningGuardActive === true,
         // Tension secondaire
         secondaryTension: postureDecision.secondaryTension || null,
         postCrisisSupportActive: postCrisisSupportCarryTurnActive,

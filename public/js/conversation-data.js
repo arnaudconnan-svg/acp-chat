@@ -9,8 +9,14 @@
 // These must stay in sync with SESSION_OPENING_GREETING and
 // CONVERSATION_OPENING_GREETING in the main inline script.
 var OPENING_GREETINGS = [
+  "Bienvenue dans cette nouvelle session. Que veux-tu explorer aujourd'hui ?\n*PS : un peu de contexte peut m'aider a mieux comprendre la direction que tu veux prendre.*",
+  "Bienvenue dans cette nouvelle conversation. Que veux-tu explorer aujourd'hui ?\n*PS : un peu de contexte peut m'aider a mieux comprendre la direction que tu veux prendre.*",
+  "Bienvenue dans cette nouvelle session. Que voulez-vous explorer aujourd'hui ?\n*PS : un peu de contexte peut m'aider a mieux comprendre la direction que vous voulez prendre.*",
+  "Bienvenue dans cette nouvelle conversation. Que voulez-vous explorer aujourd'hui ?\n*PS : un peu de contexte peut m'aider a mieux comprendre la direction que vous voulez prendre.*",
   "Bienvenue dans cette nouvelle session. Que veux-tu explorer aujourd'hui ?",
-  "Bienvenue dans cette nouvelle conversation. Que veux-tu explorer aujourd'hui ?"
+  "Bienvenue dans cette nouvelle conversation. Que veux-tu explorer aujourd'hui ?",
+  "Bienvenue dans cette nouvelle session. Que voulez-vous explorer aujourd'hui ?",
+  "Bienvenue dans cette nouvelle conversation. Que voulez-vous explorer aujourd'hui ?"
 ];
 
 function isOpeningGreetingMessage(content) {

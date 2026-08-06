@@ -2835,6 +2835,9 @@
             if (meta.postDischargeTransitionActive === true) {
               signauxLines.push('Transition post-d\u00e9charge active (C3)');
             }
+            if (meta.lowContextOpeningGuardActive === true) {
+              signauxLines.push('Ouverture initiale peu contextualisee');
+            }
             if (meta.secondaryTension) {
               var secondaryLabel = window.FacilitatDebug.formatSecondaryTension(
                 meta.secondaryTension

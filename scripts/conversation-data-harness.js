@@ -39,14 +39,21 @@ function assert(label, condition, detail = '') {
 assert(
   'isOpeningGreetingMessage: session greeting → true',
   isOpeningGreetingMessage(
-    "Bienvenue dans cette nouvelle session. Que veux-tu explorer aujourd'hui ?"
+    "Bienvenue dans cette nouvelle session. Que veux-tu explorer aujourd'hui ?\n*PS : un peu de contexte peut m'aider a mieux comprendre la direction que tu veux prendre.*"
   ) === true
 );
 
 assert(
   'isOpeningGreetingMessage: conversation greeting → true',
   isOpeningGreetingMessage(
-    "Bienvenue dans cette nouvelle conversation. Que veux-tu explorer aujourd'hui ?"
+    "Bienvenue dans cette nouvelle conversation. Que veux-tu explorer aujourd'hui ?\n*PS : un peu de contexte peut m'aider a mieux comprendre la direction que tu veux prendre.*"
+  ) === true
+);
+
+assert(
+  'isOpeningGreetingMessage: formal session greeting → true',
+  isOpeningGreetingMessage(
+    "Bienvenue dans cette nouvelle session. Que voulez-vous explorer aujourd'hui ?\n*PS : un peu de contexte peut m'aider a mieux comprendre la direction que vous voulez prendre.*"
   ) === true
 );
 
@@ -68,7 +75,7 @@ assert(
 assert(
   'isOpeningGreetingMessage: greeting with extra whitespace → true (content is trimmed)',
   isOpeningGreetingMessage(
-    "  Bienvenue dans cette nouvelle session. Que veux-tu explorer aujourd'hui ?  "
+    "  Bienvenue dans cette nouvelle session. Que veux-tu explorer aujourd'hui ?\n*PS : un peu de contexte peut m'aider a mieux comprendre la direction que tu veux prendre.*  "
   ) === true
 );
 
@@ -215,7 +222,7 @@ assert(
     {
       role: 'assistant',
       content:
-        "Bienvenue dans cette nouvelle session. Que veux-tu explorer aujourd'hui ?"
+        "Bienvenue dans cette nouvelle session. Que veux-tu explorer aujourd'hui ?\n*PS : un peu de contexte peut m'aider a mieux comprendre la direction que tu veux prendre.*"
     },
     { role: 'user', content: 'Je veux parler de mon angoisse.' },
     { role: 'assistant', content: "Je t'écoute." }

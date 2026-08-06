@@ -340,6 +340,9 @@
       postDischargeTransitionActive: toBooleanTrue(
         safe.postDischargeTransitionActive
       ),
+      lowContextOpeningGuardActive: toBooleanTrue(
+        safe.lowContextOpeningGuardActive
+      ),
       n2TurnType: toTrimmedString(safe.n2TurnType, '') || null,
       emergencyNumbersIncluded: toBooleanTrue(safe.emergencyNumbersIncluded),
       postCrisisSupportActive: toBooleanTrue(safe.postCrisisSupportActive),
@@ -449,6 +452,8 @@
         'tentation proc\u00e9durale \u2014 auto-d\u00e9rision',
       procedural_temptation_neutral: 'tentation proc\u00e9durale \u2014 sobre',
       attention_overloaded_noticed: 'surcharge attentionnelle not\u00e9e',
+      opening_low_context_clarify_direction:
+        'ouverture peu contextualisee — clarification de direction',
       everyday_concrete_reframe:
         'partage quotidien concret \u2014 recadrage neutre',
       dependency_care_expressed_medium: 'lucidit\u00e9 relationnelle (medium)',
