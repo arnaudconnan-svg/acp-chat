@@ -819,6 +819,10 @@
     <script>
       let activeAdminConversationSwipeElement = null;
       let activeAdminConversationSwipeCloser = null;
+      const ADMIN_CONVERSATION_SCROLL_Y_KEY =
+        'admin_conversation_list_scroll_y';
+      const ADMIN_CONVERSATION_SCROLL_RESTORE_PENDING_KEY =
+        'admin_conversation_list_scroll_restore_pending';
 
       function getConversationIdFromUrl() {
         const params = new URLSearchParams(window.location.search);
@@ -831,6 +835,82 @@
           .trim()
           .toLowerCase();
         return view === 'support' ? 'support' : 'conversations';
+      }
+
+      function rememberConversationListScrollBeforeNavigation() {
+        if (getConversationIdFromUrl()) {
+          return;
+        }
+        if (getAdminViewFromUrl() !== 'conversations') {
+          return;
+        }
+
+        const scrollY =
+          window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0;
+
+        try {
+          sessionStorage.setItem(
+            ADMIN_CONVERSATION_SCROLL_Y_KEY,
+            String(Math.max(0, Math.floor(scrollY)))
+          );
+          sessionStorage.setItem(
+            ADMIN_CONVERSATION_SCROLL_RESTORE_PENDING_KEY,
+            '1'
+          );
+        } catch {
+          // Ignore storage errors (private mode / quota)
+        }
+      }
+
+      function restoreConversationListScrollIfNeeded() {
+        if (getConversationIdFromUrl()) {
+          return;
+        }
+        if (getAdminViewFromUrl() !== 'conversations') {
+          return;
+        }
+
+        const cameFromConversation = /\/admin\.html\?c=/.test(
+          String(document.referrer || '')
+        );
+
+        if (!cameFromConversation) {
+          return;
+        }
+
+        let pending = false;
+        let rawScrollY = '';
+        try {
+          pending =
+            sessionStorage.getItem(
+              ADMIN_CONVERSATION_SCROLL_RESTORE_PENDING_KEY
+            ) === '1';
+          rawScrollY =
+            sessionStorage.getItem(ADMIN_CONVERSATION_SCROLL_Y_KEY) || '';
+        } catch {
+          return;
+        }
+
+        if (!pending) {
+          return;
+        }
+
+        const parsedScrollY = Number.parseInt(rawScrollY, 10);
+        const nextScrollY = Number.isFinite(parsedScrollY)
+          ? Math.max(0, parsedScrollY)
+          : 0;
+
+        try {
+          sessionStorage.removeItem(
+            ADMIN_CONVERSATION_SCROLL_RESTORE_PENDING_KEY
+          );
+        } catch {
+          // Ignore storage errors
+        }
+
+        requestAnimationFrame(() => {
+          window.scrollTo({ top: nextScrollY, left: 0, behavior: 'auto' });
+        });
       }
 
       function closeAdminActionsMenu() {
@@ -1848,6 +1928,7 @@
 
           if (!Array.isArray(data) || !data.length) {
             list.innerHTML = '<div class="empty">Aucune conversation</div>';
+            restoreConversationListScrollIfNeeded();
             return;
           }
 
@@ -2146,6 +2227,7 @@
                 closeSwipeActions();
                 return;
               }
+              rememberConversationListScrollBeforeNavigation();
               window.location.href =
                 '/admin.html?c=' + encodeURIComponent(conv.id);
             });
@@ -2182,6 +2264,8 @@
             card.appendChild(openBtn);
             list.appendChild(card);
           });
+
+          restoreConversationListScrollIfNeeded();
         } catch (err) {
           const isTimeout =
             err &&
