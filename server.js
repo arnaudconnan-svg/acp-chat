@@ -5976,23 +5976,30 @@ app.get(
 // Admin route to list all conversations with optional user labels.
 app.get('/api/admin/conversations', requireAdminAuth, async (req, res) => {
   try {
-    const [convSnap, labelsSnap] = await Promise.all([
+    const [convSnap, labelsSnap, usersSnap] = await Promise.all([
       db.ref('conversations').once('value'),
-      userLabelsRef.once('value')
+      userLabelsRef.once('value'),
+      usersRef.once('value')
     ]);
 
     const data = convSnap.val() || {};
     const labels = labelsSnap.val() || {};
+    const users = usersSnap.val() || {};
 
     const conversations = Object.entries(data)
       .filter(([, value]) => value?.isBranch !== true)
       .map(([id, value]) => {
         const rawUserId = value.userId || null;
         const label = rawUserId && labels[rawUserId] ? labels[rawUserId] : null;
+        const userEmail =
+          rawUserId && users[rawUserId]
+            ? normalizeEmail(users[rawUserId].email)
+            : null;
 
         return {
           id,
           userId: rawUserId,
+          userEmail,
           userLabel: label,
           displayUser: label || rawUserId,
           createdAt: value.createdAt,

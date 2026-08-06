@@ -311,6 +311,17 @@
         padding: 0;
       }
 
+      .admin-conversation-card-secondary {
+        background: #eef4fb;
+        border-color: #c7d9ef;
+        box-shadow: 0 4px 14px rgba(50, 92, 153, 0.12);
+      }
+
+      .admin-conversation-card-secondary:hover {
+        border-color: #aac5e7;
+        box-shadow: 0 8px 18px rgba(50, 92, 153, 0.18);
+      }
+
       .admin-conversation-open-btn {
         width: 100%;
         border: none;
@@ -1825,6 +1836,10 @@
 
           const data = response.data;
           list.innerHTML = '';
+          const secondaryConversationEmails = new Set([
+            'arnaud.connan@gmail.com',
+            'review@facilitat.io'
+          ]);
 
           if (!Array.isArray(data) || !data.length) {
             list.innerHTML = '<div class="empty">Aucune conversation</div>';
@@ -1926,6 +1941,15 @@
             const card = document.createElement('div');
             card.className = 'item admin-conversation-card';
             card.dataset.convId = conv.id;
+            const convUserEmail = String(conv.userEmail || '')
+              .trim()
+              .toLowerCase();
+            if (
+              convUserEmail &&
+              secondaryConversationEmails.has(convUserEmail)
+            ) {
+              card.classList.add('admin-conversation-card-secondary');
+            }
 
             const renameSwipeBtn = document.createElement('button');
             renameSwipeBtn.type = 'button';
