@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
@@ -7,7 +7,7 @@
       content="width=device-width, initial-scale=1, viewport-fit=cover"
     />
     <meta name="color-scheme" content="light" />
-    <title>Admin - Facilitators</title>
+    <title>Facilitateur-ice</title>
 
     <style>
       * {
@@ -48,7 +48,7 @@
         min-height: 40px;
       }
 
-      .back-link {
+      .back-btn {
         position: absolute;
         left: 0;
         top: 50%;
@@ -65,9 +65,10 @@
         text-decoration: none;
         font-size: 14px;
         font-weight: 600;
+        cursor: pointer;
       }
 
-      .back-link:hover {
+      .back-btn:hover {
         background: #ffffff;
       }
 
@@ -79,26 +80,143 @@
         text-align: center;
       }
 
-      .placeholder {
-        margin-top: 20px;
+      #status {
         background: #ffffff;
         border: 1px solid #d6e2e1;
-        border-radius: 18px;
-        padding: 18px;
-        box-shadow: 0 8px 22px rgba(43, 79, 82, 0.1);
+        border-radius: 14px;
+        padding: 12px;
+        color: #466064;
+        font-size: 14px;
+        line-height: 1.45;
       }
 
-      .placeholder-title {
-        margin: 0 0 8px;
-        font-size: 18px;
+      #list {
+        margin-top: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .item {
+        background: #f7fbfa;
+        border: 1px solid #d6e2e1;
+        border-radius: 16px;
+        padding: 14px;
+        cursor: pointer;
+        box-shadow: 0 4px 14px rgba(43, 79, 82, 0.08);
+      }
+
+      .item:hover {
+        background: #fbfbfc;
+      }
+
+      .main-line {
+        font-size: 16px;
+        font-weight: 700;
         color: #1f3f44;
+        margin-bottom: 6px;
       }
 
-      .placeholder-text {
-        margin: 0;
-        font-size: 15px;
-        line-height: 1.5;
+      .meta-line {
+        font-size: 13px;
         color: #4b6366;
+        margin-top: 4px;
+      }
+
+      .chip {
+        margin-top: 8px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        line-height: 1;
+        border-radius: 999px;
+        border: 1px solid #f0cfa4;
+        background: #fff7ed;
+        color: #9a3412;
+        padding: 5px 9px;
+      }
+
+      .loading,
+      .empty,
+      .error {
+        background: #ffffff;
+        border: 1px solid #dde4e7;
+        border-radius: 16px;
+        padding: 16px;
+        font-size: 16px;
+        line-height: 1.5;
+      }
+
+      .error {
+        color: #991b1b;
+      }
+
+      .message-row {
+        display: flex;
+      }
+
+      .message-card {
+        max-width: 100%;
+        cursor: default;
+      }
+
+      .message-card .meta-line {
+        margin-top: 0;
+        margin-bottom: 8px;
+      }
+
+      .message-content {
+        font-size: 16px;
+        line-height: 1.5;
+        white-space: pre-wrap;
+        word-break: break-word;
+        overflow-wrap: break-word;
+      }
+
+      .role-user {
+        margin-left: auto;
+        background: #4a7478;
+        color: #ffffff;
+      }
+
+      .role-user .meta-line {
+        color: #d8eaeb;
+      }
+
+      .role-assistant {
+        margin-right: auto;
+        background: #ffffff;
+      }
+
+      .memory-block {
+        margin-top: 10px;
+      }
+
+      .memory-block details {
+        border: 1px solid #d6e2e1;
+        border-radius: 10px;
+        background: #f8fbfb;
+        overflow: hidden;
+      }
+
+      .memory-block summary {
+        list-style: none;
+        cursor: pointer;
+        padding: 8px 10px;
+        font-size: 12px;
+        font-weight: 700;
+        color: #245e66;
+      }
+
+      .memory-content {
+        border-top: 1px solid #d6e2e1;
+        padding: 10px;
+        font-size: 13px;
+        line-height: 1.45;
+        white-space: pre-wrap;
+        word-break: break-word;
+        color: #334155;
       }
 
       @media (max-width: 640px) {
@@ -111,7 +229,7 @@
           font-size: 18px;
         }
 
-        .back-link {
+        .back-btn {
           font-size: 13px;
           padding: 0 10px;
         }
@@ -123,42 +241,38 @@
     <div id="app">
       <div class="topbar">
         <div class="topbar-head">
-          <a class="back-link" href="/admin.html">Conversations</a>
-          <h1>Facilitators</h1>
+          <button id="backBtn" class="back-btn" type="button">Hub pro</button>
+          <h1 id="pageTitle">Facilitateur-ice</h1>
         </div>
       </div>
 
-      <section class="placeholder" aria-labelledby="facilitationPlaceholderTitle">
-        <h2 id="facilitationPlaceholderTitle" class="placeholder-title">
-          Espace Facilitators
-        </h2>
-        <p class="placeholder-text">
-          Cette page est creee et protegee par une gate dediee. Le contenu metier pourra etre ajoute ensuite.
-        </p>
-      </section>
+      <div id="status">Chargement...</div>
+      <div id="list"></div>
     </div>
 
     <script>
-      function setupRootBackToAdmin() {
-        history.replaceState(
-          { facilitationAdminRoot: true },
-          '',
-          window.location.href
-        );
-        history.pushState(
-          { facilitationAdminTrap: true },
-          '',
-          window.location.href
-        );
+      const state = {
+        sessionChecked: false,
+        activeUserName: ''
+      };
 
-        window.addEventListener('popstate', (event) => {
-          if (event.state && event.state.facilitationAdminRoot) {
-            window.location.replace('/admin.html');
-          }
-        });
+      async function fetchWithTimeout(url, options = {}, timeoutMs = 12000) {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+        try {
+          return await fetch(url, {
+            credentials: 'same-origin',
+            cache: 'no-store',
+            ...options,
+            signal: controller.signal
+          });
+        } finally {
+          clearTimeout(timer);
+        }
       }
 
-      async function readAdminJsonResponse(res) {
+      async function readJsonSafely(res) {
         if (
           res?.redirected &&
           typeof res.url === 'string' &&
@@ -166,11 +280,7 @@
             res.url.includes('/admin-login.html'))
         ) {
           window.location.href = res.url;
-          return {
-            data: null,
-            isJson: false,
-            redirectedToLogin: true
-          };
+          return { data: null, isJson: false, redirectedToLogin: true };
         }
 
         const contentType = String(
@@ -178,11 +288,7 @@
         ).toLowerCase();
 
         if (!contentType.includes('application/json')) {
-          return {
-            data: null,
-            isJson: false,
-            redirectedToLogin: false
-          };
+          return { data: null, isJson: false, redirectedToLogin: false };
         }
 
         try {
@@ -192,44 +298,28 @@
             redirectedToLogin: false
           };
         } catch {
-          return {
-            data: null,
-            isJson: false,
-            redirectedToLogin: false
-          };
+          return { data: null, isJson: false, redirectedToLogin: false };
         }
       }
 
-      async function fetchWithTimeout(url, options = {}, timeoutMs = 12000) {
-        const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), timeoutMs);
-
-        try {
-          const requestOptions = {
-            credentials: 'same-origin',
-            cache: 'no-store',
-            ...options,
-            signal: controller.signal
-          };
-          return await fetch(url, requestOptions);
-        } finally {
-          clearTimeout(timer);
+      async function ensureFacilitationSession() {
+        if (state.sessionChecked) {
+          return true;
         }
-      }
 
-      async function ensureFacilitationAdminSession() {
         const res = await fetchWithTimeout('/api/admin/session', {
           method: 'GET'
         });
+        const response = await readJsonSafely(res);
 
-        const response = await readAdminJsonResponse(res);
-        const isAuthenticated =
+        const hasAccess =
+          res.ok &&
           response.isJson &&
           response.data &&
           response.data.authenticated === true &&
           response.data.canAccessFacilitationAdmin === true;
 
-        if (!res.ok || !isAuthenticated) {
+        if (!hasAccess) {
           const next = encodeURIComponent(
             window.location.pathname + window.location.search
           );
@@ -237,42 +327,584 @@
           return false;
         }
 
+        state.sessionChecked = true;
         return true;
       }
 
-      function renderAccessError(error) {
-        const container = document.querySelector('.placeholder-text');
-        if (!container) {
+      function parseRoute() {
+        const params = new URLSearchParams(window.location.search);
+        const userRef = String(params.get('u') || '').trim();
+        const conversationRef = String(params.get('c') || '').trim();
+
+        return {
+          userRef: userRef || null,
+          conversationRef: conversationRef || null
+        };
+      }
+
+      function buildQuery({ userRef = null, conversationRef = null } = {}) {
+        const params = new URLSearchParams();
+        if (userRef) {
+          params.set('u', userRef);
+        }
+        if (conversationRef) {
+          params.set('c', conversationRef);
+        }
+
+        const query = params.toString();
+        return query ? '?' + query : '';
+      }
+
+      function navigateRoute(route = {}, replace = false) {
+        const target =
+          window.location.pathname +
+          buildQuery({
+            userRef: route.userRef || null,
+            conversationRef: route.conversationRef || null
+          });
+
+        if (replace) {
+          window.history.replaceState({}, '', target);
+        } else {
+          window.history.pushState({}, '', target);
+        }
+
+        renderRoute().catch(renderError);
+      }
+
+      function formatDateTime(value) {
+        if (!value) {
+          return 'inconnue';
+        }
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) {
+          return 'inconnue';
+        }
+
+        return date.toLocaleString('fr-FR', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      }
+
+      function setTopbar(route) {
+        const backBtn = document.getElementById('backBtn');
+        const pageTitle = document.getElementById('pageTitle');
+
+        if (!route.userRef) {
+          backBtn.textContent = 'Hub pro';
+          backBtn.onclick = () => {
+            window.location.href = '/pros.html';
+          };
+          pageTitle.textContent = 'Facilitateur-ice';
           return;
         }
 
+        if (!route.conversationRef) {
+          backBtn.textContent = 'Utilisateurs';
+          backBtn.onclick = () => {
+            navigateRoute({}, false);
+          };
+          pageTitle.textContent = state.activeUserName || 'Conversations';
+          return;
+        }
+
+        backBtn.textContent = 'Conversations';
+        backBtn.onclick = () => {
+          navigateRoute({ userRef: route.userRef }, false);
+        };
+        pageTitle.textContent = state.activeUserName || 'Conversation';
+      }
+
+      function renderStatus(text, kind = 'normal') {
+        const status = document.getElementById('status');
+        status.classList.remove('error');
+        status.style.display = 'block';
+        status.textContent = text;
+        if (kind === 'error') {
+          status.classList.add('error');
+        }
+      }
+
+      function clearList() {
+        const list = document.getElementById('list');
+        list.innerHTML = '';
+        return list;
+      }
+
+      function createCard() {
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.className = 'item';
+        return card;
+      }
+
+      async function loadUsers() {
+        renderStatus('Chargement des personnes accompagnées...');
+        const list = clearList();
+
+        const res = await fetchWithTimeout('/api/facilitation/users');
+        const response = await readJsonSafely(res);
+
+        if (response.redirectedToLogin) {
+          return;
+        }
+
+        if (!res.ok || !response.isJson) {
+          const message =
+            typeof response.data?.error === 'string'
+              ? response.data.error
+              : 'Erreur de chargement des personnes accompagnées';
+          renderStatus(message, 'error');
+          return;
+        }
+
+        const users = Array.isArray(response.data?.users)
+          ? response.data.users
+          : [];
+
+        if (users.length === 0) {
+          renderStatus('Aucune personne accompagnée visible pour ce compte.');
+          list.innerHTML = '<div class="empty">Aucun profil à afficher.</div>';
+          return;
+        }
+
+        document.getElementById('status').style.display = 'none';
+
+        users.forEach((item) => {
+          const card = createCard();
+
+          const title = document.createElement('div');
+          title.className = 'main-line';
+          title.textContent = String(item.displayName || 'Personne accompagnée');
+
+          const interaction = document.createElement('div');
+          interaction.className = 'meta-line';
+          interaction.textContent =
+            'Dernière interaction IA: ' + formatDateTime(item.lastInteractionAt);
+
+          const count = document.createElement('div');
+          count.className = 'meta-line';
+          count.textContent =
+            String(Number(item.visibleConversationCount || 0)) +
+            ' conversation(s) accessible(s)';
+
+          card.appendChild(title);
+          card.appendChild(interaction);
+          card.appendChild(count);
+
+          if (item.hasPrivateInteractionSinceLastVisible === true) {
+            const chip = document.createElement('div');
+            chip.className = 'chip';
+            chip.textContent =
+              'Dernière interaction en privé: ' +
+              formatDateTime(item.lastPrivateInteractionAt);
+            card.appendChild(chip);
+          }
+
+          card.addEventListener('click', () => {
+            state.activeUserName = String(item.displayName || '').trim();
+            navigateRoute({ userRef: String(item.userRef || '') }, false);
+          });
+
+          list.appendChild(card);
+        });
+      }
+
+      async function loadUserConversations(route) {
+        const userRef = String(route.userRef || '').trim();
+        if (!userRef) {
+          renderStatus('Utilisateur invalide.', 'error');
+          return;
+        }
+
+        renderStatus('Chargement des conversations...');
+        const list = clearList();
+
+        const res = await fetchWithTimeout(
+          '/api/facilitation/users/' +
+            encodeURIComponent(userRef) +
+            '/conversations'
+        );
+        const response = await readJsonSafely(res);
+
+        if (response.redirectedToLogin) {
+          return;
+        }
+
+        if (!res.ok || !response.isJson) {
+          const message =
+            typeof response.data?.error === 'string'
+              ? response.data.error
+              : 'Erreur de chargement des conversations';
+          renderStatus(message, 'error');
+          return;
+        }
+
+        const user =
+          response.data && response.data.user && typeof response.data.user === 'object'
+            ? response.data.user
+            : null;
+        if (user && typeof user.displayName === 'string' && user.displayName.trim()) {
+          state.activeUserName = user.displayName.trim();
+        }
+
+        setTopbar(route);
+
+        const conversations = Array.isArray(response.data?.conversations)
+          ? response.data.conversations
+          : [];
+
+        if (conversations.length === 0) {
+          renderStatus('Aucune conversation accessible pour cette personne.');
+          list.innerHTML =
+            '<div class="empty">Aucune conversation non privée à afficher.</div>';
+          return;
+        }
+
+        document.getElementById('status').style.display = 'none';
+
+        if (user && user.hasPrivateInteractionSinceLastVisible === true) {
+          const info = document.createElement('div');
+          info.className = 'loading';
+          info.textContent =
+            'Note: une interaction plus récente existe en privé (' +
+            formatDateTime(user.lastPrivateInteractionAt) +
+            ').';
+          list.appendChild(info);
+        }
+
+        conversations.forEach((item) => {
+          const card = createCard();
+
+          const title = document.createElement('div');
+          title.className = 'main-line';
+          title.textContent = String(item.title || '(sans titre)');
+
+          const interaction = document.createElement('div');
+          interaction.className = 'meta-line';
+          interaction.textContent =
+            'Dernière interaction IA: ' + formatDateTime(item.lastInteractionAt);
+
+          const count = document.createElement('div');
+          count.className = 'meta-line';
+          count.textContent =
+            String(Number(item.messageCount || 0)) + ' message(s)';
+
+          card.appendChild(title);
+          card.appendChild(interaction);
+          card.appendChild(count);
+
+          card.addEventListener('click', () => {
+            navigateRoute(
+              {
+                userRef,
+                conversationRef: String(item.conversationRef || '')
+              },
+              false
+            );
+          });
+
+          list.appendChild(card);
+        });
+      }
+
+      function buildStructuredMemoryText(memoryState) {
+        if (!memoryState || typeof memoryState !== 'object') {
+          return null;
+        }
+
+        const sessionStable = Array.isArray(memoryState.sessionStableContext)
+          ? memoryState.sessionStableContext
+              .map((entry) => '- ' + String(entry || '').trim())
+              .filter((entry) => entry !== '- ')
+          : [];
+
+        const ongoing = Array.isArray(memoryState.onGoingMovements)
+          ? memoryState.onGoingMovements
+              .map((entry) => {
+                const safeEntry =
+                  entry && typeof entry === 'object' ? entry : {};
+                const id =
+                  typeof safeEntry.id === 'string' && safeEntry.id.trim()
+                    ? ' [' + safeEntry.id.trim() + ']'
+                    : '';
+                const text =
+                  typeof safeEntry.text === 'string' && safeEntry.text.trim()
+                    ? safeEntry.text.trim()
+                    : '(vide)';
+                return '-' + id + ' ' + text;
+              })
+              .filter(Boolean)
+          : [];
+
+        const ancient = Array.isArray(memoryState.ancientMovements)
+          ? memoryState.ancientMovements
+              .map((entry) => {
+                const safeEntry =
+                  entry && typeof entry === 'object' ? entry : {};
+                const id =
+                  typeof safeEntry.id === 'string' && safeEntry.id.trim()
+                    ? ' [' + safeEntry.id.trim() + ']'
+                    : '';
+                const text =
+                  typeof safeEntry.text === 'string' && safeEntry.text.trim()
+                    ? safeEntry.text.trim()
+                    : '(vide)';
+                return '-' + id + ' ' + text;
+              })
+              .filter(Boolean)
+          : [];
+
+        return [
+          'Contexte stable:',
+          sessionStable.length > 0 ? sessionStable.join('\n') : '(vide)',
+          '',
+          'Mouvements en cours:',
+          ongoing.length > 0 ? ongoing.join('\n') : '(vide)',
+          '',
+          'Anciens mouvements:',
+          ancient.length > 0 ? ancient.join('\n') : '(vide)'
+        ].join('\n');
+      }
+
+      function extractMemoryBlocks(debugMeta) {
+        if (!debugMeta || typeof debugMeta !== 'object') {
+          return [];
+        }
+
+        const blocks = [];
+        const structuredText = buildStructuredMemoryText(debugMeta.memoryState);
+        if (structuredText) {
+          blocks.push({
+            title: 'Mémoire structurée (debug)',
+            content: structuredText
+          });
+        }
+
+        if (typeof debugMeta.memory === 'string' && debugMeta.memory.trim()) {
+          blocks.push({
+            title: 'Mémoire session utilisée (debug)',
+            content: debugMeta.memory.trim()
+          });
+        }
+
+        if (
+          typeof debugMeta.memoryBeforeSanitization === 'string' &&
+          debugMeta.memoryBeforeSanitization.trim()
+        ) {
+          blocks.push({
+            title: 'Mémoire avant réécriture (debug)',
+            content: debugMeta.memoryBeforeSanitization.trim()
+          });
+        }
+
+        return blocks;
+      }
+
+      function createMemoryDetails(title, content) {
+        const wrap = document.createElement('div');
+        wrap.className = 'memory-block';
+
+        const details = document.createElement('details');
+        const summary = document.createElement('summary');
+        summary.textContent = title;
+
+        const body = document.createElement('div');
+        body.className = 'memory-content';
+        body.textContent = String(content || '(vide)');
+
+        details.appendChild(summary);
+        details.appendChild(body);
+        wrap.appendChild(details);
+        return wrap;
+      }
+
+      async function loadConversationMessages(route) {
+        const userRef = String(route.userRef || '').trim();
+        const conversationRef = String(route.conversationRef || '').trim();
+        if (!userRef || !conversationRef) {
+          renderStatus('Conversation invalide.', 'error');
+          return;
+        }
+
+        renderStatus('Chargement des messages...');
+        const list = clearList();
+
+        const [messagesRes, intersessionRes] = await Promise.all([
+          fetchWithTimeout(
+            '/api/facilitation/conversations/' +
+              encodeURIComponent(conversationRef) +
+              '/messages'
+          ),
+          fetchWithTimeout(
+            '/api/facilitation/intersession-memory/' +
+              encodeURIComponent(userRef)
+          )
+        ]);
+
+        const [messagesResponse, intersessionResponse] = await Promise.all([
+          readJsonSafely(messagesRes),
+          readJsonSafely(intersessionRes)
+        ]);
+
+        if (messagesResponse.redirectedToLogin || intersessionResponse.redirectedToLogin) {
+          return;
+        }
+
+        if (!messagesRes.ok || !messagesResponse.isJson) {
+          const message =
+            typeof messagesResponse.data?.error === 'string'
+              ? messagesResponse.data.error
+              : 'Erreur de chargement des messages';
+          renderStatus(message, 'error');
+          return;
+        }
+
+        const conversation =
+          messagesResponse.data &&
+          messagesResponse.data.conversation &&
+          typeof messagesResponse.data.conversation === 'object'
+            ? messagesResponse.data.conversation
+            : null;
+
+        if (conversation && typeof conversation.title === 'string') {
+          document.getElementById('pageTitle').textContent = conversation.title;
+        }
+
+        document.getElementById('status').style.display = 'none';
+
+        if (intersessionRes.ok && intersessionResponse.isJson) {
+          const source =
+            typeof intersessionResponse.data?.memorySource === 'string' &&
+            intersessionResponse.data.memorySource.trim()
+              ? intersessionResponse.data.memorySource.trim()
+              : typeof intersessionResponse.data?.memory === 'string' &&
+                  intersessionResponse.data.memory.trim()
+                ? intersessionResponse.data.memory.trim()
+                : '';
+
+          const compact =
+            typeof intersessionResponse.data?.memoryCompact === 'string' &&
+            intersessionResponse.data.memoryCompact.trim()
+              ? intersessionResponse.data.memoryCompact.trim()
+              : '';
+
+          const memoryText = [
+            source ? 'Mémoire source\n' + source : '',
+            compact ? 'Mémoire compacte\n' + compact : ''
+          ]
+            .filter(Boolean)
+            .join('\n\n');
+
+          if (memoryText) {
+            list.appendChild(
+              createMemoryDetails('Mémoire inter-session', memoryText)
+            );
+          }
+        }
+
+        const messages = Array.isArray(messagesResponse.data?.messages)
+          ? messagesResponse.data.messages
+          : [];
+
+        if (messages.length === 0) {
+          list.appendChild(
+            Object.assign(document.createElement('div'), {
+              className: 'empty',
+              textContent: 'Aucun message à afficher.'
+            })
+          );
+          return;
+        }
+
+        messages.forEach((item) => {
+          const role = String(item.role || '').trim();
+          if (role !== 'user' && role !== 'assistant') {
+            return;
+          }
+
+          const row = document.createElement('div');
+          row.className = 'message-row';
+
+          const card = document.createElement('div');
+          card.className =
+            'item message-card ' + (role === 'user' ? 'role-user' : 'role-assistant');
+
+          const meta = document.createElement('div');
+          meta.className = 'meta-line';
+          meta.textContent =
+            (role === 'user' ? 'Utilisateur' : 'Facilitat.io') +
+            ' Â· ' +
+            formatDateTime(item.timestamp);
+
+          const content = document.createElement('div');
+          content.className = 'message-content';
+          content.textContent = String(item.content || '');
+
+          card.appendChild(meta);
+          card.appendChild(content);
+
+          if (role === 'assistant') {
+            const memoryBlocks = extractMemoryBlocks(item.debugMeta || null);
+            memoryBlocks.forEach((block) => {
+              card.appendChild(createMemoryDetails(block.title, block.content));
+            });
+          }
+
+          row.appendChild(card);
+          list.appendChild(row);
+        });
+      }
+
+      async function renderRoute() {
+        const canContinue = await ensureFacilitationSession();
+        if (!canContinue) {
+          return;
+        }
+
+        const route = parseRoute();
+        setTopbar(route);
+
+        if (!route.userRef) {
+          state.activeUserName = '';
+          await loadUsers();
+          return;
+        }
+
+        if (!route.conversationRef) {
+          await loadUserConversations(route);
+          return;
+        }
+
+        await loadConversationMessages(route);
+      }
+
+      function renderError(error) {
         const message =
           error && error.message
             ? error.message
             : String(error || 'Erreur inconnue');
-        container.textContent =
-          'Acces Facilitators indisponible pour le moment : ' + message;
+        renderStatus(message, 'error');
       }
 
-      async function init() {
-        const hasSession = await ensureFacilitationAdminSession();
-        if (!hasSession) {
-          return;
-        }
-
-        setupRootBackToAdmin();
-      }
+      window.addEventListener('popstate', () => {
+        renderRoute().catch(renderError);
+      });
 
       window.addEventListener('error', (event) => {
-        renderAccessError(event.error || event.message || 'Erreur JavaScript');
+        renderError(event.error || event.message || 'Erreur JavaScript');
       });
 
       window.addEventListener('unhandledrejection', (event) => {
-        renderAccessError(event.reason || 'Promesse rejetee');
+        renderError(event.reason || 'Promesse rejetée');
       });
 
       document.addEventListener('DOMContentLoaded', () => {
-        init().catch(renderAccessError);
+        renderRoute().catch(renderError);
       });
     </script>
   </body>

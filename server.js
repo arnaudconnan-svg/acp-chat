@@ -54,6 +54,15 @@ const TWA_GATE_BYPASS_PASSWORD_SET = new Set(
     .map((value) => String(value || '').trim())
     .filter(Boolean)
 );
+const SECONDARY_CONVERSATION_USER_IDS = new Set([
+  'u_be427bb5b738c711b0726703',
+  'u_ed6c766b0b8666541bf999ed',
+  'u_d3d39850658034a1492e9e5f'
+]);
+const SECONDARY_CONVERSATION_EMAILS = new Set([
+  'arnaud.connan@gmail.com',
+  'review@facilitat.io'
+]);
 const PROFESSIONAL_ACCESS_PASSWORD_BY_EMAIL_RAW = new Map([
   ['arnaud.connan@gmail.com', 'Facilitat.io29082025']
 ]);
@@ -1958,6 +1967,272 @@ function requireFacilitationAdminAuth(req, res, next) {
   }
   adminVisitedSinceLastAlert = true;
   next();
+}
+
+function parseTimestampMs(value) {
+  if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+    return value;
+  }
+
+  const asString = String(value || '').trim();
+  if (!asString) return 0;
+
+  const asNumber = Number(asString);
+  if (Number.isFinite(asNumber) && asNumber > 0) {
+    return asNumber;
+  }
+
+  const parsed = Date.parse(asString);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function toIsoOrNullFromMs(ms) {
+  return Number.isFinite(ms) && ms > 0 ? new Date(ms).toISOString() : null;
+}
+
+function buildFacilitationRef(kind = '', sourceId = '') {
+  const safeKind = String(kind || '').trim();
+  const safeId = String(sourceId || '').trim();
+  if (!safeKind || !safeId) return null;
+
+  const digest = crypto
+    .createHmac('sha256', ADMIN_SESSION_SIGNING_SECRET)
+    .update(`${safeKind}:${safeId}`)
+    .digest('hex')
+    .slice(0, 24);
+
+  return `fac_${safeKind}_${digest}`;
+}
+
+function isFacilitationSecondaryProfile(userId = '', userEmail = '') {
+  const safeUserId = String(userId || '').trim();
+  const safeEmail = normalizeEmail(userEmail || '');
+
+  return (
+    (safeUserId && SECONDARY_CONVERSATION_USER_IDS.has(safeUserId)) ||
+    (safeEmail && SECONDARY_CONVERSATION_EMAILS.has(safeEmail))
+  );
+}
+
+async function buildFacilitationDirectoryModel() {
+  const [usersSnap, labelsSnap, conversationsSnap, messagesSnap] =
+    await Promise.all([
+      usersRef.once('value'),
+      userLabelsRef.once('value'),
+      db.ref('conversations').once('value'),
+      messagesRef.once('value')
+    ]);
+
+  const usersRaw = usersSnap.val() || {};
+  const labelsRaw = labelsSnap.val() || {};
+  const conversationsRaw = conversationsSnap.val() || {};
+  const messagesRaw = messagesSnap.val() || {};
+
+  const conversationById = new Map();
+  const userStateById = new Map();
+
+  function getUserState(userId) {
+    const safeUserId = String(userId || '').trim();
+    if (!safeUserId) return null;
+
+    if (!userStateById.has(safeUserId)) {
+      userStateById.set(safeUserId, {
+        userId: safeUserId,
+        userRef: buildFacilitationRef('user', safeUserId),
+        visibleConversationIds: [],
+        allConversationIds: [],
+        lastVisibleConversationActivityMs: 0,
+        lastVisibleUserMessageMs: 0,
+        lastAnyUserMessageMs: 0,
+        lastAnyUserMessageIsPrivate: false,
+        hasName: false,
+        displayName: null
+      });
+    }
+
+    return userStateById.get(safeUserId);
+  }
+
+  for (const [conversationId, value] of Object.entries(conversationsRaw)) {
+    const safeConversation = value && typeof value === 'object' ? value : {};
+    if (safeConversation.isBranch === true) {
+      continue;
+    }
+
+    const userId = String(safeConversation.userId || '').trim();
+    if (!userId) {
+      continue;
+    }
+
+    const safeUser =
+      usersRaw[userId] && typeof usersRaw[userId] === 'object'
+        ? usersRaw[userId]
+        : {};
+    const userEmail = normalizeEmail(safeUser.email || '');
+    if (isFacilitationSecondaryProfile(userId, userEmail)) {
+      continue;
+    }
+
+    const isPrivate = safeConversation.isPrivate === true;
+    const updatedAtMs = parseTimestampMs(
+      safeConversation.updatedAt || safeConversation.createdAt
+    );
+
+    const conversationRef = buildFacilitationRef('conversation', conversationId);
+    const displayTitle =
+      typeof safeConversation.title === 'string' && safeConversation.title.trim()
+        ? safeConversation.title.trim()
+        : typeof safeConversation.lastUserMessage === 'string' &&
+            safeConversation.lastUserMessage.trim()
+          ? safeConversation.lastUserMessage.trim().slice(0, 60)
+          : '(sans titre)';
+
+    const conversationMeta = {
+      id: conversationId,
+      ref: conversationRef,
+      userId,
+      isPrivate,
+      updatedAtMs,
+      createdAtMs: parseTimestampMs(safeConversation.createdAt),
+      displayTitle,
+      messageCount: Number(safeConversation.messageCount || 0),
+      lastUserMessageMs: 0
+    };
+
+    conversationById.set(conversationId, conversationMeta);
+
+    const state = getUserState(userId);
+    if (!state) {
+      continue;
+    }
+
+    state.allConversationIds.push(conversationId);
+    if (!isPrivate) {
+      state.visibleConversationIds.push(conversationId);
+      if (updatedAtMs > state.lastVisibleConversationActivityMs) {
+        state.lastVisibleConversationActivityMs = updatedAtMs;
+      }
+    }
+  }
+
+  for (const [, value] of Object.entries(messagesRaw)) {
+    const safeMessage = value && typeof value === 'object' ? value : {};
+    if (String(safeMessage.role || '') !== 'user') {
+      continue;
+    }
+
+    const conversationId = String(safeMessage.conversationId || '').trim();
+    if (!conversationId) {
+      continue;
+    }
+
+    const conversationMeta = conversationById.get(conversationId);
+    if (!conversationMeta) {
+      continue;
+    }
+
+    const state = getUserState(conversationMeta.userId);
+    if (!state) {
+      continue;
+    }
+
+    const messageTimestampMs = parseTimestampMs(safeMessage.timestamp);
+    if (messageTimestampMs <= 0) {
+      continue;
+    }
+
+    if (messageTimestampMs > state.lastAnyUserMessageMs) {
+      state.lastAnyUserMessageMs = messageTimestampMs;
+      state.lastAnyUserMessageIsPrivate = conversationMeta.isPrivate === true;
+    }
+
+    if (!conversationMeta.isPrivate) {
+      if (messageTimestampMs > state.lastVisibleUserMessageMs) {
+        state.lastVisibleUserMessageMs = messageTimestampMs;
+      }
+      if (messageTimestampMs > conversationMeta.lastUserMessageMs) {
+        conversationMeta.lastUserMessageMs = messageTimestampMs;
+      }
+    }
+  }
+
+  const users = [];
+  for (const state of userStateById.values()) {
+    if (!Array.isArray(state.visibleConversationIds) || state.visibleConversationIds.length === 0) {
+      continue;
+    }
+
+    const safeUser =
+      usersRaw[state.userId] && typeof usersRaw[state.userId] === 'object'
+        ? usersRaw[state.userId]
+        : {};
+    const firstName =
+      typeof safeUser.firstName === 'string' && safeUser.firstName.trim()
+        ? safeUser.firstName.trim()
+        : null;
+    const label =
+      typeof labelsRaw[state.userId] === 'string' && labelsRaw[state.userId].trim()
+        ? labelsRaw[state.userId].trim()
+        : null;
+
+    state.hasName = !!(firstName || label);
+    state.displayName = firstName || label || null;
+
+    const publicInteractionMs = Math.max(
+      state.lastVisibleUserMessageMs,
+      state.lastVisibleConversationActivityMs
+    );
+    const hasPrivateInteractionSinceLastVisible =
+      state.lastAnyUserMessageIsPrivate === true &&
+      state.lastAnyUserMessageMs > publicInteractionMs;
+
+    users.push({
+      userId: state.userId,
+      userRef: state.userRef,
+      displayName: state.displayName,
+      hasExplicitName: state.hasName,
+      visibleConversationCount: state.visibleConversationIds.length,
+      lastInteractionMs: publicInteractionMs,
+      lastInteractionAt: toIsoOrNullFromMs(publicInteractionMs),
+      hasPrivateInteractionSinceLastVisible,
+      lastPrivateInteractionAt: hasPrivateInteractionSinceLastVisible
+        ? toIsoOrNullFromMs(state.lastAnyUserMessageMs)
+        : null,
+      conversationIds: state.visibleConversationIds.slice()
+    });
+  }
+
+  users.sort((a, b) => {
+    const delta = Number(b.lastInteractionMs || 0) - Number(a.lastInteractionMs || 0);
+    if (delta !== 0) return delta;
+    return String(a.userId || '').localeCompare(String(b.userId || ''));
+  });
+
+  let anonymousCounter = 0;
+  const userByRef = new Map();
+  for (const user of users) {
+    if (!user.displayName) {
+      anonymousCounter += 1;
+      user.displayName = `Personne accompagnée ${anonymousCounter}`;
+    }
+
+    userByRef.set(user.userRef, user);
+  }
+
+  const conversationByRef = new Map();
+  for (const conversation of conversationById.values()) {
+    if (conversation.isPrivate) {
+      continue;
+    }
+    conversationByRef.set(conversation.ref, conversation);
+  }
+
+  return {
+    users,
+    userByRef,
+    conversationByRef,
+    conversationById
+  };
 }
 
 // Normalize the stored memory value.
@@ -6368,6 +6643,197 @@ app.get('/api/admin/support-cases', requireAdminAuth, async (req, res) => {
     return res.status(500).json({ error: 'Support cases lookup failed' });
   }
 });
+
+app.get(
+  '/api/facilitation/users',
+  requireFacilitationAdminAuth,
+  async (_req, res) => {
+    try {
+      const model = await buildFacilitationDirectoryModel();
+
+      const users = model.users.map((item) => ({
+        userRef: item.userRef,
+        displayName: item.displayName,
+        visibleConversationCount: item.visibleConversationCount,
+        lastInteractionAt: item.lastInteractionAt,
+        hasPrivateInteractionSinceLastVisible:
+          item.hasPrivateInteractionSinceLastVisible,
+        lastPrivateInteractionAt: item.lastPrivateInteractionAt
+      }));
+
+      return res.json({ users, count: users.length });
+    } catch (err) {
+      console.error('Erreur /api/facilitation/users:', err.message);
+      return res
+        .status(500)
+        .json({ error: 'Facilitation users lookup failed' });
+    }
+  }
+);
+
+app.get(
+  '/api/facilitation/users/:userRef/conversations',
+  requireFacilitationAdminAuth,
+  async (req, res) => {
+    try {
+      const userRef = String(req.params.userRef || '').trim();
+      if (!userRef) {
+        return res.status(400).json({ error: 'userRef requis' });
+      }
+
+      const model = await buildFacilitationDirectoryModel();
+      const user = model.userByRef.get(userRef);
+      if (!user) {
+        return res.status(404).json({ error: 'Utilisateur introuvable' });
+      }
+
+      const conversations = user.conversationIds
+        .map((conversationId) => model.conversationById.get(conversationId))
+        .filter((item) => item && item.isPrivate !== true)
+        .sort((a, b) => {
+          const aMs = Math.max(a.lastUserMessageMs, a.updatedAtMs);
+          const bMs = Math.max(b.lastUserMessageMs, b.updatedAtMs);
+          return bMs - aMs;
+        })
+        .map((item) => ({
+          conversationRef: item.ref,
+          title: item.displayTitle,
+          messageCount: item.messageCount,
+          lastInteractionAt: toIsoOrNullFromMs(
+            Math.max(item.lastUserMessageMs, item.updatedAtMs)
+          )
+        }));
+
+      return res.json({
+        user: {
+          userRef: user.userRef,
+          displayName: user.displayName,
+          hasPrivateInteractionSinceLastVisible:
+            user.hasPrivateInteractionSinceLastVisible,
+          lastPrivateInteractionAt: user.lastPrivateInteractionAt
+        },
+        conversations,
+        count: conversations.length
+      });
+    } catch (err) {
+      console.error(
+        'Erreur /api/facilitation/users/:userRef/conversations:',
+        err.message
+      );
+      return res
+        .status(500)
+        .json({ error: 'Facilitation conversations lookup failed' });
+    }
+  }
+);
+
+app.get(
+  '/api/facilitation/conversations/:conversationRef/messages',
+  requireFacilitationAdminAuth,
+  async (req, res) => {
+    try {
+      const conversationRef = String(req.params.conversationRef || '').trim();
+      if (!conversationRef) {
+        return res.status(400).json({ error: 'conversationRef requis' });
+      }
+
+      const model = await buildFacilitationDirectoryModel();
+      const conversation = model.conversationByRef.get(conversationRef);
+      if (!conversation || conversation.isPrivate === true) {
+        return res.status(404).json({ error: 'Conversation introuvable' });
+      }
+
+      const [messagesSnap] = await Promise.all([
+        messagesRef
+          .orderByChild('conversationId')
+          .equalTo(conversation.id)
+          .once('value')
+      ]);
+
+      const messagesRaw = messagesSnap.val() || {};
+      const messages = Object.entries(messagesRaw)
+        .map(([id, value]) => {
+          const safeValue = value && typeof value === 'object' ? value : {};
+          return {
+            id,
+            role: String(safeValue.role || ''),
+            content:
+              typeof safeValue.content === 'string' ? safeValue.content : '',
+            timestamp: safeValue.timestamp || null,
+            userId: safeValue.userId || null,
+            debugMeta:
+              safeValue.debugMeta && typeof safeValue.debugMeta === 'object'
+                ? safeValue.debugMeta
+                : null
+          };
+        })
+        .sort(
+          (a, b) => parseTimestampMs(a.timestamp) - parseTimestampMs(b.timestamp)
+        );
+
+      return res.json({
+        userRef: buildFacilitationRef('user', conversation.userId),
+        conversation: {
+          conversationRef: conversation.ref,
+          title: conversation.displayTitle
+        },
+        messages
+      });
+    } catch (err) {
+      console.error(
+        'Erreur /api/facilitation/conversations/:conversationRef/messages:',
+        err.message
+      );
+      return res.status(500).json({ error: 'Facilitation messages lookup failed' });
+    }
+  }
+);
+
+app.get(
+  '/api/facilitation/intersession-memory/:userRef',
+  requireFacilitationAdminAuth,
+  async (req, res) => {
+    try {
+      const userRef = String(req.params.userRef || '').trim();
+      if (!userRef) {
+        return res.status(400).json({ error: 'userRef requis' });
+      }
+
+      const model = await buildFacilitationDirectoryModel();
+      const user = model.userByRef.get(userRef);
+      if (!user) {
+        return res.status(404).json({ error: 'Utilisateur introuvable' });
+      }
+
+      const snap = await usersRef.child(user.userId).once('value');
+      const userData = snap.val() || {};
+      const memorySource = normalizeIntersessionSourceFromUserData(
+        userData,
+        buildDefaultPromptRegistry()
+      );
+      const storedCompact =
+        typeof userData.intersessionMemoryCompact === 'string'
+          ? userData.intersessionMemoryCompact.trim()
+          : '';
+      const memoryCompact =
+        storedCompact || buildIntersessionCompactRuntime(memorySource).trim();
+
+      return res.json({
+        memory: memorySource,
+        memorySource,
+        memoryCompact
+      });
+    } catch (err) {
+      console.error(
+        'Erreur /api/facilitation/intersession-memory/:userRef:',
+        err.message
+      );
+      return res
+        .status(500)
+        .json({ error: 'Lecture mémoire inter-sessions échouée' });
+    }
+  }
+);
 
 // Route to manually set the title of a conversation and lock it.
 app.post('/api/conversations/:id/title', async (req, res) => {
