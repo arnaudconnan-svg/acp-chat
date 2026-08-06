@@ -1,0 +1,776 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="color-scheme" content="light" />
+    <title>Admin - Dossiers SAV</title>
+
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: #d7e4e3;
+        color: #1f2937;
+        font-family: Arial, sans-serif;
+        color-scheme: light;
+      }
+
+      body {
+        min-height: 100vh;
+      }
+
+      #app {
+        width: 100%;
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 12px 12px calc(24px + env(safe-area-inset-bottom, 0px));
+      }
+
+      .topbar {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        background: #d7e4e3;
+        padding: 6px 0 8px;
+      }
+
+      .topbar-head {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 40px;
+      }
+
+      .back-link {
+        position: absolute;
+        left: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 34px;
+        padding: 0 12px;
+        border-radius: 999px;
+        border: 1px solid #cfd8db;
+        background: rgba(255, 255, 255, 0.92);
+        color: #245e66;
+        text-decoration: none;
+        font-size: 14px;
+        font-weight: 600;
+      }
+
+      .back-link:hover {
+        background: #ffffff;
+      }
+
+      h1 {
+        font-size: 20px;
+        line-height: 1.15;
+        margin: 0;
+        color: #1f3f44;
+        text-align: center;
+      }
+
+      #list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .item {
+        background: #f7fbfa;
+        border: 1px solid #d6e2e1;
+        border-radius: 16px;
+        padding: 14px;
+        cursor: pointer;
+        box-shadow: 0 4px 14px rgba(43, 79, 82, 0.08);
+      }
+
+      .item:hover {
+        background: #fbfbfc;
+      }
+
+      .loading,
+      .empty,
+      .error {
+        background: white;
+        border: 1px solid #dde4e7;
+        border-radius: 16px;
+        padding: 16px;
+        font-size: 16px;
+        line-height: 1.5;
+      }
+
+      .error {
+        color: #991b1b;
+      }
+
+      .admin-conversation-main {
+        font-size: 15px;
+        font-weight: 600;
+        color: #1f3f44;
+        margin-bottom: 4px;
+      }
+
+      .admin-conversation-title {
+        font-size: 15px;
+        color: #334155;
+        margin-bottom: 4px;
+        font-weight: 500;
+      }
+
+      .admin-conversation-count {
+        font-size: 13px;
+        color: #6b7280;
+      }
+
+      .support-search-wrap {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin-bottom: 10px;
+      }
+
+      .support-search-input {
+        width: 100%;
+        min-height: 40px;
+        border-radius: 10px;
+        border: 1px solid #cfd8db;
+        background: #ffffff;
+        color: #1f3f44;
+        font-size: 14px;
+        padding: 9px 11px;
+        outline: none;
+      }
+
+      .support-search-input:focus {
+        border-color: #245e66;
+        box-shadow: 0 0 0 3px rgba(36, 94, 102, 0.12);
+      }
+
+      .support-meta-line {
+        font-size: 13px;
+        color: #4b6366;
+        margin-top: 4px;
+        word-break: break-word;
+      }
+
+      .support-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        line-height: 1;
+        border-radius: 999px;
+        border: 1px solid #cfd8db;
+        color: #245e66;
+        background: #ffffff;
+        padding: 5px 9px;
+        margin-top: 8px;
+      }
+
+      .support-case-card {
+        cursor: pointer;
+      }
+
+      .support-case-card:hover {
+        border-color: #b7cdd0;
+        box-shadow: 0 6px 16px rgba(43, 79, 82, 0.12);
+      }
+
+      .support-case-modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(20, 36, 40, 0.36);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 14px;
+        z-index: 1200;
+      }
+
+      .support-case-modal {
+        width: min(640px, 100%);
+        max-height: min(88vh, 760px);
+        overflow: auto;
+        background: #ffffff;
+        border-radius: 18px;
+        border: 1px solid #d6e2e1;
+        box-shadow: 0 20px 40px rgba(20, 36, 40, 0.22);
+        padding: 16px;
+      }
+
+      .support-case-modal-title {
+        font-size: 18px;
+        font-weight: 700;
+        color: #1f3f44;
+        margin: 0 0 8px;
+      }
+
+      .support-case-modal-meta {
+        font-size: 13px;
+        color: #4b6366;
+        margin: 0 0 10px;
+      }
+
+      .support-case-modal-block {
+        border: 1px solid #d6e2e1;
+        border-radius: 12px;
+        background: #f8fbfb;
+        padding: 10px;
+        margin: 0 0 10px;
+      }
+
+      .support-case-modal-block h3 {
+        margin: 0 0 8px;
+        font-size: 14px;
+        color: #245e66;
+      }
+
+      .support-case-modal-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 6px 10px;
+      }
+
+      .support-case-modal-grid p {
+        margin: 0;
+        font-size: 13px;
+        color: #1f3f44;
+      }
+
+      .support-case-history-row {
+        display: grid;
+        grid-template-columns: 1fr auto auto;
+        gap: 8px;
+        align-items: center;
+        font-size: 13px;
+        padding: 7px 0;
+        border-top: 1px solid #e6efef;
+      }
+
+      .support-case-history-row:first-child {
+        border-top: none;
+        padding-top: 0;
+      }
+
+      .support-case-modal-close {
+        margin-top: 8px;
+        border: 1px solid #cfd8db;
+        border-radius: 10px;
+        background: #ffffff;
+        color: #245e66;
+        padding: 10px 14px;
+        cursor: pointer;
+      }
+
+      @media (max-width: 520px) {
+        .support-case-modal-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 640px) {
+        #app {
+          padding-left: 10px;
+          padding-right: 10px;
+        }
+
+        h1 {
+          font-size: 18px;
+        }
+
+        .back-link {
+          font-size: 13px;
+          padding: 0 10px;
+        }
+
+        .item,
+        .loading,
+        .empty,
+        .error {
+          font-size: 15px;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="app">
+      <div class="topbar">
+        <div class="topbar-head">
+          <a class="back-link" href="/admin.html">Conversations</a>
+          <h1>Dossiers SAV</h1>
+        </div>
+      </div>
+
+      <div id="list">Chargement...</div>
+    </div>
+
+    <script>
+      function setupRootBackToAdmin() {
+        history.replaceState({ supportAdminRoot: true }, '', window.location.href);
+        history.pushState({ supportAdminTrap: true }, '', window.location.href);
+
+        window.addEventListener('popstate', (event) => {
+          if (event.state && event.state.supportAdminRoot) {
+            window.location.replace('/admin.html');
+          }
+        });
+      }
+
+      async function readAdminJsonResponse(res) {
+        if (
+          res?.redirected &&
+          typeof res.url === 'string' &&
+          res.url.includes('/admin-login.html')
+        ) {
+          window.location.href = res.url;
+          return {
+            data: null,
+            isJson: false,
+            redirectedToLogin: true
+          };
+        }
+
+        const contentType = String(
+          res?.headers?.get('content-type') || ''
+        ).toLowerCase();
+
+        if (!contentType.includes('application/json')) {
+          return {
+            data: null,
+            isJson: false,
+            redirectedToLogin: false
+          };
+        }
+
+        try {
+          return {
+            data: await res.json(),
+            isJson: true,
+            redirectedToLogin: false
+          };
+        } catch {
+          return {
+            data: null,
+            isJson: false,
+            redirectedToLogin: false
+          };
+        }
+      }
+
+      async function fetchWithTimeout(url, options = {}, timeoutMs = 12000) {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+        try {
+          const requestOptions = {
+            credentials: 'same-origin',
+            cache: 'no-store',
+            ...options,
+            signal: controller.signal
+          };
+          return await fetch(url, requestOptions);
+        } finally {
+          clearTimeout(timer);
+        }
+      }
+
+      async function ensureSupportAdminSession() {
+        const res = await fetchWithTimeout('/api/admin/session', {
+          method: 'GET'
+        });
+
+        const response = await readAdminJsonResponse(res);
+        const isAuthenticated =
+          response.isJson &&
+          response.data &&
+          response.data.authenticated === true &&
+          response.data.canAccessSupportCases === true;
+
+        if (!res.ok || !isAuthenticated) {
+          const next = encodeURIComponent(
+            window.location.pathname + window.location.search
+          );
+          window.location.href = '/admin-login.html?next=' + next;
+          return false;
+        }
+
+        return true;
+      }
+
+      function formatAdminDate(value) {
+        if (!value) {
+          return 'date inconnue';
+        }
+
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) {
+          return 'date inconnue';
+        }
+
+        return date.toLocaleString('fr-FR', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      }
+
+      async function loadSupportCases() {
+        const MONTHLY_BUDGET_EUR = 12;
+        const ROLLOVER_MAX_EUR = 3;
+        const RESERVE_USAGE_EQUIV_MAX = 12;
+        const RESERVE_PAID_EUR_MAX = 10;
+
+        function formatMonthLabel(key) {
+          const raw = String(key || '').trim();
+          if (!/^\d{4}-\d{2}$/.test(raw)) return raw || 'mois inconnu';
+          const [year, month] = raw.split('-');
+          const date = new Date(Date.UTC(Number(year), Number(month) - 1, 1));
+          if (Number.isNaN(date.getTime())) return raw;
+          return date.toLocaleDateString('fr-FR', {
+            month: 'long',
+            year: 'numeric',
+            timeZone: 'UTC'
+          });
+        }
+
+        function ensureSupportCaseModal() {
+          let overlay = document.getElementById('supportCaseModalOverlay');
+          if (overlay) return overlay;
+
+          overlay = document.createElement('div');
+          overlay.id = 'supportCaseModalOverlay';
+          overlay.className = 'support-case-modal-overlay';
+
+          overlay.addEventListener('click', (event) => {
+            if (event.target === overlay) {
+              closeSupportCaseModal();
+            }
+          });
+
+          document.body.appendChild(overlay);
+          return overlay;
+        }
+
+        function hideSupportCaseModalDom() {
+          const overlay = document.getElementById('supportCaseModalOverlay');
+          if (!overlay || overlay.style.display !== 'flex') {
+            return false;
+          }
+
+          overlay.style.display = 'none';
+          overlay.innerHTML = '';
+          return true;
+        }
+
+        function closeSupportCaseModal() {
+          const state = history.state || {};
+          if (state.supportCaseModal === true) {
+            history.back();
+            return;
+          }
+
+          hideSupportCaseModalDom();
+        }
+
+        if (!window.__supportCaseModalPopstateBound) {
+          window.addEventListener('popstate', () => {
+            hideSupportCaseModalDom();
+          });
+          window.__supportCaseModalPopstateBound = true;
+        }
+
+        function openSupportCaseModal(item = {}) {
+          const overlay = ensureSupportCaseModal();
+          const monthlyHistory =
+            item?.usageMonthlyHistory && typeof item.usageMonthlyHistory === 'object'
+              ? item.usageMonthlyHistory
+              : {};
+          const historyEntries = Object.entries(monthlyHistory)
+            .filter(([key]) => /^\d{4}-\d{2}$/.test(String(key || '').trim()))
+            .sort((a, b) => String(b[0]).localeCompare(String(a[0])));
+
+          const currentEnvelope =
+            item?.usageEnvelope && typeof item.usageEnvelope === 'object'
+              ? item.usageEnvelope
+              : {};
+          const monthlyRemaining = Number(currentEnvelope?.monthly?.remaining || 0);
+          const rolloverRemaining = Number(currentEnvelope?.rollover?.remaining || 0);
+          const reserveRemaining = Number(currentEnvelope?.reserve?.remaining || 0);
+          const reserveRemainingPaidEur =
+            (reserveRemaining / RESERVE_USAGE_EQUIV_MAX) * RESERVE_PAID_EUR_MAX;
+
+          const rowsHtml = historyEntries.length
+            ? historyEntries
+                .map(([monthKey, entry]) => {
+                  const eur = Number(entry?.totalSimulatedEur || 0);
+                  const tokens = Number(entry?.tokens || 0);
+                  return [
+                    '<div class="support-case-history-row">',
+                    `  <span>${formatMonthLabel(monthKey)}</span>`,
+                    `  <strong>${eur.toFixed(4)} EUR</strong>`,
+                    `  <span>${Math.round(tokens)} tokens</span>`,
+                    '</div>'
+                  ].join('');
+                })
+                .join('')
+            : '<div class="support-case-history-row"><span>Aucune donnee mensuelle enregistree pour ce dossier.</span><span></span><span></span></div>';
+
+          const modal = [
+            '<div class="support-case-modal" role="dialog" aria-modal="true" aria-labelledby="supportCaseModalTitle">',
+            `  <h2 class="support-case-modal-title" id="supportCaseModalTitle">Dossier SAV ${String(item?.superId || '').trim() || 'inconnu'}</h2>`,
+            `  <p class="support-case-modal-meta">User actif: ${String(item?.activeUserId || 'inconnu')} • Inscription: ${formatAdminDate(item?.activeUserCreatedAt)}</p>`,
+            '  <div class="support-case-modal-block">',
+            '    <h3>Etat courant (budget mensuel)</h3>',
+            '    <div class="support-case-modal-grid">',
+            `      <p>Budget mensuel de base: ${MONTHLY_BUDGET_EUR.toFixed(2)} EUR</p>`,
+            `      <p>Report max du mois precedent: ${ROLLOVER_MAX_EUR.toFixed(2)} EUR</p>`,
+            `      <p>Mensuel restant: ${monthlyRemaining.toFixed(4)} EUR</p>`,
+            `      <p>Report restant: ${rolloverRemaining.toFixed(4)} EUR</p>`,
+            `      <p>Reserve restante: ${reserveRemainingPaidEur.toFixed(4)} EUR (equiv. ${reserveRemaining.toFixed(4)} EUR de capacite tokens)</p>`,
+            `      <p>Total simule cumule dossier: ${Number(item?.totalSimulatedEur || 0).toFixed(4)} EUR</p>`,
+            '    </div>',
+            '  </div>',
+            '  <div class="support-case-modal-block">',
+            '    <h3>Historique mensuel des depenses simulees</h3>',
+            `    ${rowsHtml}`,
+            '  </div>',
+            '  <p class="support-case-modal-meta">Historique exact a partir de la mise en place du journal mensuel. Les mois anterieurs peuvent etre incomplets.</p>',
+            '  <button type="button" id="supportCaseModalClose" class="support-case-modal-close">Fermer</button>',
+            '</div>'
+          ].join('');
+
+          overlay.innerHTML = modal;
+          overlay.style.display = 'flex';
+
+          const state = window.history.state || {};
+          if (state.supportCaseModal !== true) {
+            window.history.pushState(
+              { ...state, supportCaseModal: true },
+              '',
+              window.location.href
+            );
+          }
+
+          const closeBtn = document.getElementById('supportCaseModalClose');
+          if (closeBtn) {
+            closeBtn.addEventListener('click', () => {
+              closeSupportCaseModal();
+            });
+          }
+        }
+
+        const list = document.getElementById('list');
+        list.innerHTML = '';
+
+        const searchWrap = document.createElement('div');
+        searchWrap.className = 'support-search-wrap';
+
+        const searchInput = document.createElement('input');
+        searchInput.className = 'support-search-input';
+        searchInput.type = 'search';
+        searchInput.placeholder = 'Recherche email...';
+        searchInput.autocomplete = 'off';
+
+        searchWrap.appendChild(searchInput);
+        list.appendChild(searchWrap);
+
+        const resultWrap = document.createElement('div');
+        resultWrap.style.display = 'flex';
+        resultWrap.style.flexDirection = 'column';
+        resultWrap.style.gap = '12px';
+        list.appendChild(resultWrap);
+
+        let debounceTimer = null;
+
+        const renderCases = (cases = []) => {
+          resultWrap.innerHTML = '';
+
+          if (!Array.isArray(cases) || cases.length === 0) {
+            resultWrap.innerHTML = '<div class="empty">Aucun dossier SAV</div>';
+            return;
+          }
+
+          cases.forEach((item) => {
+            const card = document.createElement('div');
+            card.className = 'item support-case-card';
+            card.setAttribute('role', 'button');
+            card.setAttribute('tabindex', '0');
+
+            const activity = document.createElement('div');
+            activity.className = 'admin-conversation-main';
+            activity.textContent =
+              'Maj ' + formatAdminDate(item?.lastActivityAt);
+
+            const title = document.createElement('div');
+            title.className = 'admin-conversation-title';
+            title.textContent = 'Dossier SAV';
+
+            const superIdLine = document.createElement('div');
+            superIdLine.className = 'support-meta-line';
+            superIdLine.textContent =
+              'SuperId: ' + String(item?.superId || 'inconnu');
+
+            const count = document.createElement('div');
+            count.className = 'admin-conversation-count';
+            const totalTokens = Number(item?.totalTokens || 0);
+            const conversationCount = Number(item?.conversationCount || 0);
+            count.textContent = `${conversationCount} conversations - ${totalTokens} tokens`;
+
+            const emails = Array.isArray(item?.emails)
+              ? item.emails.filter(Boolean)
+              : [];
+            const emailLine = document.createElement('div');
+            emailLine.className = 'support-meta-line';
+            emailLine.textContent =
+              'Emails: ' + (emails.length ? emails.join(' | ') : 'aucun');
+
+            const activeLine = document.createElement('div');
+            activeLine.className = 'support-meta-line';
+            activeLine.textContent =
+              'User actif: ' + String(item?.activeUserId || 'inconnu');
+
+            const signupLine = document.createElement('div');
+            signupLine.className = 'support-meta-line';
+            signupLine.textContent =
+              'Inscription user actif: ' +
+              formatAdminDate(item?.activeUserCreatedAt);
+
+            const chip = document.createElement('div');
+            chip.className = 'support-chip';
+            const eur = Number(item?.totalSimulatedEur || 0);
+            chip.textContent = `Total simule: ${eur.toFixed(4)} EUR`;
+
+            card.appendChild(activity);
+            card.appendChild(title);
+            card.appendChild(superIdLine);
+            card.appendChild(count);
+            card.appendChild(emailLine);
+            card.appendChild(activeLine);
+            card.appendChild(signupLine);
+            card.appendChild(chip);
+
+            card.addEventListener('click', () => {
+              openSupportCaseModal(item);
+            });
+            card.addEventListener('keydown', (event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                openSupportCaseModal(item);
+              }
+            });
+
+            resultWrap.appendChild(card);
+          });
+        };
+
+        const loadCases = async () => {
+          const emailQuery = String(searchInput.value || '').trim();
+          resultWrap.innerHTML =
+            '<div class="loading">Chargement des dossiers SAV...</div>';
+
+          const params = new URLSearchParams();
+          if (emailQuery) {
+            params.set('email', emailQuery);
+          }
+
+          const url = params.toString()
+            ? '/api/admin/support-cases?' + params.toString()
+            : '/api/admin/support-cases';
+
+          try {
+            const res = await fetchWithTimeout(url);
+            const response = await readAdminJsonResponse(res);
+
+            if (response.redirectedToLogin) {
+              resultWrap.innerHTML =
+                '<div class="error">Session admin expiree. Redirection...</div>';
+              return;
+            }
+
+            if (!res.ok || !response.isJson) {
+              const message =
+                typeof response.data?.error === 'string'
+                  ? response.data.error
+                  : 'Erreur chargement dossiers SAV';
+              resultWrap.innerHTML = '<div class="error">' + message + '</div>';
+              return;
+            }
+
+            renderCases(response.data?.cases || []);
+          } catch (err) {
+            const msg =
+              err && err.name === 'AbortError'
+                ? 'Le serveur ne repond pas a temps.'
+                : 'Erreur chargement dossiers SAV: ' +
+                  (err?.message || 'inconnue');
+            resultWrap.innerHTML = '<div class="error">' + msg + '</div>';
+          }
+        };
+
+        searchInput.addEventListener('input', () => {
+          if (debounceTimer) {
+            clearTimeout(debounceTimer);
+          }
+          debounceTimer = setTimeout(() => {
+            loadCases();
+          }, 220);
+        });
+
+        await loadCases();
+      }
+
+      function renderInitError(error) {
+        const list = document.getElementById('list');
+        const message =
+          error && error.message
+            ? error.message
+            : String(error || 'Erreur inconnue');
+        list.innerHTML =
+          '<div class="error">Erreur d\'initialisation admin: ' +
+          message +
+          '</div>';
+      }
+
+      async function init() {
+        const list = document.getElementById('list');
+        list.textContent = 'Verification de l\'acces SAV...';
+
+        const hasSession = await ensureSupportAdminSession();
+        if (!hasSession) {
+          return;
+        }
+
+        setupRootBackToAdmin();
+        await loadSupportCases();
+      }
+
+      window.addEventListener('error', (event) => {
+        renderInitError(event.error || event.message || 'Erreur JavaScript');
+      });
+
+      window.addEventListener('unhandledrejection', (event) => {
+        renderInitError(event.reason || 'Promesse rejetee');
+      });
+
+      document.addEventListener('DOMContentLoaded', () => {
+        init().catch(renderInitError);
+      });
+    </script>
+  </body>
+</html>

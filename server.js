@@ -942,6 +942,10 @@ app.get('/health', (req, res) => {
 });
 
 app.get('/admin.html', requireAdminAuth, (req, res) => {
+  if (String(req.query.view || '').trim().toLowerCase() === 'support') {
+    return res.redirect('/support-admin.html');
+  }
+
   res.setHeader(
     'Cache-Control',
     'no-store, no-cache, must-revalidate, proxy-revalidate'
@@ -949,6 +953,26 @@ app.get('/admin.html', requireAdminAuth, (req, res) => {
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
   res.sendFile(__dirname + '/public/admin.html');
+});
+
+app.get('/support-admin.html', requireSupportAdminAuth, (req, res) => {
+  res.setHeader(
+    'Cache-Control',
+    'no-store, no-cache, must-revalidate, proxy-revalidate'
+  );
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.sendFile(__dirname + '/public/support-admin.html');
+});
+
+app.get('/facilitation-admin.html', requireFacilitationAdminAuth, (req, res) => {
+  res.setHeader(
+    'Cache-Control',
+    'no-store, no-cache, must-revalidate, proxy-revalidate'
+  );
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.sendFile(__dirname + '/public/facilitation-admin.html');
 });
 
 // Android TWA verification endpoint.
@@ -1095,6 +1119,19 @@ function normalizeAdminScope(scope = 'full') {
   return scope === 'review' ? 'review' : 'full';
 }
 
+function buildProfessionalAccessCapabilities(scope = 'full') {
+  const normalizedScope = normalizeAdminScope(scope);
+  const hasFullProfessionalAccess = normalizedScope !== 'review';
+
+  return {
+    canBypassPhoneGate: true,
+    canUseAdminUi: hasFullProfessionalAccess,
+    canAccessAdminConversations: hasFullProfessionalAccess,
+    canAccessSupportCases: hasFullProfessionalAccess,
+    canAccessFacilitationAdmin: hasFullProfessionalAccess
+  };
+}
+
 function buildAdminSessionToken(options = {}) {
   const createdAt = Number(options.createdAt || Date.now());
   const scope = normalizeAdminScope(options.scope);
@@ -1148,8 +1185,7 @@ function parseAndValidateAdminSessionToken(token) {
     isAdmin: true,
     createdAt,
     scope,
-    canBypassPhoneGate: true,
-    canUseAdminUi: scope !== 'review'
+    ...buildProfessionalAccessCapabilities(scope)
   };
 }
 
@@ -1787,7 +1823,29 @@ function warnRuntimeContract(label, issues, context = {}) {
 function requireAdminAuth(req, res, next) {
   const session = getAdminSession(req);
 
-  if (!session || session.canUseAdminUi !== true) {
+  if (!session || session.canAccessAdminConversations !== true) {
+    const nextUrl = encodeURIComponent(req.originalUrl);
+    return res.redirect(`/admin-login.html?next=${nextUrl}`);
+  }
+  adminVisitedSinceLastAlert = true;
+  next();
+}
+
+function requireSupportAdminAuth(req, res, next) {
+  const session = getAdminSession(req);
+
+  if (!session || session.canAccessSupportCases !== true) {
+    const nextUrl = encodeURIComponent(req.originalUrl);
+    return res.redirect(`/admin-login.html?next=${nextUrl}`);
+  }
+  adminVisitedSinceLastAlert = true;
+  next();
+}
+
+function requireFacilitationAdminAuth(req, res, next) {
+  const session = getAdminSession(req);
+
+  if (!session || session.canAccessFacilitationAdmin !== true) {
     const nextUrl = encodeURIComponent(req.originalUrl);
     return res.redirect(`/admin-login.html?next=${nextUrl}`);
   }
@@ -2757,6 +2815,11 @@ app.get('/api/admin/session', async (req, res) => {
       authenticated: true,
       canBypassPhoneGate: session.canBypassPhoneGate === true,
       canUseAdminUi,
+      canAccessAdminConversations:
+        session.canAccessAdminConversations === true,
+      canAccessSupportCases: session.canAccessSupportCases === true,
+      canAccessFacilitationAdmin:
+        session.canAccessFacilitationAdmin === true,
       settings: {
         mailsEnabled: canUseAdminUi ? getCachedAdminMailsEnabled() : false
       }
@@ -2827,8 +2890,7 @@ app.post('/api/admin/login', (req, res) => {
     isAdmin: true,
     createdAt: Date.now(),
     scope: sessionScope,
-    canBypassPhoneGate: true,
-    canUseAdminUi: sessionScope !== 'review'
+    ...buildProfessionalAccessCapabilities(sessionScope)
   });
 
   res.setHeader(

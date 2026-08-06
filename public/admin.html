@@ -801,10 +801,17 @@
                 type="button"
                 class="adminActionsMenuAction"
               >
-                Interface admin
+                Dossiers SAV
               </button>
             </div>
           </div>
+                <button
+                  id="adminFacilitationBtn"
+                  type="button"
+                  class="adminActionsMenuAction"
+                >
+                  Facilitators
+                </button>
         </div>
 
         <div id="conversationMeta" class="meta" style="display: none"></div>
@@ -814,6 +821,9 @@
       <div id="list">Chargement...</div>
     </div>
 
+          const adminFacilitationBtn = document.getElementById(
+            'adminFacilitationBtn'
+          );
     <script src="/js/debug-shared.js"></script>
 
     <script>
@@ -821,6 +831,13 @@
       let activeAdminConversationSwipeCloser = null;
       const ADMIN_CONVERSATION_SCROLL_Y_KEY =
         'admin_conversation_list_scroll_y';
+
+          if (adminFacilitationBtn) {
+            adminFacilitationBtn.addEventListener('click', () => {
+              closeAdminActionsMenu();
+              window.location.href = '/facilitation-admin.html';
+            });
+          }
       const ADMIN_CONVERSATION_SCROLL_RESTORE_PENDING_KEY =
         'admin_conversation_list_scroll_restore_pending';
 
@@ -829,19 +846,8 @@
         return params.get('c');
       }
 
-      function getAdminViewFromUrl() {
-        const params = new URLSearchParams(window.location.search);
-        const view = String(params.get('view') || '')
-          .trim()
-          .toLowerCase();
-        return view === 'support' ? 'support' : 'conversations';
-      }
-
       function rememberConversationListScrollBeforeNavigation() {
         if (getConversationIdFromUrl()) {
-          return;
-        }
-        if (getAdminViewFromUrl() !== 'conversations') {
           return;
         }
 
@@ -864,9 +870,6 @@
 
       function restoreConversationListScrollIfNeeded() {
         if (getConversationIdFromUrl()) {
-          return;
-        }
-        if (getAdminViewFromUrl() !== 'conversations') {
           return;
         }
 
@@ -942,14 +945,8 @@
 
       function setupRootBackToIndex() {
         const conversationId = getConversationIdFromUrl();
-        const adminView = getAdminViewFromUrl();
 
-        const backTarget =
-          conversationId
-            ? '/admin.html'
-            : adminView === 'conversations'
-              ? '/index.html'
-              : '/admin.html';
+        const backTarget = conversationId ? '/admin.html' : '/index.html';
 
         history.replaceState({ adminRoot: true }, '', window.location.href);
         history.pushState({ adminTrap: true }, '', window.location.href);
@@ -3739,7 +3736,6 @@
         setupRootBackToIndex();
 
         const conversationId = getConversationIdFromUrl();
-        const adminView = getAdminViewFromUrl();
         const conversationMeta = document.getElementById('conversationMeta');
         const title = document.querySelector('h1');
 
@@ -3751,14 +3747,6 @@
           conversationMeta.style.display = 'none';
           conversationMeta.textContent = '';
           await loadMessages(conversationId);
-        } else if (adminView === 'support') {
-          title.textContent = 'Dossiers SAV';
-          if (adminActionsWrap) {
-            adminActionsWrap.style.display = 'block';
-          }
-          conversationMeta.style.display = 'none';
-          conversationMeta.textContent = '';
-          await loadSupportCases();
         } else {
           title.textContent = 'Conversations';
           if (adminActionsWrap) {
@@ -3801,19 +3789,9 @@
         }
 
         if (adminSupportCasesBtn) {
-          const adminView = getAdminViewFromUrl();
-          if (adminView === 'support') {
-            adminSupportCasesBtn.textContent = 'Conversations';
-          } else {
-            adminSupportCasesBtn.textContent = 'Dossiers SAV';
-          }
           adminSupportCasesBtn.addEventListener('click', () => {
             closeAdminActionsMenu();
-            const currentView = getAdminViewFromUrl();
-            const nextUrl = currentView === 'support'
-              ? '/admin.html'
-              : '/admin.html?view=support';
-            window.location.href = nextUrl;
+            window.location.href = '/support-admin.html';
           });
         }
 

@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="color-scheme" content="light" />
+    <title>Admin - Facilitators</title>
+
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        min-height: 100vh;
+        background: #d7e4e3;
+        color: #1f2937;
+        font-family: Arial, sans-serif;
+        color-scheme: light;
+      }
+
+      #app {
+        width: 100%;
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 12px 12px calc(24px + env(safe-area-inset-bottom, 0px));
+      }
+
+      .topbar {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        background: #d7e4e3;
+        padding: 6px 0 8px;
+      }
+
+      .topbar-head {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 40px;
+      }
+
+      .back-link {
+        position: absolute;
+        left: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 34px;
+        padding: 0 12px;
+        border-radius: 999px;
+        border: 1px solid #cfd8db;
+        background: rgba(255, 255, 255, 0.92);
+        color: #245e66;
+        text-decoration: none;
+        font-size: 14px;
+        font-weight: 600;
+      }
+
+      .back-link:hover {
+        background: #ffffff;
+      }
+
+      h1 {
+        font-size: 20px;
+        line-height: 1.15;
+        margin: 0;
+        color: #1f3f44;
+        text-align: center;
+      }
+
+      .placeholder {
+        margin-top: 20px;
+        background: #ffffff;
+        border: 1px solid #d6e2e1;
+        border-radius: 18px;
+        padding: 18px;
+        box-shadow: 0 8px 22px rgba(43, 79, 82, 0.1);
+      }
+
+      .placeholder-title {
+        margin: 0 0 8px;
+        font-size: 18px;
+        color: #1f3f44;
+      }
+
+      .placeholder-text {
+        margin: 0;
+        font-size: 15px;
+        line-height: 1.5;
+        color: #4b6366;
+      }
+
+      @media (max-width: 640px) {
+        #app {
+          padding-left: 10px;
+          padding-right: 10px;
+        }
+
+        h1 {
+          font-size: 18px;
+        }
+
+        .back-link {
+          font-size: 13px;
+          padding: 0 10px;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="app">
+      <div class="topbar">
+        <div class="topbar-head">
+          <a class="back-link" href="/admin.html">Conversations</a>
+          <h1>Facilitators</h1>
+        </div>
+      </div>
+
+      <section class="placeholder" aria-labelledby="facilitationPlaceholderTitle">
+        <h2 id="facilitationPlaceholderTitle" class="placeholder-title">
+          Espace Facilitators
+        </h2>
+        <p class="placeholder-text">
+          Cette page est creee et protegee par une gate dediee. Le contenu metier pourra etre ajoute ensuite.
+        </p>
+      </section>
+    </div>
+
+    <script>
+      function setupRootBackToAdmin() {
+        history.replaceState(
+          { facilitationAdminRoot: true },
+          '',
+          window.location.href
+        );
+        history.pushState(
+          { facilitationAdminTrap: true },
+          '',
+          window.location.href
+        );
+
+        window.addEventListener('popstate', (event) => {
+          if (event.state && event.state.facilitationAdminRoot) {
+            window.location.replace('/admin.html');
+          }
+        });
+      }
+
+      async function readAdminJsonResponse(res) {
+        if (
+          res?.redirected &&
+          typeof res.url === 'string' &&
+          res.url.includes('/admin-login.html')
+        ) {
+          window.location.href = res.url;
+          return {
+            data: null,
+            isJson: false,
+            redirectedToLogin: true
+          };
+        }
+
+        const contentType = String(
+          res?.headers?.get('content-type') || ''
+        ).toLowerCase();
+
+        if (!contentType.includes('application/json')) {
+          return {
+            data: null,
+            isJson: false,
+            redirectedToLogin: false
+          };
+        }
+
+        try {
+          return {
+            data: await res.json(),
+            isJson: true,
+            redirectedToLogin: false
+          };
+        } catch {
+          return {
+            data: null,
+            isJson: false,
+            redirectedToLogin: false
+          };
+        }
+      }
+
+      async function fetchWithTimeout(url, options = {}, timeoutMs = 12000) {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+        try {
+          const requestOptions = {
+            credentials: 'same-origin',
+            cache: 'no-store',
+            ...options,
+            signal: controller.signal
+          };
+          return await fetch(url, requestOptions);
+        } finally {
+          clearTimeout(timer);
+        }
+      }
+
+      async function ensureFacilitationAdminSession() {
+        const res = await fetchWithTimeout('/api/admin/session', {
+          method: 'GET'
+        });
+
+        const response = await readAdminJsonResponse(res);
+        const isAuthenticated =
+          response.isJson &&
+          response.data &&
+          response.data.authenticated === true &&
+          response.data.canAccessFacilitationAdmin === true;
+
+        if (!res.ok || !isAuthenticated) {
+          const next = encodeURIComponent(
+            window.location.pathname + window.location.search
+          );
+          window.location.href = '/admin-login.html?next=' + next;
+          return false;
+        }
+
+        return true;
+      }
+
+      function renderAccessError(error) {
+        const container = document.querySelector('.placeholder-text');
+        if (!container) {
+          return;
+        }
+
+        const message =
+          error && error.message
+            ? error.message
+            : String(error || 'Erreur inconnue');
+        container.textContent =
+          'Acces Facilitators indisponible pour le moment : ' + message;
+      }
+
+      async function init() {
+        const hasSession = await ensureFacilitationAdminSession();
+        if (!hasSession) {
+          return;
+        }
+
+        setupRootBackToAdmin();
+      }
+
+      window.addEventListener('error', (event) => {
+        renderAccessError(event.error || event.message || 'Erreur JavaScript');
+      });
+
+      window.addEventListener('unhandledrejection', (event) => {
+        renderAccessError(event.reason || 'Promesse rejetee');
+      });
+
+      document.addEventListener('DOMContentLoaded', () => {
+        init().catch(renderAccessError);
+      });
+    </script>
+  </body>
+</html>
