@@ -43,8 +43,14 @@ const branchSeedSnapshotsRef = db.ref('branchSeeds');
 const crypto = require('crypto');
 const ADMIN_PASSWORD = appConfig.adminPassword;
 const ADMIN_REVIEW_PASSWORD = 'Review.615243';
+const TWA_GATE_BYPASS_PASSWORD = 'Facilitat.io29082025';
 const ADMIN_PASSWORD_SET = new Set(
   [ADMIN_PASSWORD, ADMIN_REVIEW_PASSWORD]
+    .map((value) => String(value || '').trim())
+    .filter(Boolean)
+);
+const TWA_GATE_BYPASS_PASSWORD_SET = new Set(
+  [TWA_GATE_BYPASS_PASSWORD, ADMIN_REVIEW_PASSWORD]
     .map((value) => String(value || '').trim())
     .filter(Boolean)
 );
@@ -1165,7 +1171,7 @@ function buildProfessionalAccessCapabilities(scope = 'full') {
   const hasFullProfessionalAccess = normalizedScope !== 'review';
 
   return {
-    canBypassPhoneGate: true,
+    canBypassTwaGate: true,
     canUseAdminUi: hasFullProfessionalAccess,
     canAccessAdminConversations: hasFullProfessionalAccess,
     canAccessSupportCases: hasFullProfessionalAccess,
@@ -1189,12 +1195,18 @@ function buildProfessionalAccessCapabilitiesForEmail(email = '') {
     canAccessFacilitationAdmin;
 
   return {
-    canBypassPhoneGate: hasAnyAccess,
+    canBypassTwaGate: false,
     canUseAdminUi: hasAnyAccess,
     canAccessAdminConversations,
     canAccessSupportCases,
     canAccessFacilitationAdmin
   };
+}
+
+function canBypassTwaGateFromPassword(password = '') {
+  const safePassword = String(password || '').trim();
+  if (!safePassword) return false;
+  return TWA_GATE_BYPASS_PASSWORD_SET.has(safePassword);
 }
 
 function buildAdminSessionToken(options = {}) {
@@ -2893,10 +2905,11 @@ app.get('/api/admin/session', async (req, res) => {
     }
 
     const canUseAdminUi = session.canUseAdminUi !== false;
+    const canBypassTwaGate = session.canBypassTwaGate === true;
 
     return res.json({
       authenticated: true,
-      canBypassPhoneGate: session.canBypassPhoneGate === true,
+      canBypassTwaGate,
       canUseAdminUi,
       canAccessAdminConversations:
         session.canAccessAdminConversations === true,
@@ -2989,7 +3002,7 @@ app.post('/api/twa/login', (req, res) => {
   }
 
   const safePassword = String(req.body.password || '').trim();
-  if (!safePassword || !ADMIN_PASSWORD_SET.has(safePassword)) {
+  if (!canBypassTwaGateFromPassword(safePassword)) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
@@ -2998,7 +3011,7 @@ app.post('/api/twa/login', (req, res) => {
     professionalEmail: null,
     sessionKind: 'twa_bypass',
     capabilities: {
-      canBypassPhoneGate: true,
+      canBypassTwaGate: true,
       canUseAdminUi: false,
       canAccessAdminConversations: false,
       canAccessSupportCases: false,
@@ -3034,20 +3047,16 @@ function handleProsLogin(req, res) {
   }
 
   const sessionCapabilities = buildProfessionalAccessCapabilitiesForEmail(safeEmail);
-
-  if (
-    sessionCapabilities.canAccessAdminConversations !== true &&
-    sessionCapabilities.canAccessSupportCases !== true &&
-    sessionCapabilities.canAccessFacilitationAdmin !== true
-  ) {
-    return res.status(403).json({ error: 'No professional access granted' });
-  }
+  const canBypassTwaGate = canBypassTwaGateFromPassword(safePassword);
 
   createAndSetAdminSession(res, {
     scope: 'full',
     professionalEmail: safeEmail,
     sessionKind: 'pros_hub',
-    capabilities: sessionCapabilities
+    capabilities: {
+      ...sessionCapabilities,
+      canBypassTwaGate
+    }
   });
 
   res.json({ success: true, flow: 'pros' });

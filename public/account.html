@@ -1326,6 +1326,7 @@
           if (hasImportableConversations()) {
             main.appendChild(buildLocalImportCard());
           }
+          main.appendChild(buildWelcomeAnimationPreferenceCard());
           main.appendChild(buildPrivacyEntryCard());
           main.appendChild(buildDangerZoneCard());
         }
@@ -2710,7 +2711,6 @@
           wrap.appendChild(header);
 
           wrap.appendChild(buildPrivateDefaultCard());
-          wrap.appendChild(buildWelcomeAnimationPreferenceCard());
           wrap.appendChild(buildBiometricLockCard());
           wrap.appendChild(buildPasswordCard());
 

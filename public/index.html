@@ -3935,7 +3935,7 @@
         const fallback = {
           authenticated: false,
           canUseAdminUi: false,
-          canBypassPhoneGate: false
+          canBypassTwaGate: false
         };
 
         try {
@@ -3951,8 +3951,8 @@
           const data = await parseAppJsonResponseSafely(res);
           const isAuthenticated = data && data.authenticated === true;
           const canUseAdminUi = isAuthenticated && data?.canUseAdminUi === true;
-          const canBypassPhoneGate =
-            isAuthenticated && data?.canBypassPhoneGate === true;
+          const canBypassTwaGate =
+            isAuthenticated && data?.canBypassTwaGate === true;
 
           if (
             canUseAdminUi &&
@@ -3968,22 +3968,22 @@
           return {
             authenticated: isAuthenticated,
             canUseAdminUi,
-            canBypassPhoneGate
+            canBypassTwaGate
           };
         } catch {
           return fallback;
         }
       }
 
-      async function enforcePhoneOnlyAccessGate({
+      async function enforceTwaDeviceGate({
         isAdminUI = false,
-        canBypassPhoneGate = false
+        canBypassTwaGate = false
       } = {}) {
         if (isTwaRuntimeContext()) {
           return true;
         }
 
-        if (isAdminUI || canBypassPhoneGate) {
+        if (isAdminUI || canBypassTwaGate) {
           return true;
         }
 
@@ -4711,12 +4711,10 @@
       }
 
       async function syncAdminUiFromSession() {
-        const url = new URL(window.location.href);
-        const wantsAdminUi = url.searchParams.get('adminUi') === '1';
         const adminSession = await hasValidAdminSession();
         const isAuthenticated = adminSession.authenticated === true;
         const canUseAdminUi = adminSession.canUseAdminUi === true;
-        const canBypassPhoneGate = adminSession.canBypassPhoneGate === true;
+        const canBypassTwaGate = adminSession.canBypassTwaGate === true;
 
         if (!isAuthenticated || !canUseAdminUi) {
           localStorage.removeItem(ADMIN_UI_KEY);
@@ -4727,8 +4725,8 @@
             }
           } catch {}
         } else {
-          // Active l'UI admin dï¿½s qu'une session valide existe,
-          // que ce soit via ?adminUi=1 ou un retour depuis admin.html
+          // Active l'UI admin des qu'une session valide existe
+          // (retour depuis les interfaces professionnelles).
           safeSetLocalStorage(ADMIN_UI_KEY, '1', 'syncAdminUiFromSession');
         }
 
@@ -4745,18 +4743,11 @@
           }
         }
 
-        if (url.searchParams.has('adminUi')) {
-          url.searchParams.delete('adminUi');
-          const nextSearch = url.searchParams.toString();
-          const nextUrl = `${url.pathname}${nextSearch ? `?${nextSearch}` : ''}${url.hash || ''}`;
-          history.replaceState(history.state || {}, '', nextUrl);
-        }
-
         syncAdminAccessModeFromUrlAndSession({ isAdminAuthenticated: canUseAdminUi });
 
         return {
           isAdminUI,
-          canBypassPhoneGate
+          canBypassTwaGate
         };
       }
 
@@ -15237,13 +15228,10 @@
         const adminUiContext = await syncAdminUiFromSession();
         const isAdminUI = adminUiContext.isAdminUI === true;
 
-        await enforcePhoneOnlyAccessGate({
+        await enforceTwaDeviceGate({
           isAdminUI,
-          canBypassPhoneGate: adminUiContext.canBypassPhoneGate === true
+          canBypassTwaGate: adminUiContext.canBypassTwaGate === true
         });
-
-        const shouldSkipWelcomeAnimation =
-          isAdminUI || isWelcomeAnimationSkipEnabled();
 
         const loadUrl = new URL(window.location.href);
         const replayRequested = loadUrl.searchParams.get('adminReplay') === '1';
@@ -15934,7 +15922,10 @@
         function showWelcome() {
           setWelcomeLockedState(false);
 
-          if (shouldSkipWelcomeAnimation) {
+          const shouldSkipWelcomeAnimationNow =
+            isWelcomeAnimationSkipEnabled();
+
+          if (shouldSkipWelcomeAnimationNow) {
             clearWelcomeRitualTimers();
             prepareWelcomeScreenStatic();
             showScreen('welcomeScreen', {

@@ -53,73 +53,6 @@
         min-height: 40px;
       }
 
-      #adminActionsWrap {
-        position: absolute;
-        right: 0;
-        top: 50%;
-        transform: translateY(-50%);
-      }
-
-      #adminActionsBtn {
-        width: 34px;
-        height: 34px;
-        border: none;
-        border-radius: 999px;
-        background: transparent;
-        color: #245e66;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        padding: 0;
-        line-height: 1;
-      }
-
-      #adminActionsBtn svg {
-        width: 20px;
-        height: 20px;
-      }
-
-      #adminActionsBtn:hover {
-        background: rgba(36, 94, 102, 0.1);
-      }
-
-      #adminActionsMenu {
-        display: none;
-        position: absolute;
-        top: 40px;
-        right: 0;
-        min-width: 220px;
-        background: rgba(255, 255, 255, 0.96);
-        border: 1px solid rgba(222, 228, 230, 0.92);
-        border-radius: 18px;
-        box-shadow: 0 14px 28px rgba(20, 36, 40, 0.18);
-        overflow: hidden;
-        z-index: 80;
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
-      }
-
-      .adminActionsMenuAction {
-        width: 100%;
-        border: none;
-        background: transparent;
-        padding: 13px 14px;
-        text-align: left;
-        font: inherit;
-        font-size: 14px;
-        color: #1f3f44;
-        cursor: pointer;
-      }
-
-      .adminActionsMenuAction:hover {
-        background: rgba(36, 94, 102, 0.08);
-      }
-
-      .adminActionsMenuActionDanger {
-        color: #a63a32;
-      }
-
       .support-search-wrap {
         display: flex;
         gap: 8px;
@@ -782,29 +715,6 @@
           >
             Déplier toute la mémoire
           </button>
-          <div id="adminActionsWrap">
-            <button
-              id="adminActionsBtn"
-              type="button"
-              aria-label="Actions admin"
-              aria-expanded="false"
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <circle cx="12" cy="5" r="1.8" fill="currentColor"></circle>
-                <circle cx="12" cy="12" r="1.8" fill="currentColor"></circle>
-                <circle cx="12" cy="19" r="1.8" fill="currentColor"></circle>
-              </svg>
-            </button>
-            <div id="adminActionsMenu">
-              <button
-                id="adminProsHubBtn"
-                type="button"
-                class="adminActionsMenuAction"
-              >
-                Accueil app
-              </button>
-            </div>
-          </div>
         </div>
 
         <div id="conversationMeta" class="meta" style="display: none"></div>
@@ -900,37 +810,10 @@
         });
       }
 
-      function closeAdminActionsMenu() {
-        const menu = document.getElementById('adminActionsMenu');
-        const btn = document.getElementById('adminActionsBtn');
-        if (!menu || !btn) {
-          return;
-        }
-        menu.style.display = 'none';
-        btn.setAttribute('aria-expanded', 'false');
-      }
-
-      function toggleAdminActionsMenu(event) {
-        if (event) {
-          event.preventDefault();
-          event.stopPropagation();
-        }
-
-        const menu = document.getElementById('adminActionsMenu');
-        const btn = document.getElementById('adminActionsBtn');
-        if (!menu || !btn) {
-          return;
-        }
-
-        const shouldOpen = menu.style.display !== 'block';
-        menu.style.display = shouldOpen ? 'block' : 'none';
-        btn.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
-      }
-
       function setupRootBackToIndex() {
         const conversationId = getConversationIdFromUrl();
 
-        const backTarget = conversationId ? '/admin.html' : '/index.html';
+        const backTarget = conversationId ? '/admin.html' : '/pros.html';
 
         history.replaceState({ adminRoot: true }, '', window.location.href);
         history.pushState({ adminTrap: true }, '', window.location.href);
@@ -3710,7 +3593,6 @@
 
       async function init() {
         const list = document.getElementById('list');
-        const adminActionsWrap = document.getElementById('adminActionsWrap');
         list.textContent = 'Verification de la session admin...';
 
         const hasSession = await ensureAdminSession();
@@ -3726,17 +3608,11 @@
 
         if (conversationId) {
           title.textContent = 'Messages';
-          if (adminActionsWrap) {
-            adminActionsWrap.style.display = 'none';
-          }
           conversationMeta.style.display = 'none';
           conversationMeta.textContent = '';
           await loadMessages(conversationId);
         } else {
           title.textContent = 'Conversations';
-          if (adminActionsWrap) {
-            adminActionsWrap.style.display = 'block';
-          }
           conversationMeta.style.display = 'none';
           conversationMeta.textContent = '';
           await loadConversations();
@@ -3764,27 +3640,7 @@
       });
 
       document.addEventListener('DOMContentLoaded', () => {
-        const adminActionsBtn = document.getElementById('adminActionsBtn');
-        const adminProsHubBtn = document.getElementById(
-          'adminProsHubBtn'
-        );
-
-        if (adminActionsBtn) {
-          adminActionsBtn.addEventListener('click', toggleAdminActionsMenu);
-        }
-
-        if (adminProsHubBtn) {
-          adminProsHubBtn.addEventListener('click', () => {
-            closeAdminActionsMenu();
-            window.location.href = '/index.html';
-          });
-        }
-
         document.addEventListener('click', (event) => {
-          if (!event.target.closest('#adminActionsWrap')) {
-            closeAdminActionsMenu();
-          }
-
           if (
             activeAdminConversationSwipeCloser &&
             activeAdminConversationSwipeElement &&
