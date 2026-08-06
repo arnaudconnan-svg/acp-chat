@@ -3543,9 +3543,9 @@
               thumbBadge.style.fontSize = '15px';
               fbRow.appendChild(thumbBadge);
 
-              if (fb.devShare) {
+              if (fb.adminShare || fb.devShare) {
                 const sharedBadge = document.createElement('span');
-                sharedBadge.textContent = 'Transmis au dev';
+                sharedBadge.textContent = 'Transmis a l\'admin';
                 const isNegative = fb.type === 'thumbDown';
                 sharedBadge.style.background = isNegative
                   ? '#fde2e2'

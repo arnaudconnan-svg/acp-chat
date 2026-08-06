@@ -613,6 +613,241 @@ function createEmailNotifier() {
 }
 
 const emailNotifier = createEmailNotifier();
+
+function readPositiveIntegerEnv(name, fallback) {
+  const raw = Number.parseInt(String(process.env[name] || ''), 10);
+  return Number.isInteger(raw) && raw > 0 ? raw : fallback;
+}
+
+function createOffTopicAbuseEmailNotifier() {
+  const notifyTo = String(
+    process.env.SECURITY_ALERT_EMAIL_TO || 'vigilance@facilitat.io'
+  ).trim();
+  const smtpHost = String(process.env.NOTIFY_SMTP_HOST || '').trim();
+  const smtpPort = Number(process.env.NOTIFY_SMTP_PORT || 587);
+  const smtpSecure =
+    String(process.env.NOTIFY_SMTP_SECURE || 'false')
+      .trim()
+      .toLowerCase() === 'true';
+  const smtpUser = String(process.env.NOTIFY_SMTP_USER || '').trim();
+  const smtpPass = String(process.env.NOTIFY_SMTP_PASSWORD || '').trim();
+  const fromAddress = String(process.env.NOTIFY_EMAIL_FROM || smtpUser).trim();
+
+  if (!notifyTo || !smtpHost || !smtpPort || !smtpUser || !smtpPass) {
+    return {
+      enabled: false,
+      sendOffTopicAbuseAlert: async () => false
+    };
+  }
+
+  const transporter = nodemailer.createTransport({
+    host: smtpHost,
+    port: smtpPort,
+    secure: smtpSecure,
+    auth: {
+      user: smtpUser,
+      pass: smtpPass
+    }
+  });
+
+  return {
+    enabled: true,
+    async sendOffTopicAbuseAlert({
+      userId,
+      conversationId,
+      requestId,
+      offTopicInfoPolicy,
+      windowCount,
+      windowStartedAt,
+      threshold,
+      cooldownHours
+    }) {
+      const safeUserId = String(userId || '').trim();
+      if (!safeUserId) return false;
+
+      const startedAtIso =
+        Number.isFinite(windowStartedAt) && windowStartedAt > 0
+          ? new Date(windowStartedAt).toISOString()
+          : null;
+
+      const subject = `[Facilitat.io][Vigilance] Usage hors perimetre repete - ${safeUserId}`;
+      const text = [
+        'Alerte automatique de vigilance (sans contenu message).',
+        '',
+        `userId: ${safeUserId}`,
+        `conversationId: ${String(conversationId || '').trim() || 'unknown'}`,
+        `requestId: ${String(requestId || '').trim() || 'unknown'}`,
+        `policy: ${String(offTopicInfoPolicy || 'none')}`,
+        `windowCount: ${Number.isInteger(windowCount) ? windowCount : 0}`,
+        `windowStartedAt: ${startedAtIso || 'unknown'}`,
+        `threshold: ${threshold}`,
+        `cooldownHours: ${cooldownHours}`,
+        `sentAt: ${new Date().toISOString()}`
+      ].join('\n');
+
+      try {
+        await transporter.sendMail({
+          from: fromAddress,
+          to: notifyTo,
+          subject,
+          text
+        });
+        return true;
+      } catch (err) {
+        logger.error({
+          event: 'off_topic_abuse_email_error',
+          userId: safeUserId,
+          error: err.message
+        });
+        return false;
+      }
+    }
+  };
+}
+
+const OFF_TOPIC_ABUSE_WINDOW_MS =
+  readPositiveIntegerEnv('OFF_TOPIC_ALERT_WINDOW_HOURS', 6) * 60 * 60 * 1000;
+const OFF_TOPIC_ABUSE_THRESHOLD = readPositiveIntegerEnv(
+  'OFF_TOPIC_ALERT_THRESHOLD',
+  6
+);
+const OFF_TOPIC_ABUSE_COOLDOWN_HOURS = readPositiveIntegerEnv(
+  'OFF_TOPIC_ALERT_COOLDOWN_HOURS',
+  24
+);
+const OFF_TOPIC_ABUSE_COOLDOWN_MS =
+  OFF_TOPIC_ABUSE_COOLDOWN_HOURS * 60 * 60 * 1000;
+const offTopicAbuseEmailNotifier = createOffTopicAbuseEmailNotifier();
+
+function normalizeOffTopicAbuseMonitoringState(state) {
+  const safe = state && typeof state === 'object' ? state : {};
+  return {
+    windowStartedAt:
+      Number.isInteger(safe.windowStartedAt) && safe.windowStartedAt > 0
+        ? safe.windowStartedAt
+        : 0,
+    windowCount:
+      Number.isInteger(safe.windowCount) && safe.windowCount > 0
+        ? safe.windowCount
+        : 0,
+    lastSeenAt:
+      Number.isInteger(safe.lastSeenAt) && safe.lastSeenAt > 0
+        ? safe.lastSeenAt
+        : 0,
+    lastAlertAt:
+      Number.isInteger(safe.lastAlertAt) && safe.lastAlertAt > 0
+        ? safe.lastAlertAt
+        : 0,
+    lastAlertRequestId:
+      typeof safe.lastAlertRequestId === 'string' ? safe.lastAlertRequestId : '',
+    lastAlertConversationId:
+      typeof safe.lastAlertConversationId === 'string'
+        ? safe.lastAlertConversationId
+        : '',
+    totalAlertsSent:
+      Number.isInteger(safe.totalAlertsSent) && safe.totalAlertsSent >= 0
+        ? safe.totalAlertsSent
+        : 0
+  };
+}
+
+async function evaluateAndNotifyOffTopicAbuse({
+  userId,
+  conversationId,
+  requestId,
+  offTopicInfoPolicy
+}) {
+  const safeUserId = String(userId || '').trim();
+  if (!safeUserId || safeUserId === 'u_anon') {
+    return;
+  }
+
+  if (
+    offTopicInfoPolicy !== 'out_of_scope_recenter' &&
+    offTopicInfoPolicy !== 'out_of_scope_micro_bridge_then_recenter'
+  ) {
+    return;
+  }
+
+  const now = Date.now();
+  const userAbuseRef = usersRef.child(safeUserId).child('offTopicAbuseMonitoring');
+  let shouldSendAlert = false;
+  let txState = null;
+
+  try {
+    const txResult = await userAbuseRef.transaction((current) => {
+      const safe = normalizeOffTopicAbuseMonitoringState(current);
+      const inWindow =
+        safe.windowStartedAt > 0 && now - safe.windowStartedAt <= OFF_TOPIC_ABUSE_WINDOW_MS;
+      const nextWindowStartedAt = inWindow ? safe.windowStartedAt : now;
+      const nextWindowCount = inWindow ? safe.windowCount + 1 : 1;
+
+      const cooldownReady =
+        safe.lastAlertAt <= 0 || now - safe.lastAlertAt >= OFF_TOPIC_ABUSE_COOLDOWN_MS;
+      const thresholdReached = nextWindowCount >= OFF_TOPIC_ABUSE_THRESHOLD;
+
+      shouldSendAlert = cooldownReady && thresholdReached;
+
+      return {
+        windowStartedAt: nextWindowStartedAt,
+        windowCount: nextWindowCount,
+        lastSeenAt: now,
+        lastAlertAt: shouldSendAlert ? now : safe.lastAlertAt,
+        lastAlertRequestId: shouldSendAlert
+          ? String(requestId || '').trim()
+          : safe.lastAlertRequestId,
+        lastAlertConversationId: shouldSendAlert
+          ? String(conversationId || '').trim()
+          : safe.lastAlertConversationId,
+        totalAlertsSent: shouldSendAlert
+          ? safe.totalAlertsSent + 1
+          : safe.totalAlertsSent
+      };
+    });
+
+    if (!txResult || txResult.committed !== true || !txResult.snapshot) {
+      return;
+    }
+
+    txState = normalizeOffTopicAbuseMonitoringState(txResult.snapshot.val());
+  } catch (err) {
+    logger.error({
+      event: 'off_topic_abuse_monitoring_tx_error',
+      userId: safeUserId,
+      error: err.message
+    });
+    return;
+  }
+
+  if (!shouldSendAlert || offTopicAbuseEmailNotifier.enabled !== true) {
+    return;
+  }
+
+  const sent = await offTopicAbuseEmailNotifier.sendOffTopicAbuseAlert({
+    userId: safeUserId,
+    conversationId,
+    requestId,
+    offTopicInfoPolicy,
+    windowCount: txState ? txState.windowCount : 0,
+    windowStartedAt: txState ? txState.windowStartedAt : 0,
+    threshold: OFF_TOPIC_ABUSE_THRESHOLD,
+    cooldownHours: OFF_TOPIC_ABUSE_COOLDOWN_HOURS
+  });
+
+  if (sent) {
+    logger.warn({
+      event: 'off_topic_abuse_alert_sent',
+      userId: safeUserId,
+      conversationId: String(conversationId || '').trim() || null,
+      requestId: String(requestId || '').trim() || null,
+      offTopicInfoPolicy,
+      windowCount: txState ? txState.windowCount : null,
+      threshold: OFF_TOPIC_ABUSE_THRESHOLD,
+      cooldownHours: OFF_TOPIC_ABUSE_COOLDOWN_HOURS
+    });
+  }
+}
+
 const REVIEW_USER_IDS = new Set([
   'u_be427bb5b738c711b0726703',
   'u_ed6c766b0b8666541bf999ed',
@@ -4728,6 +4963,8 @@ function normalizeFeedbackForRead(rawFeedback) {
         : null,
     comment:
       typeof rawFeedback.comment === 'string' ? rawFeedback.comment : null,
+    adminShare:
+      rawFeedback.adminShare === true || rawFeedback.devShare === true,
     devShare: rawFeedback.devShare === true,
     timestamp:
       typeof rawFeedback.timestamp === 'number' ? rawFeedback.timestamp : null,
@@ -4736,7 +4973,7 @@ function normalizeFeedbackForRead(rawFeedback) {
 }
 
 // Store feedback (thumbUp/thumbDown + optional comment) on an existing message.
-// If devShare is false, the call should not reach this endpoint - frontend handles locally only.
+// If adminShare is false, the call should not reach this endpoint - frontend handles locally only.
 app.post('/api/messages/:id/feedback', async (req, res) => {
   try {
     const messageId = String(req.params?.id || '').trim();
@@ -4758,9 +4995,10 @@ app.post('/api/messages/:id/feedback', async (req, res) => {
     const rawComment =
       typeof req.body.comment === 'string' ? req.body.comment.trim() : '';
     const comment = rawComment.slice(0, 1000); // Bound comment length
-    const devShare = req.body.devShare === true;
-    if (!devShare) {
-      return res.status(400).json({ error: 'devShare must be true' });
+    const adminShare =
+      req.body.adminShare === true || req.body.devShare === true;
+    if (!adminShare) {
+      return res.status(400).json({ error: 'adminShare must be true' });
     }
     const mailsEnabled = req.body?.mailsEnabled !== false;
     const adminUiActive = req.body?.adminUiActive === true;
@@ -4811,7 +5049,8 @@ app.post('/api/messages/:id/feedback', async (req, res) => {
     const feedback = {
       type,
       comment: comment || null,
-      devShare,
+      adminShare,
+      devShare: adminShare,
       userId: userId || null,
       timestamp: Date.now(),
       context: feedbackContext
@@ -4841,7 +5080,7 @@ app.post('/api/messages/:id/feedback', async (req, res) => {
     console.log('[FEEDBACK]', {
       messageId,
       type,
-      devShare,
+      adminShare,
       userId: userId || 'anon'
     });
     return res.json({ success: true, messageId, feedback });
@@ -4870,9 +5109,10 @@ app.post('/api/branches/feedback-snapshot', async (req, res) => {
     const rawComment =
       typeof req.body.comment === 'string' ? req.body.comment.trim() : '';
     const comment = rawComment.slice(0, 1000);
-    const devShare = req.body.devShare === true;
-    if (!devShare) {
-      return res.status(400).json({ error: 'devShare must be true' });
+    const adminShare =
+      req.body.adminShare === true || req.body.devShare === true;
+    if (!adminShare) {
+      return res.status(400).json({ error: 'adminShare must be true' });
     }
     const mailsEnabled = req.body?.mailsEnabled !== false;
     const adminUiActive = req.body?.adminUiActive === true;
@@ -4975,7 +5215,8 @@ app.post('/api/branches/feedback-snapshot', async (req, res) => {
       feedback: {
         type,
         comment: comment || null,
-        devShare,
+        adminShare,
+        devShare: adminShare,
         userId: userId || null,
         timestamp: Date.now(),
         context: feedbackContext
@@ -5004,7 +5245,7 @@ app.post('/api/branches/feedback-snapshot', async (req, res) => {
     console.log('[FEEDBACK_SNAPSHOT]', {
       snapshotConversationId,
       type,
-      devShare,
+      adminShare,
       userId: userId || 'anon'
     });
 
@@ -6223,6 +6464,9 @@ app.get(
                       typeof value.feedback.comment === 'string'
                         ? value.feedback.comment
                         : null,
+                    adminShare:
+                      value.feedback.adminShare === true ||
+                      value.feedback.devShare === true,
                     devShare: value.feedback.devShare === true,
                     timestamp:
                       typeof value.feedback.timestamp === 'number'
@@ -10108,6 +10352,20 @@ Reponds strictement en JSON: {"items": ["..."]}
         postureDecision;
 
       Object.assign(newFlags, postureDecision.flagUpdates);
+
+      evaluateAndNotifyOffTopicAbuse({
+        userId,
+        conversationId,
+        requestId,
+        offTopicInfoPolicy: postureDecision.offTopicInfoPolicy
+      }).catch((err) => {
+        logger.error({
+          event: 'off_topic_abuse_monitoring_unhandled_error',
+          userId: String(userId || '').trim() || null,
+          requestId,
+          error: err && err.message ? err.message : String(err)
+        });
+      });
 
       // Observabilite: garder ce signal pour les logs pipeline.
       const hadEmptyOngoingBeforeTurn =

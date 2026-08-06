@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
@@ -326,7 +326,7 @@
         margin-top: 0px;
       }
 
-      #welcomeDevAccessWrap {
+      #welcomeAdminAccessWrap {
         min-height: 0;
         opacity: 1;
         transform: none;
@@ -2016,8 +2016,8 @@
         text-decoration: underline;
       }
 
-      /* Annule les marges par dÃ©faut des Ã©lÃ©ments HTML gÃ©nÃ©rÃ©s par Markdown
-   uniquement Ã  lâ€™intÃ©rieur des bulles du bot */
+      /* Annule les marges par dÃƒÂ©faut des ÃƒÂ©lÃƒÂ©ments HTML gÃƒÂ©nÃƒÂ©rÃƒÂ©s par Markdown
+   uniquement ÃƒÂ  lÃ¢â‚¬â„¢intÃƒÂ©rieur des bulles du bot */
       .bot .bubble p,
       .bot .bubble h1,
       .bot .bubble h2,
@@ -2042,7 +2042,7 @@
     .bot .bubble ul ul,
     .bot .bubble ol ol
 
-    /* petit Ã©cart entre deux Ã©lÃ©ments, si besoin */ {
+    /* petit ÃƒÂ©cart entre deux ÃƒÂ©lÃƒÂ©ments, si besoin */ {
         margin-top: 18px;
       }
 
@@ -2050,7 +2050,7 @@
         margin-top: 6px;
       }
 
-      /* Dans tes rÃ¨gles spÃ©cifiques bot */
+      /* Dans tes rÃƒÂ¨gles spÃƒÂ©cifiques bot */
       .bot .bubble br:last-child {
         display: none;
       }
@@ -2531,13 +2531,13 @@
                 ?
               </button>
 
-              <div id="welcomeDevAccessWrap">
+              <div id="welcomeAdminAccessWrap">
                 <button
-                  id="welcomeDevAccessBtn"
+                  id="welcomeAdminAccessBtn"
                   class="welcomeBtnTertiary"
                   type="button"
-                  aria-label="Acc&egrave;s admin"
-                  title="Acc&egrave;s admin"
+                  aria-label="Acc&egrave;s professionnels"
+                  title="Acc&egrave;s professionnels"
                 >
                   &#9881;
                 </button>
@@ -2549,18 +2549,18 @@
       </div>
     </div>
 
-    <div id="devAccessModal" class="modal">
+    <div id="adminAccessModal" class="modal">
       <div class="modalBox">
-        <h3 class="modalTitle">Acc&egrave;s d&eacute;veloppeur</h3>
+        <h3 class="modalTitle">Acc&egrave;s professionnels</h3>
         <p class="modalText">Choisis l'interface &agrave; ouvrir.</p>
 
         <div class="modalActions modalActionsStack">
           <button
-            id="devAccessPrimaryBtn"
+            id="adminAccessPrimaryBtn"
             class="modalBtnPrimary"
             type="button"
           >
-            Passer admin
+            Acces professionnels
           </button>
           <button
             class="modalBtnSecondary"
@@ -2574,7 +2574,7 @@
           <button
             class="modalBtnSecondary"
             type="button"
-            onclick="closeDevAccessModal()"
+            onclick="closeAdminAccessModal()"
           >
             Annuler
           </button>
@@ -2646,7 +2646,7 @@
               stroke-linecap="round"
             ></path>
           </svg>
-          <span id="conversationsPrivateFabBtnLabel">Privé</span>
+          <span id="conversationsPrivateFabBtnLabel">PrivÃ©</span>
         </button>
         <button
           id="conversationsFabBtn"
@@ -2832,7 +2832,7 @@
           <button
             type="button"
             class="crisisSupportCardDismissBtn"
-            aria-label="Masquer le rappel de sécurité"
+            aria-label="Masquer le rappel de sÃ©curitÃ©"
             title="Masquer"
           >
             &times;
@@ -3117,9 +3117,9 @@
           "
         ></textarea>
         <div class="modalCheckboxRow" style="margin-top: 14px">
-          <input type="checkbox" id="feedbackDevShareToggle" />
-          <label for="feedbackDevShareToggle"
-            >Transmettre au développeur de Facilitat.io</label
+          <input type="checkbox" id="feedbackAdminShareToggle" />
+          <label for="feedbackAdminShareToggle"
+            >Transmettre a l'admin de Facilitat.io</label
           >
         </div>
         <div class="modalActions">
@@ -3142,14 +3142,14 @@
       <div class="modalBox">
         <h3 class="modalTitle">Partager ce feedback</h3>
         <p class="modalText">
-          Cette conversation est privée. Pour transmettre votre avis au
-          développeur, une copie non-privée sera créée avec la partie utile
-          de contexte: ce message, la réponse associée, les 4 derniers
-          messages, la mémoire active et les indications internes ayant guidé
-          la réponse.
+          Cette conversation est privee. Pour transmettre votre avis a
+          l'admin, une copie non-privee sera creee avec la partie utile
+          de contexte: ce message, la rÃ©ponse associÃ©e, les 4 derniers
+          messages, la mÃ©moire active et les indications internes ayant guidÃ©
+          la rÃ©ponse.
         </p>
         <p class="modalText" style="font-size: 13px; color: #666">
-          Le reste de la conversation privée ne sera pas partagé.
+          Le reste de la conversation privee ne sera pas partage.
         </p>
         <div class="modalActions">
           <button
@@ -3318,14 +3318,14 @@
         closeModal('aboutModal');
       }
 
-      async function openDevAccessModal() {
-        pushModalHistoryState('devAccessModal');
-        await refreshDevAccessPrimaryAction();
-        document.getElementById('devAccessModal').style.display = 'flex';
+      async function openAdminAccessModal() {
+        pushModalHistoryState('adminAccessModal');
+        await refreshAdminAccessPrimaryAction();
+        document.getElementById('adminAccessModal').style.display = 'flex';
       }
 
-      function closeDevAccessModal() {
-        document.getElementById('devAccessModal').style.display = 'none';
+      function closeAdminAccessModal() {
+        document.getElementById('adminAccessModal').style.display = 'none';
       }
 
       function openPrivateConversationModal() {
@@ -3342,8 +3342,8 @@
         pendingPrivateConversationResolver = null;
       }
 
-      async function refreshDevAccessPrimaryAction() {
-        const btn = document.getElementById('devAccessPrimaryBtn');
+      async function refreshAdminAccessPrimaryAction() {
+        const btn = document.getElementById('adminAccessPrimaryBtn');
         if (!btn) return;
 
         const adminSession = await hasValidAdminSession();
@@ -3352,12 +3352,12 @@
           ? 'disable-admin'
           : 'enable-admin';
         btn.textContent = canUseAdminUi
-          ? "Revenir à l'UX normale"
-          : 'Passer admin';
+          ? "Revenir a l'UX normale"
+          : 'Acces professionnels';
       }
 
-      async function handleDevAccessPrimaryAction() {
-        const btn = document.getElementById('devAccessPrimaryBtn');
+      async function handleAdminAccessPrimaryAction() {
+        const btn = document.getElementById('adminAccessPrimaryBtn');
         if (!btn) return;
 
         if (btn.dataset.mode === 'disable-admin') {
@@ -3375,10 +3375,10 @@
           closeAdminPopover();
           syncDebugVisibility();
           if (!isTwaRuntimeContext()) {
-            setDevModeEnabled(false);
+            setAdminAccessModeEnabled(false);
           }
-          await refreshDevAccessPrimaryAction();
-          closeDevAccessModal();
+          await refreshAdminAccessPrimaryAction();
+          closeAdminAccessModal();
           window.location.reload();
           return;
         }
@@ -3388,7 +3388,7 @@
 
       window.addEventListener('popstate', () => {
         const aboutModal = document.getElementById('aboutModal');
-        const devAccessModal = document.getElementById('devAccessModal');
+        const adminAccessModal = document.getElementById('adminAccessModal');
         const state = history.state || {};
 
         if (
@@ -3400,11 +3400,11 @@
         }
 
         if (
-          devAccessModal &&
-          devAccessModal.style.display === 'flex' &&
-          state.modalId !== 'devAccessModal'
+          adminAccessModal &&
+          adminAccessModal.style.display === 'flex' &&
+          state.modalId !== 'adminAccessModal'
         ) {
-          closeDevAccessModal();
+          closeAdminAccessModal();
         }
 
         if (state.humanSupportModalOpen !== true) {
@@ -3612,7 +3612,8 @@
       const MAX_RECENT_TURNS = 8;
       const CHAT_REQUEST_TIMEOUT_MS = 60000;
       const ADMIN_UI_KEY = 'facilitatio_admin_ui';
-      const DEV_MODE_KEY = 'facilitatio_dev_mode';
+      const ADMIN_ACCESS_MODE_KEY = 'facilitatio_admin_access_mode';
+      const LEGACY_DEV_MODE_KEY = 'facilitatio_dev_mode';
       const ADMIN_REPLAY_KEY = 'facilitatio_admin_replay';
       const CHAT_BOTTOM_THRESHOLD_PX = 12;
       const BIOMETRIC_CREDENTIAL_KEY_PREFIX = 'facilitatio_bio_cred_v1_';
@@ -3769,11 +3770,14 @@
         );
       }
 
-      function isDevModeEnabled() {
-        return String(localStorage.getItem(DEV_MODE_KEY) || '') === '1';
+      function isAdminAccessModeEnabled() {
+        return (
+          String(localStorage.getItem(ADMIN_ACCESS_MODE_KEY) || '') === '1' ||
+          String(localStorage.getItem(LEGACY_DEV_MODE_KEY) || '') === '1'
+        );
       }
 
-      function shouldForceWelcomeDevAccessVisible() {
+      function shouldForceWelcomeAdminAccessVisible() {
         // Desktop browsers should always keep the welcome admin entry visible.
         const hasDesktopPointer =
           typeof window.matchMedia === 'function'
@@ -3788,26 +3792,28 @@
         return !isTwaRuntimeContext();
       }
 
-      function syncWelcomeDevAccessVisibility() {
-        const wrap = document.getElementById('welcomeDevAccessWrap');
+      function syncWelcomeAdminAccessVisibility() {
+        const wrap = document.getElementById('welcomeAdminAccessWrap');
         if (!wrap) return;
         wrap.style.display =
-          shouldForceWelcomeDevAccessVisible() || isDevModeEnabled()
+          shouldForceWelcomeAdminAccessVisible() || isAdminAccessModeEnabled()
             ? ''
             : 'none';
       }
 
-      function setDevModeEnabled(enabled) {
+      function setAdminAccessModeEnabled(enabled) {
         if (enabled) {
-          localStorage.setItem(DEV_MODE_KEY, '1');
+          localStorage.setItem(ADMIN_ACCESS_MODE_KEY, '1');
+          localStorage.setItem(LEGACY_DEV_MODE_KEY, '1');
         } else {
-          localStorage.removeItem(DEV_MODE_KEY);
+          localStorage.removeItem(ADMIN_ACCESS_MODE_KEY);
+          localStorage.removeItem(LEGACY_DEV_MODE_KEY);
         }
 
-        syncWelcomeDevAccessVisibility();
+        syncWelcomeAdminAccessVisibility();
       }
 
-      function syncDevModeFromUrlAndSession({
+      function syncAdminAccessModeFromUrlAndSession({
         isAdminAuthenticated = false
       } = {}) {
         let url;
@@ -3815,24 +3821,28 @@
         try {
           url = new URL(window.location.href);
         } catch {
-          syncWelcomeDevAccessVisibility();
+          syncWelcomeAdminAccessVisibility();
           return;
         }
 
         const devParam = url.searchParams.get('dev');
         if (devParam === '1') {
-          localStorage.setItem(DEV_MODE_KEY, '1');
+          localStorage.setItem(ADMIN_ACCESS_MODE_KEY, '1');
+          localStorage.setItem(LEGACY_DEV_MODE_KEY, '1');
         } else if (devParam === '0') {
-          localStorage.removeItem(DEV_MODE_KEY);
+          localStorage.removeItem(ADMIN_ACCESS_MODE_KEY);
+          localStorage.removeItem(LEGACY_DEV_MODE_KEY);
         }
 
         // On Android TWA, the admin entry must stay hidden until the 5-tap activator runs.
         if (isTwaRuntimeContext() && devParam !== '1') {
-          localStorage.removeItem(DEV_MODE_KEY);
+          localStorage.removeItem(ADMIN_ACCESS_MODE_KEY);
+          localStorage.removeItem(LEGACY_DEV_MODE_KEY);
         }
 
         if (isAdminAuthenticated && !isTwaRuntimeContext()) {
-          localStorage.setItem(DEV_MODE_KEY, '1');
+          localStorage.setItem(ADMIN_ACCESS_MODE_KEY, '1');
+          localStorage.setItem(LEGACY_DEV_MODE_KEY, '1');
         }
 
         if (url.searchParams.has('dev')) {
@@ -3842,10 +3852,10 @@
           history.replaceState(history.state || {}, '', nextUrl);
         }
 
-        syncWelcomeDevAccessVisibility();
+        syncWelcomeAdminAccessVisibility();
       }
 
-      function bindTwaDevModeTapActivator() {
+      function bindTwaAdminAccessTapActivator() {
         const logo = document.getElementById('welcomeLogo');
         if (!logo) return;
         const logoWrap = document.getElementById('welcomeLogoWrap');
@@ -3887,10 +3897,10 @@
           firstTapAt = 0;
           tapCount = 0;
           lastActivationAt = now;
-          setDevModeEnabled(true);
+          setAdminAccessModeEnabled(true);
 
           if (typeof showTemporaryNotice === 'function') {
-            showTemporaryNotice('Mode dev activé sur cet appareil');
+            showTemporaryNotice('Acces professionnels active sur cet appareil');
           }
         };
 
@@ -4113,7 +4123,7 @@
       }
 
       function loadBiometricCredentialId() {
-        return ''; // Legacy WebAuthn — no longer used with native biometric bridge.
+        return ''; // Legacy WebAuthn â€” no longer used with native biometric bridge.
       }
 
       function setBiometricUnlockTimestamp(ts) {
@@ -4677,7 +4687,7 @@
         } else {
           title.textContent = 'Rendre la conversation publique';
           text.textContent =
-            "Cette action envoie l'intégralité de la conversation sur Firebase. Elle sera visible dans votre compte.";
+            "Cette action envoie l'intÃ©gralitÃ© de la conversation sur Firebase. Elle sera visible dans votre compte.";
 
           const cancelBtn = document.createElement('button');
           cancelBtn.type = 'button';
@@ -4760,7 +4770,7 @@
             }
           } catch {}
         } else {
-          // Active l'UI admin d�s qu'une session valide existe,
+          // Active l'UI admin dï¿½s qu'une session valide existe,
           // que ce soit via ?adminUi=1 ou un retour depuis admin.html
           safeSetLocalStorage(ADMIN_UI_KEY, '1', 'syncAdminUiFromSession');
         }
@@ -4785,7 +4795,7 @@
           history.replaceState(history.state || {}, '', nextUrl);
         }
 
-        syncDevModeFromUrlAndSession({ isAdminAuthenticated: canUseAdminUi });
+        syncAdminAccessModeFromUrlAndSession({ isAdminAuthenticated: canUseAdminUi });
 
         return {
           isAdminUI,
@@ -5493,7 +5503,7 @@
           .toLowerCase()
           .normalize('NFD')
           .replace(/[\u0300-\u036f]/g, '')
-          .replace(/[’']/g, "'")
+          .replace(/[â€™']/g, "'")
           .replace(/\s+/g, ' ')
           .trim();
       }
@@ -5708,7 +5718,9 @@
                         typeof item.feedback.comment === 'string'
                           ? item.feedback.comment
                           : null,
-                      devShare: item.feedback.devShare === true,
+                      adminShare:
+                        item.feedback.adminShare === true ||
+                        item.feedback.devShare === true,
                       timestamp:
                         typeof item.feedback.timestamp === 'number'
                           ? item.feedback.timestamp
@@ -5951,7 +5963,7 @@
           markConversationPrivate(safeConversationId);
         }
 
-        /* Ne crÃ©e (ou ne met Ã  jour) lâ€™entrÃ©e dâ€™index
+        /* Ne crÃƒÂ©e (ou ne met ÃƒÂ  jour) lÃ¢â‚¬â„¢entrÃƒÂ©e dÃ¢â‚¬â„¢index
    que si AU MOINS un message utilisateur existe. */
         const hasUserMsg = safeData.messages.some(
           (m) => m && m.role === 'user'
@@ -6210,7 +6222,7 @@
           renderHistory();
           scrollChatToBottom();
           showTemporaryNotice(
-            'Branche activée à conversation repartie depuis ce point'
+            'Branche activÃ©e Ã  conversation repartie depuis ce point'
           );
         } catch (err) {
           console.error('[BRANCH_ERROR]', err.message);
@@ -7249,7 +7261,7 @@
         setBiometricUnlockTimestamp(Date.now());
       }
 
-      // Intersession beacon � pagehide + visibilitychange.
+      // Intersession beacon ï¿½ pagehide + visibilitychange.
       // pagehide covers desktop close / navigation; visibilitychange covers mobile
       // (iOS Safari, Android Chrome where pagehide fires late or not at all).
       // A debounce flag prevents double-fire when both events fire in the same cycle.
@@ -8676,10 +8688,10 @@
       }
 
       /**
-       * Rendu progressif + Markdown sÃ©curisÃ© pour les bulles bot.
-       * â€“ On conserve toute la logique dâ€™origine (scroll-lock, stop-line,
+       * Rendu progressif + Markdown sÃƒÂ©curisÃƒÂ© pour les bulles bot.
+       * Ã¢â‚¬â€œ On conserve toute la logique dÃ¢â‚¬â„¢origine (scroll-lock, stop-line,
        *   interruption utilisateur, reveal instant, etc.)
-       * â€“ Ã€ la fin (ou en cas dâ€™interruption) on remplace silencieusement
+       * Ã¢â‚¬â€œ Ãƒâ‚¬ la fin (ou en cas dÃ¢â‚¬â„¢interruption) on remplace silencieusement
        *   le texte brut par la version HTML issue de `safeMarkdownToHtml`.
        */
       function renderBotMessageContent(bubble, text, options = {}) {
@@ -8725,12 +8737,12 @@
 
         const wheelListenerOpts = { passive: true };
 
-        const EXTRA_MARGIN = 12; // px de marge souhaitÃ©e
+        const EXTRA_MARGIN = 12; // px de marge souhaitÃƒÂ©e
 
         function getStopLineY() {
           if (!topBar) return null;
           const { bottom } = topBar.getBoundingClientRect();
-          return bottom + EXTRA_MARGIN; // dÃ©cale la ligne dâ€™arrÃªt
+          return bottom + EXTRA_MARGIN; // dÃƒÂ©cale la ligne dÃ¢â‚¬â„¢arrÃƒÂªt
         }
 
         function hasBubbleReachedReadingPosition() {
@@ -9159,10 +9171,10 @@
         historyIndex,
         feedbackType,
         comment,
-        devShare,
+        adminShare,
         options = {}
       ) {
-        const { devShareLocked = false } = options;
+        const { adminShareLocked = false } = options;
         const conversationId = getConversationId();
         if (
           conversationId === null ||
@@ -9177,22 +9189,25 @@
           messages[historyIndex] && messages[historyIndex].feedback
             ? messages[historyIndex].feedback
             : null;
-        const nextDevShareLocked =
-          previousFeedback && previousFeedback.devShareLocked === true
+        const nextAdminShareLocked =
+          previousFeedback &&
+          (previousFeedback.adminShareLocked === true ||
+            previousFeedback.devShareLocked === true)
             ? true
-            : devShareLocked === true;
-        const shouldForceDevShare = nextDevShareLocked === true;
+            : adminShareLocked === true;
+        const shouldForceAdminShare = nextAdminShareLocked === true;
         messages[historyIndex] = {
           ...messages[historyIndex],
           feedback: {
             type: feedbackType,
             comment: comment || null,
-            devShare: shouldForceDevShare ? true : devShare,
+            adminShare: shouldForceAdminShare ? true : adminShare,
             timestamp: Date.now(),
-            devShareLocked: nextDevShareLocked,
-            devSharedAt: nextDevShareLocked
-              ? previousFeedback && previousFeedback.devSharedAt
-                ? previousFeedback.devSharedAt
+            adminShareLocked: nextAdminShareLocked,
+            adminSharedAt: nextAdminShareLocked
+              ? previousFeedback &&
+                (previousFeedback.adminSharedAt || previousFeedback.devSharedAt)
+                ? previousFeedback.adminSharedAt || previousFeedback.devSharedAt
                 : Date.now()
               : null
           }
@@ -9204,14 +9219,14 @@
         });
       }
 
-      function lockFeedbackDevShareLocally(
+      function lockFeedbackAdminShareLocally(
         historyIndex,
         feedbackType,
         comment
       ) {
         if (historyIndex < 0) return;
         saveFeedbackLocally(historyIndex, feedbackType, comment, true, {
-          devShareLocked: true
+          adminShareLocked: true
         });
       }
 
@@ -9320,7 +9335,7 @@
       async function submitFeedbackToServer(
         feedbackType,
         comment,
-        devShare,
+        adminShare,
         historyIndex,
         botContent
       ) {
@@ -9356,7 +9371,7 @@
             body: JSON.stringify({
               type: feedbackType,
               comment: comment || null,
-              devShare,
+              adminShare,
               userId,
               feedbackContext,
               ...getAdminMailAlertFlags(),
@@ -9391,7 +9406,7 @@
             body: JSON.stringify({
               type: feedbackType,
               comment: comment || null,
-              devShare,
+              adminShare,
               userId,
               feedbackContext,
               ...getAdminMailAlertFlags()
@@ -9417,11 +9432,11 @@
         const titleEl = document.getElementById('feedbackModalTitle');
         const textEl = document.getElementById('feedbackModalText');
         const commentInput = document.getElementById('feedbackCommentInput');
-        const devShareToggle = document.getElementById(
-          'feedbackDevShareToggle'
+        const adminShareToggle = document.getElementById(
+          'feedbackAdminShareToggle'
         );
-        const devShareLabel = document.querySelector(
-          'label[for="feedbackDevShareToggle"]'
+        const adminShareLabel = document.querySelector(
+          'label[for="feedbackAdminShareToggle"]'
         );
         const confirmBtn = document.getElementById('confirmFeedbackBtn');
         const cancelBtn = document.getElementById('cancelFeedbackBtn');
@@ -9440,22 +9455,27 @@
           history[resolvedHistoryIndex].feedback
             ? history[resolvedHistoryIndex].feedback
             : null;
-        const isDevShareLocked = existing && existing.devShareLocked === true;
+        const isAdminShareLocked =
+          existing &&
+          (existing.adminShareLocked === true ||
+            existing.devShareLocked === true);
 
         titleEl.textContent =
           feedbackType === 'thumbUp'
-            ? 'Bonne réponse ?'
-            : 'Réponse à améliorer ?';
+            ? 'Bonne rÃ©ponse ?'
+            : 'RÃ©ponse Ã  amÃ©liorer ?';
         textEl.textContent =
           feedbackType === 'thumbUp'
             ? 'Merci pour votre retour positif.'
-            : 'Dites-nous ce qui pourrait être amélioré.';
+            : 'Dites-nous ce qui pourrait Ãªtre amÃ©liorÃ©.';
         commentInput.value = existing ? existing.comment || '' : '';
-        devShareToggle.checked = existing ? existing.devShare : false;
+        adminShareToggle.checked = existing
+          ? existing.adminShare === true || existing.devShare === true
+          : false;
         applyFeedbackToggleUiState(
-          devShareToggle,
-          devShareLabel,
-          isDevShareLocked
+          adminShareToggle,
+          adminShareLabel,
+          isAdminShareLocked
         );
         confirmBtn.disabled = false;
         confirmBtn.textContent = 'Enregistrer';
@@ -9508,17 +9528,20 @@
         const comment = (
           document.getElementById('feedbackCommentInput').value || ''
         ).trim();
-        const devShareToggle = document.getElementById(
-          'feedbackDevShareToggle'
+        const adminShareToggle = document.getElementById(
+          'feedbackAdminShareToggle'
         );
         const existing =
           resolvedHistoryIndex >= 0
             ? (loadHistory()[resolvedHistoryIndex] || {}).feedback || null
             : null;
-        const devShareLocked = existing && existing.devShareLocked === true;
-        const devShare = devShareLocked
+        const adminShareLocked =
+          existing &&
+          (existing.adminShareLocked === true ||
+            existing.devShareLocked === true);
+        const adminShare = adminShareLocked
           ? true
-          : devShareToggle.checked === true;
+          : adminShareToggle.checked === true;
         const confirmBtn = document.getElementById('confirmFeedbackBtn');
 
         // Persist locally first (always)
@@ -9526,13 +9549,13 @@
           resolvedHistoryIndex,
           feedbackType,
           comment,
-          devShare,
-          { devShareLocked }
+          adminShare,
+          { adminShareLocked }
         );
         applyThumbActiveState(thumbUpBtn, thumbDownBtn, feedbackType);
         closeFeedbackModal();
 
-        if (!devShare) return; // Local-only, done
+        if (!adminShare) return; // Local-only, done
 
         // Check if private conversation needs snapshot confirmation
         const conversationId = getConversationId();
@@ -9548,7 +9571,7 @@
             botContent,
             historyIndex: resolvedHistoryIndex,
             comment,
-            devShare
+            adminShare
           };
           openModal('feedbackPrivateConfirmModal');
           return;
@@ -9560,7 +9583,7 @@
           botContent,
           resolvedHistoryIndex,
           comment,
-          devShare,
+          adminShare,
           confirmBtn
         );
       }
@@ -9570,7 +9593,7 @@
       async function confirmFeedbackPrivateSnapshot() {
         closeModal('feedbackPrivateConfirmModal');
         if (!_feedbackPendingAfterPrivateConfirm) return;
-        const { feedbackType, botContent, historyIndex, comment, devShare } =
+        const { feedbackType, botContent, historyIndex, comment, adminShare } =
           _feedbackPendingAfterPrivateConfirm;
         _feedbackPendingAfterPrivateConfirm = null;
         await _doSubmitFeedback(
@@ -9578,7 +9601,7 @@
           botContent,
           historyIndex,
           comment,
-          devShare,
+          adminShare,
           null
         );
       }
@@ -9586,7 +9609,7 @@
       function cancelFeedbackPrivateSnapshot() {
         closeModal('feedbackPrivateConfirmModal');
         _feedbackPendingAfterPrivateConfirm = null;
-        // Feedback is already saved locally � no need to undo
+        // Feedback is already saved locally ï¿½ no need to undo
       }
 
       async function _doSubmitFeedback(
@@ -9594,18 +9617,18 @@
         botContent,
         historyIndex,
         comment,
-        devShare,
+        adminShare,
         confirmBtnEl
       ) {
         try {
           await submitFeedbackToServer(
             feedbackType,
             comment,
-            devShare,
+            adminShare,
             historyIndex,
             botContent
           );
-          lockFeedbackDevShareLocally(historyIndex, feedbackType, comment);
+          lockFeedbackAdminShareLocally(historyIndex, feedbackType, comment);
           showTemporaryNotice('Merci pour votre retour.');
         } catch (err) {
           console.error(
@@ -9783,8 +9806,8 @@
       /* ---------- MARKDOWN SAFE RENDER ---------- */
 
       /**
-       * Retourne lâ€™instance (singleton) du parser markdown-it
-       * avec les rÃ¨gles non autorisÃ©es dÃ©sactivÃ©es.
+       * Retourne lÃ¢â‚¬â„¢instance (singleton) du parser markdown-it
+       * avec les rÃƒÂ¨gles non autorisÃƒÂ©es dÃƒÂ©sactivÃƒÂ©es.
        */
       function getMd() {
         if (window.__md) return window.__md;
@@ -9796,7 +9819,7 @@
             breaks: true, // \n => <br>
             linkify: true // auto-link
           })
-          // dÃ©sactive code & html
+          // dÃƒÂ©sactive code & html
           .disable(['code', 'fence', 'html_inline', 'html_block']);
 
         window.__md = md;
@@ -9804,10 +9827,10 @@
       }
 
       /**
-       * Convertit du Markdown Â« intermÃ©diaire Â» en HTML puis
-       * passe le rÃ©sultat dans DOMPurify :
-       *   â€“ seules les balises whitelisteÌes subsistent
-       *   â€“ tous les attributs sont filtrÃ©s sauf href des <a>
+       * Convertit du Markdown Ã‚Â« intermÃƒÂ©diaire Ã‚Â» en HTML puis
+       * passe le rÃƒÂ©sultat dans DOMPurify :
+       *   Ã¢â‚¬â€œ seules les balises whitelisteÃŒÂes subsistent
+       *   Ã¢â‚¬â€œ tous les attributs sont filtrÃƒÂ©s sauf href des <a>
        */
       function safeMarkdownToHtml(rawText = '') {
         const dirty = getMd().render(String(rawText));
@@ -9836,7 +9859,7 @@
       }
 
       /**
-       * Transforme les liens pour quâ€™ils sâ€™ouvrent
+       * Transforme les liens pour quÃ¢â‚¬â„¢ils sÃ¢â‚¬â„¢ouvrent
        * dans le navigateur externe.
        */
       function fixLinks(containerEl) {
@@ -10131,13 +10154,13 @@
             meta.conversationState.startsWith('exploration');
 
           if (meta.conversationState) {
-            // Relance : cacher si prédictible (open ↔ exploration_open, selective ↔ exploration_restrained)
+            // Relance : cacher si prÃ©dictible (open â†” exploration_open, selective â†” exploration_restrained)
             const relanceIsPredictable =
               (meta.conversationState === 'exploration_open' &&
                 meta.relancePolicy === 'open') ||
               (meta.conversationState === 'exploration_restrained' &&
                 meta.relancePolicy === 'selective');
-            // Intention : cacher si identique au défaut de l'état
+            // Intention : cacher si identique au dÃ©faut de l'Ã©tat
             const intentIsDefault =
               (meta.conversationState === 'exploration_open' &&
                 meta.intent === 'explorer librement') ||
@@ -10263,7 +10286,7 @@
             });
           }
 
-          // Section crise N2 — visible uniquement en état n2_crisis
+          // Section crise N2 â€” visible uniquement en Ã©tat n2_crisis
           if (meta.conversationState === 'n2_crisis') {
             const crisisLines = [];
             const turnTypeLabels = {
@@ -10323,7 +10346,7 @@
             );
           }
           if (meta.emotionalDecentering === true) {
-            signauxLines.push('Décentrage émotionnel actif');
+            signauxLines.push('DÃ©centrage Ã©motionnel actif');
           }
           if (meta.formalAddress === true) {
             signauxLines.push('Vouvoiement actif');
@@ -10394,7 +10417,7 @@
             meta.affiliationWindow.length > 0
           ) {
             affiliationLines.push(
-              `Fenêtre d'affiliation : [${meta.affiliationWindow.map((v) => v.toFixed(2)).join(', ')}]`
+              `FenÃªtre d'affiliation : [${meta.affiliationWindow.map((v) => v.toFixed(2)).join(', ')}]`
             );
           }
           if (typeof meta.affiliationScore === 'number') {
@@ -10892,7 +10915,7 @@
               onCopy: async () => {
                 const copied = await copyTextToClipboard(displayText);
                 if (copied) {
-                  showTemporaryNotice('Message copié');
+                  showTemporaryNotice('Message copiÃ©');
                 }
               },
               onEdit: () => {
@@ -11165,7 +11188,7 @@
 
               // We need the Firebase message id. The message may have an id field
               // if it was persisted through admin or branch path. For fresh chat
-              // messages the id is not stored locally � we use a fallback local id.
+              // messages the id is not stored locally ï¿½ we use a fallback local id.
               const anchorMessageId =
                 botEntry.id && typeof botEntry.id === 'string'
                   ? botEntry.id
@@ -11596,7 +11619,7 @@
         } catch {}
       }
 
-      // sendIntersessionBeacon � fire-and-forget on pagehide / visibilitychange.
+      // sendIntersessionBeacon ï¿½ fire-and-forget on pagehide / visibilitychange.
       // Uses sendBeacon so the request survives tab close and back-navigation.
       // Guards: authenticated user + active non-private conversation.
       function sendIntersessionBeacon() {
@@ -14230,24 +14253,24 @@
         };
       }
 
-      const welcomeDevAccessBtn = document.getElementById(
-        'welcomeDevAccessBtn'
+      const welcomeAdminAccessBtn = document.getElementById(
+        'welcomeAdminAccessBtn'
       );
-      if (welcomeDevAccessBtn) {
-        welcomeDevAccessBtn.onclick = () => {
-          openDevAccessModal();
+      if (welcomeAdminAccessBtn) {
+        welcomeAdminAccessBtn.onclick = () => {
+          openAdminAccessModal();
         };
       }
 
-      syncWelcomeDevAccessVisibility();
-      bindTwaDevModeTapActivator();
+      syncWelcomeAdminAccessVisibility();
+      bindTwaAdminAccessTapActivator();
 
-      const devAccessPrimaryBtn = document.getElementById(
-        'devAccessPrimaryBtn'
+      const adminAccessPrimaryBtn = document.getElementById(
+        'adminAccessPrimaryBtn'
       );
-      if (devAccessPrimaryBtn) {
-        devAccessPrimaryBtn.onclick = () => {
-          handleDevAccessPrimaryAction();
+      if (adminAccessPrimaryBtn) {
+        adminAccessPrimaryBtn.onclick = () => {
+          handleAdminAccessPrimaryAction();
         };
       }
 
@@ -14643,11 +14666,11 @@
         };
       }
 
-      const devAccessModal = document.getElementById('devAccessModal');
-      if (devAccessModal) {
-        devAccessModal.addEventListener('click', (e) => {
-          if (e.target.id === 'devAccessModal') {
-            closeDevAccessModal();
+      const adminAccessModal = document.getElementById('adminAccessModal');
+      if (adminAccessModal) {
+        adminAccessModal.addEventListener('click', (e) => {
+          if (e.target.id === 'adminAccessModal') {
+            closeAdminAccessModal();
           }
         });
       }
@@ -15265,7 +15288,7 @@
           syncIntersessionMemoryIfApplicable().catch(() => {});
         const adminUiContext = await syncAdminUiFromSession();
         const isAdminUI = adminUiContext.isAdminUI === true;
-        await refreshDevAccessPrimaryAction();
+        await refreshAdminAccessPrimaryAction();
 
         await enforcePhoneOnlyAccessGate({
           isAdminUI,
@@ -16097,3 +16120,5 @@
     </script>
   </body>
 </html>
+
+
