@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="color-scheme" content="light" />
+    <title>Espaces professionnels</title>
+
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        min-height: 100vh;
+        background: #d7e4e3;
+        color: #1f2937;
+        font-family: Arial, sans-serif;
+        color-scheme: light;
+      }
+
+      #app {
+        width: 100%;
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 14px 12px calc(24px + env(safe-area-inset-bottom, 0px));
+      }
+
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 14px;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 22px;
+        line-height: 1.2;
+        color: #1f3f44;
+      }
+
+      .topbar-actions {
+        display: inline-flex;
+        gap: 8px;
+      }
+
+      .topbar-btn {
+        border: 1px solid #cfd8db;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.92);
+        color: #245e66;
+        min-height: 34px;
+        padding: 0 12px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      .topbar-btn:hover {
+        background: #ffffff;
+      }
+
+      #status {
+        background: #ffffff;
+        border: 1px solid #d6e2e1;
+        border-radius: 14px;
+        padding: 12px;
+        color: #466064;
+        font-size: 14px;
+        line-height: 1.45;
+      }
+
+      #spaces {
+        margin-top: 12px;
+        display: grid;
+        grid-template-columns: repeat(1, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      .space-card {
+        border: 1px solid #d6e2e1;
+        border-radius: 16px;
+        background: #ffffff;
+        box-shadow: 0 8px 20px rgba(43, 79, 82, 0.1);
+        padding: 14px;
+        cursor: pointer;
+      }
+
+      .space-card:hover {
+        border-color: #b7cdd0;
+      }
+
+      .space-title {
+        margin: 0 0 6px;
+        font-size: 17px;
+        color: #1f3f44;
+      }
+
+      .space-desc {
+        margin: 0;
+        color: #51696c;
+        font-size: 14px;
+        line-height: 1.45;
+      }
+
+      .error {
+        color: #991b1b;
+      }
+
+      @media (max-width: 640px) {
+        h1 {
+          font-size: 20px;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="app">
+      <div class="topbar">
+        <h1>Espaces professionnels</h1>
+        <div class="topbar-actions">
+          <button id="logoutBtn" type="button" class="topbar-btn">
+            Deconnexion
+          </button>
+        </div>
+      </div>
+
+      <div id="status">Verification des droits...</div>
+      <div id="spaces"></div>
+    </div>
+
+    <script>
+      const AUTO_OPEN_SINGLE_SPACE = true;
+
+      async function fetchWithTimeout(url, options = {}, timeoutMs = 12000) {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+        try {
+          return await fetch(url, {
+            credentials: 'same-origin',
+            cache: 'no-store',
+            ...options,
+            signal: controller.signal
+          });
+        } finally {
+          clearTimeout(timer);
+        }
+      }
+
+      async function readJsonSafely(res) {
+        const contentType = String(
+          res?.headers?.get('content-type') || ''
+        ).toLowerCase();
+
+        if (!contentType.includes('application/json')) {
+          return null;
+        }
+
+        try {
+          return await res.json();
+        } catch {
+          return null;
+        }
+      }
+
+      function redirectToLogin() {
+        const next = encodeURIComponent(
+          window.location.pathname + window.location.search
+        );
+        window.location.href = '/admin-login.html?next=' + next;
+      }
+
+      function buildAllowedSpaces(sessionData = {}) {
+        const spaces = [];
+
+        if (sessionData.canAccessAdminConversations === true) {
+          spaces.push({
+            key: 'conversations',
+            title: 'Conversations',
+            desc: 'Historique integral des echanges, debug et metadonnees.',
+            href: '/admin.html'
+          });
+        }
+
+        if (sessionData.canAccessSupportCases === true) {
+          spaces.push({
+            key: 'support',
+            title: 'Support',
+            desc: 'Dossiers SAV et suivi de consommation par super-id.',
+            href: '/support-admin.html'
+          });
+        }
+
+        if (sessionData.canAccessFacilitationAdmin === true) {
+          spaces.push({
+            key: 'facilitation',
+            title: 'Facilitators',
+            desc: 'Espace Facilitators (structure prete, contenu a completer).',
+            href: '/facilitation-admin.html'
+          });
+        }
+
+        return spaces;
+      }
+
+      async function ensureSessionAndRender() {
+        const statusEl = document.getElementById('status');
+        const spacesEl = document.getElementById('spaces');
+
+        const res = await fetchWithTimeout('/api/admin/session', {
+          method: 'GET'
+        });
+        const data = await readJsonSafely(res);
+
+        const authenticated =
+          res.ok && data && data.authenticated === true;
+
+        if (!authenticated) {
+          redirectToLogin();
+          return;
+        }
+
+        const allowedSpaces = buildAllowedSpaces(data);
+
+        if (allowedSpaces.length === 0) {
+          statusEl.classList.add('error');
+          statusEl.textContent =
+            'Aucun espace professionnel autorise pour ce compte.';
+          return;
+        }
+
+        if (AUTO_OPEN_SINGLE_SPACE && allowedSpaces.length === 1) {
+          window.location.replace(allowedSpaces[0].href);
+          return;
+        }
+
+        statusEl.textContent =
+          'Choisis un espace. Seules les surfaces autorisees sont affichees.';
+
+        spacesEl.innerHTML = '';
+        allowedSpaces.forEach((space) => {
+          const card = document.createElement('button');
+          card.type = 'button';
+          card.className = 'space-card';
+          card.setAttribute('aria-label', space.title);
+          card.addEventListener('click', () => {
+            window.location.href = space.href;
+          });
+
+          const title = document.createElement('h2');
+          title.className = 'space-title';
+          title.textContent = space.title;
+
+          const desc = document.createElement('p');
+          desc.className = 'space-desc';
+          desc.textContent = space.desc;
+
+          card.appendChild(title);
+          card.appendChild(desc);
+          spacesEl.appendChild(card);
+        });
+      }
+
+      async function logoutAndReturn() {
+        try {
+          await fetch('/api/admin/logout', {
+            method: 'POST',
+            credentials: 'include'
+          });
+        } catch {}
+
+        window.location.href = '/index.html';
+      }
+
+      document.addEventListener('DOMContentLoaded', () => {
+        const logoutBtn = document.getElementById('logoutBtn');
+        if (logoutBtn) {
+          logoutBtn.addEventListener('click', logoutAndReturn);
+        }
+
+        ensureSessionAndRender().catch((err) => {
+          const statusEl = document.getElementById('status');
+          statusEl.classList.add('error');
+          statusEl.textContent =
+            'Erreur d\'ouverture des espaces pro: ' +
+            (err?.message || 'inconnue');
+        });
+      });
+    </script>
+  </body>
+</html>

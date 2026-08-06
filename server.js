@@ -986,6 +986,16 @@ app.get('/admin.html', requireAdminAuth, (req, res) => {
   res.sendFile(__dirname + '/public/admin.html');
 });
 
+app.get('/pros.html', requireProfessionalHubAuth, (req, res) => {
+  res.setHeader(
+    'Cache-Control',
+    'no-store, no-cache, must-revalidate, proxy-revalidate'
+  );
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.sendFile(__dirname + '/public/pros.html');
+});
+
 app.get('/support-admin.html', requireSupportAdminAuth, (req, res) => {
   res.setHeader(
     'Cache-Control',
@@ -1882,6 +1892,24 @@ function requireAdminAuth(req, res, next) {
     const nextUrl = encodeURIComponent(req.originalUrl);
     return res.redirect(`/admin-login.html?next=${nextUrl}`);
   }
+  adminVisitedSinceLastAlert = true;
+  next();
+}
+
+function requireProfessionalHubAuth(req, res, next) {
+  const session = getAdminSession(req);
+
+  const hasAccess =
+    session &&
+    (session.canAccessAdminConversations === true ||
+      session.canAccessSupportCases === true ||
+      session.canAccessFacilitationAdmin === true);
+
+  if (!hasAccess) {
+    const nextUrl = encodeURIComponent(req.originalUrl);
+    return res.redirect(`/admin-login.html?next=${nextUrl}`);
+  }
+
   adminVisitedSinceLastAlert = true;
   next();
 }

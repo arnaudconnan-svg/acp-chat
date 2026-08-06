@@ -119,10 +119,10 @@
 
           const requestedNext =
             new URLSearchParams(window.location.search).get('next') ||
-            '/admin.html';
+            '/pros.html';
           const safeNext = requestedNext.startsWith('/')
             ? requestedNext
-            : '/admin.html';
+            : '/pros.html';
           window.location.href = safeNext;
         } catch {
           autoSubmitDone = false;
