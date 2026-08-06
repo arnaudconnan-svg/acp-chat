@@ -2838,6 +2838,24 @@
             if (meta.lowContextOpeningGuardActive === true) {
               signauxLines.push('Ouverture initiale peu contextualisee');
             }
+            if (meta.offTopicInfoPolicy === 'out_of_scope_recenter') {
+              signauxLines.push(
+                'Hors perimetre factuel : recadrage vers le vecu'
+              );
+            }
+            if (
+              meta.offTopicInfoPolicy ===
+              'out_of_scope_micro_bridge_then_recenter'
+            ) {
+              signauxLines.push(
+                'Hors perimetre factuel : micro reponse puis recentrage vecu'
+              );
+            }
+            if (meta.secondaryTensionSuppressedForOffTopic === true) {
+              signauxLines.push(
+                'Tension secondaire non utilisee (recadrage hors perimetre)'
+              );
+            }
             if (meta.secondaryTension) {
               var secondaryLabel = window.FacilitatDebug.formatSecondaryTension(
                 meta.secondaryTension

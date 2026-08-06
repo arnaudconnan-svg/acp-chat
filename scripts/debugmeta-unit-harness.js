@@ -215,6 +215,8 @@ for (const field of [
   'externalSupportMode',
   'closureIntent',
   'lowContextOpeningGuardActive',
+  'offTopicInfoPolicy',
+  'secondaryTensionSuppressedForOffTopic',
   'postDischargeTransitionActive',
   'postCrisisSupportActive',
   'postCrisisSupportCarryTurn',
@@ -258,6 +260,8 @@ assertDeepEqual('default values', base, {
   externalSupportMode: 'none',
   closureIntent: false,
   lowContextOpeningGuardActive: false,
+  offTopicInfoPolicy: 'none',
+  secondaryTensionSuppressedForOffTopic: false,
   postDischargeTransitionActive: false,
   postCrisisSupportActive: false,
   postCrisisSupportCarryTurn: false,
@@ -475,6 +479,22 @@ assert(
   'discovery_validation'
 );
 assert('closureIntent', phaseB.closureIntent, true);
+
+const offTopicPolicy = buildResponseDebugMeta({
+  conversationState: 'info_features',
+  offTopicInfoPolicy: 'out_of_scope_recenter',
+  secondaryTensionSuppressedForOffTopic: true
+});
+assert(
+  'offTopicInfoPolicy surfaced',
+  offTopicPolicy.offTopicInfoPolicy,
+  'out_of_scope_recenter'
+);
+assert(
+  'secondaryTensionSuppressedForOffTopic surfaced',
+  offTopicPolicy.secondaryTensionSuppressedForOffTopic,
+  true
+);
 
 // 14. post-crisis support fields
 console.log('\n-- buildResponseDebugMeta post-crisis support');

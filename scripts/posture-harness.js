@@ -543,6 +543,58 @@ check('secondary tension is disabled during aggressive discharge', () => {
   );
 });
 
+check(
+  'off-topic info without personal link enforces recenter policy and suppresses secondary tension',
+  () => {
+    const out = buildPostureDecision(
+      baseInput({
+        detectedState: 'info_features',
+        infoContextFlags: ['off_topic_general_info'],
+        secondaryTension: { family: 'alliance_rupture', confidence: 'high' }
+      })
+    );
+    assert(
+      out.offTopicInfoPolicy === 'out_of_scope_recenter',
+      `expected out_of_scope_recenter, got ${out.offTopicInfoPolicy}`
+    );
+    assert(
+      out.secondaryTensionSuppressedForOffTopic === true,
+      'expected secondaryTensionSuppressedForOffTopic=true'
+    );
+    assert(
+      out.secondaryTension === null,
+      'expected secondaryTension=null when off-topic recenter policy is active'
+    );
+  }
+);
+
+check(
+  'off-topic info with personal link enables micro bridge policy and suppresses secondary tension',
+  () => {
+    const out = buildPostureDecision(
+      baseInput({
+        detectedState: 'info_features',
+        infoContextFlags: [
+          'off_topic_with_explicit_personal_experience_link'
+        ],
+        secondaryTension: { family: 'alliance_rupture', confidence: 'high' }
+      })
+    );
+    assert(
+      out.offTopicInfoPolicy === 'out_of_scope_micro_bridge_then_recenter',
+      `expected out_of_scope_micro_bridge_then_recenter, got ${out.offTopicInfoPolicy}`
+    );
+    assert(
+      out.secondaryTensionSuppressedForOffTopic === true,
+      'expected secondaryTensionSuppressedForOffTopic=true'
+    );
+    assert(
+      out.secondaryTension === null,
+      'expected secondaryTension=null when off-topic micro bridge policy is active'
+    );
+  }
+);
+
 check('dependency care pending activates need_human_support', () => {
   const out = buildPostureDecision(
     baseInput({

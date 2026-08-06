@@ -7843,6 +7843,14 @@ async function handleChatPost(req, res) {
         aggressiveDischargeDetected: safe.aggressiveDischargeDetected === true,
         postDischargeTransitionActive:
           safe.postDischargeTransitionActive === true,
+        offTopicInfoPolicy:
+          safe.offTopicInfoPolicy === 'out_of_scope_recenter' ||
+          safe.offTopicInfoPolicy ===
+            'out_of_scope_micro_bridge_then_recenter'
+            ? safe.offTopicInfoPolicy
+            : 'none',
+        secondaryTensionSuppressedForOffTopic:
+          safe.secondaryTensionSuppressedForOffTopic === true,
         secondaryTension:
           safe.secondaryTension &&
           typeof safe.secondaryTension === 'object' &&
@@ -10850,6 +10858,10 @@ Reponds strictement en JSON: {"items": ["..."]}
           postureDecision.postDischargeTransitionActive === true,
         lowContextOpeningGuardActive:
           postureDecision.lowContextOpeningGuardActive === true,
+        offTopicInfoPolicy:
+          postureDecision.offTopicInfoPolicy || 'none',
+        secondaryTensionSuppressedForOffTopic:
+          postureDecision.secondaryTensionSuppressedForOffTopic === true,
         // Tension secondaire
         secondaryTension: postureDecision.secondaryTension || null,
         postCrisisSupportActive: postCrisisSupportCarryTurnActive,

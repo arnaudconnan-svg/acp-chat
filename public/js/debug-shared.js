@@ -343,6 +343,17 @@
       lowContextOpeningGuardActive: toBooleanTrue(
         safe.lowContextOpeningGuardActive
       ),
+      offTopicInfoPolicy:
+        [
+          'none',
+          'out_of_scope_recenter',
+          'out_of_scope_micro_bridge_then_recenter'
+        ].indexOf(toTrimmedString(safe.offTopicInfoPolicy, '')) >= 0
+          ? toTrimmedString(safe.offTopicInfoPolicy, '')
+          : 'none',
+      secondaryTensionSuppressedForOffTopic: toBooleanTrue(
+        safe.secondaryTensionSuppressedForOffTopic
+      ),
       n2TurnType: toTrimmedString(safe.n2TurnType, '') || null,
       emergencyNumbersIncluded: toBooleanTrue(safe.emergencyNumbersIncluded),
       postCrisisSupportActive: toBooleanTrue(safe.postCrisisSupportActive),
