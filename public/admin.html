@@ -801,7 +801,7 @@
                 type="button"
                 class="adminActionsMenuAction"
               >
-                Accueil pro
+                Accueil app
               </button>
             </div>
           </div>
@@ -930,7 +930,7 @@
       function setupRootBackToIndex() {
         const conversationId = getConversationIdFromUrl();
 
-        const backTarget = conversationId ? '/admin.html' : '/pros.html';
+        const backTarget = conversationId ? '/admin.html' : '/index.html';
 
         history.replaceState({ adminRoot: true }, '', window.location.href);
         history.pushState({ adminTrap: true }, '', window.location.href);
@@ -946,7 +946,8 @@
         if (
           res?.redirected &&
           typeof res.url === 'string' &&
-          res.url.includes('/admin-login.html')
+          (res.url.includes('/pros-login.html') ||
+            res.url.includes('/admin-login.html'))
         ) {
           window.location.href = res.url;
           return {
@@ -1130,7 +1131,7 @@
           const next = encodeURIComponent(
             window.location.pathname + window.location.search
           );
-          window.location.href = '/admin-login.html?next=' + next;
+          window.location.href = '/pros-login.html?next=' + next;
           return false;
         }
 
@@ -3775,7 +3776,7 @@
         if (adminProsHubBtn) {
           adminProsHubBtn.addEventListener('click', () => {
             closeAdminActionsMenu();
-            window.location.href = '/pros.html';
+            window.location.href = '/index.html';
           });
         }
 

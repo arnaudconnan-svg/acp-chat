@@ -1890,7 +1890,7 @@ function requireAdminAuth(req, res, next) {
 
   if (!session || session.canAccessAdminConversations !== true) {
     const nextUrl = encodeURIComponent(req.originalUrl);
-    return res.redirect(`/admin-login.html?next=${nextUrl}`);
+    return res.redirect(`/pros-login.html?next=${nextUrl}`);
   }
   adminVisitedSinceLastAlert = true;
   next();
@@ -1907,7 +1907,7 @@ function requireProfessionalHubAuth(req, res, next) {
 
   if (!hasAccess) {
     const nextUrl = encodeURIComponent(req.originalUrl);
-    return res.redirect(`/admin-login.html?next=${nextUrl}`);
+    return res.redirect(`/pros-login.html?next=${nextUrl}`);
   }
 
   adminVisitedSinceLastAlert = true;
@@ -1919,7 +1919,7 @@ function requireSupportAdminAuth(req, res, next) {
 
   if (!session || session.canAccessSupportCases !== true) {
     const nextUrl = encodeURIComponent(req.originalUrl);
-    return res.redirect(`/admin-login.html?next=${nextUrl}`);
+    return res.redirect(`/pros-login.html?next=${nextUrl}`);
   }
   adminVisitedSinceLastAlert = true;
   next();
@@ -1930,7 +1930,7 @@ function requireFacilitationAdminAuth(req, res, next) {
 
   if (!session || session.canAccessFacilitationAdmin !== true) {
     const nextUrl = encodeURIComponent(req.originalUrl);
-    return res.redirect(`/admin-login.html?next=${nextUrl}`);
+    return res.redirect(`/pros-login.html?next=${nextUrl}`);
   }
   adminVisitedSinceLastAlert = true;
   next();
@@ -2941,77 +2941,122 @@ app.put('/api/admin/settings', requireAdminAuth, async (req, res) => {
   }
 });
 
-app.post('/api/admin/login', (req, res) => {
+function writeAdminSessionCookie(res, sessionId) {
+  res.setHeader(
+    'Set-Cookie',
+    `adminSessionId=${sessionId}; HttpOnly; Path=/; SameSite=Lax; Secure; Max-Age=${Math.floor(ADMIN_SESSION_DURATION / 1000)}`
+  );
+}
+
+function createAdminSessionRecord({
+  scope = 'review',
+  professionalEmail = null,
+  sessionKind = 'pros',
+  capabilities = {}
+} = {}) {
+  return {
+    isAdmin: true,
+    createdAt: Date.now(),
+    scope,
+    professionalEmail,
+    sessionKind,
+    ...capabilities
+  };
+}
+
+function createAndSetAdminSession(res, sessionRecord = {}) {
+  const scope = normalizeAdminScope(sessionRecord.scope || 'review');
+  const sessionId = buildAdminSessionToken({ scope });
+  adminSessions.set(
+    sessionId,
+    createAdminSessionRecord({
+      ...sessionRecord,
+      scope
+    })
+  );
+  writeAdminSessionCookie(res, sessionId);
+  return sessionId;
+}
+
+app.post('/api/twa/login', (req, res) => {
+  if (
+    !req.body ||
+    typeof req.body !== 'object' ||
+    Array.isArray(req.body) ||
+    typeof req.body.password !== 'string'
+  ) {
+    return res.status(400).json({ error: 'Invalid TWA login request' });
+  }
+
+  const safePassword = String(req.body.password || '').trim();
+  if (!safePassword || !ADMIN_PASSWORD_SET.has(safePassword)) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  createAndSetAdminSession(res, {
+    scope: 'review',
+    professionalEmail: null,
+    sessionKind: 'twa_bypass',
+    capabilities: {
+      canBypassPhoneGate: true,
+      canUseAdminUi: false,
+      canAccessAdminConversations: false,
+      canAccessSupportCases: false,
+      canAccessFacilitationAdmin: false
+    }
+  });
+
+  res.json({ success: true, flow: 'twa' });
+});
+
+function handleProsLogin(req, res) {
   if (
     !req.body ||
     typeof req.body !== 'object' ||
     Array.isArray(req.body) ||
     typeof req.body.password !== 'string' ||
-    (req.body.email !== undefined && typeof req.body.email !== 'string')
+    typeof req.body.email !== 'string'
   ) {
-    return res.status(400).json({ error: 'Invalid admin login request' });
+    return res.status(400).json({ error: 'Invalid pros login request' });
   }
 
   const safeEmail = normalizeEmail(req.body.email || '');
   const safePassword = String(req.body.password || '').trim();
-  const safePrimaryPassword = String(ADMIN_PASSWORD || '').trim();
-  const isPrimaryAdminPassword =
-    Boolean(safePrimaryPassword) && safePassword === safePrimaryPassword;
-  const isReviewPassword = safePassword === ADMIN_REVIEW_PASSWORD;
-
-  let sessionScope = 'review';
-  let sessionCapabilities = buildProfessionalAccessCapabilities('review');
-  let sessionProfessionalEmail = null;
-
-  if (safeEmail) {
-    const expectedPassword =
-      PROFESSIONAL_ACCESS_PASSWORD_BY_EMAIL.get(safeEmail) || '';
-
-    if (!expectedPassword || safePassword !== expectedPassword) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    sessionScope = 'full';
-    sessionCapabilities = buildProfessionalAccessCapabilitiesForEmail(safeEmail);
-    sessionProfessionalEmail = safeEmail;
-
-    if (
-      sessionCapabilities.canAccessAdminConversations !== true &&
-      sessionCapabilities.canAccessSupportCases !== true &&
-      sessionCapabilities.canAccessFacilitationAdmin !== true
-    ) {
-      return res.status(403).json({ error: 'No professional access granted' });
-    }
-  } else {
-    if (!safePassword || !ADMIN_PASSWORD_SET.has(safePassword)) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    sessionScope = isPrimaryAdminPassword
-      ? 'full'
-      : isReviewPassword
-        ? 'review'
-        : 'full';
-    sessionCapabilities = buildProfessionalAccessCapabilities(sessionScope);
+  if (!safeEmail || !safePassword) {
+    return res.status(400).json({ error: 'Email and password are required' });
   }
 
-  const sessionId = buildAdminSessionToken({ scope: sessionScope });
+  const expectedPassword =
+    PROFESSIONAL_ACCESS_PASSWORD_BY_EMAIL.get(safeEmail) || '';
 
-  adminSessions.set(sessionId, {
-    isAdmin: true,
-    createdAt: Date.now(),
-    scope: sessionScope,
-    professionalEmail: sessionProfessionalEmail,
-    ...sessionCapabilities
+  if (!expectedPassword || safePassword !== expectedPassword) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  const sessionCapabilities = buildProfessionalAccessCapabilitiesForEmail(safeEmail);
+
+  if (
+    sessionCapabilities.canAccessAdminConversations !== true &&
+    sessionCapabilities.canAccessSupportCases !== true &&
+    sessionCapabilities.canAccessFacilitationAdmin !== true
+  ) {
+    return res.status(403).json({ error: 'No professional access granted' });
+  }
+
+  createAndSetAdminSession(res, {
+    scope: 'full',
+    professionalEmail: safeEmail,
+    sessionKind: 'pros_hub',
+    capabilities: sessionCapabilities
   });
 
-  res.setHeader(
-    'Set-Cookie',
-    `adminSessionId=${sessionId}; HttpOnly; Path=/; SameSite=Lax; Secure; Max-Age=${Math.floor(ADMIN_SESSION_DURATION / 1000)}`
-  );
+  res.json({ success: true, flow: 'pros' });
+}
 
-  res.json({ success: true });
-});
+app.post('/api/pros/login', handleProsLogin);
+
+// Legacy alias kept for backward compatibility.
+app.post('/api/admin/login', handleProsLogin);
 
 // Admin logout route that clears the session cookie and removes the session.
 app.post('/api/admin/logout', (req, res) => {

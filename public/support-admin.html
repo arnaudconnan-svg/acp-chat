@@ -310,7 +310,7 @@
     <div id="app">
       <div class="topbar">
         <div class="topbar-head">
-          <a class="back-link" href="/pros.html">Accueil pro</a>
+          <a class="back-link" href="/admin.html">Conversations</a>
           <h1>Dossiers SAV</h1>
         </div>
       </div>
@@ -325,7 +325,7 @@
 
         window.addEventListener('popstate', (event) => {
           if (event.state && event.state.supportAdminRoot) {
-            window.location.replace('/pros.html');
+            window.location.replace('/admin.html');
           }
         });
       }
@@ -334,7 +334,8 @@
         if (
           res?.redirected &&
           typeof res.url === 'string' &&
-          res.url.includes('/admin-login.html')
+          (res.url.includes('/pros-login.html') ||
+            res.url.includes('/admin-login.html'))
         ) {
           window.location.href = res.url;
           return {
@@ -404,7 +405,7 @@
           const next = encodeURIComponent(
             window.location.pathname + window.location.search
           );
-          window.location.href = '/admin-login.html?next=' + next;
+          window.location.href = '/pros-login.html?next=' + next;
           return false;
         }
 
