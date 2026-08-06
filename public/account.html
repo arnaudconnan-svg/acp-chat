@@ -906,6 +906,8 @@
         const BIOMETRIC_CREDENTIAL_KEY_PREFIX = 'facilitatio_bio_cred_v1_';
         const ANDROID_COUNTRY_PENDING_KEY =
           'facilitatio_android_country_pending';
+        const SKIP_WELCOME_ANIMATION_KEY =
+          'facilitatio_skip_welcome_animation';
         const ACCOUNT_USAGE_ENVELOPE_UI_ENABLED = true;
         const MONTHLY_ENVELOPE_CAPACITY_EUR = 12;
         const ROLLOVER_ENVELOPE_CAPACITY_EUR = 3;
@@ -2708,10 +2710,32 @@
           wrap.appendChild(header);
 
           wrap.appendChild(buildPrivateDefaultCard());
+          wrap.appendChild(buildWelcomeAnimationPreferenceCard());
           wrap.appendChild(buildBiometricLockCard());
           wrap.appendChild(buildPasswordCard());
 
           return wrap;
+        }
+
+        function isWelcomeAnimationSkipEnabled() {
+          try {
+            return localStorage.getItem(SKIP_WELCOME_ANIMATION_KEY) === '1';
+          } catch {
+            return false;
+          }
+        }
+
+        function setWelcomeAnimationSkipEnabled(enabled) {
+          try {
+            if (enabled) {
+              localStorage.setItem(SKIP_WELCOME_ANIMATION_KEY, '1');
+            } else {
+              localStorage.removeItem(SKIP_WELCOME_ANIMATION_KEY);
+            }
+            return true;
+          } catch {
+            return false;
+          }
         }
 
         function syncNativeBiometricConfig(enabled) {
@@ -2920,6 +2944,67 @@
             } finally {
               toggle.disabled = false;
             }
+          });
+
+          return card;
+        }
+
+        function buildWelcomeAnimationPreferenceCard() {
+          const card = document.createElement('div');
+          card.className = 'card';
+
+          const title = document.createElement('div');
+          title.className = 'section-title';
+          title.textContent = "Animation d'accueil";
+          card.appendChild(title);
+
+          const row = document.createElement('label');
+          row.className = 'setting-row';
+          row.setAttribute('for', 'welcomeAnimationSkipToggle');
+
+          const rowText = document.createElement('span');
+          rowText.textContent = "Passer l'animation au lancement";
+          rowText.style.fontSize = '14px';
+          rowText.style.color = '#333';
+
+          const toggle = document.createElement('input');
+          toggle.id = 'welcomeAnimationSkipToggle';
+          toggle.type = 'checkbox';
+          toggle.checked = isWelcomeAnimationSkipEnabled();
+
+          row.appendChild(rowText);
+          row.appendChild(toggle);
+          card.appendChild(row);
+
+          const note = document.createElement('p');
+          note.textContent =
+            "Cette option s'applique au prochain retour sur l'écran d'accueil.";
+          note.style.fontSize = '13px';
+          note.style.color = '#7a9599';
+          note.style.margin = '4px 0 0';
+          card.appendChild(note);
+
+          const animationStatus = createToggleSaveStatus();
+          card.appendChild(animationStatus.element);
+
+          toggle.addEventListener('change', () => {
+            const previousValue = !toggle.checked;
+            toggle.disabled = true;
+            animationStatus.saving();
+
+            const saved = setWelcomeAnimationSkipEnabled(
+              toggle.checked === true
+            );
+
+            if (!saved) {
+              toggle.checked = previousValue;
+              animationStatus.error();
+              toggle.disabled = false;
+              return;
+            }
+
+            animationStatus.success();
+            toggle.disabled = false;
           });
 
           return card;

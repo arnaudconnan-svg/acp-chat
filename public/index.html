@@ -2552,18 +2552,11 @@
     <div id="adminAccessModal" class="modal">
       <div class="modalBox">
         <h3 class="modalTitle">Acc&egrave;s professionnels</h3>
-        <p class="modalText">Choisis l'interface &agrave; ouvrir.</p>
+        <p class="modalText">Ouvre le hub professionnels.</p>
 
         <div class="modalActions modalActionsStack">
           <button
-            id="adminAccessPrimaryBtn"
             class="modalBtnPrimary"
-            type="button"
-          >
-            Acces professionnels
-          </button>
-          <button
-            class="modalBtnSecondary"
             type="button"
             onclick="
               window.location.href = '/pros-login.html?next=%2Fpros.html'
@@ -3320,12 +3313,19 @@
 
       async function openAdminAccessModal() {
         pushModalHistoryState('adminAccessModal');
-        await refreshAdminAccessPrimaryAction();
         document.getElementById('adminAccessModal').style.display = 'flex';
       }
 
       function closeAdminAccessModal() {
         document.getElementById('adminAccessModal').style.display = 'none';
+      }
+
+      function isWelcomeAnimationSkipEnabled() {
+        try {
+          return localStorage.getItem(SKIP_WELCOME_ANIMATION_KEY) === '1';
+        } catch {
+          return false;
+        }
       }
 
       function openPrivateConversationModal() {
@@ -3340,50 +3340,6 @@
         }
 
         pendingPrivateConversationResolver = null;
-      }
-
-      async function refreshAdminAccessPrimaryAction() {
-        const btn = document.getElementById('adminAccessPrimaryBtn');
-        if (!btn) return;
-
-        const adminSession = await hasValidAdminSession();
-        const canUseAdminUi = adminSession.canUseAdminUi === true;
-        btn.dataset.mode = canUseAdminUi
-          ? 'disable-admin'
-          : 'enable-admin';
-        btn.textContent = canUseAdminUi
-          ? "Revenir a l'UX normale"
-          : 'Acces professionnels';
-      }
-
-      async function handleAdminAccessPrimaryAction() {
-        const btn = document.getElementById('adminAccessPrimaryBtn');
-        if (!btn) return;
-
-        if (btn.dataset.mode === 'disable-admin') {
-          try {
-            await fetch('/api/admin/logout', {
-              method: 'POST',
-              credentials: 'include'
-            });
-          } catch {}
-
-          localStorage.removeItem(ADMIN_UI_KEY);
-          adminUiState.logsEnabled = false;
-          saveAdminUiState();
-          document.body.classList.toggle('admin-ui', false);
-          closeAdminPopover();
-          syncDebugVisibility();
-          if (!isTwaRuntimeContext()) {
-            setAdminAccessModeEnabled(false);
-          }
-          await refreshAdminAccessPrimaryAction();
-          closeAdminAccessModal();
-          window.location.reload();
-          return;
-        }
-
-        navigateAway('/pros-login.html?next=%2Fpros.html');
       }
 
       window.addEventListener('popstate', () => {
@@ -3612,6 +3568,7 @@
       const MAX_RECENT_TURNS = 8;
       const CHAT_REQUEST_TIMEOUT_MS = 60000;
       const ADMIN_UI_KEY = 'facilitatio_admin_ui';
+      const SKIP_WELCOME_ANIMATION_KEY = 'facilitatio_skip_welcome_animation';
       const ADMIN_ACCESS_MODE_KEY = 'facilitatio_admin_access_mode';
       const LEGACY_DEV_MODE_KEY = 'facilitatio_dev_mode';
       const ADMIN_REPLAY_KEY = 'facilitatio_admin_replay';
@@ -14265,15 +14222,6 @@
       syncWelcomeAdminAccessVisibility();
       bindTwaAdminAccessTapActivator();
 
-      const adminAccessPrimaryBtn = document.getElementById(
-        'adminAccessPrimaryBtn'
-      );
-      if (adminAccessPrimaryBtn) {
-        adminAccessPrimaryBtn.onclick = () => {
-          handleAdminAccessPrimaryAction();
-        };
-      }
-
       const conversationsPrivacyHintContinueBtn = document.getElementById(
         'conversationsPrivacyHintContinueBtn'
       );
@@ -15288,14 +15236,14 @@
           syncIntersessionMemoryIfApplicable().catch(() => {});
         const adminUiContext = await syncAdminUiFromSession();
         const isAdminUI = adminUiContext.isAdminUI === true;
-        await refreshAdminAccessPrimaryAction();
 
         await enforcePhoneOnlyAccessGate({
           isAdminUI,
           canBypassPhoneGate: adminUiContext.canBypassPhoneGate === true
         });
 
-        const shouldSkipWelcomeAnimation = isAdminUI;
+        const shouldSkipWelcomeAnimation =
+          isAdminUI || isWelcomeAnimationSkipEnabled();
 
         const loadUrl = new URL(window.location.href);
         const replayRequested = loadUrl.searchParams.get('adminReplay') === '1';

@@ -106,10 +106,10 @@
 
           const requestedNext =
             new URLSearchParams(window.location.search).get('next') ||
-            '/?adminUi=1&screen=conversationsScreen';
+            '/?adminUi=1';
           const safeNext = requestedNext.startsWith('/')
             ? requestedNext
-            : '/?adminUi=1&screen=conversationsScreen';
+            : '/?adminUi=1';
           window.location.href = safeNext;
         } catch {
           autoSubmitDone = false;
