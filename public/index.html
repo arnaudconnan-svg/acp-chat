@@ -3924,7 +3924,8 @@
         const fallback = {
           authenticated: false,
           canUseAdminUi: false,
-          canBypassTwaGate: false
+          canBypassTwaGate: false,
+          welcomeAnimationPolicy: null
         };
 
         try {
@@ -3942,6 +3943,12 @@
           const canUseAdminUi = isAuthenticated && data?.canUseAdminUi === true;
           const canBypassTwaGate =
             isAuthenticated && data?.canBypassTwaGate === true;
+          const welcomeAnimationPolicy =
+            isAuthenticated &&
+            (data?.welcomeAnimationPolicy === 'skip' ||
+              data?.welcomeAnimationPolicy === 'play')
+              ? data.welcomeAnimationPolicy
+              : null;
 
           if (
             canUseAdminUi &&
@@ -3957,7 +3964,8 @@
           return {
             authenticated: isAuthenticated,
             canUseAdminUi,
-            canBypassTwaGate
+            canBypassTwaGate,
+            welcomeAnimationPolicy
           };
         } catch {
           return fallback;
@@ -4736,7 +4744,12 @@
 
         return {
           isAdminUI,
-          canBypassTwaGate
+          canBypassTwaGate,
+          welcomeAnimationPolicy:
+            adminSession.welcomeAnimationPolicy === 'skip' ||
+            adminSession.welcomeAnimationPolicy === 'play'
+              ? adminSession.welcomeAnimationPolicy
+              : null
         };
       }
 
@@ -15216,6 +15229,11 @@
           syncIntersessionMemoryIfApplicable().catch(() => {});
         const adminUiContext = await syncAdminUiFromSession();
         const isAdminUI = adminUiContext.isAdminUI === true;
+        const welcomeAnimationPolicy =
+          adminUiContext.welcomeAnimationPolicy === 'skip' ||
+          adminUiContext.welcomeAnimationPolicy === 'play'
+            ? adminUiContext.welcomeAnimationPolicy
+            : null;
 
         await enforceTwaDeviceGate({
           isAdminUI,
@@ -15912,7 +15930,11 @@
           setWelcomeLockedState(false);
 
           const shouldSkipWelcomeAnimationNow =
-            isWelcomeAnimationSkipEnabled();
+            welcomeAnimationPolicy === 'skip'
+              ? true
+              : welcomeAnimationPolicy === 'play'
+                ? false
+                : isWelcomeAnimationSkipEnabled();
 
           if (shouldSkipWelcomeAnimationNow) {
             clearWelcomeRitualTimers();

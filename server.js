@@ -1209,6 +1209,18 @@ function canBypassTwaGateFromPassword(password = '') {
   return TWA_GATE_BYPASS_PASSWORD_SET.has(safePassword);
 }
 
+function resolveTwaBypassProfileFromPassword(password = '') {
+  const safePassword = String(password || '').trim();
+  if (!safePassword) return null;
+  if (safePassword === ADMIN_REVIEW_PASSWORD) {
+    return 'review';
+  }
+  if (safePassword === TWA_GATE_BYPASS_PASSWORD) {
+    return 'professional';
+  }
+  return null;
+}
+
 function buildAdminSessionToken(options = {}) {
   const createdAt = Number(options.createdAt || Date.now());
   const scope = normalizeAdminScope(options.scope);
@@ -2906,10 +2918,16 @@ app.get('/api/admin/session', async (req, res) => {
 
     const canUseAdminUi = session.canUseAdminUi !== false;
     const canBypassTwaGate = session.canBypassTwaGate === true;
+    const welcomeAnimationPolicy =
+      session.welcomeAnimationPolicy === 'skip' ||
+      session.welcomeAnimationPolicy === 'play'
+        ? session.welcomeAnimationPolicy
+        : null;
 
     return res.json({
       authenticated: true,
       canBypassTwaGate,
+      welcomeAnimationPolicy,
       canUseAdminUi,
       canAccessAdminConversations:
         session.canAccessAdminConversations === true,
@@ -3002,20 +3020,34 @@ app.post('/api/twa/login', (req, res) => {
   }
 
   const safePassword = String(req.body.password || '').trim();
-  if (!canBypassTwaGateFromPassword(safePassword)) {
+  const bypassProfile = resolveTwaBypassProfileFromPassword(safePassword);
+  if (!bypassProfile) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
+  const isReviewProfile = bypassProfile === 'review';
+  const capabilities = isReviewProfile
+    ? {
+        canBypassTwaGate: true,
+        canUseAdminUi: false,
+        canAccessAdminConversations: false,
+        canAccessSupportCases: false,
+        canAccessFacilitationAdmin: false
+      }
+    : {
+        ...buildProfessionalAccessCapabilities('full'),
+        canBypassTwaGate: true
+      };
+
   createAndSetAdminSession(res, {
-    scope: 'review',
+    scope: isReviewProfile ? 'review' : 'full',
     professionalEmail: null,
-    sessionKind: 'twa_bypass',
+    sessionKind: isReviewProfile
+      ? 'twa_bypass_review'
+      : 'twa_bypass_professional',
     capabilities: {
-      canBypassTwaGate: true,
-      canUseAdminUi: false,
-      canAccessAdminConversations: false,
-      canAccessSupportCases: false,
-      canAccessFacilitationAdmin: false
+      ...capabilities,
+      welcomeAnimationPolicy: isReviewProfile ? 'play' : 'skip'
     }
   });
 
