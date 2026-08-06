@@ -3735,18 +3735,7 @@
       }
 
       function shouldForceWelcomeAdminAccessVisible() {
-        // Desktop browsers should always keep the welcome admin entry visible.
-        const hasDesktopPointer =
-          typeof window.matchMedia === 'function'
-            ? window.matchMedia('(hover: hover) and (pointer: fine)').matches
-            : false;
-
-        if (hasDesktopPointer) {
-          return true;
-        }
-
-        // Outside Android TWA, keep the welcome admin entry visible.
-        return !isTwaRuntimeContext();
+        return false;
       }
 
       function syncWelcomeAdminAccessVisibility() {
