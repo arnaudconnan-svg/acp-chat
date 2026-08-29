@@ -8,6 +8,9 @@ Ce fichier decrit le mode de travail reel du projet.
 - l'agent propose des axes d'amélioration, choisit l'implementation technique, structure le chantier, modifie le code, puis verifie
 - GitHub reste la source de verite
 - la branche `beta` reste la base de travail principale sauf besoin explicite contraire
+- ChatGPT web ou mobile assure la continuite conversationnelle entre les sessions et les terminaux
+- Codex Cloud/Remote travaille directement sur le repo GitHub, dans l'environnement `acp-chat` et sur la branche `beta` par defaut
+- le fonctionnement courant ne depend d'aucun repo local, VS Code local ou Chrome local
 
 ## 2. Regle generale
 
@@ -42,7 +45,7 @@ Dans ces cas :
 
 - l'agent agit directement
 - il explique apres coup ce qu'il a fait
-- il valide localement avec les commandes adaptees
+- il valide dans l'environnement Codex Cloud/Remote avec les commandes adaptees
 
 ### Changement visible pour l'utilisateur final
 
@@ -76,7 +79,7 @@ Verification complementaire selon le chantier :
 
 - lecture des logs `[PIPELINE]` pour un diagnostic fin de `/chat`
 - pour toute lenteur percue sur `/chat`, commencer par les `pipeline_summary` et lancer `npm run perf:chat:summary` sur un log reel avant de modifier le code
-- des qu'un diagnostic production Render est necessaire, l'agent lit les logs live directement depuis VS Code via commande API Render quand `RENDER_API_KEY` et `RENDER_SERVICE_ID` sont disponibles (pas de copier-coller manuel requis)
+- des qu'un diagnostic production Render est necessaire, l'agent lit les logs live depuis Codex Cloud/Remote via l'API Render quand `RENDER_API_KEY` et `RENDER_SERVICE_ID` sont disponibles (pas de copier-coller manuel requis)
 - si l'utilisateur doit suivre un test depuis `admin.html`, lancer le test en non-prive (`isPrivateConversation=false`) et communiquer `conversationId` + `requestId`
 - reserver `isPrivateConversation=true` aux tests demandes explicitement en prive
 - sequence Render de reference :
@@ -181,37 +184,20 @@ Sur ce projet :
 
 ---
 
-## 9. Continuite PC <-> Mobile avec plan.md
+## 9. Fonctionnement cloud et continuite
 
-Objectif :
+Le flux de travail courant est 100 % cloud :
 
-- maintenir une continuite de travail entre sessions sur des terminaux differents (PC local, mobile en tunneling) sans devoir tout re-expliquer a chaque ouverture
+- la continuite des echanges est portee par ChatGPT web ou mobile
+- les modifications, validations et operations Git sont realisees par Codex Cloud/Remote sur le repo GitHub
+- l'environnement `acp-chat` et la branche `beta` sont utilises par defaut
+- aucun fichier du repo ni environnement local ne sert de pont de reprise entre les terminaux
 
-### Role de plan.md
+Codex desktop/local, VS Code local et Chrome local sont reserves aux configurations ponctuelles qui ne peuvent pas etre accomplies proprement dans le cloud :
 
-`plan.md` est le pont de reprise entre sessions. Il contient le contexte minimal pour qu'une nouvelle session puisse reprendre le chantier sans reconstitution.
+- 2FA ou OAuth
+- utilisation d'une session web deja connectee
+- recuperation initiale de secrets
+- acces a un service sans API ni pont cloud propre
 
-Le contenu de `plan.md` est libre de forme. Aucune section, ordre, gabarit, style redactionnel, granularite ou contrainte de mise en page ne doit etre imposee par defaut.
-
-Preference utilisateur (non obligatoire, sauf demande contraire explicite) : favoriser une ecriture compacte par point, avec constat + decision + scope regroupes dans le meme bloc, et eviter les sections separees qui repetent ces informations et rallongent la lecture.
-
-Copilot doit viser uniquement l'utilite de reprise inter-sessions selon la demande explicite de l'utilisateur, y compris si cela prend la forme de notes brutes, d'une seule phrase, d'un bloc unique, ou d'une structure ad hoc.
-
-En consequence, Copilot ne doit plus reproposer automatiquement une structure type (ex : "objectif / decisions / validation / questions ouvertes") sauf demande explicite de l'utilisateur pour ce format.
-
-Contenu exclu :
-
-- historique de modifications deja consommees
-- backlog ou todo-list
-
-### Mise a jour
-
-`plan.md` est mis a jour uniquement sur demande. Formulation naturelle du type `MAJ plan.md = ...` declenche une mise a jour en delta intelligent par Copilot. Le contenu apres `=` est interprete comme un delta a integrer, sauf indication contraire.
-
-### Implémentation en cours dans une session tierce
-
-Si un chantier est en cours d'implementation sur un autre terminal et que le repo n'est pas encore aligne avec `plan.md`, ajouter dans `plan.md` un bloc explicite :
-
-> _Implmentation en cours dans une session tierce_ : [description de ce qui est en transit] — [contexte ou terminal concerne]
-
-Copilot ne traitera pas l'ecart repo / plan comme une incoherence sur ce sujet tant que ce bloc est present.
+Une fois cette configuration terminee, le travail courant reprend dans ChatGPT web/mobile et Codex Cloud/Remote.

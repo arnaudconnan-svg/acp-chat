@@ -164,36 +164,16 @@ Pour les modifications purement techniques sans effet comportemental visible (re
 
 Si une demande produit est ambiguë techniquement : proposer deux interprétations et demander laquelle est juste, plutôt que de choisir la plus restrictive par défaut.
 
-### Règle de continuité inter-sessions — plan.md
+### Règle de fonctionnement cloud
 
-`plan.md` est le témoin de l'état conversationnel entre sessions (PC, mobile, tunneling). Il sert de pont de reprise quand l'historique de conversation n'est pas disponible.
+Le fonctionnement courant est intégralement cloud :
 
-**À l'ouverture de chaque nouvelle session**, si `plan.md` existe dans le repo, l'agent doit :
+- ChatGPT web ou mobile assure la continuité conversationnelle entre les sessions et les terminaux
+- Codex Cloud/Remote effectue le travail sur le repo GitHub
+- l'environnement `acp-chat` sur la branche `beta` est l'environnement de travail par défaut
+- aucun fichier du repo ne sert de pont de reprise conversationnelle entre les terminaux
 
-1. le lire avant toute autre action
-2. le signaler explicitement en début d'échange
-3. si le fichier est vide, obsolète ou incohérent : le signaler et demander si on repart de zéro
-4. si une incohérence est détectée entre `plan.md` et l'état réel du repo : la signaler
-
-Sauf exception ci-dessous, **le repo prime sur `plan.md`** en cas de conflit.
-
-**Exception** : si `plan.md` contient un bloc _Implémentation en cours dans une session tierce_ décrivant ce qui est en transit et dans quel contexte, l'agent ne traite pas le décalage repo / plan comme une incohérence sur ce sujet.
-
-**Mise à jour** : `plan.md` est mis à jour uniquement sur demande explicite. Les formulations naturelles du type `MAJ plan.md = ...` déclenchent une mise à jour en delta intelligent. L'agent n'avance pas spontanément après lecture — il attend la direction de l'utilisateur.
-
-**Hygiène Git (obligatoire)** : si `plan.md` est vide et apparaît modifié uniquement par vidage/nettoyage, l'agent doit le commit sans attendre une autre modification, pour éviter une notification persistante dans la zone Source Control.
-
-Règle de publication : si `plan.md` est le seul fichier modifié, ne pas pousser sur le remote. Le push n'est autorisé que si d'autres changements sont déjà en cours de publication, ou sur demande explicite de l'utilisateur.
-
-Le contenu de `plan.md` est libre de forme. Aucune section, ordre, gabarit, style rédactionnel, granularité ou contrainte de mise en page ne peut être imposée par défaut.
-
-Préférence utilisateur (non-obligatoire, sauf demande contraire explicite) : privilégier un rendu compact par point, où constat + décision + scope du point restent dans le même bloc, et éviter les sections séparées qui dupliquent ces informations et allongent inutilement la lecture.
-
-L'agent doit uniquement viser l'utilité de reprise inter-sessions selon la demande explicite de l'utilisateur, y compris si cela prend la forme de notes brutes, d'une seule phrase, d'un bloc unique, ou d'une structure ad hoc.
-
-En conséquence, l'agent ne doit plus reproposer automatiquement une structure type (ex : "objectif / décisions / validation / questions ouvertes") sauf demande explicite de l'utilisateur pour ce format.
-
-`plan.md` ne contient pas d'historique de modifications ni de backlog.
+Codex desktop/local, VS Code local et Chrome local ne font pas partie du flux de travail courant. Ils sont réservés aux configurations ponctuelles qui exigent un contexte local : 2FA, OAuth, session web déjà connectée, récupération initiale de secrets, ou service sans API ni pont cloud propre.
 
 ---
 
