@@ -8,6 +8,21 @@ const admin = require('firebase-admin');
 const { parseAppConfig, resolveServiceAccount } = require('./lib/config');
 const { childLogger } = require('./lib/logger');
 const {
+  createAffiliationShortValidationAnalyzer
+} = require('./lib/affiliation-validation');
+const {
+  runIntersessionCompactAttempt: runMistralIntersessionCompactAttempt
+} = require('./lib/intersession-compact');
+const { createMistralTransport } = require('./lib/mistral-transport');
+const {
+  createTitleRequester,
+  sanitizeGeneratedTitleCandidate
+} = require('./lib/title-generation');
+const { createTitleConflictProtection } = require('./lib/title-conflict');
+const {
+  createInformationRequestAnalyzer
+} = require('./lib/information-routing');
+const {
   chatRequestSchema,
   stateProposalSchema,
   postureDecisionSchema,
@@ -262,9 +277,6 @@ const { resolveBranchSeedPayload } = require('./lib/branching');
 const { createWriter } = require('./lib/writer');
 
 const express = require('express');
-const OpenAI = require('openai');
-const http = require('http');
-const https = require('https');
 const { AsyncLocalStorage } = require('async_hooks');
 
 const app = express();
@@ -457,18 +469,6 @@ app.use((req, res, next) => {
   next();
 });
 
-const _httpAgent = new http.Agent({ keepAlive: true, maxSockets: 20 });
-const _httpsAgent = new https.Agent({ keepAlive: true, maxSockets: 20 });
-const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-  maxRetries: 0,
-  timeout: 55000,
-  httpAgent: _httpsAgent,
-  fetchOptions: {
-    agent: (url) => (url.startsWith('https') ? _httpsAgent : _httpAgent)
-  }
-});
-
 const llmUsageContext = new AsyncLocalStorage();
 
 function createLlmUsageAccumulator() {
@@ -528,79 +528,39 @@ function appendLlmUsageToCurrentRequest(rawUsage = null) {
   accumulator.totalTokens += usage.totalTokens;
 }
 
+const mistralTransport = createMistralTransport({
+  apiKey: appConfig.mistralApiKey,
+  onUsage: appendLlmUsageToCurrentRequest
+});
+
 function wait(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
-
-function isRetryableOpenAIError(err) {
-  return Boolean(
-    err &&
-    (err.status === 429 ||
-      err.code === 'rate_limit_exceeded' ||
-      err.type === 'tokens')
-  );
-}
-
-function readRetryDelayMs(err, attempt) {
-  const retryAfterMsHeader = err?.headers?.get?.('retry-after-ms');
-  const retryAfterSecondsHeader = err?.headers?.get?.('retry-after');
-  const retryAfterMs = Number.parseInt(String(retryAfterMsHeader || ''), 10);
-
-  if (Number.isFinite(retryAfterMs) && retryAfterMs > 0) {
-    return Math.min(retryAfterMs + 150, 2500);
-  }
-
-  const retryAfterSeconds = Number.parseFloat(
-    String(retryAfterSecondsHeader || '')
-  );
-  if (Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0) {
-    return Math.min(Math.ceil(retryAfterSeconds * 1000) + 150, 2500);
-  }
-
-  return Math.min(400 * (attempt + 1), 2500);
-}
-
-const originalCreateChatCompletion = client.chat.completions.create.bind(
-  client.chat.completions
-);
-client.chat.completions.create = async function createChatCompletionWithRetry(
-  ...args
-) {
-  let attempt = 0;
-
-  while (true) {
-    try {
-      const response = await originalCreateChatCompletion(...args);
-      appendLlmUsageToCurrentRequest(
-        response && typeof response === 'object' ? response.usage : null
-      );
-      return response;
-    } catch (err) {
-      if (!isRetryableOpenAIError(err) || attempt >= 2) {
-        throw err;
-      }
-
-      await wait(readRetryDelayMs(err, attempt));
-      attempt += 1;
-    }
-  }
-};
 
 function readModelId(envKey, fallback) {
   const configuredValue = String(process.env[envKey] || '').trim();
   return configuredValue || fallback;
 }
 
-const MODEL_IDS = {
-  analysis: readModelId('OPENAI_MODEL_ANALYSIS', 'gpt-4.1-mini'),
-  memoryUpdate: readModelId('OPENAI_MODEL_MEMORY_UPDATE', 'gpt-5'),
-  memoryUpdateFallback: readModelId(
-    'OPENAI_MODEL_MEMORY_UPDATE_FALLBACK',
-    'gpt-4.1'
-  ),
-  generation: readModelId('OPENAI_MODEL_GENERATION', 'gpt-4.1'),
-  title: readModelId('OPENAI_MODEL_TITLE', 'gpt-4o-mini')
+const MISTRAL_MODEL_IDS = {
+  analysis: readModelId('MISTRAL_MODEL_ANALYSIS', 'mistral-small-latest'),
+  generation: readModelId('MISTRAL_MODEL_GENERATION', 'mistral-medium-latest'),
+  memory: readModelId('MISTRAL_MODEL_MEMORY', 'mistral-medium-latest'),
+  title: readModelId('MISTRAL_MODEL_TITLE', 'mistral-small-latest')
 };
+
+const requestTitleFromMistral = createTitleRequester({
+  transport: mistralTransport,
+  modelId: MISTRAL_MODEL_IDS.title
+});
+
+const { analyzeModelConflict, rewriteConflictModelContent } =
+  createTitleConflictProtection({
+    mistralTransport,
+    analysisModelId: MISTRAL_MODEL_IDS.analysis,
+    titleModelId: MISTRAL_MODEL_IDS.title,
+    normalizeMemory
+  });
 
 function createEmailNotifier() {
   const notifyTo = String(process.env.NOTIFY_EMAIL_TO || '').trim();
@@ -2650,41 +2610,11 @@ function isExplicitAppFeatureRequest(message = '') {
 // --------------------------------------------------
 
 // Detect whether the user is asking an information request.
-async function llmInfoAnalysis(
-  message = '',
-  history = [],
-  promptRegistry = buildDefaultPromptRegistry()
-) {
-  const context = trimInfoAnalysisHistory(history);
-
-  const r = await client.chat.completions.create({
-    model: MODEL_IDS.analysis,
-    temperature: 0,
-    max_completion_tokens: 60,
-    messages: [
-      { role: 'system', content: promptRegistry.ANALYZE_INFO },
-      ...context.map((m) => ({ role: m.role, content: m.content })),
-      { role: 'user', content: message }
-    ]
-  });
-
-  try {
-    const raw = (r.choices?.[0]?.message?.content || '')
-      .replace(/```json|```/g, '')
-      .trim();
-    const parsed = JSON.parse(raw);
-
-    return {
-      isInfoRequest: parsed.isInfoRequest === true,
-      source: 'llm'
-    };
-  } catch {
-    return {
-      isInfoRequest: false,
-      source: 'llm_fallback'
-    };
-  }
-}
+const llmInfoAnalysis = createInformationRequestAnalyzer({
+  mistralTransport,
+  modelId: MISTRAL_MODEL_IDS.analysis,
+  trimInfoAnalysisHistory
+});
 
 const {
   analyzeExplorationCalibration,
@@ -2709,8 +2639,8 @@ const {
   n2Response,
   proposeState
 } = createAnalyzers({
-  client,
-  MODEL_IDS,
+  mistralTransport,
+  MISTRAL_MODEL_IDS,
   isExplicitAppFeatureRequest,
   llmInfoAnalysis,
   normalizeMemory,
@@ -2773,71 +2703,6 @@ async function loadConversationBranchHistoryForRecall({
   return normalizeConversationBranchHistory(recentHistory);
 }
 
-// Ask the LLM whether the generated content appears to violate the model conflict policy.
-async function analyzeModelConflict(
-  content = '',
-  promptRegistry = buildDefaultPromptRegistry()
-) {
-  const r = await client.chat.completions.create({
-    model: MODEL_IDS.analysis,
-    temperature: 0,
-    max_completion_tokens: 40,
-    messages: [
-      { role: 'system', content: promptRegistry.ANALYZE_CONFLICT_MODEL },
-      { role: 'user', content: content }
-    ]
-  });
-
-  try {
-    const raw = (r.choices?.[0]?.message?.content || '')
-      .replace(/```json|```/g, '')
-      .trim();
-    const parsed = JSON.parse(raw);
-
-    return {
-      modelConflict: parsed.modelConflict === true
-    };
-  } catch {
-    return {
-      modelConflict: false
-    };
-  }
-}
-
-async function rewriteConflictModelContent({
-  message = '',
-  history = [],
-  memory = '',
-  originalContent,
-  promptRegistry = buildDefaultPromptRegistry()
-}) {
-  const user = `
-Message utilisateur :
-${message}
-
-Contexte recent :
-${history.map((m) => `${m.role === 'user' ? 'Utilisateur' : 'Assistant'} : ${m.content}`).join('\n')}
-
-Memoire :
-${normalizeMemory(memory, promptRegistry)}
-
-Contenu initial a reformuler :
-${originalContent}
-`;
-
-  const r = await client.chat.completions.create({
-    model: MODEL_IDS.generation,
-    temperature: 0.3,
-    max_completion_tokens: 500,
-    messages: [
-      { role: 'system', content: promptRegistry.REWRITE_TITLE_CONFLICT_MODEL },
-      { role: 'user', content: user }
-    ]
-  });
-
-  return (r.choices?.[0]?.message?.content || '').trim() || originalContent;
-}
-
 // --------------------------------------------------
 // 4) MODE + DEBUG
 // --------------------------------------------------
@@ -2853,13 +2718,22 @@ const {
   updateIntersessionMemory,
   updateMemory
 } = createMemoryHelpers({
-  client,
-  MODEL_IDS,
+  mistralTransport,
+  MISTRAL_MODEL_IDS,
   normalizeIntersessionMemory,
   normalizeMemory
 });
 
-const { generateReply } = createWriter({ client, MODEL_IDS, normalizeMemory });
+const { generateReply } = createWriter({
+  mistralTransport,
+  MISTRAL_MODEL_IDS,
+  normalizeMemory
+});
+const { generateReply: generateCrisisReply } = createWriter({
+  mistralTransport,
+  MISTRAL_MODEL_IDS,
+  normalizeMemory
+});
 
 // --------------------------------------------------
 // 8) SESSION CLOSE
@@ -2944,20 +2818,6 @@ function normalizeTitleDenyKey(value = '') {
     .trim();
 }
 
-function sanitizeGeneratedTitleCandidate(value = '') {
-  let title = String(value || '')
-    .replace(/^\s+|\s+$/g, '')
-    .replace(/^['"`]+|['"`]+$/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-
-  if (title.length > 40) {
-    title = title.slice(0, 40).trim();
-  }
-
-  return title;
-}
-
 // Generate a short, clean title for a conversation from the first user messages.
 // Uses the LLM when possible, with fallback rules to keep titles safe and concise.
 async function generateConversationTitle(messages, options = {}) {
@@ -3021,44 +2881,7 @@ async function generateConversationTitle(messages, options = {}) {
       ])
     ).slice(0, 80);
 
-    const avoidBlock =
-      effectiveForbidden.length > 0
-        ? [
-            'Titres interdits (ne pas proposer ces formulations exactes, meme avec ponctuation/casse differente) :',
-            ...effectiveForbidden.map((title) => `- ${title}`)
-          ].join('\n')
-        : 'Aucun titre interdit fourni.';
-
-    const completion = await client.chat.completions.create({
-      model: MODEL_IDS.title,
-      temperature: 0.2,
-      max_completion_tokens: 30,
-      messages: [
-        {
-          role: 'system',
-          content: [
-            'Tu generes un titre tres court en francais pour une conversation.',
-            'Contraintes :',
-            '- 2 a 6 mots',
-            '- pas de guillemets',
-            "- pas d'emoji",
-            '- pas de point final',
-            '- formulation naturelle et specifique',
-            '- ne recopie pas simplement le premier message',
-            "- ne commence pas par Verbatim de type Je, J, Tu, Mon, Ma sauf si c'est indispensable",
-            '- respecte strictement la liste des titres interdits'
-          ].join('\n')
-        },
-        {
-          role: 'user',
-          content: `${sourceText}\n\n${avoidBlock}`
-        }
-      ]
-    });
-
-    return sanitizeGeneratedTitleCandidate(
-      completion.choices?.[0]?.message?.content || ''
-    );
+    return requestTitleFromMistral(sourceText, effectiveForbidden);
   }
 
   async function applyTitleConflictGuard(
@@ -6249,7 +6072,7 @@ app.put('/api/intersession-memory', requireUserAuth, async (req, res) => {
       (err.code === 'insufficient_quota' || err.type === 'insufficient_quota')
     ) {
       return res.status(503).json({
-        error: 'OpenAI quota exhausted',
+        error: 'LLM quota exhausted',
         code: 'insufficient_quota',
         status: 'service_unavailable',
         serviceUnavailable: true,
@@ -8240,79 +8063,13 @@ function deriveAttachmentLevelFromScore(attachmentScore = 0) {
   return 'high';
 }
 
-async function analyzeAffiliationShortValidationCoherence(
-  message = '',
-  history = [],
-  _promptRegistry = buildDefaultPromptRegistry()
-) {
-  const trimmedMessage = String(message || '').trim();
-  const normalizedLead = trimmedMessage
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[\u2019]/g, "'");
-
-  if (!hasShortAffiliationMarker(message)) {
-    return {
-      shortValidationConfirmed: true,
-      source: 'deterministic_no_short_marker'
-    };
-  }
-
-  // Deterministic fast-path for explicit leading validation markers.
-  // This avoids unnecessary LLM rejects on forms like "Exact." or
-  // concession starts such as "Oui, mais ...".
-  if (
-    /^(?:oui|exact(?:ement)?|c[' ]est\s*(?:exactement\s+)?ca)\b/.test(
-      normalizedLead
-    ) &&
-    !/^oui\s*,?\s*mais\s+non\b/.test(normalizedLead)
-  ) {
-    return {
-      shortValidationConfirmed: true,
-      source: 'deterministic_leading_marker'
-    };
-  }
-
-  const context = trimInfoAnalysisHistory(history);
-  const user = `
-Message utilisateur actuel :
-${message}
-
-Contexte recent :
-${context.map((m) => `${m.role === 'user' ? 'Utilisateur' : 'Assistant'} : ${m.content}`).join('\n')}
-`;
-
-  try {
-    const r = await client.chat.completions.create({
-      model: MODEL_IDS.analysis,
-      temperature: 0,
-      max_completion_tokens: 60,
-      messages: [
-        {
-          role: 'system',
-          content:
-            "Tu determines si un marqueur lexical court de validation (ex: 'exactement', 'c'est ca') confirme reellement le message assistant precedent. Reponds STRICTEMENT en JSON: {\"shortValidationConfirmed\": true|false}. true uniquement si la validation est contextuellement coherente et non ironique/non contestataire."
-        },
-        { role: 'user', content: user }
-      ]
-    });
-
-    const raw = (r.choices?.[0]?.message?.content || '')
-      .replace(/```json|```/g, '')
-      .trim();
-    const parsed = JSON.parse(raw);
-    return {
-      shortValidationConfirmed: parsed.shortValidationConfirmed === true,
-      source: 'llm'
-    };
-  } catch {
-    return {
-      shortValidationConfirmed: false,
-      source: 'llm_fallback'
-    };
-  }
-}
+const analyzeAffiliationShortValidationCoherence =
+  createAffiliationShortValidationAnalyzer({
+    mistralTransport,
+    modelId: MISTRAL_MODEL_IDS.analysis,
+    hasShortAffiliationMarker,
+    trimInfoAnalysisHistory
+  });
 
 // Main chat endpoint.
 // This route orchestrates the request parsing, safety analysis, mode detection,
@@ -9861,7 +9618,7 @@ async function handleChatPost(req, res) {
         let reply;
         let writerUsage = null;
         try {
-          const n2Result = await generateReply({
+          const n2Result = await generateCrisisReply({
             message,
             history: recentHistory,
             memory: previousMemory,
@@ -9869,7 +9626,7 @@ async function handleChatPost(req, res) {
             promptRegistry: n2PromptRegistry,
             onTokenCallback: onTokenCallbackForChat
           });
-          reply = n2Result.reply;
+          reply = String(n2Result.reply || '').trim() || n2Response();
           writerUsage = n2Result.usage || null;
         } catch {
           reply = n2Response();
@@ -10166,65 +9923,14 @@ async function handleChatPost(req, res) {
             defaults.COMPACT_INTERSESSION_RUNTIME_MEMORY ||
             ''
         ).trim();
-        const source = String(memorySource || '').trim();
-        const userPrompt = `
-[MEMOIRE_INTERSESSION_SOURCE]
-${source || '(vide)'}
-
-[CONTRAT]
-Reponds strictement en JSON: {"items": ["..."]}
-`;
-
-        let timeoutHandle = null;
-        const requestPromise = client.chat.completions.create({
-          model: MODEL_IDS.analysis,
-          max_completion_tokens: 500,
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userPrompt }
-          ]
+        return runMistralIntersessionCompactAttempt({
+          mistralTransport,
+          modelId: MISTRAL_MODEL_IDS.analysis,
+          systemPrompt,
+          memorySource,
+          extractItems: extractRuntimeCompactItems,
+          timeoutMs
         });
-
-        const timeoutPromise = new Promise((_, reject) => {
-          timeoutHandle = setTimeout(
-            () => {
-              reject(new Error(`intersession_compact_timeout_${timeoutMs}ms`));
-            },
-            Math.max(1000, timeoutMs)
-          );
-        });
-
-        try {
-          const response = await Promise.race([requestPromise, timeoutPromise]);
-          const raw = String(
-            response?.choices?.[0]?.message?.content || ''
-          ).trim();
-          const items = extractRuntimeCompactItems(raw);
-          const finishReason =
-            typeof response?.choices?.[0]?.finish_reason === 'string'
-              ? response.choices[0].finish_reason
-              : null;
-
-          if (!raw) {
-            throw new Error('intersession_compact_empty_output');
-          }
-
-          if (!Array.isArray(items)) {
-            throw new Error('intersession_compact_invalid_items');
-          }
-
-          return {
-            ok: true,
-            items,
-            raw,
-            finishReason,
-            model: typeof response?.model === 'string' ? response.model : null
-          };
-        } finally {
-          if (timeoutHandle) {
-            clearTimeout(timeoutHandle);
-          }
-        }
       }
 
       async function getFreshUserDataIfRefreshForced(userData) {
@@ -12023,7 +11729,7 @@ Reponds strictement en JSON: {"items": ["..."]}
       }
       if (isQuotaExhausted) {
         return res.status(503).json({
-          error: 'OpenAI quota exhausted',
+          error: 'LLM quota exhausted',
           code: 'insufficient_quota',
           status: 'service_unavailable',
           serviceUnavailable: true,

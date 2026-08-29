@@ -68,14 +68,11 @@ function baseInput(overrides = {}) {
 
 function createWriterForHarness() {
   return createWriter({
-    client: {
-      chat: {
-        completions: {
-          create: async () => ({ choices: [{ message: { content: '' } }] })
-        }
-      }
+    mistralTransport: {
+      complete: async () => ({ content: '', usage: null }),
+      stream: async () => ({ content: '', usage: null })
     },
-    MODEL_IDS: { generation: 'test-model' },
+    MISTRAL_MODEL_IDS: { generation: 'test-model' },
     normalizeMemory: (value) => String(value || '')
   });
 }
