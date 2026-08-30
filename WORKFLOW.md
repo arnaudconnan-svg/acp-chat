@@ -7,9 +7,10 @@ Ce fichier decrit le mode de travail reel du projet.
 - l'utilisateur formule un objectif produit, un probleme visible, une contrainte metier ou soumet une conversation test avec des commentaires dev écrits par lui
 - l'agent propose des axes d'amélioration, choisit l'implementation technique, structure le chantier, modifie le code, puis verifie
 - GitHub reste la source de verite
-- la branche `beta` reste la base de travail principale sauf besoin explicite contraire
+- la branche partagee `beta` reste la base de reference principale sauf besoin explicite contraire
+- chaque chantier part de `beta`, est implemente sur une branche de travail `work`, puis revient vers `beta` par pull request
 - ChatGPT web ou mobile assure la continuite conversationnelle entre les sessions et les terminaux
-- Codex Cloud/Remote travaille directement sur le repo GitHub, dans l'environnement `acp-chat` et sur la branche `beta` par defaut
+- Codex Cloud/Remote travaille directement sur le repo GitHub, dans l'environnement `acp-chat`, avec le flux `beta` -> `work` -> pull request vers `beta`
 - le fonctionnement courant ne depend d'aucun repo local, VS Code local ou Chrome local
 
 ## 2. Regle generale

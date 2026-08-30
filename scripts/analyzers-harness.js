@@ -2,6 +2,9 @@
 
 const {
   createAnalyzers,
+  parseClosureIntentResult,
+  parseEmotionalDecenteringResult,
+  parseExplorationRelanceResult,
   hasExplicitPersonalSuicideMarker,
   hasIdiomaticDeathExpressionMarker,
   hasExplicitCrisisResolutionMarker
@@ -138,11 +141,96 @@ function makeFakeClient() {
   };
 }
 
-function makeAnalyzers() {
+function makeAnalyzers({ mistralTransport = null } = {}) {
   const client = makeFakeClient();
   return createAnalyzers({
     client,
     MODEL_IDS: { analysis: 'fake-analysis', generation: 'fake-generation' },
+    mistralTransport:
+      mistralTransport ||
+      {
+        complete: async ({ messages = [] } = {}) => {
+          const system = String(messages[0]?.content || '');
+          const user = String(messages[messages.length - 1]?.content || '');
+          if (system.includes('reajustement relationnel')) {
+            return {
+              content: JSON.stringify({
+                needsRelationalAdjustment:
+                  /tu ne m'aides? pas|tu ne comprends? pas|c'est nul|laisse tomber/i.test(
+                    user
+                  )
+              })
+            };
+          }
+          if (system.includes('allianceSignal')) {
+            return {
+              content: JSON.stringify({ allianceSignal: 'good' })
+            };
+          }
+          if (system.includes('isInterpretationRejection')) {
+            return {
+              content: JSON.stringify({
+                isInterpretationRejection: false,
+                rejectsUnderlyingPhenomenon: false,
+                relationalFrictionSignal: 'none'
+              })
+            };
+          }
+          if (
+            system.includes(
+              'dischargeSignal": "regulated|dysregulated|null"'
+            )
+          ) {
+            const isDischarge =
+              /craque|explose|pleure|ta gueule|ferme-la|ferme la|crise d'angoisse|attaque de panique|du mal a respirer|tete qui tourne|c'est horrible|ca va pas/i.test(
+                user
+              );
+            return {
+              content: JSON.stringify({
+                isDischarge,
+                dischargeSignal: isDischarge
+                  ? /explose|panique|perte de controle|etouffe|crise d'angoisse|attaque de panique|du mal a respirer|tete qui tourne|c'est horrible|ca va pas/i.test(
+                      user
+                    )
+                    ? 'dysregulated'
+                    : 'regulated'
+                  : null,
+                aggressiveDischargeDirectedToBot:
+                  /ta gueule|ferme-la|ferme la/i.test(user)
+              })
+            };
+          }
+          if (system.includes('contact emotionnel non-dechargeant')) {
+            return {
+              content: JSON.stringify({
+                isContact: false,
+                contactSignal: null,
+                selfCriticismLevel: 'low',
+                insightMoment: false
+              })
+            };
+          }
+          if (system.includes('isExploration')) {
+            const isExploration =
+              /je me demande|j'essaie de comprendre|je cherche a comprendre|je cherche a voir ce que/i.test(
+                user
+              );
+            return {
+              content: JSON.stringify({
+                isExploration,
+                confidence: isExploration ? 'high' : 'low',
+                everydayConcreteShare:
+                  /deliveroo|burger|chat gratte|bouchons|j'ai faim/i.test(
+                    user
+                  ),
+                lowContextOpening: false
+              })
+            };
+          }
+          return { content: '{"isRelance": false}' };
+        }
+      },
+    MISTRAL_MODEL_IDS: { analysis: 'fake-mistral-analysis' },
     isExplicitAppFeatureRequest: (message = '') =>
       /\b(app|outil|fonctionnalite|fonctionnalites)\b/i.test(
         String(message || '')
@@ -163,6 +251,197 @@ function makeAnalyzers() {
 
 async function run() {
   const analyzers = makeAnalyzers();
+
+  check('inactive analyzeMemoryUpdateNeeds is not exposed', () => {
+    assert(
+      analyzers.analyzeMemoryUpdateNeeds === undefined,
+      'dead memory update analyzer must remain absent from runtime exports'
+    );
+  });
+
+  check('inactive n1ResponseLLM is absent and crisis fallbacks remain exposed', () => {
+    assert(
+      analyzers.n1ResponseLLM === undefined,
+      'inactive N1 helper must not be exposed'
+    );
+    assert(typeof analyzers.n1Fallback === 'function', 'n1Fallback must remain');
+    assert(
+      typeof analyzers.imminentMajorHarmResponseLLM === 'function',
+      'major harm response must remain'
+    );
+    assert(
+      typeof analyzers.acuteCrisisFollowupResponseLLM === 'function',
+      'acute crisis followup must remain'
+    );
+  });
+
+  check('parseExplorationRelanceResult: strict true boolean accepted', () => {
+    assert(
+      parseExplorationRelanceResult('```json\n{"isRelance":true}\n```')
+        .isRelance === true,
+      'expected isRelance=true'
+    );
+    assert(
+      parseExplorationRelanceResult('{"isRelance":"true"}').isRelance ===
+        false,
+      'expected non-boolean value to normalize to false'
+    );
+  });
+
+  let mistralRequest = null;
+  const relanceAnalyzers = makeAnalyzers({
+    mistralTransport: {
+      async complete(request) {
+        mistralRequest = request;
+        return { content: '{"isRelance": true}' };
+      }
+    }
+  });
+  const ambiguousRelance = await relanceAnalyzers.analyzeExplorationRelance({
+    reply: 'On peut prendre un instant.'
+  });
+  check(
+    'analyzeExplorationRelance: ambiguous signal uses only Mistral Small path',
+    () => {
+      assert(ambiguousRelance.isRelance === true, 'expected isRelance=true');
+      assert(ambiguousRelance.source === 'llm', 'expected source=llm');
+      assert(
+        mistralRequest?.model === 'fake-mistral-analysis',
+        'expected Mistral analysis model'
+      );
+      assert(mistralRequest?.maxTokens === 30, 'expected technical token guard');
+      assert(
+        String(mistralRequest?.messages?.[0]?.content || '').includes(
+          'invite implicitement'
+        ),
+        'expected unchanged exploration relance prompt'
+      );
+    }
+  );
+
+  const relanceFallback = await makeAnalyzers({
+    mistralTransport: {
+      async complete() {
+        return { content: 'invalid json' };
+      }
+    }
+  }).analyzeExplorationRelance({ reply: 'Tu peux continuer.' });
+  check('analyzeExplorationRelance: invalid Mistral output keeps fallback', () => {
+    assert(relanceFallback.isRelance === false, 'expected safe false fallback');
+    assert(
+      relanceFallback.source === 'llm_fallback',
+      'expected source=llm_fallback'
+    );
+  });
+
+  let deterministicMistralCalls = 0;
+  const deterministicRelanceAnalyzers = makeAnalyzers({
+    mistralTransport: {
+      async complete() {
+        deterministicMistralCalls += 1;
+        return { content: '{"isRelance": false}' };
+      }
+    }
+  });
+  const explicitRelance =
+    await deterministicRelanceAnalyzers.analyzeExplorationRelance({
+      reply: 'Tu veux continuer ?'
+    });
+  const noRelance =
+    await deterministicRelanceAnalyzers.analyzeExplorationRelance({
+      reply: 'Merci pour ce partage.'
+    });
+  check('analyzeExplorationRelance: deterministic guards bypass Mistral', () => {
+    assert(explicitRelance.isRelance === true, 'expected question guard true');
+    assert(noRelance.isRelance === false, 'expected no-signal guard false');
+    assert(deterministicMistralCalls === 0, 'expected no Mistral call');
+  });
+
+  check('parseClosureIntentResult: strict true boolean accepted', () => {
+    assert(
+      parseClosureIntentResult('```json\n{"closureIntent":true}\n```')
+        .closureIntent === true,
+      'expected closureIntent=true'
+    );
+    assert(
+      parseClosureIntentResult('{"closureIntent":"true"}').closureIntent ===
+        false,
+      'expected non-boolean value to normalize to false'
+    );
+  });
+
+  let closureMistralRequest = null;
+  const closureAnalyzers = makeAnalyzers({
+    mistralTransport: {
+      async complete(request) {
+        closureMistralRequest = request;
+        return { content: '{"closureIntent": true}' };
+      }
+    }
+  });
+  const ambiguousClosure = await closureAnalyzers.analyzeClosureIntent(
+    "J'ai besoin de temps pour reflechir"
+  );
+  check(
+    'analyzeClosureIntent: ambiguous signal uses only Mistral Small path',
+    () => {
+      assert(
+        ambiguousClosure.closureIntent === true,
+        'expected closureIntent=true'
+      );
+      assert(
+        closureMistralRequest?.model === 'fake-mistral-analysis',
+        'expected Mistral analysis model'
+      );
+      assert(
+        closureMistralRequest?.maxTokens === 30,
+        'expected technical token guard'
+      );
+      assert(
+        String(closureMistralRequest?.messages?.[0]?.content || '').includes(
+          'ignore les propos cites/rapportes'
+        ),
+        'expected unchanged closure intent prompt'
+      );
+    }
+  );
+
+  const closureFallback = await makeAnalyzers({
+    mistralTransport: {
+      async complete() {
+        return { content: 'invalid json' };
+      }
+    }
+  }).analyzeClosureIntent('Je dois y aller');
+  check('analyzeClosureIntent: invalid Mistral output keeps safe fallback', () => {
+    assert(
+      closureFallback.closureIntent === false,
+      'expected safe false fallback'
+    );
+  });
+
+  let deterministicClosureMistralCalls = 0;
+  const deterministicClosureAnalyzers = makeAnalyzers({
+    mistralTransport: {
+      async complete() {
+        deterministicClosureMistralCalls += 1;
+        return { content: '{"closureIntent": false}' };
+      }
+    }
+  });
+  const explicitClosure =
+    await deterministicClosureAnalyzers.analyzeClosureIntent('Au revoir');
+  const noClosure = await deterministicClosureAnalyzers.analyzeClosureIntent(
+    'Je poursuis mon recit.'
+  );
+  check('analyzeClosureIntent: deterministic guards bypass Mistral', () => {
+    assert(explicitClosure.closureIntent === true, 'expected strong guard true');
+    assert(noClosure.closureIntent === false, 'expected no-signal guard false');
+    assert(
+      deterministicClosureMistralCalls === 0,
+      'expected no Mistral call'
+    );
+  });
 
   const vouvoiementOnly = await analyzers.analyzeUserRegister(
     'Pourriez-vous me dire ce que vous en pensez ?'
@@ -650,7 +929,131 @@ async function run() {
     }
   );
 
+  check('parseEmotionalDecenteringResult: strict boolean accepted', () => {
+    assert(
+      parseEmotionalDecenteringResult(
+        '```json\n{"emotionalDecentering":true}\n```'
+      ).emotionalDecentering === true,
+      'expected emotionalDecentering=true'
+    );
+    assert(
+      parseEmotionalDecenteringResult(
+        '{"emotionalDecentering":"true"}'
+      ).emotionalDecentering === false,
+      'expected non-boolean value to normalize to false'
+    );
+  });
+
+  let decenteringMistralRequest = null;
+  const decenteringAnalyzers = makeAnalyzers({
+    mistralTransport: {
+      async complete(request) {
+        decenteringMistralRequest = request;
+        return { content: '{"emotionalDecentering": true}' };
+      }
+    }
+  });
+  const ambiguousDecentering =
+    await decenteringAnalyzers.analyzeEmotionalDecentering(
+      'Dans cette histoire, en fait peu importe',
+      [{ role: 'assistant', content: 'Que se passe-t-il ?' }]
+    );
+  check(
+    'analyzeEmotionalDecentering: ambiguous signal uses Mistral Small path',
+    () => {
+      assert(
+        ambiguousDecentering.emotionalDecentering === true,
+        'expected emotionalDecentering=true'
+      );
+      assert(
+        ambiguousDecentering.source === 'llm_review',
+        'expected source=llm_review'
+      );
+      assert(
+        decenteringMistralRequest?.model === 'fake-mistral-analysis',
+        'expected Mistral analysis model'
+      );
+      assert(
+        decenteringMistralRequest?.maxTokens === 40,
+        'expected technical token guard'
+      );
+      assert(
+        String(decenteringMistralRequest?.messages?.[0]?.content || '').includes(
+          'amorce une emotion et la deflecte'
+        ),
+        'expected unchanged emotional decentering prompt'
+      );
+    }
+  );
+
+  const decenteringFallback = await makeAnalyzers({
+    mistralTransport: {
+      async complete() {
+        return { content: 'invalid json' };
+      }
+    }
+  }).analyzeEmotionalDecentering('Dans cette histoire, en fait peu importe');
+  check(
+    'analyzeEmotionalDecentering: invalid Mistral output keeps safe fallback',
+    () => {
+      assert(
+        decenteringFallback.emotionalDecentering === false,
+        'expected safe false fallback'
+      );
+      assert(
+        decenteringFallback.source === 'llm_fallback',
+        'expected source=llm_fallback'
+      );
+    }
+  );
+
+  let deterministicDecenteringMistralCalls = 0;
+  const deterministicDecenteringAnalyzers = makeAnalyzers({
+    mistralTransport: {
+      async complete() {
+        deterministicDecenteringMistralCalls += 1;
+        return { content: '{"emotionalDecentering": false}' };
+      }
+    }
+  });
   const emotionalDecenteringActive =
+    await deterministicDecenteringAnalyzers.analyzeEmotionalDecentering(
+      "J'ai un truc qui monte quand j'y pense, bref on passe.",
+      []
+    );
+  const emotionalDecenteringAtStart =
+    await deterministicDecenteringAnalyzers.analyzeEmotionalDecentering(
+      'Bref, autre chose.',
+      []
+    );
+  const emotionalDecenteringNoSignal =
+    await deterministicDecenteringAnalyzers.analyzeEmotionalDecentering(
+      'Je raconte simplement la suite.',
+      []
+    );
+  check(
+    'analyzeEmotionalDecentering: deterministic guards bypass Mistral',
+    () => {
+      assert(
+        emotionalDecenteringActive.emotionalDecentering === true,
+        'expected active deterministic guard true'
+      );
+      assert(
+        emotionalDecenteringAtStart.emotionalDecentering === false,
+        'expected starts-with guard false'
+      );
+      assert(
+        emotionalDecenteringNoSignal.emotionalDecentering === false,
+        'expected no-signal guard false'
+      );
+      assert(
+        deterministicDecenteringMistralCalls === 0,
+        'expected no Mistral call'
+      );
+    }
+  );
+
+  const emotionalDecenteringEvidence =
     await analyzers.analyzeEmotionalDecentering(
       "J'ai un truc qui monte quand j'y pense, bref on passe.",
       []
@@ -659,12 +1062,12 @@ async function run() {
     'analyzeEmotionalDecentering: guard actif -> evidence match expose',
     () => {
       assert(
-        emotionalDecenteringActive.emotionalDecentering === true,
+        emotionalDecenteringEvidence.emotionalDecentering === true,
         'expected emotionalDecentering=true'
       );
       const hasMatch =
-        Array.isArray(emotionalDecenteringActive.deterministicEvidence) &&
-        emotionalDecenteringActive.deterministicEvidence.some(
+        Array.isArray(emotionalDecenteringEvidence.deterministicEvidence) &&
+        emotionalDecenteringEvidence.deterministicEvidence.some(
           function hasEntry(entry) {
             return (
               /emotional_decentering_guard_active/.test(String(entry || '')) &&

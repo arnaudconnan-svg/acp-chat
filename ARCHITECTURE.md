@@ -4,7 +4,7 @@
 
 Application conversationnelle avec :
 
-- backend : Node.js + Express + OpenAI + Firebase
+- backend : Node.js + Express + Mistral + Firebase
 - frontend : `public/index.html` comme client principal
 - stockage : Firebase comme source principale, avec etat local cote client
 
