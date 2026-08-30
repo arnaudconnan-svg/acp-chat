@@ -4750,7 +4750,7 @@
         };
       }
 
-      function getOrCreateUserId() {
+      function getLegacyLocalUserIdForImportOnly() {
         if (
           userSessionState.authenticated &&
           userSessionState.user &&
@@ -5098,8 +5098,7 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            requestId,
-            userId: getOrCreateUserId()
+            requestId
           }),
           keepalive: true
         }).catch(() => {});
@@ -6030,8 +6029,6 @@
           return;
         }
 
-        const branchUserId = getOrCreateUserId();
-
         showTemporaryNotice('Creation de la branche...');
 
         try {
@@ -6060,8 +6057,7 @@
             body: JSON.stringify({
               sourceConversationId,
               anchorMessageId,
-              seedMessages,
-              userId: branchUserId
+              seedMessages
             })
           });
 
@@ -6105,8 +6101,7 @@
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                ...branchState,
-                userId: branchUserId
+                ...branchState
               })
             }
           );
@@ -6227,7 +6222,7 @@
 
           const conversationPayload = {
             id: safeConversationId,
-            userId: getOrCreateUserId(),
+            legacyLocalUserId: getLegacyLocalUserIdForImportOnly(),
             title: fallbackTitle || titlePrefix,
             isCustomTitle: false,
             memory:
@@ -9287,7 +9282,6 @@
         botContent
       ) {
         const conversationId = getConversationId();
-        const userId = getOrCreateUserId();
         const isPrivate = isConversationPrivateById(
           conversationId,
           loadConversationData(conversationId)
@@ -9319,7 +9313,6 @@
               type: feedbackType,
               comment: comment || null,
               adminShare,
-              userId,
               feedbackContext,
               ...getAdminMailAlertFlags(),
               userContent,
@@ -9354,7 +9347,6 @@
               type: feedbackType,
               comment: comment || null,
               adminShare,
-              userId,
               feedbackContext,
               ...getAdminMailAlertFlags()
             })
@@ -12204,7 +12196,6 @@
 
         return {
           message,
-          userId: getOrCreateUserId(),
           conversationId: getConversationId(),
           recentHistory: full,
           memory: loadMemory(),
@@ -12374,7 +12365,6 @@
             let branchFailureMessage = '';
 
             if (canCreateBranchFromEdit) {
-              const branchUserId = getOrCreateUserId();
               const branchBaseHistory = truncatedHistory.slice(0, targetIndex);
               const anchorCandidate = [...branchBaseHistory]
                 .reverse()
@@ -12424,7 +12414,6 @@
                       sourceConversationId: conversationIdBeforeSend,
                       anchorMessageId,
                       seedMessages: branchSeedMessages,
-                      userId: branchUserId,
                       memory: branchState.memory,
                       flags: branchState.flags
                     })
@@ -13182,7 +13171,6 @@
 
             const persistPayload = {
               conversationId: requestConversationId,
-              userId: getOrCreateUserId(),
               requestId: chatRequestId,
               partialReply,
               isPrivateConversation,
@@ -13435,7 +13423,6 @@
               message,
               isEdited: requestIsEdited === true,
               requestId: chatRequestId,
-              userId: getOrCreateUserId(),
               conversationId: requestConversationId,
               isPrivateConversation: isConversationPrivateById(
                 requestConversationId,
@@ -15453,10 +15440,9 @@
           // Fetch branch seed from backend.
           try {
             // Find the branch id by listing branches then matching on branchConversationId.
-            const branchesRes = await fetch(
-              '/api/branches?userId=' + encodeURIComponent(getOrCreateUserId()),
-              { credentials: 'include' }
-            );
+            const branchesRes = await fetch('/api/branches', {
+              credentials: 'include'
+            });
             if (branchesRes.ok) {
               const branchesData = await branchesRes.json().catch(() => ({}));
               const matchBranch = Array.isArray(branchesData.branches)
@@ -15470,9 +15456,7 @@
               if (matchBranch) {
                 const branchRes = await fetch(
                   '/api/branches/' +
-                    encodeURIComponent(matchBranch.id) +
-                    '?userId=' +
-                    encodeURIComponent(getOrCreateUserId()),
+                    encodeURIComponent(matchBranch.id),
                   { credentials: 'include' }
                 );
                 if (branchRes.ok) {

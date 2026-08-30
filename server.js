@@ -764,7 +764,7 @@ async function evaluateAndNotifyOffTopicAbuse({
   offTopicInfoPolicy
 }) {
   const safeUserId = String(userId || '').trim();
-  if (!safeUserId || safeUserId === 'u_anon') {
+  if (!safeUserId) {
     return;
   }
 
@@ -1687,6 +1687,8 @@ async function requireUserAuth(req, res, next) {
   }
 }
 
+// Les données conversationnelles exigent une session utilisateur serveur.
+
 function invalidateUserSessionsByUserId(userId = '') {
   const targetUserId = String(userId || '').trim();
   if (!targetUserId) return;
@@ -1801,29 +1803,7 @@ function validateBiometricTokenIfNeeded(req) {
 }
 
 async function resolveBranchActorUserId(req) {
-  try {
-    const session = await getUserSession(req);
-
-    if (
-      session &&
-      typeof session.userId === 'string' &&
-      session.userId.trim()
-    ) {
-      return session.userId.trim();
-    }
-  } catch (err) {
-    console.error('Erreur resolveBranchActorUserId:', err.message);
-  }
-
-  const bodyUserId =
-    typeof req.body?.userId === 'string' ? req.body.userId.trim() : '';
-  if (bodyUserId) {
-    return bodyUserId;
-  }
-
-  const queryUserId =
-    typeof req.query?.userId === 'string' ? req.query.userId.trim() : '';
-  return queryUserId;
+  return String(req.userSession?.userId || '').trim();
 }
 
 const BRANCH_ROUTE_DEBUG = appConfig.branchRouteDebug;
@@ -4774,7 +4754,7 @@ app.post(
   }
 );
 
-app.get('/api/branches', async (req, res) => {
+app.get('/api/branches', requireUserAuth, async (req, res) => {
   try {
     const actorUserId = await resolveBranchActorUserId(req);
 
@@ -4813,7 +4793,7 @@ app.get('/api/branches', async (req, res) => {
   }
 });
 
-app.post('/api/branches/from-message', async (req, res) => {
+app.post('/api/branches/from-message', requireUserAuth, async (req, res) => {
   try {
     if (
       !req.body ||
@@ -4823,8 +4803,7 @@ app.post('/api/branches/from-message', async (req, res) => {
       (req.body.anchorMessageId !== undefined &&
         typeof req.body.anchorMessageId !== 'string') ||
       (req.body.seedMessages !== undefined &&
-        !Array.isArray(req.body.seedMessages)) ||
-      (req.body.userId !== undefined && typeof req.body.userId !== 'string')
+        !Array.isArray(req.body.seedMessages))
     ) {
       return res.status(400).json({ error: 'Invalid branch request' });
     }
@@ -4841,7 +4820,7 @@ app.post('/api/branches/from-message', async (req, res) => {
     if (!sourceConversationId || !actorUserId) {
       return res
         .status(400)
-        .json({ error: 'Missing sourceConversationId or userId' });
+        .json({ error: 'Missing sourceConversationId or session user' });
     }
 
     const conversationSnap = await db
@@ -4957,7 +4936,7 @@ app.post('/api/branches/from-message', async (req, res) => {
   }
 });
 
-app.post('/api/branches/create-and-activate', async (req, res) => {
+app.post('/api/branches/create-and-activate', requireUserAuth, async (req, res) => {
   try {
     if (
       !req.body ||
@@ -4968,7 +4947,6 @@ app.post('/api/branches/create-and-activate', async (req, res) => {
         typeof req.body.anchorMessageId !== 'string') ||
       (req.body.seedMessages !== undefined &&
         !Array.isArray(req.body.seedMessages)) ||
-      (req.body.userId !== undefined && typeof req.body.userId !== 'string') ||
       (req.body.flags !== undefined &&
         (typeof req.body.flags !== 'object' ||
           req.body.flags === null ||
@@ -4989,7 +4967,7 @@ app.post('/api/branches/create-and-activate', async (req, res) => {
     if (!sourceConversationId || !actorUserId) {
       return res
         .status(400)
-        .json({ error: 'Missing sourceConversationId or userId' });
+        .json({ error: 'Missing sourceConversationId or session user' });
     }
 
     const requestedBranchMemory =
@@ -5332,8 +5310,9 @@ function normalizeFeedbackForRead(rawFeedback) {
 
 // Store feedback (thumbUp/thumbDown + optional comment) on an existing message.
 // If adminShare is false, the call should not reach this endpoint - frontend handles locally only.
-app.post('/api/messages/:id/feedback', async (req, res) => {
+app.post('/api/messages/:id/feedback', requireUserAuth, async (req, res) => {
   try {
+    const userId = String(req.userSession?.userId || '').trim();
     const messageId = String(req.params?.id || '').trim();
     if (!messageId) {
       return res.status(400).json({ error: 'Missing messageId' });
@@ -5360,18 +5339,8 @@ app.post('/api/messages/:id/feedback', async (req, res) => {
     }
     const mailsEnabled = req.body?.mailsEnabled !== false;
     const adminUiActive = req.body?.adminUiActive === true;
-    const userId =
-      typeof req.body.userId === 'string' ? req.body.userId.trim() : '';
     if (!userId) {
-      return res.status(400).json({ error: 'Missing userId' });
-    }
-    if (!/^u_[A-Za-z0-9_\-]{6,120}$/.test(userId)) {
-      return res.status(400).json({ error: 'Invalid userId' });
-    }
-
-    const session = await getUserSession(req);
-    if (session && String(session.userId || '').trim() !== userId) {
-      return res.status(403).json({ error: 'Feedback ownership mismatch' });
+      return res.status(401).json({ error: 'Unauthorized' });
     }
 
     const feedbackContext = sanitizeFeedbackContext(req.body.feedbackContext);
@@ -5409,7 +5378,7 @@ app.post('/api/messages/:id/feedback', async (req, res) => {
       comment: comment || null,
       adminShare,
       devShare: adminShare,
-      userId: userId || null,
+      userId,
       timestamp: Date.now(),
       context: feedbackContext
     };
@@ -5439,7 +5408,7 @@ app.post('/api/messages/:id/feedback', async (req, res) => {
       messageId,
       type,
       adminShare,
-      userId: userId || 'anon'
+      userId
     });
     return res.json({ success: true, messageId, feedback });
   } catch (err) {
@@ -5451,8 +5420,9 @@ app.post('/api/messages/:id/feedback', async (req, res) => {
 // Create a non-private snapshot branch containing only the target user+bot pair,
 // then attach feedback to the bot message in that snapshot.
 // Used when the source conversation is private and the user wants to share feedback.
-app.post('/api/branches/feedback-snapshot', async (req, res) => {
+app.post('/api/branches/feedback-snapshot', requireUserAuth, async (req, res) => {
   try {
+    const userId = String(req.userSession?.userId || '').trim();
     if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
       return res.status(400).json({ error: 'Invalid payload' });
     }
@@ -5474,18 +5444,8 @@ app.post('/api/branches/feedback-snapshot', async (req, res) => {
     }
     const mailsEnabled = req.body?.mailsEnabled !== false;
     const adminUiActive = req.body?.adminUiActive === true;
-    const userId =
-      typeof req.body.userId === 'string' ? req.body.userId.trim() : '';
     if (!userId) {
-      return res.status(400).json({ error: 'Missing userId' });
-    }
-    if (!/^u_[A-Za-z0-9_\-]{6,120}$/.test(userId)) {
-      return res.status(400).json({ error: 'Invalid userId' });
-    }
-
-    const session = await getUserSession(req);
-    if (session && String(session.userId || '').trim() !== userId) {
-      return res.status(403).json({ error: 'Feedback ownership mismatch' });
+      return res.status(401).json({ error: 'Unauthorized' });
     }
 
     const feedbackContext = sanitizeFeedbackContext(req.body.feedbackContext);
@@ -5516,7 +5476,7 @@ app.post('/api/branches/feedback-snapshot', async (req, res) => {
       .ref('conversations')
       .child(snapshotConversationId)
       .set({
-        userId: userId || 'u_anon',
+        userId,
         createdAt: now,
         updatedAt: now,
         title: 'Partage feedback',
@@ -5542,7 +5502,7 @@ app.post('/api/branches/feedback-snapshot', async (req, res) => {
       role: 'user',
       content: safeUserContent,
       timestamp: timestampBase,
-      userId: userId || 'u_anon',
+      userId,
       conversationId: snapshotConversationId,
       feedbackSnapshot: true
     });
@@ -5551,7 +5511,7 @@ app.post('/api/branches/feedback-snapshot', async (req, res) => {
       role: 'assistant',
       content: safeBotContent,
       timestamp: timestampBase + 1,
-      userId: userId || 'u_anon',
+      userId,
       conversationId: snapshotConversationId,
       feedbackSnapshot: true,
       debug:
@@ -5575,7 +5535,7 @@ app.post('/api/branches/feedback-snapshot', async (req, res) => {
         comment: comment || null,
         adminShare,
         devShare: adminShare,
-        userId: userId || null,
+        userId,
         timestamp: Date.now(),
         context: feedbackContext
       }
@@ -5604,7 +5564,7 @@ app.post('/api/branches/feedback-snapshot', async (req, res) => {
       snapshotConversationId,
       type,
       adminShare,
-      userId: userId || 'anon'
+      userId
     });
 
     return res.status(201).json({
@@ -5619,7 +5579,7 @@ app.post('/api/branches/feedback-snapshot', async (req, res) => {
   }
 });
 
-app.post('/api/branches/:id/activate', async (req, res) => {
+app.post('/api/branches/:id/activate', requireUserAuth, async (req, res) => {
   try {
     const branchId = String(req.params?.id || '').trim();
     const actorUserId = await resolveBranchActorUserId(req);
@@ -5642,10 +5602,6 @@ app.post('/api/branches/:id/activate', async (req, res) => {
         Array.isArray(req.body.flags))
     ) {
       return res.status(400).json({ error: 'Invalid branch flags payload' });
-    }
-
-    if (req.body?.userId !== undefined && typeof req.body.userId !== 'string') {
-      return res.status(400).json({ error: 'Invalid branch user id payload' });
     }
 
     if (!branchId || !actorUserId) {
@@ -5809,7 +5765,7 @@ app.post('/api/branches/:id/activate', async (req, res) => {
 });
 
 // Fetch a single branch record + seed messages (for cross-device resume).
-app.get('/api/branches/:id', async (req, res) => {
+app.get('/api/branches/:id', requireUserAuth, async (req, res) => {
   try {
     const branchId = String(req.params?.id || '').trim();
     const actorUserId = await resolveBranchActorUserId(req);
@@ -6659,8 +6615,9 @@ app.get(
 );
 
 // Route to manually set the title of a conversation and lock it.
-app.post('/api/conversations/:id/title', async (req, res) => {
+app.post('/api/conversations/:id/title', requireUserAuth, async (req, res) => {
   try {
+    const userId = String(req.userSession?.userId || '').trim();
     if (
       !req.params ||
       typeof req.params.id !== 'string' ||
@@ -6688,6 +6645,16 @@ app.post('/api/conversations/:id/title', async (req, res) => {
     }
 
     const convRef = db.ref('conversations').child(conversationId);
+    const snapshot = await convRef.once('value');
+    const data = snapshot.val() || null;
+
+    if (!data) {
+      return res.status(404).json({ error: 'Conversation introuvable' });
+    }
+
+    if (String(data.userId || '').trim() !== userId) {
+      return res.status(403).json({ error: 'Conversation ownership mismatch' });
+    }
 
     await convRef.update({
       title,
@@ -6702,8 +6669,9 @@ app.post('/api/conversations/:id/title', async (req, res) => {
 });
 
 // Return the title and metadata for a given conversation.
-app.get('/api/conversations/:id/title', async (req, res) => {
+app.get('/api/conversations/:id/title', requireUserAuth, async (req, res) => {
   try {
+    const userId = String(req.userSession?.userId || '').trim();
     if (
       !req.params ||
       typeof req.params.id !== 'string' ||
@@ -6721,6 +6689,10 @@ app.get('/api/conversations/:id/title', async (req, res) => {
 
     if (!data) {
       return res.status(404).json({ error: 'Conversation introuvable' });
+    }
+
+    if (String(data.userId || '').trim() !== userId) {
+      return res.status(403).json({ error: 'Conversation ownership mismatch' });
     }
 
     return res.json({
@@ -7383,8 +7355,7 @@ function parseChatRequest(req) {
       : '';
   const isPrivateConversation = req.body?.isPrivateConversation === true;
   const sessionUserId = String(req.userSession?.userId || '').trim();
-  const userId =
-    sessionUserId || String(req.body?.userId || 'u_anon').trim() || 'u_anon';
+  const userId = sessionUserId;
   const convRef =
     conversationId && !isPrivateConversation
       ? db.ref('conversations').child(conversationId)
@@ -7432,14 +7403,6 @@ function validateChatRequestShape(body = {}) {
 
   if (typeof body.message === 'string' && body.message.length > 12000) {
     return ['message: message_too_long'];
-  }
-
-  if (
-    typeof body.userId !== 'string' &&
-    body.userId !== undefined &&
-    body.userId !== null
-  ) {
-    return ['userId: invalid_type'];
   }
 
   if (body.titleDenyList !== undefined) {
@@ -8104,9 +8067,9 @@ async function handleChatPost(req, res) {
     res.setHeader('x-trace-id', traceId);
 
     if (requestId) {
-      registerActiveChatRequest(requestId, requestData.userId || 'u_anon');
+      registerActiveChatRequest(requestId, requestData.userId);
       req.on('aborted', () => {
-        cancelActiveChatRequest(requestId, requestData.userId || 'u_anon');
+        cancelActiveChatRequest(requestId, requestData.userId);
       });
     }
 
@@ -8124,7 +8087,7 @@ async function handleChatPost(req, res) {
         }
       }
     } catch (err) {
-      // Non-blocking: If session check fails, continue (user may be anonymous)
+      // Non-blocking safeguard: requireUserAuth has already established the session.
       chatLogger.debug({
         event: 'biometric_check_skipped',
         error: err.message
@@ -8384,7 +8347,7 @@ async function handleChatPost(req, res) {
     let flagsForCatch = normalizeSessionFlags({});
     let promptRegistryForCatch = basePromptRegistryForCatch;
     let conversationIdForCatch = requestData.conversationId;
-    let userIdForCatch = requestData.userId || 'u_anon';
+    let userIdForCatch = requestData.userId;
     let convRefForCatch = requestData.convRef;
     let isPrivateConversationForCatch =
       requestData.isPrivateConversation === true;
@@ -8924,8 +8887,7 @@ async function handleChatPost(req, res) {
               })
               .catch(() => null)
           : Promise.resolve(null);
-      const shouldLoadUserProfile =
-        !isPrivateConversation && userId && userId !== 'u_anon';
+      const shouldLoadUserProfile = !isPrivateConversation && !!userId;
       const userProfilePromise = shouldLoadUserProfile
         ? usersRef
             .child(String(userId))
@@ -10003,7 +9965,7 @@ async function handleChatPost(req, res) {
       }
 
       async function prepareIntersessionMemoryForTurn(flagsSnapshot) {
-        if (!userId || userId === 'u_anon' || isPrivateConversation === true) {
+        if (!userId || isPrivateConversation === true) {
           return {
             intersessionMemoryForThisTurn: '',
             intersessionMemoryRuntime: '',
@@ -10220,7 +10182,7 @@ async function handleChatPost(req, res) {
         newFlags
       );
       const intersessionFallbackSeedPromise = (async () => {
-        if (isPrivateConversation === true || !userId || userId === 'u_anon') {
+        if (isPrivateConversation === true || !userId) {
           return '';
         }
         const userData = await userProfilePromise;
