@@ -463,6 +463,12 @@ async function run() {
   const politeTutoiement = await analyzers.analyzeUserRegister(
     'Je voudrais savoir si tu peux aider'
   );
+  const politeRequestWithoutAddress = await analyzers.analyzeUserRegister(
+    'Je voudrais comprendre ce qui se passe.'
+  );
+  const quotedFormalAddress = await analyzers.analyzeUserRegister(
+    'Je voudrais lui dire : "je ne peux plus parler avec vous."'
+  );
   check(
     'analyzeUserRegister: polite tutoiement keeps formalAddress false',
     () => {
@@ -474,6 +480,24 @@ async function run() {
         politeTutoiement.deterministicEvidence?.[0]?.includes('match: tu') ===
           true,
         'expected deterministic evidence to record tu'
+      );
+    }
+  );
+  check(
+    'analyzeUserRegister: polite request without direct address keeps tutoiement',
+    () => {
+      assert(
+        politeRequestWithoutAddress.formalAddress === false,
+        'expected polite request without direct address to keep formalAddress=false'
+      );
+    }
+  );
+  check(
+    'analyzeUserRegister: quoted third-party vous keeps tutoiement',
+    () => {
+      assert(
+        quotedFormalAddress.formalAddress === false,
+        'expected quoted third-party vous to keep formalAddress=false'
       );
     }
   );
