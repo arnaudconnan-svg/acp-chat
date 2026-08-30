@@ -122,16 +122,11 @@ function run() {
   );
 
   check(
-    'UPDATE_INTERSESSION_MEMORY enforces natural editable format',
-    updateIntersessionMemory.includes('FORMAT ATTENDU') &&
-      updateIntersessionMemory.includes(
-        'texte naturel lisible et editable par un humain'
-      ) &&
-      updateIntersessionMemory.includes('pas de prefixe technique') &&
-      updateIntersessionMemory.includes(
-        'tu peux utiliser des puces "-" si utile, mais ce n\'est pas obligatoire'
-      ),
-    'Missing natural editable format guard'
+    'UPDATE_INTERSESSION_MEMORY enforces strict JSON items output',
+    updateIntersessionMemory.includes('FORMAT DE SORTIE STRICT') &&
+      updateIntersessionMemory.includes('{"items":["fait stable 1"') &&
+      updateIntersessionMemory.includes('JSON valide'),
+    'Missing strict intersession JSON output guard'
   );
 
   check(
@@ -139,7 +134,7 @@ function run() {
     updateIntersessionMemory.includes(
       'style factuel, concret, sans theorie ni interpretation'
     ) &&
-      updateIntersessionMemory.includes('4 a 10 points max') &&
+      updateIntersessionMemory.includes('1 a 10 points distincts') &&
       updateIntersessionMemory.includes(
         'chaque point doit rester compact (une phrase courte)'
       ),

@@ -9986,9 +9986,19 @@ async function handleChatPost(req, res) {
         }
       }
 
+      let intersessionMemoryPreparationPromise = null;
+
       async function loadCurrentUserIntersessionMemory() {
         const cachedUserData = await userProfilePromise;
         const userData = await getFreshUserDataIfRefreshForced(cachedUserData);
+        if (
+          (userData?.intersessionCompactOutdated === true ||
+            userData?.intersessionRefreshForced === true) &&
+          intersessionMemoryPreparationPromise
+        ) {
+          const prepared = await intersessionMemoryPreparationPromise;
+          return String(prepared?.intersessionMemoryForThisTurn || '').trim();
+        }
         return getStoredIntersessionCompact(userData);
       }
 
@@ -10206,8 +10216,9 @@ async function handleChatPost(req, res) {
         logN1PipelineEntry();
       }
 
-      const intersessionMemoryPreparationPromise =
-        prepareIntersessionMemoryForTurn(newFlags);
+      intersessionMemoryPreparationPromise = prepareIntersessionMemoryForTurn(
+        newFlags
+      );
       const intersessionFallbackSeedPromise = (async () => {
         if (isPrivateConversation === true || !userId || userId === 'u_anon') {
           return '';

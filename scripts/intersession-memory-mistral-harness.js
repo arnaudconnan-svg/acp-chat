@@ -19,7 +19,7 @@ async function main() {
       factualRequest = request;
       return {
         content:
-          'Contexte stable : vit a Lyon et travaille dans le soin. Mouvement actuel : cherche un meilleur equilibre professionnel.',
+          '{"items":["Vit a Lyon et travaille dans le soin.","Cherche un meilleur equilibre professionnel."]}',
         finishReason: 'stop',
         usage: { promptTokens: 30, completionTokens: 12, totalTokens: 42 },
         raw: { model: 'mistral-medium-latest' }
@@ -41,6 +41,7 @@ async function main() {
   assert.strictEqual(factualRequest.maxTokens, 300);
   assert.match(factualRequest.messages[0].content, /memoire inter-session/i);
   assert.match(factualRequest.messages[1].content, /Travaille dans le soin/);
+  assert.match(factualRequest.messages[0].content, /FORMAT DE SORTIE STRICT/);
   assert.match(factualSummary, /vit a Lyon/i);
   assert.match(factualSummary, /travaille dans le soin/i);
   assert.match(factualSummary, /equilibre professionnel/i);
@@ -63,6 +64,38 @@ async function main() {
   );
   assert.strictEqual(leakResult, previousSummary);
   assert.doesNotMatch(leakResult, /Utilisateur :|Assistant :/i);
+
+  const interpretiveHelpers = createHelpers({
+    async complete() {
+      return {
+        content: '{"items":["Il semble chercher un meilleur equilibre."]}',
+        finishReason: 'stop',
+        usage: null,
+        raw: { model: 'mistral-medium-latest' }
+      };
+    }
+  });
+  const interpretiveResult = await interpretiveHelpers.updateIntersessionMemory(
+    previousSummary,
+    'Contexte stable:\n- Nouvelle donnee'
+  );
+  assert.strictEqual(interpretiveResult, previousSummary);
+
+  const verboseHelpers = createHelpers({
+    async complete() {
+      return {
+        content: JSON.stringify({ items: ['x'.repeat(241)] }),
+        finishReason: 'stop',
+        usage: null,
+        raw: { model: 'mistral-medium-latest' }
+      };
+    }
+  });
+  const verboseResult = await verboseHelpers.updateIntersessionMemory(
+    previousSummary,
+    'Contexte stable:\n- Nouvelle donnee'
+  );
+  assert.strictEqual(verboseResult, previousSummary);
 
   const emptyHelpers = createHelpers({
     async complete() {
