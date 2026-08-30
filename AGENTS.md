@@ -46,6 +46,13 @@ Sécurité > Crise > Décharge > Rupture relationnelle > Exploration > Informati
 
 Cet ordre s'applique à l'arbitrage, pas à la structure du code. L'implémentation peut évoluer tant que la priorité est respectée.
 
+### Interdiction des décisions par motifs textuels sans autorisation
+
+- Toute décision produit ou toute règle de mémoire fondée sur une liste de mots, une expression régulière, un mot-clé ou un autre match pattern est interdite par défaut.
+- L'agent doit demander et obtenir une autorisation explicite de l'utilisateur avant d'ajouter, modifier ou étendre un tel mécanisme.
+- Cette règle couvre notamment les classifications de temporalité, les promotions ou rejets mémoire, les déductions relationnelles, les changements de posture et les routages conversationnels.
+- Les gardes lexicales de sécurité déjà imposées par les invariants de crise restent autorisées lorsqu'elles protègent directement contre un risque immédiat; elles ne doivent pas être étendues à des décisions produit ordinaires sans autorisation.
+
 ### Contrat frontend/backend
 
 - Le format des données échangées entre `index.html` et `/chat` doit rester cohérent
