@@ -187,6 +187,7 @@ console.log('\n-- buildResponseDebugMeta base contract');
 const base = buildResponseDebugMeta();
 for (const field of [
   'topChips',
+  'suicideLevel',
   'memory',
   'directivityText',
   'conversationState',
@@ -198,6 +199,11 @@ for (const field of [
   'explorationCalibrationLevel',
   'explorationSignal',
   'memoryBeforeSanitization',
+  'memoryUpdateDecision',
+  'memoryUpdateReason',
+  'memoryUpdateSource',
+  'memoryUpdateStatus',
+  'memoryUpdateResultSource',
   'intent',
   'forbidden',
   'confidenceSignal',
@@ -232,6 +238,7 @@ for (const field of [
 }
 assertDeepEqual('default values', base, {
   topChips: ['EXPLORATION'],
+  suicideLevel: 'N0',
   memory: '',
   directivityText: '',
   conversationState: 'exploration_open',
@@ -243,6 +250,11 @@ assertDeepEqual('default values', base, {
   explorationCalibrationLevel: null,
   explorationSignal: null,
   memoryBeforeSanitization: null,
+  memoryUpdateDecision: 'unknown',
+  memoryUpdateReason: null,
+  memoryUpdateSource: null,
+  memoryUpdateStatus: 'not_requested',
+  memoryUpdateResultSource: null,
   intent: null,
   forbidden: [],
   confidenceSignal: 1.0,
@@ -278,6 +290,7 @@ const n2 = buildResponseDebugMeta({
   intent: null
 });
 assert('N2 topChips', n2.topChips, ['URGENCE : risque suicidaire']);
+assert('N2 suicideLevel persisted', n2.suicideLevel, 'N2');
 assert('N2 conversationState', n2.conversationState, 'n2_crisis');
 assert('N2 intent null', n2.intent, null);
 assert('N2 directivityText empty', n2.directivityText, '');

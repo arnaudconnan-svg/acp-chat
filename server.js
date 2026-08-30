@@ -8422,6 +8422,9 @@ async function handleChatPost(req, res) {
               .map((chip) => String(chip || '').trim())
               .filter(Boolean)
           : [],
+        suicideLevel: ['N0', 'N1', 'N2'].includes(safe.suicideLevel)
+          ? safe.suicideLevel
+          : 'N0',
         memory: normalizeMemory(safe.memory, promptRegistry),
         memoryBeforeSanitization:
           typeof safe.memoryBeforeSanitization === 'string'
@@ -8502,6 +8505,28 @@ async function handleChatPost(req, res) {
               .map((v) => String(v || '').trim())
               .filter(Boolean)
           : [],
+        memoryUpdateDecision: ['update', 'hold'].includes(
+          safe.memoryUpdateDecision
+        )
+          ? safe.memoryUpdateDecision
+          : 'unknown',
+        memoryUpdateReason:
+          typeof safe.memoryUpdateReason === 'string'
+            ? safe.memoryUpdateReason
+            : null,
+        memoryUpdateSource:
+          typeof safe.memoryUpdateSource === 'string'
+            ? safe.memoryUpdateSource
+            : null,
+        memoryUpdateStatus: ['pending', 'completed', 'failed', 'not_requested'].includes(
+          safe.memoryUpdateStatus
+        )
+          ? safe.memoryUpdateStatus
+          : 'not_requested',
+        memoryUpdateResultSource:
+          typeof safe.memoryUpdateResultSource === 'string'
+            ? safe.memoryUpdateResultSource
+            : null,
         // Posture contract (V3)
         intent: typeof safe.intent === 'string' ? safe.intent : null,
         forbidden: Array.isArray(safe.forbidden) ? safe.forbidden : [],
@@ -9303,6 +9328,8 @@ async function handleChatPost(req, res) {
 
       // Fire-and-forget wrapper: generates a deterministic messageId synchronously,
       // then persists in background without blocking the response path.
+      const assistantMessagePersistenceById = new Map();
+
       function persistAssistantMessageAsync(
         reply,
         debug,
@@ -9314,7 +9341,7 @@ async function handleChatPost(req, res) {
         if (!messageId) {
           throw new Error('Assistant message key reservation failed');
         }
-        persistAssistantMessage(
+        const persistencePromise = persistAssistantMessage(
           reply,
           debug,
           debugMeta,
@@ -9326,7 +9353,17 @@ async function handleChatPost(req, res) {
             err && err.message ? err.message : String(err)
           );
         });
+        assistantMessagePersistenceById.set(messageId, persistencePromise);
         return messageId;
+      }
+
+      async function persistMemoryUpdateAudit(messageId, audit = {}) {
+        if (isPrivateConversation || !messageId) return;
+        await (assistantMessagePersistenceById.get(messageId) || Promise.resolve());
+        await messagesRef.child(messageId).child('debugMeta').update({
+          memoryUpdateStatus: audit.status,
+          memoryUpdateResultSource: audit.resultSource || null
+        });
       }
 
       function buildResponseDebugMeta(params) {
@@ -11425,6 +11462,13 @@ async function handleChatPost(req, res) {
               capturedAt: new Date().toISOString()
             }
           );
+          return {
+            status: 'completed',
+            resultSource:
+              typeof memoryUpdateContract?.source === 'string'
+                ? memoryUpdateContract.source
+                : 'unknown'
+          };
         } catch (e) {
           console.warn(
             '[CHAT][MEMORY_BG_FAILED]',
@@ -11436,6 +11480,7 @@ async function handleChatPost(req, res) {
             source: postureDecision.memoryUpdateSource,
             error: e && e.message ? e.message : String(e)
           });
+          return { status: 'failed', resultSource: 'runtime_error' };
         } finally {
           await registerUsageConsumptionFromTurn();
         }
@@ -11491,6 +11536,10 @@ async function handleChatPost(req, res) {
         memoryState: previousMemoryState,
         intersessionMemoryRuntime,
         analyzerDeterministicEvidence,
+        memoryUpdateDecision: postureDecision.memoryUpdateDecision,
+        memoryUpdateReason: postureDecision.memoryUpdateReason,
+        memoryUpdateSource: postureDecision.memoryUpdateSource,
+        memoryUpdateStatus: 'pending',
         // Posture contract fields (V3)
         intent: postureDecision.intent,
         forbidden: postureDecision.forbidden,
@@ -11605,6 +11654,14 @@ async function handleChatPost(req, res) {
         responseDebugMeta,
         { memory: newMemory, flags: newFlags }
       );
+      backgroundMemoryTask
+        .then((audit) => persistMemoryUpdateAudit(botMessageId, audit))
+        .catch((error) => {
+          console.warn(
+            '[CHAT][MEMORY_AUDIT_PERSIST_FAILED]',
+            error && error.message ? error.message : String(error)
+          );
+        });
 
       return sendChatJsonResponse(
         reply,

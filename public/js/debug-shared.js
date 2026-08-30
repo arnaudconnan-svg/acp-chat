@@ -264,6 +264,25 @@
             })
             .filter(Boolean)
         : [],
+      suicideLevel: ['N0', 'N1', 'N2'].indexOf(toTrimmedString(safe.suicideLevel)) >= 0
+        ? toTrimmedString(safe.suicideLevel)
+        : 'N0',
+      memoryUpdateDecision: ['update', 'hold'].indexOf(
+        toTrimmedString(safe.memoryUpdateDecision)
+      ) >= 0
+        ? toTrimmedString(safe.memoryUpdateDecision)
+        : 'unknown',
+      memoryUpdateReason:
+        toTrimmedString(safe.memoryUpdateReason, '') || null,
+      memoryUpdateSource:
+        toTrimmedString(safe.memoryUpdateSource, '') || null,
+      memoryUpdateStatus: ['pending', 'completed', 'failed', 'not_requested'].indexOf(
+        toTrimmedString(safe.memoryUpdateStatus)
+      ) >= 0
+        ? toTrimmedString(safe.memoryUpdateStatus)
+        : 'not_requested',
+      memoryUpdateResultSource:
+        toTrimmedString(safe.memoryUpdateResultSource, '') || null,
       intent: toTrimmedString(safe.intent, '') || null,
       forbidden: Array.isArray(safe.forbidden)
         ? safe.forbidden
@@ -728,6 +747,31 @@
     return correlation ? runtimeText + ' ' + correlation : runtimeText;
   }
 
+  function buildSafetyAuditText(meta) {
+    var labels = {
+      N0: 'aucun risque suicidaire retenu',
+      N1: 'risque suicidaire a clarifier',
+      N2: 'urgence suicidaire'
+    };
+    return 'Risque suicidaire retenu : ' + (labels[meta.suicideLevel] || labels.N0);
+  }
+
+  function buildMemoryAuditText(meta) {
+    if (!meta || meta.memoryUpdateDecision === 'unknown') return '';
+    var decision = meta.memoryUpdateDecision === 'update' ? 'mise a jour demandee' : 'conservation demandee';
+    var status = {
+      pending: 'en cours',
+      completed: 'terminee',
+      failed: 'echouee',
+      not_requested: 'non demandee'
+    }[meta.memoryUpdateStatus] || 'inconnu';
+    var lines = ['Decision : ' + decision, 'Statut : ' + status];
+    if (meta.memoryUpdateReason) lines.push('Regle serveur : ' + meta.memoryUpdateReason);
+    if (meta.memoryUpdateSource) lines.push('Source de decision : ' + meta.memoryUpdateSource);
+    if (meta.memoryUpdateResultSource) lines.push('Resultat produit par : ' + meta.memoryUpdateResultSource);
+    return lines.join('\n');
+  }
+
   function formatSecondaryTension(secondaryTension) {
     var st = normalizeSecondaryTension(secondaryTension);
     if (!st) return null;
@@ -794,6 +838,8 @@
     translateInfoRoutingSource: translateInfoRoutingSource,
     buildNaturalDebugSummary: buildNaturalDebugSummary,
     buildPipelineRuntimeText: buildPipelineRuntimeText,
+    buildSafetyAuditText: buildSafetyAuditText,
+    buildMemoryAuditText: buildMemoryAuditText,
     formatSecondaryTension: formatSecondaryTension,
     detectMemoryReactivationSignal: function (meta) {
       return meta && meta.memoryReactivationGuardTriggered === true

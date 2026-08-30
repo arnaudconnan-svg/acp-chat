@@ -10096,6 +10096,16 @@
         function buildDebugSections(meta) {
           const sections = [];
 
+          const safetyAuditText = window.FacilitatDebug.buildSafetyAuditText(meta);
+          if (safetyAuditText) {
+            sections.push({ title: 'S\u00e9curit\u00e9', content: safetyAuditText });
+          }
+
+          const memoryAuditText = window.FacilitatDebug.buildMemoryAuditText(meta);
+          if (memoryAuditText) {
+            sections.push({ title: 'Suivi de la m\u00e9moire', content: memoryAuditText });
+          }
+
           const isExplorationMode =
             typeof meta.conversationState === 'string' &&
             meta.conversationState.startsWith('exploration');
