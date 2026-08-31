@@ -33,6 +33,10 @@ const {
   consumeEnvelope,
   applyMonthlyRenewal
 } = require('./lib/usage-envelope');
+const {
+  resolveConversationMemoryForIntersession,
+  selectPostResumeHistory
+} = require('./lib/intersession-memory-source');
 
 const appConfig = parseAppConfig(process.env);
 const serviceAccount = resolveServiceAccount(appConfig);
@@ -5852,19 +5856,18 @@ function stripTransientMemoryBlocksForIntersession(memoryText) {
   return result.join('\n').trim();
 }
 
-// For intersession consolidation, prefer the server-side conversation memory when available.
-// This avoids re-feeding long-term memory from stale localStorage snapshots.
+// Account intersession memory is authoritative. A conversation snapshot can only
+// contribute when the server recorded the account-memory version it started from.
 async function resolveAuthoritativeSessionMemoryForIntersession({
   userId,
   conversationId,
-  fallbackMemory
+  userData
 }) {
-  const fallback = String(fallbackMemory || '').slice(0, 8000);
   const safeConversationId =
     typeof conversationId === 'string' ? conversationId.trim() : '';
 
   if (!safeConversationId || !userId) {
-    return fallback;
+    return { memory: '', reason: 'missing_conversation' };
   }
 
   try {
@@ -5878,14 +5881,19 @@ async function resolveAuthoritativeSessionMemoryForIntersession({
     const conversationMemory =
       typeof convData.memory === 'string' ? convData.memory.trim() : '';
 
-    if (ownerUserId === String(userId) && !isPrivate && conversationMemory) {
-      return conversationMemory.slice(0, 8000);
+    if (ownerUserId !== String(userId) || isPrivate || !conversationMemory) {
+      return { memory: '', reason: 'conversation_unavailable' };
     }
-  } catch {
-    // Best-effort fallback: keep request payload memory when conversation lookup fails.
-  }
 
-  return fallback;
+    return resolveConversationMemoryForIntersession({
+      accountMemoryUpdatedAt: userData?.intersessionMemoryUpdatedAt,
+      conversationMemory,
+      conversationMemoryBaseUpdatedAt:
+        convData.intersessionMemoryBaseUpdatedAt
+    });
+  } catch {
+    return { memory: '', reason: 'conversation_lookup_failed' };
+  }
 }
 
 // PUT saves the long-term memory for the authenticated user.
@@ -5909,23 +5917,6 @@ app.put('/api/intersession-memory', requireUserAuth, async (req, res) => {
         .json({ error: 'Missing conversationId or memory' });
     }
 
-    const sessionMemory =
-      await resolveAuthoritativeSessionMemoryForIntersession({
-        userId: session.userId,
-        conversationId: requestedConversationId,
-        fallbackMemory: String(req.body.memory || '')
-      });
-
-    if (!sessionMemory.trim()) {
-      return res.json({
-        success: true,
-        skipped: true,
-        reason: 'empty_session_memory'
-      });
-    }
-
-    const strippedSessionMemory =
-      stripTransientMemoryBlocksForIntersession(sessionMemory);
     const userSnap = await usersRef.child(session.userId).once('value');
     const userData = userSnap.val() || {};
 
@@ -5938,6 +5929,25 @@ app.put('/api/intersession-memory', requireUserAuth, async (req, res) => {
         reason: 'manual_edit_lock'
       });
     }
+
+    const sessionMemoryResolution =
+      await resolveAuthoritativeSessionMemoryForIntersession({
+        userId: session.userId,
+        conversationId: requestedConversationId,
+        userData
+      });
+
+    if (!sessionMemoryResolution.memory.trim()) {
+      return res.json({
+        success: true,
+        skipped: true,
+        reason: sessionMemoryResolution.reason
+      });
+    }
+
+    const strippedSessionMemory = stripTransientMemoryBlocksForIntersession(
+      sessionMemoryResolution.memory
+    );
 
     const previousIntersessionSource = normalizeIntersessionSourceFromUserData(
       userData,
@@ -6061,16 +6071,8 @@ app.post('/api/session/beacon', async (req, res) => {
       typeof req.body?.conversationId === 'string'
         ? req.body.conversationId.trim()
         : '';
-    const memory = await resolveAuthoritativeSessionMemoryForIntersession({
-      userId: session.userId,
-      conversationId: requestedConversationId,
-      fallbackMemory:
-        typeof req.body?.memory === 'string' ? req.body.memory : ''
-    });
     const beaconTimestamp =
       typeof req.body?.timestamp === 'string' ? req.body.timestamp : null;
-
-    if (!memory.trim()) return;
 
     const now = new Date().toISOString();
 
@@ -6087,6 +6089,15 @@ app.post('/api/session/beacon', async (req, res) => {
       return;
     }
 
+    const sessionMemoryResolution =
+      await resolveAuthoritativeSessionMemoryForIntersession({
+        userId: session.userId,
+        conversationId: requestedConversationId,
+        userData
+      });
+
+    if (!sessionMemoryResolution.memory.trim()) return;
+
     if (
       beaconTimestamp &&
       storedUpdatedAt &&
@@ -6096,7 +6107,9 @@ app.post('/api/session/beacon', async (req, res) => {
       return;
     }
 
-    const strippedMemory = stripTransientMemoryBlocksForIntersession(memory);
+    const strippedMemory = stripTransientMemoryBlocksForIntersession(
+      sessionMemoryResolution.memory
+    );
     const previousIntersessionMemory = normalizeIntersessionSourceFromUserData(
       userData,
       buildDefaultPromptRegistry()
@@ -8800,6 +8813,15 @@ async function handleChatPost(req, res) {
                     typeof d.memoryRewriteDebug === 'object'
                       ? d.memoryRewriteDebug
                       : null,
+                  intersessionMemoryBaseUpdatedAt:
+                    typeof d.intersessionMemoryBaseUpdatedAt === 'string'
+                      ? d.intersessionMemoryBaseUpdatedAt
+                      : null,
+                  intersessionMemoryResumeHistoryCount: Number.isInteger(
+                    d.intersessionMemoryResumeHistoryCount
+                  )
+                    ? d.intersessionMemoryResumeHistoryCount
+                    : 0,
                   updatedAtMs: Number.isFinite(
                     Date.parse(String(d.updatedAt || ''))
                   )
@@ -8827,8 +8849,9 @@ async function handleChatPost(req, res) {
 
       // For non-private conversations, use the memory stored in Firebase (written by the previous turn).
       // Falls back to req.body.memory if Firebase has no memory yet (first turn).
+      let convMemoryFromDb = null;
       if (!isPrivateConversation && convMemoryPromise) {
-        const convMemoryFromDb = await convMemoryPromise;
+        convMemoryFromDb = await convMemoryPromise;
         if (convMemoryFromDb && typeof convMemoryFromDb === 'object') {
           if (
             typeof convMemoryFromDb.memory === 'string' &&
@@ -8853,6 +8876,54 @@ async function handleChatPost(req, res) {
           ) {
             previousConversationActivityMs = convMemoryFromDb.updatedAtMs;
           }
+        }
+      }
+      let intersessionMemoryBaseUpdatedAt = null;
+      let memoryHistoryStartIndex = 0;
+      if (!isPrivateConversation && shouldLoadUserProfile) {
+        const userDataForMemoryBase = await userProfilePromise;
+        const accountMemoryUpdatedAt =
+          typeof userDataForMemoryBase?.intersessionMemoryUpdatedAt === 'string'
+            ? userDataForMemoryBase.intersessionMemoryUpdatedAt
+            : '';
+        const accountMemoryUpdatedAtMs = Date.parse(accountMemoryUpdatedAt);
+        const conversationMemoryBaseUpdatedAt =
+          typeof convMemoryFromDb?.intersessionMemoryBaseUpdatedAt === 'string'
+            ? convMemoryFromDb.intersessionMemoryBaseUpdatedAt
+            : '';
+        const conversationMemoryBaseUpdatedAtMs = Date.parse(
+          conversationMemoryBaseUpdatedAt
+        );
+        const mustRebaseFromAccountMemory =
+          hasPersistedConversationMemory === true &&
+          Number.isFinite(accountMemoryUpdatedAtMs) &&
+          (!Number.isFinite(conversationMemoryBaseUpdatedAtMs) ||
+            conversationMemoryBaseUpdatedAtMs < accountMemoryUpdatedAtMs);
+
+        if (mustRebaseFromAccountMemory) {
+          previousMemory = normalizeMemory('', activePromptRegistry);
+          previousMemoryState = normalizeMemoryStateShape(null, '', Date.now());
+          previousMemoryRewriteDebug = null;
+          previousMemoryForCatch = previousMemory;
+          previousMemoryRewriteDebugForCatch = null;
+          memoryHistoryStartIndex = Array.isArray(recentHistory)
+            ? recentHistory.length
+            : 0;
+          intersessionMemoryBaseUpdatedAt = accountMemoryUpdatedAt;
+          logChatDecision('memory_rebased_from_authoritative_intersession', {
+            conversationId,
+            resumeHistoryCount: memoryHistoryStartIndex,
+            accountMemoryUpdatedAt
+          });
+        } else {
+          memoryHistoryStartIndex = recentHistory.length - selectPostResumeHistory(
+            recentHistory,
+            convMemoryFromDb?.intersessionMemoryResumeHistoryCount
+          ).length;
+          intersessionMemoryBaseUpdatedAt =
+            Number.isFinite(conversationMemoryBaseUpdatedAtMs)
+              ? conversationMemoryBaseUpdatedAt
+              : accountMemoryUpdatedAt || new Date().toISOString();
         }
       }
       if (isPrivateConversation && conversationId) {
@@ -9301,6 +9372,8 @@ async function handleChatPost(req, res) {
                 memoryRewriteDebug && typeof memoryRewriteDebug === 'object'
                   ? memoryRewriteDebug
                   : null,
+              intersessionMemoryBaseUpdatedAt,
+              intersessionMemoryResumeHistoryCount: memoryHistoryStartIndex,
               updatedAt: new Date().toISOString()
             });
             return;
@@ -11147,7 +11220,10 @@ async function handleChatPost(req, res) {
       };
 
       const _prevMem = previousMemory;
-      const _history = recentHistory;
+      const _history = selectPostResumeHistory(
+        recentHistory,
+        memoryHistoryStartIndex
+      );
       const _message = message;
       const _reply = reply;
       const _registry = activePromptRegistry;
