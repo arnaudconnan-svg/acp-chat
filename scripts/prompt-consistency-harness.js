@@ -130,15 +130,25 @@ function run() {
   );
 
   check(
-    'UPDATE_INTERSESSION_MEMORY keeps factual compact constraints',
+    'UPDATE_INTERSESSION_MEMORY keeps all useful facts within 6000 characters',
     updateIntersessionMemory.includes(
       'style factuel, concret, sans theorie ni interpretation'
     ) &&
-      updateIntersessionMemory.includes('1 a 10 points distincts') &&
       updateIntersessionMemory.includes(
-        'chaque point doit rester compact (une phrase courte)'
-      ),
-    'Missing compact factual constraints'
+        'sans selection arbitraire par nombre de points'
+      ) &&
+      updateIntersessionMemory.includes('budget de 6000 caracteres') &&
+      !updateIntersessionMemory.includes('1 a 10 points distincts'),
+    'Intersession prompt must use the 6000-character budget without top-N selection'
+  );
+
+  check(
+    'runtime intersession compaction prompt stays absent',
+    !Object.prototype.hasOwnProperty.call(
+      registry,
+      'COMPACT_INTERSESSION_RUNTIME_MEMORY'
+    ),
+    'Runtime compaction prompt was reintroduced'
   );
 
   check(

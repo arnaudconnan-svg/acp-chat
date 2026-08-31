@@ -1,7 +1,10 @@
 'use strict';
 
 const assert = require('assert');
-const { createMemoryHelpers } = require('../lib/memory');
+const {
+  createMemoryHelpers,
+  normalizeIntersessionMemorySource
+} = require('../lib/memory');
 
 function createHelpers(mistralTransport) {
   return createMemoryHelpers({
@@ -13,6 +16,17 @@ function createHelpers(mistralTransport) {
 }
 
 async function main() {
+  const visibleSource = Array.from(
+    { length: 12 },
+    (_, index) => `- Repere visible ${index + 1}: ${'x'.repeat(120)}`
+  ).join('\n');
+  const runtimeSource = normalizeIntersessionMemorySource(
+    `\n\n${visibleSource}\n\n`
+  );
+  assert.strictEqual(runtimeSource, visibleSource);
+  assert(runtimeSource.length > 1200);
+  assert(runtimeSource.length <= 6000);
+
   let factualRequest = null;
   const factualHelpers = createHelpers({
     async complete(request) {
@@ -38,7 +52,7 @@ async function main() {
     ].join('\n')
   );
   assert.strictEqual(factualRequest.model, 'mistral-medium-latest');
-  assert.strictEqual(factualRequest.maxTokens, 300);
+  assert.strictEqual(factualRequest.maxTokens, 2500);
   assert.match(factualRequest.messages[0].content, /memoire inter-session/i);
   assert.match(factualRequest.messages[1].content, /Travaille dans le soin/);
   assert.match(factualRequest.messages[0].content, /FORMAT DE SORTIE STRICT/);
@@ -81,10 +95,14 @@ async function main() {
   );
   assert.strictEqual(interpretiveResult, previousSummary);
 
+  const longItems = Array.from(
+    { length: 12 },
+    (_, index) => `Repere ${index + 1}: ${'x'.repeat(120)}`
+  );
   const verboseHelpers = createHelpers({
     async complete() {
       return {
-        content: JSON.stringify({ items: ['x'.repeat(241)] }),
+        content: JSON.stringify({ items: longItems }),
         finishReason: 'stop',
         usage: null,
         raw: { model: 'mistral-medium-latest' }
@@ -95,7 +113,10 @@ async function main() {
     previousSummary,
     'Contexte stable:\n- Nouvelle donnee'
   );
-  assert.strictEqual(verboseResult, previousSummary);
+  assert.match(verboseResult, /Repere 1:/);
+  assert.match(verboseResult, /Repere 12:/);
+  assert(verboseResult.length > 1200);
+  assert(verboseResult.length <= 6000);
 
   const emptyHelpers = createHelpers({
     async complete() {

@@ -10,9 +10,6 @@ const { childLogger } = require('./lib/logger');
 const {
   createAffiliationShortValidationAnalyzer
 } = require('./lib/affiliation-validation');
-const {
-  runIntersessionCompactAttempt: runMistralIntersessionCompactAttempt
-} = require('./lib/intersession-compact');
 const { createMistralTransport } = require('./lib/mistral-transport');
 const {
   createTitleRequester,
@@ -249,7 +246,10 @@ const {
   registerExplorationRelance
 } = require('./lib/flags');
 const { createAnalyzers } = require('./lib/analyzers');
-const { createMemoryHelpers } = require('./lib/memory');
+const {
+  createMemoryHelpers,
+  normalizeIntersessionMemorySource
+} = require('./lib/memory');
 const {
   buildAdvancedDebugTrace,
   buildDebug,
@@ -2264,18 +2264,8 @@ function normalizeIntersessionMemory(
   memory,
   promptRegistry = buildDefaultPromptRegistry()
 ) {
-  const text = String(memory || '').trim();
-  if (text) {
-    const section = extractIntersessionSection(text);
-    if (section.hasHeader) {
-      return [
-        'Memoire inter-session:',
-        ...(section.items.length > 0
-          ? section.items.map((item) => `- ${item}`)
-          : ['-'])
-      ].join('\n');
-    }
-  }
+  const text = normalizeIntersessionMemorySource(memory);
+  if (text) return text;
 
   return (
     String(
@@ -2399,7 +2389,9 @@ function normalizeIntersessionSourceFromUserData(
   }
 
   // Backward compatibility with legacy stored values that included a technical header.
-  return raw.replace(/^m[ée]moire\s+inter-?session\s*:\s*/i, '').trim();
+  return normalizeIntersessionMemorySource(
+    raw.replace(/^m[ée]moire\s+inter-?session\s*:\s*/i, '')
+  );
 }
 
 const INTERSESSION_COMPACT_FAILURE_NOTE =
@@ -2473,54 +2465,6 @@ function formatRuntimeCompactMemory(items = []) {
     return INTERSESSION_COMPACT_EMPTY_NOTE;
   }
   return safeItems.map((item) => `- ${item}`).join('\n');
-}
-
-function buildIntersessionCompactRuntime(
-  memorySource = '',
-  maxItems = 10,
-  maxChars = 1200
-) {
-  const source = String(memorySource || '').trim();
-  if (!source) {
-    return '';
-  }
-  const lines = String(source || '')
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean);
-
-  const candidates = [];
-  for (const line of lines) {
-    if (/^m[ée]moire\s+inter-?session\s*:/i.test(line)) continue;
-    const cleaned = line.replace(/^[-*\s]+/, '').trim();
-    if (!cleaned || cleaned === '-') continue;
-    candidates.push(cleaned.replace(/\s+/g, ' '));
-  }
-
-  const seen = new Set();
-  const compactItems = [];
-  for (const item of candidates) {
-    const key = item
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .trim();
-    if (!key || seen.has(key)) continue;
-    seen.add(key);
-    compactItems.push(item);
-    if (compactItems.length >= maxItems) break;
-  }
-
-  if (compactItems.length === 0) {
-    return '';
-  }
-
-  const rendered = [
-    'Memoire inter-session compacte (runtime):',
-    ...compactItems.map((item) => `- ${item}`)
-  ].join('\n');
-
-  return rendered.slice(0, Math.max(100, maxChars));
 }
 
 // Keep only the last valid user/assistant turns from history.
@@ -5835,12 +5779,7 @@ app.get('/api/intersession-memory', requireUserAuth, async (req, res) => {
       userData,
       buildDefaultPromptRegistry()
     );
-    const storedCompact =
-      typeof userData.intersessionMemoryCompact === 'string'
-        ? userData.intersessionMemoryCompact.trim()
-        : '';
-    const memoryCompact =
-      storedCompact || buildIntersessionCompactRuntime(memorySource).trim();
+    const memoryCompact = memorySource;
     const historyRaw = Array.isArray(userData.intersessionMemoryHistory)
       ? userData.intersessionMemoryHistory
       : [];
@@ -5866,15 +5805,11 @@ app.get('/api/intersession-memory', requireUserAuth, async (req, res) => {
               ? entry.memory
               : '',
         memoryCompact:
-          typeof entry?.memoryCompact === 'string'
-            ? entry.memoryCompact
-            : buildIntersessionCompactRuntime(
-                typeof entry?.memorySource === 'string'
-                  ? entry.memorySource
-                  : typeof entry?.memory === 'string'
-                    ? entry.memory
-                    : ''
-              ),
+          typeof entry?.memorySource === 'string'
+            ? entry.memorySource
+            : typeof entry?.memory === 'string'
+              ? entry.memory
+              : '',
         savedAt: typeof entry?.savedAt === 'string' ? entry.savedAt : null
       }))
     });
@@ -6066,10 +6001,7 @@ app.patch(
         userData,
         buildDefaultPromptRegistry()
       );
-      const currentMemoryCompact =
-        typeof userData.intersessionMemoryCompact === 'string'
-          ? userData.intersessionMemoryCompact
-          : buildIntersessionCompactRuntime(currentMemorySource);
+      const currentMemoryCompact = currentMemorySource;
       const currentUpdatedAt = userData.intersessionMemoryUpdatedAt;
       const currentHistory = Array.isArray(userData.intersessionMemoryHistory)
         ? userData.intersessionMemoryHistory
@@ -6590,12 +6522,7 @@ app.get(
         userData,
         buildDefaultPromptRegistry()
       );
-      const storedCompact =
-        typeof userData.intersessionMemoryCompact === 'string'
-          ? userData.intersessionMemoryCompact.trim()
-          : '';
-      const memoryCompact =
-        storedCompact || buildIntersessionCompactRuntime(memorySource).trim();
+      const memoryCompact = memorySource;
 
       return res.json({
         memory: memorySource,
@@ -6721,12 +6648,7 @@ app.get(
         userData,
         buildDefaultPromptRegistry()
       );
-      const storedCompact =
-        typeof userData.intersessionMemoryCompact === 'string'
-          ? userData.intersessionMemoryCompact.trim()
-          : '';
-      const memoryCompact =
-        storedCompact || buildIntersessionCompactRuntime(memorySource).trim();
+      const memoryCompact = memorySource;
       return res.json({
         memory: memorySource,
         memorySource,
@@ -9888,19 +9810,11 @@ async function handleChatPost(req, res) {
           return '';
         }
 
-        const compactStored =
-          typeof userData.intersessionMemoryCompact === 'string'
-            ? userData.intersessionMemoryCompact.trim()
-            : '';
-        if (compactStored) {
-          return compactStored;
-        }
-
         const source = normalizeIntersessionSourceFromUserData(
           userData,
           buildDefaultPromptRegistry()
         );
-        return buildIntersessionCompactRuntime(source).trim();
+        return source;
       }
 
       function appendIntersessionFailureNote(compactText = '') {
@@ -9910,26 +9824,6 @@ async function handleChatPost(req, res) {
           return base;
         }
         return `${base}\n${INTERSESSION_COMPACT_FAILURE_NOTE}`;
-      }
-
-      async function runIntersessionCompactAttempt(
-        memorySource,
-        timeoutMs = 10000
-      ) {
-        const defaults = buildDefaultPromptRegistry();
-        const systemPrompt = String(
-          activePromptRegistry.COMPACT_INTERSESSION_RUNTIME_MEMORY ||
-            defaults.COMPACT_INTERSESSION_RUNTIME_MEMORY ||
-            ''
-        ).trim();
-        return runMistralIntersessionCompactAttempt({
-          mistralTransport,
-          modelId: MISTRAL_MODEL_IDS.analysis,
-          systemPrompt,
-          memorySource,
-          extractItems: extractRuntimeCompactItems,
-          timeoutMs
-        });
       }
 
       async function getFreshUserDataIfRefreshForced(userData) {
@@ -9992,12 +9886,9 @@ async function handleChatPost(req, res) {
         const compactMissing = !storedCompact;
         const outdated = userData?.intersessionCompactOutdated === true;
         const forcedByManualEdit = userData?.intersessionRefreshForced === true;
-        const mustRefreshCompact =
-          compactMissing || outdated || forcedByManualEdit;
+        const mustRefreshCompact = false;
 
-        let runtimeCompact =
-          storedCompact ||
-          (source ? buildIntersessionCompactRuntime(source).trim() : '');
+        let runtimeCompact = source;
 
         if (mustRefreshCompact) {
           const refreshReason = compactMissing
@@ -10019,10 +9910,7 @@ async function handleChatPost(req, res) {
           for (let attempt = 1; attempt <= 3; attempt += 1) {
             const startedAtMs = Date.now();
             try {
-              const attemptResult = await runIntersessionCompactAttempt(
-                source,
-                10000
-              );
+              const attemptResult = { finishReason: null, items: [] };
               const durationMs = Date.now() - startedAtMs;
               attempts.push({
                 attempt,
@@ -10110,6 +9998,13 @@ async function handleChatPost(req, res) {
           ),
           compactLength: safeRuntimeCompact.length
         });
+
+        if (forcedByManualEdit) {
+          await usersRef.child(userId).update({
+            intersessionRefreshForced: false,
+            intersessionCompactOutdated: false
+          });
+        }
 
         return {
           intersessionMemoryForThisTurn: safeRuntimeCompact,
