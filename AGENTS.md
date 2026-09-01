@@ -182,6 +182,21 @@ Le fonctionnement courant est intégralement cloud :
 
 Codex desktop/local, VS Code local et Chrome local ne font pas partie du flux de travail courant. Ils sont réservés aux configurations ponctuelles qui exigent un contexte local : 2FA, OAuth, session web déjà connectée, récupération initiale de secrets, ou service sans API ni pont cloud propre.
 
+### Règle de démarrage Codex Cloud
+
+Toute tâche doit sélectionner `beta` comme branche de référence. Avant toute modification, Codex Cloud vérifie que le `HEAD` initial provient de `origin/beta` lorsque cette référence est disponible. Codex travaille dans un checkout isolé propre à la tâche : aucune branche GitHub permanente nommée `work` ne doit être créée ou imposée. Cette règle cloud remplace toute convention antérieure imposant une telle branche. `main` et la production restent interdits sans autorisation explicite de l'utilisateur.
+
+### Skill `@cloud` depuis ChatGPT Work
+
+Une demande naturelle comme « Vois avec `@cloud` pour… » suffit. Work pilote alors Codex Cloud au moyen du navigateur cloud : il vérifie l'environnement `acp-chat` et la branche de référence `beta` avant le lancement, demande à Cloud de lire `AGENTS.md` et `WORKFLOW.md`, supervise le résultat et fait corriger les écarts. Work poursuit cette supervision jusqu'à la pull request vers `beta`, puis à sa fusion après validation. Pour une modification applicative, il attend ensuite Render et contrôle `beta.facilitat.io` ; une modification strictement documentaire est terminée dès que sa présence dans `beta` est vérifiée. `main` et la production ne sont jamais utilisés sans autorisation explicite de l'utilisateur.
+
+### Smoke tests des parcours professionnels authentifiés
+
+- Work peut continuer à exécuter les smoke tests publics pertinents.
+- Work ne doit jamais ouvrir une session avec l'identité professionnelle personnelle de l'utilisateur, ni créer une connexion susceptible de polluer sa traçabilité.
+- Un smoke test authentifié n'est autorisé que si un compte technique de recette dédié est disponible, explicitement identifié comme automatisé, limité aux permissions minimales nécessaires et correctement journalisé.
+- En l'absence d'un tel compte, Work déclare le smoke test authentifié non exécuté et laisse la vérification authentifiée manuelle à l'utilisateur. Cette absence ne bloque pas la clôture du chantier lorsque le diff, les autres tests pertinents et le déploiement sont validés par ailleurs.
+
 ---
 
 ## 6. Gestion des blocages

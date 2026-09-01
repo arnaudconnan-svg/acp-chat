@@ -7,6 +7,7 @@ require('dotenv').config();
 const admin = require('firebase-admin');
 const { parseAppConfig, resolveServiceAccount } = require('./lib/config');
 const { childLogger } = require('./lib/logger');
+const { createHealthHandler } = require('./lib/health');
 const {
   createAffiliationShortValidationAnalyzer
 } = require('./lib/affiliation-validation');
@@ -947,9 +948,9 @@ function startAdminSettingsListener() {
   );
 }
 
-app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'ok' });
-});
+const healthHandler = createHealthHandler();
+app.get('/health', healthHandler);
+app.get('/version', healthHandler);
 
 app.get('/admin.html', requireAdminAuth, (req, res) => {
   if (String(req.query.view || '').trim().toLowerCase() === 'support') {
@@ -5144,11 +5145,8 @@ function sanitizeFeedbackContext(rawContext) {
       return null;
     }
 
-    if (typeof normalizeDebugMetaForStorage === 'function') {
-      return normalizeDebugMetaForStorage(value, defaults);
-    }
-
-    // Fallback: keep a bounded subset when the full normalizer is unavailable.
+    // Keep a bounded subset for feedback snapshots. The full chat-pipeline
+    // normalizer is scoped to the /chat handler and is not available here.
     return {
       topChips: Array.isArray(value.topChips)
         ? value.topChips
