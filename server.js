@@ -5145,11 +5145,8 @@ function sanitizeFeedbackContext(rawContext) {
       return null;
     }
 
-    if (typeof normalizeDebugMetaForStorage === 'function') {
-      return normalizeDebugMetaForStorage(value, defaults);
-    }
-
-    // Fallback: keep a bounded subset when the full normalizer is unavailable.
+    // Keep a bounded subset for feedback snapshots. The full chat-pipeline
+    // normalizer is scoped to the /chat handler and is not available here.
     return {
       topChips: Array.isArray(value.topChips)
         ? value.topChips
