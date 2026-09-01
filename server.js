@@ -7,7 +7,7 @@ require('dotenv').config();
 const admin = require('firebase-admin');
 const { parseAppConfig, resolveServiceAccount } = require('./lib/config');
 const { childLogger } = require('./lib/logger');
-const { buildHealthPayload } = require('./lib/health');
+const { createHealthHandler } = require('./lib/health');
 const {
   createAffiliationShortValidationAnalyzer
 } = require('./lib/affiliation-validation');
@@ -948,10 +948,9 @@ function startAdminSettingsListener() {
   );
 }
 
-app.get('/health', (req, res) => {
-  res.set('Cache-Control', 'no-store');
-  res.status(200).json(buildHealthPayload());
-});
+const healthHandler = createHealthHandler();
+app.get('/health', healthHandler);
+app.get('/version', healthHandler);
 
 app.get('/admin.html', requireAdminAuth, (req, res) => {
   if (String(req.query.view || '').trim().toLowerCase() === 'support') {
