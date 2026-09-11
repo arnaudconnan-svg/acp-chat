@@ -583,7 +583,7 @@ function createEmailNotifier() {
   const smtpPass = String(process.env.NOTIFY_SMTP_PASSWORD || '').trim();
   const fromAddress = String(process.env.NOTIFY_EMAIL_FROM || smtpUser).trim();
 
-  if (!notifyTo || !smtpHost || !smtpPort || !smtpUser || !smtpPass) {
+  if (!smtpHost || !smtpPort || !smtpUser || !smtpPass) {
     return {
       enabled: false,
       sendNewMessageAlert: async () => false,
@@ -601,11 +601,13 @@ function createEmailNotifier() {
     }
   });
 
-  async function send(subject, text) {
+  async function send(to, subject, text) {
+    if (!to) return false;
+
     try {
       await transporter.sendMail({
         from: fromAddress,
-        to: notifyTo,
+        to,
         subject,
         text
       });
@@ -620,6 +622,7 @@ function createEmailNotifier() {
     enabled: true,
     async sendNewMessageAlert() {
       return send(
+        notifyTo,
         '[Facilitat.io] Nouveau message utilisateur',
         [
           'Il y a un ou plusieurs nouveaux messages enregistr\u00e9s dans Firebase.',
@@ -634,11 +637,19 @@ function createEmailNotifier() {
       isPrivateConversation,
       requestType
     }) {
+      const humanSupportRecipients = Object.freeze({
+        service_contact: 'info@facilitat.io',
+        human_support: 'rendez-vous@facilitat.io'
+      });
+      const recipient = humanSupportRecipients[requestType];
+      if (!recipient) return false;
+
       const requestLabel =
         requestType === 'service_contact'
           ? "contact avec l'equipe ou le responsable apres un probleme de service"
           : 'accompagnement par un professionnel humain';
       return send(
+        recipient,
         '[Facilitat.io] Demande de relais humain',
         [
           `Type de demande : ${requestLabel}`,

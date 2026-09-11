@@ -2413,6 +2413,13 @@
         color: white;
       }
 
+      .modalBtnPrimary:disabled {
+        background: #d6ddde;
+        color: #667478;
+        cursor: not-allowed;
+        opacity: 1;
+      }
+
       .modalBtnSecondary {
         border: 1px solid #b9c9cc;
         background: white;
@@ -3165,8 +3172,9 @@
         <h3 class="modalTitle">Parler avec un humain</h3>
 
         <p class="modalText" style="margin-bottom: 10px; font-size: 15px">
-          Tu peux demander qu&rsquo;une personne de l&rsquo;&eacute;quipe Facilitat.io te
-          contacte. Aucun contenu de la conversation ne sera transmis.
+          Une personne de l&rsquo;&eacute;quipe Facilitat.io te contacte dans les
+          meilleurs d&eacute;lais. Aucun contenu de la conversation ne sera transmis
+          <strong>dans le mail</strong>.
         </p>
         <p
           class="modalText"
@@ -3191,10 +3199,10 @@
           </label>
           <select id="humanSupportRequestType" class="modalInput">
             <option value="human_support">
-              Un accompagnement par un professionnel humain
+              Un accompagnement pro pour poursuivre avec un professionnel humain
             </option>
             <option value="service_contact">
-              Un contact avec l&rsquo;&eacute;quipe apr&egrave;s un probl&egrave;me
+              Un contact avec l&rsquo;&eacute;quipe au sujet du service
             </option>
           </select>
           <label
@@ -3204,14 +3212,15 @@
             <input id="humanSupportConsent" type="checkbox" />
             <span
               >J&rsquo;accepte que mon identifiant de compte et mon adresse email
-              soient transmis &agrave; l&rsquo;&eacute;quipe pour cette demande de contact.
-              Si la conversation est partageable, son identifiant sera aussi transmis
-              ; si elle est priv&eacute;e, seule l&rsquo;indication &laquo;&nbsp;conversation
-              priv&eacute;e&nbsp;&raquo; le sera. Aucun contenu de conversation ne sera
-              transmis.</span
+              soient transmis &agrave; l&rsquo;&eacute;quipe pour cette demande de contact.</span
             >
           </label>
-          <button class="modalBtnPrimary" id="humanSupportSubmitBtn" type="button">
+          <button
+            class="modalBtnPrimary"
+            id="humanSupportSubmitBtn"
+            type="button"
+            disabled
+          >
             Transmettre ma demande
           </button>
 
@@ -8903,6 +8912,11 @@
       function openHumanSupportRequestModal() {
         closeHumanSupportPopover({ skipHistorySync: true });
 
+        const consent = document.getElementById('humanSupportConsent');
+        const submitButton = document.getElementById('humanSupportSubmitBtn');
+        if (consent) consent.checked = false;
+        if (submitButton) submitButton.disabled = true;
+
         if (
           history.state &&
           history.state.humanSupportPopoverOpen === true
@@ -14265,6 +14279,14 @@
       const humanSupportSubmitBtn = document.getElementById(
         'humanSupportSubmitBtn'
       );
+      const humanSupportConsent = document.getElementById(
+        'humanSupportConsent'
+      );
+      if (humanSupportConsent && humanSupportSubmitBtn) {
+        humanSupportConsent.addEventListener('change', () => {
+          humanSupportSubmitBtn.disabled = !humanSupportConsent.checked;
+        });
+      }
       if (humanSupportSubmitBtn) {
         humanSupportSubmitBtn.onclick = async (event) => {
           if (event) {
@@ -14304,7 +14326,7 @@
               "La transmission n'a pas pu \u00eatre confirm\u00e9e. Rien n'est annonc\u00e9 comme envoy\u00e9."
             );
           } finally {
-            humanSupportSubmitBtn.disabled = false;
+            humanSupportSubmitBtn.disabled = !consent || !consent.checked;
           }
         };
       }
