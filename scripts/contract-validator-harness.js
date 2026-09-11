@@ -225,6 +225,58 @@ check('relancePolicy follows contract constraints', () => {
   );
 });
 
+check('intervention feedback forbids every form of relance', () => {
+  const out = buildPostureDecision(
+    baseInput({
+      interpretationRejection: {
+        isInterpretationRejection: true,
+        rejectsUnderlyingPhenomenon: false,
+        relationalFrictionSignal: 'strong'
+      }
+    })
+  );
+  assert(out.relancePolicy === 'forbidden', 'feedback must forbid relance');
+  assert(out.forbidden.includes('relance'), 'relance must be forbidden');
+  assert(
+    out.finalDirectivityLevel >= 3,
+    'feedback must produce a restrained response'
+  );
+});
+
+check('forbidden relance gives the writer a contradiction-free contract', () => {
+  const writer = createWriterForHarness();
+  const posture = buildPostureDecision(
+    baseInput({ allianceSignal: 'rupture' })
+  );
+  const contract = writer.buildPostureContractBlock(posture);
+  assert(
+    contract.includes('aucune question, invitation ou affirmation'),
+    'writer contract must prohibit interrogative and declarative relances'
+  );
+  assert(
+    !contract.includes("n'ouvre pas de relance"),
+    'obsolete, underspecified relance instruction must be absent'
+  );
+});
+
+check('rejected intervention cannot return as a softer assertion', () => {
+  const writer = createWriterForHarness();
+  const block = writer.buildInterpretationRejectionPromptBlock({
+    isInterpretationRejection: true,
+    needsSoberReadjustment: true,
+    phenomenonAnchorInstruction: 'keep_if_concrete',
+    tensionHoldLevel: 'medium'
+  });
+  assert(
+    block.includes('meme adouci, indirect ou transforme en affirmation'),
+    'rejection block must prevent softened reproposals'
+  );
+  assert(
+    block.includes('feedback sur ton intervention'),
+    'rejection block must prioritize intervention feedback'
+  );
+});
+
 check('situated impasse activates action collapse guard', () => {
   const out = buildPostureDecision(
     baseInput({
