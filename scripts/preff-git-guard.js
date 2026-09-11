@@ -34,7 +34,9 @@ function isAncestor(olderRef, newerRef) {
 function ensureCleanWorktree() {
   const status = getGitText(['status', '--porcelain']);
   if (!status) return;
-  console.error('preff-git-guard: working tree is not clean. Commit/stash first.');
+  console.error(
+    'preff-git-guard: working tree is not clean. Commit/stash first.'
+  );
   process.exit(2);
 }
 
@@ -60,6 +62,34 @@ function evaluate() {
     betaInMain,
     canFastForwardMainFromBeta: mainInBeta
   };
+}
+
+function getDivergence(leftRef, rightRef) {
+  const counts = getGitText([
+    'rev-list',
+    '--left-right',
+    '--count',
+    `${leftRef}...${rightRef}`
+  ]).split(/\s+/);
+  return { betaOnly: Number(counts[0] || 0), mainOnly: Number(counts[1] || 0) };
+}
+
+function printPostPromotionAnomaly(state) {
+  const divergence = getDivergence(state.betaRef, state.mainRef);
+  console.error('preff-git-guard: post-promotion beta sync stopped.');
+  console.error(
+    `- ${state.mainRef}: ${getGitText(['rev-parse', state.mainRef])}`
+  );
+  console.error(
+    `- ${state.betaRef}: ${getGitText(['rev-parse', state.betaRef])}`
+  );
+  console.error(
+    `- divergence: beta-only=${divergence.betaOnly}, main-only=${divergence.mainOnly}`
+  );
+  console.error('- strict fast-forward beta <- main: no');
+  console.error(
+    '- no merge, rebase, reset, or force-push was attempted; investigate before continuing.'
+  );
 }
 
 function printEvaluation(state) {
@@ -103,11 +133,54 @@ function syncMainIntoBeta() {
   const state = evaluate();
   printEvaluation(state);
   if (!state.canFastForwardMainFromBeta) {
-    console.error('preff-git-guard: sync completed but fast-forward is still impossible.');
+    console.error(
+      'preff-git-guard: sync completed but fast-forward is still impossible.'
+    );
     process.exit(1);
   }
 
-  console.log('preff-git-guard: sync successful, main <- beta fast-forward is now possible.');
+  console.log(
+    'preff-git-guard: sync successful, main <- beta fast-forward is now possible.'
+  );
+}
+
+function syncBetaAfterPromotion() {
+  ensureCleanWorktree();
+  fetchRefs();
+
+  const before = evaluate();
+  if (!before.betaInMain) {
+    printPostPromotionAnomaly(before);
+    process.exit(1);
+  }
+
+  runGit(['checkout', 'beta']);
+  runGit(['pull', '--ff-only', 'origin', 'beta']);
+  runGit(['merge', '--ff-only', 'origin/main']);
+
+  const localSha = getGitText(['rev-parse', 'HEAD']);
+  const promotedMainSha = getGitText(['rev-parse', 'origin/main']);
+  if (localSha !== promotedMainSha) {
+    console.error(
+      `preff-git-guard: local beta ${localSha} does not match promoted main ${promotedMainSha}; stopping before push.`
+    );
+    process.exit(1);
+  }
+
+  runGit(['push', 'origin', 'beta']);
+  fetchRefs();
+
+  const mainSha = getGitText(['rev-parse', 'origin/main']);
+  const betaSha = getGitText(['rev-parse', 'origin/beta']);
+  if (mainSha !== betaSha) {
+    printPostPromotionAnomaly(evaluate());
+    process.exit(1);
+  }
+
+  console.log('preff-git-guard: mandatory post-promotion sync successful.');
+  console.log(`- origin/main: ${mainSha}`);
+  console.log(`- origin/beta: ${betaSha}`);
+  console.log('- strict fast-forward beta <- main: yes');
 }
 
 function main() {
@@ -115,6 +188,11 @@ function main() {
 
   if (mode === 'sync') {
     syncMainIntoBeta();
+    return;
+  }
+
+  if (mode === 'post-promotion-sync') {
+    syncBetaAfterPromotion();
     return;
   }
 
