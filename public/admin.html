@@ -2713,6 +2713,13 @@
             if (meta.lowContextOpeningGuardActive === true) {
               signauxLines.push('Ouverture initiale peu contextualisee');
             }
+            if (Array.isArray(meta.infoContextFlags)) {
+              meta.infoContextFlags.forEach((flag) => {
+                const label =
+                  window.FacilitatDebug.translateInfoContextFlag(flag);
+                if (label) signauxLines.push(label);
+              });
+            }
             if (meta.offTopicInfoPolicy === 'out_of_scope_recenter') {
               signauxLines.push(
                 'Hors perimetre factuel : recadrage vers le vecu'

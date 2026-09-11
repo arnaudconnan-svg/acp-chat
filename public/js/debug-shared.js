@@ -820,6 +820,16 @@
     };
   }
 
+  function translateInfoContextFlag(value) {
+    var map = {
+      human_support_request:
+        "Demande d'accompagnement par un professionnel humain",
+      service_contact_request:
+        "Demande de contact avec l'\u00e9quipe apr\u00e8s un probl\u00e8me"
+    };
+    return map[value] || null;
+  }
+
   globalObj.FacilitatDebug = {
     normalizePipelineStages: normalizePipelineStages,
     normalizeSecondaryTension: normalizeSecondaryTension,
@@ -836,6 +846,7 @@
     translateOrientationHint: translateOrientationHint,
     translateConfidenceSignal: translateConfidenceSignal,
     translateInfoRoutingSource: translateInfoRoutingSource,
+    translateInfoContextFlag: translateInfoContextFlag,
     buildNaturalDebugSummary: buildNaturalDebugSummary,
     buildPipelineRuntimeText: buildPipelineRuntimeText,
     buildSafetyAuditText: buildSafetyAuditText,

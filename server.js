@@ -352,6 +352,10 @@ const authRateLimiters = {
   login: createInMemoryRateLimiter({ windowMs: 15 * 60 * 1000, max: 5 }),
   register: createInMemoryRateLimiter({ windowMs: 60 * 60 * 1000, max: 10 })
 };
+const humanSupportRequestRateLimiter = createInMemoryRateLimiter({
+  windowMs: 5 * 60 * 1000,
+  max: 1
+});
 
 function buildAuthRateLimitKey(req, scope, extra = '') {
   const ip = getClientIpAddress(req);
@@ -582,7 +586,8 @@ function createEmailNotifier() {
   if (!notifyTo || !smtpHost || !smtpPort || !smtpUser || !smtpPass) {
     return {
       enabled: false,
-      sendNewMessageAlert: async () => {}
+      sendNewMessageAlert: async () => false,
+      sendHumanSupportRequest: async () => false
     };
   }
 
@@ -604,19 +609,47 @@ function createEmailNotifier() {
         subject,
         text
       });
+      return true;
     } catch (err) {
       logger.error({ event: 'notify_email_error', error: err.message });
+      return false;
     }
   }
 
   return {
     enabled: true,
     async sendNewMessageAlert() {
-      await send(
+      return send(
         '[Facilitat.io] Nouveau message utilisateur',
         [
           'Il y a un ou plusieurs nouveaux messages enregistr\u00e9s dans Firebase.',
           "Rappel: une seule alerte est envoy\u00e9e tant que l'admin n'est pas revenue sur /admin.html"
+        ].join('\n')
+      );
+    },
+    async sendHumanSupportRequest({
+      userId,
+      userEmail,
+      conversationId,
+      isPrivateConversation,
+      requestType
+    }) {
+      const requestLabel =
+        requestType === 'service_contact'
+          ? "contact avec l'equipe ou le responsable apres un probleme de service"
+          : 'accompagnement par un professionnel humain';
+      return send(
+        '[Facilitat.io] Demande de relais humain',
+        [
+          `Type de demande : ${requestLabel}`,
+          `Identifiant utilisateur : ${String(userId || '').trim()}`,
+          `Adresse de contact : ${normalizeEmail(userEmail) || 'indisponible'}`,
+          isPrivateConversation === true
+            ? 'Conversation : privee (identifiant et contenu non transmis)'
+            : `Identifiant de conversation : ${String(conversationId || '').trim() || 'indisponible'}`,
+          '',
+          "La personne a explicitement consenti a transmettre cette demande de contact.",
+          "Aucun contenu de conversation n'est joint."
         ].join('\n')
       );
     }
@@ -3217,6 +3250,98 @@ app.get('/api/emergency-support', (req, res) => {
       fallbackGuidance: buildEmergencyFallbackGuidance(),
       updatedPeriod: 'periodic'
     });
+  }
+});
+
+app.post('/api/human-support/request', requireUserAuth, async (req, res) => {
+  try {
+    const allowedBodyFields = new Set([
+      'consent',
+      'requestType',
+      'conversationId',
+      'isPrivateConversation'
+    ]);
+    if (
+      !req.body ||
+      typeof req.body !== 'object' ||
+      Array.isArray(req.body) ||
+      Object.keys(req.body).some((key) => !allowedBodyFields.has(key))
+    ) {
+      return res.status(400).json({ error: 'Demande de relais invalide' });
+    }
+    if (req.body?.consent !== true) {
+      return res.status(400).json({ error: 'Consentement explicite requis' });
+    }
+
+    const requestType =
+      req.body?.requestType === 'service_contact'
+        ? 'service_contact'
+        : req.body?.requestType === 'human_support'
+          ? 'human_support'
+          : null;
+    if (!requestType) {
+      return res.status(400).json({ error: 'Type de demande invalide' });
+    }
+    if (emailNotifier.enabled !== true) {
+      return res.status(503).json({ error: 'Relais humain indisponible' });
+    }
+
+    const session = req.userSession;
+    const isPrivateConversation = req.body?.isPrivateConversation === true;
+    const conversationId = String(req.body?.conversationId || '').trim();
+    let shareableConversationId = null;
+
+    if (!isPrivateConversation && conversationId) {
+      const snapshot = await db
+        .ref('conversations')
+        .child(conversationId)
+        .once('value');
+      const conversation = snapshot.val();
+      if (
+        !conversation ||
+        String(conversation.userId || '') !== String(session.userId || '')
+      ) {
+        return res.status(403).json({ error: 'Conversation non partageable' });
+      }
+      shareableConversationId = conversationId;
+    }
+
+    const rateLimitKey = `human_support|${String(session.userId || '').trim()}`;
+    const rateLimitResult = humanSupportRequestRateLimiter.check(rateLimitKey);
+    if (!rateLimitResult.allowed) {
+      const retryAfterSeconds = Math.max(
+        1,
+        Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000)
+      );
+      res.setHeader('Retry-After', String(retryAfterSeconds));
+      return res.status(429).json({
+        error: 'Une demande a deja ete prise en compte recemment'
+      });
+    }
+
+    const sent = await emailNotifier.sendHumanSupportRequest({
+      userId: session.userId,
+      userEmail: session.user?.email,
+      conversationId: shareableConversationId,
+      isPrivateConversation,
+      requestType
+    });
+    if (!sent) {
+      humanSupportRequestRateLimiter.reset(rateLimitKey);
+      return res.status(502).json({ error: 'Transmission non confirmee' });
+    }
+
+    logger.info({
+      event: 'human_support_request_sent',
+      userId: String(session.userId || ''),
+      requestType,
+      isPrivateConversation,
+      hasShareableConversationId: !!shareableConversationId
+    });
+    return res.json({ success: true });
+  } catch (err) {
+    logger.error({ event: 'human_support_request_failed', error: err.message });
+    return res.status(500).json({ error: 'Transmission non confirmee' });
   }
 });
 
@@ -10737,6 +10862,7 @@ async function handleChatPost(req, res) {
         isRecallAttempt: recallRouting.isRecallAttempt === true,
         psychoeducationType: detectedPsychoeducationType,
         infoContextFlags: detectedInfoContextFlags,
+        humanHandoffAvailable: emailNotifier.enabled === true,
         dischargeAnalysis,
         explorationAnalysis,
         previousFormalAddress: newFlags.formalAddress === true,
