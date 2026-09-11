@@ -173,6 +173,39 @@ Regles pratiques :
 - ne jamais utiliser de reset destructif sans demande explicite
 - si le working tree est sale, ne pas revert les changements utilisateur sans accord
 
+### Protocole canonique « pre-FF main »
+
+Le present chapitre est la source canonique du protocole. Son garde executable est
+`scripts/preff-git-guard.js`; les commandes npm ne sont que ses points d'entree.
+
+Avant une promotion de `beta` vers `main`, executer `npm run preff:git:guard`. La
+promotion elle-meme doit conserver un historique en fast-forward. Une promotion
+reussie n'est toutefois pas la fin du protocole : la resynchronisation suivante est
+obligatoire et ne peut jamais etre ignoree, reportee ou remplacee par une autre
+operation Git.
+
+Immediatement apres la promotion reussie, executer :
+
+`npm run preff:git:sync-beta-after-promotion`
+
+Ce garde effectue, dans cet ordre :
+
+1. recupere `origin/main` et `origin/beta` a jour ;
+2. affiche leurs SHA et verifie explicitement que `origin/beta` est un ancetre de
+   `origin/main`, donc que `beta` peut avancer jusqu'au HEAD exact de `main` par
+   fast-forward strict ;
+3. seulement si cette condition est satisfaite, avance la branche locale `beta`
+   avec `--ff-only`, verifie qu'elle pointe exactement sur `origin/main`, puis la
+   publie sans force ;
+4. recupere une nouvelle fois les references distantes et exige que les SHA complets
+   de `origin/beta` et `origin/main` soient identiques.
+
+Si le fast-forward strict est impossible, ou si l'egalite finale des SHA echoue, le
+protocole s'arrete immediatement et affiche les deux SHA ainsi que les nombres de
+commits propres a chaque branche. Dans ce chemin d'anomalie, il est interdit de
+faire un merge commit, un rebase, un reset force ou un force-push. L'anomalie doit
+etre investiguee avant toute reprise du protocole ; aucun contournement n'est admis.
+
 ## 8. Philosophie
 
 Sur ce projet :
