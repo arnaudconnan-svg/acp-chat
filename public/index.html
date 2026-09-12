@@ -3172,9 +3172,12 @@
         <h3 class="modalTitle">Parler avec un humain</h3>
 
         <p class="modalText" style="margin-bottom: 10px; font-size: 15px">
+          Poursuivre avec un professionnel humain en visioconf&eacute;rence
+        </p>
+        <p class="modalText" style="margin-bottom: 10px; font-size: 15px">
           Une personne de l&rsquo;&eacute;quipe Facilitat.io te contacte dans les
           meilleurs d&eacute;lais. Aucun contenu de la conversation ne sera transmis
-          <strong>dans le mail</strong>.
+          dans le mail.
         </p>
         <p
           class="modalText"
@@ -3190,21 +3193,6 @@
         </p>
 
         <div class="modalActions modalActionsStack" style="gap: 10px">
-          <label
-            class="modalText"
-            for="humanSupportRequestType"
-            style="margin: 0"
-          >
-            Ma demande concerne
-          </label>
-          <select id="humanSupportRequestType" class="modalInput">
-            <option value="human_support">
-              Un accompagnement pro pour poursuivre avec un professionnel humain
-            </option>
-            <option value="service_contact">
-              Un contact avec l&rsquo;&eacute;quipe au sujet du service
-            </option>
-          </select>
           <label
             class="modalText"
             style="display: flex; gap: 8px; align-items: flex-start; margin: 4px 0"
@@ -14294,9 +14282,6 @@
             event.stopPropagation();
           }
           const consent = document.getElementById('humanSupportConsent');
-          const requestType = document.getElementById(
-            'humanSupportRequestType'
-          );
           if (!consent || consent.checked !== true) {
             showTemporaryNotice('Ton consentement explicite est n\u00e9cessaire');
             return;
@@ -14309,7 +14294,7 @@
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 consent: true,
-                requestType: requestType ? requestType.value : 'human_support',
+                requestType: 'human_support',
                 conversationId,
                 isPrivateConversation: isConversationPrivateById(
                   conversationId,
