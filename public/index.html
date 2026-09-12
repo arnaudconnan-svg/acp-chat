@@ -10287,6 +10287,15 @@
             });
           }
 
+          const humanSupportDebugText =
+            window.FacilitatDebug.buildHumanSupportDebugText(meta);
+          if (humanSupportDebugText) {
+            sections.push({
+              title: 'Alliance et relais humain',
+              content: humanSupportDebugText
+            });
+          }
+
           const signauxLines = [];
           if (meta.contactInsightMoment === true) {
             signauxLines.push("Moment d'insight (contact)");

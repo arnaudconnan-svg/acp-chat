@@ -316,6 +316,21 @@
         toTrimmedString(safe.externalSupportMode, '') || 'none',
       closureIntent: toBooleanTrue(safe.closureIntent),
       infoRoutingSource: toTrimmedString(safe.infoRoutingSource, '') || null,
+      allianceAssessmentReason:
+        toTrimmedString(safe.allianceAssessmentReason, '') || null,
+      allianceAssessmentSource:
+        toTrimmedString(safe.allianceAssessmentSource, '') || null,
+      humanSupportProposal:
+        ['propose', 'not_indicated', 'already_addressed'].indexOf(
+          safe.humanSupportProposal
+        ) !== -1
+          ? safe.humanSupportProposal
+          : 'not_indicated',
+      humanSupportProposalReason:
+        toTrimmedString(safe.humanSupportProposalReason, '') || null,
+      humanSupportProposalEffective: toBooleanTrue(
+        safe.humanSupportProposalEffective
+      ),
       affiliationScore:
         typeof safe.affiliationScore === 'number'
           ? safe.affiliationScore
@@ -830,6 +845,59 @@
     return map[value] || null;
   }
 
+  function buildHumanSupportDebugText(meta) {
+    if (!meta) return '';
+    var allianceReasons = {
+      active_rupture: 'rupture actuellement active',
+      unresolved_friction: 'friction encore non r\u00e9solue',
+      restored_exchange: '\u00e9change manifestement r\u00e9ajust\u00e9',
+      no_rupture: 'aucune rupture active'
+    };
+    var supportReasons = {
+      ai_support_insufficient:
+        "l'accompagnement par l'IA ne r\u00e9pond plus suffisamment au besoin actuel",
+      advice_request_only:
+        'la demande de conseils ou de solutions ne justifie pas \u00e0 elle seule un relais',
+      already_proposed_or_declined:
+        'le relais a d\u00e9j\u00e0 \u00e9t\u00e9 propos\u00e9 ou refus\u00e9 dans le contexte r\u00e9cent',
+      explicit_request_existing_path:
+        'la demande explicite est prise en charge par le parcours existant',
+      human_support_not_needed:
+        "l'accompagnement par l'IA reste adapt\u00e9 au besoin actuel"
+    };
+    var lines = [];
+    if (meta.allianceAssessmentReason && allianceReasons[meta.allianceAssessmentReason]) {
+      lines.push('Alliance : ' + allianceReasons[meta.allianceAssessmentReason] + '.');
+    }
+    if (meta.allianceAssessmentSource) {
+      lines.push(
+        'Source : ' +
+          (meta.allianceAssessmentSource === 'llm'
+            ? 'analyse contextuelle'
+            : "repli de l'analyse contextuelle") +
+          '.'
+      );
+    }
+    if (meta.humanSupportProposal === 'propose') {
+      lines.push(
+        meta.humanSupportProposalEffective === true
+          ? 'Relais humain : proposition facultative retenue ; aucune demande transmise.'
+          : meta.conversationState === 'n1_crisis' ||
+              meta.conversationState === 'n2_crisis'
+            ? 'Relais humain : proposition non activ\u00e9e car le parcours de crise est prioritaire ; aucune demande transmise.'
+            : 'Relais humain : proposition indiqu\u00e9e mais indisponible techniquement ; aucune demande transmise.'
+      );
+    } else if (meta.humanSupportProposal === 'already_addressed') {
+      lines.push('Relais humain : proposition non r\u00e9p\u00e9t\u00e9e.');
+    } else {
+      lines.push('Relais humain : proposition non retenue.');
+    }
+    if (meta.humanSupportProposalReason && supportReasons[meta.humanSupportProposalReason]) {
+      lines.push('Motif : ' + supportReasons[meta.humanSupportProposalReason] + '.');
+    }
+    return lines.join('\n');
+  }
+
   globalObj.FacilitatDebug = {
     normalizePipelineStages: normalizePipelineStages,
     normalizeSecondaryTension: normalizeSecondaryTension,
@@ -847,6 +915,7 @@
     translateConfidenceSignal: translateConfidenceSignal,
     translateInfoRoutingSource: translateInfoRoutingSource,
     translateInfoContextFlag: translateInfoContextFlag,
+    buildHumanSupportDebugText: buildHumanSupportDebugText,
     buildNaturalDebugSummary: buildNaturalDebugSummary,
     buildPipelineRuntimeText: buildPipelineRuntimeText,
     buildSafetyAuditText: buildSafetyAuditText,

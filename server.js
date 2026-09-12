@@ -589,6 +589,7 @@ function createEmailNotifier() {
   if (!smtpHost || !smtpPort || !smtpUser || !smtpPass) {
     return {
       enabled: false,
+      humanRelayEnabled: false,
       sendNewMessageAlert: async () => false,
       sendHumanSupportRequest: async () => false
     };
@@ -623,6 +624,7 @@ function createEmailNotifier() {
 
   return {
     enabled: true,
+    humanRelayEnabled: Boolean(humanRelayTo),
     async sendNewMessageAlert() {
       return send(
         notifyTo,
@@ -3295,7 +3297,7 @@ app.post('/api/human-support/request', requireUserAuth, async (req, res) => {
     if (!requestType) {
       return res.status(400).json({ error: 'Type de demande invalide' });
     }
-    if (emailNotifier.enabled !== true) {
+    if (emailNotifier.humanRelayEnabled !== true) {
       return res.status(503).json({ error: 'Relais humain indisponible' });
     }
 
@@ -10875,7 +10877,7 @@ async function handleChatPost(req, res) {
         isRecallAttempt: recallRouting.isRecallAttempt === true,
         psychoeducationType: detectedPsychoeducationType,
         infoContextFlags: detectedInfoContextFlags,
-        humanHandoffAvailable: emailNotifier.enabled === true,
+        humanHandoffAvailable: emailNotifier.humanRelayEnabled === true,
         dischargeAnalysis,
         explorationAnalysis,
         previousFormalAddress: newFlags.formalAddress === true,
@@ -11653,6 +11655,12 @@ async function handleChatPost(req, res) {
         infoContextFlags: Array.isArray(postureDecision.infoContextFlags)
           ? postureDecision.infoContextFlags
           : [],
+        allianceAssessmentReason: postureDecision.allianceAssessmentReason,
+        allianceAssessmentSource: postureDecision.allianceAssessmentSource,
+        humanSupportProposal: postureDecision.humanSupportProposal,
+        humanSupportProposalReason: postureDecision.humanSupportProposalReason,
+        humanSupportProposalEffective:
+          postureDecision.humanSupportProposalEffective === true,
         promptRegistry: activePromptRegistry,
         // Lot 8 fields
         affiliationScore: affiliationScore,
