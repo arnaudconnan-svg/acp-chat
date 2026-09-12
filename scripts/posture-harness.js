@@ -77,6 +77,32 @@ function baseInput(overrides = {}) {
   };
 }
 
+check('incoherent human support decision falls back as one pair', () => {
+  const out = buildPostureDecision(
+    baseInput({
+      allianceRuptureAnalysis: {
+        allianceSignal: 'good',
+        allianceReason: 'no_rupture',
+        humanSupportProposal: 'not_indicated',
+        humanSupportReason: 'ai_support_insufficient'
+      }
+    })
+  );
+
+  assert(
+    out.humanSupportProposal === 'not_indicated',
+    `expected not_indicated, got ${out.humanSupportProposal}`
+  );
+  assert(
+    out.humanSupportProposalReason === 'human_support_not_needed',
+    `expected coherent fallback reason, got ${out.humanSupportProposalReason}`
+  );
+  assert(
+    out.humanSupportProposalEffective === false,
+    'fallback decision must not become effective'
+  );
+});
+
 check('exploration detectedState -> exploration_* conversation state', () => {
   const out = buildPostureDecision(baseInput({ detectedState: 'exploration' }));
   assert(

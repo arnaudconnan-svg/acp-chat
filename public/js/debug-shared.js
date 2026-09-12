@@ -9,6 +9,35 @@
     return value === true;
   }
 
+  function normalizeHumanSupportDecision(proposal, reason) {
+    var validReasons = {
+      propose: ['ai_support_insufficient'],
+      not_indicated: [
+        'advice_request_only',
+        'explicit_request_existing_path',
+        'human_support_not_needed'
+      ],
+      already_addressed: ['already_proposed_or_declined']
+    };
+    var normalizedProposal = toTrimmedString(proposal, '');
+    var normalizedReason = toTrimmedString(reason, '');
+
+    if (
+      validReasons[normalizedProposal] &&
+      validReasons[normalizedProposal].indexOf(normalizedReason) !== -1
+    ) {
+      return {
+        proposal: normalizedProposal,
+        reason: normalizedReason
+      };
+    }
+
+    return {
+      proposal: 'not_indicated',
+      reason: 'human_support_not_needed'
+    };
+  }
+
   function clamp01(value, fallback = 1.0) {
     return typeof value === 'number'
       ? Math.max(0, Math.min(1, value))
@@ -129,6 +158,10 @@
       debugMetaValue && typeof debugMetaValue === 'object'
         ? debugMetaValue
         : {};
+    var humanSupportDecision = normalizeHumanSupportDecision(
+      safe.humanSupportProposal,
+      safe.humanSupportProposalReason
+    );
 
     function normalizeMovementList(items, maxItems) {
       if (!Array.isArray(items)) return [];
@@ -320,17 +353,11 @@
         toTrimmedString(safe.allianceAssessmentReason, '') || null,
       allianceAssessmentSource:
         toTrimmedString(safe.allianceAssessmentSource, '') || null,
-      humanSupportProposal:
-        ['propose', 'not_indicated', 'already_addressed'].indexOf(
-          safe.humanSupportProposal
-        ) !== -1
-          ? safe.humanSupportProposal
-          : 'not_indicated',
-      humanSupportProposalReason:
-        toTrimmedString(safe.humanSupportProposalReason, '') || null,
-      humanSupportProposalEffective: toBooleanTrue(
-        safe.humanSupportProposalEffective
-      ),
+      humanSupportProposal: humanSupportDecision.proposal,
+      humanSupportProposalReason: humanSupportDecision.reason,
+      humanSupportProposalEffective:
+        humanSupportDecision.proposal === 'propose' &&
+        toBooleanTrue(safe.humanSupportProposalEffective),
       affiliationScore:
         typeof safe.affiliationScore === 'number'
           ? safe.affiliationScore
