@@ -263,6 +263,7 @@ check('writer contract keeps relational repair non-solutionist', () => {
   const writer = createWriterForHarness();
   const contract = writer.buildPostureContractBlock({
     conversationState: 'alliance_rupture',
+    humanSupportProposal: 'propose',
     humanSupportProposalEffective: true,
     humanHandoffAvailable: true
   });
@@ -276,17 +277,15 @@ check('writer contract keeps relational repair non-solutionist', () => {
     'relational repair must be explicitly bounded'
   );
   assert(
-    contract.includes('Leur simple presence dans la memoire ne suffit jamais'),
+    contract.includes('simple presence dans la memoire ne suffit jamais'),
     'remembered people must not automatically become resources'
   );
   assert(
-    contract.includes(
-      'un besoin actuel de relais humain personnel pertinent'
-    ),
-    'personal resources must require a currently relevant support need'
+    contract.includes('Ressources relationnelles personnelles a proposer ce tour'),
+    'personal resources must be driven by the semantic proposal'
   );
   assert(
-    contract.includes('nomme les personnes pertinentes ainsi etablies'),
+    contract.includes('nomme-les obligatoirement'),
     'established personal resources must be named'
   );
   assert(
@@ -295,13 +294,72 @@ check('writer contract keeps relational repair non-solutionist', () => {
   );
   assert(
     contract.includes(
-      'peut coexister avec la proposition contextuelle du relais'
+      "peut coexister avec l'option professionnelle Facilitat.io"
     ),
     'personal and professional support must remain independent'
   );
   assert(
     contract.includes("Demander a en parler avec un professionnel humain"),
     'professional handoff option must use its precise UI label'
+  );
+});
+
+check('writer contract gates personal resources on the semantic decision', () => {
+  const writer = createWriterForHarness();
+  const contract = writer.buildPostureContractBlock({
+    humanSupportProposal: 'not_indicated',
+    humanSupportProposalEffective: true,
+    humanHandoffAvailable: true
+  });
+
+  assert(
+    contract.includes("n'invite pas spontanement la personne a contacter"),
+    'not_indicated must prohibit a spontaneous personal-support invitation'
+  );
+  assert(
+    contract.includes('relation deja au centre du recit'),
+    'the guard must preserve discussion of an existing relational topic'
+  );
+  assert(
+    contract.includes('envie de contact amenee par la personne'),
+    'the guard must preserve user-initiated contact wishes'
+  );
+  assert(
+    !contract.includes('Ressources relationnelles personnelles a proposer ce tour'),
+    'an effective professional proposal must not enable personal resources'
+  );
+  assert(
+    !contract.includes('nomme-les obligatoirement'),
+    'not_indicated must not inject the personal-resource naming rule'
+  );
+});
+
+check('personal and professional support remain independently gated', () => {
+  const writer = createWriterForHarness();
+  const unavailableContract = writer.buildPostureContractBlock({
+    humanSupportProposal: 'propose',
+    humanSupportProposalEffective: false,
+    humanHandoffAvailable: false
+  });
+  const availableContract = writer.buildPostureContractBlock({
+    humanSupportProposal: 'propose',
+    humanSupportProposalEffective: true,
+    humanHandoffAvailable: true
+  });
+
+  for (const contract of [unavailableContract, availableContract]) {
+    assert(
+      contract.includes('nomme-les obligatoirement'),
+      'propose must preserve qualified personal-resource naming regardless of handoff availability'
+    );
+  }
+  assert(
+    !unavailableContract.includes('Relais humain a proposer ce tour'),
+    'technical unavailability must suppress the professional option'
+  );
+  assert(
+    availableContract.includes('Relais humain a proposer ce tour'),
+    'technical availability must preserve the professional option alongside personal resources'
   );
 });
 
