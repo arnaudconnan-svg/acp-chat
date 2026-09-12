@@ -276,14 +276,22 @@ check('writer contract keeps relational repair non-solutionist', () => {
     'relational repair must be explicitly bounded'
   );
   assert(
-    contract.includes('Leur simple presence dans la memoire ne suffit pas'),
+    contract.includes('Leur simple presence dans la memoire ne suffit jamais'),
     'remembered people must not automatically become resources'
   );
   assert(
     contract.includes(
-      'un besoin de relais humain personnel est pertinent dans la dynamique actuelle'
+      'un besoin actuel de relais humain personnel pertinent'
     ),
     'personal resources must require a currently relevant support need'
+  );
+  assert(
+    contract.includes('nomme les personnes pertinentes ainsi etablies'),
+    'established personal resources must be named'
+  );
+  assert(
+    contract.includes("tu n'inventes rien"),
+    'personal resources must never be invented'
   );
   assert(
     contract.includes(
