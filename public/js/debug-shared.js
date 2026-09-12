@@ -882,7 +882,10 @@
       lines.push(
         meta.humanSupportProposalEffective === true
           ? 'Relais humain : proposition facultative retenue ; aucune demande transmise.'
-          : 'Relais humain : proposition indiqu\u00e9e mais indisponible techniquement ; aucune demande transmise.'
+          : meta.conversationState === 'n1_crisis' ||
+              meta.conversationState === 'n2_crisis'
+            ? 'Relais humain : proposition non activ\u00e9e car le parcours de crise est prioritaire ; aucune demande transmise.'
+            : 'Relais humain : proposition indiqu\u00e9e mais indisponible techniquement ; aucune demande transmise.'
       );
     } else if (meta.humanSupportProposal === 'already_addressed') {
       lines.push('Relais humain : proposition non r\u00e9p\u00e9t\u00e9e.');
