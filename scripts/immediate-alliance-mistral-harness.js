@@ -57,9 +57,9 @@ async function run() {
     '{"needsRelationalAdjustment":false}',
     'not-json',
     new Error('provider unavailable'),
-    '{"allianceSignal":"good"}',
-    '{"allianceSignal":"fragile"}',
-    '{"allianceSignal":"good"}',
+    '{"allianceSignal":"good","allianceReason":"no_rupture","humanSupportProposal":"not_indicated","humanSupportReason":"human_support_not_needed"}',
+    '{"allianceSignal":"fragile","allianceReason":"unresolved_friction","humanSupportProposal":"not_indicated","humanSupportReason":"human_support_not_needed"}',
+    '{"allianceSignal":"rupture","allianceReason":"active_rupture","humanSupportProposal":"not_indicated","humanSupportReason":"human_support_not_needed"}',
     'not-json',
     new Error('provider unavailable')
   ]);
@@ -115,7 +115,9 @@ async function run() {
 
   assert.deepEqual(await analyzers.analyzeAllianceRupture('Merci.', [], prompts), {
     allianceSignal: 'good',
-    explicitRelationalFriction: false,
+    allianceReason: 'no_rupture',
+    humanSupportProposal: 'not_indicated',
+    humanSupportReason: 'human_support_not_needed',
     llmTriggered: true,
     source: 'llm'
   });
