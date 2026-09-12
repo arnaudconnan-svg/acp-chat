@@ -281,6 +281,12 @@ check('writer contract keeps relational repair non-solutionist', () => {
   );
   assert(
     contract.includes(
+      'un besoin de relais humain personnel est pertinent dans la dynamique actuelle'
+    ),
+    'personal resources must require a currently relevant support need'
+  );
+  assert(
+    contract.includes(
       'peut coexister avec la proposition contextuelle du relais'
     ),
     'personal and professional support must remain independent'
