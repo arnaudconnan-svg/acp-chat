@@ -259,6 +259,44 @@ check('forbidden relance gives the writer a contradiction-free contract', () => 
   );
 });
 
+check('writer contract keeps relational repair non-solutionist', () => {
+  const writer = createWriterForHarness();
+  const contract = writer.buildPostureContractBlock({
+    conversationState: 'alliance_rupture',
+    humanSupportProposalEffective: true,
+    humanHandoffAvailable: true
+  });
+
+  assert(
+    contract.includes('Le caractere facultatif ou non prescriptif'),
+    'optional wording must not permit a fabricated solution'
+  );
+  assert(
+    contract.includes("changer effectivement de conduite signifie seulement"),
+    'relational repair must be explicitly bounded'
+  );
+  assert(
+    contract.includes('Leur simple presence dans la memoire ne suffit pas'),
+    'remembered people must not automatically become resources'
+  );
+  assert(
+    contract.includes(
+      'un besoin de relais humain personnel est pertinent dans la dynamique actuelle'
+    ),
+    'personal resources must require a currently relevant support need'
+  );
+  assert(
+    contract.includes(
+      'peut coexister avec la proposition contextuelle du relais'
+    ),
+    'personal and professional support must remain independent'
+  );
+  assert(
+    contract.includes("Demander a en parler avec un professionnel humain"),
+    'professional handoff option must use its precise UI label'
+  );
+});
+
 check('rejected intervention cannot return as a softer assertion', () => {
   const writer = createWriterForHarness();
   const block = writer.buildInterpretationRejectionPromptBlock({
