@@ -3319,7 +3319,7 @@ app.post('/api/human-support/request', requireUserAuth, async (req, res) => {
       shareableConversationId = conversationId;
     }
 
-    const rateLimitKey = `human_support|${String(session.userId || '').trim()}`;
+    const rateLimitKey = `human_support|${requestType}|${String(session.userId || '').trim()}`;
     const rateLimitResult = humanSupportRequestRateLimiter.check(rateLimitKey);
     if (!rateLimitResult.allowed) {
       const retryAfterSeconds = Math.max(
