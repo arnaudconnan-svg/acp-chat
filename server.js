@@ -573,10 +573,13 @@ const { analyzeModelConflict, rewriteConflictModelContent } =
 
 function createEmailNotifier() {
   const notifyTo = String(process.env.NOTIFY_EMAIL_TO || '').trim();
-  const smtpHost = String(process.env.NOTIFY_SMTP_HOST || '').trim();
-  const smtpPort = Number(process.env.NOTIFY_SMTP_PORT || 587);
+  const humanRelayTo = String(process.env.HUMAN_RELAY_EMAIL_TO || '').trim();
+  const smtpHost = String(
+    process.env.NOTIFY_SMTP_HOST || 'smtp.hostinger.com'
+  ).trim();
+  const smtpPort = Number(process.env.NOTIFY_SMTP_PORT || 465);
   const smtpSecure =
-    String(process.env.NOTIFY_SMTP_SECURE || 'false')
+    String(process.env.NOTIFY_SMTP_SECURE || 'true')
       .trim()
       .toLowerCase() === 'true';
   const smtpUser = String(process.env.NOTIFY_SMTP_USER || '').trim();
@@ -637,22 +640,21 @@ function createEmailNotifier() {
       isPrivateConversation,
       requestType
     }) {
-      const humanSupportRecipients = Object.freeze({
-        service_contact: 'info@facilitat.io',
-        human_support: 'rendez-vous@facilitat.io'
-      });
-      const recipient = humanSupportRecipients[requestType];
-      if (!recipient) return false;
+      if (!humanRelayTo) return false;
+      if (!['service_contact', 'human_support'].includes(requestType)) {
+        return false;
+      }
 
       const requestLabel =
         requestType === 'service_contact'
           ? "contact avec l'equipe ou le responsable apres un probleme de service"
           : 'accompagnement par un professionnel humain';
       return send(
-        recipient,
-        '[Facilitat.io] Demande de relais humain',
+        humanRelayTo,
+        `[Facilitat.io] Demande de relais humain - ${requestType}`,
         [
-          `Type de demande : ${requestLabel}`,
+          `Type de demande (requestType) : ${requestType}`,
+          `Libelle : ${requestLabel}`,
           `Identifiant utilisateur : ${String(userId || '').trim()}`,
           `Adresse de contact : ${normalizeEmail(userEmail) || 'indisponible'}`,
           isPrivateConversation === true
