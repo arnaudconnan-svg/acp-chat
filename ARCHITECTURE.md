@@ -12,6 +12,40 @@ LLM. `server.js` expose et orchestre `/chat` (ainsi que son transport streaming)
 tandis que `public/index.html` et `public/admin.html` consomment le meme contrat de
 conversation et d'observabilite.
 
+## Recuperation de mot de passe
+
+Le parcours de recuperation utilise l'infrastructure SMTP `NOTIFY_SMTP_*` et
+`NOTIFY_EMAIL_FROM`, independamment des destinataires de notification. Il exige
+une origine canonique HTTPS explicite dans `PUBLIC_APP_URL` (sur beta :
+`https://beta.facilitat.io`) ; sans origine ou configuration SMTP complete, les
+deux routes de recuperation repondent uniformement que le service est
+indisponible.
+
+Le lien transporte dans le fragment de `auth.html` un identifiant de compte
+opaque et un secret aleatoire. Le navigateur retire toujours le fragment de
+l'adresse et ne le conserve dans aucun stockage. Firebase ne recoit que
+l'empreinte SHA-256 du secret, avec une expiration fixe de 30 minutes et une
+liaison a l'empreinte du mot de passe courant. L'identifiant sert uniquement a
+acceder directement au compte : seule la verification atomique du secret permet
+le changement. La consommation remplace le mot de passe et supprime le reset
+dans une seule transaction ; la version d'authentification persistante invalide
+alors toutes les anciennes sessions, y compris apres un redemarrage du serveur.
+
+Les demandes sont limitees en memoire a 3 par empreinte d'email et par heure,
+ainsi qu'a 10 par empreinte IP et par 15 minutes. Ces limites sont independantes,
+bornees a 5 000 entrees chacune, propres a chaque instance et remises a zero au
+redemarrage. Elles ne verrouillent jamais un compte. Le lookup, la transaction et
+l'envoi SMTP sont executes apres la reponse HTTP dans une file en memoire, bornee
+a deux jobs actifs et 50 en attente. Cette file n'est ni partagee entre instances
+ni durable : un redemarrage abandonne les jobs non termines, et une saturation
+rejette uniformement les nouvelles admissions sans toucher au compte.
+
+Par defaut, la limite IP du reset utilise uniquement l'adresse de la connexion
+directe et ignore `X-Forwarded-For`. `RESET_TRUST_PROXY_HOPS` reste a `0` tant que
+la chaine de proxies de l'environnement n'est pas verifiee. Une valeur positive
+ne doit etre configuree qu'apres cette verification ; elle ne modifie pas le
+comportement IP des autres routes.
+
 ## Architecture conversationnelle active
 
 Le runtime applique quatre responsabilites distinctes. Leur separation est une

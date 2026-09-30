@@ -9,6 +9,7 @@
     />
     <meta name="theme-color" content="#f4f9f9" />
     <meta name="color-scheme" content="light" />
+    <meta name="referrer" content="no-referrer" />
     <style>
       *,
       *::before,
@@ -262,6 +263,18 @@
         color: #245e66;
       }
 
+      .auth-text-button {
+        display: block;
+        margin: 12px auto 0;
+        border: 0;
+        background: transparent;
+        color: #245e66;
+        font: inherit;
+        font-size: 13px;
+        text-decoration: underline;
+        cursor: pointer;
+      }
+
       @media (max-width: 768px) {
         body {
           align-items: flex-start;
@@ -379,7 +392,136 @@
         <button type="submit" class="submit-btn" id="loginBtn">
           Se connecter
         </button>
+        <button
+          type="button"
+          class="auth-text-button"
+          onclick="showRecoveryRequest()"
+        >
+          Mot de passe oublié ?
+        </button>
         <p class="notice" id="loginNotice"></p>
+      </form>
+
+      <form
+        id="forgotForm"
+        style="display: none"
+        onsubmit="handleForgotPassword(event)"
+      >
+        <div class="form-group">
+          <label for="forgotEmail">Adresse e-mail</label>
+          <input type="email" id="forgotEmail" required autocomplete="email" />
+        </div>
+        <button type="submit" class="submit-btn" id="forgotBtn">
+          Envoyer le lien
+        </button>
+        <button
+          type="button"
+          class="auth-text-button"
+          onclick="showTab('login')"
+        >
+          Retour à la connexion
+        </button>
+        <p
+          class="notice"
+          id="forgotNotice"
+          role="status"
+          aria-live="polite"
+        ></p>
+      </form>
+
+      <form
+        id="resetForm"
+        style="display: none"
+        onsubmit="handleResetPassword(event)"
+      >
+        <div class="form-group">
+          <label for="resetPassword">Nouveau mot de passe</label>
+          <div class="password-field-wrap">
+            <input
+              type="password"
+              id="resetPassword"
+              required
+              autocomplete="new-password"
+              minlength="10"
+            />
+            <button
+              type="button"
+              class="toggle-password-btn"
+              data-target="resetPassword"
+              aria-label="Afficher le mot de passe"
+              title="Afficher le mot de passe"
+            >
+              <span class="sr-only">Afficher le mot de passe</span>
+              <svg class="icon-eye" viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  d="M1 12C3.8 7.5 7.4 5.25 12 5.25S20.2 7.5 23 12c-2.8 4.5-6.4 6.75-11 6.75S3.8 16.5 1 12Z"
+                ></path>
+                <circle cx="12" cy="12" r="3.25"></circle>
+              </svg>
+              <svg class="icon-eye-off" viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  d="M1 12C3.8 7.5 7.4 5.25 12 5.25S20.2 7.5 23 12c-2.8 4.5-6.4 6.75-11 6.75S3.8 16.5 1 12Z"
+                ></path>
+                <circle cx="12" cy="12" r="3.25"></circle>
+                <line x1="3" y1="21" x2="21" y2="3"></line>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="resetPassword2">Confirmer le mot de passe</label>
+          <div class="password-field-wrap">
+            <input
+              type="password"
+              id="resetPassword2"
+              required
+              autocomplete="new-password"
+              minlength="10"
+            />
+            <button
+              type="button"
+              class="toggle-password-btn"
+              data-target="resetPassword2"
+              aria-label="Afficher le mot de passe"
+              title="Afficher le mot de passe"
+            >
+              <span class="sr-only">Afficher le mot de passe</span>
+              <svg class="icon-eye" viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  d="M1 12C3.8 7.5 7.4 5.25 12 5.25S20.2 7.5 23 12c-2.8 4.5-6.4 6.75-11 6.75S3.8 16.5 1 12Z"
+                ></path>
+                <circle cx="12" cy="12" r="3.25"></circle>
+              </svg>
+              <svg class="icon-eye-off" viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  d="M1 12C3.8 7.5 7.4 5.25 12 5.25S20.2 7.5 23 12c-2.8 4.5-6.4 6.75-11 6.75S3.8 16.5 1 12Z"
+                ></path>
+                <circle cx="12" cy="12" r="3.25"></circle>
+                <line x1="3" y1="21" x2="21" y2="3"></line>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <button type="submit" class="submit-btn" id="resetBtn">
+          Choisir ce mot de passe
+        </button>
+        <p class="notice" id="resetNotice" role="status" aria-live="polite"></p>
+        <div id="resetActions" style="display: none">
+          <button
+            type="button"
+            class="auth-text-button"
+            onclick="showRecoveryRequest()"
+          >
+            Demander un nouveau lien
+          </button>
+          <button
+            type="button"
+            class="auth-text-button"
+            onclick="showTab('login')"
+          >
+            Retour à la connexion
+          </button>
+        </div>
       </form>
 
       <!-- REGISTER FORM -->
@@ -424,7 +566,7 @@
               required
               autocomplete="new-password"
               minlength="10"
-              pattern="(?=.*[A-Za-z])(?=.*\d).{10,}"
+              pattern="(?=.*[A-Za-zÀ-ÖØ-öø-ÿ])(?=.*\d).{10,}"
               title="Au moins 10 caractères, avec au moins une lettre et un chiffre."
               placeholder="10 caractères minimum"
             />
@@ -497,6 +639,28 @@
     <script>
       (function () {
         'use strict';
+
+        let passwordResetToken = '';
+        let authFlowChanged = false;
+        let suppressAutoLogin = false;
+        const resetIntent = window.location.hash.startsWith('#reset');
+        if (resetIntent) {
+          try {
+            const rawResetToken = decodeURIComponent(
+              window.location.hash.slice('#reset='.length)
+            );
+            if (/^u_[a-f0-9]{24}\.[A-Za-z0-9_-]{43}$/.test(rawResetToken)) {
+              passwordResetToken = rawResetToken;
+            }
+          } catch (_) {
+            passwordResetToken = '';
+          }
+          history.replaceState(
+            history.state,
+            '',
+            window.location.pathname + window.location.search
+          );
+        }
 
         function navigateAway(url, options = {}) {
           document.body.style.animation = 'none';
@@ -607,16 +771,22 @@
 
         initMobileKeyboardState();
 
-        // Redirect if already authenticated
-        fetch('/api/auth/session', { credentials: 'include' })
-          .then((r) => r.json())
-          .then((data) => {
-            if (data && data.authenticated === true) {
-              const redirectTarget = getRedirectTarget();
-              window.location.href = redirectTarget;
-            }
-          })
-          .catch(() => {});
+        // A reset link must remain usable even when an older session cookie exists.
+        if (!resetIntent)
+          fetch('/api/auth/session', { credentials: 'include' })
+            .then((r) => r.json())
+            .then((data) => {
+              if (
+                data &&
+                data.authenticated === true &&
+                !authFlowChanged &&
+                !resetIntent
+              ) {
+                const redirectTarget = getRedirectTarget();
+                window.location.href = redirectTarget;
+              }
+            })
+            .catch(() => {});
 
         function getRedirectTarget() {
           try {
@@ -631,6 +801,7 @@
             return '/?screen=conversationsScreen';
           }
         }
+        window.FacilitatAuth = Object.freeze({ getRedirectTarget });
 
         function initPasswordToggles() {
           function setPasswordToggleVisualState(btn, isVisible) {
@@ -735,6 +906,10 @@
         initConfirmPasswordValidation();
 
         window.showTab = function showTab(tab) {
+          authFlowChanged = true;
+          suppressAutoLogin = true;
+          const loginPassword = document.getElementById('loginPassword');
+          if (loginPassword) loginPassword.value = '';
           const isLogin = tab === 'login';
           document.getElementById('loginForm').style.display = isLogin
             ? ''
@@ -742,12 +917,132 @@
           document.getElementById('registerForm').style.display = isLogin
             ? 'none'
             : '';
+          document.getElementById('forgotForm').style.display = 'none';
+          document.getElementById('resetForm').style.display = 'none';
+          document.querySelector('.tab-row').style.display = '';
           document
             .getElementById('tabLogin')
             .classList.toggle('active', isLogin);
           document
             .getElementById('tabRegister')
             .classList.toggle('active', !isLogin);
+        };
+
+        window.showRecoveryRequest = function showRecoveryRequest() {
+          authFlowChanged = true;
+          suppressAutoLogin = true;
+          document.getElementById('loginForm').style.display = 'none';
+          document.getElementById('registerForm').style.display = 'none';
+          document.getElementById('resetForm').style.display = 'none';
+          document.getElementById('forgotForm').style.display = '';
+          document.querySelector('.tab-row').style.display = 'none';
+          document.getElementById('forgotEmail').focus();
+        };
+
+        if (resetIntent) {
+          document.getElementById('loginForm').style.display = 'none';
+          document.getElementById('registerForm').style.display = 'none';
+          document.getElementById('resetForm').style.display = '';
+          document.querySelector('.tab-row').style.display = 'none';
+          if (!passwordResetToken) {
+            document.getElementById('resetBtn').style.display = 'none';
+            document
+              .querySelectorAll('#resetForm .form-group')
+              .forEach((group) => {
+                group.style.display = 'none';
+              });
+            document.getElementById('resetNotice').textContent =
+              'Ce lien de réinitialisation est invalide ou incomplet.';
+            document.getElementById('resetActions').style.display = '';
+          }
+        }
+
+        window.handleForgotPassword = async function handleForgotPassword(
+          event
+        ) {
+          event.preventDefault();
+          const notice = document.getElementById('forgotNotice');
+          const btn = document.getElementById('forgotBtn');
+          btn.disabled = true;
+          notice.textContent = '';
+          try {
+            const response = await fetch('/api/auth/forgot-password', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                email: document.getElementById('forgotEmail').value
+              })
+            });
+            const data = await response.json().catch(() => ({}));
+            notice.textContent = response.ok
+              ? data.message
+              : data.error ||
+                'Le service de réinitialisation est momentanément indisponible.';
+            if (response.ok) notice.className = 'notice success';
+          } catch (_) {
+            notice.textContent =
+              'Le service de réinitialisation est momentanément indisponible.';
+          } finally {
+            btn.disabled = false;
+          }
+        };
+
+        window.handleResetPassword = async function handleResetPassword(event) {
+          event.preventDefault();
+          const notice = document.getElementById('resetNotice');
+          const btn = document.getElementById('resetBtn');
+          const newPassword = document.getElementById('resetPassword').value;
+          const confirmation = document.getElementById('resetPassword2').value;
+          if (newPassword !== confirmation) {
+            notice.textContent = 'Les mots de passe ne correspondent pas.';
+            return;
+          }
+          if (!isStrongPasswordCandidate(newPassword)) {
+            notice.textContent =
+              'Le mot de passe doit contenir au moins 10 caractères, avec au moins une lettre et un chiffre.';
+            return;
+          }
+          btn.disabled = true;
+          try {
+            const response = await fetch('/api/auth/reset-password', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ token: passwordResetToken, newPassword })
+            });
+            const data = await response.json().catch(() => ({}));
+            if (response.ok) {
+              passwordResetToken = '';
+              document.getElementById('resetPassword').value = '';
+              document.getElementById('resetPassword2').value = '';
+              document
+                .querySelectorAll('#resetForm .form-group')
+                .forEach((group) => {
+                  group.style.display = 'none';
+                });
+              notice.textContent =
+                'Votre mot de passe a été modifié. Vous pouvez maintenant vous connecter.';
+              notice.className = 'notice success';
+              btn.style.display = 'none';
+              document.getElementById('resetActions').style.display = '';
+            } else {
+              notice.textContent =
+                data.error ||
+                'Ce lien de réinitialisation est invalide ou a déjà été utilisé.';
+              if (response.status === 400 || response.status === 410) {
+                document.getElementById('resetBtn').style.display = 'none';
+                document
+                  .querySelectorAll('#resetForm .form-group')
+                  .forEach((group) => {
+                    group.style.display = 'none';
+                  });
+                document.getElementById('resetActions').style.display = '';
+              }
+            }
+          } catch (_) {
+            notice.textContent = 'Le service ne répond pas pour le moment.';
+          } finally {
+            btn.disabled = false;
+          }
         };
 
         let loginRequestInFlight = false;
@@ -820,6 +1115,7 @@
         }
 
         function maybeAutoSubmitLoginFromAutofill() {
+          if (suppressAutoLogin) return;
           const loginForm = document.getElementById('loginForm');
           const loginEmailInput = document.getElementById('loginEmail');
           const loginPasswordInput = document.getElementById('loginPassword');
@@ -907,7 +1203,11 @@
 
         function isStrongPasswordCandidate(password) {
           const text = String(password || '');
-          return text.length >= 10 && /[A-Za-z]/.test(text) && /\d/.test(text);
+          return (
+            text.length >= 10 &&
+            /[A-Za-zÀ-ÖØ-öø-ÿ]/.test(text) &&
+            /\d/.test(text)
+          );
         }
 
         document.addEventListener('visibilitychange', () => {
