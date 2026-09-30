@@ -38,6 +38,18 @@ const {
   resolveConversationMemoryForIntersession,
   selectPostResumeHistory
 } = require('./lib/intersession-memory-source');
+const {
+  NEUTRAL_REQUEST_MESSAGE,
+  createResetEmailSender,
+  createPasswordResetService,
+  resolveResetClientIp
+} = require('./lib/password-reset');
+const {
+  hashPassword,
+  isStrongPassword,
+  verifyPassword
+} = require('./lib/auth-password');
+const { createUserSessionCodec, sessionMatchesUser } = require('./lib/auth-session');
 
 const appConfig = parseAppConfig(process.env);
 const serviceAccount = resolveServiceAccount(appConfig);
@@ -127,6 +139,10 @@ const USER_SESSION_SIGNING_SECRET =
   SESSION_SECRET ||
   ADMIN_PASSWORD ||
   'dev-user-session-secret';
+const userSessionCodec = createUserSessionCodec({
+  secret: USER_SESSION_SIGNING_SECRET,
+  durationMs: USER_SESSION_DURATION
+});
 const USAGE_SIMULATION_FROZEN_MODEL = 'gpt-4.1';
 const USAGE_SIMULATION_PHASE_LABEL = 'phase de test';
 const USAGE_SIMULATION_PAYMENT_ACTIVE = false;
@@ -300,6 +316,14 @@ function getClientIpAddress(req) {
   return req.ip || req.socket?.remoteAddress || 'unknown';
 }
 
+function getPasswordResetClientIp(req) {
+  return resolveResetClientIp({
+    socketAddress: req.socket?.remoteAddress,
+    forwardedFor: req.headers['x-forwarded-for'],
+    trustedProxyHops: appConfig.resetTrustProxyHops
+  });
+}
+
 function createInMemoryRateLimiter({ windowMs, max }) {
   const buckets = new Map();
 
@@ -379,11 +403,6 @@ function enforceAuthRateLimit(req, res, scope, extra = '') {
   return res.status(429).json({
     error: 'Too many attempts. Please wait before trying again.'
   });
-}
-
-function isStrongPassword(value = '') {
-  const password = String(value || '');
-  return password.length >= 10 && /[A-Za-zÀ-ÖØ-öø-ÿ]/.test(password) && /\d/.test(password);
 }
 
 function buildPrivateConversationMemoryPayload({
@@ -591,7 +610,8 @@ function createEmailNotifier() {
       enabled: false,
       humanRelayEnabled: false,
       sendNewMessageAlert: async () => false,
-      sendHumanSupportRequest: async () => false
+      sendHumanSupportRequest: async () => false,
+      sendPasswordReset: null
     };
   }
 
@@ -602,7 +622,10 @@ function createEmailNotifier() {
     auth: {
       user: smtpUser,
       pass: smtpPass
-    }
+    },
+    connectionTimeout: 10_000,
+    greetingTimeout: 10_000,
+    socketTimeout: 15_000
   });
 
   async function send(to, subject, text) {
@@ -622,9 +645,16 @@ function createEmailNotifier() {
     }
   }
 
+  const sendPasswordReset = createResetEmailSender({
+    transporter,
+    fromAddress,
+    logger
+  });
+
   return {
     enabled: true,
     humanRelayEnabled: Boolean(humanRelayTo),
+    sendPasswordReset,
     async sendNewMessageAlert() {
       return send(
         notifyTo,
@@ -672,6 +702,17 @@ function createEmailNotifier() {
 }
 
 const emailNotifier = createEmailNotifier();
+const passwordResetService = createPasswordResetService({
+  usersRef,
+  findUserByEmail,
+  normalizeEmail,
+  hashPassword,
+  verifyPassword,
+  isStrongPassword,
+  sendResetEmail: emailNotifier.sendPasswordReset,
+  canonicalAppUrl: appConfig.publicAppUrl,
+  onJobError: () => logger.error({ event: 'password_reset_job_failed' })
+});
 
 function readPositiveIntegerEnv(name, fallback) {
   const raw = Number.parseInt(String(process.env[name] || ''), 10);
@@ -1321,103 +1362,18 @@ function parseCookies(req) {
   return list;
 }
 
-function signUserSessionPayload(payload) {
-  return crypto
-    .createHmac('sha256', USER_SESSION_SIGNING_SECRET)
-    .update(payload)
-    .digest('hex');
-}
-
-function buildUserSessionToken(userId, createdAt = Date.now()) {
-  const payload = `${String(userId || '').trim()}:${createdAt}`;
-  const signature = signUserSessionPayload(payload);
-  return `${payload}.${signature}`;
+function buildUserSessionToken(userId, authVersion = 0, createdAt = Date.now()) {
+  return userSessionCodec.build(userId, authVersion, createdAt);
 }
 
 function parseAndValidateUserSessionToken(token) {
-  if (typeof token !== 'string' || !token.includes('.')) {
-    return null;
-  }
-
-  const parts = token.split('.');
-  if (parts.length !== 2) {
-    return null;
-  }
-
-  const payload = String(parts[0] || '').trim();
-  const signature = String(parts[1] || '').trim();
-
-  if (!payload || !signature || !payload.includes(':')) {
-    return null;
-  }
-
-  const expectedSignature = signUserSessionPayload(payload);
-  const signatureBuffer = Buffer.from(signature, 'utf8');
-  const expectedBuffer = Buffer.from(expectedSignature, 'utf8');
-
-  if (signatureBuffer.length !== expectedBuffer.length) {
-    return null;
-  }
-
-  if (!crypto.timingSafeEqual(signatureBuffer, expectedBuffer)) {
-    return null;
-  }
-
-  const separatorIndex = payload.lastIndexOf(':');
-  const userId = payload.slice(0, separatorIndex).trim();
-  const createdAt = Number(payload.slice(separatorIndex + 1));
-
-  if (!userId || !Number.isFinite(createdAt) || createdAt <= 0) {
-    return null;
-  }
-
-  if (Date.now() - createdAt > USER_SESSION_DURATION) {
-    return null;
-  }
-
-  return {
-    userId,
-    createdAt
-  };
+  return userSessionCodec.parse(token);
 }
 
 function normalizeEmail(value) {
   return String(value || '')
     .trim()
     .toLowerCase();
-}
-
-function hashPassword(password) {
-  const salt = crypto.randomBytes(16).toString('hex');
-  const hash = crypto
-    .scryptSync(String(password || ''), salt, 64)
-    .toString('hex');
-  return `scrypt:${salt}:${hash}`;
-}
-
-function verifyPassword(password, storedHash) {
-  const parts = String(storedHash || '').split(':');
-  if (parts.length !== 3 || parts[0] !== 'scrypt') {
-    return false;
-  }
-
-  const salt = parts[1];
-  const expectedHashHex = parts[2];
-  if (!salt || !expectedHashHex) {
-    return false;
-  }
-
-  const passwordHashHex = crypto
-    .scryptSync(String(password || ''), salt, 64)
-    .toString('hex');
-  const passwordBuffer = Buffer.from(passwordHashHex, 'hex');
-  const expectedBuffer = Buffer.from(expectedHashHex, 'hex');
-
-  if (passwordBuffer.length !== expectedBuffer.length) {
-    return false;
-  }
-
-  return crypto.timingSafeEqual(passwordBuffer, expectedBuffer);
 }
 
 async function findUserByEmail(email) {
@@ -1713,6 +1669,11 @@ async function getUserSession(req) {
   const userData = userSnap.val();
 
   if (!userData || typeof userData !== 'object') {
+    userSessions.delete(sessionToken);
+    return null;
+  }
+
+  if (!sessionMatchesUser(session, userData)) {
     userSessions.delete(sessionToken);
     return null;
   }
@@ -3409,6 +3370,7 @@ app.post('/api/auth/register', async (req, res) => {
     const userRecord = {
       email,
       passwordHash: hashPassword(password),
+      authVersion: 0,
       superId: buildSuperId(),
       privateConversationsByDefault: false,
       biometricLockEnabled: false,
@@ -3423,10 +3385,11 @@ app.post('/api/auth/register', async (req, res) => {
 
     await usersRef.child(userId).set(userRecord);
 
-    const sessionToken = buildUserSessionToken(userId);
+    const sessionToken = buildUserSessionToken(userId, userRecord.authVersion);
     userSessions.set(sessionToken, {
       userId,
-      createdAt: Date.now()
+      createdAt: Date.now(),
+      authVersion: userRecord.authVersion
     });
 
     res.setHeader(
@@ -3481,10 +3444,14 @@ app.post('/api/auth/login', async (req, res) => {
         .update({ superId: found.user.superId });
     }
 
-    const sessionToken = buildUserSessionToken(found.userId);
+    const authVersion = Number.isSafeInteger(found.user.authVersion)
+      ? found.user.authVersion
+      : 0;
+    const sessionToken = buildUserSessionToken(found.userId, authVersion);
     userSessions.set(sessionToken, {
       userId: found.userId,
-      createdAt: Date.now()
+      createdAt: Date.now(),
+      authVersion
     });
 
     authRateLimiters.login.reset(buildAuthRateLimitKey(req, 'login', email));
@@ -3520,6 +3487,57 @@ app.post('/api/auth/logout', (req, res) => {
   return res.json({ success: true });
 });
 
+function setPasswordResetResponseHeaders(res) {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+}
+
+app.post('/api/auth/forgot-password', async (req, res) => {
+  setPasswordResetResponseHeaders(res);
+  if (!passwordResetService.enabled) {
+    return res.status(503).json({ error: 'Le service de réinitialisation est momentanément indisponible.' });
+  }
+  try {
+    const email = typeof req.body?.email === 'string' ? req.body.email : '';
+    passwordResetService.request({ email, ip: getPasswordResetClientIp(req) });
+  } catch {
+    logger.error({ event: 'password_reset_request_failed' });
+  }
+  return res.status(202).json({ success: true, message: NEUTRAL_REQUEST_MESSAGE });
+});
+
+app.post('/api/auth/reset-password', async (req, res) => {
+  setPasswordResetResponseHeaders(res);
+  if (!passwordResetService.enabled) {
+    return res.status(503).json({ error: 'Le service de réinitialisation est momentanément indisponible.' });
+  }
+  try {
+    const token = typeof req.body?.token === 'string' ? req.body.token : '';
+    const newPassword = typeof req.body?.newPassword === 'string' ? req.body.newPassword : '';
+    const outcome = await passwordResetService.consume({
+      token,
+      newPassword,
+      ip: getPasswordResetClientIp(req)
+    });
+    if (outcome.status === 'rate_limited') {
+      return res.status(429).json({ error: 'Trop de tentatives. Veuillez réessayer plus tard.' });
+    }
+    if (outcome.status === 'weak_password') {
+      return res.status(400).json({ error: 'Le mot de passe doit contenir au moins 10 caractères, avec au moins une lettre et un chiffre.' });
+    }
+    if (outcome.status === 'expired') {
+      return res.status(410).json({ error: 'Ce lien de réinitialisation a expiré.' });
+    }
+    if (outcome.status !== 'success') {
+      return res.status(400).json({ error: 'Ce lien de réinitialisation est invalide ou a déjà été utilisé.' });
+    }
+    return res.json({ success: true });
+  } catch {
+    logger.error({ event: 'password_reset_consume_failed' });
+    return res.status(400).json({ error: 'Ce lien de réinitialisation est invalide ou a déjà été utilisé.' });
+  }
+});
+
 app.post('/api/auth/change-password', requireUserAuth, async (req, res) => {
   try {
     if (
@@ -3536,10 +3554,6 @@ app.post('/api/auth/change-password', requireUserAuth, async (req, res) => {
     const currentPassword = String(req.body.currentPassword || '');
     const newPassword = String(req.body.newPassword || '');
 
-    if (!verifyPassword(currentPassword, session.user.passwordHash)) {
-      return res.status(401).json({ error: 'Current password is incorrect' });
-    }
-
     if (!isStrongPassword(newPassword)) {
       return res
         .status(400)
@@ -3549,13 +3563,20 @@ app.post('/api/auth/change-password', requireUserAuth, async (req, res) => {
         });
     }
 
-    const now = new Date().toISOString();
-    await usersRef.child(session.userId).update({
-      passwordHash: hashPassword(newPassword),
-      updatedAt: now
+    const outcome = await passwordResetService.changePassword({
+      userId: session.userId,
+      currentPassword,
+      newPassword
     });
+    if (outcome.status !== 'success') {
+      return res.status(401).json({ error: 'Current password is incorrect' });
+    }
+    if (session.token) userSessions.delete(session.token);
+    const sessionToken = buildUserSessionToken(session.userId, outcome.authVersion);
+    userSessions.set(sessionToken, { userId: session.userId, createdAt: Date.now(), authVersion: outcome.authVersion });
+    res.setHeader('Set-Cookie', `userSessionId=${sessionToken}; HttpOnly; Path=/; SameSite=Lax; Secure; Max-Age=${Math.floor(USER_SESSION_DURATION / 1000)}`);
 
-    return res.json({ success: true, updatedAt: now });
+    return res.json({ success: true, updatedAt: outcome.updatedAt });
   } catch (err) {
     console.error('Erreur /api/auth/change-password:', err.message);
     return res.status(500).json({ error: 'Password change failed' });
@@ -3860,10 +3881,12 @@ app.post('/api/account/reset', requireUserAuth, async (req, res) => {
 
     invalidateUserSessionsByUserId(oldUserId);
 
-    const newSessionToken = buildUserSessionToken(newUserId);
+    const resetAuthVersion = Number.isSafeInteger(nextUserRecord.authVersion) ? nextUserRecord.authVersion : 0;
+    const newSessionToken = buildUserSessionToken(newUserId, resetAuthVersion);
     userSessions.set(newSessionToken, {
       userId: newUserId,
-      createdAt: Date.now()
+      createdAt: Date.now(),
+      authVersion: resetAuthVersion
     });
 
     try {
