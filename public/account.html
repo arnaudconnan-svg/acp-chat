@@ -1,6 +1,9 @@
 <!doctype html>
 <html lang="fr">
   <head>
+    <script src="/js/local-destination.js"></script>
+    <script src="/js/identity-storage.js"></script>
+    <script src="/js/content-grants.js"></script>
     <meta charset="UTF-8" />
     <title>Facilitat.io — Mon compte</title>
     <meta
@@ -1147,7 +1150,7 @@
           const _initParams = new URLSearchParams(window.location.search);
           const _pendingCountry = _initParams.get('_android_country_selected');
           const _pendingCountryStored = String(
-            localStorage.getItem(ANDROID_COUNTRY_PENDING_KEY) || ''
+            window.FacilitatIdentityStorage.local.getItem(ANDROID_COUNTRY_PENDING_KEY) || ''
           )
             .toUpperCase()
             .replace(/[^A-Z]/g, '')
@@ -1204,9 +1207,9 @@
             }
 
             if (_resolvedCountry && currentUser && currentUser.country) {
-              localStorage.removeItem(ANDROID_COUNTRY_PENDING_KEY);
+              window.FacilitatIdentityStorage.local.removeItem(ANDROID_COUNTRY_PENDING_KEY);
             } else if (_resolvedCountry) {
-              localStorage.setItem(
+              window.FacilitatIdentityStorage.local.setItem(
                 ANDROID_COUNTRY_PENDING_KEY,
                 _resolvedCountry
               );
@@ -1229,7 +1232,7 @@
           let index = [];
           try {
             const rawIndex = JSON.parse(
-              localStorage.getItem(CONVERSATIONS_INDEX_KEY) || '[]'
+              window.FacilitatIdentityStorage.local.getItem(CONVERSATIONS_INDEX_KEY) || '[]'
             );
             index = Array.isArray(rawIndex) ? rawIndex : [];
           } catch {
@@ -1248,8 +1251,8 @@
             allConversationIds.add(privateId);
           }
 
-          for (let i = 0; i < localStorage.length; i += 1) {
-            const key = String(localStorage.key(i) || '');
+          for (let i = 0; i < window.FacilitatIdentityStorage.local.length; i += 1) {
+            const key = String(window.FacilitatIdentityStorage.local.key(i) || '');
             if (!key.startsWith(CONVERSATION_STORAGE_KEY_PREFIX)) continue;
             const id = key.slice(CONVERSATION_STORAGE_KEY_PREFIX.length).trim();
             if (id) {
@@ -1261,7 +1264,7 @@
             const indexItem = indexById.get(id) || null;
             let data = null;
             try {
-              const rawData = localStorage.getItem(
+              const rawData = window.FacilitatIdentityStorage.local.getItem(
                 getConversationStorageKey(id)
               );
               data = rawData ? JSON.parse(rawData) : null;
@@ -1322,6 +1325,7 @@
             main.appendChild(buildUsageEnvelopeCard());
           }
           main.appendChild(buildProfileCard());
+          window.FacilitatContentGrants.mount(main);
           main.appendChild(buildLongtermMemoryCard());
           if (hasImportableConversations()) {
             main.appendChild(buildLocalImportCard());
@@ -1658,7 +1662,7 @@
         function loadPrivateConversationIds() {
           try {
             const raw = JSON.parse(
-              localStorage.getItem(PRIVATE_CONVERSATION_IDS_KEY) || '[]'
+              window.FacilitatIdentityStorage.local.getItem(PRIVATE_CONVERSATION_IDS_KEY) || '[]'
             );
             if (!Array.isArray(raw)) return new Set();
             return new Set(
@@ -1674,7 +1678,7 @@
 
           try {
             const rawIndex = JSON.parse(
-              localStorage.getItem(CONVERSATIONS_INDEX_KEY) || '[]'
+              window.FacilitatIdentityStorage.local.getItem(CONVERSATIONS_INDEX_KEY) || '[]'
             );
             index = Array.isArray(rawIndex) ? rawIndex : [];
           } catch {
@@ -1693,8 +1697,8 @@
             allConversationIds.add(privateId);
           }
 
-          for (let i = 0; i < localStorage.length; i += 1) {
-            const key = String(localStorage.key(i) || '');
+          for (let i = 0; i < window.FacilitatIdentityStorage.local.length; i += 1) {
+            const key = String(window.FacilitatIdentityStorage.local.key(i) || '');
             if (!key.startsWith(CONVERSATION_STORAGE_KEY_PREFIX)) continue;
 
             const id = key.slice(CONVERSATION_STORAGE_KEY_PREFIX.length).trim();
@@ -1709,7 +1713,7 @@
 
               let data = null;
               try {
-                const rawData = localStorage.getItem(
+                const rawData = window.FacilitatIdentityStorage.local.getItem(
                   getConversationStorageKey(id)
                 );
                 data = rawData ? JSON.parse(rawData) : null;
@@ -2183,7 +2187,7 @@
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
                     anonymousUserId: String(
-                      localStorage.getItem(USER_ID_KEY) || ''
+                      window.FacilitatIdentityStorage.local.getItem(USER_ID_KEY) || ''
                     ).trim(),
                     conversations: selectedConversations.map((item) => ({
                       id: item.id,
@@ -2577,13 +2581,13 @@
 
           keysToRemove.forEach((key) => {
             try {
-              localStorage.removeItem(key);
+              window.FacilitatIdentityStorage.local.removeItem(key);
             } catch {}
           });
 
           const conversationKeys = [];
-          for (let i = 0; i < localStorage.length; i += 1) {
-            const key = String(localStorage.key(i) || '');
+          for (let i = 0; i < window.FacilitatIdentityStorage.local.length; i += 1) {
+            const key = String(window.FacilitatIdentityStorage.local.key(i) || '');
             if (key.startsWith(CONVERSATION_STORAGE_KEY_PREFIX)) {
               conversationKeys.push(key);
             }
@@ -2591,7 +2595,7 @@
 
           conversationKeys.forEach((key) => {
             try {
-              localStorage.removeItem(key);
+              window.FacilitatIdentityStorage.local.removeItem(key);
             } catch {}
           });
         }
@@ -2599,7 +2603,7 @@
         function rotateLocalAnonymousUserId() {
           const next = `u_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
           try {
-            localStorage.setItem(USER_ID_KEY, next);
+            window.FacilitatIdentityStorage.local.setItem(USER_ID_KEY, next);
           } catch {}
         }
 
@@ -2719,7 +2723,7 @@
 
         function isWelcomeAnimationSkipEnabled() {
           try {
-            return localStorage.getItem(SKIP_WELCOME_ANIMATION_KEY) === '1';
+            return window.FacilitatIdentityStorage.local.getItem(SKIP_WELCOME_ANIMATION_KEY) === '1';
           } catch {
             return false;
           }
@@ -2728,9 +2732,9 @@
         function setWelcomeAnimationSkipEnabled(enabled) {
           try {
             if (enabled) {
-              localStorage.setItem(SKIP_WELCOME_ANIMATION_KEY, '1');
+              window.FacilitatIdentityStorage.local.setItem(SKIP_WELCOME_ANIMATION_KEY, '1');
             } else {
-              localStorage.removeItem(SKIP_WELCOME_ANIMATION_KEY);
+              window.FacilitatIdentityStorage.local.removeItem(SKIP_WELCOME_ANIMATION_KEY);
             }
             return true;
           } catch {
@@ -2759,9 +2763,9 @@
             const normalizedEnabled = enabled === true;
             const hash = normalizedEnabled ? '1' : '0';
             const key = 'facilitat_native_bio_policy_hash_v1';
-            const previous = localStorage.getItem(key);
+            const previous = window.FacilitatIdentityStorage.local.getItem(key);
             if (previous === hash) return;
-            localStorage.setItem(key, hash);
+            window.FacilitatIdentityStorage.local.setItem(key, hash);
             syncNativeBiometricConfig(normalizedEnabled);
           } catch (_) {}
         }

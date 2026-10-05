@@ -1,17 +1,21 @@
-const SHELL_CACHE = 'facilitatio-shell-v1.0.3';
+const SHELL_CACHE = 'facilitatio-shell-v1.0.4-launch-gate';
 const SHELL_ASSETS = [
   '/',
   '/index.html',
   '/auth.html',
   '/account.html',
   '/manifest.json',
+  '/js/identity-storage.js',
+  '/js/local-destination.js',
+  '/js/conversation-data.js',
+  '/js/debug-shared.js',
   '/images/icon-512.png',
   '/images/logo.png'
 ];
 
 function isApiRequest(url) {
   return (
-    url.pathname === '/chat' ||
+    url.pathname === '/chat' || url.pathname.startsWith('/chat/') ||
     url.pathname.startsWith('/api/') ||
     url.pathname.startsWith('/session/')
   );
@@ -55,6 +59,9 @@ self.addEventListener('fetch', (event) => {
   if (isApiRequest(url)) {
     return;
   }
+
+  // Professional HTML is always network-only and never enters a shared offline cache.
+  if(['/admin.html','/pros.html','/support-admin.html','/facilitation-admin.html'].includes(url.pathname))return;
 
   // For app navigation, prefer network then fallback to cached shell.
   if (request.mode === 'navigate') {

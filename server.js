@@ -71,7 +71,7 @@ const adminSettingsRef = db.ref('adminSettings');
 const branchRecordsRef = db.ref('branches');
 const branchSeedSnapshotsRef = db.ref('branchSeeds');
 const crypto = require('crypto');
-const { createProfessionalAccess, REASONS } = require('./lib/professional-access');
+const { createProfessionalAccess, REASONS, idValid } = require('./lib/professional-access');
 const ADMIN_SESSION_DURATION = 24 * 60 * 60 * 1000;
 const ADMIN_SESSION_SIGNING_SECRET = appConfig.adminSessionSecret;
 const professionalAccess = createProfessionalAccess({db, secret: ADMIN_SESSION_SIGNING_SECRET});
@@ -930,7 +930,7 @@ const healthHandler = createHealthHandler();
 app.get('/health', healthHandler);
 app.get('/version', healthHandler);
 
-app.get('/admin.html', requireAdminAuth, (req, res) => {
+app.get('/admin.html', requireAdministratorPage, (req, res) => {
   if (String(req.query.view || '').trim().toLowerCase() === 'support') {
     return res.redirect('/support-admin.html');
   }
@@ -1436,6 +1436,7 @@ async function requireUserAuth(req, res, next) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
+    if(req.headers['x-client-identity'] && req.headers['x-client-identity']!==session.userId)return res.status(409).json({error:'Client identity changed'});
     req.userSession = session;
     const {idValid}=require('./lib/professional-access');
     if (req.body?.userId !== undefined && req.body.userId !== session.userId)
@@ -1448,7 +1449,7 @@ async function requireUserAuth(req, res, next) {
     const bodyConversationId=req.body?.sourceConversationId || req.body?.conversationId;
     const pathConversationId=req.path.includes('/conversations/') && !['claim','import-local'].includes(req.params?.id) ? req.params?.id : null;
     const targetId=pathConversationId || bodyConversationId;
-    const privateTransit=req.body?.isPrivateConversation===true && ['/chat','/chat/stream','/session/close','/api/session/beacon','/api/human-support/request'].includes(req.path);
+    const privateTransit=req.body?.isPrivateConversation===true && ['/chat','/chat/stream','/chat/stream/interrupted','/session/close','/api/session/beacon','/api/human-support/request'].includes(req.path);
     if(targetId&&!privateTransit) {
       const current=(await db.ref('conversations').child(targetId).once('value')).val();
       if(current && (current.userId!==session.userId || current.deletedAt || current.isPrivate===true))
@@ -1466,11 +1467,33 @@ async function requireUserAuth(req, res, next) {
       const c=(await db.ref('conversations').child(m.conversationId).once('value')).val();
       if(c?.userId!==session.userId||c.deletedAt||c.isPrivate===true)return res.status(403).json({error:'Object ownership required'});
     }
+    if(req.path.startsWith('/api/branches/')&&req.params.id) {
+      const branch=(await branchRecordsRef.child(req.params.id).once('value')).val();
+      if(!branch||branch.userId!==session.userId)return res.status(403).json({error:'Branch ownership required'});
+      const source=(await db.ref('conversations').child(branch.sourceConversationId).once('value')).val();
+      const destination=(await db.ref('conversations').child(branch.branchConversationId).once('value')).val();
+      const seed=(await branchSeedSnapshotsRef.child(req.params.id).once('value')).val();
+      if(source?.userId!==session.userId||source.deletedAt||source.isPrivate===true||
+        (destination&&(destination.userId!==session.userId||destination.deletedAt||destination.isPrivate===true))||
+        (seed&&seed.sourceConversationId!==branch.sourceConversationId))return res.status(403).json({error:'Branch object mismatch'});
+    }
     return next();
   } catch (err) {
     console.error('Erreur requireUserAuth:', err.message);
     return res.status(500).json({ error: 'Auth check failed' });
   }
+}
+
+async function assertConversationOwner(userId,conversationId) {
+  const current=(await db.ref('conversations').child(conversationId).once('value')).val();
+  if(!current||current.userId!==userId||current.deletedAt||current.isPrivate===true) {
+    const error=new Error('Object authorization lost');error.code='object_authority_lost';throw error;
+  }
+  return current;
+}
+async function updateOwnedConversation(ref,userId,patch) {
+  const result=await ref.transaction(current=>current&&current.userId===userId&&!current.deletedAt&&current.isPrivate!==true?{...current,...patch}:undefined);
+  if(!result.committed){const error=new Error('Object authorization lost');error.code='object_authority_lost';throw error;}
 }
 
 // Les données conversationnelles exigent une session utilisateur serveur.
@@ -1644,18 +1667,23 @@ function warnRuntimeContract(label, issues, context = {}) {
 }
 
 // Middleware protecting admin routes by redirecting unauthenticated users.
+async function requireAdministratorPage(req,res,next) {
+  const session=await getAdminSession(req);
+  if(!session?.roles.includes('administrator'))return res.status(session?403:401).end();
+  next(); // HTML shell contains no data; every API separately requires a reason.
+}
 async function requireAdminAuth(req, res, next) {
   const session = await getAdminSession(req);
   const reason = req.headers['x-access-reason'];
   const allowed = session?.roles.includes('administrator') && REASONS.has(reason);
   await professionalAccess.journal({actor:session,role:'administrator',action:'admin_access',
-    object:String(req.params?.id || req.params?.userId || req.path || ''),reason:allowed?reason:'administrator_reason_required',
+    object:professionalAccess.reference('object',String(req.params?.id||req.params?.userId||req.route?.path||'unknown_route')),reason:allowed?reason:'administrator_reason_required',
     result:allowed?'allowed':'denied',requestId:req.requestId});
   if (!allowed) return res.status(session?403:401).json({error:'Professional authorization required',code:'administrator_reason_required'});
   req.professionalSession=session;
   const unmask=req.headers['x-identity-unmask-reason'];
   if (REASONS.has(unmask)) await professionalAccess.journal({actor:session,role:'administrator',action:'identity_unmask',
-    object:req.path,reason:unmask,result:'allowed',requestId:req.requestId});
+    object:professionalAccess.reference('route',String(req.route?.path||'unknown_route')),reason:unmask,result:'allowed',requestId:req.requestId});
   const json=res.json.bind(res);
   res.json=(payload)=>{
     function project(value){
@@ -1664,7 +1692,8 @@ async function requireAdminAuth(req, res, next) {
       if(value.isPrivate===true)return null;
       const out={};for(const [key,v] of Object.entries(value)) {
         if(['hasPrivateInteractionSinceLastVisible','lastPrivateInteractionAt'].includes(key))continue;
-        if(!REASONS.has(unmask)&&['email','firstName','userId','userLabel','displayUser','displayName'].includes(key))continue;
+        if(!REASONS.has(unmask)&&['email','emails','userEmail','firstName','userId','userLabel','displayUser','displayName'].includes(key))continue;
+        if(!REASONS.has(unmask)&&['superId','stableSuperId'].includes(key)){out[key]=professionalAccess.reference('user',String(v));continue;}
         out[key]=project(v);
       }return out;
     }return json(project(payload));
@@ -1682,7 +1711,7 @@ async function requireProfessionalHubAuth(req, res, next) {
       session.canAccessFacilitationAdmin === true);
 
   if (!hasAccess) {
-    const nextUrl = encodeURIComponent(req.originalUrl);
+    const nextUrl = encodeURIComponent(require('./public/js/local-destination').resolve(req.originalUrl,'/pros.html'));
     return res.redirect(`/pros-login.html?next=${nextUrl}`);
   }
 
@@ -1694,7 +1723,7 @@ async function requireSupportAdminAuth(req, res, next) {
   const session = await getAdminSession(req);
 
   if (!session || session.canAccessSupportCases !== true) {
-    const nextUrl = encodeURIComponent(req.originalUrl);
+    const nextUrl = encodeURIComponent(require('./public/js/local-destination').resolve(req.originalUrl,'/pros.html'));
     return res.redirect(`/pros-login.html?next=${nextUrl}`);
   }
   adminVisitedSinceLastAlert = true;
@@ -1705,7 +1734,7 @@ async function requireFacilitationAdminAuth(req, res, next) {
   const session = await getAdminSession(req);
 
   if (!session || session.canAccessFacilitationAdmin !== true) {
-    const nextUrl = encodeURIComponent(req.originalUrl);
+    const nextUrl = encodeURIComponent(require('./public/js/local-destination').resolve(req.originalUrl,'/pros.html'));
     return res.redirect(`/pros-login.html?next=${nextUrl}`);
   }
   adminVisitedSinceLastAlert = true;
@@ -3267,7 +3296,12 @@ app.post('/api/auth/change-password', requireUserAuth, async (req, res) => {
 
 app.get('/api/account/content-grants',requireUserAuth,async(req,res)=>{
   const raw=(await db.ref('contentGrants').child(req.userSession.userId).once('value')).val()||{};
-  return res.json({grants:raw});
+  const assignments=(await db.ref('practitionerAssignments').once('value')).val()||{},practitioners=[];
+  for(const [id,rows]of Object.entries(assignments))if(idValid(id)&&rows?.[req.userSession.userId]?.active===true){
+    const i=(await db.ref('professionalIdentities').child(id).once('value')).val();
+    if(i?.active===true&&i.roles?.includes('practitioner'))practitioners.push({id,label:id});
+  }
+  return res.json({grants:raw,practitioners});
 });
 app.put('/api/account/content-grants/:professionalId',requireUserAuth,async(req,res)=>{
   const {idValid}=require('./lib/professional-access');
@@ -6194,6 +6228,7 @@ app.get('/api/facilitation/intersession-memory/:userRef',requirePractitioner,asy
   const actor=req.professionalSession,user=await professionalAccess.resolveUser(actor,req.params.userRef);
   if(!user||!await professionalAccess.content(actor,user.userId,null,'summary',req.requestId))return res.status(403).json({error:'Unavailable'});
   const raw=(await usersRef.child(user.userId).once('value')).val()||{};
+  if(!await professionalAccess.content(actor,user.userId,null,'summary',req.requestId))return res.status(403).json({error:'Unavailable'});
   return res.json({memory:normalizeIntersessionSourceFromUserData(raw,buildDefaultPromptRegistry())});
 });
 
@@ -6607,12 +6642,17 @@ app.post(
           : null;
 
       const conversationId = String(safeConversation?.id || '').trim();
-      const userId =
-        String(safeConversation?.userId || '').trim() || 'u_admin_replay';
+      const claimedUserId=String(safeConversation?.userId||'').trim();
 
-      if (!conversationId) {
+      if (!idValid(conversationId)||!idValid(safeConversation?.sourceConversationId)) {
         return res.status(400).json({ error: 'Conversation invalide' });
       }
+      const source=(await db.ref('conversations').child(safeConversation.sourceConversationId).once('value')).val();
+      const userId=source?.userId;
+      const destination=(await db.ref('conversations').child(conversationId).once('value')).val();
+      if(!idValid(userId)||(claimedUserId&&claimedUserId!==userId)||source.isPrivate===true||source.deletedAt||
+        (destination&&(destination.userId!==userId||destination.isPrivate===true||destination.deletedAt)))
+        return res.status(403).json({error:'Replay ownership proof required'});
 
       const rawMessages = Array.isArray(safeConversation?.messages)
         ? safeConversation.messages
@@ -7654,6 +7694,7 @@ async function handleChatPost(req, res) {
     if(activeChatRequests.has(requestId))return res.status(409).json({error:'Operation already active'});
     if (requestId) {
       registerActiveChatRequest(requestId, requestData.userId,activeRequestLease);
+      res.once('finish',()=>finalizeActiveChatRequest(requestId,activeRequestLease));
       req.on('aborted', () => {
         cancelActiveChatRequest(requestId, requestData.userId);
       });
@@ -8214,6 +8255,8 @@ async function handleChatPost(req, res) {
         return;
       }
 
+      await assertConversationOwner(userIdForCatch,conversationIdForCatch);
+
       await messagesRef.push({
         role: 'assistant',
         content: isEditedForCatch ? reply + '\n[MODIFIÉ]' : reply,
@@ -8230,7 +8273,7 @@ async function handleChatPost(req, res) {
       assistantMessagePersistedForCatch = true;
 
       if (convRefForCatch) {
-        await convRefForCatch.update({
+        await updateOwnedConversation(convRefForCatch,userIdForCatch,{
           updatedAt: new Date().toISOString()
         });
       }
@@ -8454,6 +8497,7 @@ async function handleChatPost(req, res) {
               .then((s) => {
                 const d = s.val();
                 if (!d || typeof d !== 'object') return null;
+                if(d.userId!==userId||d.deletedAt||d.isPrivate===true)throw new Error('Object authorization lost');
                 return {
                   memory:
                     typeof d.memory === 'string' && d.memory.trim()
@@ -8730,7 +8774,7 @@ async function handleChatPost(req, res) {
             return;
           }
 
-          await convRef.update({
+          await updateOwnedConversation(convRef,userId,{
             title: generatedTitle.trim(),
             updatedAt: new Date().toISOString()
           });
@@ -8749,31 +8793,11 @@ async function handleChatPost(req, res) {
       }
 
       if (!isPrivateConversation) {
-        const userMessagePushPromise = messagesRef.push({
-          role: 'user',
-          content: isEdited ? message + '\n[MODIFIÉ]' : message,
-          timestamp: Date.now(),
-          userId,
-          conversationId
-        });
-
         const conversationMetaUpdatePromise = convRef
           ? convRef.transaction((current) => {
               const now = new Date().toISOString();
 
-              if (!current) {
-                return {
-                  userId,
-                  createdAt: now,
-                  updatedAt: now,
-                  title: null,
-                  titleLocked: false,
-                  messageCount: 1,
-                  lastUserMessage: message
-                };
-              }
-
-              if(current.userId!==userId || current.deletedAt || current.isPrivate===true)return;
+              if(!current||current.userId!==userId || current.deletedAt || current.isPrivate===true)return;
               return {
                 ...current,
                 updatedAt: now,
@@ -8783,10 +8807,10 @@ async function handleChatPost(req, res) {
             })
           : Promise.resolve(null);
 
-        const [pushedRef] = await Promise.all([
-          userMessagePushPromise,
-          conversationMetaUpdatePromise
-        ]);
+        const metaResult=await conversationMetaUpdatePromise;
+        if(!metaResult?.committed)throw new Error('Object authorization lost');
+        await assertConversationOwner(userId,conversationId);
+        const pushedRef=await messagesRef.push({role:'user',content:isEdited?message+'\n[MODIFIÉ]':message,timestamp:Date.now(),userId,conversationId});
 
         userMessagePersistedForCatch = true;
         userMessageRefForCatch = pushedRef;
@@ -8823,6 +8847,7 @@ async function handleChatPost(req, res) {
         if (isPrivateConversation) {
           return null;
         }
+        await assertConversationOwner(userId,conversationId);
 
         const persistedMessageId =
           typeof messageId === 'string' && messageId.trim()
@@ -8893,7 +8918,7 @@ async function handleChatPost(req, res) {
           );
         }
 
-        await convRef.update(conversationPatch);
+        await updateOwnedConversation(convRef,userId,conversationPatch);
 
         return persistedMessageId;
       }
@@ -8979,7 +9004,7 @@ async function handleChatPost(req, res) {
 
         for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
           try {
-            await convRef.update({
+            await updateOwnedConversation(convRef,userId,{
               memory: normalizedMemory,
               memoryState:
                 memoryState && typeof memoryState === 'object'
@@ -9124,6 +9149,7 @@ async function handleChatPost(req, res) {
       }) {
         return buildResponseDebugMeta({
           memory,
+          memoryState:previousMemoryState,
           suicideLevel,
           majorHarmRiskLevel,
           majorHarmImminenceBand,

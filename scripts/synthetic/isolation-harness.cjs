@@ -1,30 +1,55 @@
 'use strict';
-const assert=require('assert/strict');
-const {loadApplication}=require('./runtime.cjs');
-let completed=false;
-process.on('beforeExit',()=>{if(!completed){console.error('Synthetic assertions did not complete');process.exitCode=1;}});
-(async()=>{
-  const a=loadApplication();
-  const express=require('express');
-  const router=express.Router();
-  const order=[];
-  a.app.use('/synthetic-mount',(req,res,next)=>{order.push('first:'+req.baseUrl);next();});
-  router.get('/ok',(req,res)=>{order.push('route:'+req.path);res.json({order});});
-  router.get('/error',async()=>{throw new Error('synthetic_expected_error');});
-  a.app.use('/synthetic-mount',router);
-  a.app.use((error,req,res,next)=>res.status(418).json({code:'handled_error'}));
-  const routed=await a.request('get','/synthetic-mount/ok');
-  assert.deepEqual(routed.body.order,['first:/synthetic-mount','route:/ok']);
-  const error=await a.request('get','/synthetic-mount/error');
-  assert.equal(error.statusCode,418);assert.equal(error.body.code,'handled_error');
-  const missing=await a.request('get','/ok');assert.equal(missing.statusCode,404);
-  const r=await a.request('get','/health');assert.equal(r.statusCode,200);assert.equal(r.body.status,'ok');
-  assert(a.blocked.includes('listen'));assert(a.blocked.includes('interval'));
-  assert.deepEqual(a.db.operations,[],'boot must not read/write persistence');
-  assert.throws(()=>require('https').get('https://synthetic.example.test'));
-  assert.throws(()=>require('net').connect(443,'synthetic.example.test'));
-  assert.throws(()=>require('firebase-admin'));
-  assert.throws(()=>require('../../server.js'));
-  completed=true;
-  console.log('[PASS] M0 genuine Express mounts/order/errors and full source/health with doubles, boot/timers/providers refused before load');
-})().catch(e=>{console.error(e);process.exitCode=1;});
+const assert = require('assert/strict');
+const { loadApplication } = require('./runtime.cjs');
+let completed = false;
+process.on('beforeExit', () => {
+  if (!completed) {
+    console.error('Synthetic assertions did not complete');
+    process.exitCode = 1;
+  }
+});
+(async () => {
+  const a = loadApplication();
+  const express = require('express');
+  const router = express.Router();
+  const order = [];
+  a.app.use('/synthetic-mount', (req, res, next) => {
+    order.push('first:' + req.baseUrl);
+    next();
+  });
+  router.get('/ok', (req, res) => {
+    order.push('route:' + req.path);
+    res.json({ order });
+  });
+  router.get('/error', async () => {
+    throw new Error('synthetic_expected_error');
+  });
+  a.app.use('/synthetic-mount', router);
+  a.app.use((error, req, res, next) =>
+    res.status(418).json({ code: 'handled_error' })
+  );
+  const routed = await a.request('get', '/synthetic-mount/ok');
+  assert.deepEqual(routed.body.order, ['first:/synthetic-mount', 'route:/ok']);
+  const error = await a.request('get', '/synthetic-mount/error');
+  assert.equal(error.statusCode, 418);
+  assert.equal(error.body.code, 'handled_error');
+  const missing = await a.request('get', '/ok');
+  assert.equal(missing.statusCode, 404);
+  const r = await a.request('get', '/health');
+  assert.equal(r.statusCode, 200);
+  assert.equal(r.body.status, 'ok');
+  assert(a.blocked.includes('listen'));
+  assert(a.blocked.includes('interval'));
+  assert.deepEqual(a.db.operations, [], 'boot must not read/write persistence');
+  assert.throws(() => require('https').get('https://synthetic.example.test'));
+  assert.throws(() => require('net').connect(443, 'synthetic.example.test'));
+  assert.throws(() => require('firebase-admin'));
+  assert.throws(() => require('../../server.js'));
+  completed = true;
+  console.log(
+    '[PASS] M0 genuine Express mounts/order/errors and full source/health with doubles, boot/timers/providers refused before load'
+  );
+})().catch((e) => {
+  console.error(e);
+  process.exitCode = 1;
+});
