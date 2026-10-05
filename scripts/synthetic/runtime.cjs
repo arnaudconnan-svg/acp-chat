@@ -37,10 +37,11 @@ function databaseDouble(seed = {}) {
   return {ref,data,operations};
 }
 function loadApplication({seed={},overrides={},env={}}={}) {
-  const db=databaseDouble(seed),routes=[],middleware=[],logs=[],blocked=[];
-  const app={use(...fns){middleware.push(...fns.filter(x=>typeof x==='function'));},listen(){blocked.push('listen');return {close(){}};}};
-  for(const method of ['get','post','put','patch','delete'])app[method]=(route,...handlers)=>routes.push({method,route,handlers});
-  const express=()=>app;express.static=()=> (req,res,next)=>next();express.json=()=> (req,res,next)=>next();
+  const db=databaseDouble(seed),logs=[],blocked=[];
+  const realExpress=realRequire('express');
+  const app=realExpress();
+  app.listen=()=>{blocked.push('listen');return {close(){}};};
+  const express=Object.assign(()=>app,realExpress);
   const logger={};for(const level of ['info','warn','error','debug','trace','fatal','log'])logger[level]=(...args)=>logs.push({level,args});logger.child=()=>logger;
   const syntheticEnv={NODE_ENV:'test',MISTRAL_API_KEY:'synthetic-unused',FIREBASE_DATABASE_URL:'https://synthetic.example.test',
     FIREBASE_SERVICE_ACCOUNT:'{}',LOG_PERSIST:'false',REFRESH_EMERGENCY_ON_BOOT:'false',
@@ -60,23 +61,27 @@ function loadApplication({seed={},overrides={},env={}}={}) {
     setInterval(){blocked.push('interval');return 0;},clearInterval(){},setTimeout(fn,ms){return setTimeout(fn,Math.min(ms||0,5));},clearTimeout,queueMicrotask});
   vm.runInContext(fs.readFileSync(path.join(root,'server.js'),'utf8'),context,{filename:'synthetic-server.js'});
   async function request(method,url,{body={},cookie='',headers={},query={}}={}) {
-    const pathname=url.split('?')[0];let params={},selected;
-    for(const r of routes){if(r.method!==method.toLowerCase())continue;
-      const keys=[],pattern=r.route.replace(/:([\w]+)/g,(_,key)=>{keys.push(key);return '([^/]+)';});
-      const m=pathname.match(new RegExp(`^${pattern}$`));if(m){selected=r;keys.forEach((k,i)=>params[k]=decodeURIComponent(m[i+1]));break;}}
-    if(!selected)throw new Error(`missing_synthetic_route:${method}:${pathname}`);
-    const req={body,params,query,headers:{cookie,...headers},path:pathname,url,method:method.toUpperCase(),
-      socket:{remoteAddress:'127.0.0.1'},ip:'127.0.0.1',on(){},get(name){return this.headers[name.toLowerCase()];}};
-    const res={statusCode:200,headers:{},body:null,writableEnded:false,
-      setHeader(name,value){this.headers[name]=value;},set(name,value){this.setHeader(name,value);return this;},
-      status(code){this.statusCode=code;return this;},json(value){this.body=copy(value);this.writableEnded=true;return this;},
-      send(value){this.body=value;this.writableEnded=true;return this;},redirect(value){this.statusCode=302;this.headers.Location=value;this.writableEnded=true;},
-      sendFile(value){this.body={file:path.basename(value)};this.writableEnded=true;},write(){},flushHeaders(){},end(){this.writableEnded=true;}};
-    const handlers=[...middleware.filter(fn=>fn.length!==4),...selected.handlers];
-    async function run(index){const fn=handlers[index];if(!fn||res.writableEnded)return;let pending;
-      await fn(req,res,()=>{pending=run(index+1);return pending;});if(pending)await pending;}
-    await run(0);return res;
+    const {IncomingMessage,ServerResponse}=require('http');
+    const {Duplex}=require('stream');
+    let wire='';
+    const socket=new Duplex({read(){},write(chunk,encoding,done){wire+=chunk.toString();done();}});
+    socket.remoteAddress='127.0.0.1';
+    const req=new IncomingMessage(socket);
+    const suffix=new URLSearchParams(query).toString();
+    req.url=url+(suffix?(url.includes('?')?'&':'?')+suffix:'');req.method=method.toUpperCase();
+    const payload=JSON.stringify(body);
+    req.headers={host:'synthetic.example.test',cookie,'content-type':'application/json',
+      'content-length':String(Buffer.byteLength(payload)),...headers};
+    const res=new ServerResponse(req);res.assignSocket(socket);
+    let captured;
+    const json=realExpress.response.json;
+    res.json=function(value){captured=copy(value);return json.call(this,value);};
+    const finished=new Promise((resolve,reject)=>{res.on('finish',resolve);res.on('error',reject);});
+    req.push(payload);req.push(null);
+    app.handle(req,res);
+    await finished;
+    return {statusCode:res.statusCode,headers:res.getHeaders(),body:captured,wire};
   }
-  return {db,request,logs,blocked,context,evaluate:code=>vm.runInContext(code,context)};
+  return {app,db,request,logs,blocked,context,evaluate:code=>vm.runInContext(code,context)};
 }
 module.exports={databaseDouble,loadApplication};

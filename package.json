@@ -94,7 +94,9 @@
     "password-reset:harness": "node scripts/password-reset-harness.js",
     "password-reset-frontend:harness": "node scripts/password-reset-frontend-harness.js",
     "password-reset-server:harness": "node scripts/password-reset-server-integration-harness.js",
-    "operator:harness": "node scripts/operator-target-harness.js"
+    "operator:harness": "node scripts/operator-target-harness.js",
+    "isolation:harness": "node scripts/synthetic/isolation-harness.cjs",
+    "verify:synthetic": "npm run operator:harness && npm run isolation:harness && npm run verify"
   },
   "keywords": [],
   "author": "",
