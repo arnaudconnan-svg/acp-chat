@@ -78,7 +78,8 @@ function loadApplication({seed={},overrides={},env={}}={}) {
     res.json=function(value){captured=copy(value);return json.call(this,value);};
     const finished=new Promise((resolve,reject)=>{res.on('finish',resolve);res.on('error',reject);});
     req.push(payload);req.push(null);
-    app.handle(req,res);
+    req.complete=true;
+    app.handle(req,res,error=>{res.statusCode=error?.status|| (error?500:404);res.end();});
     await finished;
     return {statusCode:res.statusCode,headers:res.getHeaders(),body:captured,wire};
   }

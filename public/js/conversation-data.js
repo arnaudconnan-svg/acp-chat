@@ -53,6 +53,7 @@ function normalizeStoredStateSnapshot(snapshot) {
       typeof snapshot.memory === 'string' && snapshot.memory.trim()
         ? snapshot.memory
         : defaultMemory(),
+    memoryState: snapshot.memoryState && typeof snapshot.memoryState === 'object' ? snapshot.memoryState : {},
     flags: normalizeStoredFlags(snapshot.flags || {})
   };
 }
@@ -72,6 +73,7 @@ function buildSafeConversationData(data) {
       typeof data.memory === 'string' && data.memory.trim()
         ? data.memory
         : defaultMemory(),
+    memoryState: data.memoryState && typeof data.memoryState === 'object' ? data.memoryState : {},
     flags: normalizeStoredFlags(data.flags),
     updatedAt: Number(data.updatedAt || Date.now()),
     isPrivate: data.isPrivate === true

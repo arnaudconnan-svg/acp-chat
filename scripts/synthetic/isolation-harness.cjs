@@ -1,6 +1,8 @@
 'use strict';
 const assert=require('assert/strict');
 const {loadApplication}=require('./runtime.cjs');
+let completed=false;
+process.on('beforeExit',()=>{if(!completed){console.error('Synthetic assertions did not complete');process.exitCode=1;}});
 (async()=>{
   const a=loadApplication();
   const express=require('express');
@@ -23,5 +25,6 @@ const {loadApplication}=require('./runtime.cjs');
   assert.throws(()=>require('net').connect(443,'synthetic.example.test'));
   assert.throws(()=>require('firebase-admin'));
   assert.throws(()=>require('../../server.js'));
+  completed=true;
   console.log('[PASS] M0 genuine Express mounts/order/errors and full source/health with doubles, boot/timers/providers refused before load');
 })().catch(e=>{console.error(e);process.exitCode=1;});

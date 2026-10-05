@@ -13458,6 +13458,7 @@
                 requestConversationId
               ),
               memory: loadConversationData(requestConversationId).memory,
+              memoryState: loadConversationData(requestConversationId).memoryState,
               flags: normalizeStoredFlags(
                 loadConversationData(requestConversationId).flags
               ),
@@ -13588,6 +13589,8 @@
             if (isSameConversation) {
               if (data.memory) {
                 saveMemory(data.memory);
+                const finalStoredData=loadConversationData(requestConversationId);
+                saveConversationData(requestConversationId,{...finalStoredData,memoryState:data.memoryState||finalStoredData.memoryState});
               }
               if (data.flags) {
                 saveFlags(data.flags);
@@ -13604,6 +13607,7 @@
                 data.botMessageId || null,
                 {
                   memory: data.memory,
+                  memoryState: data.memoryState,
                   flags: data.flags
                 },
                 data && data.signals ? data.signals : null
@@ -13622,6 +13626,7 @@
                   debugMeta: normalizeClientDebugMeta(data.debugMeta),
                   stateSnapshot: normalizeStoredStateSnapshot({
                     memory: data.memory,
+                    memoryState: data.memoryState,
                     flags: data.flags
                   }),
                   id:
@@ -13635,6 +13640,7 @@
               saveConversationData(requestConversationId, {
                 ...storedData,
                 memory: data.memory || storedData.memory,
+                memoryState: data.memoryState || storedData.memoryState,
                 flags: data.flags || storedData.flags,
                 messages: [...existingMessages, ...nextAssistantMessages],
                 updatedAt: Date.now()
