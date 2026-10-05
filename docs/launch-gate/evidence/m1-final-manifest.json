@@ -9,7 +9,7 @@
   "destination": "work/m0-m1-launch-gate",
   "validatedCommit": "3db45bb8827ed14b9cd9399b61de8b8da8213dc1",
   "validatedTree": "898ad8b3888ba38776ba333ef5f274bf20e1111b",
-  "publicationNote": "Le commit suivant ajoute uniquement le rapport et les preuves ; le SHA validé désigne le dernier changement de code/tests.",
+  "publicationNote": "Les publications postérieures au SHA validé ajoutent ou corrigent uniquement des documents/preuves ; code/tests inchangés.",
   "environment": {
     "node": "v24.19.0",
     "npm": "11.9.0",
@@ -54,9 +54,36 @@
     "operatorApply": "verrou total conservatoire"
   },
   "operationalStatus": {
-    "renderAttestation": "Bloquée par connexion ; traitée par Work. Principal/base/IAM consommés non attestés.",
-    "rotationAndProvisioning": "Préparés en runbook, non exécutés.",
-    "historicalPrivateNodeAndLogs": "Non purgés ; inventaire, rétention et mandat opérationnel distinct requis."
+    "renderAttestation": "Connexion levée. Work a lu les pages Environment beta/main : même cible/principal déclarés ; aucune isolation démontrée. Runtime effectif et IAM/règles non inspectés.",
+    "rotationAndProvisioning": "Beta : USER_SESSION_SECRET et ADMIN_SESSION_SECRET absents ; ADMIN_PASSWORD et SESSION_SECRET présents. Secrets dédiés requis avant démarrage M1. Rotation/provisioning et coordination des consommateurs partagés non exécutés.",
+    "historicalPrivateNodeAndLogs": "Non purgés ; inventaire, rétention et mandat opérationnel distinct requis.",
+    "declaredRenderMetadata": {
+      "source": "Work, pages Environment Render, lecture seule ; aucune donnée applicative ni valeur de secret/clé privée affichée ou consignée.",
+      "services": [
+        "srv-d6lh0094tr6s73b71kug",
+        "srv-d6kuf4ftskes73d0k15g"
+      ],
+      "liveShaBothServices": "f20d84f1962c552eaebb095d7a9e5ddb63719be7",
+      "firebaseDatabaseUrl": "https://facilitat-io-default-rtdb.europe-west1.firebasedatabase.app/",
+      "projectId": "facilitat-io",
+      "principal": "firebase-adminsdk-fbsvc@facilitat-io.iam.gserviceaccount.com",
+      "isolationDemonstrated": false,
+      "effectiveRuntimeInspected": false,
+      "iamAndRulesInspected": false,
+      "betaEnvironment": {
+        "absent": [
+          "USER_SESSION_SECRET",
+          "ADMIN_SESSION_SECRET"
+        ],
+        "present": [
+          "ADMIN_PASSWORD",
+          "SESSION_SECRET"
+        ],
+        "linkedEnvironmentGroupVisible": false,
+        "secretFileVisible": false
+      },
+      "mainDedicatedSecretsStatus": "Non transmis, inconnu."
+    }
   },
   "sha256": {
     "docs/launch-gate/evidence/m1-clean-install.log": "e68285437d3e8b53ef1c4810662674ade0109b31333a54b4be22e2f56c44b8b7",
@@ -69,5 +96,6 @@
     "scripts/synthetic/verify.sh": "77e57f806ea9ab9a9ab929f4ca2fddd4cfe135606a2dc64d4d2d47b522ab0d6e",
     "package.json": "224921e3135a25af213f1482a8803c8fcc715406c185b0c554e116655408eb5f",
     "package-lock.json": "b373caed761058422a72c9cbd61a59993cdea5a7f6a7675f667b63d787380458"
-  }
+  },
+  "operationalStatusUpdatedOn": "2026-10-05"
 }

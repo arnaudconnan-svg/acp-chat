@@ -20,6 +20,9 @@ livraison est proposée à la revue vers **beta**, sans fusion ni activation ré
   Il ne modifie pas le code ni les tests du SHA vérifié. Les checkpoints « M1 en
   cours » restent des archives datées ; les validations restantes qu'ils
   annonçaient sont soldées par ce rapport.
+- Mise à jour documentaire après lecture Render Work : aucun code/test modifié
+  depuis `3db45bb` ; `git diff --check` et comparaison des fichiers exécutables
+  contrôlés avant publication. Aucun nouveau test global pour cette mise à jour.
 
 ## Commandes et résultats
 
@@ -77,9 +80,28 @@ Aucun service réel, compte, rôle/grant, configuration, déploiement ou donnée
 n'a été modifié ; aucun appel réel Firebase/Mistral/SMTP ni listener applicatif.
 Aucun M2 ni promotion main/production.
 
-L'attestation Render reste bloquée par une connexion et est traitée par Work.
-Les métadonnées du brief restent distinguées des configuration/principal/base/IAM
-effectivement consommés, toujours non attestés ici. Avant livraison/activation,
-Work doit vérifier ces attestations, rotation/provisioning et migration des
-capacités anciennes décrits dans le [runbook M1](M1-runbook.md). Les résidus privés
-et logs historiques restent présents jusqu'à un traitement opérationnel autorisé.
+**Connexion Render débloquée — faits transmis par Work le 05/10/2026.** Les pages
+Environment de `srv-d6lh0094tr6s73b71kug` (beta) et
+`srv-d6kuf4ftskes73d0k15g` (main) déclarent toutes deux
+`FIREBASE_DATABASE_URL=https://facilitat-io-default-rtdb.europe-west1.firebasedatabase.app/`,
+projet `facilitat-io`, principal
+`firebase-adminsdk-fbsvc@facilitat-io.iam.gserviceaccount.com`.
+Les deux services live restent `f20d84f` : M0/M1 ne sont pas déployés.
+Même cible/principal déclarés, **aucune isolation beta/main démontrée** ; runtime
+effectif et IAM/règles non inspectés. Ces faits viennent d'une lecture seule des
+métadonnées Work, sans lecture applicative ni valeur de clé privée consignée.
+
+La liste Environment beta complète montre `USER_SESSION_SECRET` et
+`ADMIN_SESSION_SECRET` **absents**, `ADMIN_PASSWORD` et `SESSION_SECRET`
+**présents**, aucun groupe d'environnement lié ni secret file visible.
+Les secrets dédiés sont donc un prérequis concret avant démarrage M1, sans repli
+sur les anciens secrets. Rotation/provisioning et migration des capacités
+anciennes restent à exécuter sous mandat ; les réglages correspondants de main
+n'ont pas été attestés dans cette mise à jour.
+
+Le [plan de bascule sûre](M1-runbook.md#plan-de-bascule-sûre-sur-la-cible-partagée)
+séquence attestation runtime/IAM, dépendances de la cible commune, préparation des
+secrets avant fusion, rotation coordonnée, provisioning/grants puis recette beta
+restreinte sous mandat distinct. Il ne garantit pas les protections M1 aux
+parcours main restés hérités. PR27 reste draft ; aucun service, secret ni compte
+réel modifié. Les résidus privés et logs restent non purgés.
