@@ -5,6 +5,12 @@ PR27 ouverte draft. Sources examinées : `f20d84f` et HEAD M1. Les résultats ac
 au SHA code/tests `3db45bb` et leurs empreintes sont inchangés. Lecture de sources
 et docs seulement : aucun boot, test global ou accès réel Cloud aux services.
 
+Reprise séquence20 : [plan de clôture ciblé et helpers](M0-M1-closure-plan.md).
+Propriétaire historique désormais explicitement nommé/autorisé ; minimum déduit
+des routes : une identité, rôle unique `administrator`, aucun practitioner/support,
+affectation ou grant. Restent saisie/remise privée du credential et résultats réels,
+pas une identité nominative manquante. Helpers opérateurs préparés seulement.
+
 ## Architecture et preuves reçues de Work
 
 **Pas de production publique distincte actuellement : beta validation, main future
@@ -65,6 +71,11 @@ données prouvés et **suppression d'instance excessive pour les accès métier 
 prouvée depuis les deux services**. Bindings, clés et ensemble complet des droits
 restent non qualifiés. Les règles racine fermées ne bornent pas ces droits AdminSDK.
 Aucune mutation IAM/RTDB ni compte créé ; aucun secret fournisseur déclaré compromis.
+
+Précision officielle Work : `instances.get/update` portent les données ; `update`
+porte aussi règles et enable/disable. Les noms `data.get/update` observés ne sont
+pas une base de rôle custom documentée ni une garantie SDK. Inspection des bindings
+et sonde SDK dédiée après réduction : [plan actuel](M0-M1-closure-plan.md).
 
 **Correction IAM minimale à préparer sur le projet/principal existants :** rétablir
 un accès opérateur déjà habilité à lire/modifier la policy, inspecter bindings et
@@ -140,6 +151,13 @@ pas un principal ayant les droits administratifs d'accéder via Admin SDK.
 
 ## Identités : entrées manquantes et préparation exacte
 
+**Actualisation séquence20 :** les entrées du propriétaire sont connues et le rôle
+unique d'exploitation `administrator` est désormais choisi et autorisé. Utiliser
+uniquement le [helper actuel à TTY masquée](M0-M1-closure-plan.md), création atomique
+du seul namespace professionnel encore vide et validation module exact, sans
+credential dans fichier/env/args. Le schéma/préparation génériques ci-dessous
+documentent l'étape antérieure ; ils ne sont pas la commande actuelle de provisioning.
+
 CJ4/CJ5 ne donnent **aucune liste nominative email→rôles**. Restent à fournir pour
 chaque identité prévue : ID stable, email normalisé unique, displayName, rôles
 explicitement prévus et **canal privé de remise d'un nouveau credential**. Aucun
@@ -206,10 +224,9 @@ hash, contenu ou token : compteur/code/version/résultat. Aucun provisioning ré
    de gestion inutiles impossible avec les accès disponibles. Obtenir l'accès
    opérateur existant aux bindings/policy, qualifier consommateurs/rôles, puis
    préparer la réduction bornée ; aucun nouveau GO général requis.
-2. **Blocage provisioning :** identité nominative/rôles prévus et canal de remise
-   à finaliser, ou migration bornée du seul propriétaire configuré ci-dessus.
-   Ensuite unicité/index et provisioning précis ; aucune personne/permission
-   inventée, aucune fiche créée à ce stade.
+2. **Blocage provisioning :** saisie/remise privée du nouveau credential par le
+   seul propriétaire connu, puis booléens réels du helper exact préparé. Rôle
+   unique administrator ; aucun nominatif/rôle manquant, aucune fiche créée ici.
 3. Intégrer ces preuves avant clôture des blocages et livraison beta. Main reste
    code hérité jusqu'au bilan final/pré-FF ; le partage n'impose pas une autre base.
    Aucune fusion pendant cette étape.

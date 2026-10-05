@@ -29,6 +29,12 @@ réduction impossible avec les accès disponibles : inspecter les bindings via u
 accès opérateur existant avant tout choix de rôles ou réduction. Aucun droit élargi,
 aucune écriture ou clé révoquée. Voir le [verdict et les deux blocages](M0-M1-operational-checkpoint.md).
 
+**Précision officielle ultérieure Work :** instances.get/update documentent
+l'accès aux données ; update porte aussi règles/enable/disable. data.get/update
+renvoyés ci-dessous sont une observation, pas une base custom documentée ni une
+garantie AdminSDK. Pour la réduction, utiliser le catalogue réel et la sonde SDK
+dédiée du [plan ciblé](M0-M1-closure-plan.md), sans modifier ces résultats acquis.
+
 ```sh
 M0M1_METADATA_ACTION=iam node - <<'NODE'
 'use strict';

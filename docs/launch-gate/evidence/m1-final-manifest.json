@@ -55,7 +55,7 @@
   },
   "operationalStatus": {
     "renderAttestation": "Runtime des deux processus server.js et empreinte f20d84f confirmés par Work ; secrets dédiés présents/forts/distincts, projet/principal/base attendus, refresh=false, LOG_PERSIST=true, rétention14. Règles racine fermées. Accès données prouvé et instances.delete excessif prouvé sur beta/main ; réduction IAM impossible avec accès disponibles, bindings/clés non accessibles.",
-    "rotationAndProvisioning": "Quatre secrets dédiés distincts de 512 bits installés par Work, redéploiements f20d84f sans fusion. Anciennes capacités publiées à abandonner sous M1 ; aucun secret fournisseur déclaré compromis. Inventaire professionnel complet total0 ; identité/rôles prévus et canal privé de remise à finaliser, ou migration bornée du seul propriétaire déjà configuré sans nouveau rôle/acteur inventé. Aucun provisioning réel.",
+    "rotationAndProvisioning": "Quatre secrets dédiés distincts de 512 bits acquis, redéploiements f20d84f sans fusion. Anciennes capacités publiées à abandonner sous M1 ; aucun secret fournisseur déclaré compromis. Propriétaire nominatif identifié et autorisé, administrator uniquement, aucun roster/rôle manquant. Helper opérateur mono-ligne avec modules exacts embarqués préparé ; restent saisie personnelle masquée/remise privée et résultats réels, aucune exécution Cloud.",
     "historicalPrivateNodeAndLogs": "Non purgés ; inventaire/rétention dans les autorisations M0/M1 déjà accordées, après satisfaction des prérequis vérifiables. Purge irréversible soumise à ses limites et contrôles propres.",
     "declaredRenderMetadata": {
       "source": "Work, pages Environment Render, lecture seule ; aucune donnée applicative ni valeur de secret/clé privée affichée ou consignée.",
@@ -178,7 +178,9 @@
       "correctionPlan": "Accès opérateur existant aux bindings/policy ; identifier rôles/héritage et autres consommateurs avant réduction des droits de gestion inutiles sur le principal/projet existants. Aucun rôle deviné ni nouveau droit/base/projet.",
       "iamMutation": false,
       "rtdbMutation": false,
-      "keyTokenPrinted": false
+      "keyTokenPrinted": false,
+      "officialPermissionQualification": "Work, Firebase IAM documentation : instances.get porte données/métadonnées ; instances.update porte données/règles et enable/disable. data.get/update observés ne constituent pas une base custom documentée ni une garantie SDK. Catalogue/bindings réels et sonde SDK après réduction requis.",
+      "closurePlan": "docs/launch-gate/M0-M1-closure-plan.md ; inspection gcloud par opérateur existant ; minimum documenté instances.get/update et seules métadonnées démontrées nécessaires, sans gestion supplémentaire ni rôle présumé."
     },
     "workProfessionalInventory": {
       "source": "Work, mode identities ; HTTP succès.",
@@ -196,12 +198,59 @@
       "durableAccountToMigrate": false,
       "provisioningPerformed": false,
       "boundedLegacyOwnerOption": "Une seule identité propriétaire déjà configurée dans la source héritée ; même email dans configuration professionnelle et full, non publié ici. ID/libellé/rôles explicites et nouveau credential/canal privé à définir ; aucune traduction automatique du scope full.",
-      "missingInputs": "Identité nominative et rôles prévus, ID stable/libellé, canal privé de remise du nouveau credential ; ou finaliser la migration bornée de ce seul propriétaire existant."
+      "missingInputs": "Saisie/confirmation et conservation privée du nouveau credential par le propriétaire ; résultats réels du helper. Identité nominative fournie et administrator seul déduit/autorisé, aucun nominatif/rôle manquant.",
+      "selectedPlan": {
+        "identityId": "launch-owner",
+        "roles": [
+          "administrator"
+        ],
+        "operatorHelper": "docs/launch-gate/operators/owner-provision.cjs",
+        "professionalModuleValidatedCommit": "3db45bb8827ed14b9cd9399b61de8b8da8213dc1",
+        "professionalModuleSha256": "5210cde3a69239f3c9e8ab1182c7b68242cb750016d9307f751e1c41e0f5c537",
+        "applicationModified": false,
+        "provisioningPerformed": false,
+        "credentialGeneratedByCloud": false
+      }
     },
     "remainingBlockers": [
       "Réduction IAM impossible avec les accès disponibles : instances.delete excessif prouvé sur beta/main ; bindings/policy et consommateurs à inspecter avant réduction bornée.",
-      "Provisioning nominatif/rôles et remise de credential à finaliser ; ou migration bornée du seul propriétaire configuré, sans acteur/permission inventé."
-    ]
+      "Provisioning/remise privée du nouveau credential du seul propriétaire connu et autorisé ; administrator uniquement. Helper opérateur exact préparé, aucun nominatif/rôle manquant, aucune exécution réelle."
+    ],
+    "operatorPreparation": {
+      "sourceCheckpoint": "Work séquence20 ; PR27 b78acf8, propriétaire unique + administrator explicitement autorisés.",
+      "notice": "docs/launch-gate/M0-M1-closure-plan.md",
+      "helper": "docs/launch-gate/operators/owner-provision.cjs",
+      "sdkProbe": "docs/launch-gate/operators/sdk-probe.cjs",
+      "status": "prepared_only_not_executed",
+      "applicationModified": false,
+      "realProviderCall": false,
+      "realProvisioning": false,
+      "newCredentialGeneratedByCloud": false,
+      "globalTestsRepeated": false,
+      "targetedChecks": {
+        "nodeSyntaxBothHelpers": 0,
+        "bashSyntaxBothOneLineTransfers": 0,
+        "embeddedModulesByteEqualValidatedCommit": true,
+        "noticeChecksumsMatch": true,
+        "gitDiffCheck": 0,
+        "applicationAndAcquiredTestsUnchanged": true
+      },
+      "ownerHelperSha256": "485968e605e82c6d7eb1299a806831053d648887429d35ec188aec3e587c7c9f",
+      "sdkProbeSha256": "325aa65ad926c81056f3908a0ecd92b58037bb24e92208d3f309dbb35b8e1fc4",
+      "modulesEmbeddedAtCommit": "3db45bb8827ed14b9cd9399b61de8b8da8213dc1",
+      "moduleSha256": {
+        "professional-access.js": "5210cde3a69239f3c9e8ab1182c7b68242cb750016d9307f751e1c41e0f5c537",
+        "auth-password.js": "bf29a8e14ca710050faf58f36786470f7c1951a76147466ebea9f684ce074318"
+      },
+      "creationPrecondition": "Exact context; absent ID/email and entirely empty professionalIdentities namespace; atomic null-to-single-owner transaction, never RTDB root.",
+      "personalTtyHandoffRequired": true,
+      "requestedFutureValidation": [
+        "login",
+        "unique administrator session",
+        "probe session revocation and rejection"
+      ],
+      "futureEffects": "One owner identity + revoked probe session only. No practitioner/support/assignment/grant; no conversation/private-memory/provider access. Owner enters credential himself; output booleans/technical ID only."
+    }
   },
   "sha256": {
     "docs/launch-gate/evidence/m1-clean-install.log": "e68285437d3e8b53ef1c4810662674ade0109b31333a54b4be22e2f56c44b8b7",

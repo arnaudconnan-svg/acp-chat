@@ -15,6 +15,13 @@ Les [preuves opérationnelles Work et actions restantes](M0-M1-operational-check
 et la [commande standalone IAM/inventaire](M0-M1-render-readonly.md) sont le
 checkpoint courant. Aucun compte nominatif/rôle déduit de CJ4/CJ5.
 
+Reprise ciblée séquence20 : propriétaire déjà connu et explicitement autorisé,
+**une identité, administrator seul**. Le [plan/helper actuel](M0-M1-closure-plan.md)
+remplace l'attente générique de liste nominative : restent saisie/remise privée et
+preuves réelles du provisioning. Aucune affectation/grant ni autre acteur.
+IAM : minimum documenté instances.get/update, couplage règles/enable/disable
+résiduel ; ne pas construire un rôle sur les seuls noms data.get/update observés.
+
 ## Configuration et identités
 
 1. Attester séparément par service la branche/SHA, la base, le projet Firebase,
@@ -35,10 +42,10 @@ checkpoint courant. Aucun compte nominatif/rôle déduit de CJ4/CJ5.
    via le mécanisme existant, `active`, `roles` explicitement choisis parmi
    practitioner/commercial_support/technical_support/administrator,
    `authorizationVersion` entier non négatif, `displayName` lisible pour le
-   consentement. Inventaire complet total0 : aucun compte durable à migrer. Restent
-   identité/rôles prévus et canal privé de remise du nouveau credential, ou migration
-   bornée du seul propriétaire déjà configuré, sans déduire les rôles de son ancien
-   accès full. Aucun compte réel inventé ni créé dans cette tâche.
+   consentement. Inventaire complet total0 : aucun compte durable à migrer.
+   Le propriétaire déjà connu est désormais autorisé avec administrator seul ;
+   restent saisie/remise privée et provisioning par le helper ciblé, sans déduire
+   d'autres rôles de son ancien full. Aucun compte inventé ni créé dans Cloud.
 4. Les cookies professionnels anciens sont refusés. Les nouvelles sessions
    opaques ont un schéma versionné, une durée maximale de 24 h et une révocation
    durable ; changer `authorizationVersion`, désactiver l'identité ou retirer
@@ -145,7 +152,8 @@ des secrets dédiés sans leurs valeurs, plan de rotation/révocation coordonné
 liste de provisioning et accès journal approuvés, fenêtre beta et retour sûr.
 Les autorisations M0/M1 sont déjà accordées : aucun nouveau GO général requis.
 Les deux blocages finaux sont la réduction IAM impossible avec les accès
-disponibles et le provisioning nominatif/remise de credential à finaliser.
+disponibles et le provisioning/remise privée du credential du seul propriétaire
+déjà identifié, rôle administrator seul. Aucun nominatif/rôle manquant.
 L'empreinte de source runtime correspond au code live `f20d84f` ;
 `LOG_PERSIST=true`, rétention14, exploitation normale conservée, sans blocage ajouté.
 Configuration/rotation des deux services autorisées ; aucune fusion main avant

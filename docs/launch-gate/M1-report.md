@@ -116,13 +116,22 @@ Inventaire `professionalIdentities` Work HTTP succès : total0, complete=true,
 active/inactive0, chaque rôle0, readFailures0. Aucun compte durable à migrer ni
 écriture. Les **deux blocages précis** : réduction des permissions de gestion
 inutiles, notamment suppression d'instance, impossible avec les accès disponibles ;
-provisioning nominatif/rôles prévus et canal privé de remise à finaliser, ou
-migration bornée du seul propriétaire déjà configuré dans le code hérité, sans
-inventer acteur/rôles ni réutiliser son ancien password. Inspecter bindings et
+provisioning/remise privée du nouveau credential du seul propriétaire connu à
+exécuter via le [helper préparé](M0-M1-closure-plan.md), rôle unique administrator,
+sans acteur/rôle inventé ni réutilisation du password publié. Identité nominative
+connue/autorisation explicite, aucun nominatif/rôle manquant. Inspecter bindings et
 autres consommateurs depuis un accès opérateur existant avant réduction ; aucune
 base/projet nouveau, aucun rôle deviné. Aucun secret fournisseur déclaré compromis
 sans preuve, aucune rotation additionnelle automatique. Ces actions relèvent des
 autorisations M0/M1 déjà accordées, pas d'un nouveau GO général.
+
+Précision IAM officielle Work : les permissions documentées de données sont
+`instances.get/update`, avec couplage résiduel règles/enable/disable pour update.
+`data.get/update` renvoyés restent des observations, pas une définition custom
+supportée ou une garantie AdminSDK. Le [plan ciblé](M0-M1-closure-plan.md) prépare
+inspection gcloud et sonde SDK réversible après réduction, sans retrait présumé.
+Préparation locale des helpers : syntaxe vérifiée, aucune exécution réelle,
+application/tests validés inchangés ; module professionnel exact au SHA testé.
 
 Le [plan de bascule sûre](M1-runbook.md#plan-de-bascule-sûre-sur-la-cible-partagée)
 séquence attestation runtime/IAM, dépendances de la cible commune, préparation des
