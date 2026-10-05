@@ -56,7 +56,7 @@
   "operationalStatus": {
     "renderAttestation": "Connexion levée. Work a lu les pages Environment beta/main : même cible/principal déclarés ; aucune isolation démontrée. Runtime effectif et IAM/règles non inspectés.",
     "rotationAndProvisioning": "Beta : USER_SESSION_SECRET et ADMIN_SESSION_SECRET absents ; ADMIN_PASSWORD et SESSION_SECRET présents. Secrets dédiés requis avant démarrage M1. Rotation/provisioning et coordination des consommateurs partagés non exécutés.",
-    "historicalPrivateNodeAndLogs": "Non purgés ; inventaire, rétention et mandat opérationnel distinct requis.",
+    "historicalPrivateNodeAndLogs": "Non purgés ; inventaire/rétention dans les autorisations M0/M1 déjà accordées, après satisfaction des prérequis vérifiables. Purge irréversible soumise à ses limites et contrôles propres.",
     "declaredRenderMetadata": {
       "source": "Work, pages Environment Render, lecture seule ; aucune donnée applicative ni valeur de secret/clé privée affichée ou consignée.",
       "services": [

@@ -14,7 +14,8 @@ chantier ; Work doit vérifier les prérequis avant livraison beta.
    secrets dédiés et distincts `USER_SESSION_SECRET` et `ADMIN_SESSION_SECRET`
    (au moins 32 caractères aléatoires). Aucun repli sur `SESSION_SECRET` ou mot
    de passe admin partagé ; aucune capacité TWA large.
-3. Provisionner sous mandat des identités individuelles dans
+3. Provisionner, dans les autorisations M0/M1 déjà accordées, après satisfaction
+   des prérequis vérifiables, des identités individuelles dans
    `professionalIdentities/<id>` : email normalisé unique, `passwordHash` scrypt
    via le mécanisme existant, `active`, `roles` explicitement choisis parmi
    practitioner/commercial_support/technical_support/administrator,
@@ -28,8 +29,9 @@ chantier ; Work doit vérifier les prérequis avant livraison beta.
 
 ## Plan de bascule sûre sur la cible partagée
 
-Ce plan prépare une opération future à valider par Work ; aucune étape réelle
-n'est exécutée dans cette livraison documentaire. PR27 reste **draft**, sans
+Ce plan s'exécute dans les autorisations M0/M1 déjà accordées, après satisfaction
+des prérequis vérifiables contrôlés par Work ; aucune étape réelle n'est exécutée
+dans cette livraison documentaire. PR27 reste **draft**, sans
 fusion, déploiement, provisioning ni modification de secrets/services/comptes.
 
 **Point de départ confirmé par Work, 05/10/2026.** Beta et main sont live à
@@ -52,16 +54,19 @@ données applicatives. Connexion Render débloquée ; isolation non démontrée.
 2. **Traiter la RTDB comme une cible commune.** Inventorier les chemins concernés
    (users/conversations/messages, anciens privés, identités/sessions
    professionnelles, affectations/grants/journal) et les consommateurs main/beta
-   avant tout mandat d'écriture. Un namespace ou une variable portant « beta »
+   avant toute écriture dans les autorisations M0/M1 déjà accordées, après
+   satisfaction des prérequis vérifiables. Un namespace ou une variable portant « beta »
    ne fournit pas d'isolation avec ce même principal. Les règles RTDB seules
    ne bornent pas un SDK Admin disposant d'accès administratif ; attester aussi
    les droits du principal. Les barrières M1 sont applicatives, pas une séparation
    IAM. Tant que main reste au code hérité, ne pas présenter le privé local, les
-   grants ou révocations beta comme une protection des accès par main. Toute
-   dépendance nécessitant une action main ou une séparation effective demande
-   un chantier/mandat distinct ; ne pas l'exécuter sous cette mission M0/M1.
-3. **Préparer rotation et configuration avant fusion.** Sous mandat opérationnel,
-   fournir à beta deux valeurs nouvelles, indépendantes et aléatoires d'au moins
+   grants ou révocations beta comme une protection des accès par main. La
+   séparation d'une cible beta relève de M0, dans les autorisations M0/M1 déjà
+   accordées, après satisfaction des prérequis vérifiables. Les actions
+   main/production et les créations/élargissements de droits ou ressources non
+   encore définis conservent leurs limites et contrôles propres.
+3. **Préparer rotation et configuration avant fusion.** Dans les autorisations
+   M0/M1 déjà accordées, après satisfaction des prérequis vérifiables, fournir à beta deux valeurs nouvelles, indépendantes et aléatoires d'au moins
    32 caractères pour les secrets dédiés, hors Git et rapports. Leur absence
    actuelle bloque le démarrage M1 : le code refuse, sans repli sur
    `SESSION_SECRET`/`ADMIN_PASSWORD`. Vérifier l'autoDeploy et prévoir une fenêtre
@@ -72,7 +77,8 @@ données applicatives. Connexion Render débloquée ; isolation non démontrée.
    attester leurs remplacements, sans changer main ici. La rotation d'une
    signature utilisateur invalide les anciens cookies ; la rotation du secret
    professionnel ne révoque pas à elle seule les tokens opaques durables :
-   utiliser révocation/authorizationVersion sous mandat. Ne pas supposer que les
+   utiliser révocation/authorizationVersion dans les autorisations M0/M1 déjà
+   accordées, après satisfaction des prérequis vérifiables. Ne pas supposer que les
    anciennes capacités main sont supprimées par le nouveau code beta.
 4. **Provisionner M1 seulement après contrôle des droits.** Préparer une liste
    validée d'identités individuelles et rôles minimaux ; comptes de recette
@@ -82,31 +88,39 @@ données applicatives. Connexion Render débloquée ; isolation non démontrée.
    l'utilisateur choisit scope/date/synthèse. Établir les droits d'accès et la
    rétention des nœuds professionnels/journal sur la base commune. Si main ou
    un autre consommateur peut contourner ces barrières, garder l'activation
-   professionnelle beta bloquée jusqu'à une résolution séparément autorisée.
-5. **Bascule beta sous mandat distinct, après revue Work.** Une fois les
+   professionnelle beta bloquée jusqu'à satisfaction des prérequis vérifiables
+   de cible/configuration/IAM/provisioning dans les autorisations M0/M1 déjà accordées.
+5. **Bascule beta dans les autorisations M0/M1 déjà accordées, après satisfaction
+   des prérequis vérifiables et revue Work.** Une fois les
    prérequis précédents attestés, fixer le SHA de livraison et le périmètre de
    recette restreint ; ne pas ouvrir la beta au public. Déployer seulement beta
-   après autorisation, attester son nouveau SHA et sa configuration effective.
-   Contrôler d'abord santé et fermeture des anciennes capacités, puis, si
-   explicitement autorisés, les parcours du compte technique minimal et le
-   journal sans contenu. Les tests synthétiques existants restent la preuve
-   disponible ; aucun test fournisseur réel n'est exécuté ni autorisé ici.
+   après satisfaction des prérequis vérifiables, attester son nouveau SHA et sa
+   configuration effective. Contrôler d'abord santé et fermeture des anciennes
+   capacités, puis les parcours du compte technique minimal et le journal sans
+   contenu dans les autorisations M0/M1 déjà accordées. Les tests synthétiques existants restent la preuve
+   disponible ; aucun test fournisseur réel n'est exécuté dans cette mise à jour documentaire.
    Préserver les données locales légitimes/IDs/dates ; aucune migration par
    réattribution des objets hérités. Le comportement privé local ne vaut que
    pour les parcours utilisant le code M1, pas pour main resté à `f20d84f`.
 6. **Échec et résidus.** En cas d'échec concret de configuration/autorité,
-   suspendre l'accès de recette beta sous le même mandat ; aucun reset de la base
+   suspendre l'accès de recette beta dans les autorisations M0/M1 déjà accordées,
+   après satisfaction des prérequis vérifiables ; aucun reset de la base
    partagée, aucune restauration globale, aucun rollback vers les capacités
    héritées réouvertes. Choisir un retour compatible avec les sessions/grants
-   déjà durables avant de l'exécuter. Inventaire des anciens privés/logs,
-   sauvegarde et purge éventuelle restent un mandat distinct portant sur tous
-   les consommateurs de la cible commune ; aucun effacement implicite M1.
+   déjà durables avant de l'exécuter. Inventaire des anciens privés/logs et
+   sauvegarde relèvent des autorisations M0/M1 déjà accordées, après satisfaction
+   des prérequis vérifiables. La purge irréversible conserve ses limites et
+   contrôles propres sur tous les consommateurs de la cible commune ; aucun
+   effacement implicite M1.
 
-Livrables opérationnels attendus avant GO de livraison par Work : attestation
+Prérequis vérifiables de livraison à contrôler par Work : attestation
 runtime et IAM/règles, inventaire des dépendances partagées, preuve de préparation
 des secrets dédiés sans leurs valeurs, plan de rotation/révocation coordonné,
 liste de provisioning et accès journal approuvés, fenêtre beta et retour sûr.
-Cette documentation ne constitue aucun GO d'opération réelle ni de main.
+Les autorisations M0/M1 sont déjà accordées : aucun nouveau GO général requis.
+Les blocages sont les prérequis concrets de cible/configuration/IAM/provisioning.
+Main/production, purge irréversible et créations/élargissements de droits ou
+ressources non encore définis conservent leurs limites et contrôles propres.
 
 ## Affectations, consentement et audit
 
