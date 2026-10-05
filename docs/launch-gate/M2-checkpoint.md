@@ -104,3 +104,23 @@ puis régression complète sur l'arbre final. PR28 reste draft base beta, dépen
 de PR27 intacte. Le coût racine/capacité M4 et la coordination des anciens writers
 f20 sur Firebase partagé figurent dans `M2-operation-policy.md`. Aucun merge,
 déploiement, pré-FF réel ou M3–M6 ; ce checkpoint ne clôt pas M2.
+
+## Tranche finale — générations et streaming, avant clone indépendant
+
+Après `6693f240ecf287ccd1fe6192e66ddad5898ac6e5`, distinction explicite entre tour
+et génération de contenu : replay/import forcé/activation invalident l'ancienne
+génération sans perdre N après N+1. Oracles réels writer, mémoire et commit de
+message retenus contre chaque remplacement ; consolidation contre remplacement.
+Stop/interruption sont arbitrés dans le commit, un partiel n'écrase pas une
+réponse complète. Son frontend laisse alors le partiel non confirmé sans copier
+l'ID du complet. Aucune nouvelle décision de posture ou de mémoire sémantique.
+
+Le dernier runner complet avant le correctif completed-wins navigateur a passé :
+18 lifecycle, 17 chat, 23 navigateur, 18 copies, 8 stream puis suites existantes.
+Le correctif frontend ajoute le 24e cas navigateur, ciblé PASS. Le contrôle complet
+de l'arbre exact depuis clone indépendant et les empreintes finales suivent dans
+le manifeste. La correction TTL pro d'un instant unique est bornée à l'échec 401
+intermittent observé et testée par horloge avançante ; aucune reprise M1/PR27.
+
+Rapport : `M2-report.md`. Matrice : `M2-G15-matrix.md`. Réserves opérationnelles,
+version mixte f20 et coût racine conservés. Toujours aucun merge/déploiement réel.

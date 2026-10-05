@@ -555,6 +555,70 @@ const replay = (extra = {}) => ({
       2
     );
   });
+
+  await test('invalid structured memory/control types and explicit new private import collision have zero effects', async () => {
+    const { app, cookie, admin } = await make();
+    const baseline = structuredClone(app.db.data.conversations);
+    for (const memoryState of [
+      false,
+      { onGoingMovements: false },
+      { sessionStableContext: [true] },
+      {
+        ancientMovements: [{ id: 'x', text: 'SYNTHETIC', createdAt: 'invalid' }]
+      }
+    ]) {
+      const body = replay();
+      body.conversation.memoryState = memoryState;
+      const r = await app.request(
+        'POST',
+        '/api/admin/conversations/import-replay',
+        { ...admin, body }
+      );
+      assert.equal(r.statusCode, 400, r.wire);
+      assert.deepEqual(app.db.data.conversations, baseline);
+    }
+    const response = await app.request(
+      'POST',
+      '/api/account/conversations/import-local',
+      {
+        cookie,
+        body: {
+          forceOverwrite: true,
+          conversations: [
+            {
+              id: 'c_A',
+              expectedVersion: null,
+              messages: [{ role: 'user', content: 'COLLISION' }]
+            }
+          ]
+        }
+      }
+    );
+    assert.equal(response.statusCode, 409, response.wire);
+    assert.deepEqual(app.db.data.conversations, baseline);
+  });
+
+  await test('professional session TTL uses one creation instant even when clock advances between reads', async () => {
+    const { databaseDouble } = require('./runtime.cjs');
+    const {
+      createProfessionalAccess
+    } = require('../../lib/professional-access');
+    const db = databaseDouble(seed());
+    let clock = 1000;
+    const professional = createProfessionalAccess({
+      db,
+      secret: 'synthetic-strong-signing-secret-for-test',
+      now: () => ++clock
+    });
+    const token = await professional.login(
+      'operator@example.test',
+      'Synthetic123!Password'
+    );
+    assert(token);
+    assert.equal((await professional.session(token)).roles[0], 'administrator');
+    const record = Object.values(db.data.professionalSessions)[0];
+    assert.equal(record.expiresAt - record.createdAt, 86400000);
+  });
   done = true;
   console.log(`M2 copies: ${passed} PASS`);
 })().catch((error) => {

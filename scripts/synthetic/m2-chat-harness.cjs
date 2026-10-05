@@ -257,6 +257,220 @@ async function drain(app) {
       'superseded'
     );
   });
+
+  for (const replacement of ['replay', 'import'])
+    for (const child of ['writer', 'memory', 'persistence'])
+      await test(`real ${child} held across ${replacement} replacement cannot restore previous content`, async () => {
+        const entered = latch(),
+          release = latch();
+        const held = async () => {
+          entered.resolve();
+          await release.promise;
+          return child === 'writer'
+            ? { reply: 'OLD_HELD_REPLY' }
+            : {
+                memoryText: 'Contexte stable:\n- OLD_HELD_MEMORY',
+                source: 'synthetic'
+              };
+        };
+        const { app, cookie } = make(
+          child === 'persistence' ? {} : { [child]: held }
+        );
+        app.db.data.conversations.c_source = {
+          userId: 'u_A',
+          memory: 'SOURCE'
+        };
+        app.db.data.messages = {
+          source_anchor: {
+            userId: 'u_A',
+            conversationId: 'c_source',
+            role: 'user',
+            content: 'SOURCE',
+            timestamp: 1
+          }
+        };
+        if (child === 'persistence') {
+          let retained = false;
+          app.db.hooks.beforeCommit = async ({ value }) => {
+            if (
+              !retained &&
+              Object.values(value?.messages || {}).some(
+                (m) => m.conversationId === 'c_A' && m.role === 'assistant'
+              )
+            ) {
+              retained = true;
+              entered.resolve();
+              await release.promise;
+            }
+          };
+        }
+        const pending = app.request('POST', '/chat', {
+          cookie,
+          body: {
+            conversationId: 'c_A',
+            message: 'OLD_USER',
+            requestId: 'old_request'
+          }
+        });
+        await entered.promise;
+        if (child !== 'writer') assert.equal((await pending).statusCode, 200);
+        const conversation = {
+          id: 'c_A',
+          sourceConversationId: 'c_source',
+          anchorMessageId: 'source_anchor',
+          memory: 'REPLACED_MEMORY',
+          messages: [{ role: 'user', content: 'REPLACED_USER', timestamp: 1 }]
+        };
+        let replaced;
+        if (replacement === 'replay') {
+          app.db.data.professionalIdentities = {
+            admin: {
+              email: 'operator@example.test',
+              passwordHash: require('../../lib/auth-password').hashPassword(
+                'SyntheticPassword123!'
+              ),
+              roles: ['administrator'],
+              active: true,
+              authorizationVersion: 1
+            }
+          };
+          const login = await app.request('POST', '/api/pros/login', {
+            body: {
+              email: 'operator@example.test',
+              password: 'SyntheticPassword123!'
+            }
+          });
+          replaced = await app.request(
+            'POST',
+            '/api/admin/conversations/import-replay',
+            {
+              cookie: login.headers['set-cookie'].split(';')[0],
+              headers: { 'x-access-reason': 'support_incident' },
+              body: {
+                conversation,
+                writeIntent: 'replace',
+                expectedVersion: app.db.data.conversations.c_A.m2CopyVersion,
+                operationId: 'replace_content'
+              }
+            }
+          );
+        } else {
+          replaced = await app.request(
+            'POST',
+            '/api/account/conversations/import-local',
+            {
+              cookie,
+              body: {
+                forceOverwrite: true,
+                conversations: [conversation],
+                operationId: 'replace_content'
+              }
+            }
+          );
+        }
+        assert.equal(replaced.statusCode, 200, replaced.wire);
+        const newGeneration = app.db.data.conversations.c_A.m2ContentGeneration;
+        assert(newGeneration > 0);
+        release.resolve();
+        if (child === 'writer') {
+          const response = await pending;
+          assert.equal(response.statusCode, 409, response.wire);
+          assert.equal(response.body.code, 'conversation_replaced');
+        }
+        await drain(app);
+        const stored = Object.values(app.db.data.messages).filter(
+          (m) => m.conversationId === 'c_A'
+        );
+        assert.equal(stored.length, 1);
+        assert.equal(stored[0].content, 'REPLACED_USER');
+        assert(!app.db.data.conversations.c_A.memory.includes('OLD_HELD'));
+        assert.equal(
+          app.db.data.conversations.c_A.m2ContentGeneration,
+          newGeneration
+        );
+      });
+
+  await test('real cancel during held message commit rejects callback replay without dropping another request', async () => {
+    const { app, cookie } = make();
+    const entered = latch(),
+      release = latch();
+    let held = false;
+    app.db.hooks.beforeCommit = async ({ value }) => {
+      if (
+        !held &&
+        Object.values(value?.messages || {}).some((m) => m.role === 'assistant')
+      ) {
+        held = true;
+        entered.resolve();
+        await release.promise;
+      }
+    };
+    const response = await app.request('POST', '/chat', {
+      cookie,
+      body: {
+        conversationId: 'c_A',
+        message: 'SYNTHETIC',
+        requestId: 'cancel_commit'
+      }
+    });
+    await entered.promise;
+    assert.equal(response.statusCode, 200);
+    const cancel = await app.request('POST', '/chat/cancel', {
+      cookie,
+      body: { conversationId: 'c_A', requestId: 'cancel_commit' }
+    });
+    assert.equal(cancel.statusCode, 200);
+    assert.equal(cancel.body.canceled, true);
+    release.resolve();
+    await drain(app);
+    assert.equal(app.db.data.messages[response.body.botMessageId], undefined);
+    const next = await app.request('POST', '/chat', {
+      cookie,
+      body: { conversationId: 'c_A', message: 'NEXT', requestId: 'uncanceled' }
+    });
+    await drain(app);
+    assert.equal(next.statusCode, 200);
+    assert(app.db.data.messages[next.body.botMessageId]);
+  });
+  await test('real delayed consolidation rejects content replacement at commit', async () => {
+    const entered = latch(),
+      release = latch();
+    const { app, cookie } = make({
+      consolidate: async () => {
+        entered.resolve();
+        await release.promise;
+        return 'STALE_CONSOLIDATION';
+      }
+    });
+    const pending = app.request('PUT', '/api/intersession-memory', {
+      cookie,
+      body: { conversationId: 'c_A' }
+    });
+    await entered.promise;
+    const replaced = await app.request(
+      'POST',
+      '/api/account/conversations/import-local',
+      {
+        cookie,
+        body: {
+          forceOverwrite: true,
+          conversations: [
+            {
+              id: 'c_A',
+              memory: 'REPLACED',
+              messages: [{ role: 'user', content: 'REPLACED' }]
+            }
+          ]
+        }
+      }
+    );
+    assert.equal(replaced.statusCode, 200, replaced.wire);
+    release.resolve();
+    const response = await pending;
+    assert.equal(response.statusCode, 409);
+    assert.equal(response.body.code, 'conversation_replaced');
+    assert.equal(app.db.data.users.u_A.intersessionMemorySource, 'BEFORE');
+  });
   done = true;
   console.log(`M2 chat: ${count} PASS`);
 })().catch((error) => {
