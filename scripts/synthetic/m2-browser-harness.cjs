@@ -126,6 +126,83 @@ async function fixture(fetcher) {
   return { dom, w, api, context, load };
 }
 (async () => {
+  for (const transition of [
+    'public_navigation',
+    'private_navigation',
+    'identity',
+    'identity_roundtrip'
+  ])
+    await test(`real Stop keeps its launch destination after ${transition}`, async () => {
+      const calls = [];
+      let progressClosed = 0;
+      const f = await fixture(async (url, options) => {
+        calls.push({
+          url,
+          body: JSON.parse(options.body),
+          identity: options.headers.get('x-client-identity')
+        });
+        return json({ success: true });
+      });
+      const wasPrivate = transition === 'private_navigation';
+      f.context.saveConversationData('c_A', {
+        ...f.context.loadConversationData('c_A'),
+        isPrivate: wasPrivate
+      });
+      Object.assign(f.context, {
+        AbortController,
+        activeChatRequestId: '',
+        activeChatRequestContext: null,
+        activeChatAbortController: null,
+        activeChatRequestTransport: 'unknown',
+        buildChatRequestId: () => 'synthetic_active_request',
+        requestConversationId: 'c_A',
+        sendIdentity: f.api.capture(),
+        CHAT_REQUEST_TIMEOUT_MS: 10000,
+        startChatProgressSource() {},
+        syncSendButtonMode() {},
+        closeActiveChatProgressSource() {
+          progressClosed++;
+        }
+      });
+      // Execute the actual launch block, then the actual Stop function. This
+      // catches a missing launch capture as well as a wrong destination at Stop.
+      const source = fs.readFileSync('public/index.html', 'utf8');
+      const start = source.indexOf(
+        '          const chatRequestId = buildChatRequestId();'
+      );
+      const end = source.indexOf('\n          try {', start);
+      assert(start >= 0 && end > start);
+      vm.runInContext(source.slice(start, end), f.context);
+      const controller = f.context.activeChatAbortController;
+      f.load('public/index.html', ['stopCurrentChatRequest']);
+      f.context.currentConversation = 'c_B';
+      for (const id of ['c_A', 'c_B'])
+        f.context.saveConversationData(id, {
+          ...f.context.loadConversationData(id),
+          isPrivate: !wasPrivate
+        });
+      const identityChanged = transition.startsWith('identity');
+      if (identityChanged) f.api.activate('u_B');
+      if (transition === 'identity_roundtrip') f.api.activate('u_A');
+      assert.equal(await f.context.stopCurrentChatRequest(), !identityChanged);
+      assert.equal(controller.signal.aborted, !identityChanged);
+      assert.equal(progressClosed, identityChanged ? 0 : 1);
+      assert.deepEqual(
+        calls,
+        identityChanged
+          ? []
+          : [{
+              url: '/chat/cancel',
+              body: {
+                requestId: 'synthetic_active_request',
+                conversationId: 'c_A',
+                isPrivateConversation: wasPrivate
+              },
+              identity: 'u_A'
+            }]
+      );
+      f.dom.window.close();
+    });
   for (const transition of ['conversation', 'identity', 'delete', 'manual'])
     await test(`real close frontend destination after ${transition}`, async () => {
       const entered = latch(),

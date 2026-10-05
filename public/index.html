@@ -4801,6 +4801,7 @@
       let activeConversationSwipeElement = null;
       let activeConversationSwipeCloser = null;
       let activeChatRequestId = '';
+      let activeChatRequestContext = null;
       let activeChatAbortController = null;
       let activeChatProgressSource = null;
       let activeChatRequestTransport = 'unknown';
@@ -5096,7 +5097,12 @@
 
       async function stopCurrentChatRequest() {
         const requestId = String(activeChatRequestId || '').trim();
-        if (!requestId) return false;
+        const request = activeChatRequestContext;
+        if (
+          !requestId ||
+          request?.requestId !== requestId ||
+          !window.FacilitatIdentityStorage.current(request.identity)
+        ) return false;
 
         closeActiveChatProgressSource();
 
@@ -5110,8 +5116,8 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             requestId,
-            conversationId: getConversationId(),
-            isPrivateConversation: isConversationPrivateById(getConversationId(), loadConversationData(getConversationId()))
+            conversationId: request.conversationId,
+            isPrivateConversation: request.isPrivateConversation
           }),
           keepalive: true
         }).catch(() => {});
@@ -13144,10 +13150,7 @@
             const partialReply = String(liveStreamText || '').trim();
             if (!partialReply) return;
 
-            const isPrivateConversation = isConversationPrivateById(
-              requestConversationId,
-              loadConversationData(requestConversationId)
-            );
+            const isPrivateConversation = requestIsPrivateConversation;
 
             const storedData = loadConversationData(requestConversationId);
             const existingMessages = Array.isArray(storedData.messages)
@@ -13197,6 +13200,10 @@
           }
 
           const chatRequestId = buildChatRequestId();
+          const requestIsPrivateConversation = isConversationPrivateById(
+            requestConversationId,
+            loadConversationData(requestConversationId)
+          );
           const chatAbortController = new AbortController();
           let didTimeout = false;
           const chatTimeoutId = setTimeout(() => {
@@ -13204,6 +13211,12 @@
             chatAbortController.abort();
           }, CHAT_REQUEST_TIMEOUT_MS);
           activeChatRequestId = chatRequestId;
+          activeChatRequestContext = Object.freeze({
+            requestId: chatRequestId,
+            conversationId: requestConversationId,
+            isPrivateConversation: requestIsPrivateConversation,
+            identity: sendIdentity
+          });
           activeChatAbortController = chatAbortController;
           activeChatRequestTransport = 'unknown';
           startChatProgressSource(chatRequestId);
@@ -13419,10 +13432,7 @@
               isEdited: requestIsEdited === true,
               requestId: chatRequestId,
               conversationId: requestConversationId,
-              isPrivateConversation: isConversationPrivateById(
-                requestConversationId,
-                loadConversationData(requestConversationId)
-              ),
+              isPrivateConversation: requestIsPrivateConversation,
               adminUiActive: document.body.classList.contains('admin-ui'),
               recentHistory: buildRecentHistoryForChatRequest(loadHistory()),
               conversationBranchHistory:
@@ -13719,6 +13729,7 @@
 
             if (activeChatRequestId === chatRequestId) {
               activeChatRequestId = '';
+              activeChatRequestContext = null;
               activeChatAbortController = null;
               activeChatRequestTransport = 'unknown';
               syncSendButtonMode();
@@ -13745,6 +13756,7 @@
           closeActiveChatProgressSource();
 
           activeChatRequestId = '';
+          activeChatRequestContext = null;
           activeChatAbortController = null;
           syncSendButtonMode();
 
