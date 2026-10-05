@@ -9,7 +9,9 @@ const copy = (x) => (x == null ? null : structuredClone(x));
 function databaseDouble(seed = {}) {
   const data = copy(seed),
     operations = [];
-  const transactionPlans = [], readFailures = [];
+  const transactionPlans = [],
+    readFailures = [];
+  const hooks = {};
   let sequence = 0;
   function ref(location = '', query = {}) {
     const parts = location.split('/').filter(Boolean);
@@ -74,14 +76,23 @@ function databaseDouble(seed = {}) {
         assign(null);
       },
       async transaction(fn) {
-        const planIndex = transactionPlans.findIndex((item) => item.path === location);
-        const plan = planIndex < 0 ? {} : transactionPlans.splice(planIndex, 1)[0];
+        const planIndex = transactionPlans.findIndex(
+          (item) => item.path === location
+        );
+        const plan =
+          planIndex < 0 ? {} : transactionPlans.splice(planIndex, 1)[0];
         if (plan.initialNull) {
           const initial = fn(null);
           // Firebase aborts on undefined, even with an initially empty cache.
-          if (initial === undefined) return { committed: false, snapshot: { val: read } };
+          if (initial === undefined)
+            return { committed: false, snapshot: { val: read } };
         }
         let value = fn(read());
+        if (hooks.beforeCommit) {
+          const observed = JSON.stringify(data);
+          await hooks.beforeCommit({ path: location, value: copy(value) });
+          if (JSON.stringify(data) !== observed) value = fn(read());
+        }
         if (plan.conflict) {
           plan.conflict(data);
           value = fn(read());
@@ -107,7 +118,7 @@ function databaseDouble(seed = {}) {
     };
     return r;
   }
-  return { ref, data, operations, transactionPlans, readFailures };
+  return { ref, data, operations, transactionPlans, readFailures, hooks };
 }
 function loadApplication({ seed = {}, overrides = {}, env = {} } = {}) {
   const db = databaseDouble(seed),

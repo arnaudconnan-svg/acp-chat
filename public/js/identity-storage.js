@@ -58,6 +58,18 @@
     return {
       local: scope(nativeLocal),
       session: scope(nativeSession),
+      retireConversation(id) {
+        if (identity && typeof id === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(id)) {
+          const local = scope(nativeLocal);
+          local.setItem('retired-conversation:' + id, '1');
+          const keys = [];
+          for (let i = 0; i < local.length; i++) if (local.key(i).startsWith('copy-pending:' + id + ':')) keys.push(local.key(i));
+          for (const key of keys) local.removeItem(key);
+        }
+      },
+      isConversationRetired(id) {
+        return scope(nativeLocal).getItem('retired-conversation:' + id) === '1';
+      },
       activate,
       capture: () => ({ identity, generation }),
       captureSpace() {

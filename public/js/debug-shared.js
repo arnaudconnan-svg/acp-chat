@@ -309,7 +309,8 @@
         toTrimmedString(safe.memoryUpdateReason, '') || null,
       memoryUpdateSource:
         toTrimmedString(safe.memoryUpdateSource, '') || null,
-      memoryUpdateStatus: ['pending', 'completed', 'failed', 'not_requested'].indexOf(
+      responseSaveStatus: ['pending', 'confirmed', 'failed', 'uncertain', 'superseded', 'local'].includes(safe.responseSaveStatus) ? safe.responseSaveStatus : null,
+      memoryUpdateStatus: ['pending', 'completed', 'failed', 'invalid', 'superseded', 'retired', 'not_requested'].indexOf(
         toTrimmedString(safe.memoryUpdateStatus)
       ) >= 0
         ? toTrimmedString(safe.memoryUpdateStatus)
@@ -798,6 +799,17 @@
     return 'Risque suicidaire retenu : ' + (labels[meta.suicideLevel] || labels.N0);
   }
 
+  function buildResponseSaveText(meta) {
+    return {
+      pending: 'R\u00e9ponse disponible. Sauvegarde en cours.',
+      confirmed: 'R\u00e9ponse sauvegard\u00e9e. La consolidation m\u00e9moire est suivie s\u00e9par\u00e9ment.',
+      failed: 'R\u00e9ponse disponible. Sauvegarde \u00e9chou\u00e9e.',
+      uncertain: 'R\u00e9ponse disponible. Sauvegarde non confirm\u00e9e.',
+      superseded: 'Ce r\u00e9sultat a \u00e9t\u00e9 remplac\u00e9 par une op\u00e9ration plus r\u00e9cente.',
+      local: 'Conversation priv\u00e9e : sauvegarde sur cet appareil uniquement.'
+    }[meta && meta.responseSaveStatus] || '';
+  }
+
   function buildMemoryAuditText(meta) {
     if (!meta || meta.memoryUpdateDecision === 'unknown') return '';
     var decision = meta.memoryUpdateDecision === 'update' ? 'mise a jour demandee' : 'conservation demandee';
@@ -805,6 +817,9 @@
       pending: 'en cours',
       completed: 'terminee',
       failed: 'echouee',
+      invalid: 'resultat invalide, memoire conservee',
+      superseded: 'resultat ancien ecarte',
+      retired: 'objet retire, resultat ecarte',
       not_requested: 'non demandee'
     }[meta.memoryUpdateStatus] || 'inconnu';
     var lines = ['Decision : ' + decision, 'Statut : ' + status];
@@ -947,6 +962,7 @@
     buildPipelineRuntimeText: buildPipelineRuntimeText,
     buildSafetyAuditText: buildSafetyAuditText,
     buildMemoryAuditText: buildMemoryAuditText,
+    buildResponseSaveText: buildResponseSaveText,
     formatSecondaryTension: formatSecondaryTension,
     detectMemoryReactivationSignal: function (meta) {
       return meta && meta.memoryReactivationGuardTriggered === true

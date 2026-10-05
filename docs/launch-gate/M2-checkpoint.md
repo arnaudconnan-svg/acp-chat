@@ -60,3 +60,47 @@ Sortie intégrale : `evidence/M2-checkpoint-1-verify.log`, SHA256
 Ce checkpoint n'est pas une clôture M2. Aucun service, donnée réelle, fournisseur,
 merge, déploiement, pré-FF ou M3–M6. M0/M1 acquis conservés ; G22 préparé seulement,
 acceptation CJ6 future, industrialisation G17 reportée.
+
+## Deuxième checkpoint — chat/front/copies, M2 toujours en cours
+
+Le premier checkpoint publié est `e146518d199e8afdd3f7229b18c899b0d2235618`.
+La présente tranche raccorde le chat aux versions de commit, conserve les enfants
+jusqu'à leur terminaison effective et sépare disponibilité de réponse, sauvegarde
+confirmée/incertaine et consolidation mémoire. Une réponse N disponible dont le
+message attend encore son commit reste sauvegardable après le début de N+1 ;
+seuls ses effets périmés sur l'état courant sont écartés. Le retrait reste refusé.
+
+Les copies branches, snapshots volontaires, replay et import local sont atomiques
+et récupérables après perte d'accusé. `copyReceipts` est retiré avec les objets
+concernés ; les fences empêchent la recréation après retry/restart. La révision
+`m2CopyVersion` progresse sur toute mutation d'une conversation ou de ses messages,
+y compris un nouveau tour, une édition mémoire et un message tardif. Le replay
+exige create/replace explicite et refuse replace si la révision préparée a changé.
+Le client conserve la demande de copie exacte jusqu'à confirmation et hydrate
+la branche depuis sa destination canonique, sans réinjecter un ancien seed.
+
+Vérification réelle : `node --check server.js`, `git diff --check` et
+`bash scripts/synthetic/verify.sh` PASS, code 0. Sortie complète
+`evidence/M2-checkpoint-2-verify.log`, SHA256
+`f8011d329de5fba2db2db53f01862a7f0676a455c5d24b4bf9f76a5762f67ef0`.
+Le runner versionné inclut désormais 18 lifecycle + 9 chat + 10 navigateur +
+16 copies, puis les suites de régression existantes. Aucun serveur écoutant,
+SDK/fournisseur réel ni donnée réelle. Les contrôles Git du runner ne concernent
+que leurs fixtures locales, sans pré-FF sur ce dépôt.
+
+Oracles nouveaux : vrais handlers Express avec writer/mémoire retenus pendant
+DELETE/reset/close ; véritable front close/reset/closure ; copie dont l'accusé
+est perdu, corps retardé après retrait/changement d'identité ; import privé
+volontaire qui reste privé tant que l'ack manque ; canonical IDs après reprise.
+Le replay conserve les véritables `sessionStableContext`, `onGoingMovements`,
+`ancientMovements`, IDs, `createdAt` et `archivedAt`, les contrôles de révision et
+la barrière de retrait. Ceci ne prouve pas une fidélité historique automatique :
+le replay reste une reconstruction admin explicite.
+
+Restent avant clôture : streaming activable (y compris interruption/retry et
+retour frontend), derniers oracles replay frontend/retours de sauvegarde,
+revue des contrôles structurés des copies, matrice G15 et bilan G05/G10/G17/G22,
+puis régression complète sur l'arbre final. PR28 reste draft base beta, dépendante
+de PR27 intacte. Le coût racine/capacité M4 et la coordination des anciens writers
+f20 sur Firebase partagé figurent dans `M2-operation-policy.md`. Aucun merge,
+déploiement, pré-FF réel ou M3–M6 ; ce checkpoint ne clôt pas M2.

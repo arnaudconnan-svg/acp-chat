@@ -64,6 +64,8 @@ admin.initializeApp({
 const { createDataLifecycle } = require('./lib/data-lifecycle');
 const lifecycle = createDataLifecycle(admin.database());
 const db = lifecycle.db;
+const { createConversationCopies } = require('./lib/conversation-copies');
+const conversationCopies = createConversationCopies({ lifecycle });
 const messagesRef = db.ref('messages');
 const userLabelsRef = db.ref('userLabels');
 const usersRef = db.ref('users');
@@ -1566,8 +1568,6 @@ async function requireUserAuth(req, res, next) {
       )
         return res.status(403).json({ error: 'Branch seed mismatch' });
     }
-    if (['/chat', '/chat/stream'].includes(req.path) && targetId && !privateTransit)
-      req.lifecycleTicket = await lifecycle.beginTurn(session.userId, targetId);
     const sendJson = res.json.bind(res);
     res.json = async (body) => {
       try {
@@ -4155,6 +4155,7 @@ app.get('/api/account/conversations/:id', requireUserAuth, async (req, res) => {
                   typeof value.stateSnapshot.memory === 'string'
                     ? value.stateSnapshot.memory
                     : '',
+                memoryState: value.stateSnapshot.memoryState || null,
                 flags: normalizeSessionFlags(value.stateSnapshot.flags || {})
               }
             : null,
@@ -4170,6 +4171,8 @@ app.get('/api/account/conversations/:id', requireUserAuth, async (req, res) => {
           typeof conversation.title === 'string' ? conversation.title : null,
         updatedAt: conversation.updatedAt || conversation.createdAt || null,
         createdAt: conversation.createdAt || null,
+        copyVersion: lifecycle.revision(conversation, 'm2CopyVersion'),
+        memoryState: conversation.memoryState || null,
         memory: normalizeMemory(
           conversation.memory || '',
           buildDefaultPromptRegistry()
@@ -4182,6 +4185,21 @@ app.get('/api/account/conversations/:id', requireUserAuth, async (req, res) => {
     console.error('Erreur /api/account/conversations/:id:', err.message);
     return res.status(500).json({ error: 'Conversation fetch failed' });
   }
+});
+
+// A reply becoming available is not a durable-save acknowledgement. The client
+// can read this bounded receipt without fetching conversation content.
+app.get('/api/account/conversations/:id/saves/:messageId', requireUserAuth, async (req, res) => {
+  if (!idValid(req.params.messageId)) return res.status(400).json({ code: 'invalid_reference' });
+  try {
+    const m = (await messagesRef.child(req.params.messageId).once('value')).val();
+    if (!m) return res.json({ responseSaveStatus: 'uncertain', memoryUpdateStatus: 'not_requested' });
+    if (!messageBelongsToConversation(m, req.userSession.userId, req.params.id))
+      return res.status(403).json({ code: 'object_authority_lost' });
+    return res.json({ responseSaveStatus: 'confirmed', memoryUpdateStatus:
+      ['pending', 'completed', 'failed', 'invalid', 'superseded', 'retired', 'not_requested'].includes(m.debugMeta?.memoryUpdateStatus)
+        ? m.debugMeta.memoryUpdateStatus : 'not_requested' });
+  } catch { return res.status(503).json({ responseSaveStatus: 'uncertain' }); }
 });
 
 app.patch(
@@ -4364,6 +4382,7 @@ app.post(
       if(req.body.conversations.length>50)return res.status(400).json({error:'Import scope exceeded'});
       const conversations = req.body.conversations;
       const seen=new Set();let totalMessages=0;
+      const preparedVersions = {};
       // Validate the complete batch before the first write/delete. Missing
       // parents never authorize reassignment of historical orphan messages.
       for(const c of conversations){
@@ -4379,12 +4398,10 @@ app.post(
         if((parent&&(parent.userId!==session.userId||parent.isPrivate===true||parent.deletedAt))||
           (!parent&&Object.keys(children).length)||Object.entries(children).some(([id,m])=>!idValid(id)||!messageBelongsToConversation(m,session.userId,c.id)))
           return res.status(403).json({error:'Historical ownership proof required'});
+        preparedVersions[c.id] = parent ? lifecycle.revision(parent, 'm2CopyVersion') : null;
         if(forceOverwrite&&Object.keys(children).length>500)return res.status(400).json({error:'Overwrite scope exceeded'});
       }
-      const importedConversationIds = [];
-      const messageIdsByConversation = {};
-      let alreadyOwnedCount = 0;
-      let skippedCount = 0;
+      const jobs = [];
 
       for (const rawConversation of conversations) {
         const safeConversation =
@@ -4394,42 +4411,6 @@ app.post(
             ? rawConversation
             : null;
         const conversationId = String(safeConversation?.id || '').trim();
-
-        if (!conversationId) {
-          skippedCount += 1;
-          continue;
-        }
-
-        const convRef = db.ref('conversations').child(conversationId);
-        const convSnap = await convRef.once('value');
-        const existingConversation = convSnap.val();
-
-        if (existingConversation && typeof existingConversation === 'object') {
-          const ownerId = String(existingConversation.userId || '').trim();
-
-          if (ownerId === session.userId) {
-            if (!forceOverwrite) {
-              alreadyOwnedCount += 1;
-              continue;
-            }
-            // forceOverwrite: delete existing messages then re-import
-            const existingMsgsSnap = await messagesRef
-              .orderByChild('conversationId')
-              .equalTo(conversationId)
-              .once('value');
-            await assertConversationOwner(session.userId,conversationId);
-            if(Object.entries(existingMsgsSnap.val()||{}).some(([id,m])=>!idValid(id)||!messageBelongsToConversation(m,session.userId,conversationId)))
-              return res.status(403).json({error:'Historical ownership proof required'});
-            const deleteOps = [];
-            existingMsgsSnap.forEach((child) => {
-              deleteOps.push(child.ref.remove());
-            });
-            await Promise.all(deleteOps);
-          } else {
-            skippedCount += 1;
-            continue;
-          }
-        }
 
         const rawMessages = Array.isArray(safeConversation?.messages)
           ? safeConversation.messages
@@ -4454,7 +4435,7 @@ app.post(
             const timestamp =
               Number.isFinite(timestampCandidate) && timestampCandidate > 0
                 ? timestampCandidate
-                : Date.now() + index;
+                : index + 1;
 
             const debugMeta =
               safeEntry?.debugMeta &&
@@ -4734,12 +4715,14 @@ app.post(
                             buildDefaultPromptRegistry()
                           )
                         : '',
+                    memoryState: stateSnapshot.memoryState || null,
                     flags: normalizeSessionFlags(stateSnapshot.flags || {})
                   }
                 : null
             };
           })
           .filter(Boolean);
+        if (sanitizedMessages.length !== rawMessages.length) return res.status(400).json({ code: 'copy_invalid_message' });
 
         const normalizedMemory = normalizeMemory(
           typeof safeConversation?.memory === 'string'
@@ -4773,7 +4756,7 @@ app.post(
             ? safeConversation.title.trim()
             : '';
 
-        await convRef.set({
+        jobs.push({ id: conversationId, expectedVersion: preparedVersions[conversationId], messages: sanitizedMessages, record: {
           userId: session.userId,
           title: rawTitle || fallbackTitle,
           titleLocked: safeConversation?.isCustomTitle === true,
@@ -4787,43 +4770,16 @@ app.post(
           isPrivate:false,
           createdAt: updatedAtIso,
           updatedAt: updatedAtIso
-        });
-
-        const pushedMessageIds = [];
-        for (const message of sanitizedMessages) {
-          const pushRef = await messagesRef.push({
-            role: message.role,
-            content: message.content,
-            timestamp: message.timestamp,
-            userId: session.userId,
-            conversationId,
-            debug: message.debug,
-            debugMeta: message.debugMeta,
-            stateSnapshot: message.stateSnapshot
-          });
-          pushedMessageIds.push(pushRef.key);
-        }
-
-        importedConversationIds.push(conversationId);
-        messageIdsByConversation[conversationId] = pushedMessageIds;
+        } });
       }
-
-      return res.json({
-        success: true,
-        importedConversationIds,
-        importedCount: importedConversationIds.length,
-        alreadyOwnedCount,
-        skippedCount,
-        messageIdsByConversation
-      });
+      const outcome = await conversationCopies.importLocal({ userId: session.userId, jobs, forceOverwrite, operationId: req.body.operationId, payload: req.body });
+      return res.json({ success: true, ...outcome });
     } catch (err) {
       console.error(
         'Erreur /api/account/conversations/import-local:',
         err.message
       );
-      return res
-        .status(500)
-        .json({ error: 'Local conversation import failed' });
+      return copyError(res, err);
     }
   }
 );
@@ -4867,364 +4823,32 @@ app.get('/api/branches', requireUserAuth, async (req, res) => {
   }
 });
 
-app.post('/api/branches/from-message', requireUserAuth, async (req, res) => {
+function copyError(res, error) {
+  const status = error.status || (error.code?.startsWith('lifecycle_') ? 410 : 503);
+  return res.status(status).json({ error: 'Copy operation not confirmed', code: error.code || 'copy_commit_uncertain' });
+}
+async function createBranchFromRequest(req, res, activate) {
   try {
-    if (
-      !req.body ||
-      typeof req.body !== 'object' ||
-      Array.isArray(req.body) ||
-      typeof req.body.sourceConversationId !== 'string' ||
-      (req.body.anchorMessageId !== undefined &&
-        typeof req.body.anchorMessageId !== 'string') ||
-      (req.body.seedMessages !== undefined &&
-        !Array.isArray(req.body.seedMessages))
-    ) {
-      return res.status(400).json({ error: 'Invalid branch request' });
-    }
-
-    const actorUserId = await resolveBranchActorUserId(req);
-    const sourceConversationId = String(
-      req.body.sourceConversationId || ''
-    ).trim();
-    const anchorMessageId = String(req.body.anchorMessageId || '').trim();
-    const requestedSeedMessages = Array.isArray(req.body.seedMessages)
-      ? req.body.seedMessages
-      : null;
-
-    if (!sourceConversationId || !actorUserId) {
-      return res
-        .status(400)
-        .json({ error: 'Missing sourceConversationId or session user' });
-    }
-
-    const conversationSnap = await db
-      .ref('conversations')
-      .child(sourceConversationId)
-      .once('value');
-    const sourceConversation = conversationSnap.val();
-
-    if (!sourceConversation || typeof sourceConversation !== 'object') {
-      return res.status(404).json({ error: 'Source conversation not found' });
-    }
-
-    if (String(sourceConversation.userId || '') !== actorUserId) {
-      return res.status(403).json({ error: 'Conversation ownership mismatch' });
-    }
-
-    const messagesSnap = await messagesRef
-      .orderByChild('conversationId')
-      .equalTo(sourceConversationId)
-      .once('value');
-
-    const rawMessages = messagesSnap.val() || {};
-    const messageEntries = Object.entries(rawMessages)
-      .filter(([,m])=>messageBelongsToConversation(m,actorUserId,sourceConversationId))
-      .map(([id, item]) => ({
-        id,
-        item: item && typeof item === 'object' ? item : {}
-      }))
-      .sort((a, b) => {
-        const aDate = String(a.item.createdAt || '');
-        const bDate = String(b.item.createdAt || '');
-        if (aDate && bDate && aDate !== bDate) {
-          return aDate.localeCompare(bDate);
-        }
-        return String(a.id).localeCompare(String(b.id));
-      });
-
-    const seedResolution = resolveBranchSeedPayload({
-      messageEntries,
-      anchorMessageId,
-      requestedSeedMessages
-    });
-    if(requestedSeedMessages?.some(m=>(m.userId&&m.userId!==actorUserId)||(m.conversationId&&m.conversationId!==sourceConversationId)||
-      (m.id&&!messageEntries.some(entry=>entry.id===m.id))))return res.status(403).json({error:'Seed ownership proof required'});
-
-    if (seedResolution.error === 'anchor_not_found') {
-      logBranchRouteEvent('warn', 'anchor_not_found', {
-        route: '/api/branches/from-message',
-        sourceConversationId,
-        anchorMessageId,
-        dbMessageCount: messageEntries.length,
-        requestedSeedCount: Array.isArray(requestedSeedMessages)
-          ? requestedSeedMessages.length
-          : 0
-      });
-      return res.status(404).json({ error: 'Anchor message not found' });
-    }
-
-    const seededMessages = seedResolution.seededMessages;
-    const resolvedAnchorMessageId = seedResolution.resolvedAnchorMessageId;
-
-    if (seedResolution.usedSeedFallback) {
-      logBranchRouteEvent('info', 'anchor_fallback_used', {
-        route: '/api/branches/from-message',
-        sourceConversationId,
-        anchorMessageId,
-        resolvedAnchorMessageId,
-        dbMessageCount: messageEntries.length,
-        seededMessageCount: seededMessages.length
-      });
-    }
-
-    const now = new Date().toISOString();
-    const branchConversationId = `c_branch_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
-    const branchRef = branchRecordsRef.push();
-    const branchId = branchRef.key;
-
-    if (!branchId) {
-      return res.status(500).json({ error: 'Failed to create branch id' });
-    }
-
-    await Promise.all([
-      branchRef.set({
-        userId: actorUserId,
-        sourceConversationId,
-        sourceAnchorMessageId: resolvedAnchorMessageId,
-        branchConversationId,
-        seedMessageCount: seededMessages.length,
-        status: 'active',
-        createdAt: now,
-        updatedAt: now
-      }),
-      branchSeedSnapshotsRef.child(branchId).set({
-        userId:actorUserId,
-        sourceConversationId,
-        sourceAnchorMessageId: resolvedAnchorMessageId,
-        seededAt: now,
-        messages: seededMessages
-      })
-    ]);
-
-    return res.status(201).json({
-      success: true,
-      branch: {
-        id: branchId,
-        sourceConversationId,
-        sourceAnchorMessageId: resolvedAnchorMessageId,
-        branchConversationId,
-        seedMessageCount: seededMessages.length,
-        createdAt: now,
-        status: 'active'
-      }
-    });
-  } catch (err) {
-    console.error('Erreur /api/branches/from-message:', err.message);
-    return res.status(500).json({ error: 'Branch creation failed' });
-  }
-});
-
-app.post('/api/branches/create-and-activate', requireUserAuth, async (req, res) => {
-  try {
-    if (
-      !req.body ||
-      typeof req.body !== 'object' ||
-      Array.isArray(req.body) ||
-      typeof req.body.sourceConversationId !== 'string' ||
-      (req.body.anchorMessageId !== undefined &&
-        typeof req.body.anchorMessageId !== 'string') ||
-      (req.body.seedMessages !== undefined &&
-        !Array.isArray(req.body.seedMessages)) ||
-      (req.body.flags !== undefined &&
-        (typeof req.body.flags !== 'object' ||
-          req.body.flags === null ||
-          Array.isArray(req.body.flags)))
-    ) {
-      return res.status(400).json({ error: 'Invalid branch request' });
-    }
-
-    const actorUserId = await resolveBranchActorUserId(req);
-    const sourceConversationId = String(
-      req.body.sourceConversationId || ''
-    ).trim();
-    const anchorMessageId = String(req.body.anchorMessageId || '').trim();
-    const requestedSeedMessages = Array.isArray(req.body.seedMessages)
-      ? req.body.seedMessages
-      : null;
-
-    if (!sourceConversationId || !actorUserId) {
-      return res
-        .status(400)
-        .json({ error: 'Missing sourceConversationId or session user' });
-    }
-
-    const requestedBranchMemory =
-      typeof req.body?.memory === 'string' && req.body.memory.trim()
-        ? normalizeMemory(req.body.memory, buildDefaultPromptRegistry())
-        : '';
-    const requestedBranchFlags =
-      req.body?.flags !== undefined
-        ? normalizeSessionFlags(req.body.flags)
-        : null;
-
-    const [conversationSnap, messagesSnap] = await Promise.all([
-      db.ref('conversations').child(sourceConversationId).once('value'),
-      messagesRef
-        .orderByChild('conversationId')
-        .equalTo(sourceConversationId)
-        .once('value')
-    ]);
-
-    const sourceConversation = conversationSnap.val();
-    if (!sourceConversation || typeof sourceConversation !== 'object') {
-      return res.status(404).json({ error: 'Source conversation not found' });
-    }
-
-    if (String(sourceConversation.userId || '') !== actorUserId) {
-      return res.status(403).json({ error: 'Conversation ownership mismatch' });
-    }
-
-    const rawMessages = messagesSnap.val() || {};
-    const messageEntries = Object.entries(rawMessages)
-      .filter(([,m])=>messageBelongsToConversation(m,actorUserId,sourceConversationId))
-      .map(([id, item]) => ({
-        id,
-        item: item && typeof item === 'object' ? item : {}
-      }))
-      .sort((a, b) => {
-        const aDate = String(a.item.createdAt || '');
-        const bDate = String(b.item.createdAt || '');
-        if (aDate && bDate && aDate !== bDate)
-          return aDate.localeCompare(bDate);
-        return String(a.id).localeCompare(String(b.id));
-      });
-
-    const seedResolution = resolveBranchSeedPayload({
-      messageEntries,
-      anchorMessageId,
-      requestedSeedMessages
-    });
-    if(requestedSeedMessages?.some(m=>(m.userId&&m.userId!==actorUserId)||(m.conversationId&&m.conversationId!==sourceConversationId)||
-      (m.id&&!messageEntries.some(entry=>entry.id===m.id))))return res.status(403).json({error:'Seed ownership proof required'});
-
-    if (seedResolution.error === 'anchor_not_found') {
-      logBranchRouteEvent('warn', 'anchor_not_found', {
-        route: '/api/branches/create-and-activate',
-        sourceConversationId,
-        anchorMessageId,
-        dbMessageCount: messageEntries.length,
-        requestedSeedCount: Array.isArray(requestedSeedMessages)
-          ? requestedSeedMessages.length
-          : 0
-      });
-      return res.status(404).json({ error: 'Anchor message not found' });
-    }
-
-    const seededMessages = seedResolution.seededMessages;
-    const resolvedAnchorMessageId = seedResolution.resolvedAnchorMessageId;
-
-    if (seedResolution.usedSeedFallback) {
-      logBranchRouteEvent('info', 'anchor_fallback_used', {
-        route: '/api/branches/create-and-activate',
-        sourceConversationId,
-        anchorMessageId,
-        resolvedAnchorMessageId,
-        dbMessageCount: messageEntries.length,
-        seededMessageCount: seededMessages.length
-      });
-    }
-
-    const now = new Date().toISOString();
-    const branchConversationId = `c_branch_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
-    const branchRef = branchRecordsRef.push();
-    const branchId = branchRef.key;
-
-    if (!branchId) {
-      return res.status(500).json({ error: 'Failed to create branch id' });
-    }
-
-    const sourceConversationTitle = String(
-      sourceConversation.title || ''
-    ).trim();
-
-    const lastUserMessage = [...seededMessages]
-      .reverse()
-      .find((m) => String(m?.role || '') === 'user');
-
-    await Promise.all([
-      branchRef.set({
-        userId: actorUserId,
-        sourceConversationId,
-        sourceAnchorMessageId: resolvedAnchorMessageId,
-        branchConversationId,
-        seedMessageCount: seededMessages.length,
-        status: 'active',
-        createdAt: now,
-        updatedAt: now,
-        activatedAt: now
-      }),
-      branchSeedSnapshotsRef.child(branchId).set({
-        userId:actorUserId,
-        sourceConversationId,
-        sourceAnchorMessageId: resolvedAnchorMessageId,
-        seededAt: now,
-        messages: seededMessages
-      }),
-      db
-        .ref('conversations')
-        .child(branchConversationId)
-        .set({
-          userId: actorUserId,
-          isBranch: true,
-          sourceConversationId,
-          createdAt: now,
-          updatedAt: now,
-          title:
-            sourceConversationTitle || `Branche de ${sourceConversationId}`,
-          titleLocked: false,
-          messageCount: seededMessages.filter(
-            (m) => String(m?.role || '') === 'user'
-          ).length,
-          lastUserMessage: lastUserMessage
-            ? String(lastUserMessage.content || '')
-            : '',
-          memory: requestedBranchMemory,
-          flags: requestedBranchFlags || normalizeSessionFlags({})
-        })
-    ]);
-
-    if (seededMessages.length > 0) {
-      await Promise.all(
-        seededMessages.map((message, index) => {
-          const timestampBase = Date.now();
-          return messagesRef.push({
-            role: String(message?.role || ''),
-            content: String(message?.content || ''),
-            timestamp: timestampBase + index,
-            userId: actorUserId,
-            conversationId: branchConversationId,
-            debug: Array.isArray(message?.debug) ? message.debug : [],
-            debugMeta:
-              message?.debugMeta && typeof message.debugMeta === 'object'
-                ? message.debugMeta
-                : null,
-            branchId,
-            sourceMessageId: typeof message?.id === 'string' ? message.id : null
-          });
-        })
-      );
-    }
-
-    return res.status(201).json({
-      success: true,
-      branch: {
-        id: branchId,
-        sourceConversationId,
-        sourceAnchorMessageId: resolvedAnchorMessageId,
-        branchConversationId,
-        seedMessageCount: seededMessages.length,
-        createdAt: now,
-        status: 'active',
-        activatedAt: now
-      },
-      memory: requestedBranchMemory,
-      flags: requestedBranchFlags !== null ? requestedBranchFlags : undefined
-    });
-  } catch (err) {
-    console.error('Erreur /api/branches/create-and-activate:', err.message);
-    return res.status(500).json({ error: 'Branch create-and-activate failed' });
-  }
-});
+    const body = req.body;
+    if (!body || Array.isArray(body) || !idValid(body.sourceConversationId) || !idValid(body.anchorMessageId) ||
+        (body.operationId !== undefined && !idValid(body.operationId)) ||
+        (body.seedMessages !== undefined && !Array.isArray(body.seedMessages)) ||
+        (body.memory !== undefined && typeof body.memory !== 'string') ||
+        (body.flags !== undefined && (!body.flags || typeof body.flags !== 'object' || Array.isArray(body.flags))))
+      return res.status(400).json({ code: 'copy_invalid_request' });
+    const result = await conversationCopies.branch({ userId: req.userSession.userId,
+      sourceId: body.sourceConversationId, anchorId: body.anchorMessageId, requested: body.seedMessages,
+      memory: typeof body.memory === 'string' ? normalizeMemory(body.memory, buildDefaultPromptRegistry()) : '',
+      flags: normalizeSessionFlags(body.flags || {}), memoryState: body.memoryState ? normalizeMemoryStateShape(body.memoryState, '', Date.now()) : null,
+      operationId: body.operationId, activate });
+    if (!await lifecycle.available(req.userSession.userId, result.destinationId)) return res.status(410).json({ code: 'lifecycle_object_retired' });
+    return res.status(result.replayed ? 200 : 201).json({ success: true, replayed: result.replayed,
+      branch: { ...result.branch, id: result.branchId }, memory: result.conversation.memory,
+      memoryState: result.conversation.memoryState, flags: result.conversation.flags });
+  } catch (error) { return copyError(res, error); }
+}
+app.post('/api/branches/from-message', requireUserAuth, (req, res) => createBranchFromRequest(req, res, false));
+app.post('/api/branches/create-and-activate', requireUserAuth, (req, res) => createBranchFromRequest(req, res, true));
 
 function sanitizeFeedbackContext(rawContext) {
   if (
@@ -5546,79 +5170,22 @@ app.post('/api/branches/feedback-snapshot', requireUserAuth, async (req, res) =>
         .json({ error: 'Missing userContent or botContent' });
     }
 
-    const now = new Date().toISOString();
-    const snapshotConversationId =
-      'c_fbsnap_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
-
-    // Create a non-private conversation to hold the snapshot
-    await db
-      .ref('conversations')
-      .child(snapshotConversationId)
-      .set({
-        userId,
-        createdAt: now,
-        updatedAt: now,
-        title: 'Partage feedback',
-        titleLocked: true,
-        messageCount: 2,
-        feedbackSnapshot: true,
-        isPrivate: false,
-        memory:
-          feedbackContext && typeof feedbackContext.memory === 'string'
-            ? feedbackContext.memory
-            : '',
-        flags:
-          feedbackContext &&
-          feedbackContext.flags &&
-          typeof feedbackContext.flags === 'object'
-            ? normalizeSessionFlags(feedbackContext.flags)
-            : normalizeSessionFlags({})
-      });
-
-    // Push user message then bot message
-    const timestampBase = Date.now();
-    const userMsgRef = await messagesRef.push({
-      role: 'user',
-      content: safeUserContent,
-      timestamp: timestampBase,
-      userId,
-      conversationId: snapshotConversationId,
-      feedbackSnapshot: true
+    const copyResult = await conversationCopies.feedback({
+      userId, operationId: req.body.operationId, payload: req.body,
+      record: { title: 'Partage feedback', titleLocked: true, messageCount: 2,
+        memory: feedbackContext?.memory || '', flags: normalizeSessionFlags(feedbackContext?.flags || {}) },
+      messages: [
+        { role: 'user', content: safeUserContent, feedbackSnapshot: true },
+        { role: 'assistant', content: safeBotContent, feedbackSnapshot: true,
+          debug: feedbackContext?.botDebug || [], debugMeta: feedbackContext?.botDebugMeta || null,
+          stateSnapshot: feedbackContext?.botStateSnapshot || null,
+          feedback: { type, comment: comment || null, adminShare, devShare: adminShare,
+            userId, context: feedbackContext } }
+      ]
     });
-
-    const botMsgRef = await messagesRef.push({
-      role: 'assistant',
-      content: safeBotContent,
-      timestamp: timestampBase + 1,
-      userId,
-      conversationId: snapshotConversationId,
-      feedbackSnapshot: true,
-      debug:
-        feedbackContext && Array.isArray(feedbackContext.botDebug)
-          ? feedbackContext.botDebug
-          : [],
-      debugMeta:
-        feedbackContext &&
-        feedbackContext.botDebugMeta &&
-        typeof feedbackContext.botDebugMeta === 'object'
-          ? feedbackContext.botDebugMeta
-          : null,
-      stateSnapshot:
-        feedbackContext &&
-        feedbackContext.botStateSnapshot &&
-        typeof feedbackContext.botStateSnapshot === 'object'
-          ? feedbackContext.botStateSnapshot
-          : null,
-      feedback: {
-        type,
-        comment: comment || null,
-        adminShare,
-        devShare: adminShare,
-        userId,
-        timestamp: Date.now(),
-        context: feedbackContext
-      }
-    });
+    const snapshotConversationId = copyResult.destinationId;
+    const userMsgRef = { key: copyResult.messageIds[0] }, botMsgRef = { key: copyResult.messageIds[1] };
+    if (!await lifecycle.available(userId, snapshotConversationId)) return res.status(410).json({ code: 'lifecycle_object_retired' });
 
     const effectiveMailsEnabled =
       mailsEnabled !== false &&
@@ -5629,6 +5196,7 @@ app.post('/api/branches/feedback-snapshot', requireUserAuth, async (req, res) =>
     );
 
     if (
+      !copyResult.replayed &&
       emailNotifier.enabled &&
       effectiveMailsEnabled &&
       adminVisitedSinceLastAlert &&
@@ -5646,7 +5214,8 @@ app.post('/api/branches/feedback-snapshot', requireUserAuth, async (req, res) =>
       userId
     });
 
-    return res.status(201).json({
+    return res.status(copyResult.replayed ? 200 : 201).json({
+      replayed: copyResult.replayed,
       success: true,
       snapshotConversationId,
       userMessageId: userMsgRef.key,
@@ -5654,196 +5223,26 @@ app.post('/api/branches/feedback-snapshot', requireUserAuth, async (req, res) =>
     });
   } catch (err) {
     console.error('Erreur /api/branches/feedback-snapshot:', err.message);
-    return res.status(500).json({ error: 'Feedback snapshot failed' });
+    return copyError(res, err);
   }
 });
 
 app.post('/api/branches/:id/activate', requireUserAuth, async (req, res) => {
   try {
-    const branchId = String(req.params?.id || '').trim();
-    const actorUserId = await resolveBranchActorUserId(req);
-
-    if (
-      req.body !== undefined &&
-      (typeof req.body !== 'object' ||
-        req.body === null ||
-        Array.isArray(req.body))
-    ) {
-      return res
-        .status(400)
-        .json({ error: 'Invalid branch activation payload' });
-    }
-
-    if (
-      req.body?.flags !== undefined &&
-      (typeof req.body.flags !== 'object' ||
-        req.body.flags === null ||
-        Array.isArray(req.body.flags))
-    ) {
-      return res.status(400).json({ error: 'Invalid branch flags payload' });
-    }
-
-    if (!branchId || !actorUserId) {
-      return res.status(400).json({ error: 'Invalid branch id' });
-    }
-
-    const requestedBranchMemory =
-      typeof req.body?.memory === 'string' && req.body.memory.trim()
-        ? normalizeMemory(req.body.memory, buildDefaultPromptRegistry())
-        : '';
-    const requestedBranchFlags =
-      req.body?.flags !== undefined
-        ? normalizeSessionFlags(req.body.flags)
-        : null;
-
-    const branchRef = branchRecordsRef.child(branchId);
-    const [branchSnap, seedSnap] = await Promise.all([
-      branchRef.once('value'),
-      branchSeedSnapshotsRef.child(branchId).once('value')
-    ]);
-
-    const branch = branchSnap.val();
-    const seed = seedSnap.val();
-
-    if (!branch || typeof branch !== 'object') {
-      return res.status(404).json({ error: 'Branch not found' });
-    }
-
-    if (String(branch.userId || '') !== actorUserId) {
-      return res.status(403).json({ error: 'Branch ownership mismatch' });
-    }
-
-    let seedMessages =
-      seed && typeof seed === 'object' && Array.isArray(seed.messages)
-        ? seed.messages
-        : null;
-
-    if (!Array.isArray(seedMessages)) {
-      seedMessages = [];
-      await branchSeedSnapshotsRef.child(branchId).set({
-        sourceConversationId: String(branch.sourceConversationId || ''),
-        sourceAnchorMessageId: String(branch.sourceAnchorMessageId || ''),
-        seededAt: new Date().toISOString(),
-        messages: seedMessages
-      });
-    }
-
-    const branchConversationId = String(
-      branch.branchConversationId || ''
-    ).trim();
-    if (!branchConversationId) {
-      return res.status(500).json({ error: 'Missing branch conversation id' });
-    }
-
-    const convRef = db.ref('conversations').child(branchConversationId);
-    const existingConvSnap = await convRef.once('value');
-    const existingConversation = existingConvSnap.val();
-
-    if (!existingConversation || typeof existingConversation !== 'object') {
-      let sourceConversationTitle = '';
-      const sourceConversationId = String(
-        branch.sourceConversationId || ''
-      ).trim();
-
-      if (sourceConversationId) {
-        const sourceConvSnap = await db
-          .ref('conversations')
-          .child(sourceConversationId)
-          .once('value');
-        const sourceConversation = sourceConvSnap.val();
-        if (sourceConversation && typeof sourceConversation === 'object') {
-          sourceConversationTitle = String(
-            sourceConversation.title || ''
-          ).trim();
-        }
-      }
-
-      const lastUserMessage = [...seedMessages]
-        .reverse()
-        .find((m) => String(m?.role || '') === 'user');
-      const now = new Date().toISOString();
-
-      await convRef.set({
-        userId: actorUserId,
-        isBranch: true,
-        sourceConversationId: String(branch.sourceConversationId || ''),
-        createdAt: now,
-        updatedAt: now,
-        title:
-          sourceConversationTitle ||
-          `Branche de ${String(branch.sourceConversationId || 'conversation')}`,
-        titleLocked: false,
-        messageCount: seedMessages.filter(
-          (m) => String(m?.role || '') === 'user'
-        ).length,
-        lastUserMessage: lastUserMessage
-          ? String(lastUserMessage.content || '')
-          : '',
-        memory: requestedBranchMemory,
-        flags: requestedBranchFlags || normalizeSessionFlags({})
-      });
-
-      // Seed all historical messages into the new conversation once.
-      await Promise.all(
-        seedMessages.map((message, index) => {
-          const timestampBase = Date.now();
-          return messagesRef.push({
-            role: String(message?.role || ''),
-            content: String(message?.content || ''),
-            timestamp: timestampBase + index,
-            userId: actorUserId,
-            conversationId: branchConversationId,
-            debug: Array.isArray(message?.debug) ? message.debug : [],
-            debugMeta:
-              message?.debugMeta && typeof message.debugMeta === 'object'
-                ? message.debugMeta
-                : null,
-            branchId,
-            sourceMessageId: typeof message?.id === 'string' ? message.id : null
-          });
-        })
-      );
-    }
-
-    const conversationStatePatch = {
-      updatedAt: new Date().toISOString()
-    };
-
-    if (requestedBranchMemory) {
-      conversationStatePatch.memory = requestedBranchMemory;
-    }
-
-    if (requestedBranchFlags !== null) {
-      conversationStatePatch.flags = requestedBranchFlags;
-    }
-
-    await updateOwnedConversation(convRef,actorUserId,conversationStatePatch);
-
-    const activatedAt = new Date().toISOString();
-    await branchRef.update({
-      status: 'active',
-      activatedAt,
-      updatedAt: activatedAt
-    });
-
-    return res.json({
-      success: true,
-      branch: {
-        id: branchId,
-        branchConversationId,
-        activatedAt,
-        status: 'active'
-      },
-      memory: requestedBranchMemory,
-      flags: requestedBranchFlags !== null ? requestedBranchFlags : undefined
-    });
-  } catch (err) {
-    console.error('Erreur /api/branches/:id/activate:', err.message);
-    return res.status(500).json({ error: 'Branch activation failed' });
-  }
+    const body = req.body || {};
+    if (Array.isArray(body) || (body.memory !== undefined && typeof body.memory !== 'string') ||
+        (body.flags !== undefined && (!body.flags || typeof body.flags !== 'object' || Array.isArray(body.flags))))
+      return res.status(400).json({ code: 'copy_invalid_request' });
+    const result = await conversationCopies.activate({ userId: req.userSession.userId, branchId: req.params.id,
+      memory: typeof body.memory === 'string' ? normalizeMemory(body.memory, buildDefaultPromptRegistry()) : undefined,
+      flags: body.flags === undefined ? undefined : normalizeSessionFlags(body.flags),
+      memoryState: body.memoryState ? normalizeMemoryStateShape(body.memoryState, '', Date.now()) : undefined });
+    if (!await lifecycle.available(req.userSession.userId, result.branch.branchConversationId)) return res.status(410).json({ code: 'lifecycle_object_retired' });
+    return res.json({ success: true, replayed: result.replayed, branch: { ...result.branch, id: req.params.id },
+      memory: result.conversation.memory, memoryState: result.conversation.memoryState, flags: result.conversation.flags });
+  } catch (error) { return copyError(res, error); }
 });
 
-// Fetch a single branch record + seed messages (for cross-device resume).
 app.get('/api/branches/:id', requireUserAuth, async (req, res) => {
   try {
     const branchId = String(req.params?.id || '').trim();
@@ -6829,7 +6228,8 @@ app.get('/api/admin/conversations', requireAdminAuth, async (req, res) => {
             (value.lastUserMessage
               ? value.lastUserMessage.slice(0, 40)
               : '(sans titre)'),
-          messageCount: value.messageCount || 0
+          messageCount: value.messageCount || 0,
+          copyVersion: lifecycle.revision(value, 'm2CopyVersion')
         };
       });
 
@@ -7074,7 +6474,7 @@ app.post(
           const timestamp =
             Number.isFinite(timestampCandidate) && timestampCandidate > 0
               ? timestampCandidate
-              : Date.now() + index;
+              : index + 1;
           const debugMeta =
             safeEntry?.debugMeta &&
             typeof safeEntry.debugMeta === 'object' &&
@@ -7093,6 +6493,7 @@ app.post(
                           buildDefaultPromptRegistry()
                         )
                       : '',
+                  memoryState: safeEntry.stateSnapshot.memoryState ? normalizeMemoryStateShape(safeEntry.stateSnapshot.memoryState, '', Date.now()) : null,
                   flags: normalizeSessionFlags(
                     safeEntry.stateSnapshot.flags || {}
                   )
@@ -7110,22 +6511,11 @@ app.post(
         })
         .filter(Boolean);
 
-      if (sanitizedMessages.length === 0) {
+      if (sanitizedMessages.length === 0 || sanitizedMessages.length !== rawMessages.length) {
         return res
           .status(400)
           .json({ error: 'Aucun message valide a importer' });
       }
-
-      const convRef = db.ref('conversations').child(conversationId);
-      const existingMsgsSnap = await messagesRef
-        .orderByChild('conversationId')
-        .equalTo(conversationId)
-        .once('value');
-      const deleteOps = [];
-      existingMsgsSnap.forEach((child) => {
-        deleteOps.push(child.ref.remove());
-      });
-      await Promise.all(deleteOps);
 
       const normalizedMemory = normalizeMemory(
         typeof safeConversation?.memory === 'string'
@@ -7150,55 +6540,28 @@ app.post(
         lastUserMessage?.content?.slice(0, 60) ||
         firstUserMessage?.content?.slice(0, 60) ||
         'Conversation sans titre';
-      const updatedAtCandidate = Number(safeConversation?.updatedAt || 0);
-      const updatedAtIso =
-        Number.isFinite(updatedAtCandidate) && updatedAtCandidate > 0
-          ? new Date(updatedAtCandidate).toISOString()
-          : new Date().toISOString();
-
-      await convRef.set({
-        userId,
-        title: rawTitle || fallbackTitle,
-        titleLocked: false,
-        messageCount: sanitizedMessages.filter((item) => item.role === 'user')
-          .length,
-        lastUserMessage: lastUserMessage?.content || '',
-        memory: normalizedMemory,
-        flags: normalizedFlags,
-        adminReplaySourceConversationId:
-          String(safeConversation?.sourceConversationId || '').trim() || null,
-        adminReplayAnchorMessageId:
-          String(safeConversation?.anchorMessageId || '').trim() || null,
-        createdAt: updatedAtIso,
-        updatedAt: updatedAtIso
+      const result = await conversationCopies.replay({
+        userId, sourceId: safeConversation.sourceConversationId, destinationId: conversationId,
+        anchorId: safeConversation.anchorMessageId, operationId: req.body.operationId,
+        intent: req.body.writeIntent, expectedVersion: req.body.expectedVersion,
+        record: { title: rawTitle || fallbackTitle, titleLocked: false,
+          messageCount: sanitizedMessages.filter((item) => item.role === 'user').length,
+          lastUserMessage: lastUserMessage?.content || '', memory: normalizedMemory,
+          memoryState: safeConversation.memoryState ? normalizeMemoryStateShape(safeConversation.memoryState, '', Date.now()) : null,
+          flags: normalizedFlags },
+        messages: sanitizedMessages
       });
+      if (!await lifecycle.available(userId, conversationId)) return res.status(410).json({ code: 'lifecycle_object_retired' });
+      return res.json({ success: true, conversationId, messageIds: result.messageIds,
+        replayed: result.replayed, copyVersion: result.conversation.m2CopyVersion,
+        fidelity: 'admin_supplied_reconstruction' });
 
-      const pushedMessageIds = [];
-      for (const message of sanitizedMessages) {
-        const pushRef = await messagesRef.push({
-          role: message.role,
-          content: message.content,
-          timestamp: message.timestamp,
-          userId,
-          conversationId,
-          debug: message.debug,
-          debugMeta: message.debugMeta,
-          stateSnapshot: message.stateSnapshot
-        });
-        pushedMessageIds.push(pushRef.key);
-      }
-
-      return res.json({
-        success: true,
-        conversationId,
-        messageIds: pushedMessageIds
-      });
     } catch (err) {
       console.error(
         'Erreur /api/admin/conversations/import-replay:',
         err.message
       );
-      return res.status(500).json({ error: 'Admin replay import failed' });
+      return copyError(res, err);
     }
   }
 );
@@ -7487,7 +6850,7 @@ function trackConversationMemorySync(conversationId, promiseLike) {
   }
 
   let trackedPromise = null;
-  trackedPromise = Promise.resolve(promiseLike)
+  trackedPromise = Promise.allSettled([conversationMemorySyncLocks.get(safeConversationId)?.promise, promiseLike])
     .catch(() => {
       // Non-blocking safeguard: background memory sync failures must not break future requests.
     })
@@ -8061,6 +7424,20 @@ const analyzeAffiliationShortValidationCoherence =
 // This route orchestrates the request parsing, safety analysis, mode detection,
 // response generation, memory update, and persistence of both user and assistant messages.
 async function handleChatPost(req, res) {
+  const childTasks = new Set();
+  function trackChild(promise) {
+    const settled = Promise.resolve(promise).then(() => {}, () => {});
+    childTasks.add(settled);
+    settled.then(() => childTasks.delete(settled));
+    return promise;
+  }
+  async function checkReturnAuthority() {
+    const userId = req.userSession.userId;
+    const conversationId = req.body?.isPrivateConversation === true ? null : req.body?.conversationId;
+    if (!await lifecycle.available(userId, conversationId))
+      throw Object.assign(new Error('lifecycle_object_retired'), { code: 'lifecycle_object_retired' });
+
+  }
   return llmUsageContext.run(createLlmUsageAccumulator(), async () => {
     const onTokenCallbackForChat =
       typeof req.onTokenCallbackForChat === 'function'
@@ -8093,7 +7470,6 @@ async function handleChatPost(req, res) {
     if(activeChatRequests.has(requestId))return res.status(409).json({error:'Operation already active'});
     if (requestId) {
       registerActiveChatRequest(requestId, requestData.userId,activeRequestLease);
-      res.once('finish',()=>finalizeActiveChatRequest(requestId,activeRequestLease));
       req.on('aborted', () => {
         cancelActiveChatRequest(requestId, requestData.userId);
       });
@@ -8507,7 +7883,8 @@ async function handleChatPost(req, res) {
           typeof safe.memoryUpdateSource === 'string'
             ? safe.memoryUpdateSource
             : null,
-        memoryUpdateStatus: ['pending', 'completed', 'failed', 'not_requested'].includes(
+        responseSaveStatus: ['pending', 'confirmed', 'failed', 'uncertain', 'superseded', 'local'].includes(safe.responseSaveStatus) ? safe.responseSaveStatus : null,
+        memoryUpdateStatus: ['pending', 'completed', 'failed', 'invalid', 'superseded', 'retired', 'not_requested'].includes(
           safe.memoryUpdateStatus
         )
           ? safe.memoryUpdateStatus
@@ -8765,6 +8142,7 @@ async function handleChatPost(req, res) {
       isPrivateConversationForCatch = isPrivateConversation === true;
       isEditedForCatch = isEdited;
 
+      if (!isPrivateConversation && conversationId) req.lifecycleTicket = await lifecycle.beginTurn(userId, conversationId);
       logsEnabledForCatch = logsEnabled === true;
       markChatStage('request_destructured');
       throwIfCanceled();
@@ -8885,12 +8263,13 @@ async function handleChatPost(req, res) {
       );
       let previousMemoryRewriteDebug = null;
       let privateFinalState={memory:previousMemory,memoryState:previousMemoryState};
+      let turnMemoryTask = null;
       let privateMemoryTask=Promise.resolve();
       let privateRelanceTask=Promise.resolve();
       let previousConversationActivityMs = Date.now();
       let hasPersistedConversationMemory = false;
       const convMemoryPromise =
-        !isPrivateConversation && convRef
+        trackChild(!isPrivateConversation && convRef
           ? convRef
               .once('value')
               .then((s) => {
@@ -8928,9 +8307,9 @@ async function handleChatPost(req, res) {
                 };
               })
               .catch(() => null)
-          : Promise.resolve(null);
+          : Promise.resolve(null));
       const shouldLoadUserProfile = !isPrivateConversation && !!userId;
-      const userProfilePromise = shouldLoadUserProfile
+      const userProfilePromise = trackChild(shouldLoadUserProfile
         ? usersRef
             .child(String(userId))
             .once('value')
@@ -8939,7 +8318,7 @@ async function handleChatPost(req, res) {
               return data && typeof data === 'object' ? data : {};
             })
             .catch(() => null)
-        : Promise.resolve(null);
+        : Promise.resolve(null));
       markChatStage('request_normalized');
       throwIfCanceled();
 
@@ -9258,7 +8637,7 @@ async function handleChatPost(req, res) {
           throw new Error('Assistant message key generation failed');
         }
 
-        await messagesRef.child(persistedMessageId).set({
+        const messageRecord = {
           role: 'assistant',
           content: isEdited ? reply + '\n[MODIFIÉ]' : reply,
           timestamp: Date.now(),
@@ -9287,27 +8666,11 @@ async function handleChatPost(req, res) {
                   flags: normalizeSessionFlags(conversationState.flags || {})
                 }
               : null
-        });
-
-        assistantMessagePersistedForCatch = true;
+        };
 
         const conversationPatch = {
           updatedAt: new Date().toISOString()
         };
-
-        if (typeof conversationState?.memory === 'string') {
-          conversationPatch.memory = normalizeMemory(
-            conversationState.memory,
-            activePromptRegistry
-          );
-        }
-
-        if (
-          conversationState?.memoryState &&
-          typeof conversationState.memoryState === 'object'
-        ) {
-          conversationPatch.memoryState = conversationState.memoryState;
-        }
 
         if (
           conversationState?.flags &&
@@ -9318,7 +8681,9 @@ async function handleChatPost(req, res) {
           );
         }
 
-        await updateOwnedConversation(convRef,userId,conversationPatch);
+        messageRecord.debugMeta.responseSaveStatus = 'confirmed';
+        await lifecycle.commitTurn(userId, conversationId, req.lifecycleTicket, conversationPatch, { message: { id: persistedMessageId, record: messageRecord } });
+        assistantMessagePersistedForCatch = true;
 
         return persistedMessageId;
       }
@@ -9326,6 +8691,7 @@ async function handleChatPost(req, res) {
       // Fire-and-forget wrapper: generates a deterministic messageId synchronously,
       // then persists in background without blocking the response path.
       const assistantMessagePersistenceById = new Map();
+      const assistantSaveStatus = new Map();
 
       function persistAssistantMessageAsync(
         reply,
@@ -9338,25 +8704,28 @@ async function handleChatPost(req, res) {
         if (!messageId) {
           throw new Error('Assistant message key reservation failed');
         }
-        const persistencePromise = persistAssistantMessage(
+        assistantSaveStatus.set(messageId, 'pending');
+        const persistencePromise = trackChild(persistAssistantMessage(
           reply,
           debug,
           debugMeta,
           conversationState,
           messageId
-        ).catch((err) => {
+        ).then(() => { assistantSaveStatus.set(messageId, 'confirmed'); return true; }).catch((err) => {
+          assistantSaveStatus.set(messageId, err.code === 'memory_superseded' ? 'superseded' : 'uncertain');
           console.error(
             '[PERSIST_ASYNC][FAILED]',
             err && err.message ? err.message : String(err)
           );
-        });
+        }));
         assistantMessagePersistenceById.set(messageId, persistencePromise);
         return messageId;
       }
 
       async function persistMemoryUpdateAudit(messageId, audit = {}) {
         if (isPrivateConversation || !messageId) return;
-        await (assistantMessagePersistenceById.get(messageId) || Promise.resolve());
+        const saved = await (assistantMessagePersistenceById.get(messageId) || Promise.resolve(false));
+        if (!saved) return;
         await messagesRef.child(messageId).child('debugMeta').update({
           memoryUpdateStatus: audit.status,
           memoryUpdateResultSource: audit.resultSource || null
@@ -9404,7 +8773,8 @@ async function handleChatPost(req, res) {
 
         for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
           try {
-            await updateOwnedConversation(convRef,userId,{
+            throwIfCanceled();
+            await lifecycle.commitTurn(userId, conversationId, req.lifecycleTicket, {
               memory: normalizedMemory,
               memoryState:
                 memoryState && typeof memoryState === 'object'
@@ -9417,10 +8787,11 @@ async function handleChatPost(req, res) {
               intersessionMemoryBaseUpdatedAt,
               intersessionMemoryResumeHistoryCount: memoryHistoryStartIndex,
               updatedAt: new Date().toISOString()
-            });
+            }, { memory: true });
             return;
           } catch (err) {
             lastError = err;
+            if (['memory_superseded', 'chat_request_canceled'].includes(err.code) || err.code?.startsWith('lifecycle_')) throw err;
             if (attempt < maxRetries) {
               await waitMs(120 * (attempt + 1));
             }
@@ -9431,7 +8802,7 @@ async function handleChatPost(req, res) {
       }
 
       function scheduleBackgroundMemoryUpdate(memorySnapshot, replyText) {
-        const backgroundMemoryTask = (async () => {
+        const backgroundMemoryTask = trackChild((async () => {
           try {
             // PRODUCT DECISION (memory audit baseline): memory update is intentionally non-blocking.
             // The user-facing reply must not wait for UPDATE_MEMORY/merge/persistence.
@@ -9492,7 +8863,7 @@ async function handleChatPost(req, res) {
 
             if (isPrivateConversation) {
               privateFinalState={memory:persistedMemoryText,memoryState:mergedStateResult.memoryState};
-              return;
+              return { status: 'completed', resultSource: updatedMemory.source };
             }
 
             await persistConversationMemoryWithRetry(
@@ -9502,13 +8873,15 @@ async function handleChatPost(req, res) {
               mergedStateResult.memoryState,
               crisisMemoryRewriteDebug
             );
-          } catch {
-            // Non-bloquant : la reponse utilisateur ne depend pas de cette mise a jour memoire.
+            return { status: 'completed', resultSource: updatedMemory.source };
+          } catch (error) {
+            return { status: error.code === 'memory_result_invalid' ? 'invalid' : error.code === 'memory_superseded' ? 'superseded' : error.code?.startsWith('lifecycle_') ? 'retired' : 'failed', resultSource: 'runtime_error' };
           } finally {
             await registerUsageConsumptionFromTurn();
           }
-        })();
+        })());
 
+        turnMemoryTask = backgroundMemoryTask;
         if (isPrivateConversation) privateMemoryTask=backgroundMemoryTask;
         else if (conversationId) trackConversationMemorySync(conversationCacheKey, backgroundMemoryTask);
       }
@@ -9522,9 +8895,14 @@ async function handleChatPost(req, res) {
         botMessageId,
         signals
       ) {
-        if(isPrivateConversation)await Promise.all([privateMemoryTask,privateRelanceTask]);
+        let privateAudit = null;
+        if(isPrivateConversation) [privateAudit] = await Promise.all([privateMemoryTask,privateRelanceTask]);
+        if (turnMemoryTask && botMessageId) trackChild(turnMemoryTask.then((audit) => persistMemoryUpdateAudit(botMessageId, audit)).catch(() => {}));
+        if (turnMemoryTask) debugMeta = { ...debugMeta, memoryUpdateDecision: 'update', memoryUpdateStatus: privateAudit?.status || 'pending' };
         await registerUsageConsumptionFromTurn();
-        maybeGenerateConversationTitle();
+        await checkReturnAuthority();
+        throwIfCanceled();
+        trackChild(maybeGenerateConversationTitle());
         publishChatProgressTerminal(requestId, 'done');
 
         return res.json({
@@ -9532,7 +8910,7 @@ async function handleChatPost(req, res) {
           reply,
           memory:isPrivateConversation?privateFinalState.memory:memory,
           memoryState:isPrivateConversation?privateFinalState.memoryState:previousMemoryState,
-          flags,debug,debugMeta,botMessageId,signals
+          flags,debug,debugMeta: { ...debugMeta, responseSaveStatus: isPrivateConversation ? 'local' : assistantSaveStatus.get(botMessageId) || 'uncertain' },botMessageId,signals
         });
       }
 
@@ -9664,7 +9042,7 @@ async function handleChatPost(req, res) {
           responseDebugMeta,
           { memory: responseMemory, flags: newFlags }
         );
-        return sendChatJsonResponse(
+        return await sendChatJsonResponse(
           reply,
           responseMemory,
           newFlags,
@@ -9733,7 +9111,7 @@ async function handleChatPost(req, res) {
           responseDebugMeta,
           { memory: responseMemory, flags: newFlags }
         );
-        return sendChatJsonResponse(
+        return await sendChatJsonResponse(
           reply,
           responseMemory,
           newFlags,
@@ -9800,7 +9178,7 @@ async function handleChatPost(req, res) {
           responseDebugMeta,
           { memory: responseMemory, flags: newFlags }
         );
-        return sendChatJsonResponse(
+        return await sendChatJsonResponse(
           reply,
           responseMemory,
           newFlags,
@@ -10140,20 +9518,20 @@ async function handleChatPost(req, res) {
       let newFlags = crisisPrelude.newFlags;
 
       if (safetyDecision.route === 'major_harm') {
-        return handleImminentMajorHarmRoute(safety);
+        return await handleImminentMajorHarmRoute(safety);
       }
 
       // Severe suicide risk override path.
       // If the analysis returns N2, we bypass normal generation and reply with a crisis response.
       if (crisisDecision.route === 'n2') {
-        return handleN2CrisisRoute();
+        return await handleN2CrisisRoute();
       }
 
       // 2) Crisis follow-up path for an already active acute crisis.
       // If the crisis is not resolved, keep the bot in crisis-handling mode.
       if (flags.acuteCrisis === true) {
         if (crisisDecision.route === 'acute_followup') {
-          return handleAcuteCrisisFollowupRoute();
+          return await handleAcuteCrisisFollowupRoute();
         }
 
         handleResolvedAcuteCrisisState();
@@ -10165,17 +9543,17 @@ async function handleChatPost(req, res) {
         logN1PipelineEntry();
       }
 
-      intersessionMemoryPreparationPromise = prepareIntersessionMemoryForTurn(
+      intersessionMemoryPreparationPromise = trackChild(prepareIntersessionMemoryForTurn(
         newFlags
-      );
-      const intersessionFallbackSeedPromise = (async () => {
+      ));
+      const intersessionFallbackSeedPromise = trackChild((async () => {
         if (isPrivateConversation === true || !userId) {
           return '';
         }
         const userData = await userProfilePromise;
         return getStoredIntersessionCompact(userData);
-      })();
-      const shortAffiliationValidationPromise = hasShortAffiliationMarker(
+      })());
+      const shortAffiliationValidationPromise = trackChild(hasShortAffiliationMarker(
         message
       )
         ? withAnalyzerTiming(
@@ -10186,12 +9564,12 @@ async function handleChatPost(req, res) {
               activePromptRegistry
             )
           )
-        : Promise.resolve({ shortValidationConfirmed: true });
+        : Promise.resolve({ shortValidationConfirmed: true }));
 
       // 2) Analyse de rappel memoire : identifier si l'utilisateur demande
       // explicitement un rappel conversationnel et quelle memoire mobiliser.
       markChatStage('recall_analysis');
-      const recallRoutingPromise = (async () => {
+      const recallRoutingPromise = trackChild((async () => {
         const recallIntersessionMemory =
           await loadCurrentUserIntersessionMemory();
         return analyzeRecallRouting(
@@ -10201,8 +9579,8 @@ async function handleChatPost(req, res) {
           recallIntersessionMemory,
           activePromptRegistry
         );
-      })();
-      const recallBranchHistoryPromise = recallRoutingPromise.then(
+      })());
+      const recallBranchHistoryPromise = trackChild(recallRoutingPromise.then(
         async (resolvedRecallRouting) => {
           if (resolvedRecallRouting?.isLongTermMemoryRecall !== true) {
             return [];
@@ -10216,7 +9594,7 @@ async function handleChatPost(req, res) {
             recentHistory
           });
         }
-      );
+      ));
 
       // Phase 2: run all analyzers in parallel, including proposeState (which now
       // integrates contact detection alongside info detection).
@@ -11048,19 +10426,19 @@ async function handleChatPost(req, res) {
       }
 
       if (detectedState === 'exploration') {
-        const relanceBackgroundTask = (async () => {
+        const relanceBackgroundTask = trackChild((async () => {
           const relanceStartedAt = Date.now();
           const safeConversationId = String(conversationCacheKey || '').trim();
 
           try {
             const relanceAnalysis = await Promise.race([
-              analyzeExplorationRelance({
+              trackChild(analyzeExplorationRelance({
                 message,
                 reply,
                 history: recentHistory,
                 memory: previousMemory,
                 promptRegistry: activePromptRegistry
-              }),
+              })),
               wait(RELANCE_ASYNC_TIMEOUT_MS).then(() => {
                 const timeoutError = new Error('relance_async_timeout');
                 timeoutError.code = 'relance_async_timeout';
@@ -11155,7 +10533,7 @@ async function handleChatPost(req, res) {
           } finally {
             await registerUsageConsumptionFromTurn();
           }
-        })();
+        })());
 
         if(isPrivateConversation)privateRelanceTask=relanceBackgroundTask;
         else trackConversationRelanceSync(
@@ -11260,7 +10638,7 @@ async function handleChatPost(req, res) {
       const _lastActivityMs = previousConversationActivityMs;
       const _prioritySignal = effectiveMemoryPrioritySignalForDebug;
 
-      let backgroundMemoryTask = (async () => {
+      let backgroundMemoryTask = trackChild((async () => {
         try {
           const memoryUpdateContract = await updateMemory(
             _prevMem,
@@ -11366,7 +10744,7 @@ async function handleChatPost(req, res) {
 
           if (isPrivateConversation) {
               privateFinalState={memory:persistedMemoryText,memoryState:mergedStateResult.memoryState};
-              return;
+              return { status: 'completed', resultSource: memoryUpdateContract.source };
             }
 
           await persistConversationMemoryWithRetry(
@@ -11406,12 +10784,13 @@ async function handleChatPost(req, res) {
             source: postureDecision.memoryUpdateSource,
             error: e && e.message ? e.message : String(e)
           });
-          return { status: 'failed', resultSource: 'runtime_error' };
+          return { status: e.code === 'memory_superseded' ? 'superseded' : e.code === 'memory_result_invalid' ? 'invalid' : e.code?.startsWith('lifecycle_') ? 'retired' : 'failed', resultSource: 'runtime_error' };
         } finally {
           await registerUsageConsumptionFromTurn();
         }
-      })();
+      })());
 
+      turnMemoryTask = backgroundMemoryTask;
       if(isPrivateConversation) privateMemoryTask=backgroundMemoryTask;
       else if(conversationId&&backgroundMemoryTask)trackConversationMemorySync(conversationCacheKey,backgroundMemoryTask);
       const postCrisisSupportCarryTurnActive =
@@ -11585,16 +10964,9 @@ async function handleChatPost(req, res) {
         responseDebugMeta,
         { memory: newMemory, flags: newFlags }
       );
-      backgroundMemoryTask
-        .then((audit) => persistMemoryUpdateAudit(botMessageId, audit))
-        .catch((error) => {
-          console.warn(
-            '[CHAT][MEMORY_AUDIT_PERSIST_FAILED]',
-            error && error.message ? error.message : String(error)
-          );
-        });
 
-      return sendChatJsonResponse(
+
+      return await sendChatJsonResponse(
         reply,
         newMemory,
         newFlags,
@@ -11604,6 +10976,9 @@ async function handleChatPost(req, res) {
         turnSignals
       );
     } catch (err) {
+      if (err.code?.startsWith('lifecycle_') || err.code === 'memory_superseded') {
+        return res.status(err.code === 'memory_superseded' ? 409 : 410).json({ code: err.code, saved: false });
+      }
       if (err && err.code === 'chat_request_canceled') {
         publishChatProgressTerminal(requestId, 'canceled');
         // Mark the user message with [ENVOI STOPPE] if it was persisted
@@ -11731,6 +11106,7 @@ async function handleChatPost(req, res) {
         });
       }
 
+      try { await checkReturnAuthority(); } catch { return res.status(410).json({ code: 'lifecycle_object_retired' }); }
       // Fallback path: if any part of the /chat pipeline throws, return a safe
       // generic reply plus preserved memory/flags instead of crashing the server.
       return res.json({
@@ -11741,6 +11117,7 @@ async function handleChatPost(req, res) {
         debugMeta: fallbackDebugMeta
       });
     } finally {
+      while (childTasks.size) await Promise.allSettled([...childTasks]);
       if (requestId) {
         finalizeActiveChatRequest(requestId,activeRequestLease);
       }
@@ -11788,7 +11165,10 @@ app.post('/chat/stream', (req, res, next) => appConfig.enableChatStreaming === t
     ts: Date.now()
   });
 
-  req.onTokenCallbackForChat = (token) => {
+  req.onTokenCallbackForChat = async (token) => {
+    if (!await lifecycle.available(req.userSession.userId, req.body?.isPrivateConversation === true ? null : streamConversationId))
+      throw Object.assign(new Error('lifecycle_object_retired'), { code: 'lifecycle_object_retired' });
+    throwIfChatRequestCanceled(operationKey(req.userSession.userId, streamRequestId));
     writeSSEEvent(res, 'token', { token });
   };
 

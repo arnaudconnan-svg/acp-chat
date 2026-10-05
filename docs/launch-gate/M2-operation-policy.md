@@ -42,6 +42,15 @@ de l'industrialisation G17 et exige de préserver cette interdiction.
 
 ## Opérations futures distinctes
 
+Les fences sont applicatives : un writer de l'ancienne version f20 ne les lit
+pas et peut recréer un objet sur Firebase partagé. Pendant validation/livraison,
+coordonner les deux services et neutraliser temporairement les anciens writers
+(requêtes et tâches admises comprises) avant d'annoncer la garantie globale.
+La cible Firebase reste partagée ; aucune opération de bascule n'est réalisée
+dans cette mission. Une coexistence de versions ne constitue pas une preuve de
+retrait global. La réserve de capacité liée aux transactions racines reste à
+qualifier avec M4 avant ouverture ; aucune validation de charge n'est acquise.
+
 `privateConversationMemory` historique n'a pas d'ownership fiable : aucune
 adoption ni purge pendant M2. L'ordre CJ2 reste déploiement du chemin local-only,
 vérification/coupure des writers, purge globale séparément autorisée, redémarrage
@@ -49,3 +58,15 @@ et contrôle de non-réapparition. Le garde M0 `--apply` fermé est conservé.
 
 Les appareils hors ligne ne sont pas effaçables à distance. L'appareil courant
 efface l'espace capturé lors du reset/clôture, sans toucher au nouveau compte.
+
+## Reprise des copies (checkpoint 2)
+
+Les reçus `copyReceipts` portent l'acteur, les références source/destination et
+les IDs des messages, sans seconde copie du contenu. Ils sont supprimés lors du
+retrait de la source/destination concernée (hors contrat séparé du feedback) et
+du compte. Les fences demeurent : effacer un reçu n'autorise pas à recréer son ID.
+Une nouvelle tentative incertaine utilise la même demande et le même operationId.
+Un replay admin est une reconstruction déclarée, pas une preuve automatique du
+contexte historique exact. Une création ne remplace jamais une destination ; un
+remplacement explicite exige sa révision courante. Cette révision couvre aussi
+les writers de chat/mémoire/messages et se revalide dans le callback de commit.
