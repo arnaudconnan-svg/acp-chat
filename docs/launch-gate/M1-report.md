@@ -112,16 +112,14 @@ port10000. SHA256 `server.js` runtime
 `e53e8469a084896b1ad58b19413c12dfa659a9f67db623f90df748168ba7d555`
 identique à la source Git `f20d84f`, vérifié par Cloud. M1 non déployé.
 
-Inventaire `professionalIdentities` Work HTTP succès : total0, complete=true,
-active/inactive0, chaque rôle0, readFailures0. Aucun compte durable à migrer ni
-écriture. Les **deux blocages précis** : réduction des permissions de gestion
-inutiles, notamment suppression d'instance, impossible avec les accès disponibles ;
-provisioning/remise privée du nouveau credential du seul propriétaire connu à
-exécuter via le [helper préparé](M0-M1-closure-plan.md), rôle unique administrator,
-sans acteur/rôle inventé ni réutilisation du password publié. Identité nominative
-connue/autorisation explicite, aucun nominatif/rôle manquant. Inspecter bindings et
-autres consommateurs depuis un accès opérateur existant avant réduction ; aucune
-base/projet nouveau, aucun rôle deviné. Aucun secret fournisseur déclaré compromis
+Inventaire **historique** `professionalIdentities` Work HTTP succès : total0,
+complete=true, active/inactive0, chaque rôle0, readFailures0 ; aucun compte durable
+à migrer. **Provisioning désormais clos :** Work atteste la création active du seul
+`launch-owner`, rôle unique `administrator`, après saisie personnelle, puis
+login/session/révocation réels via le module M1 exact (preuve finale ci-dessous).
+**Seul blocage restant : IAM**, réduction des permissions de gestion inutiles,
+notamment suppression d'instance, depuis une console opérateur accessible.
+Préserver toute autre attribution ; aucune base/projet nouveau. Aucun secret fournisseur déclaré compromis
 sans preuve, aucune rotation additionnelle automatique. Ces actions relèvent des
 autorisations M0/M1 déjà accordées, pas d'un nouveau GO général.
 
@@ -184,7 +182,7 @@ de ce principal depuis une console opérateur accessible ; aucun retrait à l'av
 PR27 reste draft, sans fusion. Mise à jour docs/evidence uniquement, `diff --check`,
 aucun nouveau contrôle ni changement helper/application.
 
-## Reprise ciblée — tentatives Work et correction du helper opérateur
+## Reprise historique — tentatives Work et correction du helper opérateur
 
 Work rapporte deux tentatives de la version SHA256 `c661db9f…` sur beta `c44mq`,
 toutes deux terminées avant création : première avant confirmation, seconde au
@@ -222,3 +220,46 @@ déjà établie, et saisie personnelle/validation réelle du seul `launch-owner`
 Work confirme avoir relu le diff de saisie et la sortie réelle des 32 cas PASS ;
 gardes et modules M1 conservés, aucun contrôle supplémentaire nécessaire. Reste
 le démarrage Work de cette version et la saisie personnelle masquée.
+
+## Preuve finale Work — provisioning réellement accompli ; seul IAM reste bloquant
+
+Work a observé le résultat Render beta `c44mq` du helper corrigé au commit
+`24cf6272ea270040f3b593af85800988bed0f4eb`, SHA256
+`999309f751a68121cc36ffee5a7e45ab70b5bc624089b6a936c4bb8c07bb674d`,
+après saisie personnelle de l'utilisateur. Console revenue au shell.
+
+Résultat réel : `id=launch-owner` ; `moduleExact`, `ownerSourceExact`,
+`ownerEmailExpected`, `contextOk`, `preflightOk`, `confirmed`, `created`, `loginOk`,
+`uniqueAdministrator`, `revoked`, `revokedSessionRejected`, `inputCleanupOk`,
+`cleanupOk`, `ok` **tous true** ; `identityDisabledOnFailure=false` ;
+`failureReason/failurePhase/cleanupFailureReason=null`.
+
+Le seul propriétaire `administrator` est créé et actif. Login, session à rôle
+unique, révocation et refus de la session révoquée validés réellement par le module
+M1 exact sur RTDB partagée. Aucun compte/praticien/support/grant supplémentaire,
+aucun accès conversation. Capture expurgée conservée en privé par Work ; aucun
+credential, email, hash de credential ou token consigné. **Ne plus relancer le
+provisioning ; propriétaire/password clos, aucune demande restante à l'utilisateur.**
+Ce résultat n'est pas un test HTTP/UI M1 : application `f20d84f` toujours live,
+M1 non déployé. Préparation Cloud et échecs antérieurs restent historiques.
+
+Nouvelle capture IAM propriétaire : panneau Modifier l'accès du projet attendu,
+principal runtime déjà connu, **un rôle visible « Administrateur Firebase Real… »**,
+description complète « Accès complet en lecture/écriture aux ressources de Firebase
+Realtime Database ». Aucune condition attachée visible (seulement Ajouter une
+condition IAM), aucun autre rôle visible. Correspondance `roles/firebasedatabase.admin`
+étayée par la description officielle ; capture non exhaustive de l'héritage et des
+bindings fournis Google. Aucun IAM modifié ; capture non publiée.
+
+**Unique action bloquante IAM :** dans une console opérateur accessible,
+créer/reprendre un rôle personnalisé du projet avec seulement
+`firebasedatabase.instances.get` et `firebasedatabase.instances.update`, puis
+remplacer la seule attribution Admin RTDB confirmée, en préservant toute autre
+attribution. Aucun nouveau projet/base ; couplage résiduel données/règles/activation
+par update conservé. Work vérifiera ensuite `instances.delete` non accordé et
+lecture/écriture SDK sur la sonde dédiée réversible depuis beta/main. Ces contrôles
+ne sont pas encore acquis et ne sont pas exécutés par Cloud.
+
+Cette consignation modifie seulement rapport/checkpoint/manifest et PR27, maintenue
+draft. Diff documentaire et état Git seulement ; aucun nouveau test/helper/script,
+aucune relance de provisioning, fusion, déploiement ou M2.

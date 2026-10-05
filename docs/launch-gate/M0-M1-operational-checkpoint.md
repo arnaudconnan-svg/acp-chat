@@ -9,7 +9,8 @@ Reprise séquence20 : [plan de clôture ciblé et helpers](M0-M1-closure-plan.md
 Propriétaire historique désormais explicitement nommé/autorisé ; minimum déduit
 des routes : une identité, rôle unique `administrator`, aucun practitioner/support,
 affectation ou grant. Restent saisie/remise privée du credential et résultats réels,
-pas une identité nominative manquante. Helpers opérateurs préparés seulement.
+pas une identité nominative manquante. Préparation Cloud historique conservée ;
+**preuve finale Work ci-dessous : provisioning réalisé, seul blocage IAM restant**.
 
 ## Architecture et preuves reçues de Work
 
@@ -224,9 +225,9 @@ hash, contenu ou token : compteur/code/version/résultat. Aucun provisioning ré
    de gestion inutiles impossible avec les accès disponibles. Obtenir l'accès
    opérateur existant aux bindings/policy, qualifier consommateurs/rôles, puis
    préparer la réduction bornée ; aucun nouveau GO général requis.
-2. **Blocage provisioning :** saisie/remise privée du nouveau credential par le
-   seul propriétaire connu, puis booléens réels du helper exact préparé. Rôle
-   unique administrator ; aucun nominatif/rôle manquant, aucune fiche créée ici.
+2. **Provisioning clos par la preuve finale Work ci-dessous :** seul `launch-owner`
+   actif, `administrator` unique, saisie personnelle et validation réelle module M1
+   acquises. Ne plus relancer le provisioning ni demander propriétaire/password.
 3. Intégrer ces preuves avant clôture des blocages et livraison beta. Main reste
    code hérité jusqu'au bilan final/pré-FF ; le partage n'impose pas une autre base.
    Aucune fusion pendant cette étape.
@@ -267,7 +268,7 @@ capture/export des seuls bindings du principal depuis console opérateur accessi
 sans retrait à l'aveugle ni nouveau GO général. PR27 draft, aucune fusion.
 Cette publication ne touche que docs/evidence ; aucun nouveau contrôle, helper ou code modifié.
 
-## Reprise après `78d60f6` — correction opérateur ciblée, prête pour revue Work
+## Reprise historique après `78d60f6` — correction opérateur ciblée, prête pour revue Work
 
 Work : deux tentatives de l'ancien helper `c661db9f…` sur beta `c44mq`, terminées
 avant création. Première avant confirmation ; seconde atteint Confirmation.
@@ -311,3 +312,41 @@ Dernière preuve Work : diff de saisie et sortie réelle des 32 cas PASS relus ;
 gardes et modules M1 conservés. Aucun contrôle supplémentaire requis. Cette
 correction reste préparée, pas exécutée dans Render ; prochaine action Work :
 transfert épinglé puis passation personnelle au champ sécurisé.
+
+## Checkpoint final Work — identité active et validation réelle acquises
+
+Render beta `c44mq`, helper `24cf6272ea270040f3b593af85800988bed0f4eb`, SHA256
+`999309f751a68121cc36ffee5a7e45ab70b5bc624089b6a936c4bb8c07bb674d` :
+après saisie personnelle, Work observe `id=launch-owner` et
+`moduleExact/ownerSourceExact/ownerEmailExpected/contextOk/preflightOk/confirmed/`
+`created/loginOk/uniqueAdministrator/revoked/revokedSessionRejected/inputCleanupOk/`
+`cleanupOk/ok=true` ; `identityDisabledOnFailure=false` ;
+`failureReason/failurePhase/cleanupFailureReason=null`. Console revenue au shell.
+
+**Seul propriétaire créé et actif, rôle unique administrator ; provisioning clos.**
+Login/session/révocation et refus de la session révoquée réellement validés par le
+module M1 exact sur RTDB partagée. Aucun compte/praticien/support/grant supplémentaire,
+aucun accès conversation. Ne plus relancer le provisioning ; aucune demande
+propriétaire/password restante. App `f20d84f` toujours live, aucun test HTTP/UI M1.
+Capture expurgée privée Work, aucun secret/email recopié. Historique préparation,
+préflight et deux échecs conservé ; aucune réexécution Cloud.
+
+Capture IAM propriétaire : panneau Modifier l'accès du projet attendu pour le
+principal runtime connu, un rôle visible « Administrateur Firebase Real… »,
+description « Accès complet en lecture/écriture aux ressources de Firebase Realtime
+Database ». Aucune condition attachée visible, seulement Ajouter une condition IAM ;
+pas d'autre rôle visible. Correspondance `roles/firebasedatabase.admin` étayée par
+description officielle ; héritage/bindings fournis Google non exhaustifs. Aucun IAM
+modifié ni capture publiée.
+
+**Seul blocage : IAM.** Action humaine minimale dans console opérateur accessible :
+créer/reprendre rôle custom projet avec seulement `firebasedatabase.instances.get`
+et `firebasedatabase.instances.update`, remplacer la seule attribution Admin RTDB
+confirmée, préserver toute autre attribution. Aucun nouveau projet/base ; couplage
+règles/activation de update conservé. Work vérifiera ensuite delete non accordé et
+SDK lecture/écriture sur sonde dédiée réversible beta/main ; preuves encore attendues,
+aucun contrôle exécuté pour cette consignation.
+
+Publication documentaire seulement : rapport/checkpoint/manifest et PR27 draft,
+sans changement helper/script/application, nouveau test, fusion, déploiement ou M2.
+Vérification limitée au diff documentaire et à l'état Git ; aucune demande utilisateur.

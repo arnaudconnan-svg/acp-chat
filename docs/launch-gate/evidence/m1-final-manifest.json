@@ -42,6 +42,7 @@
     }
   ],
   "executionBoundary": {
+    "scope": "Exécution Cloud et validation synthétique acquise ; les opérations réelles Work sont attestées séparément dans operationalStatus.",
     "realExpress": true,
     "networkListener": false,
     "realFirebase": false,
@@ -55,7 +56,7 @@
   },
   "operationalStatus": {
     "renderAttestation": "Runtime des deux processus server.js et empreinte f20d84f confirmés par Work ; secrets dédiés présents/forts/distincts, projet/principal/base attendus, refresh=false, LOG_PERSIST=true, rétention14. Règles racine fermées. Accès données prouvé et instances.delete excessif prouvé sur beta/main ; réduction IAM impossible avec accès disponibles, bindings/clés non accessibles.",
-    "rotationAndProvisioning": "Quatre secrets dédiés acquis, redéploiements f20 sans fusion. Propriétaire + administrator résolus. Deux tentatives Work ancien helper arrêtées avant création ; aucun compte/session. Correction opérateur TTY/diagnostics préparée pour revue puis saisie personnelle masquée et résultats réels ; aucune exécution Cloud réelle ni nouveau GO général.",
+    "rotationAndProvisioning": "Quatre secrets dédiés acquis, redéploiements f20 sans fusion. Provisioning réel Work accompli après saisie personnelle : seul launch-owner actif, administrator unique, login/session/révocation et refus de session révoquée validés par module M1 exact sur RTDB partagée. Propriétaire/password clos ; ne plus relancer le provisioning. Seul blocage IAM restant, aucune exécution Cloud réelle ni nouveau GO général.",
     "historicalPrivateNodeAndLogs": "Non purgés ; inventaire/rétention dans les autorisations M0/M1 déjà accordées, après satisfaction des prérequis vérifiables. Purge irréversible soumise à ses limites et contrôles propres.",
     "declaredRenderMetadata": {
       "source": "Work, pages Environment Render, lecture seule ; aucune donnée applicative ni valeur de secret/clé privée affichée ou consignée.",
@@ -181,7 +182,7 @@
       "keyTokenPrinted": false,
       "officialPermissionQualification": "Work, Firebase IAM documentation : instances.get porte données/métadonnées ; instances.update porte données/règles et enable/disable. data.get/update observés ne constituent pas une base custom documentée ni une garantie SDK. Catalogue/bindings réels et sonde SDK après réduction requis.",
       "closurePlan": "docs/launch-gate/M0-M1-closure-plan.md ; inspection gcloud par opérateur existant ; minimum documenté instances.get/update et seules métadonnées démontrées nécessaires, sans gestion supplémentaire ni rôle présumé.",
-      "minimalHumanNeed": "Accès opérateur aux seuls bindings du principal et qualification du libellé tronqué observé ; exhaustivité/conditions/héritage inconnus. Aucun retrait à l’aveugle ; GCP reste inaccessible à Work.",
+      "minimalHumanNeed": "Console opérateur accessible : créer/reprendre rôle custom projet avec seulement firebasedatabase.instances.get et firebasedatabase.instances.update, remplacer la seule attribution Admin RTDB confirmée, préserver toute autre attribution. Work vérifiera ensuite delete non accordé et SDK lecture/écriture sur sonde dédiée beta/main. Aucun IAM modifié à ce stade ; aucun nouveau projet/base.",
       "userRoleLabelObservation": {
         "source": "Capture utilisateur, non publiée.",
         "expectedProjectAndPrincipal": true,
@@ -192,11 +193,36 @@
         "bindingsConditionsInheritanceExhaustive": false,
         "gcpAvailableToWork": false,
         "iamModified": false,
-        "nextAction": "Qualifier correspondance via doc/UI et export des seuls bindings du principal avant retrait ; plan custom instances.get/update inchangé, jamais retrait à l’aveugle."
+        "nextAction": "Qualifier correspondance via doc/UI et export des seuls bindings du principal avant retrait ; plan custom instances.get/update inchangé, jamais retrait à l’aveugle.",
+        "historical": true
+      },
+      "userAccessEditorObservation": {
+        "source": "Nouvelle capture propriétaire transmise par Work ; capture privée, non publiée.",
+        "panel": "Modifier l'accès projet",
+        "expectedProjectAndPrincipal": true,
+        "visibleRoleCount": 1,
+        "truncatedRoleLabel": "Administrateur Firebase Real…",
+        "fullVisibleDescription": "Accès complet en lecture/écriture aux ressources de Firebase Realtime Database",
+        "attachedConditionVisible": false,
+        "conditionControlOnly": "Ajouter une condition IAM",
+        "otherRoleVisible": false,
+        "roleCorrespondence": "roles/firebasedatabase.admin",
+        "roleCorrespondenceSupportedByOfficialDescription": true,
+        "inheritanceAndGoogleProvidedBindingsExhaustive": false,
+        "iamModified": false,
+        "plannedCustomPermissions": [
+          "firebasedatabase.instances.get",
+          "firebasedatabase.instances.update"
+        ],
+        "preserveOtherBindings": true,
+        "afterReductionDeleteNotGrantedVerified": false,
+        "afterReductionSdkProbeBothServicesVerified": false
       }
     },
     "workProfessionalInventory": {
       "source": "Work, mode identities ; HTTP succès.",
+      "historicalBeforeProvisioning": true,
+      "supersededBy": "workOwnerHelperExecution ; inventaire total0 conservé comme preuve antérieure à la création.",
       "total": 0,
       "complete": true,
       "active": 0,
@@ -211,7 +237,8 @@
       "durableAccountToMigrate": false,
       "provisioningPerformed": false,
       "boundedLegacyOwnerOption": "Une seule identité propriétaire déjà configurée dans la source héritée ; même email dans configuration professionnelle et full, non publié ici. ID/libellé/rôles explicites et nouveau credential/canal privé à définir ; aucune traduction automatique du scope full.",
-      "missingInputs": "Saisie/confirmation et conservation privée du nouveau credential par le propriétaire ; résultats réels du helper. Identité nominative fournie et administrator seul déduit/autorisé, aucun nominatif/rôle manquant.",
+      "historicalMissingInputs": "Saisie/confirmation et conservation privée du nouveau credential par le propriétaire ; résultats réels du helper. Identité nominative fournie et administrator seul déduit/autorisé, aucun nominatif/rôle manquant.",
+      "missingInputs": "Aucune : propriétaire/password clos par l'exécution réelle Work ; ne plus relancer le provisioning ni demander une saisie supplémentaire.",
       "selectedPlan": {
         "identityId": "launch-owner",
         "roles": [
@@ -221,13 +248,12 @@
         "professionalModuleValidatedCommit": "3db45bb8827ed14b9cd9399b61de8b8da8213dc1",
         "professionalModuleSha256": "5210cde3a69239f3c9e8ab1182c7b68242cb750016d9307f751e1c41e0f5c537",
         "applicationModified": false,
-        "provisioningPerformed": false,
+        "provisioningPerformed": true,
         "credentialGeneratedByCloud": false
       }
     },
     "remainingBlockers": [
-      "IAM : accès opérateur aux bindings/policy toujours indisponible ; libellé utilisateur tronqué observé, correspondance roles/firebasedatabase.admin à qualifier avant réduction custom get/update. Conditions/héritage/consommateurs à préserver, aucun retrait à l’aveugle.",
-      "Deux tentatives ancien helper terminées avant création, aucun compte/session. Nouvelle version TTY/diagnostics préparée pour revue Work, puis saisie personnelle masquée et validation réelle login/session/révocation. launch-owner + administrator résolus ; aucun roster ni nouveau GO général."
+      "IAM uniquement : console opérateur accessible nécessaire pour créer/reprendre rôle custom projet get/update seulement et remplacer la seule attribution Admin RTDB confirmée, préserver toute autre attribution. Héritage/bindings fournis Google non exhaustifs ; aucun IAM modifié. Work vérifiera ensuite delete non accordé et SDK lecture/écriture sur sonde dédiée beta/main."
     ],
     "operatorPreparation": {
       "sourceCheckpoint": "Work séquence20 ; PR27 b78acf8, propriétaire unique + administrator explicitement autorisés.",
@@ -235,6 +261,7 @@
       "helper": "docs/launch-gate/operators/owner-provision.cjs",
       "sdkProbe": "docs/launch-gate/operators/sdk-probe.cjs",
       "status": "prepared_only_not_executed",
+      "scope": "Préparation Cloud historique ; provisioning réel Work attesté dans workOwnerHelperExecution.",
       "applicationModified": false,
       "realProviderCall": false,
       "realProvisioning": false,
@@ -277,7 +304,7 @@
       "ownerMapping": "Uniquement en mémoire depuis la liste propriétaire du server.js live f20 vérifié SHA256 ; empreinte email normalisé attendue contrôlée. Aucune nouvelle constante email en clair.",
       "pinnedLiveServerSha256": "e53e8469a084896b1ad58b19413c12dfa659a9f67db623f90df748168ba7d555",
       "historicalOwnerHelperSha256": "c661db9f2d65efae8f82714ca4c5161dd7d294812a3b5b18134bddf0a26bcb3e",
-      "currentPreparationNote": "Correction opérateur TTY/diagnostics préparée pour revue Work ; pas exécutée dans Render. Politique/gardes/transaction/modules exacts inchangés ; préparation Cloud historique conservée."
+      "currentPreparationNote": "Préparation et tests ciblés Cloud historiques conservés. Work a désormais exécuté la correction dans Render après saisie personnelle, résultat réel entièrement réussi ; voir workOwnerHelperExecution. Ne plus relancer le provisioning."
     },
     "workOwnerHelperPreflight": {
       "source": "Preuve réelle transmise par Work, UI Render beta Web Shell ; pas une réexécution Cloud.",
@@ -348,7 +375,58 @@
       "currentHelperExecutedByWork": false,
       "correctionReviewedByWork": true,
       "targeted32PassOutputReviewedByWork": true,
-      "additionalCheckRequested": false
+      "additionalCheckRequested": false,
+      "historical": true,
+      "supersededBy": "workOwnerHelperExecution ; les deux échecs anciens restent conservés, création finale réussie avec le helper corrigé."
+    },
+    "workOwnerHelperExecution": {
+      "source": "Résultat réel observé par Work dans Render après saisie personnelle de l'utilisateur ; aucune réexécution Cloud.",
+      "receivedOn": "2026-10-05",
+      "helperCommit": "24cf6272ea270040f3b593af85800988bed0f4eb",
+      "helperSha256": "999309f751a68121cc36ffee5a7e45ab70b5bc624089b6a936c4bb8c07bb674d",
+      "service": "beta",
+      "instance": "c44mq",
+      "personalMaskedInputCompleted": true,
+      "consoleReturnedToShell": true,
+      "result": {
+        "id": "launch-owner",
+        "moduleExact": true,
+        "ownerSourceExact": true,
+        "ownerEmailExpected": true,
+        "contextOk": true,
+        "preflightOk": true,
+        "confirmed": true,
+        "created": true,
+        "loginOk": true,
+        "uniqueAdministrator": true,
+        "revoked": true,
+        "revokedSessionRejected": true,
+        "inputCleanupOk": true,
+        "cleanupOk": true,
+        "ok": true,
+        "identityDisabledOnFailure": false,
+        "failureReason": null,
+        "failurePhase": null,
+        "cleanupFailureReason": null
+      },
+      "identityActive": true,
+      "roles": [
+        "administrator"
+      ],
+      "exactModuleValidatedCommit": "3db45bb8827ed14b9cd9399b61de8b8da8213dc1",
+      "sharedRtdb": true,
+      "additionalIdentityPractitionerSupportGrant": false,
+      "conversationAccess": false,
+      "httpOrUiM1Test": false,
+      "applicationLiveSha": "f20d84f1962c552eaebb095d7a9e5ddb63719be7",
+      "m1Deployed": false,
+      "privateRedactedCaptureRetainedByWork": true,
+      "capturePublished": false,
+      "credentialEmailTokenRecorded": false,
+      "ownerPasswordBlockerClosed": true,
+      "provisioningMustNotBeRerun": true,
+      "newCloudTestOrOperation": false,
+      "remainingBlocker": "IAM"
     }
   },
   "sha256": {
