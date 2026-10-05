@@ -237,6 +237,17 @@ process.on('beforeExit', () => {
   );
   a.db.data.contentGrants.u_A.both.allowIntersessionSummary = true;
   assert.equal(
+    (
+      await a.request(
+        'get',
+        `/api/facilitation/intersession-memory/${userRef}`,
+        { cookie: both }
+      )
+    ).statusCode,
+    200,
+    'explicit summary grant positive API'
+  );
+  assert.equal(
     await access.content(actor, 'u_A', null, 'summary', 'fixture'),
     true
   );

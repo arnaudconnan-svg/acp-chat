@@ -73,42 +73,55 @@ process.on('beforeExit', () => {
   release();
   await assert.rejects(pending, /Identity changed/);
   // Authentication probe retained across actual logout/login transitions.
-  for (const transition of ['logout', 'login']) {
-    const probeDom = new JSDOM('', { url: 'https://synthetic.example.test' }),
-      p = probeDom.window;
-    p.Headers = Headers;
-    let releaseProbe;
-    p.fetch = async (input) => {
-      if (input === '/api/auth/session')
-        return new Promise((resolve) => {
-          releaseProbe = () =>
-            resolve(
-              new Response(
-                JSON.stringify({ authenticated: true, user: { id: 'u_A' } })
-              )
-            );
-        });
-      return new Response(
-        JSON.stringify(
-          input === '/api/auth/login'
-            ? { success: true, user: { id: 'u_B' } }
-            : { success: true }
-        )
+  for (const transition of ['logout', 'login'])
+    for (const known of [false, true]) {
+      const probeDom = new JSDOM('', { url: 'https://synthetic.example.test' }),
+        p = probeDom.window;
+      p.Headers = Headers;
+      let releaseProbe,
+        firstProbe = true;
+      p.fetch = async (input) => {
+        if (input === '/api/auth/session' && known && firstProbe) {
+          firstProbe = false;
+          return new Response(
+            JSON.stringify({ authenticated: true, user: { id: 'u_A' } })
+          );
+        }
+        if (input === '/api/auth/session')
+          return new Promise((resolve) => {
+            releaseProbe = () =>
+              resolve(
+                new Response(
+                  JSON.stringify({ authenticated: true, user: { id: 'u_A' } })
+                )
+              );
+          });
+        return new Response(
+          JSON.stringify(
+            input === '/api/auth/login'
+              ? { success: true, user: { id: 'u_B' } }
+              : { success: true }
+          )
+        );
+      };
+      const api = install(p);
+      if (known) await api.ready;
+      const held = known ? p.fetch('/api/auth/session') : api.ready;
+      const rejected = known
+        ? assert.rejects(held, /Superseded identity probe/)
+        : held;
+      if (transition === 'logout')
+        await p.fetch('/api/auth/logout', { method: 'POST' });
+      else await p.fetch('/api/auth/login', { method: 'POST' });
+      releaseProbe();
+      await rejected;
+      assert.equal(
+        api.identity,
+        transition === 'logout' ? null : 'u_B',
+        'old probe cannot restore A after ' + transition
       );
-    };
-    const api = install(p);
-    if (transition === 'logout')
-      await p.fetch('/api/auth/logout', { method: 'POST' });
-    else await p.fetch('/api/auth/login', { method: 'POST' });
-    releaseProbe();
-    await api.ready;
-    assert.equal(
-      api.identity,
-      transition === 'logout' ? null : 'u_B',
-      'old probe cannot restore A after ' + transition
-    );
-    probeDom.window.close();
-  }
+      probeDom.window.close();
+    }
   // Headers already arrived. Delay each body consumption and observe the actual
   // application continuation: neither DOM nor B storage receives A's marker.
   for (const transition of ['logout', 'B'])
