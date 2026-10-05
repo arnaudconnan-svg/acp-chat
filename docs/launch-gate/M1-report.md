@@ -64,12 +64,12 @@ vérifié. Elles ne constituent pas une attestation des services déployés.
 | Gate | Fichiers / commits principaux | Preuve exécutée et résultat | Limite et opération restante |
 | --- | --- | --- | --- |
 | M0 — isolation et opérateurs | `scripts/synthetic/{guard,runtime,verify}`, `lib/operator-target.js`, scripts reset/index ; `7c5263d`, `afe991f`, `f43b9b5` | `operator:harness`, `isolation:harness` **PASS** : cible/principal/périmètre obligatoires, simulation bornée, refus ; Express réel avec montages/ordre/erreurs, boot/timers/fournisseurs refusés avant chargement | Verrou total `--apply` **conservatoire** ; aucune opération réelle testée. Attestation service/base/principal/IAM par Work ; opérations beta dans les autorisations M0/M1 déjà accordées, après satisfaction des prérequis vérifiables. Firebase partagé intentionnel, non bloquant par principe ; pas de nouvelle base. Carte [M0](M0.md). |
-| G01 — secrets et sessions | `server.js`, `lib/professional-access.js` ; `91d6e4e`, `3cb24ac` | `professional:harness` **PASS** : aucun repli full/TWA large actif, sessions individuelles opaques, schéma strict, expiration absente/NaN/infinie refusée chaud/froid, redémarrage et révocation | Rotation des secrets antérieurement publiés et signatures, secrets dédiés distincts et provisioning individuel réels non exécutés. Serveur fermé sans configuration requise. |
+| G01 — secrets et sessions | `server.js`, `lib/professional-access.js` ; `91d6e4e`, `3cb24ac` | `professional:harness` **PASS** : aucun repli full/TWA large actif, sessions individuelles opaques, schéma strict, expiration absente/NaN/infinie refusée chaud/froid, redémarrage et révocation | Quatre secrets dédiés distincts de 512 bits configurés et consommés sur les deux services selon Work. M1 non déployé : anciennes capacités codées en dur à abandonner ; provisioning individuel/remise non exécutés. |
 | G19 / CJ4 — rôles, grants et audit | Module professionnel, routes et `public/js/{content-grants,professional-review}.js`, UI praticien ; `91d6e4e`, `3cb24ac`, `3c434b2`, `3db45bb` | `professional:harness`, `consent-ui:harness` **PASS** : affectation + grant, scope spécifique/période, synthèse explicite positive/refusée, révocation, cumul admin+praticien en rôle praticien, supports sans contenu ; journal admin à motif et unmask distinct. UI par titres/dates, portée/synthèse/échéance restaurées, instant persisté égal à l'affichage | Identités/affectations réelles à provisionner dans les autorisations M0/M1 déjà accordées, après satisfaction des prérequis vérifiables ; politique audit à attester. Lecture praticien minimale ; gardes copie/sélection/impression proportionnés, sans garantie contre toute capture. Aucun vrai grant modifié. |
 | G02 — autorité objet et associations | `server.js`, module professionnel ; `3cb24ac`, `3c434b2` | `professional:harness`, `object-private:harness`, `associations:harness` **PASS** : témoins autorisés et refus avant effets, clé canonique, objets absents/étrangers/retirés ; requestId scoped, owner-cancel/progress, finalisation inverse ; branches/source/seed/destination contradictoires sans effet B, enfants étrangers/privés/non fiables exclus ; import nouveau explicite, collisions/orphelins/path/mixed batch refusés, overwrite légitime borné | Persistance en mémoire : aucune preuve d'IAM ou concurrence distribuée RTDB. Objets hérités ambigus conservés et refusés ; aucune réattribution. Cycle delete/reset/closure et refonte replay M2 non engagés. |
 | G03 — séparation navigateur | `public/js/identity-storage.js`, `public/index.html`, autres pages et SW ; `91d6e4e`, `3cb24ac`, `3c434b2`, `3db45bb` | `browser-identity:harness`, `object-private:harness` **PASS** : namespaces A/B, logout, onglets, offline et héritage quarantiné ; sondes session retenues avant logout/login B, acteur initial inconnu ou A connu ; fetch résolu puis JSON/chunk tardif refusé ; stockage et retours applicatifs clôturés par génération | DOM/stockage/fetch simulés, pas de recette sur appareil réel. Données légitimes conservées, héritage inconnu non réattribué. Aucun cycle serveur M2 changé. |
 | G04 / CJ2 — privé local et continuité | `server.js`, `public/index.html`, `public/js/conversation-data.js` ; `91d6e4e`, `3cb24ac`, `3c434b2` | `object-private:harness`, `associations:harness` **PASS** : privé multi-tour/rechargement/redémarrage avec memoryState complet IDs/dates, debug N-1, identifiant réutilisé par B isolé, aucun effet durable/cache privé serveur ; réponse normale et crise, tokens avant consolidation finale ; feedback volontaire borné et import privé→public explicite conservés | Transit fournisseur autorisé mais simulé. Consolidation privée attendue pour la réponse finale. Ancien nœud privé et sauvegardes non purgés ; inventaire après bascule dans les autorisations M0/M1 déjà accordées, après satisfaction des prérequis vérifiables ; purge irréversible soumise à ses limites et contrôles propres. |
-| G06 — minimisation des traces | `lib/{log-projection,logger}.js`, `server.js` ; `3cb24ac`, `031c063` | `log-projection:harness`, `object-private:harness`, `professional:harness` **PASS** : sorties du vrai mécanisme de projection avant pino/console/child bindings et serveur privé sans marqueurs factices de secret/transcript/mémoire/debug ; identifiant adversarial absent du journal admin ; diagnostic client sensible désactivé | Aucun dump de logs réels. Historique, rétention et destinations déployées non attestés ; inventaire et politique d'exploitation à traiter séparément. |
+| G06 — minimisation des traces | `lib/{log-projection,logger}.js`, `server.js` ; `3cb24ac`, `031c063` | `log-projection:harness`, `object-private:harness`, `professional:harness` **PASS** : sorties du vrai mécanisme de projection avant pino/console/child bindings et serveur privé sans marqueurs factices de secret/transcript/mémoire/debug ; identifiant adversarial absent du journal admin ; diagnostic client sensible désactivé | Aucun dump de logs réels. Work atteste runtime live `LOG_PERSIST=true`, rétention14, exploitation normale conservée ; historique/destinations et contenu non inspectés. Aucun blocage ni changement `LOG_PERSIST=false`. |
 | G12 — destinations locales | `public/js/local-destination.js`, auth/pro/TWA, routes serveur ; `91d6e4e`, `3cb24ac`, `3c434b2` | `browser-identity:harness` et témoins auth historiques **PASS** : parcours locaux autorisés ; URLs externes, //, backslashes, encodages, fragments et traversées normalisées refusés, repli local sûr | Validation déterministe client/serveur, aucun parcours authentifié réel utilisé. |
 
 ## Statut opérationnel et suite Work
@@ -89,9 +89,15 @@ projet `facilitat-io`, principal
 `firebase-adminsdk-fbsvc@facilitat-io.iam.gserviceaccount.com`.
 Les deux services live restent `f20d84f` : M0/M1 ne sont pas déployés.
 Même cible/principal déclarés, **aucune isolation beta/main démontrée** ; partage
-intentionnel. Métadonnées runtime et règles live confirmées par Work ; droits IAM
-effectifs/bindings/clés encore à collecter. Ces faits viennent d'une lecture seule des
-métadonnées Work, sans lecture applicative ni valeur de clé privée consignée.
+intentionnel. Métadonnées runtime et règles live confirmées par Work ; droits de
+données prouvés, `instances.delete=true` excessif pour M1 sur beta **et main**.
+`setIamPolicy=false`, `firebaseauth.users.delete=false`. Bindings HTTP403
+`PERMISSION_DENIED` sans reason, endpoints permissions du compte/clés HTTP403
+`PERMISSION_DENIED` reason `SERVICE_DISABLED` ; UI IAM et Cloud Shell indisponibles.
+Policies/clés et tous les autres privilèges ne sont pas entièrement qualifiés.
+Ces faits viennent des contrôles bornés Work, sans contenu utilisateur, clé/token
+consigné ou mutation IAM/RTDB. Le [checkpoint](M0-M1-operational-checkpoint.md)
+conserve les permissions accordées/refus exacts et la correction IAM minimale.
 
 Le constat Environment beta initial, avant configuration Work, montrait `USER_SESSION_SECRET` et
 `ADMIN_SESSION_SECRET` **absents**, `ADMIN_PASSWORD` et `SESSION_SECRET`
@@ -99,10 +105,24 @@ Le constat Environment beta initial, avant configuration Work, montrait `USER_SE
 Ce prérequis est désormais satisfait selon Work : quatre secrets de 512 bits
 installés, quatre valeurs distinctes, consommation runtime confirmée des deux
 services. Redéploiements automatiques `f20d84f` live, sans fusion ; contrôles santé
-et session non authentifiée acquis. M1 n'est toujours pas déployé. Rotation/provisioning et migration des capacités
-anciennes restent à exécuter dans les autorisations M0/M1 déjà accordées, après
-satisfaction des prérequis vérifiables ; IAM effectif et liste nominative/rôles
-restent à fournir, pas un nouveau GO général.
+et session explicitement sans cookie acquis : retour avant toute actualisation
+d'usage. Processus beta PID85/main PID84 : credential JSON, schéma attendu,
+`dotenvPresent=false`, `LOG_PERSIST=true`, rétention14, refreshfalse, production,
+port10000. SHA256 `server.js` runtime
+`e53e8469a084896b1ad58b19413c12dfa659a9f67db623f90df748168ba7d555`
+identique à la source Git `f20d84f`, vérifié par Cloud. M1 non déployé.
+
+Inventaire `professionalIdentities` Work HTTP succès : total0, complete=true,
+active/inactive0, chaque rôle0, readFailures0. Aucun compte durable à migrer ni
+écriture. Les **deux blocages précis** : réduction des permissions de gestion
+inutiles, notamment suppression d'instance, impossible avec les accès disponibles ;
+provisioning nominatif/rôles prévus et canal privé de remise à finaliser, ou
+migration bornée du seul propriétaire déjà configuré dans le code hérité, sans
+inventer acteur/rôles ni réutiliser son ancien password. Inspecter bindings et
+autres consommateurs depuis un accès opérateur existant avant réduction ; aucune
+base/projet nouveau, aucun rôle deviné. Aucun secret fournisseur déclaré compromis
+sans preuve, aucune rotation additionnelle automatique. Ces actions relèvent des
+autorisations M0/M1 déjà accordées, pas d'un nouveau GO général.
 
 Le [plan de bascule sûre](M1-runbook.md#plan-de-bascule-sûre-sur-la-cible-partagée)
 séquence attestation runtime/IAM, dépendances de la cible commune, préparation des
@@ -115,8 +135,9 @@ deux services autorisées. Fusions bloquées avant clôture des prérequis, main
 bilan final ; purge irréversible et droits/ressources non définis gardent leurs
 contrôles propres.
 Il ne garantit pas les protections M1 aux
-parcours main restés hérités. PR27 reste draft ; aucun service, secret ni compte
-réel modifié. Les résidus privés et logs restent non purgés.
+parcours main restés hérités. PR27 reste draft ; cette publication Cloud ne modifie
+aucun service, secret ni compte réel. Les opérations de configuration/redéploiement
+Work sont attestées ci-dessus. Les résidus privés et logs restent non purgés.
 
 
 Le [checkpoint opérationnel](M0-M1-operational-checkpoint.md) distingue les preuves

@@ -54,8 +54,8 @@
     "operatorApply": "verrou total conservatoire"
   },
   "operationalStatus": {
-    "renderAttestation": "Runtime des deux services confirmé par Work : secrets dédiés présents/forts/distincts, projet/principal/base attendus, REFRESH_EMERGENCY_ON_BOOT=false. Règles racine fermées et deux index confirmés ; IAM console Site Unavailable, permissions/bindings/clés encore à collecter.",
-    "rotationAndProvisioning": "Quatre secrets dédiés distincts de 512 bits installés par Work, redéploiements automatiques f20d84f sans fusion. Anciennes capacités publiées à abandonner sous M1 ; autres rotations selon nécessité attestée. CJ4/CJ5 sans liste nominative email-rôles : pas de provisioning inventé.",
+    "renderAttestation": "Runtime des deux processus server.js et empreinte f20d84f confirmés par Work ; secrets dédiés présents/forts/distincts, projet/principal/base attendus, refresh=false, LOG_PERSIST=true, rétention14. Règles racine fermées. Accès données prouvé et instances.delete excessif prouvé sur beta/main ; réduction IAM impossible avec accès disponibles, bindings/clés non accessibles.",
+    "rotationAndProvisioning": "Quatre secrets dédiés distincts de 512 bits installés par Work, redéploiements f20d84f sans fusion. Anciennes capacités publiées à abandonner sous M1 ; aucun secret fournisseur déclaré compromis. Inventaire professionnel complet total0 ; identité/rôles prévus et canal privé de remise à finaliser, ou migration bornée du seul propriétaire déjà configuré sans nouveau rôle/acteur inventé. Aucun provisioning réel.",
     "historicalPrivateNodeAndLogs": "Non purgés ; inventaire/rétention dans les autorisations M0/M1 déjà accordées, après satisfaction des prérequis vérifiables. Purge irréversible soumise à ses limites et contrôles propres.",
     "declaredRenderMetadata": {
       "source": "Work, pages Environment Render, lecture seule ; aucune donnée applicative ni valeur de secret/clé privée affichée ou consignée.",
@@ -82,7 +82,8 @@
         "secretFileVisible": false
       },
       "mainDedicatedSecretsStatus": "Présence/longueur/distinction runtime confirmées par Work.",
-      "liveRulesInspectedByWork": true
+      "liveRulesInspectedByWork": true,
+      "iamQualification": "Permissions bornées inspectées par Work ; policies/clés et ensemble complet des privilèges non qualifiés."
     },
     "architecture": "Beta validation ; main future bêta ouverte après pré-FF ; aucune production publique distincte actuellement. Firebase partagé intentionnel, non bloquant par principe ; pas de nouvelle base/projet. Configuration/rotations des deux services autorisées M0/M1, fusions bloquées avant clôture des prérequis, main avant bilan final.",
     "workRuntimeEvidence": {
@@ -101,8 +102,106 @@
       "metricsWindowUTC": "2026-10-05 16:55–17:02 UTC",
       "providerCallsAndBusinessWritesFromChecks": false,
       "mainPublicAppUrl": "https://facilitat.io",
-      "iamEffectiveInspected": false
-    }
+      "iamEffectiveInspected": true,
+      "iamInspectionScope": "Liste bornée testIamPermissions, pas une qualification exhaustive ; bindings/clés refusés.",
+      "serverProcessIds": {
+        "beta": 85,
+        "main": 84
+      },
+      "bothProcesses": {
+        "dotenvPresent": false,
+        "credentialMode": "json",
+        "configSchemaOk": true,
+        "dedicatedSecretsPresent": true,
+        "dedicatedSecretsMinimum": true,
+        "dedicatedSecretsDistinct": true,
+        "expectedProjectPrincipalTarget": true,
+        "refreshEmergencyOnBoot": false,
+        "logPersist": true,
+        "logRetentionDays": 14,
+        "nodeEnv": "production",
+        "port": 10000
+      },
+      "serverSourceSha256": "e53e8469a084896b1ad58b19413c12dfa659a9f67db623f90df748168ba7d555",
+      "baselineServerSourceSha256Matches": true,
+      "baselineHashVerification": "Cloud : SHA256 des octets git show f20d84f1962c552eaebb095d7a9e5ddb63719be7:server.js ; concordance exacte.",
+      "authSessionCookieSent": false,
+      "authSessionUsageRenewal": false
+    },
+    "workIamEvidence": {
+      "source": "Résultats bornés transmis par Work, 05/10/2026 ; aucune mutation IAM/RTDB.",
+      "projectId": "facilitat-io",
+      "principal": "firebase-adminsdk-fbsvc@facilitat-io.iam.gserviceaccount.com",
+      "betaOAuth": "OK",
+      "betaProjectPermissionsHttpStatus": 200,
+      "betaProjectPermissions": {
+        "resourcemanager.projects.get": true,
+        "firebase.projects.get": true,
+        "firebasedatabase.instances.get": true,
+        "firebasedatabase.instances.list": true,
+        "firebasedatabase.instances.update": true,
+        "firebasedatabase.data.get": true,
+        "firebasedatabase.data.update": true,
+        "resourcemanager.projects.getIamPolicy": false
+      },
+      "bothServicesComplementHttpStatus": 200,
+      "sameProjectPrincipalJsonBothServices": true,
+      "bothServicesConfirmedPermissions": {
+        "firebasedatabase.data.get": true,
+        "firebasedatabase.data.update": true,
+        "firebasedatabase.instances.get": true,
+        "firebasedatabase.instances.list": true,
+        "firebasedatabase.instances.update": true,
+        "firebasedatabase.instances.delete": true,
+        "firebaseauth.users.delete": false,
+        "resourcemanager.projects.setIamPolicy": false
+      },
+      "betaBindings": {
+        "httpStatus": 403,
+        "apiStatus": "PERMISSION_DENIED",
+        "reason": null
+      },
+      "betaServiceAccountPermissions": {
+        "httpStatus": 403,
+        "apiStatus": "PERMISSION_DENIED",
+        "reason": "SERVICE_DISABLED"
+      },
+      "betaPrincipalKeyMetadata": {
+        "httpStatus": 403,
+        "apiStatus": "PERMISSION_DENIED",
+        "reason": "SERVICE_DISABLED"
+      },
+      "consoleIamAndCloudShell": "Site Unavailable",
+      "unnecessaryInstanceDeletionPrivilegeProvenBothServices": true,
+      "fullPolicyKeyAndPrivilegeQualification": false,
+      "reductionPossibleWithAvailableAccess": false,
+      "correctionPlan": "Accès opérateur existant aux bindings/policy ; identifier rôles/héritage et autres consommateurs avant réduction des droits de gestion inutiles sur le principal/projet existants. Aucun rôle deviné ni nouveau droit/base/projet.",
+      "iamMutation": false,
+      "rtdbMutation": false,
+      "keyTokenPrinted": false
+    },
+    "workProfessionalInventory": {
+      "source": "Work, mode identities ; HTTP succès.",
+      "total": 0,
+      "complete": true,
+      "active": 0,
+      "inactive": 0,
+      "roles": {
+        "practitioner": 0,
+        "commercial_support": 0,
+        "technical_support": 0,
+        "administrator": 0
+      },
+      "readFailures": 0,
+      "durableAccountToMigrate": false,
+      "provisioningPerformed": false,
+      "boundedLegacyOwnerOption": "Une seule identité propriétaire déjà configurée dans la source héritée ; même email dans configuration professionnelle et full, non publié ici. ID/libellé/rôles explicites et nouveau credential/canal privé à définir ; aucune traduction automatique du scope full.",
+      "missingInputs": "Identité nominative et rôles prévus, ID stable/libellé, canal privé de remise du nouveau credential ; ou finaliser la migration bornée de ce seul propriétaire existant."
+    },
+    "remainingBlockers": [
+      "Réduction IAM impossible avec les accès disponibles : instances.delete excessif prouvé sur beta/main ; bindings/policy et consommateurs à inspecter avant réduction bornée.",
+      "Provisioning nominatif/rôles et remise de credential à finaliser ; ou migration bornée du seul propriétaire configuré, sans acteur/permission inventé."
+    ]
   },
   "sha256": {
     "docs/launch-gate/evidence/m1-clean-install.log": "e68285437d3e8b53ef1c4810662674ade0109b31333a54b4be22e2f56c44b8b7",

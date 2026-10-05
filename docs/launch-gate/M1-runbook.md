@@ -20,18 +20,25 @@ checkpoint courant. Aucun compte nominatif/rôle déduit de CJ4/CJ5.
 1. Attester séparément par service la branche/SHA, la base, le projet Firebase,
    le principal **consommé au runtime** et ses droits IAM/règles RTDB. La
    [carte M0](M0.md) contient désormais les déclarations Render vérifiées par
-   Work : même cible/principal beta/main, runtime et droits non inspectés.
-2. Révoquer/rotater hors Git les secrets précédemment publiés. Configurer des
-   secrets dédiés et distincts `USER_SESSION_SECRET` et `ADMIN_SESSION_SECRET`
-   (au moins 32 caractères aléatoires). Aucun repli sur `SESSION_SECRET` ou mot
-   de passe admin partagé ; aucune capacité TWA large.
+   Work : même cible/principal beta/main, runtime attesté, droits de données et
+   suppression d'instance prouvés. Réduction IAM bloquée par les accès disponibles ;
+   bindings/clés et autres privilèges non entièrement qualifiés.
+2. Secrets dédiés acquis : quatre valeurs distinctes de 512 bits installées par
+   Work sur les deux services, consommation et redémarrages attestés. Ne pas les
+   régénérer sans anomalie. Abandonner avec M1 les capacités publiées héritées et
+   retirer les anciens secrets devenus inutiles après contrôle des consommateurs.
+   Aucun secret AdminSDK/Mistral/SMTP déclaré compromis sans preuve. Aucun repli
+   sur `SESSION_SECRET` ou mot de passe admin partagé ; aucune capacité TWA large.
 3. Provisionner, dans les autorisations M0/M1 déjà accordées, après satisfaction
    des prérequis vérifiables, des identités individuelles dans
    `professionalIdentities/<id>` : email normalisé unique, `passwordHash` scrypt
    via le mécanisme existant, `active`, `roles` explicitement choisis parmi
    practitioner/commercial_support/technical_support/administrator,
    `authorizationVersion` entier non négatif, `displayName` lisible pour le
-   consentement. Aucun compte réel inventé dans cette tâche.
+   consentement. Inventaire complet total0 : aucun compte durable à migrer. Restent
+   identité/rôles prévus et canal privé de remise du nouveau credential, ou migration
+   bornée du seul propriétaire déjà configuré, sans déduire les rôles de son ancien
+   accès full. Aucun compte réel inventé ni créé dans cette tâche.
 4. Les cookies professionnels anciens sont refusés. Les nouvelles sessions
    opaques ont un schéma versionné, une durée maximale de 24 h et une révocation
    durable ; changer `authorizationVersion`, désactiver l'identité ou retirer
@@ -60,9 +67,14 @@ données applicatives. Connexion Render débloquée ; isolation non démontrée.
    permettant de consulter les métadonnées du principal, rôles/bindings IAM,
    règles RTDB, sources des credentials et dépendances de chaque service.
    Consigner base/projet/principal réellement consommés, SHA et source de
-   configuration au runtime, sans clé ni contenu utilisateur. Si un accès IAM,
-   aux règles ou à l'attestation runtime manque, conserver ce prérequis bloquant
-   et la PR en draft. Ne pas remplacer cette preuve par un test sur la base.
+   configuration au runtime, sans clé ni contenu utilisateur. Si un accès IAM
+   manque pour réduire les droits excessifs, conserver ce prérequis bloquant
+   et la PR en draft. Runtime/règles et permissions de données sont attestés ;
+   `instances.delete=true` sur les deux services est excessif pour M1.
+   `setIamPolicy=false` interdit l'autocorrection ; UI IAM/Cloud Shell indisponibles.
+   Inspecter les bindings et les consommateurs depuis un accès opérateur existant,
+   puis réduire les permissions de gestion inutiles sans deviner un rôle ni
+   modifier la cible partagée. Ne pas remplacer cette preuve par un test sur la base.
 2. **Traiter la RTDB comme une cible commune.** Inventorier les chemins concernés
    (users/conversations/messages, anciens privés, identités/sessions
    professionnelles, affectations/grants/journal) et les consommateurs main/beta
@@ -100,7 +112,8 @@ données applicatives. Connexion Render débloquée ; isolation non démontrée.
    révocations ; affectations explicites. Aucun grant de contenu automatique :
    l'utilisateur choisit scope/date/synthèse. Établir les droits d'accès et la
    rétention des nœuds professionnels/journal sur la base commune. Les droits
-   effectifs et le provisioning restent à contrôler ; le partage intentionnel
+   de données sont prouvés ; réduction IAM et provisioning/remise restent à
+   finaliser. Aucun acteur/affectation/grant inventé ; le partage intentionnel
    n'est pas en lui-même un blocage. La future ouverture main attend bilan final
    et pré-FF ; ses protections M1 ne sont pas revendiquées avant promotion.
 5. **Bascule beta dans les autorisations M0/M1 déjà accordées, après satisfaction
@@ -131,7 +144,10 @@ runtime et IAM/règles, inventaire des dépendances partagées, preuve de prépa
 des secrets dédiés sans leurs valeurs, plan de rotation/révocation coordonné,
 liste de provisioning et accès journal approuvés, fenêtre beta et retour sûr.
 Les autorisations M0/M1 sont déjà accordées : aucun nouveau GO général requis.
-Les blocages sont les prérequis concrets de cible/configuration/IAM/provisioning.
+Les deux blocages finaux sont la réduction IAM impossible avec les accès
+disponibles et le provisioning nominatif/remise de credential à finaliser.
+L'empreinte de source runtime correspond au code live `f20d84f` ;
+`LOG_PERSIST=true`, rétention14, exploitation normale conservée, sans blocage ajouté.
 Configuration/rotation des deux services autorisées ; aucune fusion main avant
 bilan final/pré-FF. Purge irréversible et créations/élargissements de droits ou
 ressources non encore définis conservent leurs limites et contrôles propres.

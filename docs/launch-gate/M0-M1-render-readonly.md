@@ -15,6 +15,20 @@ passwordHash, sessions, grants ou autres données. Aucun PATCH/PUT/DELETE ; les
 POST OAuth/testIamPermissions/getIamPolicy sont des opérations d'authentification
 ou de lecture, pas des mutations IAM.
 
+**Collectes exécutées par Work, 05/10/2026 — aucune relance requise pour les docs.**
+OAuth beta OK ; projet HTTP200 : accès `data.get/update`, `instances.get/list/update`
+accordés, `projects.get`/`firebase.projects.get` accordés ; `projects.getIamPolicy=false`.
+Bindings HTTP403 `PERMISSION_DENIED` sans reason ; permissions du compte et clés
+HTTP403 `PERMISSION_DENIED`, reason `SERVICE_DISABLED`. Inventaire identities :
+HTTP succès, total0, complete=true, active/inactive0, tous les rôles0, readFailures0.
+Complément borné exécuté par Work sur **beta et main** : projet/principal JSON
+identiques, HTTP200, `instances.delete=true`, `projects.setIamPolicy=false`,
+`firebaseauth.users.delete=false` ; main confirme `data.get/update` et
+`instances.get/list/update=true`. Suppression d'instance excessive pour M1,
+réduction impossible avec les accès disponibles : inspecter les bindings via un
+accès opérateur existant avant tout choix de rôles ou réduction. Aucun droit élargi,
+aucune écriture ou clé révoquée. Voir le [verdict et les deux blocages](M0-M1-operational-checkpoint.md).
+
 ```sh
 M0M1_METADATA_ACTION=iam node - <<'NODE'
 'use strict';

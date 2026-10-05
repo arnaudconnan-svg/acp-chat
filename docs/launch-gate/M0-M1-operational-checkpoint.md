@@ -34,8 +34,47 @@ HTTP200, authenticated=false, user=null. Une instance stable chacune sur
 Ce sont des preuves Work, pas des commandes réexécutées par Cloud.
 
 Console Firebase : racine `.read=false/.write=false`, seuls index
-`messages.conversationId` et `users.email`. IAM console Google Cloud :
-**Site Unavailable**. Droits du principal et liste de ses clés non encore attestés.
+`messages.conversationId` et `users.email`. IAM console et panneau Cloud Shell :
+**Site Unavailable**. Les résultats bornés Work ci-dessous remplacent l'attente
+de collecte ; ils ne constituent pas une qualification exhaustive des droits.
+
+### Résultats finaux Work et correspondance des sources
+
+Collecte sur les processus `server.js` : beta PID85, main PID84. Pour les deux :
+`dotenvPresent=false`, `credentialMode=json`, `configSchemaOk=true`, secrets
+dédiés présents/longueur minimale/distinction PASS, projet/principal/cible attendus
+PASS, `REFRESH_EMERGENCY_ON_BOOT=false`, **`LOG_PERSIST=true`, rétention 14 jours**,
+`NODE_ENV=production`, port10000. L'exploitation normale des logs est conservée ;
+`LOG_PERSIST=false` n'est ni acquis ni un prérequis. L'empreinte runtime de
+`server.js`, `e53e8469a084896b1ad58b19413c12dfa659a9f67db623f90df748168ba7d555`,
+correspond exactement au SHA256 calculé par Cloud sur `git show f20d84f:server.js`.
+La sonde `/api/auth/session` était explicitement sans cookie : retour avant tout
+renouvellement d'usage.
+
+| Contrôle Work | Résultat réel |
+| --- | --- |
+| OAuth beta | OK ; aucun token consigné |
+| `testIamPermissions` projet beta, HTTP200 | `resourcemanager.projects.get`, `firebase.projects.get`, `firebasedatabase.instances.get/list/update`, `firebasedatabase.data.get/update` accordés ; `resourcemanager.projects.getIamPolicy=false` |
+| Complément projet beta puis main, HTTP200 | `firebasedatabase.instances.delete=true`, `resourcemanager.projects.setIamPolicy=false`, `firebaseauth.users.delete=false` ; main confirme aussi `data.get/update` et `instances.get/list/update=true`, même projet/principal JSON |
+| Bindings du principal, beta | HTTP403 `PERMISSION_DENIED`, aucune reason renvoyée |
+| `service_account_permissions`, `principal_key_metadata`, beta | HTTP403 `PERMISSION_DENIED`, reason `SERVICE_DISABLED` |
+| Inventaire `professionalIdentities`, mode identities | HTTP succès, total0, complete=true, active/inactive0, chaque rôle0, readFailures0 |
+
+**Verdict :** cible partagée acceptable dans l'architecture actée ; droits de
+données prouvés et **suppression d'instance excessive pour les accès métier M1
+prouvée depuis les deux services**. Bindings, clés et ensemble complet des droits
+restent non qualifiés. Les règles racine fermées ne bornent pas ces droits AdminSDK.
+Aucune mutation IAM/RTDB ni compte créé ; aucun secret fournisseur déclaré compromis.
+
+**Correction IAM minimale à préparer sur le projet/principal existants :** rétablir
+un accès opérateur déjà habilité à lire/modifier la policy, inspecter bindings et
+héritage, identifier leurs rôles exacts et les autres consommateurs, puis retirer
+les permissions de gestion d'instance inutiles en conservant les accès nécessaires.
+Ne pas deviner un rôle, révoquer une clé, créer une base ou accorder `setIamPolicy`
+à ce principal. Il ne peut pas se réduire lui-même ; UI/Cloud Shell indisponibles
+et accès actuels insuffisants. Une modification future sera bornée à la policy
+identifiée, avec contrôle des consommateurs et vérification des permissions après.
+Ce blocage d'accès concret ne requiert aucun nouveau GO général M0/M1.
 
 ## Consommation des sources et effets
 
@@ -74,7 +113,8 @@ peut persister le renouvellement d'enveloppe, donc pas de sonde de contenu.
 
 La [commande standalone prête à copier](M0-M1-render-readonly.md) utilise le
 credential local sans gcloud : mode `iam` pour permissions/bindings/clé-métadonnées,
-mode `identities` pour inventaire borné des compteurs/roles/état. Chaque refus sort
+mode `identities` pour inventaire borné des compteurs/roles/état. Ces collectes ont
+été exécutées par Work ; ne pas les répéter pour cette publication. Chaque refus sort
 HTTP/API status/reason ou OAuth code exact, sans clé/token/corps brut. Permissions
 mesurées ne sont pas déduites du seul nom AdminSDK. Les règles racine n'empêchent
 pas un principal ayant les droits administratifs d'accéder via Admin SDK.
@@ -85,9 +125,11 @@ pas un principal ayant les droits administratifs d'accéder via Admin SDK.
   devenus inutiles sous M1 ; passwords/replis littéraux publiés sont abandonnés
   par le code M1 et ne deviennent pas des mots de passe individuels. Leur rotation
   env seule ne supprime pas les chemins codés en dur de `f20d84f`.
-- **Révocation ciblée si sessions M1 préexistantes :** revoked ou hausse de
-  authorizationVersion ; une rotation HMAC seule ne suffit pas. Ne pas créer ni
-  purger des sessions pour les tester.
+- **Identités durables :** inventaire complet total0, aucun compte durable à
+  migrer ni credential individuel existant à rotater identifié. Les sessions
+  n'ont pas été inventoriées ; aucun reset/purge ou token fabriqué. Si une session
+  M1 préexistante est ultérieurement identifiée, révocation ciblée/version ; la
+  rotation HMAC seule ne suffit pas.
 - **AdminSDK/Mistral/SMTP :** rotation seulement si exposition/compromission,
   expiration ou nécessité opérationnelle attestée. La présence du principal ou
   d'un nom d'env ne prouve pas une exposition de clé. Remplacer chez tous les
@@ -99,8 +141,16 @@ pas un principal ayant les droits administratifs d'accéder via Admin SDK.
 ## Identités : entrées manquantes et préparation exacte
 
 CJ4/CJ5 ne donnent **aucune liste nominative email→rôles**. Restent à fournir pour
-chaque identité prévue : ID stable, email normalisé unique, displayName et rôles
-explicitement choisis. Aucun nom/personne/affectation/grant déduit ou inventé.
+chaque identité prévue : ID stable, email normalisé unique, displayName, rôles
+explicitement prévus et **canal privé de remise d'un nouveau credential**. Aucun
+nom/personne/affectation/grant déduit ou inventé. Autre chemin borné possible :
+migrer le **seul compte propriétaire déjà configuré dans le code hérité**. Lecture
+de source sans publier son email/password : un email dans la configuration
+professionnelle et un dans l'accès full, même email. Ce n'est pas une fiche durable
+existante : inventaire total0. Réutiliser cette identité connue depuis la source
+contrôlée, définir ID/libellé/rôles minimaux et canal de remise ; ne pas traduire
+automatiquement « full » en administrator/practitioner, ni reprendre son ancien
+password publié. Aucun autre acteur ajouté, aucune migration exécutée ici.
 Pas d'API/CLI de gestion des identités ; `/api/pros/login` et son alias admin
 ne font qu'authentifier. Pas de provisioning Firebase Authentication.
 
@@ -140,7 +190,7 @@ try {
 unset m0m1_password
 ```
 
-Work : inventaire sans email/hash d'abord ; puis unicité de l'email précis sur
+Work : inventaire sans email/hash acquis (total0) ; puis unicité de l'email précis sur
 le seul nœud professionnel, provisionnement sérialisé et transaction **sur l'ID
 prévu uniquement**, `current === null ? record : undefined`. Aucun overwrite
 ou écriture racine. Revérifier unicité, puis activation délibérée de la fiche
@@ -152,17 +202,21 @@ hash, contenu ou token : compteur/code/version/résultat. Aucun provisioning ré
 
 ## Contrôles restants et seuil de livraison
 
-1. Recevoir IAM effectif/bindings/clé-métadonnées ou refus exact et l'inventaire
-   borné professionnel ; accès console IAM manquant ne vaut pas absence de GO.
-2. Fournir la liste nominative/rôles prévue, résoudre unicité/index et provisioning
-   borné ; confirmer les seules rotations encore nécessaires. Aucun vrai compte
-   créé avant définition de ces entrées.
+1. **Blocage IAM :** réduction du droit `instances.delete` et des autres droits
+   de gestion inutiles impossible avec les accès disponibles. Obtenir l'accès
+   opérateur existant aux bindings/policy, qualifier consommateurs/rôles, puis
+   préparer la réduction bornée ; aucun nouveau GO général requis.
+2. **Blocage provisioning :** identité nominative/rôles prévus et canal de remise
+   à finaliser, ou migration bornée du seul propriétaire configuré ci-dessus.
+   Ensuite unicité/index et provisioning précis ; aucune personne/permission
+   inventée, aucune fiche créée à ce stade.
 3. Intégrer ces preuves avant clôture des blocages et livraison beta. Main reste
    code hérité jusqu'au bilan final/pré-FF ; le partage n'impose pas une autre base.
    Aucune fusion pendant cette étape.
 4. Après env, santé/SHA sans cookie sont **déjà contrôlés par Work**, pas à relancer
    pour les docs. `config:check` seul ne teste pas minimum/distinction des secrets.
    `smoke:ui:preff` force LLM : ne pas l'utiliser dans cette phase sans provider.
+   Pas de garde pré-FF supplémentaire pour ce commit docs sans promotion.
    À la future promotion, `preff:git:guard` vérifie Git/ascendance (pas de boot) ;
    synchronisation post-promotion obligatoire selon WORKFLOW, jamais avant.
 
