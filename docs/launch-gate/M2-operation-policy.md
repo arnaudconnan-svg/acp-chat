@@ -1,4 +1,4 @@
-# M2 — politique d'opération (en cours)
+# M2 — politique d'opération de la candidate vérifiée, non déployée
 
 Le contrat de suppression est physique pour les données actives connues et
 attribuables. Les enfants historiques étrangers ou sans propriétaire fiable ne

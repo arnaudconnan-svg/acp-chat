@@ -1,0 +1,29 @@
+PASS real Stop keeps its launch destination after public_navigation
+PASS real Stop keeps its launch destination after private_navigation
+PASS real Stop keeps its launch destination after identity
+PASS real Stop keeps its launch destination after identity_roundtrip
+PASS real close frontend destination after conversation
+PASS real close frontend destination after identity
+PASS real close frontend destination after delete
+PASS real close frontend destination after manual
+PASS real reset handler clears the old identity despite wrapper activation of new identity
+PASS real closure handler removes this device content and invalidates identity
+PASS real copy frontend resumes exact request after lost acknowledgement and hydrates canonical destination
+PASS real copy body delayed through identity cannot activate/store old destination
+PASS real copy body delayed through retirement cannot activate/store old destination
+PASS real make-public retries frozen import then maps acknowledged IDs; failed import stays private
+PASS real replay frontend keeps destination/request across reload and hydrates current acknowledged copy
+PASS real stream reader disabled: only explicit disabled permits classic fallback
+PASS real stream reader other405: only explicit disabled permits classic fallback
+PASS real stream reader error: only explicit disabled permits classic fallback
+PASS real stream reader success: only explicit disabled permits classic fallback
+PASS real stream reader network: only explicit disabled permits classic fallback
+PASS real stream reader rejects delayed body chunk after identity
+PASS real stream reader rejects delayed body chunk after retirement
+PASS real save receipt distinguishes confirmed, uncertain and replaced without old local resurrection
+PASS real interrupted-stream frontend receipt confirmed is scoped and truthful
+PASS real interrupted-stream frontend receipt uncertain is scoped and truthful
+PASS real interrupted-stream frontend receipt private is scoped and truthful
+PASS real interrupted-stream frontend receipt identity is scoped and truthful
+PASS real interrupted-stream frontend receipt completed_wins is scoped and truthful
+M2 browser: 28 PASS

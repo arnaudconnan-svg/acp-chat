@@ -1,0 +1,167 @@
+{
+  "scope": "M2 G05/G10/G15, minimum G17, preparation G22 only",
+  "status": "implemented_verified_draft_not_deployed",
+  "baseline": "5b3f83a5b9b6b2824c8bca578976bcca8eb4f390",
+  "tested_commit": "337420cfaac951bb989bc4ab6378ea45631b4582",
+  "date_utc": "2026-10-05",
+  "branch": "work/m2-launch-gate",
+  "pull_request": {
+    "number": 28,
+    "draft": true,
+    "base": "beta",
+    "depends_on": 27
+  },
+  "independent_checkout": {
+    "method": "git clone --no-hardlinks --branch work/m2-launch-gate /workspace/acp-chat /workspace/work/m2-independent-337420c",
+    "head_matches_tested_commit": true,
+    "clean_before": true,
+    "clean_after": true,
+    "node": "v24.19.0",
+    "npm": "11.9.0"
+  },
+  "commands": [
+    {
+      "command": "npm ci --ignore-scripts --no-audit --no-fund --cache /workspace/work/m2-npm-cache",
+      "exit": 0,
+      "note": "fresh dependencies from package-lock; no application install scripts"
+    },
+    {
+      "command": "node --check server.js",
+      "exit": 0
+    },
+    {
+      "command": "bash scripts/synthetic/verify.sh",
+      "exit": 0,
+      "guard": "scripts/synthetic/guard.cjs",
+      "note": "real Express without listener; synthetic SDK/provider injections; Git harnesses use fixture repositories only"
+    },
+    {
+      "command": "git diff --check",
+      "exit": 0
+    },
+    {
+      "command": "git status --porcelain=v1",
+      "exit": 0,
+      "stdout": ""
+    }
+  ],
+  "targeted_pass": {
+    "lifecycle": 18,
+    "chat": 17,
+    "browser": 24,
+    "copies": 18,
+    "stream": 8,
+    "total": 85
+  },
+  "existing_regressions": "PASS through verify:synthetic and npm run verify",
+  "evidence": {
+    "docs/launch-gate/evidence/M2-final-verify.log": "23e49fffc8eafddb4dc5f5bd8adf2a553310d592b2ed933bf0bac8b5bf2ef638",
+    "docs/launch-gate/evidence/M2-clean-install.log": "6960fe58118b1bc48584d69a4eb99f4a1ca6bca891ab33eaba692fdb97110c89",
+    "docs/launch-gate/evidence/M2-stop-browser.log": "4579b9a4c724a85d0a859d5bf12d2e296fcbaa26a1b184f32c05d351d57033dd"
+  },
+  "source_sha256": {
+    "server.js": "76108d277453f3f7842457a2a752746e440e3504b2010a9d24d5402fbe2d6676",
+    "lib/data-lifecycle.js": "766068d08cd8e3f14a001b967f5eca3c072f693bf4a826ee7373716b8c278a6a",
+    "lib/conversation-copies.js": "c857db7b3fea04a2c755b4c3adba84a2a2067dc139461d13e45a9522acdbec85",
+    "lib/memory.js": "624c7dc7d72616795671e9b1053941a9063073cd8b5133af228da33907c432b9",
+    "lib/professional-access.js": "45ea168f0a863c2a66ff20c69a76f809da03dcd656a38486c1bf8bd3cd6f2afc",
+    "lib/debugmeta.js": "6707aefeedb077b3e0e3fcacf35d484bddb165bd39a449ee7df8e7399c65a81e",
+    "public/index.html": "c25fb216483a1923ee327832b04e37ad8caf0bb39ba9e5a74aa891e9075c168f",
+    "public/admin.html": "a066f923d9cce5277e05632d0da121aba17b87d5786e9cdd600abe0ad5c2fc08",
+    "public/account.html": "23519d29a4a6a1624ec31c0826162df7996ce0e159ab59bb1a3161a0dd2515b0",
+    "public/account-deletion.html": "ef0ec7d010c0be45367953bc3bed75ddeee0d272adbfd830e2b076bae35e3a38",
+    "public/js/identity-storage.js": "db378594d5dcfcbfc50f1262e28b6ba42c1a4c4016ace7de12a9c2ab69283940",
+    "public/js/debug-shared.js": "ee098ad9792d456a9fc4e54477eb5296523039dbb4480cb394f322f854f97743",
+    "package.json": "3f0b9eb4d4c06e6475c9f5f535d61f9939e0b2ed6bb4ebc85689a71577ea38d2",
+    "package-lock.json": "b373caed761058422a72c9cbd61a59993cdea5a7f6a7675f667b63d787380458",
+    "scripts/synthetic/guard.cjs": "1b1de1bdfc83938a6372fb2f9f8a8f4698af09258e46036a619d678cb129068d",
+    "scripts/synthetic/runtime.cjs": "b3d82a255718806617a39133920d2eb4ab37d8d90217f05f634fd89563cd7b16",
+    "scripts/synthetic/verify.sh": "77e57f806ea9ab9a9ab929f4ca2fddd4cfe135606a2dc64d4d2d47b522ab0d6e",
+    "scripts/synthetic/m2-browser-harness.cjs": "bd51b2166c2d84ebed4686f2e9bf5c4f200c34d462064d70913dffdea3b72bb3",
+    "scripts/synthetic/m2-chat-harness.cjs": "5bdbf1aec7fd5cb2054c1d25752e8943c24169001150997b7a32ba67f174f157",
+    "scripts/synthetic/m2-copies-harness.cjs": "3bdd4305ce885d1966bb1919fdafb0c765809dab850ed6c1c132e30c8bcefd25",
+    "scripts/synthetic/m2-lifecycle-harness.cjs": "5061cc88069cb1234f2ffec9bbdd60cf76650497a28ff1a5000c9718daa84cac",
+    "scripts/synthetic/m2-stream-harness.cjs": "0415c68c17740a62997dc5ebcd217170e5e2860511283c52e125e965efde919b"
+  },
+  "remote_refs_observed": {
+    "beta": "f20d84f1962c552eaebb095d7a9e5ddb63719be7",
+    "main": "f20d84f1962c552eaebb095d7a9e5ddb63719be7",
+    "work/m0-m1-launch-gate": "5b3f83a5b9b6b2824c8bca578976bcca8eb4f390",
+    "work/m2-launch-gate": "337420cfaac951bb989bc4ab6378ea45631b4582"
+  },
+  "pr27": "open draft, unmerged, unchanged",
+  "not_executed": [
+    "merge",
+    "deployment",
+    "live pre-FF",
+    "real application data or provider calls",
+    "historical purge",
+    "load testing",
+    "CJ6 acceptance",
+    "M3-M6"
+  ],
+  "limitations": [
+    "mixed-version f20 writers do not obey M2 fences; coordination/temporary neutralization required before global guarantee on shared Firebase",
+    "root RTDB transactions require capacity qualification with M4 before opening",
+    "G17 industrialization of technical registries remains deferred",
+    "replay is explicit reconstruction, not automatic historical fidelity",
+    "other offline devices cannot be remotely erased",
+    "completed-wins leaves partial browser text unconfirmed, never labeled saved with the complete message ID"
+  ],
+  "history": [
+    "e146518 lifecycle checkpoint and full log preserved",
+    "6693f24 chat/front/copies checkpoint and full log preserved",
+    "transient 401 proved session creation used two clock reads; same-instant fix plus advancing-clock oracle, no role/schema change",
+    "final frontend completed-wins oracle included in independent full runner",
+    "ae87d97: scoped Stop launch destination/identity fix, 28 browser PASS in independent clone; full runner at 337420c preserved without rerun"
+  ],
+  "documentation_followup": "Only docs/launch-gate changes after latest_code_commit; publication checks no code/test delta.",
+  "tested_commit_note": "Full runner at tested_commit; scoped Stop follow-up below at latest_code_commit, no full-suite rerun.",
+  "latest_code_commit": "ae87d9714655d3beebdb02317f3c50fb43ce3f37",
+  "stop_followup": {
+    "tested_commit": "ae87d9714655d3beebdb02317f3c50fb43ce3f37",
+    "independent_checkout": "/workspace/work/m2-independent-337420c, advanced via local fetch and detached checkout",
+    "clean_before": true,
+    "clean_after": true,
+    "dependency_lock_unchanged": true,
+    "code_delta_since_full_runner": [
+      "public/index.html",
+      "scripts/synthetic/m2-browser-harness.cjs"
+    ],
+    "commands": [
+      {
+        "command": "node --check server.js",
+        "exit": 0
+      },
+      {
+        "command": "node --check scripts/synthetic/m2-browser-harness.cjs",
+        "exit": 0
+      },
+      {
+        "command": "env -i PATH=\"$PATH\" NODE_ENV=test NODE_OPTIONS=\"--require=$PWD/scripts/synthetic/guard.cjs\" node scripts/synthetic/m2-browser-harness.cjs",
+        "exit": 0
+      },
+      {
+        "command": "git diff --check",
+        "exit": 0
+      },
+      {
+        "command": "git status --porcelain=v1",
+        "exit": 0,
+        "stdout": ""
+      }
+    ],
+    "browser_pass": 28,
+    "new_stop_cases": 4,
+    "new_cases": [
+      "public conversation navigation preserves launch destination/privacy",
+      "private conversation navigation preserves launch destination/privacy",
+      "different identity refuses Stop without effects/network",
+      "same identity after generation change refuses Stop without effects/network"
+    ],
+    "source_sha256": {
+      "public/index.html": "af739ee5f0a11cd90b69a919662a7f7655edf93b5e226838c1aa16df85ec3762",
+      "scripts/synthetic/m2-browser-harness.cjs": "d920d60df4354fc5d968dcef1808265a9af5db004a795105c57a80563a1f4ae4"
+    }
+  }
+}

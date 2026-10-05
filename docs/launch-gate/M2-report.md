@@ -1,6 +1,6 @@
 # M2 — retrait, concurrence et copies
 
-Candidate implémentée, non déployée. PR28 reste **draft**, base `beta`, dépendante
+M2 implémenté et vérifié dans le périmètre autorisé ; candidate non déployée. PR28 reste **draft**, base `beta`, dépendante
 de PR27. Référence de diff M2 : `5b3f83a5b9b6b2824c8bca578976bcca8eb4f390`.
 Les résultats et la branche M0/M1 sont conservés. Aucun merge, pré-FF réel,
 bascule, appel fournisseur, donnée réelle ou M3–M6 dans cette mission.
@@ -10,7 +10,7 @@ bascule, appel fournisseur, donnée réelle ou M3–M6 dans cette mission.
 | Gate | Résultat de la candidate | Preuve et limite |
 | --- | --- | --- |
 | G05 | Retrait physique des objets actifs attribuables ; fences durables au commit et refus à la restitution. Reset renouvelle l'identité utilisateur ; clôture ne crée plus d'archive intégrale. | Vrais handlers avec writer/mémoire retenus pendant delete/reset/close, reprise après restart, enfants étrangers préservés mais jamais restitués via un parent retiré. Copies volontaires de feedback distinctes de leur source. |
-| G10 | Enfants suivis jusqu'à terminaison ; rejets attachés immédiatement ; résultat mémoire invalide distinct de completed ; priorité manuelle et versions au commit ; destination close figée. | Réponse N disponible puis écriture retenue pendant N+1 : message conservé, effets courants périmés écartés. Remplacement : ancienne génération refusée pour writer, mémoire, persistance et consolidation. Stop vérifié dans le commit. |
+| G10 | Enfants suivis jusqu'à terminaison ; rejets attachés immédiatement ; résultat mémoire invalide distinct de completed ; priorité manuelle et versions au commit ; destination close figée. | Réponse N disponible puis écriture retenue pendant N+1 : message conservé, effets courants périmés écartés. Remplacement : ancienne génération refusée pour writer, mémoire, persistance et consolidation. Stop vérifié dans le commit ; destination et identité figées au lancement côté navigateur. |
 | G15 | Branches, snapshots, replay et import atomiques/récupérables ; create/replace explicite ; versions et provenance ; streaming désactivé refuse avant effets, activé couvert. | Matrice `M2-G15-matrix.md`, vrais handlers Express et fonctions frontend, ack perdu/retry/conflit. Replay = reconstruction admin explicite, sans fidélité historique automatique annoncée. |
 | G17 minimum | Inventaire des objets/contrôles, promesses de retrait, reçus supprimés avec leurs objets, garde opérateur conservé, preuves reproductibles. | Industrialisation, capacité, compaction des marqueurs et opérations historiques reportées ; aucune durée juridique nouvelle ni purge. |
 | G22 | Dossier de preuves et conditions de validation future préparés. | Acceptation CJ6 future, non exécutée ; aucune bêta ouverte annoncée. |
@@ -23,6 +23,10 @@ ou de l'activation du contenu : les anciens writers/mémoires ne peuvent pas
 réinjecter le contenu remplacé. `m2CopyVersion` progresse pour toute mutation du
 parent ou de ses messages ; replace revalide sa valeur préparée dans la même
 transaction que la mutation. Les trois rôles de ces compteurs sont distincts.
+
+Stop conserve la conversation, le statut privé et la génération d’identité de la
+requête lancée. La navigation ne redirige pas son annulation ; une bascule
+d’identité la refuse, même après retour au même compte.
 
 Les requêtes publiques possèdent une référence technique sous le parent et un
 emplacement de réponse déterministe. Stop/interruption annulent le commit tardif,
@@ -73,10 +77,33 @@ utilisent uniquement leurs dépôts de fixtures ; ils ne lancent aucun protocole
 pré-FF sur la branche de travail. Les retours de transaction null initial,
 callback rejoué, concurrence au commit et ack perdu sont explicitement simulés.
 
-Les checkpoints e146518 et 6693f24 et leurs logs restent conservés. Le runner
-complet a également passé après la génération de contenu et le streaming ; le
-contrôle completed-wins navigateur, ajouté ensuite, passe ciblé. Le dernier
-contrôle depuis clone propre et son SHA sont consignés dans le manifeste final.
+Les checkpoints e146518 et 6693f24 et leurs logs restent conservés. Vérification
+finale **PASS, code 0**, dans un clone indépendant propre du commit
+`337420cfaac951bb989bc4ab6378ea45631b4582`, avec `npm ci --ignore-scripts`,
+Node v24.19.0 et npm 11.9.0. **85 oracles M2** : 18 lifecycle + 17 chat +
+24 navigateur + 18 copies + 8 stream, puis toutes les suites du runner existant.
+Le checkout indépendant est resté propre avant/après ; `node --check` et
+`git diff --check` PASS. Ce résultat global reste attaché à ce SHA.
+
+Dernière correction ciblée de destination Stop :
+`ae87d9714655d3beebdb02317f3c50fb43ce3f37`. Seuls `public/index.html` et son
+harnais navigateur changent depuis le SHA global testé. Le clone indépendant
+a été avancé vers ce commit, sans réinstallation ni partage de node_modules ;
+**28 contrôles navigateur PASS**, dont quatre nouveaux cas : navigation depuis
+une requête publique/privée, changement d’identité, retour au même compte avec
+nouvelle génération. Le vrai bloc de lancement et la vraie fonction Stop sont
+exécutés ; la destination initiale reste exacte ou aucun appel ne part.
+`node --check server.js`, syntaxe du harnais et `git diff --check` PASS ; clone
+propre avant/après. Pas de relance des suites acquises. Seule la documentation
+change après ce dernier commit applicatif.
+
+Sortie complète : `evidence/M2-final-verify.log`, SHA256
+`23e49fffc8eafddb4dc5f5bd8adf2a553310d592b2ed933bf0bac8b5bf2ef638`.
+Complément Stop : `evidence/M2-stop-browser.log`, SHA256
+`4579b9a4c724a85d0a859d5bf12d2e296fcbaa26a1b184f32c05d351d57033dd`.
+Installation propre : `evidence/M2-clean-install.log`. Commandes, empreintes
+sources, compteurs et références distantes : `evidence/M2-final-manifest.json`.
+PR27 reste open draft à 5b3f83a ; beta/main sont toujours à f20d84f.
 
 ## Réserves de livraison
 

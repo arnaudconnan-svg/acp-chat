@@ -1,4 +1,4 @@
-# M2 — checkpoint en cours, non livré
+# M2 — checkpoints et clôture de la candidate, non livrée
 
 Départ vérifié le 5 octobre 2026 : `5b3f83a5b9b6b2824c8bca578976bcca8eb4f390`,
 checkout propre, descendant de `origin/beta` (`0/19`). Références distantes :
@@ -124,3 +124,46 @@ intermittent observé et testée par horloge avançante ; aucune reprise M1/PR27
 
 Rapport : `M2-report.md`. Matrice : `M2-G15-matrix.md`. Réserves opérationnelles,
 version mixte f20 et coût racine conservés. Toujours aucun merge/déploiement réel.
+
+
+## Bilan final publié — M2 implémenté et vérifié, PR28 draft
+
+Commit applicatif testé : `337420cfaac951bb989bc4ab6378ea45631b4582`.
+Clone indépendant créé sans hardlinks ; installation fraîche du package-lock
+avec scripts d'installation désactivés. `node --check server.js`, runner
+`bash scripts/synthetic/verify.sh` et `git diff --check` : PASS, code 0.
+85 contrôles M2 ciblés (18 + 17 + 24 + 18 + 8) puis toutes les suites existantes.
+Checkout indépendant propre avant/après. La dernière correction completed-wins
+navigateur est incluse : partiel non confirmé, aucun ID de réponse complète
+attribué à ce partiel. La revue ultérieure de destination Stop est consignée
+ci-dessous avec sa correction ciblée.
+
+Log final : `evidence/M2-final-verify.log`, empreinte
+`23e49fffc8eafddb4dc5f5bd8adf2a553310d592b2ed933bf0bac8b5bf2ef638`.
+Manifeste : `evidence/M2-final-manifest.json`, avec SHA sources et installation.
+Ce résultat global demeure attaché à 337420c ; le complément ciblé suit.
+PR28 reste draft base beta ; PR27 open draft et sa branche
+restent à 5b3f83a, beta/main à f20d84f. Aucun merge/déploiement/bascule/pré-FF
+réel/M3+. G22 préparé seulement ; G17 industrialisation et capacité/M4 reportées.
+La coordination des writers f20 et le coût racine restent des conditions de
+livraison ultérieure, pas des opérations effectuées par cette mission.
+
+## Complément final — destination Stop figée
+
+Commit applicatif : `ae87d9714655d3beebdb02317f3c50fb43ce3f37`. Revue concrète corrigée :
+Stop utilisait la conversation affichée au clic alors que requestId appartenait
+encore à la requête précédente. Son contexte conserve désormais conversation,
+privé et identité/génération au lancement, utilisés aussi par le payload initial
+et l’accusé d’interruption. Une identité différente ou renouvelée refuse Stop.
+Le contexte est libéré avec la requête. Aucun changement de priorité serveur.
+
+Vrai bloc frontend de lancement puis vraie fonction Stop : 4 nouveaux oracles
+(navigation public/privé, identité différente, retour au même compte). Harnais
+navigateur complet **28 PASS** au commit ci-dessus dans le clone indépendant ;
+`node --check server.js`, syntaxe du harnais, `git diff --check` PASS, checkout
+propre avant/après. Seuls index.html et son harnais diffèrent de 337420c hors docs.
+Régression globale 85 PASS et suites existantes de 337420c conservées sans rerun.
+Sortie : `evidence/M2-stop-browser.log`, SHA256
+`4579b9a4c724a85d0a859d5bf12d2e296fcbaa26a1b184f32c05d351d57033dd`. Manifeste mis à jour avec les deux SHA de preuve.
+Le commit de consignation final ne modifie que docs/launch-gate. Aucun point
+de revue M2 restant ouvert ; PR28 draft, PR27 intacte, aucune livraison effectuée.
