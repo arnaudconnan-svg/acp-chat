@@ -122,7 +122,7 @@ La restriction AGENTS sur les smoke tests HTTP sous identité personnelle reste
 respectée : aucune session navigateur/cookie ni lecture métier par Work. La
 validation directe du module ci-dessous est explicitement demandée par l'utilisateur.
 
-Schéma exact, mapping nominatif uniquement dans le helper opérateur :
+Schéma exact, mapping résolu uniquement en mémoire depuis la source live épinglée :
 
 ```text
 professionalIdentities/launch-owner
@@ -138,7 +138,7 @@ professionalIdentities/launch-owner
 consomme pas ce nœud. Cela ne déploie ni n'active le code M1. Nouveau password
 établi/conservé par le propriétaire dans son canal privé ; pas de génération Cloud,
 SMTP, hash/password/token imprimé ou sauvegardé par le helper. Ni args/env/history
-ni chat/GitHub/checkpoint. Le canal concret proposé est **saisie directe par Arnaud
+ni chat/GitHub/checkpoint. Le canal concret proposé est **saisie directe par le propriétaire
 dans sa session Render Web Shell**, avec conservation privée dans son gestionnaire
 habituel. Work démarre le helper et passe la main ; seul l'utilisateur saisit/confirme
 et soumet le nouveau credential, conformément à la passation navigateur demandée.
@@ -153,7 +153,7 @@ contrôlées avant chargement natif. Aucun téléchargement séparé de module.
 Le helper refuse toute différence, mauvais service/SHA/contexte ou absence de TTY.
 
 ```sh
-umask 077 && M0M1_OWNER_FILE=$(mktemp /tmp/m0m1-owner.XXXXXX.cjs) && curl --fail --silent --show-error --proto '=https' --tlsv1.2 --max-time 60 https://raw.githubusercontent.com/arnaudconnan-svg/acp-chat/work/m0-m1-launch-gate/docs/launch-gate/operators/owner-provision.cjs -o "$M0M1_OWNER_FILE" && node -e 'const fs=require("node:fs"),c=require("node:crypto");if(c.createHash("sha256").update(fs.readFileSync(process.argv[1])).digest("hex")!=="485968e605e82c6d7eb1299a806831053d648887429d35ec188aec3e587c7c9f")process.exit(1)' "$M0M1_OWNER_FILE" && node "$M0M1_OWNER_FILE"
+umask 077 && M0M1_OWNER_FILE=$(mktemp /tmp/m0m1-owner.XXXXXX.cjs) && curl --fail --silent --show-error --proto '=https' --tlsv1.2 --max-time 60 https://raw.githubusercontent.com/arnaudconnan-svg/acp-chat/work/m0-m1-launch-gate/docs/launch-gate/operators/owner-provision.cjs -o "$M0M1_OWNER_FILE" && node -e 'const fs=require("node:fs"),c=require("node:crypto");if(c.createHash("sha256").update(fs.readFileSync(process.argv[1])).digest("hex")!=="c661db9f2d65efae8f82714ca4c5161dd7d294812a3b5b18134bddf0a26bcb3e")process.exit(1)' "$M0M1_OWNER_FILE" && node "$M0M1_OWNER_FILE"
 ```
 
 Commande volontairement **mono-ligne**, sans heredoc ni collage de source multiligne.
@@ -164,7 +164,10 @@ timer applicatif ou déploiement. Il charge AdminSDK déjà installé et config 
 identique entre live/M1 ; aucun server/logger/provider.
 
 Avant toute saisie : contexte exact projet/base/principal, service beta et SHA
-f20, modules/schéma, absence de fiche/email **et namespace professionnel vide**.
+f20, empreinte exacte de server.js live puis extraction de sa seule liste propriétaire
+et vérification SHA256 de l’email normalisé attendu, sans eval/require du serveur
+ni extraction/copie des passwords legacy. Aucune constante email en clair dans
+le helper. Modules/schéma, absence de fiche/email **et namespace professionnel vide**.
 Inventaire Work précédent total0. Création atomique par transaction sur
 `professionalIdentities` **uniquement si encore null** : une seule fiche, aucune
 réécriture d'une fiche ni de la racine RTDB ; un ajout concurrent fait refuser la
@@ -213,6 +216,8 @@ candidat M1 : `eca5fb9148a737a5e549993ec244ccd5680e09007a4660b31d82882be357dc85`
 Modules auth/professionnel identiques au SHA testé. Nouveaux helpers :
 `node --check` réussi, commandes mono-ligne `bash -n` réussies ; sources embarquées
 comparées octet pour octet au SHA testé, empreintes de notice concordantes.
+Résolveur propriétaire vérifié sans SDK : source live acceptée, source altérée et
+empreinte email différente refusées ; server.js jamais évalué.
 **Aucune exécution réelle**, aucune répétition de harness.
 `git diff --check` et absence de modification applicative contrôlés à publication.
 Restent les observations bindings/réduction IAM, puis la saisie/remise privée du

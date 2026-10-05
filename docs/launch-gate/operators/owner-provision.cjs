@@ -1,7 +1,7 @@
 'use strict';
 
 // Operator only. No server import, HTTP cookie, provider call or deployment.
-// Mapping authorized by the owner; never emit it or any credential material.
+// Resolve the authorized owner from pinned live source, never emit the mapping.
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
@@ -12,12 +12,13 @@ process.stdout.write = () => true;
 process.stderr.write = () => true;
 
 const OWNER_ID = 'launch-owner';
-const OWNER_EMAIL = 'arnaud.connan@gmail.com';
+const OWNER_EMAIL_SHA256 = 'f4b8dbb16ece4b5ad496dd91a87dd928ca6fa347206112bbfc91a26dde6a9667';
 const OWNER_NAME = 'Arnaud Connan';
 const PROJECT = 'facilitat-io';
 const PRINCIPAL = 'firebase-adminsdk-fbsvc@facilitat-io.iam.gserviceaccount.com';
 const DATABASE = 'https://facilitat-io-default-rtdb.europe-west1.firebasedatabase.app/';
 const LIVE_SHA = 'f20d84f1962c552eaebb095d7a9e5ddb63719be7';
+const LIVE_SERVER_SHA256 = 'e53e8469a084896b1ad58b19413c12dfa659a9f67db623f90df748168ba7d555';
 const PINNED = {
   'professional-access.js': '5210cde3a69239f3c9e8ab1182c7b68242cb750016d9307f751e1c41e0f5c537',
   'auth-password.js': 'bf29a8e14ca710050faf58f36786470f7c1951a76147466ebea9f684ce074318'
@@ -166,6 +167,8 @@ let moduleDirectory;
 const result = {
   id: OWNER_ID,
   moduleExact: false,
+  ownerSourceExact: false,
+  ownerEmailExpected: false,
   contextOk: false,
   preflightOk: false,
   confirmed: false,
@@ -184,6 +187,22 @@ function requireExact(name) {
   const digest = crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
   if (digest !== PINNED[name]) throw new Error('module_mismatch');
   return require(file);
+}
+
+function resolveOwnerEmail() {
+  const source = fs.readFileSync(path.join(process.cwd(), 'server.js'));
+  result.ownerSourceExact = crypto.createHash('sha256').update(source).digest('hex') === LIVE_SERVER_SHA256;
+  if (!result.ownerSourceExact) throw new Error('live_source_mismatch');
+  // One literal email in the pinned owner list; no eval/require of server.js.
+  // Do not extract the password map or any legacy password.
+  const literal = source.toString('utf8').match(
+    /\bconst\s+PROFESSIONAL_FULL_ACCESS_EMAILS_RAW\s*=\s*\[\s*(['"])([^'"\\\r\n]+)\1\s*\]\s*;/
+  );
+  if (!literal) throw new Error('owner_literal_mismatch');
+  const email = literal[2].trim().toLowerCase();
+  result.ownerEmailExpected = crypto.createHash('sha256').update(email).digest('hex') === OWNER_EMAIL_SHA256;
+  if (!result.ownerEmailExpected) throw new Error('owner_email_mismatch');
+  return email;
 }
 
 // Raw TTY input: no echo, argv, env, shell history or password file.
@@ -243,8 +262,9 @@ function secretLine(prompt) {
 
 async function main() {
   let app, db, access, token = null, password = '', confirmation = '', passwordHash = null;
+  let ownerEmail = null;
   let createAttempted = false;
-  const ours = record => record?.email === OWNER_EMAIL &&
+  const ours = record => record?.email === ownerEmail &&
     record?.displayName === OWNER_NAME && record?.passwordHash === passwordHash &&
     Array.isArray(record?.roles) && record.roles.length === 1 &&
     record.roles[0] === 'administrator' && record.authorizationVersion === 0;
@@ -268,6 +288,7 @@ async function main() {
         process.env.FIREBASE_DATABASE_EMULATOR_HOST || process.env.FIREBASE_AUTH_EMULATOR_HOST) {
       throw new Error('runtime_mismatch');
     }
+    ownerEmail = resolveOwnerEmail();
     const configFile = path.join(process.cwd(), 'lib/config.js');
     if (crypto.createHash('sha256').update(fs.readFileSync(configFile)).digest('hex') !==
         '541051c089d208f183add002e6923e54fdec24964016de4ebc61dbe172a5856b') {
@@ -290,7 +311,7 @@ async function main() {
     const identities = db.ref('professionalIdentities');
     const owner = identities.child(OWNER_ID);
     const [record, emailMatches, namespace] = await Promise.all([
-      owner.once('value'), identities.orderByChild('email').equalTo(OWNER_EMAIL).once('value'),
+      owner.once('value'), identities.orderByChild('email').equalTo(ownerEmail).once('value'),
       identities.once('value')
     ]);
     if (record.exists() || emailMatches.exists() || namespace.exists()) throw new Error('preexisting_identity');
@@ -303,7 +324,7 @@ async function main() {
     result.confirmed = true;
     passwordHash = hashPassword(password);
     const newRecord = {
-      email: OWNER_EMAIL, displayName: OWNER_NAME, passwordHash, active: true,
+      email: ownerEmail, displayName: OWNER_NAME, passwordHash, active: true,
       roles: ['administrator'], authorizationVersion: 0
     };
     createAttempted = true;
@@ -314,10 +335,10 @@ async function main() {
     );
     if (!creation.committed) throw new Error('creation_refused');
     result.created = true;
-    const unique = (await identities.orderByChild('email').equalTo(OWNER_EMAIL).once('value')).val() || {};
+    const unique = (await identities.orderByChild('email').equalTo(ownerEmail).once('value')).val() || {};
     if (Object.keys(unique).length !== 1 || !ours(unique[OWNER_ID])) throw new Error('uniqueness_failed');
     access = createProfessionalAccess({db, secret: config.adminSessionSecret});
-    token = await access.login(OWNER_EMAIL, password);
+    token = await access.login(ownerEmail, password);
     result.loginOk = typeof token === 'string' && /^[a-f0-9]{64}$/.test(token);
     if (!result.loginOk) throw new Error('login_failed');
     const session = await access.session(token);
@@ -351,7 +372,7 @@ async function main() {
         result.identityDisabledOnFailure = disabled.committed;
       } catch { result.identityDisabledOnFailure = false; }
     }
-    password = ''; confirmation = ''; passwordHash = null; token = null;
+    password = ''; confirmation = ''; passwordHash = null; token = null; ownerEmail = null;
     try {
       if (db) db.goOffline();
       if (app) await app.delete(); // Close this local SDK app, never delete an instance.

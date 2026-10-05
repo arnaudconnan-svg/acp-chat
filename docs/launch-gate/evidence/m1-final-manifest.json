@@ -233,9 +233,15 @@
         "embeddedModulesByteEqualValidatedCommit": true,
         "noticeChecksumsMatch": true,
         "gitDiffCheck": 0,
-        "applicationAndAcquiredTestsUnchanged": true
+        "applicationAndAcquiredTestsUnchanged": true,
+        "ownerResolverValidLiveSourceAccepted": true,
+        "ownerResolverAlteredSourceRefused": true,
+        "ownerResolverWrongExpectedFingerprintRefused": true,
+        "ownerResolverDoesNotEvaluateServer": true,
+        "ownerEmailPlaintextNotVersionedAtCurrentHead": true,
+        "ownerResolverExecutionNote": "Premier essai spawnSync Git dans Node refusé EPERM par capture sandbox ; relance Git pipe vers le résolveur pur réussie code0, sans fichier source/copier password legacy ni SDK."
       },
-      "ownerHelperSha256": "485968e605e82c6d7eb1299a806831053d648887429d35ec188aec3e587c7c9f",
+      "ownerHelperSha256": "c661db9f2d65efae8f82714ca4c5161dd7d294812a3b5b18134bddf0a26bcb3e",
       "sdkProbeSha256": "325aa65ad926c81056f3908a0ecd92b58037bb24e92208d3f309dbb35b8e1fc4",
       "modulesEmbeddedAtCommit": "3db45bb8827ed14b9cd9399b61de8b8da8213dc1",
       "moduleSha256": {
@@ -249,7 +255,9 @@
         "unique administrator session",
         "probe session revocation and rejection"
       ],
-      "futureEffects": "One owner identity + revoked probe session only. No practitioner/support/assignment/grant; no conversation/private-memory/provider access. Owner enters credential himself; output booleans/technical ID only."
+      "futureEffects": "One owner identity + revoked probe session only. No practitioner/support/assignment/grant; no conversation/private-memory/provider access. Owner enters credential himself; output booleans/technical ID only.",
+      "ownerMapping": "Uniquement en mémoire depuis la liste propriétaire du server.js live f20 vérifié SHA256 ; empreinte email normalisé attendue contrôlée. Aucune nouvelle constante email en clair.",
+      "pinnedLiveServerSha256": "e53e8469a084896b1ad58b19413c12dfa659a9f67db623f90df748168ba7d555"
     }
   },
   "sha256": {

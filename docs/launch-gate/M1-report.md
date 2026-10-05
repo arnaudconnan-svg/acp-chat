@@ -152,3 +152,9 @@ Work sont attestées ci-dessus. Les résidus privés et logs restent non purgés
 Le [checkpoint opérationnel](M0-M1-operational-checkpoint.md) distingue les preuves
 Work reçues des actions restantes. [Commande IAM/inventaire standalone prête](M0-M1-render-readonly.md),
 non exécutée par Cloud. Aucune modification de code/test ni revalidation globale.
+
+Précision du helper préparé : email propriétaire dérivé seulement en mémoire de
+la source live f20 épinglée et contrôlé par empreinte normalisée ; aucune constante
+email en clair dans le helper courant, aucun eval du serveur/password legacy copié.
+Résolveur ciblé validé (source exacte acceptée, source/empreinte altérées refusées),
+aucune exécution Render. Preuves publiques : launch-owner + administrator uniquement.

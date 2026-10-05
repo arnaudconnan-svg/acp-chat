@@ -238,3 +238,9 @@ hash, contenu ou token : compteur/code/version/résultat. Aucun provisioning ré
    synchronisation post-promotion obligatoire selon WORKFLOW, jamais avant.
 
 Checkpoint docs seulement ; résultats acquis préservés, aucun nouveau test.
+
+Précision du helper préparé : email propriétaire dérivé seulement en mémoire de
+la source live f20 épinglée et contrôlé par empreinte normalisée ; aucune constante
+email en clair dans le helper courant, aucun eval du serveur/password legacy copié.
+Résolveur ciblé validé (source exacte acceptée, source/empreinte altérées refusées),
+aucune exécution Render. Preuves publiques : launch-owner + administrator uniquement.
