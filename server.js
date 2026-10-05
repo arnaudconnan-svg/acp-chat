@@ -1436,46 +1436,133 @@ async function requireUserAuth(req, res, next) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    if(req.headers['x-client-identity'] && req.headers['x-client-identity']!==session.userId)return res.status(409).json({error:'Client identity changed'});
+    if (
+      req.headers['x-client-identity'] &&
+      req.headers['x-client-identity'] !== session.userId
+    )
+      return res.status(409).json({ error: 'Client identity changed' });
     req.userSession = session;
-    const {idValid}=require('./lib/professional-access');
+    const { idValid } = require('./lib/professional-access');
     if (req.body?.userId !== undefined && req.body.userId !== session.userId)
-      return res.status(403).json({error:'Actor mismatch'});
-    for(const key of ['id','conversationId','professionalId'])if(req.params?.[key] && !idValid(req.params[key]))
-      return res.status(400).json({error:'Invalid object reference'});
-    for(const key of ['conversationId','sourceConversationId','branchConversationId','requestId'])
-      if(req.body?.[key]!==undefined && req.body[key]!==null && !idValid(req.body[key]))
-        return res.status(400).json({error:'Invalid object reference'});
-    const bodyConversationId=req.body?.sourceConversationId || req.body?.conversationId;
-    const pathConversationId=req.path.includes('/conversations/') && !['claim','import-local'].includes(req.params?.id) ? req.params?.id : null;
-    const targetId=pathConversationId || bodyConversationId;
-    const privateTransit=req.body?.isPrivateConversation===true && ['/chat','/chat/stream','/chat/stream/interrupted','/session/close','/api/session/beacon','/api/human-support/request'].includes(req.path);
-    if(targetId&&!privateTransit) {
-      const current=(await db.ref('conversations').child(targetId).once('value')).val();
-      if(current && (current.userId!==session.userId || current.deletedAt || current.isPrivate===true))
-        return res.status(403).json({error:'Object ownership required'});
-      if(!current && ['/chat','/chat/stream'].includes(req.path)) {
-        const orphan=(await messagesRef.orderByChild('conversationId').equalTo(targetId).once('value')).val();
-        if(orphan&&Object.keys(orphan).length)return res.status(403).json({error:'Historical ownership proof required'});
-        const claimed=await db.ref('conversations').child(targetId).transaction(old=>old?undefined:{userId:session.userId,createdAt:new Date().toISOString()});
-        if(!claimed.committed)return res.status(409).json({error:'Concurrent object claim'});
-      } else if(!current) return res.status(404).json({error:'Object unavailable'});
+      return res.status(403).json({ error: 'Actor mismatch' });
+    for (const key of ['id', 'conversationId', 'professionalId'])
+      if (req.params?.[key] && !idValid(req.params[key]))
+        return res.status(400).json({ error: 'Invalid object reference' });
+    for (const key of [
+      'conversationId',
+      'sourceConversationId',
+      'branchConversationId',
+      'requestId',
+    ])
+      if (
+        req.body?.[key] !== undefined &&
+        req.body[key] !== null &&
+        !idValid(req.body[key])
+      )
+        return res.status(400).json({ error: 'Invalid object reference' });
+    const bodyConversationId =
+      req.body?.sourceConversationId || req.body?.conversationId;
+    const pathConversationId =
+      req.path.includes('/conversations/') &&
+      !['claim', 'import-local'].includes(req.params?.id)
+        ? req.params?.id
+        : null;
+    const targetId = pathConversationId || bodyConversationId;
+    const privateTransit =
+      req.body?.isPrivateConversation === true &&
+      [
+        '/chat',
+        '/chat/stream',
+        '/chat/stream/interrupted',
+        '/session/close',
+        '/api/session/beacon',
+        '/api/human-support/request',
+      ].includes(req.path);
+    if (targetId && !privateTransit) {
+      const current = (
+        await db.ref('conversations').child(targetId).once('value')
+      ).val();
+      if (
+        current &&
+        (current.userId !== session.userId ||
+          current.deletedAt ||
+          current.isPrivate === true)
+      )
+        return res.status(403).json({ error: 'Object ownership required' });
+      if (!current && ['/chat', '/chat/stream'].includes(req.path)) {
+        const orphan = (
+          await messagesRef
+            .orderByChild('conversationId')
+            .equalTo(targetId)
+            .once('value')
+        ).val();
+        if (orphan && Object.keys(orphan).length)
+          return res
+            .status(403)
+            .json({ error: 'Historical ownership proof required' });
+        const claimed = await db
+          .ref('conversations')
+          .child(targetId)
+          .transaction((old) =>
+            old
+              ? undefined
+              : { userId: session.userId, createdAt: new Date().toISOString() },
+          );
+        if (!claimed.committed)
+          return res.status(409).json({ error: 'Concurrent object claim' });
+      } else if (!current)
+        return res.status(404).json({ error: 'Object unavailable' });
     }
-    if(req.path.startsWith('/api/messages/')) {
-      const m=(await messagesRef.child(req.params.id).once('value')).val();
-      if(m?.userId!==session.userId)return res.status(403).json({error:'Message ownership required'});
-      const c=(await db.ref('conversations').child(m.conversationId).once('value')).val();
-      if(c?.userId!==session.userId||c.deletedAt||c.isPrivate===true)return res.status(403).json({error:'Object ownership required'});
+    if (req.path.startsWith('/api/messages/')) {
+      const m = (await messagesRef.child(req.params.id).once('value')).val();
+      if (m?.userId !== session.userId)
+        return res.status(403).json({ error: 'Message ownership required' });
+      const c = (
+        await db.ref('conversations').child(m.conversationId).once('value')
+      ).val();
+      if (c?.userId !== session.userId || c.deletedAt || c.isPrivate === true)
+        return res.status(403).json({ error: 'Object ownership required' });
     }
-    if(req.path.startsWith('/api/branches/')&&req.params.id) {
-      const branch=(await branchRecordsRef.child(req.params.id).once('value')).val();
-      if(!branch||branch.userId!==session.userId)return res.status(403).json({error:'Branch ownership required'});
-      const source=(await db.ref('conversations').child(branch.sourceConversationId).once('value')).val();
-      const destination=(await db.ref('conversations').child(branch.branchConversationId).once('value')).val();
-      const seed=(await branchSeedSnapshotsRef.child(req.params.id).once('value')).val();
-      if(source?.userId!==session.userId||source.deletedAt||source.isPrivate===true||
-        (destination&&(destination.userId!==session.userId||destination.deletedAt||destination.isPrivate===true))||
-        (seed&&seed.sourceConversationId!==branch.sourceConversationId))return res.status(403).json({error:'Branch object mismatch'});
+    if (req.path.startsWith('/api/branches/') && req.params.id) {
+      const branch = (
+        await branchRecordsRef.child(req.params.id).once('value')
+      ).val();
+      if (!branch || branch.userId !== session.userId)
+        return res.status(403).json({ error: 'Branch ownership required' });
+      if (
+        !idValid(branch.sourceConversationId) ||
+        !idValid(branch.branchConversationId)
+      )
+        return res.status(403).json({ error: 'Branch object mismatch' });
+      const source = await readConversationAuthority(
+        branch.sourceConversationId,
+      );
+      if (
+        source?.userId !== session.userId ||
+        source.deletedAt ||
+        source.isPrivate === true
+      )
+        return res.status(403).json({ error: 'Branch source mismatch' });
+      const destination = await readConversationAuthority(
+        branch.branchConversationId,
+      );
+      if (
+        destination.exists &&
+        (destination.userId !== session.userId ||
+          destination.deletedAt ||
+          destination.isPrivate === true)
+      )
+        return res.status(403).json({ error: 'Branch destination mismatch' });
+      const seed = (
+        await branchSeedSnapshotsRef.child(req.params.id).once('value')
+      ).val();
+      if (
+        seed &&
+        (seed.sourceConversationId !== branch.sourceConversationId ||
+          (seed.userId && seed.userId !== session.userId) ||
+          seed.messages?.some((m) => m.userId && m.userId !== session.userId))
+      )
+        return res.status(403).json({ error: 'Branch seed mismatch' });
     }
     return next();
   } catch (err) {
@@ -1484,16 +1571,64 @@ async function requireUserAuth(req, res, next) {
   }
 }
 
-async function assertConversationOwner(userId,conversationId) {
-  const current=(await db.ref('conversations').child(conversationId).once('value')).val();
-  if(!current||current.userId!==userId||current.deletedAt||current.isPrivate===true) {
-    const error=new Error('Object authorization lost');error.code='object_authority_lost';throw error;
+async function readConversationAuthority(id) {
+  const ref = db.ref('conversations').child(id);
+  const [owner, privacy, removed] = await Promise.all(
+    ['userId', 'isPrivate', 'deletedAt'].map((key) =>
+      ref.child(key).once('value'),
+    ),
+  );
+  const userId = owner.val(),
+    isPrivate = privacy.val(),
+    deletedAt = removed.val();
+  // The existence-only fallback quarantines old parent objects without an owner.
+  const exists =
+    userId !== null ||
+    isPrivate !== null ||
+    deletedAt !== null ||
+    (await ref.once('value')).exists();
+  return { userId, isPrivate, deletedAt, exists };
+}
+
+async function assertConversationOwner(userId, conversationId) {
+  const current = (
+    await db.ref('conversations').child(conversationId).once('value')
+  ).val();
+  if (
+    !current ||
+    current.userId !== userId ||
+    current.deletedAt ||
+    current.isPrivate === true
+  ) {
+    const error = new Error('Object authorization lost');
+    error.code = 'object_authority_lost';
+    throw error;
   }
   return current;
 }
-async function updateOwnedConversation(ref,userId,patch) {
-  const result=await ref.transaction(current=>current&&current.userId===userId&&!current.deletedAt&&current.isPrivate!==true?{...current,...patch}:undefined);
-  if(!result.committed){const error=new Error('Object authorization lost');error.code='object_authority_lost';throw error;}
+async function updateOwnedConversation(ref, userId, patch) {
+  const result = await ref.transaction((current) =>
+    current &&
+    current.userId === userId &&
+    !current.deletedAt &&
+    current.isPrivate !== true
+      ? { ...current, ...patch }
+      : undefined,
+  );
+  if (!result.committed) {
+    const error = new Error('Object authorization lost');
+    error.code = 'object_authority_lost';
+    throw error;
+  }
+}
+function messageBelongsToConversation(message, userId, conversationId) {
+  return (
+    !!message &&
+    message.userId === userId &&
+    message.conversationId === conversationId &&
+    message.isPrivate !== true &&
+    !message.deletedAt
+  );
 }
 
 // Les données conversationnelles exigent une session utilisateur serveur.
@@ -1667,36 +1802,98 @@ function warnRuntimeContract(label, issues, context = {}) {
 }
 
 // Middleware protecting admin routes by redirecting unauthenticated users.
-async function requireAdministratorPage(req,res,next) {
-  const session=await getAdminSession(req);
-  if(!session?.roles.includes('administrator'))return res.status(session?403:401).end();
+async function requireAdministratorPage(req, res, next) {
+  const session = await getAdminSession(req);
+  if (!session?.roles.includes('administrator'))
+    return res.status(session ? 403 : 401).end();
   next(); // HTML shell contains no data; every API separately requires a reason.
 }
 async function requireAdminAuth(req, res, next) {
   const session = await getAdminSession(req);
   const reason = req.headers['x-access-reason'];
-  const allowed = session?.roles.includes('administrator') && REASONS.has(reason);
-  await professionalAccess.journal({actor:session,role:'administrator',action:'admin_access',
-    object:professionalAccess.reference('object',String(req.params?.id||req.params?.userId||req.route?.path||'unknown_route')),reason:allowed?reason:'administrator_reason_required',
-    result:allowed?'allowed':'denied',requestId:req.requestId});
-  if (!allowed) return res.status(session?403:401).json({error:'Professional authorization required',code:'administrator_reason_required'});
-  req.professionalSession=session;
-  const unmask=req.headers['x-identity-unmask-reason'];
-  if (REASONS.has(unmask)) await professionalAccess.journal({actor:session,role:'administrator',action:'identity_unmask',
-    object:professionalAccess.reference('route',String(req.route?.path||'unknown_route')),reason:unmask,result:'allowed',requestId:req.requestId});
-  const json=res.json.bind(res);
-  res.json=(payload)=>{
-    function project(value){
-      if(Array.isArray(value))return value.filter(x=>x?.isPrivate!==true).map(project);
-      if(!value||typeof value!=='object')return value;
-      if(value.isPrivate===true)return null;
-      const out={};for(const [key,v] of Object.entries(value)) {
-        if(['hasPrivateInteractionSinceLastVisible','lastPrivateInteractionAt'].includes(key))continue;
-        if(!REASONS.has(unmask)&&['email','emails','userEmail','firstName','userId','userLabel','displayUser','displayName'].includes(key))continue;
-        if(!REASONS.has(unmask)&&['superId','stableSuperId'].includes(key)){out[key]=professionalAccess.reference('user',String(v));continue;}
-        out[key]=project(v);
-      }return out;
-    }return json(project(payload));
+  const allowed =
+    session?.roles.includes('administrator') && REASONS.has(reason);
+  await professionalAccess.journal({
+    actor: session,
+    role: 'administrator',
+    action: 'admin_access',
+    object: professionalAccess.reference(
+      'object',
+      String(
+        req.params?.id ||
+          req.params?.userId ||
+          req.route?.path ||
+          'unknown_route',
+      ),
+    ),
+    reason: allowed ? reason : 'administrator_reason_required',
+    result: allowed ? 'allowed' : 'denied',
+    requestId: req.requestId,
+  });
+  if (!allowed)
+    return res
+      .status(session ? 403 : 401)
+      .json({
+        error: 'Professional authorization required',
+        code: 'administrator_reason_required',
+      });
+  req.professionalSession = session;
+  const unmask = req.headers['x-identity-unmask-reason'];
+  if (REASONS.has(unmask))
+    await professionalAccess.journal({
+      actor: session,
+      role: 'administrator',
+      action: 'identity_unmask',
+      object: professionalAccess.reference(
+        'route',
+        String(req.route?.path || 'unknown_route'),
+      ),
+      reason: unmask,
+      result: 'allowed',
+      requestId: req.requestId,
+    });
+  const json = res.json.bind(res);
+  res.json = (payload) => {
+    function project(value) {
+      if (Array.isArray(value))
+        return value.filter((x) => x?.isPrivate !== true).map(project);
+      if (!value || typeof value !== 'object') return value;
+      if (value.isPrivate === true) return null;
+      const out = {};
+      for (const [key, v] of Object.entries(value)) {
+        if (
+          [
+            'hasPrivateInteractionSinceLastVisible',
+            'lastPrivateInteractionAt',
+          ].includes(key)
+        )
+          continue;
+        if (
+          !REASONS.has(unmask) &&
+          [
+            'email',
+            'emails',
+            'userEmail',
+            'firstName',
+            'userId',
+            'userLabel',
+            'displayUser',
+            'displayName',
+          ].includes(key)
+        )
+          continue;
+        if (
+          !REASONS.has(unmask) &&
+          ['superId', 'stableSuperId'].includes(key)
+        ) {
+          out[key] = professionalAccess.reference('user', String(v));
+          continue;
+        }
+        out[key] = project(v);
+      }
+      return out;
+    }
+    return json(project(payload));
   };
   next();
 }
@@ -2403,6 +2600,7 @@ const {
 });
 
 async function loadConversationBranchHistoryForRecall({
+  userId = '',
   conversationId = '',
   isPrivateConversation = false,
   conversationBranchHistory = [],
@@ -2419,6 +2617,7 @@ async function loadConversationBranchHistoryForRecall({
   }
 
   try {
+    await assertConversationOwner(userId,conversationId);
     const messagesSnap = await messagesRef
       .orderByChild('conversationId')
       .equalTo(conversationId)
@@ -2427,6 +2626,7 @@ async function loadConversationBranchHistoryForRecall({
     const branchHistory = Object.values(messagesSnap.val() || {})
       .filter(
         (m) =>
+          messageBelongsToConversation(m,userId,conversationId)&&
           m &&
           (m.role === 'user' || m.role === 'assistant') &&
           typeof m.content === 'string'
@@ -2828,17 +3028,29 @@ function writeAdminSessionCookie(res, sessionId) {
 }
 
 app.post('/api/twa/login', (_req, res) => {
-  return res.status(403).json({error:'Individual authentication required',code:'legacy_twa_bypass_revoked'});
+  return res
+    .status(403)
+    .json({
+      error: 'Individual authentication required',
+      code: 'legacy_twa_bypass_revoked',
+    });
 });
 
 async function handleProsLogin(req, res) {
-  if(typeof req.body?.email!=='string'||typeof req.body?.password!=='string')
-    return res.status(400).json({error:'Invalid pros login request'});
-  if(!enforceAuthRateLimit(req, res, 'login', normalizeEmail(req.body.email))) return;
-  const token=await professionalAccess.login(req.body.email,req.body.password);
-  if(!token)return res.status(401).json({error:'Unauthorized'});
-  writeAdminSessionCookie(res,token);
-  return res.json({success:true,flow:'pros'});
+  if (
+    typeof req.body?.email !== 'string' ||
+    typeof req.body?.password !== 'string'
+  )
+    return res.status(400).json({ error: 'Invalid pros login request' });
+  if (!enforceAuthRateLimit(req, res, 'login', normalizeEmail(req.body.email)))
+    return;
+  const token = await professionalAccess.login(
+    req.body.email,
+    req.body.password,
+  );
+  if (!token) return res.status(401).json({ error: 'Unauthorized' });
+  writeAdminSessionCookie(res, token);
+  return res.json({ success: true, flow: 'pros' });
 }
 
 app.post('/api/pros/login', handleProsLogin);
@@ -3294,40 +3506,117 @@ app.post('/api/auth/change-password', requireUserAuth, async (req, res) => {
   }
 });
 
-app.get('/api/account/content-grants',requireUserAuth,async(req,res)=>{
-  const raw=(await db.ref('contentGrants').child(req.userSession.userId).once('value')).val()||{};
-  const assignments=(await db.ref('practitionerAssignments').once('value')).val()||{},practitioners=[];
-  for(const [id,rows]of Object.entries(assignments))if(idValid(id)&&rows?.[req.userSession.userId]?.active===true){
-    const i=(await db.ref('professionalIdentities').child(id).once('value')).val();
-    if(i?.active===true&&i.roles?.includes('practitioner'))practitioners.push({id,label:id});
-  }
-  return res.json({grants:raw,practitioners});
+app.get('/api/account/content-grants', requireUserAuth, async (req, res) => {
+  const raw =
+    (
+      await db.ref('contentGrants').child(req.userSession.userId).once('value')
+    ).val() || {};
+  const assignments =
+      (await db.ref('practitionerAssignments').once('value')).val() || {},
+    practitioners = [];
+  for (const [id, rows] of Object.entries(assignments))
+    if (idValid(id) && rows?.[req.userSession.userId]?.active === true) {
+      const i = (
+        await db.ref('professionalIdentities').child(id).once('value')
+      ).val();
+      if (i?.active === true && i.roles?.includes('practitioner'))
+        practitioners.push({
+          id,
+          label:
+            typeof i.displayName === 'string' && i.displayName.trim()
+              ? i.displayName.trim().slice(0, 120)
+              : `Praticien affect\u00e9 ${practitioners.length + 1}`,
+          assigned: true,
+        });
+    }
+  for (const id of Object.keys(raw))
+    if (idValid(id) && !practitioners.some((p) => p.id === id))
+      practitioners.push({
+        id,
+        label: 'Autorisation existante sans affectation active',
+        assigned: false,
+      });
+  return res.json({ grants: raw, practitioners });
 });
-app.put('/api/account/content-grants/:professionalId',requireUserAuth,async(req,res)=>{
-  const {idValid}=require('./lib/professional-access');
-  const professionalId=req.params.professionalId,body=req.body||{},userId=req.userSession.userId;
-  if(!idValid(professionalId)||!['conversation_specific','accompaniment_period'].includes(body.scope)||
-    !Number.isFinite(body.endsAt)||body.endsAt<=Date.now()||body.endsAt>Date.now()+366*86400000||
-    !Array.isArray(body.conversationIds)||body.conversationIds.length>100||body.conversationIds.some(id=>!idValid(id)))
-    return res.status(400).json({error:'Invalid explicit grant'});
-  const [i,a]=await Promise.all([db.ref('professionalIdentities').child(professionalId).once('value'),
-    db.ref('practitionerAssignments').child(professionalId).child(userId).once('value')]);
-  if(i.val()?.active!==true||!i.val()?.roles?.includes('practitioner')||a.val()?.active!==true)
-    return res.status(403).json({error:'Active assignment required'});
-  for(const id of body.conversationIds){const c=(await db.ref('conversations').child(id).once('value')).val();
-    if(!c||c.userId!==userId||c.isPrivate===true||c.deletedAt)return res.status(403).json({error:'Object ownership required'});}
-  if(body.scope==='conversation_specific'&&!body.conversationIds.length)return res.status(400).json({error:'Objects required'});
-  const grantRef=db.ref('contentGrants').child(userId).child(professionalId);
-  const result=await grantRef.transaction(old=>({id:old?.id||crypto.randomBytes(12).toString('hex'),version:(old?.version||0)+1,
-    active:true,scope:body.scope,conversationIds:body.conversationIds,startsAt:Date.now(),endsAt:body.endsAt,
-    allowIntersessionSummary:body.allowIntersessionSummary===true}));
-  return res.json({grant:result.snapshot.val()});
-});
-app.delete('/api/account/content-grants/:professionalId',requireUserAuth,async(req,res)=>{
-  const {idValid}=require('./lib/professional-access');if(!idValid(req.params.professionalId))return res.status(400).json({error:'Invalid reference'});
-  await db.ref('contentGrants').child(req.userSession.userId).child(req.params.professionalId).transaction(old=>old?{...old,active:false,version:(old.version||0)+1}:undefined);
-  return res.json({success:true});
-});
+app.put(
+  '/api/account/content-grants/:professionalId',
+  requireUserAuth,
+  async (req, res) => {
+    const { idValid } = require('./lib/professional-access');
+    const professionalId = req.params.professionalId,
+      body = req.body || {},
+      userId = req.userSession.userId;
+    if (
+      !idValid(professionalId) ||
+      !['conversation_specific', 'accompaniment_period'].includes(body.scope) ||
+      !Number.isFinite(body.endsAt) ||
+      body.endsAt <= Date.now() ||
+      body.endsAt > Date.now() + 366 * 86400000 ||
+      !Array.isArray(body.conversationIds) ||
+      body.conversationIds.length > 100 ||
+      body.conversationIds.some((id) => !idValid(id))
+    )
+      return res.status(400).json({ error: 'Invalid explicit grant' });
+    const [i, a] = await Promise.all([
+      db.ref('professionalIdentities').child(professionalId).once('value'),
+      db
+        .ref('practitionerAssignments')
+        .child(professionalId)
+        .child(userId)
+        .once('value'),
+    ]);
+    if (
+      i.val()?.active !== true ||
+      !i.val()?.roles?.includes('practitioner') ||
+      a.val()?.active !== true
+    )
+      return res.status(403).json({ error: 'Active assignment required' });
+    for (const id of body.conversationIds) {
+      const c = (await db.ref('conversations').child(id).once('value')).val();
+      if (!c || c.userId !== userId || c.isPrivate === true || c.deletedAt)
+        return res.status(403).json({ error: 'Object ownership required' });
+    }
+    if (body.scope === 'conversation_specific' && !body.conversationIds.length)
+      return res.status(400).json({ error: 'Objects required' });
+    const grantRef = db
+      .ref('contentGrants')
+      .child(userId)
+      .child(professionalId);
+    const result = await grantRef.transaction((old) => ({
+      id: idValid(old?.id) ? old.id : crypto.randomBytes(12).toString('hex'),
+      version:
+        Number.isSafeInteger(old?.version) && old.version >= 0
+          ? old.version + 1
+          : 1,
+      active: true,
+      scope: body.scope,
+      conversationIds: body.conversationIds,
+      startsAt: Date.now(),
+      endsAt: body.endsAt,
+      allowIntersessionSummary: body.allowIntersessionSummary === true,
+    }));
+    return res.json({ grant: result.snapshot.val() });
+  },
+);
+app.delete(
+  '/api/account/content-grants/:professionalId',
+  requireUserAuth,
+  async (req, res) => {
+    const { idValid } = require('./lib/professional-access');
+    if (!idValid(req.params.professionalId))
+      return res.status(400).json({ error: 'Invalid reference' });
+    await db
+      .ref('contentGrants')
+      .child(req.userSession.userId)
+      .child(req.params.professionalId)
+      .transaction((old) =>
+        old
+          ? { ...old, active: false, version: (old.version || 0) + 1 }
+          : undefined,
+      );
+    return res.json({ success: true });
+  },
+);
 
 app.get('/api/account/preferences', requireUserAuth, async (req, res) => {
   try {
@@ -3798,6 +4087,8 @@ app.get('/api/account/conversations', requireUserAuth, async (req, res) => {
           return false;
         }
 
+        if(value?.isPrivate===true||value?.deletedAt)return false;
+
         if (typeof value?.deletedAt === 'string' && value.deletedAt.trim()) {
           return false;
         }
@@ -3868,6 +4159,7 @@ app.get('/api/account/conversations/:id', requireUserAuth, async (req, res) => {
 
     const messagesRaw = messagesSnap.val() || {};
     const messages = Object.entries(messagesRaw)
+      .filter(([,value])=>messageBelongsToConversation(value,session.userId,conversationId))
       .map(([id, value]) => ({
         id,
         role: String(value?.role || ''),
@@ -3896,6 +4188,7 @@ app.get('/api/account/conversations/:id', requireUserAuth, async (req, res) => {
       }))
       .sort((a, b) => Number(a.timestamp || 0) - Number(b.timestamp || 0));
 
+    await assertConversationOwner(session.userId,conversationId);
     return res.json({
       conversation: {
         id: conversationId,
@@ -4053,14 +4346,33 @@ app.delete(
   }
 );
 
-app.post('/api/account/conversations/claim',requireUserAuth,async(req,res)=>{
-  const ids=req.body?.conversationIds;
-  const {idValid}=require('./lib/professional-access');
-  if(!Array.isArray(ids)||ids.length>100||ids.some(id=>!idValid(id)))return res.status(400).json({error:'Invalid claim request'});
-  for(const id of ids){const c=(await db.ref('conversations').child(id).once('value')).val();
-    if(!c||c.userId!==req.userSession.userId||c.deletedAt)return res.status(403).json({error:'Historical ownership proof required'});}
-  return res.json({claimedConversationIds:[],claimedCount:0,alreadyOwnedCount:ids.length,skippedCount:0});
-});
+app.post(
+  '/api/account/conversations/claim',
+  requireUserAuth,
+  async (req, res) => {
+    const ids = req.body?.conversationIds;
+    const { idValid } = require('./lib/professional-access');
+    if (
+      !Array.isArray(ids) ||
+      ids.length > 100 ||
+      ids.some((id) => !idValid(id))
+    )
+      return res.status(400).json({ error: 'Invalid claim request' });
+    for (const id of ids) {
+      const c = (await db.ref('conversations').child(id).once('value')).val();
+      if (!c || c.userId !== req.userSession.userId || c.deletedAt)
+        return res
+          .status(403)
+          .json({ error: 'Historical ownership proof required' });
+    }
+    return res.json({
+      claimedConversationIds: [],
+      claimedCount: 0,
+      alreadyOwnedCount: ids.length,
+      skippedCount: 0,
+    });
+  },
+);
 
 app.post(
   '/api/account/conversations/import-local',
@@ -4079,7 +4391,26 @@ app.post(
       }
 
       const forceOverwrite = req.body.forceOverwrite === true;
-      const conversations = req.body.conversations.slice(0, 50);
+      if(req.body.conversations.length>50)return res.status(400).json({error:'Import scope exceeded'});
+      const conversations = req.body.conversations;
+      const seen=new Set();let totalMessages=0;
+      // Validate the complete batch before the first write/delete. Missing
+      // parents never authorize reassignment of historical orphan messages.
+      for(const c of conversations){
+        if(!c||!idValid(c.id)||seen.has(c.id)||(c.conversationId&&c.conversationId!==c.id)||
+          (c.userId&&c.userId!==session.userId)||!Array.isArray(c.messages)||c.messages.length>500||
+          c.messages.some(m=>!m||m.content?.length>16000||(m.userId&&m.userId!==session.userId)||
+            (m.conversationId&&m.conversationId!==c.id)||(m.id!==undefined&&!idValid(m.id))))
+          return res.status(400).json({error:'Invalid bounded import association'});
+        seen.add(c.id);totalMessages+=c.messages.length;
+        if(totalMessages>1000)return res.status(400).json({error:'Import scope exceeded'});
+        const parent=(await db.ref('conversations').child(c.id).once('value')).val();
+        const children=(await messagesRef.orderByChild('conversationId').equalTo(c.id).once('value')).val()||{};
+        if((parent&&(parent.userId!==session.userId||parent.isPrivate===true||parent.deletedAt))||
+          (!parent&&Object.keys(children).length)||Object.entries(children).some(([id,m])=>!idValid(id)||!messageBelongsToConversation(m,session.userId,c.id)))
+          return res.status(403).json({error:'Historical ownership proof required'});
+        if(forceOverwrite&&Object.keys(children).length>500)return res.status(400).json({error:'Overwrite scope exceeded'});
+      }
       const importedConversationIds = [];
       const messageIdsByConversation = {};
       let alreadyOwnedCount = 0;
@@ -4116,6 +4447,9 @@ app.post(
               .orderByChild('conversationId')
               .equalTo(conversationId)
               .once('value');
+            await assertConversationOwner(session.userId,conversationId);
+            if(Object.entries(existingMsgsSnap.val()||{}).some(([id,m])=>!idValid(id)||!messageBelongsToConversation(m,session.userId,conversationId)))
+              return res.status(403).json({error:'Historical ownership proof required'});
             const deleteOps = [];
             existingMsgsSnap.forEach((child) => {
               deleteOps.push(child.ref.remove());
@@ -4476,9 +4810,11 @@ app.post(
           messageCount: sanitizedMessages.length,
           lastUserMessage: lastUserMessage?.content || '',
           memory: normalizedMemory,
+          memoryState:safeConversation.memoryState&&typeof safeConversation.memoryState==='object'?safeConversation.memoryState:null,
           flags: normalizedFlags,
           importedFromLocal: true,
           importedFromLocalPrivate: conversationIsPrivate,
+          isPrivate:false,
           createdAt: updatedAtIso,
           updatedAt: updatedAtIso
         });
@@ -4612,6 +4948,7 @@ app.post('/api/branches/from-message', requireUserAuth, async (req, res) => {
 
     const rawMessages = messagesSnap.val() || {};
     const messageEntries = Object.entries(rawMessages)
+      .filter(([,m])=>messageBelongsToConversation(m,actorUserId,sourceConversationId))
       .map(([id, item]) => ({
         id,
         item: item && typeof item === 'object' ? item : {}
@@ -4630,6 +4967,8 @@ app.post('/api/branches/from-message', requireUserAuth, async (req, res) => {
       anchorMessageId,
       requestedSeedMessages
     });
+    if(requestedSeedMessages?.some(m=>(m.userId&&m.userId!==actorUserId)||(m.conversationId&&m.conversationId!==sourceConversationId)||
+      (m.id&&!messageEntries.some(entry=>entry.id===m.id))))return res.status(403).json({error:'Seed ownership proof required'});
 
     if (seedResolution.error === 'anchor_not_found') {
       logBranchRouteEvent('warn', 'anchor_not_found', {
@@ -4679,6 +5018,7 @@ app.post('/api/branches/from-message', requireUserAuth, async (req, res) => {
         updatedAt: now
       }),
       branchSeedSnapshotsRef.child(branchId).set({
+        userId:actorUserId,
         sourceConversationId,
         sourceAnchorMessageId: resolvedAnchorMessageId,
         seededAt: now,
@@ -4766,6 +5106,7 @@ app.post('/api/branches/create-and-activate', requireUserAuth, async (req, res) 
 
     const rawMessages = messagesSnap.val() || {};
     const messageEntries = Object.entries(rawMessages)
+      .filter(([,m])=>messageBelongsToConversation(m,actorUserId,sourceConversationId))
       .map(([id, item]) => ({
         id,
         item: item && typeof item === 'object' ? item : {}
@@ -4783,6 +5124,8 @@ app.post('/api/branches/create-and-activate', requireUserAuth, async (req, res) 
       anchorMessageId,
       requestedSeedMessages
     });
+    if(requestedSeedMessages?.some(m=>(m.userId&&m.userId!==actorUserId)||(m.conversationId&&m.conversationId!==sourceConversationId)||
+      (m.id&&!messageEntries.some(entry=>entry.id===m.id))))return res.status(403).json({error:'Seed ownership proof required'});
 
     if (seedResolution.error === 'anchor_not_found') {
       logBranchRouteEvent('warn', 'anchor_not_found', {
@@ -4841,6 +5184,7 @@ app.post('/api/branches/create-and-activate', requireUserAuth, async (req, res) 
         activatedAt: now
       }),
       branchSeedSnapshotsRef.child(branchId).set({
+        userId:actorUserId,
         sourceConversationId,
         sourceAnchorMessageId: resolvedAnchorMessageId,
         seededAt: now,
@@ -5503,7 +5847,7 @@ app.post('/api/branches/:id/activate', requireUserAuth, async (req, res) => {
       conversationStatePatch.flags = requestedBranchFlags;
     }
 
-    await convRef.update(conversationStatePatch);
+    await updateOwnedConversation(convRef,actorUserId,conversationStatePatch);
 
     const activatedAt = new Date().toISOString();
     await branchRef.update({
@@ -6186,51 +6530,194 @@ app.get('/api/admin/support-cases', requireAdminAuth, async (req, res) => {
   }
 });
 
-async function requirePractitioner(req,res,next) {
-  const actor=await getAdminSession(req);
-  if(!actor?.roles.includes('practitioner')) {
-    await professionalAccess.journal({actor,action:'practitioner_access',reason:'practitioner_required',result:'denied',requestId:req.requestId});
-    return res.status(actor?403:401).json({error:'Practitioner authorization required'});
+async function requirePractitioner(req, res, next) {
+  const actor = await getAdminSession(req);
+  if (!actor?.roles.includes('practitioner')) {
+    await professionalAccess.journal({
+      actor,
+      action: 'practitioner_access',
+      reason: 'practitioner_required',
+      result: 'denied',
+      requestId: req.requestId,
+    });
+    return res
+      .status(actor ? 403 : 401)
+      .json({ error: 'Practitioner authorization required' });
   }
-  req.professionalSession=actor;next();
+  req.professionalSession = actor;
+  next();
 }
-app.get('/api/facilitation/users',requirePractitioner,async(req,res)=>{
-  const rows=await professionalAccess.directory(req.professionalSession);
-  await professionalAccess.journal({actor:req.professionalSession,role:'practitioner',action:'directory',reason:'active_assignments',result:'allowed',requestId:req.requestId});
-  return res.json({users:rows.map(x=>({userRef:x.userRef})),count:rows.length});
+app.get('/api/facilitation/users', requirePractitioner, async (req, res) => {
+  const rows = await professionalAccess.directory(req.professionalSession);
+  await professionalAccess.journal({
+    actor: req.professionalSession,
+    role: 'practitioner',
+    action: 'directory',
+    reason: 'active_assignments',
+    result: 'allowed',
+    requestId: req.requestId,
+  });
+  return res.json({
+    users: rows.map((x) => ({ userRef: x.userRef })),
+    count: rows.length,
+  });
 });
-app.get('/api/facilitation/users/:userRef/conversations',requirePractitioner,async(req,res)=>{
-  const user=await professionalAccess.resolveUser(req.professionalSession,req.params.userRef);
-  if(!user){await professionalAccess.journal({actor:req.professionalSession,action:'conversation_list',reason:'grant_required',result:'denied',requestId:req.requestId});return res.status(404).json({error:'Unavailable'});}
-  const rows=await professionalAccess.conversations(req.professionalSession,user.userId);
-  const visible=[];
-  for(const c of rows)if(await professionalAccess.content(req.professionalSession,user.userId,c,'conversation_list',req.requestId))
-    visible.push({conversationRef:professionalAccess.reference('conversation',c.id),title:c.title||null,lastInteractionAt:c.updatedAt||null});
-  return res.json({user:{userRef:user.userRef},conversations:visible,count:visible.length});
-});
-app.get('/api/facilitation/conversations/:conversationRef/messages',requirePractitioner,async(req,res)=>{
-  const actor=req.professionalSession;
-  let conversation=null,owner=null;
-  for(const user of await professionalAccess.directory(actor))for(const c of await professionalAccess.conversations(actor,user.userId))
-    if(professionalAccess.reference('conversation',c.id)===req.params.conversationRef){conversation=c;owner=user;}
-  if(!conversation|| (req.query.userRef&&req.query.userRef!==owner.userRef)){
-    await professionalAccess.journal({actor,action:'messages',reason:'object_reference_mismatch',result:'denied',requestId:req.requestId});
-    return res.status(404).json({error:'Unavailable'});
-  }
-  if(!await professionalAccess.content(actor,owner.userId,conversation,'messages',req.requestId))return res.status(403).json({error:'Unavailable'});
-  const raw=(await messagesRef.orderByChild('conversationId').equalTo(conversation.id).once('value')).val()||{};
-  const messages=Object.values(raw).filter(m=>m.userId===owner.userId&&m.isPrivate!==true).map(professionalAccess.projectMessage)
-    .sort((a,b)=>parseTimestampMs(a.timestamp)-parseTimestampMs(b.timestamp));
-  if(!await professionalAccess.content(actor,owner.userId,conversation,'messages',req.requestId))return res.status(403).json({error:'Unavailable'});
-  return res.json({userRef:owner.userRef,conversation:{conversationRef:req.params.conversationRef,title:conversation.title||null},messages});
-});
-app.get('/api/facilitation/intersession-memory/:userRef',requirePractitioner,async(req,res)=>{
-  const actor=req.professionalSession,user=await professionalAccess.resolveUser(actor,req.params.userRef);
-  if(!user||!await professionalAccess.content(actor,user.userId,null,'summary',req.requestId))return res.status(403).json({error:'Unavailable'});
-  const raw=(await usersRef.child(user.userId).once('value')).val()||{};
-  if(!await professionalAccess.content(actor,user.userId,null,'summary',req.requestId))return res.status(403).json({error:'Unavailable'});
-  return res.json({memory:normalizeIntersessionSourceFromUserData(raw,buildDefaultPromptRegistry())});
-});
+app.get(
+  '/api/facilitation/users/:userRef/conversations',
+  requirePractitioner,
+  async (req, res) => {
+    const user = await professionalAccess.resolveUser(
+      req.professionalSession,
+      req.params.userRef,
+    );
+    if (!user) {
+      await professionalAccess.journal({
+        actor: req.professionalSession,
+        action: 'conversation_list',
+        reason: 'grant_required',
+        result: 'denied',
+        requestId: req.requestId,
+      });
+      return res.status(404).json({ error: 'Unavailable' });
+    }
+    const rows = await professionalAccess.conversations(
+      req.professionalSession,
+      user.userId,
+    );
+    const visible = [];
+    for (const c of rows)
+      if (
+        await professionalAccess.content(
+          req.professionalSession,
+          user.userId,
+          c,
+          'conversation_list',
+          req.requestId,
+        )
+      )
+        visible.push({
+          conversationRef: professionalAccess.reference('conversation', c.id),
+          title: c.title || null,
+          lastInteractionAt: c.updatedAt || null,
+        });
+    return res.json({
+      user: { userRef: user.userRef },
+      conversations: visible,
+      count: visible.length,
+    });
+  },
+);
+app.get(
+  '/api/facilitation/conversations/:conversationRef/messages',
+  requirePractitioner,
+  async (req, res) => {
+    const actor = req.professionalSession;
+    let conversation = null,
+      owner = null;
+    for (const user of await professionalAccess.directory(actor))
+      for (const c of await professionalAccess.conversations(
+        actor,
+        user.userId,
+      ))
+        if (
+          professionalAccess.reference('conversation', c.id) ===
+          req.params.conversationRef
+        ) {
+          conversation = c;
+          owner = user;
+        }
+    if (
+      !conversation ||
+      (req.query.userRef && req.query.userRef !== owner.userRef)
+    ) {
+      await professionalAccess.journal({
+        actor,
+        action: 'messages',
+        reason: 'object_reference_mismatch',
+        result: 'denied',
+        requestId: req.requestId,
+      });
+      return res.status(404).json({ error: 'Unavailable' });
+    }
+    if (
+      !(await professionalAccess.content(
+        actor,
+        owner.userId,
+        conversation,
+        'messages',
+        req.requestId,
+      ))
+    )
+      return res.status(403).json({ error: 'Unavailable' });
+    const raw =
+      (
+        await messagesRef
+          .orderByChild('conversationId')
+          .equalTo(conversation.id)
+          .once('value')
+      ).val() || {};
+    const messages = Object.values(raw)
+      .filter((m) => m.userId === owner.userId && m.isPrivate !== true)
+      .map(professionalAccess.projectMessage)
+      .sort(
+        (a, b) => parseTimestampMs(a.timestamp) - parseTimestampMs(b.timestamp),
+      );
+    if (
+      !(await professionalAccess.content(
+        actor,
+        owner.userId,
+        conversation,
+        'messages',
+        req.requestId,
+      ))
+    )
+      return res.status(403).json({ error: 'Unavailable' });
+    return res.json({
+      userRef: owner.userRef,
+      conversation: {
+        conversationRef: req.params.conversationRef,
+        title: conversation.title || null,
+      },
+      messages,
+    });
+  },
+);
+app.get(
+  '/api/facilitation/intersession-memory/:userRef',
+  requirePractitioner,
+  async (req, res) => {
+    const actor = req.professionalSession,
+      user = await professionalAccess.resolveUser(actor, req.params.userRef);
+    if (
+      !user ||
+      !(await professionalAccess.content(
+        actor,
+        user.userId,
+        null,
+        'summary',
+        req.requestId,
+      ))
+    )
+      return res.status(403).json({ error: 'Unavailable' });
+    const raw = (await usersRef.child(user.userId).once('value')).val() || {};
+    if (
+      !(await professionalAccess.content(
+        actor,
+        user.userId,
+        null,
+        'summary',
+        req.requestId,
+      ))
+    )
+      return res.status(403).json({ error: 'Unavailable' });
+    return res.json({
+      memory: normalizeIntersessionSourceFromUserData(
+        raw,
+        buildDefaultPromptRegistry(),
+      ),
+    });
+  },
+);
 
 // Route to manually set the title of a conversation and lock it.
 app.post('/api/conversations/:id/title', requireUserAuth, async (req, res) => {
@@ -6980,7 +7467,7 @@ function parseChatRequest(req) {
       : null;
   const recentHistory = trimHistory(req.body?.recentHistory);
   const conversationBranchHistory = normalizeConversationBranchHistory(
-    req.body?.conversationBranchHistory
+    req.body?.conversationBranchHistory,
   );
   const mailsEnabled = req.body?.mailsEnabled !== false;
   const logsEnabled = false; // Client cannot enable sensitive diagnostics.
@@ -6995,7 +7482,9 @@ function parseChatRequest(req) {
   return {
     message,
     isEdited,
-    requestId:requestId?operationKey(userId,requestId):buildRequestId('chat'),
+    requestId: requestId
+      ? operationKey(userId, requestId)
+      : buildRequestId('chat'),
     conversationId,
     isPrivateConversation,
     userId,
@@ -7005,7 +7494,7 @@ function parseChatRequest(req) {
     titleDenyList,
     mailsEnabled,
     logsEnabled,
-    adminUiActive
+    adminUiActive,
   };
 }
 
@@ -7561,7 +8050,7 @@ app.get('/chat/progress', requireUserAuth, (req, res) => {
     ts: Date.now()
   });
 
-  req.on('close', () => {
+  res.on('close', () => {
     const activeStreams = activeChatProgressStreams.get(requestId);
     if (!activeStreams) return;
     activeStreams.delete(res);
@@ -8706,6 +9195,7 @@ async function handleChatPost(req, res) {
             .once('value');
 
           const conversationMessages = Object.values(messagesSnap.val() || {})
+            .filter(m=>messageBelongsToConversation(m,userId,conversationId))
             .filter((m) => m && typeof m.content === 'string')
             .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
 
@@ -9809,6 +10299,7 @@ async function handleChatPost(req, res) {
           }
 
           return loadConversationBranchHistoryForRecall({
+            userId,
             conversationId,
             isPrivateConversation,
             conversationBranchHistory,
@@ -11391,7 +11882,7 @@ app.post('/chat/stream', requireUserAuth, async (req, res) => {
     writeSSEEvent(res, 'token', { token });
   };
 
-  req.on('close', () => {
+  res.on('close', () => {
     logger.info({
       scope: 'chat_stream',
       event: 'chat_stream_closed',
@@ -11404,6 +11895,7 @@ app.post('/chat/stream', requireUserAuth, async (req, res) => {
 
   const streamRes = {
     _statusCode: 200,
+    once(event,listener){res.once(event,listener);return this;},
     setHeader(name, value) {
       try {
         res.setHeader(name, value);

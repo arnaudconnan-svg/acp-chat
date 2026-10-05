@@ -199,7 +199,7 @@ function loadApplication({ seed = {}, overrides = {}, env = {} } = {}) {
   async function request(
     method,
     url,
-    { body = {}, cookie = '', headers = {}, query = {} } = {}
+    { body = {}, cookie = '', headers = {}, query = {}, onWire = null } = {}
   ) {
     const { IncomingMessage, ServerResponse } = require('http');
     const { Duplex } = require('stream');
@@ -208,6 +208,7 @@ function loadApplication({ seed = {}, overrides = {}, env = {} } = {}) {
       read() {},
       write(chunk, encoding, done) {
         wire += chunk.toString();
+        onWire?.(chunk.toString());
         done();
       }
     });

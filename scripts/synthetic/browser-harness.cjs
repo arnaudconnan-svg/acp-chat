@@ -72,6 +72,103 @@ process.on('beforeExit', () => {
   bound.activate('u_B');
   release();
   await assert.rejects(pending, /Identity changed/);
+  // Authentication probe retained across actual logout/login transitions.
+  for (const transition of ['logout', 'login']) {
+    const probeDom = new JSDOM('', { url: 'https://synthetic.example.test' }),
+      p = probeDom.window;
+    p.Headers = Headers;
+    let releaseProbe;
+    p.fetch = async (input) => {
+      if (input === '/api/auth/session')
+        return new Promise((resolve) => {
+          releaseProbe = () =>
+            resolve(
+              new Response(
+                JSON.stringify({ authenticated: true, user: { id: 'u_A' } })
+              )
+            );
+        });
+      return new Response(
+        JSON.stringify(
+          input === '/api/auth/login'
+            ? { success: true, user: { id: 'u_B' } }
+            : { success: true }
+        )
+      );
+    };
+    const api = install(p);
+    if (transition === 'logout')
+      await p.fetch('/api/auth/logout', { method: 'POST' });
+    else await p.fetch('/api/auth/login', { method: 'POST' });
+    releaseProbe();
+    await api.ready;
+    assert.equal(
+      api.identity,
+      transition === 'logout' ? null : 'u_B',
+      'old probe cannot restore A after ' + transition
+    );
+    probeDom.window.close();
+  }
+  // Headers already arrived. Delay each body consumption and observe the actual
+  // application continuation: neither DOM nor B storage receives A's marker.
+  for (const transition of ['logout', 'B'])
+    for (const method of ['json', 'stream']) {
+      const bodyDom = new JSDOM('<div id="view"></div>', {
+          url: 'https://synthetic.example.test'
+        }),
+        p = bodyDom.window;
+      p.Headers = Headers;
+      let deliver;
+      p.fetch = async (input) => {
+        if (input === '/api/auth/session')
+          return new Response(
+            JSON.stringify({ authenticated: true, user: { id: 'u_A' } })
+          );
+        if (input === '/api/auth/logout') return new Response('{}');
+        if (method === 'json')
+          return {
+            status: 200,
+            ok: true,
+            json: () =>
+              new Promise((resolve) => {
+                deliver = () => resolve({ content: 'BODY_A_MARKER' });
+              })
+          };
+        return new Response(
+          new ReadableStream({
+            start(controller) {
+              deliver = () => {
+                controller.enqueue(new TextEncoder().encode('BODY_A_MARKER'));
+                controller.close();
+              };
+            }
+          })
+        );
+      };
+      const api = install(p);
+      await api.ready;
+      const response = await p.fetch('/api/account/conversations');
+      const consume = (
+        method === 'json' ? response.json() : response.body.getReader().read()
+      ).then((data) => {
+        p.document.getElementById('view').textContent = JSON.stringify(data);
+        api.local.setItem('late', JSON.stringify(data));
+      });
+      const rejected = assert.rejects(consume, /Identity changed/);
+      if (transition === 'logout')
+        await p.fetch('/api/auth/logout', { method: 'POST' });
+      else api.activate('u_B');
+      deliver();
+      await rejected;
+      assert.equal(p.document.getElementById('view').textContent, '');
+      assert.equal(api.local.getItem('late'), null);
+      assert(
+        !Array.from({ length: p.localStorage.length }, (_, i) =>
+          p.localStorage.getItem(p.localStorage.key(i))
+        ).some((x) => x?.includes('BODY_A_MARKER'))
+      );
+      bodyDom.window.close();
+    }
   const offline = new JSDOM('', { url: 'https://synthetic.example.test' })
     .window;
   offline.Headers = Headers;

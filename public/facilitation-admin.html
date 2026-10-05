@@ -566,16 +566,6 @@
 
         document.getElementById('status').style.display = 'none';
 
-        if (user && user.hasPrivateInteractionSinceLastVisible === true) {
-          const info = document.createElement('div');
-          info.className = 'loading';
-          info.textContent =
-            'Note: une interaction plus récente existe en privé (' +
-            formatDateTime(user.lastPrivateInteractionAt) +
-            ').';
-          list.appendChild(info);
-        }
-
         conversations.forEach((item) => {
           const card = createCard();
 

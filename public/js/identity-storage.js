@@ -94,6 +94,57 @@
       api = create(nativeLocal, nativeSession);
     const nativeFetch = win.fetch?.bind(win);
     let probe = 0;
+    function check(stamp) {
+      if (!api.current(stamp))
+        throw new win.DOMException('Identity changed', 'AbortError');
+    }
+    function guardedResponse(response, stamp) {
+      return new Proxy(response, {
+        get(target, key) {
+          if (key === 'clone')
+            return () => {
+              check(stamp);
+              return guardedResponse(target.clone(), stamp);
+            };
+          if (['json', 'text', 'arrayBuffer', 'blob', 'formData'].includes(key))
+            return async (...args) => {
+              check(stamp);
+              const data = await target[key](...args);
+              check(stamp);
+              return data;
+            };
+          if (key === 'body' && target.body)
+            return new Proxy(target.body, {
+              get(stream, property) {
+                if (property === 'getReader')
+                  return (...args) => {
+                    check(stamp);
+                    const reader = stream.getReader(...args);
+                    return new Proxy(reader, {
+                      get(r, p) {
+                        if (p === 'read')
+                          return async (...params) => {
+                            check(stamp);
+                            const chunk = await r.read(...params);
+                            check(stamp);
+                            return chunk;
+                          };
+                        const value = Reflect.get(r, p, r);
+                        return typeof value === 'function'
+                          ? value.bind(r)
+                          : value;
+                      }
+                    });
+                  };
+                const value = Reflect.get(stream, property, stream);
+                return typeof value === 'function' ? value.bind(stream) : value;
+              }
+            });
+          const value = Reflect.get(target, key, target);
+          return typeof value === 'function' ? value.bind(target) : value;
+        }
+      });
+    }
     const isUserApi = (path) =>
       path === '/chat' ||
       path.startsWith('/chat/') ||
@@ -123,6 +174,7 @@
             '/api/account/reset'
           ].includes(url.pathname);
         const currentProbe = authProbe ? ++probe : probe;
+        if (authLogin || url.pathname === '/api/auth/logout') probe++;
         if (url.pathname === '/api/auth/logout') invalidate();
         if (
           url.origin === win.location.origin &&
@@ -144,7 +196,7 @@
             .clone()
             .json()
             .catch(() => null);
-          if (authProbe && currentProbe !== probe)
+          if (authProbe && (currentProbe !== probe || !api.current(stamp)))
             throw new win.DOMException(
               'Superseded identity probe',
               'AbortError'
@@ -154,8 +206,16 @@
           api.activate(
             response.ok && data?.authenticated !== false ? data?.user?.id : null
           );
+          return guardedResponse(response, api.capture());
         } else if (isUserApi(url.pathname) && !api.current(stamp))
           throw new win.DOMException('Identity changed', 'AbortError');
+        if (isUserApi(url.pathname) && url.origin === win.location.origin) {
+          if ([401, 409].includes(response.status)) {
+            invalidate();
+            throw new win.DOMException('Identity changed', 'AbortError');
+          }
+          return guardedResponse(response, stamp);
+        }
         return response;
       };
     win.addEventListener('storage', (event) => {
@@ -166,9 +226,17 @@
         win.location.reload();
       }
     });
-    api.subscribe(() =>
-      win.dispatchEvent(new win.CustomEvent('facilitat-identity-invalidated'))
-    );
+    let displayedIdentity = null;
+    api.subscribe(({ identity }) => {
+      if (
+        displayedIdentity &&
+        displayedIdentity !== identity &&
+        win.document.body
+      )
+        win.document.body.style.visibility = 'hidden';
+      displayedIdentity = identity;
+      win.dispatchEvent(new win.CustomEvent('facilitat-identity-invalidated'));
+    });
     if (win.navigator?.sendBeacon) {
       win.navigator.sendBeacon = (url, data) => {
         if (!api.identity) return false;
@@ -190,7 +258,7 @@
             cache: 'no-store'
           })
           .catch(() => {
-            api.activate(null);
+            // A failed/superseded startup probe must not invalidate a later login.
           })
       : Promise.resolve();
     return api;

@@ -1767,6 +1767,7 @@
                   data?.isPrivate === true ||
                   privateConversationIds.has(id),
                 memory: typeof data?.memory === 'string' ? data.memory : '',
+                memoryState: data?.memoryState || {},
                 flags:
                   data?.flags &&
                   typeof data.flags === 'object' &&
@@ -2195,6 +2196,7 @@
                       isCustomTitle: item.isCustomTitle === true,
                       isPrivate: item.isPrivate === true,
                       memory: item.memory,
+                      memoryState: item.memoryState || {},
                       flags: item.flags,
                       updatedAt: item.updatedAt,
                       messages: item.messages

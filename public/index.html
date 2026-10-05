@@ -4510,6 +4510,7 @@
           isCustomTitle: data.isCustomTitle === true,
           isPrivate: true,
           memory: typeof data.memory === 'string' ? data.memory : '',
+          memoryState: data.memoryState || {},
           flags: data.flags || {},
           updatedAt: Number(data.updatedAt || Date.now()),
           messages: localMessages
@@ -4777,7 +4778,7 @@
       window.addEventListener('facilitat-identity-invalidated',()=>{
         conversationDataMemoryCache.clear();
         queuedMessagesByConversation.clear();
-        chatAbortController?.abort();
+        activeChatAbortController?.abort();
         const chat=document.getElementById('chat');if(chat)chat.textContent='';
       });
       let isSending = false;
@@ -12298,6 +12299,7 @@
       }
 
       async function send(options = {}) {
+        const sendIdentity=window.FacilitatIdentityStorage.capture();
         if (sessionStatus === 'terminated' || sessionStatus === 'closing')
           return;
         if (sessionStatus === 'expired') return;
@@ -12567,6 +12569,7 @@
           }
 
           const biometricReady = await ensureBiometricAccess('chat_send');
+          if(!window.FacilitatIdentityStorage.current(sendIdentity))return;
           if (!biometricReady && isBiometricLockEnabledForSession()) {
             if (
               getConversationId() === conversationIdBeforeSend &&
@@ -13476,10 +13479,13 @@
               biometricUnlockToken: getBiometricUnlockTokenValue() || undefined
             };
 
+            if(!window.FacilitatIdentityStorage.current(sendIdentity))return;
+
             let streamAttempt = null;
             try {
               streamAttempt = await tryStreamChatResponse(requestPayload);
             } catch (streamErr) {
+              if(!window.FacilitatIdentityStorage.current(sendIdentity))throw new DOMException('Identity changed','AbortError');
               streamAttempt = null;
               const isStreamAbort =
                 streamErr && streamErr.name === 'AbortError';
@@ -13696,6 +13702,7 @@
 
             updateActivity();
           } catch (err) {
+            if(!window.FacilitatIdentityStorage.current(sendIdentity))return;
             if (dotAnimation) dotAnimation.cancel();
             removeWaitingIndicatorFromChat();
 
@@ -13753,6 +13760,7 @@
             updateScrollToBottomBtn();
           }
         } catch (sendErr) {
+          if(!window.FacilitatIdentityStorage.current(sendIdentity))return;
           console.error('[SEND][UNCAUGHT]', sendErr);
 
           removeWaitingIndicatorFromChat();
