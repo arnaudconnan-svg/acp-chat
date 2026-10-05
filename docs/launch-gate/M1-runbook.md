@@ -1,8 +1,19 @@
 # M1 — prérequis avant activation
 
-Le code et les tests sont synthétiques. Aucun compte, grant, secret, service ou
-donnée réel n'a été modifié. Ne pas activer ni fusionner automatiquement ce
+Le code et les tests sont synthétiques. La validation Cloud n'a modifié aucun
+compte, grant, secret, service ou donnée réel ; la configuration/redéploiement
+Render exécutés ensuite par Work sont attestés au checkpoint opérationnel. Ne pas activer ni fusionner automatiquement ce
 chantier ; Work doit vérifier les prérequis avant livraison beta.
+
+Architecture actée : pas de production publique distincte actuellement ; beta
+validation, main future bêta ouverte après pré-FF. Firebase partagé est intentionnel,
+non bloquant par principe ; aucun projet/base à créer. Configuration/rotation des
+deux services et préparation des identités prévues sont autorisées M0/M1 ; fusions
+beta/main bloquées tant que les prérequis ne sont pas clos, main avant bilan final.
+
+Les [preuves opérationnelles Work et actions restantes](M0-M1-operational-checkpoint.md)
+et la [commande standalone IAM/inventaire](M0-M1-render-readonly.md) sont le
+checkpoint courant. Aucun compte nominatif/rôle déduit de CJ4/CJ5.
 
 ## Configuration et identités
 
@@ -39,7 +50,8 @@ fusion, déploiement, provisioning ni modification de secrets/services/comptes.
 RTDB `https://facilitat-io-default-rtdb.europe-west1.firebasedatabase.app/`,
 projet `facilitat-io`, principal
 `firebase-adminsdk-fbsvc@facilitat-io.iam.gserviceaccount.com`.
-En beta les secrets dédiés `USER_SESSION_SECRET`/`ADMIN_SESSION_SECRET` manquent ;
+Constat initial avant configuration Work : en beta les secrets dédiés
+`USER_SESSION_SECRET`/`ADMIN_SESSION_SECRET` manquaient ;
 `ADMIN_PASSWORD`/`SESSION_SECRET` sont présents ; aucun groupe lié ni secret file
 visible. Métadonnées seules, sans valeur de secret/clé privée ni lecture de
 données applicatives. Connexion Render débloquée ; isolation non démontrée.
@@ -60,21 +72,22 @@ données applicatives. Connexion Render débloquée ; isolation non démontrée.
    ne bornent pas un SDK Admin disposant d'accès administratif ; attester aussi
    les droits du principal. Les barrières M1 sont applicatives, pas une séparation
    IAM. Tant que main reste au code hérité, ne pas présenter le privé local, les
-   grants ou révocations beta comme une protection des accès par main. La
-   séparation d'une cible beta relève de M0, dans les autorisations M0/M1 déjà
-   accordées, après satisfaction des prérequis vérifiables. Les actions
-   main/production et les créations/élargissements de droits ou ressources non
-   encore définis conservent leurs limites et contrôles propres.
+   grants ou révocations beta comme une protection des parcours main encore
+   hérités. Le partage est intentionnel et ne bloque pas la validation beta par
+   principe ; pas de projet/base à créer. Configuration des deux services et
+   rotations sont autorisées M0/M1 ; fusions bloquées avant clôture des prérequis,
+   main avant bilan final. Droits/ressources non définis gardent leurs contrôles.
 3. **Préparer rotation et configuration avant fusion.** Dans les autorisations
-   M0/M1 déjà accordées, après satisfaction des prérequis vérifiables, fournir à beta deux valeurs nouvelles, indépendantes et aléatoires d'au moins
-   32 caractères pour les secrets dédiés, hors Git et rapports. Leur absence
-   actuelle bloque le démarrage M1 : le code refuse, sans repli sur
+   M0/M1 déjà accordées : Work a installé les quatre secrets dédiés distincts de
+   512 bits sur les deux services et confirmé leur consommation runtime. Ne pas
+   régénérer ces valeurs acquises sans anomalie. M1 les requiert sans repli sur
    `SESSION_SECRET`/`ADMIN_PASSWORD`. Vérifier l'autoDeploy et prévoir une fenêtre
    de configuration/bascule avant toute fusion susceptible de déployer.
    Inventorier les consommateurs des secrets publiés, puis organiser leur
    remplacement/révocation. Si une clé de service ou un ancien secret est partagé,
    ne pas le révoquer depuis beta seule : coordonner tous ses consommateurs et
-   attester leurs remplacements, sans changer main ici. La rotation d'une
+   attester leurs remplacements ; configuration/rotation des deux services permises,
+   sans promotion du code main avant bilan final. La rotation d'une
    signature utilisateur invalide les anciens cookies ; la rotation du secret
    professionnel ne révoque pas à elle seule les tokens opaques durables :
    utiliser révocation/authorizationVersion dans les autorisations M0/M1 déjà
@@ -86,10 +99,10 @@ données applicatives. Connexion Render débloquée ; isolation non démontrée.
    Provisionner selon le schéma ci-dessus, vérifier unicité email, hash/version et
    révocations ; affectations explicites. Aucun grant de contenu automatique :
    l'utilisateur choisit scope/date/synthèse. Établir les droits d'accès et la
-   rétention des nœuds professionnels/journal sur la base commune. Si main ou
-   un autre consommateur peut contourner ces barrières, garder l'activation
-   professionnelle beta bloquée jusqu'à satisfaction des prérequis vérifiables
-   de cible/configuration/IAM/provisioning dans les autorisations M0/M1 déjà accordées.
+   rétention des nœuds professionnels/journal sur la base commune. Les droits
+   effectifs et le provisioning restent à contrôler ; le partage intentionnel
+   n'est pas en lui-même un blocage. La future ouverture main attend bilan final
+   et pré-FF ; ses protections M1 ne sont pas revendiquées avant promotion.
 5. **Bascule beta dans les autorisations M0/M1 déjà accordées, après satisfaction
    des prérequis vérifiables et revue Work.** Une fois les
    prérequis précédents attestés, fixer le SHA de livraison et le périmètre de
@@ -119,7 +132,8 @@ des secrets dédiés sans leurs valeurs, plan de rotation/révocation coordonné
 liste de provisioning et accès journal approuvés, fenêtre beta et retour sûr.
 Les autorisations M0/M1 sont déjà accordées : aucun nouveau GO général requis.
 Les blocages sont les prérequis concrets de cible/configuration/IAM/provisioning.
-Main/production, purge irréversible et créations/élargissements de droits ou
+Configuration/rotation des deux services autorisées ; aucune fusion main avant
+bilan final/pré-FF. Purge irréversible et créations/élargissements de droits ou
 ressources non encore définis conservent leurs limites et contrôles propres.
 
 ## Affectations, consentement et audit

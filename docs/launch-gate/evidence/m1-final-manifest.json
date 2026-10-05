@@ -54,8 +54,8 @@
     "operatorApply": "verrou total conservatoire"
   },
   "operationalStatus": {
-    "renderAttestation": "Connexion levée. Work a lu les pages Environment beta/main : même cible/principal déclarés ; aucune isolation démontrée. Runtime effectif et IAM/règles non inspectés.",
-    "rotationAndProvisioning": "Beta : USER_SESSION_SECRET et ADMIN_SESSION_SECRET absents ; ADMIN_PASSWORD et SESSION_SECRET présents. Secrets dédiés requis avant démarrage M1. Rotation/provisioning et coordination des consommateurs partagés non exécutés.",
+    "renderAttestation": "Runtime des deux services confirmé par Work : secrets dédiés présents/forts/distincts, projet/principal/base attendus, REFRESH_EMERGENCY_ON_BOOT=false. Règles racine fermées et deux index confirmés ; IAM console Site Unavailable, permissions/bindings/clés encore à collecter.",
+    "rotationAndProvisioning": "Quatre secrets dédiés distincts de 512 bits installés par Work, redéploiements automatiques f20d84f sans fusion. Anciennes capacités publiées à abandonner sous M1 ; autres rotations selon nécessité attestée. CJ4/CJ5 sans liste nominative email-rôles : pas de provisioning inventé.",
     "historicalPrivateNodeAndLogs": "Non purgés ; inventaire/rétention dans les autorisations M0/M1 déjà accordées, après satisfaction des prérequis vérifiables. Purge irréversible soumise à ses limites et contrôles propres.",
     "declaredRenderMetadata": {
       "source": "Work, pages Environment Render, lecture seule ; aucune donnée applicative ni valeur de secret/clé privée affichée ou consignée.",
@@ -68,21 +68,40 @@
       "projectId": "facilitat-io",
       "principal": "firebase-adminsdk-fbsvc@facilitat-io.iam.gserviceaccount.com",
       "isolationDemonstrated": false,
-      "effectiveRuntimeInspected": false,
+      "effectiveRuntimeInspected": true,
       "iamAndRulesInspected": false,
       "betaEnvironment": {
-        "absent": [
-          "USER_SESSION_SECRET",
-          "ADMIN_SESSION_SECRET"
-        ],
+        "absent": [],
         "present": [
+          "USER_SESSION_SECRET",
+          "ADMIN_SESSION_SECRET",
           "ADMIN_PASSWORD",
           "SESSION_SECRET"
         ],
         "linkedEnvironmentGroupVisible": false,
         "secretFileVisible": false
       },
-      "mainDedicatedSecretsStatus": "Non transmis, inconnu."
+      "mainDedicatedSecretsStatus": "Présence/longueur/distinction runtime confirmées par Work.",
+      "liveRulesInspectedByWork": true
+    },
+    "architecture": "Beta validation ; main future bêta ouverte après pré-FF ; aucune production publique distincte actuellement. Firebase partagé intentionnel, non bloquant par principe ; pas de nouvelle base/projet. Configuration/rotations des deux services autorisées M0/M1, fusions bloquées avant clôture des prérequis, main avant bilan final.",
+    "workRuntimeEvidence": {
+      "source": "Work, checkpoint externe séquence17",
+      "secretsConfigured": 4,
+      "eachSecretEntropyBits": 512,
+      "allSecretsDistinct": true,
+      "bothRuntimeMetadata": "PASS",
+      "liveShaBothServices": "f20d84f1962c552eaebb095d7a9e5ddb63719be7",
+      "betaDeploy": "dep-db1tcp9srm7s73d684ig",
+      "mainDeploy": "dep-db1tcsm0tbcc73cc93hg",
+      "deployFinishedAt": "2026-10-05T16:56:02Z",
+      "healthBothServices": "HTTP200 ok f20d84f no-store",
+      "unauthenticatedSessionBothServices": "HTTP200 authenticated=false user=null",
+      "stableInstancesEach": 1,
+      "metricsWindowUTC": "2026-10-05 16:55–17:02 UTC",
+      "providerCallsAndBusinessWritesFromChecks": false,
+      "mainPublicAppUrl": "https://facilitat.io",
+      "iamEffectiveInspected": false
     }
   },
   "sha256": {

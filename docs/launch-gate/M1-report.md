@@ -63,7 +63,7 @@ vérifié. Elles ne constituent pas une attestation des services déployés.
 
 | Gate | Fichiers / commits principaux | Preuve exécutée et résultat | Limite et opération restante |
 | --- | --- | --- | --- |
-| M0 — isolation et opérateurs | `scripts/synthetic/{guard,runtime,verify}`, `lib/operator-target.js`, scripts reset/index ; `7c5263d`, `afe991f`, `f43b9b5` | `operator:harness`, `isolation:harness` **PASS** : cible/principal/périmètre obligatoires, simulation bornée, refus ; Express réel avec montages/ordre/erreurs, boot/timers/fournisseurs refusés avant chargement | Verrou total `--apply` **conservatoire** ; aucune opération réelle testée. Attestation service/base/principal/IAM par Work ; opérations beta dans les autorisations M0/M1 déjà accordées, après satisfaction des prérequis vérifiables. Séparation de la cible beta : sujet M0. Carte [M0](M0.md). |
+| M0 — isolation et opérateurs | `scripts/synthetic/{guard,runtime,verify}`, `lib/operator-target.js`, scripts reset/index ; `7c5263d`, `afe991f`, `f43b9b5` | `operator:harness`, `isolation:harness` **PASS** : cible/principal/périmètre obligatoires, simulation bornée, refus ; Express réel avec montages/ordre/erreurs, boot/timers/fournisseurs refusés avant chargement | Verrou total `--apply` **conservatoire** ; aucune opération réelle testée. Attestation service/base/principal/IAM par Work ; opérations beta dans les autorisations M0/M1 déjà accordées, après satisfaction des prérequis vérifiables. Firebase partagé intentionnel, non bloquant par principe ; pas de nouvelle base. Carte [M0](M0.md). |
 | G01 — secrets et sessions | `server.js`, `lib/professional-access.js` ; `91d6e4e`, `3cb24ac` | `professional:harness` **PASS** : aucun repli full/TWA large actif, sessions individuelles opaques, schéma strict, expiration absente/NaN/infinie refusée chaud/froid, redémarrage et révocation | Rotation des secrets antérieurement publiés et signatures, secrets dédiés distincts et provisioning individuel réels non exécutés. Serveur fermé sans configuration requise. |
 | G19 / CJ4 — rôles, grants et audit | Module professionnel, routes et `public/js/{content-grants,professional-review}.js`, UI praticien ; `91d6e4e`, `3cb24ac`, `3c434b2`, `3db45bb` | `professional:harness`, `consent-ui:harness` **PASS** : affectation + grant, scope spécifique/période, synthèse explicite positive/refusée, révocation, cumul admin+praticien en rôle praticien, supports sans contenu ; journal admin à motif et unmask distinct. UI par titres/dates, portée/synthèse/échéance restaurées, instant persisté égal à l'affichage | Identités/affectations réelles à provisionner dans les autorisations M0/M1 déjà accordées, après satisfaction des prérequis vérifiables ; politique audit à attester. Lecture praticien minimale ; gardes copie/sélection/impression proportionnés, sans garantie contre toute capture. Aucun vrai grant modifié. |
 | G02 — autorité objet et associations | `server.js`, module professionnel ; `3cb24ac`, `3c434b2` | `professional:harness`, `object-private:harness`, `associations:harness` **PASS** : témoins autorisés et refus avant effets, clé canonique, objets absents/étrangers/retirés ; requestId scoped, owner-cancel/progress, finalisation inverse ; branches/source/seed/destination contradictoires sans effet B, enfants étrangers/privés/non fiables exclus ; import nouveau explicite, collisions/orphelins/path/mixed batch refusés, overwrite légitime borné | Persistance en mémoire : aucune preuve d'IAM ou concurrence distribuée RTDB. Objets hérités ambigus conservés et refusés ; aucune réattribution. Cycle delete/reset/closure et refonte replay M2 non engagés. |
@@ -76,8 +76,9 @@ vérifié. Elles ne constituent pas une attestation des services déployés.
 
 **Implémenté et testé synthétiquement : M0 puis M1. Déployé : non. Purgé : non.**
 La PR cible beta pour revue et ne doit pas être fusionnée automatiquement.
-Aucun service réel, compte, rôle/grant, configuration, déploiement ou donnée réel
-n'a été modifié ; aucun appel réel Firebase/Mistral/SMTP ni listener applicatif.
+Pendant la validation Cloud, aucun service réel, compte, rôle/grant, configuration,
+déploiement ou donnée réelle n'a été modifié ; aucun appel réel Firebase/Mistral/SMTP
+ni listener applicatif. Les opérations Work ultérieures sont attestées ci-dessous.
 Aucun M2 ni promotion main/production.
 
 **Connexion Render débloquée — faits transmis par Work le 05/10/2026.** Les pages
@@ -87,27 +88,37 @@ Environment de `srv-d6lh0094tr6s73b71kug` (beta) et
 projet `facilitat-io`, principal
 `firebase-adminsdk-fbsvc@facilitat-io.iam.gserviceaccount.com`.
 Les deux services live restent `f20d84f` : M0/M1 ne sont pas déployés.
-Même cible/principal déclarés, **aucune isolation beta/main démontrée** ; runtime
-effectif et IAM/règles non inspectés. Ces faits viennent d'une lecture seule des
+Même cible/principal déclarés, **aucune isolation beta/main démontrée** ; partage
+intentionnel. Métadonnées runtime et règles live confirmées par Work ; droits IAM
+effectifs/bindings/clés encore à collecter. Ces faits viennent d'une lecture seule des
 métadonnées Work, sans lecture applicative ni valeur de clé privée consignée.
 
-La liste Environment beta complète montre `USER_SESSION_SECRET` et
+Le constat Environment beta initial, avant configuration Work, montrait `USER_SESSION_SECRET` et
 `ADMIN_SESSION_SECRET` **absents**, `ADMIN_PASSWORD` et `SESSION_SECRET`
 **présents**, aucun groupe d'environnement lié ni secret file visible.
-Les secrets dédiés sont donc un prérequis concret avant démarrage M1, sans repli
-sur les anciens secrets. Rotation/provisioning et migration des capacités
+Ce prérequis est désormais satisfait selon Work : quatre secrets de 512 bits
+installés, quatre valeurs distinctes, consommation runtime confirmée des deux
+services. Redéploiements automatiques `f20d84f` live, sans fusion ; contrôles santé
+et session non authentifiée acquis. M1 n'est toujours pas déployé. Rotation/provisioning et migration des capacités
 anciennes restent à exécuter dans les autorisations M0/M1 déjà accordées, après
-satisfaction des prérequis vérifiables ; les réglages correspondants de main
-n'ont pas été attestés dans cette mise à jour.
+satisfaction des prérequis vérifiables ; IAM effectif et liste nominative/rôles
+restent à fournir, pas un nouveau GO général.
 
 Le [plan de bascule sûre](M1-runbook.md#plan-de-bascule-sûre-sur-la-cible-partagée)
 séquence attestation runtime/IAM, dépendances de la cible commune, préparation des
 secrets avant fusion, rotation coordonnée, provisioning/grants puis recette beta
 restreinte dans les autorisations M0/M1 déjà accordées, après satisfaction des
-prérequis vérifiables. La séparation d'une cible beta relève de M0 ; les blocages
-sont concrets (cible/configuration/IAM/provisioning), sans nouveau GO général.
-Main/production, purge irréversible et créations/élargissements de droits ou
-ressources non encore définis conservent leurs limites et contrôles propres.
+prérequis vérifiables. Pas de production publique distincte : beta validation,
+main future bêta ouverte après pré-FF, Firebase partagé intentionnel et non
+bloquant par principe ; aucune base/projet à créer. Configuration/rotations des
+deux services autorisées. Fusions bloquées avant clôture des prérequis, main avant
+bilan final ; purge irréversible et droits/ressources non définis gardent leurs
+contrôles propres.
 Il ne garantit pas les protections M1 aux
 parcours main restés hérités. PR27 reste draft ; aucun service, secret ni compte
 réel modifié. Les résidus privés et logs restent non purgés.
+
+
+Le [checkpoint opérationnel](M0-M1-operational-checkpoint.md) distingue les preuves
+Work reçues des actions restantes. [Commande IAM/inventaire standalone prête](M0-M1-render-readonly.md),
+non exécutée par Cloud. Aucune modification de code/test ni revalidation globale.
