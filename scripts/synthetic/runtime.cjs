@@ -9,6 +9,7 @@ const copy = (x) => (x == null ? null : structuredClone(x));
 function databaseDouble(seed = {}) {
   const data = copy(seed),
     operations = [];
+  const transactionPlans = [], readFailures = [];
   let sequence = 0;
   function ref(location = '', query = {}) {
     const parts = location.split('/').filter(Boolean);
@@ -25,7 +26,11 @@ function databaseDouble(seed = {}) {
       return copy(value);
     }
     function assign(value) {
-      if (!parts.length) throw new Error('synthetic_root_write_refused');
+      if (!parts.length) {
+        for (const key of Object.keys(data)) delete data[key];
+        Object.assign(data, copy(value) || {});
+        return;
+      }
       let node = data;
       for (const p of parts.slice(0, -1)) node = node[p] ||= {};
       if (value === null) delete node[parts.at(-1)];
@@ -40,6 +45,11 @@ function databaseDouble(seed = {}) {
       limitToFirst: () => r,
       async once() {
         operations.push({ action: 'read', path: location });
+        const fail = readFailures.find((item) => item.path === location);
+        if (fail && --fail.after === 0) {
+          readFailures.splice(readFailures.indexOf(fail), 1);
+          throw new Error('synthetic_read_rejected');
+        }
         const v = read();
         return {
           val: () => copy(v),
@@ -64,11 +74,26 @@ function databaseDouble(seed = {}) {
         assign(null);
       },
       async transaction(fn) {
-        const value = fn(read());
+        const planIndex = transactionPlans.findIndex((item) => item.path === location);
+        const plan = planIndex < 0 ? {} : transactionPlans.splice(planIndex, 1)[0];
+        if (plan.initialNull) {
+          const initial = fn(null);
+          // Firebase aborts on undefined, even with an initially empty cache.
+          if (initial === undefined) return { committed: false, snapshot: { val: read } };
+        }
+        let value = fn(read());
+        if (plan.conflict) {
+          plan.conflict(data);
+          value = fn(read());
+        }
         if (value === undefined)
           return { committed: false, snapshot: { val: read } };
-        await r.set(value);
-        return { committed: true, snapshot: { val: read } };
+        // One synchronous compare-and-commit: no partial root visibility.
+        operations.push({ action: 'transaction', path: location });
+        assign(value);
+        const committed = read();
+        if (plan.ackLost) throw new Error('synthetic_ack_lost');
+        return { committed: true, snapshot: { val: () => copy(committed) } };
       },
       push(value) {
         const c = r.child(`synthetic_${++sequence}`);
@@ -82,7 +107,7 @@ function databaseDouble(seed = {}) {
     };
     return r;
   }
-  return { ref, data, operations };
+  return { ref, data, operations, transactionPlans, readFailures };
 }
 function loadApplication({ seed = {}, overrides = {}, env = {} } = {}) {
   const db = databaseDouble(seed),

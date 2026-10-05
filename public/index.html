@@ -11556,12 +11556,12 @@
         }
       }
 
-      async function persistIntersessionMemoryIfApplicable() {
+      async function persistIntersessionMemoryIfApplicable(currentConversationId = getConversationId(), identityStamp = window.FacilitatIdentityStorage.capture()) {
+        if (!window.FacilitatIdentityStorage.current(identityStamp)) return;
         if (!userSessionState.authenticated) {
           return;
         }
 
-        const currentConversationId = getConversationId();
         if (!currentConversationId) {
           return;
         }
@@ -11624,7 +11624,13 @@
       }
 
       async function closeSessionBackend() {
-        const payload = buildSessionPayloadForClose();
+        const conversationId = getConversationId();
+        const identityStamp = window.FacilitatIdentityStorage.capture();
+        if (!conversationId || !identityStamp.identity) return;
+        const storageKey = getConversationStorageKey(conversationId);
+        const source = loadConversationData(conversationId);
+        const payload = { memory: source.memory, flags: source.flags, conversationId,
+          isPrivateConversation: isConversationPrivateById(conversationId, source) };
 
         try {
           const res = await fetch('/session/close', {
@@ -11639,9 +11645,12 @@
             return;
           }
 
-          if (data && data.memory) {
-            saveMemory(data.memory);
-            await persistIntersessionMemoryIfApplicable();
+          if (!window.FacilitatIdentityStorage.current(identityStamp) ||
+              !window.FacilitatIdentityStorage.local.getItem(storageKey)) return;
+          if (data && typeof data.memory === 'string') {
+            const current = loadConversationData(conversationId);
+            saveConversationData(conversationId, { ...current, memory: data.memory });
+            await persistIntersessionMemoryIfApplicable(conversationId, identityStamp);
           }
         } catch {}
       }

@@ -61,7 +61,9 @@ admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
   databaseURL: appConfig.firebaseDatabaseUrl
 });
-const db = admin.database();
+const { createDataLifecycle } = require('./lib/data-lifecycle');
+const lifecycle = createDataLifecycle(admin.database());
+const db = lifecycle.db;
 const messagesRef = db.ref('messages');
 const userLabelsRef = db.ref('userLabels');
 const usersRef = db.ref('users');
@@ -1440,7 +1442,7 @@ async function requireUserAuth(req, res, next) {
       req.headers['x-client-identity'] &&
       req.headers['x-client-identity'] !== session.userId
     )
-      return res.status(409).json({ error: 'Client identity changed' });
+      return res.status(409).json({ error: 'Client identity changed', code: 'identity_changed' });
     req.userSession = session;
     const { idValid } = require('./lib/professional-access');
     if (req.body?.userId !== undefined && req.body.userId !== session.userId)
@@ -1564,8 +1566,32 @@ async function requireUserAuth(req, res, next) {
       )
         return res.status(403).json({ error: 'Branch seed mismatch' });
     }
+    if (['/chat', '/chat/stream'].includes(req.path) && targetId && !privateTransit)
+      req.lifecycleTicket = await lifecycle.beginTurn(session.userId, targetId);
+    const sendJson = res.json.bind(res);
+    res.json = async (body) => {
+      try {
+      if (res.statusCode < 400 && !res.locals.lifecycleTransition &&
+          !(req.method === 'DELETE') &&
+          !await lifecycle.available(session.userId, privateTransit ? null : targetId)) {
+        res.status(410);
+        return sendJson({ code: 'lifecycle_object_retired', error: 'Object unavailable' });
+      }
+      return sendJson(body);
+      } catch {
+        // Some existing handlers intentionally do not await json(). Never leak
+        // a rejection or acknowledge content when the final authority read fails.
+        if (!res.headersSent) {
+          res.status(503);
+          return sendJson({ code: 'lifecycle_availability_unknown', error: 'Verification unavailable' });
+        }
+        if (!res.writableEnded) res.end();
+        return res;
+      }
+    };
     return next();
   } catch (err) {
+    if (err.code?.startsWith('lifecycle_')) return res.status(410).json({ code: err.code });
     console.error('Erreur requireUserAuth:', err.message);
     return res.status(500).json({ error: 'Auth check failed' });
   }
@@ -3906,8 +3932,7 @@ app.post('/api/account/reset', requireUserAuth, async (req, res) => {
         .json({ error: 'Compte incomplet pour remise \u00e0 z\u00e9ro' });
     }
 
-    await usersRef.child(newUserId).set(nextUserRecord);
-    await usersRef.child(oldUserId).remove();
+    await lifecycle.removeAccount(oldUserId, { id: newUserId, record: nextUserRecord });
 
     const previousSessionToken = parseCookies(req).userSessionId;
     if (previousSessionToken) {
@@ -3915,6 +3940,7 @@ app.post('/api/account/reset', requireUserAuth, async (req, res) => {
     }
 
     invalidateUserSessionsByUserId(oldUserId);
+    res.locals.lifecycleTransition = true;
 
     const resetAuthVersion = Number.isSafeInteger(nextUserRecord.authVersion) ? nextUserRecord.authVersion : 0;
     const newSessionToken = buildUserSessionToken(newUserId, resetAuthVersion);
@@ -3986,66 +4012,14 @@ app.post('/api/account/close', requireUserAuth, async (req, res) => {
       return res.status(400).json({ error: 'Invalid user session' });
     }
 
-    const conversationsSnap = await db
-      .ref('conversations')
-      .orderByChild('userId')
-      .equalTo(userId)
-      .once('value');
-
-    const conversations = conversationsSnap.val() || {};
-    const conversationEntries = Object.entries(conversations).filter(
-      ([conversationId, value]) =>
-        typeof conversationId === 'string' && value && typeof value === 'object'
-    );
-
-    const archivedConversations = {};
-    const archivedMessagesByConversation = {};
-    const conversationDeletePatch = {};
-    const messageDeletePatch = {};
-
-    for (const [conversationId, conversationData] of conversationEntries) {
-      archivedConversations[conversationId] = conversationData;
-      conversationDeletePatch[conversationId] = null;
-
-      const messageSnap = await messagesRef
-        .orderByChild('conversationId')
-        .equalTo(conversationId)
-        .once('value');
-      const messageMap = messageSnap.val() || {};
-      archivedMessagesByConversation[conversationId] = messageMap;
-
-      Object.keys(messageMap).forEach((messageId) => {
-        if (typeof messageId === 'string' && messageId.trim()) {
-          messageDeletePatch[messageId] = null;
-        }
-      });
-    }
-
-    await accountArchivesRef.child(userId).set({
-      userId,
-      archivedAt: now,
-      closeReason: 'user_requested_closure',
-      requestId,
-      user: userRecord,
-      conversations: archivedConversations,
-      messagesByConversation: archivedMessagesByConversation
-    });
-
-    if (Object.keys(messageDeletePatch).length > 0) {
-      await messagesRef.update(messageDeletePatch);
-    }
-    if (Object.keys(conversationDeletePatch).length > 0) {
-      await db.ref('conversations').update(conversationDeletePatch);
-    }
-
-    await usersRef.child(userId).remove();
-    await userLabelsRef.child(userId).remove();
+    const removedConversationIds = await lifecycle.removeAccount(userId);
 
     const sessionToken = parseCookies(req).userSessionId;
     if (sessionToken) {
       userSessions.delete(sessionToken);
     }
     invalidateUserSessionsByUserId(userId);
+    res.locals.lifecycleTransition = true;
 
     res.setHeader(
       'Set-Cookie',
@@ -4058,7 +4032,7 @@ app.post('/api/account/close', requireUserAuth, async (req, res) => {
       status: 'success',
       at: now,
       requestId,
-      archivedConversationCount: conversationEntries.length
+      removedConversationCount: removedConversationIds.length
     });
 
     return res.json({ success: true });
@@ -4330,12 +4304,8 @@ app.delete(
 
       const now = new Date().toISOString();
 
-      await convRef.update({
-        deletedAt: now,
-        updatedAt: now
-      });
-
-      return res.json({ success: true, deletedAt: now });
+      const removedConversationIds = await lifecycle.removeConversation(session.userId, conversationId);
+      return res.json({ success: true, deletedAt: now, removedConversationIds });
     } catch (err) {
       console.error(
         'Erreur DELETE /api/account/conversations/:id:',
@@ -6120,15 +6090,16 @@ app.put('/api/intersession-memory', requireUserAuth, async (req, res) => {
       buildDefaultPromptRegistry()
     );
 
-    await usersRef.child(session.userId).update({
+    await lifecycle.commitMemory(session.userId, userData, {
       intersessionMemorySource: memorySource,
       intersessionMemoryUpdatedAt: new Date().toISOString(),
       intersessionCompactOutdated: true
-    });
+    }, { conversationId: requestedConversationId });
 
     return res.json({ success: true });
   } catch (err) {
     console.error('Erreur PUT /api/intersession-memory:', err.message);
+    if (err.code === 'memory_superseded') return res.status(409).json({ code: err.code, saved: false });
     if (
       err &&
       (err.code === 'insufficient_quota' || err.type === 'insufficient_quota')
@@ -6165,43 +6136,21 @@ app.patch(
       const newSourceMemory = String(req.body.memory || '').slice(0, 6000);
       const now = new Date().toISOString();
 
-      // Archive current version before overwriting
-      const snap = await usersRef.child(session.userId).once('value');
-      const userData = snap.val() || {};
-      const currentMemorySource = normalizeIntersessionSourceFromUserData(
-        userData,
-        buildDefaultPromptRegistry()
-      );
-      const currentMemoryCompact = currentMemorySource;
-      const currentUpdatedAt = userData.intersessionMemoryUpdatedAt;
-      const currentHistory = Array.isArray(userData.intersessionMemoryHistory)
-        ? userData.intersessionMemoryHistory
-        : [];
-
-      if (
-        typeof currentMemorySource === 'string' &&
-        currentMemorySource.trim()
-      ) {
-        const newEntry = {
-          memorySource: currentMemorySource,
-          memoryCompact: currentMemoryCompact,
-          savedAt: currentUpdatedAt || now
+      const committed = await usersRef.child(session.userId).transaction((current) => {
+        if (!current) return undefined;
+        const currentSource = normalizeIntersessionSourceFromUserData(current, buildDefaultPromptRegistry());
+        const history = Array.isArray(current.intersessionMemoryHistory) ? current.intersessionMemoryHistory : [];
+        return { ...current,
+          intersessionMemoryHistory: currentSource.trim() ? [{ memorySource: currentSource,
+            memoryCompact: currentSource, savedAt: current.intersessionMemoryUpdatedAt || now }, ...history].slice(0, 3) : history,
+          intersessionMemorySource: newSourceMemory.trim(),
+          intersessionMemoryUpdatedAt: now,
+          intersessionRefreshForced: true,
+          intersessionCompactOutdated: true,
+          m2MemoryRevision: lifecycle.revision(current, 'm2MemoryRevision') + 1
         };
-        const updatedHistory = [newEntry, ...currentHistory].slice(0, 3);
-        await usersRef
-          .child(session.userId)
-          .child('intersessionMemoryHistory')
-          .set(updatedHistory);
-      }
-
-      const nextMemorySource = newSourceMemory.trim();
-
-      await usersRef.child(session.userId).update({
-        intersessionMemorySource: nextMemorySource,
-        intersessionMemoryUpdatedAt: now,
-        intersessionRefreshForced: true,
-        intersessionCompactOutdated: true
       });
+      if (!committed.committed) return res.status(410).json({ code: 'lifecycle_user_retired' });
 
       return res.json({ success: true });
     } catch (err) {
@@ -6283,11 +6232,11 @@ app.post('/api/session/beacon', requireUserAuth, async (req, res) => {
       buildDefaultPromptRegistry()
     );
 
-    await usersRef.child(session.userId).update({
+    await lifecycle.commitMemory(session.userId, userData, {
       intersessionMemorySource: consolidated,
       intersessionMemoryUpdatedAt: now,
       intersessionCompactOutdated: true
-    });
+    }, { conversationId: requestedConversationId });
   } catch (err) {
     // Background processing - errors are non-critical, log and continue.
     console.error('Erreur /api/session/beacon (background):', err.message);
@@ -6979,47 +6928,8 @@ app.delete(
         return res.status(404).json({ error: 'Conversation introuvable' });
       }
 
-      const messagesSnap = await messagesRef
-        .orderByChild('conversationId')
-        .equalTo(conversationId)
-        .once('value');
-
-      const messageIds = Object.keys(messagesSnap.val() || {});
-
-      const branchSnap = await branchRecordsRef.once('value');
-      const branches = branchSnap.val() || {};
-      const relatedBranchIds = Object.entries(branches)
-        .filter(([, value]) => {
-          const sourceConversationId = String(
-            value?.sourceConversationId || ''
-          ).trim();
-          const branchConversationId = String(
-            value?.branchConversationId || ''
-          ).trim();
-          return (
-            sourceConversationId === conversationId ||
-            branchConversationId === conversationId
-          );
-        })
-        .map(([id]) => id);
-
-      await Promise.all([
-        convRef.remove(),
-        ...messageIds.map((messageId) => messagesRef.child(messageId).remove()),
-        ...relatedBranchIds.map((branchId) =>
-          branchRecordsRef.child(branchId).remove()
-        ),
-        ...relatedBranchIds.map((branchId) =>
-          branchSeedSnapshotsRef.child(branchId).remove()
-        )
-      ]);
-
-      return res.json({
-        success: true,
-        deletedConversationId: conversationId,
-        deletedMessageCount: messageIds.length,
-        deletedBranchCount: relatedBranchIds.length
-      });
+      const removedConversationIds = await lifecycle.removeConversation(existing.userId, conversationId);
+      return res.json({ success: true, deletedConversationId: conversationId, removedConversationIds });
     } catch (err) {
       console.error('Erreur DELETE /api/admin/conversations/:id:', err.message);
       return res.status(500).json({ error: 'Conversation delete failed' });
@@ -7960,7 +7870,7 @@ app.post('/chat/cancel', requireUserAuth, (req, res) => {
   return res.json({ success: true, requestId, canceled });
 });
 
-app.post('/chat/stream/interrupted', requireUserAuth, async (req, res) => {
+app.post('/chat/stream/interrupted', (req, res, next) => appConfig.enableChatStreaming === true ? next() : res.status(405).json({code:'streaming_disabled'}), requireUserAuth, async (req, res) => {
   const conversationId =
     typeof req.body?.conversationId === 'string'
       ? req.body.conversationId.trim()
@@ -10138,11 +10048,11 @@ async function handleChatPost(req, res) {
           if (successPayload) {
             runtimeCompact = formatRuntimeCompactMemory(successPayload.items);
             try {
-              await usersRef.child(userId).update({
+              await lifecycle.commitMemory(userId, userData, {
                 intersessionMemoryCompact: runtimeCompact,
                 intersessionCompactOutdated: false,
                 intersessionRefreshForced: false
-              });
+              }, { advance: false, conversationId });
             } catch (error) {
               console.warn('[INTERSESSION_COMPACT_PERSIST_FAILED]', {
                 userId,
@@ -10182,10 +10092,10 @@ async function handleChatPost(req, res) {
         });
 
         if (forcedByManualEdit) {
-          await usersRef.child(userId).update({
+          await lifecycle.commitMemory(userId, userData, {
             intersessionRefreshForced: false,
             intersessionCompactOutdated: false
-          });
+          }, { advance: false, conversationId });
         }
 
         return {
@@ -11849,7 +11759,7 @@ async function handleChatPost(req, res) {
 
 app.post('/chat', requireUserAuth, handleChatPost);
 
-app.post('/chat/stream', requireUserAuth, async (req, res) => {
+app.post('/chat/stream', (req, res, next) => appConfig.enableChatStreaming === true ? next() : res.status(405).json({code:'streaming_disabled'}), requireUserAuth, async (req, res) => {
   if (appConfig.enableChatStreaming !== true) {
     return res.status(405).json({
       error: 'Chat streaming is not enabled',

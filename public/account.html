@@ -2610,6 +2610,7 @@
         }
 
         async function handleSensitiveAccountReset(noticeEl) {
+          const previousSpace = window.FacilitatIdentityStorage.captureSpace();
           const res = await fetch('/api/account/reset', {
             method: 'POST',
             credentials: 'include',
@@ -2627,8 +2628,7 @@
             throw new Error('Opération impossible pour le moment');
           }
 
-          clearLocalConversationStorageForReset();
-          rotateLocalAnonymousUserId();
+          previousSpace.clear();
 
           noticeEl.textContent = 'Remise à zéro effectuée';
           noticeEl.className = 'notice success';
@@ -2639,6 +2639,7 @@
         }
 
         async function handleSensitiveAccountClosure(noticeEl) {
+          const previousSpace = window.FacilitatIdentityStorage.captureSpace();
           const res = await fetch('/api/account/close', {
             method: 'POST',
             credentials: 'include',
@@ -2656,6 +2657,8 @@
             throw new Error('Opération impossible pour le moment');
           }
 
+          previousSpace.clear();
+          window.FacilitatIdentityStorage.activate(null);
           noticeEl.textContent = 'Compte clôturé';
           noticeEl.className = 'notice success';
 

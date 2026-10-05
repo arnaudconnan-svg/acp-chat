@@ -60,6 +60,25 @@
       session: scope(nativeSession),
       activate,
       capture: () => ({ identity, generation }),
+      captureSpace() {
+        const owner = identity;
+        const stamp = { identity, generation };
+        return {
+          stamp,
+          clear() {
+            if (!owner) return;
+            const prefix = PREFIX + owner + ':';
+            for (const storage of [nativeLocal, nativeSession]) {
+              const keys = [];
+              for (let i = 0; i < storage.length; i++) {
+                const key = storage.key(i);
+                if (key?.startsWith(prefix)) keys.push(key);
+              }
+              for (const key of keys) storage.removeItem(key);
+            }
+          }
+        };
+      },
       current: (stamp) =>
         stamp.identity === identity && stamp.generation === generation,
       subscribe(fn) {
@@ -210,7 +229,18 @@
         } else if (isUserApi(url.pathname) && !api.current(stamp))
           throw new win.DOMException('Identity changed', 'AbortError');
         if (isUserApi(url.pathname) && url.origin === win.location.origin) {
-          if ([401, 409].includes(response.status)) {
+          const conflict =
+            response.status === 409
+              ? await response
+                  .clone()
+                  .json()
+                  .catch(() => null)
+              : null;
+          check(stamp);
+          if (
+            response.status === 401 ||
+            conflict?.code === 'identity_changed'
+          ) {
             invalidate();
             throw new win.DOMException('Identity changed', 'AbortError');
           }
