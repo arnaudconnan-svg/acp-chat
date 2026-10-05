@@ -180,7 +180,8 @@
       "rtdbMutation": false,
       "keyTokenPrinted": false,
       "officialPermissionQualification": "Work, Firebase IAM documentation : instances.get porte données/métadonnées ; instances.update porte données/règles et enable/disable. data.get/update observés ne constituent pas une base custom documentée ni une garantie SDK. Catalogue/bindings réels et sonde SDK après réduction requis.",
-      "closurePlan": "docs/launch-gate/M0-M1-closure-plan.md ; inspection gcloud par opérateur existant ; minimum documenté instances.get/update et seules métadonnées démontrées nécessaires, sans gestion supplémentaire ni rôle présumé."
+      "closurePlan": "docs/launch-gate/M0-M1-closure-plan.md ; inspection gcloud par opérateur existant ; minimum documenté instances.get/update et seules métadonnées démontrées nécessaires, sans gestion supplémentaire ni rôle présumé.",
+      "minimalHumanNeed": "Capture/export des seuls bindings du principal depuis une console opérateur accessible ; propriétaire Firebase déjà authentifié, IAM console indisponible et rôle réellement attribué inconnu. Aucun retrait à l’aveugle."
     },
     "workProfessionalInventory": {
       "source": "Work, mode identities ; HTTP succès.",
@@ -213,8 +214,8 @@
       }
     },
     "remainingBlockers": [
-      "Réduction IAM impossible avec les accès disponibles : instances.delete excessif prouvé sur beta/main ; bindings/policy et consommateurs à inspecter avant réduction bornée.",
-      "Provisioning/remise privée du nouveau credential du seul propriétaire connu et autorisé ; administrator uniquement. Helper opérateur exact préparé, aucun nominatif/rôle manquant, aucune exécution réelle."
+      "IAM : console indisponible, propriétaire Firebase déjà authentifié, rôle attribué inconnu ; capture/export des seuls bindings de ce principal depuis une console opérateur accessible, sans retrait à l’aveugle.",
+      "Helper Work arrivé au préflight et en attente personnelle masquée ; aucun credential saisi/généré ni fiche/session écrite, login/session/révocation non testés. Propriétaire + administrator résolus, aucun nouveau GO général."
     ],
     "operatorPreparation": {
       "sourceCheckpoint": "Work séquence20 ; PR27 b78acf8, propriétaire unique + administrator explicitement autorisés.",
@@ -258,6 +259,41 @@
       "futureEffects": "One owner identity + revoked probe session only. No practitioner/support/assignment/grant; no conversation/private-memory/provider access. Owner enters credential himself; output booleans/technical ID only.",
       "ownerMapping": "Uniquement en mémoire depuis la liste propriétaire du server.js live f20 vérifié SHA256 ; empreinte email normalisé attendue contrôlée. Aucune nouvelle constante email en clair.",
       "pinnedLiveServerSha256": "e53e8469a084896b1ad58b19413c12dfa659a9f67db623f90df748168ba7d555"
+    },
+    "workOwnerHelperPreflight": {
+      "source": "Preuve réelle transmise par Work, UI Render beta Web Shell ; pas une réexécution Cloud.",
+      "receivedOn": "2026-10-05",
+      "helperSha256": "c661db9f2d65efae8f82714ca4c5161dd7d294812a3b5b18134bddf0a26bcb3e",
+      "instance": "c44mq",
+      "service": "beta",
+      "downloaded": true,
+      "checksumVerifiedByWork": true,
+      "startedByWork": true,
+      "status": "started_preflight_passed_waiting_personal_masked_input",
+      "observedUi": [
+        "Prêt. Passation à l’utilisateur : saisir et confirmer lui-même le nouveau credential.",
+        "Nouveau mot de passe (entrée masquée) :"
+      ],
+      "guardPassageProvenByPinnedHelperPrompt": {
+        "exactModules": true,
+        "serviceAndLiveF20Sha": true,
+        "ownerSourceAndExpectedHash": true,
+        "expectedProjectDatabasePrincipalConfig": true,
+        "emptyProfessionalNamespace": true
+      },
+      "awaitingPersonalInput": true,
+      "passwordEntered": false,
+      "passwordGenerated": false,
+      "identityWritten": false,
+      "sessionWritten": false,
+      "loginTested": false,
+      "sessionTested": false,
+      "revocationTested": false,
+      "provisioningAccomplished": false,
+      "workHandoff": "Après checkpoint durable ; saisie personnelle uniquement.",
+      "cloudPreparationHistoricalStatusPreserved": true,
+      "newCloudControlRun": false,
+      "helperOrApplicationModified": false
     }
   },
   "sha256": {

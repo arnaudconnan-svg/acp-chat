@@ -243,4 +243,26 @@ Précision du helper préparé : email propriétaire dérivé seulement en mémo
 la source live f20 épinglée et contrôlé par empreinte normalisée ; aucune constante
 email en clair dans le helper courant, aucun eval du serveur/password legacy copié.
 Résolveur ciblé validé (source exacte acceptée, source/empreinte altérées refusées),
-aucune exécution Render. Preuves publiques : launch-owner + administrator uniquement.
+aucune exécution Render à ce checkpoint de préparation Cloud. Preuves publiques :
+launch-owner + administrator uniquement.
+
+## Checkpoint Work — helper lancé jusqu'au préflight, en attente personnelle
+
+Preuve réelle reçue de Work : helper SHA256
+`c661db9f2d65efae8f82714ca4c5161dd7d294812a3b5b18134bddf0a26bcb3e`
+téléchargé, empreinte vérifiée et démarré dans beta Web Shell, instance `c44mq`.
+L'UI présente exactement « Prêt. Passation à l’utilisateur : saisir et confirmer
+lui-même le nouveau credential. » puis « Nouveau mot de passe (entrée masquée) : ».
+Le prompt atteste les gardes modules exacts, service/SHA f20, source owner/hash,
+config projet/base/principal et namespace professionnel vide.
+
+**Le process attend la saisie. Aucun password saisi/généré, aucune fiche/session
+écrite, aucun login/session/révocation testé.** Work passe la main après ce checkpoint
+durable. Préparation Cloud historique inchangée ; exécution Work limitée au
+préflight, aucun provisioning accompli. Identité publique : launch-owner + administrator.
+
+IAM reste bloqué : console indisponible, propriétaire Firebase déjà authentifié,
+rôle réellement attribué inconnu. Seul besoin humain minimal à ce stade :
+capture/export des seuls bindings du principal depuis console opérateur accessible,
+sans retrait à l'aveugle ni nouveau GO général. PR27 draft, aucune fusion.
+Cette publication ne touche que docs/evidence ; aucun nouveau contrôle, helper ou code modifié.
