@@ -246,7 +246,7 @@ Résolveur ciblé validé (source exacte acceptée, source/empreinte altérées 
 aucune exécution Render à ce checkpoint de préparation Cloud. Preuves publiques :
 launch-owner + administrator uniquement.
 
-## Checkpoint Work — helper lancé jusqu'au préflight, en attente personnelle
+## Checkpoint Work historique — helper lancé jusqu'au préflight, en attente personnelle
 
 Preuve réelle reçue de Work : helper SHA256
 `c661db9f2d65efae8f82714ca4c5161dd7d294812a3b5b18134bddf0a26bcb3e`
@@ -256,7 +256,7 @@ lui-même le nouveau credential. » puis « Nouveau mot de passe (entrée masqu�
 Le prompt atteste les gardes modules exacts, service/SHA f20, source owner/hash,
 config projet/base/principal et namespace professionnel vide.
 
-**Le process attend la saisie. Aucun password saisi/généré, aucune fiche/session
+**À ce checkpoint historique, le process attend la saisie. Aucun password saisi/généré, aucune fiche/session
 écrite, aucun login/session/révocation testé.** Work passe la main après ce checkpoint
 durable. Préparation Cloud historique inchangée ; exécution Work limitée au
 préflight, aucun provisioning accompli. Identité publique : launch-owner + administrator.
@@ -266,3 +266,48 @@ rôle réellement attribué inconnu. Seul besoin humain minimal à ce stade :
 capture/export des seuls bindings du principal depuis console opérateur accessible,
 sans retrait à l'aveugle ni nouveau GO général. PR27 draft, aucune fusion.
 Cette publication ne touche que docs/evidence ; aucun nouveau contrôle, helper ou code modifié.
+
+## Reprise après `78d60f6` — correction opérateur ciblée, prête pour revue Work
+
+Work : deux tentatives de l'ancien helper `c661db9f…` sur beta `c44mq`, terminées
+avant création. Première avant confirmation ; seconde atteint Confirmation.
+Seconde sortie : `moduleExact/ownerSourceExact/ownerEmailExpected/contextOk/preflightOk`
+et `cleanupOk=true` ; `confirmed/created/loginOk/uniqueAdministrator/revoked/`
+`revokedSessionRejected/identityDisabledOnFailure/ok=false`. Aucun compte/session
+créé, aucun résultat login/session/révocation acquis. Cause indéterminée, catch
+ancien silencieux ; aucune saisie, taille ou erreur brute retenue dans les preuves.
+
+Correction **du seul helper opérateur**, SHA256
+`999309f751a68121cc36ffee5a7e45ab70b5bc624089b6a936c4bb8c07bb674d` :
+lecture masquée continue des deux lignes, normalisation CR/LF/CRLF entre événements,
+reste de collage conservé, EOF refusé ; motifs fixes à liste blanche. Confirmation
+vide CR/LF séparés, collage tronqué et EOF pendant reproduits sur le lecteur ancien
+archivé. Cause Render non attribuée ; politique force/limites initiales/gardes/
+atomicité/modules M1 exacts inchangés. [Notice et transfert épinglé](M0-M1-closure-plan.md).
+
+Commande réellement exécutée :
+`node --require ./scripts/synthetic/guard.cjs docs/launch-gate/operators/owner-provision-input-test.cjs`
+— **32 cas PASS, code0**, entrées synthétiques uniquement, aucun SDK réel/réseau,
+[preuve](evidence/owner-tty-targeted.json). Syntaxe/helper/empreintes/transfert et
+`git diff --check` ciblés contrôlés ; aucune suite acquise relancée, aucun boot,
+service Render, fournisseur, provisioning ou déploiement exécuté par Cloud.
+Nouvelle version préparée pour revue Work, pas encore exécutée dans Render.
+
+Nouvelle observation IAM utilisateur : projet et principal attendus ; libellé
+tronqué « Administrateur Firebase Realtime… », case rôles fournis Google non
+cochée. `roles/firebasedatabase.admin` est la correspondance attendue à qualifier,
+pas un binding exact/exhaustif confirmé. Conditions/héritage/autres consommateurs
+restent à inspecter ; GCP indisponible à Work, aucun IAM modifié, capture non publiée.
+Plan custom get/update inchangé, couplage règles/activation conservé.
+
+Prochaines actions : revue Work puis démarrage du nouveau helper et passation
+personnelle masquée au seul `launch-owner` + `administrator` ; intégrer résultats
+réels login/session/révocation. Pour IAM, obtenir export borné des bindings du
+principal via opérateur accessible avant réduction, jamais retrait à l'aveugle.
+Aucun nominatif/rôle manquant ni nouveau GO général. PR27 draft, aucune fusion
+beta/main, M2 exclu ; code et résultats acquis préservés.
+
+Dernière preuve Work : diff de saisie et sortie réelle des 32 cas PASS relus ;
+gardes et modules M1 conservés. Aucun contrôle supplémentaire requis. Cette
+correction reste préparée, pas exécutée dans Render ; prochaine action Work :
+transfert épinglé puis passation personnelle au champ sécurisé.

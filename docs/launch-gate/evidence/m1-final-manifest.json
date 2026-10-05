@@ -55,7 +55,7 @@
   },
   "operationalStatus": {
     "renderAttestation": "Runtime des deux processus server.js et empreinte f20d84f confirmés par Work ; secrets dédiés présents/forts/distincts, projet/principal/base attendus, refresh=false, LOG_PERSIST=true, rétention14. Règles racine fermées. Accès données prouvé et instances.delete excessif prouvé sur beta/main ; réduction IAM impossible avec accès disponibles, bindings/clés non accessibles.",
-    "rotationAndProvisioning": "Quatre secrets dédiés distincts de 512 bits acquis, redéploiements f20d84f sans fusion. Anciennes capacités publiées à abandonner sous M1 ; aucun secret fournisseur déclaré compromis. Propriétaire nominatif identifié et autorisé, administrator uniquement, aucun roster/rôle manquant. Helper opérateur mono-ligne avec modules exacts embarqués préparé ; restent saisie personnelle masquée/remise privée et résultats réels, aucune exécution Cloud.",
+    "rotationAndProvisioning": "Quatre secrets dédiés acquis, redéploiements f20 sans fusion. Propriétaire + administrator résolus. Deux tentatives Work ancien helper arrêtées avant création ; aucun compte/session. Correction opérateur TTY/diagnostics préparée pour revue puis saisie personnelle masquée et résultats réels ; aucune exécution Cloud réelle ni nouveau GO général.",
     "historicalPrivateNodeAndLogs": "Non purgés ; inventaire/rétention dans les autorisations M0/M1 déjà accordées, après satisfaction des prérequis vérifiables. Purge irréversible soumise à ses limites et contrôles propres.",
     "declaredRenderMetadata": {
       "source": "Work, pages Environment Render, lecture seule ; aucune donnée applicative ni valeur de secret/clé privée affichée ou consignée.",
@@ -181,7 +181,19 @@
       "keyTokenPrinted": false,
       "officialPermissionQualification": "Work, Firebase IAM documentation : instances.get porte données/métadonnées ; instances.update porte données/règles et enable/disable. data.get/update observés ne constituent pas une base custom documentée ni une garantie SDK. Catalogue/bindings réels et sonde SDK après réduction requis.",
       "closurePlan": "docs/launch-gate/M0-M1-closure-plan.md ; inspection gcloud par opérateur existant ; minimum documenté instances.get/update et seules métadonnées démontrées nécessaires, sans gestion supplémentaire ni rôle présumé.",
-      "minimalHumanNeed": "Capture/export des seuls bindings du principal depuis une console opérateur accessible ; propriétaire Firebase déjà authentifié, IAM console indisponible et rôle réellement attribué inconnu. Aucun retrait à l’aveugle."
+      "minimalHumanNeed": "Accès opérateur aux seuls bindings du principal et qualification du libellé tronqué observé ; exhaustivité/conditions/héritage inconnus. Aucun retrait à l’aveugle ; GCP reste inaccessible à Work.",
+      "userRoleLabelObservation": {
+        "source": "Capture utilisateur, non publiée.",
+        "expectedProjectAndPrincipal": true,
+        "truncatedRoleLabel": "Administrateur Firebase Realtime…",
+        "googleProvidedRolesCheckboxChecked": false,
+        "expectedRoleCorrespondence": "roles/firebasedatabase.admin",
+        "exactRoleQualified": false,
+        "bindingsConditionsInheritanceExhaustive": false,
+        "gcpAvailableToWork": false,
+        "iamModified": false,
+        "nextAction": "Qualifier correspondance via doc/UI et export des seuls bindings du principal avant retrait ; plan custom instances.get/update inchangé, jamais retrait à l’aveugle."
+      }
     },
     "workProfessionalInventory": {
       "source": "Work, mode identities ; HTTP succès.",
@@ -214,8 +226,8 @@
       }
     },
     "remainingBlockers": [
-      "IAM : console indisponible, propriétaire Firebase déjà authentifié, rôle attribué inconnu ; capture/export des seuls bindings de ce principal depuis une console opérateur accessible, sans retrait à l’aveugle.",
-      "Helper Work arrivé au préflight et en attente personnelle masquée ; aucun credential saisi/généré ni fiche/session écrite, login/session/révocation non testés. Propriétaire + administrator résolus, aucun nouveau GO général."
+      "IAM : accès opérateur aux bindings/policy toujours indisponible ; libellé utilisateur tronqué observé, correspondance roles/firebasedatabase.admin à qualifier avant réduction custom get/update. Conditions/héritage/consommateurs à préserver, aucun retrait à l’aveugle.",
+      "Deux tentatives ancien helper terminées avant création, aucun compte/session. Nouvelle version TTY/diagnostics préparée pour revue Work, puis saisie personnelle masquée et validation réelle login/session/révocation. launch-owner + administrator résolus ; aucun roster ni nouveau GO général."
     ],
     "operatorPreparation": {
       "sourceCheckpoint": "Work séquence20 ; PR27 b78acf8, propriétaire unique + administrator explicitement autorisés.",
@@ -240,9 +252,14 @@
         "ownerResolverWrongExpectedFingerprintRefused": true,
         "ownerResolverDoesNotEvaluateServer": true,
         "ownerEmailPlaintextNotVersionedAtCurrentHead": true,
-        "ownerResolverExecutionNote": "Premier essai spawnSync Git dans Node refusé EPERM par capture sandbox ; relance Git pipe vers le résolveur pur réussie code0, sans fichier source/copier password legacy ni SDK."
+        "ownerResolverExecutionNote": "Premier essai spawnSync Git dans Node refusé EPERM par capture sandbox ; relance Git pipe vers le résolveur pur réussie code0, sans fichier source/copier password legacy ni SDK.",
+        "ttySyntheticCasesPassed": 32,
+        "ttySyntheticCommandExitCode": 0,
+        "ttyEvidence": "docs/launch-gate/evidence/owner-tty-targeted.json",
+        "archivedReaderByteEqualPreviousHelper": true,
+        "embeddedModulesUnchangedByTtyFix": true
       },
-      "ownerHelperSha256": "c661db9f2d65efae8f82714ca4c5161dd7d294812a3b5b18134bddf0a26bcb3e",
+      "ownerHelperSha256": "999309f751a68121cc36ffee5a7e45ab70b5bc624089b6a936c4bb8c07bb674d",
       "sdkProbeSha256": "325aa65ad926c81056f3908a0ecd92b58037bb24e92208d3f309dbb35b8e1fc4",
       "modulesEmbeddedAtCommit": "3db45bb8827ed14b9cd9399b61de8b8da8213dc1",
       "moduleSha256": {
@@ -256,9 +273,11 @@
         "unique administrator session",
         "probe session revocation and rejection"
       ],
-      "futureEffects": "One owner identity + revoked probe session only. No practitioner/support/assignment/grant; no conversation/private-memory/provider access. Owner enters credential himself; output booleans/technical ID only.",
+      "futureEffects": "One owner identity + revoked probe session only. No practitioner/support/assignment/grant; no conversation/private-memory/provider access. Owner enters credential himself; output booleans/technical ID and whitelisted failure reason/phase only, never values/raw errors.",
       "ownerMapping": "Uniquement en mémoire depuis la liste propriétaire du server.js live f20 vérifié SHA256 ; empreinte email normalisé attendue contrôlée. Aucune nouvelle constante email en clair.",
-      "pinnedLiveServerSha256": "e53e8469a084896b1ad58b19413c12dfa659a9f67db623f90df748168ba7d555"
+      "pinnedLiveServerSha256": "e53e8469a084896b1ad58b19413c12dfa659a9f67db623f90df748168ba7d555",
+      "historicalOwnerHelperSha256": "c661db9f2d65efae8f82714ca4c5161dd7d294812a3b5b18134bddf0a26bcb3e",
+      "currentPreparationNote": "Correction opérateur TTY/diagnostics préparée pour revue Work ; pas exécutée dans Render. Politique/gardes/transaction/modules exacts inchangés ; préparation Cloud historique conservée."
     },
     "workOwnerHelperPreflight": {
       "source": "Preuve réelle transmise par Work, UI Render beta Web Shell ; pas une réexécution Cloud.",
@@ -293,7 +312,43 @@
       "workHandoff": "Après checkpoint durable ; saisie personnelle uniquement.",
       "cloudPreparationHistoricalStatusPreserved": true,
       "newCloudControlRun": false,
-      "helperOrApplicationModified": false
+      "helperOrApplicationModified": false,
+      "historical": true,
+      "supersededBy": "workOwnerHelperAttempts ; état en attente vrai uniquement au checkpoint historique, les deux tentatives sont désormais terminées."
+    },
+    "workOwnerHelperAttempts": {
+      "source": "Work, reprise après PR27 HEAD78d60f6 ; aucune réexécution Cloud.",
+      "helperSha256": "c661db9f2d65efae8f82714ca4c5161dd7d294812a3b5b18134bddf0a26bcb3e",
+      "instance": "c44mq",
+      "service": "beta",
+      "attempts": 2,
+      "first": "Terminé avant confirmation et avant création.",
+      "secondReachedConfirmationPrompt": true,
+      "secondResult": {
+        "moduleExact": true,
+        "ownerSourceExact": true,
+        "ownerEmailExpected": true,
+        "contextOk": true,
+        "preflightOk": true,
+        "cleanupOk": true,
+        "confirmed": false,
+        "created": false,
+        "loginOk": false,
+        "uniqueAdministrator": false,
+        "revoked": false,
+        "revokedSessionRejected": false,
+        "identityDisabledOnFailure": false,
+        "ok": false
+      },
+      "identityOrSessionCreated": false,
+      "authenticatedValidationAcquired": false,
+      "failureCause": "unknown_old_silent_catch",
+      "personalInputRecorded": false,
+      "credentialGeneratedByCloud": false,
+      "currentHelperExecutedByWork": false,
+      "correctionReviewedByWork": true,
+      "targeted32PassOutputReviewedByWork": true,
+      "additionalCheckRequested": false
     }
   },
   "sha256": {
@@ -306,7 +361,11 @@
     "scripts/synthetic/guard.cjs": "1b1de1bdfc83938a6372fb2f9f8a8f4698af09258e46036a619d678cb129068d",
     "scripts/synthetic/verify.sh": "77e57f806ea9ab9a9ab929f4ca2fddd4cfe135606a2dc64d4d2d47b522ab0d6e",
     "package.json": "224921e3135a25af213f1482a8803c8fcc715406c185b0c554e116655408eb5f",
-    "package-lock.json": "b373caed761058422a72c9cbd61a59993cdea5a7f6a7675f667b63d787380458"
+    "package-lock.json": "b373caed761058422a72c9cbd61a59993cdea5a7f6a7675f667b63d787380458",
+    "docs/launch-gate/evidence/owner-tty-targeted.json": "c683c770210b5fa520afd9d416e5e57159b57bb58e8dc7dc5cf7194427045336",
+    "docs/launch-gate/operators/owner-provision.cjs": "999309f751a68121cc36ffee5a7e45ab70b5bc624089b6a936c4bb8c07bb674d",
+    "docs/launch-gate/operators/owner-provision-input-test.cjs": "594d4bfa4a99c2fc477c8c450f245e6445924dcce1a6b465bd76edf0b311dac0",
+    "docs/launch-gate/operators/owner-tty-before.cjs.txt": "efb5cbb416f7f0eb9e30f236645d4cb09b9909846bd885cd990031e0321a4377"
   },
   "operationalStatusUpdatedOn": "2026-10-05"
 }

@@ -8,8 +8,6 @@ const crypto = require('node:crypto');
 const { createRequire } = require('node:module');
 const appRequire = createRequire(path.join(process.cwd(), 'package.json'));
 const output = process.stdout.write.bind(process.stdout);
-process.stdout.write = () => true;
-process.stderr.write = () => true;
 
 const OWNER_ID = 'launch-owner';
 const OWNER_EMAIL_SHA256 = 'f4b8dbb16ece4b5ad496dd91a87dd928ca6fa347206112bbfc91a26dde6a9667';
@@ -164,6 +162,42 @@ const SOURCE_BASE64 = {
   ]
 };
 let moduleDirectory;
+const PHASE_FAILURES = Object.freeze({
+  modules: 'module_guard_failed',
+  context: 'context_guard_failed',
+  preflight: 'preflight_failed',
+  password_entry: 'tty_io_failed',
+  confirmation_entry: 'tty_io_failed',
+  confirmation: 'operation_failed',
+  credential_hash: 'credential_hash_failed',
+  creation: 'creation_operation_failed',
+  uniqueness: 'uniqueness_failed',
+  login: 'login_failed',
+  session: 'session_role_failed',
+  revocation: 'revocation_failed',
+  cleanup: 'cleanup_failed',
+  unknown: 'operation_failed'
+});
+const FAILURE_REASONS = new Set([
+  ...Object.values(PHASE_FAILURES), 'entries_differ', 'password_policy',
+  'input_cancelled', 'input_eof', 'input_control_not_allowed', 'input_too_long',
+  'tty_unavailable', 'owner_guard_failed', 'preexisting_identity', 'creation_refused'
+]);
+const operatorFailures = new WeakMap();
+function operatorFailure(reason) {
+  const error = new Error('operator_failure');
+  operatorFailures.set(error, FAILURE_REASONS.has(reason) ? reason : 'operation_failed');
+  return error;
+}
+function failureInfo(error, phase) {
+  const safePhase = Object.hasOwn(PHASE_FAILURES, phase) ? phase : 'unknown';
+  // Never inspect an SDK/TTY error message, code, stack or arbitrary property.
+  return {reason: operatorFailures.get(error) || PHASE_FAILURES[safePhase], phase: safePhase};
+}
+function validateConfirmation(password, confirmation, isStrongPassword) {
+  if (password !== confirmation) throw operatorFailure('entries_differ');
+  if (!isStrongPassword(password)) throw operatorFailure('password_policy');
+}
 const result = {
   id: OWNER_ID,
   moduleExact: false,
@@ -178,121 +212,186 @@ const result = {
   revoked: false,
   revokedSessionRejected: false,
   identityDisabledOnFailure: false,
+  inputCleanupOk: false,
   cleanupOk: false,
+  failureReason: null,
+  failurePhase: null,
+  cleanupFailureReason: null,
   ok: false
 };
 
 function requireExact(name) {
   const file = path.join(moduleDirectory, name);
   const digest = crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
-  if (digest !== PINNED[name]) throw new Error('module_mismatch');
+  if (digest !== PINNED[name]) throw operatorFailure('module_guard_failed');
   return require(file);
 }
 
 function resolveOwnerEmail() {
   const source = fs.readFileSync(path.join(process.cwd(), 'server.js'));
   result.ownerSourceExact = crypto.createHash('sha256').update(source).digest('hex') === LIVE_SERVER_SHA256;
-  if (!result.ownerSourceExact) throw new Error('live_source_mismatch');
+  if (!result.ownerSourceExact) throw operatorFailure('owner_guard_failed');
   // One literal email in the pinned owner list; no eval/require of server.js.
   // Do not extract the password map or any legacy password.
   const literal = source.toString('utf8').match(
     /\bconst\s+PROFESSIONAL_FULL_ACCESS_EMAILS_RAW\s*=\s*\[\s*(['"])([^'"\\\r\n]+)\1\s*\]\s*;/
   );
-  if (!literal) throw new Error('owner_literal_mismatch');
+  if (!literal) throw operatorFailure('owner_guard_failed');
   const email = literal[2].trim().toLowerCase();
   result.ownerEmailExpected = crypto.createHash('sha256').update(email).digest('hex') === OWNER_EMAIL_SHA256;
-  if (!result.ownerEmailExpected) throw new Error('owner_email_mismatch');
+  if (!result.ownerEmailExpected) throw operatorFailure('owner_guard_failed');
   return email;
 }
 
-// Raw TTY input: no echo, argv, env, shell history or password file.
-function secretLine(prompt) {
-  return new Promise((resolve, reject) => {
-    const input = process.stdin;
-    if (!input.isTTY || !process.stdout.isTTY || typeof input.setRawMode !== 'function') {
-      reject(new Error('tty_required'));
-      return;
-    }
-    let text = '';
-    const previousRaw = input.isRaw;
-    function finish(error) {
-      input.removeListener('data', receive);
-      input.removeListener('error', failed);
-      input.setRawMode(previousRaw);
+// One masked TTY session for both lines: preserve chunks and normalize CRLF once.
+function createSecretReader({input, terminal, write}) {
+  let active = null, text = '', queue = [], queuedBytes = 0;
+  let skipLf = false, attached = false, closed = false, fatal = null, restorationOk = true;
+  const previousRaw = Boolean(input.isRaw);
+  function restore() {
+    if (closed) return restorationOk;
+    closed = true;
+    input.removeListener('data', receive);
+    input.removeListener('error', failed);
+    input.removeListener('end', ended);
+    input.removeListener('close', ended);
+    queue = []; queuedBytes = 0; text = '';
+    try {
+      if (attached) input.setRawMode(previousRaw);
       input.pause();
-      output('\n');
-      const value = text;
-      text = '';
-      if (error) reject(error);
-      else resolve(value);
-    }
-    function failed() { finish(new Error('tty_failed')); }
-    function receive(chunk) {
-      for (const character of chunk.toString('utf8')) {
-        if (character === '\u0003' || character === '\u0004') {
-          finish(new Error('entry_aborted'));
-          return;
-        }
-        if (character === '\r' || character === '\n') {
-          finish();
-          return;
-        }
-        if (character === '\u007f' || character === '\b') {
-          text = Array.from(text).slice(0, -1).join('');
-        } else if (character >= ' ' && character !== '\u007f') {
-          text += character;
-          if (Buffer.byteLength(text, 'utf8') > 1024) {
-            finish(new Error('entry_too_long'));
-            return;
-          }
-        } else {
-          finish(new Error('invalid_control_character'));
-          return;
-        }
+      return true;
+    } catch { restorationOk = false; return false; }
+  }
+  function finish(error) {
+    const pending = active;
+    const value = text;
+    active = null; text = '';
+    if (!pending) return;
+    write('\n');
+    if (error) pending.reject(error);
+    else pending.resolve(value);
+  }
+  function stop(reason) {
+    fatal = operatorFailure(reason);
+    finish(fatal);
+    restore();
+  }
+  function failed() { stop('tty_io_failed'); }
+  function ended() { stop('input_eof'); }
+  function pump() {
+    while (active && queue.length) {
+      const character = queue.shift();
+      queuedBytes -= Buffer.byteLength(character, 'utf8');
+      if (character === '\n') {
+        finish();
+      } else if (character === '\u0003') {
+        stop('input_cancelled');
+      } else if (character === '\u0004') {
+        stop('input_eof');
+      } else if (character === '\u007f' || character === '\b') {
+        text = Array.from(text).slice(0, -1).join('');
+      } else if (character >= ' ' && character !== '\u007f') {
+        text += character;
+        if (Buffer.byteLength(text, 'utf8') > 1024) stop('input_too_long');
+      } else {
+        stop('input_control_not_allowed');
       }
     }
-    output(prompt);
-    input.setEncoding('utf8');
-    input.setRawMode(true);
-    input.on('data', receive);
-    input.on('error', failed);
-    input.resume();
-  });
+  }
+  function receive(chunk) {
+    for (const character of chunk.toString('utf8')) {
+      if (skipLf) {
+        skipLf = false;
+        if (character === '\n') continue;
+      }
+      skipLf = character === '\r';
+      const normalized = skipLf ? '\n' : character;
+      queue.push(normalized);
+      queuedBytes += Buffer.byteLength(normalized, 'utf8');
+      // Bounded pending paste; each individual line retains the original limit.
+      if (queuedBytes > 4096) { stop('input_too_long'); return; }
+    }
+    pump();
+  }
+  function read(prompt) {
+    if (fatal) return Promise.reject(fatal);
+    if (closed || active) return Promise.reject(operatorFailure('tty_io_failed'));
+    if (!input.isTTY || !terminal.isTTY || typeof input.setRawMode !== 'function') {
+      return Promise.reject(operatorFailure('tty_unavailable'));
+    }
+    if (input.readableEnded || input.destroyed) return Promise.reject(operatorFailure('input_eof'));
+    try {
+      if (!attached) {
+        input.setEncoding('utf8');
+        input.setRawMode(true);
+        attached = true;
+        input.on('data', receive);
+        input.on('error', failed);
+        input.on('end', ended);
+        input.on('close', ended);
+      }
+      return new Promise((resolve, reject) => {
+        active = {resolve, reject};
+        write(prompt);
+        pump();
+        if (!closed) input.resume();
+      });
+    } catch { stop('tty_io_failed'); return Promise.reject(fatal); }
+  }
+  function close() {
+    if (active) finish(operatorFailure('input_cancelled'));
+    return restore();
+  }
+  return {read, close};
 }
 
 async function main() {
   let app, db, access, token = null, password = '', confirmation = '', passwordHash = null;
   let ownerEmail = null;
   let createAttempted = false;
+  let phase = 'modules', inputReader = null;
+  process.stdout.write = () => true;
+  process.stderr.write = () => true;
+  function recordFailure(error, atPhase) {
+    const safe = failureInfo(error, atPhase);
+    if (result.failureReason === null) {
+      result.failureReason = safe.reason;
+      result.failurePhase = safe.phase;
+    } else if (atPhase === 'cleanup') {
+      result.cleanupFailureReason = safe.reason;
+    }
+    result.ok = false;
+  }
   const ours = record => record?.email === ownerEmail &&
     record?.displayName === OWNER_NAME && record?.passwordHash === passwordHash &&
     Array.isArray(record?.roles) && record.roles.length === 1 &&
     record.roles[0] === 'administrator' && record.authorizationVersion === 0;
   try {
-    if (!path.resolve(__filename).startsWith('/tmp/')) throw new Error('temporary_operator_required');
+    if (!path.resolve(__filename).startsWith('/tmp/')) throw operatorFailure('context_guard_failed');
     moduleDirectory = fs.mkdtempSync('/tmp/m0m1-owner-modules-');
     // Restore the exact embedded bytes only into this private temporary directory.
     for (const [name, digest] of Object.entries(PINNED)) {
       const source = Buffer.from(SOURCE_BASE64[name].join(''), 'base64');
       if (crypto.createHash('sha256').update(source).digest('hex') !== digest) {
-        throw new Error('module_mismatch');
+        throw operatorFailure('module_guard_failed');
       }
       fs.writeFileSync(path.join(moduleDirectory, name), source, {mode: 0o600, flag: 'wx'});
     }
     const { hashPassword, isStrongPassword } = requireExact('auth-password.js');
     const { createProfessionalAccess } = requireExact('professional-access.js');
     result.moduleExact = true;
-    if (!process.stdin.isTTY || !process.stdout.isTTY) throw new Error('tty_required');
+    phase = 'context';
+    if (!process.stdin.isTTY || !process.stdout.isTTY) throw operatorFailure('tty_unavailable');
     if (process.env.RENDER_SERVICE_ID !== 'srv-d6lh0094tr6s73b71kug' ||
         process.env.RENDER_GIT_COMMIT !== LIVE_SHA ||
         process.env.FIREBASE_DATABASE_EMULATOR_HOST || process.env.FIREBASE_AUTH_EMULATOR_HOST) {
-      throw new Error('runtime_mismatch');
+      throw operatorFailure('context_guard_failed');
     }
     ownerEmail = resolveOwnerEmail();
     const configFile = path.join(process.cwd(), 'lib/config.js');
     if (crypto.createHash('sha256').update(fs.readFileSync(configFile)).digest('hex') !==
         '541051c089d208f183add002e6923e54fdec24964016de4ebc61dbe172a5856b') {
-      throw new Error('config_module_mismatch');
+      throw operatorFailure('context_guard_failed');
     }
     const { parseAppConfig, resolveServiceAccount } = appRequire('./lib/config');
     const config = parseAppConfig(process.env);
@@ -301,66 +400,84 @@ async function main() {
         new URL(config.firebaseDatabaseUrl).href !== DATABASE ||
         config.adminSessionSecret.length < 32 || config.userSessionSecret.length < 32 ||
         config.adminSessionSecret === config.userSessionSecret) {
-      throw new Error('context_mismatch');
+      throw operatorFailure('context_guard_failed');
     }
     const admin = appRequire('firebase-admin');
     app = admin.initializeApp({credential: admin.credential.cert(credential), databaseURL: DATABASE},
       'launch-owner-operator');
     db = app.database();
     result.contextOk = true;
+    phase = 'preflight';
     const identities = db.ref('professionalIdentities');
     const owner = identities.child(OWNER_ID);
     const [record, emailMatches, namespace] = await Promise.all([
       owner.once('value'), identities.orderByChild('email').equalTo(ownerEmail).once('value'),
       identities.once('value')
     ]);
-    if (record.exists() || emailMatches.exists() || namespace.exists()) throw new Error('preexisting_identity');
+    if (record.exists() || emailMatches.exists() || namespace.exists()) throw operatorFailure('preexisting_identity');
     result.preflightOk = true;
     output('Prêt. Passation à l’utilisateur : saisir et confirmer lui-même le nouveau credential.\n');
-    password = await secretLine('Nouveau mot de passe (entrée masquée) : ');
-    confirmation = await secretLine('Confirmation (entrée masquée) : ');
-    if (password !== confirmation || !isStrongPassword(password)) throw new Error('password_rejected');
+    inputReader = createSecretReader({input: process.stdin, terminal: process.stdout, write: output});
+    phase = 'password_entry';
+    password = await inputReader.read('Nouveau mot de passe (entrée masquée) : ');
+    phase = 'confirmation_entry';
+    confirmation = await inputReader.read('Confirmation (entrée masquée) : ');
+    phase = 'confirmation';
+    validateConfirmation(password, confirmation, isStrongPassword);
+    result.inputCleanupOk = inputReader.close();
+    if (!result.inputCleanupOk) throw operatorFailure('tty_io_failed');
     confirmation = '';
     result.confirmed = true;
+    phase = 'credential_hash';
     passwordHash = hashPassword(password);
     const newRecord = {
       email: ownerEmail, displayName: OWNER_NAME, passwordHash, active: true,
       roles: ['administrator'], authorizationVersion: 0
     };
     createAttempted = true;
+    phase = 'creation';
     // Only this initially empty professional namespace, never the RTDB root.
     // Atomic emptiness check prevents a concurrent duplicate or any overwrite.
     const creation = await identities.transaction(current =>
       current === null ? {[OWNER_ID]: newRecord} : undefined
     );
-    if (!creation.committed) throw new Error('creation_refused');
+    if (!creation.committed) throw operatorFailure('creation_refused');
     result.created = true;
+    phase = 'uniqueness';
     const unique = (await identities.orderByChild('email').equalTo(ownerEmail).once('value')).val() || {};
-    if (Object.keys(unique).length !== 1 || !ours(unique[OWNER_ID])) throw new Error('uniqueness_failed');
+    if (Object.keys(unique).length !== 1 || !ours(unique[OWNER_ID])) throw operatorFailure('uniqueness_failed');
     access = createProfessionalAccess({db, secret: config.adminSessionSecret});
+    phase = 'login';
     token = await access.login(ownerEmail, password);
     result.loginOk = typeof token === 'string' && /^[a-f0-9]{64}$/.test(token);
-    if (!result.loginOk) throw new Error('login_failed');
+    if (!result.loginOk) throw operatorFailure('login_failed');
+    phase = 'session';
     const session = await access.session(token);
     result.uniqueAdministrator = session?.id === OWNER_ID && session.authorizationVersion === 0 &&
       session.roles?.length === 1 && session.roles[0] === 'administrator' &&
       session.canAccessAdminConversations === true && session.canAccessSupportCases === true &&
       session.canAccessFacilitationAdmin === false && session.canBypassTwaGate === false;
-    if (!result.uniqueAdministrator) throw new Error('role_failed');
+    if (!result.uniqueAdministrator) throw operatorFailure('session_role_failed');
+    phase = 'revocation';
     await access.revoke(token);
     result.revoked = true;
     result.revokedSessionRejected = (await access.session(token)) === null;
-    if (!result.revokedSessionRejected) throw new Error('revocation_failed');
+    if (!result.revokedSessionRejected) throw operatorFailure('revocation_failed');
     result.ok = true;
-  } catch {
-    result.ok = false;
+  } catch (error) {
+    recordFailure(error, phase);
   } finally {
+    result.inputCleanupOk = inputReader ? inputReader.close() : true;
+    if (!result.inputCleanupOk) recordFailure(operatorFailure('tty_io_failed'), 'cleanup');
     if (token && access) {
       try {
         await access.revoke(token);
         result.revoked = true;
         result.revokedSessionRejected = (await access.session(token)) === null;
-      } catch { result.revoked = false; result.revokedSessionRejected = false; result.ok = false; }
+      } catch (error) {
+        result.revoked = false; result.revokedSessionRejected = false;
+        recordFailure(error, 'cleanup');
+      }
     }
     if (!result.ok && createAttempted && db) {
       try {
@@ -370,21 +487,25 @@ async function main() {
           return {...record, active: false, authorizationVersion: 1};
         });
         result.identityDisabledOnFailure = disabled.committed;
-      } catch { result.identityDisabledOnFailure = false; }
+      } catch (error) { result.identityDisabledOnFailure = false; recordFailure(error, 'cleanup'); }
     }
     password = ''; confirmation = ''; passwordHash = null; token = null; ownerEmail = null;
     try {
       if (db) db.goOffline();
       if (app) await app.delete(); // Close this local SDK app, never delete an instance.
       result.cleanupOk = true;
-    } catch { result.cleanupOk = false; result.ok = false; }
+    } catch (error) { result.cleanupOk = false; recordFailure(error, 'cleanup'); }
     output(JSON.stringify(result) + '\n');
     process.exitCode = result.ok ? 0 : 1;
   }
 }
 
-main().catch(() => {
-  if (process.stdin.isTTY && process.stdin.isRaw) process.stdin.setRawMode(false);
-  output(JSON.stringify({id: OWNER_ID, ok: false}) + '\n');
-  process.exitCode = 1;
-});
+module.exports = {createSecretReader, failureInfo, operatorFailure, validateConfirmation};
+if (require.main === module) {
+  main().catch(error => {
+    try { if (process.stdin.isTTY && process.stdin.isRaw) process.stdin.setRawMode(false); } catch {}
+    const safe = failureInfo(error, 'cleanup');
+    output(JSON.stringify({id: OWNER_ID, ok: false, failureReason: safe.reason, failurePhase: safe.phase}) + '\n');
+    process.exitCode = 1;
+  });
+}

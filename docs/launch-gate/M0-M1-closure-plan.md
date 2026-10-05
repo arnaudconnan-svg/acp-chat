@@ -66,6 +66,14 @@ chemin ou l'impossibilité de désactiver une instance avec ce rôle.
 AdminSDK. Firebase UI ne montre pas ces bindings. UI IAM/Cloud Shell indisponibles ;
 principal runtime sans getIamPolicy/setIamPolicy : blocage concret conservé.
 
+Observation utilisateur ultérieure : capture du projet attendu et du seul principal
+attendu, libellé tronqué **« Administrateur Firebase Realtime… »**, case des rôles
+fournis Google non cochée. Correspondance attendue `roles/firebasedatabase.admin`,
+à qualifier par documentation/UI et export avant tout retrait. Ce libellé ne
+prouve ni l'identifiant exact ni l'exhaustivité des bindings, conditions ou droits
+hérités. GCP reste inaccessible à Work ; aucun IAM modifié, aucune capture publiée.
+Le plan custom `instances.get/update` ci-dessus reste inchangé.
+
 Commandes **lecture seule** depuis un opérateur déjà habilité, gcloud déjà
 authentifié ; le credential runtime ne peut pas faire cette inspection/réduction.
 Ne pas extraire un token navigateur ni créer un compte/droit pour la contourner.
@@ -153,7 +161,7 @@ contrôlées avant chargement natif. Aucun téléchargement séparé de module.
 Le helper refuse toute différence, mauvais service/SHA/contexte ou absence de TTY.
 
 ```sh
-umask 077 && M0M1_OWNER_FILE=$(mktemp /tmp/m0m1-owner.XXXXXX.cjs) && curl --fail --silent --show-error --proto '=https' --tlsv1.2 --max-time 60 https://raw.githubusercontent.com/arnaudconnan-svg/acp-chat/work/m0-m1-launch-gate/docs/launch-gate/operators/owner-provision.cjs -o "$M0M1_OWNER_FILE" && node -e 'const fs=require("node:fs"),c=require("node:crypto");if(c.createHash("sha256").update(fs.readFileSync(process.argv[1])).digest("hex")!=="c661db9f2d65efae8f82714ca4c5161dd7d294812a3b5b18134bddf0a26bcb3e")process.exit(1)' "$M0M1_OWNER_FILE" && node "$M0M1_OWNER_FILE"
+umask 077 && M0M1_OWNER_FILE=$(mktemp /tmp/m0m1-owner.XXXXXX.cjs) && curl --fail --silent --show-error --proto '=https' --tlsv1.2 --max-time 60 https://raw.githubusercontent.com/arnaudconnan-svg/acp-chat/work/m0-m1-launch-gate/docs/launch-gate/operators/owner-provision.cjs -o "$M0M1_OWNER_FILE" && node -e 'const fs=require("node:fs"),c=require("node:crypto");if(c.createHash("sha256").update(fs.readFileSync(process.argv[1])).digest("hex")!=="999309f751a68121cc36ffee5a7e45ab70b5bc624089b6a936c4bb8c07bb674d")process.exit(1)' "$M0M1_OWNER_FILE" && node "$M0M1_OWNER_FILE"
 ```
 
 Commande volontairement **mono-ligne**, sans heredoc ni collage de source multiligne.
@@ -178,7 +186,7 @@ Après confirmation masquée : scrypt existant, création, unicité vérifiée ;
 module M1 `login` → `session` avec **rôle unique administrator**, aucun bypass TWA
 ni facilitation ; `revoke` → session refusée. Une session de sonde révoquée reste
 durable (aucune purge) ; token en mémoire seulement, aucun cookie. Sortie : ID
-technique et booléens. En échec après création, révocation tentée et désactivation
+technique, booléens et codes d'échec fixes décrits ci-dessous. En échec après création, révocation tentée et désactivation
 bornée de **sa seule fiche nouvelle** si hash/identité/rôle/version correspondent.
 Network/SIGKILL peuvent empêcher cette fermeture : tout booléen de révocation ou
 désactivation non confirmé impose réconciliation sur ce seul ID, sans reset.
@@ -186,6 +194,52 @@ Le helper supprime l'écho TTY ; les valeurs restent brièvement en mémoire, sa
 promesse d'effacement physique de la RAM. Aucune lecture conversations/mémoire privée.
 IAM peut rester bloqué : cette préparation/provisioning borné autorisé ne clôt pas
 le gate IAM et ne permet aucune fusion. Pas de provisioning exécuté par Cloud.
+
+### Correction ciblée de saisie et diagnostics — revue Work avant exécution
+
+Version corrigée SHA256
+`999309f751a68121cc36ffee5a7e45ab70b5bc624089b6a936c4bb8c07bb674d`,
+transfert mono-ligne épinglé par cette empreinte : toute différence est refusée.
+Les deux tentatives Work de la version `c661db9f…` se sont terminées avant création,
+la seconde au prompt Confirmation ; aucun compte/session créé. Le catch ancien
+ne permet pas de connaître leur cause. Ne pas attribuer cet échec à une saisie
+particulière ni au défaut reproduit sans nouvelle preuve.
+
+Défauts démontrés sur l'ancien lecteur archivé : CR puis LF dans deux événements
+termine la confirmation vide ; un collage contenant deux lignes dans un événement
+perd sa seconde ligne ; EOF du flux laisse la promesse en attente. Le lecteur
+unique corrigé garde la TTY masquée entre les deux prompts, normalise CR/LF/CRLF
+même entre événements et conserve le reste du collage pour la confirmation.
+Backspace/DEL retirent un caractère entier, UTF-8 découpé est décodé ; aucune saisie
+ni longueur effective n'est affichée. Les contrôles ESC/tabulation/autres C0 sont
+refusés, y compris les séquences de collage encadré. Ctrl-C annule, Ctrl-D/fin du
+flux refuse. Limite initiale inchangée de 1024 octets par ligne, tampon en attente
+borné à 4096 octets. Politique `isStrongPassword` existante inchangée, pas de trim.
+
+`failureReason`, `failurePhase` et éventuellement `cleanupFailureReason` sont des
+codes à liste blanche ; aucune propriété d'erreur SDK/TTY n'est lue ou imprimée.
+`entries_differ` = confirmation différente ; `password_policy` = politique existante
+non satisfaite ; `input_cancelled`/`input_eof` = annulation/fin ;
+`input_control_not_allowed` = contrôle refusé ; `input_too_long` = limite dépassée,
+sans taille effective ; `tty_unavailable`/`tty_io_failed` = entrée indisponible.
+Les autres refus restent bornés aux gardes modules/propriétaire/contexte, préflight,
+identité préexistante, transaction ou phase hash/unicité/login/session/révocation/
+nettoyage. Une erreur externe inconnue ne produit que le code fixe de sa phase.
+`inputCleanupOk` indique la restauration TTY ; tous les autres gardes, modules
+embarqués exacts, rôles, scrypt et atomicité restent inchangés.
+
+Contrôle ciblé réellement exécuté, **32 cas PASS, code0**, entrées exclusivement
+synthétiques, sous garde hermétique, sans SDK ni réseau :
+
+```sh
+node --require ./scripts/synthetic/guard.cjs docs/launch-gate/operators/owner-provision-input-test.cjs
+```
+
+[Preuve ciblée](evidence/owner-tty-targeted.json). Aucune suite acquise relancée,
+aucune exécution de cette nouvelle version Render par Cloud. Work revoit la version
+publiée avant démarrage et conserve la passation personnelle obligatoire.
+Revue Work reçue : diff de saisie et sortie réelle des 32 cas PASS relus,
+gardes et modules M1 conservés ; aucun contrôle supplémentaire demandé.
 
 ## Vérification SDK après réduction — seule sonde réversible dédiée
 

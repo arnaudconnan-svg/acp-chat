@@ -160,7 +160,7 @@ Résolveur ciblé validé (source exacte acceptée, source/empreinte altérées 
 aucune exécution Render à ce checkpoint de préparation Cloud. Preuves publiques :
 launch-owner + administrator uniquement.
 
-## Preuve Work ultérieure — préflight Render seulement
+## Preuve Work historique — préflight Render seulement
 
 Work atteste le téléchargement, contrôle SHA256
 `c661db9f2d65efae8f82714ca4c5161dd7d294812a3b5b18134bddf0a26bcb3e`
@@ -172,14 +172,53 @@ et démarrage du helper dans beta Web Shell, instance `c44mq`. L'UI affiche exac
 
 Ce prompt du helper épinglé prouve le passage des gardes modules exacts,
 service/SHA f20, source propriétaire/empreinte, configuration projet/base/principal
-et namespace professionnel vide. **Processus en attente de saisie personnelle :
+et namespace professionnel vide. **À ce checkpoint historique, processus en attente de saisie personnelle :
 aucun password saisi/généré, aucune fiche/session écrite, aucun login, contrôle de
 session ou révocation exécuté.** Work passe la main après checkpoint durable.
 Le statut historique de préparation Cloud reste conservé ; cette nouvelle preuve
 Work ne constitue pas un provisioning accompli ni une validation authentifiée.
 
-IAM : console toujours indisponible, propriétaire Firebase déjà authentifié,
+IAM à ce checkpoint : console indisponible, propriétaire Firebase déjà authentifié,
 rôle attribué inconnu. Besoin humain minimal : capture/export des seuls bindings
 de ce principal depuis une console opérateur accessible ; aucun retrait à l'aveugle.
 PR27 reste draft, sans fusion. Mise à jour docs/evidence uniquement, `diff --check`,
 aucun nouveau contrôle ni changement helper/application.
+
+## Reprise ciblée — tentatives Work et correction du helper opérateur
+
+Work rapporte deux tentatives de la version SHA256 `c661db9f…` sur beta `c44mq`,
+toutes deux terminées avant création : première avant confirmation, seconde au
+prompt Confirmation. Seconde : `moduleExact`, `ownerSourceExact`, `ownerEmailExpected`,
+`contextOk`, `preflightOk`, `cleanupOk` vrais ; `confirmed`, `created`, `loginOk`,
+`uniqueAdministrator`, `revoked`, `revokedSessionRejected`,
+`identityDisabledOnFailure`, `ok` faux. **Aucun compte/session créé ; aucun
+login/révocation validé.** Cause inconnue faute de diagnostic dans l'ancien catch ;
+aucune saisie personnelle collectée ou consignée.
+
+Seul helper opérateur corrigé : lecteur masqué unique pour les deux lignes,
+CR/LF/CRLF et reste de collage conservés, EOF traité. L'ancienne version reproduit
+une confirmation vide après CR/LF séparés et une seconde ligne collée perdue.
+Ce sont des défauts démontrés, pas une attribution de l'échec Render. Diagnostics
+à liste blanche seulement, sans saisie/longueur effective/hash/token/email/erreur
+brute. Politique, gardes, transaction et modules M1 exacts inchangés.
+
+Version préparée pour revue Work, SHA256
+`999309f751a68121cc36ffee5a7e45ab70b5bc624089b6a936c4bb8c07bb674d`.
+[Notice/commande mono-ligne](M0-M1-closure-plan.md),
+[preuve ciblée](evidence/owner-tty-targeted.json) : **32 cas synthétiques PASS, code0**,
+sous garde hermétique, sans SDK réel. Pas de suite globale acquise relancée ni
+d'exécution Render de cette correction ; nouvelle saisie personnelle obligatoire.
+Code applicatif et modules embarqués inchangés depuis le SHA testé.
+
+Observation IAM utilisateur : projet/principal attendus, libellé tronqué
+« Administrateur Firebase Realtime… », case rôles fournis Google non cochée.
+Correspondance attendue `roles/firebasedatabase.admin` à qualifier par doc/UI
+avant retrait ; aucune exhaustivité de bindings/conditions/héritage affirmée.
+GCP reste inaccessible à Work, aucun IAM modifié et aucune capture publiée.
+Restent accès opérateur aux bindings puis réduction custom `instances.get/update`
+déjà établie, et saisie personnelle/validation réelle du seul `launch-owner`
+`administrator` ; aucun roster ni nouveau GO général. PR27 draft, aucune fusion.
+
+Work confirme avoir relu le diff de saisie et la sortie réelle des 32 cas PASS ;
+gardes et modules M1 conservés, aucun contrôle supplémentaire nécessaire. Reste
+le démarrage Work de cette version et la saisie personnelle masquée.
