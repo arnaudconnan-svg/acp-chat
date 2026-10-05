@@ -6,11 +6,15 @@ au SHA code/tests `3db45bb` et leurs empreintes sont inchangés. Lecture de sour
 et docs seulement : aucun boot, test global ou accès réel Cloud aux services.
 
 Reprise séquence20 : [plan de clôture ciblé et helpers](M0-M1-closure-plan.md).
-Propriétaire historique désormais explicitement nommé/autorisé ; minimum déduit
-des routes : une identité, rôle unique `administrator`, aucun practitioner/support,
-affectation ou grant. Restent saisie/remise privée du credential et résultats réels,
-pas une identité nominative manquante. Préparation Cloud historique conservée ;
-**preuve finale Work ci-dessous : provisioning réalisé, seul blocage IAM restant**.
+Propriétaire historique explicitement autorisé ; une identité active, rôle unique
+`administrator`, aucun practitioner/support, affectation ou grant. Provisioning
+et login/session/révocation réels acquis ; ne pas reprovisionner. Préparation et
+échecs historiques conservés.
+
+**Verdict final : M0/M1 clos — prêt pour protocole pré-FF et livraison vers main.**
+IAM réduit et contrôlé beta/main, SDK qualifié et trois marqueurs nettoyés selon
+les preuves Work finales ci-dessous. Pré-FF/livraison non exécutés ; PR27 draft
+base beta, services f20d84f, protections HTTP M1 candidates non déployées.
 
 ## Architecture et preuves reçues de Work
 
@@ -67,7 +71,7 @@ renouvellement d'usage.
 | `service_account_permissions`, `principal_key_metadata`, beta | HTTP403 `PERMISSION_DENIED`, reason `SERVICE_DISABLED` |
 | Inventaire `professionalIdentities`, mode identities | HTTP succès, total0, complete=true, active/inactive0, chaque rôle0, readFailures0 |
 
-**Verdict :** cible partagée acceptable dans l'architecture actée ; droits de
+**Verdict historique avant réduction IAM :** cible partagée acceptable dans l'architecture actée ; droits de
 données prouvés et **suppression d'instance excessive pour les accès métier M1
 prouvée depuis les deux services**. Bindings, clés et ensemble complet des droits
 restent non qualifiés. Les règles racine fermées ne bornent pas ces droits AdminSDK.
@@ -221,15 +225,14 @@ hash, contenu ou token : compteur/code/version/résultat. Aucun provisioning ré
 
 ## Contrôles restants et seuil de livraison
 
-1. **Blocage IAM :** réduction du droit `instances.delete` et des autres droits
-   de gestion inutiles impossible avec les accès disponibles. Obtenir l'accès
-   opérateur existant aux bindings/policy, qualifier consommateurs/rôles, puis
-   préparer la réduction bornée ; aucun nouveau GO général requis.
+1. **IAM clos par les preuves finales Work :** rôle custom get/update exactement,
+   delete/create/list non accordés dans beta/main. SDK qualifié et trois sondes
+   nettoyées ; limitation initiale removed/ok=false conservée, cause non prouvée.
 2. **Provisioning clos par la preuve finale Work ci-dessous :** seul `launch-owner`
    actif, `administrator` unique, saisie personnelle et validation réelle module M1
    acquises. Ne plus relancer le provisioning ni demander propriétaire/password.
-3. Intégrer ces preuves avant clôture des blocages et livraison beta. Main reste
-   code hérité jusqu'au bilan final/pré-FF ; le partage n'impose pas une autre base.
+3. Preuves intégrées, bilan M0/M1 clos ; pré-FF et livraison restent à exécuter.
+   Main reste code hérité ; le partage n'impose pas une autre base.
    Aucune fusion pendant cette étape.
 4. Après env, santé/SHA sans cookie sont **déjà contrôlés par Work**, pas à relancer
    pour les docs. `config:check` seul ne teste pas minimum/distinction des secrets.
@@ -313,7 +316,7 @@ gardes et modules M1 conservés. Aucun contrôle supplémentaire requis. Cette
 correction reste préparée, pas exécutée dans Render ; prochaine action Work :
 transfert épinglé puis passation personnelle au champ sécurisé.
 
-## Checkpoint final Work — identité active et validation réelle acquises
+## Checkpoint historique Work — identité active, IAM alors restant
 
 Render beta `c44mq`, helper `24cf6272ea270040f3b593af85800988bed0f4eb`, SHA256
 `999309f751a68121cc36ffee5a7e45ab70b5bc624089b6a936c4bb8c07bb674d` :
@@ -350,3 +353,34 @@ aucun contrôle exécuté pour cette consignation.
 Publication documentaire seulement : rapport/checkpoint/manifest et PR27 draft,
 sans changement helper/script/application, nouveau test, fusion, déploiement ou M2.
 Vérification limitée au diff documentaire et à l'état Git ; aucune demande utilisateur.
+
+## Checkpoint de clôture M0/M1 — preuves Work du 5 octobre 2026
+
+Utilisateur : rôle GA `projects/facilitat-io/roles/facilitatRuntimeRtdb` créé et
+enregistré, permissions **exactement** instances.get/update, remplacement de
+roles/firebasedatabase.admin sur le principal runtime connu ; capture policy updated.
+Work : testIamPermissions frais avec credentials runtime beta **et** main,
+contexte projet/principal/URL exact, HTTP200 chacun, get/update=true,
+delete/create/list=false, projects.setIamPolicy=false. **IAM clos, droit de
+suppression d'instance effectivement absent** ; réserve update règles/enable-disable
+conservée, héritage/bindings fournis Google non exhaustifs, partage inchangé accepté.
+
+Sonde téléchargée épinglée df4bc47, SHA256
+`325aa65ad926c81056f3908a0ecd92b58037bb24e92208d3f309dbb35b8e1fc4` :
+trois marqueurs, beta initial puis beta/main après ajout local de lecture préalable.
+Tous ont `context/created/read/update/cleanup=true`, **removed=false/ok=false**.
+La modification locale n'a pas résolu ce résultat, cause non prouvée. Complément
+borné pour chacun : schéma exact version1/probeId/step1/trois clés, remove puis
+lecture absence ; markerExact=true/removed=true. **Trois marqueurs nettoyés**,
+[IDs et détail](M0-M1-closure-plan.md#preuves-finales-work--iam-réduit-et-sondes-nettoyées).
+Lecture/écriture/update/transaction SDK et suppression complémentaire validées ;
+aucun PASS rétrospectif de la sonde initiale, limitation non bloquante après nettoyage.
+
+**M0/M1 clos — prêt pour protocole pré-FF et livraison vers main.** Aucun blocage
+opérationnel restant, owner clos administrator seul ; ne pas reprovisionner.
+Services et branches beta/main f20d84f, protections HTTP M1 non déployées,
+aucun test HTTP/UI M1 ou annonce de bêta ouverte. Pré-FF/livraison après bilan,
+non exécutés ici. PR27 draft base beta ; aucune fusion/deploy/M2, nouvelle mission,
+modification helper/script/code ou relance des tests acquis 3db45bb.
+Publication rapport/checkpoint/manifest/closure-plan seulement, captures expurgées
+privées Work, aucun secret/email personnel recopié.

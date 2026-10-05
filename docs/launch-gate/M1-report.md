@@ -1,8 +1,17 @@
-# Launch Gate M0 + M1 — rapport final de validation synthétique
+# Launch Gate M0 + M1 — rapport final de validation et clôture opérationnelle
 
 5 octobre 2026. Les correctifs G02/G03 et le consentement publiés ont été acceptés
 par Work. La vérification globale dans le clone indépendant est verte. La
 livraison est proposée à la revue vers **beta**, sans fusion ni activation réelle.
+
+**Verdict actualisé : M0/M1 clos — prêt pour protocole pré-FF et livraison vers main.**
+Preuves Work du 5 octobre 2026 : IAM réduit et contrôlé depuis beta/main ; SDK
+lecture/écriture/update/transaction validés et trois sondes nettoyées par contrôle
+complémentaire. Les sorties initiales `removed=false/ok=false` restent des échecs
+de la sonde, sans cause prouvée, pas des PASS réécrits. Propriétaire déjà actif,
+ne pas reprovisionner. Pré-FF et livraison restent à exécuter après bilan ; PR27
+draft base beta, services `f20d84f`, protections HTTP M1 non déployées, aucune
+annonce de bêta ouverte. Historique conservé ; preuves de clôture en fin de rapport.
 
 ## Références et état Git
 
@@ -89,8 +98,9 @@ projet `facilitat-io`, principal
 `firebase-adminsdk-fbsvc@facilitat-io.iam.gserviceaccount.com`.
 Les deux services live restent `f20d84f` : M0/M1 ne sont pas déployés.
 Même cible/principal déclarés, **aucune isolation beta/main démontrée** ; partage
-intentionnel. Métadonnées runtime et règles live confirmées par Work ; droits de
-données prouvés, `instances.delete=true` excessif pour M1 sur beta **et main**.
+intentionnel. Métadonnées runtime et règles live confirmées par Work. **Avant la
+réduction IAM**, droits de données prouvés et `instances.delete=true` excessif
+pour M1 sur beta **et main**.
 `setIamPolicy=false`, `firebaseauth.users.delete=false`. Bindings HTTP403
 `PERMISSION_DENIED` sans reason, endpoints permissions du compte/clés HTTP403
 `PERMISSION_DENIED` reason `SERVICE_DISABLED` ; UI IAM et Cloud Shell indisponibles.
@@ -117,9 +127,9 @@ complete=true, active/inactive0, chaque rôle0, readFailures0 ; aucun compte dur
 à migrer. **Provisioning désormais clos :** Work atteste la création active du seul
 `launch-owner`, rôle unique `administrator`, après saisie personnelle, puis
 login/session/révocation réels via le module M1 exact (preuve finale ci-dessous).
-**Seul blocage restant : IAM**, réduction des permissions de gestion inutiles,
-notamment suppression d'instance, depuis une console opérateur accessible.
-Préserver toute autre attribution ; aucune base/projet nouveau. Aucun secret fournisseur déclaré compromis
+**IAM désormais clos**, attribution custom get/update enregistrée par l'utilisateur,
+delete/create/list non accordés dans les contrôles runtime frais beta/main et
+validation SDK qualifiée ci-dessous. Aucune base/projet nouveau. Aucun secret fournisseur déclaré compromis
 sans preuve, aucune rotation additionnelle automatique. Ces actions relèvent des
 autorisations M0/M1 déjà accordées, pas d'un nouveau GO général.
 
@@ -221,7 +231,7 @@ Work confirme avoir relu le diff de saisie et la sortie réelle des 32 cas PASS 
 gardes et modules M1 conservés, aucun contrôle supplémentaire nécessaire. Reste
 le démarrage Work de cette version et la saisie personnelle masquée.
 
-## Preuve finale Work — provisioning réellement accompli ; seul IAM reste bloquant
+## Checkpoint historique Work — provisioning accompli, IAM alors restant
 
 Work a observé le résultat Render beta `c44mq` du helper corrigé au commit
 `24cf6272ea270040f3b593af85800988bed0f4eb`, SHA256
@@ -263,3 +273,46 @@ ne sont pas encore acquis et ne sont pas exécutés par Cloud.
 Cette consignation modifie seulement rapport/checkpoint/manifest et PR27, maintenue
 draft. Diff documentaire et état Git seulement ; aucun nouveau test/helper/script,
 aucune relance de provisioning, fusion, déploiement ou M2.
+
+## Clôture opérationnelle Work — IAM et SDK, 5 octobre 2026
+
+L'utilisateur a créé/enregistré le rôle GA
+`projects/facilitat-io/roles/facilitatRuntimeRtdb`, avec **exactement**
+`firebasedatabase.instances.get` et `firebasedatabase.instances.update`, puis
+remplacé `roles/firebasedatabase.admin` pour le principal runtime déjà connu.
+Work atteste la capture « policy updated », conservée expurgée en privé.
+
+Work a ensuite exécuté `testIamPermissions` frais avec les credentials runtime
+dans beta `srv-d6lh0094tr6s73b71kug` et main `srv-d6kuf4ftskes73d0k15g` :
+contexte projet/principal/URL exact, **HTTP200 sur les deux**, get/update=true,
+delete/create/list=false, `resourcemanager.projects.setIamPolicy=false`.
+Le droit excessif de suppression d'instance est effectivement absent des deux
+processus contrôlés ; **IAM clos**. La granularité Google conserve pour update
+les capacités règles/enable-disable ; ni isolation par chemin ni qualification
+exhaustive de l'héritage/bindings fournis Google annoncées. Firebase partagé accepté.
+
+Sonde `sdk-probe.cjs` téléchargée épinglée au commit `df4bc47`, SHA256
+`325aa65ad926c81056f3908a0ecd92b58037bb24e92208d3f309dbb35b8e1fc4`.
+Le [détail des trois sondes](M0-M1-closure-plan.md#preuves-finales-work--iam-réduit-et-sondes-nettoyées)
+conserve leurs IDs, versions et résultats. Toutes donnent
+`context/created/read/update/cleanup=true` mais **`removed=false`, `ok=false`**.
+L'ajout local Work d'une lecture préalable n'a pas corrigé removed sur beta/main ;
+aucun helper du dépôt modifié dans ce suivi. Pour chaque marqueur, contrôle
+complémentaire exact schemaVersion=1/probeId attendu/step=1/exactement trois clés,
+puis remove et lecture d'absence : `markerExact=true`, `removed=true`.
+**Tous les trois nettoyés, absence vérifiée.**
+
+Validation runtime qualifiée : lecture, écriture, update et transaction de création
+via SDK ; suppression et absence via contrôle complémentaire borné. La suppression
+n'est pas prouvée par la transaction de nettoyage initiale ; aucun PASS global de
+sonde annoncé. Limitation de sonde non bloquante après nettoyage, **cause non prouvée**.
+Aucune donnée métier/conversation ou purge réelle ; aucun secret consigné.
+
+**M0/M1 clos — prêt pour protocole pré-FF et livraison vers main.** Aucun blocage
+opérationnel M0/M1 restant. `launch-owner` administrator seul, validation réelle
+login/session/révocation acquise, ne plus reprovisionner. Pré-FF/livraison non
+exécutés ; services toujours f20d84f, protections HTTP M1 candidates non déployées.
+PR27 draft base beta, aucune fusion/déploiement/M2 ou nouvelle mission.
+Cette publication est documentaire seulement ; tests acquis à 3db45bb conservés
+sans relance. Git distant beta/main vérifié inchangé à
+`f20d84f1962c552eaebb095d7a9e5ddb63719be7`.

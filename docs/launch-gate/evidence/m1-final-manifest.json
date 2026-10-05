@@ -55,8 +55,8 @@
     "operatorApply": "verrou total conservatoire"
   },
   "operationalStatus": {
-    "renderAttestation": "Runtime des deux processus server.js et empreinte f20d84f confirmés par Work ; secrets dédiés présents/forts/distincts, projet/principal/base attendus, refresh=false, LOG_PERSIST=true, rétention14. Règles racine fermées. Accès données prouvé et instances.delete excessif prouvé sur beta/main ; réduction IAM impossible avec accès disponibles, bindings/clés non accessibles.",
-    "rotationAndProvisioning": "Quatre secrets dédiés acquis, redéploiements f20 sans fusion. Provisioning réel Work accompli après saisie personnelle : seul launch-owner actif, administrator unique, login/session/révocation et refus de session révoquée validés par module M1 exact sur RTDB partagée. Propriétaire/password clos ; ne plus relancer le provisioning. Seul blocage IAM restant, aucune exécution Cloud réelle ni nouveau GO général.",
+    "renderAttestation": "Runtime beta/main f20 confirmé par Work, secrets dédiés/contexte attendus et exploitation normale conservés. IAM réduit par utilisateur : rôle custom get/update exactement ; testIamPermissions runtime frais HTTP200 beta/main, delete/create/list/setIamPolicy non accordés. SDK lecture/écriture/update/transaction validés, trois marqueurs nettoyés par complément borné ; résultats initiaux removed/ok=false conservés, cause non prouvée. M1 HTTP non déployé.",
+    "rotationAndProvisioning": "Secrets dédiés et provisioning réel Work acquis : seul launch-owner actif administrator, login/session/révocation/refus validés par module M1 exact. Ne plus reprovisionner. IAM désormais clos, aucun blocage opérationnel M0/M1 restant, aucun nouveau GO général ni credential demandé.",
     "historicalPrivateNodeAndLogs": "Non purgés ; inventaire/rétention dans les autorisations M0/M1 déjà accordées, après satisfaction des prérequis vérifiables. Purge irréversible soumise à ses limites et contrôles propres.",
     "declaredRenderMetadata": {
       "source": "Work, pages Environment Render, lecture seule ; aucune donnée applicative ni valeur de secret/clé privée affichée ou consignée.",
@@ -182,7 +182,7 @@
       "keyTokenPrinted": false,
       "officialPermissionQualification": "Work, Firebase IAM documentation : instances.get porte données/métadonnées ; instances.update porte données/règles et enable/disable. data.get/update observés ne constituent pas une base custom documentée ni une garantie SDK. Catalogue/bindings réels et sonde SDK après réduction requis.",
       "closurePlan": "docs/launch-gate/M0-M1-closure-plan.md ; inspection gcloud par opérateur existant ; minimum documenté instances.get/update et seules métadonnées démontrées nécessaires, sans gestion supplémentaire ni rôle présumé.",
-      "minimalHumanNeed": "Console opérateur accessible : créer/reprendre rôle custom projet avec seulement firebasedatabase.instances.get et firebasedatabase.instances.update, remplacer la seule attribution Admin RTDB confirmée, préserver toute autre attribution. Work vérifiera ensuite delete non accordé et SDK lecture/écriture sur sonde dédiée beta/main. Aucun IAM modifié à ce stade ; aucun nouveau projet/base.",
+      "minimalHumanNeed": "Aucun blocage IAM restant : attribution remplacée par utilisateur et permissions runtime fraîches beta/main mesurées. Réserve update règles/enable-disable conservée.",
       "userRoleLabelObservation": {
         "source": "Capture utilisateur, non publiée.",
         "expectedProjectAndPrincipal": true,
@@ -216,8 +216,12 @@
         ],
         "preserveOtherBindings": true,
         "afterReductionDeleteNotGrantedVerified": false,
-        "afterReductionSdkProbeBothServicesVerified": false
-      }
+        "afterReductionSdkProbeBothServicesVerified": false,
+        "historicalBeforeReduction": true
+      },
+      "historicalBeforeReduction": true,
+      "supersededBy": "workIamClosure ; refus, droit delete ancien et captures antérieures conservés comme historique.",
+      "historicalMinimalHumanNeed": "Console opérateur accessible : créer/reprendre rôle custom projet avec seulement firebasedatabase.instances.get et firebasedatabase.instances.update, remplacer la seule attribution Admin RTDB confirmée, préserver toute autre attribution. Work vérifiera ensuite delete non accordé et SDK lecture/écriture sur sonde dédiée beta/main. Aucun IAM modifié à ce stade ; aucun nouveau projet/base."
     },
     "workProfessionalInventory": {
       "source": "Work, mode identities ; HTTP succès.",
@@ -252,9 +256,7 @@
         "credentialGeneratedByCloud": false
       }
     },
-    "remainingBlockers": [
-      "IAM uniquement : console opérateur accessible nécessaire pour créer/reprendre rôle custom projet get/update seulement et remplacer la seule attribution Admin RTDB confirmée, préserver toute autre attribution. Héritage/bindings fournis Google non exhaustifs ; aucun IAM modifié. Work vérifiera ensuite delete non accordé et SDK lecture/écriture sur sonde dédiée beta/main."
-    ],
+    "remainingBlockers": [],
     "operatorPreparation": {
       "sourceCheckpoint": "Work séquence20 ; PR27 b78acf8, propriétaire unique + administrator explicitement autorisés.",
       "notice": "docs/launch-gate/M0-M1-closure-plan.md",
@@ -426,7 +428,185 @@
       "ownerPasswordBlockerClosed": true,
       "provisioningMustNotBeRerun": true,
       "newCloudTestOrOperation": false,
-      "remainingBlocker": "IAM"
+      "remainingBlocker": null,
+      "remainingBlockerAtExecutionCheckpoint": "IAM"
+    },
+    "closureVerdict": "M0/M1 clos — prêt pour protocole pré-FF et livraison vers main.",
+    "deliveryStatus": {
+      "preffExecuted": false,
+      "deliveryExecuted": false,
+      "pr": 27,
+      "prDraft": true,
+      "prBase": "beta",
+      "merge": false,
+      "deployment": false,
+      "m2": false,
+      "newMission": false,
+      "candidateHttpM1ProtectionsDeployed": false,
+      "m1HttpUiTestExecuted": false,
+      "openBetaAnnounced": false,
+      "betaMainLiveSha": "f20d84f1962c552eaebb095d7a9e5ddb63719be7",
+      "nextStep": "Pré-FF et livraison à exécuter après bilan ; aucune promotion réalisée dans ce suivi documentaire."
+    },
+    "workIamClosure": {
+      "source": "Preuves réelles Work/utilisateur du 2026-10-05 ; aucune réexécution ou mutation IAM Cloud.",
+      "receivedOn": "2026-10-05",
+      "projectId": "facilitat-io",
+      "principal": "firebase-adminsdk-fbsvc@facilitat-io.iam.gserviceaccount.com",
+      "customRole": "projects/facilitat-io/roles/facilitatRuntimeRtdb",
+      "stage": "GA",
+      "roleCreatedAndSavedByUser": true,
+      "exactRolePermissions": [
+        "firebasedatabase.instances.get",
+        "firebasedatabase.instances.update"
+      ],
+      "replacedRole": "roles/firebasedatabase.admin",
+      "policyUpdatedCaptureObservedByWork": true,
+      "capturePublished": false,
+      "freshRuntimeCredentialPermissionTests": [
+        {
+          "service": "beta",
+          "serviceId": "srv-d6lh0094tr6s73b71kug",
+          "expectedProjectPrincipalDatabaseContext": true,
+          "httpStatus": 200,
+          "permissions": {
+            "firebasedatabase.instances.get": true,
+            "firebasedatabase.instances.update": true,
+            "firebasedatabase.instances.delete": false,
+            "firebasedatabase.instances.create": false,
+            "firebasedatabase.instances.list": false,
+            "resourcemanager.projects.setIamPolicy": false
+          }
+        },
+        {
+          "service": "main",
+          "serviceId": "srv-d6kuf4ftskes73d0k15g",
+          "expectedProjectPrincipalDatabaseContext": true,
+          "httpStatus": 200,
+          "permissions": {
+            "firebasedatabase.instances.get": true,
+            "firebasedatabase.instances.update": true,
+            "firebasedatabase.instances.delete": false,
+            "firebasedatabase.instances.create": false,
+            "firebasedatabase.instances.list": false,
+            "resourcemanager.projects.setIamPolicy": false
+          }
+        }
+      ],
+      "unnecessaryInstanceDeleteEffectivelyAbsentBothServices": true,
+      "iamBlockerClosed": true,
+      "updateResidualCoupling": "instances.update conserve données/règles et enable-disable selon granularité Google ; aucune isolation par chemin annoncée.",
+      "inheritanceGoogleProvidedBindingsExhaustive": false,
+      "newProjectOrDatabase": false,
+      "cloudIamMutation": false
+    },
+    "workSdkProbeClosure": {
+      "source": "Résultats réels Work du 2026-10-05 ; aucune exécution Cloud.",
+      "downloadedOriginalHelper": "docs/launch-gate/operators/sdk-probe.cjs",
+      "downloadPinnedCommit": "df4bc47d4aced963ed0ad32b41041f1b0ce6a2d0",
+      "downloadedOriginalSha256": "325aa65ad926c81056f3908a0ecd92b58037bb24e92208d3f309dbb35b8e1fc4",
+      "probes": [
+        {
+          "service": "beta",
+          "probeId": "probe_94595a053c3033991fafa77e52cf9746",
+          "version": "pinned_repository_helper",
+          "reportedInitialResult": {
+            "context": true,
+            "created": true,
+            "read": true,
+            "update": true,
+            "cleanup": true,
+            "removed": false,
+            "ok": false
+          },
+          "complementaryCleanup": {
+            "preRemoveMarkerCheck": {
+              "schemaVersion": 1,
+              "probeIdExpected": true,
+              "step": 1,
+              "exactKeyCount": 3
+            },
+            "method": "remove() puis lecture absence sur le seul marqueur exact de sonde dédiée",
+            "markerExact": true,
+            "removed": true,
+            "absenceVerified": true
+          }
+        },
+        {
+          "service": "beta",
+          "probeId": "probe_58514cd6a4bf6c8cf286f35ddeac9475",
+          "version": "work_local_copy_added_prior_read",
+          "reportedInitialResult": {
+            "context": true,
+            "created": true,
+            "read": true,
+            "update": true,
+            "cleanup": true,
+            "removed": false,
+            "ok": false
+          },
+          "complementaryCleanup": {
+            "preRemoveMarkerCheck": {
+              "schemaVersion": 1,
+              "probeIdExpected": true,
+              "step": 1,
+              "exactKeyCount": 3
+            },
+            "method": "remove() puis lecture absence sur le seul marqueur exact de sonde dédiée",
+            "markerExact": true,
+            "removed": true,
+            "absenceVerified": true
+          }
+        },
+        {
+          "service": "main",
+          "probeId": "probe_abaf893d0e760e2a688dc7793a685933",
+          "version": "work_local_copy_added_prior_read",
+          "reportedInitialResult": {
+            "context": true,
+            "created": true,
+            "read": true,
+            "update": true,
+            "cleanup": true,
+            "removed": false,
+            "ok": false
+          },
+          "complementaryCleanup": {
+            "preRemoveMarkerCheck": {
+              "schemaVersion": 1,
+              "probeIdExpected": true,
+              "step": 1,
+              "exactKeyCount": 3
+            },
+            "method": "remove() puis lecture absence sur le seul marqueur exact de sonde dédiée",
+            "markerExact": true,
+            "removed": true,
+            "absenceVerified": true
+          }
+        }
+      ],
+      "workLocalPriorReadAttemptFixedRemoved": false,
+      "repositoryHelperChanged": false,
+      "initialProbeResultsConvertedToPass": false,
+      "allThreeMarkersRemovedAndAbsenceVerified": true,
+      "runtimeQualification": "Lecture/écriture/update et transaction de création SDK validés ; suppression/absence validées par contrôle complémentaire borné, pas par la transaction de nettoyage initiale.",
+      "initialCleanupTransactionProvesRemoval": false,
+      "overallInitialProbePass": false,
+      "limitationBlockingAfterCleanup": false,
+      "causeProven": false,
+      "businessDataOrConversationAccess": false,
+      "realPurge": false,
+      "secretValueRecorded": false,
+      "cloudTestOrProviderCall": false
+    },
+    "gitClosureMetadata": {
+      "source": "git ls-remote origin, lecture seule Cloud pendant cette clôture documentaire.",
+      "betaSha": "f20d84f1962c552eaebb095d7a9e5ddb63719be7",
+      "mainSha": "f20d84f1962c552eaebb095d7a9e5ddb63719be7",
+      "initialWorkHead": "df4bc47d4aced963ed0ad32b41041f1b0ce6a2d0",
+      "destination": "work/m0-m1-launch-gate",
+      "betaMainChangedByThisTask": false,
+      "forcePush": false
     }
   },
   "sha256": {

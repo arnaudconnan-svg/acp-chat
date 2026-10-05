@@ -7,6 +7,14 @@ relues. Aucun boot, test global acquis, accès fournisseur, provisioning ou
 déploiement exécuté par Cloud. Les helpers ci-dessous sont opérateurs temporaires,
 sans modification applicative. PR27 draft ; aucune fusion beta/main, M2 exclu.
 
+**État final : M0/M1 clos — prêt pour protocole pré-FF et livraison vers main.**
+Propriétaire actif administrator seul, login/session/révocation réels acquis ;
+**ne plus relancer le provisioning**. IAM custom réduit, permissions fraîches
+beta/main et SDK qualifiés, trois marqueurs nettoyés ; détail final en bas de page.
+Les instructions de préparation ci-dessous sont historiques, pas des opérations
+à répéter. Services f20d84f et protections HTTP M1 non déployées ; pré-FF/livraison
+restent à exécuter après bilan, PR27 draft base beta, aucune bêta ouverte annoncée.
+
 ## Usages Firebase réellement présents dans les deux sources
 
 Le serveur utilise seulement **AdminSDK Realtime Database**, avec
@@ -39,7 +47,7 @@ La clé locale sert à obtenir un token OAuth ; aucun besoin de signBlob,
 serviceAccountTokenCreator, lecture de policy ou gestion de clés dans ces sources.
 L'inspection ne qualifie pas d'autres consommateurs externes du principal partagé.
 
-## IAM : minimum documenté et réduction à préparer
+## Historique IAM : minimum documenté et réduction préparée
 
 Correction officielle transmise par Work :
 [Firebase permissions, Realtime Database](https://firebase.google.com/docs/projects/iam/permissions)
@@ -151,7 +159,7 @@ dans sa session Render Web Shell**, avec conservation privée dans son gestionna
 habituel. Work démarre le helper et passe la main ; seul l'utilisateur saisit/confirme
 et soumet le nouveau credential, conformément à la passation navigateur demandée.
 
-## Commande prête — provisioning et validation du module exact
+## Commande historique — provisioning accompli, ne plus exécuter
 
 Depuis le répertoire applicatif de **beta Web Shell**, aucune variable/secrète
 à ajouter. Télécharger seulement dans un répertoire opérateur privé temporaire,
@@ -241,7 +249,7 @@ publiée avant démarrage et conserve la passation personnelle obligatoire.
 Revue Work reçue : diff de saisie et sortie réelle des 32 cas PASS relus,
 gardes et modules M1 conservés ; aucun contrôle supplémentaire demandé.
 
-## Vérification SDK après réduction — seule sonde réversible dédiée
+## Vérification SDK historique — sonde exécutée, nettoyage complémentaire accompli
 
 Depuis chacun des deux shells, nouveau processus/OAuth avec credential réellement
 local ; pas de réutilisation du cache du serveur. Télécharger et vérifier :
@@ -274,6 +282,61 @@ Résolveur propriétaire vérifié sans SDK : source live acceptée, source alt�
 empreinte email différente refusées ; server.js jamais évalué.
 **Aucune exécution réelle**, aucune répétition de harness.
 `git diff --check` et absence de modification applicative contrôlés à publication.
-Restent les observations bindings/réduction IAM, puis la saisie/remise privée du
-nouveau credential et les booléens réels du helper/SDK, dans les autorisations
-M0/M1 déjà accordées. Aucun nominatif/rôle manquant, aucun nouveau GO général.
+Ces preuves de préparation précèdent les résultats réels Work ci-dessous ;
+provisioning et IAM désormais clos, aucun nominatif/rôle/password manquant,
+aucun nouveau GO général ni opération à répéter.
+
+## Preuves finales Work — IAM réduit et sondes nettoyées
+
+Preuves du **5 octobre 2026**. L'utilisateur a créé/enregistré le rôle GA
+`projects/facilitat-io/roles/facilitatRuntimeRtdb`, avec exactement
+`firebasedatabase.instances.get` et `firebasedatabase.instances.update`, puis
+remplacé `roles/firebasedatabase.admin` pour
+`firebase-adminsdk-fbsvc@facilitat-io.iam.gserviceaccount.com`. Capture policy updated
+conservée en privé ; aucune modification IAM par Cloud.
+
+Work a exécuté testIamPermissions frais avec credentials runtime dans les deux
+services Render, contexte principal/projet/URL attendu exact :
+
+| Service | HTTP | instances.get | instances.update | instances.delete | instances.create | instances.list | projects.setIamPolicy |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| beta `srv-d6lh0094tr6s73b71kug` | 200 | true | true | false | false | false | false |
+| main `srv-d6kuf4ftskes73d0k15g` | 200 | true | true | false | false | false | false |
+
+`projects.setIamPolicy` abrège `resourcemanager.projects.setIamPolicy`.
+**IAM clos** : droit excessif delete effectivement absent sur les deux services,
+aucun nouveau projet/base. Réserve de granularité Google conservée : update porte
+encore règles/enable-disable, sans isolation par chemin ni preuve exhaustive des
+bindings hérités/fournis Google. Firebase partagé accepté, inchangé.
+
+Sonde `sdk-probe.cjs` téléchargée épinglée au commit
+`df4bc47d4aced963ed0ad32b41041f1b0ce6a2d0`, SHA256
+`325aa65ad926c81056f3908a0ecd92b58037bb24e92208d3f309dbb35b8e1fc4`.
+Work a tenté ensuite une modification **locale** ajoutant une lecture préalable,
+sans correction du résultat removed et sans publication de ce changement ici.
+
+| Service / version Work | ID technique | Résultat initial | Contrôle complémentaire |
+| --- | --- | --- | --- |
+| beta, sonde épinglée | `probe_94595a053c3033991fafa77e52cf9746` | context/created/read/update/cleanup=true ; **removed=false, ok=false** | markerExact=true, removed=true ; absence vérifiée |
+| beta, copie locale avec lecture préalable | `probe_58514cd6a4bf6c8cf286f35ddeac9475` | mêmes true ; **removed=false, ok=false** | markerExact=true, removed=true ; absence vérifiée |
+| main, copie locale avec lecture préalable | `probe_abaf893d0e760e2a688dc7793a685933` | mêmes true ; **removed=false, ok=false** | markerExact=true, removed=true ; absence vérifiée |
+
+Avant chaque suppression complémentaire, Work a contrôlé exactement
+schemaVersion=1, probeId égal à l'ID attendu, step=1 et **exactement trois clés**,
+puis remove() et lecture d'absence sur le seul marqueur de la sonde dédiée.
+**Tous les trois marqueurs nettoyés.** Aucun contenu métier/conversation touché.
+
+Qualification : SDK runtime lecture/écriture/update et transaction de création
+validés ; suppression/absence validées par contrôle complémentaire. Les sorties
+initiales ne deviennent pas des PASS : la transaction de nettoyage de la sonde
+n'a pas prouvé la suppression. Limitation désormais non bloquante après nettoyage,
+**cause non prouvée** ; aucun helper/code corrigé dans ce suivi.
+
+Propriétaire déjà clos : seul launch-owner actif administrator, login/session/
+révocation réels validés via module M1 exact, aucune affectation/grant supplémentaire.
+Ne plus reprovisionner. **M0/M1 clos — prêt pour protocole pré-FF et livraison vers
+main.** Aucun blocage opérationnel restant ; pré-FF/livraison non exécutés après
+bilan, services toujours f20d84f, protections HTTP M1 candidates non déployées.
+PR27 draft base beta ; aucune fusion/deploy/M2, aucune annonce de bêta ouverte,
+nouvelle mission ou relance des tests acquis 3db45bb. Consignation documentaire
+seulement ; captures expurgées privées Work, aucune valeur secrète recopiée.
