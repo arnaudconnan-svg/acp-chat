@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-10-05T15:00:09Z",
+  "repository": "arnaudconnan-svg/acp-chat",
+  "base": {
+    "ref": "beta",
+    "sha": "f20d84f1962c552eaebb095d7a9e5ddb63719be7"
+  },
+  "destination": "work/m0-m1-launch-gate",
+  "validatedCommit": "3db45bb8827ed14b9cd9399b61de8b8da8213dc1",
+  "validatedTree": "898ad8b3888ba38776ba333ef5f274bf20e1111b",
+  "publicationNote": "Le commit suivant ajoute uniquement le rapport et les preuves ; le SHA validé désigne le dernier changement de code/tests.",
+  "environment": {
+    "node": "v24.19.0",
+    "npm": "11.9.0",
+    "independentClone": "/workspace/work/acp-clean-m0m1-031c063"
+  },
+  "commands": [
+    {
+      "command": "npm ci --ignore-scripts --no-audit --no-fund",
+      "exitCode": 0,
+      "log": "m1-clean-install.log",
+      "note": "Exécuté avant fast-forward depuis 031c063 ; package.json et package-lock.json identiques au SHA validé."
+    },
+    {
+      "command": "bash scripts/synthetic/verify.sh",
+      "exitCode": 0,
+      "log": "m1-clean-verify.log",
+      "note": "Au SHA validé ; inclut les huit contrôles M0/M1, node --check server.js et tout npm run verify."
+    },
+    {
+      "command": "git status --porcelain",
+      "exitCode": 0,
+      "stdout": "",
+      "note": "Clone indépendant propre avant et après la suite."
+    },
+    {
+      "command": "git diff --check",
+      "exitCode": 0,
+      "stdout": "",
+      "note": "Clone indépendant et checkout de mission."
+    }
+  ],
+  "executionBoundary": {
+    "realExpress": true,
+    "networkListener": false,
+    "realFirebase": false,
+    "realMistral": false,
+    "realSMTP": false,
+    "realPurge": false,
+    "deployment": false,
+    "merge": false,
+    "realProvisioning": false,
+    "operatorApply": "verrou total conservatoire"
+  },
+  "operationalStatus": {
+    "renderAttestation": "Bloquée par connexion ; traitée par Work. Principal/base/IAM consommés non attestés.",
+    "rotationAndProvisioning": "Préparés en runbook, non exécutés.",
+    "historicalPrivateNodeAndLogs": "Non purgés ; inventaire, rétention et mandat opérationnel distinct requis."
+  },
+  "sha256": {
+    "docs/launch-gate/evidence/m1-clean-install.log": "e68285437d3e8b53ef1c4810662674ade0109b31333a54b4be22e2f56c44b8b7",
+    "docs/launch-gate/evidence/m1-clean-verify.log": "fa0b0542ba913c2cf296d4bb7d18694615326183cc431b40d065f1fa5b2b7665",
+    "docs/launch-gate/evidence/m1-final-verify.log": "1cb952b81f1e6182e564514d9122aff1157076b140fb835d9b21bec889d58e3f",
+    "docs/launch-gate/evidence/initial/guard.cjs.txt": "1297a50f4b6688a82681d3f7c4e58b916a35bddb5c8cd14323f39277b986402c",
+    "docs/launch-gate/evidence/initial/verify.log": "53eb94f22081609660257132bdecb19245aff08f82a151ab12d77d576ea66c5a",
+    "docs/launch-gate/evidence/initial/repeatability.log": "addb9271860219485c03e137fdff958b18dc3e27b6a5f15ebd8fe945255bea61",
+    "scripts/synthetic/guard.cjs": "1b1de1bdfc83938a6372fb2f9f8a8f4698af09258e46036a619d678cb129068d",
+    "scripts/synthetic/verify.sh": "77e57f806ea9ab9a9ab929f4ca2fddd4cfe135606a2dc64d4d2d47b522ab0d6e",
+    "package.json": "224921e3135a25af213f1482a8803c8fcc715406c185b0c554e116655408eb5f",
+    "package-lock.json": "b373caed761058422a72c9cbd61a59993cdea5a7f6a7675f667b63d787380458"
+  }
+}
