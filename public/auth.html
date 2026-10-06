@@ -1,6 +1,8 @@
 <!doctype html>
 <html lang="fr">
   <head>
+    <script src="/js/local-destination.js"></script>
+    <script src="/js/identity-storage.js"></script>
     <meta charset="UTF-8" />
     <title>Facilitat.io — Compte</title>
     <meta
@@ -789,17 +791,7 @@
             .catch(() => {});
 
         function getRedirectTarget() {
-          try {
-            const params = new URLSearchParams(window.location.search);
-            const raw = params.get('next') || '/?screen=conversationsScreen';
-            const url = new URL(raw, window.location.origin);
-            // Only allow same-origin redirects
-            if (url.origin !== window.location.origin)
-              return '/?screen=conversationsScreen';
-            return url.pathname + url.search + url.hash;
-          } catch (_) {
-            return '/?screen=conversationsScreen';
-          }
+          return window.FacilitatLocalDestination.resolve(new URLSearchParams(window.location.search).get('next'), '/?screen=conversationsScreen');
         }
         window.FacilitatAuth = Object.freeze({ getRedirectTarget });
 

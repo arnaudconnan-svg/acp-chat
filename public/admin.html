@@ -1,6 +1,9 @@
 <!doctype html>
 <html lang="fr">
   <head>
+    <script src="/js/local-destination.js"></script>
+    <script src="/js/identity-storage.js"></script>
+    <script src="/js/professional-review.js"></script>
     <meta charset="UTF-8" />
     <meta
       name="viewport"
@@ -749,11 +752,11 @@
           window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0;
 
         try {
-          sessionStorage.setItem(
+          window.FacilitatIdentityStorage.session.setItem(
             ADMIN_CONVERSATION_SCROLL_Y_KEY,
             String(Math.max(0, Math.floor(scrollY)))
           );
-          sessionStorage.setItem(
+          window.FacilitatIdentityStorage.session.setItem(
             ADMIN_CONVERSATION_SCROLL_RESTORE_PENDING_KEY,
             '1'
           );
@@ -779,11 +782,11 @@
         let rawScrollY = '';
         try {
           pending =
-            sessionStorage.getItem(
+            window.FacilitatIdentityStorage.session.getItem(
               ADMIN_CONVERSATION_SCROLL_RESTORE_PENDING_KEY
             ) === '1';
           rawScrollY =
-            sessionStorage.getItem(ADMIN_CONVERSATION_SCROLL_Y_KEY) || '';
+            window.FacilitatIdentityStorage.session.getItem(ADMIN_CONVERSATION_SCROLL_Y_KEY) || '';
         } catch {
           return;
         }
@@ -798,7 +801,7 @@
           : 0;
 
         try {
-          sessionStorage.removeItem(
+          window.FacilitatIdentityStorage.session.removeItem(
             ADMIN_CONVERSATION_SCROLL_RESTORE_PENDING_KEY
           );
         } catch {
@@ -989,7 +992,7 @@
             timestamp: Date.now()
           };
 
-          localStorage.setItem(
+          window.FacilitatIdentityStorage.local.setItem(
             'facilitatio_admin_replay',
             JSON.stringify(replayPayload)
           );

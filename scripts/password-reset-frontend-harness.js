@@ -23,6 +23,9 @@ async function load(url, fetchImpl) {
     beforeParse(window) {
       window.fetch = fetchImpl;
       window.scrollTo = () => {};
+      // External scripts are deliberately loaded from disk: JSDOM has no network.
+      window.FacilitatLocalDestination = require('../public/js/local-destination');
+      window.FacilitatIdentityStorage = require('../public/js/identity-storage').create(window.localStorage, window.sessionStorage);
     }
   });
   await tick();

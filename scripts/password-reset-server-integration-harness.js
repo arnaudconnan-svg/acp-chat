@@ -191,7 +191,7 @@ async function main() {
   const changeRoutes = compileRoute(
     slice(
       "app.post('/api/auth/change-password'",
-      "app.get('/api/account/preferences'"
+      "app.get('/api/account/content-grants'"
     ),
     {
       requireUserAuth() {},

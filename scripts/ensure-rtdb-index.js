@@ -1,5 +1,7 @@
 'use strict';
 
+// Live rules inspection/mutation requires separate operational attestation.
+throw new Error('rtdb_index_live_execution_locked_m0_m1');
 require('dotenv').config();
 
 const fs = require('fs');
