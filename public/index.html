@@ -3984,8 +3984,15 @@
           return true;
         }
 
+        // Ordinary browser access uses a fresh server-validated user session.
+        // A cached identity or local UI preference cannot grant this access.
+        const session = await syncUserSessionState();
+        if (session.authenticated === true && session.user?.id) {
+          return true;
+        }
+
         navigateAway('/telecharger');
-        return true;
+        return false;
       }
 
       function normalizeBiometricRelockSeconds(value) {
@@ -15284,10 +15291,10 @@
             ? adminUiContext.welcomeAnimationPolicy
             : null;
 
-        await enforceTwaDeviceGate({
+        if (!(await enforceTwaDeviceGate({
           isAdminUI,
           canBypassTwaGate: adminUiContext.canBypassTwaGate === true
-        });
+        }))) return;
 
         const loadUrl = new URL(window.location.href);
         const replayRequested = loadUrl.searchParams.get('adminReplay') === '1';

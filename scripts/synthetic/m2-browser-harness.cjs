@@ -6,6 +6,7 @@ const espree = require('espree');
 const { JSDOM } = require('jsdom');
 const { install, PREFIX } = require('../../public/js/identity-storage');
 const conversation = require('../../public/js/conversation-data');
+const { loadApplication } = require('./runtime.cjs');
 const sources = new Map();
 function functionsFrom(file) {
   if (sources.has(file)) return sources.get(file);
@@ -57,14 +58,14 @@ async function test(name, callback) {
   count++;
   console.log('PASS ' + name);
 }
-async function fixture(fetcher) {
+async function fixture(fetcher, { serverSession = false } = {}) {
   const dom = new JSDOM('<div id="chat"></div>', {
       url: 'https://synthetic.example.test'
     }),
     w = dom.window;
   w.Headers = Headers;
   w.fetch = async (url, options) =>
-    url === '/api/auth/session'
+    url === '/api/auth/session' && !serverSession
       ? json({ authenticated: true, user: { id: 'u_A' } })
       : fetcher(url, options);
   const api = install(w);
@@ -126,6 +127,101 @@ async function fixture(fetcher) {
   return { dom, w, api, context, load };
 }
 (async () => {
+  await test('reserved-access link uses ordinary authentication and retains Android entry', async () => {
+    const dom = new JSDOM(fs.readFileSync('public/telecharger.html', 'utf8'), {
+      url: 'https://synthetic.example.test/telecharger'
+    });
+    const links = [...dom.window.document.querySelectorAll('a')];
+    const reserved = links.find((a) => a.textContent.trim() === 'Accès réservé');
+    assert.equal(reserved.getAttribute('href'), '/auth.html?next=%2F');
+    assert(links.some((a) => a.href.startsWith('https://play.google.com/')));
+    dom.window.close();
+  });
+  for (const scenario of ['anonymous', 'valid', 'invalid', 'revoked', 'unavailable', 'android'])
+    await test(`real reserved-access frontend and Express session: ${scenario}`, async () => {
+      const app = loadApplication({
+        seed: { users: { u_A: { email: 'review@example.test', authVersion: 0 } } }
+      });
+      app.db.data.users.u_A.passwordHash = app.evaluate(
+        "hashPassword('SyntheticPassword123!')"
+      );
+      let cookie = '', unavailable = false;
+      const calls = [], navigations = [];
+      const f = await fixture(async (url, options = {}) => {
+        calls.push(url);
+        if (unavailable && url === '/api/auth/session')
+          return json({ error: 'synthetic_unavailable' }, 503);
+        const result = await app.request(options.method || 'get', url, {
+          cookie,
+          body: options.body ? JSON.parse(options.body) : {},
+          headers: Object.fromEntries(options.headers || [])
+        });
+        if (result.headers['set-cookie'])
+          cookie = result.headers['set-cookie'].split(';')[0];
+        return json(result.body, result.statusCode);
+      }, { serverSession: true });
+      Object.assign(f.context, {
+        URL,
+        URLSearchParams,
+        navigator: f.w.navigator,
+        ANDROID_COUNTRY_PENDING_KEY: 'synthetic_android_country',
+        syncConversationsFabPrivateDefaultBadge() {},
+        navigateAway: (url) => navigations.push(url),
+        loginRequestInFlight: false,
+        setTimeout: (fn) => { queueMicrotask(fn); return 0; }
+      });
+      f.load('public/index.html', [
+        'syncUserSessionState', 'isTwaRuntimeContext', 'enforceTwaDeviceGate'
+      ]);
+      if (['valid', 'revoked', 'unavailable'].includes(scenario)) {
+        // Actual auth form submit code -> actual Express login -> signed cookie.
+        f.w.history.replaceState({}, '', '/auth.html?next=%2F');
+        f.w.FacilitatLocalDestination = require('../../public/js/local-destination');
+        f.w.document.body.insertAdjacentHTML('beforeend',
+          '<input id="loginEmail"><input id="loginPassword">' +
+          '<button id="loginBtn"></button><div id="loginNotice"></div>');
+        f.w.document.getElementById('loginEmail').value = 'review@example.test';
+        f.w.document.getElementById('loginPassword').value = 'SyntheticPassword123!';
+        f.load('public/auth.html', ['getRedirectTarget', 'submitLoginCredentials']);
+        await f.context.submitLoginCredentials();
+        await Promise.resolve();
+        assert.deepEqual(navigations, ['/']);
+        assert(cookie.startsWith('userSessionId='));
+        assert.equal(f.api.identity, 'u_A');
+        navigations.length = 0;
+        f.w.history.replaceState({}, '', '/');
+      }
+      if (scenario === 'invalid') cookie = 'userSessionId=synthetic_invalid';
+      if (scenario === 'revoked') app.db.data.users.u_A.authVersion++;
+      if (scenario === 'unavailable') unavailable = true;
+      if (scenario === 'android') {
+        Object.defineProperty(f.w.navigator, 'userAgent', { value: 'Android' });
+        f.w.matchMedia = () => ({ matches: true });
+      }
+      // A stale client session never grants ordinary browser access.
+      f.context.userSessionState = { authenticated: true, user: { id: 'u_A' } };
+      const allowed = await f.context.enforceTwaDeviceGate();
+      assert.equal(allowed, ['valid', 'android'].includes(scenario));
+      assert.deepEqual(navigations, allowed ? [] : ['/telecharger']);
+      assert.equal(f.w.document.body.classList.contains('admin-ui'), false);
+      assert(!calls.includes('/api/twa/login'));
+      assert(!calls.includes('/api/pros/login'));
+      if (scenario === 'valid') {
+        const session = await app.request('get', '/api/admin/session', { cookie });
+        assert.equal(session.body.authenticated, false);
+        assert.equal((await app.request('get', '/api/admin/users', { cookie })).statusCode, 401);
+        assert.equal((await app.request('get', '/api/facilitation/users', { cookie })).statusCode, 401);
+        assert.equal((await app.request('post', '/api/twa/login', {
+          body: { password: 'SyntheticPassword123!' }
+        })).statusCode, 403);
+        assert.equal((await app.request('get', '/api/account/conversations', { cookie })).statusCode, 200);
+      }
+      if (['invalid', 'revoked'].includes(scenario))
+        assert.equal((await app.request('get', '/api/account/conversations', { cookie })).statusCode, 401);
+      assert.equal(app.db.data.professionalIdentities, undefined);
+      assert.equal(app.db.data.professionalSessions, undefined);
+      f.dom.window.close();
+    });
   for (const transition of [
     'public_navigation',
     'private_navigation',
