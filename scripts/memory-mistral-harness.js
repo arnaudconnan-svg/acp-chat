@@ -71,13 +71,11 @@ async function main() {
       }
     }
   });
-  const invalid = await invalidHelpers.updateMemory(
+  await assert.rejects(invalidHelpers.updateMemory(
     'Contexte stable:\n- Contexte deja connu\n\nMouvements en cours:\n-',
     [{ role: 'user', content: 'Message neutre' }]
-  );
+  ), { code: 'memory_result_invalid' });
   assert.strictEqual(invalidRequests.length, 2);
-  assert.match(invalid.memoryText, /Contexte deja connu/);
-  assert.match(invalid.memoryText, /Mouvements en cours:\n-/);
 
   console.log('structured memory Mistral harness: ok');
 }

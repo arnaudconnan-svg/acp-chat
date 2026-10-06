@@ -283,7 +283,10 @@ function cookie(app, id) {
   ]) {
     const snapshot = structuredClone(app.db.data),
       response = await app.request(method, url, { cookie: a, body: payload });
-    assert([400, 403, 404].includes(response.statusCode), url);
+    if (url === '/chat/stream' || url === '/chat/stream/interrupted') {
+      assert.equal(response.statusCode, 405, url);
+      assert.equal(response.body.code, 'streaming_disabled');
+    } else assert([400, 403, 404].includes(response.statusCode), url);
     assert.deepEqual(app.db.data, snapshot, url + ' refused before effect');
   }
   assert.equal(

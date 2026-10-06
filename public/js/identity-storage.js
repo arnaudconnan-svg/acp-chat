@@ -58,8 +58,39 @@
     return {
       local: scope(nativeLocal),
       session: scope(nativeSession),
+      retireConversation(id) {
+        if (identity && typeof id === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(id)) {
+          const local = scope(nativeLocal);
+          local.setItem('retired-conversation:' + id, '1');
+          const keys = [];
+          for (let i = 0; i < local.length; i++) if (local.key(i).startsWith('copy-pending:' + id + ':')) keys.push(local.key(i));
+          for (const key of keys) local.removeItem(key);
+        }
+      },
+      isConversationRetired(id) {
+        return scope(nativeLocal).getItem('retired-conversation:' + id) === '1';
+      },
       activate,
       capture: () => ({ identity, generation }),
+      captureSpace() {
+        const owner = identity;
+        const stamp = { identity, generation };
+        return {
+          stamp,
+          clear() {
+            if (!owner) return;
+            const prefix = PREFIX + owner + ':';
+            for (const storage of [nativeLocal, nativeSession]) {
+              const keys = [];
+              for (let i = 0; i < storage.length; i++) {
+                const key = storage.key(i);
+                if (key?.startsWith(prefix)) keys.push(key);
+              }
+              for (const key of keys) storage.removeItem(key);
+            }
+          }
+        };
+      },
       current: (stamp) =>
         stamp.identity === identity && stamp.generation === generation,
       subscribe(fn) {
@@ -210,7 +241,18 @@
         } else if (isUserApi(url.pathname) && !api.current(stamp))
           throw new win.DOMException('Identity changed', 'AbortError');
         if (isUserApi(url.pathname) && url.origin === win.location.origin) {
-          if ([401, 409].includes(response.status)) {
+          const conflict =
+            response.status === 409
+              ? await response
+                  .clone()
+                  .json()
+                  .catch(() => null)
+              : null;
+          check(stamp);
+          if (
+            response.status === 401 ||
+            conflict?.code === 'identity_changed'
+          ) {
             invalidate();
             throw new win.DOMException('Identity changed', 'AbortError');
           }

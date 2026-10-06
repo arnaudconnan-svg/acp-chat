@@ -80,21 +80,9 @@ const token = (app) =>
   assert.equal(created.statusCode, 201);
   const branchId = created.body.branch.id;
   // Resolve the real configured namespaces rather than inventing fake route state.
-  const branchPath = app.db.operations.find(
-    (op) =>
-      op.action === 'set' &&
-      op.path.endsWith('/' + branchId) &&
-      !op.path.includes('Snapshots')
-  ).path;
-  const branchRoot = branchPath.split('/')[0];
+  const branchRoot = app.evaluate('branchRecordsRef.key');
   const branch = app.db.data[branchRoot][branchId];
-  const seedPath = app.db.operations.find(
-    (op) =>
-      op.action === 'set' &&
-      op.path.endsWith('/' + branchId) &&
-      op.path !== branchPath
-  ).path;
-  const seedRoot = seedPath.split('/')[0];
+  const seedRoot = app.evaluate('branchSeedSnapshotsRef.key');
   const seed = app.db.data[seedRoot][branchId];
   assert.equal(seed.messages.length, 1);
   assert.equal(seed.messages[0].content, 'OWNED');

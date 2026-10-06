@@ -3984,8 +3984,15 @@
           return true;
         }
 
+        // Ordinary browser access uses a fresh server-validated user session.
+        // A cached identity or local UI preference cannot grant this access.
+        const session = await syncUserSessionState();
+        if (session.authenticated === true && session.user?.id) {
+          return true;
+        }
+
         navigateAway('/telecharger');
-        return true;
+        return false;
       }
 
       function normalizeBiometricRelockSeconds(value) {
@@ -4505,7 +4512,7 @@
         const data = loadConversationData(conversationId);
         const localMessages = Array.isArray(data.messages) ? data.messages : [];
         const conversationPayload = {
-          id: conversationId,
+          id: conversationId, expectedVersion: null,
           title: typeof data.title === 'string' ? data.title : '',
           isCustomTitle: data.isCustomTitle === true,
           isPrivate: true,
@@ -4516,7 +4523,7 @@
           messages: localMessages
         };
 
-        const res = await fetch('/api/account/conversations/import-local', {
+        const res = await copyFetch('/api/account/conversations/import-local', {
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
@@ -4578,6 +4585,7 @@
         );
 
         updateMakePublicBtnVisibility();
+        res.finishCopy();
       }
 
       function openMakePublicModal() {
@@ -4800,6 +4808,7 @@
       let activeConversationSwipeElement = null;
       let activeConversationSwipeCloser = null;
       let activeChatRequestId = '';
+      let activeChatRequestContext = null;
       let activeChatAbortController = null;
       let activeChatProgressSource = null;
       let activeChatRequestTransport = 'unknown';
@@ -5095,7 +5104,12 @@
 
       async function stopCurrentChatRequest() {
         const requestId = String(activeChatRequestId || '').trim();
-        if (!requestId) return false;
+        const request = activeChatRequestContext;
+        if (
+          !requestId ||
+          request?.requestId !== requestId ||
+          !window.FacilitatIdentityStorage.current(request.identity)
+        ) return false;
 
         closeActiveChatProgressSource();
 
@@ -5108,7 +5122,9 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            requestId
+            requestId,
+            conversationId: request.conversationId,
+            isPrivateConversation: request.isPrivateConversation
           }),
           keepalive: true
         }).catch(() => {});
@@ -5862,7 +5878,7 @@
 
       function loadConversationData(conversationId = getConversationId()) {
         const safeConversationId = String(conversationId || '').trim();
-        if (!safeConversationId) {
+        if (!safeConversationId || window.FacilitatIdentityStorage.isConversationRetired(safeConversationId)) {
           return createEmptyConversationData();
         }
 
@@ -5904,7 +5920,7 @@
         data = {}
       ) {
         const safeConversationId = String(conversationId || '').trim();
-        if (!safeConversationId) return false;
+        if (!safeConversationId || window.FacilitatIdentityStorage.isConversationRetired(safeConversationId)) return false;
 
         const safeData = buildSafeConversationData(data);
         rememberConversationDataMemoryCache(safeConversationId, safeData);
@@ -5969,14 +5985,54 @@
         }
       }
 
+      async function copyFetch(url, options) {
+        const identity = window.FacilitatIdentityStorage;
+        const stamp = identity.capture();
+        const submitted = JSON.parse(options.body);
+        const sourceId = submitted.sourceConversationId || submitted.conversation?.sourceConversationId || submitted.conversations?.[0]?.id || submitted.localSourceId;
+        const anchor = submitted.anchorMessageId || submitted.conversation?.anchorMessageId || submitted.localAnchorId || '';
+        const key = 'copy-pending:' + sourceId + ':' + url + ':' + anchor;
+        function current() {
+          if (!identity.current(stamp) || identity.isConversationRetired(sourceId))
+            throw new Error('Op\u00e9ration retir\u00e9e ou compte modifi\u00e9');
+        }
+        function signature(value) {
+          if (Array.isArray(value)) return value.map(signature);
+          if (!value || typeof value !== 'object') return value;
+          return Object.fromEntries(Object.keys(value).sort()
+            .filter((k) => !['timestamp', 'capturedAt', 'updatedAt', 't', 'operationId'].includes(k))
+            .map((k) => [k, signature(value[k])]));
+        }
+        current();
+        const shape = JSON.stringify(signature(submitted));
+        const raw = identity.local.getItem(key);
+        let pending = raw ? JSON.parse(raw) : null;
+        if (pending && pending.shape !== shape)
+          throw new Error('Copie pr\u00e9c\u00e9dente non confirm\u00e9e : reprendre la m\u00eame demande avant de la modifier');
+        if (!pending) {
+          pending = { shape, body: { ...submitted, operationId: window.crypto.randomUUID() } };
+          identity.local.setItem(key, JSON.stringify(pending));
+          if (identity.local.getItem(key) !== JSON.stringify(pending)) throw new Error('Sauvegarde locale de la reprise impossible');
+        }
+        const response = await fetch(url, { ...options, body: JSON.stringify(pending.body) });
+        const data = await response.json();
+        current();
+        // A bounded 4xx is a definitive refusal. An uncertain result keeps the
+        // exact request on this identity's device for an explicit retry.
+        if (response.status >= 400 && response.status < 500) identity.local.removeItem(key);
+        return {
+          ok: response.ok, status: response.status, headers: response.headers,
+          json: async () => { current(); return data; },
+          finishCopy() { current(); if (response.ok) identity.local.removeItem(key); }
+        };
+      }
+
       function readAndConsumeAdminReplayPayload(maxAgeMs = 5 * 60 * 1000) {
         try {
           const raw = window.FacilitatIdentityStorage.local.getItem(ADMIN_REPLAY_KEY);
           if (!raw) {
             return null;
           }
-
-          window.FacilitatIdentityStorage.local.removeItem(ADMIN_REPLAY_KEY);
 
           const parsed = JSON.parse(raw);
           const timestamp = Number(parsed?.timestamp || 0);
@@ -5991,13 +6047,14 @@
           if (
             !sourceConversationId ||
             !Number.isFinite(timestamp) ||
-            Date.now() - timestamp > maxAgeMs
+            (!parsed.destinationId && Date.now() - timestamp > maxAgeMs)
           ) {
             return null;
           }
 
           const safeRecentHistory = recentHistory
             .map((item) => ({
+              id: typeof item?.id === 'string' ? item.id : undefined,
               role: String(item?.role || '').trim(),
               content: String(item?.content || '').trim(),
               debug: Array.isArray(item?.debug)
@@ -6017,7 +6074,11 @@
             return null;
           }
 
+          const destinationId = parsed.destinationId || createConversationId();
+          window.FacilitatIdentityStorage.local.setItem(ADMIN_REPLAY_KEY, JSON.stringify({ ...parsed, destinationId }));
           return {
+            destinationId, timestamp,
+            memoryState: parsed.memoryState || {}, flags: parsed.flags || {},
             sourceConversationId,
             memory: memory || defaultMemory(),
             anchorMessageId: String(parsed?.anchorMessageId || '').trim(),
@@ -6029,156 +6090,34 @@
         }
       }
 
-      async function openBranchFromMessage(
-        sourceConversationId,
-        anchorMessageId,
-        anchorHistory
-      ) {
-        if (!sourceConversationId || !anchorMessageId) {
-          showTemporaryNotice('Repartir impossible : identifiants manquants');
-          return;
-        }
-
-        showTemporaryNotice('Creation de la branche...');
-
+      async function openBranchFromMessage(sourceConversationId, anchorMessageId, anchorHistory) {
+        const identity = window.FacilitatIdentityStorage, stamp = identity.capture();
         try {
-          const seedMessages = (
-            Array.isArray(anchorHistory) ? anchorHistory : []
-          )
-            .map((item) => ({
-              id: typeof item?.id === 'string' ? item.id : undefined,
-              role: String(item?.role || ''),
-              content: String(item?.content || ''),
-              debug: Array.isArray(item?.debug) ? item.debug : [],
-              debugMeta: normalizeClientDebugMeta(item?.debugMeta),
-              stateSnapshot: normalizeStoredStateSnapshot(item?.stateSnapshot)
-            }))
-            .filter((item) => item.role && item.content);
-
-          logBranchClientEvent('from_message_request', {
-            sourceConversationId,
-            anchorMessageId,
-            seedMessageCount: seedMessages.length
+          const branchState = deriveBranchConversationState(sourceConversationId, anchorHistory);
+          const response = await copyFetch('/api/branches/create-and-activate', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sourceConversationId, anchorMessageId, seedMessages: anchorHistory, ...branchState })
           });
-
-          const createRes = await fetch('/api/branches/from-message', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              sourceConversationId,
-              anchorMessageId,
-              seedMessages
-            })
-          });
-
-          if (!createRes.ok) {
-            const data = await createRes.json().catch(() => ({}));
-            logBranchClientEvent('from_message_create_failed', {
-              sourceConversationId,
-              anchorMessageId,
-              status: createRes.status,
-              error: String(data.error || '')
-            });
-            showTemporaryNotice(
-              'Branchement impossible : ' + (data.error || createRes.status)
-            );
-            return;
-          }
-
-          const createData = await createRes.json();
-          const branchId = createData?.branch?.id;
-          const branchConversationId = createData?.branch?.branchConversationId;
-
-          if (!branchId || !branchConversationId) {
-            logBranchClientEvent('from_message_invalid_payload', {
-              sourceConversationId,
-              anchorMessageId
-            });
-            showTemporaryNotice(
-              'Branchement impossible : r\u00e9ponse invalide.'
-            );
-            return;
-          }
-
-          const branchState = deriveBranchConversationState(
-            sourceConversationId,
-            anchorHistory
-          );
-
-          const activateRes = await fetch(
-            '/api/branches/' + branchId + '/activate',
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                ...branchState
-              })
-            }
-          );
-
-          if (!activateRes.ok) {
-            const data = await activateRes.json().catch(() => ({}));
-            logBranchClientEvent('from_message_activate_failed', {
-              sourceConversationId,
-              anchorMessageId,
-              branchId,
-              status: activateRes.status,
-              error: String(data.error || '')
-            });
-            showTemporaryNotice(
-              'Activation de branche impossible : ' +
-                (data.error || activateRes.status)
-            );
-            return;
-          }
-
-          // Inject branch history locally then switch to it.
-          const baseTs = Date.now();
-          const branchMessages = (
-            Array.isArray(anchorHistory) ? anchorHistory : []
-          ).map((item, index) => ({
-            role: item.role,
-            content: item.content,
-            debug: Array.isArray(item.debug) ? item.debug : [],
-            debugMeta: normalizeClientDebugMeta(item.debugMeta),
-            t: baseTs - Math.max((anchorHistory.length || 1) - index, 1) * 1000
-          }));
-
-          window.FacilitatIdentityStorage.local.setItem(CONVERSATION_ID_KEY, branchConversationId);
-          const sourceTrunkTitle =
-            getTrunkConversationTitle(sourceConversationId);
-          if (!isBranchConversationId(sourceConversationId)) {
-            markTrunkConversationHidden(sourceConversationId);
-          }
-          saveConversationData(branchConversationId, {
-            messages: branchMessages,
-            memory: branchState.memory,
-            flags: branchState.flags,
-            updatedAt: Date.now()
-          });
-          upsertConversationIndexItem({
-            id: branchConversationId,
-            title:
-              sourceTrunkTitle ||
-              getConversationIndexTitle(sourceConversationId),
-            updatedAt: Date.now()
-          });
-
+          const data = await response.json();
+          if (!response.ok) throw new Error('Copie non confirm\u00e9e (' + response.status + ')');
+          const id = data.branch?.branchConversationId;
+          if (!id) throw new Error('Destination manquante');
+          const remote = await fetch('/api/account/conversations/' + encodeURIComponent(id));
+          const snapshot = await remote.json();
+          if (!remote.ok || !identity.current(stamp) || identity.isConversationRetired(sourceConversationId) || identity.isConversationRetired(id))
+            throw new Error('Destination indisponible');
+          if (!saveConversationData(id, { ...snapshot.conversation, messages: snapshot.messages, updatedAt: Date.now() }))
+            throw new Error('Sauvegarde locale non confirm\u00e9e');
+          identity.local.setItem(CONVERSATION_ID_KEY, id);
+          if (!isBranchConversationId(sourceConversationId)) markTrunkConversationHidden(sourceConversationId);
+          response.finishCopy();
           setSessionStatus('active');
           closeEditMode({ restoreDraft: false });
-          showScreen('chatScreen', {
-            replaceHistory: true,
-            pushHistory: false,
-            noAnimation: true
-          });
-          renderHistory();
-          scrollChatToBottom();
-          showTemporaryNotice(
-            'Branche activÃ©e Ã  conversation repartie depuis ce point'
-          );
-        } catch (err) {
-          console.error('[BRANCH_ERROR]', err.message);
-          showTemporaryNotice('Erreur inattendue lors du branchement');
+          showScreen('chatScreen', { replaceHistory: true, pushHistory: false, noAnimation: true });
+          renderHistory(); scrollChatToBottom();
+          showTemporaryNotice('Branche sauvegard\u00e9e et activ\u00e9e');
+        } catch {
+          showTemporaryNotice('Branche non confirm\u00e9e. R\u00e9essayez la m\u00eame demande pour reprendre sans duplication.');
         }
       }
 
@@ -6187,8 +6126,9 @@
           return null;
         }
 
-        const nextConversationId = createConversationId();
-        const baseTs = Date.now();
+        const nextConversationId = payload.destinationId;
+        const baseTs = payload.timestamp;
+        if (window.FacilitatIdentityStorage.isConversationRetired(nextConversationId)) return null;
         const replayMessages = payload.recentHistory.map((item, index) => ({
           id: typeof item?.id === 'string' ? item.id : undefined,
           role: item.role,
@@ -6202,8 +6142,9 @@
         saveConversationData(nextConversationId, {
           messages: replayMessages,
           memory: payload.memory,
-          flags: normalizeStoredFlags({}),
-          updatedAt: Date.now()
+          memoryState: payload.memoryState || {},
+          flags: normalizeStoredFlags(payload.flags || {}),
+          updatedAt: baseTs
         });
 
         return nextConversationId;
@@ -6239,6 +6180,7 @@
               typeof localData.memory === 'string' ? localData.memory : '',
             flags: normalizeStoredFlags(localData.flags),
             updatedAt: Number(localData.updatedAt || Date.now()),
+            memoryState: localData.memoryState || {},
             sourceConversationId,
             anchorMessageId: String(payload.anchorMessageId || '').trim(),
             messages: Array.isArray(localData.messages)
@@ -6246,11 +6188,11 @@
               : []
           };
 
-          const res = await fetch('/api/admin/conversations/import-replay', {
+          const res = await copyFetch('/api/admin/conversations/import-replay', {
             method: 'POST',
             credentials: 'same-origin',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ conversation: conversationPayload })
+            body: JSON.stringify({ writeIntent: 'create', conversation: conversationPayload })
           });
 
           const body = await parseAppJsonResponseSafely(res);
@@ -6258,43 +6200,11 @@
             return false;
           }
 
-          const returnedIds = Array.isArray(body.messageIds)
-            ? body.messageIds
-            : [];
-          if (returnedIds.length > 0) {
-            const currentData = loadConversationData(safeConversationId);
-            const currentMessages = Array.isArray(currentData.messages)
-              ? currentData.messages
-              : [];
-            const validMessages = currentMessages.filter((m) => {
-              const role = String(m?.role || '').trim();
-              const content =
-                typeof m?.content === 'string' ? m.content.trim() : '';
-              return (role === 'user' || role === 'assistant') && content;
-            });
+          if (!Array.isArray(body.messages) || !body.conversation ||
+              !saveConversationData(safeConversationId, { ...body.conversation, messages: body.messages, updatedAt: Date.now() })) return false;
 
-            const updatedMessages = currentMessages.map((message) => {
-              const role = String(message?.role || '').trim();
-              const content =
-                typeof message?.content === 'string'
-                  ? message.content.trim()
-                  : '';
-              if ((role === 'user' || role === 'assistant') && content) {
-                const index = validMessages.indexOf(message);
-                if (index >= 0 && index < returnedIds.length) {
-                  return { ...message, id: returnedIds[index] };
-                }
-              }
-              return message;
-            });
-
-            saveConversationData(safeConversationId, {
-              ...currentData,
-              messages: updatedMessages,
-              updatedAt: Date.now()
-            });
-          }
-
+          res.finishCopy();
+          window.FacilitatIdentityStorage.local.removeItem(ADMIN_REPLAY_KEY);
           return true;
         } catch {
           return false;
@@ -6409,6 +6319,7 @@
               typeof sourceData.memory === 'string' && sourceData.memory.trim()
                 ? sourceData.memory
                 : defaultMemory(),
+            memoryState: sourceData.memoryState || {},
             flags: normalizeStoredFlags(sourceData.flags || {})
           };
         }
@@ -6462,6 +6373,7 @@
           return;
         }
 
+        window.FacilitatIdentityStorage.retireConversation(safeConversationId);
         conversationDataMemoryCache.delete(safeConversationId);
         window.FacilitatIdentityStorage.local.removeItem(getConversationStorageKey(safeConversationId));
 
@@ -6531,6 +6443,10 @@
             }
           );
 
+          if (res.ok) {
+            const result = await res.json();
+            for (const id of result.removedConversationIds || []) deleteConversationData(id);
+          }
           // 403 means the conversation ID exists remotely but belongs to another account.
           // In that case, keep server data intact and allow local cleanup to proceed.
           return res.ok || res.status === 404 || res.status === 403;
@@ -9322,10 +9238,11 @@
               ? String(userEntry.content || '')
               : '';
 
-          const res = await fetch('/api/branches/feedback-snapshot', {
+          const res = await copyFetch('/api/branches/feedback-snapshot', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
+              localSourceId: conversationId, localAnchorId: String(resolvedHistoryIndex),
               type: feedbackType,
               comment: comment || null,
               adminShare,
@@ -9341,7 +9258,9 @@
             const data = await res.json().catch(() => ({}));
             throw new Error(data.error || 'Snapshot failed');
           }
-          return await res.json();
+          const shared = await res.json();
+          res.finishCopy();
+          return shared;
         }
 
         // Non-private: use the message id stored in history
@@ -10109,6 +10028,8 @@
             sections.push({ title: 'S\u00e9curit\u00e9', content: safetyAuditText });
           }
 
+          const saveText = window.FacilitatDebug.buildResponseSaveText(meta);
+          if (saveText) sections.push({ title: 'Sauvegarde de la r\u00e9ponse', content: saveText });
           const memoryAuditText = window.FacilitatDebug.buildMemoryAuditText(meta);
           if (memoryAuditText) {
             sections.push({ title: 'Suivi de la m\u00e9moire', content: memoryAuditText });
@@ -11447,6 +11368,18 @@
         return userMessage || getDefaultServiceUnavailableMessage();
       }
 
+      function discardUnavailableChat(id, status, data) {
+        if (status !== 410 && data?.code !== 'conversation_replaced') return false;
+        if (status === 410) deleteConversationData(id);
+        else {
+          conversationDataMemoryCache.delete(id);
+          window.FacilitatIdentityStorage.local.removeItem(getConversationStorageKey(id));
+        }
+        if (getConversationId() === id) renderHistory();
+        showTemporaryNotice(status === 410 ? 'Conversation retir\u00e9e.' : 'Conversation remplac\u00e9e. Rechargez sa version actuelle.');
+        return true;
+      }
+
       function readChatServerFailureMessage(res, data) {
         const explicitUserMessage = String(data?.userMessage || '').trim();
         if (explicitUserMessage) {
@@ -11556,12 +11489,12 @@
         }
       }
 
-      async function persistIntersessionMemoryIfApplicable() {
+      async function persistIntersessionMemoryIfApplicable(currentConversationId = getConversationId(), identityStamp = window.FacilitatIdentityStorage.capture()) {
+        if (!window.FacilitatIdentityStorage.current(identityStamp)) return;
         if (!userSessionState.authenticated) {
           return;
         }
 
-        const currentConversationId = getConversationId();
         if (!currentConversationId) {
           return;
         }
@@ -11623,8 +11556,60 @@
         } catch (_) {}
       }
 
+      async function confirmInterruptedStream(conversationId, index, payload, stamp) {
+        const identity = window.FacilitatIdentityStorage;
+        let receipt = { responseSaveStatus: payload.isPrivateConversation ? 'local' : 'uncertain' };
+        if (!payload.isPrivateConversation) {
+          try {
+            const response = await fetch('/chat/stream/interrupted', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), keepalive: true });
+            const result = await response.json();
+            if (!identity.current(stamp)) return;
+            if (discardUnavailableChat(conversationId, response.status, result)) return;
+            if (response.ok && result.responseSaveStatus === 'confirmed' && result.streamInterrupted === true) receipt = result;
+          } catch {}
+        }
+        if (!identity.current(stamp) || identity.isConversationRetired(conversationId) || !identity.local.getItem(getConversationStorageKey(conversationId))) return;
+        const stored = loadConversationData(conversationId), message = stored.messages[index];
+        if (!message?.streamInterrupted || message.streamRequestId !== payload.requestId) return;
+        stored.messages[index] = { ...message, id: receipt.messageId || message.id,
+          debugMeta: { ...message.debugMeta, responseSaveStatus: receipt.responseSaveStatus } };
+        saveConversationData(conversationId, stored);
+      }
+
+      async function observeResponseSave(conversationId, messageId, identityStamp, initialMeta) {
+        if (!messageId || initialMeta?.responseSaveStatus === 'local') return;
+        let outcome = { ...initialMeta };
+        for (let attempt = 0; attempt < 3; attempt++) {
+          if (!window.FacilitatIdentityStorage.current(identityStamp) || window.FacilitatIdentityStorage.isConversationRetired(conversationId)) return;
+          try {
+            const res = await fetch('/api/account/conversations/' + encodeURIComponent(conversationId) + '/saves/' + encodeURIComponent(messageId), { credentials: 'include', cache: 'no-store' });
+            const receipt = await res.json();
+            if (discardUnavailableChat(conversationId, res.status, receipt)) return;
+            if (!res.ok) throw new Error('save_receipt_unavailable');
+            outcome = { ...outcome, ...receipt };
+          } catch { outcome.responseSaveStatus = 'uncertain'; }
+          if (!window.FacilitatIdentityStorage.current(identityStamp) || window.FacilitatIdentityStorage.isConversationRetired(conversationId)) return;
+          const stored = loadConversationData(conversationId);
+          if (!window.FacilitatIdentityStorage.local.getItem(getConversationStorageKey(conversationId))) return;
+          saveConversationData(conversationId, { ...stored, messages: stored.messages.map((message) => message.id === messageId ? { ...message, debugMeta: { ...message.debugMeta, ...outcome } } : message) });
+          if (getConversationId() === conversationId) {
+            let notice = document.getElementById('response-save-status');
+            if (!notice) { notice = document.createElement('p'); notice.id = 'response-save-status'; notice.setAttribute('role', 'status'); document.getElementById('chat').appendChild(notice); }
+            notice.textContent = window.FacilitatDebug.buildResponseSaveText(outcome);
+          }
+          if (outcome.responseSaveStatus === 'confirmed' && outcome.memoryUpdateStatus !== 'pending') return;
+          if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 1000));
+        }
+      }
+
       async function closeSessionBackend() {
-        const payload = buildSessionPayloadForClose();
+        const conversationId = getConversationId();
+        const identityStamp = window.FacilitatIdentityStorage.capture();
+        if (!conversationId || !identityStamp.identity) return;
+        const storageKey = getConversationStorageKey(conversationId);
+        const source = loadConversationData(conversationId);
+        const payload = { memory: source.memory, flags: source.flags, conversationId,
+          isPrivateConversation: isConversationPrivateById(conversationId, source) };
 
         try {
           const res = await fetch('/session/close', {
@@ -11639,9 +11624,13 @@
             return;
           }
 
-          if (data && data.memory) {
-            saveMemory(data.memory);
-            await persistIntersessionMemoryIfApplicable();
+          if (!window.FacilitatIdentityStorage.current(identityStamp) ||
+              !window.FacilitatIdentityStorage.local.getItem(storageKey)) return;
+          if (data && typeof data.memory === 'string') {
+            const current = loadConversationData(conversationId);
+            if (current.memory === source.memory)
+              saveConversationData(conversationId, { ...current, memory: data.memory });
+            await persistIntersessionMemoryIfApplicable(conversationId, identityStamp);
           }
         } catch {}
       }
@@ -12438,7 +12427,7 @@
                   targetIndex,
                   lastUserIndex
                 });
-                const branchRes = await fetch(
+                const branchRes = await copyFetch(
                   '/api/branches/create-and-activate',
                   {
                     method: 'POST',
@@ -12448,6 +12437,7 @@
                       anchorMessageId,
                       seedMessages: branchSeedMessages,
                       memory: branchState.memory,
+                      memoryState: branchState.memoryState || {},
                       flags: branchState.flags
                     })
                   }
@@ -12470,13 +12460,15 @@
                     if (!isBranchConversationId(conversationIdBeforeSend)) {
                       markTrunkConversationHidden(conversationIdBeforeSend);
                     }
-                    saveConversationData(branchConversationId, {
-                      ...loadConversationData(branchConversationId),
-                      messages: truncatedHistory,
-                      memory: editedConversationState.memory,
-                      flags: editedConversationState.flags,
+                    const canonicalRes = await fetch('/api/account/conversations/' + encodeURIComponent(branchConversationId));
+                    const canonical = await canonicalRes.json();
+                    if (!canonicalRes.ok || !window.FacilitatIdentityStorage.current(sendIdentity) ||
+                        window.FacilitatIdentityStorage.isConversationRetired(branchConversationId)) throw new Error('Destination indisponible');
+                    if (!saveConversationData(branchConversationId, {
+                      ...canonical.conversation,
+                      messages: [...canonical.messages, truncatedHistory.at(-1)],
                       updatedAt: Date.now()
-                    });
+                    })) throw new Error('Sauvegarde locale non confirmee');
                     upsertConversationIndexItem({
                       id: branchConversationId,
                       title:
@@ -12486,6 +12478,7 @@
                     });
                     requestIsEdited = false;
                     shouldSkipUserHistoryInsert = true;
+                    branchRes.finishCopy();
                     branchActivated = true;
                   } else {
                     branchFailureMessage =
@@ -13156,6 +13149,7 @@
           }
 
           function markLiveStreamInterrupted() {
+            if (!window.FacilitatIdentityStorage.current(sendIdentity) || window.FacilitatIdentityStorage.isConversationRetired(requestConversationId)) return;
             if (!liveStreamNode || !liveStreamNode.contentWrap) return;
             if (liveStreamNode.interrupted === true) return;
             liveStreamNode.interrupted = true;
@@ -13163,10 +13157,7 @@
             const partialReply = String(liveStreamText || '').trim();
             if (!partialReply) return;
 
-            const isPrivateConversation = isConversationPrivateById(
-              requestConversationId,
-              loadConversationData(requestConversationId)
-            );
+            const isPrivateConversation = requestIsPrivateConversation;
 
             const storedData = loadConversationData(requestConversationId);
             const existingMessages = Array.isArray(storedData.messages)
@@ -13177,7 +13168,8 @@
               role: 'assistant',
               content: partialReply,
               debug: [],
-              debugMeta: null,
+              debugMeta: { responseSaveStatus: isPrivateConversation ? 'local' : 'pending', memoryUpdateStatus: 'not_requested' },
+              streamRequestId: chatRequestId,
               stateSnapshot: null,
               t: Date.now(),
               streamInterrupted: true
@@ -13211,35 +13203,14 @@
               isEdited: requestIsEdited === true
             };
 
-            try {
-              if (navigator && typeof navigator.sendBeacon === 'function') {
-                const body = new Blob([JSON.stringify(persistPayload)], {
-                  type: 'application/json'
-                });
-                const accepted = navigator.sendBeacon(
-                  '/chat/stream/interrupted',
-                  body
-                );
-                if (!accepted) {
-                  fetch('/chat/stream/interrupted', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(persistPayload),
-                    keepalive: true
-                  }).catch(() => {});
-                }
-              } else {
-                fetch('/chat/stream/interrupted', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify(persistPayload),
-                  keepalive: true
-                }).catch(() => {});
-              }
-            } catch {}
+            confirmInterruptedStream(requestConversationId, interruptedHistoryIndex, persistPayload, sendIdentity).catch(() => {});
           }
 
           const chatRequestId = buildChatRequestId();
+          const requestIsPrivateConversation = isConversationPrivateById(
+            requestConversationId,
+            loadConversationData(requestConversationId)
+          );
           const chatAbortController = new AbortController();
           let didTimeout = false;
           const chatTimeoutId = setTimeout(() => {
@@ -13247,6 +13218,12 @@
             chatAbortController.abort();
           }, CHAT_REQUEST_TIMEOUT_MS);
           activeChatRequestId = chatRequestId;
+          activeChatRequestContext = Object.freeze({
+            requestId: chatRequestId,
+            conversationId: requestConversationId,
+            isPrivateConversation: requestIsPrivateConversation,
+            identity: sendIdentity
+          });
           activeChatAbortController = chatAbortController;
           activeChatRequestTransport = 'unknown';
           startChatProgressSource(chatRequestId);
@@ -13326,7 +13303,8 @@
               });
 
               if (streamRes.status === 405) {
-                return null;
+                const refusal = await streamRes.clone().json().catch(() => null);
+                if (refusal?.code === 'streaming_disabled') return null;
               }
 
               const streamContentType = String(
@@ -13337,7 +13315,7 @@
                 !streamRes.body ||
                 typeof streamRes.body.getReader !== 'function'
               ) {
-                return null;
+                return { usedStreaming: true, res: streamRes, data: await parseJsonResponseSafely(streamRes, 'stream-refusal') };
               }
 
               activeChatRequestTransport = 'streaming';
@@ -13375,6 +13353,8 @@
 
               while (true) {
                 const { value, done } = await reader.read();
+                if (!window.FacilitatIdentityStorage.current(sendIdentity) || window.FacilitatIdentityStorage.isConversationRetired(requestConversationId))
+                  throw new DOMException('Destination removed', 'AbortError');
                 if (done) break;
 
                 sseBuffer += decoder.decode(value, { stream: true });
@@ -13426,10 +13406,11 @@
               flushPendingBatch(true);
 
               if (streamErrorPayload && !finalData) {
-                markLiveStreamInterrupted();
+                if (!discardUnavailableChat(requestConversationId, streamErrorPayload.status, streamErrorPayload)) markLiveStreamInterrupted();
+                else removeLiveStreamBubble();
                 return {
-                  res: streamRes,
-                  data: null,
+                  res: { ok: false, status: streamErrorPayload.status || 502, headers: streamRes.headers },
+                  data: streamErrorPayload,
                   streamingError: streamErrorPayload,
                   usedStreaming: true
                 };
@@ -13458,10 +13439,7 @@
               isEdited: requestIsEdited === true,
               requestId: chatRequestId,
               conversationId: requestConversationId,
-              isPrivateConversation: isConversationPrivateById(
-                requestConversationId,
-                loadConversationData(requestConversationId)
-              ),
+              isPrivateConversation: requestIsPrivateConversation,
               adminUiActive: document.body.classList.contains('admin-ui'),
               recentHistory: buildRecentHistoryForChatRequest(loadHistory()),
               conversationBranchHistory:
@@ -13494,6 +13472,9 @@
               } else {
                 removeLiveStreamBubble();
               }
+              // After an attempted stream, a network/body failure is ambiguous.
+              // Only the explicit pre-effect 405 above permits classic fallback.
+              throw streamErr;
             }
 
             let res = null;
@@ -13521,6 +13502,12 @@
               res = classicRes;
               data = await parseJsonResponseSafely(classicRes, 'send:/chat');
             }
+            if (!window.FacilitatIdentityStorage.current(sendIdentity) ||
+                window.FacilitatIdentityStorage.isConversationRetired(requestConversationId)) {
+              removeLiveStreamBubble();
+              return;
+            }
+            if (discardUnavailableChat(requestConversationId, res.status, data)) { removeLiveStreamBubble(); return; }
             const responseRequestId = String(
               res.headers.get('x-request-id') || ''
             ).trim();
@@ -13662,6 +13649,8 @@
               });
             }
 
+            observeResponseSave(requestConversationId, data.botMessageId, sendIdentity, data.debugMeta).catch(() => {});
+
             finalizedStreamInPlace =
               usedStreaming === true &&
               shouldRenderInCurrentChat &&
@@ -13747,6 +13736,7 @@
 
             if (activeChatRequestId === chatRequestId) {
               activeChatRequestId = '';
+              activeChatRequestContext = null;
               activeChatAbortController = null;
               activeChatRequestTransport = 'unknown';
               syncSendButtonMode();
@@ -13773,6 +13763,7 @@
           closeActiveChatProgressSource();
 
           activeChatRequestId = '';
+          activeChatRequestContext = null;
           activeChatAbortController = null;
           syncSendButtonMode();
 
@@ -15300,10 +15291,10 @@
             ? adminUiContext.welcomeAnimationPolicy
             : null;
 
-        await enforceTwaDeviceGate({
+        if (!(await enforceTwaDeviceGate({
           isAdminUI,
           canBypassTwaGate: adminUiContext.canBypassTwaGate === true
-        });
+        }))) return;
 
         const loadUrl = new URL(window.location.href);
         const replayRequested = loadUrl.searchParams.get('adminReplay') === '1';
@@ -15402,10 +15393,12 @@
           const replayConversationId = applyAdminReplayPayload(replayPayload);
           if (replayConversationId) {
             window.FacilitatIdentityStorage.local.setItem(CONVERSATION_ID_KEY, replayConversationId);
-            await persistAdminReplayConversation(
-              replayConversationId,
-              replayPayload
-            );
+            const confirmed = await persistAdminReplayConversation(replayConversationId, replayPayload);
+            if (!confirmed) {
+              showScreen('homeScreen', { replaceHistory: true, pushHistory: false });
+              showTemporaryNotice('Replay non confirm\u00e9. Rechargez pour reprendre la m\u00eame copie sans duplication.');
+              return;
+            }
           }
           setSessionStatus('active');
           showScreen('chatScreen', {
@@ -15418,10 +15411,10 @@
           const replayNotice = replayPayload.anchorMessageId
             ? 'Contexte charg\u00e9 depuis ' +
               replayPayload.sourceConversationId +
-              ' (point cible + debug conserv\u00e9s, flags r\u00e9initialis\u00e9s)'
+              ' (point cible + debug conserv\u00e9s, reconstruction explicite, fid\u00e9lit\u00e9 historique non garantie)'
             : 'Contexte charg\u00e9 depuis ' +
               replayPayload.sourceConversationId +
-              ' (debug conserv\u00e9, flags r\u00e9initialis\u00e9s)';
+              ' (debug conserv\u00e9, reconstruction explicite, fid\u00e9lit\u00e9 historique non garantie)';
           showTemporaryNotice(replayNotice);
           updateActivity();
           defocusInput();
