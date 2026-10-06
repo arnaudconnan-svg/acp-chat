@@ -72,12 +72,7 @@ async function main() {
       };
     }
   });
-  const leakResult = await leakHelpers.updateIntersessionMemory(
-    previousSummary,
-    'Contexte stable:\n- Nouvelle donnee'
-  );
-  assert.strictEqual(leakResult, previousSummary);
-  assert.doesNotMatch(leakResult, /Utilisateur :|Assistant :/i);
+  await assert.rejects(leakHelpers.updateIntersessionMemory(previousSummary, 'Contexte stable:\n- Nouvelle donnee'), { code: 'memory_result_invalid' });
 
   const interpretiveHelpers = createHelpers({
     async complete() {
@@ -89,11 +84,7 @@ async function main() {
       };
     }
   });
-  const interpretiveResult = await interpretiveHelpers.updateIntersessionMemory(
-    previousSummary,
-    'Contexte stable:\n- Nouvelle donnee'
-  );
-  assert.strictEqual(interpretiveResult, previousSummary);
+  await assert.rejects(interpretiveHelpers.updateIntersessionMemory(previousSummary, 'Contexte stable:\n- Nouvelle donnee'), { code: 'memory_result_invalid' });
 
   const longItems = Array.from(
     { length: 12 },
@@ -128,11 +119,7 @@ async function main() {
       };
     }
   });
-  const emptyResult = await emptyHelpers.updateIntersessionMemory(
-    previousSummary,
-    'Contexte stable:\n- Nouvelle donnee'
-  );
-  assert.strictEqual(emptyResult, previousSummary);
+  await assert.rejects(emptyHelpers.updateIntersessionMemory(previousSummary, 'Contexte stable:\n- Nouvelle donnee'), { code: 'memory_result_invalid' });
 
   console.log('intersession memory Mistral harness: ok');
 }

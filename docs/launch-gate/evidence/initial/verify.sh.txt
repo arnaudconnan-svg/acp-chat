@@ -1,0 +1,7 @@
+#!/bin/bash
+set -euo pipefail
+cd /workspace/acp-chat
+safe_env=(env -i PATH="$PATH" HOME=/tmp TMPDIR=/tmp NODE_ENV=test REFRESH_EMERGENCY_ON_BOOT=false LOG_PERSIST=false MISTRAL_API_KEY=synthetic-unused FIREBASE_DATABASE_URL=http://127.0.0.1:9 FIREBASE_SERVICE_ACCOUNT='{}' NOTIFY_SMTP_HOST=127.0.0.1 NODE_OPTIONS=--require=/workspace/acp-validation/guard.cjs)
+"${safe_env[@]}" node --check server.js
+# Direct npm CLI invocation propagates the guard to each existing harness without enabling shell-spawning APIs in Node.
+"${safe_env[@]}" /bin/bash -c 'npm run verify' 

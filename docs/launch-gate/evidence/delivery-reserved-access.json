@@ -1,0 +1,53 @@
+{
+  "scope": "Authorized delivery fix: ordinary authenticated browser access, no professional privileges",
+  "date": "2026-10-06",
+  "base_commit": "0c65ec1be38451b2e0c66edda43edea42f877843",
+  "status": "verified_synthetic_not_deployed_waiting_for_Work_coordination",
+  "source_sha256": {
+    "public/index.html": "1d25946cd6c9865b143ad5e680707ff8a4eb7b9dd6d834a41ab4fd438bc5f533",
+    "public/telecharger.html": "1defed6a25040eaeee15b99645e6e0cafa87d46862f79759bc0af02c16759956",
+    "scripts/synthetic/m2-browser-harness.cjs": "5851f32182ece56d5216d0d95464fb276d0462bce0df1cd7edf5bae7a2854d8e"
+  },
+  "commands": [
+    {
+      "command": "node --check server.js",
+      "exit": 0
+    },
+    {
+      "command": "node --check scripts/synthetic/m2-browser-harness.cjs",
+      "exit": 0
+    },
+    {
+      "command": "node scripts/synthetic/m2-browser-harness.cjs",
+      "guard": "scripts/synthetic/guard.cjs, env -i, NODE_ENV=test",
+      "exit": 0,
+      "pass": 35,
+      "new_cases": 7
+    },
+    {
+      "command": "npm run browser-identity:harness && npm run professional:harness && npm run verify",
+      "guard": "versioned synthetic guard and empty environment with synthetic config, same settings as scripts/synthetic/verify.sh",
+      "exit": 0
+    },
+    {
+      "command": "git diff --check",
+      "exit": 0
+    }
+  ],
+  "evidence": {
+    "docs/launch-gate/evidence/delivery-reserved-access.log": "0be03d866597fcdbea39c3bba14abd3f8347604fabdabc653e55d3dff6804aea"
+  },
+  "preserved_proofs": [
+    "337420c full synthetic suite",
+    "ae87d97 Stop browser oracles"
+  ],
+  "not_executed": [
+    "real application/provider/SDK calls",
+    "GUI E2E",
+    "account provisioning",
+    "merge",
+    "deployment",
+    "live pre-FF",
+    "M3+"
+  ]
+}

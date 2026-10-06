@@ -1,0 +1,56 @@
+// Exact TTY reader archived from helper SHA256 c661db9f2d65efae8f82714ca4c5161dd7d294812a3b5b18134bddf0a26bcb3e.
+// Regression fixture only; no actor, credential, modules or SDK.
+function secretLine(prompt) {
+  return new Promise((resolve, reject) => {
+    const input = process.stdin;
+    if (!input.isTTY || !process.stdout.isTTY || typeof input.setRawMode !== 'function') {
+      reject(new Error('tty_required'));
+      return;
+    }
+    let text = '';
+    const previousRaw = input.isRaw;
+    function finish(error) {
+      input.removeListener('data', receive);
+      input.removeListener('error', failed);
+      input.setRawMode(previousRaw);
+      input.pause();
+      output('\n');
+      const value = text;
+      text = '';
+      if (error) reject(error);
+      else resolve(value);
+    }
+    function failed() { finish(new Error('tty_failed')); }
+    function receive(chunk) {
+      for (const character of chunk.toString('utf8')) {
+        if (character === '\u0003' || character === '\u0004') {
+          finish(new Error('entry_aborted'));
+          return;
+        }
+        if (character === '\r' || character === '\n') {
+          finish();
+          return;
+        }
+        if (character === '\u007f' || character === '\b') {
+          text = Array.from(text).slice(0, -1).join('');
+        } else if (character >= ' ' && character !== '\u007f') {
+          text += character;
+          if (Buffer.byteLength(text, 'utf8') > 1024) {
+            finish(new Error('entry_too_long'));
+            return;
+          }
+        } else {
+          finish(new Error('invalid_control_character'));
+          return;
+        }
+      }
+    }
+    output(prompt);
+    input.setEncoding('utf8');
+    input.setRawMode(true);
+    input.on('data', receive);
+    input.on('error', failed);
+    input.resume();
+  });
+}
+

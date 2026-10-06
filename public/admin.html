@@ -1,6 +1,9 @@
 <!doctype html>
 <html lang="fr">
   <head>
+    <script src="/js/local-destination.js"></script>
+    <script src="/js/identity-storage.js"></script>
+    <script src="/js/professional-review.js"></script>
     <meta charset="UTF-8" />
     <meta
       name="viewport"
@@ -749,11 +752,11 @@
           window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0;
 
         try {
-          sessionStorage.setItem(
+          window.FacilitatIdentityStorage.session.setItem(
             ADMIN_CONVERSATION_SCROLL_Y_KEY,
             String(Math.max(0, Math.floor(scrollY)))
           );
-          sessionStorage.setItem(
+          window.FacilitatIdentityStorage.session.setItem(
             ADMIN_CONVERSATION_SCROLL_RESTORE_PENDING_KEY,
             '1'
           );
@@ -779,11 +782,11 @@
         let rawScrollY = '';
         try {
           pending =
-            sessionStorage.getItem(
+            window.FacilitatIdentityStorage.session.getItem(
               ADMIN_CONVERSATION_SCROLL_RESTORE_PENDING_KEY
             ) === '1';
           rawScrollY =
-            sessionStorage.getItem(ADMIN_CONVERSATION_SCROLL_Y_KEY) || '';
+            window.FacilitatIdentityStorage.session.getItem(ADMIN_CONVERSATION_SCROLL_Y_KEY) || '';
         } catch {
           return;
         }
@@ -798,7 +801,7 @@
           : 0;
 
         try {
-          sessionStorage.removeItem(
+          window.FacilitatIdentityStorage.session.removeItem(
             ADMIN_CONVERSATION_SCROLL_RESTORE_PENDING_KEY
           );
         } catch {
@@ -983,13 +986,15 @@
 
           const replayPayload = {
             sourceConversationId: conversationId,
-            memory: extractReplayMemory(response.data),
+            memory: selectedMessages.at(-1)?.stateSnapshot?.memory || extractReplayMemory(selectedMessages),
+            memoryState: selectedMessages.at(-1)?.stateSnapshot?.memoryState || {},
+            flags: selectedMessages.at(-1)?.stateSnapshot?.flags || {},
             recentHistory: selectedMessages,
-            anchorMessageId: anchorMessageId || '',
+            anchorMessageId: anchorMessageId || selectedMessages.at(-1)?.id || '',
             timestamp: Date.now()
           };
 
-          localStorage.setItem(
+          window.FacilitatIdentityStorage.local.setItem(
             'facilitatio_admin_replay',
             JSON.stringify(replayPayload)
           );
@@ -2483,7 +2488,9 @@
               sections.push({ title: 'S\u00e9curit\u00e9', content: safetyAuditText });
             }
 
-            const memoryAuditText = window.FacilitatDebug.buildMemoryAuditText(meta);
+            const saveText = window.FacilitatDebug.buildResponseSaveText(meta);
+          if (saveText) sections.push({ title: 'Sauvegarde de la r\u00e9ponse', content: saveText });
+          const memoryAuditText = window.FacilitatDebug.buildMemoryAuditText(meta);
             if (memoryAuditText) {
               sections.push({ title: 'Suivi de la m\u00e9moire', content: memoryAuditText });
             }

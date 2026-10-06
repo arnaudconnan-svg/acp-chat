@@ -1,6 +1,8 @@
 <!doctype html>
 <html lang="fr">
   <head>
+    <script src="/js/local-destination.js"></script>
+    <script src="/js/identity-storage.js"></script>
     <meta charset="UTF-8" />
     <title>Connexion à l'espace professionnel</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -118,9 +120,7 @@
           const requestedNext =
             new URLSearchParams(window.location.search).get('next') ||
             '/pros.html';
-          const safeNext = requestedNext.startsWith('/')
-            ? requestedNext
-            : '/pros.html';
+          const safeNext = window.FacilitatLocalDestination.resolve(requestedNext, '/pros.html');
           window.location.href = safeNext;
         } catch {
           autoSubmitDone = false;

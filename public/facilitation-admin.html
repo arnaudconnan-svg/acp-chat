@@ -1,6 +1,8 @@
 ﻿<!doctype html>
 <html lang="fr">
   <head>
+    <script src="/js/local-destination.js"></script>
+    <script src="/js/identity-storage.js"></script>
     <meta charset="UTF-8" />
     <meta
       name="viewport"
@@ -10,6 +12,8 @@
     <title>Facilitateur-ice</title>
 
     <style>
+      #list { user-select: none; -webkit-user-select: none; }
+      @media print { body { display: none !important; } }
       * {
         box-sizing: border-box;
       }
@@ -251,6 +255,8 @@
     </div>
 
     <script>
+      for(const event of ['copy','cut','contextmenu'])document.addEventListener(event,e=>{if(e.target.closest?.('#list'))e.preventDefault();});
+      document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&['c','p','s'].includes(e.key.toLowerCase()))e.preventDefault();});
       const state = {
         sessionChecked: false,
         activeUserName: ''
@@ -496,14 +502,7 @@
           card.appendChild(interaction);
           card.appendChild(count);
 
-          if (item.hasPrivateInteractionSinceLastVisible === true) {
-            const chip = document.createElement('div');
-            chip.className = 'chip';
-            chip.textContent =
-              'Dernière interaction en privé: ' +
-              formatDateTime(item.lastPrivateInteractionAt);
-            card.appendChild(chip);
-          }
+
 
           card.addEventListener('click', () => {
             state.activeUserName = String(item.displayName || '').trim();
@@ -567,16 +566,6 @@
 
         document.getElementById('status').style.display = 'none';
 
-        if (user && user.hasPrivateInteractionSinceLastVisible === true) {
-          const info = document.createElement('div');
-          info.className = 'loading';
-          info.textContent =
-            'Note: une interaction plus récente existe en privé (' +
-            formatDateTime(user.lastPrivateInteractionAt) +
-            ').';
-          list.appendChild(info);
-        }
-
         conversations.forEach((item) => {
           const card = createCard();
 
@@ -612,99 +601,6 @@
         });
       }
 
-      function buildStructuredMemoryText(memoryState) {
-        if (!memoryState || typeof memoryState !== 'object') {
-          return null;
-        }
-
-        const sessionStable = Array.isArray(memoryState.sessionStableContext)
-          ? memoryState.sessionStableContext
-              .map((entry) => '- ' + String(entry || '').trim())
-              .filter((entry) => entry !== '- ')
-          : [];
-
-        const ongoing = Array.isArray(memoryState.onGoingMovements)
-          ? memoryState.onGoingMovements
-              .map((entry) => {
-                const safeEntry =
-                  entry && typeof entry === 'object' ? entry : {};
-                const id =
-                  typeof safeEntry.id === 'string' && safeEntry.id.trim()
-                    ? ' [' + safeEntry.id.trim() + ']'
-                    : '';
-                const text =
-                  typeof safeEntry.text === 'string' && safeEntry.text.trim()
-                    ? safeEntry.text.trim()
-                    : '(vide)';
-                return '-' + id + ' ' + text;
-              })
-              .filter(Boolean)
-          : [];
-
-        const ancient = Array.isArray(memoryState.ancientMovements)
-          ? memoryState.ancientMovements
-              .map((entry) => {
-                const safeEntry =
-                  entry && typeof entry === 'object' ? entry : {};
-                const id =
-                  typeof safeEntry.id === 'string' && safeEntry.id.trim()
-                    ? ' [' + safeEntry.id.trim() + ']'
-                    : '';
-                const text =
-                  typeof safeEntry.text === 'string' && safeEntry.text.trim()
-                    ? safeEntry.text.trim()
-                    : '(vide)';
-                return '-' + id + ' ' + text;
-              })
-              .filter(Boolean)
-          : [];
-
-        return [
-          'Contexte stable:',
-          sessionStable.length > 0 ? sessionStable.join('\n') : '(vide)',
-          '',
-          'Mouvements en cours:',
-          ongoing.length > 0 ? ongoing.join('\n') : '(vide)',
-          '',
-          'Anciens mouvements:',
-          ancient.length > 0 ? ancient.join('\n') : '(vide)'
-        ].join('\n');
-      }
-
-      function extractMemoryBlocks(debugMeta) {
-        if (!debugMeta || typeof debugMeta !== 'object') {
-          return [];
-        }
-
-        const blocks = [];
-        const structuredText = buildStructuredMemoryText(debugMeta.memoryState);
-        if (structuredText) {
-          blocks.push({
-            title: 'Mémoire structurée (debug)',
-            content: structuredText
-          });
-        }
-
-        if (typeof debugMeta.memory === 'string' && debugMeta.memory.trim()) {
-          blocks.push({
-            title: 'Mémoire session utilisée (debug)',
-            content: debugMeta.memory.trim()
-          });
-        }
-
-        if (
-          typeof debugMeta.memoryBeforeSanitization === 'string' &&
-          debugMeta.memoryBeforeSanitization.trim()
-        ) {
-          blocks.push({
-            title: 'Mémoire avant réécriture (debug)',
-            content: debugMeta.memoryBeforeSanitization.trim()
-          });
-        }
-
-        return blocks;
-      }
-
       function createMemoryDetails(title, content) {
         const wrap = document.createElement('div');
         wrap.className = 'memory-block';
@@ -738,7 +634,7 @@
           fetchWithTimeout(
             '/api/facilitation/conversations/' +
               encodeURIComponent(conversationRef) +
-              '/messages'
+              '/messages?userRef=' + encodeURIComponent(userRef)
           ),
           fetchWithTimeout(
             '/api/facilitation/intersession-memory/' +
@@ -847,13 +743,6 @@
 
           card.appendChild(meta);
           card.appendChild(content);
-
-          if (role === 'assistant') {
-            const memoryBlocks = extractMemoryBlocks(item.debugMeta || null);
-            memoryBlocks.forEach((block) => {
-              card.appendChild(createMemoryDetails(block.title, block.content));
-            });
-          }
 
           row.appendChild(card);
           list.appendChild(row);

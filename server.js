@@ -7,6 +7,8 @@ require('dotenv').config();
 const admin = require('firebase-admin');
 const { parseAppConfig, resolveServiceAccount } = require('./lib/config');
 const { childLogger } = require('./lib/logger');
+const { createSafeConsole } = require('./lib/log-projection');
+const console = createSafeConsole(childLogger({scope:'console'}));
 const { createHealthHandler } = require('./lib/health');
 const {
   createAffiliationShortValidationAnalyzer
@@ -59,86 +61,34 @@ admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
   databaseURL: appConfig.firebaseDatabaseUrl
 });
-const db = admin.database();
+const { createDataLifecycle } = require('./lib/data-lifecycle');
+const lifecycle = createDataLifecycle(admin.database());
+const db = lifecycle.db;
+const { createConversationCopies, assertCopyMemoryShape } = require('./lib/conversation-copies');
+const conversationCopies = createConversationCopies({ lifecycle });
 const messagesRef = db.ref('messages');
 const userLabelsRef = db.ref('userLabels');
 const usersRef = db.ref('users');
-const privateConversationMemoryRef = db.ref('privateConversationMemory');
 const accountArchivesRef = db.ref('accountArchives');
 const accountResetAuditsRef = db.ref('accountResetAudits');
 const adminSettingsRef = db.ref('adminSettings');
 const branchRecordsRef = db.ref('branches');
 const branchSeedSnapshotsRef = db.ref('branchSeeds');
 const crypto = require('crypto');
-const ADMIN_PASSWORD = appConfig.adminPassword;
-const ADMIN_REVIEW_PASSWORD = 'Review.615243';
-const TWA_GATE_BYPASS_PASSWORD = 'Facilitat.io29082025';
-const ADMIN_PASSWORD_SET = new Set(
-  [ADMIN_PASSWORD, ADMIN_REVIEW_PASSWORD]
-    .map((value) => String(value || '').trim())
-    .filter(Boolean)
-);
-const TWA_GATE_BYPASS_PASSWORD_SET = new Set(
-  [TWA_GATE_BYPASS_PASSWORD, ADMIN_REVIEW_PASSWORD]
-    .map((value) => String(value || '').trim())
-    .filter(Boolean)
-);
-const SECONDARY_CONVERSATION_USER_IDS = new Set([
-  'u_be427bb5b738c711b0726703',
-  'u_ed6c766b0b8666541bf999ed',
-  'u_d3d39850658034a1492e9e5f'
-]);
-const SECONDARY_CONVERSATION_EMAILS = new Set([
-  'arnaud.connan@gmail.com',
-  'review@facilitat.io'
-]);
-const PROFESSIONAL_ACCESS_PASSWORD_BY_EMAIL_RAW = new Map([
-  ['arnaud.connan@gmail.com', 'Facilitat.io29082025']
-]);
-const PROFESSIONAL_FULL_ACCESS_EMAILS_RAW = ['arnaud.connan@gmail.com'];
-const PROFESSIONAL_ADMIN_CONVERSATIONS_EMAILS_RAW = [];
-const PROFESSIONAL_SUPPORT_CASES_EMAILS_RAW = [];
-const PROFESSIONAL_FACILITATION_EMAILS_RAW = [];
-
-const PROFESSIONAL_ACCESS_PASSWORD_BY_EMAIL = new Map(
-  Array.from(PROFESSIONAL_ACCESS_PASSWORD_BY_EMAIL_RAW.entries())
-    .map(([email, password]) => [
-      normalizeEmail(email),
-      String(password || '').trim()
-    ])
-    .filter(([email, password]) => email && password)
-);
-
-const PROFESSIONAL_FULL_ACCESS_EMAILS = new Set(
-  PROFESSIONAL_FULL_ACCESS_EMAILS_RAW.map(normalizeEmail).filter(Boolean)
-);
-const PROFESSIONAL_ADMIN_CONVERSATIONS_EMAILS = new Set(
-  PROFESSIONAL_ADMIN_CONVERSATIONS_EMAILS_RAW.map(normalizeEmail).filter(
-    Boolean
-  )
-);
-const PROFESSIONAL_SUPPORT_CASES_EMAILS = new Set(
-  PROFESSIONAL_SUPPORT_CASES_EMAILS_RAW.map(normalizeEmail).filter(Boolean)
-);
-const PROFESSIONAL_FACILITATION_EMAILS = new Set(
-  PROFESSIONAL_FACILITATION_EMAILS_RAW.map(normalizeEmail).filter(Boolean)
-);
-const SESSION_SECRET = appConfig.sessionSecret;
-const adminSessions = new Map(); // sessionId -> { isAdmin: true, createdAt }
-const ADMIN_SESSION_DURATION = 24 * 60 * 60 * 1000; // 24h
-const ADMIN_SESSION_SIGNING_SECRET =
-  appConfig.adminSessionSecret ||
-  SESSION_SECRET ||
-  ADMIN_PASSWORD ||
-  'dev-admin-session-secret';
+const { createProfessionalAccess, REASONS, idValid } = require('./lib/professional-access');
+const ADMIN_SESSION_DURATION = 24 * 60 * 60 * 1000;
+const ADMIN_SESSION_SIGNING_SECRET = appConfig.adminSessionSecret;
+const professionalAccess = createProfessionalAccess({db, secret: ADMIN_SESSION_SIGNING_SECRET});
+const adminSessions = new Map(); // legacy cache never grants authority
+const SECONDARY_CONVERSATION_USER_IDS = new Set();
+const SECONDARY_CONVERSATION_EMAILS = new Set();
 const userSessions = new Map(); // sessionToken -> { userId, createdAt }
 const USER_SESSION_DURATION = 30 * 24 * 60 * 60 * 1000; // 30d
 const ACCOUNT_RESET_AUDIT_RETENTION_MS = 30 * 24 * 60 * 60 * 1000; // 30d
-const USER_SESSION_SIGNING_SECRET =
-  appConfig.userSessionSecret ||
-  SESSION_SECRET ||
-  ADMIN_PASSWORD ||
-  'dev-user-session-secret';
+const USER_SESSION_SIGNING_SECRET = appConfig.userSessionSecret;
+if (!USER_SESSION_SIGNING_SECRET || USER_SESSION_SIGNING_SECRET.length < 32) {
+  throw new Error('user_signing_secret_required');
+}
 const userSessionCodec = createUserSessionCodec({
   secret: USER_SESSION_SIGNING_SECRET,
   durationMs: USER_SESSION_DURATION
@@ -405,63 +355,6 @@ function enforceAuthRateLimit(req, res, scope, extra = '') {
   });
 }
 
-function buildPrivateConversationMemoryPayload({
-  memory = '',
-  memoryState = {},
-  memoryRewriteDebug = null,
-  updatedAt = new Date().toISOString()
-} = {}) {
-  return {
-    memory: typeof memory === 'string' ? memory : '',
-    memoryState:
-      memoryState && typeof memoryState === 'object' && !Array.isArray(memoryState)
-        ? memoryState
-        : {},
-    memoryRewriteDebug:
-      memoryRewriteDebug && typeof memoryRewriteDebug === 'object'
-        ? memoryRewriteDebug
-        : null,
-    updatedAt: typeof updatedAt === 'string' ? updatedAt : new Date().toISOString()
-  };
-}
-
-async function readPrivateConversationMemory(conversationId = '') {
-  const safeConversationId = String(conversationId || '').trim();
-  if (!safeConversationId) return null;
-
-  try {
-    const snap = await privateConversationMemoryRef
-      .child(safeConversationId)
-      .once('value');
-    const data = snap.val();
-    if (!data || typeof data !== 'object') return null;
-
-    return buildPrivateConversationMemoryPayload({
-      memory: typeof data.memory === 'string' ? data.memory : '',
-      memoryState:
-        data.memoryState && typeof data.memoryState === 'object'
-          ? data.memoryState
-          : {},
-      memoryRewriteDebug:
-        data.memoryRewriteDebug && typeof data.memoryRewriteDebug === 'object'
-          ? data.memoryRewriteDebug
-          : null,
-      updatedAt: typeof data.updatedAt === 'string' ? data.updatedAt : new Date().toISOString()
-    });
-  } catch {
-    return null;
-  }
-}
-
-async function persistPrivateConversationMemory(conversationId = '', payload = {}) {
-  const safeConversationId = String(conversationId || '').trim();
-  if (!safeConversationId) return;
-
-  await privateConversationMemoryRef
-    .child(safeConversationId)
-    .set(buildPrivateConversationMemoryPayload(payload));
-}
-
 function normalizeSuperId(value = '') {
   const raw = String(value || '').trim();
   if (!raw) return '';
@@ -490,7 +383,7 @@ app.use((req, res, next) => {
     typeof req.headers['x-request-id'] === 'string'
       ? String(req.headers['x-request-id']).trim()
       : '';
-  const requestId = headerRequestId || buildRequestId('req');
+  const requestId = buildRequestId('req');
 
   req.requestId = requestId;
   res.setHeader('x-request-id', requestId);
@@ -1041,7 +934,7 @@ const healthHandler = createHealthHandler();
 app.get('/health', healthHandler);
 app.get('/version', healthHandler);
 
-app.get('/admin.html', requireAdminAuth, (req, res) => {
+app.get('/admin.html', requireAdministratorPage, (req, res) => {
   if (String(req.query.view || '').trim().toLowerCase() === 'support') {
     return res.redirect('/support-admin.html');
   }
@@ -1217,129 +1110,6 @@ const MAX_RECENT_TURNS = 8;
 const MAX_INFO_ANALYSIS_TURNS = 6;
 const MAX_SUICIDE_ANALYSIS_TURNS = 10;
 const MAX_RECALL_ANALYSIS_TURNS = 6;
-
-function signAdminSessionPayload(payload) {
-  return crypto
-    .createHmac('sha256', ADMIN_SESSION_SIGNING_SECRET)
-    .update(payload)
-    .digest('hex');
-}
-
-function normalizeAdminScope(scope = 'full') {
-  return scope === 'review' ? 'review' : 'full';
-}
-
-function buildProfessionalAccessCapabilities(scope = 'full') {
-  const normalizedScope = normalizeAdminScope(scope);
-  const hasFullProfessionalAccess = normalizedScope !== 'review';
-
-  return {
-    canBypassTwaGate: true,
-    canUseAdminUi: hasFullProfessionalAccess,
-    canAccessAdminConversations: hasFullProfessionalAccess,
-    canAccessSupportCases: hasFullProfessionalAccess,
-    canAccessFacilitationAdmin: hasFullProfessionalAccess
-  };
-}
-
-function buildProfessionalAccessCapabilitiesForEmail(email = '') {
-  const safeEmail = normalizeEmail(email);
-  const hasFullAccess = PROFESSIONAL_FULL_ACCESS_EMAILS.has(safeEmail);
-
-  const canAccessAdminConversations =
-    hasFullAccess || PROFESSIONAL_ADMIN_CONVERSATIONS_EMAILS.has(safeEmail);
-  const canAccessSupportCases =
-    hasFullAccess || PROFESSIONAL_SUPPORT_CASES_EMAILS.has(safeEmail);
-  const canAccessFacilitationAdmin =
-    hasFullAccess || PROFESSIONAL_FACILITATION_EMAILS.has(safeEmail);
-  const hasAnyAccess =
-    canAccessAdminConversations ||
-    canAccessSupportCases ||
-    canAccessFacilitationAdmin;
-
-  return {
-    canBypassTwaGate: false,
-    canUseAdminUi: hasAnyAccess,
-    canAccessAdminConversations,
-    canAccessSupportCases,
-    canAccessFacilitationAdmin
-  };
-}
-
-function canBypassTwaGateFromPassword(password = '') {
-  const safePassword = String(password || '').trim();
-  if (!safePassword) return false;
-  return TWA_GATE_BYPASS_PASSWORD_SET.has(safePassword);
-}
-
-function resolveTwaBypassProfileFromPassword(password = '') {
-  const safePassword = String(password || '').trim();
-  if (!safePassword) return null;
-  if (safePassword === ADMIN_REVIEW_PASSWORD) {
-    return 'review';
-  }
-  if (safePassword === TWA_GATE_BYPASS_PASSWORD) {
-    return 'professional';
-  }
-  return null;
-}
-
-function buildAdminSessionToken(options = {}) {
-  const createdAt = Number(options.createdAt || Date.now());
-  const scope = normalizeAdminScope(options.scope);
-  const payload = `${createdAt}:${scope}`;
-  const signature = signAdminSessionPayload(payload);
-  return `${payload}.${signature}`;
-}
-
-function parseAndValidateAdminSessionToken(token) {
-  if (typeof token !== 'string' || !token.includes('.')) {
-    return null;
-  }
-
-  const parts = token.split('.');
-  if (parts.length !== 2) {
-    return null;
-  }
-
-  const payload = String(parts[0] || '').trim();
-  const signature = String(parts[1] || '').trim();
-
-  if (!payload || !signature) {
-    return null;
-  }
-
-  const expectedSignature = signAdminSessionPayload(payload);
-
-  const signatureBuffer = Buffer.from(signature, 'utf8');
-  const expectedBuffer = Buffer.from(expectedSignature, 'utf8');
-
-  if (signatureBuffer.length !== expectedBuffer.length) {
-    return null;
-  }
-
-  if (!crypto.timingSafeEqual(signatureBuffer, expectedBuffer)) {
-    return null;
-  }
-
-  const payloadParts = payload.split(':');
-  const createdAt = Number(payloadParts[0] || 0);
-  const scope = normalizeAdminScope(payloadParts[1] || 'full');
-  if (!Number.isFinite(createdAt) || createdAt <= 0) {
-    return null;
-  }
-
-  if (Date.now() - createdAt > ADMIN_SESSION_DURATION) {
-    return null;
-  }
-
-  return {
-    isAdmin: true,
-    createdAt,
-    scope,
-    ...buildProfessionalAccessCapabilities(scope)
-  };
-}
 
 function parseCookies(req) {
   const list = {};
@@ -1610,31 +1380,8 @@ function toPublicUser(userId, userData, _options = {}) {
 }
 
 // Retrieve the admin session from cookies and validate its expiration.
-function getAdminSession(req) {
-  const cookies = parseCookies(req);
-  const sessionId = cookies.adminSessionId;
-
-  if (!sessionId) return null;
-
-  const session = adminSessions.get(sessionId);
-  if (!session) {
-    const tokenSession = parseAndValidateAdminSessionToken(sessionId);
-
-    if (!tokenSession) {
-      return null;
-    }
-
-    adminSessions.set(sessionId, tokenSession);
-    return tokenSession;
-  }
-
-  // expiration
-  if (Date.now() - session.createdAt > ADMIN_SESSION_DURATION) {
-    adminSessions.delete(sessionId);
-    return null;
-  }
-
-  return session;
+async function getAdminSession(req) {
+  return professionalAccess.session(parseCookies(req).adminSessionId);
 }
 
 async function getUserSession(req) {
@@ -1693,12 +1440,222 @@ async function requireUserAuth(req, res, next) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
+    if (
+      req.headers['x-client-identity'] &&
+      req.headers['x-client-identity'] !== session.userId
+    )
+      return res.status(409).json({ error: 'Client identity changed', code: 'identity_changed' });
     req.userSession = session;
+    const { idValid } = require('./lib/professional-access');
+    if (req.body?.userId !== undefined && req.body.userId !== session.userId)
+      return res.status(403).json({ error: 'Actor mismatch' });
+    for (const key of ['id', 'conversationId', 'professionalId'])
+      if (req.params?.[key] && !idValid(req.params[key]))
+        return res.status(400).json({ error: 'Invalid object reference' });
+    for (const key of [
+      'conversationId',
+      'sourceConversationId',
+      'branchConversationId',
+      'requestId',
+    ])
+      if (
+        req.body?.[key] !== undefined &&
+        req.body[key] !== null &&
+        !idValid(req.body[key])
+      )
+        return res.status(400).json({ error: 'Invalid object reference' });
+    const bodyConversationId =
+      req.body?.sourceConversationId || req.body?.conversationId;
+    const pathConversationId =
+      req.path.includes('/conversations/') &&
+      !['claim', 'import-local'].includes(req.params?.id)
+        ? req.params?.id
+        : null;
+    const targetId = pathConversationId || bodyConversationId;
+    const privateTransit =
+      req.body?.isPrivateConversation === true &&
+      [
+        '/chat',
+        '/chat/stream',
+        '/chat/stream/interrupted',
+        '/chat/cancel',
+        '/session/close',
+        '/api/session/beacon',
+        '/api/human-support/request',
+      ].includes(req.path);
+    if (targetId && !privateTransit) {
+      const current = (
+        await db.ref('conversations').child(targetId).once('value')
+      ).val();
+      if (
+        current &&
+        (current.userId !== session.userId ||
+          current.deletedAt ||
+          current.isPrivate === true)
+      )
+        return res.status(403).json({ error: 'Object ownership required' });
+      if (!current && ['/chat', '/chat/stream'].includes(req.path)) {
+        const orphan = (
+          await messagesRef
+            .orderByChild('conversationId')
+            .equalTo(targetId)
+            .once('value')
+        ).val();
+        if (orphan && Object.keys(orphan).length)
+          return res
+            .status(403)
+            .json({ error: 'Historical ownership proof required' });
+        const claimed = await db
+          .ref('conversations')
+          .child(targetId)
+          .transaction((old) =>
+            old
+              ? undefined
+              : { userId: session.userId, createdAt: new Date().toISOString() },
+          );
+        if (!claimed.committed)
+          return res.status(409).json({ error: 'Concurrent object claim' });
+      } else if (!current)
+        return res.status(404).json({ error: 'Object unavailable' });
+    }
+    if (req.path.startsWith('/api/messages/')) {
+      const m = (await messagesRef.child(req.params.id).once('value')).val();
+      if (m?.userId !== session.userId)
+        return res.status(403).json({ error: 'Message ownership required' });
+      const c = (
+        await db.ref('conversations').child(m.conversationId).once('value')
+      ).val();
+      if (c?.userId !== session.userId || c.deletedAt || c.isPrivate === true)
+        return res.status(403).json({ error: 'Object ownership required' });
+    }
+    if (req.path.startsWith('/api/branches/') && req.params.id) {
+      const branch = (
+        await branchRecordsRef.child(req.params.id).once('value')
+      ).val();
+      if (!branch || branch.userId !== session.userId)
+        return res.status(403).json({ error: 'Branch ownership required' });
+      if (
+        !idValid(branch.sourceConversationId) ||
+        !idValid(branch.branchConversationId)
+      )
+        return res.status(403).json({ error: 'Branch object mismatch' });
+      const source = await readConversationAuthority(
+        branch.sourceConversationId,
+      );
+      if (
+        source?.userId !== session.userId ||
+        source.deletedAt ||
+        source.isPrivate === true
+      )
+        return res.status(403).json({ error: 'Branch source mismatch' });
+      const destination = await readConversationAuthority(
+        branch.branchConversationId,
+      );
+      if (
+        destination.exists &&
+        (destination.userId !== session.userId ||
+          destination.deletedAt ||
+          destination.isPrivate === true)
+      )
+        return res.status(403).json({ error: 'Branch destination mismatch' });
+      const seed = (
+        await branchSeedSnapshotsRef.child(req.params.id).once('value')
+      ).val();
+      if (
+        seed &&
+        (seed.sourceConversationId !== branch.sourceConversationId ||
+          (seed.userId && seed.userId !== session.userId) ||
+          seed.messages?.some((m) => m.userId && m.userId !== session.userId))
+      )
+        return res.status(403).json({ error: 'Branch seed mismatch' });
+    }
+    const sendJson = res.json.bind(res);
+    res.json = async (body) => {
+      try {
+      if (res.statusCode < 400 && !res.locals.lifecycleTransition &&
+          !(req.method === 'DELETE') &&
+          !await lifecycle.available(session.userId, privateTransit ? null : targetId)) {
+        res.status(410);
+        return sendJson({ code: 'lifecycle_object_retired', error: 'Object unavailable' });
+      }
+      return sendJson(body);
+      } catch {
+        // Some existing handlers intentionally do not await json(). Never leak
+        // a rejection or acknowledge content when the final authority read fails.
+        if (!res.headersSent) {
+          res.status(503);
+          return sendJson({ code: 'lifecycle_availability_unknown', error: 'Verification unavailable' });
+        }
+        if (!res.writableEnded) res.end();
+        return res;
+      }
+    };
     return next();
   } catch (err) {
+    if (err.code?.startsWith('lifecycle_')) return res.status(410).json({ code: err.code });
     console.error('Erreur requireUserAuth:', err.message);
     return res.status(500).json({ error: 'Auth check failed' });
   }
+}
+
+async function readConversationAuthority(id) {
+  const ref = db.ref('conversations').child(id);
+  const [owner, privacy, removed] = await Promise.all(
+    ['userId', 'isPrivate', 'deletedAt'].map((key) =>
+      ref.child(key).once('value'),
+    ),
+  );
+  const userId = owner.val(),
+    isPrivate = privacy.val(),
+    deletedAt = removed.val();
+  // The existence-only fallback quarantines old parent objects without an owner.
+  const exists =
+    userId !== null ||
+    isPrivate !== null ||
+    deletedAt !== null ||
+    (await ref.once('value')).exists();
+  return { userId, isPrivate, deletedAt, exists };
+}
+
+async function assertConversationOwner(userId, conversationId) {
+  const current = (
+    await db.ref('conversations').child(conversationId).once('value')
+  ).val();
+  if (
+    !current ||
+    current.userId !== userId ||
+    current.deletedAt ||
+    current.isPrivate === true
+  ) {
+    const error = new Error('Object authorization lost');
+    error.code = 'object_authority_lost';
+    throw error;
+  }
+  return current;
+}
+async function updateOwnedConversation(ref, userId, patch) {
+  const result = await ref.transaction((current) =>
+    current &&
+    current.userId === userId &&
+    !current.deletedAt &&
+    current.isPrivate !== true
+      ? { ...current, ...patch }
+      : undefined,
+  );
+  if (!result.committed) {
+    const error = new Error('Object authorization lost');
+    error.code = 'object_authority_lost';
+    throw error;
+  }
+}
+function messageBelongsToConversation(message, userId, conversationId) {
+  return (
+    !!message &&
+    message.userId === userId &&
+    message.conversationId === conversationId &&
+    message.isPrivate !== true &&
+    !message.deletedAt
+  );
 }
 
 // Les données conversationnelles exigent une session utilisateur serveur.
@@ -1872,19 +1829,104 @@ function warnRuntimeContract(label, issues, context = {}) {
 }
 
 // Middleware protecting admin routes by redirecting unauthenticated users.
-function requireAdminAuth(req, res, next) {
-  const session = getAdminSession(req);
-
-  if (!session || session.canAccessAdminConversations !== true) {
-    const nextUrl = encodeURIComponent(req.originalUrl);
-    return res.redirect(`/pros-login.html?next=${nextUrl}`);
-  }
-  adminVisitedSinceLastAlert = true;
+async function requireAdministratorPage(req, res, next) {
+  const session = await getAdminSession(req);
+  if (!session?.roles.includes('administrator'))
+    return res.status(session ? 403 : 401).end();
+  next(); // HTML shell contains no data; every API separately requires a reason.
+}
+async function requireAdminAuth(req, res, next) {
+  const session = await getAdminSession(req);
+  const reason = req.headers['x-access-reason'];
+  const allowed =
+    session?.roles.includes('administrator') && REASONS.has(reason);
+  await professionalAccess.journal({
+    actor: session,
+    role: 'administrator',
+    action: 'admin_access',
+    object: professionalAccess.reference(
+      'object',
+      String(
+        req.params?.id ||
+          req.params?.userId ||
+          req.route?.path ||
+          'unknown_route',
+      ),
+    ),
+    reason: allowed ? reason : 'administrator_reason_required',
+    result: allowed ? 'allowed' : 'denied',
+    requestId: req.requestId,
+  });
+  if (!allowed)
+    return res
+      .status(session ? 403 : 401)
+      .json({
+        error: 'Professional authorization required',
+        code: 'administrator_reason_required',
+      });
+  req.professionalSession = session;
+  const unmask = req.headers['x-identity-unmask-reason'];
+  if (REASONS.has(unmask))
+    await professionalAccess.journal({
+      actor: session,
+      role: 'administrator',
+      action: 'identity_unmask',
+      object: professionalAccess.reference(
+        'route',
+        String(req.route?.path || 'unknown_route'),
+      ),
+      reason: unmask,
+      result: 'allowed',
+      requestId: req.requestId,
+    });
+  const json = res.json.bind(res);
+  res.json = (payload) => {
+    function project(value) {
+      if (Array.isArray(value))
+        return value.filter((x) => x?.isPrivate !== true).map(project);
+      if (!value || typeof value !== 'object') return value;
+      if (value.isPrivate === true) return null;
+      const out = {};
+      for (const [key, v] of Object.entries(value)) {
+        if (
+          [
+            'hasPrivateInteractionSinceLastVisible',
+            'lastPrivateInteractionAt',
+          ].includes(key)
+        )
+          continue;
+        if (
+          !REASONS.has(unmask) &&
+          [
+            'email',
+            'emails',
+            'userEmail',
+            'firstName',
+            'userId',
+            'userLabel',
+            'displayUser',
+            'displayName',
+          ].includes(key)
+        )
+          continue;
+        if (
+          !REASONS.has(unmask) &&
+          ['superId', 'stableSuperId'].includes(key)
+        ) {
+          out[key] = professionalAccess.reference('user', String(v));
+          continue;
+        }
+        out[key] = project(v);
+      }
+      return out;
+    }
+    return json(project(payload));
+  };
   next();
 }
 
-function requireProfessionalHubAuth(req, res, next) {
-  const session = getAdminSession(req);
+async function requireProfessionalHubAuth(req, res, next) {
+  const session = await getAdminSession(req);
 
   const hasAccess =
     session &&
@@ -1893,7 +1935,7 @@ function requireProfessionalHubAuth(req, res, next) {
       session.canAccessFacilitationAdmin === true);
 
   if (!hasAccess) {
-    const nextUrl = encodeURIComponent(req.originalUrl);
+    const nextUrl = encodeURIComponent(require('./public/js/local-destination').resolve(req.originalUrl,'/pros.html'));
     return res.redirect(`/pros-login.html?next=${nextUrl}`);
   }
 
@@ -1901,22 +1943,22 @@ function requireProfessionalHubAuth(req, res, next) {
   next();
 }
 
-function requireSupportAdminAuth(req, res, next) {
-  const session = getAdminSession(req);
+async function requireSupportAdminAuth(req, res, next) {
+  const session = await getAdminSession(req);
 
   if (!session || session.canAccessSupportCases !== true) {
-    const nextUrl = encodeURIComponent(req.originalUrl);
+    const nextUrl = encodeURIComponent(require('./public/js/local-destination').resolve(req.originalUrl,'/pros.html'));
     return res.redirect(`/pros-login.html?next=${nextUrl}`);
   }
   adminVisitedSinceLastAlert = true;
   next();
 }
 
-function requireFacilitationAdminAuth(req, res, next) {
-  const session = getAdminSession(req);
+async function requireFacilitationAdminAuth(req, res, next) {
+  const session = await getAdminSession(req);
 
   if (!session || session.canAccessFacilitationAdmin !== true) {
-    const nextUrl = encodeURIComponent(req.originalUrl);
+    const nextUrl = encodeURIComponent(require('./public/js/local-destination').resolve(req.originalUrl,'/pros.html'));
     return res.redirect(`/pros-login.html?next=${nextUrl}`);
   }
   adminVisitedSinceLastAlert = true;
@@ -2136,9 +2178,7 @@ async function buildFacilitationDirectoryModel() {
       state.lastVisibleUserMessageMs,
       state.lastVisibleConversationActivityMs
     );
-    const hasPrivateInteractionSinceLastVisible =
-      state.lastAnyUserMessageIsPrivate === true &&
-      state.lastAnyUserMessageMs > publicInteractionMs;
+
 
     users.push({
       userId: state.userId,
@@ -2148,10 +2188,6 @@ async function buildFacilitationDirectoryModel() {
       visibleConversationCount: state.visibleConversationIds.length,
       lastInteractionMs: publicInteractionMs,
       lastInteractionAt: toIsoOrNullFromMs(publicInteractionMs),
-      hasPrivateInteractionSinceLastVisible,
-      lastPrivateInteractionAt: hasPrivateInteractionSinceLastVisible
-        ? toIsoOrNullFromMs(state.lastAnyUserMessageMs)
-        : null,
       conversationIds: state.visibleConversationIds.slice()
     });
   }
@@ -2591,6 +2627,7 @@ const {
 });
 
 async function loadConversationBranchHistoryForRecall({
+  userId = '',
   conversationId = '',
   isPrivateConversation = false,
   conversationBranchHistory = [],
@@ -2607,6 +2644,7 @@ async function loadConversationBranchHistoryForRecall({
   }
 
   try {
+    await assertConversationOwner(userId,conversationId);
     const messagesSnap = await messagesRef
       .orderByChild('conversationId')
       .equalTo(conversationId)
@@ -2615,6 +2653,7 @@ async function loadConversationBranchHistoryForRecall({
     const branchHistory = Object.values(messagesSnap.val() || {})
       .filter(
         (m) =>
+          messageBelongsToConversation(m,userId,conversationId)&&
           m &&
           (m.role === 'user' || m.role === 'assistant') &&
           typeof m.content === 'string'
@@ -2702,7 +2741,7 @@ function validateSessionCloseRequestShape(body = {}) {
 }
 
 // Reset session flags and return the normalized memory/flags state when the session ends.
-app.post('/session/close', async (req, res) => {
+app.post('/session/close', requireUserAuth, async (req, res) => {
   try {
     const requestIssues = validateSessionCloseRequestShape(req.body);
 
@@ -2947,7 +2986,7 @@ async function generateConversationTitle(messages, options = {}) {
 // Admin login route that creates a time-limited session cookie.
 app.get('/api/admin/session', async (req, res) => {
   try {
-    const session = getAdminSession(req);
+    const session = await getAdminSession(req);
     if (!session) {
       return res.json({ authenticated: false });
     }
@@ -3015,119 +3054,30 @@ function writeAdminSessionCookie(res, sessionId) {
   );
 }
 
-function createAdminSessionRecord({
-  scope = 'review',
-  professionalEmail = null,
-  sessionKind = 'pros',
-  capabilities = {}
-} = {}) {
-  return {
-    isAdmin: true,
-    createdAt: Date.now(),
-    scope,
-    professionalEmail,
-    sessionKind,
-    ...capabilities
-  };
-}
-
-function createAndSetAdminSession(res, sessionRecord = {}) {
-  const scope = normalizeAdminScope(sessionRecord.scope || 'review');
-  const sessionId = buildAdminSessionToken({ scope });
-  adminSessions.set(
-    sessionId,
-    createAdminSessionRecord({
-      ...sessionRecord,
-      scope
-    })
-  );
-  writeAdminSessionCookie(res, sessionId);
-  return sessionId;
-}
-
-app.post('/api/twa/login', (req, res) => {
-  if (
-    !req.body ||
-    typeof req.body !== 'object' ||
-    Array.isArray(req.body) ||
-    typeof req.body.password !== 'string'
-  ) {
-    return res.status(400).json({ error: 'Invalid TWA login request' });
-  }
-
-  const safePassword = String(req.body.password || '').trim();
-  const bypassProfile = resolveTwaBypassProfileFromPassword(safePassword);
-  if (!bypassProfile) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
-
-  const isReviewProfile = bypassProfile === 'review';
-  const capabilities = isReviewProfile
-    ? {
-        canBypassTwaGate: true,
-        canUseAdminUi: false,
-        canAccessAdminConversations: false,
-        canAccessSupportCases: false,
-        canAccessFacilitationAdmin: false
-      }
-    : {
-        ...buildProfessionalAccessCapabilities('full'),
-        canBypassTwaGate: true
-      };
-
-  createAndSetAdminSession(res, {
-    scope: isReviewProfile ? 'review' : 'full',
-    professionalEmail: null,
-    sessionKind: isReviewProfile
-      ? 'twa_bypass_review'
-      : 'twa_bypass_professional',
-    capabilities: {
-      ...capabilities,
-      welcomeAnimationPolicy: isReviewProfile ? 'play' : 'skip'
-    }
-  });
-
-  res.json({ success: true, flow: 'twa' });
+app.post('/api/twa/login', (_req, res) => {
+  return res
+    .status(403)
+    .json({
+      error: 'Individual authentication required',
+      code: 'legacy_twa_bypass_revoked',
+    });
 });
 
-function handleProsLogin(req, res) {
+async function handleProsLogin(req, res) {
   if (
-    !req.body ||
-    typeof req.body !== 'object' ||
-    Array.isArray(req.body) ||
-    typeof req.body.password !== 'string' ||
-    typeof req.body.email !== 'string'
-  ) {
+    typeof req.body?.email !== 'string' ||
+    typeof req.body?.password !== 'string'
+  )
     return res.status(400).json({ error: 'Invalid pros login request' });
-  }
-
-  const safeEmail = normalizeEmail(req.body.email || '');
-  const safePassword = String(req.body.password || '').trim();
-  if (!safeEmail || !safePassword) {
-    return res.status(400).json({ error: 'Email and password are required' });
-  }
-
-  const expectedPassword =
-    PROFESSIONAL_ACCESS_PASSWORD_BY_EMAIL.get(safeEmail) || '';
-
-  if (!expectedPassword || safePassword !== expectedPassword) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
-
-  const sessionCapabilities = buildProfessionalAccessCapabilitiesForEmail(safeEmail);
-  const canBypassTwaGate = canBypassTwaGateFromPassword(safePassword);
-
-  createAndSetAdminSession(res, {
-    scope: 'full',
-    professionalEmail: safeEmail,
-    sessionKind: 'pros_hub',
-    capabilities: {
-      ...sessionCapabilities,
-      canBypassTwaGate
-    }
-  });
-
-  res.json({ success: true, flow: 'pros' });
+  if (!enforceAuthRateLimit(req, res, 'login', normalizeEmail(req.body.email)))
+    return;
+  const token = await professionalAccess.login(
+    req.body.email,
+    req.body.password,
+  );
+  if (!token) return res.status(401).json({ error: 'Unauthorized' });
+  writeAdminSessionCookie(res, token);
+  return res.json({ success: true, flow: 'pros' });
 }
 
 app.post('/api/pros/login', handleProsLogin);
@@ -3136,12 +3086,12 @@ app.post('/api/pros/login', handleProsLogin);
 app.post('/api/admin/login', handleProsLogin);
 
 // Admin logout route that clears the session cookie and removes the session.
-app.post('/api/admin/logout', (req, res) => {
+app.post('/api/admin/logout', async (req, res) => {
   const cookies = parseCookies(req);
   const sessionId = cookies.adminSessionId;
 
   if (sessionId) {
-    adminSessions.delete(sessionId);
+    await professionalAccess.revoke(sessionId);
   }
 
   res.setHeader(
@@ -3155,7 +3105,7 @@ app.post('/api/admin/logout', (req, res) => {
 app.get('/api/auth/session', async (req, res) => {
   try {
     const session = await getUserSession(req);
-    const isAdmin = Boolean(getAdminSession(req));
+    const isAdmin = Boolean(await getAdminSession(req));
 
     if (!session) {
       return res.json({ authenticated: false, user: null });
@@ -3583,6 +3533,118 @@ app.post('/api/auth/change-password', requireUserAuth, async (req, res) => {
   }
 });
 
+app.get('/api/account/content-grants', requireUserAuth, async (req, res) => {
+  const raw =
+    (
+      await db.ref('contentGrants').child(req.userSession.userId).once('value')
+    ).val() || {};
+  const assignments =
+      (await db.ref('practitionerAssignments').once('value')).val() || {},
+    practitioners = [];
+  for (const [id, rows] of Object.entries(assignments))
+    if (idValid(id) && rows?.[req.userSession.userId]?.active === true) {
+      const i = (
+        await db.ref('professionalIdentities').child(id).once('value')
+      ).val();
+      if (i?.active === true && i.roles?.includes('practitioner'))
+        practitioners.push({
+          id,
+          label:
+            typeof i.displayName === 'string' && i.displayName.trim()
+              ? i.displayName.trim().slice(0, 120)
+              : `Praticien affect\u00e9 ${practitioners.length + 1}`,
+          assigned: true,
+        });
+    }
+  for (const id of Object.keys(raw))
+    if (idValid(id) && !practitioners.some((p) => p.id === id))
+      practitioners.push({
+        id,
+        label: 'Autorisation existante sans affectation active',
+        assigned: false,
+      });
+  return res.json({ grants: raw, practitioners });
+});
+app.put(
+  '/api/account/content-grants/:professionalId',
+  requireUserAuth,
+  async (req, res) => {
+    const { idValid } = require('./lib/professional-access');
+    const professionalId = req.params.professionalId,
+      body = req.body || {},
+      userId = req.userSession.userId;
+    if (
+      !idValid(professionalId) ||
+      !['conversation_specific', 'accompaniment_period'].includes(body.scope) ||
+      !Number.isFinite(body.endsAt) ||
+      body.endsAt <= Date.now() ||
+      body.endsAt > Date.now() + 366 * 86400000 ||
+      !Array.isArray(body.conversationIds) ||
+      body.conversationIds.length > 100 ||
+      body.conversationIds.some((id) => !idValid(id))
+    )
+      return res.status(400).json({ error: 'Invalid explicit grant' });
+    const [i, a] = await Promise.all([
+      db.ref('professionalIdentities').child(professionalId).once('value'),
+      db
+        .ref('practitionerAssignments')
+        .child(professionalId)
+        .child(userId)
+        .once('value'),
+    ]);
+    if (
+      i.val()?.active !== true ||
+      !i.val()?.roles?.includes('practitioner') ||
+      a.val()?.active !== true
+    )
+      return res.status(403).json({ error: 'Active assignment required' });
+    for (const id of body.conversationIds) {
+      const c = (await db.ref('conversations').child(id).once('value')).val();
+      if (!c || c.userId !== userId || c.isPrivate === true || c.deletedAt)
+        return res.status(403).json({ error: 'Object ownership required' });
+    }
+    if (body.scope === 'conversation_specific' && !body.conversationIds.length)
+      return res.status(400).json({ error: 'Objects required' });
+    const grantRef = db
+      .ref('contentGrants')
+      .child(userId)
+      .child(professionalId);
+    const result = await grantRef.transaction((old) => ({
+      id: idValid(old?.id) ? old.id : crypto.randomBytes(12).toString('hex'),
+      version:
+        Number.isSafeInteger(old?.version) && old.version >= 0
+          ? old.version + 1
+          : 1,
+      active: true,
+      scope: body.scope,
+      conversationIds: body.conversationIds,
+      startsAt: Date.now(),
+      endsAt: body.endsAt,
+      allowIntersessionSummary: body.allowIntersessionSummary === true,
+    }));
+    return res.json({ grant: result.snapshot.val() });
+  },
+);
+app.delete(
+  '/api/account/content-grants/:professionalId',
+  requireUserAuth,
+  async (req, res) => {
+    const { idValid } = require('./lib/professional-access');
+    if (!idValid(req.params.professionalId))
+      return res.status(400).json({ error: 'Invalid reference' });
+    await db
+      .ref('contentGrants')
+      .child(req.userSession.userId)
+      .child(req.params.professionalId)
+      .transaction((old) =>
+        old
+          ? { ...old, active: false, version: (old.version || 0) + 1 }
+          : undefined,
+      );
+    return res.json({ success: true });
+  },
+);
+
 app.get('/api/account/preferences', requireUserAuth, async (req, res) => {
   try {
     const session = req.userSession;
@@ -3871,8 +3933,7 @@ app.post('/api/account/reset', requireUserAuth, async (req, res) => {
         .json({ error: 'Compte incomplet pour remise \u00e0 z\u00e9ro' });
     }
 
-    await usersRef.child(newUserId).set(nextUserRecord);
-    await usersRef.child(oldUserId).remove();
+    await lifecycle.removeAccount(oldUserId, { id: newUserId, record: nextUserRecord });
 
     const previousSessionToken = parseCookies(req).userSessionId;
     if (previousSessionToken) {
@@ -3880,6 +3941,7 @@ app.post('/api/account/reset', requireUserAuth, async (req, res) => {
     }
 
     invalidateUserSessionsByUserId(oldUserId);
+    res.locals.lifecycleTransition = true;
 
     const resetAuthVersion = Number.isSafeInteger(nextUserRecord.authVersion) ? nextUserRecord.authVersion : 0;
     const newSessionToken = buildUserSessionToken(newUserId, resetAuthVersion);
@@ -3951,66 +4013,14 @@ app.post('/api/account/close', requireUserAuth, async (req, res) => {
       return res.status(400).json({ error: 'Invalid user session' });
     }
 
-    const conversationsSnap = await db
-      .ref('conversations')
-      .orderByChild('userId')
-      .equalTo(userId)
-      .once('value');
-
-    const conversations = conversationsSnap.val() || {};
-    const conversationEntries = Object.entries(conversations).filter(
-      ([conversationId, value]) =>
-        typeof conversationId === 'string' && value && typeof value === 'object'
-    );
-
-    const archivedConversations = {};
-    const archivedMessagesByConversation = {};
-    const conversationDeletePatch = {};
-    const messageDeletePatch = {};
-
-    for (const [conversationId, conversationData] of conversationEntries) {
-      archivedConversations[conversationId] = conversationData;
-      conversationDeletePatch[conversationId] = null;
-
-      const messageSnap = await messagesRef
-        .orderByChild('conversationId')
-        .equalTo(conversationId)
-        .once('value');
-      const messageMap = messageSnap.val() || {};
-      archivedMessagesByConversation[conversationId] = messageMap;
-
-      Object.keys(messageMap).forEach((messageId) => {
-        if (typeof messageId === 'string' && messageId.trim()) {
-          messageDeletePatch[messageId] = null;
-        }
-      });
-    }
-
-    await accountArchivesRef.child(userId).set({
-      userId,
-      archivedAt: now,
-      closeReason: 'user_requested_closure',
-      requestId,
-      user: userRecord,
-      conversations: archivedConversations,
-      messagesByConversation: archivedMessagesByConversation
-    });
-
-    if (Object.keys(messageDeletePatch).length > 0) {
-      await messagesRef.update(messageDeletePatch);
-    }
-    if (Object.keys(conversationDeletePatch).length > 0) {
-      await db.ref('conversations').update(conversationDeletePatch);
-    }
-
-    await usersRef.child(userId).remove();
-    await userLabelsRef.child(userId).remove();
+    const removedConversationIds = await lifecycle.removeAccount(userId);
 
     const sessionToken = parseCookies(req).userSessionId;
     if (sessionToken) {
       userSessions.delete(sessionToken);
     }
     invalidateUserSessionsByUserId(userId);
+    res.locals.lifecycleTransition = true;
 
     res.setHeader(
       'Set-Cookie',
@@ -4023,7 +4033,7 @@ app.post('/api/account/close', requireUserAuth, async (req, res) => {
       status: 'success',
       at: now,
       requestId,
-      archivedConversationCount: conversationEntries.length
+      removedConversationCount: removedConversationIds.length
     });
 
     return res.json({ success: true });
@@ -4051,6 +4061,8 @@ app.get('/api/account/conversations', requireUserAuth, async (req, res) => {
         if (String(value?.userId || '') !== session.userId) {
           return false;
         }
+
+        if(value?.isPrivate===true||value?.deletedAt)return false;
 
         if (typeof value?.deletedAt === 'string' && value.deletedAt.trim()) {
           return false;
@@ -4122,6 +4134,7 @@ app.get('/api/account/conversations/:id', requireUserAuth, async (req, res) => {
 
     const messagesRaw = messagesSnap.val() || {};
     const messages = Object.entries(messagesRaw)
+      .filter(([,value])=>messageBelongsToConversation(value,session.userId,conversationId))
       .map(([id, value]) => ({
         id,
         role: String(value?.role || ''),
@@ -4143,6 +4156,7 @@ app.get('/api/account/conversations/:id', requireUserAuth, async (req, res) => {
                   typeof value.stateSnapshot.memory === 'string'
                     ? value.stateSnapshot.memory
                     : '',
+                memoryState: value.stateSnapshot.memoryState || null,
                 flags: normalizeSessionFlags(value.stateSnapshot.flags || {})
               }
             : null,
@@ -4150,6 +4164,7 @@ app.get('/api/account/conversations/:id', requireUserAuth, async (req, res) => {
       }))
       .sort((a, b) => Number(a.timestamp || 0) - Number(b.timestamp || 0));
 
+    await assertConversationOwner(session.userId,conversationId);
     return res.json({
       conversation: {
         id: conversationId,
@@ -4157,6 +4172,8 @@ app.get('/api/account/conversations/:id', requireUserAuth, async (req, res) => {
           typeof conversation.title === 'string' ? conversation.title : null,
         updatedAt: conversation.updatedAt || conversation.createdAt || null,
         createdAt: conversation.createdAt || null,
+        copyVersion: lifecycle.revision(conversation, 'm2CopyVersion'),
+        memoryState: conversation.memoryState || null,
         memory: normalizeMemory(
           conversation.memory || '',
           buildDefaultPromptRegistry()
@@ -4169,6 +4186,25 @@ app.get('/api/account/conversations/:id', requireUserAuth, async (req, res) => {
     console.error('Erreur /api/account/conversations/:id:', err.message);
     return res.status(500).json({ error: 'Conversation fetch failed' });
   }
+});
+
+// A reply becoming available is not a durable-save acknowledgement. The client
+// can read this bounded receipt without fetching conversation content.
+app.get('/api/account/conversations/:id/saves/:messageId', requireUserAuth, async (req, res) => {
+  if (!idValid(req.params.messageId)) return res.status(400).json({ code: 'invalid_reference' });
+  try {
+    const c = (await db.ref('conversations').child(req.params.id).once('value')).val();
+    const request = req.params.messageId.startsWith('m_chat_') ? c?.m2Requests?.[req.params.messageId.slice(7)] : null;
+    if (request && request.generation !== lifecycle.revision(c, 'm2ContentGeneration'))
+      return res.status(409).json({ code: 'conversation_replaced', responseSaveStatus: 'superseded' });
+    const m = (await messagesRef.child(req.params.messageId).once('value')).val();
+    if (!m) return res.json({ responseSaveStatus: 'uncertain', memoryUpdateStatus: 'not_requested' });
+    if (!messageBelongsToConversation(m, req.userSession.userId, req.params.id))
+      return res.status(403).json({ code: 'object_authority_lost' });
+    return res.json({ responseSaveStatus: 'confirmed', memoryUpdateStatus:
+      ['pending', 'completed', 'failed', 'invalid', 'superseded', 'retired', 'not_requested'].includes(m.debugMeta?.memoryUpdateStatus)
+        ? m.debugMeta.memoryUpdateStatus : 'not_requested' });
+  } catch { return res.status(503).json({ responseSaveStatus: 'uncertain' }); }
 });
 
 app.patch(
@@ -4291,12 +4327,8 @@ app.delete(
 
       const now = new Date().toISOString();
 
-      await convRef.update({
-        deletedAt: now,
-        updatedAt: now
-      });
-
-      return res.json({ success: true, deletedAt: now });
+      const removedConversationIds = await lifecycle.removeConversation(session.userId, conversationId);
+      return res.json({ success: true, deletedAt: now, removedConversationIds });
     } catch (err) {
       console.error(
         'Erreur DELETE /api/account/conversations/:id:',
@@ -4311,99 +4343,28 @@ app.post(
   '/api/account/conversations/claim',
   requireUserAuth,
   async (req, res) => {
-    try {
-      const session = req.userSession;
-
-      if (
-        !req.body ||
-        typeof req.body !== 'object' ||
-        Array.isArray(req.body) ||
-        typeof req.body.anonymousUserId !== 'string' ||
-        !Array.isArray(req.body.conversationIds)
-      ) {
-        return res.status(400).json({ error: 'Invalid claim request' });
-      }
-
-      const anonymousUserId = String(req.body.anonymousUserId || '').trim();
-      const conversationIds = req.body.conversationIds
-        .map((value) => String(value || '').trim())
-        .filter(Boolean)
-        .slice(0, 100);
-
-      if (!anonymousUserId || conversationIds.length === 0) {
-        return res.status(400).json({ error: 'Claim payload incomplete' });
-      }
-
-      const uniqueConversationIds = Array.from(new Set(conversationIds));
-      const claimedConversationIds = [];
-      let alreadyOwnedCount = 0;
-      let skippedCount = 0;
-
-      for (const conversationId of uniqueConversationIds) {
-        const convRef = db.ref('conversations').child(conversationId);
-        const convSnap = await convRef.once('value');
-        const conversation = convSnap.val();
-
-        if (!conversation || typeof conversation !== 'object') {
-          skippedCount += 1;
-          continue;
-        }
-
-        const ownerId = String(conversation.userId || '').trim();
-
-        if (ownerId === session.userId) {
-          alreadyOwnedCount += 1;
-          continue;
-        }
-
-        if (ownerId !== anonymousUserId) {
-          skippedCount += 1;
-          continue;
-        }
-
-        await convRef.update({ userId: session.userId });
-
-        const messagesSnap = await messagesRef
-          .orderByChild('conversationId')
-          .equalTo(conversationId)
-          .once('value');
-
-        const messages = messagesSnap.val() || {};
-        const messageUpdates = {};
-
-        Object.entries(messages).forEach(([messageId, value]) => {
-          if (
-            typeof messageId !== 'string' ||
-            !value ||
-            typeof value !== 'object'
-          ) {
-            return;
-          }
-
-          if (String(value.userId || '').trim() === anonymousUserId) {
-            messageUpdates[`${messageId}/userId`] = session.userId;
-          }
-        });
-
-        if (Object.keys(messageUpdates).length > 0) {
-          await messagesRef.update(messageUpdates);
-        }
-
-        claimedConversationIds.push(conversationId);
-      }
-
-      return res.json({
-        success: true,
-        claimedConversationIds,
-        claimedCount: claimedConversationIds.length,
-        alreadyOwnedCount,
-        skippedCount
-      });
-    } catch (err) {
-      console.error('Erreur /api/account/conversations/claim:', err.message);
-      return res.status(500).json({ error: 'Conversation claim failed' });
+    const ids = req.body?.conversationIds;
+    const { idValid } = require('./lib/professional-access');
+    if (
+      !Array.isArray(ids) ||
+      ids.length > 100 ||
+      ids.some((id) => !idValid(id))
+    )
+      return res.status(400).json({ error: 'Invalid claim request' });
+    for (const id of ids) {
+      const c = (await db.ref('conversations').child(id).once('value')).val();
+      if (!c || c.userId !== req.userSession.userId || c.deletedAt)
+        return res
+          .status(403)
+          .json({ error: 'Historical ownership proof required' });
     }
-  }
+    return res.json({
+      claimedConversationIds: [],
+      claimedCount: 0,
+      alreadyOwnedCount: ids.length,
+      skippedCount: 0,
+    });
+  },
 );
 
 app.post(
@@ -4422,12 +4383,33 @@ app.post(
         return res.status(400).json({ error: 'Invalid local import request' });
       }
 
+      if (req.body.forceOverwrite !== undefined && typeof req.body.forceOverwrite !== 'boolean') return res.status(400).json({ code: 'copy_invalid_intent' });
       const forceOverwrite = req.body.forceOverwrite === true;
-      const conversations = req.body.conversations.slice(0, 50);
-      const importedConversationIds = [];
-      const messageIdsByConversation = {};
-      let alreadyOwnedCount = 0;
-      let skippedCount = 0;
+      if(req.body.conversations.length>50)return res.status(400).json({error:'Import scope exceeded'});
+      const conversations = req.body.conversations;
+      const seen=new Set();let totalMessages=0;
+      const preparedVersions = {};
+      // Validate the complete batch before the first write/delete. Missing
+      // parents never authorize reassignment of historical orphan messages.
+      for(const c of conversations){
+        if(!c||!idValid(c.id)||seen.has(c.id)||(c.conversationId&&c.conversationId!==c.id)||
+          (c.userId&&c.userId!==session.userId)||!Array.isArray(c.messages)||c.messages.length>500||
+          c.messages.some(m=>!m||m.content?.length>16000||(m.userId&&m.userId!==session.userId)||
+            (m.conversationId&&m.conversationId!==c.id)||(m.id!==undefined&&!idValid(m.id))))
+          return res.status(400).json({error:'Invalid bounded import association'});
+        assertCopyMemoryShape(c.memoryState);
+        for (const message of c.messages) assertCopyMemoryShape(message.stateSnapshot?.memoryState);
+        seen.add(c.id);totalMessages+=c.messages.length;
+        if(totalMessages>1000)return res.status(400).json({error:'Import scope exceeded'});
+        const parent=(await db.ref('conversations').child(c.id).once('value')).val();
+        const children=(await messagesRef.orderByChild('conversationId').equalTo(c.id).once('value')).val()||{};
+        if((parent&&(parent.userId!==session.userId||parent.isPrivate===true||parent.deletedAt))||
+          (!parent&&Object.keys(children).length)||Object.entries(children).some(([id,m])=>!idValid(id)||!messageBelongsToConversation(m,session.userId,c.id)))
+          return res.status(403).json({error:'Historical ownership proof required'});
+        preparedVersions[c.id] = Object.hasOwn(c, 'expectedVersion') ? c.expectedVersion : parent ? lifecycle.revision(parent, 'm2CopyVersion') : null;
+        if(forceOverwrite&&Object.keys(children).length>500)return res.status(400).json({error:'Overwrite scope exceeded'});
+      }
+      const jobs = [];
 
       for (const rawConversation of conversations) {
         const safeConversation =
@@ -4437,39 +4419,6 @@ app.post(
             ? rawConversation
             : null;
         const conversationId = String(safeConversation?.id || '').trim();
-
-        if (!conversationId) {
-          skippedCount += 1;
-          continue;
-        }
-
-        const convRef = db.ref('conversations').child(conversationId);
-        const convSnap = await convRef.once('value');
-        const existingConversation = convSnap.val();
-
-        if (existingConversation && typeof existingConversation === 'object') {
-          const ownerId = String(existingConversation.userId || '').trim();
-
-          if (ownerId === session.userId) {
-            if (!forceOverwrite) {
-              alreadyOwnedCount += 1;
-              continue;
-            }
-            // forceOverwrite: delete existing messages then re-import
-            const existingMsgsSnap = await messagesRef
-              .orderByChild('conversationId')
-              .equalTo(conversationId)
-              .once('value');
-            const deleteOps = [];
-            existingMsgsSnap.forEach((child) => {
-              deleteOps.push(child.ref.remove());
-            });
-            await Promise.all(deleteOps);
-          } else {
-            skippedCount += 1;
-            continue;
-          }
-        }
 
         const rawMessages = Array.isArray(safeConversation?.messages)
           ? safeConversation.messages
@@ -4494,7 +4443,7 @@ app.post(
             const timestamp =
               Number.isFinite(timestampCandidate) && timestampCandidate > 0
                 ? timestampCandidate
-                : Date.now() + index;
+                : index + 1;
 
             const debugMeta =
               safeEntry?.debugMeta &&
@@ -4774,12 +4723,14 @@ app.post(
                             buildDefaultPromptRegistry()
                           )
                         : '',
+                    memoryState: stateSnapshot.memoryState || null,
                     flags: normalizeSessionFlags(stateSnapshot.flags || {})
                   }
                 : null
             };
           })
           .filter(Boolean);
+        if (sanitizedMessages.length !== rawMessages.length) return res.status(400).json({ code: 'copy_invalid_message' });
 
         const normalizedMemory = normalizeMemory(
           typeof safeConversation?.memory === 'string'
@@ -4813,55 +4764,30 @@ app.post(
             ? safeConversation.title.trim()
             : '';
 
-        await convRef.set({
+        jobs.push({ id: conversationId, expectedVersion: preparedVersions[conversationId], messages: sanitizedMessages, record: {
           userId: session.userId,
           title: rawTitle || fallbackTitle,
           titleLocked: safeConversation?.isCustomTitle === true,
           messageCount: sanitizedMessages.length,
           lastUserMessage: lastUserMessage?.content || '',
           memory: normalizedMemory,
+          memoryState:safeConversation.memoryState&&typeof safeConversation.memoryState==='object'?safeConversation.memoryState:null,
           flags: normalizedFlags,
           importedFromLocal: true,
           importedFromLocalPrivate: conversationIsPrivate,
+          isPrivate:false,
           createdAt: updatedAtIso,
           updatedAt: updatedAtIso
-        });
-
-        const pushedMessageIds = [];
-        for (const message of sanitizedMessages) {
-          const pushRef = await messagesRef.push({
-            role: message.role,
-            content: message.content,
-            timestamp: message.timestamp,
-            userId: session.userId,
-            conversationId,
-            debug: message.debug,
-            debugMeta: message.debugMeta,
-            stateSnapshot: message.stateSnapshot
-          });
-          pushedMessageIds.push(pushRef.key);
-        }
-
-        importedConversationIds.push(conversationId);
-        messageIdsByConversation[conversationId] = pushedMessageIds;
+        } });
       }
-
-      return res.json({
-        success: true,
-        importedConversationIds,
-        importedCount: importedConversationIds.length,
-        alreadyOwnedCount,
-        skippedCount,
-        messageIdsByConversation
-      });
+      const outcome = await conversationCopies.importLocal({ userId: session.userId, jobs, forceOverwrite, operationId: req.body.operationId, payload: req.body });
+      return res.json({ success: true, ...outcome });
     } catch (err) {
       console.error(
         'Erreur /api/account/conversations/import-local:',
         err.message
       );
-      return res
-        .status(500)
-        .json({ error: 'Local conversation import failed' });
+      return copyError(res, err);
     }
   }
 );
@@ -4905,356 +4831,33 @@ app.get('/api/branches', requireUserAuth, async (req, res) => {
   }
 });
 
-app.post('/api/branches/from-message', requireUserAuth, async (req, res) => {
+function copyError(res, error) {
+  const status = error.status || (error.code?.startsWith('lifecycle_') ? 410 : 503);
+  return res.status(status).json({ error: 'Copy operation not confirmed', code: error.code || 'copy_commit_uncertain' });
+}
+async function createBranchFromRequest(req, res, activate) {
   try {
-    if (
-      !req.body ||
-      typeof req.body !== 'object' ||
-      Array.isArray(req.body) ||
-      typeof req.body.sourceConversationId !== 'string' ||
-      (req.body.anchorMessageId !== undefined &&
-        typeof req.body.anchorMessageId !== 'string') ||
-      (req.body.seedMessages !== undefined &&
-        !Array.isArray(req.body.seedMessages))
-    ) {
-      return res.status(400).json({ error: 'Invalid branch request' });
-    }
-
-    const actorUserId = await resolveBranchActorUserId(req);
-    const sourceConversationId = String(
-      req.body.sourceConversationId || ''
-    ).trim();
-    const anchorMessageId = String(req.body.anchorMessageId || '').trim();
-    const requestedSeedMessages = Array.isArray(req.body.seedMessages)
-      ? req.body.seedMessages
-      : null;
-
-    if (!sourceConversationId || !actorUserId) {
-      return res
-        .status(400)
-        .json({ error: 'Missing sourceConversationId or session user' });
-    }
-
-    const conversationSnap = await db
-      .ref('conversations')
-      .child(sourceConversationId)
-      .once('value');
-    const sourceConversation = conversationSnap.val();
-
-    if (!sourceConversation || typeof sourceConversation !== 'object') {
-      return res.status(404).json({ error: 'Source conversation not found' });
-    }
-
-    if (String(sourceConversation.userId || '') !== actorUserId) {
-      return res.status(403).json({ error: 'Conversation ownership mismatch' });
-    }
-
-    const messagesSnap = await messagesRef
-      .orderByChild('conversationId')
-      .equalTo(sourceConversationId)
-      .once('value');
-
-    const rawMessages = messagesSnap.val() || {};
-    const messageEntries = Object.entries(rawMessages)
-      .map(([id, item]) => ({
-        id,
-        item: item && typeof item === 'object' ? item : {}
-      }))
-      .sort((a, b) => {
-        const aDate = String(a.item.createdAt || '');
-        const bDate = String(b.item.createdAt || '');
-        if (aDate && bDate && aDate !== bDate) {
-          return aDate.localeCompare(bDate);
-        }
-        return String(a.id).localeCompare(String(b.id));
-      });
-
-    const seedResolution = resolveBranchSeedPayload({
-      messageEntries,
-      anchorMessageId,
-      requestedSeedMessages
-    });
-
-    if (seedResolution.error === 'anchor_not_found') {
-      logBranchRouteEvent('warn', 'anchor_not_found', {
-        route: '/api/branches/from-message',
-        sourceConversationId,
-        anchorMessageId,
-        dbMessageCount: messageEntries.length,
-        requestedSeedCount: Array.isArray(requestedSeedMessages)
-          ? requestedSeedMessages.length
-          : 0
-      });
-      return res.status(404).json({ error: 'Anchor message not found' });
-    }
-
-    const seededMessages = seedResolution.seededMessages;
-    const resolvedAnchorMessageId = seedResolution.resolvedAnchorMessageId;
-
-    if (seedResolution.usedSeedFallback) {
-      logBranchRouteEvent('info', 'anchor_fallback_used', {
-        route: '/api/branches/from-message',
-        sourceConversationId,
-        anchorMessageId,
-        resolvedAnchorMessageId,
-        dbMessageCount: messageEntries.length,
-        seededMessageCount: seededMessages.length
-      });
-    }
-
-    const now = new Date().toISOString();
-    const branchConversationId = `c_branch_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
-    const branchRef = branchRecordsRef.push();
-    const branchId = branchRef.key;
-
-    if (!branchId) {
-      return res.status(500).json({ error: 'Failed to create branch id' });
-    }
-
-    await Promise.all([
-      branchRef.set({
-        userId: actorUserId,
-        sourceConversationId,
-        sourceAnchorMessageId: resolvedAnchorMessageId,
-        branchConversationId,
-        seedMessageCount: seededMessages.length,
-        status: 'active',
-        createdAt: now,
-        updatedAt: now
-      }),
-      branchSeedSnapshotsRef.child(branchId).set({
-        sourceConversationId,
-        sourceAnchorMessageId: resolvedAnchorMessageId,
-        seededAt: now,
-        messages: seededMessages
-      })
-    ]);
-
-    return res.status(201).json({
-      success: true,
-      branch: {
-        id: branchId,
-        sourceConversationId,
-        sourceAnchorMessageId: resolvedAnchorMessageId,
-        branchConversationId,
-        seedMessageCount: seededMessages.length,
-        createdAt: now,
-        status: 'active'
-      }
-    });
-  } catch (err) {
-    console.error('Erreur /api/branches/from-message:', err.message);
-    return res.status(500).json({ error: 'Branch creation failed' });
-  }
-});
-
-app.post('/api/branches/create-and-activate', requireUserAuth, async (req, res) => {
-  try {
-    if (
-      !req.body ||
-      typeof req.body !== 'object' ||
-      Array.isArray(req.body) ||
-      typeof req.body.sourceConversationId !== 'string' ||
-      (req.body.anchorMessageId !== undefined &&
-        typeof req.body.anchorMessageId !== 'string') ||
-      (req.body.seedMessages !== undefined &&
-        !Array.isArray(req.body.seedMessages)) ||
-      (req.body.flags !== undefined &&
-        (typeof req.body.flags !== 'object' ||
-          req.body.flags === null ||
-          Array.isArray(req.body.flags)))
-    ) {
-      return res.status(400).json({ error: 'Invalid branch request' });
-    }
-
-    const actorUserId = await resolveBranchActorUserId(req);
-    const sourceConversationId = String(
-      req.body.sourceConversationId || ''
-    ).trim();
-    const anchorMessageId = String(req.body.anchorMessageId || '').trim();
-    const requestedSeedMessages = Array.isArray(req.body.seedMessages)
-      ? req.body.seedMessages
-      : null;
-
-    if (!sourceConversationId || !actorUserId) {
-      return res
-        .status(400)
-        .json({ error: 'Missing sourceConversationId or session user' });
-    }
-
-    const requestedBranchMemory =
-      typeof req.body?.memory === 'string' && req.body.memory.trim()
-        ? normalizeMemory(req.body.memory, buildDefaultPromptRegistry())
-        : '';
-    const requestedBranchFlags =
-      req.body?.flags !== undefined
-        ? normalizeSessionFlags(req.body.flags)
-        : null;
-
-    const [conversationSnap, messagesSnap] = await Promise.all([
-      db.ref('conversations').child(sourceConversationId).once('value'),
-      messagesRef
-        .orderByChild('conversationId')
-        .equalTo(sourceConversationId)
-        .once('value')
-    ]);
-
-    const sourceConversation = conversationSnap.val();
-    if (!sourceConversation || typeof sourceConversation !== 'object') {
-      return res.status(404).json({ error: 'Source conversation not found' });
-    }
-
-    if (String(sourceConversation.userId || '') !== actorUserId) {
-      return res.status(403).json({ error: 'Conversation ownership mismatch' });
-    }
-
-    const rawMessages = messagesSnap.val() || {};
-    const messageEntries = Object.entries(rawMessages)
-      .map(([id, item]) => ({
-        id,
-        item: item && typeof item === 'object' ? item : {}
-      }))
-      .sort((a, b) => {
-        const aDate = String(a.item.createdAt || '');
-        const bDate = String(b.item.createdAt || '');
-        if (aDate && bDate && aDate !== bDate)
-          return aDate.localeCompare(bDate);
-        return String(a.id).localeCompare(String(b.id));
-      });
-
-    const seedResolution = resolveBranchSeedPayload({
-      messageEntries,
-      anchorMessageId,
-      requestedSeedMessages
-    });
-
-    if (seedResolution.error === 'anchor_not_found') {
-      logBranchRouteEvent('warn', 'anchor_not_found', {
-        route: '/api/branches/create-and-activate',
-        sourceConversationId,
-        anchorMessageId,
-        dbMessageCount: messageEntries.length,
-        requestedSeedCount: Array.isArray(requestedSeedMessages)
-          ? requestedSeedMessages.length
-          : 0
-      });
-      return res.status(404).json({ error: 'Anchor message not found' });
-    }
-
-    const seededMessages = seedResolution.seededMessages;
-    const resolvedAnchorMessageId = seedResolution.resolvedAnchorMessageId;
-
-    if (seedResolution.usedSeedFallback) {
-      logBranchRouteEvent('info', 'anchor_fallback_used', {
-        route: '/api/branches/create-and-activate',
-        sourceConversationId,
-        anchorMessageId,
-        resolvedAnchorMessageId,
-        dbMessageCount: messageEntries.length,
-        seededMessageCount: seededMessages.length
-      });
-    }
-
-    const now = new Date().toISOString();
-    const branchConversationId = `c_branch_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
-    const branchRef = branchRecordsRef.push();
-    const branchId = branchRef.key;
-
-    if (!branchId) {
-      return res.status(500).json({ error: 'Failed to create branch id' });
-    }
-
-    const sourceConversationTitle = String(
-      sourceConversation.title || ''
-    ).trim();
-
-    const lastUserMessage = [...seededMessages]
-      .reverse()
-      .find((m) => String(m?.role || '') === 'user');
-
-    await Promise.all([
-      branchRef.set({
-        userId: actorUserId,
-        sourceConversationId,
-        sourceAnchorMessageId: resolvedAnchorMessageId,
-        branchConversationId,
-        seedMessageCount: seededMessages.length,
-        status: 'active',
-        createdAt: now,
-        updatedAt: now,
-        activatedAt: now
-      }),
-      branchSeedSnapshotsRef.child(branchId).set({
-        sourceConversationId,
-        sourceAnchorMessageId: resolvedAnchorMessageId,
-        seededAt: now,
-        messages: seededMessages
-      }),
-      db
-        .ref('conversations')
-        .child(branchConversationId)
-        .set({
-          userId: actorUserId,
-          isBranch: true,
-          sourceConversationId,
-          createdAt: now,
-          updatedAt: now,
-          title:
-            sourceConversationTitle || `Branche de ${sourceConversationId}`,
-          titleLocked: false,
-          messageCount: seededMessages.filter(
-            (m) => String(m?.role || '') === 'user'
-          ).length,
-          lastUserMessage: lastUserMessage
-            ? String(lastUserMessage.content || '')
-            : '',
-          memory: requestedBranchMemory,
-          flags: requestedBranchFlags || normalizeSessionFlags({})
-        })
-    ]);
-
-    if (seededMessages.length > 0) {
-      await Promise.all(
-        seededMessages.map((message, index) => {
-          const timestampBase = Date.now();
-          return messagesRef.push({
-            role: String(message?.role || ''),
-            content: String(message?.content || ''),
-            timestamp: timestampBase + index,
-            userId: actorUserId,
-            conversationId: branchConversationId,
-            debug: Array.isArray(message?.debug) ? message.debug : [],
-            debugMeta:
-              message?.debugMeta && typeof message.debugMeta === 'object'
-                ? message.debugMeta
-                : null,
-            branchId,
-            sourceMessageId: typeof message?.id === 'string' ? message.id : null
-          });
-        })
-      );
-    }
-
-    return res.status(201).json({
-      success: true,
-      branch: {
-        id: branchId,
-        sourceConversationId,
-        sourceAnchorMessageId: resolvedAnchorMessageId,
-        branchConversationId,
-        seedMessageCount: seededMessages.length,
-        createdAt: now,
-        status: 'active',
-        activatedAt: now
-      },
-      memory: requestedBranchMemory,
-      flags: requestedBranchFlags !== null ? requestedBranchFlags : undefined
-    });
-  } catch (err) {
-    console.error('Erreur /api/branches/create-and-activate:', err.message);
-    return res.status(500).json({ error: 'Branch create-and-activate failed' });
-  }
-});
+    const body = req.body;
+    if (!body || Array.isArray(body) || !idValid(body.sourceConversationId) || !idValid(body.anchorMessageId) ||
+        (body.operationId !== undefined && !idValid(body.operationId)) ||
+        (body.seedMessages !== undefined && !Array.isArray(body.seedMessages)) ||
+        (body.memory !== undefined && typeof body.memory !== 'string') ||
+        (body.flags !== undefined && (!body.flags || typeof body.flags !== 'object' || Array.isArray(body.flags))))
+      return res.status(400).json({ code: 'copy_invalid_request' });
+    assertCopyMemoryShape(body.memoryState);
+    const result = await conversationCopies.branch({ userId: req.userSession.userId,
+      sourceId: body.sourceConversationId, anchorId: body.anchorMessageId, requested: body.seedMessages,
+      memory: typeof body.memory === 'string' ? normalizeMemory(body.memory, buildDefaultPromptRegistry()) : '',
+      flags: normalizeSessionFlags(body.flags || {}), memoryState: body.memoryState ? normalizeMemoryStateShape(body.memoryState, '', Date.now()) : null,
+      operationId: body.operationId, activate });
+    if (!await lifecycle.available(req.userSession.userId, result.destinationId)) return res.status(410).json({ code: 'lifecycle_object_retired' });
+    return res.status(result.replayed ? 200 : 201).json({ success: true, replayed: result.replayed,
+      branch: { ...result.branch, id: result.branchId }, memory: result.conversation.memory,
+      memoryState: result.conversation.memoryState, flags: result.conversation.flags });
+  } catch (error) { return copyError(res, error); }
+}
+app.post('/api/branches/from-message', requireUserAuth, (req, res) => createBranchFromRequest(req, res, false));
+app.post('/api/branches/create-and-activate', requireUserAuth, (req, res) => createBranchFromRequest(req, res, true));
 
 function sanitizeFeedbackContext(rawContext) {
   if (
@@ -5576,79 +5179,22 @@ app.post('/api/branches/feedback-snapshot', requireUserAuth, async (req, res) =>
         .json({ error: 'Missing userContent or botContent' });
     }
 
-    const now = new Date().toISOString();
-    const snapshotConversationId =
-      'c_fbsnap_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
-
-    // Create a non-private conversation to hold the snapshot
-    await db
-      .ref('conversations')
-      .child(snapshotConversationId)
-      .set({
-        userId,
-        createdAt: now,
-        updatedAt: now,
-        title: 'Partage feedback',
-        titleLocked: true,
-        messageCount: 2,
-        feedbackSnapshot: true,
-        isPrivate: false,
-        memory:
-          feedbackContext && typeof feedbackContext.memory === 'string'
-            ? feedbackContext.memory
-            : '',
-        flags:
-          feedbackContext &&
-          feedbackContext.flags &&
-          typeof feedbackContext.flags === 'object'
-            ? normalizeSessionFlags(feedbackContext.flags)
-            : normalizeSessionFlags({})
-      });
-
-    // Push user message then bot message
-    const timestampBase = Date.now();
-    const userMsgRef = await messagesRef.push({
-      role: 'user',
-      content: safeUserContent,
-      timestamp: timestampBase,
-      userId,
-      conversationId: snapshotConversationId,
-      feedbackSnapshot: true
+    const copyResult = await conversationCopies.feedback({
+      userId, operationId: req.body.operationId, payload: req.body,
+      record: { title: 'Partage feedback', titleLocked: true, messageCount: 2,
+        memory: feedbackContext?.memory || '', flags: normalizeSessionFlags(feedbackContext?.flags || {}) },
+      messages: [
+        { role: 'user', content: safeUserContent, feedbackSnapshot: true },
+        { role: 'assistant', content: safeBotContent, feedbackSnapshot: true,
+          debug: feedbackContext?.botDebug || [], debugMeta: feedbackContext?.botDebugMeta || null,
+          stateSnapshot: feedbackContext?.botStateSnapshot || null,
+          feedback: { type, comment: comment || null, adminShare, devShare: adminShare,
+            userId, context: feedbackContext } }
+      ]
     });
-
-    const botMsgRef = await messagesRef.push({
-      role: 'assistant',
-      content: safeBotContent,
-      timestamp: timestampBase + 1,
-      userId,
-      conversationId: snapshotConversationId,
-      feedbackSnapshot: true,
-      debug:
-        feedbackContext && Array.isArray(feedbackContext.botDebug)
-          ? feedbackContext.botDebug
-          : [],
-      debugMeta:
-        feedbackContext &&
-        feedbackContext.botDebugMeta &&
-        typeof feedbackContext.botDebugMeta === 'object'
-          ? feedbackContext.botDebugMeta
-          : null,
-      stateSnapshot:
-        feedbackContext &&
-        feedbackContext.botStateSnapshot &&
-        typeof feedbackContext.botStateSnapshot === 'object'
-          ? feedbackContext.botStateSnapshot
-          : null,
-      feedback: {
-        type,
-        comment: comment || null,
-        adminShare,
-        devShare: adminShare,
-        userId,
-        timestamp: Date.now(),
-        context: feedbackContext
-      }
-    });
+    const snapshotConversationId = copyResult.destinationId;
+    const userMsgRef = { key: copyResult.messageIds[0] }, botMsgRef = { key: copyResult.messageIds[1] };
+    if (!await lifecycle.available(userId, snapshotConversationId)) return res.status(410).json({ code: 'lifecycle_object_retired' });
 
     const effectiveMailsEnabled =
       mailsEnabled !== false &&
@@ -5659,6 +5205,7 @@ app.post('/api/branches/feedback-snapshot', requireUserAuth, async (req, res) =>
     );
 
     if (
+      !copyResult.replayed &&
       emailNotifier.enabled &&
       effectiveMailsEnabled &&
       adminVisitedSinceLastAlert &&
@@ -5676,7 +5223,8 @@ app.post('/api/branches/feedback-snapshot', requireUserAuth, async (req, res) =>
       userId
     });
 
-    return res.status(201).json({
+    return res.status(copyResult.replayed ? 200 : 201).json({
+      replayed: copyResult.replayed,
       success: true,
       snapshotConversationId,
       userMessageId: userMsgRef.key,
@@ -5684,196 +5232,27 @@ app.post('/api/branches/feedback-snapshot', requireUserAuth, async (req, res) =>
     });
   } catch (err) {
     console.error('Erreur /api/branches/feedback-snapshot:', err.message);
-    return res.status(500).json({ error: 'Feedback snapshot failed' });
+    return copyError(res, err);
   }
 });
 
 app.post('/api/branches/:id/activate', requireUserAuth, async (req, res) => {
   try {
-    const branchId = String(req.params?.id || '').trim();
-    const actorUserId = await resolveBranchActorUserId(req);
-
-    if (
-      req.body !== undefined &&
-      (typeof req.body !== 'object' ||
-        req.body === null ||
-        Array.isArray(req.body))
-    ) {
-      return res
-        .status(400)
-        .json({ error: 'Invalid branch activation payload' });
-    }
-
-    if (
-      req.body?.flags !== undefined &&
-      (typeof req.body.flags !== 'object' ||
-        req.body.flags === null ||
-        Array.isArray(req.body.flags))
-    ) {
-      return res.status(400).json({ error: 'Invalid branch flags payload' });
-    }
-
-    if (!branchId || !actorUserId) {
-      return res.status(400).json({ error: 'Invalid branch id' });
-    }
-
-    const requestedBranchMemory =
-      typeof req.body?.memory === 'string' && req.body.memory.trim()
-        ? normalizeMemory(req.body.memory, buildDefaultPromptRegistry())
-        : '';
-    const requestedBranchFlags =
-      req.body?.flags !== undefined
-        ? normalizeSessionFlags(req.body.flags)
-        : null;
-
-    const branchRef = branchRecordsRef.child(branchId);
-    const [branchSnap, seedSnap] = await Promise.all([
-      branchRef.once('value'),
-      branchSeedSnapshotsRef.child(branchId).once('value')
-    ]);
-
-    const branch = branchSnap.val();
-    const seed = seedSnap.val();
-
-    if (!branch || typeof branch !== 'object') {
-      return res.status(404).json({ error: 'Branch not found' });
-    }
-
-    if (String(branch.userId || '') !== actorUserId) {
-      return res.status(403).json({ error: 'Branch ownership mismatch' });
-    }
-
-    let seedMessages =
-      seed && typeof seed === 'object' && Array.isArray(seed.messages)
-        ? seed.messages
-        : null;
-
-    if (!Array.isArray(seedMessages)) {
-      seedMessages = [];
-      await branchSeedSnapshotsRef.child(branchId).set({
-        sourceConversationId: String(branch.sourceConversationId || ''),
-        sourceAnchorMessageId: String(branch.sourceAnchorMessageId || ''),
-        seededAt: new Date().toISOString(),
-        messages: seedMessages
-      });
-    }
-
-    const branchConversationId = String(
-      branch.branchConversationId || ''
-    ).trim();
-    if (!branchConversationId) {
-      return res.status(500).json({ error: 'Missing branch conversation id' });
-    }
-
-    const convRef = db.ref('conversations').child(branchConversationId);
-    const existingConvSnap = await convRef.once('value');
-    const existingConversation = existingConvSnap.val();
-
-    if (!existingConversation || typeof existingConversation !== 'object') {
-      let sourceConversationTitle = '';
-      const sourceConversationId = String(
-        branch.sourceConversationId || ''
-      ).trim();
-
-      if (sourceConversationId) {
-        const sourceConvSnap = await db
-          .ref('conversations')
-          .child(sourceConversationId)
-          .once('value');
-        const sourceConversation = sourceConvSnap.val();
-        if (sourceConversation && typeof sourceConversation === 'object') {
-          sourceConversationTitle = String(
-            sourceConversation.title || ''
-          ).trim();
-        }
-      }
-
-      const lastUserMessage = [...seedMessages]
-        .reverse()
-        .find((m) => String(m?.role || '') === 'user');
-      const now = new Date().toISOString();
-
-      await convRef.set({
-        userId: actorUserId,
-        isBranch: true,
-        sourceConversationId: String(branch.sourceConversationId || ''),
-        createdAt: now,
-        updatedAt: now,
-        title:
-          sourceConversationTitle ||
-          `Branche de ${String(branch.sourceConversationId || 'conversation')}`,
-        titleLocked: false,
-        messageCount: seedMessages.filter(
-          (m) => String(m?.role || '') === 'user'
-        ).length,
-        lastUserMessage: lastUserMessage
-          ? String(lastUserMessage.content || '')
-          : '',
-        memory: requestedBranchMemory,
-        flags: requestedBranchFlags || normalizeSessionFlags({})
-      });
-
-      // Seed all historical messages into the new conversation once.
-      await Promise.all(
-        seedMessages.map((message, index) => {
-          const timestampBase = Date.now();
-          return messagesRef.push({
-            role: String(message?.role || ''),
-            content: String(message?.content || ''),
-            timestamp: timestampBase + index,
-            userId: actorUserId,
-            conversationId: branchConversationId,
-            debug: Array.isArray(message?.debug) ? message.debug : [],
-            debugMeta:
-              message?.debugMeta && typeof message.debugMeta === 'object'
-                ? message.debugMeta
-                : null,
-            branchId,
-            sourceMessageId: typeof message?.id === 'string' ? message.id : null
-          });
-        })
-      );
-    }
-
-    const conversationStatePatch = {
-      updatedAt: new Date().toISOString()
-    };
-
-    if (requestedBranchMemory) {
-      conversationStatePatch.memory = requestedBranchMemory;
-    }
-
-    if (requestedBranchFlags !== null) {
-      conversationStatePatch.flags = requestedBranchFlags;
-    }
-
-    await convRef.update(conversationStatePatch);
-
-    const activatedAt = new Date().toISOString();
-    await branchRef.update({
-      status: 'active',
-      activatedAt,
-      updatedAt: activatedAt
-    });
-
-    return res.json({
-      success: true,
-      branch: {
-        id: branchId,
-        branchConversationId,
-        activatedAt,
-        status: 'active'
-      },
-      memory: requestedBranchMemory,
-      flags: requestedBranchFlags !== null ? requestedBranchFlags : undefined
-    });
-  } catch (err) {
-    console.error('Erreur /api/branches/:id/activate:', err.message);
-    return res.status(500).json({ error: 'Branch activation failed' });
-  }
+    const body = req.body || {};
+    if (Array.isArray(body) || (body.memory !== undefined && typeof body.memory !== 'string') ||
+        (body.flags !== undefined && (!body.flags || typeof body.flags !== 'object' || Array.isArray(body.flags))))
+      return res.status(400).json({ code: 'copy_invalid_request' });
+    assertCopyMemoryShape(body.memoryState);
+    const result = await conversationCopies.activate({ userId: req.userSession.userId, branchId: req.params.id,
+      memory: typeof body.memory === 'string' ? normalizeMemory(body.memory, buildDefaultPromptRegistry()) : undefined,
+      flags: body.flags === undefined ? undefined : normalizeSessionFlags(body.flags),
+      memoryState: body.memoryState ? normalizeMemoryStateShape(body.memoryState, '', Date.now()) : undefined });
+    if (!await lifecycle.available(req.userSession.userId, result.branch.branchConversationId)) return res.status(410).json({ code: 'lifecycle_object_retired' });
+    return res.json({ success: true, replayed: result.replayed, branch: { ...result.branch, id: req.params.id },
+      memory: result.conversation.memory, memoryState: result.conversation.memoryState, flags: result.conversation.flags });
+  } catch (error) { return copyError(res, error); }
 });
 
-// Fetch a single branch record + seed messages (for cross-device resume).
 app.get('/api/branches/:id', requireUserAuth, async (req, res) => {
   try {
     const branchId = String(req.params?.id || '').trim();
@@ -6046,12 +5425,12 @@ async function resolveAuthoritativeSessionMemoryForIntersession({
       return { memory: '', reason: 'conversation_unavailable' };
     }
 
-    return resolveConversationMemoryForIntersession({
+    return { generation: lifecycle.revision(convData, 'm2ContentGeneration'), ...resolveConversationMemoryForIntersession({
       accountMemoryUpdatedAt: userData?.intersessionMemoryUpdatedAt,
       conversationMemory,
       conversationMemoryBaseUpdatedAt:
         convData.intersessionMemoryBaseUpdatedAt
-    });
+    }) };
   } catch {
     return { memory: '', reason: 'conversation_lookup_failed' };
   }
@@ -6120,15 +5499,16 @@ app.put('/api/intersession-memory', requireUserAuth, async (req, res) => {
       buildDefaultPromptRegistry()
     );
 
-    await usersRef.child(session.userId).update({
+    await lifecycle.commitMemory(session.userId, userData, {
       intersessionMemorySource: memorySource,
       intersessionMemoryUpdatedAt: new Date().toISOString(),
       intersessionCompactOutdated: true
-    });
+    }, { conversationId: requestedConversationId, generation: sessionMemoryResolution.generation });
 
     return res.json({ success: true });
   } catch (err) {
     console.error('Erreur PUT /api/intersession-memory:', err.message);
+    if (['memory_superseded', 'conversation_replaced'].includes(err.code)) return res.status(409).json({ code: err.code, saved: false });
     if (
       err &&
       (err.code === 'insufficient_quota' || err.type === 'insufficient_quota')
@@ -6165,43 +5545,21 @@ app.patch(
       const newSourceMemory = String(req.body.memory || '').slice(0, 6000);
       const now = new Date().toISOString();
 
-      // Archive current version before overwriting
-      const snap = await usersRef.child(session.userId).once('value');
-      const userData = snap.val() || {};
-      const currentMemorySource = normalizeIntersessionSourceFromUserData(
-        userData,
-        buildDefaultPromptRegistry()
-      );
-      const currentMemoryCompact = currentMemorySource;
-      const currentUpdatedAt = userData.intersessionMemoryUpdatedAt;
-      const currentHistory = Array.isArray(userData.intersessionMemoryHistory)
-        ? userData.intersessionMemoryHistory
-        : [];
-
-      if (
-        typeof currentMemorySource === 'string' &&
-        currentMemorySource.trim()
-      ) {
-        const newEntry = {
-          memorySource: currentMemorySource,
-          memoryCompact: currentMemoryCompact,
-          savedAt: currentUpdatedAt || now
+      const committed = await usersRef.child(session.userId).transaction((current) => {
+        if (!current) return undefined;
+        const currentSource = normalizeIntersessionSourceFromUserData(current, buildDefaultPromptRegistry());
+        const history = Array.isArray(current.intersessionMemoryHistory) ? current.intersessionMemoryHistory : [];
+        return { ...current,
+          intersessionMemoryHistory: currentSource.trim() ? [{ memorySource: currentSource,
+            memoryCompact: currentSource, savedAt: current.intersessionMemoryUpdatedAt || now }, ...history].slice(0, 3) : history,
+          intersessionMemorySource: newSourceMemory.trim(),
+          intersessionMemoryUpdatedAt: now,
+          intersessionRefreshForced: true,
+          intersessionCompactOutdated: true,
+          m2MemoryRevision: lifecycle.revision(current, 'm2MemoryRevision') + 1
         };
-        const updatedHistory = [newEntry, ...currentHistory].slice(0, 3);
-        await usersRef
-          .child(session.userId)
-          .child('intersessionMemoryHistory')
-          .set(updatedHistory);
-      }
-
-      const nextMemorySource = newSourceMemory.trim();
-
-      await usersRef.child(session.userId).update({
-        intersessionMemorySource: nextMemorySource,
-        intersessionMemoryUpdatedAt: now,
-        intersessionRefreshForced: true,
-        intersessionCompactOutdated: true
       });
+      if (!committed.committed) return res.status(410).json({ code: 'lifecycle_user_retired' });
 
       return res.json({ success: true });
     } catch (err) {
@@ -6220,7 +5578,7 @@ app.patch(
 // Responds 200 immediately; consolidation runs async in the background.
 // Race-condition guard: ignored if the beacon's timestamp is older than the
 // intersessionMemoryUpdatedAt already stored (e.g. explicit close arrived first).
-app.post('/api/session/beacon', async (req, res) => {
+app.post('/api/session/beacon', requireUserAuth, async (req, res) => {
   // Respond immediately - sendBeacon ignores the body anyway.
   res.status(200).json({ ok: true });
 
@@ -6237,7 +5595,8 @@ app.post('/api/session/beacon', async (req, res) => {
 
     const now = new Date().toISOString();
 
-    // Update lastActiveAt unconditionally - lightweight, no LLM.
+    if(req.body?.isPrivateConversation===true)return;
+    // Public activity only; private activity is never persisted.
     await usersRef.child(session.userId).update({ lastActiveAt: now });
 
     // Race-condition guard: skip consolidation if a more recent update already exists.
@@ -6282,11 +5641,11 @@ app.post('/api/session/beacon', async (req, res) => {
       buildDefaultPromptRegistry()
     );
 
-    await usersRef.child(session.userId).update({
+    await lifecycle.commitMemory(session.userId, userData, {
       intersessionMemorySource: consolidated,
       intersessionMemoryUpdatedAt: now,
       intersessionCompactOutdated: true
-    });
+    }, { conversationId: requestedConversationId, generation: sessionMemoryResolution.generation });
   } catch (err) {
     // Background processing - errors are non-critical, log and continue.
     console.error('Erreur /api/session/beacon (background):', err.message);
@@ -6529,190 +5888,193 @@ app.get('/api/admin/support-cases', requireAdminAuth, async (req, res) => {
   }
 });
 
-app.get(
-  '/api/facilitation/users',
-  requireFacilitationAdminAuth,
-  async (_req, res) => {
-    try {
-      const model = await buildFacilitationDirectoryModel();
-
-      const users = model.users.map((item) => ({
-        userRef: item.userRef,
-        displayName: item.displayName,
-        visibleConversationCount: item.visibleConversationCount,
-        lastInteractionAt: item.lastInteractionAt,
-        hasPrivateInteractionSinceLastVisible:
-          item.hasPrivateInteractionSinceLastVisible,
-        lastPrivateInteractionAt: item.lastPrivateInteractionAt
-      }));
-
-      return res.json({ users, count: users.length });
-    } catch (err) {
-      console.error('Erreur /api/facilitation/users:', err.message);
-      return res
-        .status(500)
-        .json({ error: 'Facilitation users lookup failed' });
-    }
+async function requirePractitioner(req, res, next) {
+  const actor = await getAdminSession(req);
+  if (!actor?.roles.includes('practitioner')) {
+    await professionalAccess.journal({
+      actor,
+      action: 'practitioner_access',
+      reason: 'practitioner_required',
+      result: 'denied',
+      requestId: req.requestId,
+    });
+    return res
+      .status(actor ? 403 : 401)
+      .json({ error: 'Practitioner authorization required' });
   }
-);
-
+  req.professionalSession = actor;
+  next();
+}
+app.get('/api/facilitation/users', requirePractitioner, async (req, res) => {
+  const rows = await professionalAccess.directory(req.professionalSession);
+  await professionalAccess.journal({
+    actor: req.professionalSession,
+    role: 'practitioner',
+    action: 'directory',
+    reason: 'active_assignments',
+    result: 'allowed',
+    requestId: req.requestId,
+  });
+  return res.json({
+    users: rows.map((x) => ({ userRef: x.userRef })),
+    count: rows.length,
+  });
+});
 app.get(
   '/api/facilitation/users/:userRef/conversations',
-  requireFacilitationAdminAuth,
+  requirePractitioner,
   async (req, res) => {
-    try {
-      const userRef = String(req.params.userRef || '').trim();
-      if (!userRef) {
-        return res.status(400).json({ error: 'userRef requis' });
-      }
-
-      const model = await buildFacilitationDirectoryModel();
-      const user = model.userByRef.get(userRef);
-      if (!user) {
-        return res.status(404).json({ error: 'Utilisateur introuvable' });
-      }
-
-      const conversations = user.conversationIds
-        .map((conversationId) => model.conversationById.get(conversationId))
-        .filter((item) => item && item.isPrivate !== true)
-        .sort((a, b) => {
-          const aMs = Math.max(a.lastUserMessageMs, a.updatedAtMs);
-          const bMs = Math.max(b.lastUserMessageMs, b.updatedAtMs);
-          return bMs - aMs;
-        })
-        .map((item) => ({
-          conversationRef: item.ref,
-          title: item.displayTitle,
-          messageCount: item.messageCount,
-          lastInteractionAt: toIsoOrNullFromMs(
-            Math.max(item.lastUserMessageMs, item.updatedAtMs)
-          )
-        }));
-
-      return res.json({
-        user: {
-          userRef: user.userRef,
-          displayName: user.displayName,
-          hasPrivateInteractionSinceLastVisible:
-            user.hasPrivateInteractionSinceLastVisible,
-          lastPrivateInteractionAt: user.lastPrivateInteractionAt
-        },
-        conversations,
-        count: conversations.length
+    const user = await professionalAccess.resolveUser(
+      req.professionalSession,
+      req.params.userRef,
+    );
+    if (!user) {
+      await professionalAccess.journal({
+        actor: req.professionalSession,
+        action: 'conversation_list',
+        reason: 'grant_required',
+        result: 'denied',
+        requestId: req.requestId,
       });
-    } catch (err) {
-      console.error(
-        'Erreur /api/facilitation/users/:userRef/conversations:',
-        err.message
-      );
-      return res
-        .status(500)
-        .json({ error: 'Facilitation conversations lookup failed' });
+      return res.status(404).json({ error: 'Unavailable' });
     }
-  }
+    const rows = await professionalAccess.conversations(
+      req.professionalSession,
+      user.userId,
+    );
+    const visible = [];
+    for (const c of rows)
+      if (
+        await professionalAccess.content(
+          req.professionalSession,
+          user.userId,
+          c,
+          'conversation_list',
+          req.requestId,
+        )
+      )
+        visible.push({
+          conversationRef: professionalAccess.reference('conversation', c.id),
+          title: c.title || null,
+          lastInteractionAt: c.updatedAt || null,
+        });
+    return res.json({
+      user: { userRef: user.userRef },
+      conversations: visible,
+      count: visible.length,
+    });
+  },
 );
-
 app.get(
   '/api/facilitation/conversations/:conversationRef/messages',
-  requireFacilitationAdminAuth,
+  requirePractitioner,
   async (req, res) => {
-    try {
-      const conversationRef = String(req.params.conversationRef || '').trim();
-      if (!conversationRef) {
-        return res.status(400).json({ error: 'conversationRef requis' });
-      }
-
-      const model = await buildFacilitationDirectoryModel();
-      const conversation = model.conversationByRef.get(conversationRef);
-      if (!conversation || conversation.isPrivate === true) {
-        return res.status(404).json({ error: 'Conversation introuvable' });
-      }
-
-      const [messagesSnap] = await Promise.all([
-        messagesRef
+    const actor = req.professionalSession;
+    let conversation = null,
+      owner = null;
+    for (const user of await professionalAccess.directory(actor))
+      for (const c of await professionalAccess.conversations(
+        actor,
+        user.userId,
+      ))
+        if (
+          professionalAccess.reference('conversation', c.id) ===
+          req.params.conversationRef
+        ) {
+          conversation = c;
+          owner = user;
+        }
+    if (
+      !conversation ||
+      (req.query.userRef && req.query.userRef !== owner.userRef)
+    ) {
+      await professionalAccess.journal({
+        actor,
+        action: 'messages',
+        reason: 'object_reference_mismatch',
+        result: 'denied',
+        requestId: req.requestId,
+      });
+      return res.status(404).json({ error: 'Unavailable' });
+    }
+    if (
+      !(await professionalAccess.content(
+        actor,
+        owner.userId,
+        conversation,
+        'messages',
+        req.requestId,
+      ))
+    )
+      return res.status(403).json({ error: 'Unavailable' });
+    const raw =
+      (
+        await messagesRef
           .orderByChild('conversationId')
           .equalTo(conversation.id)
           .once('value')
-      ]);
-
-      const messagesRaw = messagesSnap.val() || {};
-      const messages = Object.entries(messagesRaw)
-        .map(([id, value]) => {
-          const safeValue = value && typeof value === 'object' ? value : {};
-          return {
-            id,
-            role: String(safeValue.role || ''),
-            content:
-              typeof safeValue.content === 'string' ? safeValue.content : '',
-            timestamp: safeValue.timestamp || null,
-            userId: safeValue.userId || null,
-            debugMeta:
-              safeValue.debugMeta && typeof safeValue.debugMeta === 'object'
-                ? safeValue.debugMeta
-                : null
-          };
-        })
-        .sort(
-          (a, b) => parseTimestampMs(a.timestamp) - parseTimestampMs(b.timestamp)
-        );
-
-      return res.json({
-        userRef: buildFacilitationRef('user', conversation.userId),
-        conversation: {
-          conversationRef: conversation.ref,
-          title: conversation.displayTitle
-        },
-        messages
-      });
-    } catch (err) {
-      console.error(
-        'Erreur /api/facilitation/conversations/:conversationRef/messages:',
-        err.message
+      ).val() || {};
+    const messages = Object.values(raw)
+      .filter((m) => m.userId === owner.userId && m.isPrivate !== true)
+      .map(professionalAccess.projectMessage)
+      .sort(
+        (a, b) => parseTimestampMs(a.timestamp) - parseTimestampMs(b.timestamp),
       );
-      return res.status(500).json({ error: 'Facilitation messages lookup failed' });
-    }
-  }
+    if (
+      !(await professionalAccess.content(
+        actor,
+        owner.userId,
+        conversation,
+        'messages',
+        req.requestId,
+      ))
+    )
+      return res.status(403).json({ error: 'Unavailable' });
+    return res.json({
+      userRef: owner.userRef,
+      conversation: {
+        conversationRef: req.params.conversationRef,
+        title: conversation.title || null,
+      },
+      messages,
+    });
+  },
 );
-
 app.get(
   '/api/facilitation/intersession-memory/:userRef',
-  requireFacilitationAdminAuth,
+  requirePractitioner,
   async (req, res) => {
-    try {
-      const userRef = String(req.params.userRef || '').trim();
-      if (!userRef) {
-        return res.status(400).json({ error: 'userRef requis' });
-      }
-
-      const model = await buildFacilitationDirectoryModel();
-      const user = model.userByRef.get(userRef);
-      if (!user) {
-        return res.status(404).json({ error: 'Utilisateur introuvable' });
-      }
-
-      const snap = await usersRef.child(user.userId).once('value');
-      const userData = snap.val() || {};
-      const memorySource = normalizeIntersessionSourceFromUserData(
-        userData,
-        buildDefaultPromptRegistry()
-      );
-      const memoryCompact = memorySource;
-
-      return res.json({
-        memory: memorySource,
-        memorySource,
-        memoryCompact
-      });
-    } catch (err) {
-      console.error(
-        'Erreur /api/facilitation/intersession-memory/:userRef:',
-        err.message
-      );
-      return res
-        .status(500)
-        .json({ error: 'Lecture mémoire inter-sessions échouée' });
-    }
-  }
+    const actor = req.professionalSession,
+      user = await professionalAccess.resolveUser(actor, req.params.userRef);
+    if (
+      !user ||
+      !(await professionalAccess.content(
+        actor,
+        user.userId,
+        null,
+        'summary',
+        req.requestId,
+      ))
+    )
+      return res.status(403).json({ error: 'Unavailable' });
+    const raw = (await usersRef.child(user.userId).once('value')).val() || {};
+    if (
+      !(await professionalAccess.content(
+        actor,
+        user.userId,
+        null,
+        'summary',
+        req.requestId,
+      ))
+    )
+      return res.status(403).json({ error: 'Unavailable' });
+    return res.json({
+      memory: normalizeIntersessionSourceFromUserData(
+        raw,
+        buildDefaultPromptRegistry(),
+      ),
+    });
+  },
 );
 
 // Route to manually set the title of a conversation and lock it.
@@ -6876,7 +6238,8 @@ app.get('/api/admin/conversations', requireAdminAuth, async (req, res) => {
             (value.lastUserMessage
               ? value.lastUserMessage.slice(0, 40)
               : '(sans titre)'),
-          messageCount: value.messageCount || 0
+          messageCount: value.messageCount || 0,
+          copyVersion: lifecycle.revision(value, 'm2CopyVersion')
         };
       });
 
@@ -6975,47 +6338,8 @@ app.delete(
         return res.status(404).json({ error: 'Conversation introuvable' });
       }
 
-      const messagesSnap = await messagesRef
-        .orderByChild('conversationId')
-        .equalTo(conversationId)
-        .once('value');
-
-      const messageIds = Object.keys(messagesSnap.val() || {});
-
-      const branchSnap = await branchRecordsRef.once('value');
-      const branches = branchSnap.val() || {};
-      const relatedBranchIds = Object.entries(branches)
-        .filter(([, value]) => {
-          const sourceConversationId = String(
-            value?.sourceConversationId || ''
-          ).trim();
-          const branchConversationId = String(
-            value?.branchConversationId || ''
-          ).trim();
-          return (
-            sourceConversationId === conversationId ||
-            branchConversationId === conversationId
-          );
-        })
-        .map(([id]) => id);
-
-      await Promise.all([
-        convRef.remove(),
-        ...messageIds.map((messageId) => messagesRef.child(messageId).remove()),
-        ...relatedBranchIds.map((branchId) =>
-          branchRecordsRef.child(branchId).remove()
-        ),
-        ...relatedBranchIds.map((branchId) =>
-          branchSeedSnapshotsRef.child(branchId).remove()
-        )
-      ]);
-
-      return res.json({
-        success: true,
-        deletedConversationId: conversationId,
-        deletedMessageCount: messageIds.length,
-        deletedBranchCount: relatedBranchIds.length
-      });
+      const removedConversationIds = await lifecycle.removeConversation(existing.userId, conversationId);
+      return res.json({ success: true, deletedConversationId: conversationId, removedConversationIds });
     } catch (err) {
       console.error('Erreur DELETE /api/admin/conversations/:id:', err.message);
       return res.status(500).json({ error: 'Conversation delete failed' });
@@ -7125,16 +6449,24 @@ app.post(
           : null;
 
       const conversationId = String(safeConversation?.id || '').trim();
-      const userId =
-        String(safeConversation?.userId || '').trim() || 'u_admin_replay';
+      const claimedUserId=String(safeConversation?.userId||'').trim();
 
-      if (!conversationId) {
+      if (!idValid(conversationId)||!idValid(safeConversation?.sourceConversationId)) {
         return res.status(400).json({ error: 'Conversation invalide' });
       }
+      const source=(await db.ref('conversations').child(safeConversation.sourceConversationId).once('value')).val();
+      const userId=source?.userId;
+      const destination=(await db.ref('conversations').child(conversationId).once('value')).val();
+      if(!idValid(userId)||(claimedUserId&&claimedUserId!==userId)||source.isPrivate===true||source.deletedAt||
+        (destination&&(destination.userId!==userId||destination.isPrivate===true||destination.deletedAt)))
+        return res.status(403).json({error:'Replay ownership proof required'});
 
       const rawMessages = Array.isArray(safeConversation?.messages)
         ? safeConversation.messages
         : [];
+      if (rawMessages.some((m) => (m?.userId && m.userId !== userId) || (m?.conversationId && ![conversationId, safeConversation.sourceConversationId].includes(m.conversationId)))) return res.status(403).json({ code: 'copy_seed_owner_mismatch' });
+      assertCopyMemoryShape(safeConversation.memoryState);
+      for (const message of rawMessages) assertCopyMemoryShape(message?.stateSnapshot?.memoryState);
       const sanitizedMessages = rawMessages
         .map((entry, index) => {
           const safeEntry =
@@ -7155,7 +6487,7 @@ app.post(
           const timestamp =
             Number.isFinite(timestampCandidate) && timestampCandidate > 0
               ? timestampCandidate
-              : Date.now() + index;
+              : index + 1;
           const debugMeta =
             safeEntry?.debugMeta &&
             typeof safeEntry.debugMeta === 'object' &&
@@ -7174,6 +6506,7 @@ app.post(
                           buildDefaultPromptRegistry()
                         )
                       : '',
+                  memoryState: safeEntry.stateSnapshot.memoryState ? normalizeMemoryStateShape(safeEntry.stateSnapshot.memoryState, '', Date.now()) : null,
                   flags: normalizeSessionFlags(
                     safeEntry.stateSnapshot.flags || {}
                   )
@@ -7191,22 +6524,11 @@ app.post(
         })
         .filter(Boolean);
 
-      if (sanitizedMessages.length === 0) {
+      if (sanitizedMessages.length === 0 || sanitizedMessages.length !== rawMessages.length) {
         return res
           .status(400)
           .json({ error: 'Aucun message valide a importer' });
       }
-
-      const convRef = db.ref('conversations').child(conversationId);
-      const existingMsgsSnap = await messagesRef
-        .orderByChild('conversationId')
-        .equalTo(conversationId)
-        .once('value');
-      const deleteOps = [];
-      existingMsgsSnap.forEach((child) => {
-        deleteOps.push(child.ref.remove());
-      });
-      await Promise.all(deleteOps);
 
       const normalizedMemory = normalizeMemory(
         typeof safeConversation?.memory === 'string'
@@ -7231,55 +6553,30 @@ app.post(
         lastUserMessage?.content?.slice(0, 60) ||
         firstUserMessage?.content?.slice(0, 60) ||
         'Conversation sans titre';
-      const updatedAtCandidate = Number(safeConversation?.updatedAt || 0);
-      const updatedAtIso =
-        Number.isFinite(updatedAtCandidate) && updatedAtCandidate > 0
-          ? new Date(updatedAtCandidate).toISOString()
-          : new Date().toISOString();
-
-      await convRef.set({
-        userId,
-        title: rawTitle || fallbackTitle,
-        titleLocked: false,
-        messageCount: sanitizedMessages.filter((item) => item.role === 'user')
-          .length,
-        lastUserMessage: lastUserMessage?.content || '',
-        memory: normalizedMemory,
-        flags: normalizedFlags,
-        adminReplaySourceConversationId:
-          String(safeConversation?.sourceConversationId || '').trim() || null,
-        adminReplayAnchorMessageId:
-          String(safeConversation?.anchorMessageId || '').trim() || null,
-        createdAt: updatedAtIso,
-        updatedAt: updatedAtIso
+      const result = await conversationCopies.replay({
+        userId, sourceId: safeConversation.sourceConversationId, destinationId: conversationId,
+        anchorId: safeConversation.anchorMessageId, operationId: req.body.operationId,
+        intent: req.body.writeIntent, expectedVersion: req.body.expectedVersion,
+        record: { title: rawTitle || fallbackTitle, titleLocked: false,
+          messageCount: sanitizedMessages.filter((item) => item.role === 'user').length,
+          lastUserMessage: lastUserMessage?.content || '', memory: normalizedMemory,
+          memoryState: safeConversation.memoryState ? normalizeMemoryStateShape(safeConversation.memoryState, '', Date.now()) : null,
+          flags: normalizedFlags },
+        messages: sanitizedMessages
       });
+      if (!await lifecycle.available(userId, conversationId)) return res.status(410).json({ code: 'lifecycle_object_retired' });
+      return res.json({ success: true, conversationId, messageIds: result.messageIds,
+        replayed: result.replayed, copyVersion: result.conversation.m2CopyVersion,
+        fidelity: 'admin_supplied_reconstruction',
+        conversation: { memory: result.conversation.memory, memoryState: result.conversation.memoryState, flags: result.conversation.flags },
+        messages: result.currentMessages });
 
-      const pushedMessageIds = [];
-      for (const message of sanitizedMessages) {
-        const pushRef = await messagesRef.push({
-          role: message.role,
-          content: message.content,
-          timestamp: message.timestamp,
-          userId,
-          conversationId,
-          debug: message.debug,
-          debugMeta: message.debugMeta,
-          stateSnapshot: message.stateSnapshot
-        });
-        pushedMessageIds.push(pushRef.key);
-      }
-
-      return res.json({
-        success: true,
-        conversationId,
-        messageIds: pushedMessageIds
-      });
     } catch (err) {
       console.error(
         'Erreur /api/admin/conversations/import-replay:',
         err.message
       );
-      return res.status(500).json({ error: 'Admin replay import failed' });
+      return copyError(res, err);
     }
   }
 );
@@ -7458,10 +6755,10 @@ function parseChatRequest(req) {
       : null;
   const recentHistory = trimHistory(req.body?.recentHistory);
   const conversationBranchHistory = normalizeConversationBranchHistory(
-    req.body?.conversationBranchHistory
+    req.body?.conversationBranchHistory,
   );
   const mailsEnabled = req.body?.mailsEnabled !== false;
-  const logsEnabled = req.body?.logsEnabled === true;
+  const logsEnabled = false; // Client cannot enable sensitive diagnostics.
   const adminUiActive = req.body?.adminUiActive === true;
   const titleDenyList = Array.isArray(req.body?.titleDenyList)
     ? req.body.titleDenyList
@@ -7473,7 +6770,9 @@ function parseChatRequest(req) {
   return {
     message,
     isEdited,
-    requestId,
+    requestId: requestId
+      ? operationKey(userId, requestId)
+      : buildRequestId('chat'),
     conversationId,
     isPrivateConversation,
     userId,
@@ -7483,7 +6782,7 @@ function parseChatRequest(req) {
     titleDenyList,
     mailsEnabled,
     logsEnabled,
-    adminUiActive
+    adminUiActive,
   };
 }
 
@@ -7526,10 +6825,12 @@ function validateChatRequestShape(body = {}) {
   return [];
 }
 
+function operationKey(actor,id) {
+  return crypto.createHmac('sha256',USER_SESSION_SIGNING_SECRET).update(JSON.stringify([actor,id])).digest('hex');
+}
 const activeChatRequests = new Map();
 const CHAT_REQUEST_STALE_TTL_MS = 15 * 60 * 1000;
 const activeChatProgressStreams = new Map(); // requestId -> Set(response)
-const privateConversationMemoryCache = new Map(); // conversationId -> { memory, memoryState, updatedAt }
 const conversationMemorySyncLocks = new Map(); // conversationId -> { promise, startedAt }
 const MEMORY_SYNC_GATE_TIMEOUT_MS = 2000;
 const conversationRelanceSyncLocks = new Map(); // conversationId -> { promise, startedAt, targetTurnNumber }
@@ -7564,7 +6865,7 @@ function trackConversationMemorySync(conversationId, promiseLike) {
   }
 
   let trackedPromise = null;
-  trackedPromise = Promise.resolve(promiseLike)
+  trackedPromise = Promise.allSettled([conversationMemorySyncLocks.get(safeConversationId)?.promise, promiseLike])
     .catch(() => {
       // Non-blocking safeguard: background memory sync failures must not break future requests.
     })
@@ -7863,12 +7164,13 @@ function closeChatProgressStreams(requestId) {
   activeChatProgressStreams.delete(safeId);
 }
 
-function registerActiveChatRequest(requestId, userId) {
+function registerActiveChatRequest(requestId, userId,lease=null) {
   const safeId = String(requestId || '').trim();
   if (!safeId) return;
 
   activeChatRequests.set(safeId, {
     userId: String(userId || '').trim(),
+    lease,
     canceled: false,
     updatedAt: Date.now(),
     lastProgressStep: null
@@ -7905,9 +7207,10 @@ function isActiveChatRequestCanceled(requestId) {
   return entry.canceled === true;
 }
 
-function finalizeActiveChatRequest(requestId) {
+function finalizeActiveChatRequest(requestId,lease=null) {
   const safeId = String(requestId || '').trim();
   if (!safeId) return;
+  if(lease && activeChatRequests.get(safeId)?.lease!==lease)return;
   activeChatRequests.delete(safeId);
   closeChatProgressStreams(safeId);
 }
@@ -7923,29 +7226,25 @@ function throwIfChatRequestCanceled(requestId) {
 setInterval(() => {
   const cutoff = Date.now() - CHAT_REQUEST_STALE_TTL_MS;
   for (const [requestId, entry] of activeChatRequests.entries()) {
-    if (!entry || Number(entry.updatedAt || 0) < cutoff) {
+    if (!entry || (!entry.lease && Number(entry.updatedAt || 0) < cutoff)) {
       finalizeActiveChatRequest(requestId);
     }
   }
 }, CHAT_REQUEST_STALE_TTL_MS);
 
-app.post('/chat/cancel', requireUserAuth, (req, res) => {
-  const requestId =
-    typeof req.body?.requestId === 'string' ? req.body.requestId.trim() : '';
-  const userId = String(req.userSession?.userId || '').trim();
-
-  if (!requestId) {
-    return res.status(400).json({ error: 'Missing requestId' });
-  }
-
-  const canceled = cancelActiveChatRequest(requestId, userId);
-  if (canceled) {
-    publishChatProgressTerminal(requestId, 'canceled');
-  }
-  return res.json({ success: true, requestId, canceled });
+app.post('/chat/cancel', requireUserAuth, async (req, res) => {
+  const requestId = req.body?.requestId, userId = req.userSession.userId;
+  if (!idValid(requestId)) return res.status(400).json({ code: 'chat_request_invalid' });
+  let canceled = cancelActiveChatRequest(operationKey(userId, requestId), userId);
+  try {
+    if (req.body.conversationId && req.body.isPrivateConversation !== true)
+      canceled = await lifecycle.cancelTurn(userId, req.body.conversationId, requestId) || canceled;
+    if (canceled) publishChatProgressTerminal(operationKey(userId, requestId), 'canceled');
+    return res.json({ success: true, requestId, canceled });
+  } catch (error) { return res.status(409).json({ code: error.code || 'chat_cancel_uncertain', canceled }); }
 });
 
-app.post('/chat/stream/interrupted', requireUserAuth, async (req, res) => {
+app.post('/chat/stream/interrupted', (req, res, next) => appConfig.enableChatStreaming === true ? next() : res.status(405).json({code:'streaming_disabled'}), requireUserAuth, async (req, res) => {
   const conversationId =
     typeof req.body?.conversationId === 'string'
       ? req.body.conversationId.trim()
@@ -7976,48 +7275,37 @@ app.post('/chat/stream/interrupted', requireUserAuth, async (req, res) => {
   }
 
   try {
-    const pushedRef = await messagesRef.push({
-      role: 'assistant',
-      content: isEdited ? normalizedPartial + '\n[MODIFIÉ]' : normalizedPartial,
-      timestamp: Date.now(),
-      userId,
-      conversationId,
-      streamInterrupted: true,
-      requestId: requestId || null
+    if (!idValid(requestId)) return res.status(400).json({ code: 'chat_request_invalid' });
+    const result = await lifecycle.interruptTurn(userId, conversationId, requestId, {
+      role: 'assistant', content: isEdited ? normalizedPartial + '\n[MODIFIÉ]' : normalizedPartial,
+      timestamp: Date.now(), requestId
     });
-
-    const convRef = db.ref('conversations').child(conversationId);
-    await convRef.update({
-      updatedAt: new Date().toISOString()
-    });
-
-    return res.json({
-      success: true,
-      messageId: pushedRef.key || null,
-      conversationId
-    });
+    cancelActiveChatRequest(operationKey(userId, requestId), userId);
+    return res.json({ success: true, conversationId, ...result });
   } catch (err) {
     console.error(
       '[STREAM_INTERRUPTED_PERSIST][FAILED]',
       err && err.message ? err.message : String(err)
     );
     return res
-      .status(500)
-      .json({ error: 'Failed to persist interrupted stream' });
+      .status(err.code?.startsWith('lifecycle_') ? 410 : err.code === 'chat_request_conflict' ? 409 : 503)
+      .json({ error: 'Failed to persist interrupted stream', code: err.code || 'chat_save_uncertain' });
   }
 });
 
 app.get('/chat/progress', requireUserAuth, (req, res) => {
-  const requestId =
-    typeof req.query?.requestId === 'string' ? req.query.requestId.trim() : '';
+  const rawRequestId=typeof req.query?.requestId==='string'?req.query.requestId.trim():'';
+  const requestId=rawRequestId?operationKey(req.userSession.userId,rawRequestId):'';
 
   if (!requestId) {
     return res.status(400).json({ error: 'Missing requestId' });
   }
 
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache, no-transform');
-  res.setHeader('Connection', 'keep-alive');
+  const active=activeChatRequests.get(requestId);
+  if(!active||active.userId!==req.userSession.userId)return res.status(404).json({error:'Operation unavailable'});
+  res.setHeader('Content-Type','text/event-stream');
+  res.setHeader('Cache-Control','no-cache, no-transform');
+  res.setHeader('Connection','keep-alive');
   res.flushHeaders?.();
 
   let streams = activeChatProgressStreams.get(requestId);
@@ -8033,7 +7321,7 @@ app.get('/chat/progress', requireUserAuth, (req, res) => {
     ts: Date.now()
   });
 
-  req.on('close', () => {
+  res.on('close', () => {
     const activeStreams = activeChatProgressStreams.get(requestId);
     if (!activeStreams) return;
     activeStreams.delete(res);
@@ -8134,6 +7422,21 @@ const analyzeAffiliationShortValidationCoherence =
 // This route orchestrates the request parsing, safety analysis, mode detection,
 // response generation, memory update, and persistence of both user and assistant messages.
 async function handleChatPost(req, res) {
+  const childTasks = new Set();
+  function trackChild(promise) {
+    const settled = Promise.resolve(promise).then(() => {}, () => {});
+    childTasks.add(settled);
+    settled.then(() => childTasks.delete(settled));
+    return promise;
+  }
+  async function checkReturnAuthority() {
+    const userId = req.userSession.userId;
+    const conversationId = req.body?.isPrivateConversation === true ? null : req.body?.conversationId;
+    if (!await lifecycle.available(userId, conversationId))
+      throw Object.assign(new Error('lifecycle_object_retired'), { code: 'lifecycle_object_retired' });
+    if (conversationId && req.lifecycleTicket) await lifecycle.assertTurnAvailable(userId, conversationId, req.lifecycleTicket);
+  }
+
   return llmUsageContext.run(createLlmUsageAccumulator(), async () => {
     const onTokenCallbackForChat =
       typeof req.onTokenCallbackForChat === 'function'
@@ -8162,8 +7465,10 @@ async function handleChatPost(req, res) {
     }
     res.setHeader('x-trace-id', traceId);
 
+    const activeRequestLease=crypto.randomBytes(12).toString('hex');
+    if(activeChatRequests.has(requestId))return res.status(409).json({error:'Operation already active'});
     if (requestId) {
-      registerActiveChatRequest(requestId, requestData.userId);
+      registerActiveChatRequest(requestId, requestData.userId,activeRequestLease);
       req.on('aborted', () => {
         cancelActiveChatRequest(requestId, requestData.userId);
       });
@@ -8176,6 +7481,7 @@ async function handleChatPost(req, res) {
         req.userSession = userSession;
         const tokenValidation = validateBiometricTokenIfNeeded(req);
         if (!tokenValidation.valid) {
+          finalizeActiveChatRequest(requestId, activeRequestLease);
           return res.status(403).json({
             error: 'Biometric unlock required',
             reason: tokenValidation.reason
@@ -8577,7 +7883,8 @@ async function handleChatPost(req, res) {
           typeof safe.memoryUpdateSource === 'string'
             ? safe.memoryUpdateSource
             : null,
-        memoryUpdateStatus: ['pending', 'completed', 'failed', 'not_requested'].includes(
+        responseSaveStatus: ['pending', 'confirmed', 'failed', 'uncertain', 'superseded', 'local'].includes(safe.responseSaveStatus) ? safe.responseSaveStatus : null,
+        memoryUpdateStatus: ['pending', 'completed', 'failed', 'invalid', 'superseded', 'retired', 'not_requested'].includes(
           safe.memoryUpdateStatus
         )
           ? safe.memoryUpdateStatus
@@ -8724,7 +8031,10 @@ async function handleChatPost(req, res) {
         return;
       }
 
-      await messagesRef.push({
+      await assertConversationOwner(userIdForCatch,conversationIdForCatch);
+
+      const id = req.lifecycleTicket?.messageId || messagesRef.push().key;
+      const record = {
         role: 'assistant',
         content: isEditedForCatch ? reply + '\n[MODIFIÉ]' : reply,
         timestamp: Date.now(),
@@ -8735,15 +8045,11 @@ async function handleChatPost(req, res) {
           debugMeta,
           promptRegistryForCatch
         )
-      });
+      };
 
+      await lifecycle.commitTurn(userIdForCatch, conversationIdForCatch, req.lifecycleTicket, { updatedAt: new Date().toISOString() }, { message: { id, record } });
       assistantMessagePersistedForCatch = true;
-
-      if (convRefForCatch) {
-        await convRefForCatch.update({
-          updatedAt: new Date().toISOString()
-        });
-      }
+      return id;
     }
 
     // Build metadata for the fallback response used in the catch block.
@@ -8833,6 +8139,7 @@ async function handleChatPost(req, res) {
       isPrivateConversationForCatch = isPrivateConversation === true;
       isEditedForCatch = isEdited;
 
+      if (!isPrivateConversation && conversationId) req.lifecycleTicket = await lifecycle.beginTurn(userId, conversationId, req.body?.requestId || null);
       logsEnabledForCatch = logsEnabled === true;
       markChatStage('request_destructured');
       throwIfCanceled();
@@ -8842,10 +8149,11 @@ async function handleChatPost(req, res) {
         return res.status(400).json({ error: 'Missing conversationId' });
       }
 
-      const currentTurnNumber = nextConversationTurnNumber(conversationId);
+      const conversationCacheKey=isPrivateConversation?null:operationKey(userId,conversationId);
+      const currentTurnNumber = nextConversationTurnNumber(conversationCacheKey);
 
       const memorySyncGateResult = await waitForConversationMemorySync(
-        conversationId,
+        conversationCacheKey,
         MEMORY_SYNC_GATE_TIMEOUT_MS
       );
       if (memorySyncGateResult.waited) {
@@ -8856,7 +8164,7 @@ async function handleChatPost(req, res) {
       }
 
       const relanceSyncGateResult = await waitForConversationRelanceSync(
-        conversationId,
+        conversationCacheKey,
         RELANCE_SYNC_GATE_TIMEOUT_MS
       );
       if (relanceSyncGateResult.waited) {
@@ -8874,7 +8182,7 @@ async function handleChatPost(req, res) {
         activePromptRegistry
       );
       const relanceStateResolution = consumeRelanceAsyncStateForTurn(
-        conversationId,
+        conversationCacheKey,
         currentTurnNumber
       );
       let flags = normalizeSessionFlags(requestFlags);
@@ -8951,15 +8259,20 @@ async function handleChatPost(req, res) {
         Date.now()
       );
       let previousMemoryRewriteDebug = null;
+      let privateFinalState={memory:previousMemory,memoryState:previousMemoryState};
+      let turnMemoryTask = null;
+      let privateMemoryTask=Promise.resolve();
+      let privateRelanceTask=Promise.resolve();
       let previousConversationActivityMs = Date.now();
       let hasPersistedConversationMemory = false;
       const convMemoryPromise =
-        !isPrivateConversation && convRef
+        trackChild(!isPrivateConversation && convRef
           ? convRef
               .once('value')
               .then((s) => {
                 const d = s.val();
                 if (!d || typeof d !== 'object') return null;
+                if(d.userId!==userId||d.deletedAt||d.isPrivate===true)throw new Error('Object authorization lost');
                 return {
                   memory:
                     typeof d.memory === 'string' && d.memory.trim()
@@ -8991,9 +8304,9 @@ async function handleChatPost(req, res) {
                 };
               })
               .catch(() => null)
-          : Promise.resolve(null);
+          : Promise.resolve(null));
       const shouldLoadUserProfile = !isPrivateConversation && !!userId;
-      const userProfilePromise = shouldLoadUserProfile
+      const userProfilePromise = trackChild(shouldLoadUserProfile
         ? usersRef
             .child(String(userId))
             .once('value')
@@ -9002,7 +8315,7 @@ async function handleChatPost(req, res) {
               return data && typeof data === 'object' ? data : {};
             })
             .catch(() => null)
-        : Promise.resolve(null);
+        : Promise.resolve(null));
       markChatStage('request_normalized');
       throwIfCanceled();
 
@@ -9087,46 +8400,6 @@ async function handleChatPost(req, res) {
               : accountMemoryUpdatedAt || new Date().toISOString();
         }
       }
-      if (isPrivateConversation && conversationId) {
-        let cachedPrivateMemory = privateConversationMemoryCache.get(
-          String(conversationId)
-        );
-        if (!cachedPrivateMemory) {
-          cachedPrivateMemory = await readPrivateConversationMemory(conversationId);
-          if (cachedPrivateMemory) {
-            privateConversationMemoryCache.set(
-              String(conversationId),
-              cachedPrivateMemory
-            );
-          }
-        }
-        if (
-          cachedPrivateMemory &&
-          typeof cachedPrivateMemory.memory === 'string' &&
-          cachedPrivateMemory.memory.trim()
-        ) {
-          previousMemory = normalizeMemory(
-            cachedPrivateMemory.memory,
-            activePromptRegistry
-          );
-          previousMemoryState = normalizeMemoryStateShape(
-            cachedPrivateMemory.memoryState,
-            '',
-            Date.now()
-          );
-          previousMemoryRewriteDebug =
-            cachedPrivateMemory.memoryRewriteDebug || null;
-          hasPersistedConversationMemory = true;
-          if (
-            Number.isFinite(cachedPrivateMemory.updatedAt) &&
-            cachedPrivateMemory.updatedAt > 0
-          ) {
-            previousConversationActivityMs = cachedPrivateMemory.updatedAt;
-          }
-          previousMemoryForCatch = previousMemory;
-          previousMemoryRewriteDebugForCatch = previousMemoryRewriteDebug;
-        }
-      }
       if (
         isPrivateConversation !== true &&
         hasPersistedConversationMemory !== true
@@ -9149,6 +8422,7 @@ async function handleChatPost(req, res) {
       if (
         isPrivateConversation === true &&
         recentHistoryCountForMemorySeed === 0 &&
+        !req.body?.memoryState &&
         hasPersistedConversationMemory !== true
       ) {
         previousMemory = normalizeMemory('', activePromptRegistry);
@@ -9163,6 +8437,7 @@ async function handleChatPost(req, res) {
           reason: 'no_persisted_memory'
         });
       }
+      privateFinalState={memory:previousMemory,memoryState:previousMemoryState};
       previousMemoryRewriteDebugForCatch = previousMemoryRewriteDebug;
       if (!isPrivateConversation && shouldLoadUserProfile) {
         let userData = await userProfilePromise;
@@ -9206,6 +8481,7 @@ async function handleChatPost(req, res) {
             .once('value');
 
           const conversationMessages = Object.values(messagesSnap.val() || {})
+            .filter(m=>messageBelongsToConversation(m,userId,conversationId))
             .filter((m) => m && typeof m.content === 'string')
             .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
 
@@ -9274,7 +8550,7 @@ async function handleChatPost(req, res) {
             return;
           }
 
-          await convRef.update({
+          await lifecycle.commitTurn(userId, conversationId, req.lifecycleTicket, {
             title: generatedTitle.trim(),
             updatedAt: new Date().toISOString()
           });
@@ -9293,33 +8569,13 @@ async function handleChatPost(req, res) {
       }
 
       if (!isPrivateConversation) {
-        const userMessagePushPromise = messagesRef.push({
-          role: 'user',
-          content: isEdited ? message + '\n[MODIFIÉ]' : message,
-          timestamp: Date.now(),
-          userId,
-          conversationId
-        });
-
         const conversationMetaUpdatePromise = convRef
           ? convRef.transaction((current) => {
               const now = new Date().toISOString();
 
-              if (!current) {
-                return {
-                  userId,
-                  createdAt: now,
-                  updatedAt: now,
-                  title: null,
-                  titleLocked: false,
-                  messageCount: 1,
-                  lastUserMessage: message
-                };
-              }
-
+              if(!current||current.userId!==userId || current.deletedAt || current.isPrivate===true)return;
               return {
                 ...current,
-                userId,
                 updatedAt: now,
                 messageCount: (Number(current.messageCount) || 0) + 1,
                 lastUserMessage: message
@@ -9327,10 +8583,10 @@ async function handleChatPost(req, res) {
             })
           : Promise.resolve(null);
 
-        const [pushedRef] = await Promise.all([
-          userMessagePushPromise,
-          conversationMetaUpdatePromise
-        ]);
+        const metaResult=await conversationMetaUpdatePromise;
+        if(!metaResult?.committed)throw new Error('Object authorization lost');
+        await assertConversationOwner(userId,conversationId);
+        const pushedRef=await messagesRef.push({role:'user',content:isEdited?message+'\n[MODIFIÉ]':message,timestamp:Date.now(),userId,conversationId});
 
         userMessagePersistedForCatch = true;
         userMessageRefForCatch = pushedRef;
@@ -9367,6 +8623,7 @@ async function handleChatPost(req, res) {
         if (isPrivateConversation) {
           return null;
         }
+        await assertConversationOwner(userId,conversationId);
 
         const persistedMessageId =
           typeof messageId === 'string' && messageId.trim()
@@ -9377,7 +8634,7 @@ async function handleChatPost(req, res) {
           throw new Error('Assistant message key generation failed');
         }
 
-        await messagesRef.child(persistedMessageId).set({
+        const messageRecord = {
           role: 'assistant',
           content: isEdited ? reply + '\n[MODIFIÉ]' : reply,
           timestamp: Date.now(),
@@ -9406,27 +8663,11 @@ async function handleChatPost(req, res) {
                   flags: normalizeSessionFlags(conversationState.flags || {})
                 }
               : null
-        });
-
-        assistantMessagePersistedForCatch = true;
+        };
 
         const conversationPatch = {
           updatedAt: new Date().toISOString()
         };
-
-        if (typeof conversationState?.memory === 'string') {
-          conversationPatch.memory = normalizeMemory(
-            conversationState.memory,
-            activePromptRegistry
-          );
-        }
-
-        if (
-          conversationState?.memoryState &&
-          typeof conversationState.memoryState === 'object'
-        ) {
-          conversationPatch.memoryState = conversationState.memoryState;
-        }
 
         if (
           conversationState?.flags &&
@@ -9437,7 +8678,9 @@ async function handleChatPost(req, res) {
           );
         }
 
-        await convRef.update(conversationPatch);
+        messageRecord.debugMeta.responseSaveStatus = 'confirmed';
+        await lifecycle.commitTurn(userId, conversationId, req.lifecycleTicket, conversationPatch, { message: { id: persistedMessageId, record: messageRecord } });
+        assistantMessagePersistedForCatch = true;
 
         return persistedMessageId;
       }
@@ -9445,6 +8688,7 @@ async function handleChatPost(req, res) {
       // Fire-and-forget wrapper: generates a deterministic messageId synchronously,
       // then persists in background without blocking the response path.
       const assistantMessagePersistenceById = new Map();
+      const assistantSaveStatus = new Map();
 
       function persistAssistantMessageAsync(
         reply,
@@ -9453,29 +8697,32 @@ async function handleChatPost(req, res) {
         conversationState = null
       ) {
         if (isPrivateConversation) return null;
-        const messageId = messagesRef.push().key;
+        const messageId = req.lifecycleTicket?.messageId || messagesRef.push().key;
         if (!messageId) {
           throw new Error('Assistant message key reservation failed');
         }
-        const persistencePromise = persistAssistantMessage(
+        assistantSaveStatus.set(messageId, 'pending');
+        const persistencePromise = trackChild(persistAssistantMessage(
           reply,
           debug,
           debugMeta,
           conversationState,
           messageId
-        ).catch((err) => {
+        ).then(() => { assistantSaveStatus.set(messageId, 'confirmed'); return true; }).catch((err) => {
+          assistantSaveStatus.set(messageId, ['memory_superseded', 'conversation_replaced'].includes(err.code) ? 'superseded' : 'uncertain');
           console.error(
             '[PERSIST_ASYNC][FAILED]',
             err && err.message ? err.message : String(err)
           );
-        });
+        }));
         assistantMessagePersistenceById.set(messageId, persistencePromise);
         return messageId;
       }
 
       async function persistMemoryUpdateAudit(messageId, audit = {}) {
         if (isPrivateConversation || !messageId) return;
-        await (assistantMessagePersistenceById.get(messageId) || Promise.resolve());
+        const saved = await (assistantMessagePersistenceById.get(messageId) || Promise.resolve(false));
+        if (!saved) return;
         await messagesRef.child(messageId).child('debugMeta').update({
           memoryUpdateStatus: audit.status,
           memoryUpdateResultSource: audit.resultSource || null
@@ -9523,7 +8770,8 @@ async function handleChatPost(req, res) {
 
         for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
           try {
-            await convRef.update({
+            throwIfCanceled();
+            await lifecycle.commitTurn(userId, conversationId, req.lifecycleTicket, {
               memory: normalizedMemory,
               memoryState:
                 memoryState && typeof memoryState === 'object'
@@ -9536,10 +8784,11 @@ async function handleChatPost(req, res) {
               intersessionMemoryBaseUpdatedAt,
               intersessionMemoryResumeHistoryCount: memoryHistoryStartIndex,
               updatedAt: new Date().toISOString()
-            });
+            }, { memory: true });
             return;
           } catch (err) {
             lastError = err;
+            if (['memory_superseded', 'conversation_replaced', 'chat_request_canceled'].includes(err.code) || err.code?.startsWith('lifecycle_')) throw err;
             if (attempt < maxRetries) {
               await waitMs(120 * (attempt + 1));
             }
@@ -9550,7 +8799,7 @@ async function handleChatPost(req, res) {
       }
 
       function scheduleBackgroundMemoryUpdate(memorySnapshot, replyText) {
-        const backgroundMemoryTask = (async () => {
+        const backgroundMemoryTask = trackChild((async () => {
           try {
             // PRODUCT DECISION (memory audit baseline): memory update is intentionally non-blocking.
             // The user-facing reply must not wait for UPDATE_MEMORY/merge/persistence.
@@ -9609,30 +8858,9 @@ async function handleChatPost(req, res) {
               capturedAt: new Date().toISOString()
             };
 
-            if (isPrivateConversation && conversationId) {
-              privateConversationMemoryCache.set(String(conversationId), {
-                memory: persistedMemoryText,
-                memoryState: mergedStateResult.memoryState,
-                memoryRewriteDebug: crisisMemoryRewriteDebug,
-                updatedAt: Date.now()
-              });
-              try {
-                await persistPrivateConversationMemory(conversationId, {
-                  memory: persistedMemoryText,
-                  memoryState: mergedStateResult.memoryState,
-                  memoryRewriteDebug: crisisMemoryRewriteDebug,
-                  updatedAt: new Date().toISOString()
-                });
-              } catch (persistPrivateErr) {
-                console.warn('[CHAT][PRIVATE_MEMORY_PERSIST_FAILED]', {
-                  conversationId,
-                  error:
-                    persistPrivateErr && persistPrivateErr.message
-                      ? persistPrivateErr.message
-                      : String(persistPrivateErr)
-                });
-              }
-              return;
+            if (isPrivateConversation) {
+              privateFinalState={memory:persistedMemoryText,memoryState:mergedStateResult.memoryState};
+              return { status: 'completed', resultSource: updatedMemory.source };
             }
 
             await persistConversationMemoryWithRetry(
@@ -9642,16 +8870,17 @@ async function handleChatPost(req, res) {
               mergedStateResult.memoryState,
               crisisMemoryRewriteDebug
             );
-          } catch {
-            // Non-bloquant : la reponse utilisateur ne depend pas de cette mise a jour memoire.
+            return { status: 'completed', resultSource: updatedMemory.source };
+          } catch (error) {
+            return { status: error.code === 'memory_result_invalid' ? 'invalid' : ['memory_superseded', 'conversation_replaced'].includes(error.code) ? 'superseded' : error.code?.startsWith('lifecycle_') ? 'retired' : 'failed', resultSource: 'runtime_error' };
           } finally {
             await registerUsageConsumptionFromTurn();
           }
-        })();
+        })());
 
-        if (conversationId) {
-          trackConversationMemorySync(conversationId, backgroundMemoryTask);
-        }
+        turnMemoryTask = backgroundMemoryTask;
+        if (isPrivateConversation) privateMemoryTask=backgroundMemoryTask;
+        else if (conversationId) trackConversationMemorySync(conversationCacheKey, backgroundMemoryTask);
       }
 
       async function sendChatJsonResponse(
@@ -9663,19 +8892,22 @@ async function handleChatPost(req, res) {
         botMessageId,
         signals
       ) {
+        let privateAudit = null;
+        if(isPrivateConversation) [privateAudit] = await Promise.all([privateMemoryTask,privateRelanceTask]);
+        if (turnMemoryTask && botMessageId) trackChild(turnMemoryTask.then((audit) => persistMemoryUpdateAudit(botMessageId, audit)).catch(() => {}));
+        if (turnMemoryTask) debugMeta = { ...debugMeta, memoryUpdateDecision: 'update', memoryUpdateStatus: privateAudit?.status || 'pending' };
         await registerUsageConsumptionFromTurn();
-        maybeGenerateConversationTitle();
+        await checkReturnAuthority();
+        throwIfCanceled();
+        trackChild(maybeGenerateConversationTitle());
         publishChatProgressTerminal(requestId, 'done');
 
         return res.json({
           conversationId,
           reply,
-          memory,
-          flags,
-          debug,
-          debugMeta,
-          botMessageId,
-          signals
+          memory:isPrivateConversation?privateFinalState.memory:memory,
+          memoryState:isPrivateConversation?privateFinalState.memoryState:previousMemoryState,
+          flags,debug,debugMeta: { ...debugMeta, responseSaveStatus: isPrivateConversation ? 'local' : assistantSaveStatus.get(botMessageId) || 'uncertain' },botMessageId,signals
         });
       }
 
@@ -9692,6 +8924,7 @@ async function handleChatPost(req, res) {
       }) {
         return buildResponseDebugMeta({
           memory,
+          memoryState:previousMemoryState,
           suicideLevel,
           majorHarmRiskLevel,
           majorHarmImminenceBand,
@@ -9806,7 +9039,7 @@ async function handleChatPost(req, res) {
           responseDebugMeta,
           { memory: responseMemory, flags: newFlags }
         );
-        return sendChatJsonResponse(
+        return await sendChatJsonResponse(
           reply,
           responseMemory,
           newFlags,
@@ -9875,7 +9108,7 @@ async function handleChatPost(req, res) {
           responseDebugMeta,
           { memory: responseMemory, flags: newFlags }
         );
-        return sendChatJsonResponse(
+        return await sendChatJsonResponse(
           reply,
           responseMemory,
           newFlags,
@@ -9942,7 +9175,7 @@ async function handleChatPost(req, res) {
           responseDebugMeta,
           { memory: responseMemory, flags: newFlags }
         );
-        return sendChatJsonResponse(
+        return await sendChatJsonResponse(
           reply,
           responseMemory,
           newFlags,
@@ -10190,11 +9423,11 @@ async function handleChatPost(req, res) {
           if (successPayload) {
             runtimeCompact = formatRuntimeCompactMemory(successPayload.items);
             try {
-              await usersRef.child(userId).update({
+              await lifecycle.commitMemory(userId, userData, {
                 intersessionMemoryCompact: runtimeCompact,
                 intersessionCompactOutdated: false,
                 intersessionRefreshForced: false
-              });
+              }, { advance: false, conversationId });
             } catch (error) {
               console.warn('[INTERSESSION_COMPACT_PERSIST_FAILED]', {
                 userId,
@@ -10234,10 +9467,10 @@ async function handleChatPost(req, res) {
         });
 
         if (forcedByManualEdit) {
-          await usersRef.child(userId).update({
+          await lifecycle.commitMemory(userId, userData, {
             intersessionRefreshForced: false,
             intersessionCompactOutdated: false
-          });
+          }, { advance: false, conversationId });
         }
 
         return {
@@ -10282,20 +9515,20 @@ async function handleChatPost(req, res) {
       let newFlags = crisisPrelude.newFlags;
 
       if (safetyDecision.route === 'major_harm') {
-        return handleImminentMajorHarmRoute(safety);
+        return await handleImminentMajorHarmRoute(safety);
       }
 
       // Severe suicide risk override path.
       // If the analysis returns N2, we bypass normal generation and reply with a crisis response.
       if (crisisDecision.route === 'n2') {
-        return handleN2CrisisRoute();
+        return await handleN2CrisisRoute();
       }
 
       // 2) Crisis follow-up path for an already active acute crisis.
       // If the crisis is not resolved, keep the bot in crisis-handling mode.
       if (flags.acuteCrisis === true) {
         if (crisisDecision.route === 'acute_followup') {
-          return handleAcuteCrisisFollowupRoute();
+          return await handleAcuteCrisisFollowupRoute();
         }
 
         handleResolvedAcuteCrisisState();
@@ -10307,17 +9540,17 @@ async function handleChatPost(req, res) {
         logN1PipelineEntry();
       }
 
-      intersessionMemoryPreparationPromise = prepareIntersessionMemoryForTurn(
+      intersessionMemoryPreparationPromise = trackChild(prepareIntersessionMemoryForTurn(
         newFlags
-      );
-      const intersessionFallbackSeedPromise = (async () => {
+      ));
+      const intersessionFallbackSeedPromise = trackChild((async () => {
         if (isPrivateConversation === true || !userId) {
           return '';
         }
         const userData = await userProfilePromise;
         return getStoredIntersessionCompact(userData);
-      })();
-      const shortAffiliationValidationPromise = hasShortAffiliationMarker(
+      })());
+      const shortAffiliationValidationPromise = trackChild(hasShortAffiliationMarker(
         message
       )
         ? withAnalyzerTiming(
@@ -10328,12 +9561,12 @@ async function handleChatPost(req, res) {
               activePromptRegistry
             )
           )
-        : Promise.resolve({ shortValidationConfirmed: true });
+        : Promise.resolve({ shortValidationConfirmed: true }));
 
       // 2) Analyse de rappel memoire : identifier si l'utilisateur demande
       // explicitement un rappel conversationnel et quelle memoire mobiliser.
       markChatStage('recall_analysis');
-      const recallRoutingPromise = (async () => {
+      const recallRoutingPromise = trackChild((async () => {
         const recallIntersessionMemory =
           await loadCurrentUserIntersessionMemory();
         return analyzeRecallRouting(
@@ -10343,21 +9576,22 @@ async function handleChatPost(req, res) {
           recallIntersessionMemory,
           activePromptRegistry
         );
-      })();
-      const recallBranchHistoryPromise = recallRoutingPromise.then(
+      })());
+      const recallBranchHistoryPromise = trackChild(recallRoutingPromise.then(
         async (resolvedRecallRouting) => {
           if (resolvedRecallRouting?.isLongTermMemoryRecall !== true) {
             return [];
           }
 
           return loadConversationBranchHistoryForRecall({
+            userId,
             conversationId,
             isPrivateConversation,
             conversationBranchHistory,
             recentHistory
           });
         }
-      );
+      ));
 
       // Phase 2: run all analyzers in parallel, including proposeState (which now
       // integrates contact detection alongside info detection).
@@ -11189,19 +10423,19 @@ async function handleChatPost(req, res) {
       }
 
       if (detectedState === 'exploration') {
-        const relanceBackgroundTask = (async () => {
+        const relanceBackgroundTask = trackChild((async () => {
           const relanceStartedAt = Date.now();
-          const safeConversationId = String(conversationId || '').trim();
+          const safeConversationId = String(conversationCacheKey || '').trim();
 
           try {
             const relanceAnalysis = await Promise.race([
-              analyzeExplorationRelance({
+              trackChild(analyzeExplorationRelance({
                 message,
                 reply,
                 history: recentHistory,
                 memory: previousMemory,
                 promptRegistry: activePromptRegistry
-              }),
+              })),
               wait(RELANCE_ASYNC_TIMEOUT_MS).then(() => {
                 const timeoutError = new Error('relance_async_timeout');
                 timeoutError.code = 'relance_async_timeout';
@@ -11214,6 +10448,11 @@ async function handleChatPost(req, res) {
               relanceAnalysis?.isRelance === true
             );
 
+            if(isPrivateConversation) {
+              newFlags.explorationRelanceWindow=relanceNextFlags.explorationRelanceWindow;
+              newFlags.explorationDirectivityLevel=relanceNextFlags.explorationDirectivityLevel;
+              return;
+            }
             const currentTurnSeen = Number(
               conversationTurnCounters.get(safeConversationId)
             );
@@ -11249,6 +10488,7 @@ async function handleChatPost(req, res) {
             });
           } catch (err) {
             const fallbackFlags = normalizeSessionFlags(relanceBaseFlagsSnapshot);
+            if(isPrivateConversation)return;
             const currentTurnSeen = Number(
               conversationTurnCounters.get(safeConversationId)
             );
@@ -11290,10 +10530,11 @@ async function handleChatPost(req, res) {
           } finally {
             await registerUsageConsumptionFromTurn();
           }
-        })();
+        })());
 
-        trackConversationRelanceSync(
-          conversationId,
+        if(isPrivateConversation)privateRelanceTask=relanceBackgroundTask;
+        else trackConversationRelanceSync(
+          conversationCacheKey,
           relanceBackgroundTask,
           relanceTargetTurnNumber
         );
@@ -11394,7 +10635,7 @@ async function handleChatPost(req, res) {
       const _lastActivityMs = previousConversationActivityMs;
       const _prioritySignal = effectiveMemoryPrioritySignalForDebug;
 
-      let backgroundMemoryTask = (async () => {
+      let backgroundMemoryTask = trackChild((async () => {
         try {
           const memoryUpdateContract = await updateMemory(
             _prevMem,
@@ -11498,56 +10739,10 @@ async function handleChatPost(req, res) {
             }
           });
 
-          if (isPrivateConversation && conversationId) {
-            privateConversationMemoryCache.set(String(conversationId), {
-              memory: persistedMemoryText,
-              memoryState: mergedStateResult.memoryState,
-              memoryRewriteDebug: {
-                beforeSanitization: null,
-                deletedAncientIds: Array.isArray(
-                  memoryUpdateContract?.deleteAncientMovementsById
-                )
-                  ? memoryUpdateContract.deleteAncientMovementsById
-                  : [],
-                source:
-                  typeof memoryUpdateContract?.source === 'string'
-                    ? memoryUpdateContract.source
-                    : null,
-                capturedAt: new Date().toISOString()
-              },
-              updatedAt: Date.now()
-            });
-
-                try {
-                  await persistPrivateConversationMemory(conversationId, {
-                    memory: persistedMemoryText,
-                    memoryState: mergedStateResult.memoryState,
-                    memoryRewriteDebug: {
-                      beforeSanitization: null,
-                      deletedAncientIds: Array.isArray(
-                        memoryUpdateContract?.deleteAncientMovementsById
-                      )
-                        ? memoryUpdateContract.deleteAncientMovementsById
-                        : [],
-                      source:
-                        typeof memoryUpdateContract?.source === 'string'
-                          ? memoryUpdateContract.source
-                          : null,
-                      capturedAt: new Date().toISOString()
-                    },
-                    updatedAt: new Date().toISOString()
-                  });
-                } catch (persistPrivateErr) {
-                  console.warn('[CHAT][PRIVATE_MEMORY_PERSIST_FAILED]', {
-                    conversationId,
-                    error:
-                      persistPrivateErr && persistPrivateErr.message
-                        ? persistPrivateErr.message
-                        : String(persistPrivateErr)
-                  });
-                }
-            return;
-          }
+          if (isPrivateConversation) {
+              privateFinalState={memory:persistedMemoryText,memoryState:mergedStateResult.memoryState};
+              return { status: 'completed', resultSource: memoryUpdateContract.source };
+            }
 
           await persistConversationMemoryWithRetry(
             persistedMemoryText,
@@ -11586,15 +10781,15 @@ async function handleChatPost(req, res) {
             source: postureDecision.memoryUpdateSource,
             error: e && e.message ? e.message : String(e)
           });
-          return { status: 'failed', resultSource: 'runtime_error' };
+          return { status: ['memory_superseded', 'conversation_replaced'].includes(e.code) ? 'superseded' : e.code === 'memory_result_invalid' ? 'invalid' : e.code?.startsWith('lifecycle_') ? 'retired' : 'failed', resultSource: 'runtime_error' };
         } finally {
           await registerUsageConsumptionFromTurn();
         }
-      })();
+      })());
 
-      if (conversationId && backgroundMemoryTask) {
-        trackConversationMemorySync(conversationId, backgroundMemoryTask);
-      }
+      turnMemoryTask = backgroundMemoryTask;
+      if(isPrivateConversation) privateMemoryTask=backgroundMemoryTask;
+      else if(conversationId&&backgroundMemoryTask)trackConversationMemorySync(conversationCacheKey,backgroundMemoryTask);
       const postCrisisSupportCarryTurnActive =
         req.__postCrisisSupportCarryTurnActive === true;
       const emergencySupportText = postCrisisSupportCarryTurnActive
@@ -11766,16 +10961,9 @@ async function handleChatPost(req, res) {
         responseDebugMeta,
         { memory: newMemory, flags: newFlags }
       );
-      backgroundMemoryTask
-        .then((audit) => persistMemoryUpdateAudit(botMessageId, audit))
-        .catch((error) => {
-          console.warn(
-            '[CHAT][MEMORY_AUDIT_PERSIST_FAILED]',
-            error && error.message ? error.message : String(error)
-          );
-        });
 
-      return sendChatJsonResponse(
+
+      return await sendChatJsonResponse(
         reply,
         newMemory,
         newFlags,
@@ -11785,6 +10973,9 @@ async function handleChatPost(req, res) {
         turnSignals
       );
     } catch (err) {
+      if (err.code?.startsWith('lifecycle_') || ['memory_superseded', 'conversation_replaced', 'chat_request_conflict'].includes(err.code)) {
+        return res.status(['memory_superseded', 'conversation_replaced', 'chat_request_conflict'].includes(err.code) ? 409 : 410).json({ code: err.code, saved: false });
+      }
       if (err && err.code === 'chat_request_canceled') {
         publishChatProgressTerminal(requestId, 'canceled');
         // Mark the user message with [ENVOI STOPPE] if it was persisted
@@ -11912,6 +11103,7 @@ async function handleChatPost(req, res) {
         });
       }
 
+      try { await checkReturnAuthority(); } catch { return res.status(410).json({ code: 'lifecycle_object_retired' }); }
       // Fallback path: if any part of the /chat pipeline throws, return a safe
       // generic reply plus preserved memory/flags instead of crashing the server.
       return res.json({
@@ -11922,8 +11114,9 @@ async function handleChatPost(req, res) {
         debugMeta: fallbackDebugMeta
       });
     } finally {
+      while (childTasks.size) await Promise.allSettled([...childTasks]);
       if (requestId) {
-        finalizeActiveChatRequest(requestId);
+        finalizeActiveChatRequest(requestId,activeRequestLease);
       }
 
       if (logsEnabledForCatch) {
@@ -11940,7 +11133,7 @@ async function handleChatPost(req, res) {
 
 app.post('/chat', requireUserAuth, handleChatPost);
 
-app.post('/chat/stream', requireUserAuth, async (req, res) => {
+app.post('/chat/stream', (req, res, next) => appConfig.enableChatStreaming === true ? next() : res.status(405).json({code:'streaming_disabled'}), requireUserAuth, async (req, res) => {
   if (appConfig.enableChatStreaming !== true) {
     return res.status(405).json({
       error: 'Chat streaming is not enabled',
@@ -11969,11 +11162,16 @@ app.post('/chat/stream', requireUserAuth, async (req, res) => {
     ts: Date.now()
   });
 
-  req.onTokenCallbackForChat = (token) => {
+  req.onTokenCallbackForChat = async (token) => {
+    if (!await lifecycle.available(req.userSession.userId, req.body?.isPrivateConversation === true ? null : streamConversationId))
+      throw Object.assign(new Error('lifecycle_object_retired'), { code: 'lifecycle_object_retired' });
+    if (req.body?.isPrivateConversation !== true && req.lifecycleTicket)
+      await lifecycle.assertTurnAvailable(req.userSession.userId, streamConversationId, req.lifecycleTicket);
+    throwIfChatRequestCanceled(operationKey(req.userSession.userId, streamRequestId));
     writeSSEEvent(res, 'token', { token });
   };
 
-  req.on('close', () => {
+  res.on('close', () => {
     logger.info({
       scope: 'chat_stream',
       event: 'chat_stream_closed',
@@ -11986,6 +11184,7 @@ app.post('/chat/stream', requireUserAuth, async (req, res) => {
 
   const streamRes = {
     _statusCode: 200,
+    once(event,listener){res.once(event,listener);return this;},
     setHeader(name, value) {
       try {
         res.setHeader(name, value);
