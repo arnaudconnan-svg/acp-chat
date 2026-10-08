@@ -3566,7 +3566,6 @@
         'facilitatio_conversations_swipe_hint_dismissed';
       const SESSION_TIMEOUT_MS = 12 * 60 * 60 * 1000;
       const MAX_RECENT_TURNS = 8;
-      const CHAT_REQUEST_TIMEOUT_MS = 60000;
       const ADMIN_UI_KEY = 'facilitatio_admin_ui';
       const SKIP_WELCOME_ANIMATION_KEY = 'facilitatio_skip_welcome_animation';
       const ADMIN_ACCESS_MODE_KEY = 'facilitatio_admin_access_mode';
@@ -13212,11 +13211,6 @@
             loadConversationData(requestConversationId)
           );
           const chatAbortController = new AbortController();
-          let didTimeout = false;
-          const chatTimeoutId = setTimeout(() => {
-            didTimeout = true;
-            chatAbortController.abort();
-          }, CHAT_REQUEST_TIMEOUT_MS);
           activeChatRequestId = chatRequestId;
           activeChatRequestContext = Object.freeze({
             requestId: chatRequestId,
@@ -13696,12 +13690,6 @@
             removeWaitingIndicatorFromChat();
 
             if (err && err.name === 'AbortError') {
-              if (didTimeout) {
-                showTemporaryNotice(
-                  'D\u00e9lai d\u00e9pass\u00e9 : le service met trop de temps \u00e0 r\u00e9pondre.'
-                );
-              }
-
               if (liveStreamText.trim()) {
                 markLiveStreamInterrupted();
               }
@@ -13731,7 +13719,6 @@
               removeLiveStreamBubble();
             }
           } finally {
-            clearTimeout(chatTimeoutId);
             closeActiveChatProgressSource();
 
             if (activeChatRequestId === chatRequestId) {
