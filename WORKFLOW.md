@@ -8,10 +8,58 @@ Ce fichier decrit le mode de travail reel du projet.
 - l'agent propose des axes d'amélioration, choisit l'implementation technique, structure le chantier, modifie le code, puis verifie
 - GitHub reste la source de verite
 - la branche partagee `beta` reste la base de reference principale sauf besoin explicite contraire
-- chaque chantier part de `beta`, est implemente sur une branche de travail `work`, puis revient vers `beta` par pull request
+- chaque chantier part de `beta`, est implemente sur une branche de tâche isolée et nommée pour le chantier, puis revient vers `beta` par pull request
 - ChatGPT web ou mobile assure la continuite conversationnelle entre les sessions et les terminaux
-- Codex Cloud/Remote travaille directement sur le repo GitHub, dans l'environnement `acp-chat`, avec le flux `beta` -> `work` -> pull request vers `beta`
+- Codex Cloud/Remote travaille directement sur le repo GitHub, dans l'environnement `acp-chat`, avec le flux `beta` -> branche de tâche -> pull request vers `beta`
 - le fonctionnement courant ne depend d'aucun repo local, VS Code local ou Chrome local
+
+## Mandat permanent — autorité et limites
+
+Ce mandat gouverne les consignes actives de `AGENTS.md`, `WORKFLOW.md` et
+`PROMPTING.md`. Les rapports datés de `docs/launch-gate/` restent des preuves
+attachées à leurs SHA ; leurs autorisations historiques ne lancent aucune nouvelle
+opération et ne valent jamais autorisation de promotion.
+
+- L'autonomie technique couvre les choix d'implémentation, corrections,
+  refactorings, outillage et validations nécessaires à l'objectif déjà autorisé.
+  Aucun nouveau GO général n'est requis pour une étape couverte. Un objectif
+  produit nouveau ou ambigu reste à arbitrer ; les invariants de sécurité,
+  confidentialité, mémoire et décisions par motifs textuels restent applicables.
+- Un effet visible est annoncé avec son risque. Si l'objectif et cet effet sont
+  déjà autorisés, l'agent avance dans ce périmètre ; sinon il attend l'arbitrage
+  produit avant de coder. La validation graphique Work reste une étape distincte.
+- Avant mutation, lire les consignes applicables ; vérifier un arbre propre et,
+  par lecture Git distante fraîche, l'égalité du HEAD initial avec `origin/beta`.
+  Publier une branche de tâche, examiner le diff complet et ses références,
+  valider puis ouvrir une PR exclusivement vers `beta`. Fusionner seulement si
+  conforme aux contrôles et protections existants ; vérifier ensuite le commit
+  intégré dans `beta` et relire les consignes actives sur ce SHA.
+- La promotion `beta` vers `main` est une opération distincte : elle exige une
+  autorisation de promotion et les preuves Work de validation graphique sur la
+  candidate exacte et de restauration vérifiée. Consigner le SHA de retour,
+  la procédure et le résultat de restauration avant promotion. Le protocole
+  pré-FF ci-dessous reste obligatoire, y compris la resynchronisation finale.
+  Aucun test technique ni fusion documentaire ne remplace ces prérequis.
+- Les tests API Mistral ciblés nécessaires à un objectif couvert sont autorisés
+  sur des scénarios exclusivement synthétiques, dans les coûts existants.
+  Avant exécution, consigner scénarios, nombre maximal d'appels, plafond de coût
+  dans l'enveloppe existante et méthode de suivi ; suivre appels, tokens et coût,
+  arrêter au plafond. Si le plafond disponible ou le suivi ne peut être établi,
+  ne pas lancer les appels ; signaler cette limite sans inventer un budget.
+  Aucun test large, autre fournisseur ou hausse de coûts n'est autorisé par défaut.
+- Le corpus personnel est strictement isolé des conversations de validation :
+  aucune lecture, copie, injection dans un scénario, réutilisation d'identité ou
+  mélange de mémoire/historique. Les conversations synthétiques utilisent une
+  identité de recette dédiée et des identifiants traçables, sans grant personnel.
+  Le statut public/privé ne prouve pas l'isolation ; à défaut de garantie,
+  rester sur les doubles hermétiques sans persistance réelle.
+- Préserver les contrôles existants : crise prioritaire, consentements, grants,
+  révocation, minimisation et rétention des traces, droits minimaux, secrets hors
+  sorties et Git, gardes de purge et protections Git. Le mandat n'autorise aucun
+  contournement ni élargissement d'accès, domaine, secret ou infrastructure.
+- Une mission documentaire ne lance ni test API payant ni déploiement applicatif
+  artificiel. Constater seulement un éventuel effet automatique, sans le relancer.
+  Son contrôle porte sur cohérence, références, diff et présence dans `beta`.
 
 ## 2. Regle generale
 
@@ -62,7 +110,7 @@ Dans ces cas :
 
 1. l'agent annonce ce qui va changer
 2. l'agent indique le risque principal
-3. il attend un go avant de coder
+3. il vérifie que l’effet est couvert par l’autorisation existante ; sinon il attend un arbitrage produit avant de coder
 
 ## 4. Verification attendue
 
@@ -82,7 +130,7 @@ Verification complementaire selon le chantier :
 - pour toute lenteur percue sur `/chat`, commencer par les `pipeline_summary` et lancer `npm run perf:chat:summary` sur un log reel avant de modifier le code
 - des qu'un diagnostic production Render est necessaire, l'agent lit les logs live depuis Codex Cloud/Remote via l'API Render quand `RENDER_API_KEY` et `RENDER_SERVICE_ID` sont disponibles (pas de copier-coller manuel requis)
 - si l'utilisateur doit suivre un test depuis `admin.html`, lancer le test en non-prive (`isPrivateConversation=false`) et communiquer `conversationId` + `requestId`
-- reserver `isPrivateConversation=true` aux tests demandes explicitement en prive
+- reserver `isPrivateConversation=true` aux tests demandes explicitement en prive ; dans tous les cas appliquer l’isolement du mandat permanent ci-dessus
 - sequence Render de reference :
   - 1.  `GET /v1/services/{serviceId}` pour recuperer `ownerId`
   - 2.  `GET /v1/logs?ownerId=<ownerId>&resource=<serviceId>`
@@ -98,7 +146,7 @@ Verification complementaire selon le chantier :
   - ne pas conclure "pas de logs" avant d'avoir valide la combinaison `ownerId + resource`
 - harness comportemental centre sur `debugMeta`
 - test manuel cible quand le changement est visible
-- `pipeline:harness`, `debugmeta:harness` ou `eval:chat` sur GO explicite seulement (LLM en direct)
+- pour tout test LLM en direct (commande effectivement présente dans `package.json`), appliquer le mandat Mistral synthétique ciblé, son suivi et son plafond ; vérifier le fournisseur et les effets réels du script avant lancement
 
 Pour le chantier Android TWA, le chemin de validation et de deploiement doit etre le suivant :
 
@@ -157,7 +205,7 @@ Le produit est en phase de stabilisation comportementale.
 Cela signifie :
 
 - la priorite est de corriger, stabiliser et tester les comportements existants — pas d'en ajouter de nouveaux
-- tout nouveau signal, analyseur, etat machine, token writer, champ debug ou champ memoire est traite comme exceptionnel : le signaler comme besoin avec justification comportementale et attendre un go explicite
+- tout nouveau signal, analyseur, etat machine, token writer, champ debug ou champ memoire est traite comme exceptionnel : justifier sa nécessité comportementale ; agir si couvert par l’objectif autorisé, sinon attendre un arbitrage produit
 - les bugs comportementaux visibles restent traites immediatement, sans attendre
 - les ameliorations de l'outillage (harness, logs, tests deterministes) restent autorisees sans validation prealable
 - les refactorings qui ameliorent la fiabilite sans ajouter de comportement nouveau sont autorises
@@ -174,6 +222,9 @@ Regles pratiques :
 - si le working tree est sale, ne pas revert les changements utilisateur sans accord
 
 ### Protocole canonique « pre-FF main »
+
+Les prérequis de promotion du mandat permanent ci-dessus sont bloquants avant
+toute commande de promotion ; ce protocole technique ne les remplace pas.
 
 Le present chapitre est la source canonique du protocole. Son garde executable est
 `scripts/preff-git-guard.js`; les commandes npm ne sont que ses points d'entree.

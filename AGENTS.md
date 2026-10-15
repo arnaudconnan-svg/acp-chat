@@ -1,5 +1,8 @@
 # AGENTS.md — Facilitat.io
 
+Le [mandat permanent de WORKFLOW.md](WORKFLOW.md#mandat-permanent--autorité-et-limites)
+gouverne les autorisations, validations, promotions, coûts et limites de données.
+
 ## 1. Répartition des rôles
 
 **L'utilisateur est l'expert produit et métier.** Il est psychopraticien. Il définit les objectifs comportementaux, valide ce qui est visible par l'utilisateur final, et arbitre les décisions produit. Il ne lit pas le code.
@@ -60,7 +63,7 @@ Cet ordre s'applique à l'arbitrage, pas à la structure du code. L'implémentat
 
 ### Comportement visible
 
-- Tout changement qui modifie ce que l'utilisateur final reçoit (ton, mode, réponse de crise, mémoire affichée) doit être signalé avant exécution et validé
+- Tout changement qui modifie ce que l'utilisateur final reçoit (ton, mode, réponse de crise, mémoire affichée) doit être annoncé avec son risque et couvert par une autorisation produit existante ou un arbitrage explicite, selon le mandat permanent
 
 ### Mémoire
 
@@ -89,7 +92,7 @@ L'agent **n'a pas besoin de demande explicite** pour ces décisions s'il peut le
 
 ### Restriction de mode agent
 
-**L'agent ne peut pas basculer du mode Ask ou Interactive vers le mode Plan, Agent ou Autopilot sans validation explicite de l'utilisateur.** Si une tâche semble nécessiter un autre mode, signaler et attendre confirmation avant tout changement de mode.
+L'agent respecte le mode et les permissions de l'environnement sélectionné. Il organise librement les étapes techniques couvertes par la mission ; il ne change ni environnement, ni permissions, ni niveau d'accès sans autorisation applicable.
 
 ### Règles de nomenclature (obligatoires)
 
@@ -163,7 +166,7 @@ Avant toute modification qui change un comportement visible :
 
 1. **Annoncer en langage produit** : ce qui va changer pour l'utilisateur final
 2. **Indiquer le risque** : ce qui pourrait régresser
-3. **Attendre un signal de go** avant d'écrire le code
+3. **Vérifier l'autorisation existante** : avancer si l'effet est couvert ; sinon attendre l'arbitrage produit avant d'écrire le code
 
 Pour les modifications purement techniques sans effet comportemental visible (refactoring, renommage interne, restructuration, logs) : exécuter directement, expliquer après si utile.
 
@@ -184,7 +187,7 @@ Codex desktop/local, VS Code local et Chrome local ne font pas partie du flux de
 
 ### Règle de démarrage Codex Cloud
 
-Toute tâche doit sélectionner `beta` comme branche de référence. Avant toute modification, Codex Cloud vérifie que le `HEAD` initial provient de `origin/beta` lorsque cette référence est disponible. Codex travaille dans un checkout isolé propre à la tâche : aucune branche GitHub permanente nommée `work` ne doit être créée ou imposée. Cette règle cloud remplace toute convention antérieure imposant une telle branche. `main` et la production restent interdits sans autorisation explicite de l'utilisateur.
+Toute tâche doit sélectionner `beta` comme branche de référence. Avant toute modification, Codex Cloud vérifie, après fetch frais de `beta`, que le `HEAD` initial est exactement égal à `origin/beta` ; si cette preuve est impossible, ne pas modifier le dépôt. Codex travaille dans un checkout isolé propre à la tâche : aucune branche GitHub permanente nommée `work` ne doit être créée ou imposée. Cette règle cloud remplace toute convention antérieure imposant une telle branche. `main` et la production restent interdits sans autorisation explicite de l'utilisateur.
 
 ### Skill `@cloud` depuis ChatGPT Work
 
@@ -285,19 +288,21 @@ Obligation :
 
 - après toute modification de prompt ou de contrat mémoire (`lib/prompts.js`, parse/merge mémoire), considérer un échec de `prompts:consistency` comme bloquant au même titre qu'un harness rouge
 
-Les commandes `pipeline:harness`, `debugmeta:harness` et `eval:chat` dépendent d'un LLM en direct — elles requièrent un GO explicite avant lancement.
-
-Règle agent (obligatoire) : ne jamais proposer spontanément des tests online (LLM en direct). Ces commandes ne sont mentionnées ou lancées que si l'utilisateur les demande explicitement.
+Les tests LLM en direct relèvent du mandat permanent de `WORKFLOW.md` : tests
+API Mistral ciblés, synthétiques, nécessaires à l'objectif autorisé, coûts existants,
+suivi et plafond établis avant exécution. Vérifier le fournisseur et les effets de
+chaque commande ; son nom ne prouve ni un appel live ni son isolation. Aucun GO
+répété n'est requis pour un test couvert ; hors de ce cadre, ne pas le lancer.
 
 Les tests de comportement fins (tests manuels, live test) restent de la responsabilité conjointe.
 
 ### Règle de diagnostic production Render
 
-Quand un diagnostic production est demandé et que les credentials Render sont disponibles dans l'environnement local (`RENDER_API_KEY`, `RENDER_SERVICE_ID`), l'agent lit directement les logs Render depuis VS Code via l'API (`/v1/logs`, avec filtre `ownerId` + `resource`).
+Quand un diagnostic production est demandé et que les credentials Render sont disponibles dans l'environnement cloud autorisé (`RENDER_API_KEY`, `RENDER_SERVICE_ID`), l'agent lit directement les logs Render depuis Codex Cloud/Remote via l'API (`/v1/logs`, avec filtre `ownerId` + `resource`).
 
 Objectif : éviter les copier-coller manuels de logs et réduire le temps de diagnostic.
 
-Si les credentials manquent ou sont invalides, l'agent le signale explicitement et demande seulement les éléments manquants.
+Si les credentials manquent ou sont invalides, l'agent signale l'accès manquant sans demander de valeur secrète dans le chat.
 
 Runbook API Render (obligatoire, anti-régression) :
 
@@ -327,6 +332,7 @@ Règle de visibilité admin pour les tests live (obligatoire) :
 - Si l'utilisateur veut suivre les tests depuis `admin.html`, ne pas lancer les tests en `isPrivateConversation=true`.
 - Utiliser `isPrivateConversation=false` par défaut pour ces tests et partager `conversationId` + `requestId` pour le suivi.
 - N'utiliser `isPrivateConversation=true` que sur demande explicite de l'utilisateur.
+- Appliquer dans tous les cas l'isolement synthétique du mandat permanent ; visibilité admin et statut privé ne prouvent pas l'isolation du corpus personnel.
 
 Hygiène d'environnement (Windows/PowerShell) :
 
@@ -427,7 +433,7 @@ Le produit est entré en phase de stabilisation comportementale. Cette phase a u
 **Ce que cela signifie concrètement :**
 
 - Corriger et stabiliser le comportement existant est prioritaire sur ajouter de nouveaux signaux, états, politiques ou champs de mémoire.
-- Par défaut, l'agent ne propose pas de nouveaux analyseurs, flags de session, tokens writer, champs debugMeta ou états machine d'état. Si une telle addition semble nécessaire, la signaler comme besoin avec justification comportementale et attendre un go explicite.
+- Par défaut, l'agent ne propose pas de nouveaux analyseurs, flags de session, tokens writer, champs debugMeta ou états machine d'état. Si une telle addition semble nécessaire, justifier sa nécessité comportementale ; agir si couvert par l’objectif autorisé, sinon attendre un arbitrage produit.
 - Les bugs comportementaux visibles restent traités immédiatement, sans attendre.
 - Les améliorations de l'outillage (harness, logs, tests déterministes) restent autorisées sans validation préalable.
 
