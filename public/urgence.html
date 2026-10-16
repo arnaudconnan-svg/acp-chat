@@ -269,7 +269,12 @@
         if (!backLink) return;
 
         backLink.addEventListener('click', (event) => {
-          if (window.history.length > 1) {
+          let hasAppReferrer = false;
+          try {
+            hasAppReferrer =
+              new URL(document.referrer).origin === window.location.origin;
+          } catch {}
+          if (hasAppReferrer && window.history.length > 1) {
             event.preventDefault();
             window.history.back();
           }
