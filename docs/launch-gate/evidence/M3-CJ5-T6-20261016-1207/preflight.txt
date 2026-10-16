@@ -1,0 +1,57 @@
+M3-CJ5-T6-20261016-1207 — transcription fidèle des sorties outils initiales.
+Pas une réexécution du constat initial après modification.
+
+Commande: git remote get-url origin
+Code: 0
+https://github.com/arnaudconnan-svg/acp-chat.git
+Commande: git status --porcelain=v1
+Code: 0
+Sortie vide (checkout initial propre).
+Commande: git rev-parse HEAD
+Code: 0
+11a41e9ea6765418737ad7f8e2b8a31fe404b9b1
+Commande: git branch --show-current
+Code: 0
+work (branche locale préexistante du snapshot, laissée intacte).
+
+Native environment_status: observations_current=true, observed_phase=running,
+connectivity=connected, network_policy.mode=restricted, state=enforced.
+Hôtes configurés: github.com, registry.npmjs.org; alias effectif www.github.com.
+Lecture /etc/codex/network-policy.json: restricted, mêmes hôtes, vpn_configured=false.
+Aucune modification de configuration, proxy, permission permanente ou secret.
+
+Commande réseau: timeout 30s git fetch --no-tags origin beta
+Permissions: sandbox_permissions=with_additional_permissions;
+additional_permissions={network:{enabled:true}}; justification ponctuelle fournie.
+Code: 0
+From https://github.com/arnaudconnan-svg/acp-chat
+ * branch            beta       -> FETCH_HEAD
+
+Commande: git rev-parse origin/beta
+Code: 128 (référence de suivi absente; aucun code écrit).
+La configuration initiale suivait seulement refs/heads/main.
+Commande: git rev-parse FETCH_HEAD
+Code: 0
+8b1475bc5d8f753854056e1d27eab620530a95a2
+
+Commande réseau: timeout 30s git fetch --no-tags origin refs/heads/beta:refs/remotes/origin/beta
+Mêmes permissions natives ponctuelles, sans changer la configuration.
+Code: 0
+From https://github.com/arnaudconnan-svg/acp-chat
+ * [new branch]      beta       -> origin/beta
+
+Commandes (enchaînement vérifié, code global 0):
+test "$(git rev-parse origin/beta)" = 8b1475bc5d8f753854056e1d27eab620530a95a2
+test -z "$(git status --porcelain=v1)"
+git switch -c m3-cj5-t6-20261016-g08-g20 origin/beta
+git rev-parse HEAD
+git status --porcelain=v1
+
+Sorties:
+Switched to a new branch 'm3-cj5-t6-20261016-g08-g20'
+8b1475bc5d8f753854056e1d27eab620530a95a2
+(sortie status vide)
+Conclusion avant code: HEAD = origin/beta = SHA Work, arbre propre.
+AGENTS.md, WORKFLOW.md, PROMPTING.md et ARCHITECTURE.md lus sur cette base.
+Aucun autre AGENTS.md trouvé dans les répertoires modifiés.
+Origin push vérifié également: https://github.com/arnaudconnan-svg/acp-chat.git.

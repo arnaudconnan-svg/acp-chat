@@ -1,0 +1,278 @@
+
+> acp-chat@1.0.0 verify:synthetic
+> npm run m2:lifecycle:harness && npm run m2:chat:harness && npm run m2:browser:harness && npm run m2:copies:harness && npm run m2:stream:harness && npm run operator:harness && npm run isolation:harness && npm run professional:harness && npm run object-private:harness && npm run browser-identity:harness && npm run log-projection:harness && npm run associations:harness && npm run consent-ui:harness && npm run verify
+
+
+> acp-chat@1.0.0 m2:lifecycle:harness
+> node scripts/synthetic/m2-lifecycle-harness.cjs
+
+Fri, 16 Oct 2026 10:20:54 GMT router deprecated handlers that are Promise-like are deprecated, use a native Promise instead at node_modules/router/lib/route.js:157:13
+PASS enabled streaming preserves foreign public ownership refusals
+PASS Firebase transaction initial null/retry/conflict/lost acknowledgement
+PASS query.ref, snapshot.ref and multipath updates cannot bypass fences
+PASS known replay provenance removed only for its owner
+PASS delete removes parent/direct/derived children atomically, retains voluntary feedback and B
+PASS delete: pre-admitted top-level set/fallback/audit/user writers rejected after restart
+PASS reset: pre-admitted top-level set/fallback/audit/user writers rejected after restart
+PASS close: pre-admitted top-level set/fallback/audit/user writers rejected after restart
+PASS manual priority and reverse turn order checked at commit
+PASS real Express delete and fresh request cannot reclaim retired ID
+PASS disabled streaming refuses before conversation claim
+PASS failed final authority read returns 503 without content or unhandled rejection
+PASS stable rejection handled immediately; parent waits for retained sibling
+PASS invalid structured memory rejected (invalid)
+PASS invalid structured memory rejected ({"items":false})
+PASS invalid structured memory rejected ({"items":[1]})
+PASS invalid structured memory rejected ({"items":[""]})
+PASS business 409 retains session; identity mismatch invalidates; reset clears captured old space
+M2 targeted: 18 PASS
+
+> acp-chat@1.0.0 m2:chat:harness
+> node scripts/synthetic/m2-chat-harness.cjs
+
+Fri, 16 Oct 2026 10:20:55 GMT router deprecated handlers that are Promise-like are deprecated, use a native Promise instead at node_modules/router/lib/route.js:157:13
+PASS delivered N remains saveable after N+1 while stale current-state effects are discarded
+PASS real chat writer retained during delete
+PASS real chat memory retained during delete
+PASS real chat writer retained during reset
+PASS real chat memory retained during reset
+PASS real chat writer retained during close
+PASS real chat memory retained during close
+PASS real consolidation loses to manual edit without invalidating session
+PASS real held chat memory cannot overwrite a newer manual revision
+PASS real writer held across replay replacement cannot restore previous content
+PASS real memory held across replay replacement cannot restore previous content
+PASS real persistence held across replay replacement cannot restore previous content
+PASS real writer held across import replacement cannot restore previous content
+PASS real memory held across import replacement cannot restore previous content
+PASS real persistence held across import replacement cannot restore previous content
+PASS real cancel during held message commit rejects callback replay without dropping another request
+PASS real delayed consolidation rejects content replacement at commit
+M2 chat: 17 PASS
+
+> acp-chat@1.0.0 m2:browser:harness
+> node scripts/synthetic/m2-browser-harness.cjs
+
+PASS reserved-access link uses ordinary authentication and retains Android entry
+Fri, 16 Oct 2026 10:20:57 GMT router deprecated handlers that are Promise-like are deprecated, use a native Promise instead at node_modules/router/lib/route.js:157:13
+PASS real reserved-access frontend and Express session: anonymous
+PASS real reserved-access frontend and Express session: valid
+PASS real reserved-access frontend and Express session: invalid
+PASS real reserved-access frontend and Express session: revoked
+PASS real reserved-access frontend and Express session: unavailable
+PASS real reserved-access frontend and Express session: android
+PASS real Stop keeps its launch destination after public_navigation
+PASS real Stop keeps its launch destination after private_navigation
+PASS real Stop keeps its launch destination after identity
+PASS real Stop keeps its launch destination after identity_roundtrip
+PASS real close frontend destination after conversation
+PASS real close frontend destination after identity
+PASS real close frontend destination after delete
+PASS real close frontend destination after manual
+PASS real reset handler clears the old identity despite wrapper activation of new identity
+PASS real closure handler removes this device content and invalidates identity
+PASS real copy frontend resumes exact request after lost acknowledgement and hydrates canonical destination
+PASS real copy body delayed through identity cannot activate/store old destination
+PASS real copy body delayed through retirement cannot activate/store old destination
+PASS real make-public retries frozen import then maps acknowledged IDs; failed import stays private
+PASS real replay frontend keeps destination/request across reload and hydrates current acknowledged copy
+PASS real stream reader disabled: only explicit disabled permits classic fallback
+PASS real stream reader other405: only explicit disabled permits classic fallback
+PASS real stream reader error: only explicit disabled permits classic fallback
+PASS real stream reader success: only explicit disabled permits classic fallback
+PASS real stream reader network: only explicit disabled permits classic fallback
+PASS real stream reader rejects delayed body chunk after identity
+PASS real stream reader rejects delayed body chunk after retirement
+PASS real save receipt distinguishes confirmed, uncertain and replaced without old local resurrection
+PASS real interrupted-stream frontend receipt confirmed is scoped and truthful
+PASS real interrupted-stream frontend receipt uncertain is scoped and truthful
+PASS real interrupted-stream frontend receipt private is scoped and truthful
+PASS real interrupted-stream frontend receipt identity is scoped and truthful
+PASS real interrupted-stream frontend receipt completed_wins is scoped and truthful
+M2 browser: 35 PASS
+
+> acp-chat@1.0.0 m2:copies:harness
+> node scripts/synthetic/m2-copies-harness.cjs
+
+Fri, 16 Oct 2026 10:21:00 GMT router deprecated handlers that are Promise-like are deprecated, use a native Promise instead at node_modules/router/lib/route.js:157:13
+PASS from-message: lost ack + cold retry returns one canonical copy
+PASS create-and-activate: lost ack + cold retry returns one canonical copy
+PASS prepared activation retry preserves destination work and canonical structured snapshot
+PASS delete_destination erases receipts, retry cannot recreate after restart
+PASS delete_source erases receipts, retry cannot recreate after restart
+PASS reset erases receipts, retry cannot recreate after restart
+PASS close erases receipts, retry cannot recreate after restart
+PASS foreign anchor/owner and contradictory seed rejected without copy effects
+PASS replace prepared before new_turn refuses; current explicit replace succeeds
+PASS replace prepared before edit_memory refuses; current explicit replace succeeds
+PASS replace prepared before late_message refuses; current explicit replace succeeds
+PASS replay transaction conflict reevaluates current destination version
+PASS explicit create cannot replace; replay ack loss retry cannot duplicate
+PASS replay preserves real memory movements, control revisions and retirement barriers
+PASS import-local is atomic, repeatable after lost ack, and replacement loses to intervening message
+PASS voluntary feedback snapshot lost ack yields one pair and survives source-only removal
+PASS invalid structured memory/control types and explicit new private import collision have zero effects
+PASS professional session TTL uses one creation instant even when clock advances between reads
+M2 copies: 18 PASS
+
+> acp-chat@1.0.0 m2:stream:harness
+> node scripts/synthetic/m2-stream-harness.cjs
+
+Fri, 16 Oct 2026 10:21:02 GMT router deprecated handlers that are Promise-like are deprecated, use a native Promise instead at node_modules/router/lib/route.js:157:13
+PASS enabled streaming public legitimate tokens/result and persistence contract
+PASS enabled streaming private legitimate tokens/result and persistence contract
+PASS enabled stream token retained during delete: no late token/result
+PASS enabled stream token retained during reset: no late token/result
+PASS enabled stream token retained during close: no late token/result
+PASS enabled stream token retained during cancel: no late token/result
+PASS interrupted public stream retained writer, lost acknowledgement and cold repeat preserve one partial child
+PASS completed stream wins over late partial report, fabricated operation refused
+M2 stream: 8 PASS
+
+> acp-chat@1.0.0 operator:harness
+> node scripts/operator-target-harness.js
+
+[PASS] M0 bounded simulation and fail-closed refusals; no deletion adapter
+
+> acp-chat@1.0.0 isolation:harness
+> node scripts/synthetic/isolation-harness.cjs
+
+[PASS] M0 genuine Express mounts/order/errors and full source/health with doubles, boot/timers/providers refused before load
+
+> acp-chat@1.0.0 professional:harness
+> node scripts/synthetic/professional-harness.cjs
+
+Fri, 16 Oct 2026 10:21:04 GMT router deprecated handlers that are Promise-like are deprecated, use a native Promise instead at node_modules/router/lib/route.js:157:13
+[PASS] M1 individual roles, cold restart, grants/revocation, minimal API, supports/admin and journal through genuine Express
+
+> acp-chat@1.0.0 object-private:harness
+> node scripts/synthetic/object-private-harness.cjs
+
+Fri, 16 Oct 2026 10:21:05 GMT router deprecated handlers that are Promise-like are deprecated, use a native Promise instead at node_modules/router/lib/route.js:157:13
+[PASS] G02 actual routes/effects, scopes/cancel/progress/leases; G04 private multi-turn/device reload/cold restart and bounded feedback
+
+> acp-chat@1.0.0 browser-identity:harness
+> node scripts/synthetic/browser-harness.cjs
+
+[PASS] G03 identity namespaces/legacy/logout/tabs/offline/late responses and G12 local destination positives/refusals
+
+> acp-chat@1.0.0 log-projection:harness
+> node scripts/synthetic/log-projection-harness.cjs
+
+[PASS] G06 production projection before genuine pino, console and child bindings; markers absent
+
+> acp-chat@1.0.0 associations:harness
+> node scripts/synthetic/associations-harness.cjs
+
+Fri, 16 Oct 2026 10:21:07 GMT router deprecated handlers that are Promise-like are deprecated, use a native Promise instead at node_modules/router/lib/route.js:157:13
+[PASS] G02 parent/child ownership for reads/chat recall/seeds, contradictory branches, orphan/collision/path imports and bounded authorized overwrite
+
+> acp-chat@1.0.0 consent-ui:harness
+> node scripts/synthetic/consent-ui-harness.cjs
+
+Fri, 16 Oct 2026 10:21:08 GMT router deprecated handlers that are Promise-like are deprecated, use a native Promise instead at node_modules/router/lib/route.js:157:13
+[PASS] CJ4 consent DOM through real APIs: readable owned public choices, restored scope/date/summary, exact local expiry and revocation; distinct admin reasons
+
+> acp-chat@1.0.0 verify
+> node --check server.js && npm run m3:emergency:harness && npm run m3:safety:harness && npm run password-reset:harness && npm run password-reset-frontend:harness && npm run password-reset-server:harness && npm run preff:git:harness && npm run health:harness && npm run no-openai-runtime:harness && npm run mistral:harness && npm run title:harness && npm run title:conflict:mistral:harness && npm run information-routing:mistral:harness && npm run exploration:mistral:harness && npm run recall-routing:mistral:harness && npm run contact-discharge:mistral:harness && npm run immediate-alliance:mistral:harness && npm run interpretation-rejection:mistral:harness && npm run dependency-risk:mistral:harness && npm run major-harm-response:mistral:harness && npm run acute-crisis-followup:mistral:harness && npm run n2-writer:mistral:harness && npm run major-harm-risk:mistral:harness && npm run suicide-risk:mistral:harness && npm run writer:mistral:harness && npm run memory:mistral:harness && npm run intersession:mistral:harness && npm run intersession:source:harness && npm run affiliation:mistral:harness && npm run state:harness && npm run posture:harness && npm run analyzers:harness && npm run prompts:consistency && npm run contract-validator:harness && npm run human-support:harness && npm run flags:harness && npm run conversation-state:harness && npm run runtime-schemas:harness && npm run debugmeta-unit:harness && npm run auth-conversation:harness && npm run chat-routing:harness && npm run branching:harness && npm run transcript:harness && npm run crisis-routing:harness && npm run llm-messages:harness && npm run conversation-data:harness && npm run ui-layout:verify
+
+
+> acp-chat@1.0.0 m3:emergency:harness
+> node scripts/synthetic/m3-emergency-harness.cjs
+
+PASS collection is candidate-only, third-party instructions not copied
+PASS unapproved candidate/service, changed digest and stale base rejected
+PASS missing provenance and non-telephone identifiers rejected
+PASS partial failed collection never advances published version/dates
+PASS approved publication is atomic, leaves untouched categories and territories unchanged
+PASS legacy updater refuses before any network or file write
+PASS HTTP byte limit, deadline, caller abort, error and invalid JSON destroy request
+PASS unknown country and missing category keep effective country and honest legacy status
+PASS real API, crisis writer context and DOM share effective country, source and dates
+PASS real writer receives hostile resource content only as unprivileged data
+PASS real followup resource context never enters privileged instructions
+M3 emergency: 11 groups passed; no real providers/data
+
+> acp-chat@1.0.0 m3:safety:harness
+> node scripts/synthetic/m3-safety-characterization.cjs
+
+Fri, 16 Oct 2026 10:21:10 GMT router deprecated handlers that are Promise-like are deprecated, use a native Promise instead at node_modules/router/lib/route.js:157:13
+{"id":"D1","message":"Ce boulot me tue.","raw":"{\"suicideLevel\":\"N2\",\"needsClarification\":false,\"isQuote\":false,\"idiomaticDeathExpression\":false,\"crisisResolved\":false}","normalized":{"suicideLevel":"N0","needsClarification":false,"isQuote":false,"idiomaticDeathExpression":true,"crisisResolved":false,"crisisResolvedExplicit":false},"previousCrisis":false,"decision":{"route":null,"ruleId":null,"priority":null,"winner":"none","safetyImminence":0,"suicideImminence":0},"orchestratorDecision":{"route":null,"ruleId":null,"priority":null,"winner":"none","safetyImminence":0,"suicideImminence":0},"writer":{"state":"exploration_open","effectiveState":"exploration_open","reply":"SYNTHETIC_REPLY","followupCalls":0,"writerCalls":1},"responseSaveStatus":"pending","persistedInDouble":true}
+{"id":"D2","message":"Ce boulot me tue. Et séparément, je veux mourir.","raw":"{\"suicideLevel\":\"N1\",\"needsClarification\":true,\"isQuote\":false,\"idiomaticDeathExpression\":false,\"crisisResolved\":false}","normalized":{"suicideLevel":"N1","needsClarification":false,"isQuote":false,"idiomaticDeathExpression":true,"crisisResolved":false,"crisisResolvedExplicit":false},"previousCrisis":false,"decision":{"route":"n1_clarification","ruleId":"suicide_clarification","priority":30,"winner":"suicide","safetyImminence":0,"suicideImminence":2},"orchestratorDecision":{"route":"n1_clarification","ruleId":"suicide_clarification","priority":30,"winner":"suicide","safetyImminence":0,"suicideImminence":2},"writer":{"state":"exploration_open","effectiveState":"n1_crisis","reply":"SYNTHETIC_REPLY","followupCalls":0,"writerCalls":1},"responseSaveStatus":"pending","persistedInDouble":true}
+{"id":"D3","message":"Ce boulot me tue. À part cela, je vais me tuer maintenant, j'ai préparé le moyen.","raw":"{\"suicideLevel\":\"N2\",\"needsClarification\":false,\"isQuote\":false,\"idiomaticDeathExpression\":false,\"crisisResolved\":false}","normalized":{"suicideLevel":"N0","needsClarification":false,"isQuote":false,"idiomaticDeathExpression":true,"crisisResolved":false,"crisisResolvedExplicit":false},"previousCrisis":false,"decision":{"route":null,"ruleId":null,"priority":null,"winner":"none","safetyImminence":0,"suicideImminence":0},"orchestratorDecision":{"route":null,"ruleId":null,"priority":null,"winner":"none","safetyImminence":0,"suicideImminence":0},"writer":{"state":"exploration_open","effectiveState":"exploration_open","reply":"SYNTHETIC_REPLY","followupCalls":0,"writerCalls":1},"responseSaveStatus":"pending","persistedInDouble":true}
+{"id":"D4","message":"Il a dit « je veux mourir ». Quant à moi, je vais me tuer maintenant, j'ai préparé le moyen.","raw":"{\"suicideLevel\":\"N2\",\"needsClarification\":false,\"isQuote\":true,\"idiomaticDeathExpression\":false,\"crisisResolved\":false}","normalized":{"suicideLevel":"N2","needsClarification":false,"isQuote":true,"idiomaticDeathExpression":false,"crisisResolved":false,"crisisResolvedExplicit":false},"previousCrisis":false,"decision":{"route":"n2","ruleId":"suicide_n2","priority":10,"winner":"suicide","safetyImminence":0,"suicideImminence":4},"orchestratorDecision":{"route":"n2","ruleId":"suicide_n2","priority":10,"winner":"suicide","safetyImminence":0,"suicideImminence":4},"writer":{"state":"n2_crisis","effectiveState":null,"reply":"SYNTHETIC_REPLY","followupCalls":0,"writerCalls":1},"responseSaveStatus":"pending","persistedInDouble":true}
+{"id":"D5","message":"Parlons de ma semaine.","raw":"{\"suicideLevel\":\"N0\",\"needsClarification\":false,\"isQuote\":false,\"idiomaticDeathExpression\":false,\"crisisResolved\":false}","normalized":{"suicideLevel":"N0","needsClarification":false,"isQuote":false,"idiomaticDeathExpression":false,"crisisResolved":false,"crisisResolvedExplicit":false},"previousCrisis":true,"decision":{"route":"acute_followup","ruleId":"acute_crisis_followup","priority":20,"winner":"suicide","safetyImminence":0,"suicideImminence":0},"orchestratorDecision":{"route":"acute_followup","ruleId":"acute_crisis_followup","priority":20,"winner":"suicide","safetyImminence":0,"suicideImminence":0},"writer":{"state":null,"effectiveState":null,"reply":"SYNTHETIC_FOLLOWUP","followupCalls":1,"writerCalls":0},"responseSaveStatus":"pending","persistedInDouble":true}
+{"id":"D6_timeout_prior_false","message":"Message synthétique neutre.","raw":{"error":"SYNTHETIC_TIMEOUT"},"normalized":{"suicideLevel":"N0","needsClarification":false,"isQuote":false,"idiomaticDeathExpression":false,"crisisResolved":false,"crisisResolvedExplicit":false},"previousCrisis":false,"decision":{"route":null,"ruleId":null,"priority":null,"winner":"none","safetyImminence":0,"suicideImminence":0},"orchestratorDecision":{"route":null,"ruleId":null,"priority":null,"winner":"none","safetyImminence":0,"suicideImminence":0},"writer":{"state":"exploration_open","effectiveState":"exploration_open","reply":"SYNTHETIC_REPLY","followupCalls":0,"writerCalls":1},"responseSaveStatus":"pending","persistedInDouble":true}
+{"id":"D6_incomplete_json_prior_false","message":"Message synthétique neutre.","raw":"{\"suicideLevel\":","normalized":{"suicideLevel":"N0","needsClarification":false,"isQuote":false,"idiomaticDeathExpression":false,"crisisResolved":false,"crisisResolvedExplicit":false},"previousCrisis":false,"decision":{"route":null,"ruleId":null,"priority":null,"winner":"none","safetyImminence":0,"suicideImminence":0},"orchestratorDecision":{"route":null,"ruleId":null,"priority":null,"winner":"none","safetyImminence":0,"suicideImminence":0},"writer":{"state":"exploration_open","effectiveState":"exploration_open","reply":"SYNTHETIC_REPLY","followupCalls":0,"writerCalls":1},"responseSaveStatus":"pending","persistedInDouble":true}
+{"id":"D6_incomplete_object_prior_false","message":"Message synthétique neutre.","raw":"{\"suicideLevel\":\"N2\"}","normalized":{"suicideLevel":"N2","needsClarification":false,"isQuote":false,"idiomaticDeathExpression":false,"crisisResolved":false,"crisisResolvedExplicit":false},"previousCrisis":false,"decision":{"route":"n2","ruleId":"suicide_n2","priority":10,"winner":"suicide","safetyImminence":0,"suicideImminence":4},"orchestratorDecision":{"route":"n2","ruleId":"suicide_n2","priority":10,"winner":"suicide","safetyImminence":0,"suicideImminence":4},"writer":{"state":"n2_crisis","effectiveState":null,"reply":"SYNTHETIC_REPLY","followupCalls":0,"writerCalls":1},"responseSaveStatus":"pending","persistedInDouble":true}
+{"id":"D6_unknown_level_prior_false","message":"Message synthétique neutre.","raw":"{\"suicideLevel\":\"UNKNOWN\",\"needsClarification\":false,\"isQuote\":false,\"idiomaticDeathExpression\":false,\"crisisResolved\":false}","normalized":{"suicideLevel":"N0","needsClarification":false,"isQuote":false,"idiomaticDeathExpression":false,"crisisResolved":false,"crisisResolvedExplicit":false},"previousCrisis":false,"decision":{"route":null,"ruleId":null,"priority":null,"winner":"none","safetyImminence":0,"suicideImminence":0},"orchestratorDecision":{"route":null,"ruleId":null,"priority":null,"winner":"none","safetyImminence":0,"suicideImminence":0},"writer":{"state":"exploration_open","effectiveState":"exploration_open","reply":"SYNTHETIC_REPLY","followupCalls":0,"writerCalls":1},"responseSaveStatus":"pending","persistedInDouble":true}
+{"id":"D6_wrong_booleans_prior_false","message":"Message synthétique neutre.","raw":"{\"suicideLevel\":\"N1\",\"needsClarification\":\"true\",\"isQuote\":\"false\",\"idiomaticDeathExpression\":\"true\",\"crisisResolved\":\"true\"}","normalized":{"suicideLevel":"N1","needsClarification":false,"isQuote":false,"idiomaticDeathExpression":false,"crisisResolved":false,"crisisResolvedExplicit":false},"previousCrisis":false,"decision":{"route":"n1_clarification","ruleId":"suicide_clarification","priority":30,"winner":"suicide","safetyImminence":0,"suicideImminence":2},"orchestratorDecision":{"route":"n1_clarification","ruleId":"suicide_clarification","priority":30,"winner":"suicide","safetyImminence":0,"suicideImminence":2},"writer":{"state":"exploration_open","effectiveState":"n1_crisis","reply":"SYNTHETIC_REPLY","followupCalls":0,"writerCalls":1},"responseSaveStatus":"pending","persistedInDouble":true}
+{"id":"D6_timeout_prior_true","message":"Message synthétique neutre.","raw":{"error":"SYNTHETIC_TIMEOUT"},"normalized":{"suicideLevel":"N0","needsClarification":false,"isQuote":false,"idiomaticDeathExpression":false,"crisisResolved":false,"crisisResolvedExplicit":false},"previousCrisis":true,"decision":{"route":"acute_followup","ruleId":"acute_crisis_followup","priority":20,"winner":"suicide","safetyImminence":0,"suicideImminence":0},"orchestratorDecision":{"route":"acute_followup","ruleId":"acute_crisis_followup","priority":20,"winner":"suicide","safetyImminence":0,"suicideImminence":0},"writer":{"state":null,"effectiveState":null,"reply":"SYNTHETIC_FOLLOWUP","followupCalls":1,"writerCalls":0},"responseSaveStatus":"pending","persistedInDouble":true}
+{"id":"D6_incomplete_json_prior_true","message":"Message synthétique neutre.","raw":"{\"suicideLevel\":","normalized":{"suicideLevel":"N0","needsClarification":false,"isQuote":false,"idiomaticDeathExpression":false,"crisisResolved":false,"crisisResolvedExplicit":false},"previousCrisis":true,"decision":{"route":"acute_followup","ruleId":"acute_crisis_followup","priority":20,"winner":"suicide","safetyImminence":0,"suicideImminence":0},"orchestratorDecision":{"route":"acute_followup","ruleId":"acute_crisis_followup","priority":20,"winner":"suicide","safetyImminence":0,"suicideImminence":0},"writer":{"state":null,"effectiveState":null,"reply":"SYNTHETIC_FOLLOWUP","followupCalls":1,"writerCalls":0},"responseSaveStatus":"pending","persistedInDouble":true}
+{"id":"D6_incomplete_object_prior_true","message":"Message synthétique neutre.","raw":"{\"suicideLevel\":\"N2\"}","normalized":{"suicideLevel":"N2","needsClarification":false,"isQuote":false,"idiomaticDeathExpression":false,"crisisResolved":false,"crisisResolvedExplicit":false},"previousCrisis":true,"decision":{"route":"n2","ruleId":"suicide_n2","priority":10,"winner":"suicide","safetyImminence":0,"suicideImminence":4},"orchestratorDecision":{"route":"n2","ruleId":"suicide_n2","priority":10,"winner":"suicide","safetyImminence":0,"suicideImminence":4},"writer":{"state":"n2_crisis","effectiveState":null,"reply":"SYNTHETIC_REPLY","followupCalls":0,"writerCalls":1},"responseSaveStatus":"pending","persistedInDouble":true}
+{"id":"D6_unknown_level_prior_true","message":"Message synthétique neutre.","raw":"{\"suicideLevel\":\"UNKNOWN\",\"needsClarification\":false,\"isQuote\":false,\"idiomaticDeathExpression\":false,\"crisisResolved\":false}","normalized":{"suicideLevel":"N0","needsClarification":false,"isQuote":false,"idiomaticDeathExpression":false,"crisisResolved":false,"crisisResolvedExplicit":false},"previousCrisis":true,"decision":{"route":"acute_followup","ruleId":"acute_crisis_followup","priority":20,"winner":"suicide","safetyImminence":0,"suicideImminence":0},"orchestratorDecision":{"route":"acute_followup","ruleId":"acute_crisis_followup","priority":20,"winner":"suicide","safetyImminence":0,"suicideImminence":0},"writer":{"state":null,"effectiveState":null,"reply":"SYNTHETIC_FOLLOWUP","followupCalls":1,"writerCalls":0},"responseSaveStatus":"pending","persistedInDouble":true}
+{"id":"D6_wrong_booleans_prior_true","message":"Message synthétique neutre.","raw":"{\"suicideLevel\":\"N1\",\"needsClarification\":\"true\",\"isQuote\":\"false\",\"idiomaticDeathExpression\":\"true\",\"crisisResolved\":\"true\"}","normalized":{"suicideLevel":"N1","needsClarification":false,"isQuote":false,"idiomaticDeathExpression":false,"crisisResolved":false,"crisisResolvedExplicit":false},"previousCrisis":true,"decision":{"route":"acute_followup","ruleId":"acute_crisis_followup","priority":20,"winner":"suicide","safetyImminence":0,"suicideImminence":2},"orchestratorDecision":{"route":"acute_followup","ruleId":"acute_crisis_followup","priority":20,"winner":"suicide","safetyImminence":0,"suicideImminence":2},"writer":{"state":null,"effectiveState":null,"reply":"SYNTHETIC_FOLLOWUP","followupCalls":1,"writerCalls":0},"responseSaveStatus":"pending","persistedInDouble":true}
+{"boundary":"writer_timeout","responseSaveStatus":"pending","reply":"Je t'entends, et la c'est urgent. Si tu es en danger immediat, appelle les services d'urgence locaux. Pays demandé : ZZ ; repli : SYNTHETIC_FR (FR), pas des ressources locales confirmées. | urgences : 000 (ressource héritée non validée ; source et date de vérification non établies ; version du registre : bc2079f4e51e374f68811bb37735e1b0216f9e6822f59544316386060e87bd7c) | prévention suicide : 001 (ressource héritée non validée ; source et date de vérification non établies ; version du registre : bc2079f4e51e374f68811bb37735e1b0216f9e6822f59544316386060e87bd7c) Si tu peux, ne reste pas seul.","writerCalls":1}
+{"boundary":"save_failure","responseSaveStatus":"pending","reply":"SYNTHETIC_REPLY","writerCalls":1}
+{"boundary":"unauthenticated","status":401,"writerCalls":0}
+{"boundary":"foreign_conversation","status":403,"writerCalls":0}
+M3 D1-D6 characterization complete; existing clinical policy unchanged; synthetic injected outputs only.
+
+> acp-chat@1.0.0 password-reset:harness
+> node scripts/password-reset-harness.js
+
+[PASS] password reset queue, limits, real scrypt, RTDB retry/races and sessions
+
+> acp-chat@1.0.0 password-reset-frontend:harness
+> node scripts/password-reset-frontend-harness.js
+
+[PASS] password reset frontend DOM: fragments, outcomes, session race, redirects and autofill
+
+> acp-chat@1.0.0 password-reset-server:harness
+> node scripts/password-reset-server-integration-harness.js
+
+[PASS] real server auth routes and getUserSession with synthetic RTDB
+
+> acp-chat@1.0.0 preff:git:harness
+> node scripts/preff-git-guard-harness.js
+
+node:assert:885
+    throw err;
+    ^
+
+AssertionError [ERR_ASSERTION]: The input did not match the regular expression /mandatory post-promotion sync successful/. Input:
+
+"Your branch is up to date with 'origin/beta'.\n" +
+  'Already up to date.\n' +
+  'Updating c235321..d452768\n' +
+  'Fast-forward\n' +
+  ' promoted.txt | 1 +\n' +
+  ' 1 file changed, 1 insertion(+)\n' +
+  ' create mode 100644 promoted.txt\n'
+
+    at verifyFastForwardSuccess (/workspace/acp-chat/scripts/preff-git-guard-harness.js:57:10)
+    at Object.<anonymous> (/workspace/acp-chat/scripts/preff-git-guard-harness.js:87:1)
+    at Module._compile (node:internal/modules/cjs/loader:1872:14)
+    at Object..js (node:internal/modules/cjs/loader:2003:10)
+    at Module.load (node:internal/modules/cjs/loader:1594:32)
+    at Module.<anonymous> (node:internal/modules/cjs/loader:1396:12)
+    at Module._load (/workspace/acp-chat/scripts/synthetic/guard.cjs:35:17)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
+    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)
+    at node:internal/main/run_main_module:33:47 {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: "Your branch is up to date with 'origin/beta'.\n" +
+    'Already up to date.\n' +
+    'Updating c235321..d452768\n' +
+    'Fast-forward\n' +
+    ' promoted.txt | 1 +\n' +
+    ' 1 file changed, 1 insertion(+)\n' +
+    ' create mode 100644 promoted.txt\n',
+  expected: /mandatory post-promotion sync successful/,
+  operator: 'match',
+  diff: 'simple'
+}
+
+Node.js v24.19.0
+EXIT_CODE=1

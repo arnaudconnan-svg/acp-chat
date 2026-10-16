@@ -1,0 +1,2 @@
+Publication bloquée : fournir --candidate fichier.json --approval validation.json (empreinte et validation par service).
+EXIT_CODE=1 EXPECTED=1

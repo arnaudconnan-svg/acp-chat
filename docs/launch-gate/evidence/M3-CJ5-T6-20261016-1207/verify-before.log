@@ -1,0 +1,62 @@
+
+> acp-chat@1.0.0 verify
+> node --check server.js && npm run password-reset:harness && npm run password-reset-frontend:harness && npm run password-reset-server:harness && npm run preff:git:harness && npm run health:harness && npm run no-openai-runtime:harness && npm run mistral:harness && npm run title:harness && npm run title:conflict:mistral:harness && npm run information-routing:mistral:harness && npm run exploration:mistral:harness && npm run recall-routing:mistral:harness && npm run contact-discharge:mistral:harness && npm run immediate-alliance:mistral:harness && npm run interpretation-rejection:mistral:harness && npm run dependency-risk:mistral:harness && npm run major-harm-response:mistral:harness && npm run acute-crisis-followup:mistral:harness && npm run n2-writer:mistral:harness && npm run major-harm-risk:mistral:harness && npm run suicide-risk:mistral:harness && npm run writer:mistral:harness && npm run memory:mistral:harness && npm run intersession:mistral:harness && npm run intersession:source:harness && npm run affiliation:mistral:harness && npm run state:harness && npm run posture:harness && npm run analyzers:harness && npm run prompts:consistency && npm run contract-validator:harness && npm run human-support:harness && npm run flags:harness && npm run conversation-state:harness && npm run runtime-schemas:harness && npm run debugmeta-unit:harness && npm run auth-conversation:harness && npm run chat-routing:harness && npm run branching:harness && npm run transcript:harness && npm run crisis-routing:harness && npm run llm-messages:harness && npm run conversation-data:harness && npm run ui-layout:verify
+
+
+> acp-chat@1.0.0 password-reset:harness
+> node scripts/password-reset-harness.js
+
+[PASS] password reset queue, limits, real scrypt, RTDB retry/races and sessions
+
+> acp-chat@1.0.0 password-reset-frontend:harness
+> node scripts/password-reset-frontend-harness.js
+
+[PASS] password reset frontend DOM: fragments, outcomes, session race, redirects and autofill
+
+> acp-chat@1.0.0 password-reset-server:harness
+> node scripts/password-reset-server-integration-harness.js
+
+[PASS] real server auth routes and getUserSession with synthetic RTDB
+
+> acp-chat@1.0.0 preff:git:harness
+> node scripts/preff-git-guard-harness.js
+
+node:assert:885
+    throw err;
+    ^
+
+AssertionError [ERR_ASSERTION]: The input did not match the regular expression /mandatory post-promotion sync successful/. Input:
+
+"Your branch is up to date with 'origin/beta'.\n" +
+  'Already up to date.\n' +
+  'Updating b646552..2eded36\n' +
+  'Fast-forward\n' +
+  ' promoted.txt | 1 +\n' +
+  ' 1 file changed, 1 insertion(+)\n' +
+  ' create mode 100644 promoted.txt\n'
+
+    at verifyFastForwardSuccess (/workspace/acp-chat/scripts/preff-git-guard-harness.js:57:10)
+    at Object.<anonymous> (/workspace/acp-chat/scripts/preff-git-guard-harness.js:87:1)
+    at Module._compile (node:internal/modules/cjs/loader:1872:14)
+    at Object..js (node:internal/modules/cjs/loader:2003:10)
+    at Module.load (node:internal/modules/cjs/loader:1594:32)
+    at Module.<anonymous> (node:internal/modules/cjs/loader:1396:12)
+    at Module._load (/workspace/acp-chat/scripts/synthetic/guard.cjs:35:17)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
+    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)
+    at node:internal/main/run_main_module:33:47 {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: "Your branch is up to date with 'origin/beta'.\n" +
+    'Already up to date.\n' +
+    'Updating b646552..2eded36\n' +
+    'Fast-forward\n' +
+    ' promoted.txt | 1 +\n' +
+    ' 1 file changed, 1 insertion(+)\n' +
+    ' create mode 100644 promoted.txt\n',
+  expected: /mandatory post-promotion sync successful/,
+  operator: 'match',
+  diff: 'simple'
+}
+
+Node.js v24.19.0

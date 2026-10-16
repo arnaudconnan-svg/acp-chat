@@ -1,0 +1,42 @@
+{
+  "suicide_normalization_and_fallback": {
+    "unchanged": true,
+    "sha256": "0cc0c3ffb9b2aa29f3adbb949dcb1c99e8a172d773773f4677e2dfcaf57126d0"
+  },
+  "major_harm_analysis": {
+    "unchanged": true,
+    "sha256": "2a5708b19daffdb3d91b8ca7e76a9f76055391d67afad32466338dbc1ca07a26"
+  },
+  "lexical_markers": {
+    "unchanged": true,
+    "sha256": "33967c3dd8021d9743e47b66f260a4de0ef876c754b440ca397fe2630d03c0d3"
+  },
+  "refusal_turn_type_policy": {
+    "unchanged": true,
+    "sha256": "ef39a2431496e02c920f99539f00410725be4d02c6d7c84629189d73da0c0e82"
+  },
+  "lib/chat-routing.js": {
+    "unchanged": true,
+    "sha256": "5560b3f10aa5c64a6a08d2e30e67cf8fbe5d402464ab006f03cb0500d27d23e6"
+  },
+  "lib/pipeline.js": {
+    "unchanged": true,
+    "sha256": "87459875d7d30e5347566e3cdbe0d2b1b4586ee2937f34eb02b9907fa39130ca"
+  },
+  "lib/memory.js": {
+    "unchanged": true,
+    "sha256": "624c7dc7d72616795671e9b1053941a9063073cd8b5133af228da33907c432b9"
+  },
+  "lib/prompts.js": {
+    "unchanged": true,
+    "sha256": "26254eccfad21888aeb06397567eb0e7041102f6a021d7d21166a35f236f8557"
+  },
+  "scripts/preff-git-guard.js": {
+    "unchanged": true,
+    "sha256": "b30a6c07a8b2d902e8d5baf5668356ea6bad9c7f6de08b271f6c3b8aef223a9c"
+  },
+  "scripts/synthetic/guard.cjs": {
+    "unchanged": true,
+    "sha256": "1b1de1bdfc83938a6372fb2f9f8a8f4698af09258e46036a619d678cb129068d"
+  }
+}
