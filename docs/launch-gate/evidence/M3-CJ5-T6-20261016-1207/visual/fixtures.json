@@ -1,0 +1,289 @@
+{
+  "cases": [
+    {
+      "id": "known",
+      "query": "?country=BE",
+      "country": "BE",
+      "support": {
+        "requestedCountry": "BE",
+        "country": "BE",
+        "fallbackCountry": "FR",
+        "fallbackUsed": false,
+        "fallbackReason": null,
+        "label": "Belgique — fixture synthétique",
+        "emergency": "000",
+        "suicide": "001",
+        "services": {
+          "emergency": {
+            "value": "000",
+            "status": "legacy_unverified",
+            "source": null,
+            "version": "a9a679fe356cc6f433389058f039c12eb3760597ac4f41788ffe4a6d768c6799",
+            "retrievedAt": null,
+            "publishedAt": null,
+            "verifiedAt": null,
+            "approval": null
+          },
+          "suicide": {
+            "value": "001",
+            "status": "legacy_unverified",
+            "source": null,
+            "version": "a9a679fe356cc6f433389058f039c12eb3760597ac4f41788ffe4a6d768c6799",
+            "retrievedAt": null,
+            "publishedAt": null,
+            "verifiedAt": null,
+            "approval": null
+          }
+        },
+        "status": "legacy_unverified",
+        "registryVersion": "a9a679fe356cc6f433389058f039c12eb3760597ac4f41788ffe4a6d768c6799",
+        "hasStructuredNumbers": true,
+        "fallbackGuidance": "Si ces numéros ne sont pas disponibles pour votre pays, appelez le numéro d'urgence local de votre opérateur téléphonique ou recherchez 'numéro urgence + votre pays' et 'ligne prévention suicide + votre pays'.",
+        "updatedPeriod": null
+      }
+    },
+    {
+      "id": "unknown_fallback",
+      "query": "?country=ZZ",
+      "country": "ZZ",
+      "support": {
+        "requestedCountry": "ZZ",
+        "country": "FR",
+        "fallbackCountry": "FR",
+        "fallbackUsed": true,
+        "fallbackReason": "country_unavailable",
+        "label": "France — fixture synthétique",
+        "emergency": "000",
+        "suicide": "001",
+        "services": {
+          "emergency": {
+            "value": "000",
+            "status": "legacy_unverified",
+            "source": null,
+            "version": "a9a679fe356cc6f433389058f039c12eb3760597ac4f41788ffe4a6d768c6799",
+            "retrievedAt": null,
+            "publishedAt": null,
+            "verifiedAt": null,
+            "approval": null
+          },
+          "suicide": {
+            "value": "001",
+            "status": "legacy_unverified",
+            "source": null,
+            "version": "a9a679fe356cc6f433389058f039c12eb3760597ac4f41788ffe4a6d768c6799",
+            "retrievedAt": null,
+            "publishedAt": null,
+            "verifiedAt": null,
+            "approval": null
+          }
+        },
+        "status": "legacy_unverified",
+        "registryVersion": "a9a679fe356cc6f433389058f039c12eb3760597ac4f41788ffe4a6d768c6799",
+        "hasStructuredNumbers": true,
+        "fallbackGuidance": "Si ces numéros ne sont pas disponibles pour votre pays, appelez le numéro d'urgence local de votre opérateur téléphonique ou recherchez 'numéro urgence + votre pays' et 'ligne prévention suicide + votre pays'.",
+        "updatedPeriod": null
+      }
+    },
+    {
+      "id": "absent_explicit",
+      "query": "?country=",
+      "country": null,
+      "support": {
+        "requestedCountry": null,
+        "country": "FR",
+        "fallbackCountry": "FR",
+        "fallbackUsed": true,
+        "fallbackReason": "country_unspecified",
+        "label": "France — fixture synthétique",
+        "emergency": "000",
+        "suicide": "001",
+        "services": {
+          "emergency": {
+            "value": "000",
+            "status": "legacy_unverified",
+            "source": null,
+            "version": "a9a679fe356cc6f433389058f039c12eb3760597ac4f41788ffe4a6d768c6799",
+            "retrievedAt": null,
+            "publishedAt": null,
+            "verifiedAt": null,
+            "approval": null
+          },
+          "suicide": {
+            "value": "001",
+            "status": "legacy_unverified",
+            "source": null,
+            "version": "a9a679fe356cc6f433389058f039c12eb3760597ac4f41788ffe4a6d768c6799",
+            "retrievedAt": null,
+            "publishedAt": null,
+            "verifiedAt": null,
+            "approval": null
+          }
+        },
+        "status": "legacy_unverified",
+        "registryVersion": "a9a679fe356cc6f433389058f039c12eb3760597ac4f41788ffe4a6d768c6799",
+        "hasStructuredNumbers": true,
+        "fallbackGuidance": "Si ces numéros ne sont pas disponibles pour votre pays, appelez le numéro d'urgence local de votre opérateur téléphonique ou recherchez 'numéro urgence + votre pays' et 'ligne prévention suicide + votre pays'.",
+        "updatedPeriod": null
+      }
+    },
+    {
+      "id": "missing_suicide",
+      "query": "?country=CA",
+      "country": "CA",
+      "support": {
+        "requestedCountry": "CA",
+        "country": "CA",
+        "fallbackCountry": "FR",
+        "fallbackUsed": false,
+        "fallbackReason": null,
+        "label": "Canada — fixture synthétique",
+        "emergency": "000",
+        "suicide": null,
+        "services": {
+          "emergency": {
+            "value": "000",
+            "status": "legacy_unverified",
+            "source": null,
+            "version": "a9a679fe356cc6f433389058f039c12eb3760597ac4f41788ffe4a6d768c6799",
+            "retrievedAt": null,
+            "publishedAt": null,
+            "verifiedAt": null,
+            "approval": null
+          },
+          "suicide": null
+        },
+        "status": "legacy_unverified",
+        "registryVersion": "a9a679fe356cc6f433389058f039c12eb3760597ac4f41788ffe4a6d768c6799",
+        "hasStructuredNumbers": true,
+        "fallbackGuidance": "Si ces numéros ne sont pas disponibles pour votre pays, appelez le numéro d'urgence local de votre opérateur téléphonique ou recherchez 'numéro urgence + votre pays' et 'ligne prévention suicide + votre pays'.",
+        "updatedPeriod": null
+      }
+    },
+    {
+      "id": "missing_emergency",
+      "query": "?country=CH",
+      "country": "CH",
+      "support": {
+        "requestedCountry": "CH",
+        "country": "CH",
+        "fallbackCountry": "FR",
+        "fallbackUsed": false,
+        "fallbackReason": null,
+        "label": "Suisse — fixture synthétique",
+        "emergency": null,
+        "suicide": "001",
+        "services": {
+          "emergency": null,
+          "suicide": {
+            "value": "001",
+            "status": "legacy_unverified",
+            "source": null,
+            "version": "a9a679fe356cc6f433389058f039c12eb3760597ac4f41788ffe4a6d768c6799",
+            "retrievedAt": null,
+            "publishedAt": null,
+            "verifiedAt": null,
+            "approval": null
+          }
+        },
+        "status": "legacy_unverified",
+        "registryVersion": "a9a679fe356cc6f433389058f039c12eb3760597ac4f41788ffe4a6d768c6799",
+        "hasStructuredNumbers": true,
+        "fallbackGuidance": "Si ces numéros ne sont pas disponibles pour votre pays, appelez le numéro d'urgence local de votre opérateur téléphonique ou recherchez 'numéro urgence + votre pays' et 'ligne prévention suicide + votre pays'.",
+        "updatedPeriod": null
+      }
+    },
+    {
+      "id": "html_literal",
+      "query": "?country=BE",
+      "country": "BE",
+      "support": {
+        "requestedCountry": "BE",
+        "country": "BE",
+        "fallbackCountry": "FR",
+        "fallbackUsed": false,
+        "fallbackReason": null,
+        "label": "Belgique — fixture synthétique",
+        "emergency": "<img src=x onerror=\"window.syntheticInjected=true\"> TEXTE_SYNTHETIQUE",
+        "suicide": "001",
+        "services": {
+          "emergency": {
+            "value": "<img src=x onerror=\"window.syntheticInjected=true\"> TEXTE_SYNTHETIQUE",
+            "status": "legacy_unverified",
+            "source": null,
+            "version": "a2bd404bf5b3e33f8fa54bf74bc2fe3fe45e7ff2db447f4da6522aca664b0d59",
+            "retrievedAt": null,
+            "publishedAt": null,
+            "verifiedAt": null,
+            "approval": null
+          },
+          "suicide": {
+            "value": "001",
+            "status": "legacy_unverified",
+            "source": null,
+            "version": "a2bd404bf5b3e33f8fa54bf74bc2fe3fe45e7ff2db447f4da6522aca664b0d59",
+            "retrievedAt": null,
+            "publishedAt": null,
+            "verifiedAt": null,
+            "approval": null
+          }
+        },
+        "status": "legacy_unverified",
+        "registryVersion": "a2bd404bf5b3e33f8fa54bf74bc2fe3fe45e7ff2db447f4da6522aca664b0d59",
+        "hasStructuredNumbers": true,
+        "fallbackGuidance": "Si ces numéros ne sont pas disponibles pour votre pays, appelez le numéro d'urgence local de votre opérateur téléphonique ou recherchez 'numéro urgence + votre pays' et 'ligne prévention suicide + votre pays'.",
+        "updatedPeriod": null
+      }
+    },
+    {
+      "id": "reviewed_long_source",
+      "query": "?country=BE",
+      "country": "BE",
+      "support": {
+        "requestedCountry": "BE",
+        "country": "BE",
+        "fallbackCountry": "FR",
+        "fallbackUsed": false,
+        "fallbackReason": null,
+        "label": "Belgique — fixture synthétique",
+        "emergency": "000",
+        "suicide": "001",
+        "services": {
+          "emergency": {
+            "value": "000",
+            "status": "reviewed",
+            "source": {
+              "url": "https://source.example.test/services/territory/official-document-with-a-long-unbroken-path-for-local-visual-validation-only",
+              "version": "synthetic-v1",
+              "retrievedAt": "2026-10-01T00:00:00.000Z",
+              "publishedAt": null
+            },
+            "version": "synthetic-v1",
+            "retrievedAt": "2026-10-01T00:00:00.000Z",
+            "publishedAt": null,
+            "verifiedAt": "2026-10-01T00:00:00.000Z",
+            "approval": {
+              "candidateDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "evidenceUrl": "https://review.example.test/synthetic",
+              "reviewedAt": "2026-10-01T00:00:00.000Z"
+            }
+          },
+          "suicide": {
+            "value": "001",
+            "status": "legacy_unverified",
+            "source": null,
+            "version": "6867b1a5fd67a5464ebb554f42a784635e82b6e4212c585ebd6efa662690c53b",
+            "retrievedAt": null,
+            "publishedAt": null,
+            "verifiedAt": null,
+            "approval": null
+          }
+        },
+        "status": "legacy_unverified",
+        "registryVersion": "6867b1a5fd67a5464ebb554f42a784635e82b6e4212c585ebd6efa662690c53b",
+        "hasStructuredNumbers": true,
+        "fallbackGuidance": "Si ces numéros ne sont pas disponibles pour votre pays, appelez le numéro d'urgence local de votre opérateur téléphonique ou recherchez 'numéro urgence + votre pays' et 'ligne prévention suicide + votre pays'.",
+        "updatedPeriod": null
+      }
+    }
+  ]
+}

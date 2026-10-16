@@ -1,0 +1,18 @@
+diff --git a/public/urgence.html b/public/urgence.html
+index 9fc330f..f45ef8d 100644
+--- a/public/urgence.html
++++ b/public/urgence.html
+@@ -269,7 +269,12 @@
+         if (!backLink) return;
+ 
+         backLink.addEventListener('click', (event) => {
+-          if (window.history.length > 1) {
++          let hasAppReferrer = false;
++          try {
++            hasAppReferrer =
++              new URL(document.referrer).origin === window.location.origin;
++          } catch {}
++          if (hasAppReferrer && window.history.length > 1) {
+             event.preventDefault();
+             window.history.back();
+           }
