@@ -20,7 +20,7 @@
         padding: 0;
         background: var(--bg);
         color: var(--text);
-        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       }
 
       .wrap {
@@ -104,8 +104,10 @@
       <section class="card" aria-live="polite">
         <h1>Ressources d'urgence et d'écoute</h1>
         <p class="intro">
-          Cette page affiche les ressources disponibles pour ton pays quand elles sont connues.
-          Les données sont mises à jour périodiquement.
+          Cette page affiche les ressources disponibles pour ton pays quand
+          elles sont connues. Les ressources héritées ne sont pas validées :
+          leur source et leur date de vérification ne sont pas établies. Un
+          repli vers un autre pays est signalé explicitement.
         </p>
 
         <p class="country" id="countryLabel">Chargement...</p>
@@ -119,11 +121,15 @@
         <p class="fallback" id="fallbackBlock" hidden></p>
 
         <p class="note">
-          En cas de danger immédiat, appelle sans attendre les services d'urgence locaux.
+          En cas de danger immédiat, appelle sans attendre les services
+          d'urgence locaux.
         </p>
 
         <div class="actions">
-          <a id="urgenceBackLink" class="back-link" href="/index.html?screen=chatScreen"
+          <a
+            id="urgenceBackLink"
+            class="back-link"
+            href="/index.html?screen=chatScreen"
             >Retour à Facilitat.io</a
           >
         </div>
@@ -150,7 +156,11 @@
       }
 
       async function loadEmergencySupport() {
-        const country = getCountryFromQuery() || getCountryFromNavigator();
+        const country = new URLSearchParams(window.location.search).has(
+          'country'
+        )
+          ? getCountryFromQuery()
+          : getCountryFromNavigator();
         const qs = country ? '?country=' + encodeURIComponent(country) : '';
 
         const countryLabel = document.getElementById('countryLabel');
@@ -168,7 +178,8 @@
 
           const hasStructured = data && data.hasStructuredNumbers === true;
           if (!hasStructured) {
-            countryLabel.textContent = 'Ressources locales non disponibles automatiquement';
+            countryLabel.textContent =
+              'Ressources locales non disponibles automatiquement';
             fallbackBlock.hidden = false;
             fallbackBlock.textContent =
               data && data.fallbackGuidance
@@ -180,29 +191,47 @@
 
           countryLabel.textContent =
             data && data.label
-              ? 'Pays détecté : ' + data.label
+              ? (data.fallbackUsed
+                  ? 'Pays demand\u00e9 : ' +
+                    (data.requestedCountry || 'non pr\u00e9cis\u00e9') +
+                    ' ; repli : '
+                  : 'Pays des ressources : ') +
+                data.label +
+                ' (' +
+                data.country +
+                ')'
               : 'Ressources disponibles';
 
           structuredBlock.hidden = false;
 
           if (data.emergency) {
             emergencyLine.hidden = false;
-            emergencyLine.innerHTML = '<strong>Urgences :</strong> ' + data.emergency;
+            emergencyLine.textContent =
+              'Urgences : ' +
+              describeService(
+                data.services && data.services.emergency,
+                data.emergency
+              );
           } else {
             emergencyLine.hidden = true;
           }
 
           if (data.suicide) {
             suicideLine.hidden = false;
-            suicideLine.innerHTML = '<strong>Prévention suicide :</strong> ' + data.suicide;
-            partialFallback.hidden = true;
+            suicideLine.textContent =
+              'Pr\u00e9vention suicide : ' +
+              describeService(
+                data.services && data.services.suicide,
+                data.suicide
+              );
           } else {
             suicideLine.hidden = true;
-            partialFallback.hidden = false;
-            partialFallback.textContent =
-              data.fallbackGuidance ||
-              "Aucune ligne d'écoute locale confirmée pour ce pays. Appuie-toi sur le numéro d'urgence local ou une recherche web locale.";
           }
+
+          partialFallback.hidden = Boolean(data.emergency && data.suicide);
+          partialFallback.textContent =
+            data.fallbackGuidance ||
+            'Une cat\u00e9gorie de ressource manque ; recherchez les services locaux.';
 
           fallbackBlock.hidden = true;
         } catch {
@@ -214,12 +243,38 @@
         }
       }
 
+      function describeService(service, value) {
+        if (!service || service.status !== 'reviewed') {
+          return (
+            value +
+            ' — ressource h\u00e9rit\u00e9e non valid\u00e9e ; source et date de v\u00e9rification non \u00e9tablies.' +
+            (service && service.version
+              ? ' Version du registre : ' + service.version.slice(0, 12) + '.'
+              : '')
+          );
+        }
+        return (
+          value +
+          ' — source : ' +
+          service.source.url +
+          ' ; version : ' +
+          service.version +
+          ' ; v\u00e9rifi\u00e9 le : ' +
+          service.verifiedAt
+        );
+      }
+
       function wireBackLink() {
         const backLink = document.getElementById('urgenceBackLink');
         if (!backLink) return;
 
         backLink.addEventListener('click', (event) => {
-          if (window.history.length > 1) {
+          let hasAppReferrer = false;
+          try {
+            hasAppReferrer =
+              new URL(document.referrer).origin === window.location.origin;
+          } catch {}
+          if (hasAppReferrer && window.history.length > 1) {
             event.preventDefault();
             window.history.back();
           }

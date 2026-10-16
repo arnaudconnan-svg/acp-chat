@@ -1,0 +1,6 @@
+{
+  "command": "git diff 7e0b47a3bb40caeca1171c4d26a659a4f6970e97 629694765ae6a3617396d54a01056b6326c98e67 -- public/urgence.html",
+  "exit_code": 0,
+  "sha256": "36a4cc1135029aa299b8ce0f5307274d159f88d7f785cc5e9816866c289e9e50",
+  "diff": "diff --git a/public/urgence.html b/public/urgence.html\nindex 9fc330f..f45ef8d 100644\n--- a/public/urgence.html\n+++ b/public/urgence.html\n@@ -269,7 +269,12 @@\n         if (!backLink) return;\n \n         backLink.addEventListener('click', (event) => {\n-          if (window.history.length > 1) {\n+          let hasAppReferrer = false;\n+          try {\n+            hasAppReferrer =\n+              new URL(document.referrer).origin === window.location.origin;\n+          } catch {}\n+          if (hasAppReferrer && window.history.length > 1) {\n             event.preventDefault();\n             window.history.back();\n           }\n"
+}

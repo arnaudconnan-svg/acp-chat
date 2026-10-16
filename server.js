@@ -112,94 +112,21 @@ const EMERGENCY_NUMBERS_FILE = path.join(
   'data/emergency-numbers.json'
 );
 const {
-  updateEmergencyNumbers: runEmergencyNumbersUpdate
-} = require('./lib/emergency-updater');
+  normalizeCountryCode,
+  resolveEmergencySupport,
+  buildEmergencySupportText
+} = require('./lib/emergency-resources');
 let emergencyNumbers = {};
 try {
-  const raw = fs.readFileSync(EMERGENCY_NUMBERS_FILE, 'utf-8');
-  const parsed = JSON.parse(raw);
-  // Strip internal _meta key
-  for (const [k, v] of Object.entries(parsed)) {
-    if (!k.startsWith('_')) emergencyNumbers[k] = v;
+  const registry = JSON.parse(fs.readFileSync(EMERGENCY_NUMBERS_FILE, 'utf-8'));
+  if (registry && typeof registry === 'object' && !Array.isArray(registry)) {
+    emergencyNumbers = registry;
   }
 } catch {
-  // Non-blocking: fallback text will be used if file is missing
+  // No number is invented if the inherited registry cannot be loaded.
 }
-
-let emergencyRefreshInProgress = false;
-let lastEmergencyRefreshAt = 0;
-
-const EMERGENCY_REFRESH_INITIAL_DELAY_MS = 5 * 60 * 1000; // 5 minutes
-const EMERGENCY_REFRESH_MIN_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
-const REFRESH_EMERGENCY_ON_BOOT = appConfig.refreshEmergencyOnBoot;
-
-async function safeRefreshEmergencyNumbers(reason = 'interval') {
-  const now = Date.now();
-
-  if (emergencyRefreshInProgress) {
-    logger.info({
-      event: 'emergency_refresh_skipped',
-      reason,
-      detail: 'already_in_progress'
-    });
-    return;
-  }
-
-  if (
-    lastEmergencyRefreshAt > 0 &&
-    now - lastEmergencyRefreshAt < EMERGENCY_REFRESH_MIN_INTERVAL_MS
-  ) {
-    logger.info({
-      event: 'emergency_refresh_skipped',
-      reason,
-      detail: 'too_recent'
-    });
-    return;
-  }
-
-  emergencyRefreshInProgress = true;
-  lastEmergencyRefreshAt = now;
-
-  try {
-    const updated = await runEmergencyNumbersUpdate(
-      EMERGENCY_NUMBERS_FILE,
-      '[server][emergency-refresh]'
-    );
-    emergencyNumbers = updated;
-    logger.info({ event: 'emergency_refresh_updated' });
-  } catch (err) {
-    logger.error({ event: 'emergency_refresh_failed', error: err.message });
-  } finally {
-    emergencyRefreshInProgress = false;
-  }
-}
-
-function normalizeCountryCode(value) {
-  const code = String(value || '')
-    .trim()
-    .toUpperCase();
-  return /^[A-Z]{2}$/.test(code) ? code : null;
-}
-
-function lookupEmergencyNumbers(countryCode) {
-  const code = normalizeCountryCode(countryCode);
-  if (!code) return null;
-  return emergencyNumbers[code] || null;
-}
-
-function buildEmergencyNumbersText(emergencyInfo) {
-  if (!emergencyInfo) return null;
-  const parts = [];
-  if (emergencyInfo.emergency)
-    parts.push(`urgences : ${emergencyInfo.emergency}`);
-  if (emergencyInfo.suicide)
-    parts.push(`prévention suicide : ${emergencyInfo.suicide}`);
-  return parts.join(' | ') || null;
-}
-
-function buildEmergencyFallbackGuidance() {
-  return "Si ces numéros ne sont pas disponibles pour votre pays, appelez le numéro d'urgence local de votre opérateur téléphonique ou recherchez 'numéro urgence + votre pays' et 'ligne prévention suicide + votre pays'.";
-}
+// Live publication is deliberately absent from boot and timers. The local
+// registry changes only through a reviewed, digest-bound manual publication.
 // -----------------------------------------------------------------------------
 const {
   clampDependencyRiskScore,
@@ -3128,54 +3055,12 @@ app.get('/api/auth/session', async (req, res) => {
 
 app.get('/api/emergency-support', (req, res) => {
   try {
-    const requestedCountry = normalizeCountryCode(req.query.country);
-    const fallbackCountry = normalizeCountryCode(req.query.fallbackCountry);
-    const primaryInfo = lookupEmergencyNumbers(requestedCountry);
-    const fallbackInfo = lookupEmergencyNumbers(fallbackCountry || 'FR');
-    const emergencyInfo = primaryInfo || fallbackInfo || null;
-
-    const hasStructuredNumbers = Boolean(
-      emergencyInfo &&
-        (String(emergencyInfo.emergency || '').trim() ||
-          String(emergencyInfo.suicide || '').trim())
-    );
-
-    return res.json({
-      requestedCountry: requestedCountry || null,
-      country:
-        hasStructuredNumbers && primaryInfo
-          ? requestedCountry
-          : hasStructuredNumbers && fallbackInfo
-            ? fallbackCountry || 'FR'
-            : null,
-      label:
-        hasStructuredNumbers && emergencyInfo
-          ? String(emergencyInfo.label || '').trim() || null
-          : null,
-      emergency:
-        hasStructuredNumbers && emergencyInfo
-          ? String(emergencyInfo.emergency || '').trim() || null
-          : null,
-      suicide:
-        hasStructuredNumbers && emergencyInfo
-          ? String(emergencyInfo.suicide || '').trim() || null
-          : null,
-      hasStructuredNumbers,
-      fallbackGuidance: buildEmergencyFallbackGuidance(),
-      updatedPeriod: 'periodic'
-    });
+    return res.json(resolveEmergencySupport(
+      emergencyNumbers, req.query.country, req.query.fallbackCountry || 'FR'
+    ));
   } catch (err) {
     logger.error({ event: 'api_emergency_support_failed', error: err.message });
-    return res.status(500).json({
-      requestedCountry: null,
-      country: null,
-      label: null,
-      emergency: null,
-      suicide: null,
-      hasStructuredNumbers: false,
-      fallbackGuidance: buildEmergencyFallbackGuidance(),
-      updatedPeriod: 'periodic'
-    });
+    return res.status(500).json(resolveEmergencySupport({}, null, null));
   }
 });
 
@@ -8987,21 +8872,16 @@ async function handleChatPost(req, res) {
 
         const debug = buildOverrideDebug('N2');
 
-        let n2PromptRegistry = activePromptRegistry;
-        try {
-          const emergencyText = await resolveEmergencySupportText();
-          if (emergencyText) {
-            n2PromptRegistry = {
-              ...activePromptRegistry,
-              N2_RESPONSE_LLM: activePromptRegistry.N2_RESPONSE_LLM.replace(
-                '{{EMERGENCY_NUMBERS}}',
-                emergencyText
-              )
-            };
-          }
-        } catch {
-          // Non-bloquant : on continue avec les numéros FR par défaut si la résolution échoue
-        }
+        const emergencyText = await resolveEmergencySupportText();
+        // Only this fixed instruction is privileged; resource content is passed
+        // to the writer as untrusted data in a separate user message.
+        const n2PromptRegistry = {
+          ...activePromptRegistry,
+          N2_RESPONSE_LLM: activePromptRegistry.N2_RESPONSE_LLM.replace(
+            '{{EMERGENCY_NUMBERS}}',
+            'les ressources jointes comme donnees, en respectant leur pays, leur repli et leur statut de validation'
+          )
+        };
 
         let reply;
         let writerUsage = null;
@@ -9012,12 +8892,13 @@ async function handleChatPost(req, res) {
             memory: previousMemory,
             postureDecision: buildN2CrisisPostureDecision(),
             promptRegistry: n2PromptRegistry,
+            emergencyResourceData: emergencyText,
             onTokenCallback: onTokenCallbackForChat
           });
-          reply = String(n2Result.reply || '').trim() || n2Response();
+          reply = String(n2Result.reply || '').trim() || n2Response(emergencyText);
           writerUsage = n2Result.usage || null;
         } catch {
-          reply = n2Response();
+          reply = n2Response(emergencyText);
         }
         await registerUsageConsumptionFromTurn({ writerUsage });
 
@@ -9028,9 +8909,9 @@ async function handleChatPost(req, res) {
           memory: responseMemory,
           suicideLevel: 'N2',
           n2TurnType: null,
-          emergencyNumbersIncluded: true,
+          emergencyNumbersIncluded: emergencySupportDataForTurn?.hasStructuredNumbers === true,
           postCrisisSupportActive: false,
-          emergencySupportText: null
+          emergencySupportText: emergencyText
         });
 
         const botMessageId = persistAssistantMessageAsync(
@@ -9481,6 +9362,7 @@ async function handleChatPost(req, res) {
       }
 
       let emergencySupportTextPromise = null;
+      let emergencySupportDataForTurn = null;
       async function resolveEmergencySupportText() {
         if (emergencySupportTextPromise) {
           return emergencySupportTextPromise;
@@ -9493,12 +9375,11 @@ async function handleChatPost(req, res) {
             if (userData && typeof userData.country === 'string') {
               userCountryCode = normalizeCountryCode(userData.country);
             }
-            const emergencyInfo =
-              lookupEmergencyNumbers(userCountryCode) ||
-              lookupEmergencyNumbers('FR');
-            return buildEmergencyNumbersText(emergencyInfo) || null;
+            emergencySupportDataForTurn = resolveEmergencySupport(emergencyNumbers, userCountryCode);
+            return buildEmergencySupportText(emergencySupportDataForTurn);
           } catch {
-            return null;
+            emergencySupportDataForTurn = resolveEmergencySupport(emergencyNumbers, null);
+            return buildEmergencySupportText(emergencySupportDataForTurn);
           }
         })();
 
@@ -11254,18 +11135,6 @@ app.listen(port, () => {
   bootstrapAdminSettingsCache();
   startAdminSettingsListener();
 
-  // Auto-refresh for emergency numbers via Wikidata.
-  // Boot refresh is opt-in via REFRESH_EMERGENCY_ON_BOOT=true.
-  if (REFRESH_EMERGENCY_ON_BOOT) {
-    setTimeout(() => {
-      safeRefreshEmergencyNumbers('boot');
-    }, EMERGENCY_REFRESH_INITIAL_DELAY_MS);
-  }
+  // Emergency resources are never collected or published automatically.
 
-  // Node.js setInterval overflows for values > 2^31-1 ms (~24.8 days), firing immediately in a loop.
-  // Cap at 24h; the guard inside safeRefreshEmergencyNumbers (EMERGENCY_REFRESH_MIN_INTERVAL_MS)
-  // prevents actual refresh from running more than once per 24h anyway.
-  setInterval(() => {
-    safeRefreshEmergencyNumbers('interval');
-  }, EMERGENCY_REFRESH_MIN_INTERVAL_MS);
 });

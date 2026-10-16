@@ -1,0 +1,32 @@
+{
+  "environment_id": "ccarenv_b64_Y2NhcmVudl84OGFmOTgyOTE1NmM4MTkxYWVhMDBhMTFiZDkyMWIyZg",
+  "source_config_id": "7b3a26d3-3d48-4f4f-9fef-3689d8d58cc5~cecfg_6ad0bc80319081919c56c9802773629d",
+  "source_config_version_id": "7b3a26d3-3d48-4f4f-9fef-3689d8d58cc5~cecfgver_6ad0bdf0200c819187528d217115cadd",
+  "spec_revision": "4",
+  "observed_spec_revision": "4",
+  "observations_current": true,
+  "provider": "cloud",
+  "desired_phase": "running",
+  "observed_phase": "running",
+  "failure": null,
+  "connectivity": "connected",
+  "network_policy": {
+    "mode": "restricted",
+    "state": "enforced",
+    "allowed_hosts": [
+      "github.com",
+      "registry.npmjs.org"
+    ],
+    "presets": [],
+    "preset_allowed_hosts": [],
+    "effective_allowed_hosts": [
+      "github.com",
+      "registry.npmjs.org",
+      "www.github.com"
+    ]
+  },
+  "capabilities": [],
+  "secrets": [],
+  "runtime_variables": [],
+  "outbound_identities": []
+}

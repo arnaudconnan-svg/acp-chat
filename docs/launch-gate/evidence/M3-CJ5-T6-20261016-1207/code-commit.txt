@@ -1,0 +1,23 @@
+commit ab191383cf2d617e011ffd0852a52d4fcc40b87c
+Author:     Arnaud Connan <arnaud.connan@gmail.com>
+AuthorDate: Fri Oct 16 10:28:50 2026 +0000
+Commit:     Arnaud Connan <arnaud.connan@gmail.com>
+CommitDate: Fri Oct 16 10:28:50 2026 +0000
+
+    fix(safety): require reviewed emergency resources and characterize crisis contracts
+
+ data/emergency-numbers.json                      |   2 +-
+ lib/analyzers.js                                 |  10 +-
+ lib/emergency-resources.js                       | 158 ++++++++
+ lib/emergency-updater.js                         | 425 +++++++++++---------
+ lib/writer.js                                    |  11 +-
+ package.json                                     |   6 +-
+ public/index.html                                |  10 +
+ public/urgence.html                              |  80 +++-
+ scripts/acute-crisis-followup-mistral-harness.js |  35 +-
+ scripts/preff-git-guard-harness.js               |  27 +-
+ scripts/synthetic/m3-emergency-harness.cjs       | 432 +++++++++++++++++++++
+ scripts/synthetic/m3-safety-characterization.cjs | 469 +++++++++++++++++++++++
+ scripts/update-emergency-numbers.js              |  50 +--
+ server.js                                        | 201 ++--------
+ 14 files changed, 1515 insertions(+), 401 deletions(-)

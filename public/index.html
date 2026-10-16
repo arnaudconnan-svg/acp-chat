@@ -14332,6 +14332,16 @@
       );
       if (humanSupportEmergencyLink) {
         humanSupportEmergencyLink.addEventListener('click', () => {
+          // Use the same requested country as the crisis writer, including an
+          // explicitly unknown profile country rather than a different locale.
+          const profileCountry = userSessionState.authenticated
+            ? String(userSessionState.user?.country || '').trim().toUpperCase()
+            : null;
+          humanSupportEmergencyLink.href = profileCountry === null
+            ? '/urgence.html'
+            : '/urgence.html?country=' + encodeURIComponent(
+                /^[A-Z]{2}$/.test(profileCountry) ? profileCountry : ''
+              );
           const currentConversationId = String(getConversationId() || '').trim();
           const payload = {
             createdAt: Date.now(),

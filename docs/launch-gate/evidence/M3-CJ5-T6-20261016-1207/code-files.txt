@@ -1,0 +1,14 @@
+M	data/emergency-numbers.json
+M	lib/analyzers.js
+A	lib/emergency-resources.js
+M	lib/emergency-updater.js
+M	lib/writer.js
+M	package.json
+M	public/index.html
+M	public/urgence.html
+M	scripts/acute-crisis-followup-mistral-harness.js
+M	scripts/preff-git-guard-harness.js
+A	scripts/synthetic/m3-emergency-harness.cjs
+A	scripts/synthetic/m3-safety-characterization.cjs
+M	scripts/update-emergency-numbers.js
+M	server.js

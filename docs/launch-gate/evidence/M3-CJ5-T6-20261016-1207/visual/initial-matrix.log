@@ -1,0 +1,22 @@
+{"case": "known", "viewport": "desktop", "horizontalOverflow": false, "back_direct": "about:blank"}
+{"case": "unknown_fallback", "viewport": "desktop", "horizontalOverflow": false, "back_direct": "about:blank"}
+{"case": "absent_explicit", "viewport": "desktop", "horizontalOverflow": false, "back_direct": "about:blank"}
+{"case": "missing_suicide", "viewport": "desktop", "horizontalOverflow": false, "back_direct": "about:blank"}
+{"case": "missing_emergency", "viewport": "desktop", "horizontalOverflow": false, "back_direct": "about:blank"}
+{"case": "html_literal", "viewport": "desktop", "horizontalOverflow": false, "back_direct": "about:blank"}
+{"case": "reviewed_long_source", "viewport": "desktop", "horizontalOverflow": false, "back_direct": "about:blank"}
+{"case": "chat_link", "viewport": "desktop", "country": "BE", "target": "https://synthetic.example.test/urgence.html?country=BE", "back_history": "https://synthetic.example.test/index.html?screen=chatScreen"}
+{"case": "chat_link", "viewport": "desktop", "country": "ZZ", "target": "https://synthetic.example.test/urgence.html?country=ZZ", "back_history": "https://synthetic.example.test/index.html?screen=chatScreen"}
+{"case": "chat_link", "viewport": "desktop", "country": null, "target": "https://synthetic.example.test/urgence.html?country=", "back_history": "https://synthetic.example.test/index.html?screen=chatScreen"}
+{"case": "known", "viewport": "mobile", "horizontalOverflow": false, "back_direct": "about:blank"}
+{"case": "unknown_fallback", "viewport": "mobile", "horizontalOverflow": false, "back_direct": "about:blank"}
+{"case": "absent_explicit", "viewport": "mobile", "horizontalOverflow": false, "back_direct": "about:blank"}
+{"case": "missing_suicide", "viewport": "mobile", "horizontalOverflow": false, "back_direct": "about:blank"}
+{"case": "missing_emergency", "viewport": "mobile", "horizontalOverflow": false, "back_direct": "about:blank"}
+{"case": "html_literal", "viewport": "mobile", "horizontalOverflow": false, "back_direct": "about:blank"}
+{"case": "reviewed_long_source", "viewport": "mobile", "horizontalOverflow": false, "back_direct": "about:blank"}
+{"case": "chat_link", "viewport": "mobile", "country": "BE", "target": "https://synthetic.example.test/urgence.html?country=BE", "back_history": "https://synthetic.example.test/index.html?screen=chatScreen"}
+{"case": "chat_link", "viewport": "mobile", "country": "ZZ", "target": "https://synthetic.example.test/urgence.html?country=ZZ", "back_history": "https://synthetic.example.test/index.html?screen=chatScreen"}
+{"case": "chat_link", "viewport": "mobile", "country": null, "target": "https://synthetic.example.test/urgence.html?country=", "back_history": "https://synthetic.example.test/index.html?screen=chatScreen"}
+Screenshots=34; failures=0
+EXIT_CODE=0

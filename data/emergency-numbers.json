@@ -6,7 +6,7 @@
       "emergency": "Numéro(s) d'urgence généraliste(s)",
       "suicide": "Ligne de prévention suicide/crise (null si inconnue)"
     },
-    "note": "Données issues des connaissances d'entraînement + curation manuelle. Mettre à jour via `npm run update:emergency-numbers`."
+    "note": "Registre hérité non validé : connaissances d'entraînement et curation manuelle sans pièces de provenance par service. Aucune date de vérification établie. Publication automatique désactivée ; candidat et validation explicite par service requis."
   },
   "AD": { "label": "Andorre", "emergency": "112", "suicide": null },
   "AT": { "label": "Autriche", "emergency": "112", "suicide": "142" },

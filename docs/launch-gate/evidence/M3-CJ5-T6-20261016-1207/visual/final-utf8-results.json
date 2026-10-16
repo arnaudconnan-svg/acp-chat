@@ -1,0 +1,926 @@
+{
+  "phase": "final-utf8",
+  "html_sha256": "5e644a14bbf680795973507744d5ad653b583c8ec24f540e45f6b83d7b4f5d6a",
+  "results": [
+    {
+      "width": 1440,
+      "scrollWidth": 1440,
+      "horizontalOverflow": false,
+      "text": {
+        "countryLabel": {
+          "text": "Pays des ressources : Belgique — fixture synthétique (BE)",
+          "hidden": false
+        },
+        "emergencyLine": {
+          "text": "Urgences : 000 — ressource héritée non validée ; source et date de vérification non établies. Version du registre : a9a679fe356c.",
+          "hidden": false
+        },
+        "suicideLine": {
+          "text": "Prévention suicide : 001 — ressource héritée non validée ; source et date de vérification non établies. Version du registre : a9a679fe356c.",
+          "hidden": false
+        },
+        "partialFallback": {
+          "text": "Si ces numéros ne sont pas disponibles pour votre pays, appelez le numéro d'urgence local de votre opérateur téléphonique ou recherchez 'numéro urgence + votre pays' et 'ligne prévention suicide + votre pays'.",
+          "hidden": true
+        },
+        "urgenceBackLink": {
+          "text": "Retour à Facilitat.io",
+          "hidden": false
+        }
+      },
+      "interpretedImages": 0,
+      "injected": false,
+      "historyLength": 2,
+      "referrer": "",
+      "fontSize": "15px",
+      "lineHeight": "21.75px",
+      "case": "known",
+      "viewport": "desktop",
+      "back_direct": "https://synthetic.example.test/index.html?screen=chatScreen",
+      "api": "https://synthetic.example.test/api/emergency-support?country=BE",
+      "errors": [],
+      "unexpected": []
+    },
+    {
+      "width": 1440,
+      "scrollWidth": 1440,
+      "horizontalOverflow": false,
+      "text": {
+        "countryLabel": {
+          "text": "Pays demandé : ZZ ; repli : France — fixture synthétique (FR)",
+          "hidden": false
+        },
+        "emergencyLine": {
+          "text": "Urgences : 000 — ressource héritée non validée ; source et date de vérification non établies. Version du registre : a9a679fe356c.",
+          "hidden": false
+        },
+        "suicideLine": {
+          "text": "Prévention suicide : 001 — ressource héritée non validée ; source et date de vérification non établies. Version du registre : a9a679fe356c.",
+          "hidden": false
+        },
+        "partialFallback": {
+          "text": "Si ces numéros ne sont pas disponibles pour votre pays, appelez le numéro d'urgence local de votre opérateur téléphonique ou recherchez 'numéro urgence + votre pays' et 'ligne prévention suicide + votre pays'.",
+          "hidden": true
+        },
+        "urgenceBackLink": {
+          "text": "Retour à Facilitat.io",
+          "hidden": false
+        }
+      },
+      "interpretedImages": 0,
+      "injected": false,
+      "historyLength": 2,
+      "referrer": "",
+      "fontSize": "15px",
+      "lineHeight": "21.75px",
+      "case": "unknown_fallback",
+      "viewport": "desktop",
+      "back_direct": "https://synthetic.example.test/index.html?screen=chatScreen",
+      "api": "https://synthetic.example.test/api/emergency-support?country=ZZ",
+      "errors": [],
+      "unexpected": []
+    },
+    {
+      "width": 1440,
+      "scrollWidth": 1440,
+      "horizontalOverflow": false,
+      "text": {
+        "countryLabel": {
+          "text": "Pays demandé : non précisé ; repli : France — fixture synthétique (FR)",
+          "hidden": false
+        },
+        "emergencyLine": {
+          "text": "Urgences : 000 — ressource héritée non validée ; source et date de vérification non établies. Version du registre : a9a679fe356c.",
+          "hidden": false
+        },
+        "suicideLine": {
+          "text": "Prévention suicide : 001 — ressource héritée non validée ; source et date de vérification non établies. Version du registre : a9a679fe356c.",
+          "hidden": false
+        },
+        "partialFallback": {
+          "text": "Si ces numéros ne sont pas disponibles pour votre pays, appelez le numéro d'urgence local de votre opérateur téléphonique ou recherchez 'numéro urgence + votre pays' et 'ligne prévention suicide + votre pays'.",
+          "hidden": true
+        },
+        "urgenceBackLink": {
+          "text": "Retour à Facilitat.io",
+          "hidden": false
+        }
+      },
+      "interpretedImages": 0,
+      "injected": false,
+      "historyLength": 2,
+      "referrer": "",
+      "fontSize": "15px",
+      "lineHeight": "21.75px",
+      "case": "absent_explicit",
+      "viewport": "desktop",
+      "back_direct": "https://synthetic.example.test/index.html?screen=chatScreen",
+      "api": "https://synthetic.example.test/api/emergency-support",
+      "errors": [],
+      "unexpected": []
+    },
+    {
+      "width": 1440,
+      "scrollWidth": 1440,
+      "horizontalOverflow": false,
+      "text": {
+        "countryLabel": {
+          "text": "Pays des ressources : Canada — fixture synthétique (CA)",
+          "hidden": false
+        },
+        "emergencyLine": {
+          "text": "Urgences : 000 — ressource héritée non validée ; source et date de vérification non établies. Version du registre : a9a679fe356c.",
+          "hidden": false
+        },
+        "suicideLine": {
+          "text": "",
+          "hidden": true
+        },
+        "partialFallback": {
+          "text": "Si ces numéros ne sont pas disponibles pour votre pays, appelez le numéro d'urgence local de votre opérateur téléphonique ou recherchez 'numéro urgence + votre pays' et 'ligne prévention suicide + votre pays'.",
+          "hidden": false
+        },
+        "urgenceBackLink": {
+          "text": "Retour à Facilitat.io",
+          "hidden": false
+        }
+      },
+      "interpretedImages": 0,
+      "injected": false,
+      "historyLength": 2,
+      "referrer": "",
+      "fontSize": "15px",
+      "lineHeight": "21.75px",
+      "case": "missing_suicide",
+      "viewport": "desktop",
+      "back_direct": "https://synthetic.example.test/index.html?screen=chatScreen",
+      "api": "https://synthetic.example.test/api/emergency-support?country=CA",
+      "errors": [],
+      "unexpected": []
+    },
+    {
+      "width": 1440,
+      "scrollWidth": 1440,
+      "horizontalOverflow": false,
+      "text": {
+        "countryLabel": {
+          "text": "Pays des ressources : Suisse — fixture synthétique (CH)",
+          "hidden": false
+        },
+        "emergencyLine": {
+          "text": "",
+          "hidden": true
+        },
+        "suicideLine": {
+          "text": "Prévention suicide : 001 — ressource héritée non validée ; source et date de vérification non établies. Version du registre : a9a679fe356c.",
+          "hidden": false
+        },
+        "partialFallback": {
+          "text": "Si ces numéros ne sont pas disponibles pour votre pays, appelez le numéro d'urgence local de votre opérateur téléphonique ou recherchez 'numéro urgence + votre pays' et 'ligne prévention suicide + votre pays'.",
+          "hidden": false
+        },
+        "urgenceBackLink": {
+          "text": "Retour à Facilitat.io",
+          "hidden": false
+        }
+      },
+      "interpretedImages": 0,
+      "injected": false,
+      "historyLength": 2,
+      "referrer": "",
+      "fontSize": "15px",
+      "lineHeight": "21.75px",
+      "case": "missing_emergency",
+      "viewport": "desktop",
+      "back_direct": "https://synthetic.example.test/index.html?screen=chatScreen",
+      "api": "https://synthetic.example.test/api/emergency-support?country=CH",
+      "errors": [],
+      "unexpected": []
+    },
+    {
+      "width": 1440,
+      "scrollWidth": 1440,
+      "horizontalOverflow": false,
+      "text": {
+        "countryLabel": {
+          "text": "Pays des ressources : Belgique — fixture synthétique (BE)",
+          "hidden": false
+        },
+        "emergencyLine": {
+          "text": "Urgences : <img src=x onerror=\"window.syntheticInjected=true\"> TEXTE_SYNTHETIQUE — ressource héritée non validée ; source et date de vérification non établies. Version du registre : a2bd404bf5b3.",
+          "hidden": false
+        },
+        "suicideLine": {
+          "text": "Prévention suicide : 001 — ressource héritée non validée ; source et date de vérification non établies. Version du registre : a2bd404bf5b3.",
+          "hidden": false
+        },
+        "partialFallback": {
+          "text": "Si ces numéros ne sont pas disponibles pour votre pays, appelez le numéro d'urgence local de votre opérateur téléphonique ou recherchez 'numéro urgence + votre pays' et 'ligne prévention suicide + votre pays'.",
+          "hidden": true
+        },
+        "urgenceBackLink": {
+          "text": "Retour à Facilitat.io",
+          "hidden": false
+        }
+      },
+      "interpretedImages": 0,
+      "injected": false,
+      "historyLength": 2,
+      "referrer": "",
+      "fontSize": "15px",
+      "lineHeight": "21.75px",
+      "case": "html_literal",
+      "viewport": "desktop",
+      "back_direct": "https://synthetic.example.test/index.html?screen=chatScreen",
+      "api": "https://synthetic.example.test/api/emergency-support?country=BE",
+      "errors": [],
+      "unexpected": []
+    },
+    {
+      "width": 1440,
+      "scrollWidth": 1440,
+      "horizontalOverflow": false,
+      "text": {
+        "countryLabel": {
+          "text": "Pays des ressources : Belgique — fixture synthétique (BE)",
+          "hidden": false
+        },
+        "emergencyLine": {
+          "text": "Urgences : 000 — source : https://source.example.test/services/territory/official-document-with-a-long-unbroken-path-for-local-visual-validation-only ; version : synthetic-v1 ; vérifié le : 2026-10-01T00:00:00.000Z",
+          "hidden": false
+        },
+        "suicideLine": {
+          "text": "Prévention suicide : 001 — ressource héritée non validée ; source et date de vérification non établies. Version du registre : 6867b1a5fd67.",
+          "hidden": false
+        },
+        "partialFallback": {
+          "text": "Si ces numéros ne sont pas disponibles pour votre pays, appelez le numéro d'urgence local de votre opérateur téléphonique ou recherchez 'numéro urgence + votre pays' et 'ligne prévention suicide + votre pays'.",
+          "hidden": true
+        },
+        "urgenceBackLink": {
+          "text": "Retour à Facilitat.io",
+          "hidden": false
+        }
+      },
+      "interpretedImages": 0,
+      "injected": false,
+      "historyLength": 2,
+      "referrer": "",
+      "fontSize": "15px",
+      "lineHeight": "21.75px",
+      "case": "reviewed_long_source",
+      "viewport": "desktop",
+      "back_direct": "https://synthetic.example.test/index.html?screen=chatScreen",
+      "api": "https://synthetic.example.test/api/emergency-support?country=BE",
+      "errors": [],
+      "unexpected": []
+    },
+    {
+      "case": "chat_link",
+      "country": "BE",
+      "viewport": "desktop",
+      "target": "https://synthetic.example.test/urgence.html?country=BE",
+      "back_history": "https://synthetic.example.test/index.html?screen=chatScreen"
+    },
+    {
+      "case": "chat_link",
+      "country": "ZZ",
+      "viewport": "desktop",
+      "target": "https://synthetic.example.test/urgence.html?country=ZZ",
+      "back_history": "https://synthetic.example.test/index.html?screen=chatScreen"
+    },
+    {
+      "case": "chat_link",
+      "country": null,
+      "viewport": "desktop",
+      "target": "https://synthetic.example.test/urgence.html?country=",
+      "back_history": "https://synthetic.example.test/index.html?screen=chatScreen"
+    },
+    {
+      "width": 390,
+      "scrollWidth": 390,
+      "horizontalOverflow": false,
+      "text": {
+        "countryLabel": {
+          "text": "Pays des ressources : Belgique — fixture synthétique (BE)",
+          "hidden": false
+        },
+        "emergencyLine": {
+          "text": "Urgences : 000 — ressource héritée non validée ; source et date de vérification non établies. Version du registre : a9a679fe356c.",
+          "hidden": false
+        },
+        "suicideLine": {
+          "text": "Prévention suicide : 001 — ressource héritée non validée ; source et date de vérification non établies. Version du registre : a9a679fe356c.",
+          "hidden": false
+        },
+        "partialFallback": {
+          "text": "Si ces numéros ne sont pas disponibles pour votre pays, appelez le numéro d'urgence local de votre opérateur téléphonique ou recherchez 'numéro urgence + votre pays' et 'ligne prévention suicide + votre pays'.",
+          "hidden": true
+        },
+        "urgenceBackLink": {
+          "text": "Retour à Facilitat.io",
+          "hidden": false
+        }
+      },
+      "interpretedImages": 0,
+      "injected": false,
+      "historyLength": 2,
+      "referrer": "",
+      "fontSize": "15px",
+      "lineHeight": "21.75px",
+      "case": "known",
+      "viewport": "mobile",
+      "back_direct": "https://synthetic.example.test/index.html?screen=chatScreen",
+      "api": "https://synthetic.example.test/api/emergency-support?country=BE",
+      "errors": [],
+      "unexpected": []
+    },
+    {
+      "width": 390,
+      "scrollWidth": 390,
+      "horizontalOverflow": false,
+      "text": {
+        "countryLabel": {
+          "text": "Pays demandé : ZZ ; repli : France — fixture synthétique (FR)",
+          "hidden": false
+        },
+        "emergencyLine": {
+          "text": "Urgences : 000 — ressource héritée non validée ; source et date de vérification non établies. Version du registre : a9a679fe356c.",
+          "hidden": false
+        },
+        "suicideLine": {
+          "text": "Prévention suicide : 001 — ressource héritée non validée ; source et date de vérification non établies. Version du registre : a9a679fe356c.",
+          "hidden": false
+        },
+        "partialFallback": {
+          "text": "Si ces numéros ne sont pas disponibles pour votre pays, appelez le numéro d'urgence local de votre opérateur téléphonique ou recherchez 'numéro urgence + votre pays' et 'ligne prévention suicide + votre pays'.",
+          "hidden": true
+        },
+        "urgenceBackLink": {
+          "text": "Retour à Facilitat.io",
+          "hidden": false
+        }
+      },
+      "interpretedImages": 0,
+      "injected": false,
+      "historyLength": 2,
+      "referrer": "",
+      "fontSize": "15px",
+      "lineHeight": "21.75px",
+      "case": "unknown_fallback",
+      "viewport": "mobile",
+      "back_direct": "https://synthetic.example.test/index.html?screen=chatScreen",
+      "api": "https://synthetic.example.test/api/emergency-support?country=ZZ",
+      "errors": [],
+      "unexpected": []
+    },
+    {
+      "width": 390,
+      "scrollWidth": 390,
+      "horizontalOverflow": false,
+      "text": {
+        "countryLabel": {
+          "text": "Pays demandé : non précisé ; repli : France — fixture synthétique (FR)",
+          "hidden": false
+        },
+        "emergencyLine": {
+          "text": "Urgences : 000 — ressource héritée non validée ; source et date de vérification non établies. Version du registre : a9a679fe356c.",
+          "hidden": false
+        },
+        "suicideLine": {
+          "text": "Prévention suicide : 001 — ressource héritée non validée ; source et date de vérification non établies. Version du registre : a9a679fe356c.",
+          "hidden": false
+        },
+        "partialFallback": {
+          "text": "Si ces numéros ne sont pas disponibles pour votre pays, appelez le numéro d'urgence local de votre opérateur téléphonique ou recherchez 'numéro urgence + votre pays' et 'ligne prévention suicide + votre pays'.",
+          "hidden": true
+        },
+        "urgenceBackLink": {
+          "text": "Retour à Facilitat.io",
+          "hidden": false
+        }
+      },
+      "interpretedImages": 0,
+      "injected": false,
+      "historyLength": 2,
+      "referrer": "",
+      "fontSize": "15px",
+      "lineHeight": "21.75px",
+      "case": "absent_explicit",
+      "viewport": "mobile",
+      "back_direct": "https://synthetic.example.test/index.html?screen=chatScreen",
+      "api": "https://synthetic.example.test/api/emergency-support",
+      "errors": [],
+      "unexpected": []
+    },
+    {
+      "width": 390,
+      "scrollWidth": 390,
+      "horizontalOverflow": false,
+      "text": {
+        "countryLabel": {
+          "text": "Pays des ressources : Canada — fixture synthétique (CA)",
+          "hidden": false
+        },
+        "emergencyLine": {
+          "text": "Urgences : 000 — ressource héritée non validée ; source et date de vérification non établies. Version du registre : a9a679fe356c.",
+          "hidden": false
+        },
+        "suicideLine": {
+          "text": "",
+          "hidden": true
+        },
+        "partialFallback": {
+          "text": "Si ces numéros ne sont pas disponibles pour votre pays, appelez le numéro d'urgence local de votre opérateur téléphonique ou recherchez 'numéro urgence + votre pays' et 'ligne prévention suicide + votre pays'.",
+          "hidden": false
+        },
+        "urgenceBackLink": {
+          "text": "Retour à Facilitat.io",
+          "hidden": false
+        }
+      },
+      "interpretedImages": 0,
+      "injected": false,
+      "historyLength": 2,
+      "referrer": "",
+      "fontSize": "15px",
+      "lineHeight": "21.75px",
+      "case": "missing_suicide",
+      "viewport": "mobile",
+      "back_direct": "https://synthetic.example.test/index.html?screen=chatScreen",
+      "api": "https://synthetic.example.test/api/emergency-support?country=CA",
+      "errors": [],
+      "unexpected": []
+    },
+    {
+      "width": 390,
+      "scrollWidth": 390,
+      "horizontalOverflow": false,
+      "text": {
+        "countryLabel": {
+          "text": "Pays des ressources : Suisse — fixture synthétique (CH)",
+          "hidden": false
+        },
+        "emergencyLine": {
+          "text": "",
+          "hidden": true
+        },
+        "suicideLine": {
+          "text": "Prévention suicide : 001 — ressource héritée non validée ; source et date de vérification non établies. Version du registre : a9a679fe356c.",
+          "hidden": false
+        },
+        "partialFallback": {
+          "text": "Si ces numéros ne sont pas disponibles pour votre pays, appelez le numéro d'urgence local de votre opérateur téléphonique ou recherchez 'numéro urgence + votre pays' et 'ligne prévention suicide + votre pays'.",
+          "hidden": false
+        },
+        "urgenceBackLink": {
+          "text": "Retour à Facilitat.io",
+          "hidden": false
+        }
+      },
+      "interpretedImages": 0,
+      "injected": false,
+      "historyLength": 2,
+      "referrer": "",
+      "fontSize": "15px",
+      "lineHeight": "21.75px",
+      "case": "missing_emergency",
+      "viewport": "mobile",
+      "back_direct": "https://synthetic.example.test/index.html?screen=chatScreen",
+      "api": "https://synthetic.example.test/api/emergency-support?country=CH",
+      "errors": [],
+      "unexpected": []
+    },
+    {
+      "width": 390,
+      "scrollWidth": 390,
+      "horizontalOverflow": false,
+      "text": {
+        "countryLabel": {
+          "text": "Pays des ressources : Belgique — fixture synthétique (BE)",
+          "hidden": false
+        },
+        "emergencyLine": {
+          "text": "Urgences : <img src=x onerror=\"window.syntheticInjected=true\"> TEXTE_SYNTHETIQUE — ressource héritée non validée ; source et date de vérification non établies. Version du registre : a2bd404bf5b3.",
+          "hidden": false
+        },
+        "suicideLine": {
+          "text": "Prévention suicide : 001 — ressource héritée non validée ; source et date de vérification non établies. Version du registre : a2bd404bf5b3.",
+          "hidden": false
+        },
+        "partialFallback": {
+          "text": "Si ces numéros ne sont pas disponibles pour votre pays, appelez le numéro d'urgence local de votre opérateur téléphonique ou recherchez 'numéro urgence + votre pays' et 'ligne prévention suicide + votre pays'.",
+          "hidden": true
+        },
+        "urgenceBackLink": {
+          "text": "Retour à Facilitat.io",
+          "hidden": false
+        }
+      },
+      "interpretedImages": 0,
+      "injected": false,
+      "historyLength": 2,
+      "referrer": "",
+      "fontSize": "15px",
+      "lineHeight": "21.75px",
+      "case": "html_literal",
+      "viewport": "mobile",
+      "back_direct": "https://synthetic.example.test/index.html?screen=chatScreen",
+      "api": "https://synthetic.example.test/api/emergency-support?country=BE",
+      "errors": [],
+      "unexpected": []
+    },
+    {
+      "width": 390,
+      "scrollWidth": 390,
+      "horizontalOverflow": false,
+      "text": {
+        "countryLabel": {
+          "text": "Pays des ressources : Belgique — fixture synthétique (BE)",
+          "hidden": false
+        },
+        "emergencyLine": {
+          "text": "Urgences : 000 — source : https://source.example.test/services/territory/official-document-with-a-long-unbroken-path-for-local-visual-validation-only ; version : synthetic-v1 ; vérifié le : 2026-10-01T00:00:00.000Z",
+          "hidden": false
+        },
+        "suicideLine": {
+          "text": "Prévention suicide : 001 — ressource héritée non validée ; source et date de vérification non établies. Version du registre : 6867b1a5fd67.",
+          "hidden": false
+        },
+        "partialFallback": {
+          "text": "Si ces numéros ne sont pas disponibles pour votre pays, appelez le numéro d'urgence local de votre opérateur téléphonique ou recherchez 'numéro urgence + votre pays' et 'ligne prévention suicide + votre pays'.",
+          "hidden": true
+        },
+        "urgenceBackLink": {
+          "text": "Retour à Facilitat.io",
+          "hidden": false
+        }
+      },
+      "interpretedImages": 0,
+      "injected": false,
+      "historyLength": 2,
+      "referrer": "",
+      "fontSize": "15px",
+      "lineHeight": "21.75px",
+      "case": "reviewed_long_source",
+      "viewport": "mobile",
+      "back_direct": "https://synthetic.example.test/index.html?screen=chatScreen",
+      "api": "https://synthetic.example.test/api/emergency-support?country=BE",
+      "errors": [],
+      "unexpected": []
+    },
+    {
+      "case": "chat_link",
+      "country": "BE",
+      "viewport": "mobile",
+      "target": "https://synthetic.example.test/urgence.html?country=BE",
+      "back_history": "https://synthetic.example.test/index.html?screen=chatScreen"
+    },
+    {
+      "case": "chat_link",
+      "country": "ZZ",
+      "viewport": "mobile",
+      "target": "https://synthetic.example.test/urgence.html?country=ZZ",
+      "back_history": "https://synthetic.example.test/index.html?screen=chatScreen"
+    },
+    {
+      "case": "chat_link",
+      "country": null,
+      "viewport": "mobile",
+      "target": "https://synthetic.example.test/urgence.html?country=",
+      "back_history": "https://synthetic.example.test/index.html?screen=chatScreen"
+    }
+  ],
+  "requests": [
+    {
+      "case": "known",
+      "viewport": "desktop",
+      "url": "https://synthetic.example.test/urgence.html?country=BE"
+    },
+    {
+      "case": "known",
+      "viewport": "desktop",
+      "url": "https://synthetic.example.test/api/emergency-support?country=BE"
+    },
+    {
+      "case": "known",
+      "viewport": "desktop",
+      "url": "https://synthetic.example.test/index.html?screen=chatScreen"
+    },
+    {
+      "case": "unknown_fallback",
+      "viewport": "desktop",
+      "url": "https://synthetic.example.test/urgence.html?country=ZZ"
+    },
+    {
+      "case": "unknown_fallback",
+      "viewport": "desktop",
+      "url": "https://synthetic.example.test/api/emergency-support?country=ZZ"
+    },
+    {
+      "case": "unknown_fallback",
+      "viewport": "desktop",
+      "url": "https://synthetic.example.test/index.html?screen=chatScreen"
+    },
+    {
+      "case": "absent_explicit",
+      "viewport": "desktop",
+      "url": "https://synthetic.example.test/urgence.html?country="
+    },
+    {
+      "case": "absent_explicit",
+      "viewport": "desktop",
+      "url": "https://synthetic.example.test/api/emergency-support"
+    },
+    {
+      "case": "absent_explicit",
+      "viewport": "desktop",
+      "url": "https://synthetic.example.test/index.html?screen=chatScreen"
+    },
+    {
+      "case": "missing_suicide",
+      "viewport": "desktop",
+      "url": "https://synthetic.example.test/urgence.html?country=CA"
+    },
+    {
+      "case": "missing_suicide",
+      "viewport": "desktop",
+      "url": "https://synthetic.example.test/api/emergency-support?country=CA"
+    },
+    {
+      "case": "missing_suicide",
+      "viewport": "desktop",
+      "url": "https://synthetic.example.test/index.html?screen=chatScreen"
+    },
+    {
+      "case": "missing_emergency",
+      "viewport": "desktop",
+      "url": "https://synthetic.example.test/urgence.html?country=CH"
+    },
+    {
+      "case": "missing_emergency",
+      "viewport": "desktop",
+      "url": "https://synthetic.example.test/api/emergency-support?country=CH"
+    },
+    {
+      "case": "missing_emergency",
+      "viewport": "desktop",
+      "url": "https://synthetic.example.test/index.html?screen=chatScreen"
+    },
+    {
+      "case": "html_literal",
+      "viewport": "desktop",
+      "url": "https://synthetic.example.test/urgence.html?country=BE"
+    },
+    {
+      "case": "html_literal",
+      "viewport": "desktop",
+      "url": "https://synthetic.example.test/api/emergency-support?country=BE"
+    },
+    {
+      "case": "html_literal",
+      "viewport": "desktop",
+      "url": "https://synthetic.example.test/index.html?screen=chatScreen"
+    },
+    {
+      "case": "reviewed_long_source",
+      "viewport": "desktop",
+      "url": "https://synthetic.example.test/urgence.html?country=BE"
+    },
+    {
+      "case": "reviewed_long_source",
+      "viewport": "desktop",
+      "url": "https://synthetic.example.test/api/emergency-support?country=BE"
+    },
+    {
+      "case": "reviewed_long_source",
+      "viewport": "desktop",
+      "url": "https://synthetic.example.test/index.html?screen=chatScreen"
+    },
+    {
+      "case": "known",
+      "viewport": "desktop",
+      "url": "https://synthetic.example.test/index.html?screen=chatScreen"
+    },
+    {
+      "case": "known",
+      "viewport": "desktop",
+      "url": "https://synthetic.example.test/urgence.html?country=BE"
+    },
+    {
+      "case": "known",
+      "viewport": "desktop",
+      "url": "https://synthetic.example.test/api/emergency-support?country=BE"
+    },
+    {
+      "case": "known",
+      "viewport": "desktop",
+      "url": "https://synthetic.example.test/index.html?screen=chatScreen"
+    },
+    {
+      "case": "unknown_fallback",
+      "viewport": "desktop",
+      "url": "https://synthetic.example.test/index.html?screen=chatScreen"
+    },
+    {
+      "case": "unknown_fallback",
+      "viewport": "desktop",
+      "url": "https://synthetic.example.test/urgence.html?country=ZZ"
+    },
+    {
+      "case": "unknown_fallback",
+      "viewport": "desktop",
+      "url": "https://synthetic.example.test/api/emergency-support?country=ZZ"
+    },
+    {
+      "case": "unknown_fallback",
+      "viewport": "desktop",
+      "url": "https://synthetic.example.test/index.html?screen=chatScreen"
+    },
+    {
+      "case": "absent_explicit",
+      "viewport": "desktop",
+      "url": "https://synthetic.example.test/index.html?screen=chatScreen"
+    },
+    {
+      "case": "absent_explicit",
+      "viewport": "desktop",
+      "url": "https://synthetic.example.test/urgence.html?country="
+    },
+    {
+      "case": "absent_explicit",
+      "viewport": "desktop",
+      "url": "https://synthetic.example.test/api/emergency-support"
+    },
+    {
+      "case": "absent_explicit",
+      "viewport": "desktop",
+      "url": "https://synthetic.example.test/index.html?screen=chatScreen"
+    },
+    {
+      "case": "known",
+      "viewport": "mobile",
+      "url": "https://synthetic.example.test/urgence.html?country=BE"
+    },
+    {
+      "case": "known",
+      "viewport": "mobile",
+      "url": "https://synthetic.example.test/api/emergency-support?country=BE"
+    },
+    {
+      "case": "known",
+      "viewport": "mobile",
+      "url": "https://synthetic.example.test/index.html?screen=chatScreen"
+    },
+    {
+      "case": "unknown_fallback",
+      "viewport": "mobile",
+      "url": "https://synthetic.example.test/urgence.html?country=ZZ"
+    },
+    {
+      "case": "unknown_fallback",
+      "viewport": "mobile",
+      "url": "https://synthetic.example.test/api/emergency-support?country=ZZ"
+    },
+    {
+      "case": "unknown_fallback",
+      "viewport": "mobile",
+      "url": "https://synthetic.example.test/index.html?screen=chatScreen"
+    },
+    {
+      "case": "absent_explicit",
+      "viewport": "mobile",
+      "url": "https://synthetic.example.test/urgence.html?country="
+    },
+    {
+      "case": "absent_explicit",
+      "viewport": "mobile",
+      "url": "https://synthetic.example.test/api/emergency-support"
+    },
+    {
+      "case": "absent_explicit",
+      "viewport": "mobile",
+      "url": "https://synthetic.example.test/index.html?screen=chatScreen"
+    },
+    {
+      "case": "missing_suicide",
+      "viewport": "mobile",
+      "url": "https://synthetic.example.test/urgence.html?country=CA"
+    },
+    {
+      "case": "missing_suicide",
+      "viewport": "mobile",
+      "url": "https://synthetic.example.test/api/emergency-support?country=CA"
+    },
+    {
+      "case": "missing_suicide",
+      "viewport": "mobile",
+      "url": "https://synthetic.example.test/index.html?screen=chatScreen"
+    },
+    {
+      "case": "missing_emergency",
+      "viewport": "mobile",
+      "url": "https://synthetic.example.test/urgence.html?country=CH"
+    },
+    {
+      "case": "missing_emergency",
+      "viewport": "mobile",
+      "url": "https://synthetic.example.test/api/emergency-support?country=CH"
+    },
+    {
+      "case": "missing_emergency",
+      "viewport": "mobile",
+      "url": "https://synthetic.example.test/index.html?screen=chatScreen"
+    },
+    {
+      "case": "html_literal",
+      "viewport": "mobile",
+      "url": "https://synthetic.example.test/urgence.html?country=BE"
+    },
+    {
+      "case": "html_literal",
+      "viewport": "mobile",
+      "url": "https://synthetic.example.test/api/emergency-support?country=BE"
+    },
+    {
+      "case": "html_literal",
+      "viewport": "mobile",
+      "url": "https://synthetic.example.test/index.html?screen=chatScreen"
+    },
+    {
+      "case": "reviewed_long_source",
+      "viewport": "mobile",
+      "url": "https://synthetic.example.test/urgence.html?country=BE"
+    },
+    {
+      "case": "reviewed_long_source",
+      "viewport": "mobile",
+      "url": "https://synthetic.example.test/api/emergency-support?country=BE"
+    },
+    {
+      "case": "reviewed_long_source",
+      "viewport": "mobile",
+      "url": "https://synthetic.example.test/index.html?screen=chatScreen"
+    },
+    {
+      "case": "known",
+      "viewport": "mobile",
+      "url": "https://synthetic.example.test/index.html?screen=chatScreen"
+    },
+    {
+      "case": "known",
+      "viewport": "mobile",
+      "url": "https://synthetic.example.test/urgence.html?country=BE"
+    },
+    {
+      "case": "known",
+      "viewport": "mobile",
+      "url": "https://synthetic.example.test/api/emergency-support?country=BE"
+    },
+    {
+      "case": "known",
+      "viewport": "mobile",
+      "url": "https://synthetic.example.test/index.html?screen=chatScreen"
+    },
+    {
+      "case": "unknown_fallback",
+      "viewport": "mobile",
+      "url": "https://synthetic.example.test/index.html?screen=chatScreen"
+    },
+    {
+      "case": "unknown_fallback",
+      "viewport": "mobile",
+      "url": "https://synthetic.example.test/urgence.html?country=ZZ"
+    },
+    {
+      "case": "unknown_fallback",
+      "viewport": "mobile",
+      "url": "https://synthetic.example.test/api/emergency-support?country=ZZ"
+    },
+    {
+      "case": "unknown_fallback",
+      "viewport": "mobile",
+      "url": "https://synthetic.example.test/index.html?screen=chatScreen"
+    },
+    {
+      "case": "absent_explicit",
+      "viewport": "mobile",
+      "url": "https://synthetic.example.test/index.html?screen=chatScreen"
+    },
+    {
+      "case": "absent_explicit",
+      "viewport": "mobile",
+      "url": "https://synthetic.example.test/urgence.html?country="
+    },
+    {
+      "case": "absent_explicit",
+      "viewport": "mobile",
+      "url": "https://synthetic.example.test/api/emergency-support"
+    },
+    {
+      "case": "absent_explicit",
+      "viewport": "mobile",
+      "url": "https://synthetic.example.test/index.html?screen=chatScreen"
+    }
+  ]
+}

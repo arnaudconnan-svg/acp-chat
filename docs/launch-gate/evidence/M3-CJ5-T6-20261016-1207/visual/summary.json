@@ -1,0 +1,27 @@
+{
+  "initial_sha": "7e0b47a3bb40caeca1171c4d26a659a4f6970e97",
+  "fix_code_sha": "629694765ae6a3617396d54a01056b6326c98e67",
+  "browser": "Chromium 154.0.8037.57",
+  "viewport_desktop": {
+    "width": 1440,
+    "height": 1000
+  },
+  "viewport_mobile": {
+    "width": 390,
+    "height": 844,
+    "touch": true
+  },
+  "results": 20,
+  "final_screenshots": 20,
+  "requests_intercepted": 66,
+  "all_context_requests_mocked": true,
+  "horizontal_overflow_count": 0,
+  "injection_count": 0,
+  "interpreted_images": 0,
+  "all_returns_inside_app": true,
+  "source_before_sha256": "c87f83f3626c9e9b71db0d4d449d93067bcdcfe64f1946e387945cee27920d89",
+  "source_after_sha256": "5e644a14bbf680795973507744d5ad653b583c8ec24f540e45f6b83d7b4f5d6a",
+  "runtime_real_services_used": false,
+  "clinical_policy_changed": false,
+  "merged": false
+}

@@ -1,0 +1,18 @@
+
+> acp-chat@1.0.0 m3:emergency:harness
+> node scripts/synthetic/m3-emergency-harness.cjs
+
+PASS collection is candidate-only, third-party instructions not copied
+PASS unapproved candidate/service, changed digest and stale base rejected
+PASS missing provenance and non-telephone identifiers rejected
+PASS partial failed collection never advances published version/dates
+PASS approved publication is atomic, leaves untouched categories and territories unchanged
+PASS legacy updater refuses before any network or file write
+PASS HTTP byte limit, deadline, caller abort, error and invalid JSON destroy request
+PASS unknown country and missing category keep effective country and honest legacy status
+PASS real API, crisis writer context and DOM share effective country, source and dates
+PASS real writer receives hostile resource content only as unprivileged data
+PASS real followup resource context never enters privileged instructions
+PASS real chat link passes profile country, including unknown, without locale substitution
+M3 emergency: 12 groups passed; no real providers/data
+EXIT_CODE=0

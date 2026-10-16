@@ -1,0 +1,91 @@
+
+> acp-chat@1.0.0 health:harness
+> node scripts/health-harness.js
+
+health harness: ok
+
+> acp-chat@1.0.0 no-openai-runtime:harness
+> node scripts/no-openai-runtime-harness.js
+
+no OpenAI runtime harness: ok
+
+> acp-chat@1.0.0 mistral:harness
+> node scripts/mistral-transport-harness.js
+
+mistral transport harness: ok
+
+> acp-chat@1.0.0 title:harness
+> node scripts/title-generation-harness.js
+
+title generation harness: ok
+
+> acp-chat@1.0.0 title:conflict:mistral:harness
+> node scripts/title-conflict-mistral-harness.js
+
+title conflict Mistral harness: ok
+
+> acp-chat@1.0.0 information-routing:mistral:harness
+> node scripts/information-routing-mistral-harness.js
+
+information-routing-mistral-harness: ok
+
+> acp-chat@1.0.0 exploration:mistral:harness
+> node scripts/exploration-mistral-harness.js
+
+exploration-mistral-harness: ok
+
+> acp-chat@1.0.0 recall-routing:mistral:harness
+> node scripts/recall-routing-mistral-harness.js
+
+recall-routing-mistral-harness: ok
+
+> acp-chat@1.0.0 contact-discharge:mistral:harness
+> node scripts/contact-discharge-mistral-harness.js
+
+contact-discharge-mistral-harness: ok
+
+> acp-chat@1.0.0 immediate-alliance:mistral:harness
+> node scripts/immediate-alliance-mistral-harness.js
+
+immediate-alliance-mistral-harness: ok
+
+> acp-chat@1.0.0 interpretation-rejection:mistral:harness
+> node scripts/interpretation-rejection-mistral-harness.js
+
+interpretation-rejection-mistral-harness: ok
+
+> acp-chat@1.0.0 dependency-risk:mistral:harness
+> node scripts/dependency-risk-mistral-harness.js
+
+dependency-risk-mistral-harness: ok
+
+> acp-chat@1.0.0 major-harm-response:mistral:harness
+> node scripts/major-harm-response-mistral-harness.js
+
+major-harm-response-mistral-harness: ok
+
+> acp-chat@1.0.0 acute-crisis-followup:mistral:harness
+> node scripts/acute-crisis-followup-mistral-harness.js
+
+AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
++ actual - expected
+
+  [
++   '{"emergencyResourceData":"112 ou 3114"}',
+    'tour-3',
+    'tour-4',
+    'tour-5',
+    'tour-6'
+  ]
+
+    at /workspace/acp-chat/scripts/acute-crisis-followup-mistral-harness.js:117:12
+    at Array.forEach (<anonymous>)
+    at run (/workspace/acp-chat/scripts/acute-crisis-followup-mistral-harness.js:113:14) {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: [Array],
+  expected: [Array],
+  operator: 'deepStrictEqual',
+  diff: 'simple'
+}
+EXIT_CODE=1
