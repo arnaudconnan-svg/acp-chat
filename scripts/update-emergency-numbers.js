@@ -1,27 +1,29 @@
-﻿'use strict';
+'use strict';
 
-/**
- * update-emergency-numbers.js
- *
- * Interroge Wikidata via SPARQL pour mettre à jour data/emergency-numbers.json.
- * Les numéros déjà présents dans le fichier sont conservés si Wikidata ne retourne
- * aucune donnée pour ce pays (les entrées manuelles priment sur les données Wikidata).
- *
- * Usage : npm run update:emergency-numbers
- */
-
+// Manual publication only; never an implicit live-registry update or network call.
+const fs = require('fs');
 const path = require('path');
-const { updateEmergencyNumbers } = require('../lib/emergency-updater');
-
-const OUTPUT_FILE = path.join(__dirname, '../data/emergency-numbers.json');
-
-updateEmergencyNumbers(OUTPUT_FILE, '[update-emergency-numbers]')
-  .then(() => {
-    console.log(
-      "[update-emergency-numbers] RAPPEL : vérifier manuellement les entrées 'label' pour les nouveaux pays (Wikidata ne fournit pas les noms en français)."
+const { publishEmergencyCandidate } = require('../lib/emergency-updater');
+const args = process.argv.slice(2);
+if (
+  args.length !== 4 ||
+  args[0] !== '--candidate' ||
+  args[2] !== '--approval'
+) {
+  console.error(
+    'Publication bloquée : fournir --candidate fichier.json --approval validation.json (empreinte et validation par service).'
+  );
+  process.exitCode = 1;
+} else {
+  try {
+    publishEmergencyCandidate(
+      path.join(__dirname, '../data/emergency-numbers.json'),
+      JSON.parse(fs.readFileSync(args[1], 'utf8')),
+      JSON.parse(fs.readFileSync(args[3], 'utf8'))
     );
-  })
-  .catch((err) => {
-    console.error('[update-emergency-numbers] Erreur fatale:', err.message);
-    process.exit(1);
-  });
+    console.log('Registre publié après validation explicite.');
+  } catch (error) {
+    console.error('Publication bloquée :', error.message);
+    process.exitCode = 1;
+  }
+}

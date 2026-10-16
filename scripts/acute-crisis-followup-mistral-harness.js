@@ -113,14 +113,23 @@ async function run() {
   categories.forEach((category, index) => {
     const request = transport.requests[index];
     assert.equal(request.model, GENERATION_MODEL);
-    assert.match(request.messages[0].content, new RegExp(categoryLabels[index]));
+    assert.match(
+      request.messages[0].content,
+      new RegExp(categoryLabels[index])
+    );
     assert.deepEqual(
-      request.messages.slice(1, -1).map((item) => item.content),
+      request.messages
+        .slice(category === 'n2_neutral' ? 2 : 1, -1)
+        .map((item) => item.content),
       ['tour-3', 'tour-4', 'tour-5', 'tour-6']
     );
   });
   assert.match(transport.requests[0].messages[0].content, /ne pas repeter/i);
-  assert.match(transport.requests[4].messages[0].content, /112 ou 3114/);
+  assert.doesNotMatch(transport.requests[4].messages[0].content, /112 ou 3114/);
+  assert.equal(transport.requests[4].messages[1].role, 'user');
+  assert.deepEqual(JSON.parse(transport.requests[4].messages[1].content), {
+    emergencyResourceData: '112 ou 3114'
+  });
 
   assert.equal(
     await analyzers.acuteCrisisFollowupResponseLLM(
@@ -143,10 +152,22 @@ async function run() {
     );
   }
 
-  assert.equal(analyzers.classifyN2TurnType("Je ne veux pas appeler"), 'n2_refusal');
-  assert.equal(analyzers.classifyN2TurnType('Laisse-moi tranquille'), 'n2_hostile');
-  assert.equal(analyzers.classifyN2TurnType('Je suis seul sans aucun soutien'), 'n2_isolation');
-  assert.equal(analyzers.classifyN2TurnType("Je pleure, je n'en peux plus"), 'n2_overflow');
+  assert.equal(
+    analyzers.classifyN2TurnType('Je ne veux pas appeler'),
+    'n2_refusal'
+  );
+  assert.equal(
+    analyzers.classifyN2TurnType('Laisse-moi tranquille'),
+    'n2_hostile'
+  );
+  assert.equal(
+    analyzers.classifyN2TurnType('Je suis seul sans aucun soutien'),
+    'n2_isolation'
+  );
+  assert.equal(
+    analyzers.classifyN2TurnType("Je pleure, je n'en peux plus"),
+    'n2_overflow'
+  );
   assert.equal(analyzers.classifyN2TurnType('Je vous entends.'), 'n2_neutral');
   assert.equal(getOpenAiCalls(), 0);
 

@@ -9,7 +9,32 @@ const { spawnSync } = require('child_process');
 const guard = path.resolve(__dirname, 'preff-git-guard.js');
 
 function run(command, args, cwd, allowFailure = false) {
-  const result = spawnSync(command, args, { cwd, encoding: 'utf8' });
+  let result;
+  // Some restricted runtimes report EPERM on pipe capture while returning
+  // status=0 and losing child output. Capture the same child through
+  // regular files outside the fixture worktrees; keep every assertion below.
+  const capture = fs.mkdtempSync(path.join(os.tmpdir(), 'preff-capture-'));
+  const stdoutFile = path.join(capture, 'stdout');
+  const stderrFile = path.join(capture, 'stderr');
+  const stdoutFd = fs.openSync(stdoutFile, 'w');
+  const stderrFd = fs.openSync(stderrFile, 'w');
+  try {
+    try {
+      result = spawnSync(command, args, {
+        cwd,
+        encoding: 'utf8',
+        stdio: ['ignore', stdoutFd, stderrFd]
+      });
+    } finally {
+      fs.closeSync(stdoutFd);
+      fs.closeSync(stderrFd);
+    }
+    result.stdout = fs.readFileSync(stdoutFile, 'utf8');
+    result.stderr = fs.readFileSync(stderrFile, 'utf8');
+  } finally {
+    fs.rmSync(capture, { recursive: true, force: true });
+  }
+  if (result.error) throw result.error;
   if (!allowFailure && result.status !== 0) {
     throw new Error(`${command} ${args.join(' ')} failed:\n${result.stderr}`);
   }
