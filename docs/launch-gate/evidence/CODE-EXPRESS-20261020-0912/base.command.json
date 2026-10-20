@@ -1,0 +1,11 @@
+{
+  "argv": [
+    "git",
+    "rev-parse",
+    "HEAD",
+    "origin/beta"
+  ],
+  "exit_code": 0,
+  "started_unix": 1792481367.8318865,
+  "duration_seconds": 0.004
+}

@@ -1,0 +1,30 @@
+{
+  "version": "2.3.0",
+  "dependencies": {
+    "qs": "^6.15.2",
+    "bytes": "^3.1.2",
+    "debug": "^4.4.3",
+    "type-is": "^2.1.0",
+    "raw-body": "^3.0.2",
+    "iconv-lite": "^0.7.2",
+    "http-errors": "^2.0.1",
+    "on-finished": "^2.4.1",
+    "content-type": "^2.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dist": {
+    "shasum": "6d8662f4d8c336028b8ac9aa24251b0ca64ba437",
+    "tarball": "https://registry.npmjs.org/body-parser/-/body-parser-2.3.0.tgz",
+    "fileCount": 10,
+    "integrity": "sha512-2cGmJupaNgg+QUwVLAucDuWuoMZ6EX9iHDRswZ5lsNYEmwPaRknMPCLZz07yTzVq/83p4o/wzbDZbBrTvGGTIw==",
+    "signatures": [
+      {
+        "sig": "MEUCIGCX/T+R3Ow5xMvv/aOjnxJzICVYKL27LzUlZ1M1lumsAiEAiCHyPGK5Gc8RIE0LeEq2hIbquM13SGshFkQRGb/5ju8=",
+        "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+      }
+    ],
+    "unpackedSize": 42536
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "version": "6.16.1",
+  "dependencies": {
+    "side-channel": "^1.1.1",
+    "es-define-property": "^1.0.1"
+  },
+  "engines": {
+    "node": ">=0.6"
+  },
+  "dist": {
+    "shasum": "0643e17993e551759c85078e1f0bc4b9fe908020",
+    "tarball": "https://registry.npmjs.org/qs/-/qs-6.16.1.tgz",
+    "integrity": "sha512-5Px6J7rfHBAGUhNQ3es4YzcOdBBw0SDcVtThJml4RdnKw4tKs2epA0kPZ+K8X+WiHktT93RHVcQ/3ym5aTCgtg==",
+    "fileCount": 20,
+    "unpackedSize": 418793,
+    "signatures": [
+      {
+        "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U",
+        "sig": "MEQCIBD/HODTxSGXW4MI271pfIsMMMbbwHj3MeVovqvY+x3YAiBMpQnp/2uQ85UdZMgXXA6A3QTEwSE//1ueytFwpAC3Zw=="
+      }
+    ]
+  }
+}

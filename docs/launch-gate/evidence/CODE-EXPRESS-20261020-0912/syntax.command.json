@@ -1,0 +1,10 @@
+{
+  "argv": [
+    "node",
+    "--check",
+    "scripts/synthetic/express-chain-harness.cjs"
+  ],
+  "exit_code": 0,
+  "started_unix": 1792481306.4972708,
+  "duration_seconds": 0.032
+}

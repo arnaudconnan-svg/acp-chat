@@ -213,6 +213,9 @@ function loadApplication({ seed = {}, overrides = {}, env = {} } = {}) {
       on() {}
     },
     Buffer,
+    // Express/body-parser run in the host realm. Match the real server's
+    // instanceof SyntaxError check when its JSON error middleware runs in VM.
+    SyntaxError,
     URL,
     structuredClone,
     console: logger,
@@ -235,7 +238,15 @@ function loadApplication({ seed = {}, overrides = {}, env = {} } = {}) {
   async function request(
     method,
     url,
-    { body = {}, cookie = '', headers = {}, query = {}, onWire = null } = {}
+    {
+      body = {},
+      cookie = '',
+      headers = {},
+      query = {},
+      onWire = null,
+      rawBody = undefined,
+      socketAddress = '127.0.0.1'
+    } = {}
   ) {
     const { IncomingMessage, ServerResponse } = require('http');
     const { Duplex } = require('stream');
@@ -248,12 +259,12 @@ function loadApplication({ seed = {}, overrides = {}, env = {} } = {}) {
         done();
       }
     });
-    socket.remoteAddress = '127.0.0.1';
+    socket.remoteAddress = socketAddress;
     const req = new IncomingMessage(socket);
     const suffix = new URLSearchParams(query).toString();
     req.url = url + (suffix ? (url.includes('?') ? '&' : '?') + suffix : '');
     req.method = method.toUpperCase();
-    const payload = JSON.stringify(body);
+    const payload = rawBody === undefined ? JSON.stringify(body) : rawBody;
     req.headers = {
       host: 'synthetic.example.test',
       cookie,

@@ -1,0 +1,19 @@
+{
+  "argv": [
+    "npm",
+    "update",
+    "proxy-addr",
+    "body-parser",
+    "qs",
+    "--dry-run",
+    "--json",
+    "--ignore-scripts",
+    "--no-audit",
+    "--no-fund",
+    "--cache=/workspace/work/npm-cache",
+    "--registry=https://registry.npmjs.org"
+  ],
+  "exit_code": 0,
+  "started_unix": 1792481164.2135804,
+  "duration_seconds": 1.169
+}

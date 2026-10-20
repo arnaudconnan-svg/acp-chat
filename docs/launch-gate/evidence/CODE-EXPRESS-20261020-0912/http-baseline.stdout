@@ -1,0 +1,131 @@
+{
+  "versions": {
+    "express": "5.2.1",
+    "proxy-addr": "2.0.7",
+    "body-parser": "2.2.2",
+    "qs": "6.15.2"
+  },
+  "observations": [
+    {
+      "name": "valid",
+      "status": 200,
+      "body": {
+        "body": {
+          "value": "synthetic"
+        },
+        "query": {},
+        "ip": "127.0.0.1",
+        "ips": [],
+        "manualIp": "127.0.0.1",
+        "resetIp": "127.0.0.1"
+      }
+    },
+    {
+      "name": "malformed",
+      "status": 400,
+      "body": {
+        "error": "Invalid JSON payload"
+      }
+    },
+    {
+      "name": "empty",
+      "status": 200,
+      "body": {
+        "body": {},
+        "query": {},
+        "ip": "127.0.0.1",
+        "ips": [],
+        "manualIp": "127.0.0.1",
+        "resetIp": "127.0.0.1"
+      }
+    },
+    {
+      "name": "primitive",
+      "status": 400,
+      "body": {
+        "error": "Invalid JSON payload"
+      }
+    },
+    {
+      "name": "wrong-content-type",
+      "status": 200,
+      "body": {
+        "body": null,
+        "query": {},
+        "ip": "127.0.0.1",
+        "ips": [],
+        "manualIp": "127.0.0.1",
+        "resetIp": "127.0.0.1"
+      }
+    },
+    {
+      "name": "json-charset",
+      "status": 200,
+      "body": {
+        "body": {
+          "value": "é"
+        },
+        "query": {},
+        "ip": "127.0.0.1",
+        "ips": [],
+        "manualIp": "127.0.0.1",
+        "resetIp": "127.0.0.1"
+      }
+    },
+    {
+      "name": "oversize",
+      "status": 413
+    },
+    {
+      "name": "existing-simple-query",
+      "query": {
+        "a": [
+          "one",
+          "two"
+        ],
+        "filter[name]": "synthetic",
+        "__proto__[polluted]": "yes"
+      }
+    },
+    {
+      "name": "fixture-only-extended-query",
+      "query": {
+        "filter": {
+          "name": "synthetic"
+        },
+        "a": [
+          "one",
+          "two"
+        ]
+      }
+    },
+    {
+      "name": "default-trust-proxy-and-manual-forwarding",
+      "body": {},
+      "query": {},
+      "ip": "127.0.0.1",
+      "ips": [],
+      "manualIp": "198.51.100.7",
+      "resetIp": "127.0.0.1"
+    },
+    {
+      "name": "mapped-socket-default",
+      "body": {},
+      "query": {},
+      "ip": "::ffff:127.0.0.1",
+      "ips": [],
+      "manualIp": "198.51.100.7",
+      "resetIp": "::ffff:127.0.0.1"
+    },
+    {
+      "name": "existing-reset-hop-option",
+      "body": {},
+      "query": {},
+      "ip": "127.0.0.1",
+      "ips": [],
+      "manualIp": "198.51.100.7",
+      "resetIp": "203.0.113.9"
+    }
+  ]
+}
+PASS real HTTP JSON/query/IP/error characterization; relay/reset malformed; M0 preserved
