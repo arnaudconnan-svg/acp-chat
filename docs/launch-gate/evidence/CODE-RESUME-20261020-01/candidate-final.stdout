@@ -1,0 +1,6 @@
+PASS real human relay routes: both types, consent, private minimization, IDN recipient, MIME text
+PASS real human relay route: transport rejection and retry
+PASS real reset routes/queue/sender: normalized address object, ASCII/Unicode/IDN, success/error, hashed secret
+PASS existing reset bounds: unknown account sends nothing, Express body limit retained
+PASS shared dependency: reset simple string and genuine vigilance notifier
+PASS Nodemailer 10.1.7: guarded real dependency compatibility

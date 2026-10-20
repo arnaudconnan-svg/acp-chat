@@ -1,0 +1,17 @@
+Tue, 20 Oct 2026 01:15:45 GMT router deprecated handlers that are Promise-like are deprecated, use a native Promise instead at node_modules/router/lib/route.js:157:13
+AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
++ actual - expected
+
+  [
++   'élise@équipe.test'
+-   'élise@xn--quipe-9ra.test'
+  ]
+
+    at main (/workspace/acp-chat/scripts/synthetic/nodemailer-harness.cjs:123:14) {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: [Array],
+  expected: [Array],
+  operator: 'deepStrictEqual',
+  diff: 'simple'
+}

@@ -1,0 +1,96 @@
+{
+  "mission": "CODE-RESUME-20261020-01",
+  "tested_code_sha": "ee9ec31de5fa18c6a6eb23c88ef6c67c31f433f7",
+  "code_git_blobs": {
+    "server.js": "250993263d6395508379aa0aa4ae05dac287f0cd",
+    "lib/password-reset.js": "4b80918fa563be79ae2f17405c9fe9ce5e3b9d01",
+    "scripts/synthetic/runtime.cjs": "d75d7ec592c336fc87d9b6553744938edafb7641",
+    "scripts/synthetic/guard.cjs": "3c29ae234994f52d6913662b60760c5f5bde10e8",
+    "scripts/synthetic/nodemailer-harness.cjs": "95e40c94ac80fb1ac8756b541911715378dd742d"
+  },
+  "base_beta": "1ccaeeba3c18d21d39ed6d8b5c91c015d44eb955",
+  "test_runtime": "Node v24.19.0",
+  "runs": [
+    {
+      "name": "baseline-final",
+      "exit_code": 0,
+      "nodemailer": "8.0.5",
+      "provenance": "stdout/stderr copied byte-for-byte from existing captured files; exit code transcribed from native tool result",
+      "tested_code": "ee9ec31de5fa18c6a6eb23c88ef6c67c31f433f7"
+    },
+    {
+      "name": "candidate-final",
+      "exit_code": 0,
+      "nodemailer": "10.1.7",
+      "provenance": "stdout/stderr copied byte-for-byte from existing captured files; exit code transcribed from native tool result",
+      "tested_code": "ee9ec31de5fa18c6a6eb23c88ef6c67c31f433f7"
+    },
+    {
+      "name": "verify-final",
+      "exit_code": 0,
+      "nodemailer": "10.1.7",
+      "provenance": "stdout/stderr copied byte-for-byte from existing captured files; exit code transcribed from native tool result",
+      "tested_code": "ee9ec31de5fa18c6a6eb23c88ef6c67c31f433f7"
+    },
+    {
+      "name": "unicode-first-red",
+      "exit_code": 1,
+      "nodemailer": "10.1.7",
+      "provenance": "stdout/stderr copied byte-for-byte from existing captured files; exit code transcribed from native tool result",
+      "tested_code": "pre-commit harness prototype; exact source SHA not retained"
+    },
+    {
+      "name": "isolation-m0",
+      "exit_code": 0,
+      "tested_code": "ee9ec31de5fa18c6a6eb23c88ef6c67c31f433f7",
+      "provenance": "literal transcription of native exec result at 2026-10-20 01:17; separate stdout/stderr files were not originally saved; no stderr text visible in combined result"
+    },
+    {
+      "name": "npm-view-candidate",
+      "exit_code": 0,
+      "provenance": "literal JSON transcription of native successful npm view result from this code mission; no new registry request, separate streams not originally saved; no stderr text visible"
+    }
+  ],
+  "verify_metadata_limit": "verify-final used the final harness/guard blobs and NODE_OPTIONS M0 preload; package npm script was subsequently changed only to preload the same guard when run standalone. That standalone command passed with code 0. No application JS changed.",
+  "audit": {
+    "before_exit_code": 1,
+    "after_exit_code": 1,
+    "provenance": "projection of original npm audit JSON files, no audit repeated; installed versions from base lock/candidate lock; original full JSON deliberately not published"
+  },
+  "redaction": {
+    "changes": "none required; captured stdout/stderr retained byte-for-byte; no real secret values, personal corpus or process environment read",
+    "inspection": "reviewed synthetic fixture provenance and scanned key/token/private-key/Bearer/JWT markers; no matches; only example .test addresses in first red. This is an inspection, not an absolute guarantee."
+  },
+  "deployment_node_evidence": {
+    "tracked_server_pin_files_found": [],
+    "inspection": "tracked render.yaml/yml/json, Dockerfile*, docker-compose*, .node-version, .nvmrc, .tool-versions, Procfile, nixpacks.toml, railway.toml/json, fly.toml and .github/workflows; only Android build/deploy scripts present in build inventory",
+    "effective_deployed_node": "not established; no Render env/secrets/API read; >=20 requirement remains for beta delivery"
+  },
+  "ci": "No GitHub/Actions status evidence claimed; Work reported empty status lists.",
+  "mutations": "evidence and minimal report wording only; no application/test/config changes, no merge/deploy",
+  "sha256_files": {
+    "audit-after.code": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "audit-after.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "audit-before.code": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "audit-before.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "audit-nodemailer.projection.json": "a99d9a211bdca2bf58583d836f130f5ebb648da3465dac68e1cd24d3138f62c4",
+    "baseline-final.code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "baseline-final.stderr": "eec30e1a44e0cfd46104a62572438f1c745b9903ba388abb398d6007c1c023de",
+    "baseline-final.stdout": "4faafbb027c65a5ea76f4b46ae92e13954cdc307c0d61b8159df41136cba21a7",
+    "candidate-final.code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "candidate-final.stderr": "eec30e1a44e0cfd46104a62572438f1c745b9903ba388abb398d6007c1c023de",
+    "candidate-final.stdout": "cfe5ab3c19149ddc3123d76ee5564c17f9a295ecb3b655c46f2bc8311dc2bc76",
+    "isolation-m0.code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "isolation-m0.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "isolation-m0.stdout": "804df74a405644b788976f048f5e321863534250380337a3621184e4bf9989a7",
+    "npm-view-candidate.code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "npm-view-candidate.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "npm-view-candidate.stdout": "ecc133a92f1eeda3ab9ccd182b7c3510f6fc356ec0bc1b3f0ba4e7b894c3a0b6",
+    "unicode-first-red.code": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "unicode-first-red.stderr": "836d7c76d2efbbf1956e3ead00483c5a6eb574b516b968f2b17b0c4d4879e9e7",
+    "unicode-first-red.stdout": "597d13336a4c28b8df997ef94898db137bcc4ecc60b40306116e3ce526c6e3ee",
+    "verify-final.code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "verify-final.stderr": "05a16626a73752267702dd626b1224de02a8f317bcaac21f5cab7e4b4b8f32cc",
+    "verify-final.stdout": "8a4f165b367b18d8711b6a1312b85dfb456c518be99ef17e0d57a65b84e8c39b"
+  }
+}
