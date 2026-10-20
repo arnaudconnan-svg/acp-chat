@@ -42,8 +42,11 @@ if (!/(?:^|\/)(?:npm|npm-cli\.js)$/.test(process.argv[1] || '')) {
       'scripts/synthetic/wscrit-harness.cjs'
     );
     const offlineFirebase =
-      process.argv[1] === firebaseHarness &&
-      parent?.filename === firebaseHarness &&
+      [
+        firebaseHarness,
+        path.join(repoRoot, 'scripts/synthetic/busboy-harness.cjs')
+      ].includes(process.argv[1]) &&
+      parent?.filename === process.argv[1] &&
       name === 'firebase-admin';
     if (
       /^(firebase-admin|nodemailer|dotenv)(\/|$)/.test(name) &&

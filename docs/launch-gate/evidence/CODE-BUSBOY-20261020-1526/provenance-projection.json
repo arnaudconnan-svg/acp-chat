@@ -1,0 +1,69 @@
+{
+  "statements": [
+    {
+      "_type": "https://in-toto.io/Statement/v0.1",
+      "subject": [
+        {
+          "name": "pkg:npm/%40fastify/busboy@3.2.3",
+          "digest": {
+            "sha512": "7e6a3f20a8247a73f3cf7a93286fac2145dd17f2aff37024bef3972473d31c978a25b6adf12b0bd62854685683a2daa8125e146752dff046ffdef2ba79a597d8"
+          }
+        }
+      ],
+      "predicateType": "https://github.com/npm/attestation/tree/main/specs/publish/v0.1",
+      "predicate": {
+        "name": "@fastify/busboy",
+        "version": "3.2.3",
+        "registry": "https://registry.npmjs.org"
+      }
+    },
+    {
+      "_type": "https://in-toto.io/Statement/v1",
+      "subject": [
+        {
+          "name": "pkg:npm/%40fastify/busboy@3.2.3",
+          "digest": {
+            "sha512": "7e6a3f20a8247a73f3cf7a93286fac2145dd17f2aff37024bef3972473d31c978a25b6adf12b0bd62854685683a2daa8125e146752dff046ffdef2ba79a597d8"
+          }
+        }
+      ],
+      "predicateType": "https://slsa.dev/provenance/v1",
+      "predicate": {
+        "buildDefinition": {
+          "buildType": "https://slsa-framework.github.io/github-actions-buildtypes/workflow/v1",
+          "externalParameters": {
+            "workflow": {
+              "ref": "refs/heads/main",
+              "repository": "https://github.com/fastify/busboy",
+              "path": ".github/workflows/release.yml"
+            }
+          },
+          "internalParameters": {
+            "github": {
+              "event_name": "workflow_dispatch",
+              "repository_id": "432454387",
+              "repository_owner_id": "24939410"
+            }
+          },
+          "resolvedDependencies": [
+            {
+              "uri": "git+https://github.com/fastify/busboy@refs/heads/main",
+              "digest": {
+                "gitCommit": "144bf46b374b6fd0bc8e129026637e7d7bff3da5"
+              }
+            }
+          ]
+        },
+        "runDetails": {
+          "builder": {
+            "id": "https://github.com/actions/runner/github-hosted"
+          },
+          "metadata": {
+            "invocationId": "https://github.com/fastify/busboy/actions/runs/38043672389/attempts/1"
+          }
+        }
+      }
+    }
+  ],
+  "verification": "Retrieved from official npm HTTPS registry; payload decoded, SHA512 subject matched below; no independent Sigstore signature verification claimed."
+}

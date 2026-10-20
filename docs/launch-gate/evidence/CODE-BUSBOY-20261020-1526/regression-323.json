@@ -1,0 +1,16 @@
+{
+  "argv": [
+    "env",
+    "-i",
+    "PATH=/usr/bin:/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin",
+    "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+    "node",
+    "docs/launch-gate/evidence/CODE-BUSBOY-20261020-1526/chunk-regression.cjs",
+    "/workspace/acp-chat/node_modules/@fastify/busboy"
+  ],
+  "start": "2026-10-20T13:43:50.702931+00:00",
+  "end": "2026-10-20T13:43:50.746160+00:00",
+  "code": 0,
+  "stdout_sha256": "6e005bd89dcad60b02316aeddba75b4b4f8cbc89a57c6348ff245bf5ec78d9db",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

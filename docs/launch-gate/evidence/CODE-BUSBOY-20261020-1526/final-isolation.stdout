@@ -1,0 +1,5 @@
+
+> acp-chat@1.0.0 isolation:harness
+> node scripts/synthetic/isolation-harness.cjs
+
+[PASS] M0 genuine Express mounts/order/errors and full source/health with doubles, boot/timers/providers refused before load

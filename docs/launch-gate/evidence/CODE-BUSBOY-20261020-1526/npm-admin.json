@@ -1,0 +1,17 @@
+{
+  "argv": [
+    "npm",
+    "--cache",
+    "/workspace/work/npm-cache",
+    "view",
+    "firebase-admin@13.10.0",
+    "dependencies",
+    "dist",
+    "--json"
+  ],
+  "start": "2026-10-20T13:40:40.853832+00:00",
+  "end": "2026-10-20T13:40:41.131850+00:00",
+  "code": 0,
+  "stdout_sha256": "19f2e5727f528a24d050d63513fc803a297b4b163f7504a41c35ff56295a5097",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

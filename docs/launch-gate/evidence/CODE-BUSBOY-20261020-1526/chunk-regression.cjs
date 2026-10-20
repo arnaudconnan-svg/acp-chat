@@ -1,0 +1,15 @@
+'use strict';
+const assert = require('node:assert/strict');
+const path = require('node:path');
+const Busboy = require(path.resolve(process.argv[2]));
+const version = require(path.resolve(process.argv[2], 'package.json')).version;
+const body = Buffer.from('--synthetic\r\nContent-Disposition: form-data; name="bad\rname"\r\n\r\nhello\r\n--synthetic--\r\n');
+const parser = new Busboy({ headers: { 'content-type': 'multipart/form-data; boundary=synthetic' } });
+let complete = false;
+const timer = setTimeout(() => { console.error('timeout'); process.exitCode = 1; }, 1000);
+parser.on('field', () => assert.fail('unsafe field must be suppressed'));
+parser.on('error', e => { console.error(version, e.code, e.message); clearTimeout(timer); process.exitCode = 1; });
+parser.on('finish', () => { complete = true; clearTimeout(timer); console.log(version, 'chunked CR rejected safely'); });
+process.on('beforeExit', () => { if (!complete) process.exitCode = 1; });
+for (let i = 0; i < body.length; i += 7) parser.write(body.subarray(i, i + 7));
+parser.end();

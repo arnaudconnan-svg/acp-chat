@@ -1,0 +1,14 @@
+{
+  "argv": [
+    "curl",
+    "--fail",
+    "--silent",
+    "--show-error",
+    "https://registry.npmjs.org/-/npm/v1/attestations/@fastify%2fbusboy@3.2.3"
+  ],
+  "start": "2026-10-20T13:43:32.296997+00:00",
+  "end": "2026-10-20T13:43:32.385175+00:00",
+  "code": 0,
+  "stdout_sha256": "ebd4dee823cd0a7cee472e4faaf3ec6b780698ab43933cb4a09ee1d6ef594ce6",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}
