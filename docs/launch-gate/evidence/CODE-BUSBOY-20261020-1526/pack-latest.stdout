@@ -1,0 +1,116 @@
+[
+  {
+    "id": "@fastify/busboy@3.2.3",
+    "name": "@fastify/busboy",
+    "version": "3.2.3",
+    "size": 22539,
+    "unpackedSize": 95912,
+    "shasum": "4a21ff2fbdf8b199cfac7230c1721adc9f5cba1f",
+    "integrity": "sha512-fmo/IKgkenPzz3qTKG+sIUXdF/Kv83AkvvOXJHPTHJeKJbat8SsL1ihUaFaDotqoEl4UZ1Lf8Eb/3vK6eaWX2A==",
+    "filename": "fastify-busboy-3.2.3.tgz",
+    "files": [
+      {
+        "path": "LICENSE",
+        "size": 1167,
+        "mode": 420
+      },
+      {
+        "path": "README.md",
+        "size": 11365,
+        "mode": 420
+      },
+      {
+        "path": "deps/dicer/lib/dicer.d.ts",
+        "size": 9524,
+        "mode": 420
+      },
+      {
+        "path": "deps/dicer/lib/Dicer.js",
+        "size": 6408,
+        "mode": 420
+      },
+      {
+        "path": "deps/dicer/lib/HeaderParser.js",
+        "size": 4001,
+        "mode": 420
+      },
+      {
+        "path": "deps/dicer/lib/PartStream.js",
+        "size": 294,
+        "mode": 420
+      },
+      {
+        "path": "deps/dicer/LICENSE",
+        "size": 1067,
+        "mode": 420
+      },
+      {
+        "path": "deps/streamsearch/sbmh.js",
+        "size": 7170,
+        "mode": 420
+      },
+      {
+        "path": "index.js",
+        "size": 2180,
+        "mode": 420
+      },
+      {
+        "path": "lib/types/multipart.js",
+        "size": 9522,
+        "mode": 420
+      },
+      {
+        "path": "lib/types/urlencoded.js",
+        "size": 5841,
+        "mode": 420
+      },
+      {
+        "path": "lib/utils/basename.js",
+        "size": 420,
+        "mode": 420
+      },
+      {
+        "path": "lib/utils/Decoder.js",
+        "size": 1425,
+        "mode": 420
+      },
+      {
+        "path": "lib/utils/decodeText.js",
+        "size": 2711,
+        "mode": 420
+      },
+      {
+        "path": "lib/utils/getLimit.js",
+        "size": 359,
+        "mode": 420
+      },
+      {
+        "path": "lib/utils/parseParams.js",
+        "size": 12066,
+        "mode": 420
+      },
+      {
+        "path": "package.json",
+        "size": 1926,
+        "mode": 420
+      },
+      {
+        "path": "types/dicer.tst.ts",
+        "size": 2168,
+        "mode": 420
+      },
+      {
+        "path": "types/index.d.ts",
+        "size": 6931,
+        "mode": 420
+      },
+      {
+        "path": "types/index.tst.ts",
+        "size": 9367,
+        "mode": 420
+      }
+    ],
+    "entryCount": 20,
+    "bundled": []
+  }
+]

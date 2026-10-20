@@ -1,0 +1,31 @@
+{
+  "code_commit": "cf1ff948b00c00bd633f14c3bde149e6fc7cd31c",
+  "base": "ae54db75761b90bc58786672c84f272798d93e33",
+  "node": {
+    "version": "v24.19.0",
+    "execPath": "/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node"
+  },
+  "four_commit_manifest_checkout_matches": {
+    "package.json": {
+      "sha256": "9a5492d85b438b4015e39cd8949d80782f17a984d1ba4a0bcb1b359e2273d48c",
+      "commit_equals_tested_manifest_equals_checkout": true
+    },
+    "package-lock.json": {
+      "sha256": "f4cac78d7021dc8a956676855d35113a268cb4b68f7f845c75e634c7fcb6abfb",
+      "commit_equals_tested_manifest_equals_checkout": true
+    },
+    "scripts/synthetic/guard.cjs": {
+      "sha256": "4b0b744468fc6b95ff0f91cd2126cf05fa10560e9188efc2d0e9e351dd258a89",
+      "commit_equals_tested_manifest_equals_checkout": true
+    },
+    "scripts/synthetic/busboy-harness.cjs": {
+      "sha256": "62f250445b4f912da23beea790d3102f3cfcbb2d959dea952d4e99e424c22daa",
+      "commit_equals_tested_manifest_equals_checkout": true
+    }
+  },
+  "captured_commands": 9,
+  "physical_source_hashes_match": true,
+  "source_excerpts": "source-excerpts.json",
+  "receipt": "tested-code-receipt.json",
+  "technical_code_unchanged": true
+}

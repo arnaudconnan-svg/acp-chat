@@ -1,0 +1,27 @@
+{
+  "version": "3.2.3",
+  "dist": {
+    "shasum": "4a21ff2fbdf8b199cfac7230c1721adc9f5cba1f",
+    "tarball": "https://registry.npmjs.org/@fastify/busboy/-/busboy-3.2.3.tgz",
+    "fileCount": 20,
+    "integrity": "sha512-fmo/IKgkenPzz3qTKG+sIUXdF/Kv83AkvvOXJHPTHJeKJbat8SsL1ihUaFaDotqoEl4UZ1Lf8Eb/3vK6eaWX2A==",
+    "signatures": [
+      {
+        "sig": "MEYCIQDUgD0t6aNIHFZJX1e79ooWUD9A8/wLuJuzIKdYNnXX+gIhAKw75Kf7+6Ia34oYYO4oiEB8qIz7fAwm8LFpkOaxqOiX",
+        "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+      },
+      {
+        "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U",
+        "sig": "MEYCIQCSQXtWRNp24gTk3Ld3oMNG8HZTdUK54/otc2lFjpU7iQIhAIwqlVt+ON3+XGlxitCUO0APHb6SVWuvoeaOxkkQc3UD"
+      }
+    ],
+    "attestations": {
+      "url": "https://registry.npmjs.org/-/npm/v1/attestations/@fastify%2fbusboy@3.2.3",
+      "provenance": {
+        "predicateType": "https://slsa.dev/provenance/v1"
+      }
+    },
+    "unpackedSize": 95912
+  },
+  "gitHead": "af57a2c6a892a85a507e3c39202f3208f95b86d9"
+}

@@ -1,0 +1,25 @@
+{
+  "dependencies": {
+    "jwks-rsa": "^3.1.0",
+    "jsonwebtoken": "^9.0.0",
+    "@fastify/busboy": "^3.0.0",
+    "farmhash-modern": "^1.1.0",
+    "fast-deep-equal": "^3.1.1",
+    "google-auth-library": "^10.6.1",
+    "@firebase/database-types": "^1.0.6",
+    "@firebase/database-compat": "^2.0.0"
+  },
+  "dist": {
+    "shasum": "d8d11067773ce72dbf2d4c764bea4598762c53e4",
+    "tarball": "https://registry.npmjs.org/firebase-admin/-/firebase-admin-13.10.0.tgz",
+    "fileCount": 248,
+    "integrity": "sha512-rbuCrJvYRwqBqvbccMS8fj/x2zsaMisdf5RQbRzQzr14Rbq9r2UlpuBHqWAwrO6c9dIRF56xF/xoepXsD5yDuQ==",
+    "signatures": [
+      {
+        "sig": "MEYCIQCKq46XTG5K5rGpyLvlS+rtDQdSRxwuztGhDZQhacgPjwIhAI/XEG2cF4SF3UcwV/KrI2Ryi5wIqCfurOMGeqS2sXNV",
+        "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+      }
+    ],
+    "unpackedSize": 1429103
+  }
+}

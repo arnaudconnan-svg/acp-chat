@@ -1,0 +1,157 @@
+{
+  "admin": {
+    "file": "node_modules/firebase-admin/lib/utils/api-request.js",
+    "function": "AsyncRequestCall.handleMultipartResponse",
+    "sha256": "23bf8a938f30defc6e05cf82e00bbbeea2dcf3cc0a226350ac37471d570e0393",
+    "lines": [
+      {
+        "line": 401,
+        "text": "    handleMultipartResponse(response, respStream, boundary) {"
+      },
+      {
+        "line": 402,
+        "text": "        const busboy = require('@fastify/busboy'); // eslint-disable-line @typescript-eslint/no-var-requires"
+      },
+      {
+        "line": 403,
+        "text": "        const multipartParser = new busboy.Dicer({ boundary });"
+      },
+      {
+        "line": 404,
+        "text": "        const responseBuffer = [];"
+      },
+      {
+        "line": 405,
+        "text": "        multipartParser.on('part', (part) => {"
+      },
+      {
+        "line": 406,
+        "text": "            const tempBuffers = [];"
+      },
+      {
+        "line": 407,
+        "text": "            part.on('data', (partData) => {"
+      },
+      {
+        "line": 408,
+        "text": "                tempBuffers.push(partData);"
+      },
+      {
+        "line": 409,
+        "text": "            });"
+      },
+      {
+        "line": 410,
+        "text": "            part.on('end', () => {"
+      },
+      {
+        "line": 411,
+        "text": "                responseBuffer.push(Buffer.concat(tempBuffers));"
+      },
+      {
+        "line": 412,
+        "text": "            });"
+      },
+      {
+        "line": 413,
+        "text": "        });"
+      },
+      {
+        "line": 414,
+        "text": "        multipartParser.on('finish', () => {"
+      },
+      {
+        "line": 415,
+        "text": "            response.data = undefined;"
+      },
+      {
+        "line": 416,
+        "text": "            response.multipart = responseBuffer;"
+      },
+      {
+        "line": 417,
+        "text": "            this.finalizeResponse(response);"
+      },
+      {
+        "line": 418,
+        "text": "        });"
+      },
+      {
+        "line": 419,
+        "text": "        respStream.pipe(multipartParser);"
+      }
+    ]
+  },
+  "busboy_323": {
+    "file": "node_modules/@fastify/busboy/lib/types/multipart.js",
+    "function": "Multipart.prototype.write",
+    "sha256": "a802b96a9efcd8a7e5b47e8c4931dceb354cfb00143b6bd8b42383f32328769b",
+    "lines": [
+      {
+        "line": 274,
+        "text": "Multipart.prototype.write = function (chunk, cb) {"
+      },
+      {
+        "line": 275,
+        "text": "  // After the closing delimiter Dicer is no longer writable. A later"
+      },
+      {
+        "line": 276,
+        "text": "  // chunk can still carry an RFC 2046 epilogue; ignore it so the write"
+      },
+      {
+        "line": 277,
+        "text": "  // callback still runs instead of hanging on a destroyed parser."
+      },
+      {
+        "line": 278,
+        "text": "  if (!this.parser.writable) {"
+      },
+      {
+        "line": 279,
+        "text": "    cb()"
+      },
+      {
+        "line": 280,
+        "text": "    return"
+      },
+      {
+        "line": 281,
+        "text": "  }"
+      },
+      {
+        "line": 282,
+        "text": ""
+      },
+      {
+        "line": 283,
+        "text": "  const r = this.parser.write(chunk)"
+      },
+      {
+        "line": 284,
+        "text": "  if (r && !this._pause) {"
+      },
+      {
+        "line": 285,
+        "text": "    cb()"
+      },
+      {
+        "line": 286,
+        "text": "  } else {"
+      },
+      {
+        "line": 287,
+        "text": "    this._needDrain = !r"
+      }
+    ]
+  },
+  "busboy_322": {
+    "file": "/workspace/work/busboy/v3.2.2/lib/types/multipart.js",
+    "package_version": "3.2.2",
+    "sha256": "3b5f374be02a13d538f11c3ba415f47480fb9774899e9d88698ae0617756941a",
+    "function": "Multipart.prototype.write",
+    "start_line": 274
+  },
+  "npm_322_to_323_diff": "--- npm @fastify/busboy@3.2.2/lib/types/multipart.js\n+++ npm @fastify/busboy@3.2.3/lib/types/multipart.js\n@@ -272,6 +272,14 @@\n }\n \n Multipart.prototype.write = function (chunk, cb) {\n+  // After the closing delimiter Dicer is no longer writable. A later\n+  // chunk can still carry an RFC 2046 epilogue; ignore it so the write\n+  // callback still runs instead of hanging on a destroyed parser.\n+  if (!this.parser.writable) {\n+    cb()\n+    return\n+  }\n+\n   const r = this.parser.write(chunk)\n   if (r && !this._pause) {\n     cb()\n",
+  "provenance_limit": "Public package physical sources already inspected; 3.2.3 files match captured physical manifest. Registry metadata and tarball integrity evidence remain unchanged. Sigstore signatures not independently verified."
+}

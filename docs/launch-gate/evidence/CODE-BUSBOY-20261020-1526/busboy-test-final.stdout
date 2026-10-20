@@ -1,0 +1,25 @@
+{
+  "admin": {
+    "version": "13.10.0",
+    "entry": "/workspace/acp-chat/node_modules/firebase-admin/lib/index.js"
+  },
+  "busboy": {
+    "version": "3.2.2",
+    "entry": "/workspace/acp-chat/node_modules/@fastify/busboy/index.js",
+    "sha256": "ce61544d7cdca32cbc24fe7b42e93b1b280406891b77730ea1e3e84d764f6692"
+  },
+  "adminSource": {
+    "file": "/workspace/acp-chat/node_modules/firebase-admin/lib/utils/api-request.js",
+    "sha256": "23bf8a938f30defc6e05cf82e00bbbeea2dcf3cc0a226350ac37471d570e0393",
+    "function": "AsyncRequestCall.handleMultipartResponse",
+    "limitation": "private class not exported: exact source checked, real Dicer exercised; no Firebase E2E"
+  },
+  "cases": [
+    "normal field",
+    "Admin Dicer normal multipart",
+    "three prototype-named headers",
+    "oversized boundary rejected",
+    "bare CR/LF names and filenames suppressed",
+    "M0 isolation"
+  ]
+}

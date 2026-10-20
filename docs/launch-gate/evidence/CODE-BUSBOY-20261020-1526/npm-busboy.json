@@ -1,0 +1,17 @@
+{
+  "argv": [
+    "npm",
+    "view",
+    "@fastify/busboy",
+    "versions",
+    "dist-tags",
+    "time",
+    "--json",
+    "--fetch-retries=0"
+  ],
+  "start": "2026-10-20T13:40:14.795933+00:00",
+  "end": "2026-10-20T13:40:15.060399+00:00",
+  "code": 1,
+  "stdout_sha256": "9c0f683d771e145d76400bec0904f866f891cc4c477ea4b228e38ecb63d1b480",
+  "stderr_sha256": "a3f3c5534f346c428ce4c578ff7f8a941838a709718e5db2301d38d40dee6738"
+}

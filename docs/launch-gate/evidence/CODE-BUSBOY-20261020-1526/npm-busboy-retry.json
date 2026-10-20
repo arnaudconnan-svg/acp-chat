@@ -1,0 +1,19 @@
+{
+  "argv": [
+    "npm",
+    "--cache",
+    "/workspace/work/npm-cache",
+    "view",
+    "@fastify/busboy",
+    "versions",
+    "dist-tags",
+    "time",
+    "--json",
+    "--fetch-retries=0"
+  ],
+  "start": "2026-10-20T13:40:29.711751+00:00",
+  "end": "2026-10-20T13:40:30.030966+00:00",
+  "code": 0,
+  "stdout_sha256": "2aa8eb5b8244f16a9722057851b477f3446516a0f325e6aa572bfd92d1f4a0ae",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

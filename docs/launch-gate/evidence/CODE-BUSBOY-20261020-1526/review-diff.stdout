@@ -1,0 +1,56 @@
+diff --git a/package-lock.json b/package-lock.json
+index 9fe06e9..81185b4 100644
+--- a/package-lock.json
++++ b/package-lock.json
+@@ -324,9 +324,9 @@
+       }
+     },
+     "node_modules/@fastify/busboy": {
+-      "version": "3.2.0",
+-      "resolved": "https://registry.npmjs.org/@fastify/busboy/-/busboy-3.2.0.tgz",
+-      "integrity": "sha512-m9FVDXU3GT2ITSe0UaMA5rU3QkfC/UXtCU8y0gSN/GugTqtVldOBWIB5V6V3sbmenVZUIpU6f+mPEO2+m5iTaA==",
++      "version": "3.2.3",
++      "resolved": "https://registry.npmjs.org/@fastify/busboy/-/busboy-3.2.3.tgz",
++      "integrity": "sha512-fmo/IKgkenPzz3qTKG+sIUXdF/Kv83AkvvOXJHPTHJeKJbat8SsL1ihUaFaDotqoEl4UZ1Lf8Eb/3vK6eaWX2A==",
+       "license": "MIT"
+     },
+     "node_modules/@firebase/app-check-interop-types": {
+diff --git a/package.json b/package.json
+index 38a0bc7..2e2f9b6 100644
+--- a/package.json
++++ b/package.json
+@@ -63,7 +63,7 @@
+     "preff:git:harness": "node scripts/preff-git-guard-harness.js",
+     "smoke:ui:local": "node scripts/ui-smoke-local.js",
+     "ui-layout:verify": "node scripts/ui-layout-verify.js",
+-    "verify": "node --check server.js && npm run wscrit:harness && npm run express-chain:harness && npm run nodemailer:harness && npm run m3:emergency:harness && npm run m3:safety:harness && npm run password-reset:harness && npm run password-reset-frontend:harness && npm run password-reset-server:harness && npm run preff:git:harness && npm run health:harness && npm run no-openai-runtime:harness && npm run mistral:harness && npm run title:harness && npm run title:conflict:mistral:harness && npm run information-routing:mistral:harness && npm run exploration:mistral:harness && npm run recall-routing:mistral:harness && npm run contact-discharge:mistral:harness && npm run immediate-alliance:mistral:harness && npm run interpretation-rejection:mistral:harness && npm run dependency-risk:mistral:harness && npm run major-harm-response:mistral:harness && npm run acute-crisis-followup:mistral:harness && npm run n2-writer:mistral:harness && npm run major-harm-risk:mistral:harness && npm run suicide-risk:mistral:harness && npm run writer:mistral:harness && npm run memory:mistral:harness && npm run intersession:mistral:harness && npm run intersession:source:harness && npm run affiliation:mistral:harness && npm run state:harness && npm run posture:harness && npm run analyzers:harness && npm run prompts:consistency && npm run contract-validator:harness && npm run human-support:harness && npm run flags:harness && npm run conversation-state:harness && npm run runtime-schemas:harness && npm run debugmeta-unit:harness && npm run auth-conversation:harness && npm run chat-routing:harness && npm run branching:harness && npm run transcript:harness && npm run crisis-routing:harness && npm run llm-messages:harness && npm run conversation-data:harness && npm run ui-layout:verify",
++    "verify": "node --check server.js && npm run busboy:harness && npm run wscrit:harness && npm run express-chain:harness && npm run nodemailer:harness && npm run m3:emergency:harness && npm run m3:safety:harness && npm run password-reset:harness && npm run password-reset-frontend:harness && npm run password-reset-server:harness && npm run preff:git:harness && npm run health:harness && npm run no-openai-runtime:harness && npm run mistral:harness && npm run title:harness && npm run title:conflict:mistral:harness && npm run information-routing:mistral:harness && npm run exploration:mistral:harness && npm run recall-routing:mistral:harness && npm run contact-discharge:mistral:harness && npm run immediate-alliance:mistral:harness && npm run interpretation-rejection:mistral:harness && npm run dependency-risk:mistral:harness && npm run major-harm-response:mistral:harness && npm run acute-crisis-followup:mistral:harness && npm run n2-writer:mistral:harness && npm run major-harm-risk:mistral:harness && npm run suicide-risk:mistral:harness && npm run writer:mistral:harness && npm run memory:mistral:harness && npm run intersession:mistral:harness && npm run intersession:source:harness && npm run affiliation:mistral:harness && npm run state:harness && npm run posture:harness && npm run analyzers:harness && npm run prompts:consistency && npm run contract-validator:harness && npm run human-support:harness && npm run flags:harness && npm run conversation-state:harness && npm run runtime-schemas:harness && npm run debugmeta-unit:harness && npm run auth-conversation:harness && npm run chat-routing:harness && npm run branching:harness && npm run transcript:harness && npm run crisis-routing:harness && npm run llm-messages:harness && npm run conversation-data:harness && npm run ui-layout:verify",
+     "verify:full": "npm run verify",
+     "reset:data": "node scripts/reset-app-data.js",
+     "update:emergency-numbers": "node scripts/update-emergency-numbers.js",
+@@ -112,6 +112,7 @@
+     "m3:safety:harness": "node scripts/synthetic/m3-safety-characterization.cjs",
+     "nodemailer:harness": "node --require ./scripts/synthetic/guard.cjs scripts/synthetic/nodemailer-harness.cjs",
+     "express-chain:harness": "node --require ./scripts/synthetic/guard.cjs scripts/synthetic/express-chain-harness.cjs",
++    "busboy:harness": "node --require ./scripts/synthetic/guard.cjs scripts/synthetic/busboy-harness.cjs",
+     "wscrit:harness": "node --require ./scripts/synthetic/guard.cjs scripts/synthetic/wscrit-harness.cjs --candidate"
+   },
+   "keywords": [],
+diff --git a/scripts/synthetic/guard.cjs b/scripts/synthetic/guard.cjs
+index adb5c93..60cd216 100644
+--- a/scripts/synthetic/guard.cjs
++++ b/scripts/synthetic/guard.cjs
+@@ -42,8 +42,11 @@ if (!/(?:^|\/)(?:npm|npm-cli\.js)$/.test(process.argv[1] || '')) {
+       'scripts/synthetic/wscrit-harness.cjs'
+     );
+     const offlineFirebase =
+-      process.argv[1] === firebaseHarness &&
+-      parent?.filename === firebaseHarness &&
++      [
++        firebaseHarness,
++        path.join(repoRoot, 'scripts/synthetic/busboy-harness.cjs')
++      ].includes(process.argv[1]) &&
++      parent?.filename === process.argv[1] &&
+       name === 'firebase-admin';
+     if (
+       /^(firebase-admin|nodemailer|dotenv)(\/|$)/.test(name) &&

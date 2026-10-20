@@ -1,0 +1,15 @@
+{
+  "argv": [
+    "env",
+    "-i",
+    "PATH=/home/agent/.local/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin/override:/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin:/opt/codex/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/agent/.local/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin/fallback",
+    "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+    "node",
+    "/workspace/acp-chat/scripts/synthetic/busboy-harness.cjs"
+  ],
+  "start": "2026-10-20T13:41:58.108272+00:00",
+  "end": "2026-10-20T13:41:58.204248+00:00",
+  "code": 1,
+  "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stderr_sha256": "0fa25db1689e59004b7fb4118dc9f3b3dca877dfb514ad13edca18fa96299c7c"
+}

@@ -1,0 +1,14 @@
+{
+  "argv": [
+    "git",
+    "log",
+    "-1",
+    "--format=%H%n%s",
+    "origin/beta"
+  ],
+  "start": "2026-10-20T13:43:50.801488+00:00",
+  "end": "2026-10-20T13:43:50.803627+00:00",
+  "code": 0,
+  "stdout_sha256": "a5b5809eb92dfe902d9bfb20d91dd55485fbf5febec627cdeb0aa5253340cde8",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

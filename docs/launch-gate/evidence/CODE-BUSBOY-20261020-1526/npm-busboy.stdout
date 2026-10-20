@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "ENOENT",
+    "summary": "Invalid response body while trying to fetch https://registry.npmjs.org/@fastify%2fbusboy: ENOENT: no such file or directory, mkdir '/home/agent/.npm/_cacache'",
+    "detail": "This is related to npm not being able to find a file."
+  }
+}

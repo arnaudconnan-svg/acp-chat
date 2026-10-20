@@ -1,0 +1,142 @@
+{
+  "_id": "@fastify/busboy@3.2.2",
+  "_rev": "39-c16f589e0c377f97fc953361c34b9b57",
+  "name": "@fastify/busboy",
+  "dist-tags": {
+    "next": "1.0.0-next2",
+    "latest": "3.2.3"
+  },
+  "versions": [
+    "1.0.0-next1",
+    "1.0.0-next2",
+    "1.0.0",
+    "1.1.0",
+    "1.2.0",
+    "1.2.1",
+    "2.0.0",
+    "2.1.0",
+    "2.1.1",
+    "3.0.0",
+    "3.1.0",
+    "3.1.1",
+    "3.2.0",
+    "3.2.1",
+    "3.2.2",
+    "3.2.3"
+  ],
+  "time": {
+    "created": "2021-11-29T22:21:13.417Z",
+    "modified": "2026-10-10T10:06:52.646Z",
+    "1.0.0-next1": "2021-11-29T22:21:13.703Z",
+    "1.0.0-next2": "2021-12-04T20:39:59.966Z",
+    "1.0.0": "2021-12-04T21:37:11.881Z",
+    "1.1.0": "2022-06-08T22:18:17.110Z",
+    "1.2.0": "2023-01-06T08:28:37.106Z",
+    "1.2.1": "2023-01-08T10:43:40.566Z",
+    "2.0.0": "2023-09-28T13:27:00.533Z",
+    "2.1.0": "2023-11-12T11:19:50.196Z",
+    "2.1.1": "2024-02-28T17:19:54.514Z",
+    "3.0.0": "2024-07-09T20:11:33.367Z",
+    "3.1.0": "2024-12-03T12:11:00.510Z",
+    "3.1.1": "2024-12-22T14:07:03.534Z",
+    "3.2.0": "2025-08-16T16:45:11.358Z",
+    "3.2.1": "2026-08-12T20:05:52.719Z",
+    "3.2.2": "2026-08-21T00:30:58.815Z",
+    "3.2.3": "2026-10-10T10:06:52.280Z"
+  },
+  "bugs": {
+    "url": "https://github.com/fastify/busboy/issues"
+  },
+  "author": "Brian White <mscdex@mscdex.net>",
+  "license": "MIT",
+  "homepage": "https://github.com/fastify/busboy#readme",
+  "keywords": [
+    "uploads",
+    "forms",
+    "multipart",
+    "form-data"
+  ],
+  "repository": {
+    "url": "git+https://github.com/fastify/busboy.git",
+    "type": "git"
+  },
+  "description": "A streaming parser for HTML form data for node.js",
+  "contributors": [
+    "Igor Savin <kibertoad@gmail.com> (https://github.com/kibertoad)",
+    "Aras Abbasi <aras.abbasi@gmail.com> (https://github.com/uzlopak)"
+  ],
+  "maintainers": [
+    "matteo.collina <hello@matteocollina.com>",
+    "jsumners <james.sumners@gmail.com>",
+    "eomm <behemoth89@gmail.com>",
+    "climba03003 <kaka@kakawebsitedemo.com>",
+    "gurgunday <hey@gurgun.day>",
+    "fdawgs <frazer.dev@icloud.com>",
+    "ivan-tymoshenko <ivan@tymoshenko.me>"
+  ],
+  "readmeFilename": "README.md",
+  "_contentLength": 69952,
+  "version": "3.2.2",
+  "dist": {
+    "shasum": "c35ca0fac4b644f5f56a7e179360568a5d7c997e",
+    "tarball": "https://registry.npmjs.org/@fastify/busboy/-/busboy-3.2.2.tgz",
+    "fileCount": 20,
+    "integrity": "sha512-yXSS27qPExaXeuLvMRMXOLtpipzfQYNjG3FkunDWKGfMYjKuhFXko9CVzqxm8jcF+lmtS9Fd89QNdh9XDjnbNg==",
+    "signatures": [
+      {
+        "sig": "MEUCIQCt1OF/jL0hF3huBqKFMI2esjMPt/u+bnrTG7BooHBZRQIgCQfe6DFXj5HVu8UhKsfT+gmLs8cKL/IkuPEsVvBtlNo=",
+        "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+      },
+      {
+        "sig": "MEYCIQDZpAdAq1CWKpTznQVDabOXEXfdH4WBHtkMSJ568SgciAIhAPtBo8sdCUjYi79T7GRJvlS7nhiFDkrACUu7Ut1ZEb9h",
+        "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+      }
+    ],
+    "unpackedSize": 95647
+  },
+  "main": "index.js",
+  "type": "commonjs",
+  "types": "types/index.d.ts",
+  "gitHead": "4e8de12f3638d1d7dcfbfffbd8df1382180e0a02",
+  "scripts": {
+    "lint": "eslint",
+    "test": "npm run test:unit && npm run test:types",
+    "lint:fix": "eslint --fix",
+    "coveralls": "nyc report --reporter=lcov",
+    "test:unit": "c8 --check-coverage --statements 100 --branches 100 --functions 100 --lines 100 node --test",
+    "test:types": "tstyche",
+    "bench:dicer": "node bench/dicer/dicer-bench-multipart-parser.js",
+    "bench:busboy": "cd benchmarks && npm install && npm run benchmark-fastify"
+  },
+  "_npmUser": "matteo.collina <hello@matteocollina.com>",
+  "standard": {
+    "ignore": [
+      "bench"
+    ],
+    "globals": [
+      "describe",
+      "it"
+    ]
+  },
+  "_npmVersion": "11.16.0",
+  "directories": {},
+  "_nodeVersion": "24.18.0",
+  "_hasShrinkwrap": false,
+  "devDependencies": {
+    "c8": "^12.0.0",
+    "tslib": "^2.8.1",
+    "busboy": "^1.6.0",
+    "eslint": "^9.39.0",
+    "snazzy": "^9.0.0",
+    "tstyche": "^7.0.0",
+    "tinybench": "^6.0.0",
+    "typescript": "~6.0.2",
+    "@types/node": "^26.0.1",
+    "neostandard": "^0.12.0",
+    "photofinish": "^1.8.0"
+  },
+  "_npmOperationalInternal": {
+    "tmp": "tmp/busboy_3.2.2_1787272258712_0.09337289493630463",
+    "host": "s3://npm-registry-packages-npm-production"
+  }
+}
