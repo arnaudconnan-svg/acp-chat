@@ -66,3 +66,13 @@ Livraison uniquement PR vers beta, NON fusionnée pour revue Work. Aucun déploi
 main/prod/public, achat, reset ou automation. G13/G21, D2/D3 et externe restent OPEN.
 Rollback : nouvelle branche depuis beta, revert de cette seule unité, nouvelle PR
 vers beta ; aucun force-push ni revert global des PR31–34.
+
+Complément de revue Work : [reçu ciblé du code testé](tested-code-receipt.json)
+lié explicitement à `cf1ff948b00c00bd633f14c3bde149e6fc7cd31c` : quatre
+fichiers techniques du commit = hashes du manifeste testé = checkout, contrôle
+code 0 capturé dans `receipt-check.*`. Node v24.19.0 observé avant tests et
+résolu de nouveau avec leur PATH exact ; pas de capture version contemporaine
+par commande prétendue. Commandes finales, codes et UTC repris des captures.
+[Extraits physiques](source-excerpts.json) : Admin lignes 401–419 et diff npm
+Busboy 3.2.2 → 3.2.3, fonctions/lignes/SHA256 explicites. Aucun code technique
+modifié, aucun verify rejoué, aucune donnée ni aucun corpus lu.

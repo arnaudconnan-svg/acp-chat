@@ -1,0 +1,174 @@
+{
+  "code_commit": "cf1ff948b00c00bd633f14c3bde149e6fc7cd31c",
+  "base": "ae54db75761b90bc58786672c84f272798d93e33",
+  "checked_at_utc": "2026-10-20T13:48:04.940379+00:00",
+  "node_runtime": {
+    "version": "v24.19.0",
+    "execPath": "/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node",
+    "evidence": "v24.19.0 observed before tests; same env-i PATH re-resolved for this receipt. No contemporaneous per-test Node version capture is claimed."
+  },
+  "files": {
+    "package.json": {
+      "sha256": "9a5492d85b438b4015e39cd8949d80782f17a984d1ba4a0bcb1b359e2273d48c",
+      "commit_equals_tested_manifest_equals_checkout": true
+    },
+    "package-lock.json": {
+      "sha256": "f4cac78d7021dc8a956676855d35113a268cb4b68f7f845c75e634c7fcb6abfb",
+      "commit_equals_tested_manifest_equals_checkout": true
+    },
+    "scripts/synthetic/guard.cjs": {
+      "sha256": "4b0b744468fc6b95ff0f91cd2126cf05fa10560e9188efc2d0e9e351dd258a89",
+      "commit_equals_tested_manifest_equals_checkout": true
+    },
+    "scripts/synthetic/busboy-harness.cjs": {
+      "sha256": "62f250445b4f912da23beea790d3102f3cfcbb2d959dea952d4e99e424c22daa",
+      "commit_equals_tested_manifest_equals_checkout": true
+    }
+  },
+  "final_commands": [
+    {
+      "capture": "syntax.json",
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/usr/bin:/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin",
+        "node",
+        "--check",
+        "server.js"
+      ],
+      "start": "2026-10-20T13:42:08.824824+00:00",
+      "end": "2026-10-20T13:42:08.851295+00:00",
+      "code": 0,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "capture": "syntax-guard.json",
+      "argv": [
+        "node",
+        "--check",
+        "scripts/synthetic/guard.cjs"
+      ],
+      "start": "2026-10-20T13:43:13.548154+00:00",
+      "end": "2026-10-20T13:43:13.572526+00:00",
+      "code": 0,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "capture": "syntax-harness.json",
+      "argv": [
+        "node",
+        "--check",
+        "scripts/synthetic/busboy-harness.cjs"
+      ],
+      "start": "2026-10-20T13:43:13.499871+00:00",
+      "end": "2026-10-20T13:43:13.522066+00:00",
+      "code": 0,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "capture": "final-busboy.json",
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/usr/bin:/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin",
+        "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+        "npm",
+        "run",
+        "busboy:harness"
+      ],
+      "start": "2026-10-20T13:43:13.598250+00:00",
+      "end": "2026-10-20T13:43:13.884933+00:00",
+      "code": 0,
+      "stdout_sha256": "63fe31ae98238d1ab74e07acff807bb1110efaf57887b78bacf150140521c033",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "capture": "final-isolation.json",
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/usr/bin:/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin",
+        "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+        "npm",
+        "run",
+        "isolation:harness"
+      ],
+      "start": "2026-10-20T13:43:32.664964+00:00",
+      "end": "2026-10-20T13:43:32.983389+00:00",
+      "code": 0,
+      "stdout_sha256": "d568338bfea60f52a5646276704dbfe81d2e82449150ad443b5696ebd48716d9",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "capture": "final-verify.json",
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/usr/bin:/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin",
+        "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+        "npm",
+        "run",
+        "verify"
+      ],
+      "start": "2026-10-20T13:43:33.010084+00:00",
+      "end": "2026-10-20T13:43:47.951645+00:00",
+      "code": 0,
+      "stdout_sha256": "21693dae08bce655b699e7cf1b79e593143cde05fefde41dec44c985d82b82b6",
+      "stderr_sha256": "079da1b44ac3e6419780c5f11fa075c1cdc55e861086c2b183e5e2038536ace0"
+    },
+    {
+      "capture": "final-audit.json",
+      "argv": [
+        "npm",
+        "--cache",
+        "/workspace/work/npm-cache",
+        "audit",
+        "--json",
+        "--ignore-scripts"
+      ],
+      "start": "2026-10-20T13:43:31.639297+00:00",
+      "end": "2026-10-20T13:43:32.270998+00:00",
+      "code": 1,
+      "stdout_sha256": "6222305dd4bfe28daf59064e40b22401ccaa1a546c2182223b3ead70704211b9",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "capture": "regression-322.json",
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/usr/bin:/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin",
+        "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+        "node",
+        "docs/launch-gate/evidence/CODE-BUSBOY-20261020-1526/chunk-regression.cjs",
+        "/workspace/work/busboy/v3.2.2"
+      ],
+      "start": "2026-10-20T13:43:50.629570+00:00",
+      "end": "2026-10-20T13:43:50.677040+00:00",
+      "code": 1,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "0364cc71d6995af16abf7dbb461f3500d7af84c5215c55178d6c0c04acc848c6"
+    },
+    {
+      "capture": "regression-323.json",
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/usr/bin:/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin",
+        "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+        "node",
+        "docs/launch-gate/evidence/CODE-BUSBOY-20261020-1526/chunk-regression.cjs",
+        "/workspace/acp-chat/node_modules/@fastify/busboy"
+      ],
+      "start": "2026-10-20T13:43:50.702931+00:00",
+      "end": "2026-10-20T13:43:50.746160+00:00",
+      "code": 0,
+      "stdout_sha256": "6e005bd89dcad60b02316aeddba75b4b4f8cbc89a57c6348ff245bf5ec78d9db",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "scope": "Proof-only follow-up; technical files unchanged; no verify rerun, data/corpus read, private-class loading or provider call."
+}
