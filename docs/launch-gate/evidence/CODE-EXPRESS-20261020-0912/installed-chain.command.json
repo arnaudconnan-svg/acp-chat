@@ -1,0 +1,19 @@
+{
+  "argv": [
+    "npm",
+    "ls",
+    "express",
+    "proxy-addr",
+    "body-parser",
+    "qs",
+    "type-is",
+    "content-type",
+    "side-channel",
+    "side-channel-list",
+    "nodemailer",
+    "--json"
+  ],
+  "exit_code": 0,
+  "started_unix": 1792481306.6806219,
+  "duration_seconds": 0.516
+}

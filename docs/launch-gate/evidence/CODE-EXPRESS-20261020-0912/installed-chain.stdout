@@ -1,0 +1,77 @@
+{
+  "version": "1.0.0",
+  "name": "acp-chat",
+  "dependencies": {
+    "express": {
+      "version": "5.2.1",
+      "resolved": "https://registry.npmjs.org/express/-/express-5.2.1.tgz",
+      "overridden": false,
+      "dependencies": {
+        "body-parser": {
+          "version": "2.3.0",
+          "resolved": "https://registry.npmjs.org/body-parser/-/body-parser-2.3.0.tgz",
+          "overridden": false,
+          "dependencies": {
+            "content-type": {
+              "version": "2.1.0",
+              "resolved": "https://registry.npmjs.org/content-type/-/content-type-2.1.0.tgz",
+              "overridden": false
+            },
+            "qs": {
+              "version": "6.16.1"
+            },
+            "type-is": {
+              "version": "2.1.0"
+            }
+          }
+        },
+        "content-type": {
+          "version": "1.0.5",
+          "resolved": "https://registry.npmjs.org/content-type/-/content-type-1.0.5.tgz",
+          "overridden": false
+        },
+        "proxy-addr": {
+          "version": "2.0.8",
+          "resolved": "https://registry.npmjs.org/proxy-addr/-/proxy-addr-2.0.8.tgz",
+          "overridden": false
+        },
+        "qs": {
+          "version": "6.16.1",
+          "resolved": "https://registry.npmjs.org/qs/-/qs-6.16.1.tgz",
+          "overridden": false,
+          "dependencies": {
+            "side-channel": {
+              "version": "1.1.1",
+              "resolved": "https://registry.npmjs.org/side-channel/-/side-channel-1.1.1.tgz",
+              "overridden": false,
+              "dependencies": {
+                "side-channel-list": {
+                  "version": "1.0.1",
+                  "resolved": "https://registry.npmjs.org/side-channel-list/-/side-channel-list-1.0.1.tgz",
+                  "overridden": false
+                }
+              }
+            }
+          }
+        },
+        "type-is": {
+          "version": "2.1.0",
+          "resolved": "https://registry.npmjs.org/type-is/-/type-is-2.1.0.tgz",
+          "overridden": false,
+          "dependencies": {
+            "content-type": {
+              "version": "2.1.0",
+              "resolved": "https://registry.npmjs.org/content-type/-/content-type-2.1.0.tgz",
+              "overridden": false
+            }
+          }
+        }
+      }
+    },
+    "nodemailer": {
+      "version": "10.1.7",
+      "resolved": "https://registry.npmjs.org/nodemailer/-/nodemailer-10.1.7.tgz",
+      "overridden": false
+    }
+  }
+}

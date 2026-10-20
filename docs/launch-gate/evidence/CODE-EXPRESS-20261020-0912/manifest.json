@@ -1,0 +1,453 @@
+{
+  "unit": "CODE-EXPRESS-20261020-0912",
+  "base_beta": "1a6ad2fb731894a43939c832432ce35eed09da93",
+  "tested_code_sha": "9a6b7bdae84f5952643642ffb46f95883b4a4588",
+  "code_files": {
+    "package.json": {
+      "git_blob": "562dfd8b60c4a6f8197d058948fc5894a128e38e",
+      "sha256": "bf2a615d51856de8d7abdfb1e629bbc19a7201b2af9cea09526940902cfad410"
+    },
+    "package-lock.json": {
+      "git_blob": "ebdb2e98fa3bddae90c9bef42a5d0bb44a9dc2ed",
+      "sha256": "f9d34bb3acc3c9ac26b312e59b15e84559d350a5f6d1c71dfb9653c549eeb936"
+    },
+    "server.js": {
+      "git_blob": "250993263d6395508379aa0aa4ae05dac287f0cd",
+      "sha256": "c248242392b3368a078c6cb9330ab3a6653d41083e02a55f5ec2ffc4b319f166"
+    },
+    "lib/password-reset.js": {
+      "git_blob": "4b80918fa563be79ae2f17405c9fe9ce5e3b9d01",
+      "sha256": "ec9f7daf82d7c4fef76a846bc08b74116ba90295689504f43cfae6e974cfdf1b"
+    },
+    "scripts/synthetic/runtime.cjs": {
+      "git_blob": "72e080be41b530541e0f83ee8d1ed5b07701052b",
+      "sha256": "c1b1c0afbe7f45804261806a8de38e29c261bce06b618df84b9112e832da2a74"
+    },
+    "scripts/synthetic/guard.cjs": {
+      "git_blob": "3c29ae234994f52d6913662b60760c5f5bde10e8",
+      "sha256": "f85d02e82891a65cadfd4928d6d444f864ce6a7f7cf017495afa8dce78ce90f9"
+    },
+    "scripts/synthetic/express-chain-harness.cjs": {
+      "git_blob": "d2f2fcbca1ad8b7fdb33e71183ab551b5e0fd763",
+      "sha256": "1ca67c4662a950d4d1074c19e0586fb1dbb9307122fa3f7df08b43261c91037d"
+    },
+    "scripts/synthetic/nodemailer-harness.cjs": {
+      "git_blob": "95e40c94ac80fb1ac8756b541911715378dd742d",
+      "sha256": "430e64b3ce63bf3966665c30a9b182f17aff452fe2114fcc5077d2990dc8fa79"
+    }
+  },
+  "runtime": "Node v24.19.0",
+  "network": "UNKNOWN conserved, no attestation diagnosis; native restricted domains/permissions respected",
+  "provenance": "stdout/stderr opened before each subprocess, code and argv/duration captured by wrapper; audit JSON projected afterward, complete audit not committed; no transcription",
+  "baseline": "same final HTTP harness/runtime blobs, base dependency versions express5.2.1/proxy-addr2.0.7/body-parser2.2.2/qs6.15.2; npm script integration added after this baseline run",
+  "candidate": "express5.2.1/proxy-addr2.0.8/body-parser2.3.0/qs6.16.1; observations identical",
+  "commands": {
+    "audit-after.command.json": {
+      "argv": [
+        "npm",
+        "audit",
+        "--json",
+        "--ignore-scripts",
+        "--cache=/workspace/work/npm-cache",
+        "--registry=https://registry.npmjs.org"
+      ],
+      "exit_code": 1,
+      "started_unix": 1792481265.3623977,
+      "duration_seconds": 0.768
+    },
+    "audit-before.command.json": {
+      "argv": [
+        "npm",
+        "audit",
+        "--json",
+        "--ignore-scripts",
+        "--cache=/workspace/work/npm-cache",
+        "--registry=https://registry.npmjs.org"
+      ],
+      "exit_code": 1,
+      "started_unix": 1792481148.310297,
+      "duration_seconds": 1.972
+    },
+    "base.command.json": {
+      "argv": [
+        "git",
+        "rev-parse",
+        "HEAD",
+        "origin/beta"
+      ],
+      "exit_code": 0,
+      "started_unix": 1792481367.8318865,
+      "duration_seconds": 0.004
+    },
+    "diff-check.command.json": {
+      "argv": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exit_code": 0,
+      "started_unix": 1792481340.224131,
+      "duration_seconds": 0.008
+    },
+    "http-baseline.command.json": {
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/home/agent/.local/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin/override:/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin:/opt/codex/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/agent/.local/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin/fallback",
+        "TMPDIR=/tmp",
+        "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+        "node",
+        "/workspace/acp-chat/scripts/synthetic/express-chain-harness.cjs"
+      ],
+      "exit_code": 0,
+      "started_unix": 1792481244.5467575,
+      "duration_seconds": 0.265
+    },
+    "http-candidate.command.json": {
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/home/agent/.local/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin/override:/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin:/opt/codex/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/agent/.local/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin/fallback",
+        "TMPDIR=/tmp",
+        "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+        "node",
+        "/workspace/acp-chat/scripts/synthetic/express-chain-harness.cjs"
+      ],
+      "exit_code": 0,
+      "started_unix": 1792481262.3243036,
+      "duration_seconds": 0.316
+    },
+    "http-compare.command.json": {
+      "argv": [
+        "python3",
+        "-c",
+        "import json,pathlib; p=pathlib.Path(\"docs/launch-gate/evidence/CODE-EXPRESS-20261020-0912\"); a=(p/\"http-baseline.stdout\").read_text(); b=(p/\"http-candidate.stdout\").read_text(); assert json.loads(a[:a.rfind(\"\\nPASS\")])[\"observations\"]==json.loads(b[:b.rfind(\"\\nPASS\")])[\"observations\"]; print(\"PASS baseline/candidate HTTP observations identical\")"
+      ],
+      "exit_code": 0,
+      "started_unix": 1792481367.7675066,
+      "duration_seconds": 0.033
+    },
+    "install-targets.command.json": {
+      "argv": [
+        "npm",
+        "update",
+        "proxy-addr",
+        "body-parser",
+        "qs",
+        "--ignore-scripts",
+        "--no-audit",
+        "--no-fund",
+        "--cache=/workspace/work/npm-cache",
+        "--registry=https://registry.npmjs.org"
+      ],
+      "exit_code": 0,
+      "started_unix": 1792481252.170683,
+      "duration_seconds": 1.12
+    },
+    "installed-chain.command.json": {
+      "argv": [
+        "npm",
+        "ls",
+        "express",
+        "proxy-addr",
+        "body-parser",
+        "qs",
+        "type-is",
+        "content-type",
+        "side-channel",
+        "side-channel-list",
+        "nodemailer",
+        "--json"
+      ],
+      "exit_code": 0,
+      "started_unix": 1792481306.6806219,
+      "duration_seconds": 0.516
+    },
+    "isolation.command.json": {
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/home/agent/.local/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin/override:/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin:/opt/codex/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/agent/.local/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin/fallback",
+        "TMPDIR=/tmp",
+        "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+        "node",
+        "/workspace/acp-chat/scripts/synthetic/isolation-harness.cjs"
+      ],
+      "exit_code": 0,
+      "started_unix": 1792481339.9788535,
+      "duration_seconds": 0.216
+    },
+    "metadata-body-parser.command.json": {
+      "argv": [
+        "npm",
+        "view",
+        "body-parser@2.3.0",
+        "version",
+        "dependencies",
+        "engines",
+        "dist",
+        "--json",
+        "--registry=https://registry.npmjs.org",
+        "--cache=/workspace/work/npm-cache"
+      ],
+      "exit_code": 0,
+      "started_unix": 1792481123.7952309,
+      "duration_seconds": 0.468
+    },
+    "metadata-chain.command.json": {
+      "argv": [
+        "npm",
+        "view",
+        "side-channel@1.1.1",
+        "dependencies",
+        "--json",
+        "--registry=https://registry.npmjs.org",
+        "--cache=/workspace/work/npm-cache"
+      ],
+      "exit_code": 0,
+      "started_unix": 1792481186.2335606,
+      "duration_seconds": 0.416
+    },
+    "metadata-express.command.json": {
+      "argv": [
+        "npm",
+        "view",
+        "express@5",
+        "version",
+        "dependencies",
+        "engines",
+        "dist",
+        "--json",
+        "--registry=https://registry.npmjs.org",
+        "--cache=/workspace/work/npm-cache"
+      ],
+      "exit_code": 0,
+      "started_unix": 1792481122.7512035,
+      "duration_seconds": 0.566
+    },
+    "metadata-proxy-addr.command.json": {
+      "argv": [
+        "npm",
+        "view",
+        "proxy-addr@2.0.8",
+        "version",
+        "dependencies",
+        "engines",
+        "dist",
+        "--json",
+        "--registry=https://registry.npmjs.org",
+        "--cache=/workspace/work/npm-cache"
+      ],
+      "exit_code": 0,
+      "started_unix": 1792481123.3502195,
+      "duration_seconds": 0.416
+    },
+    "metadata-qs-selected.command.json": {
+      "argv": [
+        "npm",
+        "view",
+        "qs@6.16.1",
+        "version",
+        "dependencies",
+        "engines",
+        "dist",
+        "--json",
+        "--registry=https://registry.npmjs.org",
+        "--cache=/workspace/work/npm-cache"
+      ],
+      "exit_code": 0,
+      "started_unix": 1792481185.7830784,
+      "duration_seconds": 0.417
+    },
+    "metadata-qs.command.json": {
+      "argv": [
+        "npm",
+        "view",
+        "qs@6.16.0",
+        "version",
+        "dependencies",
+        "engines",
+        "dist",
+        "--json",
+        "--registry=https://registry.npmjs.org",
+        "--cache=/workspace/work/npm-cache"
+      ],
+      "exit_code": 0,
+      "started_unix": 1792481124.297254,
+      "duration_seconds": 0.416
+    },
+    "resolution-dry-run.command.json": {
+      "argv": [
+        "npm",
+        "update",
+        "proxy-addr",
+        "body-parser",
+        "qs",
+        "--dry-run",
+        "--json",
+        "--ignore-scripts",
+        "--no-audit",
+        "--no-fund",
+        "--cache=/workspace/work/npm-cache",
+        "--registry=https://registry.npmjs.org"
+      ],
+      "exit_code": 0,
+      "started_unix": 1792481164.2135804,
+      "duration_seconds": 1.169
+    },
+    "runtime-syntax.command.json": {
+      "argv": [
+        "node",
+        "--check",
+        "scripts/synthetic/runtime.cjs"
+      ],
+      "exit_code": 0,
+      "started_unix": 1792481306.5582366,
+      "duration_seconds": 0.032
+    },
+    "server-syntax.command.json": {
+      "argv": [
+        "node",
+        "--check",
+        "server.js"
+      ],
+      "exit_code": 0,
+      "started_unix": 1792481306.6193988,
+      "duration_seconds": 0.032
+    },
+    "syntax.command.json": {
+      "argv": [
+        "node",
+        "--check",
+        "scripts/synthetic/express-chain-harness.cjs"
+      ],
+      "exit_code": 0,
+      "started_unix": 1792481306.4972708,
+      "duration_seconds": 0.032
+    },
+    "verify.command.json": {
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/home/agent/.local/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin/override:/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin:/opt/codex/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/agent/.local/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin/fallback",
+        "TMPDIR=/tmp",
+        "NODE_ENV=test",
+        "REFRESH_EMERGENCY_ON_BOOT=false",
+        "LOG_PERSIST=false",
+        "LOG_PRETTY=false",
+        "MISTRAL_API_KEY=synthetic-unused",
+        "FIREBASE_DATABASE_URL=https://synthetic.example.test",
+        "FIREBASE_SERVICE_ACCOUNT={}",
+        "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+        "npm_config_cache=/workspace/work/npm-cache",
+        "npm",
+        "run",
+        "verify"
+      ],
+      "exit_code": 0,
+      "started_unix": 1792481307.228789,
+      "duration_seconds": 12.737
+    }
+  },
+  "audit_residuals": {
+    "info": 0,
+    "low": 0,
+    "moderate": 2,
+    "high": 5,
+    "critical": 1,
+    "total": 8
+  },
+  "redaction": {
+    "inspection": "all artifacts scanned for private-key/token/JWT markers; logs inspected for synthetic provenance; no real credentials, environment dump or personal corpus used",
+    "changes": "none required; synthetic env -i command arguments retained, no real secrets read; public npm signatures/integrities are provenance metadata, not secrets"
+  },
+  "ci": "No CI/Actions status asserted. Local guarded validation only.",
+  "scope": "no production JS, trust proxy, manual XFF, query parser, JSON limit, reset policy or Nodemailer changes; M0 guards unchanged",
+  "limits": "No real SMTP/Firebase/Mistral/Render/network HTTP listener; captured HTTP uses actual Express over in-memory request/response. Extended query fixture only; production stays simple. No universal security claim. G13/G21 D2/D3 and external validation remain open.",
+  "sha256_files": {
+    "audit-after.code": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "audit-after.command.json": "ea65e9bd7a018df8f91df515b0ae6481742ef7af58775fdf66c6ea272ad9b946",
+    "audit-after.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "audit-before.code": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "audit-before.command.json": "dabc470670cc0cab091099ec1d22a2d347a6e9448d46a42cf48b0d46aa1eea51",
+    "audit-before.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "audit-targets.projection.json": "30287696d4001d8a5e72374001e0287a7d50cb39cf367f8a08c30b6429c97348",
+    "base.code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "base.command.json": "e670331dfb33911d0eb3c777c130e0325a42411f485fae636383215fdc4c07e8",
+    "base.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "base.stdout": "9435c487b07667c34c5c861d03635ab44649338a522ed04390c85c30b07880c8",
+    "diff-check.code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "diff-check.command.json": "0bce2ec05c279984916de39cfc3cd362e51fa5f163355d06c9cf6b7ad373c2e4",
+    "diff-check.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "diff-check.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "http-baseline.code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "http-baseline.command.json": "ed8ad2e1821d051758a3e12f8399c07b105ad1f55ac405cd18fb8c913e026db5",
+    "http-baseline.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "http-baseline.stdout": "84c28ab1ee4a92d0e31f4573a0c63cb8011a075bfefee3490768f60a738b3ef1",
+    "http-candidate.code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "http-candidate.command.json": "b5ceda7855753d9f27877ebe3caca6c84f2f01fd39e8f01003ccf7f38d7f1dcf",
+    "http-candidate.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "http-candidate.stdout": "3e2c9a0b9527634a2462e937d411d65895f2c3261c15303486d0dbfe133f92b4",
+    "http-compare.code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "http-compare.command.json": "ff1a3c3431cbd154df3df86080ca0973ad87ac53c048500b688ec21df99edfc4",
+    "http-compare.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "http-compare.stdout": "fde8000f4b1a54e613355c35e10eaa5066eae176fe0bdbb7f005cc5c1e347d39",
+    "install-targets.code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "install-targets.command.json": "9ba89b9e774df14911ee1fefd4cd391114a604409786ed7ccf64f29a8787f186",
+    "install-targets.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "install-targets.stdout": "c4fe246c5102fd9af8f1578b996ddaa6530b338171d863b6aa1046f558b35d61",
+    "installed-chain.code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "installed-chain.command.json": "e86ece776f734ac31259a74799e562e86fa2f2dd8799e66ccc77d5c21a5bcc26",
+    "installed-chain.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "installed-chain.stdout": "474e6d80a1751750fe8383d3cc66eb5f64f47a27c7f89466ad892acdb3b35c3b",
+    "isolation.code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "isolation.command.json": "a86cc2f0e098c4db006dad21d4160167a95a5c58d6b897eb542f94b702c38412",
+    "isolation.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "isolation.stdout": "804df74a405644b788976f048f5e321863534250380337a3621184e4bf9989a7",
+    "lock-provenance.json": "400cdc35b4fc46a42099406380d489baf112ddece0275eeb3391f4083df1eaef",
+    "metadata-body-parser.code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "metadata-body-parser.command.json": "07dafc528917ddbec6fce3d74ee483420c4540d5d3dfb15cf5f1e64f4be62d92",
+    "metadata-body-parser.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "metadata-body-parser.stdout": "0fd911eb297fd71b7d9b781759b178dffdc00ffc484315de15e929c64a92278c",
+    "metadata-chain.code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "metadata-chain.command.json": "d1d460a82c27a6599050e8091f57f3fc61d82cfe87e0b6dc1d565ea8729ca00f",
+    "metadata-chain.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "metadata-chain.stdout": "17f85b96cdd481d2a4309dc1d712d7c85a99299caaa95c8135fc66a469a62351",
+    "metadata-express.code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "metadata-express.command.json": "14832c90cf7b313742aaeb26f234047ca56cc5edb224da0a9ed2005ebacbb211",
+    "metadata-express.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "metadata-express.stdout": "1fcf391e3549e5eecd83b6b1997b433f1cc32e180029d12856a908e2374b3bcf",
+    "metadata-proxy-addr.code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "metadata-proxy-addr.command.json": "fbb0a568123b399e7fa0fb9d1c9563ad6852e0b6dfb31421510d682ee43925ad",
+    "metadata-proxy-addr.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "metadata-proxy-addr.stdout": "54f747c2b9a08712560000de6198683325978e4713f34b0e9b8ef742d198b6f7",
+    "metadata-qs-selected.code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "metadata-qs-selected.command.json": "48c0e1aa79286f85b71e17cc37e635f34e8fc4fab47d58511f7f2a00106fa121",
+    "metadata-qs-selected.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "metadata-qs-selected.stdout": "083ccc0bd35bc2163b0f58854295a28b2cb0f9d2b5650e5e9ffe98e33148403a",
+    "metadata-qs.code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "metadata-qs.command.json": "48c0ca2c8fb516e91b17afb7a80886d483ac4485188947d9fed0f44aa98cc337",
+    "metadata-qs.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "metadata-qs.stdout": "ea507e64945ddc593ecc6813ea26c5cd774b7235364ea6c88509bf4680183d29",
+    "resolution-dry-run.code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "resolution-dry-run.command.json": "3bc5b4a62c8ec4f0c466f54cb8196956fe18f6c62de540d5d1ecacb9ca91ae78",
+    "resolution-dry-run.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "resolution-dry-run.stdout": "b5a69b427b0b4f4c925cf89cd464ead9a339798e09e7fe4fa6c77682f1d651f2",
+    "runtime-syntax.code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "runtime-syntax.command.json": "fffde703f05814e6a1c52875ba49cd1e6436226277f9e5aa56c794513040ab72",
+    "runtime-syntax.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "runtime-syntax.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "server-syntax.code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "server-syntax.command.json": "035fab80ac0d792ad6d6d89246296e4dfd43b0a4e891f54a32674ac486f19e90",
+    "server-syntax.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "server-syntax.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "syntax.code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "syntax.command.json": "ca59bfaeb0acadb1335135c5173163106cf93e9708c79deb6d8b4af60d91f152",
+    "syntax.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "syntax.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "verify.code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "verify.command.json": "38d41b49e5ca83dd6b85b49f0b6a613e97bc1c2864f9848a0b6663da143c8fe0",
+    "verify.stderr": "c0b157498917402cfab4ff0bfe80f350b7b954a528e377aaa959b66ff1d4569e",
+    "verify.stdout": "639db43790751614f1975a66586fd85390c33fa489ea4a3a68ef3386a0fc52fd"
+  }
+}

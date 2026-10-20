@@ -1,0 +1,17 @@
+{
+  "argv": [
+    "npm",
+    "view",
+    "body-parser@2.3.0",
+    "version",
+    "dependencies",
+    "engines",
+    "dist",
+    "--json",
+    "--registry=https://registry.npmjs.org",
+    "--cache=/workspace/work/npm-cache"
+  ],
+  "exit_code": 0,
+  "started_unix": 1792481123.7952309,
+  "duration_seconds": 0.468
+}

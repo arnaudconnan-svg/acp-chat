@@ -1,0 +1,14 @@
+{
+  "argv": [
+    "npm",
+    "view",
+    "side-channel@1.1.1",
+    "dependencies",
+    "--json",
+    "--registry=https://registry.npmjs.org",
+    "--cache=/workspace/work/npm-cache"
+  ],
+  "exit_code": 0,
+  "started_unix": 1792481186.2335606,
+  "duration_seconds": 0.416
+}

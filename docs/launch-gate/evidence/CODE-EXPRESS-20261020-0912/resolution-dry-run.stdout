@@ -1,0 +1,102 @@
+change type-is 2.0.1 => 2.1.0
+add content-type 2.1.0
+change side-channel 1.1.0 => 1.1.1
+change side-channel-list 1.0.0 => 1.0.1
+change qs 6.15.2 => 6.16.1
+change proxy-addr 2.0.7 => 2.0.8
+change body-parser 2.2.2 => 2.3.0
+add content-type 2.1.0
+{
+  "add": [
+    {
+      "name": "content-type",
+      "version": "2.1.0",
+      "path": "/workspace/acp-chat/node_modules/type-is/node_modules/content-type"
+    },
+    {
+      "name": "content-type",
+      "version": "2.1.0",
+      "path": "/workspace/acp-chat/node_modules/body-parser/node_modules/content-type"
+    }
+  ],
+  "added": 2,
+  "audited": 0,
+  "change": [
+    {
+      "from": {
+        "name": "type-is",
+        "version": "2.0.1",
+        "path": "/workspace/acp-chat/node_modules/type-is"
+      },
+      "to": {
+        "name": "type-is",
+        "version": "2.1.0",
+        "path": "/workspace/acp-chat/node_modules/type-is"
+      }
+    },
+    {
+      "from": {
+        "name": "side-channel",
+        "version": "1.1.0",
+        "path": "/workspace/acp-chat/node_modules/side-channel"
+      },
+      "to": {
+        "name": "side-channel",
+        "version": "1.1.1",
+        "path": "/workspace/acp-chat/node_modules/side-channel"
+      }
+    },
+    {
+      "from": {
+        "name": "side-channel-list",
+        "version": "1.0.0",
+        "path": "/workspace/acp-chat/node_modules/side-channel-list"
+      },
+      "to": {
+        "name": "side-channel-list",
+        "version": "1.0.1",
+        "path": "/workspace/acp-chat/node_modules/side-channel-list"
+      }
+    },
+    {
+      "from": {
+        "name": "qs",
+        "version": "6.15.2",
+        "path": "/workspace/acp-chat/node_modules/qs"
+      },
+      "to": {
+        "name": "qs",
+        "version": "6.16.1",
+        "path": "/workspace/acp-chat/node_modules/qs"
+      }
+    },
+    {
+      "from": {
+        "name": "proxy-addr",
+        "version": "2.0.7",
+        "path": "/workspace/acp-chat/node_modules/proxy-addr"
+      },
+      "to": {
+        "name": "proxy-addr",
+        "version": "2.0.8",
+        "path": "/workspace/acp-chat/node_modules/proxy-addr"
+      }
+    },
+    {
+      "from": {
+        "name": "body-parser",
+        "version": "2.2.2",
+        "path": "/workspace/acp-chat/node_modules/body-parser"
+      },
+      "to": {
+        "name": "body-parser",
+        "version": "2.3.0",
+        "path": "/workspace/acp-chat/node_modules/body-parser"
+      }
+    }
+  ],
+  "changed": 6,
+  "funding": 0,
+  "remove": [],
+  "removed": 0
+}

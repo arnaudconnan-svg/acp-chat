@@ -1,0 +1,10 @@
+{
+  "argv": [
+    "node",
+    "--check",
+    "scripts/synthetic/runtime.cjs"
+  ],
+  "exit_code": 0,
+  "started_unix": 1792481306.5582366,
+  "duration_seconds": 0.032
+}

@@ -1,0 +1,10 @@
+{
+  "argv": [
+    "git",
+    "diff",
+    "--check"
+  ],
+  "exit_code": 0,
+  "started_unix": 1792481340.224131,
+  "duration_seconds": 0.008
+}

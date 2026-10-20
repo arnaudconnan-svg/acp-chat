@@ -1,0 +1,10 @@
+{
+  "argv": [
+    "python3",
+    "-c",
+    "import json,pathlib; p=pathlib.Path(\"docs/launch-gate/evidence/CODE-EXPRESS-20261020-0912\"); a=(p/\"http-baseline.stdout\").read_text(); b=(p/\"http-candidate.stdout\").read_text(); assert json.loads(a[:a.rfind(\"\\nPASS\")])[\"observations\"]==json.loads(b[:b.rfind(\"\\nPASS\")])[\"observations\"]; print(\"PASS baseline/candidate HTTP observations identical\")"
+  ],
+  "exit_code": 0,
+  "started_unix": 1792481367.7675066,
+  "duration_seconds": 0.033
+}
