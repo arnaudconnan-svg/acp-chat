@@ -1,0 +1,15 @@
+{
+  "argv": [
+    "npm",
+    "ls",
+    "firebase-admin",
+    "@firebase/database-compat",
+    "@firebase/database",
+    "faye-websocket",
+    "websocket-driver",
+    "--json"
+  ],
+  "exit_code": 0,
+  "started_unix": 1792501279.066584,
+  "duration_seconds": 0.718
+}

@@ -1,0 +1,64 @@
+{
+  "inspection": "source only, no private parser export/instrumentation, no frames/compression/network, no new app or harness code",
+  "tested_code_sha_unchanged": "1a8fd6784b7c0e19eab3b973e49e6dd21eb53d78",
+  "bundles": [
+    {
+      "version": "2.1.4",
+      "origin": "official npm archive, integrity equals lock; bytes SHA equals previously actually loaded Admin standalone capture",
+      "loaded_path_recorded": "/workspace/acp-chat/node_modules/@firebase/database-compat/dist/index.standalone.js",
+      "bundle_sha256": "f2e00833a61551dcf3e34488599b925ba6acb95aaa3b8c719b27d579cc7b654d",
+      "archive_integrity": "sha512-3pK35F1MAgmqFJQlf2nhQl44vtAXQO1uaCaQOEUI9kCRtLFqi7N+QRKR7lFZPg+xIZIyubgxQaxY69YgfZRZWg==",
+      "physical_candidate_bytes_equal": null,
+      "legacy": {
+        "function": "Draft75$2 / instance$4.parse(chunk) / switch case 1",
+        "function_region_lines": [
+          2475,
+          2591
+        ],
+        "accumulation_line": 2514,
+        "bound_after_accumulation_before_skip": false,
+        "comparison": "this._length > this._maxLength -> this.close()",
+        "excerpt_start_line": 2512,
+        "excerpt": "\n        case 1:\n          this._length = (octet & 0x7F) + 128 * this._length;\n\n          if (this._closing && this._length === 0) {\n            return this.close();\n          }\n          else if ((octet & 0x80) !== 0x80) {"
+      },
+      "post_extension": {
+        "function": "Hybi$2._emitMessage -> processIncomingMessage callback",
+        "function_start_line": 2192,
+        "bound_present": false,
+        "excerpt": "var payload = message.data;\n      if (message.opcode === this.OPCODES.text) payload = this._encode(payload);\n\n      if (payload === null)"
+      }
+    },
+    {
+      "version": "2.1.7",
+      "origin": "official npm archive, integrity equals lock; bytes SHA equals previously actually loaded Admin standalone capture",
+      "loaded_path_recorded": "/workspace/acp-chat/node_modules/@firebase/database-compat/dist/index.standalone.js",
+      "bundle_sha256": "308f0f904b47e92a009d445964ac3392a3692b1a8166020b4effe352285c4b4c",
+      "archive_integrity": "sha512-lBq9sJm8MnJINKJnkAKSOj2MbC66xGoSVCcGkPtstl+lkoKEBtD46qHLbuDgW/WbLPoKVm17RIN8BxHj+Z2F2w==",
+      "physical_candidate_bytes_equal": true,
+      "legacy": {
+        "function": "Draft75$2 / instance$4.parse(chunk) / switch case 1",
+        "function_region_lines": [
+          2466,
+          2583
+        ],
+        "accumulation_line": 2505,
+        "bound_after_accumulation_before_skip": true,
+        "comparison": "this._length > this._maxLength -> this.close()",
+        "excerpt_start_line": 2503,
+        "excerpt": "\n        case 1:\n          this._length = (octet & 0x7F) + 128 * this._length;\n          if (this._length > this._maxLength) return this.close();\n\n          if (this._closing && this._length === 0) {\n            return this.close();\n          }"
+      },
+      "post_extension": {
+        "function": "Hybi$2._emitMessage -> processIncomingMessage callback",
+        "function_start_line": 2178,
+        "bound_present": true,
+        "excerpt": "var payload = message.data;\n\n      if (payload.length > this._maxLength)\n        return this._fail('too_large', 'WebSocket frame length too large');\n\n      if (message.opcode === this.OPCODES.text)\n        payload = this._encode(payload);\n\n      if (payload === null)"
+      }
+    }
+  ],
+  "retained_admin": {
+    "version": "13.10.0",
+    "compat_range": "^2.0.0",
+    "official_dist_matches_lock": true
+  },
+  "conclusion": "both legacy accumulation bound and post-extension bound absent in loaded baseline2.1.4, present in exact loaded candidate2.1.7; source evidence only"
+}

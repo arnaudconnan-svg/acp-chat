@@ -1,0 +1,88 @@
+{
+  "before": {
+    "driver_version": "0.7.4",
+    "finding": {
+      "name": "websocket-driver",
+      "severity": "critical",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1123482,
+          "name": "websocket-driver",
+          "dependency": "websocket-driver",
+          "title": "websocket-driver: Resource limit bypass via message compression",
+          "url": "https://github.com/advisories/GHSA-mp7j-qc5w-4988",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-770"
+          ],
+          "cvss": {
+            "score": 0,
+            "vectorString": null
+          },
+          "range": "<0.7.5"
+        },
+        {
+          "source": 1123483,
+          "name": "websocket-driver",
+          "dependency": "websocket-driver",
+          "title": "websocket-driver: Message corruption via abuse of protocol length headers",
+          "url": "https://github.com/advisories/GHSA-xv26-6w52-cph6",
+          "severity": "critical",
+          "cwe": [
+            "CWE-130"
+          ],
+          "cvss": {
+            "score": 0,
+            "vectorString": null
+          },
+          "range": "<0.7.5"
+        }
+      ],
+      "effects": [],
+      "range": "<=0.7.4",
+      "nodes": [
+        "node_modules/websocket-driver"
+      ],
+      "fixAvailable": true
+    },
+    "counters": {
+      "info": 0,
+      "low": 0,
+      "moderate": 2,
+      "high": 5,
+      "critical": 1,
+      "total": 8
+    },
+    "residuals": {
+      "@fastify/busboy": "high",
+      "@grpc/grpc-js": "high",
+      "brace-expansion": "high",
+      "fast-copy": "moderate",
+      "form-data": "high",
+      "js-yaml": "high",
+      "protobufjs": "moderate"
+    }
+  },
+  "after": {
+    "driver_version": "0.7.5",
+    "finding": null,
+    "counters": {
+      "info": 0,
+      "low": 0,
+      "moderate": 2,
+      "high": 5,
+      "critical": 0,
+      "total": 7
+    },
+    "residuals": {
+      "@fastify/busboy": "high",
+      "@grpc/grpc-js": "high",
+      "brace-expansion": "high",
+      "fast-copy": "moderate",
+      "form-data": "high",
+      "js-yaml": "high",
+      "protobufjs": "moderate"
+    }
+  }
+}

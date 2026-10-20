@@ -34,7 +34,22 @@ if (!/(?:^|\/)(?:npm|npm-cli\.js)$/.test(process.argv[1] || '')) {
       process.argv[1] === mailHarness &&
       parent?.filename === mailHarness &&
       ['nodemailer', 'nodemailer/package.json'].includes(name);
-    if (/^(firebase-admin|nodemailer|dotenv)(\/|$)/.test(name) && !captureMail)
+    // The RTDB compatibility harness may load Admin's real public entry only.
+    // No credential discovery or provider I/O is permitted: all existing
+    // filesystem/HTTP/socket/TLS guards remain active.
+    const firebaseHarness = path.join(
+      repoRoot,
+      'scripts/synthetic/wscrit-harness.cjs'
+    );
+    const offlineFirebase =
+      process.argv[1] === firebaseHarness &&
+      parent?.filename === firebaseHarness &&
+      name === 'firebase-admin';
+    if (
+      /^(firebase-admin|nodemailer|dotenv)(\/|$)/.test(name) &&
+      !captureMail &&
+      !offlineFirebase
+    )
       denied();
     if (
       path.resolve(String(name)) === path.join(repoRoot, 'server.js') ||

@@ -1,0 +1,15 @@
+{
+  "argv": [
+    "npm",
+    "view",
+    "@firebase/database-compat@2",
+    "version",
+    "dependencies",
+    "--json",
+    "--registry=https://registry.npmjs.org",
+    "--cache=/workspace/work/npm-cache"
+  ],
+  "exit_code": 0,
+  "started_unix": 1792501427.8051171,
+  "duration_seconds": 0.52
+}

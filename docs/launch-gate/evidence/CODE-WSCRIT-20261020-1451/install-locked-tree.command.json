@@ -1,0 +1,14 @@
+{
+  "argv": [
+    "npm",
+    "ci",
+    "--ignore-scripts",
+    "--no-audit",
+    "--no-fund",
+    "--cache=/workspace/work/npm-cache",
+    "--registry=https://registry.npmjs.org"
+  ],
+  "exit_code": 0,
+  "started_unix": 1792501657.8835268,
+  "duration_seconds": 7.814
+}

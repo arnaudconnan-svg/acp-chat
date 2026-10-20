@@ -1,0 +1,14 @@
+{
+  "argv": [
+    "env",
+    "-i",
+    "PATH=/home/agent/.local/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin/override:/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin:/opt/codex/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/agent/.local/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin/fallback",
+    "TMPDIR=/tmp",
+    "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+    "node",
+    "/workspace/acp-chat/scripts/synthetic/wscrit-harness.cjs"
+  ],
+  "exit_code": 1,
+  "started_unix": 1792501542.8100698,
+  "duration_seconds": 0.215
+}
