@@ -1,0 +1,12 @@
+{
+  "version": "10.1.7",
+  "dist-tags": {
+    "beta": "2.4.0-beta.0",
+    "latest": "10.1.7"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dist.integrity": "sha512-OQa6FDln5fLttmqSbjDiRYvFDOFNrBqfiOwHPlEbURil3b+vPB1v8xpi+Sp46drzNDlsTnNsS502vthmz56r4w==",
+  "dist.tarball": "https://registry.npmjs.org/nodemailer/-/nodemailer-10.1.7.tgz"
+}

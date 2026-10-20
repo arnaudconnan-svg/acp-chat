@@ -1,0 +1,2 @@
+PASS real human relay routes: both types, consent, private minimization, IDN recipient, MIME text
+PASS real human relay route: transport rejection and retry
