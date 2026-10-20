@@ -1,0 +1,16 @@
+{
+  "argv": [
+    "npm",
+    "--cache",
+    "/workspace/work/npm-cache",
+    "view",
+    "@google-cloud/storage@7.19.0",
+    "dependencies",
+    "--json"
+  ],
+  "start": "2026-10-20T14:15:50.155530+00:00",
+  "end": "2026-10-20T14:15:50.476961+00:00",
+  "code": 0,
+  "stdout_sha256": "0c8122778737fc7c50da4166ad8ea375ee04baeccdfe873c09467b82e5320fab",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

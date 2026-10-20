@@ -1,0 +1,18 @@
+{
+  "argv": [
+    "npm",
+    "--cache",
+    "/workspace/work/npm-cache",
+    "pack",
+    "form-data@2.5.6",
+    "--ignore-scripts",
+    "--pack-destination",
+    "/workspace/work/formdata",
+    "--json"
+  ],
+  "start": "2026-10-20T14:15:50.812554+00:00",
+  "end": "2026-10-20T14:15:51.144473+00:00",
+  "code": 0,
+  "stdout_sha256": "4c2b618518d194e8e857ad54e017e46002b4c6ff1e7abeb947de73a610afc20d",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

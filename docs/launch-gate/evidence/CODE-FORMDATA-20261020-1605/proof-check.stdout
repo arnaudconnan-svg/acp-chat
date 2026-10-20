@@ -1,0 +1,29 @@
+{
+  "code_commit": "285b66719cf1a872a4ad1b175e7b2ec640456e56",
+  "base": "d8434f1f524f691549ace6367471687b1b096aea",
+  "four_code_files_match": {
+    "package.json": {
+      "sha256": "ef1acee014b37d9dd929df901e7553f3532423c9d9c6e6d2011c899970b4b2e1",
+      "git_show_equals_tested_checkout": true
+    },
+    "package-lock.json": {
+      "sha256": "6f30044771819c7e0e5910f63cfe68aa0f2e1371e508ec496300674f75ecd7ff",
+      "git_show_equals_tested_checkout": true
+    },
+    "scripts/synthetic/guard.cjs": {
+      "sha256": "4b0b744468fc6b95ff0f91cd2126cf05fa10560e9188efc2d0e9e351dd258a89",
+      "git_show_equals_tested_checkout": true
+    },
+    "scripts/synthetic/formdata-harness.cjs": {
+      "sha256": "c4ec9e7460476179f06b4001bbda1e5c318d55ed6c92613decbb64811caaab77",
+      "git_show_equals_tested_checkout": true
+    }
+  },
+  "five_residuals_unchanged": true,
+  "only_lock_dependency_changed": "form-data",
+  "physical_parents_identical": true,
+  "baseline_crlf_code": 1,
+  "final_formdata_code": 0,
+  "final_verify_code": 0,
+  "tarball_integrity_matches": true
+}

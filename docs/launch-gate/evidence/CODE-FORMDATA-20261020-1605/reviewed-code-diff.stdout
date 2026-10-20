@@ -1,0 +1,210 @@
+diff --git a/package-lock.json b/package-lock.json
+index 81185b4..f95820f 100644
+--- a/package-lock.json
++++ b/package-lock.json
+@@ -2104,9 +2104,9 @@
+       "license": "ISC"
+     },
+     "node_modules/form-data": {
+-      "version": "2.5.5",
+-      "resolved": "https://registry.npmjs.org/form-data/-/form-data-2.5.5.tgz",
+-      "integrity": "sha512-jqdObeR2rxZZbPSGL+3VckHMYtu+f9//KXBsVny6JSX/pa38Fy+bGjuG8eW/H6USNQWhLi8Num++cU2yOCNz4A==",
++      "version": "2.5.6",
++      "resolved": "https://registry.npmjs.org/form-data/-/form-data-2.5.6.tgz",
++      "integrity": "sha512-Ogz/E85h9tlfJzpI6TuFpGcHZFhLrb9Gw8wq9v40CxSCPnv7ahKr6Xgtkn0KYCDQJ8DNn5VoMO8EXr9V5PadyA==",
+       "license": "MIT",
+       "optional": true,
+       "dependencies": {
+diff --git a/package.json b/package.json
+index 2e2f9b6..32530cf 100644
+--- a/package.json
++++ b/package.json
+@@ -63,7 +63,7 @@
+     "preff:git:harness": "node scripts/preff-git-guard-harness.js",
+     "smoke:ui:local": "node scripts/ui-smoke-local.js",
+     "ui-layout:verify": "node scripts/ui-layout-verify.js",
+-    "verify": "node --check server.js && npm run busboy:harness && npm run wscrit:harness && npm run express-chain:harness && npm run nodemailer:harness && npm run m3:emergency:harness && npm run m3:safety:harness && npm run password-reset:harness && npm run password-reset-frontend:harness && npm run password-reset-server:harness && npm run preff:git:harness && npm run health:harness && npm run no-openai-runtime:harness && npm run mistral:harness && npm run title:harness && npm run title:conflict:mistral:harness && npm run information-routing:mistral:harness && npm run exploration:mistral:harness && npm run recall-routing:mistral:harness && npm run contact-discharge:mistral:harness && npm run immediate-alliance:mistral:harness && npm run interpretation-rejection:mistral:harness && npm run dependency-risk:mistral:harness && npm run major-harm-response:mistral:harness && npm run acute-crisis-followup:mistral:harness && npm run n2-writer:mistral:harness && npm run major-harm-risk:mistral:harness && npm run suicide-risk:mistral:harness && npm run writer:mistral:harness && npm run memory:mistral:harness && npm run intersession:mistral:harness && npm run intersession:source:harness && npm run affiliation:mistral:harness && npm run state:harness && npm run posture:harness && npm run analyzers:harness && npm run prompts:consistency && npm run contract-validator:harness && npm run human-support:harness && npm run flags:harness && npm run conversation-state:harness && npm run runtime-schemas:harness && npm run debugmeta-unit:harness && npm run auth-conversation:harness && npm run chat-routing:harness && npm run branching:harness && npm run transcript:harness && npm run crisis-routing:harness && npm run llm-messages:harness && npm run conversation-data:harness && npm run ui-layout:verify",
++    "verify": "node --check server.js && npm run formdata:harness && npm run busboy:harness && npm run wscrit:harness && npm run express-chain:harness && npm run nodemailer:harness && npm run m3:emergency:harness && npm run m3:safety:harness && npm run password-reset:harness && npm run password-reset-frontend:harness && npm run password-reset-server:harness && npm run preff:git:harness && npm run health:harness && npm run no-openai-runtime:harness && npm run mistral:harness && npm run title:harness && npm run title:conflict:mistral:harness && npm run information-routing:mistral:harness && npm run exploration:mistral:harness && npm run recall-routing:mistral:harness && npm run contact-discharge:mistral:harness && npm run immediate-alliance:mistral:harness && npm run interpretation-rejection:mistral:harness && npm run dependency-risk:mistral:harness && npm run major-harm-response:mistral:harness && npm run acute-crisis-followup:mistral:harness && npm run n2-writer:mistral:harness && npm run major-harm-risk:mistral:harness && npm run suicide-risk:mistral:harness && npm run writer:mistral:harness && npm run memory:mistral:harness && npm run intersession:mistral:harness && npm run intersession:source:harness && npm run affiliation:mistral:harness && npm run state:harness && npm run posture:harness && npm run analyzers:harness && npm run prompts:consistency && npm run contract-validator:harness && npm run human-support:harness && npm run flags:harness && npm run conversation-state:harness && npm run runtime-schemas:harness && npm run debugmeta-unit:harness && npm run auth-conversation:harness && npm run chat-routing:harness && npm run branching:harness && npm run transcript:harness && npm run crisis-routing:harness && npm run llm-messages:harness && npm run conversation-data:harness && npm run ui-layout:verify",
+     "verify:full": "npm run verify",
+     "reset:data": "node scripts/reset-app-data.js",
+     "update:emergency-numbers": "node scripts/update-emergency-numbers.js",
+@@ -112,6 +112,7 @@
+     "m3:safety:harness": "node scripts/synthetic/m3-safety-characterization.cjs",
+     "nodemailer:harness": "node --require ./scripts/synthetic/guard.cjs scripts/synthetic/nodemailer-harness.cjs",
+     "express-chain:harness": "node --require ./scripts/synthetic/guard.cjs scripts/synthetic/express-chain-harness.cjs",
++    "formdata:harness": "node --require ./scripts/synthetic/guard.cjs scripts/synthetic/formdata-harness.cjs",
+     "busboy:harness": "node --require ./scripts/synthetic/guard.cjs scripts/synthetic/busboy-harness.cjs",
+     "wscrit:harness": "node --require ./scripts/synthetic/guard.cjs scripts/synthetic/wscrit-harness.cjs --candidate"
+   },
+diff --git a/scripts/synthetic/formdata-harness.cjs b/scripts/synthetic/formdata-harness.cjs
+new file mode 100644
+index 0000000..af53989
+--- /dev/null
++++ b/scripts/synthetic/formdata-harness.cjs
+@@ -0,0 +1,166 @@
++'use strict';
++const assert = require('node:assert/strict');
++const fs = require('node:fs');
++const path = require('node:path');
++const crypto = require('node:crypto');
++const { createRequire } = require('node:module');
++assert(
++  require.cache[path.join(__dirname, 'guard.cjs')],
++  'M0 must be preloaded'
++);
++function packageAt(entry) {
++  let dir = path.dirname(entry);
++  while (true) {
++    const file = path.join(dir, 'package.json');
++    if (fs.existsSync(file)) {
++      const metadata = JSON.parse(fs.readFileSync(file, 'utf8'));
++      if (metadata.name && metadata.version) return { dir, file, ...metadata };
++    }
++    const parent = path.dirname(dir);
++    assert.notEqual(parent, dir, 'named package metadata required');
++    dir = parent;
++  }
++}
++
++function digest(file) {
++  return crypto
++    .createHash('sha256')
++    .update(fs.readFileSync(file))
++    .digest('hex');
++}
++// Resolve installed parents without initializing Admin/Storage or discovering credentials.
++const adminEntry = require.resolve('firebase-admin');
++const adminRequire = createRequire(adminEntry);
++const storageEntry = adminRequire.resolve('@google-cloud/storage');
++const storageRequire = createRequire(storageEntry);
++const retryEntry = storageRequire.resolve('retry-request');
++const retryRequire = createRequire(retryEntry);
++const typesFile = retryRequire.resolve('@types/request/package.json');
++const typesRequire = createRequire(typesFile);
++const formEntry = typesRequire.resolve('form-data');
++const FormData = typesRequire('form-data');
++const chain = [adminEntry, storageEntry, retryEntry, typesFile, formEntry].map(
++  packageAt
++);
++assert.deepEqual(
++  chain.map((p) => p.version),
++  [
++    '13.10.0',
++    '7.19.0',
++    '7.0.2',
++    '2.48.13',
++    process.argv.includes('--baseline') ? '2.5.5' : '2.5.6'
++  ]
++);
++assert.equal(chain[0].optionalDependencies['@google-cloud/storage'], '^7.19.0');
++assert.equal(chain[1].dependencies['retry-request'], '^7.0.0');
++assert.equal(chain[2].dependencies['@types/request'], '^2.48.8');
++assert.equal(chain[3].dependencies['form-data'], '^2.5.5');
++assert.equal(chain[3].types, 'index.d.ts');
++assert(
++  fs
++    .readFileSync(path.join(chain[3].dir, 'index.d.ts'), 'utf8')
++    .includes('import FormData = require("form-data")')
++);
++assert.equal(typeof storageRequire('retry-request'), 'function'); // load only, no transport invoked
++const boundary = 'synthetic-formdata';
++function form() {
++  const value = new FormData();
++  value.setBoundary(boundary);
++  return value;
++}
++const normal = form();
++normal.append('field', 'hello');
++normal.append('file', Buffer.from('world'), {
++  filename: 'normal.txt',
++  contentType: 'text/plain'
++});
++const normalBody = normal.getBuffer();
++assert.equal(normal.getLengthSync(), normalBody.length);
++assert.equal(
++  normal.getHeaders()['content-type'],
++  'multipart/form-data; boundary=' + boundary
++);
++assert(normalBody.includes(Buffer.from('name="field"\r\n\r\nhello\r\n')));
++assert(
++  normalBody.includes(
++    Buffer.from(
++      'name="file"; filename="normal.txt"\r\nContent-Type: text/plain\r\n\r\nworld\r\n'
++    )
++  )
++);
++assert(normalBody.toString().endsWith('--' + boundary + '--\r\n'));
++const fixtures = [
++  {
++    kind: 'field',
++    input: 'field"\r\nX-Synthetic: injected',
++    escaped: 'name="field%22%0D%0AX-Synthetic: injected"'
++  },
++  {
++    kind: 'filename',
++    input: 'file"\r\nX-Synthetic: injected',
++    escaped: 'filename="file%22%0D%0AX-Synthetic: injected"'
++  }
++];
++const observed = fixtures.map((fixture) => {
++  const value = form();
++  if (fixture.kind === 'field') value.append(fixture.input, 'hello');
++  else
++    value.append('file', Buffer.from('hello'), {
++      filename: fixture.input,
++      contentType: 'text/plain'
++    });
++  const body = value.getBuffer().toString();
++  assert(body.length < 512, 'fixture stays bounded');
++  return {
++    ...fixture,
++    injectedHeader: body.includes('\r\nX-Synthetic: injected'),
++    escapedParameter: body.includes(fixture.escaped),
++    body
++  };
++});
++assert.throws(() => require('https').get('https://synthetic.example.test'));
++assert.throws(() => require('net').connect(443, 'synthetic.example.test'));
++assert.throws(() => require('tls').connect(443, 'synthetic.example.test'));
++assert.throws(() => require('firebase-admin'));
++assert.throws(() => fs.readFileSync(path.resolve('.env')));
++assert.throws(() =>
++  fs.readFileSync(path.resolve('data/synthetic-not-read.json'))
++);
++console.log(
++  JSON.stringify(
++    {
++      node: { version: process.version, execPath: process.execPath },
++      chain: chain.map((p, i) => ({
++        name: p.name,
++        version: p.version,
++        metadata: p.file,
++        metadataSha256: digest(p.file),
++        entry: [adminEntry, storageEntry, retryEntry, typesFile, formEntry][i]
++      })),
++      formEntrySha256: digest(formEntry),
++      normal: {
++        serialized: true,
++        length: normalBody.length,
++        lengthMatches: true
++      },
++      fixtures: observed,
++      limitation:
++        'Installed metadata/type-resolution chain, not an Admin runtime form-data invocation. Admin and Storage are not initialized; no transport/provider request.'
++    },
++    null,
++    2
++  )
++);
++for (const fixture of observed) {
++  assert.equal(
++    fixture.injectedHeader,
++    false,
++    fixture.kind + ': CRLF must not create a header'
++  );
++  assert.equal(
++    fixture.escapedParameter,
++    true,
++    fixture.kind + ': quote/CR/LF must be encoded'
++  );
++}

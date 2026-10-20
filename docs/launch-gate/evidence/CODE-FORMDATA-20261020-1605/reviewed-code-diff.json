@@ -1,0 +1,17 @@
+{
+  "argv": [
+    "git",
+    "diff",
+    "d8434f1f524f691549ace6367471687b1b096aea",
+    "HEAD",
+    "--",
+    "package.json",
+    "package-lock.json",
+    "scripts/synthetic/formdata-harness.cjs"
+  ],
+  "start": "2026-10-20T14:19:25.198067+00:00",
+  "end": "2026-10-20T14:19:25.201758+00:00",
+  "code": 0,
+  "stdout_sha256": "0243dfbcdb7ee8381a5b516af81da3c5eef41b57f90c1647d4db923d3600a156",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

@@ -1,0 +1,6 @@
+{
+  "form-data": "^2.5.5",
+  "@types/node": "*",
+  "@types/caseless": "*",
+  "@types/tough-cookie": "*"
+}

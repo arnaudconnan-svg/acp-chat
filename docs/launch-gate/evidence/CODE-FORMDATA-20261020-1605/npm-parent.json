@@ -1,0 +1,16 @@
+{
+  "argv": [
+    "npm",
+    "--cache",
+    "/workspace/work/npm-cache",
+    "view",
+    "@types/request@2.48.13",
+    "dependencies",
+    "--json"
+  ],
+  "start": "2026-10-20T14:15:49.536723+00:00",
+  "end": "2026-10-20T14:15:49.835671+00:00",
+  "code": 0,
+  "stdout_sha256": "c95366acc6663dcf643505802ad3988c212ab738a0f85660c0c9095e21d11802",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

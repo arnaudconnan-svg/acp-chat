@@ -1,0 +1,68 @@
+{
+  "node": {
+    "version": "v24.19.0",
+    "execPath": "/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node"
+  },
+  "chain": [
+    {
+      "name": "firebase-admin",
+      "version": "13.10.0",
+      "metadata": "/workspace/acp-chat/node_modules/firebase-admin/package.json",
+      "metadataSha256": "eeea23150ca753f4d3b82e4bd1cfd194b8b4771d6a008be9ff8ae98ff669e490",
+      "entry": "/workspace/acp-chat/node_modules/firebase-admin/lib/index.js"
+    },
+    {
+      "name": "@google-cloud/storage",
+      "version": "7.19.0",
+      "metadata": "/workspace/acp-chat/node_modules/@google-cloud/storage/package.json",
+      "metadataSha256": "00e8483c2c98209a2f054ee3f67fb9d4666921e6175e47f675baee32f19a9a00",
+      "entry": "/workspace/acp-chat/node_modules/@google-cloud/storage/build/cjs/src/index.js"
+    },
+    {
+      "name": "retry-request",
+      "version": "7.0.2",
+      "metadata": "/workspace/acp-chat/node_modules/retry-request/package.json",
+      "metadataSha256": "d5963403d0a50f3dcad8390151f12495d16291da5e548463ef7c363c922f3d63",
+      "entry": "/workspace/acp-chat/node_modules/retry-request/index.js"
+    },
+    {
+      "name": "@types/request",
+      "version": "2.48.13",
+      "metadata": "/workspace/acp-chat/node_modules/@types/request/package.json",
+      "metadataSha256": "35bdabce35cb2074bb2efcdec71dab8a7d5f228de7e78b659c2652244f8d5d4e",
+      "entry": "/workspace/acp-chat/node_modules/@types/request/package.json"
+    },
+    {
+      "name": "form-data",
+      "version": "2.5.5",
+      "metadata": "/workspace/acp-chat/node_modules/form-data/package.json",
+      "metadataSha256": "46f344753b636a77e3d70fe9a2d72c2119f94e155da9e4150b14cf5240f39bbc",
+      "entry": "/workspace/acp-chat/node_modules/form-data/lib/form_data.js"
+    }
+  ],
+  "formEntrySha256": "648d6c4cdc5d3266393e387307bcb6937169c61552aca019f44e85dd99852fa6",
+  "normal": {
+    "serialized": true,
+    "length": 226,
+    "lengthMatches": true
+  },
+  "fixtures": [
+    {
+      "kind": "field",
+      "input": "field\"\r\nX-Synthetic: injected",
+      "escaped": "name=\"field%22%0D%0AX-Synthetic: injected\"",
+      "injectedHeader": true,
+      "escapedParameter": false,
+      "body": "--synthetic-formdata\r\nContent-Disposition: form-data; name=\"field\"\r\nX-Synthetic: injected\"\r\n\r\nhello\r\n--synthetic-formdata--\r\n"
+    },
+    {
+      "kind": "filename",
+      "input": "file\"\r\nX-Synthetic: injected",
+      "escaped": "filename=\"file%22%0D%0AX-Synthetic: injected\"",
+      "injectedHeader": true,
+      "escapedParameter": false,
+      "body": "--synthetic-formdata\r\nContent-Disposition: form-data; name=\"file\"; filename=\"file\"\r\nX-Synthetic: injected\"\r\nContent-Type: text/plain\r\n\r\nhello\r\n--synthetic-formdata--\r\n"
+    }
+  ],
+  "limitation": "Installed metadata/type-resolution chain, not an Admin runtime form-data invocation. Admin and Storage are not initialized; no transport/provider request."
+}

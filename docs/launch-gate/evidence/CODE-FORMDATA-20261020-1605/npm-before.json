@@ -1,0 +1,18 @@
+{
+  "argv": [
+    "npm",
+    "--cache",
+    "/workspace/work/npm-cache",
+    "view",
+    "form-data@2.5.5",
+    "version",
+    "dist",
+    "gitHead",
+    "--json"
+  ],
+  "start": "2026-10-20T14:17:47.370397+00:00",
+  "end": "2026-10-20T14:17:47.644679+00:00",
+  "code": 0,
+  "stdout_sha256": "d860f254c3dfe9f2d8e5f271304a6ff2db87e953d6e833e77cbf24da99c93d04",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}
