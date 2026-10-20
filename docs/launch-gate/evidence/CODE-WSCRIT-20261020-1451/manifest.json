@@ -1,0 +1,643 @@
+{
+  "unit": "CODE-WSCRIT-20261020-1451",
+  "base_beta": "fb7951f56887ee0b486ee17ee1820618179c81eb",
+  "tested_code_sha": "1a8fd6784b7c0e19eab3b973e49e6dd21eb53d78",
+  "runtime": "Node v24.19.0",
+  "code_files": {
+    "package.json": {
+      "blob": "38a0bc72365d6d163399b630257440454b69f4e1",
+      "sha256": "dc15e8fcd9c4588a9a29970c98c53cadf4805414d5f3b0492af68003e09c2935"
+    },
+    "package-lock.json": {
+      "blob": "9fe06e93eed434a3e70894af50719ffb29c442d8",
+      "sha256": "f134da736a2e9d58d2c1deff57824818619892eebd1eb8c1131c64e5197ef921"
+    },
+    "server.js": {
+      "blob": "250993263d6395508379aa0aa4ae05dac287f0cd",
+      "sha256": "c248242392b3368a078c6cb9330ab3a6653d41083e02a55f5ec2ffc4b319f166"
+    },
+    "lib/data-lifecycle.js": {
+      "blob": "98ac02dc4549d4c45631db80a8b53d49bbfd4f8e",
+      "sha256": "766068d08cd8e3f14a001b967f5eca3c072f693bf4a826ee7373716b8c278a6a"
+    },
+    "scripts/synthetic/guard.cjs": {
+      "blob": "adb5c9372462b3abafdafb416c4b9f7662b0f81f",
+      "sha256": "9669305ce704b27fe531b36a3dfb9bc6af4ee1bf3b8a0f6779baf67ba353e569"
+    },
+    "scripts/synthetic/wscrit-harness.cjs": {
+      "blob": "aee756d3233f28c4c5523e22d65f805fbfefda46",
+      "sha256": "d8c904d97488797bd9251f04a20294d8ab93f10f13c02a0069c7549101d12a5f"
+    }
+  },
+  "commands": {
+    "audit-after.command.json": {
+      "argv": [
+        "npm",
+        "audit",
+        "--json",
+        "--ignore-scripts",
+        "--cache=/workspace/work/npm-cache",
+        "--registry=https://registry.npmjs.org"
+      ],
+      "exit_code": 1,
+      "started_unix": 1792501674.3279164,
+      "duration_seconds": 1.47
+    },
+    "audit-before.command.json": {
+      "argv": [
+        "npm",
+        "audit",
+        "--json",
+        "--ignore-scripts",
+        "--cache=/workspace/work/npm-cache",
+        "--registry=https://registry.npmjs.org"
+      ],
+      "exit_code": 1,
+      "started_unix": 1792501287.317964,
+      "duration_seconds": 1.929
+    },
+    "base.command.json": {
+      "argv": [
+        "git",
+        "rev-parse",
+        "HEAD",
+        "origin/beta"
+      ],
+      "exit_code": 0,
+      "started_unix": 1792501279.0211565,
+      "duration_seconds": 0.004
+    },
+    "chain-baseline-corrected.command.json": {
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/home/agent/.local/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin/override:/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin:/opt/codex/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/agent/.local/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin/fallback",
+        "TMPDIR=/tmp",
+        "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+        "node",
+        "/workspace/acp-chat/scripts/synthetic/wscrit-harness.cjs"
+      ],
+      "exit_code": 0,
+      "started_unix": 1792501588.5455317,
+      "duration_seconds": 0.165
+    },
+    "chain-baseline-final.command.json": {
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/home/agent/.local/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin/override:/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin:/opt/codex/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/agent/.local/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin/fallback",
+        "TMPDIR=/tmp",
+        "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+        "node",
+        "/workspace/acp-chat/scripts/synthetic/wscrit-harness.cjs"
+      ],
+      "exit_code": 1,
+      "started_unix": 1792501565.9961114,
+      "duration_seconds": 0.215
+    },
+    "chain-baseline.command.json": {
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/home/agent/.local/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin/override:/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin:/opt/codex/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/agent/.local/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin/fallback",
+        "TMPDIR=/tmp",
+        "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+        "node",
+        "/workspace/acp-chat/scripts/synthetic/wscrit-harness.cjs"
+      ],
+      "exit_code": 1,
+      "started_unix": 1792501542.8100698,
+      "duration_seconds": 0.215
+    },
+    "chain-candidate-check.command.json": {
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/home/agent/.local/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin/override:/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin:/opt/codex/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/agent/.local/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin/fallback",
+        "TMPDIR=/tmp",
+        "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+        "node",
+        "/workspace/acp-chat/scripts/synthetic/wscrit-harness.cjs"
+      ],
+      "exit_code": 0,
+      "started_unix": 1792501633.5497649,
+      "duration_seconds": 0.218
+    },
+    "chain-candidate.command.json": {
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/home/agent/.local/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin/override:/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin:/opt/codex/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/agent/.local/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin/fallback",
+        "TMPDIR=/tmp",
+        "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+        "node",
+        "/workspace/acp-chat/scripts/synthetic/wscrit-harness.cjs",
+        "--candidate"
+      ],
+      "exit_code": 0,
+      "started_unix": 1792501688.4955363,
+      "duration_seconds": 0.216
+    },
+    "diff-check.command.json": {
+      "argv": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exit_code": 0,
+      "started_unix": 1792501747.78787,
+      "duration_seconds": 0.008
+    },
+    "guard-syntax.command.json": {
+      "argv": [
+        "node",
+        "--check",
+        "scripts/synthetic/guard.cjs"
+      ],
+      "exit_code": 0,
+      "started_unix": 1792501688.8686926,
+      "duration_seconds": 0.065
+    },
+    "install-compat.command.json": {
+      "argv": [
+        "npm",
+        "update",
+        "@firebase/database-compat",
+        "--ignore-scripts",
+        "--no-audit",
+        "--no-fund",
+        "--cache=/workspace/work/npm-cache",
+        "--registry=https://registry.npmjs.org"
+      ],
+      "exit_code": 0,
+      "started_unix": 1792501603.267191,
+      "duration_seconds": 1.37
+    },
+    "install-driver.command.json": {
+      "argv": [
+        "npm",
+        "update",
+        "websocket-driver",
+        "--ignore-scripts",
+        "--no-audit",
+        "--no-fund",
+        "--cache=/workspace/work/npm-cache",
+        "--registry=https://registry.npmjs.org"
+      ],
+      "exit_code": 0,
+      "started_unix": 1792501604.6656523,
+      "duration_seconds": 0.566
+    },
+    "install-locked-tree.command.json": {
+      "argv": [
+        "npm",
+        "ci",
+        "--ignore-scripts",
+        "--no-audit",
+        "--no-fund",
+        "--cache=/workspace/work/npm-cache",
+        "--registry=https://registry.npmjs.org"
+      ],
+      "exit_code": 0,
+      "started_unix": 1792501657.8835268,
+      "duration_seconds": 7.814
+    },
+    "installed-after.command.json": {
+      "argv": [
+        "npm",
+        "ls",
+        "firebase-admin",
+        "@firebase/database-compat",
+        "@firebase/database",
+        "faye-websocket",
+        "websocket-driver",
+        "--json"
+      ],
+      "exit_code": 0,
+      "started_unix": 1792501747.2339618,
+      "duration_seconds": 0.516
+    },
+    "installed-before.command.json": {
+      "argv": [
+        "npm",
+        "ls",
+        "firebase-admin",
+        "@firebase/database-compat",
+        "@firebase/database",
+        "faye-websocket",
+        "websocket-driver",
+        "--json"
+      ],
+      "exit_code": 0,
+      "started_unix": 1792501279.066584,
+      "duration_seconds": 0.718
+    },
+    "installed-pre-candidate.command.json": {
+      "argv": [
+        "npm",
+        "ls",
+        "firebase-admin",
+        "@firebase/database-compat",
+        "@firebase/database",
+        "faye-websocket",
+        "websocket-driver",
+        "--json"
+      ],
+      "exit_code": 0,
+      "started_unix": 1792501620.3165348,
+      "duration_seconds": 0.568
+    },
+    "isolation.command.json": {
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/home/agent/.local/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin/override:/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin:/opt/codex/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/agent/.local/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin/fallback",
+        "TMPDIR=/tmp",
+        "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+        "node",
+        "/workspace/acp-chat/scripts/synthetic/isolation-harness.cjs"
+      ],
+      "exit_code": 0,
+      "started_unix": 1792501746.9904957,
+      "duration_seconds": 0.215
+    },
+    "metadata-admin.command.json": {
+      "argv": [
+        "npm",
+        "view",
+        "firebase-admin",
+        "version",
+        "dependencies",
+        "--json",
+        "--registry=https://registry.npmjs.org",
+        "--cache=/workspace/work/npm-cache"
+      ],
+      "exit_code": 0,
+      "started_unix": 1792501404.5978053,
+      "duration_seconds": 0.467
+    },
+    "metadata-compat-versions.command.json": {
+      "argv": [
+        "npm",
+        "view",
+        "@firebase/database-compat@2",
+        "version",
+        "dependencies",
+        "--json",
+        "--registry=https://registry.npmjs.org",
+        "--cache=/workspace/work/npm-cache"
+      ],
+      "exit_code": 0,
+      "started_unix": 1792501427.8051171,
+      "duration_seconds": 0.52
+    },
+    "metadata-compat.command.json": {
+      "argv": [
+        "npm",
+        "view",
+        "@firebase/database-compat",
+        "version",
+        "dependencies",
+        "dist.integrity",
+        "--json",
+        "--registry=https://registry.npmjs.org",
+        "--cache=/workspace/work/npm-cache"
+      ],
+      "exit_code": 0,
+      "started_unix": 1792501403.946151,
+      "duration_seconds": 0.617
+    },
+    "metadata-driver.command.json": {
+      "argv": [
+        "npm",
+        "view",
+        "websocket-driver",
+        "version",
+        "versions",
+        "dependencies",
+        "engines",
+        "dist",
+        "--json",
+        "--registry=https://registry.npmjs.org",
+        "--cache=/workspace/work/npm-cache"
+      ],
+      "exit_code": 0,
+      "started_unix": 1792501286.1942635,
+      "duration_seconds": 0.466
+    },
+    "metadata-faye.command.json": {
+      "argv": [
+        "npm",
+        "view",
+        "faye-websocket@0.11.4",
+        "version",
+        "dependencies",
+        "dist",
+        "--json",
+        "--registry=https://registry.npmjs.org",
+        "--cache=/workspace/work/npm-cache"
+      ],
+      "exit_code": 0,
+      "started_unix": 1792501286.6967094,
+      "duration_seconds": 0.569
+    },
+    "metadata-selected-parent.command.json": {
+      "argv": [
+        "npm",
+        "view",
+        "@firebase/database-compat@2.1.7",
+        "version",
+        "dependencies",
+        "dist",
+        "--json",
+        "--registry=https://registry.npmjs.org",
+        "--cache=/workspace/work/npm-cache"
+      ],
+      "exit_code": 0,
+      "started_unix": 1792501673.7797878,
+      "duration_seconds": 0.516
+    },
+    "pack-compat-215.command.json": {
+      "argv": [
+        "npm",
+        "pack",
+        "@firebase/database-compat@2.1.5",
+        "--pack-destination=/workspace/work/wscrit-package",
+        "--ignore-scripts",
+        "--cache=/workspace/work/npm-cache",
+        "--registry=https://registry.npmjs.org",
+        "--loglevel=error"
+      ],
+      "exit_code": 0,
+      "started_unix": 1792501447.0936344,
+      "duration_seconds": 0.668
+    },
+    "pack-compat-216.command.json": {
+      "argv": [
+        "npm",
+        "pack",
+        "@firebase/database-compat@2.1.6",
+        "--pack-destination=/workspace/work/wscrit-package",
+        "--ignore-scripts",
+        "--cache=/workspace/work/npm-cache",
+        "--registry=https://registry.npmjs.org",
+        "--loglevel=error"
+      ],
+      "exit_code": 0,
+      "started_unix": 1792501447.821281,
+      "duration_seconds": 0.617
+    },
+    "pack-compat-latest.command.json": {
+      "argv": [
+        "npm",
+        "pack",
+        "@firebase/database-compat@2.1.7",
+        "--pack-destination=/workspace/work/wscrit-package",
+        "--ignore-scripts",
+        "--cache=/workspace/work/npm-cache",
+        "--registry=https://registry.npmjs.org",
+        "--loglevel=error"
+      ],
+      "exit_code": 0,
+      "started_unix": 1792501428.3597229,
+      "duration_seconds": 0.819
+    },
+    "pack-driver.command.json": {
+      "argv": [
+        "npm",
+        "pack",
+        "websocket-driver@0.7.5",
+        "--pack-destination=/workspace/work/wscrit-package",
+        "--ignore-scripts",
+        "--cache=/workspace/work/npm-cache",
+        "--registry=https://registry.npmjs.org",
+        "--loglevel=error"
+      ],
+      "exit_code": 0,
+      "started_unix": 1792501358.6044912,
+      "duration_seconds": 0.467
+    },
+    "parent-resolution-dry-run.command.json": {
+      "argv": [
+        "npm",
+        "update",
+        "@firebase/database-compat",
+        "websocket-driver",
+        "--dry-run",
+        "--json",
+        "--ignore-scripts",
+        "--no-audit",
+        "--no-fund",
+        "--cache=/workspace/work/npm-cache",
+        "--registry=https://registry.npmjs.org"
+      ],
+      "exit_code": 0,
+      "started_unix": 1792501472.6875384,
+      "duration_seconds": 2.782
+    },
+    "resolution-dry-run.command.json": {
+      "argv": [
+        "npm",
+        "update",
+        "websocket-driver",
+        "--dry-run",
+        "--json",
+        "--ignore-scripts",
+        "--no-audit",
+        "--no-fund",
+        "--cache=/workspace/work/npm-cache",
+        "--registry=https://registry.npmjs.org"
+      ],
+      "exit_code": 0,
+      "started_unix": 1792501313.0893753,
+      "duration_seconds": 0.466
+    },
+    "server-syntax.command.json": {
+      "argv": [
+        "node",
+        "--check",
+        "server.js"
+      ],
+      "exit_code": 0,
+      "started_unix": 1792501688.9698071,
+      "duration_seconds": 0.065
+    },
+    "syntax.command.json": {
+      "argv": [
+        "node",
+        "--check",
+        "scripts/synthetic/wscrit-harness.cjs"
+      ],
+      "exit_code": 0,
+      "started_unix": 1792501688.7714877,
+      "duration_seconds": 0.066
+    },
+    "verify.command.json": {
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/home/agent/.local/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin/override:/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin:/opt/codex/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/agent/.local/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin/fallback",
+        "TMPDIR=/tmp",
+        "NODE_ENV=test",
+        "REFRESH_EMERGENCY_ON_BOOT=false",
+        "LOG_PERSIST=false",
+        "LOG_PRETTY=false",
+        "MISTRAL_API_KEY=synthetic-unused",
+        "FIREBASE_DATABASE_URL=https://synthetic.example.test",
+        "FIREBASE_SERVICE_ACCOUNT={}",
+        "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+        "npm_config_cache=/workspace/work/npm-cache",
+        "npm",
+        "run",
+        "verify"
+      ],
+      "exit_code": 0,
+      "started_unix": 1792501689.0782156,
+      "duration_seconds": 13.425
+    }
+  },
+  "provenance": "stdout/stderr opened before each subprocess; codes, argv, start time and duration captured; no transcription; original complete audit JSON remains outside repo",
+  "bundled_transport": "Admin database() really loads compat standalone with inline driver. External driver is loaded separately from declared database->faye dependency. Modular database entry path is resolved/hashed but not loaded: @firebase/app absent, not needed by Admin standalone. No shim or extra dependency installed.",
+  "tests": "Offline real Admin DB refs/query/lifecycle API, invalid paths; zero credential calls; real external driver handshake/masked text/binary/fragment/error, bounded synthetic extension callback expansion and legacy frame length; bundle source-bound presence verified on actual loaded file. No claim of dynamic bundle wire parser test or live RTDB persistence/auth/network.",
+  "baseline": "Old physical modules: compat2.1.4/driver0.7.4. Baseline code lacked only the later --candidate physical-version assertions. Old length rejection flags false, an observed risk, not a fixed behavior.",
+  "initial_errors": {
+    "chain-baseline": "Unused modular database entry requires absent @firebase/app; corrected harness loads Admin actual standalone plus real declared faye dependency. No new dependency or shim.",
+    "chain-baseline-final": "Legacy fixture handshake lacked method/Upgrade headers, closed before length check; fixed actual handshake and assert it succeeded. All assertions retained.",
+    "chain-candidate-check": "Diagnostic, not final validation: npm lock resolution changed but restored physical modules were still old. npm ci --ignore-scripts reified exact lock; final candidate requires explicit physical versions."
+  },
+  "scope": "Lock changes limited to websocket-driver and closest bundled RTDB parent subtree (10 entries). Admin13.10.0, Faye0.11.4, Express chain, Nodemailer and seven residual findings unchanged. No application source changes.",
+  "redaction": "Artifacts reviewed/scanned for token/private-key/JWT markers. No real secrets or personal corpus read. env -i fixtures only; public npm signatures are not credentials.",
+  "network": "UNKNOWN conserved; native restrictions/one-shot permissions respected; no attestation investigation or bypass",
+  "ci": "No CI/Actions claim",
+  "sha256_files": {
+    "audit-after.code": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "audit-after.command.json": "3b299c308cda26c2e4e507f31d26e6fd976563fdffb5ada17a541b52dafe6061",
+    "audit-after.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "audit-before.code": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "audit-before.command.json": "a68e967a4b3fc9d5245d5aa774e7d173a0949674fdf803e860695cb7cd784be5",
+    "audit-before.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "audit-target.projection.json": "7c60e133c2735a442133f24c09c1a8e5b0f699cf9eba1f40c55e74144968241f",
+    "base.code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "base.command.json": "1bd90900af210ac240b9bd91f1c321011ea786aeb330ac3fef84399e5bbf06d6",
+    "base.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "base.stdout": "a6a56aa333c1257a94b991196bbfb24b24fc3bd42479287596c1e8ebb30e0985",
+    "bundled-driver-inspection.json": "9d3199f1de7f8f245dd16333014acd38128f3189a0705e4dba93845f3cdbdd3c",
+    "chain-baseline-corrected.code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "chain-baseline-corrected.command.json": "fd5c9c681f4332eee4062f57776000d8f9a88fd365222db5812da7d4f53c9150",
+    "chain-baseline-corrected.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "chain-baseline-corrected.stdout": "3d761c6d9b36a662cb708be15adc9fc46f87679854d3177a23c324af7d13dc2a",
+    "chain-baseline-final.code": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "chain-baseline-final.command.json": "c6c1e0dcb3249e81fa4692e9cd80a0a502f0bd9f892be74d8f8ee513fa144564",
+    "chain-baseline-final.stderr": "ebe5800cd802376403497da05d882db1af9b49cbd282640fe192c82fd1c90dee",
+    "chain-baseline-final.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "chain-baseline.code": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "chain-baseline.command.json": "cbc8cfd858b53fb9b475184d89703e1d75b65473290cd744bb2bdb20ce798b9f",
+    "chain-baseline.stderr": "c9c399f9d4cb6224672c6362a9730eeddde44376620d24dceb6528dca36aa3af",
+    "chain-baseline.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "chain-candidate-check.code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "chain-candidate-check.command.json": "4a6ae7fca9c026a67c8291dcac8870dd2e84e7f4d29096ea1169c2aa2d498a91",
+    "chain-candidate-check.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "chain-candidate-check.stdout": "3d761c6d9b36a662cb708be15adc9fc46f87679854d3177a23c324af7d13dc2a",
+    "chain-candidate.code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "chain-candidate.command.json": "fd4a655e3e5042f225e58f7e914ac386641365f73758ede44611dc8d059d1d9d",
+    "chain-candidate.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "chain-candidate.stdout": "14e95f6d5601eb112f95c9804575bd6207807d79c5f4919c6d75079e01ffd375",
+    "diff-check.code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "diff-check.command.json": "58c683713b03976438bb025c5887b2874f1775f40356de18e200d65fad72d19c",
+    "diff-check.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "diff-check.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "guard-syntax.code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "guard-syntax.command.json": "0d2bd6af9386997d006d73120bee0fee7b3b11d77fe2590538a0891ff2fa5b68",
+    "guard-syntax.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "guard-syntax.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "install-compat.code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "install-compat.command.json": "ca1607e6998a9b7c89b75435cae2ea26bdbe217f348805a54eaf1dae4716ea7e",
+    "install-compat.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "install-compat.stdout": "b125771fda8addd462adfe7f7b03299feb35e28badbb2d16ae8589e371216f8f",
+    "install-driver.code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "install-driver.command.json": "67e8cfc7f829981e816a4415caf491535b9494f647cdee73e365dacf0f2d2d93",
+    "install-driver.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "install-driver.stdout": "42cacdd635be894cbb2bb2c62eb809606433cddf825962306fe7c0736ce905b6",
+    "install-locked-tree.code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "install-locked-tree.command.json": "2062c7e1d6a703d0a6478583c7a900dca649f1d6c7f1c7ef9aa6f715fa20917b",
+    "install-locked-tree.stderr": "c403d3e2287f76231c644735926e4e7b5ac01f0a1ac91dc2c0794f9a61d7a08c",
+    "install-locked-tree.stdout": "9ed78490a4ede87a2ad44c767b984b66bd6988eb7bfcc1ea8e5ad8bdfc7e1fd2",
+    "installed-after.code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "installed-after.command.json": "88cafd6c10f4d6892845f26bc011aef16187875efcff1d78ca4093d0f4297ff9",
+    "installed-after.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "installed-after.stdout": "3683ca69f286e9af71b392e41758cdd6a93d00de4dc92385ad7d6c8a718e757e",
+    "installed-before.code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "installed-before.command.json": "58558b62904cd50b966dd2d9678130d0b02e45cfe9780495da4ced14eafd98a6",
+    "installed-before.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "installed-before.stdout": "26f12b4f221aa8c553794e2b036d100a80910d35bf501a37e5e5df8973f7b3b4",
+    "installed-pre-candidate.code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "installed-pre-candidate.command.json": "320a20dcea07086dbb0d9056410c7699e0f632fa0309aba5f9c11cb2ddb52e31",
+    "installed-pre-candidate.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "installed-pre-candidate.stdout": "3683ca69f286e9af71b392e41758cdd6a93d00de4dc92385ad7d6c8a718e757e",
+    "isolation.code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "isolation.command.json": "df7ba63f87daefc5f4b408148061240a53784657c6f924ba9a1b96946db0ca87",
+    "isolation.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "isolation.stdout": "804df74a405644b788976f048f5e321863534250380337a3621184e4bf9989a7",
+    "lock-provenance.json": "1c80aab01f8f0fa75d8fbfff980922225793eee0b07a34b60ae6a1fef8f98650",
+    "metadata-admin.code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "metadata-admin.command.json": "0cae27541d9f76f4109d41d08fb624fe6730a1a96554001099cb819275904736",
+    "metadata-admin.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "metadata-admin.stdout": "bfc81f60c9e71a973bdbe60aeb2422de36a2762fed9b999dd44119ff3114b5aa",
+    "metadata-compat-versions.code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "metadata-compat-versions.command.json": "07b91ec3637bf9eea38220023d8defdf6a9f99dbaf2b0578cc96b074cf89518e",
+    "metadata-compat-versions.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "metadata-compat-versions.stdout": "8b696b79976b1b323e8996b02e6bc5242a819f3f42b429e95748e74912ba6112",
+    "metadata-compat.code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "metadata-compat.command.json": "2c27fdf9a1f4946bf2e6c53cac2bbd85b1b8b340b0e9735329fd62b407723a4b",
+    "metadata-compat.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "metadata-compat.stdout": "861058bdeb7ae63e20f85dbff0639d80bbc27a06162b6eaf39c803b5f3816e68",
+    "metadata-driver.code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "metadata-driver.command.json": "a10760224bf1541ac0b724b16cd608cf058d760a6fff8c9ea057b465ca10c2df",
+    "metadata-driver.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "metadata-driver.stdout": "a9ba6857d812ba56b2a3b0df4b7fb89b7743f2f68cbb2090242f2884a4af152b",
+    "metadata-faye.code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "metadata-faye.command.json": "0e6f12a2ab5a338dd4c1087612a98526222065955b136f171101e88833ad6713",
+    "metadata-faye.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "metadata-faye.stdout": "823f3445e266d8355ff8f99838f30c58eb3dadfb6a439f23374e04d05ae99c3d",
+    "metadata-selected-parent.code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "metadata-selected-parent.command.json": "e23b19c02cc1353deb109448f0beaa88e5ef14c1af27341165498932dfd0d016",
+    "metadata-selected-parent.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "metadata-selected-parent.stdout": "7c19cf87ef97750b48c655e9b1b9e5b8c1778b9175b09d9290e058fde473368f",
+    "pack-compat-215.code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "pack-compat-215.command.json": "0db528d6e1bcca62c70a4014797f9b70ce320be38cb94e5653fb7059e2c86676",
+    "pack-compat-215.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "pack-compat-215.stdout": "b2bde234a44fda01441f036d0cdb72c4f6a452bb928805be65c14adeb7ba0fc1",
+    "pack-compat-216.code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "pack-compat-216.command.json": "2afa1332e6be5b5c9b82821aaf0e85d2c062b930953720e3eed2ec3d32c5a66f",
+    "pack-compat-216.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "pack-compat-216.stdout": "c79013d54751d93805036cc1dbf72d0d86017fb01c5899fa82d80b1c542ee561",
+    "pack-compat-latest.code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "pack-compat-latest.command.json": "e8c2f1bf1de7e39590ee0a3b3c671e3f4b22f574d1e5126ff5249fbbf921e291",
+    "pack-compat-latest.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "pack-compat-latest.stdout": "a658f48508b2a686cc26c165bb8c8a08e5687901fe36c626eba3bd61090510fd",
+    "pack-driver.code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "pack-driver.command.json": "2e495a054761daf63ff1a585ae26d9eb5827805cf02227b96809937d90854950",
+    "pack-driver.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "pack-driver.stdout": "2bb772e2150b3c2a9affed350165f8eed9ea59fd27795c39cb2e5a56b856172d",
+    "parent-resolution-dry-run.code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "parent-resolution-dry-run.command.json": "d4563b55928c0e0a64da4bfd67a96c7ba2197821e6086a59b852029cf3a7983e",
+    "parent-resolution-dry-run.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "parent-resolution-dry-run.stdout": "27f82910dd26f6669f979ec0d7376801847939b7e4cd69ad03009fcebd5d597f",
+    "resolution-dry-run.code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "resolution-dry-run.command.json": "eeb34c6798bfd6be3bdf503142504c5c2e1889f9e5459fc0bcb028313bd2cfeb",
+    "resolution-dry-run.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "resolution-dry-run.stdout": "3bcc69666c7e3c4c5243f6e13bdcf434b4fb2f4c10dd5a790681c1b2397efbb0",
+    "server-syntax.code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "server-syntax.command.json": "4ba258f7965fbeb2afe62c0135e9f4142af03c7e6fcae1db51457b6a37063afa",
+    "server-syntax.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "server-syntax.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "syntax.code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "syntax.command.json": "b3c058cd797edefe52f42cb028ad06ec8ebc41a8a7fc056123508d791db39f98",
+    "syntax.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "syntax.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "verify.code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "verify.command.json": "2964145b8c9269510beef7be8c7038cbd135ebad662697df39a26b6e65a172cf",
+    "verify.stderr": "b3d6bfbfcace0752ebcbb03c18b61aac99cbe59670ff45e5857c0a1b36070749",
+    "verify.stdout": "0025d52aceed9d3cba3b7c93d544ac3078104ccfc592707a0855024c2e7c10a2"
+  }
+}

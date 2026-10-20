@@ -1,0 +1,10 @@
+{
+  "argv": [
+    "node",
+    "--check",
+    "scripts/synthetic/wscrit-harness.cjs"
+  ],
+  "exit_code": 0,
+  "started_unix": 1792501688.7714877,
+  "duration_seconds": 0.066
+}

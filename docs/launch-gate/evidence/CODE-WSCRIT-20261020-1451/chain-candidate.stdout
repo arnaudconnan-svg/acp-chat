@@ -1,0 +1,36 @@
+{
+  "chain": [
+    {
+      "entry": "/workspace/acp-chat/node_modules/firebase-admin/lib/index.js",
+      "version": "13.10.0",
+      "sha256": "2e4ccc72e674fe268abb66dcd4172b55392356d8bd044876e3176066880c89c7"
+    },
+    {
+      "entry": "/workspace/acp-chat/node_modules/@firebase/database-compat/dist/index.standalone.js",
+      "version": "2.1.7",
+      "sha256": "308f0f904b47e92a009d445964ac3392a3692b1a8166020b4effe352285c4b4c"
+    },
+    {
+      "entry": "/workspace/acp-chat/node_modules/@firebase/database/dist/index.node.cjs.js",
+      "version": "1.1.5",
+      "sha256": "903623a4f51a67706497d85fe54561cbee71ac0363c02b5fffc51226cecec6b7"
+    },
+    {
+      "entry": "/workspace/acp-chat/node_modules/faye-websocket/lib/faye/websocket.js",
+      "version": "0.11.4",
+      "sha256": "e0b42c7ddfd511bb8cbb67b1d1613ab49b016a58e7eff24320f446b8db92a1c5"
+    },
+    {
+      "entry": "/workspace/acp-chat/node_modules/websocket-driver/lib/websocket/driver.js",
+      "version": "0.7.5",
+      "sha256": "24d672a4d05d98385edd9f0b8c0e62809ba45d6daacec3b62857f9c7479aeefa"
+    }
+  ],
+  "adminUsesBundledDriver": true,
+  "externalLoadedByAdmin": false,
+  "tokenCalls": 0,
+  "postExtensionOversizeRejected": true,
+  "legacyOversizeClosed": true,
+  "bundledPostExtensionBound": true
+}
+PASS real Admin/RTDB offline application refs/query/error API; real declared faye/driver; text/binary/fragment/error/length checks; M0 intact

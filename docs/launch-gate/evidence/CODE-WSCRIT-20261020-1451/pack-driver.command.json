@@ -1,0 +1,15 @@
+{
+  "argv": [
+    "npm",
+    "pack",
+    "websocket-driver@0.7.5",
+    "--pack-destination=/workspace/work/wscrit-package",
+    "--ignore-scripts",
+    "--cache=/workspace/work/npm-cache",
+    "--registry=https://registry.npmjs.org",
+    "--loglevel=error"
+  ],
+  "exit_code": 0,
+  "started_unix": 1792501358.6044912,
+  "duration_seconds": 0.467
+}

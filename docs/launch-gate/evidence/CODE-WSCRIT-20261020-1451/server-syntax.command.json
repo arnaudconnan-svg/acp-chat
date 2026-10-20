@@ -1,0 +1,10 @@
+{
+  "argv": [
+    "node",
+    "--check",
+    "server.js"
+  ],
+  "exit_code": 0,
+  "started_unix": 1792501688.9698071,
+  "duration_seconds": 0.065
+}

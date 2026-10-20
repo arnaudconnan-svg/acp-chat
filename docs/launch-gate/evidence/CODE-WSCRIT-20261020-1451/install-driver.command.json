@@ -1,0 +1,15 @@
+{
+  "argv": [
+    "npm",
+    "update",
+    "websocket-driver",
+    "--ignore-scripts",
+    "--no-audit",
+    "--no-fund",
+    "--cache=/workspace/work/npm-cache",
+    "--registry=https://registry.npmjs.org"
+  ],
+  "exit_code": 0,
+  "started_unix": 1792501604.6656523,
+  "duration_seconds": 0.566
+}

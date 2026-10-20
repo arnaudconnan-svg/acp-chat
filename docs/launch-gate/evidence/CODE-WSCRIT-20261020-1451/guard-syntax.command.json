@@ -1,0 +1,10 @@
+{
+  "argv": [
+    "node",
+    "--check",
+    "scripts/synthetic/guard.cjs"
+  ],
+  "exit_code": 0,
+  "started_unix": 1792501688.8686926,
+  "duration_seconds": 0.065
+}

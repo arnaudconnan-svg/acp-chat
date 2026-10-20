@@ -1,0 +1,12 @@
+{
+  "version": "2.1.7",
+  "dependencies": {
+    "tslib": "^2.1.0",
+    "@firebase/util": "1.15.3",
+    "@firebase/logger": "0.5.2",
+    "@firebase/database": "1.1.5",
+    "@firebase/component": "0.7.5",
+    "@firebase/database-types": "1.0.22"
+  },
+  "dist.integrity": "sha512-lBq9sJm8MnJINKJnkAKSOj2MbC66xGoSVCcGkPtstl+lkoKEBtD46qHLbuDgW/WbLPoKVm17RIN8BxHj+Z2F2w=="
+}

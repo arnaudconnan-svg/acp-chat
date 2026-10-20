@@ -1,0 +1,39 @@
+{
+  "version": "1.0.0",
+  "name": "acp-chat",
+  "dependencies": {
+    "firebase-admin": {
+      "version": "13.10.0",
+      "resolved": "https://registry.npmjs.org/firebase-admin/-/firebase-admin-13.10.0.tgz",
+      "overridden": false,
+      "dependencies": {
+        "@firebase/database-compat": {
+          "version": "2.1.7",
+          "resolved": "https://registry.npmjs.org/@firebase/database-compat/-/database-compat-2.1.7.tgz",
+          "overridden": false,
+          "dependencies": {
+            "@firebase/database": {
+              "version": "1.1.5",
+              "resolved": "https://registry.npmjs.org/@firebase/database/-/database-1.1.5.tgz",
+              "overridden": false,
+              "dependencies": {
+                "faye-websocket": {
+                  "version": "0.11.4",
+                  "resolved": "https://registry.npmjs.org/faye-websocket/-/faye-websocket-0.11.4.tgz",
+                  "overridden": false,
+                  "dependencies": {
+                    "websocket-driver": {
+                      "version": "0.7.5",
+                      "resolved": "https://registry.npmjs.org/websocket-driver/-/websocket-driver-0.7.5.tgz",
+                      "overridden": false
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

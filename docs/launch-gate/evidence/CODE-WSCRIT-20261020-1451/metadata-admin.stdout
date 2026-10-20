@@ -1,0 +1,12 @@
+{
+  "version": "14.5.0",
+  "dependencies": {
+    "jwks-rsa": "^4.0.1",
+    "jsonwebtoken": "^9.0.0",
+    "@fastify/busboy": "^3.0.0",
+    "fast-deep-equal": "^3.1.1",
+    "google-auth-library": "^11.1.0",
+    "@firebase/database-types": "^1.0.20",
+    "@firebase/database-compat": "^2.1.4"
+  }
+}

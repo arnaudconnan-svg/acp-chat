@@ -1,0 +1,18 @@
+{
+  "argv": [
+    "npm",
+    "update",
+    "@firebase/database-compat",
+    "websocket-driver",
+    "--dry-run",
+    "--json",
+    "--ignore-scripts",
+    "--no-audit",
+    "--no-fund",
+    "--cache=/workspace/work/npm-cache",
+    "--registry=https://registry.npmjs.org"
+  ],
+  "exit_code": 0,
+  "started_unix": 1792501472.6875384,
+  "duration_seconds": 2.782
+}

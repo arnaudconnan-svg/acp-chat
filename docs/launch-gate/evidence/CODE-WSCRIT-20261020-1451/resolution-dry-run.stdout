@@ -1,0 +1,24 @@
+change websocket-driver 0.7.4 => 0.7.5
+{
+  "add": [],
+  "added": 0,
+  "audited": 0,
+  "change": [
+    {
+      "from": {
+        "name": "websocket-driver",
+        "version": "0.7.4",
+        "path": "/workspace/acp-chat/node_modules/websocket-driver"
+      },
+      "to": {
+        "name": "websocket-driver",
+        "version": "0.7.5",
+        "path": "/workspace/acp-chat/node_modules/websocket-driver"
+      }
+    }
+  ],
+  "changed": 1,
+  "funding": 0,
+  "remove": [],
+  "removed": 0
+}
