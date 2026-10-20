@@ -1,0 +1,17 @@
+{
+  "argv": [
+    "git",
+    "diff",
+    "30e3e74fb7b47da6c4df72d19172e1ac4f99e6cc",
+    "HEAD",
+    "--",
+    "package.json",
+    "package-lock.json",
+    "scripts/synthetic/grpc-harness.cjs"
+  ],
+  "start": "2026-10-20T19:19:47.282340+00:00",
+  "end": "2026-10-20T19:19:47.286146+00:00",
+  "code": 0,
+  "stdout_sha256": "d622352e608670cd47d5bd1cd5cc1115ce0dd48c9f1e5cf9029c0d5d95fc3e37",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

@@ -1,0 +1,386 @@
+diff --git a/package-lock.json b/package-lock.json
+index f95820f..e0dd182 100644
+--- a/package-lock.json
++++ b/package-lock.json
+@@ -524,9 +524,9 @@
+       }
+     },
+     "node_modules/@grpc/grpc-js": {
+-      "version": "1.14.3",
+-      "resolved": "https://registry.npmjs.org/@grpc/grpc-js/-/grpc-js-1.14.3.tgz",
+-      "integrity": "sha512-Iq8QQQ/7X3Sac15oB6p0FmUg/klxQvXLeileoqrTRGJYLV+/9tubbr9ipz0GKHjmXVsgFPo/+W+2cA8eNcR+XA==",
++      "version": "1.14.5",
++      "resolved": "https://registry.npmjs.org/@grpc/grpc-js/-/grpc-js-1.14.5.tgz",
++      "integrity": "sha512-7VZM+SVdEcUUqSQeNI3zM8Qs/BhQKZndPo2h5VkYkAM8Iz0wJIa8mKV5ekQGqG8UUsnkQ0NMxIxwkIHYvj0qOw==",
+       "license": "Apache-2.0",
+       "optional": true,
+       "dependencies": {
+diff --git a/package.json b/package.json
+index 32530cf..0f1f3fa 100644
+--- a/package.json
++++ b/package.json
+@@ -63,7 +63,7 @@
+     "preff:git:harness": "node scripts/preff-git-guard-harness.js",
+     "smoke:ui:local": "node scripts/ui-smoke-local.js",
+     "ui-layout:verify": "node scripts/ui-layout-verify.js",
+-    "verify": "node --check server.js && npm run formdata:harness && npm run busboy:harness && npm run wscrit:harness && npm run express-chain:harness && npm run nodemailer:harness && npm run m3:emergency:harness && npm run m3:safety:harness && npm run password-reset:harness && npm run password-reset-frontend:harness && npm run password-reset-server:harness && npm run preff:git:harness && npm run health:harness && npm run no-openai-runtime:harness && npm run mistral:harness && npm run title:harness && npm run title:conflict:mistral:harness && npm run information-routing:mistral:harness && npm run exploration:mistral:harness && npm run recall-routing:mistral:harness && npm run contact-discharge:mistral:harness && npm run immediate-alliance:mistral:harness && npm run interpretation-rejection:mistral:harness && npm run dependency-risk:mistral:harness && npm run major-harm-response:mistral:harness && npm run acute-crisis-followup:mistral:harness && npm run n2-writer:mistral:harness && npm run major-harm-risk:mistral:harness && npm run suicide-risk:mistral:harness && npm run writer:mistral:harness && npm run memory:mistral:harness && npm run intersession:mistral:harness && npm run intersession:source:harness && npm run affiliation:mistral:harness && npm run state:harness && npm run posture:harness && npm run analyzers:harness && npm run prompts:consistency && npm run contract-validator:harness && npm run human-support:harness && npm run flags:harness && npm run conversation-state:harness && npm run runtime-schemas:harness && npm run debugmeta-unit:harness && npm run auth-conversation:harness && npm run chat-routing:harness && npm run branching:harness && npm run transcript:harness && npm run crisis-routing:harness && npm run llm-messages:harness && npm run conversation-data:harness && npm run ui-layout:verify",
++    "verify": "node --check server.js && npm run grpc:harness && npm run formdata:harness && npm run busboy:harness && npm run wscrit:harness && npm run express-chain:harness && npm run nodemailer:harness && npm run m3:emergency:harness && npm run m3:safety:harness && npm run password-reset:harness && npm run password-reset-frontend:harness && npm run password-reset-server:harness && npm run preff:git:harness && npm run health:harness && npm run no-openai-runtime:harness && npm run mistral:harness && npm run title:harness && npm run title:conflict:mistral:harness && npm run information-routing:mistral:harness && npm run exploration:mistral:harness && npm run recall-routing:mistral:harness && npm run contact-discharge:mistral:harness && npm run immediate-alliance:mistral:harness && npm run interpretation-rejection:mistral:harness && npm run dependency-risk:mistral:harness && npm run major-harm-response:mistral:harness && npm run acute-crisis-followup:mistral:harness && npm run n2-writer:mistral:harness && npm run major-harm-risk:mistral:harness && npm run suicide-risk:mistral:harness && npm run writer:mistral:harness && npm run memory:mistral:harness && npm run intersession:mistral:harness && npm run intersession:source:harness && npm run affiliation:mistral:harness && npm run state:harness && npm run posture:harness && npm run analyzers:harness && npm run prompts:consistency && npm run contract-validator:harness && npm run human-support:harness && npm run flags:harness && npm run conversation-state:harness && npm run runtime-schemas:harness && npm run debugmeta-unit:harness && npm run auth-conversation:harness && npm run chat-routing:harness && npm run branching:harness && npm run transcript:harness && npm run crisis-routing:harness && npm run llm-messages:harness && npm run conversation-data:harness && npm run ui-layout:verify",
+     "verify:full": "npm run verify",
+     "reset:data": "node scripts/reset-app-data.js",
+     "update:emergency-numbers": "node scripts/update-emergency-numbers.js",
+@@ -112,6 +112,7 @@
+     "m3:safety:harness": "node scripts/synthetic/m3-safety-characterization.cjs",
+     "nodemailer:harness": "node --require ./scripts/synthetic/guard.cjs scripts/synthetic/nodemailer-harness.cjs",
+     "express-chain:harness": "node --require ./scripts/synthetic/guard.cjs scripts/synthetic/express-chain-harness.cjs",
++    "grpc:harness": "node --require ./scripts/synthetic/guard.cjs scripts/synthetic/grpc-harness.cjs",
+     "formdata:harness": "node --require ./scripts/synthetic/guard.cjs scripts/synthetic/formdata-harness.cjs",
+     "busboy:harness": "node --require ./scripts/synthetic/guard.cjs scripts/synthetic/busboy-harness.cjs",
+     "wscrit:harness": "node --require ./scripts/synthetic/guard.cjs scripts/synthetic/wscrit-harness.cjs --candidate"
+diff --git a/scripts/synthetic/grpc-harness.cjs b/scripts/synthetic/grpc-harness.cjs
+new file mode 100644
+index 0000000..86989b9
+--- /dev/null
++++ b/scripts/synthetic/grpc-harness.cjs
+@@ -0,0 +1,342 @@
++'use strict';
++const assert = require('node:assert/strict');
++const fs = require('node:fs');
++const path = require('node:path');
++const crypto = require('node:crypto');
++const { createRequire } = require('node:module');
++const { EventEmitter } = require('node:events');
++const { TLSSocket } = require('node:tls');
++const zlib = require('node:zlib');
++assert(
++  require.cache[path.join(__dirname, 'guard.cjs')],
++  'M0 must be preloaded'
++);
++function packageAt(entry) {
++  let dir = path.dirname(entry);
++  while (true) {
++    const file = path.join(dir, 'package.json');
++    if (fs.existsSync(file)) {
++      const metadata = JSON.parse(fs.readFileSync(file, 'utf8'));
++      if (metadata.name && metadata.version) return { dir, file, ...metadata };
++    }
++    const parent = path.dirname(dir);
++    assert.notEqual(parent, dir);
++    dir = parent;
++  }
++}
++const adminEntry = require.resolve('firebase-admin');
++const firestoreEntry = createRequire(adminEntry).resolve(
++  '@google-cloud/firestore'
++);
++const gaxEntry = createRequire(firestoreEntry).resolve('google-gax');
++const gaxRequire = createRequire(gaxEntry);
++const grpcEntry = gaxRequire.resolve('@grpc/grpc-js');
++const grpc = gaxRequire('@grpc/grpc-js');
++const chain = [adminEntry, firestoreEntry, gaxEntry, grpcEntry].map(packageAt);
++assert.deepEqual(
++  chain.map((p) => p.version),
++  [
++    '13.10.0',
++    '7.11.6',
++    '4.6.1',
++    process.argv.includes('--baseline') ? '1.14.3' : '1.14.5'
++  ]
++);
++assert.equal(
++  chain[0].optionalDependencies['@google-cloud/firestore'],
++  '^7.11.0'
++);
++assert.equal(chain[1].dependencies['google-gax'], '^4.3.3');
++assert.equal(chain[2].dependencies['@grpc/grpc-js'], '^1.10.9');
++const sourceRoot = path.dirname(grpcEntry);
++const { BaseServerInterceptingCall } = require(
++  path.join(sourceRoot, 'server-interceptors.js')
++);
++const { StreamDecoder } = require(path.join(sourceRoot, 'stream-decoder.js'));
++function frame(bytes, compressed = false) {
++  const header = Buffer.alloc(5);
++  header[0] = compressed ? 1 : 0;
++  header.writeUInt32BE(bytes.length, 1);
++  return Buffer.concat([header, bytes]);
++}
++// Only the I/O boundary is synthetic. No real socket/TLS session is constructed.
++class MemoryStream extends EventEmitter {
++  constructor(socket = {}) {
++    super();
++    this.session = { socket };
++    this.outputs = [];
++    this.destroyed = false;
++    this.closed = false;
++  }
++  pause() {}
++  resume() {}
++  respond(headers) {
++    this.outputs.push(headers);
++    this.onOutput?.(headers);
++  }
++  sendTrailers(headers) {
++    this.outputs.push(headers);
++    this.onOutput?.(headers);
++  }
++  write(bytes, callback) {
++    this.outputs.push(Buffer.from(bytes));
++    callback?.();
++    return true;
++  }
++  end() {
++    this.emit('wantTrailers');
++  }
++}
++function tlsFixture(authorized) {
++  const socket = Object.create(TLSSocket.prototype);
++  Object.defineProperties(socket, {
++    authorized: { value: authorized },
++    getPeerCertificate: {
++      value: () => ({ raw: Buffer.from('synthetic-certificate') })
++    },
++    localAddress: { value: undefined },
++    localPort: { value: undefined },
++    remoteAddress: { value: undefined },
++    remotePort: { value: undefined }
++  });
++  return socket;
++}
++const handler = {
++  path: '/synthetic.Service/Test',
++  serialize: (x) => Buffer.from(x),
++  deserialize: (x) => x.toString()
++};
++function baseCall(stream = new MemoryStream()) {
++  return new BaseServerInterceptingCall(
++    stream,
++    {
++      ':authority': 'synthetic.example.test',
++      'content-type': 'application/grpc'
++    },
++    null,
++    handler,
++    { 'grpc.max_receive_message_length': 64 }
++  );
++}
++const results = [];
++async function auth() {
++  const unauthorized = baseCall(
++    new MemoryStream(tlsFixture(false))
++  ).getAuthContext();
++  const authorized = baseCall(
++    new MemoryStream(tlsFixture(true))
++  ).getAuthContext();
++  const plaintext = baseCall().getAuthContext();
++  results.push({
++    case: 'auth',
++    unauthorizedCertificateExposed: !!unauthorized.sslPeerCertificate,
++    authorizedCertificateExposed: !!authorized.sslPeerCertificate,
++    plaintext
++  });
++  assert(
++    authorized.sslPeerCertificate.raw.equals(
++      Buffer.from('synthetic-certificate')
++    )
++  );
++  assert.deepEqual(plaintext, {});
++  assert.deepEqual(
++    unauthorized,
++    {},
++    'unauthorized TLS fixture must not expose a trusted auth context'
++  );
++}
++async function dispatch(type, throws) {
++  const server = new grpc.Server({ 'grpc.enable_channelz': 0 });
++  const stream = new MemoryStream();
++  let timer;
++  const done = new Promise((resolve, reject) => {
++    timer = setTimeout(
++      () => reject(new Error('bounded server dispatch timeout')),
++      1000
++    );
++    stream.onOutput = (headers) => {
++      if (headers['grpc-status'] !== undefined)
++        resolve({
++          code: Number(headers['grpc-status']),
++          details: decodeURI(headers['grpc-message'] || '')
++        });
++    };
++  });
++  server.register(
++    handler.path,
++    (call, callback) => {
++      if (throws) throw new Error('synthetic-internal-marker');
++      assert.equal(call.request, 'hello');
++      callback(null, 'world');
++    },
++    handler.serialize,
++    handler.deserialize,
++    type
++  );
++  server._streamHandler([], stream, {
++    ':path': handler.path,
++    ':authority': 'synthetic.example.test',
++    'content-type': 'application/grpc'
++  });
++  if (type === 'unary' || type === 'serverStream') {
++    stream.emit('data', frame(Buffer.from('hello')));
++    stream.emit('end');
++  }
++  try {
++    return {
++      ...(await done),
++      payloads: stream.outputs
++        .filter(Buffer.isBuffer)
++        .map((x) => x.subarray(5).toString())
++    };
++  } finally {
++    clearTimeout(timer);
++    server.forceShutdown();
++  }
++}
++async function errors() {
++  assert.equal(
++    process.env.GRPC_NODE_DEBUG_SEND_ERROR_DETAILS,
++    undefined,
++    'default privacy setting required'
++  );
++  const normal = await dispatch('unary', false);
++  assert.equal(normal.code, grpc.status.OK);
++  assert.deepEqual(normal.payloads, ['world']);
++  const observed = [];
++  for (const type of ['unary', 'clientStream', 'serverStream', 'bidi'])
++    observed.push({ type, ...(await dispatch(type, true)) });
++  results.push({ case: 'handler-errors', normal, observed });
++  for (const value of observed) {
++    assert.equal(value.code, grpc.status.UNKNOWN);
++    assert.equal(
++      value.details,
++      'Unknown error',
++      value.type + ': internal thrown details must stay private'
++    );
++  }
++}
++async function compression() {
++  const call = baseCall();
++  const normal = Buffer.from('hello');
++  assert.deepEqual(call.decompressMessage(frame(normal), 'identity'), normal);
++  for (const encoding of ['gzip', 'deflate']) {
++    const zip = encoding === 'gzip' ? zlib.gzipSync : zlib.deflateSync;
++    assert.deepEqual(
++      await call.decompressMessage(frame(zip(normal), true), encoding),
++      normal
++    );
++    await assert.rejects(
++      call.decompressMessage(frame(zip(Buffer.alloc(128)), true), encoding),
++      (error) => error.code === grpc.status.RESOURCE_EXHAUSTED
++    );
++    await assert.rejects(
++      call.decompressMessage(
++        frame(Buffer.from([255, 255, 255]), true),
++        encoding
++      ),
++      (error) =>
++        error.code === grpc.status.INTERNAL &&
++        error.details === 'Failed to decompress message'
++    );
++  }
++  results.push({
++    case: 'compression',
++    identity: 'normal',
++    gzip: 'normal + limit + corrupt',
++    deflate: 'normal + limit + corrupt'
++  });
++}
++async function framing() {
++  const bytes = frame(Buffer.from('hello'));
++  const decoder = new StreamDecoder(64),
++    decoded = [];
++  for (let i = 0; i < bytes.length; i += 2)
++    decoded.push(...decoder.write(bytes.subarray(i, i + 2)));
++  assert.deepEqual(decoded, [bytes]);
++  const oversized = Buffer.from([0, 0, 0, 0, 65]);
++  assert.throws(
++    () => new StreamDecoder(64).write(oversized),
++    /larger than max/
++  );
++  const server = new grpc.Server({ 'grpc.enable_channelz': 0 }),
++    stream = new MemoryStream();
++  server._streamHandler([], stream, {
++    ':path': handler.path,
++    'content-type': 'text/plain'
++  });
++  assert.doesNotThrow(() =>
++    stream.emit('error', new Error('synthetic-malformed-stream'))
++  );
++  server.forceShutdown();
++  results.push({
++    case: 'framing',
++    chunkedNormal: true,
++    oversizedHeaderRejected: true,
++    malformedContentTypeStreamErrorHandled: true
++  });
++}
++const selected = process.argv.find((x) => x.startsWith('--case='))?.slice(7);
++let complete = false;
++process.on('beforeExit', () => {
++  if (!complete) process.exitCode = 1;
++});
++(async () => {
++  const failures = [];
++  for (const [name, run] of Object.entries({
++    auth,
++    errors,
++    compression,
++    framing
++  })) {
++    if (selected && name !== selected) continue;
++    try {
++      await run();
++    } catch (error) {
++      failures.push({ case: name, error: error.message });
++    }
++  }
++  assert.throws(() => require('https').get('https://synthetic.example.test'));
++  assert.throws(() => require('net').connect(443, 'synthetic.example.test'));
++  assert.throws(() => require('tls').connect(443, 'synthetic.example.test'));
++  assert.throws(() => require('firebase-admin'));
++  assert.throws(() => fs.readFileSync(path.resolve('.env')));
++  assert.throws(() =>
++    fs.readFileSync(path.resolve('data/synthetic-not-read.json'))
++  );
++  console.log(
++    JSON.stringify(
++      {
++        node: { version: process.version, execPath: process.execPath },
++        chain: chain.map((p, i) => ({
++          name: p.name,
++          version: p.version,
++          entry: [adminEntry, firestoreEntry, gaxEntry, grpcEntry][i]
++        })),
++        sources: [
++          'server-interceptors.js',
++          'server.js',
++          'transport.js',
++          'stream-decoder.js'
++        ].map((name) => ({
++          file: path.join(sourceRoot, name),
++          sha256: crypto
++            .createHash('sha256')
++            .update(fs.readFileSync(path.join(sourceRoot, name)))
++            .digest('hex')
++        })),
++        results,
++        failures,
++        limitation:
++          'Real gRPC exported Server and BaseServerInterceptingCall with in-memory HTTP2/TLS-shaped boundary fixtures; no handshake, socket, Firebase E2E, or private-class extraction. Client transport auth branch reviewed as source only.'
++      },
++      null,
++      2
++    )
++  );
++  assert.deepEqual(failures, []);
++  complete = true;
++})().catch((error) => {
++  console.error(error);
++  process.exitCode = 1;
++});

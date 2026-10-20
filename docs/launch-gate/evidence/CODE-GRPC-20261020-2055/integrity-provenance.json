@@ -1,0 +1,10 @@
+{
+  "version": "1.14.5",
+  "tarball": "https://registry.npmjs.org/@grpc/grpc-js/-/grpc-js-1.14.5.tgz",
+  "integrity": "sha512-7VZM+SVdEcUUqSQeNI3zM8Qs/BhQKZndPo2h5VkYkAM8Iz0wJIa8mKV5ekQGqG8UUsnkQ0NMxIxwkIHYvj0qOw==",
+  "tarball_matches_registry_sha512_and_shasum": true,
+  "registry_gitHead": "56567d9604b4e45cdca0d2e3c2a60ac227ee659d",
+  "signatures_present": true,
+  "attestation_field_present": false,
+  "limitation": "npm HTTPS metadata and tarball retrieved. Signatures/Sigstore not independently verified; gitHead is registry metadata, not a provenance attestation."
+}

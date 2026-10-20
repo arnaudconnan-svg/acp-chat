@@ -1,0 +1,17 @@
+node:events:487
+      throw er; // Unhandled 'error' event
+      ^
+
+Error: incorrect header check
+    at genericNodeError (node:internal/errors:985:15)
+    at wrappedFn (node:internal/errors:539:14)
+    at Zlib.zlibOnError [as onerror] (node:zlib:191:17)
+Emitted 'error' event on Gunzip instance at:
+    at emitErrorNT (node:internal/streams/destroy:170:8)
+    at emitErrorCloseNT (node:internal/streams/destroy:129:3)
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  errno: -3,
+  code: 'Z_DATA_ERROR'
+}
+
+Node.js v24.19.0

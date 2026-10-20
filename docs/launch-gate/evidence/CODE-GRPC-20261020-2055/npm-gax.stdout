@@ -1,0 +1,14 @@
+{
+  "uuid": "^9.0.1",
+  "duplexify": "^4.0.0",
+  "node-fetch": "^2.7.0",
+  "protobufjs": "^7.3.2",
+  "@types/long": "^4.0.0",
+  "object-hash": "^3.0.0",
+  "@grpc/grpc-js": "^1.10.9",
+  "retry-request": "^7.0.0",
+  "abort-controller": "^3.0.0",
+  "@grpc/proto-loader": "^0.7.13",
+  "google-auth-library": "^9.3.0",
+  "proto3-json-serializer": "^2.0.2"
+}

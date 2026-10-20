@@ -1,0 +1,17 @@
+{
+  "argv": [
+    "env",
+    "-i",
+    "PATH=/usr/bin:/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin",
+    "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+    "node",
+    "/workspace/acp-chat/scripts/synthetic/grpc-harness.cjs",
+    "--baseline",
+    "--case=framing"
+  ],
+  "start": "2026-10-20T19:17:25.325641+00:00",
+  "end": "2026-10-20T19:17:25.397739+00:00",
+  "code": 1,
+  "stdout_sha256": "d7e2817d633bab6fd83cd31982d712e51e40cb0d1c95ba37569a76e10e6c8855",
+  "stderr_sha256": "03c1a571dee4018b9e1afa7b768b70f42ddcfec5d4c4d5a751295102b0fde6ce"
+}

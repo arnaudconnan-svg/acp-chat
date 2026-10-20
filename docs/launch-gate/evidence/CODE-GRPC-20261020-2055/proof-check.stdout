@@ -1,0 +1,30 @@
+{
+  "code_commit": "dfc8ac925e4f5aa8c3f9e5ab25e608ff4d73b1d0",
+  "base": "30e3e74fb7b47da6c4df72d19172e1ac4f99e6cc",
+  "four_useful_code_files_match": {
+    "package.json": {
+      "sha256": "14f13d3a0e5244f32d00117ebff748d8fb56b7061391ae0d8eb9531bee118277",
+      "git_show_equals_tested_checkout": true
+    },
+    "package-lock.json": {
+      "sha256": "6adb45468f2c05cb85a176f846d1fc067d9f2b64c5124b8a4ea839d50bd9cd84",
+      "git_show_equals_tested_checkout": true
+    },
+    "scripts/synthetic/guard.cjs": {
+      "sha256": "4b0b744468fc6b95ff0f91cd2126cf05fa10560e9188efc2d0e9e351dd258a89",
+      "git_show_equals_tested_checkout": true
+    },
+    "scripts/synthetic/grpc-harness.cjs": {
+      "sha256": "98ab13dc58e3f184b0690211fcbdec63ea1f272057103795a0a2548ae37230f6",
+      "git_show_equals_tested_checkout": true
+    }
+  },
+  "actual_baseline": "1.14.3",
+  "candidate": "1.14.5",
+  "four_residuals_unchanged": true,
+  "only_dependency_changed": "@grpc/grpc-js",
+  "physical_parents_unchanged": true,
+  "final_grpc_code": 0,
+  "final_verify_code": 0,
+  "tarball_integrity_matches": true
+}

@@ -1,0 +1,61 @@
+{
+  "node": {
+    "version": "v24.19.0",
+    "execPath": "/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node"
+  },
+  "chain": [
+    {
+      "name": "firebase-admin",
+      "version": "13.10.0",
+      "entry": "/workspace/acp-chat/node_modules/firebase-admin/lib/index.js"
+    },
+    {
+      "name": "@google-cloud/firestore",
+      "version": "7.11.6",
+      "entry": "/workspace/acp-chat/node_modules/@google-cloud/firestore/build/src/index.js"
+    },
+    {
+      "name": "google-gax",
+      "version": "4.6.1",
+      "entry": "/workspace/acp-chat/node_modules/google-gax/build/src/index.js"
+    },
+    {
+      "name": "@grpc/grpc-js",
+      "version": "1.14.3",
+      "entry": "/workspace/acp-chat/node_modules/@grpc/grpc-js/build/src/index.js"
+    }
+  ],
+  "sources": [
+    {
+      "file": "/workspace/acp-chat/node_modules/@grpc/grpc-js/build/src/server-interceptors.js",
+      "sha256": "76be06258ce191f9806954dcf1282ae713f0831b6d7101dcd2aa2e0a01c26e83"
+    },
+    {
+      "file": "/workspace/acp-chat/node_modules/@grpc/grpc-js/build/src/server.js",
+      "sha256": "b3ac686df081f472fcab8b81635e8f524fb17e0830f09be88581b544601a626a"
+    },
+    {
+      "file": "/workspace/acp-chat/node_modules/@grpc/grpc-js/build/src/transport.js",
+      "sha256": "cdd11b8bd6fbd6728ec2e1023c6731c3115ab76016b6f2a3fff6c46ca52eefb3"
+    },
+    {
+      "file": "/workspace/acp-chat/node_modules/@grpc/grpc-js/build/src/stream-decoder.js",
+      "sha256": "b11c00ec37606d60d8d135a2259e3f6244309bfde775db9a76581d28433b1bf6"
+    }
+  ],
+  "results": [
+    {
+      "case": "auth",
+      "unauthorizedCertificateExposed": true,
+      "authorizedCertificateExposed": true,
+      "plaintext": {}
+    }
+  ],
+  "failures": [
+    {
+      "case": "auth",
+      "error": "unauthorized TLS fixture must not expose a trusted auth context\n+ actual - expected\n\n+ {\n+   sslPeerCertificate: {\n+     raw: Buffer(21) [Uint8Array] [\n+       115,\n+       121,\n+       110,\n+       116,\n+       104,\n+       101,\n+       116,\n+       105,\n+       99,\n+       45,\n+       99,\n+       101,\n+       114,\n+       116,\n+       105,\n+       102,\n+       105,\n+       99,\n+       97,\n+       116,\n+       101\n+     ]\n+   },\n+   transportSecurityType: 'ssl'\n+ }\n- {}\n"
+    }
+  ],
+  "limitation": "Real gRPC exported Server and BaseServerInterceptingCall with in-memory HTTP2/TLS-shaped boundary fixtures; no handshake, socket, Firebase E2E, or private-class extraction. Client transport auth branch reviewed as source only."
+}

@@ -1,0 +1,16 @@
+{
+  "argv": [
+    "npm",
+    "--cache",
+    "/workspace/work/npm-cache",
+    "ci",
+    "--ignore-scripts",
+    "--no-audit",
+    "--no-fund"
+  ],
+  "start": "2026-10-20T19:17:38.011176+00:00",
+  "end": "2026-10-20T19:17:42.058360+00:00",
+  "code": 0,
+  "stdout_sha256": "49c993b88d18082b246cfdb7645ac637e8211164df4fc702953ee6bbe8a054ca",
+  "stderr_sha256": "c403d3e2287f76231c644735926e4e7b5ac01f0a1ac91dc2c0794f9a61d7a08c"
+}
