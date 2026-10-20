@@ -24,7 +24,18 @@ if (!/(?:^|\/)(?:npm|npm-cli\.js)$/.test(process.argv[1] || '')) {
   // Synthetic DOM timers remain available to existing frontend harnesses.
   const load = Module._load;
   Module._load = function (name, parent, main) {
-    if (/^(firebase-admin|nodemailer|dotenv)(\/|$)/.test(name)) denied();
+    // Only the mail compatibility harness may load the real dependency. All
+    // socket, HTTP, TLS, provider and data guards above/below remain active.
+    const mailHarness = path.join(
+      repoRoot,
+      'scripts/synthetic/nodemailer-harness.cjs'
+    );
+    const captureMail =
+      process.argv[1] === mailHarness &&
+      parent?.filename === mailHarness &&
+      ['nodemailer', 'nodemailer/package.json'].includes(name);
+    if (/^(firebase-admin|nodemailer|dotenv)(\/|$)/.test(name) && !captureMail)
+      denied();
     if (
       path.resolve(String(name)) === path.join(repoRoot, 'server.js') ||
       (parent?.filename &&
