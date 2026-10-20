@@ -1,0 +1,16 @@
+{
+  "argv": [
+    "npm",
+    "--cache",
+    "/workspace/work/npm-cache",
+    "view",
+    "@google-cloud/firestore@7.11.6",
+    "dependencies",
+    "--json"
+  ],
+  "start": "2026-10-20T19:18:16.125013+00:00",
+  "end": "2026-10-20T19:18:16.426033+00:00",
+  "code": 0,
+  "stdout_sha256": "b042cae8a5523f00293f4ce1261d63a20a25a3fa8837b92fe27774b8012bfffd",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

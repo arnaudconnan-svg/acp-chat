@@ -1,0 +1,318 @@
+{
+  "sources": [
+    {
+      "file": "node_modules/@grpc/grpc-js/build/src/server-interceptors.js",
+      "baseline_version": "1.14.3",
+      "baseline_sha256": "76be06258ce191f9806954dcf1282ae713f0831b6d7101dcd2aa2e0a01c26e83",
+      "tested_version": "1.14.5",
+      "tested_sha256": "1773f6c7bb6c139186fc5c39634c21bc2ea6163562c9abeba1ab16f5ab171449",
+      "physical_source_matches_registry_tarball": true,
+      "snippets": [
+        {
+          "function": "decompressMessage",
+          "lines": [
+            {
+              "line": 521,
+              "text": "                const messageParts = [];"
+            },
+            {
+              "line": 522,
+              "text": "                decompresser.on('error', (error) => {"
+            },
+            {
+              "line": 523,
+              "text": "                    reject({"
+            },
+            {
+              "line": 524,
+              "text": "                        code: constants_1.Status.INTERNAL,"
+            },
+            {
+              "line": 525,
+              "text": "                        details: 'Failed to decompress message'"
+            },
+            {
+              "line": 526,
+              "text": "                    });"
+            },
+            {
+              "line": 527,
+              "text": "                });"
+            }
+          ]
+        },
+        {
+          "function": "getAuthContext",
+          "lines": [
+            {
+              "line": 783,
+              "text": "        var _a;"
+            },
+            {
+              "line": 784,
+              "text": "        if (!(((_a = this.stream.session) === null || _a === void 0 ? void 0 : _a.socket) instanceof tls_1.TLSSocket)) {"
+            },
+            {
+              "line": 785,
+              "text": "            return {};"
+            },
+            {
+              "line": 786,
+              "text": "        }"
+            },
+            {
+              "line": 787,
+              "text": "        if (!this.stream.session.socket.authorized) {"
+            },
+            {
+              "line": 788,
+              "text": "            return {};"
+            },
+            {
+              "line": 789,
+              "text": "        }"
+            },
+            {
+              "line": 790,
+              "text": "        const peerCertificate = this.stream.session.socket.getPeerCertificate();"
+            },
+            {
+              "line": 791,
+              "text": "        return {"
+            },
+            {
+              "line": 792,
+              "text": "            transportSecurityType: 'ssl',"
+            },
+            {
+              "line": 793,
+              "text": "            sslPeerCertificate: peerCertificate.raw ? peerCertificate : undefined"
+            },
+            {
+              "line": 794,
+              "text": "        };"
+            },
+            {
+              "line": 795,
+              "text": "    }"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "node_modules/@grpc/grpc-js/build/src/server.js",
+      "baseline_version": "1.14.3",
+      "baseline_sha256": "b3ac686df081f472fcab8b81635e8f524fb17e0830f09be88581b544601a626a",
+      "tested_version": "1.14.5",
+      "tested_sha256": "ec8b6af916cd4e435b92bac8140a585bd1d1d01ec9a15d4700837ec214cd6d76",
+      "physical_source_matches_registry_tarball": true,
+      "snippets": [
+        {
+          "function": "_streamHandler",
+          "lines": [
+            {
+              "line": 1006,
+              "text": "            _streamHandler(extraInterceptors, stream, headers) {"
+            },
+            {
+              "line": 1007,
+              "text": "                stream.once('error', (err) => {"
+            },
+            {
+              "line": 1008,
+              "text": "                    /* We need an error handler to avoid uncaught error event exceptions, but"
+            },
+            {
+              "line": 1009,
+              "text": "                     * there is nothing we can reasonably do here. Any error event should"
+            },
+            {
+              "line": 1010,
+              "text": "                     * have a corresponding close event, which handles emitting the cancelled"
+            },
+            {
+              "line": 1011,
+              "text": "                     * event. And the stream is now in a bad state, so we can't reasonably"
+            },
+            {
+              "line": 1012,
+              "text": "                     * expect to be able to send an error over it. */"
+            },
+            {
+              "line": 1013,
+              "text": "                });"
+            },
+            {
+              "line": 1014,
+              "text": "                // for handling idle timeout"
+            },
+            {
+              "line": 1015,
+              "text": "                this.onStreamOpened(stream);"
+            }
+          ]
+        },
+        {
+          "function": "handleUnary",
+          "lines": [
+            {
+              "line": 1481,
+              "text": "            catch (err) {"
+            },
+            {
+              "line": 1482,
+              "text": "                let details;"
+            },
+            {
+              "line": 1483,
+              "text": "                if (environment_1.GRPC_NODE_DEBUG_SEND_ERROR_DETAILS) {"
+            },
+            {
+              "line": 1484,
+              "text": "                    details = `Server method handler threw error ${err.message}`;"
+            },
+            {
+              "line": 1485,
+              "text": "                }"
+            },
+            {
+              "line": 1486,
+              "text": "                else {"
+            },
+            {
+              "line": 1487,
+              "text": "                    details = 'Unknown error';"
+            },
+            {
+              "line": 1488,
+              "text": "                }"
+            },
+            {
+              "line": 1489,
+              "text": "                call.sendStatus({"
+            },
+            {
+              "line": 1490,
+              "text": "                    code: constants_1.Status.UNKNOWN,"
+            },
+            {
+              "line": 1491,
+              "text": "                    details: details,"
+            },
+            {
+              "line": 1492,
+              "text": "                    metadata: null,"
+            },
+            {
+              "line": 1493,
+              "text": "                });"
+            },
+            {
+              "line": 1494,
+              "text": "            }"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "node_modules/@grpc/grpc-js/build/src/transport.js",
+      "baseline_version": "1.14.3",
+      "baseline_sha256": "cdd11b8bd6fbd6728ec2e1023c6731c3115ab76016b6f2a3fff6c46ca52eefb3",
+      "tested_version": "1.14.5",
+      "tested_sha256": "cdfaf45e972bf87f6450d26a833e6fc5b3e92c86ba9a25daa8befafa438fe8ea",
+      "physical_source_matches_registry_tarball": true,
+      "snippets": [
+        {
+          "function": "Http2Transport.constructor",
+          "lines": [
+            {
+              "line": 155,
+              "text": "        }"
+            },
+            {
+              "line": 156,
+              "text": "        if (session.socket instanceof tls_1.TLSSocket && session.socket.authorized) {"
+            },
+            {
+              "line": 157,
+              "text": "            this.authContext = {"
+            },
+            {
+              "line": 158,
+              "text": "                transportSecurityType: 'ssl',"
+            },
+            {
+              "line": 159,
+              "text": "                sslPeerCertificate: session.socket.getPeerCertificate()"
+            },
+            {
+              "line": 160,
+              "text": "            };"
+            },
+            {
+              "line": 161,
+              "text": "        }"
+            },
+            {
+              "line": 162,
+              "text": "        else {"
+            },
+            {
+              "line": 163,
+              "text": "            this.authContext = {};"
+            },
+            {
+              "line": 164,
+              "text": "        }"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "node_modules/@grpc/grpc-js/build/src/stream-decoder.js",
+      "baseline_version": "1.14.3",
+      "baseline_sha256": "b11c00ec37606d60d8d135a2259e3f6244309bfde775db9a76581d28433b1bf6",
+      "tested_version": "1.14.5",
+      "tested_sha256": "b11c00ec37606d60d8d135a2259e3f6244309bfde775db9a76581d28433b1bf6",
+      "physical_source_matches_registry_tarball": true,
+      "snippets": []
+    },
+    {
+      "file": "node_modules/firebase-admin/lib/firestore/firestore-internal.js",
+      "sha256": "88a204a3f0982939bc29a5f61e2c9679fe89943425ac35ff404adce95cae6cbf",
+      "function": "dependency loading",
+      "lines": [
+        {
+          "line": 134,
+          "text": "        firestoreDatabase = require('@google-cloud/firestore').Firestore;"
+        }
+      ]
+    },
+    {
+      "file": "node_modules/@google-cloud/firestore/build/src/index.js",
+      "sha256": "ecb61cdee1d5a5d6ca0d9ebc0037dbabbfdc193500882d8ce0a2f0fb1e8d00e9",
+      "function": "dependency loading",
+      "lines": [
+        {
+          "line": 504,
+          "text": "                    gax = this._gax = require('google-gax');"
+        }
+      ]
+    },
+    {
+      "file": "node_modules/google-gax/build/src/grpc.js",
+      "sha256": "04be99b61216b959a1f7c088a89e5325b27d9e8f5922a93e36576f1896fa1362",
+      "function": "dependency loading",
+      "lines": [
+        {
+          "line": 23,
+          "text": "const grpc = require(\"@grpc/grpc-js\");"
+        }
+      ]
+    }
+  ],
+  "client_auth_limit": "Client transport authorization branch inspected as physical source; no handshake or private-class extraction. Runtime tests cover real server-side auth and exported server dispatch using synthetic I/O boundary fixtures."
+}

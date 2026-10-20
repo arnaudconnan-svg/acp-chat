@@ -1,0 +1,23 @@
+AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
++ actual - expected
+
++ [
++   {
++     case: 'errors',
++     error: 'unary: internal thrown details must stay private\n' +
++       '+ actual - expected\n' +
++       '\n' +
++       "+ 'Server method handler threw error synthetic-internal-marker'\n" +
++       "- 'Unknown error'\n"
++   }
++ ]
+- []
+
+    at /workspace/acp-chat/scripts/synthetic/grpc-harness.cjs:337:10 {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: [Array],
+  expected: [],
+  operator: 'deepStrictEqual',
+  diff: 'simple'
+}

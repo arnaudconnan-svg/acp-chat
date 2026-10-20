@@ -1,0 +1,18 @@
+{
+  "argv": [
+    "npm",
+    "--cache",
+    "/workspace/work/npm-cache",
+    "view",
+    "@grpc/grpc-js@1.14.3",
+    "version",
+    "dist",
+    "gitHead",
+    "--json"
+  ],
+  "start": "2026-10-20T19:18:16.761832+00:00",
+  "end": "2026-10-20T19:18:17.045093+00:00",
+  "code": 0,
+  "stdout_sha256": "eeaaffebc21458e8fd837cf1a745d200c79a0c7b56876d8928f07d09d12ebba7",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

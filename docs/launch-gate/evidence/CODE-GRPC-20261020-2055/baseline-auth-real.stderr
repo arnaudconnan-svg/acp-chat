@@ -1,0 +1,50 @@
+AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
++ actual - expected
+
++ [
++   {
++     case: 'auth',
++     error: 'unauthorized TLS fixture must not expose a trusted auth context\n' +
++       '+ actual - expected\n' +
++       '\n' +
++       '+ {\n' +
++       '+   sslPeerCertificate: {\n' +
++       '+     raw: Buffer(21) [Uint8Array] [\n' +
++       '+       115,\n' +
++       '+       121,\n' +
++       '+       110,\n' +
++       '+       116,\n' +
++       '+       104,\n' +
++       '+       101,\n' +
++       '+       116,\n' +
++       '+       105,\n' +
++       '+       99,\n' +
++       '+       45,\n' +
++       '+       99,\n' +
++       '+       101,\n' +
++       '+       114,\n' +
++       '+       116,\n' +
++       '+       105,\n' +
++       '+       102,\n' +
++       '+       105,\n' +
++       '+       99,\n' +
++       '+       97,\n' +
++       '+       116,\n' +
++       '+       101\n' +
++       '+     ]\n' +
++       '+   },\n' +
++       "+   transportSecurityType: 'ssl'\n" +
++       '+ }\n' +
++       '- {}\n'
++   }
++ ]
+- []
+
+    at /workspace/acp-chat/scripts/synthetic/grpc-harness.cjs:337:10 {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: [Array],
+  expected: [],
+  operator: 'deepStrictEqual',
+  diff: 'simple'
+}

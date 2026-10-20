@@ -1,0 +1,19 @@
+AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
++ actual - expected
+
++ [
++   {
++     case: 'framing',
++     error: 'Got unwanted exception.\nActual message: "synthetic-malformed-stream"'
++   }
++ ]
+- []
+
+    at /workspace/acp-chat/scripts/synthetic/grpc-harness.cjs:337:10 {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: [Array],
+  expected: [],
+  operator: 'deepStrictEqual',
+  diff: 'simple'
+}

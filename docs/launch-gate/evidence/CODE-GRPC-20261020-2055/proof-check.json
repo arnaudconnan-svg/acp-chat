@@ -1,0 +1,11 @@
+{
+  "argv": [
+    "python3",
+    "docs/launch-gate/evidence/CODE-GRPC-20261020-2055/proof-check.py"
+  ],
+  "start": "2026-10-20T19:19:00.562351+00:00",
+  "end": "2026-10-20T19:19:00.610904+00:00",
+  "code": 0,
+  "stdout_sha256": "b60462d42e30cf80164b013a084b43b607262b76389810ee4fc0795bddfdfe6e",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

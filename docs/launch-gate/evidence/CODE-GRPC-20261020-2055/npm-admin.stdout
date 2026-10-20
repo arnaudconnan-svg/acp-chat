@@ -1,0 +1,4 @@
+{
+  "@google-cloud/storage": "^7.19.0",
+  "@google-cloud/firestore": "^7.11.0"
+}

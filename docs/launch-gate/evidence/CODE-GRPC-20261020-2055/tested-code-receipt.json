@@ -1,0 +1,253 @@
+{
+  "code_commit": "dfc8ac925e4f5aa8c3f9e5ab25e608ff4d73b1d0",
+  "base": "30e3e74fb7b47da6c4df72d19172e1ac4f99e6cc",
+  "code_committed_at": "2026-10-20T19:17:45Z",
+  "checked_at_utc": "2026-10-20T19:19:00.598508+00:00",
+  "node": {
+    "version": "v24.19.0",
+    "execPath": "/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node"
+  },
+  "node_evidence": "Observed directly inside baseline/final harness; no independent per-command version observation claimed for other scripts.",
+  "files": {
+    "package.json": {
+      "sha256": "14f13d3a0e5244f32d00117ebff748d8fb56b7061391ae0d8eb9531bee118277",
+      "git_show_equals_tested_checkout": true
+    },
+    "package-lock.json": {
+      "sha256": "6adb45468f2c05cb85a176f846d1fc067d9f2b64c5124b8a4ea839d50bd9cd84",
+      "git_show_equals_tested_checkout": true
+    },
+    "scripts/synthetic/guard.cjs": {
+      "sha256": "4b0b744468fc6b95ff0f91cd2126cf05fa10560e9188efc2d0e9e351dd258a89",
+      "git_show_equals_tested_checkout": true
+    },
+    "scripts/synthetic/grpc-harness.cjs": {
+      "sha256": "98ab13dc58e3f184b0690211fcbdec63ea1f272057103795a0a2548ae37230f6",
+      "git_show_equals_tested_checkout": true
+    }
+  },
+  "commands": [
+    {
+      "capture": "baseline-ci.json",
+      "argv": [
+        "npm",
+        "--cache",
+        "/workspace/work/npm-cache",
+        "ci",
+        "--ignore-scripts",
+        "--no-audit",
+        "--no-fund"
+      ],
+      "start": "2026-10-20T19:17:11.650823+00:00",
+      "end": "2026-10-20T19:17:16.202046+00:00",
+      "code": 0,
+      "stdout_sha256": "49c993b88d18082b246cfdb7645ac637e8211164df4fc702953ee6bbe8a054ca",
+      "stderr_sha256": "c403d3e2287f76231c644735926e4e7b5ac01f0a1ac91dc2c0794f9a61d7a08c"
+    },
+    {
+      "capture": "baseline-auth-real.json",
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/usr/bin:/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin",
+        "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+        "node",
+        "/workspace/acp-chat/scripts/synthetic/grpc-harness.cjs",
+        "--baseline",
+        "--case=auth"
+      ],
+      "start": "2026-10-20T19:17:25.121133+00:00",
+      "end": "2026-10-20T19:17:25.193535+00:00",
+      "code": 1,
+      "stdout_sha256": "db92a1ad4570c3259d1096975e4374ad140339b30cb86a5cd36777fb944466c5",
+      "stderr_sha256": "4dcdbf65b2755c8246b84cacc19ba6dcef45878cf64860b03544c0c3c1681728"
+    },
+    {
+      "capture": "baseline-errors-real.json",
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/usr/bin:/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin",
+        "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+        "node",
+        "/workspace/acp-chat/scripts/synthetic/grpc-harness.cjs",
+        "--baseline",
+        "--case=errors"
+      ],
+      "start": "2026-10-20T19:17:25.220040+00:00",
+      "end": "2026-10-20T19:17:25.298053+00:00",
+      "code": 1,
+      "stdout_sha256": "73e0ccc225f941181d77f5dc69069f1a359f89b23d51986e9e465d4c17e5125b",
+      "stderr_sha256": "f5b52f784893914a6348cb7093affc11f2d47099bcd0c9ec3d743025136e5701"
+    },
+    {
+      "capture": "baseline-framing-real.json",
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/usr/bin:/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin",
+        "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+        "node",
+        "/workspace/acp-chat/scripts/synthetic/grpc-harness.cjs",
+        "--baseline",
+        "--case=framing"
+      ],
+      "start": "2026-10-20T19:17:25.325641+00:00",
+      "end": "2026-10-20T19:17:25.397739+00:00",
+      "code": 1,
+      "stdout_sha256": "d7e2817d633bab6fd83cd31982d712e51e40cb0d1c95ba37569a76e10e6c8855",
+      "stderr_sha256": "03c1a571dee4018b9e1afa7b768b70f42ddcfec5d4c4d5a751295102b0fde6ce"
+    },
+    {
+      "capture": "baseline-compression-real.json",
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/usr/bin:/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin",
+        "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+        "node",
+        "/workspace/acp-chat/scripts/synthetic/grpc-harness.cjs",
+        "--baseline",
+        "--case=compression"
+      ],
+      "start": "2026-10-20T19:17:25.431236+00:00",
+      "end": "2026-10-20T19:17:25.507572+00:00",
+      "code": 1,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "3410ea039f54d8cd74a300f6b4f38716964bbd914e006d4850ab88b7e0b4a1ac"
+    },
+    {
+      "capture": "npm-ci.json",
+      "argv": [
+        "npm",
+        "--cache",
+        "/workspace/work/npm-cache",
+        "ci",
+        "--ignore-scripts",
+        "--no-audit",
+        "--no-fund"
+      ],
+      "start": "2026-10-20T19:17:38.011176+00:00",
+      "end": "2026-10-20T19:17:42.058360+00:00",
+      "code": 0,
+      "stdout_sha256": "49c993b88d18082b246cfdb7645ac637e8211164df4fc702953ee6bbe8a054ca",
+      "stderr_sha256": "c403d3e2287f76231c644735926e4e7b5ac01f0a1ac91dc2c0794f9a61d7a08c"
+    },
+    {
+      "capture": "final-grpc.json",
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/usr/bin:/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin",
+        "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+        "npm",
+        "run",
+        "grpc:harness"
+      ],
+      "start": "2026-10-20T19:17:51.835882+00:00",
+      "end": "2026-10-20T19:17:52.095653+00:00",
+      "code": 0,
+      "stdout_sha256": "a137af8c74f6b767984764b2306785c739757ee17723d4abcade2abdf4755c36",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "capture": "syntax-harness.json",
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/usr/bin:/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin",
+        "node",
+        "--check",
+        "scripts/synthetic/grpc-harness.cjs"
+      ],
+      "start": "2026-10-20T19:17:52.122382+00:00",
+      "end": "2026-10-20T19:17:52.145647+00:00",
+      "code": 0,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "capture": "syntax-server.json",
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/usr/bin:/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin",
+        "node",
+        "--check",
+        "server.js"
+      ],
+      "start": "2026-10-20T19:17:52.171514+00:00",
+      "end": "2026-10-20T19:17:52.201336+00:00",
+      "code": 0,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "capture": "final-isolation.json",
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/usr/bin:/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin",
+        "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+        "npm",
+        "run",
+        "isolation:harness"
+      ],
+      "start": "2026-10-20T19:17:52.226699+00:00",
+      "end": "2026-10-20T19:17:52.551685+00:00",
+      "code": 0,
+      "stdout_sha256": "d568338bfea60f52a5646276704dbfe81d2e82449150ad443b5696ebd48716d9",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "capture": "final-verify.json",
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/usr/bin:/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin",
+        "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+        "npm",
+        "run",
+        "verify"
+      ],
+      "start": "2026-10-20T19:17:52.577731+00:00",
+      "end": "2026-10-20T19:18:08.416367+00:00",
+      "code": 0,
+      "stdout_sha256": "dc01f2451ffcc8b396a36d3d80d049ad5e1dcabbb0c6fd0e4257f2ab1d0b2cba",
+      "stderr_sha256": "9966ff6f71425eb888223a735bb3df35172e1885d0e90c1bd74e79c5525b1b49"
+    },
+    {
+      "capture": "audit-before.json",
+      "argv": [
+        "npm",
+        "--cache",
+        "/workspace/work/npm-cache",
+        "audit",
+        "--json",
+        "--ignore-scripts"
+      ],
+      "start": "2026-10-20T19:15:08.746483+00:00",
+      "end": "2026-10-20T19:15:10.129438+00:00",
+      "code": 1,
+      "stdout_sha256": "1013b76d2e2f48d0ae4c0d746726f5c46ad6be96ed3dfe67026a71f8087093b0",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "capture": "audit-after.json",
+      "argv": [
+        "npm",
+        "--cache",
+        "/workspace/work/npm-cache",
+        "audit",
+        "--json",
+        "--ignore-scripts"
+      ],
+      "start": "2026-10-20T19:18:15.129087+00:00",
+      "end": "2026-10-20T19:18:15.737027+00:00",
+      "code": 1,
+      "stdout_sha256": "0dc42e22e248ba7fb0e6ac97ff50276b8bbca3400dbb7a014338a044ce0905d1",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "scope": "Technical commit precedes final tests. Proof-only follow-up, no repository/data manifest."
+}
