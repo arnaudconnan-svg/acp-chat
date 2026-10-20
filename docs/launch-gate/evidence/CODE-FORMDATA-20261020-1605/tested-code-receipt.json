@@ -1,0 +1,197 @@
+{
+  "code_commit": "285b66719cf1a872a4ad1b175e7b2ec640456e56",
+  "base": "d8434f1f524f691549ace6367471687b1b096aea",
+  "code_committed_at": "2026-10-20T14:17:21Z",
+  "checked_utc": "2026-10-20T14:18:36.792671+00:00",
+  "node": {
+    "version": "v24.19.0",
+    "execPath": "/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node"
+  },
+  "node_limit": "Observed before checks and directly inside baseline/final form-data harness; no per-command version capture claimed for the other harnesses.",
+  "files": {
+    "package.json": {
+      "sha256": "ef1acee014b37d9dd929df901e7553f3532423c9d9c6e6d2011c899970b4b2e1",
+      "git_show_equals_tested_checkout": true
+    },
+    "package-lock.json": {
+      "sha256": "6f30044771819c7e0e5910f63cfe68aa0f2e1371e508ec496300674f75ecd7ff",
+      "git_show_equals_tested_checkout": true
+    },
+    "scripts/synthetic/guard.cjs": {
+      "sha256": "4b0b744468fc6b95ff0f91cd2126cf05fa10560e9188efc2d0e9e351dd258a89",
+      "git_show_equals_tested_checkout": true
+    },
+    "scripts/synthetic/formdata-harness.cjs": {
+      "sha256": "c4ec9e7460476179f06b4001bbda1e5c318d55ed6c92613decbb64811caaab77",
+      "git_show_equals_tested_checkout": true
+    }
+  },
+  "commands": [
+    {
+      "capture": "node.json",
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/usr/bin:/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin",
+        "node",
+        "-p",
+        "JSON.stringify({version:process.version,execPath:process.execPath})"
+      ],
+      "start": "2026-10-20T14:15:33.760744+00:00",
+      "end": "2026-10-20T14:15:33.799570+00:00",
+      "code": 0,
+      "stdout_sha256": "b0cc8b7d745927ed3e986a5e9958270148cb71747b8acb307a822a2440fa42b6",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "capture": "npm-ci.json",
+      "argv": [
+        "npm",
+        "--cache",
+        "/workspace/work/npm-cache",
+        "ci",
+        "--ignore-scripts",
+        "--no-audit",
+        "--no-fund"
+      ],
+      "start": "2026-10-20T14:17:12.823221+00:00",
+      "end": "2026-10-20T14:17:17.144571+00:00",
+      "code": 0,
+      "stdout_sha256": "49c993b88d18082b246cfdb7645ac637e8211164df4fc702953ee6bbe8a054ca",
+      "stderr_sha256": "c403d3e2287f76231c644735926e4e7b5ac01f0a1ac91dc2c0794f9a61d7a08c"
+    },
+    {
+      "capture": "baseline-crlf.json",
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/usr/bin:/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin",
+        "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+        "node",
+        "/workspace/acp-chat/scripts/synthetic/formdata-harness.cjs",
+        "--baseline"
+      ],
+      "start": "2026-10-20T14:17:00.959838+00:00",
+      "end": "2026-10-20T14:17:01.019778+00:00",
+      "code": 1,
+      "stdout_sha256": "a0d62bcf6b01dc1cc7f8db2d8079dcb385be78d110a02ce27ad78a575a31515c",
+      "stderr_sha256": "b4ed47e9de6d14c14e35a735d74d9b1a8dbb7d53d114525f28e146cba42700ab"
+    },
+    {
+      "capture": "syntax-server.json",
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/usr/bin:/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin",
+        "node",
+        "--check",
+        "server.js"
+      ],
+      "start": "2026-10-20T14:17:30.123548+00:00",
+      "end": "2026-10-20T14:17:30.155333+00:00",
+      "code": 0,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "capture": "syntax-harness.json",
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/usr/bin:/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin",
+        "node",
+        "--check",
+        "scripts/synthetic/formdata-harness.cjs"
+      ],
+      "start": "2026-10-20T14:17:30.069554+00:00",
+      "end": "2026-10-20T14:17:30.096232+00:00",
+      "code": 0,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "capture": "final-formdata.json",
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/usr/bin:/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin",
+        "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+        "npm",
+        "run",
+        "formdata:harness"
+      ],
+      "start": "2026-10-20T14:17:29.789071+00:00",
+      "end": "2026-10-20T14:17:30.035736+00:00",
+      "code": 0,
+      "stdout_sha256": "8cb868458951a95e8e0230cd27c262630b6ba58a8d16078f66dd49e2089aafd8",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "capture": "final-isolation.json",
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/usr/bin:/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin",
+        "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+        "npm",
+        "run",
+        "isolation:harness"
+      ],
+      "start": "2026-10-20T14:17:30.189076+00:00",
+      "end": "2026-10-20T14:17:30.519344+00:00",
+      "code": 0,
+      "stdout_sha256": "d568338bfea60f52a5646276704dbfe81d2e82449150ad443b5696ebd48716d9",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "capture": "final-verify.json",
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/usr/bin:/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin",
+        "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+        "npm",
+        "run",
+        "verify"
+      ],
+      "start": "2026-10-20T14:17:30.547168+00:00",
+      "end": "2026-10-20T14:17:45.856562+00:00",
+      "code": 0,
+      "stdout_sha256": "39aaa6c899e19696812b2dbe278b4d57dc3b1973bd10b189d5507d650a116041",
+      "stderr_sha256": "cd0fcad9abbfcb573dc5abd189dd00cb6267e882f0c1f2cbe3f3c8c89ab4060d"
+    },
+    {
+      "capture": "audit-before.json",
+      "argv": [
+        "npm",
+        "--cache",
+        "/workspace/work/npm-cache",
+        "audit",
+        "--json",
+        "--ignore-scripts"
+      ],
+      "start": "2026-10-20T14:15:34.193476+00:00",
+      "end": "2026-10-20T14:15:36.108173+00:00",
+      "code": 1,
+      "stdout_sha256": "6222305dd4bfe28daf59064e40b22401ccaa1a546c2182223b3ead70704211b9",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "capture": "audit-after.json",
+      "argv": [
+        "npm",
+        "--cache",
+        "/workspace/work/npm-cache",
+        "audit",
+        "--json",
+        "--ignore-scripts"
+      ],
+      "start": "2026-10-20T14:17:46.695726+00:00",
+      "end": "2026-10-20T14:17:47.342356+00:00",
+      "code": 1,
+      "stdout_sha256": "1013b76d2e2f48d0ae4c0d746726f5c46ad6be96ed3dfe67026a71f8087093b0",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "scope": "Only four useful code-file hashes. Technical commit precedes final tests; this proof commit does not change technical files."
+}

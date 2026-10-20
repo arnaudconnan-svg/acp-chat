@@ -1,0 +1,17 @@
+{
+  "old_file": "npm form-data@2.5.5/lib/form_data.js",
+  "old_sha256": "648d6c4cdc5d3266393e387307bcb6937169c61552aca019f44e85dd99852fa6",
+  "new_file": "node_modules/form-data/lib/form_data.js",
+  "new_sha256": "9c9b166cc9ddf4b64e454574d216e007cae0a552e01a93b87b8e026717d03076",
+  "functions": [
+    "escapeHeaderParam",
+    "FormData.prototype._multiPartHeader",
+    "FormData.prototype._getContentDisposition"
+  ],
+  "line_numbered_diff": "--- npm/form-data@2.5.5/lib/form_data.js\n+++ npm/form-data@2.5.6/lib/form_data.js\n@@ -15,6 +15,11 @@\n var populate = require('./populate.js');\n var Buffer = require('safe-buffer').Buffer;\n \n+// escape CR/LF/`\"` so a name/filename can't inject headers or smuggle parts; matches the WHATWG HTML multipart/form-data encoding\n+function escapeHeaderParam(str) {\n+  return String(str).replace(/\\r/g, '%0D').replace(/\\n/g, '%0A').replace(/\"/g, '%22');\n+}\n+\n /**\n  * Create readable \"multipart/form-data\" streams.\n  * Can be used to submit forms\n@@ -190,7 +195,7 @@\n   var contents = '';\n   var headers = {\n     // add custom disposition as third element or keep it two elements if not\n-    'Content-Disposition': ['form-data', 'name=\"' + field + '\"'].concat(contentDisposition || []),\n+    'Content-Disposition': ['form-data', 'name=\"' + escapeHeaderParam(field) + '\"'].concat(contentDisposition || []),\n     // if no content type. allow it to be empty array\n     'Content-Type': [].concat(contentType || []),\n   };\n@@ -245,7 +250,7 @@\n   }\n \n   if (filename) {\n-    contentDisposition = 'filename=\"' + filename + '\"';\n+    contentDisposition = 'filename=\"' + escapeHeaderParam(filename) + '\"';\n   }\n \n   return contentDisposition;\n",
+  "type_import": {
+    "file": "node_modules/@types/request/index.d.ts",
+    "line": 10,
+    "text": "import FormData = require(\"form-data\");"
+  }
+}

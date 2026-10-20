@@ -1,0 +1,128 @@
+{
+  "target_before": {
+    "name": "form-data",
+    "severity": "high",
+    "isDirect": false,
+    "via": [
+      {
+        "source": 1120745,
+        "name": "form-data",
+        "dependency": "form-data",
+        "title": "form-data: CRLF injection in form-data via unescaped multipart field names and filenames",
+        "url": "https://github.com/advisories/GHSA-hmw2-7cc7-3qxx",
+        "severity": "high",
+        "cwe": [
+          "CWE-93"
+        ],
+        "cvss": {
+          "score": 7.5,
+          "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N"
+        },
+        "range": "<2.5.6"
+      }
+    ],
+    "effects": [],
+    "range": "<2.5.6",
+    "nodes": [
+      "node_modules/form-data"
+    ],
+    "fixAvailable": true
+  },
+  "target_after": null,
+  "counts_before": {
+    "info": 0,
+    "low": 0,
+    "moderate": 2,
+    "high": 4,
+    "critical": 0,
+    "total": 6
+  },
+  "counts_after": {
+    "info": 0,
+    "low": 0,
+    "moderate": 2,
+    "high": 3,
+    "critical": 0,
+    "total": 5
+  },
+  "residuals_exactly_unchanged": true,
+  "residuals": [
+    {
+      "name": "@grpc/grpc-js",
+      "severity": "high",
+      "range": "1.14.0 - 1.14.4",
+      "nodes": [
+        "node_modules/@grpc/grpc-js"
+      ],
+      "advisory_urls": [
+        "https://github.com/advisories/GHSA-5375-pq7m-f5r2",
+        "https://github.com/advisories/GHSA-99f4-grh7-6pcq",
+        "https://github.com/advisories/GHSA-m9gg-hp2v-232j",
+        "https://github.com/advisories/GHSA-f596-whhp-79r4"
+      ],
+      "canonical_sha256_before_and_after": "fa7b3367174c6f08b4fb0ee16e8eb7ab626cef0c179e919187ad8e94f1c894db"
+    },
+    {
+      "name": "brace-expansion",
+      "severity": "high",
+      "range": "<=1.1.20",
+      "nodes": [
+        "node_modules/brace-expansion"
+      ],
+      "advisory_urls": [
+        "https://github.com/advisories/GHSA-3jxr-9vmj-r5cp",
+        "https://github.com/advisories/GHSA-mh99-v99m-4gvg",
+        "https://github.com/advisories/GHSA-rgw5-rvv9-x895",
+        "https://github.com/advisories/GHSA-q2hr-2g5m-vwhr",
+        "https://github.com/advisories/GHSA-qhr7-859c-m2p7",
+        "https://github.com/advisories/GHSA-6j4f-fj2g-mc7p"
+      ],
+      "canonical_sha256_before_and_after": "35fddcfb5c1d3818843d1a047d70b21f6aabf91b3cc0f1c816f0d74e09a9de2a"
+    },
+    {
+      "name": "fast-copy",
+      "severity": "moderate",
+      "range": "4.0.0 - 4.0.4",
+      "nodes": [
+        "node_modules/fast-copy"
+      ],
+      "advisory_urls": [
+        "https://github.com/advisories/GHSA-jggr-w7fw-pc2j"
+      ],
+      "canonical_sha256_before_and_after": "1e10326ddd91d769ed673ed7d067912116e427dd13f5192b69d1a9c89ac91526"
+    },
+    {
+      "name": "js-yaml",
+      "severity": "high",
+      "range": "4.0.0 - 4.3.1",
+      "nodes": [
+        "node_modules/js-yaml"
+      ],
+      "advisory_urls": [
+        "https://github.com/advisories/GHSA-h67p-54hq-rp68",
+        "https://github.com/advisories/GHSA-52cp-r559-cp3m",
+        "https://github.com/advisories/GHSA-5p4m-2wfm-xmqj",
+        "https://github.com/advisories/GHSA-2883-xcg3-v3hh"
+      ],
+      "canonical_sha256_before_and_after": "432fe80844b7d0e1aa5b93e149d636af003ef9927e67d996f7c407b52f558a6f"
+    },
+    {
+      "name": "protobufjs",
+      "severity": "moderate",
+      "range": "<=7.6.4",
+      "nodes": [
+        "node_modules/protobufjs"
+      ],
+      "advisory_urls": [
+        "https://github.com/advisories/GHSA-f38q-mgvj-vph7",
+        "https://github.com/advisories/GHSA-j3f2-48v5-ccww"
+      ],
+      "canonical_sha256_before_and_after": "0c726c3db09f65a910c7f8673bcb58ebf182084c13e8ac132022f19d992674b1"
+    }
+  ],
+  "audit_codes": [
+    1,
+    1
+  ],
+  "meaning": "Valid npm audit JSON; exit 1 expected for residual findings, not CI PASS."
+}

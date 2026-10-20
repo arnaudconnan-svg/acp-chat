@@ -1,0 +1,16 @@
+{
+  "argv": [
+    "env",
+    "-i",
+    "PATH=/usr/bin:/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin",
+    "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+    "node",
+    "/workspace/acp-chat/scripts/synthetic/formdata-harness.cjs",
+    "--baseline"
+  ],
+  "start": "2026-10-20T14:17:00.959838+00:00",
+  "end": "2026-10-20T14:17:01.019778+00:00",
+  "code": 1,
+  "stdout_sha256": "a0d62bcf6b01dc1cc7f8db2d8079dcb385be78d110a02ce27ad78a575a31515c",
+  "stderr_sha256": "b4ed47e9de6d14c14e35a735d74d9b1a8dbb7d53d114525f28e146cba42700ab"
+}

@@ -1,0 +1,5 @@
+{
+  "extend": "^3.0.2",
+  "teeny-request": "^9.0.0",
+  "@types/request": "^2.48.8"
+}

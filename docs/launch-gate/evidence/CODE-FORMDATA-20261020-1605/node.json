@@ -1,0 +1,15 @@
+{
+  "argv": [
+    "env",
+    "-i",
+    "PATH=/usr/bin:/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin",
+    "node",
+    "-p",
+    "JSON.stringify({version:process.version,execPath:process.execPath})"
+  ],
+  "start": "2026-10-20T14:15:33.760744+00:00",
+  "end": "2026-10-20T14:15:33.799570+00:00",
+  "code": 0,
+  "stdout_sha256": "b0cc8b7d745927ed3e986a5e9958270148cb71747b8acb307a822a2440fa42b6",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}
