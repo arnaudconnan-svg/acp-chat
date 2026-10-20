@@ -14,5 +14,9 @@
   "2.1.7": {
     "post_extension_length_guard": true,
     "post_extension_excerpt": "processIncomingMessage(message, function(error, message) {\n      if (error) return this._fail('extension_error', error.message);\n\n      var payload = message.data;\n\n      if (payload.length > this._maxLength)\n        return this._fail('too_large', 'WebSocket frame length too large');\n\n      if (message.opcode === this.OPCODES.text)\n        payload = this._encode(payload);\n\n      if (payload === null)"
+  },
+  "_work_review_followup": {
+    "source": "bundle-both-controls.stdout",
+    "scope": "both controls in exact loaded baseline and candidate bundles; source inspection only"
   }
 }

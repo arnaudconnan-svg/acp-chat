@@ -1,0 +1,15 @@
+{
+  "argv": [
+    "npm",
+    "pack",
+    "@firebase/database-compat@2.1.4",
+    "--pack-destination=/workspace/work/wscrit-package",
+    "--ignore-scripts",
+    "--cache=/workspace/work/npm-cache",
+    "--registry=https://registry.npmjs.org",
+    "--loglevel=error"
+  ],
+  "exit_code": 0,
+  "started_unix": 1792502017.2433262,
+  "duration_seconds": 1.022
+}

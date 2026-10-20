@@ -494,6 +494,46 @@
       "exit_code": 0,
       "started_unix": 1792501689.0782156,
       "duration_seconds": 13.425
+    },
+    "metadata-admin-retained.command.json": {
+      "argv": [
+        "npm",
+        "view",
+        "firebase-admin@13.10.0",
+        "dependencies",
+        "dist",
+        "--json",
+        "--registry=https://registry.npmjs.org",
+        "--cache=/workspace/work/npm-cache"
+      ],
+      "exit_code": 0,
+      "started_unix": 1792502016.3605056,
+      "duration_seconds": 0.824
+    },
+    "pack-compat-baseline.command.json": {
+      "argv": [
+        "npm",
+        "pack",
+        "@firebase/database-compat@2.1.4",
+        "--pack-destination=/workspace/work/wscrit-package",
+        "--ignore-scripts",
+        "--cache=/workspace/work/npm-cache",
+        "--registry=https://registry.npmjs.org",
+        "--loglevel=error"
+      ],
+      "exit_code": 0,
+      "started_unix": 1792502017.2433262,
+      "duration_seconds": 1.022
+    },
+    "bundle-both-controls.command.json": {
+      "argv": [
+        "python3",
+        "-c",
+        "\nimport json,hashlib,base64,tarfile,re,subprocess\nfrom pathlib import Path\nroot=Path('docs/launch-gate/evidence/CODE-WSCRIT-20261020-1451')\ndef captured(name):\n s=(root/(name+'.stdout')).read_text();return json.loads(s[:s.rfind('\\nPASS')])\nbaseline=captured('chain-baseline-corrected');candidate=captured('chain-candidate')\nbase_lock=json.loads(subprocess.check_output(['git','show','fb7951f56887ee0b486ee17ee1820618179c81eb:package-lock.json']))['packages']\nlock=json.loads(Path('package-lock.json').read_text())['packages']\nphysical=Path(candidate['chain'][1]['entry']);assert str(physical).endswith('/@firebase/database-compat/dist/index.standalone.js')\nrecords=[]\nfor version,record,entries in [('2.1.4',baseline,base_lock),('2.1.7',candidate,lock)]:\n archive=Path('/workspace/work/wscrit-package/firebase-database-compat-'+version+'.tgz')\n tar_integrity='sha512-'+base64.b64encode(hashlib.sha512(archive.read_bytes()).digest()).decode()\n assert tar_integrity==entries['node_modules/@firebase/database-compat']['integrity']\n with tarfile.open(archive) as tf: raw=tf.extractfile('package/dist/index.standalone.js').read()\n digest=hashlib.sha256(raw).hexdigest();assert digest==record['chain'][1]['sha256']\n if version=='2.1.7':assert raw==physical.read_bytes()\n text=raw.decode(); lines=text.splitlines()\n legacy_start=text.index('var Draft75$2 = function(')\n legacy_end=text.index('var draft75 = ',legacy_start)\n legacy=text[legacy_start:legacy_end]\n acc='this._length = (octet & 0x7F) + 128 * this._length;'\n position=text.index(acc,legacy_start)\n line=text[:position].count('\\n')+1\n excerpt='\\n'.join(lines[line-3:line+5])\n legacy_guard='if (this._length > this._maxLength) return this.close();' in legacy\n # Require the bound immediately after the accumulated length, before any\n # closing/skipping branch. This is the legacy Draft75 parser, not a similarly\n # named guard in another protocol handler.\n adjacent=bool(re.search(re.escape(acc)+r'\\s*if \\(this\\._length > this\\._maxLength\\) return this\\.close\\(\\);',legacy))\n emit=re.search(r'_emitMessage: function\\(message\\) \\{[\\s\\S]*?processIncomingMessage\\(message, function\\(error, message\\)[\\s\\S]*?var payload = message.data;([\\s\\S]*?)if \\(payload === null\\)',text)\n assert emit\n post_guard='payload.length > this._maxLength' in emit.group(1)\n post_line=text[:emit.start()].count('\\n')+1\n post_excerpt=emit.group(0)[emit.group(0).index('var payload = message.data;'):]\n assert legacy_guard==adjacent==(version=='2.1.7')\n assert post_guard==(version=='2.1.7')\n records.append({'version':version,'origin':'official npm archive, integrity equals lock; bytes SHA equals previously actually loaded Admin standalone capture','loaded_path_recorded':record['chain'][1]['entry'],'bundle_sha256':digest,'archive_integrity':tar_integrity,'physical_candidate_bytes_equal':True if version=='2.1.7' else None,'legacy':{'function':'Draft75$2 / instance$4.parse(chunk) / switch case 1','function_region_lines':[text[:legacy_start].count('\\n')+1,text[:legacy_end].count('\\n')+1],'accumulation_line':line,'bound_after_accumulation_before_skip':adjacent,'comparison':'this._length > this._maxLength -> this.close()','excerpt_start_line':line-2,'excerpt':excerpt},'post_extension':{'function':'Hybi$2._emitMessage -> processIncomingMessage callback','function_start_line':post_line,'bound_present':post_guard,'excerpt':post_excerpt}})\nadmin=json.loads((root/'metadata-admin-retained.stdout').read_text());expected=lock['node_modules/firebase-admin'];assert admin['dependencies']['@firebase/database-compat']=='^2.0.0';assert admin['dist']['integrity']==expected['integrity'];assert admin['dist']['tarball']==expected['resolved']\nprint(json.dumps({'inspection':'source only, no private parser export/instrumentation, no frames/compression/network, no new app or harness code','tested_code_sha_unchanged':'1a8fd6784b7c0e19eab3b973e49e6dd21eb53d78','bundles':records,'retained_admin':{'version':expected['version'],'compat_range':admin['dependencies']['@firebase/database-compat'],'official_dist_matches_lock':True},'conclusion':'both legacy accumulation bound and post-extension bound absent in loaded baseline2.1.4, present in exact loaded candidate2.1.7; source evidence only'},ensure_ascii=False,indent=2))\n"
+      ],
+      "exit_code": 0,
+      "started_unix": 1792502066.3136876,
+      "duration_seconds": 0.115
     }
   },
   "provenance": "stdout/stderr opened before each subprocess; codes, argv, start time and duration captured; no transcription; original complete audit JSON remains outside repo",
@@ -521,7 +561,11 @@
     "base.command.json": "1bd90900af210ac240b9bd91f1c321011ea786aeb330ac3fef84399e5bbf06d6",
     "base.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "base.stdout": "a6a56aa333c1257a94b991196bbfb24b24fc3bd42479287596c1e8ebb30e0985",
-    "bundled-driver-inspection.json": "9d3199f1de7f8f245dd16333014acd38128f3189a0705e4dba93845f3cdbdd3c",
+    "bundle-both-controls.code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "bundle-both-controls.command.json": "73681f6dd2a87b13420cfba24ad71a836bb19d21f31f637de0dae9f0d9ba5445",
+    "bundle-both-controls.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "bundle-both-controls.stdout": "81e3ab2b3cddddf5522357dd195d2b6dc61a7f84391d56c9117daadd4b57cf95",
+    "bundled-driver-inspection.json": "6d7f977e3edc9061d73c25d72f4de1d3d7e38f59298b7838cbd835f2c2c14f97",
     "chain-baseline-corrected.code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
     "chain-baseline-corrected.command.json": "fd5c9c681f4332eee4062f57776000d8f9a88fd365222db5812da7d4f53c9150",
     "chain-baseline-corrected.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -579,6 +623,10 @@
     "isolation.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "isolation.stdout": "804df74a405644b788976f048f5e321863534250380337a3621184e4bf9989a7",
     "lock-provenance.json": "1c80aab01f8f0fa75d8fbfff980922225793eee0b07a34b60ae6a1fef8f98650",
+    "metadata-admin-retained.code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "metadata-admin-retained.command.json": "0283ce95ce5c5e19b7b05f0d114d3df1f2a3fd3a72eccbeda726bbf8349bdac4",
+    "metadata-admin-retained.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "metadata-admin-retained.stdout": "19f2e5727f528a24d050d63513fc803a297b4b163f7504a41c35ff56295a5097",
     "metadata-admin.code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
     "metadata-admin.command.json": "0cae27541d9f76f4109d41d08fb624fe6730a1a96554001099cb819275904736",
     "metadata-admin.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -611,6 +659,10 @@
     "pack-compat-216.command.json": "2afa1332e6be5b5c9b82821aaf0e85d2c062b930953720e3eed2ec3d32c5a66f",
     "pack-compat-216.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "pack-compat-216.stdout": "c79013d54751d93805036cc1dbf72d0d86017fb01c5899fa82d80b1c542ee561",
+    "pack-compat-baseline.code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "pack-compat-baseline.command.json": "f57869e2351bc00fa9ba392e0b3d93238b5955e63cfc5138f3702a81ac71784c",
+    "pack-compat-baseline.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "pack-compat-baseline.stdout": "b5812f04416db0081f041d9dcf6dfd1092f2357a218e937faab455c0c57be563",
     "pack-compat-latest.code": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
     "pack-compat-latest.command.json": "e8c2f1bf1de7e39590ee0a3b3c671e3f4b22f574d1e5126ff5249fbbf921e291",
     "pack-compat-latest.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -639,5 +691,12 @@
     "verify.command.json": "2964145b8c9269510beef7be8c7038cbd135ebad662697df39a26b6e65a172cf",
     "verify.stderr": "b3d6bfbfcace0752ebcbb03c18b61aac99cbe59670ff45e5857c0a1b36070749",
     "verify.stdout": "0025d52aceed9d3cba3b7c93d544ac3078104ccfc592707a0855024c2e7c10a2"
+  },
+  "followup_review": {
+    "request": "Work final targeted review, no application/harness/lock code changed",
+    "inspection": "bundle-both-controls.stdout: legacy Draft75 parse case1 and Hybi post-extension checks, function/line bounds, minimal excerpts, archive integrities and loaded bundle SHA matches",
+    "result": "both absent in baseline2.1.4 and present in actual physical candidate2.1.7",
+    "admin_metadata": "metadata-admin-retained.stdout/command.json: exact npm firebase-admin@13.10.0 dependencies/dist; ^2.0.0 and dist match lock. metadata-admin.stdout retains prior latest14.5.0 observation only, not evidence for installed Admin",
+    "validation": "source-only; no private parser exposure/instrumentation, compression or network test. verify not repeated because executable code unchanged. First errors and original test SHA remain unchanged."
   }
 }
