@@ -2928,6 +2928,9 @@ app.get('/api/admin/session', async (req, res) => {
 
     return res.json({
       authenticated: true,
+      reviewContext: crypto.createHmac('sha256', ADMIN_SESSION_SIGNING_SECRET)
+        .update('admin-review:' + String(parseCookies(req).adminSessionId || ''))
+        .digest('hex'),
       canBypassTwaGate,
       welcomeAnimationPolicy,
       canUseAdminUi,

@@ -1,0 +1,259 @@
+{
+  "code_commit": "e7b03af936713ad8850ef087b09905cfcb99d811",
+  "base": "b745f01c49230b88c42adf8848e353c84c1d1b76",
+  "technical_commits": [
+    "4a9751c98794558f4dd5de8d92164d8129315371",
+    "e7b03af936713ad8850ef087b09905cfcb99d811"
+  ],
+  "checked_at_utc": "2026-10-21T13:34:04.319304+00:00",
+  "runtime_observed_at_receipt": {
+    "node": "v24.19.0",
+    "execPath": "/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node"
+  },
+  "chromium": "Chromium 154.0.8037.57 built on Debian GNU/Linux 13 (trixie)",
+  "runtime_limit": "Resolved under same env-i PATH as tests; no per-command contemporaneous version capture claimed. Browser uses the recorded /usr/bin/chromium.",
+  "files": {
+    "public/admin.html": {
+      "sha256": "69707088b52c993f5f36cfc0133cf348ed8df68c1e5b5336b77cfd36b20920f3",
+      "git_show_equals_tested_checkout": true
+    },
+    "public/js/professional-review.js": {
+      "sha256": "04475c0eb696c90f383a51f62316cbf9dd91c172e1d7e2355295eb2fbac2d984",
+      "git_show_equals_tested_checkout": true
+    },
+    "public/pros-login.html": {
+      "sha256": "bdad446e5a26ff68f18565ebee6a36ffc357ce39b12a20cd7ce9fee069bc52f2",
+      "git_show_equals_tested_checkout": true
+    },
+    "public/pros.html": {
+      "sha256": "4eae8e1e4b03020ff58be0d988ad09310cab5c4406a60358532617289e6cb254",
+      "git_show_equals_tested_checkout": true
+    },
+    "scripts/synthetic/admin-review-browser.cjs": {
+      "sha256": "b54838bfd467a6d69bbee1f095e6ad5926070f69f7aac7d329d4a6b2705d902c",
+      "git_show_equals_tested_checkout": true
+    },
+    "scripts/synthetic/admin-review-harness.cjs": {
+      "sha256": "38f7ebab497a06407dabece29810e10980e65cdc58288c1c741250f039491e17",
+      "git_show_equals_tested_checkout": true
+    },
+    "scripts/synthetic/consent-ui-harness.cjs": {
+      "sha256": "1a89019679e0d22032dd908d489bc64b2b6b04544d7678b0f947442a6c2f4e6f",
+      "git_show_equals_tested_checkout": true
+    },
+    "server.js": {
+      "sha256": "253230f9436a222fc04934d7e9c3360a849e37626cac273653fa3d360fda1c2a",
+      "git_show_equals_tested_checkout": true
+    }
+  },
+  "guard_unchanged": true,
+  "lock_unchanged": true,
+  "commands": [
+    {
+      "capture": "qualified-unit.json",
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/usr/bin:/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin",
+        "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+        "node",
+        "scripts/synthetic/admin-review-harness.cjs"
+      ],
+      "start": "2026-10-21T13:31:29.423328+00:00",
+      "end": "2026-10-21T13:31:30.336448+00:00",
+      "code": 0,
+      "stdout_sha256": "831bca111f9cb4dc512b88e60cd7d7c139900bbfd9c54f623726bc8ab8b63db0",
+      "stderr_sha256": "4bd204f8a1b027e272438703068ea92477c0e2a15bdb33d1bb9e0832d1e92ad9"
+    },
+    {
+      "capture": "qualified-browser.json",
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/usr/bin:/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin",
+        "ADMIN_REVIEW_OUTPUT=/workspace/acp-chat/docs/launch-gate/evidence/CODE-UX-ADMIN-20261021-1500/renders",
+        "node",
+        "scripts/synthetic/admin-review-browser.cjs"
+      ],
+      "start": "2026-10-21T13:31:31.562004+00:00",
+      "end": "2026-10-21T13:31:38.401127+00:00",
+      "code": 0,
+      "stdout_sha256": "f56ad03d40185f59a644e5d61267d4144e7fe43ca11c8e68db8c33b98dadfc81",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "capture": "qualified-lint.json",
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/usr/bin:/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin",
+        "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+        "node",
+        "node_modules/eslint/bin/eslint.js",
+        "public/js/professional-review.js",
+        "server.js",
+        "scripts/synthetic/admin-review-browser.cjs",
+        "scripts/synthetic/admin-review-harness.cjs"
+      ],
+      "start": "2026-10-21T13:31:29.444260+00:00",
+      "end": "2026-10-21T13:31:30.612796+00:00",
+      "code": 0,
+      "stdout_sha256": "f3e7066bfb885626a02bcc83b625934d020e77f92a1c202f0510c56b9dc3b709",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "capture": "qualified-syntax.json",
+      "argv": [
+        "node",
+        "--check",
+        "public/js/professional-review.js"
+      ],
+      "start": "2026-10-21T13:31:30.663547+00:00",
+      "end": "2026-10-21T13:31:30.693858+00:00",
+      "code": 0,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "capture": "qualified-professional.json",
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/usr/bin:/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin",
+        "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+        "npm",
+        "run",
+        "professional:harness"
+      ],
+      "start": "2026-10-21T13:32:19.341673+00:00",
+      "end": "2026-10-21T13:32:20.596930+00:00",
+      "code": 0,
+      "stdout_sha256": "bead575f809217c070c84d352eead506f8b523817fcd831dc18c8d9ab89ed9e8",
+      "stderr_sha256": "379fafb2eb316a05378c8f9e19f9af0c67684ab1709d541c5b98e3b2f8a2f850"
+    },
+    {
+      "capture": "qualified-consent.json",
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/usr/bin:/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin",
+        "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+        "npm",
+        "run",
+        "consent-ui:harness"
+      ],
+      "start": "2026-10-21T13:32:20.646299+00:00",
+      "end": "2026-10-21T13:32:21.974949+00:00",
+      "code": 0,
+      "stdout_sha256": "595edb57f5a04ef1276f943fd1e300a6a32e6c60b739c650313f6c33f72d496e",
+      "stderr_sha256": "6d5cb6da3166d16d54885fa3279704b8e53b72f967aad32cac8b79abd89ac558"
+    },
+    {
+      "capture": "qualified-isolation.json",
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/usr/bin:/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin",
+        "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+        "npm",
+        "run",
+        "isolation:harness"
+      ],
+      "start": "2026-10-21T13:32:22.030686+00:00",
+      "end": "2026-10-21T13:32:22.602478+00:00",
+      "code": 0,
+      "stdout_sha256": "d568338bfea60f52a5646276704dbfe81d2e82449150ad443b5696ebd48716d9",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "capture": "qualified-verify.json",
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/usr/bin:/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin",
+        "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+        "npm",
+        "run",
+        "verify"
+      ],
+      "start": "2026-10-21T13:31:30.401170+00:00",
+      "end": "2026-10-21T13:32:02.359894+00:00",
+      "code": 0,
+      "stdout_sha256": "c41781d7a4a483e7b705a4cede4cbac252b00adb423e96230a5b87ebf79bfcd9",
+      "stderr_sha256": "04f92ee32f948647a24500709b993475bf1af6ba147dcce5a586716ea3cacf28"
+    },
+    {
+      "capture": "syntax-server.json",
+      "argv": [
+        "node",
+        "--check",
+        "server.js"
+      ],
+      "start": "2026-10-21T13:30:03.916855+00:00",
+      "end": "2026-10-21T13:30:04.019182+00:00",
+      "code": 0,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "capture": "syntax-inline.json",
+      "argv": [
+        "python3",
+        "-c",
+        "import pathlib,subprocess; files=sorted(pathlib.Path(\"/workspace/work/uxadmin\").glob(\"*.html*.js\")); results=[subprocess.run([\"node\",\"--check\",str(f)]).returncode for f in files]; print(str(len(files))+\" inline scripts checked\"); raise SystemExit(max(results))"
+      ],
+      "start": "2026-10-21T13:30:04.330475+00:00",
+      "end": "2026-10-21T13:30:04.536637+00:00",
+      "code": 0,
+      "stdout_sha256": "ede70c0718fd5157c477270c71cfc60f5e2f665ec4015a759ec6da643fbee89d",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "capture": "runtime.json",
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/usr/bin:/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin",
+        "node",
+        "-p",
+        "JSON.stringify({node:process.version,execPath:process.execPath})"
+      ],
+      "start": "2026-10-21T13:33:10.478718+00:00",
+      "end": "2026-10-21T13:33:10.532027+00:00",
+      "code": 0,
+      "stdout_sha256": "e1b39d6628525b8135a253b4935816c3d2e67e6fb33e83a16f8b4bab5241b760",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "capture": "chromium-version.json",
+      "argv": [
+        "/usr/bin/chromium",
+        "--version"
+      ],
+      "start": "2026-10-21T13:33:10.577653+00:00",
+      "end": "2026-10-21T13:33:10.651800+00:00",
+      "code": 0,
+      "stdout_sha256": "091d31fb294d599567cfbeeb6731b9aee8838317f6f54e4d5bfeea6b4b3477b9",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "render_sha256": {
+    "desktop-conversation-reason.png": "14124a0dfab1f0e2115db173f3d179e3f073c2257fa9a08039a7e44691d3dde7",
+    "desktop-expired.png": "7e31c58508926e5931d7c671eea26c7c49ab755ee6804d4a9ba0dc2a160af5b6",
+    "desktop-list-masked.png": "8821c11e97394d108b481885804d0f598886b05dd854f7d6872052484d7a13cc",
+    "desktop-list-revealed.png": "d232b9aff7ff48ecdc4abf59e8f1b01161da19f5f7ee3f7b2411dab803a387d8",
+    "desktop-race-remasked.png": "33b39ecd35c1ca0f1a8b55e87bbc19933bb01cbe757453655336984737211a30",
+    "mobile-conversation-reason.png": "68118558b8b7237a085c52f0adb08f9e2a4cd0597838bd9d4ca92a77b3dfd508",
+    "mobile-expired.png": "f6aedaa65dcef6b498cf9db6ffa4712ee89388c8e0f8d8bfaed9ae6f649bd941",
+    "mobile-list-masked.png": "7af770d10aad69c4f6ee7f136f0de4910522b09711a22d58281c10b3b9151422",
+    "mobile-list-revealed.png": "3a7cde65a4e1eabaf7f74d1b2a3c506ea89cb1fd44c08a7622856de8711c45ab",
+    "mobile-race-remasked.png": "f266a18c9a04291e3687eab306cf672e18ba94a7a274704753c56e84ba2df3f2"
+  },
+  "browser_boundaries": "Real frontend served through Playwright route fulfill; all API responses are synthetic route doubles, all unexpected origins aborted. Chromium launched with native one-command network permission for required local IPC; no server/provider network in fixtures. M0 unchanged and used for backend/unit/verify checks; browser driver necessarily runs separately from its child-process-denying guard.",
+  "limitations": [
+    "No deployed authentication or personal professional account tested",
+    "No Firebase/SMTP/Mistral or real conversation/corpus",
+    "Role/consent/audit backend verified separately with existing genuine Express synthetic harnesses",
+    "Known inherited global lint baseline not rerun; targeted lint code 0 with eleven existing server warnings"
+  ]
+}

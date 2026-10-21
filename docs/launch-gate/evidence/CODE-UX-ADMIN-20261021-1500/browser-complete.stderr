@@ -1,0 +1,14 @@
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
++ actual - expected
+
++ 'support_incident'
+- ''
+
+    at /workspace/acp-chat/scripts/synthetic/admin-review-browser.cjs:253:14 {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: 'support_incident',
+  expected: '',
+  operator: 'strictEqual',
+  diff: 'simple'
+}

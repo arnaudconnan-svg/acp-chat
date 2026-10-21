@@ -1,0 +1,5 @@
+
+> acp-chat@1.0.0 consent-ui:harness
+> node scripts/synthetic/consent-ui-harness.cjs
+
+[PASS] CJ4 consent DOM through real APIs: readable owned public choices, restored scope/date/summary, exact local expiry and revocation; distinct admin reasons

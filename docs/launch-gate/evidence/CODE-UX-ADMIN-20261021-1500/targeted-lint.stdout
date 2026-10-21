@@ -1,0 +1,16 @@
+
+/workspace/acp-chat/server.js
+    72:7   warning  'accountArchivesRef' is assigned a value but never used. Allowed unused vars must match /^_/u        no-unused-vars
+    82:7   warning  'adminSessions' is assigned a value but never used. Allowed unused vars must match /^_/u             no-unused-vars
+   174:9   warning  'resolveBranchSeedPayload' is assigned a value but never used. Allowed unused vars must match /^_/u  no-unused-vars
+   309:9   warning  'headerRequestId' is assigned a value but never used. Allowed unused vars must match /^_/u           no-unused-vars
+  1563:16  warning  'updateOwnedConversation' is defined but never used. Allowed unused vars must match /^_/u            no-unused-vars
+  1710:10  warning  'logBranchRouteEvent' is defined but never used. Allowed unused vars must match /^_/u                no-unused-vars
+  1940:16  warning  'buildFacilitationDirectoryModel' is defined but never used. Allowed unused vars must match /^_/u    no-unused-vars
+  2186:10  warning  'extractIntersessionSection' is defined but never used. Allowed unused vars must match /^_/u         no-unused-vars
+  2404:10  warning  'extractRuntimeCompactItems' is defined but never used. Allowed unused vars must match /^_/u         no-unused-vars
+  3895:11  warning  'userRecord' is assigned a value but never used. Allowed unused vars must match /^_/u                no-unused-vars
+  8026:7   warning  'convRefForCatch' is assigned a value but never used. Allowed unused vars must match /^_/u           no-unused-vars
+
+✖ 11 problems (0 errors, 11 warnings)
+
