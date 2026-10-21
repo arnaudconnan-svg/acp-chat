@@ -1,0 +1,14 @@
+{
+  "code_commit": "e7b03af936713ad8850ef087b09905cfcb99d811",
+  "base": "b745f01c49230b88c42adf8848e353c84c1d1b76",
+  "checked_files": 8,
+  "all_git_show_hashes_match": true,
+  "guard_and_lock_unchanged": true,
+  "qualified_commands_all_code_0": true,
+  "screenshots": 10,
+  "rendered_viewports": [
+    "desktop",
+    "mobile"
+  ],
+  "audit_reason_present_every_synthetic_protected_request": true
+}

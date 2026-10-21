@@ -1,0 +1,15 @@
+{
+  "argv": [
+    "env",
+    "-i",
+    "PATH=/usr/bin:/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin",
+    "ADMIN_REVIEW_OUTPUT=/workspace/acp-chat/docs/launch-gate/evidence/CODE-UX-ADMIN-20261021-1500/renders",
+    "node",
+    "scripts/synthetic/admin-review-browser.cjs"
+  ],
+  "start": "2026-10-21T13:26:43.304826+00:00",
+  "end": "2026-10-21T13:26:46.767604+00:00",
+  "code": 1,
+  "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stderr_sha256": "ec63e4775c4b78f95a7a77c97effb5b340e2d4fc36e73df100b75528de57609f"
+}

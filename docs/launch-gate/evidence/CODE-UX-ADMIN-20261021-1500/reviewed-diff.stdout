@@ -1,0 +1,1011 @@
+diff --git a/public/admin.html b/public/admin.html
+index 07bc67d..66d2401 100644
+--- a/public/admin.html
++++ b/public/admin.html
+@@ -1740,6 +1740,7 @@
+       }
+ 
+       async function loadConversations() {
++        const reviewStamp = window.FacilitatProfessionalReview.capture();
+         const list = document.getElementById('list');
+         const debugToggleBtn = document.getElementById('debugToggleBtn');
+         const memoryToggleBtn = document.getElementById('memoryToggleBtn');
+@@ -1762,6 +1763,7 @@
+         try {
+           const res = await fetchWithTimeout('/api/admin/conversations');
+           const response = await readAdminJsonResponse(res);
++          if (!window.FacilitatProfessionalReview.current(reviewStamp)) return;
+ 
+           if (response.redirectedToLogin) {
+             list.innerHTML =
+@@ -1844,6 +1846,7 @@
+               }
+             );
+             const response = await readAdminJsonResponse(res);
++            if (!window.FacilitatProfessionalReview.current(reviewStamp)) return;
+ 
+             if (response.redirectedToLogin) {
+               return;
+@@ -1876,6 +1879,7 @@
+               }
+             );
+             const response = await readAdminJsonResponse(res);
++            if (!window.FacilitatProfessionalReview.current(reviewStamp)) return;
+ 
+             if (response.redirectedToLogin) {
+               return;
+@@ -2137,6 +2141,7 @@
+ 
+           restoreConversationListScrollIfNeeded();
+         } catch (err) {
++          if (!window.FacilitatProfessionalReview.current(reviewStamp)) return;
+           const isTimeout =
+             err &&
+             (err.name === 'AbortError' ||
+@@ -2155,7 +2160,9 @@
+         const list = document.getElementById('list');
+         const debugToggleBtn = document.getElementById('debugToggleBtn');
+         const memoryToggleBtn = document.getElementById('memoryToggleBtn');
++        const reviewStamp = window.FacilitatProfessionalReview.capture();
+         const branchTreeData = await fetchBranchTreeData(conversationId);
++        if (!window.FacilitatProfessionalReview.current(reviewStamp)) return;
+         const preferredConversationId =
+           resolvePreferredConversationIdForBranchView(
+             branchTreeData,
+@@ -2200,6 +2207,7 @@
+               '/messages'
+           );
+           const response = await readAdminJsonResponse(res);
++          if (!window.FacilitatProfessionalReview.current(reviewStamp)) return;
+ 
+           if (response.redirectedToLogin) {
+             list.innerHTML =
+@@ -3610,6 +3618,7 @@
+ 
+           await branchTreePromise;
+         } catch (err) {
++          if (!window.FacilitatProfessionalReview.current(reviewStamp)) return;
+           const isTimeout =
+             err &&
+             (err.name === 'AbortError' ||
+@@ -3624,6 +3633,30 @@
+         }
+       }
+ 
++      // Identity context changes discard rendered nodes and their data-bearing handlers.
++      window.addEventListener('facilitat-admin-clear', () => {
++        activeAdminConversationSwipeElement = null;
++        activeAdminConversationSwipeCloser = null;
++        document.getElementById('list').replaceChildren();
++        const meta = document.getElementById('conversationMeta');
++        meta.replaceChildren();
++        meta.style.display = 'none';
++        hideBranchTree();
++        for (const id of ['debugToggleBtn', 'memoryToggleBtn']) {
++          const button = document.getElementById(id);
++          button.onclick = null;
++          button.style.display = 'none';
++        }
++      });
++      window.addEventListener('facilitat-admin-refresh', async () => {
++        const stamp = window.FacilitatProfessionalReview.capture();
++        if (!(await ensureAdminSession())) return;
++        if (!window.FacilitatProfessionalReview.current(stamp)) return;
++        const conversationId = getConversationIdFromUrl();
++        const load = conversationId ? loadMessages(conversationId) : loadConversations();
++        load.catch(renderInitError);
++      });
++
+       async function init() {
+         const list = document.getElementById('list');
+         list.textContent = 'Verification de la session admin...';
+diff --git a/public/js/professional-review.js b/public/js/professional-review.js
+index 053bd37..c5f39fb 100644
+--- a/public/js/professional-review.js
++++ b/public/js/professional-review.js
+@@ -1,74 +1,334 @@
+ (function (root) {
+   'use strict';
+   if (!root?.document) return;
+-  let reason = '',
+-    unmask = '';
++  const KEY = 'facilitatio:admin-review:v1';
++  const TTL = 10 * 60 * 1000;
+   const nativeFetch = root.fetch.bind(root);
+   const choices = {
+     support_incident: 'Incident de support',
+-    security_review: 'Revue de s\u00e9curit\u00e9',
++    security_review: 'Revue de sécurité',
+     user_request: 'Demande utilisateur',
+-    identity_verification: 'V\u00e9rification d\u2019identit\u00e9'
++    identity_verification: 'Vérification d’identité'
+   };
+-  let requested;
+-  function requestReason() {
+-    if (reason) return Promise.resolve();
+-    if (requested) return requested;
+-    requested = new Promise((resolve) => {
+-      const panel = root.document.createElement('aside');
+-      panel.style.cssText =
+-        'padding:16px;background:#fff;color:#111;position:sticky;top:0;z-index:1000';
+-      panel.append(
+-        'Acc\u00e8s administrateur journalis\u00e9. Motif obligatoire : '
+-      );
+-      const select = root.document.createElement('select');
+-      select.setAttribute('aria-label', 'Motif administrateur');
+-      select.add(new root.Option('Choisir un motif', ''));
+-      for (const [code, label] of Object.entries(choices))
+-        select.add(new root.Option(label, code));
+-      select.onchange = () => {
+-        reason = select.value;
+-        if (reason) resolve();
+-      };
+-      panel.append(select);
+-      panel.append(
+-        ' Lev\u00e9e de pseudonymisation (\u00e9v\u00e9nement distinct) : '
+-      );
+-      const identity = root.document.createElement('select');
+-      identity.setAttribute(
+-        'aria-label',
+-        'Motif de lev\u00e9e de pseudonymisation'
+-      );
+-      identity.add(new root.Option('Conserver la pseudonymisation', ''));
+-      for (const [code, label] of Object.entries(choices))
+-        identity.add(new root.Option(label, code));
+-      identity.onchange = () => {
+-        unmask = identity.value;
+-      };
+-      panel.append(identity);
+-      root.document.body.prepend(panel);
+-    });
+-    return requested;
++  let reason = '',
++    unmask = '',
++    context = '',
++    expiresAt = 0,
++    generation = 0;
++  let panel, accessSelect, identitySelect, status, waiter, timer;
++  const pending = new Set();
++  const abortError = () =>
++    new root.DOMException('Contexte administrateur renouvelé', 'AbortError');
++  function store() {
++    try {
++      if (reason && context)
++        root.sessionStorage.setItem(
++          KEY,
++          JSON.stringify({ reason, context, expiresAt })
++        );
++      else root.sessionStorage.removeItem(KEY);
++    } catch {
++      /* Reason remains usable only in this document if storage is unavailable. */
++    }
++  }
++  function invalidate() {
++    generation++;
++    for (const controller of pending) controller.abort();
++    pending.clear();
++    root.dispatchEvent(new root.CustomEvent('facilitat-admin-clear'));
++  }
++  function sync() {
++    if (accessSelect) accessSelect.value = reason;
++    if (identitySelect) identitySelect.value = unmask;
++  }
++  function reset() {
++    reason = '';
++    unmask = '';
++    context = '';
++    expiresAt = 0;
++    root.clearTimeout(timer);
++    store();
++    sync();
++    if (status) status.textContent = 'Motif à confirmer. Identités masquées.';
++    invalidate();
++    if (waiter) {
++      waiter.reject(abortError());
++      waiter = null;
++    }
++  }
++  function arm() {
++    root.clearTimeout(timer);
++    if (reason)
++      timer = root.setTimeout(reset, Math.max(0, expiresAt - Date.now()));
++  }
++  function refresh() {
++    root.dispatchEvent(new root.CustomEvent('facilitat-admin-refresh'));
++  }
++  function mount() {
++    if (panel) return;
++    panel = root.document.createElement('aside');
++    panel.id = 'adminReviewPanel';
++    panel.style.cssText =
++      'padding:12px;background:#fff;color:#111;position:sticky;top:0;z-index:1000;display:flex;flex-wrap:wrap;gap:10px;align-items:center;font-size:14px';
++    function select(label, empty) {
++      const wrap = root.document.createElement('label');
++      wrap.append(label + ' ');
++      const input = root.document.createElement('select');
++      input.setAttribute('aria-label', label);
++      input.style.maxWidth = '100%';
++      input.add(new root.Option(empty, ''));
++      for (const [code, text] of Object.entries(choices))
++        input.add(new root.Option(text, code));
++      wrap.append(input);
++      panel.append(wrap);
++      return input;
++    }
++    accessSelect = select('Motif administrateur', 'Choisir un motif');
++    identitySelect = select(
++      'Motif de levée de pseudonymisation',
++      'Conserver la pseudonymisation'
++    );
++    status = root.document.createElement('span');
++    status.setAttribute('role', 'status');
++    status.textContent = 'Accès journalisé. Identités masquées par défaut.';
++    panel.append(status);
++    const clear = root.document.createElement('button');
++    clear.type = 'button';
++    clear.textContent = 'Réinitialiser le motif';
++    clear.onclick = () => {
++      reset();
++      refresh();
++    };
++    panel.append(clear);
++    accessSelect.onchange = () => {
++      const next = Object.hasOwn(choices, accessSelect.value)
++        ? accessSelect.value
++        : '';
++      const waiting = waiter;
++      reason = next;
++      unmask = '';
++      expiresAt = reason ? Date.now() + TTL : 0;
++      if (!waiting) invalidate();
++      store();
++      sync();
++      status.textContent = 'Motif courant mis à jour. Identités masquées.';
++      arm();
++      if (waiting && reason) {
++        waiter = null;
++        waiting.resolve();
++      } else if (!waiting) refresh();
++    };
++    identitySelect.onchange = () => {
++      unmask =
++        reason && context && Object.hasOwn(choices, identitySelect.value)
++          ? identitySelect.value
++          : '';
++      invalidate();
++      sync();
++      status.textContent = unmask
++        ? 'Vérification de l’accès aux identités…'
++        : 'Identités remasquées.';
++      refresh();
++    };
++    root.document.body.prepend(panel);
++    sync();
++  }
++  async function requestReason() {
++    mount();
++    if (!context) throw abortError();
++    if (reason && expiresAt <= Date.now()) {
++      reset();
++      throw abortError();
++    }
++    if (reason) return;
++    if (!waiter) {
++      const promise = new Promise((resolve, reject) => {
++        waiter = { resolve, reject };
++      });
++      waiter.promise = promise;
++    }
++    await waiter.promise;
++  }
++  async function session(response, stamp) {
++    let data;
++    try {
++      data = await response.clone().json();
++    } catch {
++      reset();
++      return;
++    }
++    if (stamp !== generation) throw abortError();
++    if (!response.ok || data?.authenticated !== true || !data.reviewContext) {
++      reset();
++      return;
++    }
++    const next = String(data.reviewContext);
++    if (context && context !== next) reset();
++    context = next;
++    if (!reason) {
++      try {
++        const saved = JSON.parse(root.sessionStorage.getItem(KEY));
++        if (
++          saved?.context === context &&
++          Object.hasOwn(choices, saved.reason) &&
++          saved.expiresAt > Date.now() &&
++          saved.expiresAt <= Date.now() + TTL
++        ) {
++          reason = saved.reason;
++          expiresAt = saved.expiresAt;
++        } else root.sessionStorage.removeItem(KEY);
++      } catch {
++        try {
++          root.sessionStorage.removeItem(KEY);
++        } catch {
++          /* Storage unavailable. */
++        }
++      }
++    }
++    store();
++    sync();
++    arm();
+   }
+   root.fetch = async function (input, options = {}) {
+     const url = new URL(
+       typeof input === 'string' ? input : input.url,
+       root.location.origin
+     );
+-    if (
+-      url.origin === root.location.origin &&
++    if (url.origin !== root.location.origin) return nativeFetch(input, options);
++    const authChange = [
++      '/api/admin/logout',
++      '/api/admin/login',
++      '/api/pros/login',
++      '/api/pros/logout'
++    ].includes(url.pathname);
++    if (authChange) reset();
++    const protectedApi =
+       url.pathname.startsWith('/api/admin/') &&
+       !['/api/admin/session', '/api/admin/login', '/api/admin/logout'].includes(
+         url.pathname
+-      )
+-    ) {
+-      await requestReason();
+-      const headers = new root.Headers(options.headers || input?.headers || {});
+-      headers.set('x-access-reason', reason);
+-      if (unmask) headers.set('x-identity-unmask-reason', unmask);
+-      return nativeFetch(input, { ...options, headers });
++      );
++    if (!protectedApi) {
++      const sessionStamp = generation;
++      try {
++        const response = await nativeFetch(input, options);
++        if (url.pathname === '/api/admin/session')
++          await session(response, sessionStamp);
++        return response;
++      } catch (error) {
++        if (
++          url.pathname === '/api/admin/session' &&
++          sessionStamp === generation
++        )
++          reset();
++        throw error;
++      }
++    }
++    await requestReason();
++    const stamp = generation;
++    const controller = new root.AbortController();
++    const signal = options.signal || input?.signal;
++    const abort = () => controller.abort();
++    if (signal?.aborted) abort();
++    signal?.addEventListener('abort', abort, { once: true });
++    pending.add(controller);
++    const timeout = root.setTimeout(() => controller.abort(), 12000);
++    const headers = new root.Headers(options.headers || input?.headers || {});
++    headers.set('x-access-reason', reason);
++    headers.delete('x-identity-unmask-reason');
++    if (unmask) headers.set('x-identity-unmask-reason', unmask);
++    const check = () => {
++      if (stamp !== generation || !context || expiresAt <= Date.now())
++        throw abortError();
++    };
++    try {
++      check();
++      const response = await nativeFetch(input, {
++        ...options,
++        cache: 'no-store',
++        headers,
++        signal: controller.signal
++      });
++      check();
++      if ([401, 403].includes(response.status) || response.redirected) {
++        reset();
++        refresh();
++        throw abortError();
++      }
++      if (!response.ok) {
++        unmask = '';
++        invalidate();
++        sync();
++        status.textContent =
++          'Accès refusé ou indisponible. Identités masquées.';
++        throw abortError();
++      }
++      if (unmask)
++        status.textContent = 'Levée d’identité active pour cette page.';
++      return new Proxy(response, {
++        get(target, key) {
++          if (['json', 'text', 'arrayBuffer', 'blob', 'formData'].includes(key))
++            return async (...args) => {
++              check();
++              try {
++                let bodyTimer;
++                let value;
++                try {
++                  value = await Promise.race([
++                    target[key](...args),
++                    new Promise((_, reject) => {
++                      bodyTimer = root.setTimeout(
++                        () => reject(abortError()),
++                        12000
++                      );
++                    })
++                  ]);
++                } finally {
++                  root.clearTimeout(bodyTimer);
++                }
++                check();
++                return value;
++              } catch (error) {
++                if (stamp === generation && unmask) {
++                  unmask = '';
++                  invalidate();
++                  sync();
++                  status.textContent =
++                    'Réponse indisponible. Identités masquées.';
++                }
++                throw error;
++              }
++            };
++          const value = Reflect.get(target, key, target);
++          return typeof value === 'function' ? value.bind(target) : value;
++        }
++      });
++    } catch (error) {
++      if (stamp === generation && unmask) {
++        unmask = '';
++        invalidate();
++        sync();
++      }
++      throw error;
++    } finally {
++      root.clearTimeout(timeout);
++      pending.delete(controller);
++      signal?.removeEventListener('abort', abort);
++    }
++  };
++  root.addEventListener('pagehide', () => {
++    unmask = '';
++    invalidate();
++  });
++  root.addEventListener('pageshow', (event) => {
++    if (event.persisted) {
++      reset();
++      refresh();
+     }
+-    return nativeFetch(input, options);
++  });
++  root.FacilitatProfessionalReview = {
++    requestReason,
++    reset,
++    capture: () => generation,
++    current: (stamp) => stamp === generation
+   };
+-  root.FacilitatProfessionalReview = { requestReason };
+ })(typeof window === 'undefined' ? null : window);
+diff --git a/public/pros-login.html b/public/pros-login.html
+index 8ec8f2c..db60305 100644
+--- a/public/pros-login.html
++++ b/public/pros-login.html
+@@ -3,6 +3,7 @@
+   <head>
+     <script src="/js/local-destination.js"></script>
+     <script src="/js/identity-storage.js"></script>
++    <script src="/js/professional-review.js"></script>
+     <meta charset="UTF-8" />
+     <title>Connexion à l'espace professionnel</title>
+     <meta name="viewport" content="width=device-width, initial-scale=1" />
+diff --git a/public/pros.html b/public/pros.html
+index 014cf08..1b56905 100644
+--- a/public/pros.html
++++ b/public/pros.html
+@@ -3,6 +3,7 @@
+   <head>
+     <script src="/js/local-destination.js"></script>
+     <script src="/js/identity-storage.js"></script>
++    <script src="/js/professional-review.js"></script>
+     <meta charset="UTF-8" />
+     <meta
+       name="viewport"
+diff --git a/scripts/synthetic/admin-review-browser.cjs b/scripts/synthetic/admin-review-browser.cjs
+new file mode 100644
+index 0000000..ebef4e4
+--- /dev/null
++++ b/scripts/synthetic/admin-review-browser.cjs
+@@ -0,0 +1,324 @@
++'use strict';
++const assert = require('node:assert/strict');
++const process = require('node:process');
++const { URL } = require('node:url');
++const console = require('node:console');
++const fs = require('node:fs');
++const path = require('node:path');
++const { chromium } = require('playwright');
++const root = path.resolve('.');
++const output = path.resolve(
++  process.env.ADMIN_REVIEW_OUTPUT || '/tmp/admin-review-renders'
++);
++fs.mkdirSync(output, { recursive: true });
++(async () => {
++  const browser = await chromium.launch({
++    executablePath: '/usr/bin/chromium',
++    headless: true,
++    args: ['--no-sandbox']
++  });
++  try {
++    for (const [name, viewport] of [
++      ['desktop', { width: 1365, height: 900 }],
++      ['mobile', { width: 390, height: 844 }]
++    ]) {
++      const context = await browser.newContext({ viewport });
++      const calls = [],
++        errors = [];
++      let hold = null,
++        release,
++        fault = null,
++        session = 'synthetic-session-A';
++      await context.route('**/*', async (route) => {
++        const request = route.request(),
++          url = new URL(request.url());
++        if (url.origin !== 'http://synthetic.example.test') {
++          errors.push('external request blocked');
++          return route.abort();
++        }
++        if (url.pathname === '/index.html')
++          return route.fulfill({
++            contentType: 'text/html',
++            body: '<!doctype html><title>Déconnexion synthétique</title>'
++          });
++        const json = (data, status = 200) =>
++          route.fulfill({
++            status,
++            contentType: 'application/json',
++            body: JSON.stringify(data)
++          });
++        if (url.pathname === '/api/auth/session')
++          return json({ authenticated: false });
++        if (url.pathname === '/api/admin/session')
++          return json({
++            authenticated: true,
++            reviewContext: session,
++            canUseAdminUi: true,
++            canAccessAdminConversations: true,
++            canAccessSupportCases: true
++          });
++        if (url.pathname === '/api/admin/logout')
++          return json({ success: true });
++        if (url.pathname.startsWith('/api/admin/')) {
++          const headers = request.headers(),
++            revealed = !!headers['x-identity-unmask-reason'];
++          calls.push({
++            path: url.pathname,
++            reason: headers['x-access-reason'],
++            unmask: headers['x-identity-unmask-reason'] || null
++          });
++          if (!headers['x-access-reason']) errors.push('missing audit reason');
++          if (revealed && hold) await hold;
++          if (fault && revealed) {
++            const code = fault;
++            fault = null;
++            if (code === 'network') return route.abort('failed');
++            return json({ error: 'Synthetic refusal' }, code);
++          }
++          const identity = revealed
++            ? {
++                userLabel: 'SYNTHETIC ALICE',
++                userEmail: 'synthetic-alice@example.test',
++                userId: 'u_synthetic'
++              }
++            : { userLabel: 'Participant synthétique' };
++          try {
++            if (url.pathname.endsWith('/branches')) return json(null);
++            if (url.pathname.endsWith('/messages'))
++              return json([
++                {
++                  id: 'm_synthetic',
++                  role: 'user',
++                  content: 'Échange de démonstration — données synthétiques.',
++                  timestamp: 1792587600000,
++                  ...identity
++                }
++              ]);
++            if (url.pathname.includes('/intersession-memory/')) return json({});
++            if (url.pathname === '/api/admin/conversations')
++              return json([
++                {
++                  id: 'c_synthetic',
++                  title: 'Conversation synthétique',
++                  createdAt: 1792587600000,
++                  updatedAt: 1792587600000,
++                  messageCount: 1,
++                  ...identity
++                }
++              ]);
++            errors.push('unexpected API ' + url.pathname);
++            return json({}, 404);
++          } catch {
++            /* A deliberately aborted old response may no longer be fulfillable. */
++          }
++        }
++        const allowed =
++          url.pathname === '/admin.html' ||
++          url.pathname === '/pros.html' ||
++          (url.pathname.startsWith('/js/') && !url.pathname.includes('..'));
++        if (!allowed) return route.fulfill({ status: 404, body: '' });
++        const file = path.join(root, 'public', url.pathname);
++        if (!fs.existsSync(file))
++          return route.fulfill({ status: 404, body: '' });
++        return route.fulfill({
++          contentType: file.endsWith('.js')
++            ? 'application/javascript'
++            : 'text/html',
++          body: fs.readFileSync(file)
++        });
++      });
++      const page = await context.newPage();
++      await page.clock.install();
++      const access = () =>
++        page.getByLabel('Motif administrateur', { exact: true });
++      const identity = () =>
++        page.getByLabel('Motif de levée de pseudonymisation', { exact: true });
++      const masked = async () => {
++        await page
++          .locator('#list')
++          .getByText('Participant synthétique', { exact: false })
++          .first()
++          .waitFor();
++        assert(
++          !(await page.locator('body').innerText()).includes('SYNTHETIC ALICE')
++        );
++      };
++      const noIdentity = async () => {
++        const html = await page.locator('body').innerHTML();
++        for (const marker of [
++          'SYNTHETIC ALICE',
++          'synthetic-alice@example.test',
++          'u_synthetic'
++        ])
++          assert(!html.includes(marker));
++        const storage = await page.evaluate(() =>
++          JSON.stringify([
++            Object.entries(globalThis.sessionStorage),
++            Object.entries(globalThis.localStorage)
++          ])
++        );
++        assert(!storage.includes('SYNTHETIC ALICE'));
++        assert(!storage.includes('u_synthetic'));
++      };
++      const shot = (label) =>
++        page.screenshot({
++          path: path.join(output, name + '-' + label + '.png'),
++          fullPage: true
++        });
++      await page.goto('http://synthetic.example.test/admin.html');
++      await access().selectOption('support_incident');
++      await masked();
++      await shot('list-masked');
++      await identity().selectOption('identity_verification');
++      await page
++        .getByText('SYNTHETIC ALICE', { exact: false })
++        .first()
++        .waitFor();
++      await shot('list-revealed');
++      await page.locator('.admin-conversation-open-btn').first().click();
++      await page.waitForURL('**/admin.html?c=c_synthetic');
++      await page
++        .getByText('Échange de démonstration — données synthétiques.', {
++          exact: false
++        })
++        .first()
++        .waitFor();
++      assert.equal(await access().inputValue(), 'support_incident');
++      assert.equal(await identity().inputValue(), '');
++      await access().selectOption('security_review');
++      await page
++        .getByText('Échange de démonstration — données synthétiques.', {
++          exact: false
++        })
++        .first()
++        .waitFor();
++      await shot('conversation-reason');
++      await identity().selectOption('identity_verification');
++      await page
++        .getByText('SYNTHETIC ALICE', { exact: false })
++        .first()
++        .waitFor();
++      await identity().selectOption('');
++      assert(
++        !(await page.locator('body').innerText()).includes('SYNTHETIC ALICE')
++      );
++      await page.goto('http://synthetic.example.test/admin.html');
++      await masked();
++      assert.equal(await access().inputValue(), 'security_review');
++      hold = new Promise((resolve) => {
++        release = resolve;
++      });
++      await identity().selectOption('identity_verification');
++      await page.waitForFunction(() =>
++        globalThis.document
++          .querySelector('#list')
++          .textContent.includes('Chargement')
++      );
++      await identity().selectOption('');
++      await masked();
++      release();
++      hold = null;
++      await page.waitForTimeout(100);
++      await masked();
++      await noIdentity();
++      await shot('race-remasked');
++      await page.reload();
++      await masked();
++      assert.equal(await identity().inputValue(), '');
++      for (const code of [401, 403, 500, 'network']) {
++        fault = code;
++        await identity().selectOption('identity_verification');
++        await page.waitForFunction(
++          () =>
++            globalThis.document.querySelector(
++              '[aria-label="Motif de levée de pseudonymisation"]'
++            ).value === ''
++        );
++        assert(
++          !(await page.locator('body').innerText()).includes('SYNTHETIC ALICE')
++        );
++        if (code === 401 || code === 403) {
++          await access().selectOption('user_request');
++          await masked();
++        }
++      }
++      await page
++        .getByRole('button', { name: 'Réinitialiser le motif' })
++        .click();
++      assert.equal(await access().inputValue(), '');
++      assert.equal(
++        await page.evaluate(() =>
++          globalThis.sessionStorage.getItem('facilitatio:admin-review:v1')
++        ),
++        null
++      );
++      await access().selectOption('security_review');
++      await masked();
++      await page.reload();
++      await masked();
++      assert.equal(await access().inputValue(), 'security_review');
++      session = 'synthetic-session-B';
++      await page.reload();
++      await access().waitFor();
++      assert.equal(await access().inputValue(), '');
++      await access().selectOption('user_request');
++      await masked();
++      await page.goto('http://synthetic.example.test/pros.html');
++      await page.getByRole('button', { name: /déconnexion/i }).click();
++      await page.waitForURL('**/index.html');
++      assert.equal(
++        await page.evaluate(() =>
++          globalThis.sessionStorage.getItem('facilitatio:admin-review:v1')
++        ),
++        null
++      );
++      await page.goto('http://synthetic.example.test/admin.html');
++      await access().selectOption('support_incident');
++      await masked();
++      await page.clock.fastForward(10 * 60 * 1000 + 1);
++      assert.equal(await access().inputValue(), '');
++      assert.equal(
++        await page.evaluate(() =>
++          globalThis.sessionStorage.getItem('facilitatio:admin-review:v1')
++        ),
++        null
++      );
++      assert(
++        !(await page.locator('body').innerText()).includes('SYNTHETIC ALICE')
++      );
++      await shot('expired');
++      assert.deepEqual(errors, []);
++      assert(
++        calls.some(
++          (c) => c.reason === 'security_review' && c.path.endsWith('/messages')
++        )
++      );
++      assert(calls.some((c) => c.unmask));
++      console.log(
++        JSON.stringify({
++          viewport: name,
++          scenarios: [
++            'list/reveal/refresh',
++            'navigation/reason reuse/edit',
++            'conversation/remask',
++            'late response race',
++            'reload masked',
++            '401/403/500/network fail closed',
++            'reset',
++            'changed session',
++            'logout from professional space',
++            '10 minute expiry'
++          ],
++          requests: calls,
++          externalNetwork: false
++        })
++      );
++      await context.close();
++    }
++  } finally {
++    await browser.close();
++  }
++})().catch((error) => {
++  console.error(error);
++  process.exitCode = 1;
++});
+diff --git a/scripts/synthetic/admin-review-harness.cjs b/scripts/synthetic/admin-review-harness.cjs
+new file mode 100644
+index 0000000..7dc866d
+--- /dev/null
++++ b/scripts/synthetic/admin-review-harness.cjs
+@@ -0,0 +1,115 @@
++'use strict';
++const assert = require('node:assert/strict');
++const fs = require('node:fs');
++const path = require('node:path');
++const process = require('node:process');
++const { JSDOM } = require('jsdom');
++const { hashPassword } = require('../../lib/auth-password');
++const { loadApplication } = require('./runtime.cjs');
++assert(require.cache[path.resolve('scripts/synthetic/guard.cjs')]);
++(async () => {
++  const app = loadApplication({
++    seed: {
++      professionalIdentities: {
++        synthetic_admin: {
++          email: 'synthetic-admin@example.test',
++          passwordHash: hashPassword('Synthetic-only-123!'),
++          active: true,
++          roles: ['administrator'],
++          authorizationVersion: 1
++        }
++      }
++    }
++  });
++  const login = async () =>
++    (
++      await app.request('post', '/api/pros/login', {
++        body: {
++          email: 'synthetic-admin@example.test',
++          password: 'Synthetic-only-123!'
++        }
++      })
++    ).headers['set-cookie'].split(';')[0];
++  const first = await login(),
++    second = await login();
++  const probe = async (cookie) =>
++    (await app.request('get', '/api/admin/session', { cookie })).body;
++  const a = await probe(first),
++    b = await probe(first),
++    c = await probe(second);
++  assert.equal(a.authenticated, true);
++  assert.equal(a.reviewContext, b.reviewContext);
++  assert.notEqual(a.reviewContext, c.reviewContext);
++  assert.equal(a.reviewContext.length, 64);
++  assert(!a.reviewContext.includes('synthetic_admin'));
++  await app.request('post', '/api/admin/logout', { cookie: first });
++  assert.equal((await probe(first)).reviewContext, undefined);
++  const dom = new JSDOM('<main id="synthetic"></main>', {
++      url: 'https://synthetic.example.test/admin.html',
++      runScripts: 'outside-only'
++    }),
++    w = dom.window;
++  w.Headers = globalThis.Headers;
++  w.AbortController = globalThis.AbortController;
++  const requests = [];
++  let delayed = false,
++    release;
++  w.fetch = async (url, options = {}) => {
++    if (url === '/api/admin/session')
++      return new globalThis.Response(
++        JSON.stringify({
++          authenticated: true,
++          reviewContext: 'synthetic-context'
++        })
++      );
++    requests.push(options.headers);
++    const response = new globalThis.Response('{}');
++    if (delayed)
++      response.json = () =>
++        new Promise((resolve) => {
++          release = () => resolve({ userLabel: 'SYNTHETIC IDENTITY' });
++        });
++    return response;
++  };
++  w.eval(
++    fs.readFileSync(path.resolve('public/js/professional-review.js'), 'utf8')
++  );
++  await w.fetch('/api/admin/session');
++  const waiting = w.fetch('/api/admin/conversations');
++  await new Promise((resolve) => w.setTimeout(resolve, 0));
++  const selectors = w.document.querySelectorAll('select');
++  selectors[0].value = 'support_incident';
++  selectors[0].dispatchEvent(new w.Event('change'));
++  await waiting;
++  assert.equal(requests.at(-1).get('x-access-reason'), 'support_incident');
++  selectors[1].value = 'identity_verification';
++  selectors[1].dispatchEvent(new w.Event('change'));
++  delayed = true;
++  const response = await w.fetch('/api/admin/conversations');
++  const reading = response.json();
++  selectors[1].value = '';
++  selectors[1].dispatchEvent(new w.Event('change'));
++  release();
++  await assert.rejects(reading, (error) => error.name === 'AbortError');
++  delayed = false;
++  await w.fetch('/api/admin/conversations', {
++    headers: { 'x-identity-unmask-reason': 'identity_verification' }
++  });
++  assert.equal(requests.at(-1).get('x-identity-unmask-reason'), null);
++  selectors[0].value = 'security_review';
++  selectors[0].dispatchEvent(new w.Event('change'));
++  await w.fetch('/api/admin/conversations');
++  assert.equal(requests.at(-1).get('x-access-reason'), 'security_review');
++  const saved = w.sessionStorage.getItem('facilitatio:admin-review:v1');
++  assert(saved.includes('security_review'));
++  assert(!saved.includes('SYNTHETIC IDENTITY'));
++  await w.fetch('/api/admin/logout', { method: 'POST' });
++  assert.equal(w.sessionStorage.getItem('facilitatio:admin-review:v1'), null);
++  dom.window.close();
++  process.stdout.write(
++    '[PASS] synthetic session binding/revocation; per-request audit reason; guarded deferred JSON body; caller unmask header removed; reason edit/logout cleanup\n'
++  );
++})().catch((error) => {
++  process.stderr.write(String(error.stack) + '\n');
++  process.exitCode = 1;
++});
+diff --git a/scripts/synthetic/consent-ui-harness.cjs b/scripts/synthetic/consent-ui-harness.cjs
+index 319b6f2..e3defe6 100644
+--- a/scripts/synthetic/consent-ui-harness.cjs
++++ b/scripts/synthetic/consent-ui-harness.cjs
+@@ -140,7 +140,14 @@ const tick = () => new Promise((resolve) => setImmediate(resolve));
+   let headers;
+   v.fetch = async (input, options) => {
+     headers = options.headers;
+-    return new Response('{}');
++    return new Response(
++      input === '/api/admin/session'
++        ? JSON.stringify({
++            authenticated: true,
++            reviewContext: 'synthetic-review-session'
++          })
++        : '{}'
++    );
+   };
+   v.eval(
+     fs.readFileSync(
+@@ -148,6 +155,7 @@ const tick = () => new Promise((resolve) => setImmediate(resolve));
+       'utf8'
+     )
+   );
++  await v.fetch('/api/admin/session');
+   let completed = false;
+   const pending = v.fetch('/api/admin/users').then(() => (completed = true));
+   await tick();
+diff --git a/server.js b/server.js
+index 2509932..b45d5bc 100644
+--- a/server.js
++++ b/server.js
+@@ -2928,6 +2928,9 @@ app.get('/api/admin/session', async (req, res) => {
+ 
+     return res.json({
+       authenticated: true,
++      reviewContext: crypto.createHmac('sha256', ADMIN_SESSION_SIGNING_SECRET)
++        .update('admin-review:' + String(parseCookies(req).adminSessionId || ''))
++        .digest('hex'),
+       canBypassTwaGate,
+       welcomeAnimationPolicy,
+       canUseAdminUi,

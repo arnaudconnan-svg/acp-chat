@@ -1,0 +1,5 @@
+page.waitForURL: net::ERR_HTTP_RESPONSE_CODE_FAILURE
+=========================== logs ===========================
+waiting for navigation to "**/index.html" until "load"
+============================================================
+    at /workspace/acp-chat/scripts/synthetic/admin-review-browser.cjs:236:18

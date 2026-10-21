@@ -1,0 +1,11 @@
+{
+  "argv": [
+    "/usr/bin/chromium",
+    "--version"
+  ],
+  "start": "2026-10-21T13:33:10.577653+00:00",
+  "end": "2026-10-21T13:33:10.651800+00:00",
+  "code": 0,
+  "stdout_sha256": "091d31fb294d599567cfbeeb6731b9aee8838317f6f54e4d5bfeea6b4b3477b9",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

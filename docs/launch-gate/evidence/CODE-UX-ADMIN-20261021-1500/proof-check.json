@@ -1,0 +1,11 @@
+{
+  "argv": [
+    "python3",
+    "docs/launch-gate/evidence/CODE-UX-ADMIN-20261021-1500/proof-check.py"
+  ],
+  "start": "2026-10-21T13:34:04.197518+00:00",
+  "end": "2026-10-21T13:34:04.329085+00:00",
+  "code": 0,
+  "stdout_sha256": "60a1d523f4209cf1b32e15506d16dd463d3046bc5a667e93f6f9c8a614afa7aa",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

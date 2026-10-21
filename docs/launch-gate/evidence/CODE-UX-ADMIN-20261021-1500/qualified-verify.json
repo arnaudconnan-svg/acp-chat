@@ -1,0 +1,16 @@
+{
+  "argv": [
+    "env",
+    "-i",
+    "PATH=/usr/bin:/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin",
+    "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+    "npm",
+    "run",
+    "verify"
+  ],
+  "start": "2026-10-21T13:31:30.401170+00:00",
+  "end": "2026-10-21T13:32:02.359894+00:00",
+  "code": 0,
+  "stdout_sha256": "c41781d7a4a483e7b705a4cede4cbac252b00adb423e96230a5b87ebf79bfcd9",
+  "stderr_sha256": "04f92ee32f948647a24500709b993475bf1af6ba147dcce5a586716ea3cacf28"
+}

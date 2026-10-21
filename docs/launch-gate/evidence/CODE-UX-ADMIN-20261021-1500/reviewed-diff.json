@@ -1,0 +1,22 @@
+{
+  "argv": [
+    "git",
+    "diff",
+    "b745f01c49230b88c42adf8848e353c84c1d1b76",
+    "HEAD",
+    "--",
+    "public/js/professional-review.js",
+    "public/admin.html",
+    "public/pros.html",
+    "public/pros-login.html",
+    "server.js",
+    "scripts/synthetic/admin-review-harness.cjs",
+    "scripts/synthetic/admin-review-browser.cjs",
+    "scripts/synthetic/consent-ui-harness.cjs"
+  ],
+  "start": "2026-10-21T13:33:10.696008+00:00",
+  "end": "2026-10-21T13:33:10.716854+00:00",
+  "code": 0,
+  "stdout_sha256": "81ec86bc27db90ec100257c298a69caa4135d68ab039b472ce853fdbb18e7dfc",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}
