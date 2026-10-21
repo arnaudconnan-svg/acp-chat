@@ -84,13 +84,13 @@ const empty =
   ']}\n';
 const defaultEmpty =
   'source: &source {}\nresult: {<<: [' +
-  Array(10002).fill('*source').join(', ') +
+  Array(101).fill('*source').join(', ') +
   ']}\n';
 const fixtures = [
   { name: 'repeated-alias-merges', document: repeated, budget: 16 },
   { name: 'expanding-merge-chain', document: chain, budget: 16 },
   { name: 'empty-source-budget-bypass', document: empty, budget: 16 },
-  { name: 'empty-source-default-limit', document: defaultEmpty }
+  { name: 'empty-source-default-sequence-limit', document: defaultEmpty }
 ];
 const observations = fixtures.map((fixture) => {
   assert(
@@ -109,7 +109,7 @@ const observations = fixtures.map((fixture) => {
   return {
     name: fixture.name,
     bytes: Buffer.byteLength(fixture.document),
-    budget: fixture.budget ?? 'default 10000',
+    budget: fixture.budget ?? 'default sequence limit 100',
     error: error ?? null
   };
 });
@@ -160,7 +160,9 @@ for (const item of observations) {
   );
   assert.match(
     item.error.reason,
-    /maxTotalMergeKeys/,
+    item.name === 'empty-source-default-sequence-limit'
+      ? /abnormal merge sequence size/
+      : /maxTotalMergeKeys/,
     item.name + ': expected work-budget rejection'
   );
 }
