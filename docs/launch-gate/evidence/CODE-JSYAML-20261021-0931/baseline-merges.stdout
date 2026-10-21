@@ -1,0 +1,55 @@
+{
+  "node": {
+    "version": "v24.19.0",
+    "execPath": "/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node"
+  },
+  "parent": {
+    "version": "3.3.5",
+    "entry": "/workspace/acp-chat/node_modules/@eslint/eslintrc/dist/eslintrc.cjs",
+    "range": "^4.1.1"
+  },
+  "yaml": {
+    "version": "4.1.1",
+    "entry": "/workspace/acp-chat/node_modules/js-yaml/index.js",
+    "entrySha256": "7d1ebc0d9929b9124997b439d1a1fd9aff8feb6bb0a1b59e977ea638944f34ba",
+    "loaderSha256": "5056164fe1cb8acfc42172cfebaf4805ffe6f6c9eb7ebd53b4ffcdbf6be289c0"
+  },
+  "normalYaml": true,
+  "eslintConfig": {
+    "loader": "Legacy.loadConfigFile + ConfigArrayFactory.loadFile",
+    "env": {
+      "node": true,
+      "browser": true
+    },
+    "rule": [
+      "warn"
+    ]
+  },
+  "observations": [
+    {
+      "name": "repeated-alias-merges",
+      "bytes": 164,
+      "budget": 16,
+      "error": null
+    },
+    {
+      "name": "expanding-merge-chain",
+      "bytes": 330,
+      "budget": 16,
+      "error": null
+    },
+    {
+      "name": "empty-source-budget-bypass",
+      "bytes": 214,
+      "budget": 16,
+      "error": null
+    },
+    {
+      "name": "empty-source-default-limit",
+      "bytes": 90052,
+      "budget": "default 10000",
+      "error": null
+    }
+  ],
+  "limitation": "Deterministic configured/default merge-work limits on bounded synthetic inputs; no timing/asymptotic benchmark. Legacy ESLint YAML loading tested; application uses flat eslint.config.js, and js-yaml remains a dev dependency."
+}

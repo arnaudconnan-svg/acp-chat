@@ -1,0 +1,16 @@
+{
+  "changed_lock_packages": [
+    "node_modules/js-yaml"
+  ],
+  "all_other_lock_entries_identical": true,
+  "guard_unchanged": true,
+  "physical_parent_before_after": {
+    "version": "3.3.5",
+    "entry": "/workspace/acp-chat/node_modules/@eslint/eslintrc/dist/eslintrc.cjs",
+    "range": "^4.1.1"
+  },
+  "dev_only_lock_flag": true,
+  "new_version": "4.3.2",
+  "parent_range": "^4.1.1",
+  "brief_discrepancy": "4.3.0 remains affected by GHSA-5p4m-2wfm-xmqj (<4.3.1) and GHSA-2883-xcg3-v3hh (<4.3.2). 4.3.2 is minimum compatible outside all current ranges."
+}

@@ -1,0 +1,71 @@
+
+> acp-chat@1.0.0 jsyaml:harness
+> node --require ./scripts/synthetic/guard.cjs scripts/synthetic/jsyaml-harness.cjs
+
+{
+  "node": {
+    "version": "v24.19.0",
+    "execPath": "/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node"
+  },
+  "parent": {
+    "version": "3.3.5",
+    "entry": "/workspace/acp-chat/node_modules/@eslint/eslintrc/dist/eslintrc.cjs",
+    "range": "^4.1.1"
+  },
+  "yaml": {
+    "version": "4.3.2",
+    "entry": "/workspace/acp-chat/node_modules/js-yaml/index.js",
+    "entrySha256": "e85d524fcd45466669dfc37618284e0c53ccaaf3f4bef1e23cd25ec6c43120bc",
+    "loaderSha256": "88a97ccd655f8eb9d81af9b51ab9ddafbab9dc545337e772ba922ab062f8b72d"
+  },
+  "normalYaml": true,
+  "eslintConfig": {
+    "loader": "Legacy.loadConfigFile + ConfigArrayFactory.loadFile",
+    "env": {
+      "node": true,
+      "browser": true
+    },
+    "rule": [
+      "warn"
+    ]
+  },
+  "observations": [
+    {
+      "name": "repeated-alias-merges",
+      "bytes": 164,
+      "budget": 16,
+      "error": {
+        "name": "YAMLException",
+        "reason": "merge keys exceeded maxTotalMergeKeys (16)"
+      }
+    },
+    {
+      "name": "expanding-merge-chain",
+      "bytes": 330,
+      "budget": 16,
+      "error": {
+        "name": "YAMLException",
+        "reason": "merge keys exceeded maxTotalMergeKeys (16)"
+      }
+    },
+    {
+      "name": "empty-source-budget-bypass",
+      "bytes": 214,
+      "budget": 16,
+      "error": {
+        "name": "YAMLException",
+        "reason": "merge keys exceeded maxTotalMergeKeys (16)"
+      }
+    },
+    {
+      "name": "empty-source-default-sequence-limit",
+      "bytes": 943,
+      "budget": "default sequence limit 100",
+      "error": {
+        "name": "YAMLException",
+        "reason": "abnormal merge sequence size"
+      }
+    }
+  ],
+  "limitation": "Deterministic configured/default merge-work limits on bounded synthetic inputs; no timing/asymptotic benchmark. Legacy ESLint YAML loading tested; application uses flat eslint.config.js, and js-yaml remains a dev dependency."
+}

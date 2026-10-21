@@ -1,0 +1,19 @@
+{
+  "argv": [
+    "npm",
+    "--cache",
+    "/workspace/work/npm-cache",
+    "view",
+    "js-yaml@4.3.2",
+    "version",
+    "dist",
+    "dependencies",
+    "gitHead",
+    "--json"
+  ],
+  "start": "2026-10-21T07:40:58.575956+00:00",
+  "end": "2026-10-21T07:40:59.139185+00:00",
+  "code": 0,
+  "stdout_sha256": "c9e6f8e4f0d25b7152e3b3bcb763a9f04ac1d6091100e34a1cf4631a775082e6",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

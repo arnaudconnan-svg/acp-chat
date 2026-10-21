@@ -1,0 +1,16 @@
+{
+  "argv": [
+    "npm",
+    "--cache",
+    "/workspace/work/npm-cache",
+    "view",
+    "@eslint/eslintrc@3.3.5",
+    "dependencies",
+    "--json"
+  ],
+  "start": "2026-10-21T07:42:17.188624+00:00",
+  "end": "2026-10-21T07:42:17.711005+00:00",
+  "code": 0,
+  "stdout_sha256": "45c1b898381953bc5fcb3bbd72f3fd8ed3b7c797b10b7ae6b3def70dd94817a3",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

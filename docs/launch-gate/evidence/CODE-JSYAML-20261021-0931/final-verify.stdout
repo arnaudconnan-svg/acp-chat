@@ -1,0 +1,75 @@
+
+> acp-chat@1.0.0 verify
+> node --check server.js && npm run jsyaml:harness && npm run grpc:harness && npm run formdata:harness && npm run busboy:harness && npm run wscrit:harness && npm run express-chain:harness && npm run nodemailer:harness && npm run m3:emergency:harness && npm run m3:safety:harness && npm run password-reset:harness && npm run password-reset-frontend:harness && npm run password-reset-server:harness && npm run preff:git:harness && npm run health:harness && npm run no-openai-runtime:harness && npm run mistral:harness && npm run title:harness && npm run title:conflict:mistral:harness && npm run information-routing:mistral:harness && npm run exploration:mistral:harness && npm run recall-routing:mistral:harness && npm run contact-discharge:mistral:harness && npm run immediate-alliance:mistral:harness && npm run interpretation-rejection:mistral:harness && npm run dependency-risk:mistral:harness && npm run major-harm-response:mistral:harness && npm run acute-crisis-followup:mistral:harness && npm run n2-writer:mistral:harness && npm run major-harm-risk:mistral:harness && npm run suicide-risk:mistral:harness && npm run writer:mistral:harness && npm run memory:mistral:harness && npm run intersession:mistral:harness && npm run intersession:source:harness && npm run affiliation:mistral:harness && npm run state:harness && npm run posture:harness && npm run analyzers:harness && npm run prompts:consistency && npm run contract-validator:harness && npm run human-support:harness && npm run flags:harness && npm run conversation-state:harness && npm run runtime-schemas:harness && npm run debugmeta-unit:harness && npm run auth-conversation:harness && npm run chat-routing:harness && npm run branching:harness && npm run transcript:harness && npm run crisis-routing:harness && npm run llm-messages:harness && npm run conversation-data:harness && npm run ui-layout:verify
+
+
+> acp-chat@1.0.0 jsyaml:harness
+> node --require ./scripts/synthetic/guard.cjs scripts/synthetic/jsyaml-harness.cjs
+
+{
+  "node": {
+    "version": "v24.19.0",
+    "execPath": "/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node"
+  },
+  "parent": {
+    "version": "3.3.5",
+    "entry": "/workspace/acp-chat/node_modules/@eslint/eslintrc/dist/eslintrc.cjs",
+    "range": "^4.1.1"
+  },
+  "yaml": {
+    "version": "4.3.2",
+    "entry": "/workspace/acp-chat/node_modules/js-yaml/index.js",
+    "entrySha256": "e85d524fcd45466669dfc37618284e0c53ccaaf3f4bef1e23cd25ec6c43120bc",
+    "loaderSha256": "88a97ccd655f8eb9d81af9b51ab9ddafbab9dc545337e772ba922ab062f8b72d"
+  },
+  "normalYaml": true,
+  "eslintConfig": {
+    "loader": "Legacy.loadConfigFile + ConfigArrayFactory.loadFile",
+    "env": {
+      "node": true,
+      "browser": true
+    },
+    "rule": [
+      "warn"
+    ]
+  },
+  "observations": [
+    {
+      "name": "repeated-alias-merges",
+      "bytes": 164,
+      "budget": 16,
+      "error": {
+        "name": "YAMLException",
+        "reason": "merge keys exceeded maxTotalMergeKeys (16)"
+      }
+    },
+    {
+      "name": "expanding-merge-chain",
+      "bytes": 330,
+      "budget": 16,
+      "error": {
+        "name": "YAMLException",
+        "reason": "merge keys exceeded maxTotalMergeKeys (16)"
+      }
+    },
+    {
+      "name": "empty-source-budget-bypass",
+      "bytes": 214,
+      "budget": 16,
+      "error": {
+        "name": "YAMLException",
+        "reason": "merge keys exceeded maxTotalMergeKeys (16)"
+      }
+    },
+    {
+      "name": "empty-source-default-limit",
+      "bytes": 90052,
+      "budget": "default 10000",
+      "error": {
+        "name": "YAMLException",
+        "reason": "abnormal merge sequence size"
+      }
+    }
+  ],
+  "limitation": "Deterministic configured/default merge-work limits on bounded synthetic inputs; no timing/asymptotic benchmark. Legacy ESLint YAML loading tested; application uses flat eslint.config.js, and js-yaml remains a dev dependency."
+}

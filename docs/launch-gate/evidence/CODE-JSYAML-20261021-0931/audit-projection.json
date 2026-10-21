@@ -1,0 +1,148 @@
+{
+  "target_before": {
+    "name": "js-yaml",
+    "severity": "high",
+    "isDirect": false,
+    "via": [
+      {
+        "source": 1121860,
+        "name": "js-yaml",
+        "dependency": "js-yaml",
+        "title": "JS-YAML: Quadratic-complexity DoS in merge key handling via repeated aliases",
+        "url": "https://github.com/advisories/GHSA-h67p-54hq-rp68",
+        "severity": "moderate",
+        "cwe": [
+          "CWE-407"
+        ],
+        "cvss": {
+          "score": 5.3,
+          "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L"
+        },
+        "range": ">=4.0.0 <=4.1.1"
+      },
+      {
+        "source": 1123911,
+        "name": "js-yaml",
+        "dependency": "js-yaml",
+        "title": "js-yaml: YAML merge-key chains can force quadratic CPU consumption",
+        "url": "https://github.com/advisories/GHSA-52cp-r559-cp3m",
+        "severity": "high",
+        "cwe": [
+          "CWE-400",
+          "CWE-407"
+        ],
+        "cvss": {
+          "score": 7.5,
+          "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+        },
+        "range": ">=4.0.0 <4.3.0"
+      },
+      {
+        "source": 1138115,
+        "name": "js-yaml",
+        "dependency": "js-yaml",
+        "title": "JS-YAML: Quadratic CPU consumption in !!omap resolution (3.x and 4.x) \u2014 CVE-2026-59870 fix not backported",
+        "url": "https://github.com/advisories/GHSA-5p4m-2wfm-xmqj",
+        "severity": "high",
+        "cwe": [
+          "CWE-407"
+        ],
+        "cvss": {
+          "score": 7.5,
+          "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+        },
+        "range": ">=4.0.0 <4.3.1"
+      },
+      {
+        "source": 1193727,
+        "name": "js-yaml",
+        "dependency": "js-yaml",
+        "title": "js-yaml: maxTotalMergeKeys does not limit CPU use for empty merge sources",
+        "url": "https://github.com/advisories/GHSA-2883-xcg3-v3hh",
+        "severity": "high",
+        "cwe": [
+          "CWE-400",
+          "CWE-407"
+        ],
+        "cvss": {
+          "score": 7.5,
+          "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+        },
+        "range": ">=4.0.0 <4.3.2"
+      }
+    ],
+    "effects": [],
+    "range": "4.0.0 - 4.3.1",
+    "nodes": [
+      "node_modules/js-yaml"
+    ],
+    "fixAvailable": true
+  },
+  "target_after": null,
+  "before_counts": {
+    "info": 0,
+    "low": 0,
+    "moderate": 2,
+    "high": 2,
+    "critical": 0,
+    "total": 4
+  },
+  "after_counts": {
+    "info": 0,
+    "low": 0,
+    "moderate": 2,
+    "high": 1,
+    "critical": 0,
+    "total": 3
+  },
+  "residuals_exactly_unchanged": true,
+  "residuals": [
+    {
+      "name": "brace-expansion",
+      "severity": "high",
+      "range": "<=1.1.20",
+      "nodes": [
+        "node_modules/brace-expansion"
+      ],
+      "advisory_urls": [
+        "https://github.com/advisories/GHSA-3jxr-9vmj-r5cp",
+        "https://github.com/advisories/GHSA-mh99-v99m-4gvg",
+        "https://github.com/advisories/GHSA-rgw5-rvv9-x895",
+        "https://github.com/advisories/GHSA-q2hr-2g5m-vwhr",
+        "https://github.com/advisories/GHSA-qhr7-859c-m2p7",
+        "https://github.com/advisories/GHSA-6j4f-fj2g-mc7p"
+      ],
+      "canonical_sha256_before_and_after": "35fddcfb5c1d3818843d1a047d70b21f6aabf91b3cc0f1c816f0d74e09a9de2a"
+    },
+    {
+      "name": "fast-copy",
+      "severity": "moderate",
+      "range": "4.0.0 - 4.0.4",
+      "nodes": [
+        "node_modules/fast-copy"
+      ],
+      "advisory_urls": [
+        "https://github.com/advisories/GHSA-jggr-w7fw-pc2j"
+      ],
+      "canonical_sha256_before_and_after": "1e10326ddd91d769ed673ed7d067912116e427dd13f5192b69d1a9c89ac91526"
+    },
+    {
+      "name": "protobufjs",
+      "severity": "moderate",
+      "range": "<=7.6.4",
+      "nodes": [
+        "node_modules/protobufjs"
+      ],
+      "advisory_urls": [
+        "https://github.com/advisories/GHSA-f38q-mgvj-vph7",
+        "https://github.com/advisories/GHSA-j3f2-48v5-ccww"
+      ],
+      "canonical_sha256_before_and_after": "0c726c3db09f65a910c7f8673bcb58ebf182084c13e8ac132022f19d992674b1"
+    }
+  ],
+  "audit_codes": [
+    1,
+    1
+  ],
+  "interpretation": "Valid npm JSON, residual findings remain. Not global audit/CI PASS."
+}
