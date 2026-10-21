@@ -140,7 +140,14 @@ const tick = () => new Promise((resolve) => setImmediate(resolve));
   let headers;
   v.fetch = async (input, options) => {
     headers = options.headers;
-    return new Response('{}');
+    return new Response(
+      input === '/api/admin/session'
+        ? JSON.stringify({
+            authenticated: true,
+            reviewContext: 'synthetic-review-session'
+          })
+        : '{}'
+    );
   };
   v.eval(
     fs.readFileSync(
@@ -148,6 +155,7 @@ const tick = () => new Promise((resolve) => setImmediate(resolve));
       'utf8'
     )
   );
+  await v.fetch('/api/admin/session');
   let completed = false;
   const pending = v.fetch('/api/admin/users').then(() => (completed = true));
   await tick();

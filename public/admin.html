@@ -1740,6 +1740,7 @@
       }
 
       async function loadConversations() {
+        const reviewStamp = window.FacilitatProfessionalReview.capture();
         const list = document.getElementById('list');
         const debugToggleBtn = document.getElementById('debugToggleBtn');
         const memoryToggleBtn = document.getElementById('memoryToggleBtn');
@@ -1762,6 +1763,7 @@
         try {
           const res = await fetchWithTimeout('/api/admin/conversations');
           const response = await readAdminJsonResponse(res);
+          if (!window.FacilitatProfessionalReview.current(reviewStamp)) return;
 
           if (response.redirectedToLogin) {
             list.innerHTML =
@@ -1844,6 +1846,7 @@
               }
             );
             const response = await readAdminJsonResponse(res);
+            if (!window.FacilitatProfessionalReview.current(reviewStamp)) return;
 
             if (response.redirectedToLogin) {
               return;
@@ -1876,6 +1879,7 @@
               }
             );
             const response = await readAdminJsonResponse(res);
+            if (!window.FacilitatProfessionalReview.current(reviewStamp)) return;
 
             if (response.redirectedToLogin) {
               return;
@@ -2137,6 +2141,7 @@
 
           restoreConversationListScrollIfNeeded();
         } catch (err) {
+          if (!window.FacilitatProfessionalReview.current(reviewStamp)) return;
           const isTimeout =
             err &&
             (err.name === 'AbortError' ||
@@ -2155,7 +2160,9 @@
         const list = document.getElementById('list');
         const debugToggleBtn = document.getElementById('debugToggleBtn');
         const memoryToggleBtn = document.getElementById('memoryToggleBtn');
+        const reviewStamp = window.FacilitatProfessionalReview.capture();
         const branchTreeData = await fetchBranchTreeData(conversationId);
+        if (!window.FacilitatProfessionalReview.current(reviewStamp)) return;
         const preferredConversationId =
           resolvePreferredConversationIdForBranchView(
             branchTreeData,
@@ -2200,6 +2207,7 @@
               '/messages'
           );
           const response = await readAdminJsonResponse(res);
+          if (!window.FacilitatProfessionalReview.current(reviewStamp)) return;
 
           if (response.redirectedToLogin) {
             list.innerHTML =
@@ -3610,6 +3618,7 @@
 
           await branchTreePromise;
         } catch (err) {
+          if (!window.FacilitatProfessionalReview.current(reviewStamp)) return;
           const isTimeout =
             err &&
             (err.name === 'AbortError' ||
@@ -3623,6 +3632,30 @@
               '</div>';
         }
       }
+
+      // Identity context changes discard rendered nodes and their data-bearing handlers.
+      window.addEventListener('facilitat-admin-clear', () => {
+        activeAdminConversationSwipeElement = null;
+        activeAdminConversationSwipeCloser = null;
+        document.getElementById('list').replaceChildren();
+        const meta = document.getElementById('conversationMeta');
+        meta.replaceChildren();
+        meta.style.display = 'none';
+        hideBranchTree();
+        for (const id of ['debugToggleBtn', 'memoryToggleBtn']) {
+          const button = document.getElementById(id);
+          button.onclick = null;
+          button.style.display = 'none';
+        }
+      });
+      window.addEventListener('facilitat-admin-refresh', async () => {
+        const stamp = window.FacilitatProfessionalReview.capture();
+        if (!(await ensureAdminSession())) return;
+        if (!window.FacilitatProfessionalReview.current(stamp)) return;
+        const conversationId = getConversationIdFromUrl();
+        const load = conversationId ? loadMessages(conversationId) : loadConversations();
+        load.catch(renderInitError);
+      });
 
       async function init() {
         const list = document.getElementById('list');
