@@ -1,0 +1,31 @@
+{
+  "code_commit": "2c87a1db8dac795594ea95d1f3e952356fabfd06",
+  "base": "e23bc20e06c14438a02034c6feb49bf0dcec41d8",
+  "four_useful_code_files_match": {
+    "package.json": {
+      "sha256": "8988d7a0e2bc713be82e839ea905b869e8a3d7537f02c63ec6903a11b0cd16f2",
+      "git_show_equals_tested_checkout": true
+    },
+    "package-lock.json": {
+      "sha256": "6c871f1e553ed8e0b00a950324c5097a64e71df1aa2b580def43bb43e312d208",
+      "git_show_equals_tested_checkout": true
+    },
+    "scripts/synthetic/guard.cjs": {
+      "sha256": "4b0b744468fc6b95ff0f91cd2126cf05fa10560e9188efc2d0e9e351dd258a89",
+      "git_show_equals_tested_checkout": true
+    },
+    "scripts/synthetic/jsyaml-harness.cjs": {
+      "sha256": "da3d21966b26a9c5f28c9fe61d10a50de1945cf4aeab8854fe45c14c92b4a994",
+      "git_show_equals_tested_checkout": true
+    }
+  },
+  "physical_yaml": "4.3.2",
+  "physical_parent": "@eslint/eslintrc 3.3.5",
+  "three_residual_families_unchanged": true,
+  "only_dependency_changed": "js-yaml",
+  "global_lint_existing_failure_identical": true,
+  "targeted_lint_code": 0,
+  "qualified_jsyaml_code": 0,
+  "qualified_verify_code": 0,
+  "tarball_integrity_matches": true
+}

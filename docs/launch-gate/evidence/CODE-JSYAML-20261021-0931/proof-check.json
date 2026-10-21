@@ -1,0 +1,11 @@
+{
+  "argv": [
+    "python3",
+    "docs/launch-gate/evidence/CODE-JSYAML-20261021-0931/proof-check.py"
+  ],
+  "start": "2026-10-21T07:46:41.874342+00:00",
+  "end": "2026-10-21T07:46:41.992921+00:00",
+  "code": 0,
+  "stdout_sha256": "fafe41f4cf1af72fc38c240a90534c97048266382ed67d4d458c304bed7708cb",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

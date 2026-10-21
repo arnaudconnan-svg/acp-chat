@@ -1,0 +1,10 @@
+{
+  "version": "4.3.2",
+  "tarball": "https://registry.npmjs.org/js-yaml/-/js-yaml-4.3.2.tgz",
+  "integrity": "sha512-SFNOvSJ+Dgf/9An904Yx+CgSlIPCkIpao4qo51lpee25TIRejdH3rhR4EZMGoNx3/TP3O+wzWuiTFl4sqbltzA==",
+  "tarball_matches_registry_sha512_and_shasum": true,
+  "registry_gitHead": "79ca68d90f333fbe6d9e42827527e62636200191",
+  "signatures_present": true,
+  "attestation_field_present": false,
+  "limitation": "Official npm HTTPS metadata and tarball retrieved. No independent npm signature/Sigstore verification; no provenance attestation inferred from gitHead."
+}

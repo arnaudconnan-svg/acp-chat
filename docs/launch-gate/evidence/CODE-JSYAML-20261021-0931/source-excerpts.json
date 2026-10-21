@@ -1,0 +1,54 @@
+{
+  "sources": [
+    {
+      "file": "node_modules/js-yaml/lib/loader.js",
+      "sha256": "88a97ccd655f8eb9d81af9b51ab9ddafbab9dc545337e772ba922ab062f8b72d",
+      "snippets": [
+        {
+          "start_line": 150,
+          "end_line": 156,
+          "text": "  this.legacy = options['legacy'] || false\n\n  this.json = options['json'] || false\n  this.listener = options['listener'] || null\n  this.maxDepth = typeof options['maxDepth'] === 'number' ? options['maxDepth'] : 100\n  this.maxTotalMergeKeys = typeof options['maxTotalMergeKeys'] === 'number' ? options['maxTotalMergeKeys'] : 10000\n"
+        },
+        {
+          "start_line": 374,
+          "end_line": 402,
+          "text": "function chargeMergeWork (state) {\n  state.totalMergeKeys++\n\n  if (state.maxTotalMergeKeys !== -1 && state.totalMergeKeys > state.maxTotalMergeKeys) {\n    throwError(state, 'merge keys exceeded maxTotalMergeKeys (' + state.maxTotalMergeKeys + ')')\n  }\n}\n\nfunction mergeMappings (state, destination, source, overridableKeys) {\n  if (!common.isObject(source)) {\n    throwError(state, 'cannot merge mappings; the provided source object is unacceptable')\n  }\n\n  // Count the source mapping itself to bound sequences of empty mappings.\n  chargeMergeWork(state)\n\n  const sourceKeys = Object.keys(source)\n\n  for (let index = 0, quantity = sourceKeys.length; index < quantity; index += 1) {\n    const key = sourceKeys[index]\n\n    chargeMergeWork(state)\n\n    if (!_hasOwnProperty.call(destination, key)) {\n      setProperty(destination, key, source[key])\n      overridableKeys[key] = true\n    }\n  }\n}"
+        },
+        {
+          "start_line": 435,
+          "end_line": 446,
+          "text": "\n  if (keyTag === 'tag:yaml.org,2002:merge') {\n    if (Array.isArray(valueNode)) {\n      if (valueNode.length > 100) {\n        throwError(state, 'abnormal merge sequence size')\n      }\n\n      for (let index = 0, quantity = valueNode.length; index < quantity; index += 1) {\n        mergeMappings(state, _result, valueNode[index], overridableKeys)\n      }\n    } else {\n      mergeMappings(state, _result, valueNode, overridableKeys)"
+        }
+      ]
+    },
+    {
+      "file": "node_modules/js-yaml/lib/type/omap.js",
+      "sha256": "8a865841abeb5f12a30f39f095967b6ac05ef6240e78872573fb23e8c9b5c47f",
+      "snippets": [
+        {
+          "start_line": 9,
+          "end_line": 36,
+          "text": "  if (data === null) return true\n\n  const objectKeys = {}\n  const object = data\n\n  for (let index = 0, length = object.length; index < length; index += 1) {\n    const pair = object[index]\n    let pairHasKey = false\n\n    if (_toString.call(pair) !== '[object Object]') return false\n\n    let pairKey\n    for (pairKey in pair) {\n      if (_hasOwnProperty.call(pair, pairKey)) {\n        if (!pairHasKey) pairHasKey = true\n        else return false\n      }\n    }\n\n    if (!pairHasKey) return false\n\n    if (_hasOwnProperty.call(objectKeys, pairKey)) return false\n    Object.defineProperty(objectKeys, pairKey, { value: true })\n  }\n\n  return true\n}\n"
+        }
+      ]
+    },
+    {
+      "file": "node_modules/@eslint/eslintrc/dist/eslintrc.cjs",
+      "sha256": "fbae17e4d631d7f53288fd0dd7b334c114024181ba9e94e98388360863c7623f",
+      "snippets": [
+        {
+          "start_line": 2611,
+          "end_line": 2622,
+          "text": "function loadYAMLConfigFile(filePath) {\n    debug$2(`Loading YAML config file: ${filePath}`);\n\n    // lazy load YAML to improve performance when not used\n    const yaml = require$1(\"js-yaml\");\n\n    try {\n\n        // empty YAML file can be null, so always use\n        return yaml.load(readFile(filePath)) || {};\n    } catch (e) {\n        debug$2(`Error reading YAML file: ${filePath}`);"
+        }
+      ]
+    }
+  ],
+  "baseline_loader": {
+    "version": "4.1.1",
+    "sha256": "5056164fe1cb8acfc42172cfebaf4805ffe6f6c9eb7ebd53b4ffcdbf6be289c0",
+    "function": "mergeMappings",
+    "line_numbered_excerpt": "304: function mergeMappings(state, destination, source, overridableKeys) {\n305:   var sourceKeys, key, index, quantity;\n306: \n307:   if (!common.isObject(source)) {\n308:     throwError(state, 'cannot merge mappings; the provided source object is unacceptable');\n309:   }\n310: \n311:   sourceKeys = Object.keys(source);\n312: \n313:   for (index = 0, quantity = sourceKeys.length; index < quantity; index += 1) {\n314:     key = sourceKeys[index];\n315: \n316:     if (!_hasOwnProperty.call(destination, key)) {\n317:       setProperty(destination, key, source[key]);\n318:       overridableKeys[key] = true;\n319:     }\n320:   }\n321: }\n322: \n323: function storeMappingPair(state, _result, overridableKeys, keyTag, keyNode, valueNode,\n324:   startLine, startLineStart, startPos) {\n325: \n326:   var index, quantity;\n327: \n328:   // The output is a plain object here, so keys can only be strings."
+  },
+  "semantics": "chargeMergeWork counts source mapping itself and each source key; separate default merge-sequence guard is 100 entries. Deterministic rejection semantics, not timing/performance proof."
+}

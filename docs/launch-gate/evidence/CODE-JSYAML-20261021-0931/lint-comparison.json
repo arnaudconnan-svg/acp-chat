@@ -1,0 +1,11 @@
+{
+  "baseline_code": 1,
+  "qualified_code": 1,
+  "stdout_identical_byte_for_byte": true,
+  "stderr_identical_byte_for_byte": true,
+  "stdout_sha256": "8876c5915f828858c5ff49a383db0f6e6abeff8485f8af6bb1c39faba4ad11ba",
+  "existing_errors": 337,
+  "existing_warnings": 17,
+  "new_harness_lint_code": 0,
+  "scope": "Inherited global lint failure preserved; no rules disabled or unrelated findings fixed."
+}

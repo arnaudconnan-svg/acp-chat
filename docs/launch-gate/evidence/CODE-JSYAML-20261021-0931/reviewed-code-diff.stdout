@@ -1,0 +1,212 @@
+diff --git a/package-lock.json b/package-lock.json
+index e0dd182..e722c61 100644
+--- a/package-lock.json
++++ b/package-lock.json
+@@ -2696,9 +2696,9 @@
+       }
+     },
+     "node_modules/js-yaml": {
+-      "version": "4.1.1",
+-      "resolved": "https://registry.npmjs.org/js-yaml/-/js-yaml-4.1.1.tgz",
+-      "integrity": "sha512-qQKT4zQxXl8lLwBtHMWwaTcGfFOZviOJet3Oy/xmGk2gZH677CJM9EvtfdSkgWcATZhj/55JZ0rmy3myCT5lsA==",
++      "version": "4.3.2",
++      "resolved": "https://registry.npmjs.org/js-yaml/-/js-yaml-4.3.2.tgz",
++      "integrity": "sha512-SFNOvSJ+Dgf/9An904Yx+CgSlIPCkIpao4qo51lpee25TIRejdH3rhR4EZMGoNx3/TP3O+wzWuiTFl4sqbltzA==",
+       "dev": true,
+       "license": "MIT",
+       "dependencies": {
+diff --git a/package.json b/package.json
+index 0f1f3fa..d7145da 100644
+--- a/package.json
++++ b/package.json
+@@ -63,7 +63,7 @@
+     "preff:git:harness": "node scripts/preff-git-guard-harness.js",
+     "smoke:ui:local": "node scripts/ui-smoke-local.js",
+     "ui-layout:verify": "node scripts/ui-layout-verify.js",
+-    "verify": "node --check server.js && npm run grpc:harness && npm run formdata:harness && npm run busboy:harness && npm run wscrit:harness && npm run express-chain:harness && npm run nodemailer:harness && npm run m3:emergency:harness && npm run m3:safety:harness && npm run password-reset:harness && npm run password-reset-frontend:harness && npm run password-reset-server:harness && npm run preff:git:harness && npm run health:harness && npm run no-openai-runtime:harness && npm run mistral:harness && npm run title:harness && npm run title:conflict:mistral:harness && npm run information-routing:mistral:harness && npm run exploration:mistral:harness && npm run recall-routing:mistral:harness && npm run contact-discharge:mistral:harness && npm run immediate-alliance:mistral:harness && npm run interpretation-rejection:mistral:harness && npm run dependency-risk:mistral:harness && npm run major-harm-response:mistral:harness && npm run acute-crisis-followup:mistral:harness && npm run n2-writer:mistral:harness && npm run major-harm-risk:mistral:harness && npm run suicide-risk:mistral:harness && npm run writer:mistral:harness && npm run memory:mistral:harness && npm run intersession:mistral:harness && npm run intersession:source:harness && npm run affiliation:mistral:harness && npm run state:harness && npm run posture:harness && npm run analyzers:harness && npm run prompts:consistency && npm run contract-validator:harness && npm run human-support:harness && npm run flags:harness && npm run conversation-state:harness && npm run runtime-schemas:harness && npm run debugmeta-unit:harness && npm run auth-conversation:harness && npm run chat-routing:harness && npm run branching:harness && npm run transcript:harness && npm run crisis-routing:harness && npm run llm-messages:harness && npm run conversation-data:harness && npm run ui-layout:verify",
++    "verify": "node --check server.js && npm run jsyaml:harness && npm run grpc:harness && npm run formdata:harness && npm run busboy:harness && npm run wscrit:harness && npm run express-chain:harness && npm run nodemailer:harness && npm run m3:emergency:harness && npm run m3:safety:harness && npm run password-reset:harness && npm run password-reset-frontend:harness && npm run password-reset-server:harness && npm run preff:git:harness && npm run health:harness && npm run no-openai-runtime:harness && npm run mistral:harness && npm run title:harness && npm run title:conflict:mistral:harness && npm run information-routing:mistral:harness && npm run exploration:mistral:harness && npm run recall-routing:mistral:harness && npm run contact-discharge:mistral:harness && npm run immediate-alliance:mistral:harness && npm run interpretation-rejection:mistral:harness && npm run dependency-risk:mistral:harness && npm run major-harm-response:mistral:harness && npm run acute-crisis-followup:mistral:harness && npm run n2-writer:mistral:harness && npm run major-harm-risk:mistral:harness && npm run suicide-risk:mistral:harness && npm run writer:mistral:harness && npm run memory:mistral:harness && npm run intersession:mistral:harness && npm run intersession:source:harness && npm run affiliation:mistral:harness && npm run state:harness && npm run posture:harness && npm run analyzers:harness && npm run prompts:consistency && npm run contract-validator:harness && npm run human-support:harness && npm run flags:harness && npm run conversation-state:harness && npm run runtime-schemas:harness && npm run debugmeta-unit:harness && npm run auth-conversation:harness && npm run chat-routing:harness && npm run branching:harness && npm run transcript:harness && npm run crisis-routing:harness && npm run llm-messages:harness && npm run conversation-data:harness && npm run ui-layout:verify",
+     "verify:full": "npm run verify",
+     "reset:data": "node scripts/reset-app-data.js",
+     "update:emergency-numbers": "node scripts/update-emergency-numbers.js",
+@@ -112,6 +112,7 @@
+     "m3:safety:harness": "node scripts/synthetic/m3-safety-characterization.cjs",
+     "nodemailer:harness": "node --require ./scripts/synthetic/guard.cjs scripts/synthetic/nodemailer-harness.cjs",
+     "express-chain:harness": "node --require ./scripts/synthetic/guard.cjs scripts/synthetic/express-chain-harness.cjs",
++    "jsyaml:harness": "node --require ./scripts/synthetic/guard.cjs scripts/synthetic/jsyaml-harness.cjs",
+     "grpc:harness": "node --require ./scripts/synthetic/guard.cjs scripts/synthetic/grpc-harness.cjs",
+     "formdata:harness": "node --require ./scripts/synthetic/guard.cjs scripts/synthetic/formdata-harness.cjs",
+     "busboy:harness": "node --require ./scripts/synthetic/guard.cjs scripts/synthetic/busboy-harness.cjs",
+diff --git a/scripts/synthetic/jsyaml-harness.cjs b/scripts/synthetic/jsyaml-harness.cjs
+new file mode 100644
+index 0000000..8781e0f
+--- /dev/null
++++ b/scripts/synthetic/jsyaml-harness.cjs
+@@ -0,0 +1,168 @@
++'use strict';
++const assert = require('node:assert/strict');
++const { Buffer } = require('node:buffer');
++const console = require('node:console');
++const fs = require('node:fs');
++const path = require('node:path');
++const os = require('node:os');
++const process = require('node:process');
++const crypto = require('node:crypto');
++const { createRequire } = require('node:module');
++assert(
++  require.cache[path.resolve('scripts/synthetic/guard.cjs')],
++  'M0 must be preloaded'
++);
++const parentEntry = require.resolve('@eslint/eslintrc');
++const parentRequire = createRequire(parentEntry);
++const yamlEntry = parentRequire.resolve('js-yaml');
++const yaml = parentRequire('js-yaml');
++const parent = require('@eslint/eslintrc/package.json');
++const yamlPackage = parentRequire('js-yaml/package.json');
++assert.equal(parent.version, '3.3.5');
++assert.equal(parent.dependencies['js-yaml'], '^4.1.1');
++assert.equal(
++  yamlPackage.version,
++  process.argv.includes('--baseline') ? '4.1.1' : '4.3.2'
++);
++function digest(file) {
++  return crypto
++    .createHash('sha256')
++    .update(fs.readFileSync(file))
++    .digest('hex');
++}
++const plain =
++  'defaults: &defaults {node: true, browser: false}\nresult: {<<: *defaults, browser: true}\n';
++assert.deepEqual(yaml.load(plain).result, { node: true, browser: true });
++assert.deepEqual(yaml.load(yaml.dump({ normal: ['hello', 2, true] })), {
++  normal: ['hello', 2, true]
++});
++assert.deepEqual(yaml.load('!!omap [a: 1, b: 2]'), [{ a: 1 }, { b: 2 }]);
++assert.throws(() => yaml.load('!!omap [a: 1, a: 2]'), /cannot resolve/);
++assert.throws(() => yaml.load('broken: [1, 2'), /unexpected end/);
++const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'synthetic-jsyaml-'));
++let eslintConfig;
++try {
++  const file = path.join(tmp, '.eslintrc.yml');
++  fs.writeFileSync(
++    file,
++    'root: true\nenv: &env {node: true}\noverrides:\n  - files: ["*.js"]\n    env: {<<: *env, browser: true}\nrules:\n  no-unused-vars: warn\n'
++  );
++  const { Legacy } = require('@eslint/eslintrc');
++  const loaded = Legacy.loadConfigFile(file);
++  assert.equal(loaded.overrides[0].env.browser, true);
++  assert.equal(loaded.overrides[0].env.node, true);
++  const factory = new Legacy.ConfigArrayFactory({ cwd: tmp });
++  const config = factory
++    .loadFile(file)
++    .extractConfig(path.join(tmp, 'synthetic.js'));
++  assert.equal(config.env.node, true);
++  assert.equal(config.env.browser, true);
++  assert.deepEqual(config.rules['no-unused-vars'], ['warn']);
++  assert(
++    require.cache[yamlEntry],
++    'actual parent-resolved YAML module is loaded'
++  );
++  eslintConfig = {
++    loader: 'Legacy.loadConfigFile + ConfigArrayFactory.loadFile',
++    env: config.env,
++    rule: config.rules['no-unused-vars']
++  };
++} finally {
++  fs.rmSync(tmp, { recursive: true, force: true });
++}
++// Small deterministic work budgets discriminate merge shapes without timing benchmarks.
++const repeated =
++  'source: &source {a: 1, b: 2, c: 3, d: 4}\nresult: {<<: [' +
++  Array(12).fill('*source').join(', ') +
++  ']}\n';
++let chain = 'm0: &m0 {k0: 0}\n';
++for (let i = 1; i <= 12; i++)
++  chain += `m${i}: &m${i} {<<: *m${i - 1}, k${i}: ${i}}\n`;
++const empty =
++  'source: &source {}\nresult: {<<: [' +
++  Array(20).fill('*source').join(', ') +
++  ']}\n';
++const defaultEmpty =
++  'source: &source {}\nresult: {<<: [' +
++  Array(101).fill('*source').join(', ') +
++  ']}\n';
++const fixtures = [
++  { name: 'repeated-alias-merges', document: repeated, budget: 16 },
++  { name: 'expanding-merge-chain', document: chain, budget: 16 },
++  { name: 'empty-source-budget-bypass', document: empty, budget: 16 },
++  { name: 'empty-source-default-sequence-limit', document: defaultEmpty }
++];
++const observations = fixtures.map((fixture) => {
++  assert(
++    Buffer.byteLength(fixture.document) < 100000,
++    'bounded authored fixture'
++  );
++  let error;
++  try {
++    yaml.load(
++      fixture.document,
++      fixture.budget === undefined ? {} : { maxTotalMergeKeys: fixture.budget }
++    );
++  } catch (e) {
++    error = { name: e.name, reason: e.reason };
++  }
++  return {
++    name: fixture.name,
++    bytes: Buffer.byteLength(fixture.document),
++    budget: fixture.budget ?? 'default sequence limit 100',
++    error: error ?? null
++  };
++});
++// The same non-empty shapes remain valid below a larger finite budget.
++assert.equal(yaml.load(repeated, { maxTotalMergeKeys: 128 }).result.a, 1);
++assert.equal(yaml.load(chain, { maxTotalMergeKeys: 128 }).m12.k12, 12);
++assert.deepEqual(yaml.load(empty, { maxTotalMergeKeys: 128 }).result, {});
++assert.throws(() => require('https').get('https://synthetic.example.test'));
++assert.throws(() => require('net').connect(443, 'synthetic.example.test'));
++assert.throws(() => require('tls').connect(443, 'synthetic.example.test'));
++assert.throws(() => require('firebase-admin'));
++assert.throws(() => fs.readFileSync(path.resolve('.env')));
++assert.throws(() =>
++  fs.readFileSync(path.resolve('data/synthetic-not-read.json'))
++);
++console.log(
++  JSON.stringify(
++    {
++      node: { version: process.version, execPath: process.execPath },
++      parent: {
++        version: parent.version,
++        entry: parentEntry,
++        range: parent.dependencies['js-yaml']
++      },
++      yaml: {
++        version: yamlPackage.version,
++        entry: yamlEntry,
++        entrySha256: digest(yamlEntry),
++        loaderSha256: digest(
++          path.join(path.dirname(yamlEntry), 'lib/loader.js')
++        )
++      },
++      normalYaml: true,
++      eslintConfig,
++      observations,
++      limitation:
++        'Deterministic configured/default merge-work limits on bounded synthetic inputs; no timing/asymptotic benchmark. Legacy ESLint YAML loading tested; application uses flat eslint.config.js, and js-yaml remains a dev dependency.'
++    },
++    null,
++    2
++  )
++);
++for (const item of observations) {
++  assert.equal(
++    item.error?.name,
++    'YAMLException',
++    item.name + ': merge work must be bounded'
++  );
++  assert.match(
++    item.error.reason,
++    item.name === 'empty-source-default-sequence-limit'
++      ? /abnormal merge sequence size/
++      : /maxTotalMergeKeys/,
++    item.name + ': expected work-budget rejection'
++  );
++}

@@ -1,0 +1,196 @@
+[
+  {
+    "id": "js-yaml@4.3.2",
+    "name": "js-yaml",
+    "version": "4.3.2",
+    "size": 227545,
+    "unpackedSize": 960180,
+    "shasum": "8e44fb14a2643c59726bb15787b5f1512cb3d3fb",
+    "integrity": "sha512-SFNOvSJ+Dgf/9An904Yx+CgSlIPCkIpao4qo51lpee25TIRejdH3rhR4EZMGoNx3/TP3O+wzWuiTFl4sqbltzA==",
+    "filename": "js-yaml-4.3.2.tgz",
+    "files": [
+      {
+        "path": "LICENSE",
+        "size": 1084,
+        "mode": 420
+      },
+      {
+        "path": "README.md",
+        "size": 8008,
+        "mode": 420
+      },
+      {
+        "path": "bin/js-yaml.js",
+        "size": 2658,
+        "mode": 493
+      },
+      {
+        "path": "dist/js-yaml.js",
+        "size": 131632,
+        "mode": 420
+      },
+      {
+        "path": "dist/js-yaml.js.map",
+        "size": 191323,
+        "mode": 420
+      },
+      {
+        "path": "dist/js-yaml.min.js",
+        "size": 43644,
+        "mode": 420
+      },
+      {
+        "path": "dist/js-yaml.min.js.map",
+        "size": 179668,
+        "mode": 420
+      },
+      {
+        "path": "dist/js-yaml.mjs",
+        "size": 104118,
+        "mode": 420
+      },
+      {
+        "path": "dist/js-yaml.mjs.map",
+        "size": 183595,
+        "mode": 420
+      },
+      {
+        "path": "index.js",
+        "size": 1585,
+        "mode": 420
+      },
+      {
+        "path": "lib/common.js",
+        "size": 1094,
+        "mode": 420
+      },
+      {
+        "path": "lib/dumper.js",
+        "size": 30967,
+        "mode": 420
+      },
+      {
+        "path": "lib/exception.js",
+        "size": 1285,
+        "mode": 420
+      },
+      {
+        "path": "lib/index_vite_proxy.tmp.mjs",
+        "size": 434,
+        "mode": 420
+      },
+      {
+        "path": "lib/loader.js",
+        "size": 50952,
+        "mode": 420
+      },
+      {
+        "path": "lib/schema.js",
+        "size": 3257,
+        "mode": 420
+      },
+      {
+        "path": "lib/schema/core.js",
+        "size": 284,
+        "mode": 420
+      },
+      {
+        "path": "lib/schema/default.js",
+        "size": 534,
+        "mode": 420
+      },
+      {
+        "path": "lib/schema/failsafe.js",
+        "size": 274,
+        "mode": 420
+      },
+      {
+        "path": "lib/schema/json.js",
+        "size": 519,
+        "mode": 420
+      },
+      {
+        "path": "lib/snippet.js",
+        "size": 3063,
+        "mode": 420
+      },
+      {
+        "path": "lib/type.js",
+        "size": 1736,
+        "mode": 420
+      },
+      {
+        "path": "lib/type/binary.js",
+        "size": 2853,
+        "mode": 420
+      },
+      {
+        "path": "lib/type/bool.js",
+        "size": 967,
+        "mode": 420
+      },
+      {
+        "path": "lib/type/float.js",
+        "size": 2485,
+        "mode": 420
+      },
+      {
+        "path": "lib/type/int.js",
+        "size": 3318,
+        "mode": 420
+      },
+      {
+        "path": "lib/type/map.js",
+        "size": 188,
+        "mode": 420
+      },
+      {
+        "path": "lib/type/merge.js",
+        "size": 229,
+        "mode": 420
+      },
+      {
+        "path": "lib/type/null.js",
+        "size": 791,
+        "mode": 420
+      },
+      {
+        "path": "lib/type/omap.js",
+        "size": 1036,
+        "mode": 420
+      },
+      {
+        "path": "lib/type/pairs.js",
+        "size": 1031,
+        "mode": 420
+      },
+      {
+        "path": "lib/type/seq.js",
+        "size": 189,
+        "mode": 420
+      },
+      {
+        "path": "lib/type/set.js",
+        "size": 547,
+        "mode": 420
+      },
+      {
+        "path": "lib/type/str.js",
+        "size": 187,
+        "mode": 420
+      },
+      {
+        "path": "lib/type/timestamp.js",
+        "size": 2364,
+        "mode": 420
+      },
+      {
+        "path": "package.json",
+        "size": 2281,
+        "mode": 420
+      }
+    ],
+    "entryCount": 36,
+    "bundled": []
+  }
+]
