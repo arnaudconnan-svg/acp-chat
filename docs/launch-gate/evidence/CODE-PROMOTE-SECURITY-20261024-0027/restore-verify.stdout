@@ -1,0 +1,23 @@
+
+> acp-chat@1.0.0 verify
+> node --check server.js && npm run password-reset:harness && npm run password-reset-frontend:harness && npm run password-reset-server:harness && npm run preff:git:harness && npm run health:harness && npm run no-openai-runtime:harness && npm run mistral:harness && npm run title:harness && npm run title:conflict:mistral:harness && npm run information-routing:mistral:harness && npm run exploration:mistral:harness && npm run recall-routing:mistral:harness && npm run contact-discharge:mistral:harness && npm run immediate-alliance:mistral:harness && npm run interpretation-rejection:mistral:harness && npm run dependency-risk:mistral:harness && npm run major-harm-response:mistral:harness && npm run acute-crisis-followup:mistral:harness && npm run n2-writer:mistral:harness && npm run major-harm-risk:mistral:harness && npm run suicide-risk:mistral:harness && npm run writer:mistral:harness && npm run memory:mistral:harness && npm run intersession:mistral:harness && npm run intersession:source:harness && npm run affiliation:mistral:harness && npm run state:harness && npm run posture:harness && npm run analyzers:harness && npm run prompts:consistency && npm run contract-validator:harness && npm run human-support:harness && npm run flags:harness && npm run conversation-state:harness && npm run runtime-schemas:harness && npm run debugmeta-unit:harness && npm run auth-conversation:harness && npm run chat-routing:harness && npm run branching:harness && npm run transcript:harness && npm run crisis-routing:harness && npm run llm-messages:harness && npm run conversation-data:harness && npm run ui-layout:verify
+
+
+> acp-chat@1.0.0 password-reset:harness
+> node scripts/password-reset-harness.js
+
+[PASS] password reset queue, limits, real scrypt, RTDB retry/races and sessions
+
+> acp-chat@1.0.0 password-reset-frontend:harness
+> node scripts/password-reset-frontend-harness.js
+
+[PASS] password reset frontend DOM: fragments, outcomes, session race, redirects and autofill
+
+> acp-chat@1.0.0 password-reset-server:harness
+> node scripts/password-reset-server-integration-harness.js
+
+[PASS] real server auth routes and getUserSession with synthetic RTDB
+
+> acp-chat@1.0.0 preff:git:harness
+> node scripts/preff-git-guard-harness.js
+

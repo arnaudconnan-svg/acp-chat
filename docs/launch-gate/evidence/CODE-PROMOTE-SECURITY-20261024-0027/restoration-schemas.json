@@ -1,0 +1,15 @@
+{
+  "argv": [
+    "env",
+    "-i",
+    "PATH=/workspace/work/promote/node/package/bin:/usr/bin:/bin",
+    "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+    "node",
+    "/workspace/work/promote/rollback/scripts/runtime-schemas-harness.js"
+  ],
+  "start": "2026-10-23T22:48:55.617301+00:00",
+  "end": "2026-10-23T22:48:55.687963+00:00",
+  "code": 0,
+  "stdout_sha256": "9aeeb9ca715ea9b0e8d83e9c738796274be8ae69f7c44e8ad0716787d11c9df3",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

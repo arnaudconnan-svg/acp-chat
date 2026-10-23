@@ -1,0 +1,18 @@
+{
+  "argv": [
+    "git",
+    "diff",
+    "c6650835eec849655c9e92754a446a14c5928927",
+    "HEAD",
+    "--",
+    "package.json",
+    "package-lock.json",
+    "lib/runtime-schemas.js",
+    "scripts/synthetic/promotion-security-harness.cjs"
+  ],
+  "start": "2026-10-23T22:49:47.599005+00:00",
+  "end": "2026-10-23T22:49:47.620641+00:00",
+  "code": 0,
+  "stdout_sha256": "53ec23d9359245457525046d625ba1cfa3561444a57b56bc6ca2ee689a2116af",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

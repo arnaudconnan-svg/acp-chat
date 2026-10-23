@@ -1,0 +1,16 @@
+{
+  "argv": [
+    "env",
+    "-i",
+    "PATH=/workspace/work/promote/node/package/bin:/usr/bin:/bin",
+    "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+    "npm",
+    "run",
+    "verify"
+  ],
+  "start": "2026-10-23T22:44:57.994947+00:00",
+  "end": "2026-10-23T22:45:26.955765+00:00",
+  "code": 0,
+  "stdout_sha256": "e16900606d5f5fb2b7ff3eec5009ca957b78e99483326c0aea980b5693890e15",
+  "stderr_sha256": "b310470a55f5fc728e4f1e95e8281322ebbd34f1d1acf72d44b6466657e2c62b"
+}

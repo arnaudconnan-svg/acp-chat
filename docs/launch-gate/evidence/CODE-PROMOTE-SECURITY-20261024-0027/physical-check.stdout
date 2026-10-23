@@ -1,0 +1,207 @@
+{
+  "node": "v22.23.4",
+  "execPath": "/workspace/work/promote/node/package/bin/node",
+  "chains": [
+    [
+      {
+        "file": "/workspace/acp-chat/node_modules/express/package.json",
+        "entry": "/workspace/acp-chat/node_modules/express/index.js",
+        "name": "express",
+        "version": "5.2.1",
+        "sourceSha256": "4d2f5afc192178c5b0dc418d2da5826d52a8b6998771b011aede7fdba9118140"
+      },
+      {
+        "file": "/workspace/acp-chat/node_modules/body-parser/package.json",
+        "entry": "/workspace/acp-chat/node_modules/body-parser/index.js",
+        "name": "body-parser",
+        "version": "2.4.0",
+        "sourceSha256": "4d33d19d4ce36726988a1fa508f4d6f15254cc52fe95b777b30f49d97d825668"
+      },
+      {
+        "file": "/workspace/acp-chat/node_modules/iconv-lite/package.json",
+        "entry": "/workspace/acp-chat/node_modules/iconv-lite/lib/index.js",
+        "name": "iconv-lite",
+        "version": "0.7.3",
+        "sourceSha256": "59759a24727cd37306bc039512307c8b87992568fc7a2145fcbb8a4fd404fb3c"
+      }
+    ],
+    [
+      {
+        "file": "/workspace/acp-chat/node_modules/pino-pretty/package.json",
+        "entry": "/workspace/acp-chat/node_modules/pino-pretty/index.js",
+        "name": "pino-pretty",
+        "version": "13.1.3",
+        "sourceSha256": "331964661c50758d986e1ef97fd6d0f0bf901dc758fdf2293985014ea6c4cc47"
+      },
+      {
+        "file": "/workspace/acp-chat/node_modules/fast-copy/package.json",
+        "entry": "/workspace/acp-chat/node_modules/fast-copy/dist/cjs/index.cjs",
+        "name": "fast-copy",
+        "version": "4.0.3",
+        "sourceSha256": "47bbd470e256528957b039b135e964ff405ea413ffbc016308b1de84d9c13800"
+      }
+    ],
+    [
+      {
+        "file": "/workspace/acp-chat/node_modules/firebase-admin/package.json",
+        "entry": "/workspace/acp-chat/node_modules/firebase-admin/lib/index.js",
+        "name": "firebase-admin",
+        "version": "13.10.0",
+        "sourceSha256": "2e4ccc72e674fe268abb66dcd4172b55392356d8bd044876e3176066880c89c7"
+      },
+      {
+        "file": "/workspace/acp-chat/node_modules/@google-cloud/firestore/package.json",
+        "entry": "/workspace/acp-chat/node_modules/@google-cloud/firestore/build/src/index.js",
+        "name": "@google-cloud/firestore",
+        "version": "7.11.6",
+        "sourceSha256": "ecb61cdee1d5a5d6ca0d9ebc0037dbabbfdc193500882d8ce0a2f0fb1e8d00e9"
+      },
+      {
+        "file": "/workspace/acp-chat/node_modules/google-gax/package.json",
+        "entry": "/workspace/acp-chat/node_modules/google-gax/build/src/index.js",
+        "name": "google-gax",
+        "version": "4.6.1",
+        "sourceSha256": "dcb606c914fe0e7159ec4d1f65c7998897bf59bacf1dcf4a872cebec5a49b9ab"
+      },
+      {
+        "file": "/workspace/acp-chat/node_modules/protobufjs/package.json",
+        "entry": "/workspace/acp-chat/node_modules/protobufjs/index.js",
+        "name": "protobufjs",
+        "version": "7.6.1",
+        "sourceSha256": "33c2ed457283fb463ca5a3228eb35fabbe2ab5f25f25b411e93aed4b7c18e8c0"
+      }
+    ],
+    [
+      {
+        "file": "/workspace/acp-chat/node_modules/firebase-admin/package.json",
+        "entry": "/workspace/acp-chat/node_modules/firebase-admin/lib/index.js",
+        "name": "firebase-admin",
+        "version": "13.10.0",
+        "sourceSha256": "2e4ccc72e674fe268abb66dcd4172b55392356d8bd044876e3176066880c89c7"
+      },
+      {
+        "file": "/workspace/acp-chat/node_modules/@google-cloud/firestore/package.json",
+        "entry": "/workspace/acp-chat/node_modules/@google-cloud/firestore/build/src/index.js",
+        "name": "@google-cloud/firestore",
+        "version": "7.11.6",
+        "sourceSha256": "ecb61cdee1d5a5d6ca0d9ebc0037dbabbfdc193500882d8ce0a2f0fb1e8d00e9"
+      },
+      {
+        "file": "/workspace/acp-chat/node_modules/google-gax/package.json",
+        "entry": "/workspace/acp-chat/node_modules/google-gax/build/src/index.js",
+        "name": "google-gax",
+        "version": "4.6.1",
+        "sourceSha256": "dcb606c914fe0e7159ec4d1f65c7998897bf59bacf1dcf4a872cebec5a49b9ab"
+      },
+      {
+        "file": "/workspace/acp-chat/node_modules/@grpc/proto-loader/package.json",
+        "entry": "/workspace/acp-chat/node_modules/@grpc/proto-loader/build/src/index.js",
+        "name": "@grpc/proto-loader",
+        "version": "0.7.15",
+        "sourceSha256": "9ece986be86fadc2c15919a3f15dc0c8e96e39ed5ba33a075cc820f2a092f777"
+      },
+      {
+        "file": "/workspace/acp-chat/node_modules/@grpc/grpc-js/package.json",
+        "entry": "/workspace/acp-chat/node_modules/@grpc/grpc-js/build/src/index.js",
+        "name": "@grpc/grpc-js",
+        "version": "1.14.5",
+        "sourceSha256": "248fae70078a28b5dde8f8607df8cf6619a4da4066eea55a4df36b9694c92de3"
+      }
+    ],
+    [
+      {
+        "file": "/workspace/acp-chat/node_modules/firebase-admin/package.json",
+        "entry": "/workspace/acp-chat/node_modules/firebase-admin/lib/index.js",
+        "name": "firebase-admin",
+        "version": "13.10.0",
+        "sourceSha256": "2e4ccc72e674fe268abb66dcd4172b55392356d8bd044876e3176066880c89c7"
+      },
+      {
+        "file": "/workspace/acp-chat/node_modules/@google-cloud/storage/package.json",
+        "entry": "/workspace/acp-chat/node_modules/@google-cloud/storage/build/cjs/src/index.js",
+        "name": "@google-cloud/storage",
+        "version": "7.19.0",
+        "sourceSha256": "5557d3df72adca34cddf6e92056731877a42aeccf90bce1f4a5f9302dcfddaf3"
+      },
+      {
+        "file": "/workspace/acp-chat/node_modules/retry-request/package.json",
+        "entry": "/workspace/acp-chat/node_modules/retry-request/index.js",
+        "name": "retry-request",
+        "version": "7.0.2",
+        "sourceSha256": "2b38319c1b5df38304420a12c184074bc61413656d9696a1a7f47a448e14bdcb"
+      },
+      {
+        "file": "/workspace/acp-chat/node_modules/@types/request/package.json",
+        "entry": "/workspace/acp-chat/node_modules/@types/request/package.json",
+        "name": "@types/request",
+        "version": "2.48.13",
+        "sourceSha256": "35bdabce35cb2074bb2efcdec71dab8a7d5f228de7e78b659c2652244f8d5d4e"
+      },
+      {
+        "file": "/workspace/acp-chat/node_modules/form-data/package.json",
+        "entry": "/workspace/acp-chat/node_modules/form-data/lib/form_data.js",
+        "name": "form-data",
+        "version": "2.5.6",
+        "sourceSha256": "9c9b166cc9ddf4b64e454574d216e007cae0a552e01a93b87b8e026717d03076"
+      }
+    ],
+    [
+      {
+        "file": "/workspace/acp-chat/node_modules/@eslint/eslintrc/package.json",
+        "entry": "/workspace/acp-chat/node_modules/@eslint/eslintrc/dist/eslintrc.cjs",
+        "name": "@eslint/eslintrc",
+        "version": "3.3.5",
+        "sourceSha256": "fbae17e4d631d7f53288fd0dd7b334c114024181ba9e94e98388360863c7623f"
+      },
+      {
+        "file": "/workspace/acp-chat/node_modules/minimatch/package.json",
+        "entry": "/workspace/acp-chat/node_modules/minimatch/minimatch.js",
+        "name": "minimatch",
+        "version": "3.1.5",
+        "sourceSha256": "746849f267c4868a53729225bd85c7dccd387712136fb305fcc0a3eadd4a3d9d"
+      },
+      {
+        "file": "/workspace/acp-chat/node_modules/brace-expansion/package.json",
+        "entry": "/workspace/acp-chat/node_modules/brace-expansion/index.js",
+        "name": "brace-expansion",
+        "version": "1.1.21",
+        "sourceSha256": "c53b4fab560940391af6889ac8fafe67629ec645ca536dd7f10d266713e969bf"
+      }
+    ],
+    [
+      {
+        "file": "/workspace/acp-chat/node_modules/@eslint/eslintrc/package.json",
+        "entry": "/workspace/acp-chat/node_modules/@eslint/eslintrc/dist/eslintrc.cjs",
+        "name": "@eslint/eslintrc",
+        "version": "3.3.5",
+        "sourceSha256": "fbae17e4d631d7f53288fd0dd7b334c114024181ba9e94e98388360863c7623f"
+      },
+      {
+        "file": "/workspace/acp-chat/node_modules/js-yaml/package.json",
+        "entry": "/workspace/acp-chat/node_modules/js-yaml/index.js",
+        "name": "js-yaml",
+        "version": "4.3.2",
+        "sourceSha256": "e85d524fcd45466669dfc37618284e0c53ccaaf3f4bef1e23cd25ec6c43120bc"
+      }
+    ],
+    [
+      {
+        "file": "/workspace/acp-chat/node_modules/firebase-admin/package.json",
+        "entry": "/workspace/acp-chat/node_modules/firebase-admin/lib/index.js",
+        "name": "firebase-admin",
+        "version": "13.10.0",
+        "sourceSha256": "2e4ccc72e674fe268abb66dcd4172b55392356d8bd044876e3176066880c89c7"
+      },
+      {
+        "file": "/workspace/acp-chat/node_modules/@fastify/busboy/package.json",
+        "entry": "/workspace/acp-chat/node_modules/@fastify/busboy/index.js",
+        "name": "@fastify/busboy",
+        "version": "3.2.3",
+        "sourceSha256": "ce61544d7cdca32cbc24fe7b42e93b1b280406891b77730ea1e3e84d764f6692"
+      }
+    ]
+  ],
+  "realFastCopyParentFilter": "passed",
+  "realProtobufRoundTrip": "passed",
+  "limits": "No Firebase/SMTP/Mistral load, credentials, providers or untrusted .proto; public package metadata/source only"
+}

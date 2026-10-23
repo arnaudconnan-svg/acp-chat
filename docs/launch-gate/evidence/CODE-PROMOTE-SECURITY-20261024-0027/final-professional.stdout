@@ -1,0 +1,5 @@
+
+> acp-chat@1.0.0 professional:harness
+> node scripts/synthetic/professional-harness.cjs
+
+[PASS] M1 individual roles, cold restart, grants/revocation, minimal API, supports/admin and journal through genuine Express

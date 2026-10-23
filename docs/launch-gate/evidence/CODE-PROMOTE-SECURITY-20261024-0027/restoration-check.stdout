@@ -1,0 +1,48 @@
+{
+  "return_commit": "11a41e9ea6765418737ad7f8e2b8a31fe404b9b1",
+  "candidate": "64efa303661068f3af871232a0cc578ccdf25a2c",
+  "isolated_checkout": "/workspace/work/promote/rollback",
+  "files": [
+    {
+      "file": "package.json",
+      "candidate_sha256": "e3a9ff0ca03290a803147fe1c36bf46730b21a2ce7605b7dad9d92eec9d5373d",
+      "restored_sha256": "3f0b9eb4d4c06e6475c9f5f535d61f9939e0b2ed6bb4ebc85689a71577ea38d2",
+      "restored_matches_main": true
+    },
+    {
+      "file": "package-lock.json",
+      "candidate_sha256": "4985f28230133cb001e61d45cd107ee4d5adbe74334d053090905807b8f94c7d",
+      "restored_sha256": "b373caed761058422a72c9cbd61a59993cdea5a7f6a7675f667b63d787380458",
+      "restored_matches_main": true
+    },
+    {
+      "file": "lib/runtime-schemas.js",
+      "candidate_sha256": "082b3d2f3360c9be1f591b7a2a7ce3dce22720714cf696323728a600e1b4dc80",
+      "restored_sha256": "2f43370f87f1dad804738b0837d6fe6738646c2d92409a3a13bbabd0b6336111",
+      "restored_matches_main": true
+    },
+    {
+      "file": "server.js",
+      "candidate_sha256": "253230f9436a222fc04934d7e9c3360a849e37626cac273653fa3d360fda1c2a",
+      "restored_sha256": "76108d277453f3f7842457a2a752746e440e3504b2010a9d24d5402fbe2d6676",
+      "restored_matches_main": true
+    },
+    {
+      "file": "lib/config.js",
+      "candidate_sha256": "541051c089d208f183add002e6923e54fdec24964016de4ebc61dbe172a5856b",
+      "restored_sha256": "541051c089d208f183add002e6923e54fdec24964016de4ebc61dbe172a5856b",
+      "restored_matches_main": true
+    },
+    {
+      "file": "scripts/synthetic/guard.cjs",
+      "candidate_sha256": "4b0b744468fc6b95ff0f91cd2126cf05fa10560e9188efc2d0e9e351dd258a89",
+      "restored_sha256": "1b1de1bdfc83938a6372fb2f9f8a8f4698af09258e46036a619d678cb129068d",
+      "restored_matches_main": true
+    }
+  ],
+  "restoration": "candidate code artifacts replaced by exact main artifacts and hashes rechecked",
+  "data_touched": false,
+  "deployment_performed": false,
+  "secrets_read_or_modified": false,
+  "live_NODE_VERSION_verified": false
+}

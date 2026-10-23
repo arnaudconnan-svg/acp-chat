@@ -1,0 +1,15 @@
+{
+  "argv": [
+    "env",
+    "-i",
+    "PATH=/workspace/work/promote/node/package/bin:/usr/bin:/bin",
+    "ADMIN_REVIEW_OUTPUT=/workspace/work/promote/admin-renders",
+    "node",
+    "scripts/synthetic/admin-review-browser.cjs"
+  ],
+  "start": "2026-10-23T22:46:49.448334+00:00",
+  "end": "2026-10-23T22:47:02.700375+00:00",
+  "code": 0,
+  "stdout_sha256": "a40aa96592d7829d135cd4d641a093472af679335226bc60fa3be3fee5f2a274",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

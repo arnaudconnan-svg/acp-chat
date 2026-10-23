@@ -1,0 +1,15 @@
+{
+  "argv": [
+    "curl",
+    "--fail",
+    "--silent",
+    "--show-error",
+    "--location",
+    "https://github.com/advisories/GHSA-27r3-jxmh-p828"
+  ],
+  "start": "2026-10-23T22:42:29.602458+00:00",
+  "end": "2026-10-23T22:42:30.342872+00:00",
+  "code": 0,
+  "stdout_sha256": "667f263fe1c0147b3e1d32a6e641754f2798ff8222dbd13f1759ed5f7d1968d5",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

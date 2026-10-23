@@ -1,0 +1,15 @@
+{
+  "argv": [
+    "env",
+    "-i",
+    "PATH=/workspace/work/promote/node/package/bin:/usr/bin:/bin",
+    "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+    "node",
+    "scripts/synthetic/admin-review-harness.cjs"
+  ],
+  "start": "2026-10-23T22:45:27.004446+00:00",
+  "end": "2026-10-23T22:45:28.396286+00:00",
+  "code": 0,
+  "stdout_sha256": "831bca111f9cb4dc512b88e60cd7d7c139900bbfd9c54f623726bc8ab8b63db0",
+  "stderr_sha256": "a6f993c4c384553234b0cd2c7d941f3cdb8fd5a2b01b94fa9d83ce33f5ccb075"
+}

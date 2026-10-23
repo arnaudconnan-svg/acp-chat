@@ -1,0 +1,8 @@
+markdown-body comment-body p-0" >
+    Impact
+A single request can crash any application using body-parser with default options. When a request carries a Content-Encoding (for example gzip), body-parser pipes it into a decompression stream and, after reading the body, leaves that stream piped with no error listener. A payload of one valid compressed frame followed by trailing bytes decodes and the application responds normally, but the trailing bytes then reach the already-finished decoder, which emits an error that is re-thrown as an uncaught exception and terminates the process. No authentication or matching route is required, since parsing runs before routing.
+Patches
+Fixed in body-parser 2.4.0 and 1.20.9. Upgrade to one of these versions.
+Workarounds
+Pass inflate: false to the body-parser middleware if the application does not need to accept compressed request bodies. This rejects encoded requests before any decompression stream is created.
+

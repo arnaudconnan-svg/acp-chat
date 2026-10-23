@@ -1,0 +1,16 @@
+{
+  "argv": [
+    "env",
+    "-i",
+    "PATH=/workspace/work/promote/node/package/bin:/usr/bin:/bin",
+    "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+    "node",
+    "-e",
+    "const s=require(\"./lib/runtime-schemas\");for(const input of [Array(64).fill(null),Array(64).fill({role:\"\",content:\"\"})])console.log(s.validateShape(s.chatRequestSchema,{message:\"synthetic\",conversationId:\"synthetic\",recentHistory:input}).length)"
+  ],
+  "start": "2026-10-23T22:50:14.989568+00:00",
+  "end": "2026-10-23T22:50:15.163879+00:00",
+  "code": 0,
+  "stdout_sha256": "4d7dcd9afb361162d977673ffbcee8678e11bb3a2531e9fa75420caa1ec5b6e7",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

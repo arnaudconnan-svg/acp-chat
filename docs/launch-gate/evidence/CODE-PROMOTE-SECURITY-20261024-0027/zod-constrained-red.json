@@ -1,0 +1,16 @@
+{
+  "argv": [
+    "env",
+    "-i",
+    "PATH=/workspace/work/promote/node/package/bin:/usr/bin:/bin",
+    "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+    "node",
+    "-e",
+    "const {z}=require(\"/workspace/work/promote/rollback/node_modules/zod\");let n=0;const a=z.array(z.preprocess(v=>{n++;return v},z.string())).max(4).safeParse(Array(64).fill(0));console.log(JSON.stringify({version:require(\"/workspace/work/promote/rollback/node_modules/zod/package.json\").version,success:a.success,issues:a.error.issues.length,visited:n}));require(\"assert/strict\").equal(n,0)"
+  ],
+  "start": "2026-10-23T22:50:51.175379+00:00",
+  "end": "2026-10-23T22:50:51.238274+00:00",
+  "code": 1,
+  "stdout_sha256": "c7ca9b09a69d434c899caf602d16e221e129d383bd59dd008977af7bfbe6706f",
+  "stderr_sha256": "f9b1c960f51736eaa6e903f642efaf214108c0c8a45eb17b44b42ff00fd07256"
+}

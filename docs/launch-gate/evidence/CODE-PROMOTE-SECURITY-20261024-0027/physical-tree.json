@@ -1,0 +1,16 @@
+{
+  "argv": [
+    "env",
+    "PATH=/workspace/work/promote/node/package/bin:/usr/bin:/bin",
+    "npm",
+    "ls",
+    "--all",
+    "--json",
+    "--ignore-scripts"
+  ],
+  "start": "2026-10-23T22:45:04.318546+00:00",
+  "end": "2026-10-23T22:45:05.202559+00:00",
+  "code": 0,
+  "stdout_sha256": "7f15cf3705f53fcdb3ef1ea9efcf35a44d08a763dfb629d9357946ad39d8aa3c",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

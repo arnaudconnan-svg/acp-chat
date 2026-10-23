@@ -1,0 +1,11 @@
+{
+  "argv": [
+    "python",
+    "docs/launch-gate/evidence/CODE-PROMOTE-SECURITY-20261024-0027/check-tested-code.py"
+  ],
+  "start": "2026-10-23T22:54:44.906197+00:00",
+  "end": "2026-10-23T22:54:45.541922+00:00",
+  "code": 0,
+  "stdout_sha256": "3bb7206fab39203e821993720e6968035a815664f344cdfa7e16af09186fb391",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

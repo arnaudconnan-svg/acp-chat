@@ -1,0 +1,26 @@
+{
+  "version": "22.23.4",
+  "dist": {
+    "shasum": "76e9d972a707f8c9dcf4692845b6b3949a48c87d",
+    "tarball": "https://registry.npmjs.org/node-linux-x64/-/node-linux-x64-22.23.4.tgz",
+    "fileCount": 2733,
+    "integrity": "sha512-Bi7VlP4LNQBy6W40tvqfXKPMGT9tnrs7pybiox7yqQMSiMagKuZyyIIb/pYM2dbtPlXyQnLif0ZtgyUIImQQkQ==",
+    "signatures": [
+      {
+        "sig": "MEQCIG7zEjtH5MxtptG+WMnJsESgM5akgpqjo6cHTgxFzgCuAiBRaaeAzCFcArFdQ6HeoqKCkuXrDulG2C1frs2lL4oqeg==",
+        "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+      },
+      {
+        "sig": "MEQCIG8AOV7RJWDhIoN2O6one8VOvBYAt+37ct/hGcr6Co0mAiBJOUffhL6NnDkx/UPRSfQC7u+0m47Z5bWFEv4/zx6nPw==",
+        "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+      }
+    ],
+    "attestations": {
+      "url": "https://registry.npmjs.org/-/npm/v1/attestations/node-linux-x64@22.23.4",
+      "provenance": {
+        "predicateType": "https://slsa.dev/provenance/v1"
+      }
+    },
+    "unpackedSize": 184934431
+  }
+}

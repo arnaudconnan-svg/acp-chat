@@ -1,0 +1,15 @@
+{
+  "argv": [
+    "env",
+    "-i",
+    "PATH=/workspace/work/promote/node/package/bin:/usr/bin:/bin",
+    "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+    "node",
+    "docs/launch-gate/evidence/CODE-PROMOTE-SECURITY-20261024-0027/physical-check.cjs"
+  ],
+  "start": "2026-10-23T22:47:22.510327+00:00",
+  "end": "2026-10-23T22:47:22.611255+00:00",
+  "code": 0,
+  "stdout_sha256": "00c551011ca162d40f13b5ca85532bb39c179f941a56ec94595c4d22cac55e47",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

@@ -1,0 +1,11 @@
+{
+  "argv": [
+    "python",
+    "docs/launch-gate/evidence/CODE-PROMOTE-SECURITY-20261024-0027/check-provenance.py"
+  ],
+  "start": "2026-10-23T22:52:45.217360+00:00",
+  "end": "2026-10-23T22:52:45.440384+00:00",
+  "code": 0,
+  "stdout_sha256": "61703eaed3a340775acbcd05843df53377c13d7204dbc98a905b3823d90efc14",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

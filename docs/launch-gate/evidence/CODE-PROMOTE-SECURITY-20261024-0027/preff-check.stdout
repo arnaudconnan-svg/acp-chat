@@ -1,0 +1,9 @@
+
+> acp-chat@1.0.0 preff:git:guard
+> node scripts/preff-git-guard.js
+
+preff-git-guard status:
+- origin/main: 11a41e9
+- origin/beta: c665083
+- relation: main is ancestor of beta
+- fast-forward main <- beta: yes

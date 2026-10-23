@@ -1,0 +1,484 @@
+{
+  "code_commit": "7dd3ce6f003a0cbe441fa68e367ce458abe9fedc",
+  "base_beta": "c6650835eec849655c9e92754a446a14c5928927",
+  "return_main": "11a41e9ea6765418737ad7f8e2b8a31fe404b9b1",
+  "checked_utc": "2026-10-23T22:54:45.005316+00:00",
+  "node_effective_tests": "v22.23.4",
+  "node_path": "/workspace/work/promote/node/package/bin/node",
+  "node_binary_sha256": "94efd062ed066c1a0b332e18249859c905e920eeada5df55d24c99b919629a90",
+  "files": [
+    {
+      "file": "package.json",
+      "tested_sha256": "e3a9ff0ca03290a803147fe1c36bf46730b21a2ce7605b7dad9d92eec9d5373d",
+      "git_show_sha256": "e3a9ff0ca03290a803147fe1c36bf46730b21a2ce7605b7dad9d92eec9d5373d",
+      "equal": true
+    },
+    {
+      "file": "package-lock.json",
+      "tested_sha256": "4985f28230133cb001e61d45cd107ee4d5adbe74334d053090905807b8f94c7d",
+      "git_show_sha256": "4985f28230133cb001e61d45cd107ee4d5adbe74334d053090905807b8f94c7d",
+      "equal": true
+    },
+    {
+      "file": "lib/runtime-schemas.js",
+      "tested_sha256": "082b3d2f3360c9be1f591b7a2a7ce3dce22720714cf696323728a600e1b4dc80",
+      "git_show_sha256": "082b3d2f3360c9be1f591b7a2a7ce3dce22720714cf696323728a600e1b4dc80",
+      "equal": true
+    },
+    {
+      "file": "scripts/synthetic/promotion-security-harness.cjs",
+      "tested_sha256": "dddbe566d7cbacfb96bddbcd89bc313aec7678c7c09af9441d82753a0abc4ea8",
+      "git_show_sha256": "dddbe566d7cbacfb96bddbcd89bc313aec7678c7c09af9441d82753a0abc4ea8",
+      "equal": true
+    },
+    {
+      "file": "scripts/synthetic/guard.cjs",
+      "tested_sha256": "4b0b744468fc6b95ff0f91cd2126cf05fa10560e9188efc2d0e9e351dd258a89",
+      "git_show_sha256": "4b0b744468fc6b95ff0f91cd2126cf05fa10560e9188efc2d0e9e351dd258a89",
+      "equal": true
+    },
+    {
+      "file": "server.js",
+      "tested_sha256": "253230f9436a222fc04934d7e9c3360a849e37626cac273653fa3d360fda1c2a",
+      "git_show_sha256": "253230f9436a222fc04934d7e9c3360a849e37626cac273653fa3d360fda1c2a",
+      "equal": true
+    }
+  ],
+  "changed_lock_entries": [
+    "",
+    "node_modules/body-parser",
+    "node_modules/iconv-lite",
+    "node_modules/zod"
+  ],
+  "all_other_lock_entries_unchanged": true,
+  "server_guard_admin_and_config_unchanged": true,
+  "commands": [
+    {
+      "label": "runtime",
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/workspace/work/promote/node/package/bin:/usr/bin:/bin",
+        "node",
+        "-p",
+        "JSON.stringify({version:process.version,execPath:process.execPath,versions:process.versions})"
+      ],
+      "start": "2026-10-23T22:39:49.732186+00:00",
+      "end": "2026-10-23T22:39:49.794607+00:00",
+      "code": 0,
+      "stdout_sha256": "24ea630a91bfb5f464e5e761ceb41da44bcf801c7b545979522c2e7e67b7269c",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "candidate-ci",
+      "argv": [
+        "env",
+        "PATH=/workspace/work/promote/node/package/bin:/usr/bin:/bin",
+        "npm",
+        "--cache",
+        "/workspace/work/npm-cache",
+        "ci",
+        "--ignore-scripts",
+        "--no-audit",
+        "--no-fund"
+      ],
+      "start": "2026-10-23T22:39:49.834481+00:00",
+      "end": "2026-10-23T22:40:04.332012+00:00",
+      "code": 0,
+      "stdout_sha256": "711081f751460b06350eddde87c232b50d5b6a1d8abd269084ba1a3b907042f0",
+      "stderr_sha256": "c403d3e2287f76231c644735926e4e7b5ac01f0a1ac91dc2c0794f9a61d7a08c"
+    },
+    {
+      "label": "baseline-verify",
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/workspace/work/promote/node/package/bin:/usr/bin:/bin",
+        "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+        "npm",
+        "run",
+        "verify"
+      ],
+      "start": "2026-10-23T22:40:30.217422+00:00",
+      "end": "2026-10-23T22:40:56.266794+00:00",
+      "code": 0,
+      "stdout_sha256": "76ee81d9e380b39011d65aef61668a144d739c004c2f7dc1a7551a12a30f44bb",
+      "stderr_sha256": "544e8846a8b2b81a2c2de760a3368d83a7a2a106b1375d1fda9d52cc9514682b"
+    },
+    {
+      "label": "baseline-admin",
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/workspace/work/promote/node/package/bin:/usr/bin:/bin",
+        "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+        "node",
+        "scripts/synthetic/admin-review-harness.cjs"
+      ],
+      "start": "2026-10-23T22:40:56.315591+00:00",
+      "end": "2026-10-23T22:40:57.215218+00:00",
+      "code": 0,
+      "stdout_sha256": "831bca111f9cb4dc512b88e60cd7d7c139900bbfd9c54f623726bc8ab8b63db0",
+      "stderr_sha256": "50ed0fe210363b9898806a4239a5f4f72c09d4f18bed0955d2bc52c12a794412"
+    },
+    {
+      "label": "corrected-ci",
+      "argv": [
+        "env",
+        "PATH=/workspace/work/promote/node/package/bin:/usr/bin:/bin",
+        "npm",
+        "--cache",
+        "/workspace/work/npm-cache",
+        "ci",
+        "--ignore-scripts",
+        "--no-audit",
+        "--no-fund"
+      ],
+      "start": "2026-10-23T22:43:51.436804+00:00",
+      "end": "2026-10-23T22:43:58.715748+00:00",
+      "code": 0,
+      "stdout_sha256": "0d008fad125789081637c0ca11f67598521dc786f4fee40c328d105853c90dd6",
+      "stderr_sha256": "c403d3e2287f76231c644735926e4e7b5ac01f0a1ac91dc2c0794f9a61d7a08c"
+    },
+    {
+      "label": "exact-verify",
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/workspace/work/promote/node/package/bin:/usr/bin:/bin",
+        "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+        "npm",
+        "run",
+        "verify"
+      ],
+      "start": "2026-10-23T22:50:51.560021+00:00",
+      "end": "2026-10-23T22:51:17.653398+00:00",
+      "code": 0,
+      "stdout_sha256": "d12fc2acceac85622c65b137630f57789977452a8f78302b6826086d5f21924a",
+      "stderr_sha256": "29c1a1c177975526ebd24dd0c0abcbeb0739e71e6c35583893a7a0203f8ff2bf"
+    },
+    {
+      "label": "exact-lint",
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/workspace/work/promote/node/package/bin:/usr/bin:/bin",
+        "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+        "node",
+        "node_modules/eslint/bin/eslint.js",
+        "lib/runtime-schemas.js",
+        "scripts/synthetic/promotion-security-harness.cjs"
+      ],
+      "start": "2026-10-23T22:51:17.711766+00:00",
+      "end": "2026-10-23T22:51:18.083600+00:00",
+      "code": 0,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "qualified-admin",
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/workspace/work/promote/node/package/bin:/usr/bin:/bin",
+        "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+        "node",
+        "scripts/synthetic/admin-review-harness.cjs"
+      ],
+      "start": "2026-10-23T22:47:23.520679+00:00",
+      "end": "2026-10-23T22:47:24.467008+00:00",
+      "code": 0,
+      "stdout_sha256": "831bca111f9cb4dc512b88e60cd7d7c139900bbfd9c54f623726bc8ab8b63db0",
+      "stderr_sha256": "84bf100b49a61d5aebb076df345578f2274b6a2738fa0ad7cb292edd871208ce"
+    },
+    {
+      "label": "qualified-professional",
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/workspace/work/promote/node/package/bin:/usr/bin:/bin",
+        "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+        "npm",
+        "run",
+        "professional:harness"
+      ],
+      "start": "2026-10-23T22:47:24.515292+00:00",
+      "end": "2026-10-23T22:47:25.969560+00:00",
+      "code": 0,
+      "stdout_sha256": "bead575f809217c070c84d352eead506f8b523817fcd831dc18c8d9ab89ed9e8",
+      "stderr_sha256": "61522ed2e9a373ec7205718b7044881b490677b85fe730183779c92c7fe69a85"
+    },
+    {
+      "label": "qualified-isolation",
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/workspace/work/promote/node/package/bin:/usr/bin:/bin",
+        "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+        "npm",
+        "run",
+        "isolation:harness"
+      ],
+      "start": "2026-10-23T22:47:26.018024+00:00",
+      "end": "2026-10-23T22:47:26.637346+00:00",
+      "code": 0,
+      "stdout_sha256": "d568338bfea60f52a5646276704dbfe81d2e82449150ad443b5696ebd48716d9",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "qualified-admin-browser",
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/workspace/work/promote/node/package/bin:/usr/bin:/bin",
+        "ADMIN_REVIEW_OUTPUT=/workspace/work/promote/admin-renders",
+        "node",
+        "scripts/synthetic/admin-review-browser.cjs"
+      ],
+      "start": "2026-10-23T22:46:49.448334+00:00",
+      "end": "2026-10-23T22:47:02.700375+00:00",
+      "code": 0,
+      "stdout_sha256": "a40aa96592d7829d135cd4d641a093472af679335226bc60fa3be3fee5f2a274",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "real-sdk-compatibility",
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/workspace/work/promote/node/package/bin:/usr/bin:/bin",
+        "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+        "node",
+        "/workspace/work/promote/sdk-probe.cjs"
+      ],
+      "start": "2026-10-23T22:48:29.410763+00:00",
+      "end": "2026-10-23T22:48:30.507340+00:00",
+      "code": 0,
+      "stdout_sha256": "149b69ee30f6b49e0ea1cbc06f02b2802fad6afee6adcd20cd54fc0650bc156d",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "physical-check",
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/workspace/work/promote/node/package/bin:/usr/bin:/bin",
+        "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+        "node",
+        "docs/launch-gate/evidence/CODE-PROMOTE-SECURITY-20261024-0027/physical-check.cjs"
+      ],
+      "start": "2026-10-23T22:47:22.510327+00:00",
+      "end": "2026-10-23T22:47:22.611255+00:00",
+      "code": 0,
+      "stdout_sha256": "00c551011ca162d40f13b5ca85532bb39c179f941a56ec94595c4d22cac55e47",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "provenance-check",
+      "argv": [
+        "python",
+        "docs/launch-gate/evidence/CODE-PROMOTE-SECURITY-20261024-0027/check-provenance.py"
+      ],
+      "start": "2026-10-23T22:52:45.217360+00:00",
+      "end": "2026-10-23T22:52:45.440384+00:00",
+      "code": 0,
+      "stdout_sha256": "61703eaed3a340775acbcd05843df53377c13d7204dbc98a905b3823d90efc14",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "restoration-check",
+      "argv": [
+        "python",
+        "docs/launch-gate/evidence/CODE-PROMOTE-SECURITY-20261024-0027/check-restoration.py"
+      ],
+      "start": "2026-10-23T22:48:55.388474+00:00",
+      "end": "2026-10-23T22:48:55.478605+00:00",
+      "code": 0,
+      "stdout_sha256": "521905b2e1c3f34fb5e08b6112c7663a5379d6087ec818e9ca4cae8a969adbbd",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "restoration-syntax",
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/workspace/work/promote/node/package/bin:/usr/bin:/bin",
+        "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+        "node",
+        "--check",
+        "/workspace/work/promote/rollback/server.js"
+      ],
+      "start": "2026-10-23T22:48:55.520506+00:00",
+      "end": "2026-10-23T22:48:55.578433+00:00",
+      "code": 0,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "restoration-schemas",
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/workspace/work/promote/node/package/bin:/usr/bin:/bin",
+        "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+        "node",
+        "/workspace/work/promote/rollback/scripts/runtime-schemas-harness.js"
+      ],
+      "start": "2026-10-23T22:48:55.617301+00:00",
+      "end": "2026-10-23T22:48:55.687963+00:00",
+      "code": 0,
+      "stdout_sha256": "9aeeb9ca715ea9b0e8d83e9c738796274be8ae69f7c44e8ad0716787d11c9df3",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "restoration-final-verify",
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/workspace/work/promote/node/package/bin:/usr/bin:/bin",
+        "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+        "npm",
+        "--prefix",
+        "/workspace/work/promote/rollback",
+        "run",
+        "verify"
+      ],
+      "start": "2026-10-23T22:50:55.683425+00:00",
+      "end": "2026-10-23T22:53:01.145757+00:00",
+      "code": 0,
+      "stdout_sha256": "53eb94f22081609660257132bdecb19245aff08f82a151ab12d77d576ea66c5a",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "preff-check",
+      "argv": [
+        "env",
+        "PATH=/workspace/work/promote/node/package/bin:/usr/bin:/bin",
+        "npm",
+        "run",
+        "preff:git:guard"
+      ],
+      "start": "2026-10-23T22:49:46.427435+00:00",
+      "end": "2026-10-23T22:49:47.502812+00:00",
+      "code": 0,
+      "stdout_sha256": "3300d53946baf520d90c81ea02805aa187819ba32abf2a6c893750c9244a991b",
+      "stderr_sha256": "4c078893625d5ff67f0de00e3abbd592d694481712f3b71aba0aa08c407887df"
+    },
+    {
+      "label": "candidate-audit-all",
+      "argv": [
+        "env",
+        "PATH=/workspace/work/promote/node/package/bin:/usr/bin:/bin",
+        "npm",
+        "--cache",
+        "/workspace/work/npm-cache",
+        "audit",
+        "--json",
+        "--ignore-scripts"
+      ],
+      "start": "2026-10-23T22:40:04.390773+00:00",
+      "end": "2026-10-23T22:40:06.089264+00:00",
+      "code": 1,
+      "stdout_sha256": "d84fcc404872634dfe03d77717bb882fd8689ebed5a773ce2a72c8f39e999106",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "candidate-audit-prod",
+      "argv": [
+        "env",
+        "PATH=/workspace/work/promote/node/package/bin:/usr/bin:/bin",
+        "npm",
+        "--cache",
+        "/workspace/work/npm-cache",
+        "audit",
+        "--omit=dev",
+        "--json",
+        "--ignore-scripts"
+      ],
+      "start": "2026-10-23T22:40:06.138640+00:00",
+      "end": "2026-10-23T22:40:06.908591+00:00",
+      "code": 1,
+      "stdout_sha256": "429217f1887fb7a310836c96d022f7e0e4b3d809ef4efe11bb98d856a9ff3b4b",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "main-audit-all",
+      "argv": [
+        "env",
+        "PATH=/workspace/work/promote/node/package/bin:/usr/bin:/bin",
+        "npm",
+        "--prefix",
+        "/workspace/work/promote/rollback",
+        "--cache",
+        "/workspace/work/npm-cache",
+        "audit",
+        "--json",
+        "--ignore-scripts"
+      ],
+      "start": "2026-10-23T22:45:35.273417+00:00",
+      "end": "2026-10-23T22:45:38.425066+00:00",
+      "code": 1,
+      "stdout_sha256": "83fded880b6951aa519cba44186377306baa0e4319a212a89e56fbc3fc7b5bc1",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "main-audit-prod",
+      "argv": [
+        "env",
+        "PATH=/workspace/work/promote/node/package/bin:/usr/bin:/bin",
+        "npm",
+        "--prefix",
+        "/workspace/work/promote/rollback",
+        "--cache",
+        "/workspace/work/npm-cache",
+        "audit",
+        "--omit=dev",
+        "--json",
+        "--ignore-scripts"
+      ],
+      "start": "2026-10-23T22:45:38.495233+00:00",
+      "end": "2026-10-23T22:45:39.707827+00:00",
+      "code": 1,
+      "stdout_sha256": "b28cf3bc09d5b26ef206f7e1c345b8c02d46a13d9f7a637297e65aff52518d45",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "final-audit-all",
+      "argv": [
+        "env",
+        "PATH=/workspace/work/promote/node/package/bin:/usr/bin:/bin",
+        "npm",
+        "--cache",
+        "/workspace/work/npm-cache",
+        "audit",
+        "--json",
+        "--ignore-scripts"
+      ],
+      "start": "2026-10-23T22:45:02.579185+00:00",
+      "end": "2026-10-23T22:45:03.397374+00:00",
+      "code": 1,
+      "stdout_sha256": "466cf44aac305d42fe8dca49e5b5393277e8d53c966fb00a7be970fde39d196b",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "final-audit-prod",
+      "argv": [
+        "env",
+        "PATH=/workspace/work/promote/node/package/bin:/usr/bin:/bin",
+        "npm",
+        "--cache",
+        "/workspace/work/npm-cache",
+        "audit",
+        "--omit=dev",
+        "--json",
+        "--ignore-scripts"
+      ],
+      "start": "2026-10-23T22:45:03.454679+00:00",
+      "end": "2026-10-23T22:45:04.265615+00:00",
+      "code": 1,
+      "stdout_sha256": "03d98bc21664ee9bfcae29c173fcef57191a0d1dc75ff86079543416ef840b01",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "limitations": "Graphical deployed Chat gate belongs to Work and is not replaced; no deployed auth, Render rollback/config/secrets verification or promotion performed"
+}

@@ -1,0 +1,6 @@
+{
+  error: undefined,
+  body: { ok: true },
+  listeners: 0,
+  destroyed: false
+}

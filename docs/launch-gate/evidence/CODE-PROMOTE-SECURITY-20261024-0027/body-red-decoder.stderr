@@ -1,0 +1,23 @@
+node:internal/assert/utils:77
+    throw err;
+    ^
+
+AssertionError [ERR_ASSERTION]: finished decoder must retain an error listener
+    at /workspace/work/promote/body-lifecycle.cjs:2:424
+    at /workspace/acp-chat/node_modules/body-parser/lib/read.js:171:5
+    at AsyncResource.runInAsyncScope (node:async_hooks:214:14)
+    at invokeCallback (/workspace/acp-chat/node_modules/raw-body/index.js:238:16)
+    at done (/workspace/acp-chat/node_modules/raw-body/index.js:227:7)
+    at Gunzip.onEnd (/workspace/acp-chat/node_modules/raw-body/index.js:287:7)
+    at Gunzip.emit (node:events:519:28)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:89:21) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+
+Node.js v22.23.4

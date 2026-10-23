@@ -1,0 +1,20 @@
+{
+  "argv": [
+    "env",
+    "PATH=/workspace/work/promote/node/package/bin:/usr/bin:/bin",
+    "npm",
+    "--prefix",
+    "/workspace/work/promote/rollback",
+    "--cache",
+    "/workspace/work/npm-cache",
+    "audit",
+    "--omit=dev",
+    "--json",
+    "--ignore-scripts"
+  ],
+  "start": "2026-10-23T22:45:38.495233+00:00",
+  "end": "2026-10-23T22:45:39.707827+00:00",
+  "code": 1,
+  "stdout_sha256": "b28cf3bc09d5b26ef206f7e1c345b8c02d46a13d9f7a637297e65aff52518d45",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

@@ -1,0 +1,15 @@
+{
+  "argv": [
+    "curl",
+    "--fail",
+    "--silent",
+    "--show-error",
+    "--location",
+    "https://github.com/advisories/GHSA-mrhx-c7xc-m3w5"
+  ],
+  "start": "2026-10-23T22:40:41.833135+00:00",
+  "end": "2026-10-23T22:40:42.420728+00:00",
+  "code": 0,
+  "stdout_sha256": "b479a4fdb283927d93254e7e9925c93d1fdc34efe69ee247d8feb807ae37345e",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}
