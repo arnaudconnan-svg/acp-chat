@@ -10,7 +10,7 @@ const { createRequire } = require('node:module');
 const { IncomingMessage } = require('node:http');
 const { Duplex } = require('node:stream');
 const zlib = require('node:zlib');
-assert(require.cache[path.join(__dirname, 'guard.cjs')], 'M0 required');
+assert(require.cache[path.resolve('scripts/synthetic/guard.cjs')], 'M0 required');
 const expressRequire = createRequire(require.resolve('express'));
 const body = expressRequire('body-parser');
 const { z } = require('zod');
