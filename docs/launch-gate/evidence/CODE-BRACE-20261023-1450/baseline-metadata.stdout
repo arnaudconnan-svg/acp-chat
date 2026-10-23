@@ -1,0 +1,17 @@
+{
+  "version": "1.1.14",
+  "dist": {
+    "shasum": "d9de602370d91347cd9ddad1224d4fd701eb348b",
+    "tarball": "https://registry.npmjs.org/brace-expansion/-/brace-expansion-1.1.14.tgz",
+    "fileCount": 4,
+    "integrity": "sha512-MWPGfDxnyzKU7rNOW9SP/c50vi3xrmrua/+6hfPbCS2ABNWfx24vPidzvC7krjU/RTo235sV776ymlsMtGKj8g==",
+    "signatures": [
+      {
+        "sig": "MEUCIAUfWjoiHEMuZvGFZGPbXWyKZjkk+UD5Zps2d54+ssP7AiEAj3kldXMcqMQXCkUq6zFMeBk7UQyIsv+VgWEGZ4UFvIc=",
+        "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+      }
+    ],
+    "unpackedSize": 11282
+  },
+  "gitHead": "10c05fcf3699b1a29ef5e611c011af3d3c97e6e3"
+}

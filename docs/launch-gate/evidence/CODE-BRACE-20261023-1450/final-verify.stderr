@@ -1,0 +1,2 @@
+Fri, 23 Oct 2026 13:15:03 GMT router deprecated handlers that are Promise-like are deprecated, use a native Promise instead at node_modules/router/lib/route.js:157:13
+Fri, 23 Oct 2026 13:15:05 GMT router deprecated handlers that are Promise-like are deprecated, use a native Promise instead at node_modules/router/lib/route.js:157:13

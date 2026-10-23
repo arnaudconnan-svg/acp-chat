@@ -1,0 +1,18 @@
+{
+  "argv": [
+    "npm",
+    "--cache",
+    "/workspace/work/npm-cache",
+    "view",
+    "brace-expansion@1.1.17",
+    "version",
+    "dist",
+    "gitHead",
+    "--json"
+  ],
+  "start": "2026-10-23T13:15:13.777306+00:00",
+  "end": "2026-10-23T13:15:14.541171+00:00",
+  "code": 0,
+  "stdout_sha256": "40ad3ed0534246813bb311cea8d86e8618d0df4856fdddea9c54dedcfc928c3f",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

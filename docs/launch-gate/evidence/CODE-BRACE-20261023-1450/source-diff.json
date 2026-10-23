@@ -1,0 +1,13 @@
+{
+  "argv": [
+    "diff",
+    "-u",
+    "/workspace/work/brace/v14/package/index.js",
+    "node_modules/brace-expansion/index.js"
+  ],
+  "start": "2026-10-23T13:15:40.492956+00:00",
+  "end": "2026-10-23T13:15:40.494980+00:00",
+  "code": 1,
+  "stdout_sha256": "17ad451afca4237bdc7cb07b995b171ebd7da3cb58c5864fbb27db0d2f876180",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

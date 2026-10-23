@@ -1,0 +1,109 @@
+
+> acp-chat@1.0.0 brace:harness
+> node --require ./scripts/synthetic/guard.cjs scripts/synthetic/brace-harness.cjs
+
+{
+  "node": "v24.19.0",
+  "eslint": "3.3.5",
+  "parent": {
+    "entry": "/workspace/acp-chat/node_modules/minimatch/minimatch.js",
+    "version": "3.1.5",
+    "range": "^1.1.7"
+  },
+  "physical": {
+    "entry": "/workspace/acp-chat/node_modules/brace-expansion/index.js",
+    "version": "1.1.21",
+    "sha256": "c53b4fab560940391af6889ac8fafe67629ec645ca536dd7f10d266713e969bf"
+  },
+  "normalCases": "passed",
+  "observations": [
+    {
+      "advisory": "GHSA-3jxr-9vmj-r5cp",
+      "name": "consecutive non-expanding groups",
+      "inputBytes": 49,
+      "options": {},
+      "observed": {
+        "balancedCalls": 1,
+        "commaDepth": 0,
+        "results": 1,
+        "characters": 49
+      },
+      "passed": true
+    },
+    {
+      "advisory": "GHSA-mh99-v99m-4gvg",
+      "name": "total output character budget",
+      "inputBytes": 55,
+      "options": {
+        "maxLength": 32
+      },
+      "observed": {
+        "balancedCalls": 20,
+        "commaDepth": 1,
+        "results": 1,
+        "characters": 20
+      },
+      "passed": true
+    },
+    {
+      "advisory": "GHSA-rgw5-rvv9-x895",
+      "name": "intermediate comma alternatives budget",
+      "inputBytes": 401,
+      "options": {
+        "max": 100,
+        "maxLength": 16
+      },
+      "observed": {
+        "balancedCalls": 7,
+        "commaDepth": 1,
+        "results": 4,
+        "characters": 16
+      },
+      "passed": true
+    },
+    {
+      "advisory": "GHSA-6j4f-fj2g-mc7p",
+      "name": "iterative comma parser",
+      "inputBytes": 99,
+      "options": {},
+      "observed": {
+        "balancedCalls": 51,
+        "commaDepth": 1,
+        "results": 25,
+        "characters": 73
+      },
+      "passed": true
+    },
+    {
+      "advisory": "GHSA-qhr7-859c-m2p7",
+      "name": "nested group depth budget",
+      "inputBytes": 27,
+      "options": {
+        "maxDepth": 2
+      },
+      "observed": {
+        "balancedCalls": 6,
+        "commaDepth": 1,
+        "results": 1,
+        "characters": 27
+      },
+      "passed": true
+    },
+    {
+      "advisory": "GHSA-q2hr-2g5m-vwhr",
+      "name": "rewrite restart budget",
+      "inputBytes": 18,
+      "options": {
+        "maxRewrites": 2
+      },
+      "observed": {
+        "balancedCalls": 3,
+        "commaDepth": 0,
+        "results": 1,
+        "characters": 18
+      },
+      "passed": true
+    }
+  ]
+}
+brace harness: PASS
