@@ -10,7 +10,10 @@ const { createRequire } = require('node:module');
 const { IncomingMessage } = require('node:http');
 const { Duplex } = require('node:stream');
 const zlib = require('node:zlib');
-assert(require.cache[path.resolve('scripts/synthetic/guard.cjs')], 'M0 required');
+assert(
+  require.cache[path.resolve('scripts/synthetic/guard.cjs')],
+  'M0 required'
+);
 const expressRequire = createRequire(require.resolve('express'));
 const body = expressRequire('body-parser');
 const { z } = require('zod');
@@ -59,6 +62,25 @@ const rejected = z
 assert.equal(rejected.success, false);
 assert.equal(rejected.error.issues.length, 1);
 assert.equal(visited, 1, 'abort during parsing, not after accumulating errors');
+let constrainedVisits = 0;
+const constrained = z
+  .array(
+    z.preprocess((value) => {
+      constrainedVisits++;
+      return value;
+    }, z.string())
+  )
+  .max(4);
+assert(constrained.safeParse(['synthetic']).success);
+constrainedVisits = 0;
+const oversized = constrained.safeParse(Array(64).fill(0));
+assert.equal(oversized.success, false);
+assert.equal(oversized.error.issues.length, 1);
+assert.equal(
+  constrainedVisits,
+  0,
+  'reject oversized constrained collections before element parsing'
+);
 const syntheticConfig = {
   NODE_ENV: 'production',
   FIREBASE_DATABASE_URL: 'https://synthetic.example.test',
@@ -161,6 +183,12 @@ async function compressed(kind, zip) {
           elements: 64,
           visited,
           issues: rejected.error.issues.length
+        },
+        constrainedArray: {
+          elements: 64,
+          limit: 4,
+          visited: constrainedVisits,
+          issues: oversized.error.issues.length
         },
         normalSchemasAndConfig: 'passed',
         observations,
