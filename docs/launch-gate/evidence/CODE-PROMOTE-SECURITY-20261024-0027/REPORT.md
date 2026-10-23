@@ -25,7 +25,7 @@ Main est ancêtre de beta : divergence **0 main-only / 38 beta-only**, fast-forw
 | Code corrigé, tout | 2 | 0 / 0 / 2 | 3 |
 | Code corrigé, omit=dev | 1 | 0 / 0 / 1 | 2 |
 
-Les compteurs npm désignent des **packages**, y compris les effets propagés ; les avis uniques sont dédupliqués par URL GHSA. Répartition par sévérité des avis uniques et versions physiques : `audit-summary.json`. Les six JSON audit sont valides ; leurs codes **1** sont conservés, aucun PASS audit/CI global prétendu.
+Les compteurs npm désignent des **packages**, y compris les effets propagés ; les avis uniques sont dédupliqués par URL GHSA. Répartition par sévérité des avis uniques et versions physiques : `audit-summary.json`. Les stdout/stderr volumineux secondaires sont parfois conservés sans perte en `.gz` ; leur SHA décompressé reste celui de la capture `.json`. Les sorties finales utiles restent en clair. Les six JSON audit sont valides ; leurs codes **1** sont conservés, aucun PASS audit/CI global prétendu.
 
 ## Corrections nécessaires et minimales
 
