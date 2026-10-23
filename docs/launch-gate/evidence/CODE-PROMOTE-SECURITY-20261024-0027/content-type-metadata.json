@@ -1,0 +1,21 @@
+{
+  "argv": [
+    "env",
+    "PATH=/workspace/work/promote/node/package/bin:/usr/bin:/bin",
+    "npm",
+    "--cache",
+    "/workspace/work/npm-cache",
+    "view",
+    "content-type@2.1.0",
+    "version",
+    "dist",
+    "dependencies",
+    "engines",
+    "--json"
+  ],
+  "start": "2026-10-23T22:41:56.531873+00:00",
+  "end": "2026-10-23T22:41:56.990568+00:00",
+  "code": 0,
+  "stdout_sha256": "893dee020017be41d67fb64b0ecfb74ad2e2abea04f013b5ea6c8d07245a341a",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

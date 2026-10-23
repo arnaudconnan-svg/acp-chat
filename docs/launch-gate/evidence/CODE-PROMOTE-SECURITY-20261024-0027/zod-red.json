@@ -1,0 +1,15 @@
+{
+  "argv": [
+    "env",
+    "-i",
+    "PATH=/workspace/work/promote/node/package/bin:/usr/bin:/bin",
+    "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+    "node",
+    "/workspace/work/promote/zod-probe.cjs"
+  ],
+  "start": "2026-10-23T22:43:19.697744+00:00",
+  "end": "2026-10-23T22:43:19.792735+00:00",
+  "code": 1,
+  "stdout_sha256": "72cae9e0263cf737d2945381d83baa5d07ddc1a148dac4f8e5a2e53ffe9a18a7",
+  "stderr_sha256": "b55d72079606ec13a5823d57c6b9ed9fd0d1df3cae4d9bea3603eb73884eea5b"
+}

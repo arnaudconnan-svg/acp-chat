@@ -1,0 +1,23 @@
+{
+  "version": "2.1.0",
+  "dist": {
+    "shasum": "d9389c43c0a8cf6a355db464d21e07092a40493a",
+    "tarball": "https://registry.npmjs.org/content-type/-/content-type-2.1.0.tgz",
+    "fileCount": 6,
+    "integrity": "sha512-mj7UPXE0jaqaOsukNZRUEfEi2AcL7C/vwmwcHV0O97eO1E1pxBZuyjlZrx5seTaNBg1U6+o35wpa35Qfcc+7ag==",
+    "signatures": [
+      {
+        "sig": "MEQCIAesCKlTxK7DDJj+bRVxVqnPebCrDYKlCvXYXzC13PTbAiBzuJ2rrSEvAQKMfpV7FwOMi8eKomTRHVf5/y9ZnGl8sQ==",
+        "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+      },
+      {
+        "sig": "MEQCIDm2i9kdHCg3OWR9UNJs52nxr+qrdnmtp6Rhk0R0mi4EAiBtS5WDVW31UZOXRRfjO4UPpP3sfCJHmwURZckhcnrAyg==",
+        "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+      }
+    ],
+    "unpackedSize": 23136
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

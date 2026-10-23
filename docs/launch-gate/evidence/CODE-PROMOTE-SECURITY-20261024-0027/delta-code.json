@@ -1,0 +1,17 @@
+{
+  "argv": [
+    "git",
+    "diff",
+    "--numstat",
+    "origin/main",
+    "origin/beta",
+    "--",
+    ":!docs",
+    ":!data"
+  ],
+  "start": "2026-10-23T22:39:21.014006+00:00",
+  "end": "2026-10-23T22:39:21.044844+00:00",
+  "code": 0,
+  "stdout_sha256": "4b224a7a6a4acba10e68076d321ab2aab0203de529ff6e3f922e592262f09910",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

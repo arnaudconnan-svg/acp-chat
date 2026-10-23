@@ -1,0 +1,14 @@
+{
+  "argv": [
+    "env",
+    "PATH=/workspace/work/promote/node/package/bin:/usr/bin:/bin",
+    "npm",
+    "run",
+    "preff:git:guard"
+  ],
+  "start": "2026-10-23T22:49:46.427435+00:00",
+  "end": "2026-10-23T22:49:47.502812+00:00",
+  "code": 0,
+  "stdout_sha256": "3300d53946baf520d90c81ea02805aa187819ba32abf2a6c893750c9244a991b",
+  "stderr_sha256": "4c078893625d5ff67f0de00e3abbd592d694481712f3b71aba0aa08c407887df"
+}

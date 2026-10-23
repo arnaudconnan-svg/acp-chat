@@ -1,0 +1,23 @@
+npm notice
+npm notice 📦  body-parser@2.4.0
+npm notice Tarball Contents
+npm notice 1.2kB LICENSE
+npm notice 21.9kB README.md
+npm notice 976B index.js
+npm notice 6.1kB lib/read.js
+npm notice 4.4kB lib/types/json.js
+npm notice 805B lib/types/raw.js
+npm notice 669B lib/types/text.js
+npm notice 3.5kB lib/types/urlencoded.js
+npm notice 1.9kB lib/utils.js
+npm notice 1.6kB package.json
+npm notice Tarball Details
+npm notice name: body-parser
+npm notice version: 2.4.0
+npm notice filename: body-parser-2.4.0.tgz
+npm notice package size: 11.4 kB
+npm notice unpacked size: 42.9 kB
+npm notice shasum: 337a76249270f83e450ad385a9606ca3b4a75c06
+npm notice integrity: sha512-Ifk1KcLrxaGt1[...]31DNKkRmxtXjQ==
+npm notice total files: 10
+npm notice

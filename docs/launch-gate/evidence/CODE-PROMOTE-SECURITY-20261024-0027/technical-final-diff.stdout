@@ -1,0 +1,326 @@
+diff --git a/lib/runtime-schemas.js b/lib/runtime-schemas.js
+index 16b14c0..d5aa4c9 100644
+--- a/lib/runtime-schemas.js
++++ b/lib/runtime-schemas.js
+@@ -5,7 +5,7 @@ const { z } = require('zod');
+ const historyEntrySchema = z.object({
+   role: z.string().trim().min(1),
+   content: z.string(),
+-  signals: z.record(z.any()).optional()
++  signals: z.record(z.string(), z.any()).optional()
+ });
+ 
+ const chatRequestSchema = z.object({
+@@ -39,7 +39,7 @@ const postureDecisionSchema = z
+   .object({
+     conversationState: z.string().trim().min(1),
+     forbidden: z.array(z.string()),
+-    flagUpdates: z.record(z.any())
++    flagUpdates: z.record(z.string(), z.any())
+   })
+   .passthrough();
+ 
+@@ -69,7 +69,7 @@ function formatIssues(result) {
+ }
+ 
+ function validateShape(schema, payload) {
+-  return formatIssues(schema.safeParse(payload));
++  return formatIssues(schema.safeParse(payload, { abortEarly: true }));
+ }
+ 
+ module.exports = {
+diff --git a/package-lock.json b/package-lock.json
+index 7bfefec..d389dc8 100644
+--- a/package-lock.json
++++ b/package-lock.json
+@@ -15,7 +15,7 @@
+         "firebase-admin": "^13.10.0",
+         "nodemailer": "10.1.7",
+         "pino": "^9.7.0",
+-        "zod": "^3.25.76"
++        "zod": "^4.6.6"
+       },
+       "devDependencies": {
+         "@eslint/js": "^9.26.0",
+@@ -1059,20 +1059,20 @@
+       }
+     },
+     "node_modules/body-parser": {
+-      "version": "2.3.0",
+-      "resolved": "https://registry.npmjs.org/body-parser/-/body-parser-2.3.0.tgz",
+-      "integrity": "sha512-2cGmJupaNgg+QUwVLAucDuWuoMZ6EX9iHDRswZ5lsNYEmwPaRknMPCLZz07yTzVq/83p4o/wzbDZbBrTvGGTIw==",
++      "version": "2.4.0",
++      "resolved": "https://registry.npmjs.org/body-parser/-/body-parser-2.4.0.tgz",
++      "integrity": "sha512-Ifk1KcLrxaGt1occQagQNFNNOqRt1LFuehEnHHzB8Z6cRgIxRU1TBaiIsUiCdA+gy5PL7Y1IX31DNKkRmxtXjQ==",
+       "license": "MIT",
+       "dependencies": {
++        "qs": "^6.16.1",
+         "bytes": "^3.1.2",
+-        "content-type": "^2.0.0",
+         "debug": "^4.4.3",
++        "type-is": "^2.1.0",
++        "raw-body": "^3.0.2",
++        "iconv-lite": "^0.7.3",
+         "http-errors": "^2.0.1",
+-        "iconv-lite": "^0.7.2",
+         "on-finished": "^2.4.1",
+-        "qs": "^6.15.2",
+-        "raw-body": "^3.0.2",
+-        "type-is": "^2.1.0"
++        "content-type": "^2.1.0"
+       },
+       "engines": {
+         "node": ">=18"
+@@ -2543,9 +2543,9 @@
+       }
+     },
+     "node_modules/iconv-lite": {
+-      "version": "0.7.2",
+-      "resolved": "https://registry.npmjs.org/iconv-lite/-/iconv-lite-0.7.2.tgz",
+-      "integrity": "sha512-im9DjEDQ55s9fL4EYzOAv0yMqmMBSZp6G0VvFyTMPKWxiSBHUj9NW/qqLmXUwXrrM7AvqSlTCfvqRb0cM8yYqw==",
++      "version": "0.7.3",
++      "resolved": "https://registry.npmjs.org/iconv-lite/-/iconv-lite-0.7.3.tgz",
++      "integrity": "sha512-IKXpvIzjnC9XTAUbVBcMfGS0EPaIXtW6v+zr+RRp+hqULEpo0owZax6wyRwPOJbWbzjYspQwusTsfVr0ifh4uQ==",
+       "license": "MIT",
+       "dependencies": {
+         "safer-buffer": ">= 2.1.2 < 3.0.0"
+@@ -4578,9 +4578,9 @@
+       }
+     },
+     "node_modules/zod": {
+-      "version": "3.25.76",
+-      "resolved": "https://registry.npmjs.org/zod/-/zod-3.25.76.tgz",
+-      "integrity": "sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==",
++      "version": "4.6.6",
++      "resolved": "https://registry.npmjs.org/zod/-/zod-4.6.6.tgz",
++      "integrity": "sha512-4UmzQUF5fxvfcYHlbjBmejU+w+hbDnWFx4aS8kBx7nPBHcO2SqPbpAG8snbdg+Xse4pRefR98hgjFgIMCI/UhA==",
+       "license": "MIT",
+       "funding": {
+         "url": "https://github.com/sponsors/colinhacks"
+diff --git a/package.json b/package.json
+index 3ed982b..d8c0f34 100644
+--- a/package.json
++++ b/package.json
+@@ -63,7 +63,7 @@
+     "preff:git:harness": "node scripts/preff-git-guard-harness.js",
+     "smoke:ui:local": "node scripts/ui-smoke-local.js",
+     "ui-layout:verify": "node scripts/ui-layout-verify.js",
+-    "verify": "node --check server.js && npm run brace:harness && npm run jsyaml:harness && npm run grpc:harness && npm run formdata:harness && npm run busboy:harness && npm run wscrit:harness && npm run express-chain:harness && npm run nodemailer:harness && npm run m3:emergency:harness && npm run m3:safety:harness && npm run password-reset:harness && npm run password-reset-frontend:harness && npm run password-reset-server:harness && npm run preff:git:harness && npm run health:harness && npm run no-openai-runtime:harness && npm run mistral:harness && npm run title:harness && npm run title:conflict:mistral:harness && npm run information-routing:mistral:harness && npm run exploration:mistral:harness && npm run recall-routing:mistral:harness && npm run contact-discharge:mistral:harness && npm run immediate-alliance:mistral:harness && npm run interpretation-rejection:mistral:harness && npm run dependency-risk:mistral:harness && npm run major-harm-response:mistral:harness && npm run acute-crisis-followup:mistral:harness && npm run n2-writer:mistral:harness && npm run major-harm-risk:mistral:harness && npm run suicide-risk:mistral:harness && npm run writer:mistral:harness && npm run memory:mistral:harness && npm run intersession:mistral:harness && npm run intersession:source:harness && npm run affiliation:mistral:harness && npm run state:harness && npm run posture:harness && npm run analyzers:harness && npm run prompts:consistency && npm run contract-validator:harness && npm run human-support:harness && npm run flags:harness && npm run conversation-state:harness && npm run runtime-schemas:harness && npm run debugmeta-unit:harness && npm run auth-conversation:harness && npm run chat-routing:harness && npm run branching:harness && npm run transcript:harness && npm run crisis-routing:harness && npm run llm-messages:harness && npm run conversation-data:harness && npm run ui-layout:verify",
++    "verify": "node --check server.js && npm run promotion-security:harness && npm run brace:harness && npm run jsyaml:harness && npm run grpc:harness && npm run formdata:harness && npm run busboy:harness && npm run wscrit:harness && npm run express-chain:harness && npm run nodemailer:harness && npm run m3:emergency:harness && npm run m3:safety:harness && npm run password-reset:harness && npm run password-reset-frontend:harness && npm run password-reset-server:harness && npm run preff:git:harness && npm run health:harness && npm run no-openai-runtime:harness && npm run mistral:harness && npm run title:harness && npm run title:conflict:mistral:harness && npm run information-routing:mistral:harness && npm run exploration:mistral:harness && npm run recall-routing:mistral:harness && npm run contact-discharge:mistral:harness && npm run immediate-alliance:mistral:harness && npm run interpretation-rejection:mistral:harness && npm run dependency-risk:mistral:harness && npm run major-harm-response:mistral:harness && npm run acute-crisis-followup:mistral:harness && npm run n2-writer:mistral:harness && npm run major-harm-risk:mistral:harness && npm run suicide-risk:mistral:harness && npm run writer:mistral:harness && npm run memory:mistral:harness && npm run intersession:mistral:harness && npm run intersession:source:harness && npm run affiliation:mistral:harness && npm run state:harness && npm run posture:harness && npm run analyzers:harness && npm run prompts:consistency && npm run contract-validator:harness && npm run human-support:harness && npm run flags:harness && npm run conversation-state:harness && npm run runtime-schemas:harness && npm run debugmeta-unit:harness && npm run auth-conversation:harness && npm run chat-routing:harness && npm run branching:harness && npm run transcript:harness && npm run crisis-routing:harness && npm run llm-messages:harness && npm run conversation-data:harness && npm run ui-layout:verify",
+     "verify:full": "npm run verify",
+     "reset:data": "node scripts/reset-app-data.js",
+     "update:emergency-numbers": "node scripts/update-emergency-numbers.js",
+@@ -117,7 +117,8 @@
+     "formdata:harness": "node --require ./scripts/synthetic/guard.cjs scripts/synthetic/formdata-harness.cjs",
+     "busboy:harness": "node --require ./scripts/synthetic/guard.cjs scripts/synthetic/busboy-harness.cjs",
+     "wscrit:harness": "node --require ./scripts/synthetic/guard.cjs scripts/synthetic/wscrit-harness.cjs --candidate",
+-    "brace:harness": "node --require ./scripts/synthetic/guard.cjs scripts/synthetic/brace-harness.cjs"
++    "brace:harness": "node --require ./scripts/synthetic/guard.cjs scripts/synthetic/brace-harness.cjs",
++    "promotion-security:harness": "node --require ./scripts/synthetic/guard.cjs scripts/synthetic/promotion-security-harness.cjs"
+   },
+   "keywords": [],
+   "author": "",
+@@ -130,7 +131,7 @@
+     "firebase-admin": "^13.10.0",
+     "nodemailer": "10.1.7",
+     "pino": "^9.7.0",
+-    "zod": "^3.25.76"
++    "zod": "^4.6.6"
+   },
+   "devDependencies": {
+     "@eslint/js": "^9.26.0",
+diff --git a/scripts/synthetic/promotion-security-harness.cjs b/scripts/synthetic/promotion-security-harness.cjs
+new file mode 100644
+index 0000000..c36cb87
+--- /dev/null
++++ b/scripts/synthetic/promotion-security-harness.cjs
+@@ -0,0 +1,189 @@
++'use strict';
++const assert = require('node:assert/strict');
++const console = require('node:console');
++const process = require('node:process');
++const path = require('node:path');
++const fs = require('node:fs');
++const crypto = require('node:crypto');
++const { Buffer } = require('node:buffer');
++const { createRequire } = require('node:module');
++const { IncomingMessage } = require('node:http');
++const { Duplex } = require('node:stream');
++const zlib = require('node:zlib');
++assert(require.cache[path.resolve('scripts/synthetic/guard.cjs')], 'M0 required');
++const expressRequire = createRequire(require.resolve('express'));
++const body = expressRequire('body-parser');
++const { z } = require('zod');
++const schemas = require('../../lib/runtime-schemas');
++const { inspectConfig } = require('../../lib/config');
++assert.equal(expressRequire('body-parser/package.json').version, '2.4.0');
++assert.equal(require('zod/package.json').version, '4.6.6');
++const history = {
++  role: 'user',
++  content: 'synthetic',
++  signals: { synthetic: true }
++};
++assert(
++  schemas.chatRequestSchema.safeParse({
++    message: 'synthetic',
++    conversationId: 'synthetic-1',
++    recentHistory: [history]
++  }).success
++);
++assert(
++  schemas.postureDecisionSchema.safeParse({
++    conversationState: 'exploration',
++    forbidden: [],
++    flagUpdates: { synthetic: false }
++  }).success
++);
++assert.equal(
++  schemas.validateShape(schemas.chatRequestSchema, {
++    message: 'synthetic',
++    conversationId: 'synthetic-1',
++    recentHistory: Array(64).fill(null)
++  }).length,
++  1
++);
++let visited = 0;
++const item = z.preprocess(
++  (value) => {
++    visited++;
++    return value;
++  },
++  z.object({ required: z.string() })
++);
++const rejected = z
++  .array(item)
++  .safeParse(Array(64).fill(null), { abortEarly: true });
++assert.equal(rejected.success, false);
++assert.equal(rejected.error.issues.length, 1);
++assert.equal(visited, 1, 'abort during parsing, not after accumulating errors');
++const syntheticConfig = {
++  NODE_ENV: 'production',
++  FIREBASE_DATABASE_URL: 'https://synthetic.example.test',
++  FIREBASE_SERVICE_ACCOUNT: 'synthetic-not-a-credential',
++  MISTRAL_API_KEY: 'synthetic-not-a-key',
++  LOG_PERSIST: 'false'
++};
++const config = inspectConfig(syntheticConfig);
++assert.equal(config.ok, true);
++assert.equal(config.config.logPretty, false);
++assert.equal(config.config.logPersist, false);
++assert.equal(inspectConfig({ ...syntheticConfig, PORT: 'invalid' }).ok, false);
++const observations = [];
++async function compressed(kind, zip) {
++  const descriptor = Object.getOwnPropertyDescriptor(zlib, kind);
++  let decoder;
++  Object.defineProperty(zlib, kind, {
++    ...descriptor,
++    value: (...args) => (decoder = descriptor.value(...args))
++  });
++  try {
++    const bytes = zip(Buffer.from('{"synthetic":true}'));
++    const socket = new Duplex({
++      read() {},
++      write(chunk, encoding, done) {
++        done();
++      }
++    });
++    const req = new IncomingMessage(socket);
++    req.method = 'POST';
++    const encoding = {
++      createGunzip: 'gzip',
++      createInflate: 'deflate',
++      createBrotliDecompress: 'br'
++    }[kind];
++    req.headers = {
++      'content-type': 'application/json',
++      'content-encoding': encoding,
++      'content-length': String(bytes.length)
++    };
++    let callbacks = 0;
++    await new Promise((resolve, reject) => {
++      body.json()(req, {}, (error) => {
++        callbacks++;
++        if (error) return reject(error);
++        try {
++          assert.deepEqual(req.body, { synthetic: true });
++          assert(
++            decoder.destroyed,
++            'decoder destroyed before application continues'
++          );
++          assert(
++            decoder.listenerCount('error') > 0,
++            'finished decoder retains late-error sink'
++          );
++          // Explicit lifecycle fault injection on the REAL decoder, not a wire
++          // exploit: the advisory's post-read error must be handled, not fatal.
++          decoder.emit(
++            'error',
++            new Error('synthetic late decompression error')
++          );
++          assert.equal(callbacks, 1);
++          observations.push({
++            encoding,
++            bytes: bytes.length,
++            destroyed: decoder.destroyed,
++            errorListeners: decoder.listenerCount('error'),
++            callbacks
++          });
++          resolve();
++        } catch (failure) {
++          reject(failure);
++        }
++      });
++      req.push(bytes);
++      req.push(null);
++      req.complete = true;
++    });
++  } finally {
++    Object.defineProperty(zlib, kind, descriptor);
++  }
++}
++(async () => {
++  await compressed('createGunzip', zlib.gzipSync);
++  await compressed('createInflate', zlib.deflateSync);
++  await compressed('createBrotliDecompress', zlib.brotliCompressSync);
++  const files = [
++    expressRequire.resolve('body-parser'),
++    expressRequire.resolve('body-parser/lib/read'),
++    require.resolve('zod')
++  ];
++  console.log(
++    JSON.stringify(
++      {
++        node: process.version,
++        execPath: process.execPath,
++        bodyParser: '2.4.0',
++        zod: '4.6.6',
++        invalidArray: {
++          elements: 64,
++          visited,
++          issues: rejected.error.issues.length
++        },
++        normalSchemasAndConfig: 'passed',
++        observations,
++        physical: files.map((file) => ({
++          file,
++          sha256: crypto
++            .createHash('sha256')
++            .update(fs.readFileSync(file))
++            .digest('hex')
++        }))
++      },
++      null,
++      2
++    )
++  );
++  assert.throws(
++    () => require('net').connect(443, 'synthetic.example.test'),
++    /prohibited side effect/
++  );
++  console.log(
++    'PASS bounded validation and real decompression lifecycle; M0 preserved'
++  );
++})().catch((error) => {
++  console.error(error);
++  process.exitCode = 1;
++});

@@ -1,0 +1,17 @@
+{
+  "argv": [
+    "env",
+    "-i",
+    "PATH=/workspace/work/promote/node/package/bin:/usr/bin:/bin",
+    "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+    "node",
+    "node_modules/eslint/bin/eslint.js",
+    "lib/runtime-schemas.js",
+    "scripts/synthetic/promotion-security-harness.cjs"
+  ],
+  "start": "2026-10-23T22:46:14.355720+00:00",
+  "end": "2026-10-23T22:46:33.707008+00:00",
+  "code": 0,
+  "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

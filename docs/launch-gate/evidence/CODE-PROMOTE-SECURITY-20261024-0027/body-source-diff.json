@@ -1,0 +1,13 @@
+{
+  "argv": [
+    "diff",
+    "-u",
+    "node_modules/body-parser/lib/read.js",
+    "/workspace/work/promote/body-fixed/package/lib/read.js"
+  ],
+  "start": "2026-10-23T22:40:50.479156+00:00",
+  "end": "2026-10-23T22:40:50.485165+00:00",
+  "code": 1,
+  "stdout_sha256": "ba89d50447e41285cdbacb4376455b8053751c98f4d310ce8b84a42dac7afd0b",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

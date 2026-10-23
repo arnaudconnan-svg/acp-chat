@@ -1,0 +1,54 @@
+
+> acp-chat@1.0.0 promotion-security:harness
+> node --require ./scripts/synthetic/guard.cjs scripts/synthetic/promotion-security-harness.cjs
+
+{
+  "node": "v22.23.4",
+  "execPath": "/workspace/work/promote/node/package/bin/node",
+  "bodyParser": "2.4.0",
+  "zod": "4.6.6",
+  "invalidArray": {
+    "elements": 64,
+    "visited": 1,
+    "issues": 1
+  },
+  "normalSchemasAndConfig": "passed",
+  "observations": [
+    {
+      "encoding": "gzip",
+      "bytes": 38,
+      "destroyed": true,
+      "errorListeners": 1,
+      "callbacks": 1
+    },
+    {
+      "encoding": "deflate",
+      "bytes": 26,
+      "destroyed": true,
+      "errorListeners": 1,
+      "callbacks": 1
+    },
+    {
+      "encoding": "br",
+      "bytes": 22,
+      "destroyed": true,
+      "errorListeners": 1,
+      "callbacks": 1
+    }
+  ],
+  "physical": [
+    {
+      "file": "/workspace/acp-chat/node_modules/body-parser/index.js",
+      "sha256": "4d33d19d4ce36726988a1fa508f4d6f15254cc52fe95b777b30f49d97d825668"
+    },
+    {
+      "file": "/workspace/acp-chat/node_modules/body-parser/lib/read.js",
+      "sha256": "c77982d481a9fe5b13c0fdd68515a5931729961e7135124f70236d5a30bdd701"
+    },
+    {
+      "file": "/workspace/acp-chat/node_modules/zod/index.cjs",
+      "sha256": "d93a8730d52c0fedab13619c8bc971cc99934c13d8dce7c97ee4d03a98d4096e"
+    }
+  ]
+}
+PASS bounded validation and real decompression lifecycle; M0 preserved

@@ -1,0 +1,70 @@
+node_modules/body-parser/lib/read.js SHA256=c77982d481a9fe5b13c0fdd68515a5931729961e7135124f70236d5a30bdd701
+150:       if (stream !== req) {
+151:         req.unpipe()
+152:         stream.destroy()
+153:       }
+154: 
+155:       // read off entire request
+156:       dump(req, function onfinished () {
+157:         next(createError(400, _error))
+158:       })
+159:       return
+160:     }
+161: 
+162:     // detach and destroy the decompression stream to
+163:     // avoid decompression errors on the finished stream
+164:     if (stream !== req) {
+165:       req.unpipe(stream)
+166:       stream.on('error', () => {})
+167:       stream.destroy()
+168: 
+169:       // consume any remaining bytes so the HTTP request can finish
+170:       req.resume()
+171:     }
+172: 
+173:     // verify
+node_modules/zod/v4/core/schemas.cjs SHA256=7e35563b275bcc457a6d8ae0f5e1354b3c499ddd38401439f16bed1b8f357e41
+863: // an oversized container fails its leading size checks before any element is parsed
+864: function capSize(inst, size) {
+865:     const caps = util.sizeCaps(inst._zod.def.checks);
+866:     if (!caps.length)
+867:         return;
+868:     const cap = Math.min(...caps.map((c) => c[0]));
+869:     const parse = inst._zod.parse;
+870:     inst._zod.parse = (payload, ctx) => {
+871:         const n = size(payload.value);
+872:         if (n > cap && !ctx?.skipChecks && ctx?.direction !== "backward") {
+873:             for (const [max, ch] of util.sizeCaps(inst._zod.def.checks)) {
+874:                 if (n > max && ch._zod.def.when(payload)) {
+875:                     const start = payload.issues.length;
+876:                     ch._zod.check(payload);
+877:                     // the value is still the raw input, so no later check may read it
+878:                     payload.issues[start].continue = false;
+879:                     util.attachSchema(payload.issues, start, inst);
+880:                     return payload;
+881:                 }
+882:             }
+883:         }
+884:         return parse(payload, ctx);
+885:     };
+886: }
+node_modules/zod/v4/core/schemas.cjs SHA256=7e35563b275bcc457a6d8ae0f5e1354b3c499ddd38401439f16bed1b8f357e41
+911:         payload.value = memo ? memo.alloc(inst, payload, Array(input.length), ctx) : Array(input.length);
+912:         const proms = [];
+913:         const abortEarly = ctx?.abortEarly;
+914:         for (let i = 0; i < input.length; i++) {
+915:             const item = input[i];
+916:             const result = def.element._zod.run({
+917:                 value: item,
+918:                 issues: [],
+919:             }, ctx);
+920:             if (result instanceof Promise) {
+921:                 proms.push(result.then((result) => handleArrayResult(result, payload, i)));
+922:             }
+923:             else {
+924:                 handleArrayResult(result, payload, i);
+925:                 // the element's payload is authoritative here, since handleArrayResult forwards every issue; an object's is not, because it drops a failed absent optional
+926:                 if (abortEarly && result.issues.length !== 0 && util.aborted(result))
+927:                     break;
+928:             }
+929:         }

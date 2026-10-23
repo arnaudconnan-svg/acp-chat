@@ -1,0 +1,22 @@
+{
+  "version": "0.7.3",
+  "dist": {
+    "shasum": "84ee12f963e7de50bc01a13e160a078b3b0f415f",
+    "tarball": "https://registry.npmjs.org/iconv-lite/-/iconv-lite-0.7.3.tgz",
+    "fileCount": 27,
+    "integrity": "sha512-IKXpvIzjnC9XTAUbVBcMfGS0EPaIXtW6v+zr+RRp+hqULEpo0owZax6wyRwPOJbWbzjYspQwusTsfVr0ifh4uQ==",
+    "signatures": [
+      {
+        "sig": "MEQCIFJvPthpyX27pZafuycv3venitMdG3BwbekkqqlGKu/9AiBe444ahvUrkfdrJekmcbBbGhDbwmjUF6kx+It8zImpRQ==",
+        "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+      }
+    ],
+    "unpackedSize": 344185
+  },
+  "dependencies": {
+    "safer-buffer": ">= 2.1.2 < 3.0.0"
+  },
+  "engines": {
+    "node": ">=0.10.0"
+  }
+}

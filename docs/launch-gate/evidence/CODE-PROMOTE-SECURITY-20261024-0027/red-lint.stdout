@@ -1,0 +1,6 @@
+
+/workspace/acp-chat/scripts/synthetic/promotion-security-harness.cjs
+  13:32  error  '__dirname' is not defined  no-undef
+
+✖ 1 problem (1 error, 0 warnings)
+

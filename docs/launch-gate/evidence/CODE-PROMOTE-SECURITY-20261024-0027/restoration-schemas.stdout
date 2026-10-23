@@ -1,0 +1,10 @@
+[PASS] chatRequest accepts minimal valid payload
+[PASS] chatRequest rejects empty message
+[PASS] stateProposal requires candidates
+[PASS] stateProposal accepts enriched payload
+[PASS] postureDecision requires conversationState
+[PASS] postureDecision accepts minimal valid payload
+[PASS] debugMeta requires pipelineStages array
+[PASS] debugMeta accepts pipeline stage entries
+
+[RUNTIME-SCHEMAS] 8 passed, 0 failed.

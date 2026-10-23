@@ -1,0 +1,1588 @@
+
+> acp-chat@1.0.0 verify
+> node --check server.js && npm run promotion-security:harness && npm run brace:harness && npm run jsyaml:harness && npm run grpc:harness && npm run formdata:harness && npm run busboy:harness && npm run wscrit:harness && npm run express-chain:harness && npm run nodemailer:harness && npm run m3:emergency:harness && npm run m3:safety:harness && npm run password-reset:harness && npm run password-reset-frontend:harness && npm run password-reset-server:harness && npm run preff:git:harness && npm run health:harness && npm run no-openai-runtime:harness && npm run mistral:harness && npm run title:harness && npm run title:conflict:mistral:harness && npm run information-routing:mistral:harness && npm run exploration:mistral:harness && npm run recall-routing:mistral:harness && npm run contact-discharge:mistral:harness && npm run immediate-alliance:mistral:harness && npm run interpretation-rejection:mistral:harness && npm run dependency-risk:mistral:harness && npm run major-harm-response:mistral:harness && npm run acute-crisis-followup:mistral:harness && npm run n2-writer:mistral:harness && npm run major-harm-risk:mistral:harness && npm run suicide-risk:mistral:harness && npm run writer:mistral:harness && npm run memory:mistral:harness && npm run intersession:mistral:harness && npm run intersession:source:harness && npm run affiliation:mistral:harness && npm run state:harness && npm run posture:harness && npm run analyzers:harness && npm run prompts:consistency && npm run contract-validator:harness && npm run human-support:harness && npm run flags:harness && npm run conversation-state:harness && npm run runtime-schemas:harness && npm run debugmeta-unit:harness && npm run auth-conversation:harness && npm run chat-routing:harness && npm run branching:harness && npm run transcript:harness && npm run crisis-routing:harness && npm run llm-messages:harness && npm run conversation-data:harness && npm run ui-layout:verify
+
+
+> acp-chat@1.0.0 promotion-security:harness
+> node --require ./scripts/synthetic/guard.cjs scripts/synthetic/promotion-security-harness.cjs
+
+{
+  "node": "v22.23.4",
+  "execPath": "/workspace/work/promote/node/package/bin/node",
+  "bodyParser": "2.4.0",
+  "zod": "4.6.6",
+  "invalidArray": {
+    "elements": 64,
+    "visited": 1,
+    "issues": 1
+  },
+  "constrainedArray": {
+    "elements": 64,
+    "limit": 4,
+    "visited": 0,
+    "issues": 1
+  },
+  "normalSchemasAndConfig": "passed",
+  "observations": [
+    {
+      "encoding": "gzip",
+      "bytes": 38,
+      "destroyed": true,
+      "errorListeners": 1,
+      "callbacks": 1
+    },
+    {
+      "encoding": "deflate",
+      "bytes": 26,
+      "destroyed": true,
+      "errorListeners": 1,
+      "callbacks": 1
+    },
+    {
+      "encoding": "br",
+      "bytes": 22,
+      "destroyed": true,
+      "errorListeners": 1,
+      "callbacks": 1
+    }
+  ],
+  "physical": [
+    {
+      "file": "/workspace/acp-chat/node_modules/body-parser/index.js",
+      "sha256": "4d33d19d4ce36726988a1fa508f4d6f15254cc52fe95b777b30f49d97d825668"
+    },
+    {
+      "file": "/workspace/acp-chat/node_modules/body-parser/lib/read.js",
+      "sha256": "c77982d481a9fe5b13c0fdd68515a5931729961e7135124f70236d5a30bdd701"
+    },
+    {
+      "file": "/workspace/acp-chat/node_modules/zod/index.cjs",
+      "sha256": "d93a8730d52c0fedab13619c8bc971cc99934c13d8dce7c97ee4d03a98d4096e"
+    }
+  ]
+}
+PASS bounded validation and real decompression lifecycle; M0 preserved
+
+> acp-chat@1.0.0 brace:harness
+> node --require ./scripts/synthetic/guard.cjs scripts/synthetic/brace-harness.cjs
+
+{
+  "node": "v22.23.4",
+  "eslint": "3.3.5",
+  "parent": {
+    "entry": "/workspace/acp-chat/node_modules/minimatch/minimatch.js",
+    "version": "3.1.5",
+    "range": "^1.1.7"
+  },
+  "physical": {
+    "entry": "/workspace/acp-chat/node_modules/brace-expansion/index.js",
+    "version": "1.1.21",
+    "sha256": "c53b4fab560940391af6889ac8fafe67629ec645ca536dd7f10d266713e969bf"
+  },
+  "normalCases": "passed",
+  "observations": [
+    {
+      "advisory": "GHSA-3jxr-9vmj-r5cp",
+      "name": "consecutive non-expanding groups",
+      "inputBytes": 49,
+      "options": {},
+      "observed": {
+        "balancedCalls": 1,
+        "commaDepth": 0,
+        "results": 1,
+        "characters": 49
+      },
+      "passed": true
+    },
+    {
+      "advisory": "GHSA-mh99-v99m-4gvg",
+      "name": "total output character budget",
+      "inputBytes": 55,
+      "options": {
+        "maxLength": 32
+      },
+      "observed": {
+        "balancedCalls": 20,
+        "commaDepth": 1,
+        "results": 1,
+        "characters": 20
+      },
+      "passed": true
+    },
+    {
+      "advisory": "GHSA-rgw5-rvv9-x895",
+      "name": "intermediate comma alternatives budget",
+      "inputBytes": 401,
+      "options": {
+        "max": 100,
+        "maxLength": 16
+      },
+      "observed": {
+        "balancedCalls": 7,
+        "commaDepth": 1,
+        "results": 4,
+        "characters": 16
+      },
+      "passed": true
+    },
+    {
+      "advisory": "GHSA-6j4f-fj2g-mc7p",
+      "name": "iterative comma parser",
+      "inputBytes": 99,
+      "options": {},
+      "observed": {
+        "balancedCalls": 51,
+        "commaDepth": 1,
+        "results": 25,
+        "characters": 73
+      },
+      "passed": true
+    },
+    {
+      "advisory": "GHSA-qhr7-859c-m2p7",
+      "name": "nested group depth budget",
+      "inputBytes": 27,
+      "options": {
+        "maxDepth": 2
+      },
+      "observed": {
+        "balancedCalls": 6,
+        "commaDepth": 1,
+        "results": 1,
+        "characters": 27
+      },
+      "passed": true
+    },
+    {
+      "advisory": "GHSA-q2hr-2g5m-vwhr",
+      "name": "rewrite restart budget",
+      "inputBytes": 18,
+      "options": {
+        "maxRewrites": 2
+      },
+      "observed": {
+        "balancedCalls": 3,
+        "commaDepth": 0,
+        "results": 1,
+        "characters": 18
+      },
+      "passed": true
+    }
+  ]
+}
+brace harness: PASS
+
+> acp-chat@1.0.0 jsyaml:harness
+> node --require ./scripts/synthetic/guard.cjs scripts/synthetic/jsyaml-harness.cjs
+
+{
+  "node": {
+    "version": "v22.23.4",
+    "execPath": "/workspace/work/promote/node/package/bin/node"
+  },
+  "parent": {
+    "version": "3.3.5",
+    "entry": "/workspace/acp-chat/node_modules/@eslint/eslintrc/dist/eslintrc.cjs",
+    "range": "^4.1.1"
+  },
+  "yaml": {
+    "version": "4.3.2",
+    "entry": "/workspace/acp-chat/node_modules/js-yaml/index.js",
+    "entrySha256": "e85d524fcd45466669dfc37618284e0c53ccaaf3f4bef1e23cd25ec6c43120bc",
+    "loaderSha256": "88a97ccd655f8eb9d81af9b51ab9ddafbab9dc545337e772ba922ab062f8b72d"
+  },
+  "normalYaml": true,
+  "eslintConfig": {
+    "loader": "Legacy.loadConfigFile + ConfigArrayFactory.loadFile",
+    "env": {
+      "node": true,
+      "browser": true
+    },
+    "rule": [
+      "warn"
+    ]
+  },
+  "observations": [
+    {
+      "name": "repeated-alias-merges",
+      "bytes": 164,
+      "budget": 16,
+      "error": {
+        "name": "YAMLException",
+        "reason": "merge keys exceeded maxTotalMergeKeys (16)"
+      }
+    },
+    {
+      "name": "expanding-merge-chain",
+      "bytes": 330,
+      "budget": 16,
+      "error": {
+        "name": "YAMLException",
+        "reason": "merge keys exceeded maxTotalMergeKeys (16)"
+      }
+    },
+    {
+      "name": "empty-source-budget-bypass",
+      "bytes": 214,
+      "budget": 16,
+      "error": {
+        "name": "YAMLException",
+        "reason": "merge keys exceeded maxTotalMergeKeys (16)"
+      }
+    },
+    {
+      "name": "empty-source-default-sequence-limit",
+      "bytes": 943,
+      "budget": "default sequence limit 100",
+      "error": {
+        "name": "YAMLException",
+        "reason": "abnormal merge sequence size"
+      }
+    }
+  ],
+  "limitation": "Deterministic configured/default merge-work limits on bounded synthetic inputs; no timing/asymptotic benchmark. Legacy ESLint YAML loading tested; application uses flat eslint.config.js, and js-yaml remains a dev dependency."
+}
+
+> acp-chat@1.0.0 grpc:harness
+> node --require ./scripts/synthetic/guard.cjs scripts/synthetic/grpc-harness.cjs
+
+{
+  "node": {
+    "version": "v22.23.4",
+    "execPath": "/workspace/work/promote/node/package/bin/node"
+  },
+  "chain": [
+    {
+      "name": "firebase-admin",
+      "version": "13.10.0",
+      "entry": "/workspace/acp-chat/node_modules/firebase-admin/lib/index.js"
+    },
+    {
+      "name": "@google-cloud/firestore",
+      "version": "7.11.6",
+      "entry": "/workspace/acp-chat/node_modules/@google-cloud/firestore/build/src/index.js"
+    },
+    {
+      "name": "google-gax",
+      "version": "4.6.1",
+      "entry": "/workspace/acp-chat/node_modules/google-gax/build/src/index.js"
+    },
+    {
+      "name": "@grpc/grpc-js",
+      "version": "1.14.5",
+      "entry": "/workspace/acp-chat/node_modules/@grpc/grpc-js/build/src/index.js"
+    }
+  ],
+  "sources": [
+    {
+      "file": "/workspace/acp-chat/node_modules/@grpc/grpc-js/build/src/server-interceptors.js",
+      "sha256": "1773f6c7bb6c139186fc5c39634c21bc2ea6163562c9abeba1ab16f5ab171449"
+    },
+    {
+      "file": "/workspace/acp-chat/node_modules/@grpc/grpc-js/build/src/server.js",
+      "sha256": "ec8b6af916cd4e435b92bac8140a585bd1d1d01ec9a15d4700837ec214cd6d76"
+    },
+    {
+      "file": "/workspace/acp-chat/node_modules/@grpc/grpc-js/build/src/transport.js",
+      "sha256": "cdfaf45e972bf87f6450d26a833e6fc5b3e92c86ba9a25daa8befafa438fe8ea"
+    },
+    {
+      "file": "/workspace/acp-chat/node_modules/@grpc/grpc-js/build/src/stream-decoder.js",
+      "sha256": "b11c00ec37606d60d8d135a2259e3f6244309bfde775db9a76581d28433b1bf6"
+    }
+  ],
+  "results": [
+    {
+      "case": "auth",
+      "unauthorizedCertificateExposed": false,
+      "authorizedCertificateExposed": true,
+      "plaintext": {}
+    },
+    {
+      "case": "handler-errors",
+      "normal": {
+        "code": 0,
+        "details": "OK",
+        "payloads": [
+          "world"
+        ]
+      },
+      "observed": [
+        {
+          "type": "unary",
+          "code": 2,
+          "details": "Unknown error",
+          "payloads": []
+        },
+        {
+          "type": "clientStream",
+          "code": 2,
+          "details": "Unknown error",
+          "payloads": []
+        },
+        {
+          "type": "serverStream",
+          "code": 2,
+          "details": "Unknown error",
+          "payloads": []
+        },
+        {
+          "type": "bidi",
+          "code": 2,
+          "details": "Unknown error",
+          "payloads": []
+        }
+      ]
+    },
+    {
+      "case": "compression",
+      "identity": "normal",
+      "gzip": "normal + limit + corrupt",
+      "deflate": "normal + limit + corrupt"
+    },
+    {
+      "case": "framing",
+      "chunkedNormal": true,
+      "oversizedHeaderRejected": true,
+      "malformedContentTypeStreamErrorHandled": true
+    }
+  ],
+  "failures": [],
+  "limitation": "Real gRPC exported Server and BaseServerInterceptingCall with in-memory HTTP2/TLS-shaped boundary fixtures; no handshake, socket, Firebase E2E, or private-class extraction. Client transport auth branch reviewed as source only."
+}
+
+> acp-chat@1.0.0 formdata:harness
+> node --require ./scripts/synthetic/guard.cjs scripts/synthetic/formdata-harness.cjs
+
+{
+  "node": {
+    "version": "v22.23.4",
+    "execPath": "/workspace/work/promote/node/package/bin/node"
+  },
+  "chain": [
+    {
+      "name": "firebase-admin",
+      "version": "13.10.0",
+      "metadata": "/workspace/acp-chat/node_modules/firebase-admin/package.json",
+      "metadataSha256": "eeea23150ca753f4d3b82e4bd1cfd194b8b4771d6a008be9ff8ae98ff669e490",
+      "entry": "/workspace/acp-chat/node_modules/firebase-admin/lib/index.js"
+    },
+    {
+      "name": "@google-cloud/storage",
+      "version": "7.19.0",
+      "metadata": "/workspace/acp-chat/node_modules/@google-cloud/storage/package.json",
+      "metadataSha256": "00e8483c2c98209a2f054ee3f67fb9d4666921e6175e47f675baee32f19a9a00",
+      "entry": "/workspace/acp-chat/node_modules/@google-cloud/storage/build/cjs/src/index.js"
+    },
+    {
+      "name": "retry-request",
+      "version": "7.0.2",
+      "metadata": "/workspace/acp-chat/node_modules/retry-request/package.json",
+      "metadataSha256": "d5963403d0a50f3dcad8390151f12495d16291da5e548463ef7c363c922f3d63",
+      "entry": "/workspace/acp-chat/node_modules/retry-request/index.js"
+    },
+    {
+      "name": "@types/request",
+      "version": "2.48.13",
+      "metadata": "/workspace/acp-chat/node_modules/@types/request/package.json",
+      "metadataSha256": "35bdabce35cb2074bb2efcdec71dab8a7d5f228de7e78b659c2652244f8d5d4e",
+      "entry": "/workspace/acp-chat/node_modules/@types/request/package.json"
+    },
+    {
+      "name": "form-data",
+      "version": "2.5.6",
+      "metadata": "/workspace/acp-chat/node_modules/form-data/package.json",
+      "metadataSha256": "47e88a1abedf820ac2d27787bc39ed95597cb519f4a52a53bfe17cf28abeeb32",
+      "entry": "/workspace/acp-chat/node_modules/form-data/lib/form_data.js"
+    }
+  ],
+  "formEntrySha256": "9c9b166cc9ddf4b64e454574d216e007cae0a552e01a93b87b8e026717d03076",
+  "normal": {
+    "serialized": true,
+    "length": 226,
+    "lengthMatches": true
+  },
+  "fixtures": [
+    {
+      "kind": "field",
+      "input": "field\"\r\nX-Synthetic: injected",
+      "escaped": "name=\"field%22%0D%0AX-Synthetic: injected\"",
+      "injectedHeader": false,
+      "escapedParameter": true,
+      "body": "--synthetic-formdata\r\nContent-Disposition: form-data; name=\"field%22%0D%0AX-Synthetic: injected\"\r\n\r\nhello\r\n--synthetic-formdata--\r\n"
+    },
+    {
+      "kind": "filename",
+      "input": "file\"\r\nX-Synthetic: injected",
+      "escaped": "filename=\"file%22%0D%0AX-Synthetic: injected\"",
+      "injectedHeader": false,
+      "escapedParameter": true,
+      "body": "--synthetic-formdata\r\nContent-Disposition: form-data; name=\"file\"; filename=\"file%22%0D%0AX-Synthetic: injected\"\r\nContent-Type: text/plain\r\n\r\nhello\r\n--synthetic-formdata--\r\n"
+    }
+  ],
+  "limitation": "Installed metadata/type-resolution chain, not an Admin runtime form-data invocation. Admin and Storage are not initialized; no transport/provider request."
+}
+
+> acp-chat@1.0.0 busboy:harness
+> node --require ./scripts/synthetic/guard.cjs scripts/synthetic/busboy-harness.cjs
+
+{
+  "admin": {
+    "version": "13.10.0",
+    "entry": "/workspace/acp-chat/node_modules/firebase-admin/lib/index.js"
+  },
+  "busboy": {
+    "version": "3.2.3",
+    "entry": "/workspace/acp-chat/node_modules/@fastify/busboy/index.js",
+    "sha256": "ce61544d7cdca32cbc24fe7b42e93b1b280406891b77730ea1e3e84d764f6692"
+  },
+  "adminSource": {
+    "file": "/workspace/acp-chat/node_modules/firebase-admin/lib/utils/api-request.js",
+    "sha256": "23bf8a938f30defc6e05cf82e00bbbeea2dcf3cc0a226350ac37471d570e0393",
+    "function": "AsyncRequestCall.handleMultipartResponse",
+    "limitation": "private class not exported: exact source checked, real Dicer exercised; no Firebase E2E"
+  },
+  "cases": [
+    "normal field",
+    "Admin Dicer normal multipart",
+    "three prototype-named headers",
+    "oversized boundary rejected",
+    "bare CR/LF names and filenames suppressed",
+    "M0 isolation"
+  ]
+}
+
+> acp-chat@1.0.0 wscrit:harness
+> node --require ./scripts/synthetic/guard.cjs scripts/synthetic/wscrit-harness.cjs --candidate
+
+{
+  "chain": [
+    {
+      "entry": "/workspace/acp-chat/node_modules/firebase-admin/lib/index.js",
+      "version": "13.10.0",
+      "sha256": "2e4ccc72e674fe268abb66dcd4172b55392356d8bd044876e3176066880c89c7"
+    },
+    {
+      "entry": "/workspace/acp-chat/node_modules/@firebase/database-compat/dist/index.standalone.js",
+      "version": "2.1.7",
+      "sha256": "308f0f904b47e92a009d445964ac3392a3692b1a8166020b4effe352285c4b4c"
+    },
+    {
+      "entry": "/workspace/acp-chat/node_modules/@firebase/database/dist/index.node.cjs.js",
+      "version": "1.1.5",
+      "sha256": "903623a4f51a67706497d85fe54561cbee71ac0363c02b5fffc51226cecec6b7"
+    },
+    {
+      "entry": "/workspace/acp-chat/node_modules/faye-websocket/lib/faye/websocket.js",
+      "version": "0.11.4",
+      "sha256": "e0b42c7ddfd511bb8cbb67b1d1613ab49b016a58e7eff24320f446b8db92a1c5"
+    },
+    {
+      "entry": "/workspace/acp-chat/node_modules/websocket-driver/lib/websocket/driver.js",
+      "version": "0.7.5",
+      "sha256": "24d672a4d05d98385edd9f0b8c0e62809ba45d6daacec3b62857f9c7479aeefa"
+    }
+  ],
+  "adminUsesBundledDriver": true,
+  "externalLoadedByAdmin": false,
+  "tokenCalls": 0,
+  "postExtensionOversizeRejected": true,
+  "legacyOversizeClosed": true,
+  "bundledPostExtensionBound": true
+}
+PASS real Admin/RTDB offline application refs/query/error API; real declared faye/driver; text/binary/fragment/error/length checks; M0 intact
+
+> acp-chat@1.0.0 express-chain:harness
+> node --require ./scripts/synthetic/guard.cjs scripts/synthetic/express-chain-harness.cjs
+
+{
+  "versions": {
+    "express": "5.2.1",
+    "proxy-addr": "2.0.8",
+    "body-parser": "2.4.0",
+    "qs": "6.16.1"
+  },
+  "observations": [
+    {
+      "name": "valid",
+      "status": 200,
+      "body": {
+        "body": {
+          "value": "synthetic"
+        },
+        "query": {},
+        "ip": "127.0.0.1",
+        "ips": [],
+        "manualIp": "127.0.0.1",
+        "resetIp": "127.0.0.1"
+      }
+    },
+    {
+      "name": "malformed",
+      "status": 400,
+      "body": {
+        "error": "Invalid JSON payload"
+      }
+    },
+    {
+      "name": "empty",
+      "status": 200,
+      "body": {
+        "body": {},
+        "query": {},
+        "ip": "127.0.0.1",
+        "ips": [],
+        "manualIp": "127.0.0.1",
+        "resetIp": "127.0.0.1"
+      }
+    },
+    {
+      "name": "primitive",
+      "status": 400,
+      "body": {
+        "error": "Invalid JSON payload"
+      }
+    },
+    {
+      "name": "wrong-content-type",
+      "status": 200,
+      "body": {
+        "body": null,
+        "query": {},
+        "ip": "127.0.0.1",
+        "ips": [],
+        "manualIp": "127.0.0.1",
+        "resetIp": "127.0.0.1"
+      }
+    },
+    {
+      "name": "json-charset",
+      "status": 200,
+      "body": {
+        "body": {
+          "value": "é"
+        },
+        "query": {},
+        "ip": "127.0.0.1",
+        "ips": [],
+        "manualIp": "127.0.0.1",
+        "resetIp": "127.0.0.1"
+      }
+    },
+    {
+      "name": "oversize",
+      "status": 413
+    },
+    {
+      "name": "existing-simple-query",
+      "query": {
+        "a": [
+          "one",
+          "two"
+        ],
+        "filter[name]": "synthetic",
+        "__proto__[polluted]": "yes"
+      }
+    },
+    {
+      "name": "fixture-only-extended-query",
+      "query": {
+        "filter": {
+          "name": "synthetic"
+        },
+        "a": [
+          "one",
+          "two"
+        ]
+      }
+    },
+    {
+      "name": "default-trust-proxy-and-manual-forwarding",
+      "body": {},
+      "query": {},
+      "ip": "127.0.0.1",
+      "ips": [],
+      "manualIp": "198.51.100.7",
+      "resetIp": "127.0.0.1"
+    },
+    {
+      "name": "mapped-socket-default",
+      "body": {},
+      "query": {},
+      "ip": "::ffff:127.0.0.1",
+      "ips": [],
+      "manualIp": "198.51.100.7",
+      "resetIp": "::ffff:127.0.0.1"
+    },
+    {
+      "name": "existing-reset-hop-option",
+      "body": {},
+      "query": {},
+      "ip": "127.0.0.1",
+      "ips": [],
+      "manualIp": "198.51.100.7",
+      "resetIp": "203.0.113.9"
+    }
+  ]
+}
+PASS real HTTP JSON/query/IP/error characterization; relay/reset malformed; M0 preserved
+
+> acp-chat@1.0.0 nodemailer:harness
+> node --require ./scripts/synthetic/guard.cjs scripts/synthetic/nodemailer-harness.cjs
+
+PASS real human relay routes: both types, consent, private minimization, IDN recipient, MIME text
+PASS real human relay route: transport rejection and retry
+PASS real reset routes/queue/sender: normalized address object, ASCII/Unicode/IDN, success/error, hashed secret
+PASS existing reset bounds: unknown account sends nothing, Express body limit retained
+PASS shared dependency: reset simple string and genuine vigilance notifier
+PASS Nodemailer 10.1.7: guarded real dependency compatibility
+
+> acp-chat@1.0.0 m3:emergency:harness
+> node scripts/synthetic/m3-emergency-harness.cjs
+
+PASS collection is candidate-only, third-party instructions not copied
+PASS unapproved candidate/service, changed digest and stale base rejected
+PASS missing provenance and non-telephone identifiers rejected
+PASS partial failed collection never advances published version/dates
+PASS approved publication is atomic, leaves untouched categories and territories unchanged
+PASS legacy updater refuses before any network or file write
+PASS HTTP byte limit, deadline, caller abort, error and invalid JSON destroy request
+PASS unknown country and missing category keep effective country and honest legacy status
+PASS real API, crisis writer context and DOM share effective country, source and dates
+PASS real writer receives hostile resource content only as unprivileged data
+PASS real followup resource context never enters privileged instructions
+PASS real chat link passes profile country, including unknown, without locale substitution
+M3 emergency: 12 groups passed; no real providers/data
+
+> acp-chat@1.0.0 m3:safety:harness
+> node scripts/synthetic/m3-safety-characterization.cjs
+
+{"id":"D1","message":"Ce boulot me tue.","raw":"{\"suicideLevel\":\"N2\",\"needsClarification\":false,\"isQuote\":false,\"idiomaticDeathExpression\":false,\"crisisResolved\":false}","normalized":{"suicideLevel":"N0","needsClarification":false,"isQuote":false,"idiomaticDeathExpression":true,"crisisResolved":false,"crisisResolvedExplicit":false},"previousCrisis":false,"decision":{"route":null,"ruleId":null,"priority":null,"winner":"none","safetyImminence":0,"suicideImminence":0},"orchestratorDecision":{"route":null,"ruleId":null,"priority":null,"winner":"none","safetyImminence":0,"suicideImminence":0},"writer":{"state":"exploration_open","effectiveState":"exploration_open","reply":"SYNTHETIC_REPLY","followupCalls":0,"writerCalls":1},"responseSaveStatus":"pending","receiptAfterCompletion":"confirmed","persistedInDouble":true}
+{"id":"D2","message":"Ce boulot me tue. Et séparément, je veux mourir.","raw":"{\"suicideLevel\":\"N1\",\"needsClarification\":true,\"isQuote\":false,\"idiomaticDeathExpression\":false,\"crisisResolved\":false}","normalized":{"suicideLevel":"N1","needsClarification":false,"isQuote":false,"idiomaticDeathExpression":true,"crisisResolved":false,"crisisResolvedExplicit":false},"previousCrisis":false,"decision":{"route":"n1_clarification","ruleId":"suicide_clarification","priority":30,"winner":"suicide","safetyImminence":0,"suicideImminence":2},"orchestratorDecision":{"route":"n1_clarification","ruleId":"suicide_clarification","priority":30,"winner":"suicide","safetyImminence":0,"suicideImminence":2},"writer":{"state":"exploration_open","effectiveState":"n1_crisis","reply":"SYNTHETIC_REPLY","followupCalls":0,"writerCalls":1},"responseSaveStatus":"pending","receiptAfterCompletion":"confirmed","persistedInDouble":true}
+{"id":"D3","message":"Ce boulot me tue. À part cela, je vais me tuer maintenant, j'ai préparé le moyen.","raw":"{\"suicideLevel\":\"N2\",\"needsClarification\":false,\"isQuote\":false,\"idiomaticDeathExpression\":false,\"crisisResolved\":false}","normalized":{"suicideLevel":"N0","needsClarification":false,"isQuote":false,"idiomaticDeathExpression":true,"crisisResolved":false,"crisisResolvedExplicit":false},"previousCrisis":false,"decision":{"route":null,"ruleId":null,"priority":null,"winner":"none","safetyImminence":0,"suicideImminence":0},"orchestratorDecision":{"route":null,"ruleId":null,"priority":null,"winner":"none","safetyImminence":0,"suicideImminence":0},"writer":{"state":"exploration_open","effectiveState":"exploration_open","reply":"SYNTHETIC_REPLY","followupCalls":0,"writerCalls":1},"responseSaveStatus":"pending","receiptAfterCompletion":"confirmed","persistedInDouble":true}
+{"id":"D4","message":"Il a dit « je veux mourir ». Quant à moi, je vais me tuer maintenant, j'ai préparé le moyen.","raw":"{\"suicideLevel\":\"N2\",\"needsClarification\":false,\"isQuote\":true,\"idiomaticDeathExpression\":false,\"crisisResolved\":false}","normalized":{"suicideLevel":"N2","needsClarification":false,"isQuote":true,"idiomaticDeathExpression":false,"crisisResolved":false,"crisisResolvedExplicit":false},"previousCrisis":false,"decision":{"route":"n2","ruleId":"suicide_n2","priority":10,"winner":"suicide","safetyImminence":0,"suicideImminence":4},"orchestratorDecision":{"route":"n2","ruleId":"suicide_n2","priority":10,"winner":"suicide","safetyImminence":0,"suicideImminence":4},"writer":{"state":"n2_crisis","effectiveState":null,"reply":"SYNTHETIC_REPLY","followupCalls":0,"writerCalls":1},"responseSaveStatus":"pending","receiptAfterCompletion":"confirmed","persistedInDouble":true}
+{"id":"D5","message":"Parlons de ma semaine.","raw":"{\"suicideLevel\":\"N0\",\"needsClarification\":false,\"isQuote\":false,\"idiomaticDeathExpression\":false,\"crisisResolved\":false}","normalized":{"suicideLevel":"N0","needsClarification":false,"isQuote":false,"idiomaticDeathExpression":false,"crisisResolved":false,"crisisResolvedExplicit":false},"previousCrisis":true,"decision":{"route":"acute_followup","ruleId":"acute_crisis_followup","priority":20,"winner":"suicide","safetyImminence":0,"suicideImminence":0},"orchestratorDecision":{"route":"acute_followup","ruleId":"acute_crisis_followup","priority":20,"winner":"suicide","safetyImminence":0,"suicideImminence":0},"writer":{"state":null,"effectiveState":null,"reply":"SYNTHETIC_FOLLOWUP","followupCalls":1,"writerCalls":0},"responseSaveStatus":"pending","receiptAfterCompletion":"confirmed","persistedInDouble":true}
+{"id":"D6_timeout_prior_false","message":"Message synthétique neutre.","raw":{"error":"SYNTHETIC_TIMEOUT"},"normalized":{"suicideLevel":"N0","needsClarification":false,"isQuote":false,"idiomaticDeathExpression":false,"crisisResolved":false,"crisisResolvedExplicit":false},"previousCrisis":false,"decision":{"route":null,"ruleId":null,"priority":null,"winner":"none","safetyImminence":0,"suicideImminence":0},"orchestratorDecision":{"route":null,"ruleId":null,"priority":null,"winner":"none","safetyImminence":0,"suicideImminence":0},"writer":{"state":"exploration_open","effectiveState":"exploration_open","reply":"SYNTHETIC_REPLY","followupCalls":0,"writerCalls":1},"responseSaveStatus":"pending","receiptAfterCompletion":"confirmed","persistedInDouble":true}
+{"id":"D6_incomplete_json_prior_false","message":"Message synthétique neutre.","raw":"{\"suicideLevel\":","normalized":{"suicideLevel":"N0","needsClarification":false,"isQuote":false,"idiomaticDeathExpression":false,"crisisResolved":false,"crisisResolvedExplicit":false},"previousCrisis":false,"decision":{"route":null,"ruleId":null,"priority":null,"winner":"none","safetyImminence":0,"suicideImminence":0},"orchestratorDecision":{"route":null,"ruleId":null,"priority":null,"winner":"none","safetyImminence":0,"suicideImminence":0},"writer":{"state":"exploration_open","effectiveState":"exploration_open","reply":"SYNTHETIC_REPLY","followupCalls":0,"writerCalls":1},"responseSaveStatus":"pending","receiptAfterCompletion":"confirmed","persistedInDouble":true}
+{"id":"D6_incomplete_object_prior_false","message":"Message synthétique neutre.","raw":"{\"suicideLevel\":\"N2\"}","normalized":{"suicideLevel":"N2","needsClarification":false,"isQuote":false,"idiomaticDeathExpression":false,"crisisResolved":false,"crisisResolvedExplicit":false},"previousCrisis":false,"decision":{"route":"n2","ruleId":"suicide_n2","priority":10,"winner":"suicide","safetyImminence":0,"suicideImminence":4},"orchestratorDecision":{"route":"n2","ruleId":"suicide_n2","priority":10,"winner":"suicide","safetyImminence":0,"suicideImminence":4},"writer":{"state":"n2_crisis","effectiveState":null,"reply":"SYNTHETIC_REPLY","followupCalls":0,"writerCalls":1},"responseSaveStatus":"pending","receiptAfterCompletion":"confirmed","persistedInDouble":true}
+{"id":"D6_unknown_level_prior_false","message":"Message synthétique neutre.","raw":"{\"suicideLevel\":\"UNKNOWN\",\"needsClarification\":false,\"isQuote\":false,\"idiomaticDeathExpression\":false,\"crisisResolved\":false}","normalized":{"suicideLevel":"N0","needsClarification":false,"isQuote":false,"idiomaticDeathExpression":false,"crisisResolved":false,"crisisResolvedExplicit":false},"previousCrisis":false,"decision":{"route":null,"ruleId":null,"priority":null,"winner":"none","safetyImminence":0,"suicideImminence":0},"orchestratorDecision":{"route":null,"ruleId":null,"priority":null,"winner":"none","safetyImminence":0,"suicideImminence":0},"writer":{"state":"exploration_open","effectiveState":"exploration_open","reply":"SYNTHETIC_REPLY","followupCalls":0,"writerCalls":1},"responseSaveStatus":"pending","receiptAfterCompletion":"confirmed","persistedInDouble":true}
+{"id":"D6_wrong_booleans_prior_false","message":"Message synthétique neutre.","raw":"{\"suicideLevel\":\"N1\",\"needsClarification\":\"true\",\"isQuote\":\"false\",\"idiomaticDeathExpression\":\"true\",\"crisisResolved\":\"true\"}","normalized":{"suicideLevel":"N1","needsClarification":false,"isQuote":false,"idiomaticDeathExpression":false,"crisisResolved":false,"crisisResolvedExplicit":false},"previousCrisis":false,"decision":{"route":"n1_clarification","ruleId":"suicide_clarification","priority":30,"winner":"suicide","safetyImminence":0,"suicideImminence":2},"orchestratorDecision":{"route":"n1_clarification","ruleId":"suicide_clarification","priority":30,"winner":"suicide","safetyImminence":0,"suicideImminence":2},"writer":{"state":"exploration_open","effectiveState":"n1_crisis","reply":"SYNTHETIC_REPLY","followupCalls":0,"writerCalls":1},"responseSaveStatus":"pending","receiptAfterCompletion":"confirmed","persistedInDouble":true}
+{"id":"D6_timeout_prior_true","message":"Message synthétique neutre.","raw":{"error":"SYNTHETIC_TIMEOUT"},"normalized":{"suicideLevel":"N0","needsClarification":false,"isQuote":false,"idiomaticDeathExpression":false,"crisisResolved":false,"crisisResolvedExplicit":false},"previousCrisis":true,"decision":{"route":"acute_followup","ruleId":"acute_crisis_followup","priority":20,"winner":"suicide","safetyImminence":0,"suicideImminence":0},"orchestratorDecision":{"route":"acute_followup","ruleId":"acute_crisis_followup","priority":20,"winner":"suicide","safetyImminence":0,"suicideImminence":0},"writer":{"state":null,"effectiveState":null,"reply":"SYNTHETIC_FOLLOWUP","followupCalls":1,"writerCalls":0},"responseSaveStatus":"pending","receiptAfterCompletion":"confirmed","persistedInDouble":true}
+{"id":"D6_incomplete_json_prior_true","message":"Message synthétique neutre.","raw":"{\"suicideLevel\":","normalized":{"suicideLevel":"N0","needsClarification":false,"isQuote":false,"idiomaticDeathExpression":false,"crisisResolved":false,"crisisResolvedExplicit":false},"previousCrisis":true,"decision":{"route":"acute_followup","ruleId":"acute_crisis_followup","priority":20,"winner":"suicide","safetyImminence":0,"suicideImminence":0},"orchestratorDecision":{"route":"acute_followup","ruleId":"acute_crisis_followup","priority":20,"winner":"suicide","safetyImminence":0,"suicideImminence":0},"writer":{"state":null,"effectiveState":null,"reply":"SYNTHETIC_FOLLOWUP","followupCalls":1,"writerCalls":0},"responseSaveStatus":"pending","receiptAfterCompletion":"confirmed","persistedInDouble":true}
+{"id":"D6_incomplete_object_prior_true","message":"Message synthétique neutre.","raw":"{\"suicideLevel\":\"N2\"}","normalized":{"suicideLevel":"N2","needsClarification":false,"isQuote":false,"idiomaticDeathExpression":false,"crisisResolved":false,"crisisResolvedExplicit":false},"previousCrisis":true,"decision":{"route":"n2","ruleId":"suicide_n2","priority":10,"winner":"suicide","safetyImminence":0,"suicideImminence":4},"orchestratorDecision":{"route":"n2","ruleId":"suicide_n2","priority":10,"winner":"suicide","safetyImminence":0,"suicideImminence":4},"writer":{"state":"n2_crisis","effectiveState":null,"reply":"SYNTHETIC_REPLY","followupCalls":0,"writerCalls":1},"responseSaveStatus":"pending","receiptAfterCompletion":"confirmed","persistedInDouble":true}
+{"id":"D6_unknown_level_prior_true","message":"Message synthétique neutre.","raw":"{\"suicideLevel\":\"UNKNOWN\",\"needsClarification\":false,\"isQuote\":false,\"idiomaticDeathExpression\":false,\"crisisResolved\":false}","normalized":{"suicideLevel":"N0","needsClarification":false,"isQuote":false,"idiomaticDeathExpression":false,"crisisResolved":false,"crisisResolvedExplicit":false},"previousCrisis":true,"decision":{"route":"acute_followup","ruleId":"acute_crisis_followup","priority":20,"winner":"suicide","safetyImminence":0,"suicideImminence":0},"orchestratorDecision":{"route":"acute_followup","ruleId":"acute_crisis_followup","priority":20,"winner":"suicide","safetyImminence":0,"suicideImminence":0},"writer":{"state":null,"effectiveState":null,"reply":"SYNTHETIC_FOLLOWUP","followupCalls":1,"writerCalls":0},"responseSaveStatus":"pending","receiptAfterCompletion":"confirmed","persistedInDouble":true}
+{"id":"D6_wrong_booleans_prior_true","message":"Message synthétique neutre.","raw":"{\"suicideLevel\":\"N1\",\"needsClarification\":\"true\",\"isQuote\":\"false\",\"idiomaticDeathExpression\":\"true\",\"crisisResolved\":\"true\"}","normalized":{"suicideLevel":"N1","needsClarification":false,"isQuote":false,"idiomaticDeathExpression":false,"crisisResolved":false,"crisisResolvedExplicit":false},"previousCrisis":true,"decision":{"route":"acute_followup","ruleId":"acute_crisis_followup","priority":20,"winner":"suicide","safetyImminence":0,"suicideImminence":2},"orchestratorDecision":{"route":"acute_followup","ruleId":"acute_crisis_followup","priority":20,"winner":"suicide","safetyImminence":0,"suicideImminence":2},"writer":{"state":null,"effectiveState":null,"reply":"SYNTHETIC_FOLLOWUP","followupCalls":1,"writerCalls":0},"responseSaveStatus":"pending","receiptAfterCompletion":"confirmed","persistedInDouble":true}
+{"resourceCountry":"BE","apiEffectiveCountry":"BE","fallbackUsed":false,"writerDataEqualsApi":true}
+{"resourceCountry":"FR","apiEffectiveCountry":"FR","fallbackUsed":false,"writerDataEqualsApi":true}
+{"resourceCountry":null,"apiEffectiveCountry":"FR","fallbackUsed":true,"writerDataEqualsApi":true}
+{"boundary":"missing_registry","emergencyNumbersIncluded":false,"reply":"Je t'entends, et la c'est urgent. Si tu es en danger immediat, appelle les services d'urgence locaux. Si ces numéros ne sont pas disponibles pour votre pays, appelez le numéro d'urgence local de votre opérateur téléphonique ou recherchez 'numéro urgence + votre pays' et 'ligne prévention suicide + votre pays'. Si tu peux, ne reste pas seul."}
+{"boundary":"writer_timeout","responseSaveStatus":"pending","receiptAfterCompletion":"confirmed","displayedSaveText":"Réponse sauvegardée. La consolidation mémoire est suivie séparément.","reply":"Je t'entends, et la c'est urgent. Si tu es en danger immediat, appelle les services d'urgence locaux. Pays demandé : ZZ ; repli : SYNTHETIC_FR (FR), pas des ressources locales confirmées. | urgences : 000 (ressource héritée non validée ; source et date de vérification non établies ; version du registre : bc2079f4e51e374f68811bb37735e1b0216f9e6822f59544316386060e87bd7c) | prévention suicide : 001 (ressource héritée non validée ; source et date de vérification non établies ; version du registre : bc2079f4e51e374f68811bb37735e1b0216f9e6822f59544316386060e87bd7c) Si tu peux, ne reste pas seul.","writerCalls":1}
+{"boundary":"save_failure","responseSaveStatus":"pending","receiptAfterCompletion":"uncertain","displayedSaveText":"Réponse disponible. Sauvegarde non confirmée.","reply":"SYNTHETIC_REPLY","writerCalls":1}
+{"boundary":"unauthenticated","status":401,"writerCalls":0}
+{"boundary":"foreign_conversation","status":403,"writerCalls":0}
+M3 D1-D6 characterization complete; existing clinical policy unchanged; synthetic injected outputs only.
+
+> acp-chat@1.0.0 password-reset:harness
+> node scripts/password-reset-harness.js
+
+[PASS] password reset queue, limits, real scrypt, RTDB retry/races and sessions
+
+> acp-chat@1.0.0 password-reset-frontend:harness
+> node scripts/password-reset-frontend-harness.js
+
+[PASS] password reset frontend DOM: fragments, outcomes, session race, redirects and autofill
+
+> acp-chat@1.0.0 password-reset-server:harness
+> node scripts/password-reset-server-integration-harness.js
+
+[PASS] real server auth routes and getUserSession with synthetic RTDB
+
+> acp-chat@1.0.0 preff:git:harness
+> node scripts/preff-git-guard-harness.js
+
+preff-git-guard harness: OK
+
+> acp-chat@1.0.0 health:harness
+> node scripts/health-harness.js
+
+health harness: ok
+
+> acp-chat@1.0.0 no-openai-runtime:harness
+> node scripts/no-openai-runtime-harness.js
+
+no OpenAI runtime harness: ok
+
+> acp-chat@1.0.0 mistral:harness
+> node scripts/mistral-transport-harness.js
+
+mistral transport harness: ok
+
+> acp-chat@1.0.0 title:harness
+> node scripts/title-generation-harness.js
+
+title generation harness: ok
+
+> acp-chat@1.0.0 title:conflict:mistral:harness
+> node scripts/title-conflict-mistral-harness.js
+
+title conflict Mistral harness: ok
+
+> acp-chat@1.0.0 information-routing:mistral:harness
+> node scripts/information-routing-mistral-harness.js
+
+information-routing-mistral-harness: ok
+
+> acp-chat@1.0.0 exploration:mistral:harness
+> node scripts/exploration-mistral-harness.js
+
+exploration-mistral-harness: ok
+
+> acp-chat@1.0.0 recall-routing:mistral:harness
+> node scripts/recall-routing-mistral-harness.js
+
+recall-routing-mistral-harness: ok
+
+> acp-chat@1.0.0 contact-discharge:mistral:harness
+> node scripts/contact-discharge-mistral-harness.js
+
+contact-discharge-mistral-harness: ok
+
+> acp-chat@1.0.0 immediate-alliance:mistral:harness
+> node scripts/immediate-alliance-mistral-harness.js
+
+immediate-alliance-mistral-harness: ok
+
+> acp-chat@1.0.0 interpretation-rejection:mistral:harness
+> node scripts/interpretation-rejection-mistral-harness.js
+
+interpretation-rejection-mistral-harness: ok
+
+> acp-chat@1.0.0 dependency-risk:mistral:harness
+> node scripts/dependency-risk-mistral-harness.js
+
+dependency-risk-mistral-harness: ok
+
+> acp-chat@1.0.0 major-harm-response:mistral:harness
+> node scripts/major-harm-response-mistral-harness.js
+
+major-harm-response-mistral-harness: ok
+
+> acp-chat@1.0.0 acute-crisis-followup:mistral:harness
+> node scripts/acute-crisis-followup-mistral-harness.js
+
+acute-crisis-followup-mistral-harness: ok
+
+> acp-chat@1.0.0 n2-writer:mistral:harness
+> node scripts/n2-writer-mistral-harness.js
+
+n2-writer-mistral-harness: ok
+
+> acp-chat@1.0.0 major-harm-risk:mistral:harness
+> node scripts/major-harm-risk-mistral-harness.js
+
+major-harm-risk-mistral-harness: ok
+
+> acp-chat@1.0.0 suicide-risk:mistral:harness
+> node scripts/suicide-risk-mistral-harness.js
+
+suicide-risk-mistral-harness: ok
+
+> acp-chat@1.0.0 writer:mistral:harness
+> node scripts/writer-mistral-harness.js
+
+writer Mistral harness: ok
+
+> acp-chat@1.0.0 memory:mistral:harness
+> node scripts/memory-mistral-harness.js
+
+structured memory Mistral harness: ok
+
+> acp-chat@1.0.0 intersession:mistral:harness
+> node scripts/intersession-memory-mistral-harness.js
+
+intersession memory Mistral harness: ok
+
+> acp-chat@1.0.0 intersession:source:harness
+> node scripts/intersession-memory-source-harness.js
+
+intersession memory source harness: ok
+
+> acp-chat@1.0.0 affiliation:mistral:harness
+> node scripts/affiliation-validation-mistral-harness.js
+
+affiliation validation Mistral harness: ok
+
+> acp-chat@1.0.0 state:harness
+> node scripts/state-machine-harness.js
+
+[PASS] CONVERSATION_STATES is an array
+[PASS] CONVERSATION_STATES includes 'exploration'
+[PASS] CONVERSATION_STATES includes 'discharge'
+[PASS] CONVERSATION_STATES includes 'info'
+[PASS] CONVERSATION_STATES includes 'alliance_rupture'
+[PASS] CONVERSATION_STATES includes 'need_human_support'
+[PASS] CONVERSATION_STATES includes 'closure'
+[PASS] CONVERSATION_STATES includes 'n1_crisis'
+[PASS] CONVERSATION_STATES includes 'n2_crisis'
+[PASS] STATE_TRANSITIONS has entry for 'exploration'
+[PASS] STATE_TRANSITIONS['exploration'] is non-empty
+[PASS] STATE_TRANSITIONS has entry for 'discharge'
+[PASS] STATE_TRANSITIONS['discharge'] is non-empty
+[PASS] STATE_TRANSITIONS has entry for 'info'
+[PASS] STATE_TRANSITIONS['info'] is non-empty
+[PASS] STATE_TRANSITIONS has entry for 'alliance_rupture'
+[PASS] STATE_TRANSITIONS['alliance_rupture'] is non-empty
+[PASS] STATE_TRANSITIONS has entry for 'need_human_support'
+[PASS] STATE_TRANSITIONS['need_human_support'] is non-empty
+[PASS] STATE_TRANSITIONS has entry for 'closure'
+[PASS] STATE_TRANSITIONS['closure'] is non-empty
+[PASS] STATE_TRANSITIONS has entry for 'n1_crisis'
+[PASS] STATE_TRANSITIONS['n1_crisis'] is non-empty
+[PASS] STATE_TRANSITIONS has entry for 'n2_crisis'
+[PASS] STATE_TRANSITIONS['n2_crisis'] is non-empty
+[PASS] isValidTransition: exploration -> discharge
+[PASS] isValidTransition: discharge -> exploration
+[PASS] isValidTransition: exploration -> exploration (self)
+[PASS] isValidTransition: discharge -> discharge (self)
+[PASS] isValidTransition: info -> info (self)
+[PASS] isValidTransition: closure -> alliance_rupture BLOCKED
+[PASS] isValidTransition: unknown legacy state is permissive
+[PASS] resolve: exploration_open after discharge turn
+[PASS] resolve: exploration_open after dysregulated discharge turn
+[PASS] resolve: info_features beats cooldown after discharge
+[PASS] resolve: info_features -> info_features
+[PASS] resolve: info_pure -> info_pure
+[PASS] resolve: info_psychoeducation -> info_psychoeducation
+[PASS] resolve: default is exploration_open
+[PASS] resolve: directivityLevel=2 keeps exploration_open
+[PASS] resolve: directivityLevel>=3 gives exploration_restrained
+[PASS] resolve: alliance_rupture overrides exploration
+[PASS] resolve: alliance_rupture overrides exploration (post-discharge)
+[PASS] resolve: alliance_rupture takes precedence
+[PASS] resolve: closureIntent -> closure
+[PASS] resolve: closureIntent cannot override alliance_rupture
+[PASS] baseStateOf: exploration_open -> exploration
+[PASS] baseStateOf: exploration_restrained -> exploration
+[PASS] baseStateOf: discharge_regulated -> discharge
+[PASS] baseStateOf: discharge_dysregulated -> discharge
+[PASS] baseStateOf: info_pure -> info
+[PASS] baseStateOf: info_features -> info
+[PASS] baseStateOf: info_psychoeducation -> info
+[PASS] baseStateOf: alliance_rupture -> alliance_rupture
+[PASS] baseStateOf: need_human_support passthrough
+[PASS] baseStateOf: closure -> closure
+[PASS] baseStateOf: n1_crisis passthrough
+[PASS] STATE_FORBIDDEN has 'exploration_open'
+[PASS] STATE_INTENT has 'exploration_open'
+[PASS] STATE_FORBIDDEN['exploration_open'] is array
+[PASS] STATE_INTENT['exploration_open'] is string
+[PASS] STATE_FORBIDDEN has 'exploration_restrained'
+[PASS] STATE_INTENT has 'exploration_restrained'
+[PASS] STATE_FORBIDDEN['exploration_restrained'] is array
+[PASS] STATE_INTENT['exploration_restrained'] is string
+[PASS] STATE_FORBIDDEN has 'alliance_rupture'
+[PASS] STATE_INTENT has 'alliance_rupture'
+[PASS] STATE_FORBIDDEN['alliance_rupture'] is array
+[PASS] STATE_INTENT['alliance_rupture'] is string
+[PASS] STATE_FORBIDDEN has 'need_human_support'
+[PASS] STATE_INTENT has 'need_human_support'
+[PASS] STATE_FORBIDDEN['need_human_support'] is array
+[PASS] STATE_INTENT['need_human_support'] is string
+[PASS] STATE_FORBIDDEN has 'closure'
+[PASS] STATE_INTENT has 'closure'
+[PASS] STATE_FORBIDDEN['closure'] is array
+[PASS] STATE_INTENT['closure'] is string
+[PASS] STATE_FORBIDDEN has 'discharge_regulated'
+[PASS] STATE_INTENT has 'discharge_regulated'
+[PASS] STATE_FORBIDDEN['discharge_regulated'] is array
+[PASS] STATE_INTENT['discharge_regulated'] is string
+[PASS] STATE_FORBIDDEN has 'discharge_dysregulated'
+[PASS] STATE_INTENT has 'discharge_dysregulated'
+[PASS] STATE_FORBIDDEN['discharge_dysregulated'] is array
+[PASS] STATE_INTENT['discharge_dysregulated'] is string
+[PASS] STATE_FORBIDDEN has 'info_pure'
+[PASS] STATE_INTENT has 'info_pure'
+[PASS] STATE_FORBIDDEN['info_pure'] is array
+[PASS] STATE_INTENT['info_pure'] is string
+[PASS] STATE_FORBIDDEN has 'info_psychoeducation'
+[PASS] STATE_INTENT has 'info_psychoeducation'
+[PASS] STATE_FORBIDDEN['info_psychoeducation'] is array
+[PASS] STATE_INTENT['info_psychoeducation'] is string
+[PASS] STATE_FORBIDDEN has 'info_features'
+[PASS] STATE_INTENT has 'info_features'
+[PASS] STATE_FORBIDDEN['info_features'] is array
+[PASS] STATE_INTENT['info_features'] is string
+[PASS] STATE_FORBIDDEN has 'n1_crisis'
+[PASS] STATE_INTENT has 'n1_crisis'
+[PASS] STATE_FORBIDDEN['n1_crisis'] is array
+[PASS] STATE_INTENT['n1_crisis'] is string
+[PASS] STATE_FORBIDDEN has 'n2_crisis'
+[PASS] STATE_INTENT has 'n2_crisis'
+[PASS] STATE_FORBIDDEN['n2_crisis'] is array
+[PASS] STATE_INTENT['n2_crisis'] is string
+
+[STATE] 105/105 checks passed.
+
+> acp-chat@1.0.0 posture:harness
+> node scripts/posture-harness.js
+
+[PASS] incoherent human support decision falls back as one pair
+[PASS] exploration detectedState -> exploration_* conversation state
+[PASS] exploration directivity can rise progressively from inherited 0
+[PASS] info detectedState passes through
+[PASS] discharge detectedState keeps discharge state
+[PASS] N1 keeps visible state and exposes effective crisis routing state
+[PASS] post-discharge cooldown returns exploration (no contact state)
+[PASS] post-discharge transition enforces restrained phenomenological exploration
+[PASS] post-discharge transition applies in non-exploration states without forcing exploration shape
+[PASS] contact self-criticism signal enriches forbidden + hints
+[PASS] insightMoment keeps hint without relance lock
+[PASS] everyday concrete share enforces neutral reframe without opening
+[PASS] low-context first turn enforces concise clarification posture
+[PASS] emotionalDecentering hints apply in info states
+[PASS] emotionalDecentering hints are blocked in discharge states
+[PASS] emotionalDecentering hints stay inactive without functional affiliation
+[PASS] explicit incomprehension keeps clarification-friendly exploration contract
+[PASS] narrowed processing window enforces single-axis exploration contract
+[PASS] emotionSequenceStage removed from posture decision output
+[PASS] secondary tension arbitration prefers higher confidence over semantic priority
+[PASS] secondary tension tie-break uses semantic priority on equal confidence
+[PASS] secondary tension suppresses redundancy with active base family
+[PASS] secondary tension is disabled during aggressive discharge
+[PASS] off-topic info without personal link enforces recenter policy and suppresses secondary tension
+[PASS] off-topic info with personal link enables micro bridge policy and suppresses secondary tension
+[PASS] dependency care pending activates need_human_support
+[PASS] election tie-break reason: discharge priority
+[PASS] election tie-break reason: app_features override
+[PASS] election tie-break reason: info stronger confidence
+[PASS] election tie-break reason: exploration stronger confidence
+[PASS] election tie-break reason: equal high favors info
+[PASS] election tie-break reason: equal medium favors info
+[PASS] election tie-break reason: equal low favors exploration
+[PASS] election tie-break reason: info only candidate
+[PASS] election tie-break reason: exploration only candidate
+
+[POSTURE] 35 passed, 0 failed.
+
+> acp-chat@1.0.0 analyzers:harness
+> node scripts/analyzers-harness.js
+
+[PASS] inactive analyzeMemoryUpdateNeeds is not exposed
+[PASS] inactive n1ResponseLLM is absent and crisis fallbacks remain exposed
+[PASS] parseExplorationRelanceResult: strict true boolean accepted
+[PASS] analyzeExplorationRelance: ambiguous signal uses only Mistral Small path
+[PASS] analyzeExplorationRelance: invalid Mistral output keeps fallback
+[PASS] analyzeExplorationRelance: deterministic guards bypass Mistral
+[PASS] parseClosureIntentResult: strict true boolean accepted
+[PASS] analyzeClosureIntent: ambiguous signal uses only Mistral Small path
+[PASS] analyzeClosureIntent: invalid Mistral output keeps safe fallback
+[PASS] analyzeClosureIntent: deterministic guards bypass Mistral
+[PASS] analyzeUserRegister: vouvoiement only -> formalAddress true
+[PASS] analyzeUserRegister: polite tutoiement keeps formalAddress false
+[PASS] analyzeUserRegister: polite request without direct address keeps tutoiement
+[PASS] analyzeUserRegister: quoted third-party vous keeps tutoiement
+[PASS] lexical suicide: "j'aimerais en finir" -> explicit personal marker true
+[PASS] lexical suicide: "ce serait mieux si je n'etais plus la" -> explicit personal marker true
+[PASS] lexical suicide: "ce boulot me tue" -> idiomatic marker true
+[PASS] lexical suicide: personal suicidality wording is not idiomatic
+[PASS] lexical crisis resolution: explicit test declaration -> true
+[PASS] lexical crisis resolution: acute intent statement -> false
+[PASS] proposeState: candidat discharge produit (C2 n'arbitre plus)
+[PASS] proposeState: pas de décharge ni info → candidat exploration high confidence
+[PASS] proposeState: info détectée → candidat info présent, contactAnalysis passé tel quel
+[PASS] analyzeRelationalAdjustmentNeed: neutral message -> deterministic skip, no LLM
+[PASS] analyzeRelationalAdjustmentNeed: explicit friction -> LLM triggered
+[PASS] analyzeRelationalAdjustmentNeed: explicit incomprehension -> LLM triggered
+[PASS] analyzeAllianceRupture: hard rupture wording -> rupture
+[PASS] analyzeInterpretationRejection: challenge wording triggers analyzer path
+[PASS] analyzeRelationalAdjustmentNeed: isContact=true -> guard short-circuit
+[PASS] analyzeDischargeState: message calme -> guard deterministe, pas de LLM
+[PASS] analyzeDischargeState: message avec signal positif (craqu) -> LLM declenche
+[PASS] analyzeDischargeState: explos -> LLM declenche, detectedState discharge_dysregulated
+[PASS] analyzeDischargeState: insulte + !! -> LLM declenche, aggressiveDischargeDirectedToBot
+[PASS] analyzeDischargeState: wasDischarge=true -> passe toujours au LLM meme sans signal
+[PASS] analyzeDischargeState: crise d'angoisse + respiration difficile -> candidate dysregulated
+[PASS] analyzeDischargeState: vertige + urgence explicite -> candidate dysregulated
+[PASS] analyzeExplorationSignal: questionnement explicite sur soi -> isExploration=true, high
+[PASS] analyzeExplorationSignal: description neutre -> isExploration=false
+[PASS] analyzeExplorationSignal: partage quotidien concret -> everydayConcreteShare=true
+[PASS] parseEmotionalDecenteringResult: strict boolean accepted
+[PASS] analyzeEmotionalDecentering: ambiguous signal uses Mistral Small path
+[PASS] analyzeEmotionalDecentering: invalid Mistral output keeps safe fallback
+[PASS] analyzeEmotionalDecentering: deterministic guards bypass Mistral
+[PASS] analyzeEmotionalDecentering: guard actif -> evidence match expose
+[PASS] proposeState: message exploratoire -> exploration candidate avec confiance LLM
+[PASS] proposeState: partage quotidien concret -> explorationAnalysis.everydayConcreteShare=true
+
+[ANALYZERS] 46 passed, 0 failed.
+
+> acp-chat@1.0.0 prompts:consistency
+> node scripts/prompt-consistency-harness.js
+
+[PASS] EXTRACT_ONGOING_MOVEMENTS exists
+[PASS] EXTRACT_ONGOING_MOVEMENTS enforces strict JSON output
+[PASS] EXTRACT_ONGOING_MOVEMENTS caps list to 2 items
+[PASS] embodied experience remains optional rather than privileged
+[PASS] dismissed exploration paths cannot return in softened form
+[PASS] phenomenological follow covers several lived-experience channels
+[PASS] body metaphors are not promoted to declared sensations
+[PASS] spontaneous sensations can be followed without imposed meaning
+[PASS] saturated relance window has no bodily exception
+[PASS] bodily questions remain open and non-presupposing
+[PASS] feedback about the bot is classified as intervention feedback
+[PASS] removed somatic policy is not referenced by active prompts
+[PASS] EXTRACT_STABLE_CONTEXT exists
+[PASS] EXTRACT_STABLE_CONTEXT enforces strict JSON output
+[PASS] CLEANUP_ANCIENT_DUPLICATES exists
+[PASS] CLEANUP_ANCIENT_DUPLICATES enforces deleteAncientIds contract
+[PASS] legacy UPDATE_MEMORY prompt stays absent
+[PASS] legacy ANALYZE_MEMORY_UPDATE_NEEDS prompt stays absent
+[PASS] removed dead memory prompts stay absent
+[PASS] UPDATE_INTERSESSION_MEMORY exists
+[PASS] UPDATE_INTERSESSION_MEMORY enforces strict JSON items output
+[PASS] UPDATE_INTERSESSION_MEMORY keeps all useful facts within 6000 characters
+[PASS] runtime intersession compaction prompt stays absent
+[PASS] NORMALIZE_INTERSESSION_MEMORY_TEMPLATE is canonical
+
+[PROMPT-CONSISTENCY] 24 passed, 0 failed.
+
+> acp-chat@1.0.0 contract-validator:harness
+> node scripts/contract-validator-harness.js
+
+[PASS] state tables are aligned
+[PASS] every conversation state maps to a known extended state
+[PASS] posture decision always returns known conversationState
+[PASS] confidenceSignal is float between 0 and 1
+[PASS] relancePolicy follows contract constraints
+[PASS] intervention feedback forbids every form of relance
+[PASS] forbidden relance gives the writer a contradiction-free contract
+[PASS] writer contract keeps relational repair non-solutionist
+[PASS] writer contract gates personal resources on the semantic decision
+[PASS] personal and professional support remain independently gated
+[PASS] rejected intervention cannot return as a softer assertion
+[PASS] situated impasse activates action collapse guard
+[PASS] narrowed processing adds soft attention guidance hint
+[PASS] info features prompt enforces Option B for bot nature and capacity doubts
+[PASS] writer contract forces formalAddress over hint examples
+[PASS] procedural temptation hint avoids golden canned formula
+
+[CONTRACT-VALIDATOR] 16 checks passed.
+
+> acp-chat@1.0.0 human-support:harness
+> node scripts/human-support-contract-harness.js
+
+[PASS] propose requires ai_support_insufficient
+[PASS] not_indicated rejects ai_support_insufficient
+[PASS] an incoherent pair falls back atomically
+[PASS] admin/chat shared normalization uses the coherent fallback reason
+[PASS] admin/chat shared normalization cannot expose an incoherent effective decision
+
+5 human-support contract checks passed.
+
+> acp-chat@1.0.0 flags:harness
+> node scripts/flags-harness.js
+
+[PASS] normalizeFlags: null → {}
+[PASS] normalizeFlags: undefined → {}
+[PASS] normalizeFlags: array → {}
+[PASS] normalizeFlags: string → {}
+[PASS] normalizeFlags: valid object passthrough
+[PASS] clamp: 0 → 0
+[PASS] clamp: 4 → 4
+[PASS] clamp: -1 → 0
+[PASS] clamp: 5 → 4
+[PASS] clamp: 2.5 (non-integer) → 0
+[PASS] clamp: null → 0
+[PASS] clamp: 'bad' → 0
+[PASS] clamp: '3' (numeric string) → 3 (Number() coerces)
+[PASS] compute: [] → 0
+[PASS] compute: [false,false,false,false] → 0
+[PASS] compute: [true,false,false,false] → 1
+[PASS] compute: [true,true,true,true] → 4
+[PASS] compute: [true,true,true,true,true] capped at 4
+[PASS] window: non-array → []
+[PASS] window: filters non-booleans
+[PASS] window: slices to last 4
+[PASS] window: [true,true] → [true,true]
+[PASS] dischargeState: null → {wasDischarge:false}
+[PASS] dischargeState: array → {wasDischarge:false}
+[PASS] dischargeState: {wasDischarge:true} → {wasDischarge:true}
+[PASS] dischargeState: {wasDischarge:'yes'} → {wasDischarge:false}
+[PASS] conversationState: 'exploration_open' → 'exploration_open'
+[PASS] conversationState: 'exploration_restrained' → 'exploration_restrained'
+[PASS] conversationState: 'info_pure' → 'info_pure'
+[PASS] conversationState: 'info_features' → 'info_features'
+[PASS] conversationState: 'info_psychoeducation' → 'info_psychoeducation'
+[PASS] conversationState: 'alliance_rupture' → 'alliance_rupture'
+[PASS] conversationState: 'closure' → 'closure'
+[PASS] conversationState: 'discharge_regulated' → 'discharge_regulated'
+[PASS] conversationState: 'discharge_dysregulated' → 'discharge_dysregulated'
+[PASS] conversationState: 'n1_crisis' → 'n1_crisis'
+[PASS] conversationState: 'n2_crisis' → 'n2_crisis'
+[PASS] conversationState: unknown → 'exploration_open' (safe default)
+[PASS] conversationState: null → 'exploration_open'
+[PASS] consecutiveTurns: 0 → 0
+[PASS] consecutiveTurns: 5 → 5
+[PASS] consecutiveTurns: -1 → 0
+[PASS] consecutiveTurns: 2.5 → 0 (non-integer)
+[PASS] consecutiveTurns: 'bad' → 0
+[PASS] allianceSignal: 'good' → 'good'
+[PASS] allianceSignal: 'fragile' → 'fragile'
+[PASS] allianceSignal: 'rupture' → 'rupture'
+[PASS] allianceSignal: null → 'good'
+[PASS] allianceSignal: unknown → 'good'
+[PASS] engagementLevel: 'active' → 'active'
+[PASS] engagementLevel: 'passive' → 'passive'
+[PASS] engagementLevel: 'withdrawn' → 'withdrawn'
+[PASS] engagementLevel: null → 'active'
+[PASS] engagementLevel: unknown → 'active'
+[PASS] attentionWindow: 'open' → 'open'
+[PASS] attentionWindow: 'narrowed' → 'narrowed'
+[PASS] attentionWindow: 'overloaded' → 'overloaded'
+[PASS] attentionWindow: null → 'open'
+[PASS] attentionWindow: unknown → 'open'
+[PASS] depRiskScore: 0 → 0
+[PASS] depRiskScore: 100 → 100
+[PASS] depRiskScore: -5 → 0
+[PASS] depRiskScore: 105 → 100
+[PASS] depRiskScore: 42.7 → 43 (rounds)
+[PASS] depRiskScore: NaN → 0
+[PASS] depRiskScore: 'bad' → 0
+[PASS] depRiskLevel: 'low' → 'low'
+[PASS] depRiskLevel: 'medium' → 'medium'
+[PASS] depRiskLevel: 'high' → 'high'
+[PASS] depRiskLevel: null → 'low'
+[PASS] depRiskLevel: unknown → 'low'
+[PASS] externalSupportMode: 'none' → 'none'
+[PASS] externalSupportMode: 'discovery_validation' → 'discovery_validation'
+[PASS] externalSupportMode: 'overreliance' → 'overreliance'
+[PASS] externalSupportMode: null → 'none'
+[PASS] externalSupportMode: unknown → 'none'
+[PASS] sessionFlags: null input → stable defaults
+[PASS] sessionFlags: explicit directivity preserved
+[PASS] sessionFlags: out-of-range directivity clamped
+[PASS] sessionFlags: explicit relance window with no explicit level → compute from window
+[PASS] sessionFlags: acuteCrisis non-boolean → false
+[PASS] sessionFlags: postCrisisSupportCarryTurn non-boolean → false
+[PASS] sessionFlags: postCrisisSupportCarryTurn true preserved
+[PASS] sessionFlags: unknown conversationState → 'exploration_open'
+[PASS] sessionFlags: allianceSignal preserved
+[PASS] sessionFlags: engagementLevel preserved
+[PASS] sessionFlags: dependencyRiskScore clamped
+[PASS] sessionFlags: extra props preserved
+[PASS] registerRelance: true pushes true onto window
+[PASS] registerRelance: false pushes false
+[PASS] registerRelance: directivity recomputed from window
+[PASS] registerRelance: window slides (length stays 4)
+[PASS] detectClosureIntent: 'au revoir' → true
+[PASS] detectClosureIntent: 'bonne nuit' → true
+[PASS] detectClosureIntent: 'bonsoir' → true
+[PASS] detectClosureIntent: 'c\'est bon pour aujourd\'hui' → true
+[PASS] detectClosureIntent: 'c\'est tout pour aujourd\'hui' → true
+[PASS] detectClosureIntent: 'on s\'arrête là' → true (accent normalisé)
+[PASS] detectClosureIntent: 'je vais m\'arrêter' → true (accent normalisé)
+[PASS] detectClosureIntent: 'c\'est fini pour aujourd\'hui' → true
+[PASS] detectClosureIntent: plain exploration message → false
+[PASS] detectClosureIntent: empty string → false
+[PASS] detectClosureIntent: null → false (safe)
+[PASS] affiliationWindow: non-array → []
+[PASS] affiliationWindow: filters non-numbers, no padding
+[PASS] affiliationWindow: slices to last 4
+[PASS] affiliationTurnScore: empty string → 0
+[PASS] affiliationTurnScore: 'exactement' → >= 0.5
+[PASS] affiliationTurnScore: 'Exact.' → >= 0.5
+[PASS] affiliationTurnScore: long message → > 0
+[PASS] affiliationFinalScore: empty window → 0
+[PASS] affiliationFinalScore: strong current join boosts final score
+[PASS] affiliationEstablished: [] → false
+[PASS] affiliationEstablished: [0.3, 0.3, 0.3, 0.3] → false (max < 0.5)
+[PASS] affiliationEstablished: [0, 0, 0, 0.5] → false (insufficient functional continuity)
+[PASS] affiliationEstablished: [0, 0, 0, 0.8] → true (functional threshold reached)
+
+[FLAGS] 116/116 checks passed.
+
+> acp-chat@1.0.0 conversation-state:harness
+> node scripts/conversation-state-harness.js
+
+[PASS] baseStateOf maps exploration/info/discharge correctly
+[PASS] resolveConversationState keeps discharge priority
+[PASS] post-discharge cooldown returns exploration (no contact state)
+[PASS] info states pass through
+[PASS] exploration expands by directivity
+[PASS] Phase B overrides exploration
+[PASS] dependency care pending overrides exploration and info
+[PASS] dependency care pending keeps support state through alliance rupture
+[PASS] isValidTransition allows closure -> need_human_support
+[PASS] isValidTransition supports need_human_support transitions
+[PASS] state tables contain no contact key
+
+[CONVERSATION-STATE] 11 passed, 0 failed.
+
+> acp-chat@1.0.0 runtime-schemas:harness
+> node scripts/runtime-schemas-harness.js
+
+[PASS] chatRequest accepts minimal valid payload
+[PASS] chatRequest rejects empty message
+[PASS] stateProposal requires candidates
+[PASS] stateProposal accepts enriched payload
+[PASS] postureDecision requires conversationState
+[PASS] postureDecision accepts minimal valid payload
+[PASS] debugMeta requires pipelineStages array
+[PASS] debugMeta accepts pipeline stage entries
+
+[RUNTIME-SCHEMAS] 8 passed, 0 failed.
+
+> acp-chat@1.0.0 debugmeta-unit:harness
+> node scripts/debugmeta-unit-harness.js
+
+
+-- buildTopChips
+  PASS  N2 urgence chip
+  PASS  N1 clarification chip
+  PASS  exploration_open EXPLORATION
+  PASS  exploration_open interpretation submode
+  PASS  exploration_open phenomenological_follow
+  PASS  info_pure
+  PASS  info_features
+  PASS  info_psychoeducation
+  PASS  discharge_regulated
+  PASS  discharge_dysregulated
+  PASS  N0 no state empty
+  PASS  N2 overrides state
+  PASS  interpretationRejection chip
+  PASS  isRecallRequest chip
+  PASS  needsSoberReadjustment chip
+  PASS  relationalAdjustmentActive chip
+  PASS  exploration_open + recall + sober
+  PASS  default call (no args)
+
+-- buildDirectivityText
+  PASS  non-exploration state empty string
+  PASS  null state empty string
+  PASS  exploration_open level 0 no calibration empty string
+  PASS  exploration_open level 2 no calibration directivity line only
+  PASS  exploration_open level 2 calibration 3
+  PASS  exploration_restrained calibration 1 shows retained level
+  PASS  default call empty string
+
+-- buildResponseDebugMeta base contract
+  PASS  default has field: topChips
+  PASS  default has field: suicideLevel
+  PASS  default has field: memory
+  PASS  default has field: directivityText
+  PASS  default has field: conversationState
+  PASS  default has field: consecutiveNonExplorationTurns
+  PASS  default has field: interpretationRejection
+  PASS  default has field: needsSoberReadjustment
+  PASS  default has field: relationalAdjustmentActive
+  PASS  default has field: pipelineStages
+  PASS  default has field: explorationCalibrationLevel
+  PASS  default has field: explorationSignal
+  PASS  default has field: memoryBeforeSanitization
+  PASS  default has field: memoryUpdateDecision
+  PASS  default has field: memoryUpdateReason
+  PASS  default has field: memoryUpdateSource
+  PASS  default has field: memoryUpdateStatus
+  PASS  default has field: memoryUpdateResultSource
+  PASS  default has field: intent
+  PASS  default has field: forbidden
+  PASS  default has field: confidenceSignal
+  PASS  default has field: formalAddress
+  PASS  default has field: relancePolicy
+  PASS  default has field: actionCollapseGuardActive
+  PASS  default has field: stateTransitionFrom
+  PASS  default has field: stateTransitionValid
+  PASS  default has field: stateTransitionRequested
+  PASS  default has field: allianceSignal
+  PASS  default has field: engagementLevel
+  PASS  default has field: attentionWindow
+  PASS  default has field: dependencyRiskScore
+  PASS  default has field: dependencyRiskLevel
+  PASS  default has field: externalSupportMode
+  PASS  default has field: closureIntent
+  PASS  default has field: lowContextOpeningGuardActive
+  PASS  default has field: offTopicInfoPolicy
+  PASS  default has field: secondaryTensionSuppressedForOffTopic
+  PASS  default has field: postDischargeTransitionActive
+  PASS  default has field: postCrisisSupportActive
+  PASS  default has field: postCrisisSupportCarryTurn
+  PASS  default has field: emergencySupportText
+  PASS  default has field: requestId
+  PASS  default has field: traceId
+  PASS  default values
+
+-- buildResponseDebugMeta N2 path
+  PASS  N2 topChips
+  PASS  N2 suicideLevel persisted
+  PASS  N2 conversationState
+  PASS  N2 intent null
+  PASS  N2 directivityText empty
+  PASS  N2 post crisis support inactive
+
+-- buildResponseDebugMeta exploration path
+  PASS  exploration topChips
+  PASS  exploration conversationState
+  PASS  exploration intent
+  PASS  exploration forbidden
+  PASS  exploration formalAddress
+  PASS  exploration relancePolicy
+  PASS  exploration actionCollapseGuardActive
+  PASS  exploration explorationSignal
+  PASS  exploration directivityText includes calibration
+  PASS  exploration pipelineStages length
+  PASS  exploration pipelineStages[0].stage
+  PASS  exploration pipelineStages[0].deltaMs
+  PASS  exploration requestId
+  PASS  exploration traceId
+  PASS  exploration explorationCalibrationLevel
+
+-- buildResponseDebugMeta info path
+  PASS  info topChips (info_features)
+  PASS  info conversationState
+  PASS  info directivityText empty
+  PASS  info explorationSignal null
+
+-- buildResponseDebugMeta discharge path
+  PASS  discharge topChips
+  PASS  discharge conversationState
+
+-- buildResponseDebugMeta recall path
+  PASS  recall isRecallRequest chip (with default exploration_open state)
+  PASS  recall intent null
+
+-- buildResponseDebugMeta pipelineStages filtering
+  PASS  pipelineStages length (nulls filtered)
+  PASS  pipelineStages[0]
+  PASS  pipelineStages[1] bad deltaMs null
+  PASS  pipelineStages[2]
+  PASS  empty pipelineStages
+  PASS  non-array pipelineStages []
+
+-- buildResponseDebugMeta normalizeMemory
+  PASS  normalizeMemory trims whitespace
+  PASS  normalizeMemory fallback
+
+-- buildResponseDebugMeta memoryBeforeSanitization
+  PASS  memoryBeforeSanitization present
+  PASS  memoryBeforeSanitization null when empty
+
+-- buildResponseDebugMeta Phase B flags
+  PASS  allianceSignal
+  PASS  engagementLevel
+  PASS  attentionWindow
+  PASS  dependencyRiskLevel
+  PASS  externalSupportMode
+  PASS  closureIntent
+  PASS  offTopicInfoPolicy surfaced
+  PASS  secondaryTensionSuppressedForOffTopic surfaced
+
+-- buildResponseDebugMeta post-crisis support
+  PASS  postCrisisSupportActive
+  PASS  postCrisisSupportCarryTurn
+  PASS  emergencySupportText
+
+-- buildResponseDebugMeta conversationState normalization
+  PASS  exploration_open state
+  PASS  unknown state defaults to exploration_open
+  PASS  null state defaults to exploration_open
+
+-- buildResponseDebugMeta stateTransition fields
+  PASS  stateTransitionFrom default null
+  PASS  stateTransitionValid default true
+  PASS  stateTransitionRequested default null
+  PASS  stateTransitionFrom string pass-through
+  PASS  stateTransitionValid true
+  PASS  stateTransitionRequested null
+  PASS  stateTransitionFrom on invalid
+  PASS  stateTransitionValid false
+  PASS  stateTransitionRequested on invalid
+  PASS  stateTransitionFrom non-string null
+  PASS  stateTransitionValid false coercion
+
+-- buildResponseDebugMeta secondaryTension normalization
+  PASS  secondaryTension family alias relationalRupture
+  PASS  secondaryTension confidence alias strong
+  PASS  secondaryTension unknown family -> null
+
+============================================================
+debugmeta-unit-harness: 136 passed, 0 failed
+
+> acp-chat@1.0.0 auth-conversation:harness
+> node scripts/authenticated-conversation-routes-harness.js
+
+[PASS] branch routes require server user auth
+[PASS] branch actor id comes only from req.userSession
+[PASS] feedback routes require auth and never create anonymous snapshots
+[PASS] conversation title routes require auth and ownership checks
+[PASS] chat request identity comes only from server session
+[PASS] frontend does not send generic userId for protected conversations
+
+6 authenticated conversation route checks passed.
+
+> acp-chat@1.0.0 chat-routing:harness
+> node scripts/chat-routing-harness.js
+
+[PASS] CHAT_PRIORITY_RULES has 5 entries
+[PASS] All rules have id, phase, priority
+[PASS] post_safety and post_suicide rules appear before post_recall in order
+[PASS] Priority ordering: imminent_major_harm before suicide_n2
+[PASS] Priority ordering: suicide_n2 < acute_crisis_followup < suicide_clarification
+[PASS] Priority ordering: recall_long_term < recall_none
+[PASS] CHAT_PRIORITY_MATCHERS has an entry for each rule id
+[PASS] imminent_major_harm: matches when harmRiskLevel=H2
+[PASS] post_safety: returns null when harmRiskLevel=H0
+[PASS] suicide_n2: matches when suicideLevel=N2
+[PASS] suicide_n2: N2 takes priority over N1 (first in table)
+[PASS] acute_crisis_followup: matches when acuteCrisis=true and crisisResolved!=true
+[PASS] acute_crisis_followup: does NOT match when crisisResolved=true
+[PASS] acute_crisis_followup: does NOT match when acuteCrisis=false
+[PASS] suicide_clarification: matches when suicideLevel=N1
+[PASS] suicide_clarification: matches when needsClarification=true regardless of level
+[PASS] post_suicide: returns null when N0 and no crisis
+[PASS] N2 takes priority over acuteCrisis (N2 is first in table)
+[PASS] acuteCrisis takes priority over N1 (acute_crisis_followup before suicide_clarification)
+[PASS] recall_long_term: matches when isLongTermMemoryRecall=true
+[PASS] recall_none: matches when isRecallAttempt=true and calledMemory=none
+[PASS] recall_none: does NOT match when calledMemory is not none
+[PASS] recall_long_term takes priority over recall_none when both would match
+[PASS] post_recall: returns null when no recall flags set
+[PASS] post_suicide rules do NOT fire in post_recall phase (N2)
+[PASS] post_safety rules do NOT fire in post_suicide phase
+[PASS] post_recall rules do NOT fire in post_suicide phase
+[PASS] returns null when phase is unknown
+[PASS] returns null when called with no arguments
+[PASS] handles null suicide without throwing
+[PASS] handles null recallRouting without throwing
+[PASS] returned rule has correct shape (id, phase, priority)
+
+Chat routing harness: 32 passed, 0 failed
+
+> acp-chat@1.0.0 branching:harness
+> node scripts/branching-harness.js
+
+[PASS] anchor found: uses DB slice and no fallback
+[PASS] anchor missing + seed provided: uses seed fallback
+[PASS] anchor missing + empty seed: returns anchor_not_found
+[PASS] no anchor + seed: accepted and anchor inferred from latest seed id
+[PASS] seed normalization filters invalid entries
+
+[BRANCHING] 5 passed, 0 failed.
+
+> acp-chat@1.0.0 transcript:harness
+> node scripts/transcript-regression-harness.js
+
+[TRANSCRIPT] Running transcript regression harness...
+  ✓ [history already ends with pending user message] expected length
+  ✓ [history already ends with pending user message] expected last role
+  ✓ [history already ends with pending user message] no consecutive user turns
+  ✓ [same content from assistant must not block user append] expected length
+  ✓ [same content from assistant must not block user append] expected last role
+  ✓ [same content from assistant must not block user append] no consecutive user turns
+  ✓ [whitespace normalization avoids duplicate user turn] expected length
+  ✓ [whitespace normalization avoids duplicate user turn] expected last role
+  ✓ [whitespace normalization avoids duplicate user turn] no consecutive user turns
+  ✓ [older duplicate does not prevent append] expected length
+  ✓ [older duplicate does not prevent append] expected last role
+  ✓ [older duplicate does not prevent append] no consecutive user turns
+
+[TRANSCRIPT] 12/12 passed
+
+> acp-chat@1.0.0 crisis-routing:harness
+> node scripts/crisis-routing-harness.js
+
+
+Crisis routing harness
+
+  ✓ N2 → route n2
+  ✓ N2 + acuteCrisis already true → route n2 (N2 priorité absolue)
+  ✓ acuteCrisis=true + crisisResolved=false → route acute_followup
+  ✓ acuteCrisis=true + N0 + crisisResolved=false → route acute_followup
+  ✓ acuteCrisis=true + crisisResolved=true → route null (crise résolue)
+  ✓ N1 + acuteCrisis=false → route n1_clarification
+  ✓ N0 + needsClarification=true → route n1_clarification
+  ✓ N0 + pas de crise + acuteCrisis=false → route null
+  ✓ N0 + crisisResolved=true + acuteCrisis=false → route null
+  ✓ N2 → ruleId = suicide_n2
+  ✓ N2 → priority = 10
+  ✓ N0 normal → ruleId = null
+  ✓ N0 normal → priority = null
+
+13 test(s) — 13 passé(s), 0 échoué(s)
+
+
+> acp-chat@1.0.0 llm-messages:harness
+> node scripts/llm-messages-harness.js
+
+  ✓ empty history → 1 user turn
+  ✓ empty history → role is user
+  ✓ empty history → correct content
+  ✓ normal history → correct length
+  ✓ normal history → last role is user
+  ✓ normal history → last content is new message
+  ✓ normal history → no consecutive user turns
+  ✓ history ends with same user msg → no duplicate added
+  ✓ history ends with same user msg → no consecutive user turns
+  ✓ history ends with same user msg → last content unchanged
+  ✓ whitespace normalization → no duplicate
+  ✓ same content but different role → user turn added normally
+  ✓ same content but different role → last role is user
+  ✓ null history → 1 user turn
+  ✓ undefined history → 1 user turn
+  ✓ empty message → 1 user turn with empty content
+  ✓ current msg matches older entry but not last → still appended
+  ✓ current msg matches older entry → no consecutive user turns
+  ✓ extra props stripped from history turns
+
+llm-messages-harness: 19/19 passed
+
+> acp-chat@1.0.0 conversation-data:harness
+> node scripts/conversation-data-harness.js
+
+  ✓ isOpeningGreetingMessage: session greeting → true
+  ✓ isOpeningGreetingMessage: conversation greeting → true
+  ✓ isOpeningGreetingMessage: formal session greeting → true
+  ✓ isOpeningGreetingMessage: normal message → false
+  ✓ isOpeningGreetingMessage: empty string → false
+  ✓ isOpeningGreetingMessage: null → false
+  ✓ isOpeningGreetingMessage: greeting with extra whitespace → true (content is trimmed)
+  ✓ defaultMemory: returns string
+  ✓ defaultMemory: contains 'Contexte stable'
+  ✓ defaultMemory: contains 'Mouvements en cours'
+  ✓ defaultMemory: does not contain 'Signaux du tour precedent'
+  ✓ normalizeStoredFlags: valid object → returned as-is
+  ✓ normalizeStoredFlags: null → {}
+  ✓ normalizeStoredFlags: array → {}
+  ✓ normalizeStoredFlags: string → {}
+  ✓ normalizeStoredStateSnapshot: null → null
+  ✓ normalizeStoredStateSnapshot: array → null
+  ✓ normalizeStoredStateSnapshot: valid → memory preserved
+  ✓ normalizeStoredStateSnapshot: valid → flags preserved
+  ✓ normalizeStoredStateSnapshot: empty memory → defaultMemory
+  ✓ normalizeStoredMessages: array → same array
+  ✓ normalizeStoredMessages: null → []
+  ✓ normalizeStoredMessages: string → []
+  ✓ buildSafeConversationData: undefined → messages is []
+  ✓ buildSafeConversationData: undefined → memory is defaultMemory
+  ✓ buildSafeConversationData: undefined → flags is {}
+  ✓ buildSafeConversationData: undefined → updatedAt is number
+  ✓ buildSafeConversationData: undefined → isPrivate false
+  ✓ buildSafeConversationData: custom memory preserved
+  ✓ buildSafeConversationData: isPrivate true
+  ✓ buildSafeConversationData: updatedAt preserved
+  ✓ countMeaningful: greeting not counted
+  ✓ countMeaningful: empty array → 0
+  ✓ countMeaningful: null → 0
+  ✓ countMeaningful: all greetings → 0
+  ✓ selectPreferred: richer primary wins over newer empty fallback
+  ✓ selectPreferred: richer fallback beats emptier primary
+  ✓ selectPreferred: equal count, newer fallback wins
+  ✓ selectPreferred: equal everything → primary returned
+  ✓ selectPreferred: both null → returns safe object
+
+conversation-data-harness: 40/40 passed
+
+> acp-chat@1.0.0 ui-layout:verify
+> node scripts/ui-layout-verify.js
+
+[ui-layout-verify] Checking welcome screen layout constraints...
+[ui-layout-verify] All layout constraints passed.

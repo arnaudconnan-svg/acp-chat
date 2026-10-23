@@ -1,0 +1,14 @@
+{
+  "argv": [
+    "git",
+    "rev-list",
+    "--left-right",
+    "--count",
+    "origin/main...origin/beta"
+  ],
+  "start": "2026-10-23T22:39:09.715745+00:00",
+  "end": "2026-10-23T22:39:09.720901+00:00",
+  "code": 0,
+  "stdout_sha256": "1515d3f2a27bf0cc3c7e326f43c83ac01c53642090d615f2255da6add9f5439f",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

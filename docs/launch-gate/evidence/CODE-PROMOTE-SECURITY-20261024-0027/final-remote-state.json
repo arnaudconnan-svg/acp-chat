@@ -1,0 +1,14 @@
+{
+  "argv": [
+    "git",
+    "ls-remote",
+    "origin",
+    "refs/heads/beta",
+    "refs/heads/main"
+  ],
+  "start": "2026-10-23T22:54:45.634470+00:00",
+  "end": "2026-10-23T22:54:46.202931+00:00",
+  "code": 0,
+  "stdout_sha256": "3fccaa76b000de41af98c1fbc2f5d345760ed14804af651924215d84c504e38d",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

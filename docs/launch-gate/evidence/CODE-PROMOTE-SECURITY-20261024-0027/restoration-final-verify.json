@@ -1,0 +1,18 @@
+{
+  "argv": [
+    "env",
+    "-i",
+    "PATH=/workspace/work/promote/node/package/bin:/usr/bin:/bin",
+    "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+    "npm",
+    "--prefix",
+    "/workspace/work/promote/rollback",
+    "run",
+    "verify"
+  ],
+  "start": "2026-10-23T22:50:55.683425+00:00",
+  "end": "2026-10-23T22:53:01.145757+00:00",
+  "code": 0,
+  "stdout_sha256": "53eb94f22081609660257132bdecb19245aff08f82a151ab12d77d576ea66c5a",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

@@ -1,0 +1,38 @@
+c665083:Merge pull request #40 from arnaudconnan-svg/code-brace-20261023-1450
+9fcf7d2:docs: capture bounded brace-expansion validation and tested commit receipt
+9067356:fix: pin compatible brace-expansion 1.1.21 and bound regressions
+737b941:Merge pull request #39 from arnaudconnan-svg/code-ux-admin-20261021-1500
+f2587ef:docs(evidence): record synthetic admin journeys and exact tested code
+e7b03af:fix(admin): persist renewed reason after session revalidation
+4a9751c:fix(admin): refresh identity safely and retain bounded audit reason
+b745f01:Merge pull request #38 from arnaudconnan-svg/code-jsyaml-20261021-0931
+485c6c5:docs(evidence): record js-yaml validation tied to exact tested code
+2c87a1d:test(js-yaml): assert exact default merge sequence rejection
+9c29b43:fix(deps): resolve js-yaml merge complexity advisories with 4.3.2
+e23bc20:Merge pull request #37 from arnaudconnan-svg/code-grpc-20261020-2055
+70d497e:docs(evidence): bind grpc-js security validation to tested commit
+dfc8ac9:fix(deps): resolve grpc-js security advisories with 1.14.5
+30e3e74:Merge pull request #36 from arnaudconnan-svg/code-formdata-20261020-1605
+b7a2f83:docs(evidence): record exact form-data code validation and CRLF regression
+285b667:fix(deps): resolve transitive form-data CRLF injection in 2.5.6
+d8434f1:Merge pull request #35 from arnaudconnan-svg/code-busboy-20261020-1526
+c6d7dc8:docs(evidence): bind Busboy validation to tested code commit
+cf1ff94:fix(deps): resolve Admin Busboy to compatible 3.2.3
+ae54db7:Merge pull request #34 from arnaudconnan-svg/fix/websocket-driver-20261020
+fd9e532:docs: attest both bundled driver fixes and retained Admin metadata
+bd689f9:docs: persist WebSocket and bundled RTDB qualification evidence
+1a8fd67:fix: patch WebSocket driver and bundled Firebase RTDB transport
+fb7951f:Merge pull request #33 from arnaudconnan-svg/fix/express-chain-20261020
+515b612:docs: persist Express chain metadata and guarded validation evidence
+9a6b7bd:fix: resolve corrected Express middleware chain with HTTP compatibility tests
+1a6ad2f:Merge PR #32: update Nodemailer to 10.1.7
+7051065:docs: persist Nodemailer validation evidence and clarify beta review gate
+ee9ec31:fix: upgrade Nodemailer to 10.1.7 with guarded mail compatibility tests
+1ccaeeb:Merge PR #31: M3 G08/G20 emergency resources review
+8390037:docs(ui): preserve raw return diff in lossless JSON
+626376e:docs(ui): record bounded M3 visual smoke and return-link evidence
+6296947:fix(ui): keep emergency return navigation inside the app
+7e0b47a:docs(safety): checkpoint M3 evidence and open clinical findings for Work
+ab19138:fix(safety): require reviewed emergency resources and characterize crisis contracts
+8b1475b:Merge GOV-001 instruction harmonization
+354b4f3:docs: harmonize GOV-001 permanent operating mandate

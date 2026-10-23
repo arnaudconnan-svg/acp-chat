@@ -1,0 +1,16 @@
+{
+  "argv": [
+    "env",
+    "-i",
+    "PATH=/workspace/work/promote/node/package/bin:/usr/bin:/bin",
+    "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+    "node",
+    "-e",
+    "const {z}=require(\"zod\");let n=0;const a=z.array(z.preprocess(v=>{n++;return v},z.string())).max(4).safeParse(Array(64).fill(0));console.log(JSON.stringify({success:a.success,issues:a.error.issues.length,visited:n}));require(\"assert/strict\").equal(n,0)"
+  ],
+  "start": "2026-10-23T22:50:31.939900+00:00",
+  "end": "2026-10-23T22:50:32.067529+00:00",
+  "code": 0,
+  "stdout_sha256": "5aa7d9e612796468583cd9b87ddabf6fa49d0974fa7c0300b29e8277eb28b04f",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}
