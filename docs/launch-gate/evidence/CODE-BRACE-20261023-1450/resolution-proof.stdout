@@ -1,0 +1,121 @@
+{
+  "compatibleSafe": [
+    "1.1.21"
+  ],
+  "advisoryRanges": [
+    {
+      "url": "https://github.com/advisories/GHSA-3jxr-9vmj-r5cp",
+      "range": "<1.1.16"
+    },
+    {
+      "url": "https://github.com/advisories/GHSA-mh99-v99m-4gvg",
+      "range": "<1.1.17"
+    },
+    {
+      "url": "https://github.com/advisories/GHSA-rgw5-rvv9-x895",
+      "range": "<1.1.18"
+    },
+    {
+      "url": "https://github.com/advisories/GHSA-q2hr-2g5m-vwhr",
+      "range": "<1.1.21"
+    },
+    {
+      "url": "https://github.com/advisories/GHSA-qhr7-859c-m2p7",
+      "range": "<1.1.20"
+    },
+    {
+      "url": "https://github.com/advisories/GHSA-6j4f-fj2g-mc7p",
+      "range": "<1.1.19"
+    }
+  ],
+  "physicalEntry": "/workspace/acp-chat/node_modules/brace-expansion/index.js",
+  "physicalSha256": "c53b4fab560940391af6889ac8fafe67629ec645ca536dd7f10d266713e969bf",
+  "residualsExactlyUnchanged": true,
+  "sources": [
+    {
+      "version": "1.1.14",
+      "file": "/workspace/work/brace/v14/package/index.js",
+      "sha256": "bbfaa8962b73eaf482259bf321a9cd48eafd823126146f0696bc1b375f2369e7",
+      "integrityVerified": true,
+      "gitHeadReported": "10c05fcf3699b1a29ef5e611c011af3d3c97e6e3",
+      "signaturesIndependentlyVerified": false,
+      "sigstoreVerified": false,
+      "functions": [
+        {
+          "name": "parseCommaParts",
+          "line": 38
+        },
+        {
+          "name": "expandTop",
+          "line": 65
+        },
+        {
+          "name": "expand",
+          "line": 103
+        }
+      ]
+    },
+    {
+      "version": "1.1.17",
+      "file": "/workspace/work/brace/v17/package/index.js",
+      "sha256": "60132a2f37fc0473ab5ea69f82485e39279a30374b324a570299c80463c46301",
+      "integrityVerified": true,
+      "gitHeadReported": "5c57cc2519dfb067e188b7cb0733fffbd02946bf",
+      "signaturesIndependentlyVerified": false,
+      "sigstoreVerified": false,
+      "functions": [
+        {
+          "name": "parseCommaParts",
+          "line": 52
+        },
+        {
+          "name": "expandTop",
+          "line": 79
+        },
+        {
+          "name": "combine",
+          "line": 127
+        },
+        {
+          "name": "expandSequence",
+          "line": 158
+        },
+        {
+          "name": "expand",
+          "line": 213
+        }
+      ]
+    },
+    {
+      "version": "1.1.21",
+      "file": "/workspace/work/brace/fixed/package/index.js",
+      "sha256": "c53b4fab560940391af6889ac8fafe67629ec645ca536dd7f10d266713e969bf",
+      "integrityVerified": true,
+      "gitHeadReported": "8e81e187b6e9c6c723d16c042657c00acefc2483",
+      "signaturesIndependentlyVerified": false,
+      "sigstoreVerified": false,
+      "functions": [
+        {
+          "name": "parseCommaParts",
+          "line": 79
+        },
+        {
+          "name": "expandTop",
+          "line": 119
+        },
+        {
+          "name": "combine",
+          "line": 169
+        },
+        {
+          "name": "expandSequence",
+          "line": 200
+        },
+        {
+          "name": "expand",
+          "line": 259
+        }
+      ]
+    }
+  ]
+}

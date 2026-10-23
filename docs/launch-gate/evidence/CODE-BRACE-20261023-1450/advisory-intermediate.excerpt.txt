@@ -1,0 +1,14 @@
+markdown-body comment-body p-0" >
+    Summary
+The maxLength mitigation added in 5.0.8 for GHSA-mh99-v99m-4gvg / CVE-2026-14257 is incomplete. It bounds the accumulator where results are combined, but not the intermediate arrays that feed it. A ~25 KB input still crashes the Node process with an uncatchable out-of-memory error, so try/catch around expand() does not help.
+A second, related path in the same function lets a ~400 KB input block the event loop for over two minutes without ever exceeding the memory bound.
+Details
+maxLength was enforced in combine(), the single place output grows. Two arrays are built before combine() runs, and neither was bounded.
+1. Comma alternatives accumulate without a running total (memory exhaustion)
+Each alternative in {a,b,c,...} is expanded by its own recursive expand_() call, so each receives a full, independent maxLength allowance. The results were then concatenated into a single values array with no cumulative limit:
+values = []
+for (let j = 0; j < n.length; j++) {
+  values.push.apply(values, expand_(n[j], max, maxLength, false))
+}
+
+acc = combine(acc, pre, values, max, maxLength, ...)

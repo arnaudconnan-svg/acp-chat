@@ -1,0 +1,17 @@
+{
+  "argv": [
+    "npm",
+    "--cache",
+    "/workspace/work/npm-cache",
+    "pack",
+    "brace-expansion@1.1.21",
+    "--ignore-scripts",
+    "--pack-destination",
+    "/workspace/work/brace"
+  ],
+  "start": "2026-10-23T13:11:30.058567+00:00",
+  "end": "2026-10-23T13:11:30.583531+00:00",
+  "code": 0,
+  "stdout_sha256": "29d80ed7b64d95a3054aaa012adfd8c4f3140bd47dc2f693676b05b5cad88046",
+  "stderr_sha256": "e703ce88b07aefde4492075244f0121ee9159244e14781ed14c9af5eda9f159c"
+}

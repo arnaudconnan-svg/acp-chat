@@ -1,0 +1,13 @@
+markdown-body comment-body p-0" >
+    Summary
+brace-expansion's expand() exhibits exponential-time - O(2ⁿ) - behavior in the number of consecutive non-expanding {} groups. A short, all-ASCII input (~90 bytes/30 groups) blocks the calling thread for minutes; a slightly longer input hangs it effectively indefinitely. Because the dominant consumers run on Node's single-threaded event loop, one small input can fully stall a worker/process.
+In expand_, post is computed unconditionally at the top of the function, before the early-return branches that don't use it:
+const post = m.post.length ? expand_(m.post, max, false) : [''];   // always recurses
+  ...
+if (!isSequence && !isOptions) {
+  if (m.post.match(/,(?!,).*\}/)) {
+    str = m.pre + '{' + m.body + escClose + m.post;
+    return expand_(str, max, true); // restart — `post` discarded
+  }
+  return [str];
+}

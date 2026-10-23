@@ -1,0 +1,190 @@
+{
+  "code_commit": "90673565e115939611926646cad56851d5bcd1d2",
+  "base_commit": "737b94156f23eadca27c5366dcf6c82853079bd0",
+  "node_effective_tests": "v24.19.0",
+  "node_observation": "final-brace.stdout (inside env-i/M0 process)",
+  "checked_utc": "2026-10-23T13:17:18.645164+00:00",
+  "files": [
+    {
+      "file": "package.json",
+      "tested_worktree_sha256": "6f9959fc528b824f5cc4516bbc64f26391501e1c01c52d7817dcb6e3b2b49074",
+      "git_show_sha256": "6f9959fc528b824f5cc4516bbc64f26391501e1c01c52d7817dcb6e3b2b49074",
+      "equal": true
+    },
+    {
+      "file": "package-lock.json",
+      "tested_worktree_sha256": "f23ec8ec8e5cc2ccd1d1f3cecee8f64a88bf84ca969b61cefbb1a7483d56e519",
+      "git_show_sha256": "f23ec8ec8e5cc2ccd1d1f3cecee8f64a88bf84ca969b61cefbb1a7483d56e519",
+      "equal": true
+    },
+    {
+      "file": "scripts/synthetic/guard.cjs",
+      "tested_worktree_sha256": "4b0b744468fc6b95ff0f91cd2126cf05fa10560e9188efc2d0e9e351dd258a89",
+      "git_show_sha256": "4b0b744468fc6b95ff0f91cd2126cf05fa10560e9188efc2d0e9e351dd258a89",
+      "equal": true
+    },
+    {
+      "file": "scripts/synthetic/brace-harness.cjs",
+      "tested_worktree_sha256": "79fa3978e362c38017454f7887ce7ebc80fc7568693d187eec2c8a09286dda3b",
+      "git_show_sha256": "79fa3978e362c38017454f7887ce7ebc80fc7568693d187eec2c8a09286dda3b",
+      "equal": true
+    }
+  ],
+  "changed_lock_entries": [
+    "node_modules/brace-expansion"
+  ],
+  "all_other_lock_entries_unchanged": true,
+  "guard_unchanged": true,
+  "commands": [
+    {
+      "label": "npm-ci",
+      "argv": [
+        "npm",
+        "--cache",
+        "/workspace/work/npm-cache",
+        "ci",
+        "--ignore-scripts",
+        "--no-audit",
+        "--no-fund"
+      ],
+      "start": "2026-10-23T13:14:44.997258+00:00",
+      "end": "2026-10-23T13:14:56.771583+00:00",
+      "code": 0,
+      "stdout_sha256": "befa14197d8e6c8125031ba00082a94ec74eb2a408fedc241cdbffdc08754d1f",
+      "stderr_sha256": "c403d3e2287f76231c644735926e4e7b5ac01f0a1ac91dc2c0794f9a61d7a08c"
+    },
+    {
+      "label": "final-brace",
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/usr/bin:/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin",
+        "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+        "npm",
+        "run",
+        "brace:harness"
+      ],
+      "start": "2026-10-23T13:14:57.090511+00:00",
+      "end": "2026-10-23T13:14:57.503102+00:00",
+      "code": 0,
+      "stdout_sha256": "83fe08481fd91b56cc12b598ed346557f838c11667ba7ca1272529835aa483ce",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "final-syntax",
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/usr/bin:/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin",
+        "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+        "node",
+        "--check",
+        "scripts/synthetic/brace-harness.cjs"
+      ],
+      "start": "2026-10-23T13:14:57.554935+00:00",
+      "end": "2026-10-23T13:14:57.615192+00:00",
+      "code": 0,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "final-isolation",
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/usr/bin:/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin",
+        "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+        "npm",
+        "run",
+        "isolation:harness"
+      ],
+      "start": "2026-10-23T13:14:57.659559+00:00",
+      "end": "2026-10-23T13:14:58.354996+00:00",
+      "code": 0,
+      "stdout_sha256": "d568338bfea60f52a5646276704dbfe81d2e82449150ad443b5696ebd48716d9",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "final-lint",
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/usr/bin:/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin",
+        "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+        "node",
+        "node_modules/eslint/bin/eslint.js",
+        "scripts/synthetic/brace-harness.cjs"
+      ],
+      "start": "2026-10-23T13:15:39.541412+00:00",
+      "end": "2026-10-23T13:15:40.407380+00:00",
+      "code": 0,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "final-verify",
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/usr/bin:/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin",
+        "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+        "npm",
+        "run",
+        "verify"
+      ],
+      "start": "2026-10-23T13:14:58.409093+00:00",
+      "end": "2026-10-23T13:15:35.414065+00:00",
+      "code": 0,
+      "stdout_sha256": "e565df5baa5ffba9b5bb91252a7a796739fe1aafd1bf4d4bddeef52ec1ec1f3f",
+      "stderr_sha256": "afc2a06758d6cd2bdfde38f00b595039d3c6c74ffcd290d64af549d0907bc06f"
+    },
+    {
+      "label": "audit-before",
+      "argv": [
+        "npm",
+        "--cache",
+        "/workspace/work/npm-cache",
+        "audit",
+        "--json",
+        "--ignore-scripts"
+      ],
+      "start": "2026-10-23T13:11:20.123895+00:00",
+      "end": "2026-10-23T13:11:21.872004+00:00",
+      "code": 1,
+      "stdout_sha256": "e3c05cfc03f70820de5a66599e7f3af1b4c84afc8b9fe2fdbd6d2e6827e3dc42",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "audit-after",
+      "argv": [
+        "npm",
+        "--cache",
+        "/workspace/work/npm-cache",
+        "audit",
+        "--json",
+        "--ignore-scripts"
+      ],
+      "start": "2026-10-23T13:15:11.910144+00:00",
+      "end": "2026-10-23T13:15:12.954306+00:00",
+      "code": 1,
+      "stdout_sha256": "466cf44aac305d42fe8dca49e5b5393277e8d53c966fb00a7be970fde39d196b",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "resolution-proof",
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/usr/bin:/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin",
+        "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+        "node",
+        "docs/launch-gate/evidence/CODE-BRACE-20261023-1450/check-resolution.cjs"
+      ],
+      "start": "2026-10-23T13:16:43.775774+00:00",
+      "end": "2026-10-23T13:16:43.919314+00:00",
+      "code": 0,
+      "stdout_sha256": "df170d7f4674be8c8d3fad83f3b7c210c4c2531820238d4e4e838c216736c700",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ]
+}

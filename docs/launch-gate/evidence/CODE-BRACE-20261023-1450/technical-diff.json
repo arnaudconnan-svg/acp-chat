@@ -1,0 +1,17 @@
+{
+  "argv": [
+    "git",
+    "diff",
+    "737b94156f23eadca27c5366dcf6c82853079bd0",
+    "HEAD",
+    "--",
+    "package.json",
+    "package-lock.json",
+    "scripts/synthetic/brace-harness.cjs"
+  ],
+  "start": "2026-10-23T13:17:18.714077+00:00",
+  "end": "2026-10-23T13:17:18.721652+00:00",
+  "code": 0,
+  "stdout_sha256": "2e5f8809b8af9caa38492ef46e77639aa8906c62fe2e9565bf4283273d286902",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

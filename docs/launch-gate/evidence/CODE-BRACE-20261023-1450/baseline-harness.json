@@ -1,0 +1,17 @@
+{
+  "argv": [
+    "env",
+    "-i",
+    "PATH=/usr/bin:/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin",
+    "node",
+    "--require",
+    "./scripts/synthetic/guard.cjs",
+    "scripts/synthetic/brace-harness.cjs",
+    "--baseline"
+  ],
+  "start": "2026-10-23T13:14:23.653786+00:00",
+  "end": "2026-10-23T13:14:23.733779+00:00",
+  "code": 1,
+  "stdout_sha256": "a3074808ad2e6b74a938cefffe93aa9d25f5434a33718e8c39debf52f73672d2",
+  "stderr_sha256": "789f655db580abe17d2ae3ac39ae7aaea07f4423af6cc48a2b6ddb8940134851"
+}

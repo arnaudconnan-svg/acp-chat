@@ -1,0 +1,15 @@
+{
+  "argv": [
+    "curl",
+    "--fail",
+    "--silent",
+    "--show-error",
+    "--location",
+    "https://github.com/advisories/GHSA-rgw5-rvv9-x895"
+  ],
+  "start": "2026-10-23T13:12:35.960495+00:00",
+  "end": "2026-10-23T13:12:36.797095+00:00",
+  "code": 0,
+  "stdout_sha256": "6b86238da21f4605ef6632f60e63804ac46ab5aadb6322a3382e5516644eefe2",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

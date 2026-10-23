@@ -1,0 +1,104 @@
+{
+  "node": "v24.19.0",
+  "eslint": "3.3.5",
+  "parent": {
+    "entry": "/workspace/acp-chat/node_modules/minimatch/minimatch.js",
+    "version": "3.1.5",
+    "range": "^1.1.7"
+  },
+  "physical": {
+    "entry": "/workspace/acp-chat/node_modules/brace-expansion/index.js",
+    "version": "1.1.14",
+    "sha256": "bbfaa8962b73eaf482259bf321a9cd48eafd823126146f0696bc1b375f2369e7"
+  },
+  "normalCases": "passed",
+  "observations": [
+    {
+      "advisory": "GHSA-3jxr-9vmj-r5cp",
+      "name": "consecutive non-expanding groups",
+      "inputBytes": 49,
+      "options": {},
+      "observed": {
+        "balancedCalls": 1,
+        "commaDepth": 0,
+        "results": 1,
+        "characters": 49
+      },
+      "passed": true
+    },
+    {
+      "advisory": "GHSA-mh99-v99m-4gvg",
+      "name": "total output character budget",
+      "inputBytes": 55,
+      "options": {
+        "maxLength": 32
+      },
+      "observed": {
+        "balancedCalls": 20,
+        "commaDepth": 1,
+        "results": 32,
+        "characters": 640
+      },
+      "passed": false
+    },
+    {
+      "advisory": "GHSA-rgw5-rvv9-x895",
+      "name": "intermediate comma alternatives budget",
+      "inputBytes": 401,
+      "options": {
+        "max": 100,
+        "maxLength": 16
+      },
+      "observed": {
+        "balancedCalls": 82,
+        "commaDepth": 1,
+        "results": 80,
+        "characters": 320
+      },
+      "passed": false
+    },
+    {
+      "advisory": "GHSA-6j4f-fj2g-mc7p",
+      "name": "iterative comma parser",
+      "inputBytes": 99,
+      "options": {},
+      "observed": {
+        "balancedCalls": 51,
+        "commaDepth": 25,
+        "results": 25,
+        "characters": 73
+      },
+      "passed": false
+    },
+    {
+      "advisory": "GHSA-qhr7-859c-m2p7",
+      "name": "nested group depth budget",
+      "inputBytes": 27,
+      "options": {
+        "maxDepth": 2
+      },
+      "observed": {
+        "balancedCalls": 48,
+        "commaDepth": 2,
+        "results": 2,
+        "characters": 46
+      },
+      "passed": false
+    },
+    {
+      "advisory": "GHSA-q2hr-2g5m-vwhr",
+      "name": "rewrite restart budget",
+      "inputBytes": 18,
+      "options": {
+        "maxRewrites": 2
+      },
+      "observed": {
+        "balancedCalls": 17,
+        "commaDepth": 1,
+        "results": 2,
+        "characters": 15
+      },
+      "passed": false
+    }
+  ]
+}

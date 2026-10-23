@@ -1,0 +1,37 @@
+'use strict';
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const crypto = require('node:crypto');
+const console = require('node:console');
+const semver = require('semver');
+const { createRequire } = require('node:module');
+const evidence = __dirname;
+const before = JSON.parse(fs.readFileSync(evidence + '/audit-before.stdout'));
+const after = JSON.parse(fs.readFileSync(evidence + '/audit-after.stdout'));
+assert.equal(before.auditReportVersion, 2);
+assert.equal(after.auditReportVersion, 2);
+assert.equal(before.vulnerabilities['brace-expansion'].via.length, 6);
+assert(!after.vulnerabilities['brace-expansion']);
+assert.deepEqual(Object.keys(after.vulnerabilities).sort(), ['fast-copy', 'protobufjs']);
+for (const name of ['fast-copy', 'protobufjs']) assert.deepEqual(after.vulnerabilities[name], before.vulnerabilities[name]);
+const ranges = before.vulnerabilities['brace-expansion'].via.map(a => a.range);
+const versions = JSON.parse(fs.readFileSync(evidence + '/published-versions.stdout'));
+const compatibleSafe = versions.filter(v => semver.satisfies(v, '^1.1.7') && ranges.every(r => !semver.satisfies(v, r))).sort(semver.compare);
+assert.equal(compatibleSafe[0], '1.1.21');
+const parentRequire = createRequire(require.resolve('@eslint/eslintrc'));
+const minimatchRequire = createRequire(parentRequire.resolve('minimatch'));
+const installed = minimatchRequire.resolve('brace-expansion');
+const sha256 = b => crypto.createHash('sha256').update(b).digest('hex');
+const sources = [];
+for (const [metadata, version, directory] of [['baseline-metadata', '1.1.14', 'v14'], ['comparison-metadata', '1.1.17', 'v17'], ['metadata', '1.1.21', 'fixed']]) {
+  const m = JSON.parse(fs.readFileSync(evidence + '/' + metadata + '.stdout'));
+  const tar = fs.readFileSync('/workspace/work/brace/brace-expansion-' + version + '.tgz');
+  assert.equal('sha512-' + crypto.createHash('sha512').update(tar).digest('base64'), m.dist.integrity);
+  assert.equal(crypto.createHash('sha1').update(tar).digest('hex'), m.dist.shasum);
+  const file = '/workspace/work/brace/' + directory + '/package/index.js';
+  const source = fs.readFileSync(file);
+  if (version === '1.1.21') assert.equal(sha256(source), sha256(fs.readFileSync(installed)));
+  const lines = source.toString().split('\n');
+  sources.push({ version, file, sha256: sha256(source), integrityVerified: true, gitHeadReported: m.gitHead, signaturesIndependentlyVerified: false, sigstoreVerified: false, functions: ['parseCommaParts','expandTop','combine','expandSequence','expand'].map(name => ({ name, line: lines.findIndex(l => l.startsWith('function ' + name + '(')) + 1 })).filter(f => f.line) });
+}
+console.log(JSON.stringify({ compatibleSafe, advisoryRanges: before.vulnerabilities['brace-expansion'].via.map(a=>({url:a.url,range:a.range})), physicalEntry: installed, physicalSha256: sha256(fs.readFileSync(installed)), residualsExactlyUnchanged: true, sources }, null, 2));
