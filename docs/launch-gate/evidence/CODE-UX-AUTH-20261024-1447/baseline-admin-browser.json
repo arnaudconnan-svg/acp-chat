@@ -1,0 +1,15 @@
+{
+  "argv": [
+    "env",
+    "-i",
+    "PATH=/workspace/acp-chat/work/ux-auth/package/bin:/usr/bin:/bin",
+    "ADMIN_REVIEW_OUTPUT=/workspace/acp-chat/docs/launch-gate/evidence/CODE-UX-AUTH-20261024-1447/admin-renders",
+    "node",
+    "scripts/synthetic/admin-review-browser.cjs"
+  ],
+  "start": "2026-10-24T13:04:02.120953+00:00",
+  "end": "2026-10-24T13:04:02.886278+00:00",
+  "code": 1,
+  "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stderr_sha256": "21857789c08cd8c4d30e196db526a0f25e2ee1a1350d33f722dc11dcd410e1dd"
+}

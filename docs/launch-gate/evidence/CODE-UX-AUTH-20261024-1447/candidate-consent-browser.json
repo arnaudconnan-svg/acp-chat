@@ -1,0 +1,15 @@
+{
+  "argv": [
+    "env",
+    "-i",
+    "PATH=/workspace/acp-chat/work/ux-auth/package/bin:/usr/bin:/bin",
+    "CONSENT_OUTPUT=/workspace/acp-chat/docs/launch-gate/evidence/CODE-UX-AUTH-20261024-1447/consent-renders",
+    "node",
+    "scripts/synthetic/consent-browser.cjs"
+  ],
+  "start": "2026-10-24T13:11:36.881458+00:00",
+  "end": "2026-10-24T13:11:43.546299+00:00",
+  "code": 0,
+  "stdout_sha256": "a65c8e2aa3f5334bc1522343543d162fe90fc13f74fb57af4c8c6b2dc4c674dc",
+  "stderr_sha256": "05b51ea8b83c25db383d970ade4c1bd0b5723ad9995d82f140c0818509875a46"
+}

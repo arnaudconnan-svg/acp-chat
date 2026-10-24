@@ -1,0 +1,10 @@
+Sat, 24 Oct 2026 13:09:36 GMT router deprecated handlers that are Promise-like are deprecated, use a native Promise instead at node_modules/router/lib/route.js:157:13
+AssertionError [ERR_ASSERTION]: the authorization scope must fit its mobile card
+    at /workspace/acp-chat/scripts/synthetic/consent-browser.cjs:134:9 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}

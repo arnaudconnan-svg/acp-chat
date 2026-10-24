@@ -1,0 +1,16 @@
+{
+  "argv": [
+    "env",
+    "-i",
+    "PATH=/workspace/acp-chat/work/ux-auth/package/bin:/usr/bin:/bin",
+    "NODE_ENV=test",
+    "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+    "node",
+    "scripts/synthetic/admin-review-harness.cjs"
+  ],
+  "start": "2026-10-24T13:04:01.412930+00:00",
+  "end": "2026-10-24T13:04:02.091534+00:00",
+  "code": 0,
+  "stdout_sha256": "831bca111f9cb4dc512b88e60cd7d7c139900bbfd9c54f623726bc8ab8b63db0",
+  "stderr_sha256": "b4819a9afc5da98e37b94947fab31b2a7189fc088730bcebb6ba16c1c10aa1e3"
+}

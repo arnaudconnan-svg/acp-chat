@@ -1,0 +1,10 @@
+Sat, 24 Oct 2026 13:05:39 GMT router deprecated handlers that are Promise-like are deprecated, use a native Promise instead at node_modules/router/lib/route.js:157:13
+locator.fill: Error: Malformed value
+Call log:
+  - waiting for locator('section').filter({ has: getByRole('heading', { name: 'Accès de mon praticien', exact: true }) }).getByLabel('Fin de l’autorisation en heure locale', { exact: true })
+    - locator resolved to <input step="0.001" type="datetime-local" aria-label="Fin de l’autorisation en heure locale"/>
+    - fill("2026-10-24T16:05:40.070")
+  - attempting fill action
+    - waiting for element to be visible, enabled and editable
+
+    at /workspace/acp-chat/scripts/synthetic/consent-browser.cjs:121:92

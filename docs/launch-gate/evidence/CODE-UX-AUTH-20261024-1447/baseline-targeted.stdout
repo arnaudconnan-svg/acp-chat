@@ -1,0 +1,5 @@
+[PASS] CJ4 consent DOM through real APIs: readable owned public choices, restored scope/date/summary, exact local expiry and revocation; distinct admin reasons
+[PASS] M1 individual roles, cold restart, grants/revocation, minimal API, supports/admin and journal through genuine Express
+[PASS] M0 genuine Express mounts/order/errors and full source/health with doubles, boot/timers/providers refused before load
+[PASS] G02 actual routes/effects, scopes/cancel/progress/leases; G04 private multi-turn/device reload/cold restart and bounded feedback
+[PASS] G06 production projection before genuine pino, console and child bindings; markers absent

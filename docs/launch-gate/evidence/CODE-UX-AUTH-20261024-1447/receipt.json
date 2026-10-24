@@ -1,0 +1,108 @@
+{
+  "utc": "2026-10-24T13:14:18.505020+00:00",
+  "base": "285f55f7558a9372f62a32e78bafb2852a363337",
+  "technical_sha": "682a474b0fec2a1a8420d72e88d34c9ac51bde3a",
+  "node_tarball_integrity": "sha512-Bi7VlP4LNQBy6W40tvqfXKPMGT9tnrs7pybiox7yqQMSiMagKuZyyIIb/pYM2dbtPlXyQnLif0ZtgyUIImQQkQ==",
+  "sha256": {
+    "public/js/content-grants.js": "efad21eb4dc0dba9f689b535bc57429be0501062754e66b822daa332d1860c9d",
+    "scripts/synthetic/admin-review-browser.cjs": "e788c376a47720fa24ba70a3992382971587d6189806159a7d5cbb9a73275d59",
+    "scripts/synthetic/consent-browser.cjs": "69e2014488fb4795eaebc626072aecd1bf7265449924b2d2c9be442798dec595",
+    "scripts/synthetic/guard.cjs": "4b0b744468fc6b95ff0f91cd2126cf05fa10560e9188efc2d0e9e351dd258a89",
+    "scripts/synthetic/runtime.cjs": "c1b1c0afbe7f45804261806a8de38e29c261bce06b618df84b9112e832da2a74",
+    "server.js": "253230f9436a222fc04934d7e9c3360a849e37626cac273653fa3d360fda1c2a",
+    "package.json": "e3a9ff0ca03290a803147fe1c36bf46730b21a2ce7605b7dad9d92eec9d5373d",
+    "package-lock.json": "4985f28230133cb001e61d45cd107ee4d5adbe74334d053090905807b8f94c7d",
+    "AGENTS.md": "a4a4e4cf41fe079fc5bc5dfffa2137c3608ebcf854483b1ecb7a56a9989a294c",
+    "WORKFLOW.md": "da30f2ede9a442ade3e225bc2f7ebf54ff6c28e6715a96f4fdb142260f8a64d2",
+    "PROMPTING.md": "f2dfb94cf5a3408973adc03f7a8778f0754fda01ee8b586623cad6c451dddb5d"
+  },
+  "runs": {
+    "candidate-verify.json": {
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/workspace/acp-chat/work/ux-auth/package/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin:/usr/bin:/bin",
+        "NODE_ENV=test",
+        "REFRESH_EMERGENCY_ON_BOOT=false",
+        "LOG_PERSIST=false",
+        "LOG_PRETTY=false",
+        "MISTRAL_API_KEY=synthetic-unused",
+        "FIREBASE_DATABASE_URL=https://synthetic.example.test",
+        "FIREBASE_SERVICE_ACCOUNT={}",
+        "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+        "npm",
+        "run",
+        "verify"
+      ],
+      "start": "2026-10-24T13:11:38.116211+00:00",
+      "end": "2026-10-24T13:11:57.023628+00:00",
+      "code": 0,
+      "stdout_sha256": "0688f3d51f56693518674140c2fbdc073db1a8ae761068e263ef67541b63ee6a",
+      "stderr_sha256": "f21e5002566a6399a9bc16bf0437e8078b92432b3b6b1a4c4272c117e09c3865"
+    },
+    "candidate-lint.json": {
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/workspace/acp-chat/work/ux-auth/package/bin:/usr/bin:/bin",
+        "node",
+        "node_modules/eslint/bin/eslint.js",
+        "public/js/content-grants.js",
+        "scripts/synthetic/admin-review-browser.cjs",
+        "scripts/synthetic/consent-browser.cjs"
+      ],
+      "start": "2026-10-24T13:11:41.496115+00:00",
+      "end": "2026-10-24T13:11:41.815849+00:00",
+      "code": 0,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "candidate-admin-browser.json": {
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/workspace/acp-chat/work/ux-auth/package/bin:/usr/bin:/bin",
+        "ADMIN_REVIEW_OUTPUT=/workspace/acp-chat/docs/launch-gate/evidence/CODE-UX-AUTH-20261024-1447/admin-renders",
+        "node",
+        "scripts/synthetic/admin-review-browser.cjs"
+      ],
+      "start": "2026-10-24T13:11:43.578627+00:00",
+      "end": "2026-10-24T13:11:47.932191+00:00",
+      "code": 0,
+      "stdout_sha256": "56b81d51f8ee97cfd3f0d171bed2ea137b723775370e34b9bdcd3d416007ff55",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "candidate-consent-browser.json": {
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/workspace/acp-chat/work/ux-auth/package/bin:/usr/bin:/bin",
+        "CONSENT_OUTPUT=/workspace/acp-chat/docs/launch-gate/evidence/CODE-UX-AUTH-20261024-1447/consent-renders",
+        "node",
+        "scripts/synthetic/consent-browser.cjs"
+      ],
+      "start": "2026-10-24T13:11:36.881458+00:00",
+      "end": "2026-10-24T13:11:43.546299+00:00",
+      "code": 0,
+      "stdout_sha256": "a65c8e2aa3f5334bc1522343543d162fe90fc13f74fb57af4c8c6b2dc4c674dc",
+      "stderr_sha256": "05b51ea8b83c25db383d970ade4c1bd0b5723ad9995d82f140c0818509875a46"
+    },
+    "candidate-targeted.json": {
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/workspace/acp-chat/work/ux-auth/package/bin:/usr/bin:/bin",
+        "NODE_ENV=test",
+        "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+        "/bin/bash",
+        "-c",
+        "node --check server.js && node --check public/js/content-grants.js && node --check scripts/synthetic/consent-browser.cjs && node scripts/synthetic/admin-review-harness.cjs && node scripts/synthetic/consent-ui-harness.cjs && node scripts/synthetic/professional-harness.cjs && node scripts/synthetic/isolation-harness.cjs && node scripts/synthetic/object-private-harness.cjs && node scripts/synthetic/log-projection-harness.cjs"
+      ],
+      "start": "2026-10-24T13:11:38.129035+00:00",
+      "end": "2026-10-24T13:11:41.463855+00:00",
+      "code": 0,
+      "stdout_sha256": "9ac56babfd7966b4d0dcdf177c56d952d0e94a5d50a91afaa4231a300c470ee3",
+      "stderr_sha256": "c6db8b4484e43d1063b99d8f339c861a3af68c12651949b48e451ea03a66cad1"
+    }
+  }
+}

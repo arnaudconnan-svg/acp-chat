@@ -1,0 +1,9 @@
+origin	https://github.com/arnaudconnan-svg/acp-chat.git (fetch)
+origin	https://github.com/arnaudconnan-svg/acp-chat.git (push)
+682a474b0fec2a1a8420d72e88d34c9ac51bde3a
+285f55f7558a9372f62a32e78bafb2852a363337
+?? docs/launch-gate/evidence/CODE-UX-AUTH-20261024-1447/
+?? work/
+v22.23.4
+Chromium 154.0.8037.57 built on Debian GNU/Linux 13 (trixie)
+{"playwright":"1.59.1","bodyParser":"2.4.0"}

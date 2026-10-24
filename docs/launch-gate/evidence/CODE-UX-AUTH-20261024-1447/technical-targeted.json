@@ -1,0 +1,17 @@
+{
+  "argv": [
+    "env",
+    "-i",
+    "PATH=/workspace/acp-chat/work/ux-auth/package/bin:/usr/bin:/bin",
+    "NODE_ENV=test",
+    "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+    "/bin/bash",
+    "-c",
+    "node --check server.js && node --check public/js/content-grants.js && node --check scripts/synthetic/consent-browser.cjs && node scripts/synthetic/admin-review-harness.cjs && node scripts/synthetic/consent-ui-harness.cjs && node scripts/synthetic/professional-harness.cjs && node scripts/synthetic/isolation-harness.cjs && node scripts/synthetic/object-private-harness.cjs && node scripts/synthetic/log-projection-harness.cjs"
+  ],
+  "start": "2026-10-24T13:10:51.963231+00:00",
+  "end": "2026-10-24T13:10:54.815860+00:00",
+  "code": 0,
+  "stdout_sha256": "9ac56babfd7966b4d0dcdf177c56d952d0e94a5d50a91afaa4231a300c470ee3",
+  "stderr_sha256": "51a04cc1083024168fdcc386c650d872e2cd905740722488a2711b8445023c0e"
+}
