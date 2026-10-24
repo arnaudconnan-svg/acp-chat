@@ -1,0 +1,14 @@
+{
+  "argv": [
+    "env",
+    "-i",
+    "PATH=/workspace/work/CODE-UX-AUTH-20261024-1447/ux-auth/package/bin:/usr/bin:/bin",
+    "node",
+    "scripts/synthetic/qa-chat-worker.cjs"
+  ],
+  "start": "2026-10-24T14:16:40.332574+00:00",
+  "end": "2026-10-24T14:16:40.358033+00:00",
+  "code": 1,
+  "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stderr_sha256": "1f1f829a0906dbe38fed400a04b45eaabd98aa00e9b45abf07d96f9c90a204fe"
+}

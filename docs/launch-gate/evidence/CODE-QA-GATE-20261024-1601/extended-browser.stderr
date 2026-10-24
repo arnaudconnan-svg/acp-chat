@@ -1,0 +1,8 @@
+Sat, 24 Oct 2026 14:14:54 GMT router deprecated handlers that are Promise-like are deprecated, use a native Promise instead at node_modules/router/lib/route.js:157:13
+locator.waitFor: Timeout 12000ms exceeded.
+Call log:
+  - waiting for locator('#chat').getByText('Le message n\'a pas pu être traité pour le moment. Un nouvel essai sera possible dans quelques instants.', { exact: true }).last() to be visible
+
+    at /workspace/acp-chat/scripts/synthetic/qa-chat-browser.cjs:324:12 {
+  name: 'TimeoutError'
+}

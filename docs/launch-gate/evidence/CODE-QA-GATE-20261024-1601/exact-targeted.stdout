@@ -1,0 +1,64 @@
+[PASS] M0 genuine Express mounts/order/errors and full source/health with doubles, boot/timers/providers refused before load
+PASS reserved-access link uses ordinary authentication and retains Android entry
+PASS real reserved-access frontend and Express session: anonymous
+PASS real reserved-access frontend and Express session: valid
+PASS real reserved-access frontend and Express session: invalid
+PASS real reserved-access frontend and Express session: revoked
+PASS real reserved-access frontend and Express session: unavailable
+PASS real reserved-access frontend and Express session: android
+PASS real Stop keeps its launch destination after public_navigation
+PASS real Stop keeps its launch destination after private_navigation
+PASS real Stop keeps its launch destination after identity
+PASS real Stop keeps its launch destination after identity_roundtrip
+PASS real close frontend destination after conversation
+PASS real close frontend destination after identity
+PASS real close frontend destination after delete
+PASS real close frontend destination after manual
+PASS real reset handler clears the old identity despite wrapper activation of new identity
+PASS real closure handler removes this device content and invalidates identity
+PASS real copy frontend resumes exact request after lost acknowledgement and hydrates canonical destination
+PASS real copy body delayed through identity cannot activate/store old destination
+PASS real copy body delayed through retirement cannot activate/store old destination
+PASS real make-public retries frozen import then maps acknowledged IDs; failed import stays private
+PASS real replay frontend keeps destination/request across reload and hydrates current acknowledged copy
+PASS real stream reader disabled: only explicit disabled permits classic fallback
+PASS real stream reader other405: only explicit disabled permits classic fallback
+PASS real stream reader error: only explicit disabled permits classic fallback
+PASS real stream reader success: only explicit disabled permits classic fallback
+PASS real stream reader network: only explicit disabled permits classic fallback
+PASS real stream reader rejects delayed body chunk after identity
+PASS real stream reader rejects delayed body chunk after retirement
+PASS real save receipt distinguishes confirmed, uncertain and replaced without old local resurrection
+PASS real interrupted-stream frontend receipt confirmed is scoped and truthful
+PASS real interrupted-stream frontend receipt uncertain is scoped and truthful
+PASS real interrupted-stream frontend receipt private is scoped and truthful
+PASS real interrupted-stream frontend receipt identity is scoped and truthful
+PASS real interrupted-stream frontend receipt completed_wins is scoped and truthful
+M2 browser: 35 PASS
+PASS enabled streaming public legitimate tokens/result and persistence contract
+PASS enabled streaming private legitimate tokens/result and persistence contract
+PASS enabled stream token retained during delete: no late token/result
+PASS enabled stream token retained during reset: no late token/result
+PASS enabled stream token retained during close: no late token/result
+PASS enabled stream token retained during cancel: no late token/result
+PASS interrupted public stream retained writer, lost acknowledgement and cold repeat preserve one partial child
+PASS completed stream wins over late partial report, fabricated operation refused
+M2 stream: 8 PASS
+PASS delivered N remains saveable after N+1 while stale current-state effects are discarded
+PASS real chat writer retained during delete
+PASS real chat memory retained during delete
+PASS real chat writer retained during reset
+PASS real chat memory retained during reset
+PASS real chat writer retained during close
+PASS real chat memory retained during close
+PASS real consolidation loses to manual edit without invalidating session
+PASS real held chat memory cannot overwrite a newer manual revision
+PASS real writer held across replay replacement cannot restore previous content
+PASS real memory held across replay replacement cannot restore previous content
+PASS real persistence held across replay replacement cannot restore previous content
+PASS real writer held across import replacement cannot restore previous content
+PASS real memory held across import replacement cannot restore previous content
+PASS real persistence held across import replacement cannot restore previous content
+PASS real cancel during held message commit rejects callback replay without dropping another request
+PASS real delayed consolidation rejects content replacement at commit
+M2 chat: 17 PASS

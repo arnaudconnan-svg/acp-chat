@@ -1,0 +1,15 @@
+{
+  "argv": [
+    "env",
+    "-i",
+    "PATH=/workspace/work/CODE-UX-AUTH-20261024-1447/ux-auth/package/bin:/usr/bin:/bin",
+    "QA_CHAT_OUTPUT=/workspace/acp-chat/docs/launch-gate/evidence/CODE-QA-GATE-20261024-1601/renders",
+    "node",
+    "scripts/synthetic/qa-chat-browser.cjs"
+  ],
+  "start": "2026-10-24T14:16:11.288400+00:00",
+  "end": "2026-10-24T14:16:34.696232+00:00",
+  "code": 0,
+  "stdout_sha256": "2eda76f4b9ccfacb291780e53038746ad5ba48a31529eedacd2482cc883ce8ec",
+  "stderr_sha256": "16a9c63fb587f3cbbde1b0d2de668f33ad0ffcb342cf1ce7ba7d510da56d172b"
+}

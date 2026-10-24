@@ -1,0 +1,12 @@
+
+/workspace/acp-chat/scripts/synthetic/qa-chat-browser.cjs
+   19:16  error  'Buffer' is not defined    no-undef
+   33:10  error  'Buffer' is not defined    no-undef
+  310:13  error  'document' is not defined  no-undef
+  359:17  error  'fetch' is not defined     no-undef
+  373:11  error  'document' is not defined  no-undef
+  374:11  error  'window' is not defined    no-undef
+  381:19  error  'fetch' is not defined     no-undef
+
+✖ 7 problems (7 errors, 0 warnings)
+

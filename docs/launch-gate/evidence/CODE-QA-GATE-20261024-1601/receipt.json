@@ -1,0 +1,113 @@
+{
+  "utc": "2026-10-24T14:21:27.707827+00:00",
+  "base": "47b049c9bb54dfe462a1e03c87c701e29ce94f64",
+  "technical_sha": "7b27a6796331675af51f993d02030fb5545a4f85",
+  "sha256": {
+    "scripts/synthetic/qa-chat-browser.cjs": "996ec4a73eed55a7d53f9663f34f1c49187f1244e4105d238fff7c4f2acd7688",
+    "scripts/synthetic/qa-chat-browser.sh": "10e28c47e4a4b1e745206297a805982d76d5ff4c2db3d32a98c05dbd5a05cfda",
+    "scripts/synthetic/qa-chat-worker.cjs": "a34cc08d451eadcc15591699af294fb8fa4230d9e74ebddaf99a22bbc5770131",
+    "scripts/synthetic/guard.cjs": "4b0b744468fc6b95ff0f91cd2126cf05fa10560e9188efc2d0e9e351dd258a89",
+    "scripts/synthetic/runtime.cjs": "c1b1c0afbe7f45804261806a8de38e29c261bce06b618df84b9112e832da2a74",
+    "public/index.html": "97de33a51813338cfe9bd9700f32c03b5f1189d8955092c5bb2e8f0219f4e5d0",
+    "public/auth.html": "47f0d58ab19fa864e46950cd9279398f9741d3cdd89971ab611f639b5d5f1b00",
+    "public/launch-bridge.html": "8b54fceec659be6945232952231d7d07aacae08b22ecc3ff802f7ca4a582ba21",
+    "server.js": "253230f9436a222fc04934d7e9c3360a849e37626cac273653fa3d360fda1c2a",
+    "package.json": "e3a9ff0ca03290a803147fe1c36bf46730b21a2ce7605b7dad9d92eec9d5373d",
+    "package-lock.json": "4985f28230133cb001e61d45cd107ee4d5adbe74334d053090905807b8f94c7d"
+  },
+  "key_render_sha256": {
+    "mobile-stream-response.png": "090876ceb2f679ed5294e084a474979ddd714b48ad35662a870609b2843fcc36",
+    "desktop-json-fallback.png": "31b165872d762b9d084f6ceef64ee9e2b234a543591662da2e6d623352e2876f",
+    "mobile-consent-required.png": "a067906a6f1a1c38617a1bb62a291a088fc346d3cebc943156f939ad350fab0f",
+    "mobile-failure-network.png": "447274fed3409dd91b53ee1c44c30e6d72157056eb15d74152c25458201486d8",
+    "mobile-auth-required-again.png": "59d8163b1c1297ea0e23ae040d655b6aee094f7f634284bb78aa2bf81ed5d698",
+    "desktop-stream.sse": "9e11cea0876d3d418e445a225e9b6856d05d9a0e4862e2ea66c26579ad606fc9"
+  },
+  "runs": {
+    "exact-targeted.json": {
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/workspace/work/CODE-UX-AUTH-20261024-1447/ux-auth/package/bin:/usr/bin:/bin",
+        "NODE_ENV=test",
+        "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+        "/bin/bash",
+        "-c",
+        "node --check server.js && node --check scripts/synthetic/qa-chat-browser.cjs && node --check scripts/synthetic/qa-chat-worker.cjs && bash -n scripts/synthetic/qa-chat-browser.sh && node scripts/synthetic/isolation-harness.cjs && node scripts/synthetic/m2-browser-harness.cjs && node scripts/synthetic/m2-stream-harness.cjs && node scripts/synthetic/m2-chat-harness.cjs"
+      ],
+      "start": "2026-10-24T14:19:04.112701+00:00",
+      "end": "2026-10-24T14:19:06.922998+00:00",
+      "code": 0,
+      "stdout_sha256": "2ca4011bbdd3c019bca30f27ebd008008cf904c2bcb539a728062b17d2adff64",
+      "stderr_sha256": "cac1eaa30ed7b77fcbd5a888f24a03fe6f72c038f5d239a9de7a465520e79c43"
+    },
+    "exact-lint.json": {
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/workspace/work/CODE-UX-AUTH-20261024-1447/ux-auth/package/bin:/usr/bin:/bin",
+        "node",
+        "node_modules/eslint/bin/eslint.js",
+        "scripts/synthetic/qa-chat-browser.cjs",
+        "scripts/synthetic/qa-chat-worker.cjs"
+      ],
+      "start": "2026-10-24T14:19:06.955702+00:00",
+      "end": "2026-10-24T14:19:07.222287+00:00",
+      "code": 0,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "exact-browser.json": {
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/workspace/work/CODE-UX-AUTH-20261024-1447/ux-auth/package/bin:/usr/bin:/bin",
+        "QA_CHAT_OUTPUT=/workspace/acp-chat/docs/launch-gate/evidence/CODE-QA-GATE-20261024-1601/renders",
+        "bash",
+        "scripts/synthetic/qa-chat-browser.sh"
+      ],
+      "start": "2026-10-24T14:19:07.591267+00:00",
+      "end": "2026-10-24T14:19:30.377934+00:00",
+      "code": 0,
+      "stdout_sha256": "d36d5131c50c6950595631fc0fff9bb0b6dd2a75b36bfcf0c83b61c7aaa693e7",
+      "stderr_sha256": "23231b2d6479d6353a062d955af33e57c4209fe213fc47fd54efaab109dbf066"
+    },
+    "exact-negative-guard.json": {
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/workspace/work/CODE-UX-AUTH-20261024-1447/ux-auth/package/bin:/usr/bin:/bin",
+        "node",
+        "scripts/synthetic/qa-chat-worker.cjs"
+      ],
+      "start": "2026-10-24T14:19:34.948239+00:00",
+      "end": "2026-10-24T14:19:34.976991+00:00",
+      "code": 1,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "1f1f829a0906dbe38fed400a04b45eaabd98aa00e9b45abf07d96f9c90a204fe"
+    },
+    "exact-verify.json": {
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/workspace/work/CODE-UX-AUTH-20261024-1447/ux-auth/package/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin:/usr/bin:/bin",
+        "NODE_ENV=test",
+        "REFRESH_EMERGENCY_ON_BOOT=false",
+        "LOG_PERSIST=false",
+        "LOG_PRETTY=false",
+        "MISTRAL_API_KEY=synthetic-unused",
+        "FIREBASE_DATABASE_URL=https://synthetic.example.test",
+        "FIREBASE_SERVICE_ACCOUNT={}",
+        "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+        "npm",
+        "run",
+        "verify"
+      ],
+      "start": "2026-10-24T14:19:04.118727+00:00",
+      "end": "2026-10-24T14:19:23.120332+00:00",
+      "code": 0,
+      "stdout_sha256": "d68bc49de60efa627b238b93556197d7c247ae039b0644655a78c9e2c7820c36",
+      "stderr_sha256": "cbcb3373274414af64cda901ca05c29331c4d065b6fd2553ea2b35310ccf6cf7"
+    }
+  }
+}
