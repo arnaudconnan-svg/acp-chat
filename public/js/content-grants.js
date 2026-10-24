@@ -27,6 +27,7 @@
       const existing = element('p');
       existing.setAttribute('data-grant-current', '');
       const scope = element('select');
+      scope.style.maxWidth = '100%';
       scope.setAttribute('aria-label', 'Port\u00e9e de l\u2019autorisation');
       scope.add(
         new root.Option('Conversations choisies', 'conversation_specific')
@@ -60,7 +61,8 @@
       let grants = {},
         conversations = [],
         practitioners = [],
-        busy = false;
+        busy = false,
+        expiryTimer;
       const buttons = [];
       function refreshButtons() {
         for (const b of buttons)
@@ -97,6 +99,13 @@
           );
           element('br', null, choices);
         }
+        updateCurrentGrant();
+        refreshScope();
+        refreshButtons();
+      }
+      function updateCurrentGrant() {
+        root.clearTimeout(expiryTimer);
+        const g = grants[professional.value];
         const selectedTitles = conversations
           .filter((c) => g?.conversationIds?.includes(c.id))
           .map((c) => c.title || 'Conversation sans titre')
@@ -119,8 +128,13 @@
             (g.allowIntersessionSummary ? 'oui' : 'non') +
             '.'
           : 'Aucune autorisation enregistr\u00e9e.';
-        refreshScope();
-        refreshButtons();
+        if (g?.active && Number.isFinite(g.endsAt) && g.endsAt > Date.now())
+          expiryTimer = root.setTimeout(
+            () => {
+              if (panel.isConnected) updateCurrentGrant();
+            },
+            Math.min(g.endsAt - Date.now(), 2147483647)
+          );
       }
       async function reload() {
         const [grantRes, convRes] = await Promise.all([

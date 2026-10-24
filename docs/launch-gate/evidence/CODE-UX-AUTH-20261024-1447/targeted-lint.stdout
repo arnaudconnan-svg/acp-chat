@@ -1,0 +1,13 @@
+
+/workspace/acp-chat/scripts/synthetic/consent-browser.cjs
+    9:27  error  '__dirname' is not defined   no-undef
+   11:34  error  '__dirname' is not defined   no-undef
+   56:42  error  '__filename' is not defined  no-undef
+   57:93  error  '__dirname' is not defined   no-undef
+   77:7   error  'console' is not defined     no-undef
+   84:50  error  'URL' is not defined         no-undef
+  175:9   error  'console' is not defined     no-undef
+  179:27  error  'console' is not defined     no-undef
+
+✖ 8 problems (8 errors, 0 warnings)
+

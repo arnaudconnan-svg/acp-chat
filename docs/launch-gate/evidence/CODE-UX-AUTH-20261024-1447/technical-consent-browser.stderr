@@ -1,0 +1,13 @@
+Sat, 24 Oct 2026 13:10:56 GMT router deprecated handlers that are Promise-like are deprecated, use a native Promise instead at node_modules/router/lib/route.js:157:13
+AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:
+
+  assert(await panel().locator('fieldset').isDisabled())
+
+    at /workspace/acp-chat/scripts/synthetic/consent-browser.cjs:370:9 {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}

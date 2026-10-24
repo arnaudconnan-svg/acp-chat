@@ -1,0 +1,23 @@
+{
+  "argv": [
+    "env",
+    "-i",
+    "PATH=/workspace/acp-chat/work/ux-auth/package/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin:/usr/bin:/bin",
+    "NODE_ENV=test",
+    "REFRESH_EMERGENCY_ON_BOOT=false",
+    "LOG_PERSIST=false",
+    "LOG_PRETTY=false",
+    "MISTRAL_API_KEY=synthetic-unused",
+    "FIREBASE_DATABASE_URL=https://synthetic.example.test",
+    "FIREBASE_SERVICE_ACCOUNT={}",
+    "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+    "npm",
+    "run",
+    "verify"
+  ],
+  "start": "2026-10-24T13:08:29.993340+00:00",
+  "end": "2026-10-24T13:08:47.680450+00:00",
+  "code": 0,
+  "stdout_sha256": "0688f3d51f56693518674140c2fbdc073db1a8ae761068e263ef67541b63ee6a",
+  "stderr_sha256": "0338a6b18c3210d418ced262f100aba8b0ff57817eba968c13726917aa4ba602"
+}
