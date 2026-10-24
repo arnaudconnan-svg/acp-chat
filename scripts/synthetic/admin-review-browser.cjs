@@ -158,6 +158,7 @@ fs.mkdirSync(output, { recursive: true });
           ])
         );
         assert(!storage.includes('SYNTHETIC ALICE'));
+        assert(!storage.includes('synthetic-alice@example.test'));
         assert(!storage.includes('u_synthetic'));
       };
       const shot = (label) =>
@@ -175,6 +176,26 @@ fs.mkdirSync(output, { recursive: true });
         .first()
         .waitFor();
       await shot('list-revealed');
+      const refreshed = page.waitForResponse(
+        (r) => new URL(r.url()).pathname === '/api/admin/conversations'
+      );
+      await page.evaluate(() =>
+        globalThis.dispatchEvent(
+          new globalThis.CustomEvent('facilitat-admin-refresh')
+        )
+      );
+      await refreshed;
+      await page
+        .getByText('SYNTHETIC ALICE', { exact: false })
+        .first()
+        .waitFor();
+      assert.equal(calls.at(-1).reason, 'support_incident');
+      assert.equal(calls.at(-1).unmask, 'identity_verification');
+      await identity().selectOption('');
+      await masked();
+      await noIdentity();
+      assert.equal(calls.at(-1).unmask, null);
+      await shot('refresh-remasked');
       await page.locator('.admin-conversation-open-btn').first().click();
       await page.waitForURL('**/admin.html?c=c_synthetic');
       await page
@@ -202,6 +223,7 @@ fs.mkdirSync(output, { recursive: true });
       assert(
         !(await page.locator('body').innerText()).includes('SYNTHETIC ALICE')
       );
+      await noIdentity();
       await page.goto('http://synthetic.example.test/admin.html');
       await masked();
       assert.equal(await access().inputValue(), 'security_review');
@@ -287,6 +309,7 @@ fs.mkdirSync(output, { recursive: true });
         !(await page.locator('body').innerText()).includes('SYNTHETIC ALICE')
       );
       await shot('expired');
+      await noIdentity();
       assert.deepEqual(errors, []);
       assert(
         calls.some(
