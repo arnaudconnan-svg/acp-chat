@@ -1,0 +1,1 @@
+{"node":"v22.23.4","chromium":"154.0.8037.57","mocked":["safety signals H0/N2","writer/tokens","memory","disabled progress SSE","injected transport failures"],"real":["index.html/auth.html/assets","login/session/logout and human-support consent routes","chat/stream and chat JSON routes","M0 in-memory runtime"],"providerCalls":0}

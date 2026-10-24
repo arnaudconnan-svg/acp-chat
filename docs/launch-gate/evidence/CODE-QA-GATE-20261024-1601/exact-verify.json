@@ -1,0 +1,23 @@
+{
+  "argv": [
+    "env",
+    "-i",
+    "PATH=/workspace/work/CODE-UX-AUTH-20261024-1447/ux-auth/package/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin:/usr/bin:/bin",
+    "NODE_ENV=test",
+    "REFRESH_EMERGENCY_ON_BOOT=false",
+    "LOG_PERSIST=false",
+    "LOG_PRETTY=false",
+    "MISTRAL_API_KEY=synthetic-unused",
+    "FIREBASE_DATABASE_URL=https://synthetic.example.test",
+    "FIREBASE_SERVICE_ACCOUNT={}",
+    "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+    "npm",
+    "run",
+    "verify"
+  ],
+  "start": "2026-10-24T14:19:04.118727+00:00",
+  "end": "2026-10-24T14:19:23.120332+00:00",
+  "code": 0,
+  "stdout_sha256": "d68bc49de60efa627b238b93556197d7c247ae039b0644655a78c9e2c7820c36",
+  "stderr_sha256": "cbcb3373274414af64cda901ca05c29331c4d065b6fd2553ea2b35310ccf6cf7"
+}

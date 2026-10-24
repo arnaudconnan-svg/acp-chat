@@ -1,0 +1,17 @@
+{
+  "argv": [
+    "env",
+    "-i",
+    "PATH=/workspace/work/CODE-UX-AUTH-20261024-1447/ux-auth/package/bin:/usr/bin:/bin",
+    "NODE_ENV=test",
+    "NODE_OPTIONS=--require=/workspace/acp-chat/scripts/synthetic/guard.cjs",
+    "/bin/bash",
+    "-c",
+    "node --check server.js && node --check scripts/synthetic/qa-chat-browser.cjs && node --check scripts/synthetic/qa-chat-worker.cjs && bash -n scripts/synthetic/qa-chat-browser.sh && node scripts/synthetic/isolation-harness.cjs && node scripts/synthetic/m2-browser-harness.cjs && node scripts/synthetic/m2-stream-harness.cjs && node scripts/synthetic/m2-chat-harness.cjs"
+  ],
+  "start": "2026-10-24T14:19:04.112701+00:00",
+  "end": "2026-10-24T14:19:06.922998+00:00",
+  "code": 0,
+  "stdout_sha256": "2ca4011bbdd3c019bca30f27ebd008008cf904c2bcb539a728062b17d2adff64",
+  "stderr_sha256": "cac1eaa30ed7b77fcbd5a888f24a03fe6f72c038f5d239a9de7a465520e79c43"
+}
