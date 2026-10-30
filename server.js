@@ -392,8 +392,8 @@ function readModelId(envKey, fallback) {
 
 const MISTRAL_MODEL_IDS = {
   analysis: readModelId('MISTRAL_MODEL_ANALYSIS', 'mistral-small-latest'),
-  generation: readModelId('MISTRAL_MODEL_GENERATION', 'mistral-medium-latest'),
-  memory: readModelId('MISTRAL_MODEL_MEMORY', 'mistral-medium-latest'),
+  generation: readModelId('MISTRAL_MODEL_GENERATION', 'mistral-large-4-0'),
+  memory: readModelId('MISTRAL_MODEL_MEMORY', 'mistral-large-4-0'),
   title: readModelId('MISTRAL_MODEL_TITLE', 'mistral-small-latest')
 };
 

@@ -3,7 +3,7 @@
 const assert = require('node:assert/strict');
 const { createAnalyzers } = require('../lib/analyzers');
 
-const SECURITY_MODEL = 'mistral-medium-latest';
+const SECURITY_MODEL = 'mistral-large-4-0';
 const prompts = {
   ANALYZE_SUICIDE_RISK: 'PROMPT_SUICIDE acute={{acuteCrisis}}'
 };

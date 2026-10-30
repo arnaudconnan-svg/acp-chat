@@ -3,7 +3,7 @@
 const assert = require('node:assert/strict');
 const { createAnalyzers } = require('../lib/analyzers');
 
-const GENERATION_MODEL = 'mistral-medium-latest';
+const GENERATION_MODEL = 'mistral-large-4-0';
 const FOLLOWUP_PROMPT = [
   'TYPE={{TURN_TYPE_LABEL}}',
   'INSTRUCTIONS={{TURN_TYPE_INSTRUCTIONS}}',

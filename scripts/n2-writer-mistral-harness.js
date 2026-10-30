@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const { buildResponseDebugMeta } = require('../lib/debugmeta');
 const { createWriter } = require('../lib/writer');
 
-const GENERATION_MODEL = 'mistral-medium-latest';
+const GENERATION_MODEL = 'mistral-large-4-0';
 
 function n2Decision() {
   return {

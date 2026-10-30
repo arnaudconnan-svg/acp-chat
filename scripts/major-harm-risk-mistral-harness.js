@@ -3,7 +3,7 @@
 const assert = require('node:assert/strict');
 const { createAnalyzers } = require('../lib/analyzers');
 
-const SECURITY_MODEL = 'mistral-medium-latest';
+const SECURITY_MODEL = 'mistral-large-4-0';
 const prompts = { ANALYZE_IMMINENT_MAJOR_HARM_RISK: 'PROMPT_MAJOR_HARM_RISK' };
 
 function result(overrides = {}) {
