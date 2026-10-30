@@ -18,7 +18,7 @@ function buildPostureDecision() {
 function createHarnessWriter(mistralTransport) {
   return createWriter({
     mistralTransport,
-    MISTRAL_MODEL_IDS: { generation: 'mistral-medium-latest' },
+    MISTRAL_MODEL_IDS: { generation: 'mistral-large-4-0' },
     normalizeMemory: (value) => String(value || '')
   });
 }
@@ -49,7 +49,7 @@ async function main() {
     completionTokens: 3,
     totalTokens: 15
   });
-  assert.strictEqual(classicRequest.model, 'mistral-medium-latest');
+  assert.strictEqual(classicRequest.model, 'mistral-large-4-0');
   assert.strictEqual(classicRequest.topP, 1);
   assert.strictEqual(classicRequest.presencePenalty, 0.3);
   assert.strictEqual(classicRequest.frequencyPenalty, 0.15);
@@ -79,7 +79,7 @@ async function main() {
     }
   });
   assert.strictEqual(n1Result.reply, 'Question de clarification N1');
-  assert.strictEqual(n1Request.model, 'mistral-medium-latest');
+  assert.strictEqual(n1Request.model, 'mistral-large-4-0');
   assert(
     n1Request.messages.some((message) =>
       String(message.content || '').includes('CONTRAT_N1_TEST')
@@ -113,7 +113,7 @@ async function main() {
   });
   assert.strictEqual(streamed.reply, 'Reponse streamée');
   assert.deepStrictEqual(emittedTokens, ['Reponse ', 'streamée']);
-  assert.strictEqual(streamRequest.model, 'mistral-medium-latest');
+  assert.strictEqual(streamRequest.model, 'mistral-large-4-0');
   assert.strictEqual(streamOptions.reportUsage, false);
   assert.strictEqual(streamed.usage.totalTokens, 14);
 

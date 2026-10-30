@@ -9,7 +9,7 @@ const {
 function createHelpers(mistralTransport) {
   return createMemoryHelpers({
     mistralTransport,
-    MISTRAL_MODEL_IDS: { memory: 'mistral-medium-latest' },
+    MISTRAL_MODEL_IDS: { memory: 'mistral-large-4-0' },
     normalizeIntersessionMemory: (value) => String(value || ''),
     normalizeMemory: (value) => String(value || '')
   });
@@ -36,7 +36,7 @@ async function main() {
           '{"items":["Vit a Lyon et travaille dans le soin.","Cherche un meilleur equilibre professionnel."]}',
         finishReason: 'stop',
         usage: { promptTokens: 30, completionTokens: 12, totalTokens: 42 },
-        raw: { model: 'mistral-medium-latest' }
+        raw: { model: 'mistral-large-4-0' }
       };
     }
   });
@@ -51,7 +51,7 @@ async function main() {
       '- Cherche un meilleur equilibre professionnel'
     ].join('\n')
   );
-  assert.strictEqual(factualRequest.model, 'mistral-medium-latest');
+  assert.strictEqual(factualRequest.model, 'mistral-large-4-0');
   assert.strictEqual(factualRequest.maxTokens, 2500);
   assert.match(factualRequest.messages[0].content, /memoire inter-session/i);
   assert.match(factualRequest.messages[1].content, /Travaille dans le soin/);
@@ -68,7 +68,7 @@ async function main() {
           'Conversation :\nUtilisateur : voici mon message brut\nAssistant : voici la reponse brute',
         finishReason: 'stop',
         usage: null,
-        raw: { model: 'mistral-medium-latest' }
+        raw: { model: 'mistral-large-4-0' }
       };
     }
   });
@@ -80,7 +80,7 @@ async function main() {
         content: '{"items":["Il semble chercher un meilleur equilibre."]}',
         finishReason: 'stop',
         usage: null,
-        raw: { model: 'mistral-medium-latest' }
+        raw: { model: 'mistral-large-4-0' }
       };
     }
   });
@@ -96,7 +96,7 @@ async function main() {
         content: JSON.stringify({ items: longItems }),
         finishReason: 'stop',
         usage: null,
-        raw: { model: 'mistral-medium-latest' }
+        raw: { model: 'mistral-large-4-0' }
       };
     }
   });
@@ -115,7 +115,7 @@ async function main() {
         content: '```text\n```',
         finishReason: 'stop',
         usage: null,
-        raw: { model: 'mistral-medium-latest' }
+        raw: { model: 'mistral-large-4-0' }
       };
     }
   });

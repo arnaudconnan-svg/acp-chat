@@ -6,7 +6,7 @@ const { createMemoryHelpers } = require('../lib/memory');
 function createHelpers({ mistralTransport }) {
   return createMemoryHelpers({
     mistralTransport,
-    MISTRAL_MODEL_IDS: { memory: 'mistral-medium-latest' },
+    MISTRAL_MODEL_IDS: { memory: 'mistral-large-4-0' },
     normalizeIntersessionMemory: (value) => String(value || ''),
     normalizeMemory: (value) => String(value || '')
   });
@@ -28,7 +28,7 @@ async function main() {
           usage: { promptTokens: 20, completionTokens: 5, totalTokens: 25 },
           raw: {
             id: `memory-${memoryRequests.length}`,
-            model: 'mistral-medium-latest',
+            model: 'mistral-large-4-0',
             choices: [{ finishReason: 'stop', message: { content } }]
           }
         };
@@ -41,7 +41,7 @@ async function main() {
     [{ role: 'user', content: 'Je vis a Lyon et le travail est tendu.' }]
   );
   assert.strictEqual(memoryRequests.length, 2);
-  assert(memoryRequests.every((request) => request.model === 'mistral-medium-latest'));
+  assert(memoryRequests.every((request) => request.model === 'mistral-large-4-0'));
   assert(memoryRequests.every((request) => request.maxTokens === 1200));
   assert.match(updated.memoryText, /Aime marcher/);
   assert.match(updated.memoryText, /Vit a Lyon/);
@@ -51,7 +51,7 @@ async function main() {
   assert(
     updated.llmMeta.steps.every(
       (step) =>
-        step.model === 'mistral-medium-latest' &&
+        step.model === 'mistral-large-4-0' &&
         step.usedFallbackModel === false &&
         step.finishReason === 'stop'
     )
@@ -66,7 +66,7 @@ async function main() {
           content: 'sortie invalide',
           finishReason: 'stop',
           usage: null,
-          raw: { model: 'mistral-medium-latest', choices: [] }
+          raw: { model: 'mistral-large-4-0', choices: [] }
         };
       }
     }
